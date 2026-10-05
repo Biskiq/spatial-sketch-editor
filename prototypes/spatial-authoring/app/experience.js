@@ -185,9 +185,16 @@ export function previewGuide(){return preview(null,true);}
 export function selectStop(id){
  const stop=ctx.experience.stops[id];if(!stop)return false;
  cancelProposal('selection');A.select(id);
- // Peek is awareness, not disclosure. Selecting at Overview keeps Overview; L2 is a separate verb.
- if(S.experienceContext.depth==='occurrence'){S.experienceContext.depth='overview';T.begin({kind:'experience-overview',subject:id,params:{}});}
- S.experienceContext={...S.experienceContext,stop:null,presentation:stop.presentationId,seam:null};ctx.ui();return true;
+ const x=S.experienceContext;
+ // Selecting a Stop ends any writer or procedure that belonged to the previous context: an old route
+ // writer must not stay armed behind the new selection. Peek is awareness, not disclosure, so the
+ // context normalizes to the same Peek-level reading; the realized viewpoint is preserved.
+ const procedure=['occurrence','seam','route','coordination','precision','hints'].includes(x.depth);
+ if(procedure){S.derivedView=null;T.end();}
+ const depth=procedure?'overview':x.depth;
+ S.experienceContext={...x,depth,stop:null,presentation:stop.presentationId,seam:null};
+ if(depth==='overview')T.begin({kind:'experience-overview',subject:id,params:{}});
+ ctx.ui();return true;
 }
 export function suggestViews(pid,clear=false){return command(clear?'Free View choice':'Suggest a View order',e=>{const p=e.presentations[pid];if(!p)throw Error('Presentation removed');if(clear)delete p.viewOrder;else p.viewOrder=eligibleViews(e,pid);});}
 export function moveSuggestedView(uid,delta){return command('Reorder suggested Views',e=>{const p=e.presentations[e.uses[uid]?.presentationId],ids=p?.viewOrder;if(!ids)return;const at=ids.indexOf(uid),to=at+delta;if(at>=0&&to>=0&&to<ids.length)[ids[at],ids[to]]=[ids[to],ids[at]];});}
@@ -224,11 +231,19 @@ export async function editRoute(id) {
 }
 export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';ctx.ui();}
 function routeProposal(id,patch,label){
- const route=ctx.cameraSource.connections[id];if(!route)return false;const affected=connectionReach(ctx.experience,ctx.cameraSource,id);S.expRouteAsk={id,patch,label,affected};
+ const route=ctx.cameraSource.connections[id];if(!route)return false;
+ // A proposal is only ever made by the writer the context currently holds: a stale route selection
+ // cannot be edited through a later gesture, while a drawn reachable route stays editable.
+ if(!['experience-seam','experience-coordination'].includes(S.task?.kind)||!S.task?.params?.connection)return false;
+ const affected=connectionReach(ctx.experience,ctx.cameraSource,id);S.expRouteAsk={id,patch,label,affected};
  if(affected.length<=1)return acceptRoutePace();ctx.ui();return true;
 }
-export function routePoint(p){if(!['route','coordination'].includes(S.experienceContext.depth)||!S.task?.params.connection)return false;
- const id=S.task.params.connection,route=ctx.cameraSource.connections[id],position=[p.x,1.5,p.z];
+export function routePoint(p){
+ const x=S.experienceContext,t=S.task,id=t?.params?.connection;
+ if(!['route','coordination'].includes(x.depth)||!x.seam||!id)return false;
+ if(!['experience-seam','experience-coordination'].includes(t.kind))return false;
+ if(!ctx.cameraSource.connections[id])return false;
+ const position=[p.x,1.5,p.z];
  return routeProposal(id,{addAnchor:position},'Add Camera interior anchor');
 }
 export function beginAnchorDrag(event){
@@ -402,7 +417,7 @@ export function visitorCommand(action,id=null){
  if(action==='next')v.runtime=R.nextRuntime(e,c,r,scene);
  if(action==='back')v.runtime=R.previousRuntime(e,c,r,scene);
  if(action==='start')v.runtime=R.startGuide(e,c,r,scene);
- if(action==='auto') {v.runtime.autoplay=!r.autoplay;v.runtime.elapsed=0;const s=e.stops[r.stopId];v.runtime.pacingFallback=s?.pacing.kind==='signal'&&R.signalEmitted(r,s.pacing.ref);}
+ if(action==='auto') v.runtime=R.autoRuntime(e,r);
  if(action==='activate')v.runtime=R.activateRuntime(e,c,r,id,scene);
  if(action==='stop')v.runtime=R.stopActivityRuntime(e,r,id);
  if(action==='explore')v.runtime=R.exploreRuntime(r,nav.plainPose());
@@ -484,7 +499,7 @@ function buildExampleFixture(e,c){
  const base={target:[-10,1.2,1],az:1.2,el:.25,frameH:3,flat:0};
  const entry=addView(e,c,pid,base,'Machine overview','entry'),inside=addView(e,c,pid,{...base,frameH:1.8},'Inside','choice'),output=addView(e,c,pid,{...base,az:.9},'Output','choice');
  const n=addContribution(e,pid,{kind:'narration',name:'Explanation',text:e.presentations[pid].meaning,duration:18,markers:[{id:'inside',label:'Look inside',time:6},{id:'output',label:'Follow output',time:12}]},'narration');
- e.uses[n].primary=true;
+ e.uses[n].primary=true;e.uses[n].primaryFor=pid;
  e.uses[inside].cue={useId:n,signal:'marker:inside'};e.uses[output].cue={useId:n,signal:'marker:output'};
  const open=addContribution(e,pid,{kind:'control',name:'Open casing',subjectId:'machine',capabilityId:'casing',value:1});e.uses[open].end={kind:'experience'};e.uses[open].retention={kind:'experience'};
  const run=addContribution(e,pid,{kind:'control',name:'Run rotor',subjectId:'machine',capabilityId:'rotor',value:true});e.uses[run].start={kind:'after',useId:open,signal:'complete',scope:'visit',presentationId:pid};e.uses[run].end={kind:'experience'};

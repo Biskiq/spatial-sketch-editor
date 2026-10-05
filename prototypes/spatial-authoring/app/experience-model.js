@@ -123,9 +123,17 @@ export function clearExperience(e) {
 }
 const nonViewUses=(e,pid)=>Object.values(e.uses).filter(u=>u.presentationId===pid&&!u.viewId);
 export const presentationUses=(e,pid)=>nonViewUses(e,pid);
+// The binding is to the Presentation whose field edits it, never to the use's organizational home.
+// `primaryFor` is written when the binding is created; regrouping moves `presentationId` only, so an
+// author editing A still updates the original use after its home has moved to B. A fixture that sets
+// `primary` alone (no binding field) is read through its home.
+const explained=(u,pid)=>!u.viewId&&u.primary&&(u.primaryFor??u.presentationId)===pid;
 export function primaryExplanation(e,pid) {
- return nonViewUses(e,pid).find(u=>u.primary&&e.definitions[u.definitionId]?.kind==='narration')||null;
+ return Object.values(e.uses).find(u=>explained(u,pid)&&e.definitions[u.definitionId]?.kind==='narration')||null;
 }
+// Used by the Card to keep a bound explanation out of the "additional contributions" list even when
+// its organizational home is elsewhere, so it stays reachable and editable exactly once.
+export const isPrimaryExplanation=(e,pid,u)=>!!u&&u===primaryExplanation(e,pid);
 // The ordinary creator path: the first non-empty accepted text creates one narration use; every later
 // edit updates that same use, so the explanation never becomes two independently editable authorities.
 export function setPrimaryExplanation(e,pid,text) {
@@ -135,7 +143,7 @@ export function setPrimaryExplanation(e,pid,text) {
  if(u){const d=e.definitions[u.definitionId];if(!d)throw Error('Explanation definition missing');d.text=current;return{id:u.id,created:false};}
  if(!current.trim())return null;
  const id=addContribution(e,pid,{kind:'narration',name:'Explanation',text:current,markers:[]},'narration');
- e.uses[id].primary=true;
+ e.uses[id].primary=true;e.uses[id].primaryFor=pid;
  return {id,created:true};
 }
 // Captured capability uses are matched by subject, capability, presentation scope and kind: a visitor
@@ -178,16 +186,42 @@ export function narrationPassages(d) {
  const sentences=d.text.trim().match(/[^.!?]+[.!?]*(?:\s+|$)/g)||[];const total=sentences.reduce((n,s)=>n+s.trim().split(/\s+/).length,0)||1;let at=0;
  return sentences.map(text=>{const start=at;at+=text.trim().split(/\s+/).length/total*narrationDuration(d);return {text:text.trim(),start,end:at};});
 }
+// A reference can only satisfy an instruction evaluated inside one visit when its signal can be
+// emitted during that visit: a visit-local contribution emits in its own activation visit, an
+// Experience-scoped one is heard in every visit (see experience-runtime emit), and a visitor offer
+// emits in the visit where it is available. References that can never satisfy their instruction are
+// reported as repairable and kept as unavailable work instead of waiting forever.
+export function signalReaches(e,ref,pid){
+ const u=e.uses[ref?.useId];if(!u)return false;
+ if(u.kind==='interaction')return !u.availability||u.availability===pid;
+ return activationScope(u)===pid;
+}
+function dependencyInScope(e,u){return u.start.scope==='experience'||signalReaches(e,u.start,activationScope(u));}
+function cueInScope(e,u){return signalReaches(e,u.cue,u.presentationId);}
+// Gate and pacing instructions are evaluated inside the Stop's own Presentation visit: a reference in
+// another scope can never release them. Kept as an explicit repair issue, never silently dropped.
+export function stopConditionIssues(e,scene,id,resolveCapability=capability){
+ const s=e.stops[id];if(!s)return [];
+ const issues=[],check=(ref,label)=>{
+  if(!ref)return;
+  if(!supportedSignal(e,scene,ref)){issues.push({id,condition:label,message:`${label} needs repair`});return;}
+  if(!signalReaches(e,ref,s.presentationId))issues.push({id,condition:label,message:`${label} signal is outside this activation scope`});
+ };
+ check(s.gate,'Gate');
+ if(s.pacing.kind==='signal')check(s.pacing.ref,'Pacing signal');
+ return issues;
+}
 export function contributionIssues(e,c,scene,resolveCapability=capability) {
  const issues=[];
  for(const u of Object.values(e.uses)) {
-  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});if(u.cue&&!supportedSignal(e,scene,u.cue))issues.push({id:u.id,message:'View cue needs repair'});continue;}
+  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});if(u.cue&&!supportedSignal(e,scene,u.cue))issues.push({id:u.id,message:'View cue needs repair'});else if(u.cue&&!cueInScope(e,u))issues.push({id:u.id,message:'View cue signal is outside this activation scope'});continue;}
   const d=e.definitions[u.definitionId];if(!d){issues.push({id:u.id,message:'Definition missing'});continue;}
   if(d.kind==='control'&&!resolveCapability(scene,d.subjectId,d.capabilityId))issues.push({id:u.id,message:'Subject or capability unavailable'});
   if(u.kind==='interaction'&&!scene.subjects[u.triggerSubjectId])issues.push({id:u.id,message:'Activation subject missing'});
   if(u.availability&&!e.presentations[u.availability])issues.push({id:u.id,message:'Availability Presentation missing'});
   const scope=activationScope(u);if(scope&&!e.presentations[scope])issues.push({id:u.id,message:'Activation Presentation missing'});
   if(u.start.kind==='after'&&!supportedSignal(e,scene,u.start))issues.push({id:u.id,message:'Start signal needs repair'});
+  else if(u.start.kind==='after'&&!dependencyInScope(e,u))issues.push({id:u.id,message:'Start dependency signal is outside this activation scope'});
   for(const b of [u.end,u.retention])if(b?.kind==='visit'&&(!boundaryScope(u,b)||!e.presentations[boundaryScope(u,b)]))issues.push({id:u.id,message:'Boundary Presentation missing'});
   const seen=new Set([u.id]);let dependency=u;
   while(dependency?.start.kind==='after'){if(seen.has(dependency.start.useId)){issues.push({id:u.id,message:'Dependency cycle'});break;}seen.add(dependency.start.useId);dependency=e.uses[dependency.start.useId];if(!dependency)issues.push({id:u.id,message:'Start dependency missing'});}

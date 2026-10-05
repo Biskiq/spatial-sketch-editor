@@ -1,10 +1,12 @@
 # C9 — final model-first Experience reconciliation for #113
 
-**Status: C9.1–C9.3 implemented and verified, stopped for MP2 human review,
-2026-10-04.** The owner authorized implementation through MP2; C9.1 is implemented
-and MP1 was accepted explicitly by the owner (2026-10-04). C9.2/C9.3 product work
-and its verification are complete; C9.4/C9.5 (Travel and agency) remain not
-started until MP2 is recorded. Owner-ratified C9 decisions:
+**Status: C9.1–C9.3 implemented; the five external MP2 review blockers repaired with
+regression coverage (2026-10-05); stopped for MP2 human review.** The owner authorized
+implementation through MP2; C9.1 is implemented and MP1 was accepted explicitly by the owner
+(2026-10-04). C9.2/C9.3 product work and its verification are complete; the review repair
+record and current counts live in the
+[C9 evidence record](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
+C9.4/C9.5 (Travel and agency) remain not started until MP2 is recorded. Owner-ratified C9 decisions:
 Travel preparation/live invocation (§5, N1) and fresh repeated-Stop visits (§3, N2).
 This is the additional, bounded authoring-completeness slice for
 [PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), in the existing

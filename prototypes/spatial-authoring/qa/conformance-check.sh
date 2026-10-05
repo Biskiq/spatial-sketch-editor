@@ -286,6 +286,16 @@ qa_drag "[data-exp-anchor=\"$anchor\"]" 20 12
 conformance_ok 'shared observer-anchor gesture remains a proposal until scope acceptance' "$(qa_js '(!!__me.S.expRouteAsk)') / $(source_hash) / $(undo)" "true / $before / $count"
 click '[data-act="exp-route-cancel"]'
 conformance_ok 'canceling shared anchor proposal writes zero history' "$(source_hash) / $(undo)" "$before / $count"
+# MP2: selecting an unrelated Stop ends the route writer; a later Stage press cannot add an anchor.
+route_id="$(qa_jsv '__me.S.task.params.connection')"
+anchors_before="$(qa_js 'JSON.stringify(__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors)')"
+standpoint="$(pose)"
+unrelated="$(qa_jsv '__me.ctx.experience.guide.find(id=>id!==__me.S.experienceContext.seam.from&&id!==__me.S.experienceContext.seam.to)')"
+click "[data-act='exp-stop'][data-id='$unrelated']"
+conformance_ok 'selecting an unrelated Stop ends the route writer without moving Camera' "$(qa_js '(__me.S.experienceContext.depth!=="route"&&__me.S.experienceContext.seam===null&&__me.S.task?.kind==="experience-overview")') / $(pose)" "true / $standpoint"
+stage_point="$(qa_jsv '(()=>{const r=document.querySelector("#stage canvas").getBoundingClientRect();return Math.round(r.x+r.width/2)+","+Math.round(r.y+r.height/2);})()')"
+qa_move "${stage_point%,*}" "${stage_point#*,}";qa_down;qa_up
+conformance_ok 'a later Stage press cannot add an anchor to the old route' "$(qa_js "JSON.stringify(__me.ctx.cameraSource.connections['$route_id'].anchors)")" "$anchors_before"
 # QA-6 no Guide; use the ordinary no-Guide example through actual controls again.
 fixture exp-reset
 click '#index [data-act="pres-ref"][data-id="machine"]'

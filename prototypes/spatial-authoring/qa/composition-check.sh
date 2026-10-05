@@ -100,6 +100,10 @@ choose '[data-exp-gate]' '{"useId":"contribution-8","signal":"complete"}'
 qa_ok 'compact Stop Card authors advanced dwell and explicit Gate without Overview' "$(qa_js '(()=>{const s=__me.ctx.experience.stops[__me.S.sel];return s.pacing.seconds===3&&s.gate.useId==="contribution-8"&&__me.S.experienceContext.depth==="ordinary";})()')" true
 click '#experienceDeck [data-act=exp-preview-guide]'
 qa_ok 'authored Gate blocks button and keyboard continuation, independent of natural readiness' "$(qa_js '(document.querySelector("[data-command=next]").disabled&&__me.S.visitor.runtime.stopId===__me.S.visitor.source.experience.guide[0])')" true
+# MP2: toggling Auto must not restart the Stop's remaining-work clock; it is a real visitor control.
+qa_js '__me.E.stepVisitor(1)' >/dev/null;qa_frames
+auto_clock="$(qa_js '(()=>{const before=__me.S.visitor.runtime.elapsed;document.querySelector("[data-command=auto]").click();const on=__me.S.visitor.runtime;const kept=on.autoplay&&on.elapsed===before;document.querySelector("[data-command=auto]").click();return kept&&!__me.S.visitor.runtime.autoplay;})()')"
+qa_ok 'enabling Auto keeps the Stop remaining-work clock and toggles back cleanly' "$auto_clock" true
 qa_key_dispatch ArrowRight
 qa_ok 'keyboard observes the same Gate' "$(qa_js '(__me.S.visitor.runtime.stopId===__me.S.visitor.source.experience.guide[0])')" true
 qa_js '__me.E.stepVisitor(2)' >/dev/null;qa_frames
@@ -107,5 +111,18 @@ qa_ok 'genuine casing completion releases authored permission' "$(qa_js '(!docum
 click '[data-command=next]';click '[data-command=back]'
 qa_ok 'new Stop visit cannot borrow prior Gate completion' "$(qa_js '(document.querySelector("[data-command=next]").disabled)')" true
 click '[data-act=exp-exit-preview]'
+# MP2: the primary explanation keeps its binding when its organizational home moves. With the binding
+# collapsed onto the home, editing A here would create a second narration instead of updating this one.
+click "#index [data-act=exp-open][data-id='$pid']"
+click '#card > details:nth-of-type(3) > summary'
+click '#card [data-act=pres-ref][data-id=contribution-6]'
+click '#card > details:nth-of-type(2) > summary'
+choose '[data-exp-home]' presentation-15
+explanation_bound="$(qa_js '(()=>{const u=__me.ctx.experience.uses["contribution-6"];return u.presentationId==="presentation-15"&&u.primaryFor==="presentation-1";})()')"
+qa_ok 'regrouping the primary explanation changes its home and keeps its binding to Presentation A' "$explanation_bound" true
+click "#index [data-act=exp-open][data-id='$pid']"
+qa_ok 'Presentation A still shows its bound explanation after the home move' "$(qa_js 'document.querySelector("[data-exp-primary]").value.includes("Follow the output")')" true
+fill '[data-exp-primary]' 'The casing protects the moving rotor.'
+qa_ok 'editing Presentation A after regrouping updates the original explanation exactly once' "$(qa_js '(()=>{const e=__me.ctx.experience,u=e.uses["contribution-6"],nar=Object.values(e.uses).filter(x=>e.definitions[x.definitionId]?.kind==="narration");return e.definitions[u.definitionId].text==="The casing protects the moving rotor."&&nar.length===1&&nar[0].id==="contribution-6";})()')" true
 qa_faults_ok 'composition commands';qa_browser_errors_ok 'composition browser'
 qa_summary 'C9.2/C9.3 composition and compact Guide'

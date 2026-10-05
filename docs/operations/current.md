@@ -5,7 +5,9 @@ PHASE: F — foundation contracts; status/order → ../roadmap/README.md;
 CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION AUTHORIZED.
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
-NEXT: #113 C9.2/C9.3 implemented and verified; stopped for MP2 human review →
+NEXT: #113 C9.2/C9.3 implemented; the five external MP2 review blockers (route writer,
+       explanation binding, Experience-scoped output, Auto remaining work, signal scope)
+       repaired with regression and mutation coverage; stopped for MP2 human review →
        ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
        C9.1 implemented; MP1 accepted explicitly by owner in this thread (2026-10-04).
        Creator-loop regression hardening retains World/Camera/history and exact Preview return.
