@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {conformanceFixture} from '../app/conformance-fixture.js';
-import {eye,routeGeometry,resolveCamera,evaluatePath,pathSeconds,framingInstrument,distance} from '../app/camera-evaluation.js';
+import {eye,routeGeometry,resolveCamera,evaluatePath,pathSeconds,framingInstrument,distance,liveConnectionPath} from '../app/camera-evaluation.js';
 import {addConnection,addAnchor,detachUse,originCoverage,stopEntry} from '../app/experience-model.js';
 import {createRuntime,startGuide,nextRuntime,tickRuntime,gateState,requestView} from '../app/experience-runtime.js';
 import {editSeam} from '../app/experience-model.js';
@@ -25,12 +25,43 @@ test('spatial frustum represents the same View framing at the actual viewport as
  const {camera:c}=conformanceFixture(),p=Object.values(c.views)[0].pose;
  for(const aspect of [.98,1.46]){const rig=framingInstrument(p,aspect);assert.deepEqual(rig.observer,eye(p));assert.ok(Math.abs(distance(rig.corners[0],rig.corners[1])-p.frameH*aspect)<1e-10);assert.ok(Math.abs(distance(rig.corners[1],rig.corners[2])-p.frameH)<1e-10);}
 });
-test('Travel starts on the supported observer route only after reaching the actual departure View',()=>{
- const {experience:e,camera:c}=conformanceFixture(),a=e.guide[3],b=e.guide[4],u=e.uses[e.presentations[e.stops[a].presentationId].uses[1]],v=e.uses[stopEntry(e,b).id],id=addConnection(c,u.viewId,v.viewId);e.guide=[a,b];editSeam(e,a,b,{mode:'travel'});
- let r=createRuntime(e,c,e.stops[a].presentationId,c.views[u.viewId].pose);r=startGuide(e,c,r);requestView(r,e,c,u.id);
- assert.equal(gateState(e,c,r).allowed,false);assert.match(nextRuntime(e,c,r).refusal,/departure View/);
- r=tickRuntime(e,c,r,100);assert.equal(gateState(e,c,r).allowed,true);r=nextRuntime(e,c,r);
- const geometry=routeGeometry(c,id);assert.deepEqual(r.movement.path,geometry.path);assert.equal(r.movement.travelDuration,geometry.seconds);assert.deepEqual(r.pose,c.views[u.viewId].pose);
+// C9.4 successor proof for the replaced C8 departure-wait restriction. The protected truths are kept:
+// one Camera evaluator owns the path, the authored source is frozen, and the visitor ends at the real
+// destination View; the departure is no longer a Gate and no second tween regains it.
+test('Travel invokes the anchored Camera route from the live pose: early Next is no Gate and no second tween',()=>{
+ const {experience:e,camera:c}=conformanceFixture(),a=e.guide[3],b=e.guide[4],pid=e.stops[a].presentationId,u=e.uses[e.presentations[pid].uses[1]],v=e.uses[stopEntry(e,b).id];
+ const id=addConnection(c,u.viewId,v.viewId),anchor=addAnchor(c,id,[-8,1.5,2]);
+ e.guide=[a,b];editSeam(e,a,b,{mode:'travel'});
+ const source=JSON.stringify(c);
+ // The visitor is still flying towards the departure View when Next is pressed.
+ let r=startGuide(e,c,createRuntime(e,c,pid,c.views[u.viewId].pose));
+ assert.equal(requestView(r,e,c,u.id,'auto'),true);assert.ok(r.movement);
+ r=tickRuntime(e,c,r,Math.min(.25,r.movement.duration/2));
+ const live=structuredClone(r.pose);assert.ok(r.movement);assert.notDeepEqual(live,c.views[u.viewId].pose);
+ // Early Next starts the supported route here, from the actual pose: no departure wait, no hidden Cut.
+ assert.equal(gateState(e,c,r).allowed,true);
+ r=nextRuntime(e,c,r);
+ assert.equal(r.stopId,b);assert.equal(r.refusal,null);
+ assert.deepEqual(r.movement.path[0],live);
+ assert.deepEqual(r.movement.path.at(-1),c.views[v.viewId].pose);
+ assert.equal(r.movement.path.length,3);
+ // The interior point is the authored observer anchor, evaluated by the same Camera kernel.
+ const station=routeGeometry(c,id).stations.find(s=>s.id===anchor);
+ eye(liveConnectionPath(c.connections[id],c.views[v.viewId].pose,live)[1]).forEach((n,i)=>assert.ok(Math.abs(n-station.observer[i])<1e-9));
+ assert.equal(r.movement.travelDuration,pathSeconds(liveConnectionPath(c.connections[id],c.views[v.viewId].pose,live),c.connections[id].speed));
+ assert.equal(JSON.stringify(c),source);
+ r=tickRuntime(e,c,r,r.movement.duration);
+ assert.equal(r.movement,null);assert.deepEqual(r.pose,c.views[v.viewId].pose);
+ assert.equal(c.connections[id].anchors.length,1);
+ // Deliberately missing support stays an explicit local refusal: no implicit edge, Cut or fake route.
+ const g=conformanceFixture(),ga=g.experience.guide[3],gb=g.experience.guide[4];
+ g.experience.guide=[ga,gb];editSeam(g.experience,ga,gb,{mode:'travel'});
+ const gr=startGuide(g.experience,g.camera,createRuntime(g.experience,g.camera,g.experience.stops[ga].presentationId,{...c.views[u.viewId].pose,target:[4,1,4]}));
+ assert.equal(gateState(g.experience,g.camera,gr).allowed,false);
+ assert.match(gateState(g.experience,g.camera,gr).reason,/Travel gap/);
+ const refused=nextRuntime(g.experience,g.camera,gr);
+ assert.equal(refused.stopId,ga);assert.match(refused.refusal,/Travel gap/);
+ assert.deepEqual(Object.keys(g.camera.connections),[]);
 });
 test('renderer, shell and Experience consumers have no independent Camera writers or interpolation',()=>{
  for(const file of ['main.js','actions.js','experience.js','stage.js']){

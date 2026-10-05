@@ -201,17 +201,22 @@ standpoint="$(pose)"
 to="$(qa_jsv '__me.ctx.experience.guide[4]')"
 click "[data-act='exp-seam'][data-from='$stop'][data-to='$to']"
 conformance_ok 'opening Seam does not move realized Camera' "$(pose)" "$standpoint"
+# N1: one explicit Travel preparation transaction authors the whole directed Seam graph. Every
+# legitimate origin is left supported — an origin already at the destination View by Camera's own
+# zero-distance evaluation, a reused authored route, or one newly created direct connection — and no
+# origin is left as a gap. Nothing here was connected per origin by the author.
 click '[data-act="exp-travel"]'
-first="$(qa_jsv '__me.ctx.experience.presentations[__me.ctx.experience.stops[__me.ctx.experience.guide[3]].presentationId].uses[0]')"
-second="$(qa_jsv '__me.ctx.experience.presentations[__me.ctx.experience.stops[__me.ctx.experience.guide[3]].presentationId].uses[1]')"
-click "[data-act='exp-connect'][data-id='$first']"
-click "[data-act='exp-connect'][data-id='$second']"
-route="$(qa_jsv '__me.S.task.params.connection')"
+qa_frames
+route="$(qa_jsv '[...document.querySelectorAll("[data-exp-route]")][0].dataset.expRoute')"
+conformance_ok 'explicit Travel supports every legitimate origin in one authored step' "$(qa_js "(document.querySelector('#experienceDeck').textContent.includes('Reachable from 3 of 3')&&document.querySelector('#experienceDeck').textContent.includes('All origins supported'))")" 'true'
+conformance_ok 'Travel leaves no origin as a gap and offers no per-origin surgery' "$(qa_js "(!document.querySelector('[data-exp-gap]')&&!document.querySelector('[data-act=exp-prepare]'))")" 'true'
+conformance_ok 'Travel reports prepared versus reused support with the Camera owner' "$(qa_js "(/Prepared [0-9]+ Camera route/.test(__me.S.status.text)&&/Camera owns route geometry/.test(__me.S.status.text))")" 'true'
+conformance_ok 'one Travel preparation is one aggregate Undo step' "$(qa_js "__me.S.undo.at(-1).label==='Prepare Camera routes and select Travel'")" 'true'
 click "[data-act='exp-route'][data-id='$route']"
 # Add a real observer anchor with pointer, away from panels and endpoint controls.
 p="$(qa_jsv '(()=>{const r=document.querySelector("#gl").getBoundingClientRect();return Math.round(r.x+r.width*.53)+","+Math.round(r.y+r.height*.38)})()')"
 qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
-conformance_ok 'QA-4 actual Plan Camera graph, 2/3 reach, gap, endpoints, anchor and pace' "$(qa_js "(__me.nav.plainPose().flat>.97&&document.querySelectorAll('[data-exp-route]').length===2&&document.querySelectorAll('[data-endpoint=origin]').length===3&&document.querySelector('[data-endpoint=destination]')&&document.querySelector('[data-exp-gap]')&&document.querySelector('[data-exp-anchor]')&&document.querySelector('[data-exp-pace]')&&!document.querySelector('.station-projection')&&[...document.querySelectorAll('[data-endpoint]')].every($visible))")" true
+conformance_ok 'QA-4 actual Plan Camera graph, full support, endpoints, anchor and pace' "$(qa_js "(__me.nav.plainPose().flat>.97&&document.querySelectorAll('[data-exp-route]').length===3&&!document.querySelector('[data-exp-gap]')&&document.querySelectorAll('[data-endpoint=origin]').length===3&&document.querySelector('[data-endpoint=destination]')&&document.querySelector('[data-exp-anchor]')&&document.querySelector('[data-exp-pace]')&&!document.querySelector('.station-projection')&&[...document.querySelectorAll('[data-endpoint]')].every($visible))")" true
 conformance_ok 'Stage route samples exactly consume the Camera evaluator and remain above the Deck' "$(qa_js '(()=>{const stage=document.querySelector("#stage").getBoundingClientRect(),bottom=document.querySelector("#experienceDeck").getBoundingClientRect().top-stage.top;return [...document.querySelectorAll("[data-exp-route]")].every(el=>{const r=__me.nav.routeGeometry(__me.nav.resolvedCamera(),el.dataset.expRoute),numbers=el.getAttribute("d").match(/-?\d+(?:\.\d+)?/g).map(Number);return numbers.length===82&&r.samples.every((s,i)=>{const p=__me.ctx.stage.project(s.observer);return Math.abs(numbers[i*2]-p.x)<.06&&Math.abs(numbers[i*2+1]-p.y)<.06&&p.x>0&&p.x<stage.width&&p.y>0&&p.y<bottom;});})&&!document.querySelector("[data-endpoint][data-exp-anchor]");})()')" true
 capture qa-4-route
 checkpoint route
@@ -239,7 +244,7 @@ click ".station-tick[data-id='$anchor']"
 conformance_ok 'station focus highlights both projections without replacing canonical selection' "$(qa_js '__me.S.sel') / $(qa_js "(document.querySelector('.station-tick.active').dataset.id==='$anchor'&&document.querySelector('.exp-station.active').dataset.expStationLabel==='$anchor')")" "$identity / true"
 conformance_ok 'QA-5 keeps exact QA-4 Camera source and realized standpoint' "$(pose) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "$standpoint / $before"
 conformance_ok 'QA-5 station projections mirror, with local beat/hold lanes' "$(qa_js '(()=>{const spatial=[...document.querySelectorAll("[data-exp-station-label]")],temporal=[...document.querySelectorAll("[data-station-counterpart]")];return temporal.length>=3&&temporal.every(t=>spatial.some(s=>s.dataset.expStationLabel===t.dataset.stationCounterpart))&&!!document.querySelector(".coord-beat")&&!!document.querySelector(".coord-hold")&&document.querySelector("[data-hold-duration]").getBoundingClientRect().width>20;})()')" true
-conformance_ok 'coordination preserves reachable origin/destination identities and visible gap' "$(qa_js "([...document.querySelectorAll('[data-endpoint]')].every(e=>($visible)(e)&&($hit)(e))&&($visible)(document.querySelector('[data-exp-gap]')))")" true
+conformance_ok 'coordination preserves every supported origin identity and the destination' "$(qa_js "([...document.querySelectorAll('[data-endpoint]')].every(e=>($visible)(e)&&($hit)(e))&&!document.querySelector('[data-exp-gap]'))")" true
 conformance_ok 'Coordination composes inside the central triptych and Card exposes local binding/reach' "$(qa_js '(()=>{const central=document.querySelector(".seam-instrument"),strip=document.querySelector(".coordination-strip"),deck=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return central.contains(strip)&&strip.getBoundingClientRect().right<=central.getBoundingClientRect().right&&deck.left<stage.left&&deck.right>stage.right&&!!document.querySelector("#card [data-coordination-detail]")&&document.querySelector("#card [data-coordination-detail]").textContent.includes("Reach · this transition ×1");})()')" true
 conformance_ok 'the Stop Card declares the station binding instead of a second trigger' "$(qa_js 'document.querySelector("#card [data-coordination-detail]").textContent.includes("trigger moves here")')" true
 capture qa-5-coordination
@@ -266,10 +271,9 @@ conformance_ok 'coordination Resume keeps NOW and restores both projections neut
 click "[data-act='exp-route'][data-id='$route']"
 click '[data-act="exp-route-return"]'
 conformance_ok 'resumed route return uses the current invocation standpoint' "$(pose)" "$standpoint"
-# Repair only the remaining gap, then Cut keeps Camera connectivity but paints no traversal.
-remaining="$(qa_jsv '__me.ctx.experience.presentations[__me.ctx.experience.stops[__me.ctx.experience.guide[3]].presentationId].uses[2]')"
-click "[data-act='exp-connect'][data-id='$remaining']"
-conformance_ok 'one explicit gap repair yields 3/3 support' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3")')" true
+# Every origin was already supported by the one Travel preparation; Cut then keeps that Camera
+# connectivity while painting and executing no traversal.
+conformance_ok 'the prepared support survives the resumed route work unrepaired' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3")&&!document.querySelector("[data-act=exp-prepare]")')" true
 camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 click '[data-act="exp-cut"]'
 conformance_ok 'Cut preserves Camera source, paints no real route or anchor' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js '(!document.querySelector("[data-exp-route]")&&!document.querySelector("[data-exp-anchor]"))')" "$camera / true"

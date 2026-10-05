@@ -10,9 +10,19 @@ export function interpolate(a,b,t) {
  const mix=(x,y)=>x+(y-x)*t;
  return { target:a.target.map((n,i)=>mix(n,b.target[i])), az:mix(a.az,b.az), el:mix(a.el,b.el), frameH:mix(a.frameH,b.frameH), flat:mix(a.flat??0,b.flat??0), mirror:t===1?!!b.mirror:!!a.mirror };
 }
+// Authored observer anchors are interior only: each anchor's absolute observer position is preserved
+// by deriving its pose target from the interpolated framing of the endpoints it sits between.
+const interior=(c,from,to)=>c.anchors.map((a,i)=>{const p=interpolate(from,to,(i+1)/(c.anchors.length+1)),offset=eye(p).map((n,j)=>n-p.target[j]);return {...p,target:a.position.map((n,j)=>n-offset[j])};});
 export function connectionPath(c, from, to) {
  // Endpoints are generated from View definitions; authored anchors are interior only.
- return [from,...c.anchors.map((a,i)=>{const p=interpolate(from,to,(i+1)/(c.anchors.length+1)),offset=eye(p).map((n,j)=>n-p.target[j]);return {...p,target:a.position.map((n,j)=>n-offset[j])};}),to];
+ return [from,...interior(c,from,to),to];
+}
+// The live-start instance of the same route: the departure endpoint is the caller's actual pose (the
+// visitor's interpolated pose at the moment of the request), while authored interior observer anchors
+// and the destination are preserved verbatim. A live pose identical to the nominal origin yields the
+// nominal path, so one evaluator serves both; the session never moves or serializes an endpoint.
+export function liveConnectionPath(c, to, live) {
+ return [live,...interior(c,live,to),to];
 }
 export const pathLength = path => path.slice(1).reduce((n,p,i)=>n+Math.max(distance(eye(path[i]),eye(p)),distance(path[i].target,p.target)),0);
 export const pathSeconds = (path,speed='auto') => RATES[speed]===0 ? 0 : pathLength(path)/RATES[speed];

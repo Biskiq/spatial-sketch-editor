@@ -1,7 +1,7 @@
 // Native ESM adaptation of donor arm/begin/close, readiness and bounded stepping.
 // Camera evaluation is delegated to the kernel beneath navigation; no renderer tween lives here.
 import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues, activationScope, boundaryScope, supportedSignal, signalCanDriveVisitCondition, signalPosition, workDuration, narrationPassages, viewStep } from './experience-model.js';
-import { pathSeconds, evaluatePath, connectionPath, findConnection, stationProgress, viewPath, sameViewPose } from './camera-evaluation.js';
+import { pathSeconds, evaluatePath, findConnection, liveConnectionPath, stationProgress, viewPath } from './camera-evaluation.js';
 import { movementTiming } from './experience-coordination.js';
 import { capability, createSceneCapabilities } from './experience-capabilities.js';
 export const BREATHING=2;
@@ -188,6 +188,24 @@ function coordinationProblem(e,c,seam,connection,path) {
  }
  return null;
 }
+// The live-start invocation of one Seam transition, executed by the Camera evaluator beneath this
+// runtime. Experience owns the Seam policy (travel or cut, and the beats authored on it); Camera
+// resolves the supported directed route, its authored interior observer anchors and its timing from the
+// visitor's actual pose at the moment of the request. A Same-View origin is Camera's own zero-distance
+// evaluation, never a fabricated edge. A missing route, an unresolvable station or a coordination
+// binding that moved elsewhere stays an explicit local refusal: finishing a previous move is never an
+// implicit Gate, early continuation is never a hidden Cut, and no second tween regains a departure.
+function travelInvocation(e,c,r,from,to,seam) {
+ const connection=from&&to?findConnection(c,from.view.id,to.view.id):null;
+ if(!connection){
+  if(from&&to&&from.view.id===to.view.id)return {path:null,speed:'cut',connectionId:null};
+  return {refusal:'Travel gap from current View'};
+ }
+ const path=liveConnectionPath(connection,to.view.pose,r.pose);
+ const problem=coordinationProblem(e,c,seam,connection,path);
+ if(problem)return {refusal:problem};
+ return {path,speed:connection.speed,connectionId:connection.id};
+}
 export function gateState(e,c,r){
  const s=e.stops[r.stopId];if(!s)return {allowed:false,reason:'No Guide Stop'};
  const next=resolveNext(e,s.id);if(!next.id)return {allowed:false,reason:'End of Guide · explore freely'};
@@ -196,20 +214,14 @@ export function gateState(e,c,r){
  if(s.gate&&(!supportedSignal(e,r.scene||createSceneCapabilities(),s.gate)||!signalCanDriveVisitCondition(e,s.gate,s.presentationId)))return {allowed:false,reason:'Gate needs repair'};
  if(s.gate&&!signalEmitted(r,s.gate))return {allowed:false,reason:'Waiting for authored Gate'};
  const seam=getSeam(e,s.id,next.id),from=resolveUse(e,c,r.viewUseId),to=resolveUse(e,c,entry.id);
- if(seam.mode==='travel') {
-  const connection=from&&to?findConnection(c,from.view.id,to.view.id):null;
-  if(!connection)return {allowed:false,reason:'Travel gap from current View'};
-  if(r.movement||!sameViewPose(r.pose,from.view.pose))return {allowed:false,reason:'Camera is not yet at the departure View · finish the current move or rejoin'};
-  const problem=coordinationProblem(e,c,seam,connection,connectionPath(connection,from.view.pose,to.view.pose));
-  if(problem)return {allowed:false,reason:problem};
- }
+ if(seam.mode==='travel'){const invocation=travelInvocation(e,c,r,from,to,seam);if(invocation.refusal)return {allowed:false,reason:invocation.refusal};}
  return {allowed:true,reason:''};
 }
 function goStop(r,e,c,scene,id,record=true,ignoreTravel=false){
  const s=e.stops[id];if(!s||!e.presentations[s.presentationId]){r.refusal='Stop or Presentation missing';return false;}
  const entry=stopEntry(e,id),to=resolveUse(e,c,entry.id);if(entry.missing||(entry.id&&!to)){r.refusal='Framing removed — repair or explicitly keep viewpoint';return false;}
  const old=r.stopId,seam=old?getSeam(e,old,id):null,from=resolveUse(e,c,r.viewUseId);let path=null,speed='cut',connectionId=null;const origin=copy(r.pose);
- if(seam?.mode==='travel'&&!ignoreTravel){const conn=from&&to?findConnection(c,from.view.id,to.view.id):null;if(!conn){r.refusal='Travel gap from current View';return false;}if(r.movement||!sameViewPose(r.pose,from.view.pose)){r.refusal='Camera is not yet at the departure View · finish the current move or rejoin';return false;}path=connectionPath(conn,from.view.pose,to.view.pose);speed=conn.speed;connectionId=conn.id;const problem=coordinationProblem(e,c,seam,conn,path);if(problem){r.refusal=problem;return false;}}
+ if(seam?.mode==='travel'&&!ignoreTravel){const invocation=travelInvocation(e,c,r,from,to,seam);if(invocation.refusal){r.refusal=invocation.refusal;return false;}path=invocation.path;speed=invocation.speed;connectionId=invocation.connectionId;}
  if(record&&old)r.history.push(old);
  enterPresentation(r,e,c,scene,s.presentationId);r.stopId=id;r.exploring=false;r.refusal=null;
  r.viewingSuppressed=!!entry.hold;r.cueFloor=entry.id?(cueSeconds(e,e.uses[entry.id]?.cue)??-1):-1;
@@ -227,14 +239,41 @@ export function exploreRuntime(current,pose=null){const r=copy(current);r.pose=c
 // Stop — including work overlapped by Camera movement — is never restarted by the toggle; only the
 // pacing fallback is re-read from the runtime state.
 export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;const s=e.stops[r.stopId];r.pacingFallback=!!(s?.pacing.kind==='signal'&&signalEmitted(r,s.pacing.ref));return r;}
-export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,null,r.scene,{carried:carriedWork(r,e)});return r;}
+// Rejoin restores the current Stop's intent, or a standalone visit's Presentation viewing intent, from
+// the live pose: viewing is a Camera framing invocation, not a re-traversal, so no route station runs
+// again and no queued cue replays. The visit and its playhead are preserved; Auto stays off.
+export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,null,r.scene,{carried:carriedWork(r,e)});return r;}
+// One bounded side detour at a time: the parent visit is parked with its own bookmark (the experimental
+// pause policy, not permanent architecture) and its running narration is suspended rather than ended.
+function parkParent(r,e){
+ if(r.bookmarks.length)return false;
+ r.bookmarks.push({stopId:r.stopId,presentationId:r.presentationId,visit:r.visit,elapsed:r.elapsed,history:[...r.history],autoplay:r.autoplay,viewUseId:r.viewUseId});
+ for(const a of Object.values(r.activities))if(a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration'&&a.status==='running')a.status='paused';
+ r.stopId=null;r.presentationId=null;r.visit=0;
+ return true;
+}
 export function chooseRuntime(e,c,current,targetId,detour=false,scene=createSceneCapabilities()){
- const r=copy(current);if(detour){r.bookmarks.push({stopId:r.stopId,presentationId:r.presentationId,visit:r.visit,elapsed:r.elapsed,history:[...r.history],autoplay:r.autoplay,viewUseId:r.viewUseId});
-  for(const a of Object.values(r.activities))if(a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration'&&a.status==='running')a.status='paused';
-  r.stopId=null;r.presentationId=null;r.visit=0;
- }
+ const r=copy(current);
+ if(detour){if(!parkParent(r,e)){r.refusal='Return from this detour before taking another';return r;}}
+ // A go choice abandons the parked parent: the visitor chose to continue, not to come back.
+ else r.bookmarks=[];
  goStop(r,e,c,scene,targetId,!detour,true);return r;
 }
+// Opening another available Presentation is a deliberate visitor navigation request: from a Guide it
+// parks the current Stop with one bounded return bookmark, otherwise it starts a fresh visit. The
+// authored documents are read, never written: an open is runtime state only.
+export function openPresentationRuntime(e,c,current,pid,scene=createSceneCapabilities()){
+ const r=copy(current);
+ if(!e.presentations[pid]){r.refusal='Presentation unavailable';return r;}
+ if(r.stopId&&!parkParent(r,e)){r.refusal='Return from this detour before opening another Presentation';return r;}
+ r.stopId=null;r.presentationId=null;r.exploring=false;r.autoplay=false;r.movement=null;r.queue=[];
+ enterPresentation(r,e,c,scene,pid);
+ const u=entryUse(e,pid);if(u)requestView(r,e,c,u.id,'cut');
+ note(r,'Opened Presentation '+pid);return r;
+}
+// Closing a standalone Presentation returns to exploration, never to authoring. A parked Guide bookmark
+// stays explicit: the panel still offers Return from detour, and Rejoin restores the viewing intent.
+export function closePresentationRuntime(current){const r=copy(current);r.exploring=true;r.autoplay=false;r.movement=null;r.queue=[];r.refusal=null;note(r,'Closed Presentation · exploring');return r;}
 export function returnDetour(e,c,current,scene=createSceneCapabilities()){
  const r=copy(current),parked=new Set(r.bookmarks.map(b=>b.visit)),b=r.bookmarks.pop();if(!b)return r;closeVisit(r,e,scene,parked);
  Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});

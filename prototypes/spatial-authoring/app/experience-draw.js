@@ -44,7 +44,9 @@ function drawSeam(e,c,x){
  for(const row of rows){const view=c.views[row.viewId];if(view)items.push({id:row.useId,view,position:eye(view.pose),row});}
  const destination=rows[0]?.targetId,v=c.views[destination],uid=stopEntry(e,x.seam.to).id;
  if(v)items.push({id:uid,view:v,position:eye(v.pose),end:'destination'});
- layout(items).forEach(item=>{marker(item,{end:item.end||'origin'});if(item.row&&!item.row.connectionId&&seam.mode==='travel')ov().chip('gap-'+item.id,item.at.x,item.at.y+26,'! gap · no Camera connection','tape exp-gap',{'data-exp-gap':item.id,tag:'span',pri:99});});
+ // A same-View origin is Camera's own zero-distance evaluation, never a missing edge: only an origin
+ // that genuinely needs a connection (or needs repair) is drawn as a Travel gap.
+ layout(items).forEach(item=>{marker(item,{end:item.end||'origin'});if(item.row&&!item.row.connectionId&&item.row.viewId!==item.row.targetId&&seam.mode==='travel')ov().chip('gap-'+item.id,item.at.x,item.at.y+26,'! gap · no Camera connection','tape exp-gap',{'data-exp-gap':item.id,tag:'span',pri:99});});
  if(seam.mode!=='travel')return;
  const ids=[...new Set(rows.map(r=>r.connectionId).filter(Boolean))];
  for(const id of ids){

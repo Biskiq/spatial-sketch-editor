@@ -1292,8 +1292,10 @@ document.addEventListener('change',event=>{
  if(el.dataset.expRepair)E.command('Repair missing framing',e=>{e.uses[el.dataset.expRepair].viewId=el.value;});
 
 });
-window.addEventListener('pointermove',event=>{if(S.visitorDrag&&S.visitor?.runtime.exploring){const d=S.visitorDrag;nav.manipulate({dx:event.clientX-d.x,dy:event.clientY-d.y});d.x=event.clientX;d.y=event.clientY;S.visitor.runtime.pose=nav.plainPose();}});
-window.addEventListener('pointerup',()=>{S.visitorDrag=null;});
+// Preview pointer tracking: a drag orbits the exploring visitor's own viewpoint, a real click activates
+// the offer under the used subject, and the release decides which one happened.
+window.addEventListener('pointermove',event=>{if(S.visitor)E.visitorMove?.(event);});
+window.addEventListener('pointerup',()=>{if(S.visitor)E.visitorRelease?.();});
 
 document.addEventListener('change',event=>{const d=event.target.dataset,value=event.target.value;
  if(d.expInterruption)E.command('Set interruption',e=>e.uses[d.expInterruption].interruption=value||null);
