@@ -186,18 +186,45 @@ export function narrationPassages(d) {
  const sentences=d.text.trim().match(/[^.!?]+[.!?]*(?:\s+|$)/g)||[];const total=sentences.reduce((n,s)=>n+s.trim().split(/\s+/).length,0)||1;let at=0;
  return sentences.map(text=>{const start=at;at+=text.trim().split(/\s+/).length/total*narrationDuration(d);return {text:text.trim(),start,end:at};});
 }
-// A reference can only satisfy an instruction evaluated inside one visit when its signal can be
-// emitted during that visit: a visit-local contribution emits in its own activation visit, an
-// Experience-scoped one is heard in every visit (see experience-runtime emit), and a visitor offer
-// emits in the visit where it is available. References that can never satisfy their instruction are
-// reported as repairable and kept as unavailable work instead of waiting forever.
-export function signalReaches(e,ref,pid){
+// Two different questions are asked about a reference, and one predicate cannot answer both.
+// `signalCanDriveVisitCondition` is the strict one: Gate and pacing advance the Stop they are authored
+// on, so the signal has to be emitted inside that same visit. A visit-local contribution emits in its
+// own activation visit, a station-bound one is invoked inside the visit it lands in, and a visitor offer
+// emits in the visit where it is available — but Experience-start completion may have happened before
+// the visit and can never release a later Stop.
+// `signalCanCuePresentation` is the live-output question: `emit` deliberately lets Experience-scoped
+// narration cue the View of whatever Presentation is current, so a cue whose source is Experience-wide
+// is legitimate and must not be reported as an impossible scope. References that can never satisfy
+// their instruction are reported as repairable and kept as unavailable work instead of waiting forever.
+export function signalCanDriveVisitCondition(e,ref,pid){
  const u=e.uses[ref?.useId];if(!u)return false;
  if(u.kind==='interaction')return !u.availability||u.availability===pid;
  return activationScope(u)===pid;
 }
-function dependencyInScope(e,u){return u.start.scope==='experience'||signalReaches(e,u.start,activationScope(u));}
-function cueInScope(e,u){return signalReaches(e,u.cue,u.presentationId);}
+export function signalCanCuePresentation(e,ref,pid){
+ const u=e.uses[ref?.useId];if(!u)return false;
+ if(u.kind==='interaction')return !u.availability||u.availability===pid;
+ const scope=activationScope(u);return scope===pid||scope===null;
+}
+function dependencyInScope(e,u){return u.start.scope==='experience'||signalCanDriveVisitCondition(e,u.start,activationScope(u));}
+function cueInScope(e,u){return signalCanCuePresentation(e,u.cue,u.presentationId);}
+// The authored moment of a signal inside its own run: a narration's completion or one of its named
+// phrases, or a finite capability's completion. null means this contribution cannot produce the signal
+// at all (a persistent loop never completes), so the reference can never be satisfied.
+export function signalPosition(e,scene,u,signal){
+ const d=e?.definitions[u?.definitionId];if(!d)return null;
+ if(d.kind==='narration')return signal==='complete'?narrationDuration(d):cueSeconds(e,{useId:u.id,signal});
+ if(d.kind==='control'&&signal==='complete'){const cap=scene&&capability(scene,d.subjectId,d.capabilityId);return cap&&cap.kind!=='loop'?cap.duration??0:null;}
+ return null;
+}
+// The authored length of one run. `undefined` is not work a plan can measure; `null` is persistent work
+// that never reaches a finite completion, so only its start can be placed.
+export function workDuration(e,scene,u){
+ const d=e?.definitions[u?.definitionId];if(!d)return undefined;
+ if(d.kind==='narration')return narrationDuration(d);
+ if(d.kind==='control'){const cap=scene&&capability(scene,d.subjectId,d.capabilityId);if(!cap)return undefined;return cap.kind==='loop'?null:d.value===false?0:cap.duration||0;}
+ return undefined;
+}
 // Gate and pacing instructions are evaluated inside the Stop's own Presentation visit: a reference in
 // another scope can never release them. Kept as an explicit repair issue, never silently dropped.
 export function stopConditionIssues(e,scene,id,resolveCapability=capability){
@@ -205,7 +232,7 @@ export function stopConditionIssues(e,scene,id,resolveCapability=capability){
  const issues=[],check=(ref,label)=>{
   if(!ref)return;
   if(!supportedSignal(e,scene,ref)){issues.push({id,condition:label,message:`${label} needs repair`});return;}
-  if(!signalReaches(e,ref,s.presentationId))issues.push({id,condition:label,message:`${label} signal is outside this activation scope`});
+  if(!signalCanDriveVisitCondition(e,ref,s.presentationId))issues.push({id,condition:label,message:`${label} signal is outside this activation scope`});
  };
  check(s.gate,'Gate');
  if(s.pacing.kind==='signal')check(s.pacing.ref,'Pacing signal');
@@ -220,6 +247,12 @@ export function contributionIssues(e,c,scene,resolveCapability=capability) {
   if(u.kind==='interaction'&&!scene.subjects[u.triggerSubjectId])issues.push({id:u.id,message:'Activation subject missing'});
   if(u.availability&&!e.presentations[u.availability])issues.push({id:u.id,message:'Availability Presentation missing'});
   const scope=activationScope(u);if(scope&&!e.presentations[scope])issues.push({id:u.id,message:'Activation Presentation missing'});
+  // A station invocation is one authored trigger: its Seam must still exist and still be adjacent, or the
+  // Activity can never be invoked anywhere. The route and its station are validated where they are read
+  // (Camera travel), never copied into Experience.
+  if(u.start.kind==='station'){const seam=u.start.seam;
+   if(!seam||!e.stops[seam.from]||!e.stops[seam.to])issues.push({id:u.id,message:'Station invocation needs repair'});
+   else if(resolveNext(e,seam.from).id!==seam.to)issues.push({id:u.id,message:'Station invocation Seam needs repair'});}
   if(u.start.kind==='after'&&!supportedSignal(e,scene,u.start))issues.push({id:u.id,message:'Start signal needs repair'});
   else if(u.start.kind==='after'&&!dependencyInScope(e,u))issues.push({id:u.id,message:'Start dependency signal is outside this activation scope'});
   for(const b of [u.end,u.retention])if(b?.kind==='visit'&&(!boundaryScope(u,b)||!e.presentations[boundaryScope(u,b)]))issues.push({id:u.id,message:'Boundary Presentation missing'});
@@ -230,7 +263,38 @@ export function contributionIssues(e,c,scene,resolveCapability=capability) {
 }
 export function reuseView(e,c,pid,vid){if(!c.views[vid]||!e.presentations[pid])throw Error('Reuse target unresolved');const id=fresh(e,'use');e.uses[id]={id,kind:'view',name:c.views[vid].name,presentationId:pid,viewId:vid,role:'choice',cue:null};e.presentations[pid].uses.push(id);return id;}
 export { resolveCamera as lowerCamera } from './camera-evaluation.js';
-export function addInvocationBeat(e,c,a,b,connectionId,stationId,useId) {
- const u=e.uses[useId];if(!u||u.viewId)throw Error('Choose a supported capability or narration contribution');
- const id=addBeat(e,c,a,b,connectionId,stationId,0),beat=e.seams[seamKey(a,b)].beats.find(b=>b.id===id);beat.kind='invoke';beat.useId=useId;return id;
+// One authority for what a station may invoke: automatic work whose signal this Scene can actually
+// produce. The model refuses anything else and the coordination picker offers exactly the same set, so
+// the contract and the surface can never disagree about what a traversal is allowed to start.
+// The return value is the refusal the author would read; '' means the use is invokable.
+export function invokableRefusal(e,scene,u){
+ if(!u)return 'Choose a supported capability or narration contribution';
+ const d=e?.definitions[u.definitionId];
+ if(u.viewId)return 'A Camera View is not an Activity';
+ if(!d)return 'Choose a supported capability or narration contribution';
+ if(u.kind==='interaction')return 'A visitor offer is activated by its subject; bind a separate Activity to invoke automatically';
+ if(d.kind==='narration')return '';
+ if(d.kind!=='control')return 'Unsupported invocation target';
+ if(scene&&!capability(scene,d.subjectId,d.capabilityId))return 'Capability is unavailable in this Scene';
+ return '';
+}
+// A station invocation is the Activity's trigger, never a second one. Binding an existing use to a
+// station replaces its entry/Experience/dependency activation, so the same work can never run on entry
+// and again at the station; an author who wants both captures a separate Activity. Only supported
+// automatic work can be invoked — a visitor offer belongs to its subject and is never traversal work —
+// and one Activity is invoked by one station, so a transition executes it exactly once. Invoking an
+// Activity whose beat already exists re-asserts the binding rather than adding a second beat, which is
+// also the repair after the author moves the trigger elsewhere in the Card.
+export function addInvocationBeat(e,c,a,b,connectionId,stationId,useId,scene=null) {
+ const u=e.uses[useId],refusal=invokableRefusal(e,scene,u);
+ if(refusal)throw Error(refusal);
+ const seam=getSeam(e,a,b),prior=seam.beats.find(x=>x.kind==='invoke'&&x.useId===useId&&x.connectionId===connectionId&&x.stationId===stationId);
+ const bound=u.start.kind==='station'&&u.start.seam?.from===a&&u.start.seam?.to===b&&u.start.connectionId===connectionId&&u.start.stationId===stationId;
+ if(u.start.kind==='station'&&!bound)throw Error('Already invoked by another Seam station; capture a separate Activity for this one');
+ let id=prior?.id;
+ if(!id){id=addBeat(e,c,a,b,connectionId,stationId,0);const beat=e.seams[seamKey(a,b)].beats.find(x=>x.id===id);beat.kind='invoke';beat.useId=useId;delete beat.seconds;}
+ // The destination visit is the only place this run exists: its output, captions and boundary all read
+ // from that visit, exactly as the invocation itself does.
+ u.start={kind:'station',seam:{from:a,to:b},connectionId,stationId,presentationId:e.stops[b]?.presentationId??u.presentationId};
+ return id;
 }

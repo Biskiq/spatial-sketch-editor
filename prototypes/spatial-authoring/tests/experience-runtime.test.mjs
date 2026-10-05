@@ -50,7 +50,9 @@ test('multi-origin coordination executes only the traversed connection, and Cut 
  const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'First','entry'),other=M.addView(f.e,f.c,f.p,{...pose,target:[-10,1,0]},'Other'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry');
  const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),unused=M.addConnection(f.c,f.e.uses[other].viewId,f.e.uses[v].viewId),{a,b}=guide(f);
  M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,unused,'arrival',30);
- const invocation=control(f,'light','intensity',4,f.q,'interaction');M.addInvocationBeat(f.e,f.c,a,b,unused,'departure',invocation);
+ // The target is automatic work: a station never invokes a visitor offer, and binding it moves the
+ // Activity's trigger to the station, so nothing here runs on entry either.
+ const invocation=control(f,'light','intensity',4,f.q);M.addInvocationBeat(f.e,f.c,a,b,unused,'departure',invocation,f.scene);
  let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=R.nextRuntime(f.e,f.c,r,f.scene);
  assert.equal(r.movement.duration,r.movement.travelDuration);r=tick(f,r,4);assert.equal(r.active[invocation],undefined);
  M.addBeat(f.e,f.c,a,b,route,'arrival',2);M.editSeam(f.e,a,b,{mode:'cut'});

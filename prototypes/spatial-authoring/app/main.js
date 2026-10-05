@@ -1299,7 +1299,9 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
  if(d.expInterruption)E.command('Set interruption',e=>e.uses[d.expInterruption].interruption=value||null);
  if(d.expAfter){const u=ctx.experience.uses[d.expAfter];E.updateActivity(u.id,'start',value?{...u.start,kind:'after',...JSON.parse(value)}:{kind:'visit',presentationId:u.start.presentationId||u.presentationId});}
  if(d.expHome)E.updateActivity(d.expHome,'presentationId',value||null);
- if(d.expStart){const u=ctx.experience.uses[d.expStart];E.updateActivity(u.id,'start',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:value==='after'?{kind:value,scope:'visit',presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation,useId:'',signal:'complete'}:{kind:value});}
+ // A station trigger is authored by invoking the Activity at a Seam station, never by this select: an
+ // invented one would be a trigger no traversal can ever fire. Leaving an existing binding is explicit.
+ if(d.expStart){const u=ctx.experience.uses[d.expStart],invented=value==='station'&&u.start.kind!=='station';if(!invented)E.updateActivity(u.id,'start',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:value==='after'?{kind:value,scope:'visit',presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation,useId:'',signal:'complete'}:{kind:value});}
  if(d.expStartPresentation){const u=ctx.experience.uses[d.expStartPresentation];E.updateActivity(u.id,'start',{...u.start,presentationId:value||null,...(u.start.kind==='after'?{scope:value?'visit':'experience'}:{})});}
  if(d.expBoundary){const u=ctx.experience.uses[d.expBoundary];E.updateActivity(u.id,'end',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:{kind:value});}
  if(d.expBoundaryPresentation){const u=ctx.experience.uses[d.expBoundaryPresentation];E.updateActivity(u.id,'end',{...u.end,presentationId:value});}

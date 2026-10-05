@@ -12,7 +12,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke route-writer explanation-binding experience-output completed-work live-move auto-clock scope-validation; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -39,10 +39,21 @@ elif kind == 'hold-cue':
             "if(r.exploring||r.viewingSuppressed)return;",
             "if(r.exploring)return;")
 elif kind == 'double-invoke':
-    # A station invocation re-fires on every tick instead of running once.
+    # Attaching an Activity to a station stops replacing its entry trigger, so the same work runs on
+    # entry and again at the station: the second trigger the contract forbids.
+    replace('app/experience-model.js',
+            " u.start={kind:'station',seam:{from:a,to:b},connectionId,stationId,presentationId:e.stops[b]?.presentationId??u.presentationId};",
+            "")
+elif kind == 'invoke-repeat':
+    # The station invocation re-fires on every tick instead of running once per transition.
     replace('app/experience-runtime.js',
             "if(!invocation.fired&&m.elapsed>=invocation.at){invocation.fired=true;",
             "if(!invocation.fired&&m.elapsed>=invocation.at){")
+elif kind == 'offer-invoke':
+    # A visitor offer becomes automatic traversal work.
+    replace('app/experience-model.js',
+            " if(u.kind==='interaction')return 'A visitor offer is activated by its subject; bind a separate Activity to invoke automatically';\n",
+            "")
 elif kind == 'route-writer':
     # Selecting another Stop no longer ends the route writer.
     replace('app/experience.js',
@@ -61,8 +72,8 @@ elif kind == 'experience-output':
 elif kind == 'completed-work':
     # Completed Experience work is counted again as if it had never run.
     replace('app/experience-runtime.js',
-            "return ['running','paused','complete','stopped'].includes(a.status)?Math.max(0,Math.min(a.duration,a.elapsed)):0;",
-            "return ['running','paused'].includes(a.status)?Math.max(0,Math.min(a.duration,a.elapsed)):0;")
+            " if(a.status==='stopped'||a.status==='unavailable')return null;\n return {spent:Math.max(0,Number(a.elapsed)||0)};",
+            " return a.status==='unavailable'?null:{spent:0};")
 elif kind == 'live-move':
     # Auto advances while a Camera move is still in flight.
     replace('app/experience-runtime.js',
@@ -73,22 +84,42 @@ elif kind == 'auto-clock':
     replace('app/experience-runtime.js',
             "export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;",
             "export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;r.elapsed=0;")
+elif kind == 'stopped-remainder':
+    # A stopped run is waited for as if it could still resume and complete.
+    replace('app/experience-runtime.js',
+            " if(a.status==='stopped'||a.status==='unavailable')return null;",
+            "")
+elif kind == 'carried-dependency':
+    # A dependent pays its own spent time on top of the position its dependency already gave it.
+    replace('app/experience-runtime.js',
+            "   start=spent?start:parent.start+offset;",
+            "   start=parent.start+offset-spent;")
+elif kind == 'cue-scope':
+    # Live Experience-wide output is treated as unable to cue the current Presentation.
+    replace('app/experience-model.js',
+            "export function signalCanCuePresentation(e,ref,pid){\n const u=e.uses[ref?.useId];if(!u)return false;\n if(u.kind==='interaction')return !u.availability||u.availability===pid;\n const scope=activationScope(u);return scope===pid||scope===null;\n}",
+            "export function signalCanCuePresentation(e,ref,pid){return signalCanDriveVisitCondition(e,ref,pid);}")
 else:
     # An impossible dependency scope is accepted as if it could still fire.
     replace('app/experience-model.js',
-            "function dependencyInScope(e,u){return u.start.scope==='experience'||signalReaches(e,u.start,activationScope(u));}",
+            "function dependencyInScope(e,u){return u.start.scope==='experience'||signalCanDriveVisitCondition(e,u.start,activationScope(u));}",
             "function dependencyInScope(e,u){return true;}")
 PY
   case "$kind" in
     organization) name='organization is independent of explicit activation and boundary'; control='Finish after local departure' ;;
     hold-cue) name='hold suppresses entry and all automatic cues'; control='explicit marker seconds survive' ;;
-    double-invoke) name='station-bound holds delay arrival; invoked controls run once at Camera station'; control='multi-origin coordination executes only the traversed connection' ;;
+    double-invoke) name='P1 a station invocation replaces the Activity trigger'; control='P4 a stopped carried run and its disarmed dependents' ;;
+    invoke-repeat) name='station-bound holds delay arrival; invoked controls run once at Camera station'; control='multi-origin coordination executes only the traversed connection' ;;
+    offer-invoke) name='P1 station invocation targets automatic work only'; control='multi-origin coordination executes only the traversed connection' ;;
     route-writer) name='P1 selecting another Stop ends the route writer'; control='P2 a primary explanation keeps its binding' ;;
     explanation-binding) name='P2 a primary explanation keeps its binding'; control='P1 selecting another Stop ends the route writer' ;;
     experience-output) name='P3 Experience-start narration keeps captions and View cues'; control='P4 completed Experience work adds no wait' ;;
     completed-work) name='P4 completed Experience work adds no wait'; control='P3 Experience-start narration keeps captions and View cues' ;;
     live-move) name='P4 Auto waits for a live Camera move'; control='P4 enabling Auto keeps the Stop remaining-work clock' ;;
     auto-clock) name='P4 enabling Auto keeps the Stop remaining-work clock'; control='P4 Auto waits for a live Camera move' ;;
+    stopped-remainder) name='P4 a stopped carried run and its disarmed dependents'; control='P4 completed Experience work adds no wait' ;;
+    carried-dependency) name='P4 a carried dependency counts the remaining work once'; control='P4 completed Experience work adds no wait' ;;
+    cue-scope) name='P3 a View cue driven by Experience-wide output is legitimate work'; control='P3 an Experience-scoped signal never satisfies a later visit Gate' ;;
     scope-validation) name='P5 a visit-local dependency in another scope'; control='P5 a View cue that can never fire' ;;
   esac
   log="$work/pure-$kind.log"

@@ -1,7 +1,9 @@
 # C9 — final model-first Experience reconciliation for #113
 
 **Status: C9.1–C9.3 implemented; the five external MP2 review blockers repaired with
-regression coverage (2026-10-05); stopped for MP2 human review.** The owner authorized
+regression coverage, and the review's folded second pass (station invocation contract,
+cue-scope vs Gate scope, remaining-work edge cases, provenance) repaired with its own
+coverage (2026-10-05); stopped for MP2 human review.** The owner authorized
 implementation through MP2; C9.1 is implemented and MP1 was accepted explicitly by the owner
 (2026-10-04). C9.2/C9.3 product work and its verification are complete; the review repair
 record and current counts live in the

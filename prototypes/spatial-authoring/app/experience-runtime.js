@@ -1,6 +1,6 @@
 // Native ESM adaptation of donor arm/begin/close, readiness and bounded stepping.
 // Camera evaluation is delegated to the kernel beneath navigation; no renderer tween lives here.
-import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues, activationScope, boundaryScope, supportedSignal, signalReaches, narrationPassages, viewStep } from './experience-model.js';
+import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues, activationScope, boundaryScope, supportedSignal, signalCanDriveVisitCondition, signalPosition, workDuration, narrationPassages, viewStep } from './experience-model.js';
 import { pathSeconds, evaluatePath, connectionPath, findConnection, stationProgress, viewPath, sameViewPose } from './camera-evaluation.js';
 import { movementTiming } from './experience-coordination.js';
 import { capability, createSceneCapabilities } from './experience-capabilities.js';
@@ -9,14 +9,15 @@ const eventKey=(visit,id,signal)=>`${visit}|${id}|${signal}`;
 export const signalEmitted=(r,ref)=>!!ref&&!!r.signals[eventKey(r.visit,ref.useId,ref.signal)];
 export const projectedValue=(scene,r,sid,channel)=>r?.overrides[sid]?.[channel]?.value??scene.subjects[sid]?.properties[channel];
 const note=(r,message)=>{r.log.push({time:r.time,message});r.log=r.log.slice(-60);};
-// Remaining, not total: an Experience-scoped run carried into this Stop has already spent part of its
-// authored duration, and completed work owes nothing. Visit-local work is always freshly armed here.
-const carriedElapsed=(r,e)=>id=>{
- const u=e.uses[id];if(!u||activationScope(u)!==null)return 0;
- const a=r.activities[r.active[id]];if(!a||a.duration==null)return 0;
- // Work already spent — running, paused, complete or stopped by the visitor — is time this Stop no
- // longer owes; only work still owed contributes its full authored duration.
- return ['running','paused','complete','stopped'].includes(a.status)?Math.max(0,Math.min(a.duration,a.elapsed)):0;
+// Carried, not authored: only an Experience-scoped run that outlives its own visit has already spent
+// part of its authored time, so only the runtime knows where it stands. A run stopped by the visitor or
+// reported unavailable never reaches completion, and neither do its disarmed dependents: both owe this
+// Stop no wait at all, which is why absence of a reading (undefined) and an impossible one (null) differ.
+const carriedWork=(r,e)=>id=>{
+ const u=e.uses[id];if(!u||activationScope(u)!==null)return undefined;
+ const a=r.activities[r.active[id]];if(!a)return undefined;
+ if(a.status==='stopped'||a.status==='unavailable')return null;
+ return {spent:Math.max(0,Number(a.elapsed)||0)};
 };
 export function createRuntime(e,c,pid,pose,scene=createSceneCapabilities()) {
  const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,arrivedViewUseId:null,viewingSuppressed:false,cueFloor:-1,captions:true,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,readiness:BREATHING,refusal:null};
@@ -102,36 +103,71 @@ function closeVisit(r,e,scene,parked=new Set()){for(const a of Object.values(r.a
  if(retentionExpired){a.boundaryExpired=true;if(a.status==='complete')removeOwned(r,a.token);}
  if(u.end.kind==='visit'&&boundaryScope(u)===r.presentationId&&['running','paused'].includes(a.status)&&interruption(e,scene,u)==='cancel')stopRun(r,e,a.token,'Visit ended');
 }}
-function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene,new Set(r.bookmarks.map(b=>b.visit)));r.presentationId=pid;r.visit=++r.visitCounter;r.elapsed=0;r.queue=[];r.movement=null;r.viewingSuppressed=false;r.cueFloor=-1;r.signals={...r.signals};armScope(r,e,c,scene,pid);r.readiness=estimatePresentation(e,c,pid,r.pose,undefined,null,scene,{elapsed:carriedElapsed(r,e)});}
+function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene,new Set(r.bookmarks.map(b=>b.visit)));r.presentationId=pid;r.visit=++r.visitCounter;r.elapsed=0;r.queue=[];r.movement=null;r.viewingSuppressed=false;r.cueFloor=-1;r.signals={...r.signals};armScope(r,e,c,scene,pid);r.readiness=estimatePresentation(e,c,pid,r.pose,undefined,null,scene,{carried:carriedWork(r,e)});}
 export function presentationPlan(e,c,pid,pose,entryId=entryUse(e,pid)?.id||null,entryMovement=null,scene=createSceneCapabilities(),policy={}){
  const issues=new Set(contributionIssues(e,c,scene,capability).map(i=>i.id)),cache=new Map();
- // Activation, not organization, determines eligible work. Recursive dependency costs share one
- // memoized signal calculation; hypothetical visitor offers and unavailable work have no invented cost.
- function startAt(id,seen=new Set()){
+ // Remaining runtime completion, not elapsed subtraction at every node. Each contribution is placed
+ // once, as the window it actually occupies relative to this visit's entry: a carried Experience-scoped
+ // run starts in the past (negative), its dependents chain from its *signal*, and a dependent that has
+ // already begun keeps its own position — so no path pays the same spent time twice. Nothing here is a
+ // general scheduler: activation, not organization, decides what is eligible, a hypothetical visitor
+ // offer has no invented cost, and a run that can never complete (stopped, unavailable, repaired out)
+ // contributes no wait at all.
+ function windowOf(id,seen=new Set()){
   if(cache.has(id))return cache.get(id);const u=e.uses[id];
   if(!u||u.viewId||u.kind==='interaction'||u.start.kind==='station'||issues.has(id)||seen.has(id))return null;
-  if(activationScope(u)!==pid&&activationScope(u)!==null)return null;
-  seen.add(id);let at=0;
+  const scope=activationScope(u);
+  if(scope!==pid&&scope!==null)return null;
+  seen.add(id);
+  const carried=policy.carried?.(u.id);
+  if(carried===null){cache.set(id,null);return null;}
+  const duration=workDuration(e,scene,u);
+  if(duration===undefined){cache.set(id,null);return null;}
+  // Only spent time this very run already carries is subtracted, and only up to its authored length.
+  const spent=Math.min(duration??Infinity,Math.max(0,carried?.spent??0));
+  let start=-spent;
   if(u.start.kind==='after'){
-   const base=startAt(u.start.useId,seen),d=e.definitions[e.uses[u.start.useId]?.definitionId];
-   const offset=d?.kind==='narration'?cueSeconds(e,u.start):u.start.signal==='complete'?capability(scene,d?.subjectId,d?.capabilityId)?.duration??0:null;
-   at=base===null||offset===null?null:base+offset;
+   const parent=windowOf(u.start.useId,seen),parentUse=e.uses[u.start.useId];
+   const offset=signalPosition(e,scene,parentUse,u.start.signal);
+   if(!parent||offset===null){cache.set(id,null);return null;}
+   start=spent?start:parent.start+offset;
   }
-  // Work already underway at this Stop keeps only its remaining time; completed work owes nothing.
-  // `policy.elapsed` is the runtime's live read of carried (Experience-scoped) runs.
-  if(at!==null)at-=(policy.elapsed?.(u.id)??0);
-  cache.set(id,at);return at;
+  const window={start,duration};cache.set(id,window);return window;
+ }
+ // The moment a named signal fires relative to this visit's entry. Negative means it already happened
+ // before the visit and can never be observed here.
+ function signalAt(id,signal){
+  const w=windowOf(id);if(!w)return null;const offset=signalPosition(e,scene,e.uses[id],signal);
+  return offset===null?null:w.start+offset;
  }
  let narrationEnd=0,finiteEnd=0,persistentStart=0;
  for(const u of Object.values(e.uses)){
-  const at=startAt(u.id);if(at===null)continue;const d=e.definitions[u.definitionId];
-  if(d?.kind==='narration')narrationEnd=Math.max(narrationEnd,at+narrationDuration(d));
-  else if(d?.kind==='control'){const cap=capability(scene,d.subjectId,d.capabilityId);if(!cap)continue;if(cap.kind==='loop')persistentStart=Math.max(persistentStart,at);else finiteEnd=Math.max(finiteEnd,at+(d.value===false?0:cap.duration||0));}
+  const w=windowOf(u.id);if(!w)continue;const d=e.definitions[u.definitionId];
+  if(d?.kind==='narration')narrationEnd=Math.max(narrationEnd,w.start+w.duration);
+  else if(d?.kind==='control'){if(w.duration===null)persistentStart=Math.max(persistentStart,w.start);else finiteEnd=Math.max(finiteEnd,w.start+w.duration);}
+ }
+ // Station-bound work executes inside the incoming movement, in this visit: counted here once, at its
+ // own station's time, exactly as the runtime invokes it. It is never armed again on entry.
+ const invocations=[...(entryMovement?.invokes||[])];
+ for(const invocation of invocations){
+  const u=e.uses[invocation.useId];if(!u||activationScope(u)!==pid)continue;
+  const d=e.definitions[u.definitionId],duration=workDuration(e,scene,u);if(duration===undefined)continue;
+  const at=Math.max(0,invocation.at??0);
+  if(d?.kind==='narration')narrationEnd=Math.max(narrationEnd,at+duration);
+  else if(d?.kind==='control'){if(duration===null)persistentStart=Math.max(persistentStart,at);else finiteEnd=Math.max(finiteEnd,at+duration);}
  }
  let cameraArrival=0,current=pose;const requests=[];if(entryId)requests.push({id:entryId,at:0});
+ // Where a cue's own signal lands, relative to this visit's entry. A station-invoked source fires inside
+ // the incoming movement, so it is placed on its station's time instead of on entry.
+ function cueSourceAt(cue){
+  const u=e.uses[cue.useId];
+  if(u?.start.kind==='station'){const invocation=invocations.find(x=>x.useId===cue.useId);if(!invocation)return null;const offset=signalPosition(e,scene,u,cue.signal);return offset===null?null:(invocation.at??0)+offset;}
+  return signalAt(cue.useId,cue.signal);
+ }
  if(policy.cues!==false)for(const u of Object.values(e.uses))if(u.presentationId===pid&&u.viewId&&u.id!==entryId&&u.cue&&!issues.has(u.id)){
   // A cue whose authored moment already passed before this visit cannot fire; it never delays arrival.
-  const local=cueSeconds(e,u.cue),at=startAt(u.cue.useId);if(local!==null&&at!==null&&at+local>=0&&local>(policy.cueFloor??-1))requests.push({id:u.id,at:at+local});
+  const local=cueSeconds(e,u.cue),at=cueSourceAt(u.cue);
+  if(local!==null&&at!==null&&at>=0&&local>(policy.cueFloor??-1))requests.push({id:u.id,at});
  }
  for(const req of requests.sort((a,b)=>a.at-b.at)){const v=resolveUse(e,c,req.id)?.view;if(!v)continue;cameraArrival=Math.max(req.at,cameraArrival)+(req.id===entryId&&entryMovement?entryMovement.duration:pathSeconds(viewPath(current,v.pose),v.speed||'auto'));current=v.pose;}
  return {readiness:Math.max(narrationEnd,finiteEnd,persistentStart,cameraArrival)+BREATHING,narrationEnd,finiteEnd,persistentStart,cameraArrival,requests};
@@ -141,7 +177,14 @@ function coordinationProblem(e,c,seam,connection,path) {
  for(const beat of seam.beats||[]) {
   if(beat.connectionId!==connection.id)continue;
   if(stationProgress(connection,path,beat.stationId)===null)return 'Camera station needs repair';
-  if(beat.kind==='invoke'&&(!e.uses[beat.useId]||!e.definitions[e.uses[beat.useId].definitionId]))return 'Coordinated contribution needs repair';
+  if(beat.kind==='invoke'){
+   const u=e.uses[beat.useId];
+   if(!u||!e.definitions[u.definitionId])return 'Coordinated contribution needs repair';
+   // The station must be the invoked Activity's trigger. If the author moved the trigger back to entry
+   // or the Experience, travelling would run the work on entry and again at the station, so the
+   // transition refuses locally until the binding is restored or the beat removed.
+   if(u.start.kind!=='station'||u.start.seam?.from!==seam.from||u.start.seam?.to!==seam.to||u.start.stationId!==beat.stationId)return 'Coordinated Activity is triggered elsewhere · re-invoke it here';
+  }
  }
  return null;
 }
@@ -150,7 +193,7 @@ export function gateState(e,c,r){
  const next=resolveNext(e,s.id);if(!next.id)return {allowed:false,reason:'End of Guide · explore freely'};
  if(next.missing)return {allowed:false,reason:'Next destination needs repair'};
  const entry=stopEntry(e,next.id);if(entry.missing||(entry.id&&!resolveUse(e,c,entry.id)))return {allowed:false,reason:'Required framing needs repair'};
- if(s.gate&&(!supportedSignal(e,r.scene||createSceneCapabilities(),s.gate)||!signalReaches(e,s.gate,s.presentationId)))return {allowed:false,reason:'Gate needs repair'};
+ if(s.gate&&(!supportedSignal(e,r.scene||createSceneCapabilities(),s.gate)||!signalCanDriveVisitCondition(e,s.gate,s.presentationId)))return {allowed:false,reason:'Gate needs repair'};
  if(s.gate&&!signalEmitted(r,s.gate))return {allowed:false,reason:'Waiting for authored Gate'};
  const seam=getSeam(e,s.id,next.id),from=resolveUse(e,c,r.viewUseId),to=resolveUse(e,c,entry.id);
  if(seam.mode==='travel') {
@@ -172,7 +215,7 @@ function goStop(r,e,c,scene,id,record=true,ignoreTravel=false){
  r.viewingSuppressed=!!entry.hold;r.cueFloor=entry.id?(cueSeconds(e,e.uses[entry.id]?.cue)??-1):-1;
  if(to)requestView(r,e,c,to.use.id,speed,path,seam,connectionId);else {r.viewUseId=null;r.arrivedViewUseId=null;}
  r.pacingFallback=s.pacing.kind==='signal'&&signalEmitted(r,s.pacing.ref);
- r.readiness=estimatePresentation(e,c,s.presentationId,origin,entry.id,{duration:r.movement?.duration||0},scene,{cues:!entry.hold,cueFloor:r.cueFloor,elapsed:carriedElapsed(r,e)});note(r,'Entered Stop '+id);return true;
+ r.readiness=estimatePresentation(e,c,s.presentationId,origin,entry.id,r.movement,scene,{cues:!entry.hold,cueFloor:r.cueFloor,carried:carriedWork(r,e)});note(r,'Entered Stop '+id);return true;
 }
 export function startGuide(e,c,current,scene=createSceneCapabilities()){const r=copy(current);if(e.guide[0])goStop(r,e,c,scene,e.guide[0],false,true);return r;}
 export function nextRuntime(e,c,current,scene=createSceneCapabilities()){const r=copy(current),gate=gateState(e,c,r);if(!gate.allowed){r.refusal=gate.reason;return r;}goStop(r,e,c,scene,resolveNext(e,r.stopId).id);return r;}
@@ -184,7 +227,7 @@ export function exploreRuntime(current,pose=null){const r=copy(current);r.pose=c
 // Stop — including work overlapped by Camera movement — is never restarted by the toggle; only the
 // pacing fallback is re-read from the runtime state.
 export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autoplay;const s=e.stops[r.stopId];r.pacingFallback=!!(s?.pacing.kind==='signal'&&signalEmitted(r,s.pacing.ref));return r;}
-export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,null,r.scene,{elapsed:carriedElapsed(r,e)});return r;}
+export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,null,r.scene,{carried:carriedWork(r,e)});return r;}
 export function chooseRuntime(e,c,current,targetId,detour=false,scene=createSceneCapabilities()){
  const r=copy(current);if(detour){r.bookmarks.push({stopId:r.stopId,presentationId:r.presentationId,visit:r.visit,elapsed:r.elapsed,history:[...r.history],autoplay:r.autoplay,viewUseId:r.viewUseId});
   for(const a of Object.values(r.activities))if(a.visit===r.visit&&e.definitions[e.uses[a.useId]?.definitionId]?.kind==='narration'&&a.status==='running')a.status='paused';

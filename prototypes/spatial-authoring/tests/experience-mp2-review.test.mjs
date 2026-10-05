@@ -23,6 +23,8 @@ const tick=(f,r,t)=>R.tickRuntime(f.e,f.c,r,t,f.scene);
 const next=(f,r)=>R.nextRuntime(f.e,f.c,r,f.scene);
 const control=(f,sid,cid,value,pid=f.p)=>M.addContribution(f.e,pid,{kind:'control',name:cid,subjectId:sid,capabilityId:cid,value});
 const narration=(f,duration=10,pid=f.p)=>M.addContribution(f.e,pid,{kind:'narration',name:'Explanation',text:'First passage. Later passage. Final passage.',duration,markers:[]},'narration');
+// Experience-scoped narration with one named phrase at 2s, used by the cue/scope cases.
+const addContrib=(f,pid)=>M.addContribution(f.e,pid,{kind:'narration',name:'Intro',text:'Welcome. The rotor turns.',duration:10,markers:[{id:'turn',label:'Turn',time:2}]},'narration');
 // A minimal Stage adapter plus a real Camera reading: selection touches the real action layer, while
 // the assertion is about the writer context and the preserved viewpoint, never about rendering.
 function liveFixture(){
@@ -182,6 +184,129 @@ test('P5 a View cue that can never fire is repairable and never delays the plan'
  f.e.uses[right].cue={useId:local,signal:'complete'};
  const plan=R.presentationPlan(f.e,f.c,f.q,pose,null,null,f.scene);
  assert.ok(plan.requests.some(req=>req.id===right&&req.at===5));
+});
+test('P1 a station invocation replaces the Activity trigger: it never runs on entry and runs exactly once at the station',()=>{
+ const f=fixture();
+ const u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry');
+ const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId);
+ const work=control(f,'light','intensity',4,null); // armed at Experience start before the binding
+ M.editSeam(f.e,f.a,f.b,{mode:'travel'});
+ const beat=M.addInvocationBeat(f.e,f.c,f.a,f.b,route,'departure',work,f.scene);
+ const seam=f.e.seams[`${f.a}>${f.b}`];
+ assert.equal(f.e.uses[work].start.kind,'station');
+ assert.deepEqual(f.e.uses[work].start.seam,{from:f.a,to:f.b});
+ assert.equal(M.activationScope(f.e.uses[work]),f.q); // the destination visit is where it runs
+ assert.equal(M.addInvocationBeat(f.e,f.c,f.a,f.b,route,'departure',work,f.scene),beat); // idempotent
+ assert.equal(seam.beats.filter(b=>b.useId===work).length,1);
+ // One Activity is invoked by one station only; the second binding is refused, not layered on top.
+ const other=M.addStop(f.e,f.p);
+ M.editSeam(f.e,f.b,other,{});
+ assert.throws(()=>M.addInvocationBeat(f.e,f.c,f.b,other,route,'departure',work,f.scene),/another|capture/i);
+ // Entry amortization: the run exists once, at the station, and never again on the next tick.
+ let r=run(f);
+ assert.equal(r.stopId,f.a);
+ assert.equal(r.active[work],undefined); // no entry trigger survives the binding
+ assert.equal(R.projectedValue(f.scene,r,'light','intensity'),2);
+ assert.equal(R.presentationPlan(f.e,f.c,f.p,pose,null,null,f.scene).requests.length,0); // not counted on entry
+ r=next(f,r);
+ const duration=r.movement.duration;
+ assert.ok(duration>0);
+ r=tick(f,r,duration);
+ const token=r.active[work];
+ assert.equal(typeof token,'string'); // invoked once by the traversed station
+ assert.equal(r.movement,null);
+ assert.equal(R.projectedValue(f.scene,r,'light','intensity'),4);
+ r=tick(f,r,1);
+ assert.equal(r.active[work],token); // and never again on the next tick
+ assert.equal(Object.values(r.activities).filter(a=>a.useId===work).length,1);
+ // Moving the trigger away in the Card leaves the beat behind: travelling must refuse locally rather
+ // than run the work twice, and invoking here again restores the binding instead of adding a beat.
+ f.e.uses[work].start={kind:'visit',presentationId:f.q}; // the Card's own writer
+ assert.equal(M.contributionIssues(f.e,f.c,f.scene,capability).some(i=>i.id===work),false);
+ const stale=R.startGuide(f.e,f.c,R.createRuntime(f.e,f.c,null,pose,f.scene),f.scene);
+ const refused=R.nextRuntime(f.e,f.c,stale,f.scene);
+ assert.equal(refused.stopId,f.a);
+ assert.match(refused.refusal,/triggered elsewhere/i);
+ assert.equal(M.addInvocationBeat(f.e,f.c,f.a,f.b,route,'departure',work,f.scene),beat); // repair, not a duplicate
+ assert.equal(seam.beats.filter(b=>b.useId===work).length,1);
+ assert.equal(f.e.uses[work].start.kind,'station');
+ assert.equal(R.nextRuntime(f.e,f.c,stale,f.scene).stopId,f.b);
+});
+test('P1 station invocation targets automatic work only: a visitor offer is never traversal work',()=>{
+ const f=fixture();
+ const u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry');
+ const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId);
+ M.editSeam(f.e,f.a,f.b,{mode:'travel'});
+ const offer=control(f,'piano','music',true,f.q);f.e.uses[offer].kind='interaction';
+ // The same rule gates the model and the coordination picker: one authority, no surface-only filter.
+ assert.match(M.invokableRefusal(f.e,f.scene,f.e.uses[offer]),/offer/i);
+ assert.throws(()=>M.addInvocationBeat(f.e,f.c,f.a,f.b,route,'departure',offer,f.scene),/offer/i);
+ assert.equal(f.e.seams[`${f.a}>${f.b}`]?.beats?.length||0,0); // a refused binding authors nothing
+ assert.equal(f.e.uses[offer].start.kind,'visit');            // and never moves the offer's own trigger
+ const narration=addContrib(f,f.q);
+ assert.equal(M.invokableRefusal(f.e,f.scene,f.e.uses[narration]),'');
+ assert.equal(M.invokableRefusal(f.e,f.scene,f.e.uses[u]),'A Camera View is not an Activity');
+ const unsupported=control(f,'machine','rotor',true,f.q);f.e.definitions[f.e.uses[unsupported].definitionId].capabilityId='gone';
+ assert.match(M.invokableRefusal(f.e,f.scene,f.e.uses[unsupported]),/unavailable/i);
+ assert.throws(()=>M.addInvocationBeat(f.e,f.c,f.a,f.b,route,'departure',unsupported,f.scene),/unavailable/i);
+ const id=M.addInvocationBeat(f.e,f.c,f.a,f.b,route,'arrival',narration,f.scene);
+ assert.equal(f.e.seams[`${f.a}>${f.b}`].beats.find(b=>b.id===id).stationId,'arrival');
+ // The invoked narration runs inside the destination visit and is captioned there, never earlier.
+ let r=run(f);
+ assert.equal(r.active[narration],undefined);
+ r=next(f,r);
+ const duration=r.movement.duration;
+ r=tick(f,r,duration+1);
+ assert.equal(r.activities[r.active[narration]].visit,r.visit);
+ assert.match(R.narrationCaption(f.e,r),/Welcome|rotor/); // plan and transcript agree about the run
+});
+test('P3 a View cue driven by Experience-wide output is legitimate work, never an impossible scope',()=>{
+ const f=fixture();
+ const n=addContrib(f,null);
+ M.addView(f.e,f.c,f.p,pose,'Entry','entry'); // a held entry viewpoint would suppress every cue
+ const cue=M.addView(f.e,f.c,f.p,{...pose,target:[7,1,0]},'Turn view');
+ f.e.uses[cue].cue={useId:n,signal:'marker:turn'};
+ assert.equal(M.contributionIssues(f.e,f.c,f.scene,capability).some(i=>i.id===cue),false);
+ const plan=R.presentationPlan(f.e,f.c,f.p,pose,null,null,f.scene);
+ assert.ok(plan.requests.some(req=>req.id===cue&&req.at===2),JSON.stringify(plan.requests));
+ // The Gate/pacing question is answered by the strict predicate instead: a later visit can never wait
+ // for output that may already have finished.
+ assert.equal(M.signalCanCuePresentation(f.e,{useId:n,signal:'marker:turn'},f.q),true);
+ assert.equal(M.signalCanDriveVisitCondition(f.e,{useId:n,signal:'marker:turn'},f.q),false);
+ f.e.stops[f.b].gate={useId:n,signal:'marker:turn'};
+ assert.ok(M.stopConditionIssues(f.e,f.scene,f.b).some(i=>i.condition==='Gate'&&/scope/i.test(i.message)));
+ let r=run(f);
+ r=tick(f,r,2.1);
+ assert.equal(r.viewUseId,cue); // runtime and plan agree about the same cue
+});
+test('P4 a stopped carried run and its disarmed dependents owe the next Stop no wait',()=>{
+ const f=fixture();
+ const n=M.addContribution(f.e,null,{kind:'narration',name:'Intro',text:'Welcome. Watch the rotor.',duration:30,markers:[]},'narration');
+ const rotor=M.addContribution(f.e,null,{kind:'control',name:'Rotor',subjectId:'machine',capabilityId:'rotor',value:true});
+ f.e.uses[rotor].start={kind:'after',useId:n,signal:'complete',scope:'experience'};
+ let r=R.createRuntime(f.e,f.c,null,pose,f.scene);
+ r=tick(f,r,4);
+ r=R.stopActivityRuntime(f.e,r,r.active[n]);
+ assert.equal(r.activities[r.active[n]].status,'stopped');
+ r=R.startGuide(f.e,f.c,r,f.scene);
+ assert.ok(r.readiness<=2+1e-9,`stopped work still delays Auto: ${r.readiness}`);
+ assert.equal(r.activities[r.active[rotor]].status,'stopped'); // disarmed with its dependency
+ r.autoplay=true;r=tick(f,r,2.1);
+ assert.equal(r.stopId,f.b);
+});
+test('P4 a carried dependency counts the remaining work once, never its own elapsed twice',()=>{
+ const f=fixture();
+ const n=M.addContribution(f.e,null,{kind:'narration',name:'Intro',text:'Welcome. Watch the rotor.',duration:10,markers:[{id:'turn',label:'Turn',time:2}]},'narration');
+ const music=M.addContribution(f.e,null,{kind:'control',name:'Music',subjectId:'piano',capabilityId:'music',value:true}); // 12s
+ f.e.uses[music].start={kind:'after',useId:n,signal:'marker:turn',scope:'experience'};
+ let r=R.createRuntime(f.e,f.c,null,pose,f.scene);
+ r=tick(f,r,4); // the marker fired 2s ago; the playback is 2s in and finishes 10s from now
+ assert.equal(r.activities[r.active[n]].elapsed,4);
+ assert.equal(r.activities[r.active[music]].elapsed,2);
+ r=R.startGuide(f.e,f.c,r,f.scene);
+ assert.ok(Math.abs(r.readiness-12)<1e-6,`carried dependency misread: ${r.readiness}`);
+ r.autoplay=true;r=tick(f,r,11.9);assert.equal(r.stopId,f.a);
+ r=tick(f,r,.2);assert.equal(r.stopId,f.b);
 });
 test('P5 Gate and pacing scope mismatches are repairable Stop conditions; compatible refs still release them',()=>{
  const f=fixture();
