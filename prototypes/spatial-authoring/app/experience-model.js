@@ -145,12 +145,17 @@ export function captureUses(e,pid,sid,cid) {
   return u.kind!=='interaction'&&d?.kind==='control'&&d.subjectId===sid&&d.capabilityId===cid;
  });
 }
+// Capture another is an explicit create: the ambiguity choice is about which existing identity to
+// update, so the create action it offers must never be refused by that same ambiguity.
+export function captureNew(e,pid,sid,cid,value,name='') {
+ const id=addContribution(e,pid,{kind:'control',name:name||cid,subjectId:sid,capabilityId:cid,value},'behavior');
+ return {id,created:true};
+}
 export function captureCapability(e,pid,sid,cid,value,name='') {
  const matches=captureUses(e,pid,sid,cid);
  if(matches.length>1)return{ambiguous:matches.map(u=>u.id)};
  if(matches.length===1){const d=e.definitions[matches[0].definitionId];d.value=value;if(name)d.name=name;return{id:matches[0].id,updated:true};}
- const id=addContribution(e,pid,{kind:'control',name:name||cid,subjectId:sid,capabilityId:cid,value},'behavior');
- return {id,created:true};
+ return captureNew(e,pid,sid,cid,value,name);
 }
 export function narrationDuration(d) {return d.duration ?? Math.max(1,d.text.trim().split(/\s+/).filter(Boolean).length/2.5);}
 export function cueSeconds(e,cue) {

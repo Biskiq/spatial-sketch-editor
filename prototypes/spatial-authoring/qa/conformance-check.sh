@@ -29,6 +29,7 @@ click '#index [data-act="pres-ref"][data-id="machine"]'
 click '#card [data-act="exp-create"]'
 fill '[data-exp-field="name"]' 'Why the drive matters'
 fill '[data-exp-primary]' 'A casing, a rotor, and a path for power.'
+conformance_ok 'the explanation field commits one authored narration through the real control' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,primary=Object.values(e.uses).filter(u=>u.primary);return primary.length===1&&primary[0].presentationId===pid&&e.definitions[primary[0].definitionId].kind==="narration"&&e.definitions[primary[0].definitionId].text==="A casing, a rotor, and a path for power.";})()')" true
 conformance_ok 'quickstart observes the real Presentation it was asked for, not a button press' "$(qa_js '(()=>{const s=document.querySelector("[data-example-step]").textContent,o=document.querySelector("[data-example-observed]").textContent;return s.includes("1/4")&&o.includes("Why the drive matters");})()')" true
 # C9.1 ordinary loop: the subject-local audition is session state; Use captures one honest Activity.
 click '#card .exp-focus [data-operate="machine"]'
@@ -38,6 +39,13 @@ fill '[data-exp-audition="casing"]' '0.6'
 conformance_ok 'operating the subject auditions on the real Stage without source or history' "$(qa_jsv 'JSON.stringify(__me.S.expAudition)')" '{"machine":{"open":0.6}}'
 conformance_ok '…and the audition writes no source and no history' "$(source_hash) / $(undo)" "$before / $count"
 conformance_ok 'the audition is stated as a temporary projection' "$(qa_js 'document.querySelector("#card").textContent.includes("Temporary projection")')" true
+# Outside Preview there is no visitor runtime: a real session clock must turn a running audition so the
+# effect is visible, and stopping drops the phase again — still with no source or history.
+click '#card [data-act="exp-audition"][data-cap="rotor"][data-value="true"]'
+conformance_ok 'an auditioned running capability advances on a session clock outside Preview' "$(qa_js '(async()=>{const rot=()=>__me.ctx.stage.items.get("machine").capabilityParts.rotor.rotation.y;await __me.qa.render();const a=rot();await new Promise(r=>setTimeout(r,60));await __me.qa.render();return __me.S.expAudition.machine.running===true&&a>=0&&rot()>a;})()')" true
+conformance_ok '…with source and history still untouched' "$(source_hash) / $(undo)" "$before / $count"
+click '#card [data-act="exp-audition"][data-cap="rotor"][data-value="false"]'
+conformance_ok 'stopping the audition drops the phase' "$(qa_js '(__me.S.expAudition.machine.running===false&&__me.ctx.stage.items.get("machine").capabilityParts.rotor.rotation.y===0)')" true
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'Use in this Presentation captures one Activity holding the auditioned value' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==="control"),d=us[0]&&e.definitions[us[0].definitionId];return us.length===1&&us[0].presentationId===pid&&d.subjectId==="machine"&&d.capabilityId==="casing"&&d.value===0.6&&e.guide.length===0&&Object.keys(e.stops).length===0;})()')" true
 conformance_ok 'the capture writes one history step and creates no Camera View' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / 0"
@@ -55,6 +63,7 @@ click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 before="$(source_hash)";standpoint="$(pose)"
 click '#headPreview'
 conformance_ok 'no-Guide/no-View Preview runs the authored explanation and captured capability' "$(qa_js '(!!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&Object.keys(__me.ctx.cameraSource.views).length===0&&!!__me.S.visitor.runtime.overrides.machine?.open&&Object.values(__me.S.visitor.runtime.activities).some(a=>a.status==="running"))') / $(source_hash)" "true / $before"
+conformance_ok 'the visitor caption speaks the explanation typed through the real control' "$(qa_js 'document.querySelector(".visitor-caption").textContent.includes("A casing, a rotor")')" true
 click '[data-act="exp-exit-preview"]'
 conformance_ok 'no-View Preview restores complete standpoint' "$(pose)" "$standpoint"
 before="$(source_hash)"; count="$(undo)"
@@ -86,9 +95,27 @@ click '#card [data-act="exp-add-guide"]'
 conformance_ok 'first Stop gives Peek only' "$(qa_js '(__me.S.experienceContext.depth==="ordinary"&&document.querySelector("#experienceDeck").classList.contains("ordinary"))')" true
 capture qa-1-peek
 # QA-2/3: authored stress fixture has no active procedure or standpoint recipe.
-selected_before="$(qa_js '__me.S.sel')"
+# Selection never silently retargets a replaced Experience identity: the loader invalidates it before
+# the deterministic fixture identities are reissued. World context survives the same load.
 qa_js '__me.E.loadConformance()' >/dev/null
-conformance_ok 'fixture never selects or opens work, and leaves resolving World context alone' "$(qa_js '__me.S.sel') / $(qa_js '(__me.S.experienceContext.depth==="ordinary"&&__me.ctx.experience.guide.length===6&&__me.S.task===null)')" "$selected_before / true"
+conformance_ok 'fixture never selects or opens work, and a replaced Experience selection is invalidated, never retargeted' "$(qa_js '__me.S.sel') / $(qa_js '(__me.S.experienceContext.depth==="ordinary"&&__me.ctx.experience.guide.length===6&&__me.S.task===null)')" 'null / true'
+qa_js '__me.A.select("machine")' >/dev/null
+qa_js '__me.E.loadConformance()' >/dev/null
+conformance_ok 'a World subject selection survives the same labelled load' "$(qa_js '__me.S.sel')" '"machine"'
+# Ambiguous captures: two matching Activities in one Presentation. The choice is real product UI;
+# Escape drops it whole, and Capture another is an explicit create that touches neither existing value.
+click '#index [data-act="exp-open"][data-id="presentation-1"]'
+qa_js '(()=>{const e=__me.ctx.experience,u=Object.values(e.uses).find(x=>!x.viewId&&e.definitions[x.definitionId]?.capabilityId==="casing"),did="definition-author",uid="use-author";e.definitions[did]={...e.definitions[u.definitionId],id:did,name:"Open casing · authored"};e.uses[uid]={...u,id:uid,definitionId:did};return true;})()' >/dev/null
+click '#index [data-act="pres-ref"][data-id="machine"]'
+click '#card [data-act="exp-use"][data-cap="casing"]'
+conformance_ok 'two matching captures ask which Activity to update, never mutating either' "$(qa_js '(()=>{const e=__me.ctx.experience,a=__me.S.expCaptureAsk,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&u.presentationId===pid&&e.definitions[u.definitionId]?.capabilityId==="casing");return !!a&&a.matches.length===2&&us.length===2&&us.every(u=>e.definitions[u.definitionId].value===1);})()')" true
+qa_press Escape
+conformance_ok 'Escape drops the ambiguous proposal with its audition: no stale choice survives' "$(qa_js '(__me.S.expCaptureAsk===null&&__me.S.expAudition===null)')" true
+click '#card [data-act="exp-use"][data-cap="casing"]'
+count="$(undo)"; views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')"
+click '#card [data-act="exp-capture-new"]'
+conformance_ok 'Capture another creates a third Activity and leaves both existing values untouched' "$(qa_js '(()=>{const e=__me.ctx.experience,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.capabilityId==="casing");return us.length===3&&us.filter(u=>e.definitions[u.definitionId].value===1).length===2&&__me.S.expCaptureAsk===null;})()')" true
+conformance_ok 'Capture another writes one history step and creates no Camera View' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / $views"
 click '#index [data-act="exp-open"][data-id="presentation-1"]'
 click '#experienceDeck [data-act="exp-guide"]'
 click '[data-act="plan"]'
