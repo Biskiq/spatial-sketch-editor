@@ -69,6 +69,22 @@ export function originCoverage(e,c,a,b) {
  const origins=[...new Set(ids)].map(id=>e.uses[id]).filter(u=>u?.viewId);
  return origins.map(u=>({useId:u.id,viewId:u.viewId,targetId:target?.view.id||null,connectionId:Object.values(c.connections).find(k=>k.from===u.viewId&&k.to===target?.view.id)?.id||null,missing:!c.views[u.viewId]||!!c.views[u.viewId].unresolved||!target}));
 }
+// N1 — one explicit Travel preparation transaction. Experience supplies the eligible origin Views and
+// the destination entry; Camera creates only the missing direct connections and reuses every existing
+// one untouched, so a shared route/pace is never silently rewritten. Two origins are already supported
+// without an edge: the same View (Camera's own zero-distance evaluation, never a fabricated edge) and
+// an unresolved origin or entry, which stays a reported gap for repair. Nothing else creates
+// connectivity: adding or selecting a View and Previewing all leave the Camera graph alone.
+export function prepareTravelSupport(e,c,a,b) {
+ const prepared=[],reused=[],direct=[],gaps=[];
+ for(const row of originCoverage(e,c,a,b)){
+  if(row.missing){gaps.push({useId:row.useId,viewId:row.viewId,reason:'Origin or destination entry needs repair'});continue;}
+  if(row.viewId===row.targetId){direct.push({useId:row.useId,viewId:row.viewId});continue;}
+  if(row.connectionId){reused.push({useId:row.useId,connectionId:row.connectionId});continue;}
+  prepared.push({useId:row.useId,viewId:row.viewId,connectionId:addConnection(c,row.viewId,row.targetId)});
+ }
+ return {prepared,reused,direct,gaps};
+}
 export function addConnection(c,from,to) {
  if(!c.views[from]||!c.views[to])throw Error('Camera endpoints unresolved');
  const old=Object.values(c.connections).find(k=>k.from===from&&k.to===to);if(old)return old.id;

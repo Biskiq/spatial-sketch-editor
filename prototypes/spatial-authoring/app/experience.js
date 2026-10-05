@@ -8,7 +8,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -68,6 +68,7 @@ export function handleExperienceAction(el) {
   if (action === 'exp-seam') openSeam(el.dataset.from,el.dataset.to);
   if (action === 'exp-cut') setSeamMode('cut');
   if (action === 'exp-travel') setSeamMode('travel');
+  if (action === 'exp-prepare') prepareSeamSupport();
   if (action === 'exp-connect') connectOrigin(el.dataset.id);
   if (action === 'exp-route') editRoute(el.dataset.id);
   if (action === 'exp-route-return') returnRouteReading();
@@ -155,12 +156,13 @@ export function preview(pid=S.experienceContext.presentation,guide=false) {
  nav.releaseHold();
  S.expAudition=null;
  S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),guide?null:pid,nav.plainPose(),ctx.sceneSource)};
+ S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;
  if(guide)S.visitor.runtime=R.startGuide(S.visitor.source.experience,S.visitor.source.camera,S.visitor.runtime,S.visitor.source.scene);
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
 export async function exitPreview() {
  const v=S.visitor;if(!v)return false;
- S.visitor=null;S.visitorDrag=null;const t=v.returnToken;
+ S.visitor=null;S.visitorDrag=null;S.visitorPress=null;S.visitorChoice=null;const t=v.returnToken;
  S.lens=t.lens;S.sel=t.sel;S.experienceContext=t.context;S.expand=t.expand;S.sheet=t.sheet;S.browse=t.browse;
  await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);
  if(S.task?.kind==='experience-hints'){const p=ctx.experience.presentations[S.task.target.id];S.derivedView=p?{presentation:p.id,...nav.deriveFraming(p,S.task.params.hints)}:null;}
@@ -215,7 +217,37 @@ export function openSeam(a,b) {
  cancelProposal('invoke');S.experienceContext.depth='seam';S.experienceContext.seam={from:a,to:b};S.experienceContext.stop=null;
  T.begin({kind:'experience-seam',subject:S.sel,target:{id:b},params:{from:a,to:b,originUse:null,connection:null}});if(ctx.experience.seams[`${a}>${b}`]?.beats.length)coordinate();ctx.ui();return true;
 }
-export function setSeamMode(mode) {const {from,to}=S.experienceContext.seam;return command('Set Seam transition',e=>editSeam(e,from,to,{mode}));}
+// N1 — choosing Travel is one explicit aggregate transaction: it prepares exactly the missing direct
+// Camera support for every legitimate origin of this Seam and selects Travel. Camera creates and owns
+// the routes; the report names prepared versus reused support. Selecting Cut never creates connectivity.
+export function setSeamMode(mode) {
+ const {from,to}=S.experienceContext.seam;let report=null;
+ try{
+  const result=command(mode==='travel'?'Prepare Camera routes and select Travel':'Set Seam transition',(e,c)=>{if(mode==='travel')report=prepareTravelSupport(e,c,from,to);editSeam(e,from,to,{mode});return report;});
+  if(mode==='travel')A.setStatus(supportReport(report),report?.gaps.length?'refuse':'edit');
+  return result;
+ }catch(error){A.setStatus(error.message,'refuse');ctx.ui();return false;}
+}
+// The explicit repair for a Seam that gained a legitimate origin after Travel was chosen: one action
+// prepares exactly the missing direct routes and reuses the rest. Nothing here runs automatically when
+// a View is added, an entry changes or a Preview starts.
+export function prepareSeamSupport() {
+ const seam=S.experienceContext.seam;if(!seam)return false;let report=null;
+ try{
+  const result=command('Prepare missing Camera routes',(e,c)=>{report=prepareTravelSupport(e,c,seam.from,seam.to);return report;});
+  A.setStatus(supportReport(report),report?.gaps.length?'refuse':'edit');ctx.ui();return result;
+ }catch(error){A.setStatus(error.message,'refuse');ctx.ui();return false;}
+}
+// Prepared versus reused support, with the owner named: an explicit transaction a reviewer can read.
+function supportReport(report){
+ if(!report)return 'No Seam selected';
+ const parts=[];
+ if(report.prepared.length)parts.push(`Prepared ${report.prepared.length} Camera route${report.prepared.length===1?'':'s'}`);
+ if(report.reused.length)parts.push(`reused ${report.reused.length} existing`);
+ if(report.direct.length)parts.push(`${report.direct.length} already at the same View`);
+ if(report.gaps.length)parts.push(`${report.gaps.length} origin${report.gaps.length===1?'':'s'} need repair`);
+ return `${parts.length?parts.join(' · '):'All origins already supported'} · Camera owns route geometry`;
+}
 export function connectOrigin(uid) {
  const {from,to}=S.experienceContext.seam;
  const row=originCoverage(ctx.experience,ctx.cameraSource,from,to).find(r=>r.useId===uid);
@@ -416,6 +448,7 @@ export function cancelCaptureAsk(){if(!S.expCaptureAsk)return false;S.expCapture
 export function reuseFraming(pid,vid){return command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));}
 export function visitorCommand(action,id=null){
  const v=S.visitor;if(!v)return false;const e=v.source.experience,c=v.source.camera,scene=v.source.scene,r=v.runtime;
+ if(action==='choice-cancel'){S.visitorChoice=null;ctx.ui();return true;}
  if(action==='next')v.runtime=R.nextRuntime(e,c,r,scene);
  if(action==='back')v.runtime=R.previousRuntime(e,c,r,scene);
  if(action==='start')v.runtime=R.startGuide(e,c,r,scene);
@@ -429,13 +462,44 @@ export function visitorCommand(action,id=null){
  if(action==='captions')v.runtime.captions=!r.captions;
  if(action==='detour')v.runtime=R.chooseRuntime(e,c,r,id,true,scene);
  if(action==='return')v.runtime=R.returnDetour(e,c,r,scene);
+ // Opening another available Presentation is a deliberate navigation request: from a Guide it parks
+ // this Stop with one bounded bookmark, otherwise it starts a fresh visit. Closing a standalone
+ // Presentation returns to exploration, never to authoring. Both only read authored documents.
+ if(action==='open')v.runtime=R.openPresentationRuntime(e,c,r,id,scene);
+ if(action==='close')v.runtime=R.closePresentationRuntime(r);
+ // Any deliberate visitor command settles a pending offer choice: a choice is never left armed
+ // behind a navigation the visitor already made.
+ S.visitorChoice=null;
  if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;
 }
+// Direct subject activation during Preview and exploration: a real click activates the offer(s) the used
+// subject offers, while a drag orbits the visitor's own viewpoint and never activates. The release is
+// the only place a click decides, so click and drag stay distinguishable in both modes.
+export const VISITOR_DRAG_SLOP=6;
 export function visitorPointer(event){
- const v=S.visitor;if(!v)return;
- if(v.runtime.exploring) {S.visitorDrag={x:event.clientX,y:event.clientY};return;}
- const hit=ctx.stage.pick(event.clientX,event.clientY),id=hit?.object?.userData?.id||hit?.id;
- const e=v.source.experience,u=Object.values(e.uses).find(u=>u.kind==='interaction'&&u.triggerSubjectId===id&&(!u.availability||u.availability===v.runtime.presentationId));if(u)visitorCommand('activate',u.id);
+ const v=S.visitor;if(!v)return false;
+ const hit=ctx.stage.pick?.(event.clientX,event.clientY),id=hit?.object?.userData?.id||hit?.id||null;
+ S.visitorPress={x:event.clientX,y:event.clientY,id,moved:false};
+ if(v.runtime.exploring)S.visitorDrag={x:event.clientX,y:event.clientY};
+ return true;
+}
+export function visitorMove(event){
+ const v=S.visitor;if(!v)return false;
+ const press=S.visitorPress;
+ if(press&&Math.hypot(event.clientX-press.x,event.clientY-press.y)>VISITOR_DRAG_SLOP)press.moved=true;
+ const d=S.visitorDrag;
+ if(d&&press?.moved){nav.manipulate({dx:event.clientX-d.x,dy:event.clientY-d.y});d.x=event.clientX;d.y=event.clientY;v.runtime.pose=nav.plainPose();}
+ return true;
+}
+export function visitorRelease(){
+ const v=S.visitor,press=S.visitorPress;S.visitorPress=null;S.visitorDrag=null;
+ if(!v||!press||press.moved||!press.id)return false;
+ const offers=Object.values(v.source.experience.uses).filter(u=>u.kind==='interaction'&&u.triggerSubjectId===press.id&&(!u.availability||u.availability===v.runtime.presentationId));
+ if(!offers.length)return false;
+ // Several offers for one subject open an explicit choice: the first enumerated offer is never the
+ // visitor's decision. One offer is executed directly, still activation by deliberate click.
+ if(offers.length>1){S.visitorChoice={triggerId:press.id,offers:offers.map(u=>u.id)};ctx.ui();return true;}
+ return visitorCommand('activate',offers[0].id);
 }
 export function sourceCapability(sid,cid,value){
  const cap=capability(ctx.sceneSource,sid,cid);

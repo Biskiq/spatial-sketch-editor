@@ -72,12 +72,13 @@ qa_ok 'two origins have reach; third remains a gap' "$(qa_js 'document.querySele
 agent-browser click '[data-act="exp-cut"]' >/dev/null
 qa_frames
 qa_ok 'Cut creates no edge' "$(qa_js 'Object.keys(__me.ctx.cameraSource.connections).length')" '2'
+# N1: choosing Travel is ONE authored transaction that completes the Seam's Camera support — it keeps
+# the routes authored per origin above, prepares only the origin still missing one, and selects Travel.
+# No per-origin graph surgery is left to the author, and no duplicate edge is written.
 agent-browser click '[data-act="exp-travel"]' >/dev/null
 qa_frames
-qa_ok 'Travel exposes unresolved support locally' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Travel gap")')" 'true'
-agent-browser click '[data-act="exp-connect"]' >/dev/null
-qa_frames
-qa_ok 'explicit repair covers third origin only' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3")')" 'true'
+qa_ok 'explicit Travel completes the Seam support in one authored step' "$(qa_js '(Object.keys(__me.ctx.cameraSource.connections).length === 3 && document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3") && document.querySelector("#experienceDeck").textContent.includes("All origins supported"))')" 'true'
+qa_ok 'Travel reports prepared versus reused support with the Camera owner' "$(qa_js '(/Prepared 1 Camera route/.test(__me.S.status.text) && /Camera owns route geometry/.test(__me.S.status.text))')" 'true'
 agent-browser click '[data-act="exp-route"]' >/dev/null
 qa_frames
 qa_ok 'explicit route work requests Plan and return crumb' "$(qa_js '(__me.S.experienceContext.depth === "route" && !!document.querySelector("[data-act=exp-route-return]") && __me.ctx.stage.cam.el > 1.5)')" 'true'

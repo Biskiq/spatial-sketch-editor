@@ -3,7 +3,9 @@
 # assertion that protects it must reject the copy while unaffected controls stay green. The kinds
 # mirror the authoring plan's targeted obligations: organization-as-start, hold cue leakage and
 # entry-plus-station double invoke in the model/runtime; empty Reset hidden placeholder (C9.1),
-# silent first-offer choice and Peek forcing L2 in the wiring.
+# silent first-offer choice and Peek forcing L2 in the wiring; and the C9.4/C9.5 ownership classes —
+# departure instead of live start, View addition creating connectivity, Cut flying the route, a
+# non-traversed route's station executing, and visit-runtime work writing authored source.
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/c9-mutations.XXXXXX")"
@@ -12,7 +14,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -99,6 +101,42 @@ elif kind == 'cue-scope':
     replace('app/experience-model.js',
             "export function signalCanCuePresentation(e,ref,pid){\n const u=e.uses[ref?.useId];if(!u)return false;\n if(u.kind==='interaction')return !u.availability||u.availability===pid;\n const scope=activationScope(u);return scope===pid||scope===null;\n}",
             "export function signalCanCuePresentation(e,ref,pid){return signalCanDriveVisitCondition(e,ref,pid);}")
+elif kind == 'live-departure':
+    # Travel stops being a live-start invocation: the move is built from the authored departure View
+    # instead of the visitor's actual pose.
+    replace('app/experience-runtime.js',
+            " const path=liveConnectionPath(connection,to.view.pose,r.pose);",
+            " const path=liveConnectionPath(connection,to.view.pose,c.views[connection.from].pose);")
+elif kind == 'implicit-connectivity':
+    # Adding a View silently authors Camera connectivity to it, so a graph edit is an inference from
+    # coexistence instead of an explicit Travel preparation.
+    replace('app/experience-model.js',
+            " const id=fresh(e,'use'); e.uses[id]={id,name,presentationId:pid,viewId,role,cue:null}; p.uses.push(id);",
+            " const id=fresh(e,'use'); e.uses[id]={id,name,presentationId:pid,viewId,role,cue:null}; p.uses.push(id);for(const st of Object.values(e.stops)){const t=stopEntry(e,st.id);const from=t.id&&e.uses[t.id]?.viewId;if(from&&from!==viewId&&!Object.values(c.connections).some(k=>k.from===from&&k.to===viewId))addConnection(c,from,viewId);}")
+elif kind == 'cut-flight':
+    # Cut executes the Seam's Camera traversal and its route beats as if it were Travel.
+    replace('app/experience-runtime.js',
+            " if(seam?.mode==='travel'&&!ignoreTravel){const invocation=travelInvocation(e,c,r,from,to,seam);",
+            " if(seam&&!ignoreTravel){const invocation=travelInvocation(e,c,r,from,to,seam);")
+elif kind == 'traversed-only':
+    # Every beat authored on the Seam executes during a traversal, not only the traversed connection's.
+    replace('app/experience-coordination.js',
+            "  ? seam.beats.filter(beat => beat.connectionId === connectionId) : [];",
+            "  ? seam.beats.slice() : [];")
+elif kind == 'offer-automatic':
+    # A visitor offer becomes automatic visit work instead of an offer the visitor activates.
+    replace('app/experience-runtime.js',
+            "  if(u.viewId||u.kind==='interaction'||u.start.kind==='station'||activationScope(u)!==pid)return false;",
+            "  if(u.viewId||u.start.kind==='station'||activationScope(u)!==pid)return false;")
+elif kind == 'visitor-source-write':
+    # The visit runtime reads AND writes the authored documents instead of its own isolated copy, so
+    # a visitor activation edits authored Scene source the moment it runs.
+    replace('app/experience.js',
+            " const v=S.visitor;if(!v)return false;const e=v.source.experience,c=v.source.camera,scene=v.source.scene,r=v.runtime;",
+            " const v=S.visitor;if(!v)return false;const e=ctx.experience,c=ctx.cameraSource,scene=ctx.sceneSource,r=v.runtime;")
+    replace('app/experience-runtime.js',
+            "  put(r,d.subjectId,cap.channel,cap.kind==='motion'&&a.duration?current:value,token);",
+            "  put(r,d.subjectId,cap.channel,cap.kind==='motion'&&a.duration?current:value,token);if(scene.subjects[d.subjectId])scene.subjects[d.subjectId].properties[cap.channel]=value;")
 else:
     # An impossible dependency scope is accepted as if it could still fire.
     replace('app/experience-model.js',
@@ -121,9 +159,15 @@ PY
     carried-dependency) name='P4 a carried dependency counts the remaining work once'; control='P4 completed Experience work adds no wait' ;;
     cue-scope) name='P3 a View cue driven by Experience-wide output is legitimate work'; control='P3 an Experience-scoped signal never satisfies a later visit Gate' ;;
     scope-validation) name='P5 a visit-local dependency in another scope'; control='P5 a View cue that can never fire' ;;
+    live-departure) name='C9.4 early Next from the live pose traverses only the supported redirected route'; control='C9.4 Cut executes no Travel route beats or flight' ;;
+    implicit-connectivity) name='C9.4 Travel selection is one aggregate Undo'; control='C9.5 offers are never automatic work and availability stays explicit' ;;
+    cut-flight) name='C9.4 Cut executes no Travel route beats or flight'; control='C9.4 early Next from the live pose traverses only the supported redirected route' ;;
+    traversed-only) name='C9.4 early Next from the live pose traverses only the supported redirected route'; control='C9.4 Cut executes no Travel route beats or flight' ;;
+    offer-automatic) name='C9.5 offers are never automatic work and availability stays explicit'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
+    visitor-source-write) name='C9.5 a full visitor session leaves authored documents, history and selection untouched'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;
   esac
   log="$work/pure-$kind.log"
-  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" >"$log" 2>&1; then
+  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" >"$log" 2>&1; then
     echo "FAIL: model/runtime accepted the $kind regression"
     exit 1
   fi
