@@ -8,7 +8,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, presentationUses } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -365,10 +365,12 @@ export function chooseCaptureUse(uid){
   S.expCaptureAsk=null;ctx.ui();return result;
 }
 export function captureAnother(){
-  const ask=S.expCaptureAsk;if(!ask)return false;
-  const cap=capability(ctx.sceneSource,ask.sid,ask.cid);
-  const result=command('Capture another '+((cap?.label)||'use'),e=>captureCapability(e,ask.pid,ask.sid,ask.cid,ask.value,cap?.label||ask.cid));
-  S.expCaptureAsk=null;ctx.ui();return result;
+ const ask=S.expCaptureAsk;if(!ask)return false;
+ const cap=capability(ctx.sceneSource,ask.sid,ask.cid);
+ // Choosing "another" must never be refused by the ambiguity it is escaping: this is an explicit
+ // create, distinct from the update-a-match path every other capture decision takes.
+ const result=command('Capture another '+((cap?.label)||'use'),e=>captureNew(e,ask.pid,ask.sid,ask.cid,ask.value,cap?.label||ask.cid));
+ S.expCaptureAsk=null;ctx.ui();return result;
 }
 export function cancelCaptureAsk(){if(!S.expCaptureAsk)return false;S.expCaptureAsk=null;ctx.ui();return true;}
 export function reuseFraming(pid,vid){return command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));}
@@ -399,7 +401,13 @@ export function sourceCapability(sid,cid,value){
  return command('Edit Scene capability',()=>setSceneValue(ctx.sceneSource,sid,cid,value));
 }
 onCancel(()=>{S.expOfferDraft=null;},12,'Experience offer draft');
-onCancel(reason=>{if(['esc','lens','preview','reset','task-end','invoke','selection'].includes(reason))S.expAudition=null;},9,'Experience audition');
+onCancel(reason=>{
+ if(!['esc','lens','preview','reset','task-end','invoke','selection'].includes(reason))return;
+ S.expAudition=null;
+ // The ambiguity choice holds the same session work as the audition: dropping the audition must also
+ // drop the stale choice, so a value the user walked away from can never be accepted later.
+ S.expCaptureAsk=null;
+},9,'Experience audition and capture proposal');
 // Session transients every Experience reset or load clears: context, auditions, drafts and the
 // review observations. It never touches selection, Camera or World truth — those are settled by the
 // caller against the retained domains.
@@ -430,6 +438,11 @@ export function resetExperience() {
 function loadExperienceFixture(label,build,openMain=false){
  if(S.visitor)return false;
  cancelProposal('reset');T.park();nav.discardReturn();clearExperienceTransients();
+ // A labelled rebuild reissues deterministic fixture identities (the Experience serial resets), so an
+ // Experience-owned selection would silently point at whatever the fixture names the same way. It is
+ // invalidated before the rebuild; World and Camera identities are not Experience-owned and survive,
+ // and Load Example's explicit main Presentation is selected only after the build.
+ if(resolveExperience(S.sel)?.owner==='Experience')A.select(null);
  const result=command(label,(e,c)=>{clearExperience(e);e.serial=0;return build(e,c);});
  // Which identity the author was on is settled against the retained World/Camera domains, never adopted
  // from the loader. Load Example lands on the example's main Presentation because it is loaded to be

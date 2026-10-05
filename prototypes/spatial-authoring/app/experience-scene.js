@@ -13,8 +13,13 @@ export function buildCapabilitySubjects() {
   group.position.set(s.x,0,s.z);stage.root.add(group);stage.items.set(s.id,{kind:'object',data:s,mesh:box,group,lines:null,capabilityParts:{lid,rotor}});
  }
 }
+// Outside a visitor runtime there is no authored timeline. A session clock advances only while a
+// projected running value is on, so Play/audition visibly turns the rotor instead of freezing at zero;
+// stopping drops the phase, and Preview still runs on the visitor's own simulated clock.
+const sessionPhase=new Map();let sessionLast=null;
 export function realizeCapabilities() {
  const runtime=S.visitor?.runtime,scene=S.visitor?.source.scene||ctx.sceneSource;if(!scene)return;
+ const now=performance.now(),dt=sessionLast===null?0:Math.min(.25,Math.max(0,(now-sessionLast)/1000));sessionLast=now;
  // A subject-local audition projects supported values temporarily: it is session state, never a source
  // write, never history, and it is cleared before Preview takes the visitor over.
  const audition=S.visitor?null:S.expAudition;
@@ -22,7 +27,10 @@ export function realizeCapabilities() {
   const item=ctx.stage.items.get(s.id);if(!item?.capabilityParts)continue;
   const value=channel=>runtime?.overrides[s.id]?.[channel]?.value??audition?.[s.id]?.[channel]??s.properties[channel];
   item.capabilityParts.lid.rotation.z=Number(value('open')||0)*1.2;
-  item.capabilityParts.rotor.rotation.y=value('running')?(runtime?.time||0)*5:0;
+  const running=!!value('running'),rotor=item.capabilityParts.rotor;
+  if(runtime)rotor.rotation.y=running?(runtime.time||0)*5:0;
+  else if(running){const phase=(sessionPhase.get(s.id)||0)+dt*5;sessionPhase.set(s.id,phase);rotor.rotation.y=phase;}
+  else{sessionPhase.delete(s.id);rotor.rotation.y=0;}
   // The authored material, never the one a reading swapped in: a ghost or a selection highlight is a
   // render state with no emissive of its own, and the capability value must survive both.
   const mat=item.mesh.userData.baseMat||item.mesh.material;

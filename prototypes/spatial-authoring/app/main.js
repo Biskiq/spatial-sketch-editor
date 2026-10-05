@@ -1025,7 +1025,7 @@ window.addEventListener('keydown', (e) => {
     case 'escape': {
       // The one policy first: an unaccepted writer, draft, preview or aim is dropped before any
       // reading is touched. Shift-Esc is still a direct whole-chain return, after that cancel.
-      const held = S.cameraDraft || S.expDrag || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expOfferDraft || experienceDraft || S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
+      const held = S.cameraDraft || S.expDrag || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expOfferDraft || S.expCaptureAsk || experienceDraft || S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
       if (held) cancelProposal('esc');
       if (e.shiftKey) { closeSheets(false); if (S.session) A.closeAll(); requestUI(); break; }
       if (held) { requestUI(); break; }
@@ -1307,7 +1307,9 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
 
 document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
 
-const experienceField = el => el?.dataset && (el.dataset.expField || el.dataset.expDef || el.dataset.expPrecision || el.dataset.expScene || el.dataset.expHold || el.dataset.expPrimary);
+// A field is identified by the presence of its data attribute, never by a truthy value: the primary
+// explanation is a valueless attribute, and an empty string must still be a real, committable field.
+const experienceField = el => el?.dataset && ['expField','expDef','expPrecision','expScene','expHold','expPrimary'].some(k=>k in el.dataset);
 let experienceDraft=null,fieldEpoch=0;
 document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};});
 onCancel(()=>{fieldEpoch++;if(experienceDraft){experienceDraft.el.value=experienceDraft.value;experienceDraft=null;}},8,'Experience field draft');
@@ -1318,12 +1320,12 @@ document.addEventListener('keydown',event=>{
  event.preventDefault();event.stopImmediatePropagation();
  if(!el.isConnected||experienceDraft?.lens!==S.lens||experienceDraft?.epoch!==fieldEpoch)return;
  experienceDraft=null;
- if(el.dataset.expField)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
- if(el.dataset.expPrimary)E.explainPresentation(el.dataset.id,el.value);
- if(el.dataset.expDef)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
- if(el.dataset.expPrecision)E.proposeFraming(el.dataset.expPrecision,el.value);
- if(el.dataset.expHold)E.updateHold(el.dataset.expHold,Number(el.value));
- if(el.dataset.expScene)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
+ if('expField' in el.dataset)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
+ if('expPrimary' in el.dataset)E.explainPresentation(el.dataset.id,el.value);
+ if('expDef' in el.dataset)E.editDefinition(el.dataset.id,el.dataset.expDef,el.value);
+ if('expPrecision' in el.dataset)E.proposeFraming(el.dataset.expPrecision,el.value);
+ if('expHold' in el.dataset)E.updateHold(el.dataset.expHold,Number(el.value));
+ if('expScene' in el.dataset)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
 },true);
 
 document.addEventListener('keydown',event=>{const el=event.target.closest?.('[data-exp-anchor]');if(!el||S.visitor)return;const moves={ArrowLeft:[-.25,0],ArrowRight:[.25,0],ArrowUp:[0,-.25],ArrowDown:[0,.25]},m=moves[event.key];if(m){event.preventDefault();event.stopImmediatePropagation();E.nudgeAnchor(el.dataset.connection,el.dataset.expAnchor,...m);}},true);

@@ -52,7 +52,7 @@ test('Stop-only detachment retargets one occurrence atomically and shared reach 
  assert.equal(viewReach(e,vid).stops.length,2);
  Object.assign(e,before.e);Object.assign(c,before.c);assert.equal(stopEntry(e,a).id,uid);
 });
-import { clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, presentationUses, addContribution } from '../app/experience-model.js';
+import { clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, addContribution } from '../app/experience-model.js';
 test('C9.1 Reset clears only Experience content and keeps Camera truth and future identities free',()=>{
  const e=createExperience(),c=createCamera(),p=addPresentation(e,{kind:'subjects',ids:['machine']});
  addView(e,c,p,pose,'Entry','entry');const serials={e:e.serial,c:c.serial},views=JSON.stringify(c);
@@ -88,8 +88,19 @@ test('C9.1 capture creates one Activity and updates it; ambiguity never mutates 
  assert.deepEqual(c2.ambiguous,[a.id,extra]);
  assert.equal(e.definitions[e.uses[a.id].definitionId].value,.5);
  assert.equal(captureUses(e,p,'machine','casing').length,2);
+});test('C9.1 Capture another always creates a new Activity, even when the match is ambiguous',()=>{
+ const e=createExperience(),p=addPresentation(e,{kind:'subjects',ids:['machine']});
+ const a=captureCapability(e,p,'machine','casing',1,'Open casing');
+ const b=addContribution(e,p,{kind:'control',name:'Open casing · second',subjectId:'machine',capabilityId:'casing',value:0},'behavior');
+ const created=captureNew(e,p,'machine','casing',.6,'Open casing');
+ assert.equal(created.created,true);assert.equal('updated' in created,false);
+ assert.notEqual(created.id,a.id);assert.notEqual(created.id,b);
+ assert.equal(captureUses(e,p,'machine','casing').length,3);
+ assert.equal(e.definitions[e.uses[a.id].definitionId].value,1);
+ assert.equal(e.definitions[e.uses[b].definitionId].value,0);
+ assert.equal(e.definitions[e.uses[created.id].definitionId].value,.6);
 });
-import { addBeat } from '../app/experience-model.js';
+ import { addBeat } from '../app/experience-model.js';
 import { coordinateTiming } from '../app/experience-coordination.js';
 test('coordination binds stable Camera stations; pace and anchors alter timing without retargeting',()=>{
  const e=createExperience(),c=createCamera(),p=addPresentation(e),q=addPresentation(e),u=addView(e,c,p,pose,'From','entry'),v=addView(e,c,q,{...pose,target:[20,1,0]},'To','entry'),a=addStop(e,p),b=addStop(e,q),id=addConnection(c,e.uses[u].viewId,e.uses[v].viewId);
