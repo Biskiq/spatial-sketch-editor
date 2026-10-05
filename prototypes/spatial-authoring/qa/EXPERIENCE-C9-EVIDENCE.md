@@ -486,7 +486,9 @@ Run after the prototype work, per the repository test doctrine (task scope never
 required verification), at the reviewed C9.4/C9.5 executable revision. These gates never import the
 prototype's Experience runtime (root workspaces are `apps/*` and `packages/*` only; the prototype is
 not a workspace), so a docs-only child commit cannot change them — except for the documentation gate,
-whose finding this pass repaired (see above):- `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/c945c-arch.log`, rerun after the
+whose finding this pass repaired (see above):
+
+- `npm run test:arch` — **276/276 pass**, 24 files, rc=0 (`/tmp/c945c-arch.log`, rerun after the
   documentation-reference repair).
 - `npm test` — **33 files failed / 339 passed / 1 skipped; 4951 tests passed, 1 failed,
   1 skipped**, rc=1 (`/tmp/c945c-root-test.log`) — the same signature as the C9.2/C9.3 run. The
