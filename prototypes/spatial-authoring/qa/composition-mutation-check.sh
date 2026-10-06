@@ -14,7 +14,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -173,6 +173,63 @@ elif kind == 'visitor-source-write':
     replace('app/experience-runtime.js',
             "  put(r,d.subjectId,cap.channel,cap.kind==='motion'&&a.duration?current:value,token);",
             "  put(r,d.subjectId,cap.channel,cap.kind==='motion'&&a.duration?current:value,token);if(scene.subjects[d.subjectId])scene.subjects[d.subjectId].properties[cap.channel]=value;")
+elif kind == 'return-clock':
+    # Return preserves the parent's Stop clock but forgets to rebase the remaining-work clock, so Auto
+    # reads a partially heard narration as already done and advances on its next tick, cancelling it.
+    replace('app/experience-runtime.js',
+            " r.remainingFrom=r.elapsed;\n for(const a of Object.values(r.activities))if(a.visit===b.visit",
+            " for(const a of Object.values(r.activities))if(a.visit===b.visit")
+elif kind == 'return-dwell':
+    # Return rewinds the parent's Stop clock, so an authored dwell restarts in full instead of keeping the
+    # time already spent at the Stop.
+    replace('app/experience-runtime.js',
+            " r.remainingFrom=r.elapsed;\n for(const a of Object.values(r.activities))if(a.visit===b.visit",
+            " r.elapsed=0;\n for(const a of Object.values(r.activities))if(a.visit===b.visit")
+elif kind == 'carried-pause':
+    # Abandoning a parked parent leaves its carried runs suspended, so Finish/Continue/Experience-end work
+    # that parkParent paused never resumes once the bookmark that owned the pause is gone.
+    replace('app/experience-runtime.js',
+            " for(const a of Object.values(r.activities))if(a.visit===b.visit&&a.status==='paused'){r.active[a.useId]=a.token;a.status='running';}\n",
+            "")
+elif kind == 'abandoned-history':
+    # A go choice abandons the parent's bookmark without recording the Stop the visitor actually visited, so
+    # the parent is unreachable through ordinary Back history.
+    replace('app/experience-runtime.js',
+            " if(b.stopId)r.history.splice(b.history.length,0,b.stopId);\n",
+            "")
+elif kind == 'detour-history-order':
+    # The abandoned parent is appended after the entries the detour recorded instead of being restored at
+    # the position the detour began, so a longer visit backs C → A → B rather than C → B → A.
+    replace('app/experience-runtime.js',
+            " if(b.stopId)r.history.splice(b.history.length,0,b.stopId);",
+            " if(b.stopId)r.history.push(b.stopId);")
+elif kind == 'standalone-open':
+    # Opening another standalone Presentation clears the departing identity before entry, so the ordinary
+    # departure cleanup can no longer match the Presentation being left.
+    replace('app/experience-runtime.js',
+            " r.stopId=null;r.exploring=false;r.autoplay=false;r.movement=null;r.queue=[];",
+            " r.stopId=null;r.presentationId=null;r.exploring=false;r.autoplay=false;r.movement=null;r.queue=[];")
+elif kind == 'shared-entry-origin':
+    # Coverage drops the shared Presentation entry when the Stop enters through another View, while that
+    # entry stays visitor-selectable: all origins read supported and selecting it disables Next.
+    replace('app/experience-model.js',
+            " const ids=[...eligibleViews(e,from?.presentationId),stopEntry(e,a).id].filter(Boolean);",
+            " const entry=stopEntry(e,a).id;\n const ids=[...(e.presentations[from?.presentationId]?.uses||[]).filter(id=>id===entry||e.uses[id]?.role==='choice'||e.uses[id]?.cue),entry].filter(Boolean);")
+elif kind == 'go-continuation':
+    # A go choice is rendered and executed as a detour: it parks the parent and exposes Return instead of
+    # continuing, and carries no distinct continuation command.
+    replace('app/experience-ui.js',
+            "visitorButton(c.kind==='go'?'go':'detour',esc(c.label),c.targetId)",
+            "visitorButton('detour',esc(c.label),c.targetId)")
+    replace('app/experience.js',
+            "\n // A go choice continues: it abandons any parked parent instead of parking one, so Back (not Return) is\n // the way it can be revisited.\n if(action==='go')v.runtime=R.chooseRuntime(e,c,r,id,false,scene);",
+            "")
+elif kind == 'abandoned-parked-work':
+    # A go choice discards the parked bookmark without ending the parent's local work, so a paused
+    # narration and its visit-retained effects survive into the next occurrence.
+    replace('app/experience-runtime.js',
+            " else while(r.bookmarks.length)endParkedVisit(r,e,scene,r.bookmarks.pop());",
+            " else r.bookmarks=[];")
 else:
     # An impossible dependency scope is accepted as if it could still fire.
     replace('app/experience-model.js',
@@ -207,6 +264,15 @@ PY
     detour-readiness) name='C9.5 Return from one detour restores the parent remaining work'; control='C9.5 rejoin keeps a future cue' ;;
     rejoin-held-cue) name='C9.5 rejoin restores a held viewing intent'; control='C9.5 rejoin keeps a future cue' ;;
     offer-availability-write) name='C9.5 offer authoring defaults to Experience-wide'; control='C9.5 Preview Experience starts a world-only session' ;;
+    return-clock) name='C9.5 Return preserves the parent Stop clock while Auto still waits the remaining work'; control='C9.5 Return from one detour restores the parent remaining work' ;;
+    return-dwell) name='C9.5 Return preserves an authored dwell'; control='C9.5 Return from one detour restores the parent remaining work' ;;
+    carried-pause) name='C9.5 a go choice resumes carried parent work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
+    abandoned-history) name='C9.5 a go choice keeps the visited parent reachable through Back history'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
+    detour-history-order) name='C9.5 a go choice restores the parked parent before entries recorded during the detour'; control='C9.5 a go choice keeps the visited parent reachable through Back history' ;;
+    standalone-open) name='C9.5 opening another standalone Presentation ends the departing visit local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
+    shared-entry-origin) name='every eligible Presentation View and the private Stop entry are legitimate origins'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;
+    go-continuation) name='C9.5 a go choice is a distinct authored continuation'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
+    abandoned-parked-work) name='C9.5 a go choice ends the parked parent local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
   esac
   log="$work/pure-$kind.log"
   if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" >"$log" 2>&1; then

@@ -81,3 +81,103 @@ test('Travel with a deleted coordination station refuses locally instead of drop
  const anchor=M.addAnchor(f.c,id,[3,1,0]);M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,id,anchor,2);f.c.connections[id].anchors=[];
  const r=R.startGuide(f.e,f.c,runtime(f),f.scene);assert.equal(R.gateState(f.e,f.c,r).allowed,false);assert.match(R.nextRuntime(f.e,f.c,r,f.scene).refusal,/station.*repair/i);
 });
+test('C9.5 Return preserves the parent Stop clock while Auto still waits the remaining work',()=>{
+ const f=fixture(),n=narration(f,10),{a,b}=guide(f);
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,7);   // 7 of the parent's 10 seconds are spent
+ const detour=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);
+ let back=R.returnDetour(f.e,f.c,detour,f.scene);
+ assert.equal(back.elapsed,7);                                   // the Stop clock is preserved, not rewound
+ assert.ok(Math.abs(back.readiness-(R.BREATHING+3))<1e-9);       // and the deadline is the work still owed
+ back.autoplay=true;
+ back=tick(f,back,1);                                            // Auto measures from the rebased playhead
+ assert.equal(back.stopId,a);
+ back=tick(f,back,R.BREATHING+3);
+ assert.equal(back.activities[back.active[n]].status,'complete'); // the narration finished rather than being cancelled
+ assert.equal(back.stopId,b);
+});
+test('C9.5 Return preserves an authored dwell instead of restarting it',()=>{
+ const f=fixture(),{a,b}=guide(f);
+ f.e.stops[a].pacing={kind:'dwell',seconds:10};
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,7);   // 7 of the dwell's 10 seconds are spent
+ const detour=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);
+ let back=R.returnDetour(f.e,f.c,detour,f.scene);
+ assert.equal(back.elapsed,7);                                   // the dwell clock comes back with it
+ back.autoplay=true;
+ back=tick(f,back,2);                                            // 9 < 10: the same dwell, not a fresh one
+ assert.equal(back.stopId,a);
+ back=tick(f,back,1.5);                                          // past the authored 10: Auto advances
+ assert.equal(back.stopId,b);
+});
+test('C9.5 a go choice resumes carried parent work whose departure policy continues it',()=>{
+ const f=fixture(),{e,c}=f;
+ const finish=narration(f,20);e.uses[finish].interruption='finish';
+ const carried=narration(f,40);e.uses[carried].end={kind:'experience'};
+ const a=M.addStop(e,f.p),b=M.addStop(e,f.q),again=M.addStop(e,f.p);
+ e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ e.stops[b].choices.push({id:'choice-go',label:'Continue',targetId:again,kind:'go'});
+ // Enter the Guide directly (no prior standalone entry of the same Presentation), so the carried runs are
+ // genuinely the parent visit's own and a detour is what suspends them.
+ let r=R.startGuide(e,c,R.createRuntime(e,c,null,pose,f.scene),f.scene);r=tick(f,r,2);
+ const fToken=r.active[finish],cToken=r.active[carried];
+ const detour=R.chooseRuntime(e,c,r,b,true,f.scene);
+ assert.equal(detour.activities[fToken].status,'paused');
+ assert.equal(detour.activities[cToken].status,'paused');
+ const go=R.chooseRuntime(e,c,detour,again,false,f.scene);
+ assert.equal(go.activities[fToken].status,'running');           // Finish keeps its playhead rather than staying suspended
+ assert.equal(go.activities[fToken].elapsed,detour.activities[fToken].elapsed);
+ assert.equal(go.activities[cToken].status,'running');           // Experience-end work still outlives its visit
+});
+test('C9.5 a go choice keeps the visited parent reachable through Back history',()=>{
+ const f=fixture(),{e,c}=f;
+ const a=M.addStop(e,f.p),b=M.addStop(e,f.q),dest=M.addStop(e,f.p);
+ e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ e.stops[b].choices.push({id:'choice-go',label:'Continue',targetId:dest,kind:'go'});
+ let r=R.startGuide(e,c,runtime(f),f.scene);                     // at A
+ r=R.chooseRuntime(e,c,r,b,true,f.scene);                        // detour B parks A; the bookmark owns the return
+ assert.equal(r.stopId,b);
+ const go=R.chooseRuntime(e,c,r,dest,false,f.scene);             // Go continues and abandons the bookmark
+ assert.equal(go.stopId,dest);
+ assert.deepEqual(go.history,[a,b]);                             // but the visited parent is ordinary history again
+ assert.equal(R.previousRuntime(e,c,go,f.scene).stopId,b);
+ assert.equal(R.previousRuntime(e,c,R.previousRuntime(e,c,go,f.scene),f.scene).stopId,a);
+});
+test('C9.5 a go choice restores the parked parent before entries recorded during the detour',()=>{
+ const f=fixture(),{e,c}=f;
+ const a=M.addStop(e,f.p),b=M.addStop(e,f.q),mid=M.addStop(e,f.p),dest=M.addStop(e,f.p);
+ e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ e.stops[mid].choices.push({id:'choice-go',label:'Continue',targetId:dest,kind:'go'});
+ let r=R.startGuide(e,c,runtime(f),f.scene);                     // at A
+ r=R.chooseRuntime(e,c,r,b,true,f.scene);                        // detour B parks A; the bookmark owns the return
+ const during=R.nextRuntime(e,c,r,f.scene);                      // Next C is recorded while the detour is live
+ assert.equal(during.stopId,mid);assert.equal(during.bookmarks.length,1);
+ let back=R.chooseRuntime(e,c,during,dest,false,f.scene);        // Go D abandons the bookmark
+ assert.equal(back.stopId,dest);
+ assert.deepEqual(back.history,[a,b,mid]);                       // the parent precedes the detour's own entries
+ back=R.previousRuntime(e,c,back,f.scene);assert.equal(back.stopId,mid);   // Back C
+ back=R.previousRuntime(e,c,back,f.scene);assert.equal(back.stopId,b);     // then B · not A
+ back=R.previousRuntime(e,c,back,f.scene);assert.equal(back.stopId,a);     // then A
+});
+test('C9.5 opening another standalone Presentation ends the departing visit local work',()=>{
+ const f=fixture(),n=narration(f,20),glow=control(f,'mesh','emphasis',true);f.e.uses[glow].retention={kind:'visit'};
+ const r=R.createRuntime(f.e,f.c,f.p,pose,f.scene);
+ assert.equal(typeof r.active[n],'string');
+ assert.equal(R.projectedValue(f.scene,r,'mesh','highlight'),true);        // the visit-retained effect is projected now
+ const opened=R.openPresentationRuntime(f.e,f.c,r,f.q,f.scene);
+ assert.equal(opened.presentationId,f.q);
+ assert.equal(opened.activities[r.active[n]].status,'stopped');            // A's narration no longer runs in B
+ assert.equal(R.projectedValue(f.scene,opened,'mesh','highlight'),false);  // and its retained effect is released
+});
+test('C9.5 a go choice ends the parked parent local work instead of leaving it paused',()=>{
+ const f=fixture(),n=narration(f,10),a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.q),again=M.addStop(f.e,f.p);
+ f.e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ f.e.stops[b].choices.push({id:'choice-go',label:'Continue',targetId:again,kind:'go'});
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,4);
+ const token=r.active[n];
+ const detour=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);
+ assert.equal(detour.activities[token].status,'paused');
+ const go=R.chooseRuntime(f.e,f.c,detour,again,false,f.scene);
+ assert.equal(go.bookmarks.length,0);assert.equal(go.stopId,again);
+ assert.equal(go.activities[token].status,'stopped');           // the abandoned parent was ended, not left parked
+ assert.notEqual(go.active[n],token);                           // so a fresh occurrence starts a new run
+ assert.equal(go.activities[go.active[n]].status,'running');
+});

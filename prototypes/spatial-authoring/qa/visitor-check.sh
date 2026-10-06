@@ -117,6 +117,82 @@ qa_ok 'an Experience-wide offer activates inside the world-only visit' "$(qa_js 
 agent-browser click '[data-act="exp-exit-preview"]' >/dev/null
 qa_frames
 qa_ok 'the world-only visit restores authoring without writing source' "$(qa_js '(!__me.S.visitor && __me.S.wideBefore.source===JSON.stringify(__me.A.domainSnapshot()) && __me.S.wideBefore.undo===__me.S.undo.length)')" 'true'
+# C9.5 opening another standalone Presentation is an ordinary departure: the visit being left ends its own
+# local work under its own identity instead of leaving a narration running and its effects projected.
+agent-browser click '#index [data-act="exp-open"]' >/dev/null
+qa_frames
+agent-browser click '[data-act="exp-preview"]' >/dev/null
+qa_frames
+narration="$(qa_jsv '(()=>{const v=__me.S.visitor,r=v.runtime;return (Object.values(r.activities).find(a=>a.status==="running"&&v.source.experience.definitions[v.source.experience.uses[a.useId]?.definitionId]?.kind==="narration")||{}).token||"";})()')"
+other="$(qa_jsv "Object.values(__me.S.visitor.source.experience.presentations).find(p=>p.id!==__me.S.visitor.runtime.presentationId).id")"
+agent-browser click "[data-command=open][data-id='$other']" >/dev/null
+qa_frames
+qa_ok 'opening another standalone Presentation ends the departing visit local work' "$(qa_js "(()=>{const r=__me.S.visitor.runtime;return r.presentationId==='$other'&&r.stopId===null&&(!'$narration'||r.activities['$narration'].status==='stopped');})()")" 'true'
+agent-browser click '[data-act="exp-exit-preview"]' >/dev/null
+qa_frames
+# C9.5 choice kinds: go and detour choices are authored through the real Stop control, the visitor panel
+# renders each with its own command, a go choice continues (and keeps the visited parent in Back history)
+# while a detour still parks for one bounded Return, and Return preserves the parent's Stop clock.
+agent-browser click '#index [data-act="exp-open"]' >/dev/null
+qa_frames
+guideA="$(qa_jsv '__me.ctx.experience.guide[0]')"
+guideB="$(qa_jsv '__me.ctx.experience.guide[1]')"
+agent-browser click "[data-act='exp-stop'][data-id='$guideA']" >/dev/null
+qa_frames
+qa_scroll_center "[data-exp-choice-kind='go']"
+agent-browser select '[data-exp-choice-kind="go"]' "$guideB" >/dev/null
+qa_frames
+qa_ok 'the Stop control authors a go choice with its own kind' "$(qa_js "(()=>{const c=__me.ctx.experience.stops['$guideA'].choices.at(-1);return c&&c.kind==='go'&&c.targetId==='$guideB';})()")" 'true'
+agent-browser select '[data-exp-choice-kind="detour"]' "$guideB" >/dev/null
+qa_frames
+qa_ok 'the Stop control still authors a detour choice' "$(qa_js "(()=>{const c=__me.ctx.experience.stops['$guideA'].choices.at(-1);return c&&c.kind==='detour'&&c.targetId==='$guideB';})()")" 'true'
+agent-browser click "[data-act='exp-stop'][data-id='$guideB']" >/dev/null
+qa_frames
+qa_scroll_center "[data-exp-choice-kind='go']"
+agent-browser select '[data-exp-choice-kind="go"]' "$guideA" >/dev/null
+qa_frames
+# The detour review's product observation: a detour pauses the parent Stop's running narration, so once Go
+# abandons the bookmark, work whose departure policy carries it (an invocation interruption of `finish`)
+# must resume on its parked playhead and keep advancing rather than stay frozen at the time it was parked.
+# The policy is authored before Preview opens, because the visitor session reads a frozen source.
+carriedUse="$(qa_jsv "(()=>{const e=__me.ctx.experience,pid=e.stops['$guideA'].presentationId;const u=Object.values(e.uses).find(x=>!x.viewId&&e.definitions[x.definitionId]?.kind==='narration'&&(x.start?.kind==='experience'||((x.start?.kind==='visit'||!x.start)&&(x.start?.presentationId??x.presentationId)===pid)));if(u)__me.E.command('Set departure policy',e2=>e2.uses[u.id].interruption='finish');return u?u.id:'';})()")"
+qa_ok 'a narration at this Stop carries departure policy finish rather than cancel' "$(qa_js "'$carriedUse'?true:false")" 'true'
+agent-browser click '[data-act="exp-preview"]' >/dev/null
+qa_frames
+agent-browser click '[data-command="start"]' >/dev/null
+qa_frames
+qa_ok 'a go choice renders its own continuation command, the detour its park command' "$(qa_js "(()=>{const g=[...document.querySelectorAll('[data-command=go]')].find(b=>b.dataset.id==='$guideB');const d=[...document.querySelectorAll('[data-command=detour]')].find(b=>b.dataset.id==='$guideB');return !!g&&!!d;})()")" 'true'
+qa_js '__me.E.stepVisitor(2)' >/dev/null
+qa_frames
+carriedTok="$(qa_jsv "(()=>{const v=__me.S.visitor,r=v.runtime,a=Object.values(r.activities).find(a=>a.useId==='$carriedUse'&&a.status==='running');return a?a.token:'';})()")"
+qa_ok 'the carried narration runs while the visitor is at the parent Stop' "$(qa_js "'$carriedTok'?true:false")" 'true'
+agent-browser click "[data-command='detour'][data-id='$guideB']" >/dev/null
+qa_frames
+qa_ok 'a detour choice parks the parent with one bounded Return' "$(qa_js '__me.S.visitor.runtime.bookmarks.length===1&&!!document.querySelector("[data-command=return]")')" 'true'
+qa_ok 'the detour suspends the carried narration rather than ending it' "$(qa_js "'$carriedTok'&&__me.S.visitor.runtime.activities['$carriedTok'].status==='paused'")" 'true'
+carriedAt="$(qa_jsv "__me.S.visitor.runtime.activities['$carriedTok']?.elapsed??0")"
+agent-browser click "[data-command='go'][data-id='$guideA']" >/dev/null
+qa_frames
+qa_ok 'a go choice continues and keeps the visited parent in Back history' "$(qa_js "(()=>{const r=__me.S.visitor.runtime;return r.stopId==='$guideA'&&r.bookmarks.length===0&&!document.querySelector('[data-command=return]')&&r.history[0]==='$guideA'&&r.history[1]==='$guideB';})()")" 'true'
+qa_ok 'Go resumes the carried narration on its parked playhead' "$(qa_js "(()=>{const a=__me.S.visitor.runtime.activities['$carriedTok'];return !!a&&a.status==='running'&&a.elapsed>=$carriedAt&&a.elapsed<$carriedAt+1;})()")" 'true'
+qa_js '__me.E.stepVisitor(3)' >/dev/null
+qa_frames
+qa_ok 'and the resumed narration advances instead of staying frozen at its parked time' "$(qa_js "(()=>{const a=__me.S.visitor.runtime.activities['$carriedTok'];return !!a&&a.elapsed>$carriedAt;})()")" 'true'
+agent-browser click '[data-command="back"]' >/dev/null
+qa_frames
+qa_ok 'Back reaches the detour stop first' "$(qa_js "__me.S.visitor.runtime.stopId==='$guideB'")" 'true'
+agent-browser click '[data-command="back"]' >/dev/null
+qa_frames
+qa_ok 'and a second Back reaches the abandoned parent' "$(qa_js "__me.S.visitor.runtime.stopId==='$guideA'")" 'true'
+qa_js '__me.E.stepVisitor(12)' >/dev/null
+qa_frames
+agent-browser click "[data-command='detour'][data-id='$guideB']" >/dev/null
+qa_frames
+agent-browser click '[data-command="return"]' >/dev/null
+qa_frames
+qa_ok 'Return preserves the parent Stop clock and rebases the remaining-work deadline' "$(qa_js "(()=>{const r=__me.S.visitor.runtime;return r.stopId==='$guideA'&&r.elapsed>1&&r.readiness<r.elapsed;})()")" 'true'
+agent-browser click '[data-act="exp-exit-preview"]' >/dev/null
+qa_frames
 qa_faults_ok 'visitor commands'
 qa_browser_errors_ok 'visitor browser'
 qa_summary 'Visitor execution'

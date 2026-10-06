@@ -1316,7 +1316,9 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
  if(d.expPacingSignal)E.updateStop(d.expPacingSignal,'pacing',{kind:'signal',ref:value?JSON.parse(value):{useId:'',signal:'complete'}});
  if(d.expNext)E.command('Set Next',e=>e.stops[d.expNext].next=value==='order'||value==='end'?{kind:value}:{kind:'target',id:value});
  if(d.expEntry)E.command('Set explicit Stop entry',e=>e.stops[d.expEntry].entry=value==='presentation'||value==='hold'?{kind:value}:{kind:'use',useId:value});
- if(d.expDetour&&value)E.command('Add detour choice',e=>e.stops[d.expDetour].choices.push({id:'choice-'+(++e.serial),targetId:value,label:'Explore '+e.stops[value].name,kind:'detour'}));
+ // A choice is authored with its kind: a detour parks the current Stop for one bounded Return, while a go
+ // choice continues into the target. The label names which, so the visitor control reads the authored intent.
+ if(d.expChoiceKind&&value)E.command('Add '+d.expChoiceKind+' choice',e=>e.stops[d.id].choices.push({id:'choice-'+(++e.serial),targetId:value,label:(d.expChoiceKind==='go'?'Continue to ':'Explore ')+e.stops[value].name,kind:d.expChoiceKind}));
 });
 
 document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
