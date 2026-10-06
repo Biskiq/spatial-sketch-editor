@@ -101,6 +101,13 @@ Capability
 acceptance remains pending; detailed density/type/proportion and broader visual
 refinement follow in a dedicated, separately scoped UI/UX slice. C9 requires only
 targeted structural/reachability evidence, not exhaustive specimen comparison.
+The proposed [Experience UX pruning and shell reconciliation plan](./design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md)
+defines that later slice, including one compact Guide home, bounded deeper Guide work,
+Camera/advanced information homes and strict responsive/visual acceptance. Its post-C9
+matrix recommends compatible homes for remaining C9.6–C9.9 work and separates stable
+design from slice-specific API/proof dependencies; it changes no accepted C9 semantic
+scope and authorizes no implementation before owner review. C9's capability/MP4 order
+and this phase's current baton remain unchanged.
 The missing P23B fixture remains a separate repository-gate blocker.
 The donor stays a runnable regression oracle; the integrated design folder retains the finalized
 synthesis and boards. This work authorizes no T3 production implementation and closes no phase.
