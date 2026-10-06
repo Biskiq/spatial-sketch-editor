@@ -24,7 +24,11 @@ NEXT: #113 C9.4 (Camera default Travel and live invocation) and C9.5 (visitor pa
        Creator-loop regression hardening retains World/Camera/history and exact Preview return.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md.
        Travel and fresh repeated-Stop visits owner-ratified; C9.4/C9.5 are now done and
-       MP3 (Travel and agency) is the next human gate. No merge, closure or Paper work.
+       MP3 (Travel and agency) is the next human gate. A later self-review pass repaired one
+       defect (Rejoin/Return did not restore a held Stop's viewing intent, `022c64f4`) and
+       closed one candidate finding as by-design (Close keeps the standalone Rejoin target),
+       and MP3 was rehearsed end to end in the browser at that frozen revision with every
+       recipe step observed. No merge, closure or Paper work.
 PRODUCTION ROUTE: (resumes after the prototype detour closes, below) remains F interface
        amendments, then re-derived T1 Spatial/P26, T2 Composition/P24, T3 Experience/P25 and
        T4 Release. P26 implementation and the architecture validation window remain gated.

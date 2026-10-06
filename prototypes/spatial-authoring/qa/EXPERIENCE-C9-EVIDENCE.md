@@ -371,7 +371,157 @@ The repair pass was re-run independently rather than read from this record. `nod
  obligation itself reproduces cleanly in isolation (V2 boundary resume 94 pass / 6 fail at the
  `resume` boundary), so it is a harness flake, not a product defect.
 
+## C9.5 self-review pass and MP3 pre-QA (2026-10-05)
+
+A second self-review pass re-read the C9.4/C9.5 visitor runtime against the accepted semantics and
+then drove the prototype end to end in the real browser at the frozen revision. One defect was found
+and repaired; one candidate finding was examined and ruled by design rather than changed. Both
+outcomes are recorded here because the second is the kind of finding a later reader will re-raise.
+
+### Defect repaired — Rejoin and Return did not restore the Stop's held viewing intent
+
+`resumeGuide` and `returnDetour` preserved the playhead, the cue floor and the carried reading, but
+neither restored `viewingSuppressed`, while the remaining-work planner was told `cues: !entry.hold`.
+A Stop whose entry **holds** the viewpoint therefore planned its remainder with automatic cues
+excluded and then let the runtime perform one: the planner said the work was not owed and the runtime
+cued it anyway. A probe on a held Stop with a narration-linked View cue measured
+`plan.requests = []` while the runtime requested `use-3` at t=20 s. Both functions now set
+`r.viewingSuppressed = !!entry.hold` before planning, which is exactly the reading the estimate is
+planned with. Repair is the executable change in `022c64f4`.
+
+Coverage: a new case in `tests/experience-travel-agency.test.mjs` (“C9.5 rejoin restores a held
+viewing intent, so no cue the remainder excluded can run”) asserts the runtime never moves after the
+rejoin, and a new same-defect mutation obligation `rejoin-held-cue` reintroduces the omission while
+the named neighbour “C9.5 rejoin keeps a future cue” stays green.
+
+### Candidate finding examined and ruled by design — Close keeps the standalone Rejoin target
+
+A probe showed that after `closePresentationRuntime` from a standalone Presentation the runtime still
+reports `exploring: true` **and** keeps `presentationId` attached, so a Presentation-local offer stays
+live and activatable during free exploration and the visitor title still names the Presentation that
+was closed. This was written up as a context leak and a change was drafted. It was then withdrawn,
+because the retention is load-bearing and deliberate:
+
+- `resumeGuide`'s standalone branch resolves the entry View from `r.presentationId`; nulling it on
+  Close removes the truthful **Rejoin** the panel offers after a Close.
+- The behaviour is already protected by an existing case — “C9.5 open/close/rejoin and one bounded
+detour never write authored documents” asserts `closed.exploring === true &&
+  closed.presentationId === third` and then rejoins it — added with the C9.4/C9.5 implementation and
+  re-verified by the independent review.
+- The design intends it. §3 of the completeness plan has Close return a standalone Presentation to
+  exploration, not to authoring, while the visit is preserved; the same section requires the visitor
+  to be able to open any available Presentation from visitor navigation (P12); and J5/I6/V1 require a
+  real subject activation **while exploring**, which means an offer staying live in exploration is the
+  contracted behaviour, not a leak. Exploration already suppresses automatic cues (`emit` returns
+  while `r.exploring`), so only deliberate visitor activation reaches the offer.
+
+No code was changed for this finding, and the drafted change was reverted before it was committed.
+The two comments that had been written for it were reverted with it; the shipped behaviour and the
+existing assertions are unchanged from the reviewed revision.
+
+### MP3 pre-QA — end-to-end manual browser pass at the frozen revision
+
+The owner's MP3 walkthrough was rehearsed end to end through the real product UI (built from Reset
+and also from the product's own `Load Example` control) at this revision, and every recipe step was
+observed rather than inferred. Observations, with the values measured in the session:
+
+- **Explicit Travel preparation.** A Guide whose departure Presentation held two Framed uses (entry
+  `az 1.2`, second View `az 0.72`) plus a one-View destination: choosing Travel left **every origin
+  supported** (“All origins supported · Camera owns the routes”), wrote `connection-4
+  view-1→view-3` and `connection-5 view-2→view-3` with **no origin as a gap**, and the whole
+  preparation was **one Undo step**. Adding a View, and starting a Preview, added no connectivity.
+- **Visible Camera flight, and Cut on the same Seam.** On the Travel Seam, Next flew the authored
+  route — the target interpolated `[-10, 1.2, 1] → [-9.32, 1.12] → [-8.63, 1.24] → [-7.94, 1.35]
+  → [-7.25, 1.47]` over a `1.015 s` movement with a connection id, arriving at the authored
+  destination `[-3, 1.2, 2.2]`. Flipping the **same** Seam to Cut and pressing Next produced
+  `movement: null` and a straight snap, with Camera connectivity unchanged — the A/B that also
+  answers the earlier “it cuts immediately” question: Cut is the owner-ratified default for an
+  ordinary Guide-add, and Travel is deliberately requested.
+- **Early/manual navigation and redirect during movement.** Pressing Next while a flight was in
+  flight raised no “finish the current move” demand (`refusal: null`) and arrived at the authored
+  destination. Choosing another eligible View mid-flight started the new movement from the **live**
+  pose: the live target at the moment of the redirect was `[-8.32, 1.2, 1.29]` and the replacement
+  movement's first sample was exactly `[-8.32, 1.2, 1.29]`, not the origin and not the destination.
+- **Rejoin and Return keep the remainder** (closes the review blocker in the real UI). At Stop 1 the
+  panel read readiness **42.000** (a 40 s narration + 2 s of framing). After 9.06 s of narration had
+  played, Explore left readiness at 42, and **Rejoin** re-derived it as **32.939 = 2 + (40 − 9.06)**
+  with the **same run token** (`visit-1/run-1`) still running — the narration continued, no station
+  re-ran and no queued cue replayed, Auto stayed off. Taking the authored side detour then showed the
+  detour's own remainder (**2.819**, parent narration paused), and **Return** recomputed the parent's
+  remainder as **16.187** — the parent's own reading, not the detour's — with the same run resuming and
+  the log line “Returned without duplicate entry”.
+- **Exploration.** Explore and orbit changed the visitor's own pose and fired nothing: no offer ran,
+  no cue fired, and the authored snapshot (source, Undo length, selection, pose) was byte-identical
+  after the session.
+- **Direct visitor interaction.** A drag over a used subject orbited and activated nothing
+  (`S.visitorChoice` stayed null, no override was written); a release without movement on the same
+  subject went through the offer path.
+- **Multiple offers.** With two offers authored on the same activation subject, that click opened the
+  explicit choice — “Switch offers 2 interactions · choose one”, with both offers named by activation
+  and target (“Intensity · Switch → Light”, “Play music · Switch → Piano”) and a Cancel. Nothing ran
+  before the choice (`active` unchanged, no overrides). Cancel settled it with nothing run; choosing
+  ran **only** that offer (`overrides: ['piano']`, light untouched); and a deliberate Next settled an
+  open choice.
+- **One side detour, a second refused, and Return.** With the detour armed (exactly one bounded
+  bookmark) a second navigation request was refused with the visible reason “Return from this detour
+  before opening another Presentation”, the bookmark count stayed 1, and Return restored the parent
+  Stop with no duplicate entry.
+- **Standalone open/close.** Opening another available Presentation from a Guide Stop parked the Stop
+  with exactly one bounded Return; **Close** returned to exploration and never to authoring (authored
+  source, Undo length and selection unchanged, session still live, panel still offering Return), and
+  Rejoin re-entered the standalone Presentation's viewing intent.
+- **Availability authoring.** The offer draft exposed the Availability picker with **Experience-wide
+  selected by default** and the hint that availability is independent of the offer's home; the draft
+  was accepted as one ordinary Undo step with `availability: null` and the offer homed in the edited
+  Presentation, the Card read it back as `Experience-wide`; switching it to a named Presentation from
+  the Card's own writer was **one** Undo step labelled `Edit Activity availability` with the
+  organizational home unchanged.
+- **Preview Experience without a Presentation.** With two Experience-wide offers and no Presentation
+  selected the `Preview Experience` entry was present; the visit started with `presentationId: null`,
+  `stopId: null`, no Guide navigation and no Stop controls, offered exactly the Experience-wide
+  participation, ran it as a session override (`overrides: ['light']`, Scene source untouched), and
+  exited with authored source byte-identical, the pose restored and Undo unchanged. Without an
+  Experience-wide offer the entry is absent rather than starting an empty visit.
+- **Same-View Travel after moving** (closes the other live-pose review blocker in the real UI). With a
+  Travel Seam whose origin and destination Framed use resolve to the **same** Camera View, Next while
+  standing there produced `movement: null` — instant, zero distance, no fabricated edge. After
+  Explore + orbit moved the visitor's own pose (az `1.2 → -0.36`), Next produced a real movement
+  (`0.822 s`) whose first sample was the live `az -0.36`, and Camera connectivity was unchanged
+  (3 before, 3 after): the Camera flew back from where it actually was.
+- **Predicted versus observed cursor/Auto.** At a Stop whose panel read `readiness 3.015 s`, Auto
+  advanced at session time 3.1 s; toggling Auto off and on left the Stop's own clock counting
+  (`0.43 → 1.62 → 1.66 → 2.85 → 2.90`, never restarted) and did not reset the reading, so the toggle
+  re-reads the plan instead of rebuilding it.
+
+Two limits are recorded rather than smoothed over. The visit interactions above were driven through
+the product's own DOM controls and pointer path; the pointer events were injected, and Chromium does
+not mark injected events trusted, so the `agent-browser` axis (`qa/visitor-check.sh`) remains the
+trusted-input proof for click-versus-drag. And the cross-subject click required a pose in which the
+subject is actually pickable; the first attempt was made from an exploration pose where it was not,
+which is why the pose was restored by Rejoin before the click that opened the choice.
+
 ## Verification results
+
+### Re-verification at the self-review head (2026-10-05)
+
+Everything below was re-run on the frozen revision that carries the self-review repair (`022c64f4`
+plus its reverted candidate finding), not read from the earlier pass:
+
+- `node --test tests/*.test.mjs` — **94/94 pass** (`ℹ pass 94`, 0 fail), log `/tmp/c9-pure.log`.
+  The travel/agency file is now 12 cases, one more than the reviewed revision.
+- `qa/run-all.sh all` — **18 axes, 780 assertions, 0 failures, rc=0**, log `/tmp/c9-all.log`:
+  journeys A–F 59, interaction 56, flows 44, lifecycle/policy 41, World shell 47, Precision 38,
+  Browse/Search 60, repair 47, lens/parking/Resume 81, Experience wiring 30, V2 conformance 105,
+  C9.1 creator 23, C9.2/C9.3 composition 27, visitor 28, reconciliation 13, continuity 55,
+  responsive 15, correctness 11. No axis is carried from an earlier pass.
+- `qa/mutation-check.sh` — **40/40 rejections, rc=0**, log `/tmp/c9-mut.log` (40
+  `PASS: <domain> rejects <kind> regression; unrelated control stays green` lines). The one new kind
+  is `rejoin-held-cue`; each rejection reintroduces its named defect in a disposable copy and is
+  caught by its named protected assertion while its control stays green.
+- Documentation-reference gate `apps/editor/tests/docs/documentation-references.test.ts` — **22/22**.
+
+The root repository gates remain red on the same pre-existing missing P23B fixture reported below
+and in the checkpoint record; nothing in this pass changes that, and it is not hidden here.
 
 ### Pure Node model/runtime/Camera suite
 
