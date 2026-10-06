@@ -500,7 +500,159 @@ trusted-input proof for click-versus-drag. And the cross-subject click required 
 subject is actually pickable; the first attempt was made from an exploration pose where it was not,
 which is why the pose was restored by Rejoin before the click that opened the choice.
 
+## External C9.4/C9.5 implementation review — five findings repaired (2026-10-05)
+
+A second external review re-read the C9.1–C9.5 implementation at `2725917f` and named five acceptance
+gaps the green suite did not exercise. Each is repaired at its owning authority with behaviour-level
+coverage — a new protected assertion and a same-defect mutation obligation — and the whole acceptance
+run was re-executed at the repaired revision rather than read from this record. These repairs are an
+uncommitted working-tree change at the time of writing; the executable revision that carries them is
+recorded when this pass is committed.
+
+- **P1 Return followed by Auto cut off unfinished narration** (`app/experience-runtime.js`).
+  `returnDetour` restored the parked parent's `elapsed` clock but recomputed `readiness` as the
+  remaining work, and Auto advances on `elapsed>=readiness`: after 7 s of a 10 s narration the parent
+  read 7 against a deadline of 5, so Auto advanced on its next tick and cancelled the run. The Stop's
+  clock now restarts at the remainder it owes, exactly as `resumeGuide` already did, so the restored
+  playhead and the remaining-work deadline agree. Coverage: `tests/experience-runtime.test.mjs`
+  "C9.5 Return restarts the parent remaining-work clock…" (Auto waits, then the narration completes
+  rather than stops), a real-UI assertion in `qa/visitor-check.sh` after a real Return, and the
+  `return-clock` obligation.
+- **P1 Opening another standalone Presentation skipped departure cleanup**
+  (`app/experience-runtime.js`). `openPresentationRuntime` cleared `presentationId` before
+  `enterPresentation`, so the ordinary departure cleanup could no longer match the departing
+  Presentation: its narration stayed running and its visit-retained highlight/visibility effects stayed
+  projected into the next Presentation. The departing identity now stays attached through
+  `enterPresentation`'s `closeVisit`. Coverage: `tests/experience-runtime.test.mjs` "C9.5 opening
+  another standalone Presentation ends the departing visit local work", a real-UI assertion in
+  `qa/visitor-check.sh`, and the `standalone-open` obligation.
+- **P1 Travel preparation omitted the shared entry View** (`app/experience-model.js`).
+  `originCoverage` filtered the departing Presentation's uses to the departing Stop's entry, its
+  choice-role uses and its cue-bearing uses, so a Stop entering through another View reported every
+  origin supported while the Presentation's own entry stayed visitor-selectable and selecting it
+  disabled Next with a Travel gap. Coverage now derives from the departing Presentation's
+  `eligibleViews` plus the private Stop entry — the same set the visitor's View controls and `viewStep`
+  read. Coverage: `tests/camera-conformance.test.mjs` "every eligible Presentation View and the private
+  Stop entry are legitimate origins", `tests/experience-travel-agency.test.mjs` "C9.4 a Stop entering
+  through another View keeps the shared Presentation entry a supported origin", and the
+  `shared-entry-origin` obligation.
+- **P2 Go choices executed as detours** (`app/experience-ui.js`, `app/experience.js`, `app/main.js`).
+  Every choice rendered the detour command and `visitorCommand` had no go dispatch, and the Stop
+  control authored only detours. A choice's authored `kind` now reaches all three: the visitor panel
+  renders a `go` command for a go choice (which continues and exposes Back rather than Return), a
+  detour choice still parks for one bounded Return, and the Stop control offers a Detour and a Go
+  target select that each write their own kind and label. Coverage: `tests/experience-travel-agency.test.mjs`
+  "C9.5 a go choice is a distinct authored continuation", authored and driven through the real control
+  in `qa/visitor-check.sh`, and the `go-continuation` obligation.
+- **P2 Abandoning a detour left parked parent work alive** (`app/experience-runtime.js`). A go choice
+  discarded the parked bookmark without applying departure policies, so the parent's narration stayed
+  paused and its effects survived; a later visit to the same Presentation then reused the paused token
+  instead of starting narration. The abandoned parent's visit identity is now restored just long enough
+  for `closeVisit` to end its local work under its own policies — a paused narration is stopped so a
+  fresh occurrence starts a new run, a waiting dependent is disarmed and a visit-retained effect is
+  released — while work the author explicitly carried past its visit is left alone. Coverage:
+  `tests/experience-runtime.test.mjs` "C9.5 a go choice ends the parked parent local work instead of
+  leaving it paused", and the `abandoned-parked-work` obligation.
+
 ## Verification results
+
+### Repairs re-verified after the external C9.4/C9.5 review (2026-10-05)
+
+Re-run at the repaired working tree, not read from this record:
+
+- `node --test tests/*.test.mjs` — **99/99 pass**, 0 fail (`/tmp/c9rev-*.log`). Five new cases: the
+  Return/Auto clock, the standalone departure cleanup, the abandoned parked parent, the shared-entry
+  origin, and the go choice; the earlier camera-conformance detached-entry case is corrected because
+  it had encoded the omitted shared entry as an *ineligible* origin.
+- `qa/run-all.sh all` — **18 axes, 787 assertions, 0 failures, rc=0** (`/tmp/c9rev-all.log`). Only the
+  visitor axis changed: it gained seven assertions (standalone departure cleanup, both choice-kind
+  authoring readings, the rendered go/detour commands, go continuation, detour parking, and Return's
+  remaining-work clock) for 35, with every other axis at its reviewed count.
+- `qa/mutation-check.sh` — **45/45 rejections, rc=0** (`/tmp/c9rev-mut.log`). The five new obligations
+  (`return-clock`, `standalone-open`, `shared-entry-origin`, `go-continuation`,
+  `abandoned-parked-work`) each reintroduce their named defect in a disposable copy, are rejected by
+  their named protected assertion, and leave their named control green.
+- `git diff --check` (whitespace) — rc=0.
+
+## Third external C9.4/C9.5 review — three detour findings repaired (2026-10-05)
+
+The same review re-read the uncommitted round-1 repairs and named three related defects in the detour
+lifecycle. All three live in `app/experience-runtime.js` and are repaired there, each with a
+behaviour-level assertion and its own mutation obligation. This section supersedes the round-1
+description of the Return repair above: zeroing `elapsed` was that pass's fix and is not the repair
+of record.
+
+- **P2 Carried narration stayed paused after Go** (`app/experience-runtime.js`). `parkParent` pauses
+  every running narration of the departed visit; `closeVisit` then deliberately ends only the work
+  whose departure policy cancels — a visit-retained effect or a cancelling interruption — leaving
+  Finish, Continue and Experience-end runs parked on purpose. When a go choice discarded the bookmark,
+  `endParkedVisit` restored the visit identity and ran `closeVisit`, but nothing resumed the work that
+  policy had said should outlive its visit, so the run's clock froze at its parked value forever: an
+  18 s Finish narration stayed at 2.1 s after 20 s more elapsed through the product controls.
+  `endParkedVisit` now resumes exactly the paused runs `closeVisit` refused to end, reinstating
+  `r.active[useId]` and `running` on the parked playhead, while work that *is* cancelled is still
+  ended. Coverage: `tests/experience-runtime.test.mjs` "C9.5 a go choice resumes carried parent work
+  whose departure policy continues it" (a `finish` narration and an Experience-end narration both
+  return to `running` with their parked `elapsed`), alongside the round-1 case that the cancelled
+  parent is still ended, and the `carried-pause` obligation.
+- **P2 Return restarted the full authored dwell** (`app/experience-runtime.js`). Round 1 fixed the
+  Default-Auto cut-off by restarting the Stop clock at the remainder it owed — but that rewound an
+  authored `pacing.seconds` dwell too: spend 7 s of a 10 s dwell, take a detour, Return, enable Auto,
+  and the Stop waited a fresh 10 s instead of the remaining 3. The runtime now carries
+  `remainingFrom`, the playhead the remaining work is measured from: `enterPresentation` and
+  `resumeGuide` set it to 0, `returnDetour` sets `r.remainingFrom=r.elapsed` and no longer touches
+  `elapsed`, and Auto's three deadlines read `since=r.elapsed-r.remainingFrom` (the signal fallback on
+  `since>=BREATHING`, the default on `since>=r.readiness`) while the authored dwell keeps its own
+  absolute clock on `r.elapsed>=s.pacing.seconds`. The Stop clock therefore survives a Return at 7
+  while the deadline is still the work owed. Coverage: `tests/experience-runtime.test.mjs` "C9.5
+  Return preserves the parent Stop clock while Auto still waits the remaining work" (`elapsed===7`,
+  `readiness===BREATHING+3`, then the narration completes rather than stops) and "C9.5 Return preserves
+  an authored dwell instead of restarting it" (Auto refuses at 9 s of a 10 s dwell and advances past
+  it), a real-UI Return assertion in `qa/visitor-check.sh`, and the `return-clock` and `return-dwell`
+  obligations.
+- **P2 Go from a detour lost the parent from Back history** (`app/experience-runtime.js`). A detour
+  deliberately omits its parent from ordinary `history` because the bookmark owns the way back, so a
+  go choice that discarded the bookmark also discarded the only record of the parent: for A → detour
+  B → Go C, Back reached B and a second Back stayed at B. `endParkedVisit` now pushes the parked
+  `b.stopId` into `r.history` as it abandons the bookmark, so the genuinely visited parent is ordinary
+  history again before the go destination is entered. Coverage: `tests/experience-runtime.test.mjs`
+  "C9.5 a go choice keeps the visited parent reachable through Back history" (`history===[a,b]`, two
+  Backs reaching `b` then `a`), the same walk driven through the real visitor controls in
+  `qa/visitor-check.sh`, and the `abandoned-history` obligation.
+
+### Repairs re-verified after the detour review (2026-10-05)
+
+Re-run at the repaired working tree, not read from this record; the repairs are still an uncommitted
+working-tree change.
+
+- `node --test tests/*.test.mjs` — **102/102 pass**, 0 fail. Three new cases (the authored dwell, the
+  resumed carried work, and the abandoned parent in Back history) plus the rewritten round-1 Return
+  case, which now asserts the preserved clock (`elapsed===7`) and the rebased deadline rather than the
+  round-1 restart convention.
+- `qa/run-all.sh all` — **18 axes, 794 assertions, 0 failures, rc=0**. Only the visitor axis changed, for
+  **42** (from 37): the go choice's Back walk and Return's preserved clock, plus the review's own product
+  observation driven through the real controls — the parent narration is live at the Stop, the detour
+  suspends it, Go resumes it on its parked playhead, and it keeps advancing instead of staying frozen.
+  Those last three were proved non-vacuous by replaying the defect in a disposable copy of
+  `app/experience-runtime.js`: with the resumption removed they fail, together with the Return-clock
+  assertion. The axis is therefore not only green at the repaired revision but demonstrably red without
+  the repair. Every other axis is at its reviewed count.
+- `qa/mutation-check.sh` — **48/48 rejections, rc=0**. Three new obligations (`return-dwell`,
+  `carried-pause`, `abandoned-history`) each reintroduce their named defect in a disposable copy, are
+  rejected by their named protected assertion, and leave their named control green; the round-1
+  `return-clock` obligation was rewritten to drop the `remainingFrom` rebase instead of round 1's
+  zeroing.
+- `npm run test:arch` (root) — **276/276 pass, rc=0**, which includes the documentation-reference gate
+  `apps/editor/tests/docs/documentation-references.test.ts` at **22/22**.
+- `git diff --check` (whitespace) — rc=0.
+
+Two load-dependent harness races surfaced while re-running the whole driver, and only under the full
+18-axis run; neither reproduces in isolation and neither involves the repaired code paths. The
+`qa/responsive-check.sh` green in the round-1 pass sampled the emulated `prefers-reduced-motion` state
+after a fixed 60 ms sleep and failed once here, so both of its media-change blocks now poll the state
+they assert (bounded at 5 s) instead of sleeping. The C9.2/C9.3 composition axis failed two Gate
+assertions in one full run and passed 27/27 in each of four consecutive isolated runs; it is recorded
+here as a flake, not as a pass that was not observed.
 
 ### Re-verification at the self-review head (2026-10-05)
 

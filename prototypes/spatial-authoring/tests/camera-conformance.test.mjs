@@ -14,9 +14,14 @@ test('observer anchors, rendered samples, stations and evaluation describe the s
  assert.deepEqual(r.samples[0].observer,eye(c.views[from].pose));assert.deepEqual(r.samples.at(-1).observer,eye(c.views[to].pose));assert.equal(r.seconds,pathSeconds(r.path,c.connections[id].speed));assert.deepEqual(evaluatePath(r.path,1),c.views[to].pose);
  assert.equal(c.connections[id].anchors.length,1);assert.ok(r.seconds>0);
 });
-test('detached occurrence entry remains a legitimate origin alongside shared choices',()=>{
+test('every eligible Presentation View and the private Stop entry are legitimate origins',()=>{
  const {experience:e,camera:c}=conformanceFixture(),a=e.guide[3],b=e.guide[4],uid=stopEntry(e,a).id,local=detachUse(e,c,uid,a);
- const rows=originCoverage(e,c,a,b);assert.equal(rows.length,3);assert.ok(rows.some(r=>r.useId===local));assert.ok(!rows.some(r=>r.useId===uid));
+ const rows=originCoverage(e,c,a,b);
+ // The Stop now enters through a private View, but the shared Presentation Set is unchanged: the visitor
+ // can still deliberately select the Presentation's own entry, so it is a real origin alongside the
+ // other two eligible Views and the detached entry.
+ assert.equal(rows.length,4);assert.ok(rows.some(r=>r.useId===local));assert.ok(rows.some(r=>r.useId===uid));
+ assert.ok(rows.some(r=>r.useId===e.presentations[e.stops[a].presentationId].uses[1]));
 });
 test('one resolved Camera serves relative framing and fixed-framing review without source mutation',()=>{
  const {camera:c}=conformanceFixture(),v=Object.values(c.views)[0];v.anchor='relative';v.focusOffset=[1,0,0];const source=JSON.stringify(c),resolved=resolveCamera(c,{machine:[4,2,5],mesh:[0,0,0],piano:[0,0,0],switch:[0,0,0],light:[0,0,0]});assert.deepEqual(resolved.views[v.id].pose.target,[5,2,5]);assert.equal(JSON.stringify(c),source);

@@ -472,6 +472,9 @@ export function visitorCommand(action,id=null){
  if(action==='next-view'||action==='previous-view')v.runtime=R.viewStepRuntime(e,c,r,action==='next-view'?1:-1);
  if(action==='captions')v.runtime.captions=!r.captions;
  if(action==='detour')v.runtime=R.chooseRuntime(e,c,r,id,true,scene);
+ // A go choice continues: it abandons any parked parent instead of parking one, so Back (not Return) is
+ // the way it can be revisited.
+ if(action==='go')v.runtime=R.chooseRuntime(e,c,r,id,false,scene);
  if(action==='return')v.runtime=R.returnDetour(e,c,r,scene);
  // Opening another available Presentation is a deliberate navigation request: from a Guide it parks
  // this Stop with one bounded bookmark, otherwise it starts a fresh visit. Closing a standalone

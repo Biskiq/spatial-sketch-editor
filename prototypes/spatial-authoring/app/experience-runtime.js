@@ -23,7 +23,7 @@ const carriedWork=(r,e)=>id=>{
  return {spent:Math.max(0,Number(a.elapsed)||0)};
 };
 export function createRuntime(e,c,pid,pose,scene=createSceneCapabilities()) {
- const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,arrivedViewUseId:null,viewingSuppressed:false,cueFloor:-1,captions:true,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,readiness:BREATHING,refusal:null};
+ const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,arrivedViewUseId:null,viewingSuppressed:false,cueFloor:-1,captions:true,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,remainingFrom:0,readiness:BREATHING,refusal:null};
  r.scene=copy(scene);armScope(r,e,c,scene,null);
  if(pid)enterPresentation(r,e,c,scene,pid);
  const u=entryUse(e,pid);if(u)requestView(r,e,c,u.id,'cut');
@@ -106,7 +106,7 @@ function closeVisit(r,e,scene,parked=new Set()){for(const a of Object.values(r.a
  if(retentionExpired){a.boundaryExpired=true;if(a.status==='complete')removeOwned(r,a.token);}
  if(u.end.kind==='visit'&&boundaryScope(u)===r.presentationId&&['running','paused'].includes(a.status)&&interruption(e,scene,u)==='cancel')stopRun(r,e,a.token,'Visit ended');
 }}
-function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene,new Set(r.bookmarks.map(b=>b.visit)));r.presentationId=pid;r.visit=++r.visitCounter;r.elapsed=0;r.queue=[];r.movement=null;r.viewingSuppressed=false;r.cueFloor=-1;r.signals={...r.signals};armScope(r,e,c,scene,pid);r.readiness=estimatePresentation(e,c,pid,r.pose,undefined,null,scene,{carried:carriedWork(r,e)});}
+function enterPresentation(r,e,c,scene,pid){closeVisit(r,e,scene,new Set(r.bookmarks.map(b=>b.visit)));r.presentationId=pid;r.visit=++r.visitCounter;r.elapsed=0;r.remainingFrom=0;r.queue=[];r.movement=null;r.viewingSuppressed=false;r.cueFloor=-1;r.signals={...r.signals};armScope(r,e,c,scene,pid);r.readiness=estimatePresentation(e,c,pid,r.pose,undefined,null,scene,{carried:carriedWork(r,e)});}
 export function presentationPlan(e,c,pid,pose,entryId=entryUse(e,pid)?.id||null,entryMovement=null,scene=createSceneCapabilities(),policy={}){
  const issues=new Set(contributionIssues(e,c,scene,capability).map(i=>i.id)),cache=new Map();
  // Remaining runtime completion, not elapsed subtraction at every node. Each contribution is placed
@@ -260,7 +260,7 @@ export function autoRuntime(e,current){const r=copy(current);r.autoplay=!r.autop
 // cues again, which is exactly the reading the estimate is planned with — so the runtime can never
 // perform a cue the remaining-work planner did not count.
 // Auto stays off, and the Stop's clock starts at the remainder it now owes.
-export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.viewingSuppressed=!!entry.hold;r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,r.scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});return r;}
+export function resumeGuide(e,c,current,pose=null){const r=copy(current);r.pose=copy(pose||r.pose);r.exploring=false;r.autoplay=false;r.elapsed=0;r.remainingFrom=0;const entry=r.stopId?stopEntry(e,r.stopId):{id:entryUse(e,r.presentationId)?.id||null};if(entry.id)requestView(r,e,c,entry.id);r.viewingSuppressed=!!entry.hold;r.readiness=estimatePresentation(e,c,r.presentationId,r.pose,entry.id,r.movement,r.scene,{cues:!entry.hold,cueFloor:r.cueFloor,skipCue:cue=>signalEmitted(r,cue),carried:carriedWork(r,e)});return r;}
 // One bounded side detour at a time: the parent visit is parked with its own bookmark (the experimental
 // pause policy, not permanent architecture) and its running narration is suspended rather than ended.
 function parkParent(r,e){
@@ -270,11 +270,30 @@ function parkParent(r,e){
  r.stopId=null;r.presentationId=null;r.visit=0;
  return true;
 }
+// Abandoning a parked parent is a real departure, not a silent forget: the bookmark's own visit identity
+// is restored just long enough for the ordinary departure policies to run on its runs. A paused narration
+// whose policy cancels is ended, so a later occurrence starts a fresh run instead of reusing the parked
+// token; a waiting dependent is disarmed; and a visit-retained effect is released. Work whose departure
+// policy permits it to continue — Experience end, or an interruption policy of finish/continue — is
+// resumed on its own playhead rather than left suspended forever once the pause's bookmark is gone. The
+// parent is also the Stop the visitor actually visited, so it enters ordinary Back history here: the
+// detour intentionally kept it out while the bookmark owned the return, and Go discards that bookmark.
+// It is restored at the position the detour began — before any entry the detour itself recorded — so a
+// longer sequence (A → detour B → Next C → Go D) backs C → B → A rather than C → A → B. The bookmark's
+// saved history is exactly the prefix that preceded the detour, so its length is that insertion point.
+function endParkedVisit(r,e,scene,b){
+ const presentationId=r.presentationId,visit=r.visit;
+ r.presentationId=b.presentationId;r.visit=b.visit;closeVisit(r,e,scene,new Set());
+ for(const a of Object.values(r.activities))if(a.visit===b.visit&&a.status==='paused'){r.active[a.useId]=a.token;a.status='running';}
+ r.presentationId=presentationId;r.visit=visit;
+ if(b.stopId)r.history.splice(b.history.length,0,b.stopId);
+}
 export function chooseRuntime(e,c,current,targetId,detour=false,scene=createSceneCapabilities()){
  const r=copy(current);
  if(detour){if(!parkParent(r,e)){r.refusal='Return from this detour before taking another';return r;}}
- // A go choice abandons the parked parent: the visitor chose to continue, not to come back.
- else r.bookmarks=[];
+ // A go choice abandons the parked parent: the visitor chose to continue, not to come back, so the
+ // parent's own visit is ended under its own identity before its bookmark is forgotten.
+ else while(r.bookmarks.length)endParkedVisit(r,e,scene,r.bookmarks.pop());
  goStop(r,e,c,scene,targetId,!detour,true);return r;
 }
 // Opening another available Presentation is a deliberate visitor navigation request: from a Guide it
@@ -284,7 +303,10 @@ export function openPresentationRuntime(e,c,current,pid,scene=createSceneCapabil
  const r=copy(current);
  if(!e.presentations[pid]){r.refusal='Presentation unavailable';return r;}
  if(r.stopId&&!parkParent(r,e)){r.refusal='Return from this detour before opening another Presentation';return r;}
- r.stopId=null;r.presentationId=null;r.exploring=false;r.autoplay=false;r.movement=null;r.queue=[];
+ // The departing Presentation's identity stays attached here: enterPresentation performs the ordinary
+ // departure cleanup against it, so opening B never leaves A's narration running or its visit-retained
+ // highlight/visibility effects projected. A parked Guide parent was detached by parkParent and is skipped.
+ r.stopId=null;r.exploring=false;r.autoplay=false;r.movement=null;r.queue=[];
  enterPresentation(r,e,c,scene,pid);
  const u=entryUse(e,pid);if(u)requestView(r,e,c,u.id,'cut');
  note(r,'Opened Presentation '+pid);return r;
@@ -295,6 +317,11 @@ export function closePresentationRuntime(current){const r=copy(current);r.explor
 export function returnDetour(e,c,current,scene=createSceneCapabilities()){
  const r=copy(current),parked=new Set(r.bookmarks.map(b=>b.visit)),b=r.bookmarks.pop();if(!b)return r;closeVisit(r,e,scene,parked);
  Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});
+ // The restored elapsed is the parent's own Stop clock — an authored dwell keeps the time already spent
+ // at the Stop, so it is preserved rather than rewound. The reading recomputed below is the work still
+ // owed *from here*: the remaining-work clock is rebased to the restored playhead, and Auto advances on
+ // `elapsed-remainingFrom>=readiness`, so a partially heard narration is never read as already done.
+ r.remainingFrom=r.elapsed;
  for(const a of Object.values(r.activities))if(a.visit===b.visit&&['paused','waiting'].includes(a.status)){r.active[a.useId]=a.token;if(a.status==='paused')a.status='running';}
  const entry=stopEntry(e,r.stopId);if(entry.id)requestView(r,e,c,entry.id);
  // The parent's own remaining work is recomputed from the restored playhead and the parent's own cue
@@ -323,10 +350,13 @@ export function tickRuntime(e,c,current,seconds,scene=createSceneCapabilities())
    if(a.duration!==null&&a.elapsed>=a.duration){a.elapsed=a.duration;complete(r,e,c,scene,a.token);}
   }
   if(!r.movement&&r.queue.length){const q=r.queue.shift();requestView(r,e,c,q.id,q.speed,q.path,q.seam,q.connectionId);}
-  if(r.autoplay&&!r.exploring&&r.stopId){const s=e.stops[r.stopId];let ready=false;
+  // Dwell is authored time at the Stop, measured on the preserved Stop clock; the remaining-work deadline
+  // and the pacing fallback are measured from the rebased playhead, so a Return neither rewinds a dwell nor
+  // reads carried work as already done.
+  if(r.autoplay&&!r.exploring&&r.stopId){const s=e.stops[r.stopId],since=r.elapsed-r.remainingFrom;let ready=false;
    if(s?.pacing.kind==='dwell')ready=r.elapsed>=s.pacing.seconds;
-   else if(s?.pacing.kind==='signal')ready=r.pacingFallback?r.elapsed>=BREATHING:signalEmitted(r,s.pacing.ref);
-   else ready=r.elapsed>=r.readiness;
+   else if(s?.pacing.kind==='signal')ready=r.pacingFallback?since>=BREATHING:signalEmitted(r,s.pacing.ref);
+   else ready=since>=r.readiness;
    // Camera evaluation stays authoritative: Auto never advances into or across a move still in flight.
    if(ready&&!r.movement&&gateState(e,c,r).allowed)goStop(r,e,c,scene,resolveNext(e,r.stopId).id);
   }

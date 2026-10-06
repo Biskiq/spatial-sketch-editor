@@ -521,6 +521,40 @@ test('C9.5 Preview Experience starts a world-only session with no Presentation, 
  await E.exitPreview();
 });
 
+test('C9.4 a Stop entering through another View keeps the shared Presentation entry a supported origin',()=>{
+ const f=fixture(),{e,c,a,b}=f;
+ const shared=M.entryUse(e,f.p).id;                  // the Presentation's own entry View
+ M.detachUse(e,c,f.other,a);                         // this occurrence now enters through another View
+ assert.notEqual(M.stopEntry(e,a).id,shared);        // the entry left the shared Set, but stays selectable
+ assert.ok(M.originCoverage(e,c,a,b).some(row=>row.useId===shared));
+ const report=M.prepareTravelSupport(e,c,a,b);
+ assert.equal(report.gaps.length,0);                 // no origin left as a fabricated Travel gap
+ M.editSeam(e,a,b,{mode:'travel'});
+ const r=R.startGuide(e,c,R.createRuntime(e,c,null,pose,f.scene),f.scene);
+ assert.equal(R.requestView(r,e,c,shared,'cut'),true);
+ assert.equal(R.gateState(e,c,r).allowed,true);      // selecting that entry does not disable Next
+ assert.equal(R.nextRuntime(e,c,r,f.scene).refusal,null);
+});
+test('C9.5 a go choice is a distinct authored continuation, not a detour',async()=>{
+ const f=liveFixture(),{e,a,b}=f;
+ e.stops[a].choices.push({id:'choice-detour',label:'Side trip',targetId:b,kind:'detour'});
+ e.stops[a].choices.push({id:'choice-go',label:'Continue',targetId:b,kind:'go'});
+ assert.equal(E.preview(f.p),true);
+ const r=()=>S.visitor.runtime;
+ E.visitorCommand('start');
+ assert.equal(r().stopId,a);
+ const html=UI.visitorHtml();
+ // Each choice renders its own command: a go choice continues, a detour choice parks for Return.
+ assert.match(html,new RegExp('data-command="go" data-id="'+b+'"'));
+ assert.match(html,new RegExp('data-command="detour" data-id="'+b+'"'));
+ E.visitorCommand('go',b);
+ assert.equal(r().stopId,b);assert.equal(r().bookmarks.length,0);
+ E.visitorCommand('back');
+ assert.equal(r().stopId,a);
+ E.visitorCommand('detour',b);
+ assert.equal(r().bookmarks.length,1);               // the detour parks, the go continues
+ await E.exitPreview();
+});
 test('C9.5 rejoin restores a held viewing intent, so no cue the remainder excluded can run',()=>{
  const f=fixture(),{e,c,a}=f;
  const local=M.addContribution(e,f.p,{kind:'narration',name:'Local',text:'Walkthrough.',duration:40,markers:[{id:'late',label:'Late',time:20}]},'narration');

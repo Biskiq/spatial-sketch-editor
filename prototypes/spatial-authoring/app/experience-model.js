@@ -64,8 +64,12 @@ export function editSeam(e,a,b,patch) {
 }
 export function originCoverage(e,c,a,b) {
  const from=e.stops[a],dest=stopEntry(e,b),target=resolveUse(e,c,dest.id);
- const entry=stopEntry(e,a).id;
- const ids=[...(e.presentations[from?.presentationId]?.uses||[]).filter(id=>id===entry||e.uses[id]?.role==='choice'||e.uses[id]?.cue),entry].filter(Boolean);
+ // Every eligible Presentation View is a legitimate origin, because the visitor can deliberately select
+ // any of them (the visitor's View controls and viewStep read this same `eligibleViews` set). A Stop that
+ // enters through another View does not remove the Presentation's own entry from the Set, and excluding
+ // it would report all origins supported while selecting that entry disabled Next with a Travel gap. The
+ // Stop's private entry is a View too, and joins the set where it is not already one of the Presentation's.
+ const ids=[...eligibleViews(e,from?.presentationId),stopEntry(e,a).id].filter(Boolean);
  const origins=[...new Set(ids)].map(id=>e.uses[id]).filter(u=>u?.viewId);
  return origins.map(u=>({useId:u.id,viewId:u.viewId,targetId:target?.view.id||null,connectionId:Object.values(c.connections).find(k=>k.from===u.viewId&&k.to===target?.view.id)?.id||null,missing:!c.views[u.viewId]||!!c.views[u.viewId].unresolved||!target}));
 }
