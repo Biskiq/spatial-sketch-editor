@@ -8,7 +8,11 @@ implemented, self-reviewed, independently reviewed and verified; stopped at the 
 availability modelled but not authorable, and a same-View Travel shortcut ignoring the live pose),
 and all four are repaired at their owning authority with regression and same-defect mutation
 coverage — V2/V7 (rejoin and detour remainder), I3/J6 (world-only session), I4 (availability) and
-N1 (live pose) respectively.
+N1 (live pose) respectively. A further self-review pass then repaired one defect — Rejoin and Return
+restored the playhead, cue floor and carried reading but not a held Stop's viewing intent, while the
+planner was told `cues: !entry.hold` — and closed one candidate finding as by design (Close keeps the
+standalone Presentation as its Rejoin target, per §3/P12/J5/I6/V1); both outcomes, with the MP3
+rehearsal measurements, are in the evidence record.
 The owner authorized implementation through MP2; C9.1 is implemented and MP1 was accepted
 explicitly by the owner (2026-10-04). MP2's three recorded observations are non-blocking and
 assigned outward (shell density → the later UI/UX slice, Guide snap/cut → superseded by C9.4,

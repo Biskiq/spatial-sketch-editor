@@ -108,6 +108,28 @@ CURRENT:
 - MP2 accepted by the owner 2026-10-05 with three non-blocking observations recorded;
   C9.4/C9.5 implemented, self-reviewed and verified, committed as `c118c08b` and pushed, with
   the evidence/status docs as its docs-only child. C9.6–C9.9 and Paper are not started.
+- A further self-review pass and the MP3 rehearsal at the frozen revision found and repaired
+  one defect and closed one candidate finding as by-design:
+  - **Repaired (`022c64f4`):** `resumeGuide` and `returnDetour` preserved the playhead, cue
+    floor and carried reading but not the Stop's **held viewing intent**, while the planner was
+    told `cues: !entry.hold` — a held Stop's remainder excluded a cue the runtime could still
+    perform. Both now restore `viewingSuppressed` before planning; one new test and the
+    `rejoin-held-cue` obligation cover it.
+  - **Examined and ruled by design (no code change):** after Close from a standalone
+    Presentation the runtime keeps `presentationId`. That retention is the Rejoin target
+    `resumeGuide`'s standalone branch depends on, is asserted by the reviewed
+    open/close/rejoin case, and matches §3/P12/J5/I6/V1 — Close returns to exploration while the
+    visit is preserved, and an offer staying live in exploration is the contracted behaviour.
+    The drafted change was withdrawn before it was committed.
+- MP3 was rehearsed end to end in the real browser at the frozen revision; every recipe step was
+  observed with measured values (recorded in the evidence record), including the review repairs:
+  Rejoin re-derived readiness **42.000 → 32.939 = 2 + (40 − 9.06)** on the same run token, Return
+  restored the parent's own remainder (**16.187**, not the detour's 2.819), Travel preparation left
+  every origin supported in one Undo, Cut on the same Seam snapped (`movement: null`), a mid-flight
+  redirect started from the live pose, and a moved-away same-View Seam flew back from the live pose
+  with no invented edge. Click-versus-drag and explicit-choice interaction were observed through the
+  product's own pointer path; the injected-event limitation and its `agent-browser` successor proof
+  are recorded in the evidence record.
 - The prototype is left usable for the MP3 walkthrough; QA axis servers close themselves and
   no session is left running.
 
@@ -170,11 +192,16 @@ NEXT:
    or restore it without separate authorization.
 
 OPEN:
-- MP3 outcome (human evidence; automated assertions cannot substitute).
-- Push completed for C9.4/C9.5 (`c118c08b` plus its docs-only evidence child); the branch is at
-  the pushed head and PR #113 stays open and unmerged.
-- All 18 axes are verified at the C9.4/C9.5 executable revision; no axis is carried from an
-  earlier pass.
+- MP3 outcome (human evidence; automated assertions cannot substitute). The owner's own walkthrough
+  is still outstanding; this record contains only the rehearsal.
+- Push completed for C9.4/C9.5 (`c118c08b` plus its docs-only evidence child) and for the
+  self-review repair (`022c64f4`); the branch is at the pushed head and PR #113 stays open and
+  unmerged.
+- All 18 axes are verified at the frozen self-review revision (**18 axes, 780 assertions, 0
+  failures, rc=0**; logs `/tmp/c9-all.log`, `/tmp/c9-pure.log` 94/94, `/tmp/c9-mut.log` 40/40);
+  no axis is carried from an earlier pass.
+- Root repository gates stay red on the pre-existing missing P23B fixture, reported separately and
+  not restored; the documentation-reference gate is green (22/22).
 
 [s0s9]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md
 [c8]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md

@@ -92,8 +92,11 @@ implemented, self-reviewed, independently reviewed and verified at the pushed
 executable revision; the review's four findings — Rejoin/detour Return rebuilding
 remaining work, the missing interaction-only Preview Experience, availability
 modelled but not authorable, and a same-View Travel shortcut ignoring the live pose
-— are all repaired with regression and mutation coverage. MP3 is the next human
-gate and C9.6–C9.9 and Paper are not started.
+— are all repaired with regression and mutation coverage. A later self-review pass repaired one
+further defect (Rejoin/Return restored the playhead but not a held Stop's viewing intent,
+`022c64f4`) and ruled one candidate finding by design (Close keeps the standalone Presentation as
+its Rejoin target, matching §3/P12/J5/I6/V1). MP3 is the next human gate and has only been
+rehearsed in the browser, never owner-executed; C9.6–C9.9 and Paper are not started.
 Capability
 acceptance remains pending; detailed density/type/proportion and broader visual
 refinement follow in a dedicated, separately scoped UI/UX slice. C9 requires only
