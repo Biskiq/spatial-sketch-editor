@@ -1,5 +1,5 @@
 // Prototype-local authored domains. These are not production document interfaces.
-import { capability } from './experience-capabilities.js';
+import { capability, isRealized } from './experience-capabilities.js';
 export const copy = (v) => structuredClone(v);
 export function createExperience() {
   return { name: 'Saltmarsh Experience', serial: 0, presentations: { 'pres-highlights': { id: 'pres-highlights', name: 'Saltmarsh Highlights', meaning: '', focus: { kind: 'subjects', ids: ['gwin'] }, uses: [] } }, uses: {}, stops: {}, guide: [], seams: {}, definitions: {} };
@@ -31,7 +31,10 @@ export function entryUse(e,pid) { const p=e.presentations[pid]; return p?.uses.m
 export function setRole(e,id,role) {
  const u=e.uses[id]; if(!u) throw Error('Use removed');
  if(u.stopId)throw Error('Stop entry roles belong to this occurrence');
- if(role==='entry') for(const other of e.presentations[u.presentationId].uses) if(e.uses[other]?.role==='entry') e.uses[other].role='choice';
+ // A retained View use whose home Presentation was removed has nowhere to record a role: this is an
+ // explicit refusal the author can read, never a dereference of the missing home.
+ const p=e.presentations[u.presentationId];if(!p)throw Error('Presentation removed');
+ if(role==='entry') for(const other of p.uses) if(e.uses[other]?.role==='entry') e.uses[other].role='choice';
  u.role=role;
 }
 export function removeView(e,c,id) {
@@ -118,6 +121,10 @@ export function editView(c,id,patch) {
  if(!pose.target?.every(Number.isFinite)||![pose.az,pose.el,pose.frameH].every(Number.isFinite)||pose.frameH<=.1)throw Error('Invalid Camera framing');
  v.pose=pose;v.anchor='fixed';v.revision++;
 }
+// The six Camera View properties a Precision grip can address: one authority for the drawing, the
+// Camera Card's deliberate property list and the Precision task, so a property cannot be invented in
+// one home and silently missing in another.
+export const gripLabels={frameH:'Frame height',az:'Aim horizontally',el:'Aim vertically',x:'Target X',y:'Target height',z:'Target Z'};
 export function addBeat(e,c,a,b,connectionId,stationId,hold=1) {
  const route=c.connections[connectionId];if(!route)throw Error('Connection missing');
  const valid=['departure',...route.anchors.map(a=>a.id),...route.markers.map(m=>m.id),'arrival'];
@@ -261,7 +268,7 @@ export function stopConditionIssues(e,scene,id,resolveCapability=capability){
 export function contributionIssues(e,c,scene,resolveCapability=capability) {
  const issues=[];
  for(const u of Object.values(e.uses)) {
-  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});if(u.cue&&!supportedSignal(e,scene,u.cue))issues.push({id:u.id,message:'View cue needs repair'});else if(u.cue&&!cueInScope(e,u))issues.push({id:u.id,message:'View cue signal is outside this activation scope'});continue;}
+  if(u.viewId) {if(!c.views[u.viewId])issues.push({id:u.id,message:'Framing removed; repair or explicitly keep viewpoint'});if(u.presentationId&&!e.presentations[u.presentationId])issues.push({id:u.id,message:'Home Presentation removed; rehome or remove this retained View use'});if(u.cue&&!supportedSignal(e,scene,u.cue))issues.push({id:u.id,message:'View cue needs repair'});else if(u.cue&&!cueInScope(e,u))issues.push({id:u.id,message:'View cue signal is outside this activation scope'});continue;}
   const d=e.definitions[u.definitionId];if(!d){issues.push({id:u.id,message:'Definition missing'});continue;}
   if(d.kind==='control'&&!resolveCapability(scene,d.subjectId,d.capabilityId))issues.push({id:u.id,message:'Subject or capability unavailable'});
   if(u.kind==='interaction'&&!scene.subjects[u.triggerSubjectId])issues.push({id:u.id,message:'Activation subject missing'});
@@ -295,7 +302,9 @@ export function invokableRefusal(e,scene,u){
  if(u.kind==='interaction')return 'A visitor offer is activated by its subject; bind a separate Activity to invoke automatically';
  if(d.kind==='narration')return '';
  if(d.kind!=='control')return 'Unsupported invocation target';
- if(scene&&!capability(scene,d.subjectId,d.capabilityId))return 'Capability is unavailable in this Scene';
+ const cap=scene&&capability(scene,d.subjectId,d.capabilityId);
+ if(scene&&!cap)return 'Capability is unavailable in this Scene';
+ if(cap&&!isRealized(cap))return 'Capability is declared by the provider but not realized by this Stage';
  return '';
 }
 // A station invocation is the Activity's trigger, never a second one. Binding an existing use to a
@@ -305,6 +314,135 @@ export function invokableRefusal(e,scene,u){
 // and one Activity is invoked by one station, so a transition executes it exactly once. Invoking an
 // Activity whose beat already exists re-asserts the binding rather than adding a second beat, which is
 // also the repair after the author moves the trigger elsewhere in the Card.
+// ----- C9.6 revision and repair (J8) -------------------------------------
+// Bounded, real operations through identity-safe writers. Nothing here clones the graph, forks a
+// Presentation, silently promotes retained content or converts a missing framing into an intentional
+// hold; every operation keeps reusable definitions, stable ids and repairable references.
+
+// Rename a Presentation in place: identity and every shared Stop/View use are untouched.
+export function renamePresentation(e,pid,name) {
+ const p=e.presentations[pid];if(!p)throw Error('Presentation removed');
+ p.name=String(name??'');return p.name;
+}
+// Remove a Presentation and its own Guide occurrences. Its contributions, View uses and shared
+// definitions are deliberately retained: a later reader can still repair or remove them through their
+// selected-item writer, and nothing is silently rehomed or promoted to an Experience-start trigger.
+// Camera Views are never deleted — an unreferenced View is not Experience garbage.
+export function removePresentation(e,pid) {
+ if(!e.presentations[pid])return null;
+ const stops=Object.values(e.stops).filter(s=>s.presentationId===pid).map(s=>s.id);
+ const uses=Object.values(e.uses).filter(u=>u.presentationId===pid).map(u=>u.id);
+ delete e.presentations[pid];
+ for(const id of stops){e.guide=e.guide.filter(x=>x!==id);delete e.stops[id];}
+ // Authored choices survive the removal: a labelled detour/go whose target left with this Presentation
+ // keeps its label and its now-unresolved target, so it reads as a repairable reference rather than
+ // disappearing. A pre-existing broken choice unrelated to this removal is never purged either — only
+ // explicit Next targets are left dangling, because they were always meant to be repairable.
+ for(const [key,seam] of Object.entries(e.seams))if(!e.stops[seam.from]||!e.stops[seam.to])delete e.seams[key];
+ return {stops,uses};
+}
+// Remove one contribution use. A View use is unlinked locally; the Camera View is never deleted, and a
+// Stop that entered through it keeps an explicit, repairable missing entry rather than a hold.
+export function removeContribution(e,id) {
+ const u=e.uses[id];if(!u)throw Error('Contribution removed');
+ if(u.viewId){const p=e.presentations[u.presentationId];if(p)p.uses=p.uses.filter(x=>x!==id);}
+ // A Stop that entered through this use keeps its explicit reference, so it reads as a repairable
+ // missing entry rather than being silently rewritten to a hold or another View.
+ delete e.uses[id];
+ return {id,viewId:u.viewId||null,definitionId:u.definitionId||null};
+}
+// Duplicate a use as a new identity, optionally rehomed. A View duplicate shares the Camera View (Camera
+// is never cloned); a contribution duplicate gets its own definition copy, so editing one never mutates
+// the other. This is an explicit copy, never a fork of the whole Presentation.
+export function duplicateContribution(e,id,pid=undefined) {
+ const u=e.uses[id];if(!u)throw Error('Contribution removed');
+ const home=pid===undefined?u.presentationId:pid;
+ const nid=fresh(e,'contribution');
+ if(u.viewId){e.uses[nid]={...copy(u),id:nid,stopId:null,role:u.role==='entry'?'choice':u.role};
+  if(home&&e.presentations[home])e.presentations[home].uses.push(nid);}
+ else{
+  const did=fresh(e,'definition'),d=e.definitions[u.definitionId]?{...copy(e.definitions[u.definitionId]),id:did}:null;
+  if(d)e.definitions[did]=d;
+  e.uses[nid]={...copy(u),id:nid,presentationId:home,definitionId:did,primary:false,primaryFor:undefined};
+ }
+ return nid;
+}
+// Make this use's shared definition local: the use keeps its identity and values, but it now owns a copy
+// and later edits no longer reach other uses.
+export function makeDefinitionLocal(e,id) {
+ const u=e.uses[id];if(!u)throw Error('Contribution removed');
+ const d=e.definitions[u.definitionId];if(!d)throw Error('Definition missing');
+ const did=fresh(e,'definition');e.definitions[did]={...copy(d),id:did};
+ u.definitionId=did;return did;
+}
+// Link this use to an existing shared definition, so the same reusable truth drives both uses.
+export function linkDefinition(e,id,definitionId) {
+ const u=e.uses[id];if(!u)throw Error('Contribution removed');
+ if(!e.definitions[definitionId])throw Error('Target definition missing');
+ u.definitionId=definitionId;return definitionId;
+}
+// Rename the shared definition a use reads. Reach is whichever uses link to it.
+export function renameContribution(e,id,name) {
+ const u=e.uses[id];if(!u)throw Error('Contribution removed');
+ const d=e.definitions[u.definitionId];if(!d)throw Error('Definition missing');
+ d.name=String(name??'');return d.name;
+}
+// The value a declared capability's own domain can hold. A replacement keeps the authored value where the
+// new descriptor supports it and adapts it where it does not, so a repaired Activity is never left
+// carrying a value Preview can only report as unsupported. A range domain takes the nearest supported
+// number (its maximum for a formerly-on toggle); the boolean domains take the truth of the old value.
+export function compatibleValue(cap,value) {
+ if(!cap)return value;
+ if(cap.control==='range'){const min=cap.min??0,max=cap.max??1,n=Number(value);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):max;}
+ return !(value===false||value===0||value==null);
+}
+// Rebind a contribution to a compatible descriptor/target, preserving its identity, home, activation and
+// boundary. Trigger and target stay distinct: an offer's activation subject is never silently changed by
+// rebinding the subject it operates. A descriptor replacement validates the value it keeps, because the
+// definition a linked Activity reads must hold work this Stage can actually run.
+export function rebindContribution(e,id,patch,scene=null) {
+ const u=e.uses[id];if(!u)throw Error('Contribution removed');
+ const d=e.definitions[u.definitionId];if(!d)throw Error('Definition missing');
+ const replacing=patch.subjectId!==undefined||patch.capabilityId!==undefined;
+ if(patch.subjectId!==undefined)d.subjectId=patch.subjectId;
+ if(patch.capabilityId!==undefined)d.capabilityId=patch.capabilityId;
+ if(patch.value!==undefined)d.value=copy(patch.value);
+ if(patch.triggerSubjectId!==undefined)u.triggerSubjectId=patch.triggerSubjectId||null;
+ if(patch.availability!==undefined)u.availability=patch.availability||null;
+ if(replacing&&d.kind==='control'&&scene){const cap=capability(scene,d.subjectId,d.capabilityId);if(cap)d.value=compatibleValue(cap,d.value);}
+ return u;
+}
+// An authored choice names the Stop it continues to. Its destination is read as a real reference: a target
+// that left with its Presentation is reported as an unresolved destination rather than as a valid one.
+export function choiceTarget(e,choice) {
+ const s=choice&&e.stops[choice.targetId];
+ return s?{missing:false,id:s.id,name:s.name,at:e.guide.indexOf(s.id)}:{missing:true,id:choice?.targetId||null,name:null,at:-1};
+}
+// Point one authored choice at another existing Stop: the choice, its label and its kind are untouched.
+export function repointChoice(e,stopId,choiceId,targetId) {
+ const s=e.stops[stopId];if(!s)throw Error('Stop removed');
+ const c=s.choices.find(c=>c.id===choiceId);if(!c)throw Error('Choice removed');
+ if(!e.stops[targetId])throw Error('Choose an existing Stop as the destination');
+ c.targetId=targetId;return c;
+}
+// Remove exactly one authored choice. Nothing else on the Stop is touched.
+export function removeChoice(e,stopId,choiceId) {
+ const s=e.stops[stopId];if(!s)throw Error('Stop removed');
+ const at=s.choices.findIndex(c=>c.id===choiceId);if(at<0)throw Error('Choice removed');
+ return s.choices.splice(at,1)[0];
+}
+// Retained contributions whose organizational home no longer resolves: the Experience-level inventory the
+// plan requires, so a repair writer is reachable without opening (or resurrecting) the removed home.
+export function orphanContributions(e) {
+ return Object.values(e.uses).filter(u=>u.presentationId&&!e.presentations[u.presentationId])
+  .map(u=>({id:u.id,kind:u.kind,viewId:u.viewId||null,removedHome:u.presentationId,name:e.definitions[u.definitionId]?.name||u.name||u.id}));
+}
+// Definition reach by linked use, independent of organizational home. The primary-explanation binding is
+// included even after regrouping, because reach follows the definition, not the home.
+export function definitionReachByUse(e,definitionId) {
+ return Object.values(e.uses).filter(u=>u.definitionId===definitionId).map(u=>({id:u.id,name:u.name||e.definitions[definitionId]?.name||u.id,home:u.presentationId?e.presentations[u.presentationId]?.name||'Missing Presentation':'Experience scope'}));
+}
+
 export function addInvocationBeat(e,c,a,b,connectionId,stationId,useId,scene=null) {
  const u=e.uses[useId],refusal=invokableRefusal(e,scene,u);
  if(refusal)throw Error(refusal);

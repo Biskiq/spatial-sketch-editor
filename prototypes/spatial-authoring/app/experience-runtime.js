@@ -3,7 +3,7 @@
 import { copy, entryUse, resolveUse, stopEntry, resolveNext, getSeam, cueSeconds, narrationDuration, contributionIssues, activationScope, boundaryScope, supportedSignal, signalCanDriveVisitCondition, signalPosition, workDuration, narrationPassages, viewStep } from './experience-model.js';
 import { pathSeconds, evaluatePath, findConnection, liveConnectionPath, sameViewPose, stationProgress, viewPath } from './camera-evaluation.js';
 import { movementTiming } from './experience-coordination.js';
-import { capability, createSceneCapabilities } from './experience-capabilities.js';
+import { capability, createSceneCapabilities, isRealized } from './experience-capabilities.js';
 export const BREATHING=2;
 const eventKey=(visit,id,signal)=>`${visit}|${id}|${signal}`;
 export const signalEmitted=(r,ref)=>!!ref&&!!r.signals[eventKey(r.visit,ref.useId,ref.signal)];
@@ -75,6 +75,9 @@ function begin(r,e,c,scene,token,interaction=false){
  if(d.kind==='narration')a.duration=narrationDuration(d);
  if(d.kind==='control'){
   const cap=capability(scene,d.subjectId,d.capabilityId);if(!cap){a.status='unavailable';return false;}
+  // A capability this Stage does not realize is never run as if it had: the retained instruction stays an
+  // honest unavailable run, exactly as an unsupported value does.
+  if(!isRealized(cap)){a.status='unavailable';a.reason='Capability not realized by this Stage';return false;}
   if(cap.control==='range'&&(!Number.isFinite(d.value)||d.value<cap.min||d.value>cap.max)){a.status='unavailable';a.reason='Unsupported capability value';return false;}
   const prior=r.overrides[d.subjectId]?.[cap.channel];
   if(prior&&prior.owner!==token){if(cap.replace==='replace')stopRun(r,e,prior.owner,'Declared channel replacement');else{a.status='unavailable';a.reason='Channel occupied';return false;}}
@@ -290,6 +293,11 @@ function endParkedVisit(r,e,scene,b){
 }
 export function chooseRuntime(e,c,current,targetId,detour=false,scene=createSceneCapabilities()){
  const r=copy(current);
+ // A choice whose destination left with its Presentation is refused before anything the visitor already
+ // has is parked: a broken authored reference never costs them their parent visit, their narration or
+ // their current Stop.
+ const destination=e.stops[targetId];
+ if(!destination||!e.presentations[destination.presentationId]){r.refusal='Choice destination needs repair before it can be followed';return r;}
  if(detour){if(!parkParent(r,e)){r.refusal='Return from this detour before taking another';return r;}}
  // A go choice abandons the parked parent: the visitor chose to continue, not to come back, so the
  // parent's own visit is ended under its own identity before its bookmark is forgotten.

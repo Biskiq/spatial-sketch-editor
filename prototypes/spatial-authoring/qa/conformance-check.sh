@@ -36,7 +36,7 @@ click '#card [data-act="exp-create"]'
 fill '[data-exp-field="name"]' 'Why the drive matters'
 fill '[data-exp-primary]' 'A casing, a rotor, and a path for power.'
 conformance_ok 'the explanation field commits one authored narration through the real control' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,primary=Object.values(e.uses).filter(u=>u.primary);return primary.length===1&&primary[0].presentationId===pid&&e.definitions[primary[0].definitionId].kind==="narration"&&e.definitions[primary[0].definitionId].text==="A casing, a rotor, and a path for power.";})()')" true
-conformance_ok 'quickstart observes the real Presentation it was asked for, not a button press' "$(qa_js '(()=>{const s=document.querySelector("[data-example-step]").textContent,o=document.querySelector("[data-example-observed]").textContent;return s.includes("1/4")&&o.includes("Why the drive matters");})()')" true
+conformance_ok 'quickstart observes the real Presentation it was asked for, not a button press' "$(qa_js '(()=>{const s=document.querySelector("[data-example-step]").textContent,o=document.querySelector("[data-example-observed]").textContent;return s.includes("1/18")&&o.includes("Why the drive matters");})()')" true
 # C9.1 ordinary loop: the subject-local audition is session state; Use captures one honest Activity.
 click '#card .exp-focus [data-operate="machine"]'
 conformance_ok 'the Presentation Card reaches the subject it presents' "$(qa_js '__me.S.sel')" '"machine"'
@@ -323,9 +323,10 @@ click '#card .exp-view [data-act="pres-ref"]'
 click '#card [data-act="exp-precise"]'
 click '[data-act="exp-posture"][data-posture="through"]'
 conformance_ok 'QA-6 Through has a framing gate, real grips and exactly one local tape; no Guide Deck' "$(qa_js "(!!document.querySelector('[data-frame-gate]')&&document.querySelectorAll('[data-exp-camera]').length===1&&document.querySelectorAll('[data-active-tape] input').length===1&&!document.querySelector('#experienceDeck')&&[...document.querySelectorAll('[data-exp-camera],[data-active-tape]')].every($visible))")" true
-click '.camera-grips [data-grip="el"]'
+# C9.8: the six-property cluster is gone; a supported grip is selected directly on the drawing.
+click '[data-grip="el"]'
 conformance_ok 'switching the active grip removes the previous active input/gesture binding' "$(qa_js '(document.querySelectorAll("[data-exp-camera]").length===1&&document.querySelectorAll("[data-exp-precision]").length===1&&document.querySelector("[data-exp-camera]").dataset.grip==="el")')" true
-click '.camera-grips [data-grip="frameH"]'
+click '[data-grip="frameH"]'
 count="$(undo)";qa_drag '[data-exp-camera]' 0 20
 conformance_ok 'framing gesture accepts one Camera transaction' "$(undo)" "$((count+1))"
 count="$(undo)";fill '[data-exp-precision]' '4.0'

@@ -4,7 +4,7 @@ import { S, ctx } from './state.js';
 export function buildCapabilitySubjects() {
  const stage=ctx.stage;if(!stage||!ctx.sceneSource)return;
  for(const s of Object.values(ctx.sceneSource.subjects)) {
-  if(s.profile==='environment'||stage.items.has(s.id))continue;
+  if(s.profile==='environment'||s.profile==='representation'||stage.items.has(s.id))continue;
   const group=new THREE.Group(),color={machine:0x78917c,piano:0x333b39,light:0xd6aa5e,switch:0xa86046,mesh:0x8a93a0}[s.profile];
   const material=new THREE.MeshStandardMaterial({color,roughness:.8});
   const box=new THREE.Mesh(new THREE.BoxGeometry(s.profile==='piano'?2:1.2,s.profile==='switch'?.5:1.4,.8),material);box.position.y=.7;box.userData={id:s.id,kind:'object'};group.add(box);
@@ -39,4 +39,33 @@ export function realizeCapabilities() {
    if(s.profile==='light')mat.emissiveIntensity=Number(value('intensity')||0)/4;}
  }
  const atmosphere=scene.subjects.atmosphere;if(atmosphere&&ctx.stage.ambient)ctx.stage.ambient.intensity=runtime?.overrides.atmosphere?.ambient?.value??atmosphere.properties.ambient;
+ realizeRepresentation(scene,runtime);
+}
+// A Layout representation invocation is projected through the same declared Scene channel as any other
+// capability, but it drives the authored Wall's own evaluator instead of a capability mesh: the visitor
+// runtime's transient value sets the display unroll (`stage.d(wall).u`) and refreshes the wall through
+// the existing `wallSampler` path. Nothing is copied into Scene source, no authoring session/history is
+// touched, and the author's own reading is restored on exit by the caller's snapshot.
+function realizeRepresentation(scene,runtime){
+ if(!runtime||!ctx.stage?.d)return;
+ for(const s of Object.values(scene?.subjects||{})){
+  if(s.profile!=='representation'||!s.wallId||!ctx.stage.items.has(s.wallId))continue;
+  const held=runtime.overrides?.[s.id]?.unfolded?.value;
+  const raw=held===undefined?s.properties.unfolded:held;
+  const u=raw===true?1:raw===false||raw==null?0:Math.max(0,Math.min(1,Number(raw)||0));
+  const ds=ctx.stage.d(s.wallId);if(!ds)continue;
+  if(Math.abs((ds.u||0)-u)>1e-4){ds.u=u;ctx.stage.refreshWall(s.wallId);ctx.stage.restyle();}
+ }
+}
+// The author's own representation reading, snapshotted before Preview and restored after it, so a visit
+// can never leave the Layout displayed in the visitor's transient state.
+export function captureRepresentation(){
+ const out=[];if(!ctx.stage)return out;
+ for(const s of Object.values(ctx.sceneSource?.subjects||{}))if(s.profile==='representation'&&s.wallId)out.push({wall:s.wallId,u:ctx.stage.d(s.wallId)?.u||0});
+ return out;
+}
+export function restoreRepresentation(snapshot){
+ if(!snapshot?.length||!ctx.stage?.d)return;
+ for(const {wall,u} of snapshot){const ds=ctx.stage.d(wall);if(ds&&Math.abs((ds.u||0)-u)>1e-4){ds.u=u;ctx.stage.refreshWall(wall);}}
+ ctx.stage.restyle();
 }

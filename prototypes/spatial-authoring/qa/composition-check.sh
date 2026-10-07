@@ -84,8 +84,11 @@ click "#index [data-act=exp-open][data-id='$pid']"
 click '#card > details:last-of-type > summary'
 click '#card [data-act=exp-view-order]'
 source_camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
+# The Guide order is captured rather than assumed: the example fixture may legitimately grow, and the
+# invariant is that a suggestion reorder touches neither entry, Stop order nor Camera connectivity.
+qa_js 'window.__guideBefore=JSON.stringify(__me.ctx.experience.guide)' >/dev/null
 click '#card [data-act=exp-view-order-move][data-id=use-2][data-delta="1"]'
-qa_ok 'suggestion reorder leaves entry, Stop order and Camera connectivity unchanged' "$(qa_js '(__me.ctx.experience.uses["use-2"].role==="entry"&&__me.ctx.experience.guide.length===2)') / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "true / $source_camera"
+qa_ok 'suggestion reorder leaves entry, Stop order and Camera connectivity unchanged' "$(qa_js '(__me.ctx.experience.uses["use-2"].role==="entry"&&JSON.stringify(__me.ctx.experience.guide)===window.__guideBefore)') / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "true / $source_camera"
 click '#headPreview'
 qa_ok 'visitor offers entry and all three Views, explicit suggestion steps, coherent transcript and captions' "$(qa_js '(document.querySelectorAll("[data-command=look]").length===3&&document.querySelector("[data-command=next-view]")&&document.querySelector(".visitor-transcript").textContent.includes("Follow the output")&&document.querySelector(".visitor-caption").textContent.includes("The casing"))')" true
 checkpoint offers

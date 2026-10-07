@@ -120,18 +120,21 @@ print(json.dumps(v))' 2>/dev/null
 # behaviour failure.
 qa_js() {
   local out="" i probe
+  # A caller runs under `set -e`, so an eval that came back without output must not take the
+  # script down with it: the retries below are the harness's, and an eval that never answers is
+  # reported as an empty observation, which fails the assertion that asked for it.
   for i in 1 2 3; do
-    out="$(qa_js_once "$1")"
+    out="$(qa_js_once "$1" || true)"
     [ -n "$out" ] && break
     sleep 0.4
   done
   if [ -z "$out" ]; then
     for _ in $(seq 1 30); do
-      probe="$(agent-browser eval '1+1' 2>/dev/null | tail -1)"
-      [ "$probe" = "2" ] && break
+      probe="$(agent-browser eval '1+1' 2>/dev/null | tail -1 || true)"
+      if [ "$probe" = "2" ]; then break; fi
       sleep 1
     done
-    out="$(qa_js_once "$1")"
+    out="$(qa_js_once "$1" || true)"
   fi
   printf '%s' "$out"
 }

@@ -1,6 +1,6 @@
 import { conformanceFixture } from './conformance-fixture.js';
-import { createSceneCapabilities, capability, capabilities, setSceneValue } from './experience-capabilities.js';
-import { buildCapabilitySubjects, realizeCapabilities } from './experience-scene.js';
+import { createSceneCapabilities, capability, capabilities, setSceneValue, replaceProfile, isRealized } from './experience-capabilities.js';
+import { buildCapabilitySubjects, realizeCapabilities, captureRepresentation, restoreRepresentation } from './experience-scene.js';
 import * as nav from './navigation.js';
 import * as T from './tasks.js';
 import { cancelProposal, onCancel } from './cancel.js';
@@ -8,7 +8,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -18,13 +18,35 @@ export const resolveExperience = (id) => subject(ctx.experience, ctx.cameraSourc
 export function command(label, edit) {
   if (S.visitor) return false;
   A.beginEdit();
-  try { const result = edit(ctx.experience, ctx.cameraSource); A.commitEdit(label); ctx.ui(); return result; }
+  try { const result = edit(ctx.experience, ctx.cameraSource); A.commitEdit(label); S.expReview.writes++; ctx.ui(); return result; }
   catch (error) { A.cancelEdit(); throw error; }
+}
+// The review aid reads what the product actually reported. `review` merges one named outcome; a loader
+// names the document's provenance and restarts the authored count, so content that arrived from a loader
+// can never be credited as authorship, and an outcome observed on one document is never carried into
+// another.
+export function review(patch) { S.expReview = { ...S.expReview, ...patch }; return S.expReview; }
+// What this session authored is recorded by outcome, never as one global count: a quickstart topic reads the
+// outcomes its own instruction produces, so an unrelated edit — renaming a loaded Presentation, say — can
+// never qualify a predicate that the loader made true.
+export function reviewAuthored(outcome) { const authored={...(S.expReview.authored||{})}; authored[outcome]=(authored[outcome]||0)+1; return review({authored}); }
+export const authoredHere = (outcome) => (S.expReview.authored?.[outcome]||0) > 0;
+export function reviewSource(source) { return review({ source, writes: 0, authored: {}, auditions: 0, previews: 0, peeks: 0, visit: null, visitor: null, scope: null, loss: null, coordination: null }); }
+// The ledger a visit opens with. A Guide visit that begins inside its first Stop has already visited it,
+// so entry seeds the ledger with where the visit actually is; nothing else is assumed before a command.
+const emptyVisitorLedger=()=>({stops:[],traversed:null,explored:false,rejoined:false,viewStep:0,activated:[],detoured:false,returned:false,opened:[]});
+// What a private visit reported, read from the visitor's own session: the authored work that ran, the
+// framing that arrived and the stop it happened on. Never a counter of the authoring side.
+function visitOutcome(v) {
+  const e = v.source.experience, r = v.runtime, kind = (id) => e.definitions[e.uses[id]?.definitionId]?.kind || null;
+  const ran = Object.values(r.activities);
+  return { stop: r.stopId, stops: r.history.length, framing: !!r.arrivedViewUseId, exploring: r.exploring, caption: r.captions && !!R.narrationCaption(e, r), narration: ran.filter((a) => kind(a.useId) === 'narration').length, controls: ran.filter((a) => kind(a.useId) === 'control').length, completed: ran.filter((a) => a.status === 'complete').length, invoked: ran.filter((a) => e.uses[a.useId]?.start?.kind === 'station').length };
 }
 export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
   const label = f.kind === 'subjects' && f.ids.length === 1 ? thing(f.ids[0])?.item?.name : null;
   const id = command('Create Presentation', e => addPresentation(e, f, label || 'Untitled Presentation'));
+  if (id) reviewAuthored('presentation');
   // A fresh subject-focused moment suggests Camera framing immediately: derived intent, never an
   // authored View, and Capture is what accepts it.
   const derived = nav.deriveFraming(ctx.experience.presentations[id]);
@@ -53,7 +75,9 @@ export const updateUse=(id,key,value)=>sourceProposal('Edit shared View '+key,'u
 export function handleExperienceAction(el) {
   const action = el?.dataset?.act;
   if (!action?.startsWith('exp-')) return false;
-  if(S.visitor&&!['exp-visitor','exp-exit-preview'].includes(action))return true;
+  // A private visit is read-only for authoring, but the review aid's own navigation is not authoring:
+  // Back, Next and Skip move its cursor and never the documents, so they stay usable during Preview.
+  if(S.visitor&&!['exp-visitor','exp-exit-preview','exp-presenter','exp-presenter-skip'].includes(action))return true;
   if (action === 'exp-create') present();
   if (action === 'exp-open') openPresentation(el.dataset.id);
   if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
@@ -76,12 +100,22 @@ export function handleExperienceAction(el) {
   if(action==='exp-hints'&&autoView()){S.experienceContext.depth='hints';ctx.ui();}
   if (action === 'exp-hint') {const v=ctx.cameraSource.views[S.task?.target?.id];if(v)proposeFraming(el.dataset.key,Number(el.dataset.value));}
   if (action === 'exp-precise') preciseView(el.dataset.id);
+  if (action === 'exp-precise-property') {if(!preciseProperty(el.dataset.id,el.dataset.grip))A.setStatus('That property needs a resolving Camera View','refuse');}
   if (action === 'exp-posture') posture(el.dataset.posture);
   if (action === 'exp-grip') {if(S.task?.kind==='experience-camera')S.task.params.grip=el.dataset.grip;ctx.ui();}
   if (action === 'exp-scope-shared') acceptFraming('shared');
   if (action === 'exp-scope-local') acceptFraming('local');
-  if (action === 'exp-scope-cancel') {S.expAsk=null;ctx.ui();}
-  if(action==='exp-station-focus'){if(S.task)S.task.params.station=el.dataset.id;ctx.ui();}
+  // A declined proposal is a cancellation like any other: the one pipeline restores the typed draft, so
+  // a tape can never keep displaying a value the source does not hold once its Ask is gone.
+  // Cancellation is its own observation: accepting a later edit must never erase the fact that a shared
+  // proposal was cancelled, so the scope record is merged rather than replaced.
+  if (action === 'exp-scope-cancel') { review({scope:{...(S.expReview.scope||{}),cancelled:true}}); cancelProposal('scope-cancel'); }
+  if (action === 'exp-rebind-shared') acceptRebind('shared');
+  if (action === 'exp-rebind-local') acceptRebind('local');
+  if (action === 'exp-rebind-cancel') {S.expRebindAsk=null;cancelProposal('rebind-cancel');}
+  // Focusing a station or one of its events records that the author addressed coordination here, and an
+  // event-shaped focus also carries the beat identity so the Card and the Stage read that exact event.
+  if(action==='exp-station-focus'){if(S.task){S.task.params.station=el.dataset.id;if(el.dataset.beat)S.task.params.beat=el.dataset.beat;else delete S.task.params.beat;review({coordination:{...(S.expReview.coordination||{}),stationSelected:true}});}ctx.ui();}
   if(action==='exp-route-choice'){if(S.task){S.task.params.connection=el.dataset.id;S.task.params.station='departure';}coordinate();}
   if (action === 'exp-coordinate') coordinate();
   if (action === 'exp-mark-station') command('Name Camera station',(e,c)=>{const r=c.connections[S.task.params.connection];r.markers.push({id:fresh(c,'marker'),name:'Mid-route station',progress:.5});});
@@ -93,7 +127,7 @@ export function handleExperienceAction(el) {
   if (action === 'exp-narration') addNarration();
   if (action === 'exp-offer') beginOffer(el.dataset.kind||'behavior',el.dataset.id||null);
   if (action === 'exp-offer-accept') acceptOffer();
-  if (action === 'exp-offer-cancel') {S.expOfferDraft=null;ctx.ui();}
+  if (action === 'exp-offer-cancel') cancelProposal('offer-cancel');
   if (action === 'exp-audition') auditionCapability(el.dataset.id,el.dataset.cap,el.dataset.value==='true');
   if (action === 'exp-audition-clear') clearAudition(el.dataset.id);
   if (action === 'exp-use') useCapability(el.dataset.id,el.dataset.cap);
@@ -106,11 +140,20 @@ export function handleExperienceAction(el) {
   if (action === 'exp-passage') addMarker(el.dataset.id,el.dataset.label,Number(el.dataset.time));
   if (action === 'exp-visitor') visitorCommand(el.dataset.command,el.dataset.id);
   if (action === 'exp-remove-stop') command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==el.dataset.id);delete e.stops[el.dataset.id];});
-  if (action === 'exp-remove-contribution') command('Remove contribution',e=>delete e.uses[el.dataset.id]);
+  if (action === 'exp-remove-contribution') removeContributionCommand(el.dataset.id);
+  // ----- C9.6 revision and repair (J8) -----
+  if (action === 'exp-remove-presentation') removePresentationCommand(el.dataset.id);
+  if (action === 'exp-duplicate-contribution') duplicateContributionCommand(el.dataset.id);
+  if (action === 'exp-make-local') makeLocalCommand(el.dataset.id);
+  if (action === 'exp-choice-remove') choiceRemoveCommand(el.dataset.id,el.dataset.choice);
+  if (action === 'exp-select-orphan') { A.select(el.dataset.id); ctx.ui(); }
   if (action === 'exp-reset') resetExperience();
   if (action === 'exp-conformance') loadConformance();
   if (action === 'exp-example') loadExample();
-  if (action === 'exp-presenter') presenterStep(Number(el.dataset.delta));
+  // Next is earned: it advances only when the current topic's own outcome holds. Skip stays the
+  // deliberate way to move on without claiming the topic was observed.
+  if (action === 'exp-presenter') {const d=Number(el.dataset.delta);if(d>0){if(!presenterNext())A.setStatus('Complete this topic, or Skip it','refuse');}else presenterStep(d);}
+  if (action === 'exp-presenter-skip') presenterSkip();
   if (action === 'exp-resume') resumeExperience();
   if (action === 'exp-dismiss-parked') {S.parkedByLens.experience=null;ctx.ui();}
   if (action === 'exp-capture') captureView();
@@ -118,10 +161,9 @@ export function handleExperienceAction(el) {
   if (action === 'exp-role') changeRole(el.dataset.id,el.dataset.role);
   if(action==='exp-derived-hint')derivedHint(el.dataset.hint);
   if(action==='exp-bring')bringIntoView();
-  if(action==='exp-source-accept')acceptSource();
-  if(action==='exp-source-cancel'){S.expSourceAsk=null;ctx.ui();}
+  if(action==='exp-source-accept')acceptSource();  if (action === 'exp-source-cancel') cancelProposal('source-cancel');
   if(action==='exp-camera-return'){nav.putBack();if(S.task)S.task.params.posture=nav.readingFor(cameraSnapshot().views[S.task.target.id]);ctx.ui();}
-  if(action==='exp-route-cancel'){S.expRouteAsk=null;ctx.ui();}
+  if(action==='exp-route-cancel')cancelProposal('route-cancel');
   if (action === 'exp-preview') preview(el.dataset.id || undefined);
   if (action === 'exp-exit-preview') exitPreview();
   if (action === 'exp-region') { cancelProposal('invoke'); T.begin({kind:'experience-region',subject:S.sel,params:{first:null}}); A.setStatus('Choose two corners on the Stage to present a region'); }
@@ -154,7 +196,7 @@ export function preview(pid=S.experienceContext.presentation,guide=false,experie
  const wide=Object.values(ctx.experience.uses).some(u=>u.kind==='interaction'&&!u.availability);
  if(S.visitor || (!guide&&!experience&&!ctx.experience.presentations[pid]) || (guide&&!ctx.experience.guide.length) || (experience&&!wide)) return false;
  cancelProposal('preview');
- const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse}};
+ const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse},representation:captureRepresentation()};
  // Suspend authoring without writing source or passing through lens parking. Auditions are cleared
  // before entry: the visit sees authored source, never an authoring projection.
  T.park();
@@ -162,8 +204,12 @@ export function preview(pid=S.experienceContext.presentation,guide=false,experie
  S.expAudition=null;
  S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;
  S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),guide||experience?null:pid,nav.plainPose(),ctx.sceneSource)};
- S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;
- if(guide)S.visitor.runtime=R.startGuide(S.visitor.source.experience,S.visitor.source.camera,S.visitor.runtime,S.visitor.source.scene);
+ S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;  if(guide)S.visitor.runtime=R.startGuide(S.visitor.source.experience,S.visitor.source.camera,S.visitor.runtime,S.visitor.source.scene);
+  // A visit starts with a clean ledger: what the previous visit did is evidence about another document. A
+  // Guide visit that enters its first Stop has already visited it, so the ledger opens with that Stop
+  // instead of recording only the destinations a later command reaches.
+  const entered=S.visitor.runtime.stopId;
+  review({visit:null,visitor:entered?{...emptyVisitorLedger(),stops:[entered]}:null});
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
 export async function exitPreview() {
@@ -171,8 +217,11 @@ export async function exitPreview() {
  S.visitor=null;S.visitorDrag=null;S.visitorPress=null;S.visitorChoice=null;const t=v.returnToken;
  S.lens=t.lens;S.sel=t.sel;S.experienceContext=t.context;S.expand=t.expand;S.sheet=t.sheet;S.browse=t.browse;
  await A.restoreInspection(t.inspection);nav.restoreCapture(t.origin);
+ // A transient Layout representation invoked during the visit is not authored state: the author's own
+ // reading is put back, exactly as the Lens/Presentation/Camera contexts are.
+ restoreRepresentation(t.representation);
  if(S.task?.kind==='experience-hints'){const p=ctx.experience.presentations[S.task.target.id];S.derivedView=p?{presentation:p.id,...nav.deriveFraming(p,S.task.params.hints)}:null;}
- S.expReview.previews=(S.expReview?.previews||0)+1;
+ review({visit:visitOutcome(v),previews:(S.expReview.previews||0)+1,visitor:S.expReview.visitor});
  ctx.ui();return true;
 }
 let runtimeAt=0;
@@ -195,6 +244,9 @@ export function previewGuide(){return preview(null,true);}
 export function previewExperience(){return preview(null,false,true);}
 export function selectStop(id){
  const stop=ctx.experience.stops[id];if(!stop)return false;
+ // Selecting a Stop is the Peek the quickstart asks for: awareness of the occurrence, recorded where it
+ // actually happens rather than only when the occurrence's own work is expanded.
+ review({peeks:(S.expReview.peeks||0)+1});
  cancelProposal('selection');A.select(id);
  const x=S.experienceContext;
  // Selecting a Stop ends any writer or procedure that belonged to the previous context: an old route
@@ -209,9 +261,11 @@ export function selectStop(id){
 }
 export function suggestViews(pid,clear=false){return command(clear?'Free View choice':'Suggest a View order',e=>{const p=e.presentations[pid];if(!p)throw Error('Presentation removed');if(clear)delete p.viewOrder;else p.viewOrder=eligibleViews(e,pid);});}
 export function moveSuggestedView(uid,delta){return command('Reorder suggested Views',e=>{const p=e.presentations[e.uses[uid]?.presentationId],ids=p?.viewOrder;if(!ids)return;const at=ids.indexOf(uid),to=at+delta;if(at>=0&&to>=0&&to<ids.length)[ids[at],ids[to]]=[ids[to],ids[at]];});}
-export function addToGuide(pid=S.experienceContext.presentation) {return command('Add Presentation to Guide',e=>addStop(e,pid));}
+export function addToGuide(pid=S.experienceContext.presentation) {const id=command('Add Presentation to Guide',e=>addStop(e,pid));if(id)reviewAuthored('guide');return id;}
 export function guideOverview() {cancelProposal('invoke');S.experienceContext.depth='overview';S.experienceContext.stop=null;T.begin({kind:'experience-overview',subject:S.sel,params:{}});ctx.ui();}
 export function expandStop(id) {
+  // A Peek is awareness, not work: the review aid records that it happened, never that it wrote anything.
+  review({ peeks: (S.expReview.peeks || 0) + 1 });
  const stop=ctx.experience.stops[id];if(!stop)return false;
  cancelProposal('invoke');A.select(id);S.experienceContext={...S.experienceContext,depth:'occurrence',stop:id,presentation:stop.presentationId,seam:null};
  T.begin({kind:'experience-occurrence',subject:id,target:{id},params:{stop:id}});ctx.ui();return true;
@@ -268,9 +322,9 @@ export async function editRoute(id) {
  const epoch=nav.travelEpoch();
  nav.beginReturn('Return to Seam reading');
  S.experienceContext.depth='route';S.task.params.connection=id;
- await bringIntoView();if(epoch!==nav.travelEpoch())return false;ctx.ui();return true;
+ await bringIntoView();if(epoch!==nav.travelEpoch())return false;review({routeWrite:{...S.expReview.routeWrite,edited:true}});ctx.ui();return true;
 }
-export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';ctx.ui();}
+export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';review({routeWrite:{...S.expReview.routeWrite,returned:true}});ctx.ui();}
 function routeProposal(id,patch,label){
  const route=ctx.cameraSource.connections[id];if(!route)return false;
  // A proposal is only ever made by the writer the context currently holds: a stale route selection
@@ -303,6 +357,16 @@ export function preciseView(uid) {
  nav.beginReturn('Before precise Camera');
  T.begin({kind:'experience-camera',subject:uid,target:{id:resolved.view.id},params:{useId:uid,posture:'outside',grip:'frameH'}});ctx.ui();return true;
 }
+// A Camera Card property is deliberate depth, not a second manipulation system: it opens the same
+// Precision task on the same View and selects the grip the author asked for. The Stage's own grip chips
+// stay the direct path, and the value is still written once, on its one tape.
+export function preciseProperty(uid,grip){ if(!(grip in gripLabels))return false;
+ const resolved=resolveUse(ctx.experience,ctx.cameraSource,uid);
+ const same=S.task?.kind==='experience-camera'&&S.task.params.useId===uid&&!!resolved&&S.task.target?.id===resolved.view.id;
+ // Switching the addressed property within the same View is not a new entry: the return position taken
+ // when Precision began is kept, so Put it back returns where the author actually started.
+ if(same){S.task.params.grip=grip;ctx.ui();return true;}
+ if(!preciseView(uid))return false; S.task.params.grip=grip;ctx.ui();return true; }
 export async function posture(which){
  if(S.task?.kind!=='experience-camera')return false;const v=cameraSnapshot().views[S.task.target.id];if(!v)return false;
  cancelProposal('posture');
@@ -328,13 +392,17 @@ export function proposePatch(patch) {
 export function acceptFraming(scope) {
  const ask=S.expAsk;if(!ask)return false;
  const reach=viewReach(ctx.experience,ask.viewId);if(JSON.stringify(reach)!==JSON.stringify(ask.reach)){ask.reach=reach;ctx.ui();return false;}
- const result=command(scope==='shared'?'Update shared Camera framing':'Detach and retarget local Camera framing',(e,c)=>{
+ const label=scope==='shared'?'Update shared Camera framing':'Detach and retarget local Camera framing';
+ const result=command(label,(e,c)=>{
   const resolved=resolveUse(e,c,ask.useId);if(!resolved||resolved.view.id!==ask.viewId)throw Error('Framing removed or rebound');
   let vid=ask.viewId,uid=ask.useId;
   if(scope==='local'){uid=detachUse(e,c,uid,ask.stopId);vid=e.uses[uid].viewId;}
   editView(c,vid,ask.patch);return {uid,vid};
  });
  S.expAsk=null;
+ // Cancellation, acceptance and Undo are separate observations: the accepted edit records its own
+ // history label so its Undo is observed later, and the earlier cancellation is never overwritten.
+ review({scope:{...(S.expReview.scope||{}),kind:scope,accepted:true,viewId:ask.viewId,stops:reach.stops.length,uses:reach.uses.length,label}});
  if(S.task?.kind==='experience-camera'){S.task.target.id=result.vid;S.task.params.useId=result.uid;if(S.sel===ask.useId&&result.uid!==ask.useId){S.sel=result.uid;S.task.subject=result.uid;}if(S.task.params.posture==='through')nav.lookThrough(cameraSnapshot().views[result.vid].pose);}
  ctx.ui();return result;
 }
@@ -396,10 +464,14 @@ export function updateViewSpeed(uid,speed){if(!['cut','slow','auto','fast'].incl
   const subject=subjectId&&ctx.sceneSource.subjects[subjectId]?subjectId:p?.focus.kind==='subjects'&&ctx.sceneSource.subjects[p.focus.ids[0]]?p.focus.ids[0]:'machine';
   // I4: availability is independent of organization — the offer is homed in the Presentation being
   // edited, but it is available Experience-wide until the author says otherwise.
-  S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject)[0]?.id,value:true,availability:null};ctx.ui();
+  // The draft opens on a capability this Stage actually realizes, so the offer never starts on declared
+  // work the visitor could not run.
+  S.expOfferDraft={kind,subjectId:subject,trigger:subject,capabilityId:capabilities(ctx.sceneSource,subject).find(isRealized)?.id,value:true,availability:null};ctx.ui();
 }
 export function acceptOffer() {
- const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);if(!cap)return false;
+ const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);
+ if(!cap){A.setStatus('Choose a capability this subject declares','refuse');ctx.ui();return false;}
+ if(!isRealized(cap)){A.setStatus(`${cap.label} · declared by the provider but not realized by this Stage`,'refuse');ctx.ui();return false;}
  const value=cap.control==='range'?Number(draft.value):draft.value===true||draft.value==='true';
  if(cap.control==='range'&&(!Number.isFinite(value)||value<cap.min||value>cap.max)){A.setStatus(`Use a value between ${cap.min} and ${cap.max}`,'refuse');return false;}
  // The authored availability is written inside the same aggregate edit as the offer itself, so the
@@ -407,7 +479,7 @@ export function acceptOffer() {
  const id=command('Add '+draft.kind,e=>{const uid=addContribution(e,S.experienceContext.presentation,{kind:'control',name:cap.label,subjectId:draft.subjectId,capabilityId:cap.id,value},draft.kind,draft.trigger);const u=e.uses[uid];if(u&&draft.kind==='interaction')u.availability=draft.availability||null;return uid;});
  S.expOfferDraft=null;ctx.ui();return id;
 }
-export function changeOfferField(key,value){if(!S.expOfferDraft)return;if(key==='availability'){S.expOfferDraft.availability=value||null;ctx.ui();return;}S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value)[0];S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
+export function changeOfferField(key,value){if(!S.expOfferDraft)return;if(key==='availability'){S.expOfferDraft.availability=value||null;ctx.ui();return;}S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value).find(isRealized);S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
 
 // ----- subject-local capability auditions and capture ---------------------
 
@@ -420,31 +492,41 @@ export function auditionedValue(sid,cap){
 export function auditionCapability(sid,cid,value,quiet=false){
   const scene=ctx.sceneSource,cap=capability(scene,sid,cid),s=scene.subjects[sid];
   if(!cap||!s)return false;
+  // A capability the provider declares but this Stage does not realize is reported as unrealized rather
+  // than projected as if operating it had changed anything.
+  if(cap.realized===false){A.setStatus(`${cap.label} · declared by the provider but not realized by this Stage`,'refuse');ctx.ui();return false;}
   const v=cap.control==='range'?Number(value):(value===true||value==='true');
   if(cap.control==='range'&&(!Number.isFinite(v)||v<cap.min||v>cap.max)){A.setStatus(`Use a value between ${cap.min} and ${cap.max}`,'refuse');ctx.ui();return false;}
   (S.expAudition??={})[sid]??={};S.expAudition[sid][cap.channel]=v;
-  if(!quiet){S.expReview.auditions=(S.expReview?.auditions||0)+1;A.setStatus(`${cap.label} · audition only — source and history untouched`,'view');ctx.ui();}
+  if(!quiet){review({auditions:(S.expReview.auditions||0)+1});A.setStatus(`${cap.label} · audition only — source and history untouched`,'view');ctx.ui();}
   return true;
 }
 export function clearAudition(sid){if(!S.expAudition||!(sid in S.expAudition))return false;delete S.expAudition[sid];ctx.ui();return true;}
-export function explainPresentation(pid,text){return command('Edit explanation',e=>setPrimaryExplanation(e,pid,text));}
+// The explanation is the outcome Q2 names: its own accepted text is what the aid records as authored here,
+// so a cleared field or a merely re-committed value never counts as writing one.
+export function explainPresentation(pid,text){const result=command('Edit explanation',e=>setPrimaryExplanation(e,pid,text));if(result&&String(text??'').trim())reviewAuthored('explanation');return result;}
 // Use in Experience: one uniquely matching captured use is updated in place; no match captures a new
 // Activity; several matches require a choice and never mutate the first enumerated one. Ambiguity is
 // decided before any command, so a refused choice never leaves an empty history step behind.
 export function useCapability(sid,cid,scope='presentation'){
   const cap=capability(ctx.sceneSource,sid,cid);if(!cap)return false;
+  // A capability this Stage does not realize is never captured as Activity either: the same eligibility the
+  // audition reports governs the descriptor a visitor would later run.
+  if(!isRealized(cap)){A.setStatus(`${cap.label} · declared by the provider but not realized by this Stage`,'refuse');ctx.ui();return false;}
   const pid=scope==='experience'?null:S.experienceContext.presentation;
   if(scope!=='experience'&&!pid){A.setStatus('Open a Presentation first, or capture explicitly at Experience scope','refuse');ctx.ui();return false;}
   const value=auditionedValue(sid,cap);
   const matches=captureUses(ctx.experience,pid,sid,cid);
   if(matches.length>1){S.expCaptureAsk={sid,cid,pid,value,matches:matches.map(u=>u.id)};ctx.ui();return false;}
   const result=command(`${cap.label} · ${scope==='experience'?'use at Experience scope':'use in this Presentation'}`,e=>captureCapability(e,pid,sid,cid,value,cap.label));
+  if(result)reviewAuthored('capture');
   S.expCaptureAsk=null;ctx.ui();return result;
 }
 export function chooseCaptureUse(uid){
   const ask=S.expCaptureAsk;if(!ask||!ask.matches.includes(uid))return false;
   const cap=capability(ctx.sceneSource,ask.sid,ask.cid);
   const result=command('Update captured '+((cap?.label)||'capability'),e=>{const u=e.uses[uid];if(!u||!ask.matches.includes(uid))throw Error('Captured use changed');const d=e.definitions[u.definitionId];if(!d)throw Error('Captured definition missing');d.value=ask.value;return{id:uid,updated:true};});
+  if(result)reviewAuthored('capture');
   S.expCaptureAsk=null;ctx.ui();return result;
 }
 export function captureAnother(){
@@ -453,9 +535,111 @@ export function captureAnother(){
  // Choosing "another" must never be refused by the ambiguity it is escaping: this is an explicit
  // create, distinct from the update-a-match path every other capture decision takes.
  const result=command('Capture another '+((cap?.label)||'use'),e=>captureNew(e,ask.pid,ask.sid,ask.cid,ask.value,cap?.label||ask.cid));
+ if(result)reviewAuthored('capture');
  S.expCaptureAsk=null;ctx.ui();return result;
 }
 export function cancelCaptureAsk(){if(!S.expCaptureAsk)return false;S.expCaptureAsk=null;ctx.ui();return true;}
+
+// ----- C9.6 revision and repair commands (J8) -----------------------------
+// Rename is a direct identity-preserving edit: a Presentation's name affects no Stop, View use, cue or
+// activation, so it accepts once rather than routing through the shared-effect Ask.
+export function renamePresentationById(id,name){if(!ctx.experience.presentations[id])return false;return command('Rename Presentation',e=>renamePresentation(e,id,name));}
+// Remove a Presentation and its own Guide occurrences as one Undo. Retained contributions, View uses,
+// shared definitions and Camera Views survive as explicit, repairable references.
+export function removePresentationCommand(pid){if(!ctx.experience.presentations[pid])return false;const stops=Object.values(ctx.experience.stops).filter(s=>s.presentationId===pid).length;const result=command('Remove Presentation',e=>removePresentation(e,pid));settleExperienceSelection();if(stops)A.setStatus(`Presentation removed · ${stops} Stop${stops===1?'':'s'} left the Guide · retained references need local repair`,'edit');ctx.ui();return result;}
+export function removeContributionCommand(id){const u=ctx.experience.uses[id];if(!u)return false;const home=u.presentationId;const result=command('Remove contribution',ed=>removeContribution(ed,id));if(S.sel===id)A.select(home&&ctx.experience.presentations[home]?home:null);ctx.ui();return result;}
+// Duplicate as an explicit new identity; a View duplicate shares the Camera View, a contribution duplicate
+// gets its own definition, so editing one copy never mutates the other.
+export function duplicateContributionCommand(id){if(!ctx.experience.uses[id])return false;const nid=command('Duplicate contribution',ed=>duplicateContribution(ed,id));if(nid)A.select(nid);ctx.ui();return nid;}
+export function makeLocalCommand(id){if(!ctx.experience.uses[id]||!ctx.experience.definitions[ctx.experience.uses[id].definitionId])return false;return command('Make definition local',ed=>makeDefinitionLocal(ed,id));}
+export function linkDefinitionCommand(id,definitionId){if(!definitionId)return false;try{return command('Link shared definition',ed=>linkDefinition(ed,id,definitionId));}catch(error){A.setStatus(error.message,'refuse');ctx.ui();return false;}}
+export function renameContributionCommand(id,name){if(!ctx.experience.uses[id])return false;return command('Rename contribution',ed=>renameContribution(ed,id,name));}
+// Routed repair: rebind a retained instruction to a compatible descriptor/target without changing its
+// identity, home, activation or boundary. Trigger and target stay distinct.
+export function rebindContributionCommand(id,patch){
+ if(!ctx.experience.uses[id])return false;
+ // Replacing a descriptor edits the shared definition every linked Activity reads. When more than one
+ // Activity links it, that reach is disclosed and the author explicitly chooses a local fork or a shared
+ // edit instead of every linked use changing silently.
+ const definitionId=ctx.experience.uses[id].definitionId;
+ // A pending disclosure accumulates its edits, so choosing a subject and then a capability is one shared
+ // acceptance rather than the second choice silently dropping the first.
+ const prior=S.expRebindAsk&&S.expRebindAsk.id===id&&S.expRebindAsk.definitionId===definitionId?S.expRebindAsk.patch:{};
+ const merged={...prior,...patch};
+ // Reach is read from the whole proposal, not only from the field this call touched: a pending subject
+ // replacement stays behind the scope acceptance even when the next change (a trigger, an availability)
+ // edits no definition field itself, so a merged write can never slip past the disclosure.
+ const reachesDefinition=['subjectId','capabilityId','value'].some(k=>merged[k]!==undefined);
+ const reach=reachesDefinition?definitionReachByUse(ctx.experience,definitionId):[];
+ if(reach.length>1){S.expRebindAsk={id,patch:merged,definitionId,reach};ctx.ui();return true;}
+ return applyRebind(id,merged);
+}
+function applyRebind(id,patch,mode='shared'){
+ const stored=ctx.experience.definitions[ctx.experience.uses[id].definitionId];
+ const from=stored?.capabilityId||null;
+ // A replacement onto a capability this Stage does not realize is refused before anything is written: the
+ // author is told why, and the retained instruction keeps needing a different repair.
+ if(patch.capabilityId!==undefined){
+  const cap=stored?.kind==='control'?capability(ctx.sceneSource,patch.subjectId??stored.subjectId,patch.capabilityId):null;
+  if(cap&&!isRealized(cap)){A.setStatus(`${cap.label} · declared by the provider but not realized by this Stage`,'refuse');ctx.ui();return false;}
+ }
+ const result=command(mode==='local'?'Rebind only this Activity':'Repair contribution',ed=>{if(mode==='local')makeDefinitionLocal(ed,id);return rebindContribution(ed,id,patch,ctx.sceneSource);});
+ // A repair is an authored operation; the review aid records the capability it replaced and whether that
+ // capability was the one a profile change had just taken away, so a repaired loss is distinguishable
+ // from an unrelated rebind. It is credited only when the retained instruction now resolves: a replacement
+ // that leaves the descriptor unsupported stays an open repair issue rather than reporting completion.
+ const repaired=ctx.experience.definitions[ctx.experience.uses[id]?.definitionId];
+ const resolves=!!repaired&&(repaired.kind!=='control'||!!capability(ctx.sceneSource,repaired.subjectId,repaired.capabilityId));
+ if(result!==false&&resolves)review({repair:{id,from,to:repaired.capabilityId||null,restored:!!(S.expReview.loss&&(S.expReview.loss.lost||[]).includes(from))}});
+ return result;
+}
+// The disclosure is re-checked before it is applied: a reach that changed while the author was reading is
+// re-presented rather than committed against a stale count.
+export function acceptRebind(scope){
+ const ask=S.expRebindAsk;if(!ask)return false;
+ const reach=definitionReachByUse(ctx.experience,ask.definitionId);
+ if(reach.length>1&&JSON.stringify(reach)!==JSON.stringify(ask.reach)){ask.reach=reach;ctx.ui();return false;}
+ S.expRebindAsk=null;
+ if(reach.length<=1)return applyRebind(ask.id,ask.patch);
+ return applyRebind(ask.id,ask.patch,scope==='local'?'local':'shared');
+}
+onCancel(()=>{S.expRebindAsk=null;},12,'Shared contribution rebind');
+// Provider profile replacement is an explicit source operation: the instance and geometry are kept, and the
+// adapter reports exactly which declared capabilities were gained or lost.
+export function replaceProfileCommand(sid,profile){
+ if(!profile||!ctx.sceneSource.subjects[sid])return false;
+ const before=capabilities(ctx.sceneSource,sid).map(c=>c.id);
+ try{
+  const result=command('Replace provider profile',()=>replaceProfile(ctx.sceneSource,sid,profile));
+  const after=capabilities(ctx.sceneSource,sid).map(c=>c.id);
+  const gained=after.filter(id=>!before.includes(id)),lost=before.filter(id=>!after.includes(id));
+  if(lost.length||gained.length)review({loss:{subjectId:sid,profile,before,after,gained,lost}});
+  // A gained capability this Stage does not realize is named as declared-but-unrealized, so the demo is
+  // never read as something the visitor will actually see.
+  const unrealized=gained.filter(id=>capability(ctx.sceneSource,sid,id)?.realized===false);
+  const parts=[gained.length?`gained ${gained.join(', ')}${unrealized.length?` (${unrealized.join(', ')} not realized by this Stage)`:''}`:'',lost.length?`lost ${lost.join(', ')}`:''].filter(Boolean);
+  A.setStatus(`Profile ${profile} · ${parts.length?parts.join(' · '):'same capabilities'} · instance unchanged`,'edit');ctx.ui();return result;
+ }catch(error){A.setStatus(error.message,'refuse');ctx.ui();return false;}
+}
+// Retained contributions whose organizational home no longer resolves: an Experience-level inventory so a
+// repair writer stays reachable without resurrecting the removed Presentation.
+export const retainedContributions=()=>orphanContributions(ctx.experience);
+export const linkedDefinitionReach=(definitionId)=>definitionReachByUse(ctx.experience,definitionId);
+// The descriptor the Card's Replace and Repair controls must render while a scoped replacement is pending:
+// the author is proposing a subject or capability the write has deliberately not reached yet, so the
+// counterpart control lists that proposal's own capabilities instead of resetting to the stored descriptor.
+export function pendingDescriptor(id,d){
+ const patch=S.expRebindAsk?.id===id?S.expRebindAsk.patch:null;
+ return {subjectId:patch?.subjectId??d?.subjectId??null,capabilityId:patch?.capabilityId??d?.capabilityId??null};
+}
+// A retained choice whose destination left with its Presentation is repaired or removed where its own Stop
+// is read, so Preview is never offered a continuation that cannot resolve.
+export function choiceRemoveCommand(stopId,choiceId){if(!ctx.experience.stops[stopId])return false;return command('Remove choice',e=>removeChoice(e,stopId,choiceId));}
+export function choiceRepointCommand(stopId,choiceId,targetId){
+ if(!targetId||!ctx.experience.stops[stopId])return false;
+ try{return command('Repair choice destination',e=>repointChoice(e,stopId,choiceId,targetId));}
+ catch(error){A.setStatus(error.message,'refuse');ctx.ui();return false;}
+}
 export function reuseFraming(pid,vid){return command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));}
 export function visitorCommand(action,id=null){
  const v=S.visitor;if(!v)return false;const e=v.source.experience,c=v.source.camera,scene=v.source.scene,r=v.runtime;
@@ -484,6 +668,20 @@ export function visitorCommand(action,id=null){
  // Any deliberate visitor command settles a pending offer choice: a choice is never left armed
  // behind a navigation the visitor already made.
  S.visitorChoice=null;
+ // The visitor's own session is the only witness to what a visit did: what it traversed, explored,
+ // resumed and activated is read from the runtime this command produced, never assumed from authoring.
+ const led=S.expReview.visitor||emptyVisitorLedger();
+ const next={...led};
+ if(r.stopId!==v.runtime.stopId&&v.runtime.stopId)next.traversed={from:r.stopId,to:v.runtime.stopId,arrived:!!v.runtime.arrivedViewUseId};
+ if(v.runtime.stopId&&!next.stops.includes(v.runtime.stopId))next.stops=[...next.stops,v.runtime.stopId];
+ if(action==='explore')next.explored=true;
+ if(action==='rejoin')next.rejoined=true;
+ if(action==='next-view'||action==='previous-view')next.viewStep=led.viewStep+1;
+ if(action==='activate'&&id&&!next.activated.includes(id))next.activated=[...next.activated,id];
+ if(action==='detour')next.detoured=true;
+ if(action==='return')next.returned=true;
+ if(action==='open'&&id)next.opened=[...next.opened,id];
+ review({visitor:next});
  if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;
 }
 // Direct subject activation during Preview and exploration: a real click activates the offer(s) the used
@@ -533,7 +731,7 @@ onCancel(reason=>{
 // caller against the retained domains.
 function clearExperienceTransients(){
  S.experienceContext={presentation:null,depth:'ordinary',stop:null,seam:null};
- S.derivedView=null;S.expAudition=null;S.expOfferDraft=null;S.expCaptureAsk=null;S.expAsk=null;S.expSourceAsk=null;S.expRouteAsk=null;
+ S.derivedView=null;S.expAudition=null;S.expOfferDraft=null;S.expCaptureAsk=null;S.expAsk=null;S.expSourceAsk=null;S.expRouteAsk=null;S.expRebindAsk=null;
  S.expReview={auditions:0,previews:0};S.parkedByLens.experience=null;T.end();
 }
 // Remove only the context that no longer resolves: a World subject or a retained Camera View stays
@@ -548,6 +746,8 @@ export function resetExperience() {
  if(S.visitor)return false;
  cancelProposal('reset');T.park();nav.discardReturn();clearExperienceTransients();
  const result=command('Reset Experience',e=>{clearExperience(e);return true;});
+ // Reset authors an empty Experience here; whatever a loader had put on screen is gone with it.
+ reviewSource('reset');
  settleExperienceSelection();ctx.ui();return result;
 }
 // Load Example / Load Conformance explicitly replace Experience fixture content and add Camera fixture
@@ -555,7 +755,7 @@ export function resetExperience() {
 // existing Camera truth, no history wipe. One aggregate command holds the whole load, so Undo leaves
 // the independent domains exactly as they were before it. A labelled load is the one place that rebuilds
 // deterministic Experience identities: the whole domain is replaced by the fixture, never merged with it.
-function loadExperienceFixture(label,build,openMain=false){
+function loadExperienceFixture(label,build,openMain=false,source='fixture'){
  if(S.visitor)return false;
  cancelProposal('reset');T.park();nav.discardReturn();clearExperienceTransients();
  // A labelled rebuild reissues deterministic fixture identities (the Experience serial resets), so an
@@ -564,6 +764,9 @@ function loadExperienceFixture(label,build,openMain=false){
  // and Load Example's explicit main Presentation is selected only after the build.
  if(resolveExperience(S.sel)?.owner==='Experience')A.select(null);
  const result=command(label,(e,c)=>{clearExperience(e);e.serial=0;return build(e,c);});
+ // The load is labelled provenance, not authorship: the review aid says where this document came from
+ // and counts no authored edit until the reviewer makes one.
+ reviewSource(source);
  // Which identity the author was on is settled against the retained World/Camera domains, never adopted
  // from the loader. Load Example lands on the example's main Presentation because it is loaded to be
  // edited; the conformance fixture is explicit content only and never selects or opens work.
@@ -571,9 +774,9 @@ function loadExperienceFixture(label,build,openMain=false){
  if(openMain&&result?.presentation&&ctx.experience.presentations[result.presentation]){S.experienceContext.presentation=result.presentation;A.select(result.presentation);}
  ctx.ui();return result;
 }
-export function loadExample(){return loadExperienceFixture('Load Example',buildExampleFixture,true);}
-export function loadConformance(){return loadExperienceFixture('Load Conformance fixture',(e,c)=>conformanceFixture(e,c));}
-function buildExampleFixture(e,c){
+export function loadExample(){return loadExperienceFixture('Load Example',(e,c)=>buildExampleFixture(e,c,ctx.sceneSource),true,'example');}
+export function loadConformance(){return loadExperienceFixture('Load Conformance fixture',(e,c)=>conformanceFixture(e,c),false,'conformance');}
+function buildExampleFixture(e,c,scene){
  const pid=addPresentation(e,{kind:'subjects',ids:['machine']},'Understand the drive');
  e.presentations[pid].meaning='The casing protects the rotor. See how power travels through the machine.';
  const base={target:[-10,1.2,1],az:1.2,el:.25,frameH:3,flat:0};
@@ -587,32 +790,129 @@ function buildExampleFixture(e,c){
  const light=addContribution(e,null,{kind:'control',name:'Light from Switch',subjectId:'light',capabilityId:'intensity',value:3},'interaction','switch');e.uses[light].availability=null;
  const compare=addPresentation(e,{kind:'subjects',ids:['machine','mesh']},'Compare materials');reuseView(e,c,compare,e.uses[entry].viewId);setRole(e,e.presentations[compare].uses[0],'entry');
  const a=addStop(e,pid),b=addStop(e,compare);e.stops[a].choices.push({id:fresh(e,'choice'),label:'Compare materials detour',targetId:b,kind:'detour'});
+ // ---- C9.7 rich fixture, appended after the retained identities above so the earlier example content
+ // is byte-comparable. It adapts the donor's remaining concepts into this World: a repeated occurrence,
+ // a contextual offer beside the Experience-wide ones, the native Wall assembly as an off-Guide detour,
+ // a no-View atmosphere moment, and one supported Travel Seam carrying an authored route, a named
+ // station, an Experience hold and a station-only capability invocation.
+ const repeat=addStop(e,compare);                        // a repeated occurrence: distinct Stop identity, no Camera edge
+ const cEntry=addView(e,c,compare,{...base,target:[-9,1.4,-1.2],az:-2.1},'Materials close-up','entry');
+ setRole(e,cEntry,'entry');                              // the shared overview stays a deliberate choice
+ const contextual=addContribution(e,pid,{kind:'control',name:'Listen inside',subjectId:'piano',capabilityId:'music',value:true},'interaction','piano');e.uses[contextual].availability=pid;
+ const wall=addPresentation(e,{kind:'environment'},'The wall assembly');
+ e.presentations[wall].meaning='The round wall unrolls to a flat sheet without stretching.';
+ addContribution(e,wall,{kind:'control',name:'Unfold the assembly',subjectId:'wallAssembly',capabilityId:'unfold',value:true});
+ const wallStop=addStop(e,wall);e.guide=e.guide.filter(id=>id!==wallStop);   // off the main Guide: a deliberate detour only
+ e.stops[a].choices.push({id:fresh(e,'choice'),label:'See the wall assembly',targetId:wallStop,kind:'detour'});
+ const mood=addPresentation(e,{kind:'environment'},'Evening atmosphere');
+ e.presentations[mood].meaning='The gallery dims as evening comes in.';
+ addContribution(e,mood,{kind:'control',name:'Dim the atmosphere',subjectId:'atmosphere',capabilityId:'ambient',value:.35});
+ // The Wall detour is framed by Camera like any other moment: appended after the retained identities so
+ // the earlier fixture is untouched, it gives the off-Guide Stop a Wall entry rather than leaving the
+ // visitor on the previous machine close-up while the assembly unrolls out of sight.
+ addView(e,c,wall,{target:[5.5,1.2,0],az:1.05,el:.2,frameH:5,flat:0},'Wall assembly','entry');
+ // The Seam's own entry route is authored first and carries the coordination; the remaining legitimate
+ // origins are prepared beside it, so every origin the visitor can actually select is supported.
+ const route=addConnection(c,e.uses[entry].viewId,e.uses[cEntry].viewId);
+ const anchor=addAnchor(c,route,[-4,2,1.2]);
+ const marker=fresh(c,'marker');c.connections[route].markers.push({id:marker,name:'Power station',progress:.5});
+ prepareTravelSupport(e,c,a,b);
+ editSeam(e,a,b,{mode:'travel'});
+ addBeat(e,c,a,b,route,anchor,2);                        // an Experience hold of visible duration
+ const stationWork=addContribution(e,compare,{kind:'control',name:'Highlight at the station',subjectId:'mesh',capabilityId:'emphasis',value:true});
+ addInvocationBeat(e,c,a,b,route,marker,stationWork,scene);  // its only authored activation is this station
+ // The atmosphere moment has no View of its own and never joins the Guide; its visitor entry is one
+ // deliberate continuation from the repeated occurrence, so the no-View Presentation stays reachable.
+ const moodStop=addStop(e,mood);e.guide=e.guide.filter(id=>id!==moodStop);
+ e.stops[repeat].choices.push({id:fresh(e,'choice'),label:'Evening atmosphere',targetId:moodStop,kind:'detour'});
+ // The machine explanation's own local highlight: a visit-scoped effect that never outlives its visit and
+ // never edits the Scene source.
+ addContribution(e,pid,{kind:'control',name:'Highlight the casing',subjectId:'machine',capabilityId:'highlight',value:true});
  return {presentation:pid};
 }
-// The quickstart instructions observe the real product outcomes rather than trusting a button press:
-// Q1 subject + Presentation, Q2 explanation + accepted framing, Q3 operated and captured capability,
-// Q4 a completed no-Guide Preview. Back/Next change only which instruction is shown.
-export function quickstart(){
+// The review aid's eighteen topics. Each one reads a real product outcome: authored documents, the
+// Camera's own resolution, or what a visit actually reported (the ledger in `expReview`, written by the
+// paths that produce those outcomes). A topic is never credited for a field being present or a button
+// having been pressed, and a quickstart topic names the authored outcomes of its own instruction, so
+// loaded content can never complete one: the predicate must hold and its own work must have been authored
+// here. An advanced topic may be reviewed on explicitly loaded content, and says so.
+export function presenterSteps(){
  const e=ctx.experience;
  const working=()=>e.presentations[S.experienceContext.presentation]||Object.values(e.presentations).find(p=>p.focus.kind==='subjects')||null;
  const primary=pid=>primaryExplanation(e,pid);
  const captured=()=>Object.values(e.uses).find(u=>!u.viewId&&u.presentationId&&u.kind!=='interaction'&&e.definitions[u.definitionId]?.kind==='control')||null;
  return [
-  {title:'Subject and Presentation',instruction:'Select a real World subject in the Index, then Present this. One Presentation, no Guide.',
-   done:()=>Object.values(e.presentations).some(p=>p.focus.kind==='subjects')&&e.guide.length===0,
-   observed:()=>{const p=working();return p?`${p.name} · focus ${p.focus.kind==='subjects'?p.focus.ids.join(', '):p.focus.kind}`:'No Presentation yet';}},
-  {title:'Explanation and framing',instruction:'Write the explanation in the Presentation Card, then Capture the suggested framing.',
+  {family:'Q',title:'Q1 · Subject and Presentation',authored:['presentation'],instruction:'Select a real World subject in the Index, then Present this. One Presentation, no Guide.',
+   done:()=>Object.values(e.presentations).some(p=>p.focus.kind==='subjects'&&p.focus.ids.length&&p.focus.ids.every(id=>!!A.worldOf(id)))&&e.guide.length===0,
+   observed:()=>{const p=working();if(!p)return 'No Presentation yet';const ids=p.focus.ids||[],real=ids.filter(id=>!!A.worldOf(id));return `${p.name} · focus ${real.join(', ')||p.focus.kind}${real.length<ids.length?' · unresolved':''} · Guide ${e.guide.length}`;}},
+  {family:'Q',title:'Q2 · Explanation and framing',authored:['explanation'],instruction:'Write the explanation in the Presentation Card, then Capture the suggested framing.',
    done:()=>{const p=working();if(!p)return false;const u=primary(p.id);return !!(u&&e.definitions[u.definitionId]?.text.trim())&&p.uses.some(id=>e.uses[id]?.viewId);},
    observed:()=>{const p=working();if(!p)return 'Waiting for a Presentation';const u=primary(p.id),text=u?e.definitions[u.definitionId]?.text.trim():'';return `${text?`“${text.slice(0,48)}${text.length>48?'…':''}”`:'No explanation'} · ${p.uses.filter(id=>e.uses[id]?.viewId).length} View(s)`;}},
-  {title:'Operate and Use',instruction:'Select the subject again, operate a capability, then Use in this Presentation.',
+  {family:'Q',title:'Q3 · Operate and Use',authored:['capture'],instruction:'Select the subject again, operate a capability, then Use in this Presentation.',
    done:()=>!!captured()&&(S.expReview?.auditions||0)>0,
    observed:()=>{const u=captured();const d=u&&e.definitions[u.definitionId],tries=S.expReview?.auditions||0;return `${d?`${d.name||d.capabilityId} captured${u.presentationId?` in ${e.presentations[u.presentationId]?.name||'a Presentation'}`:''}`:'No captured capability yet'}${tries?` · ${tries} audition${tries===1?'':'s'}`:''}`;}},
-  {title:'Preview without a Guide',instruction:'Preview the Presentation; the explanation, framing and capability run in a private visit. Exit returns exactly.',
-   done:()=>!!S.expReview?.previews,
-   observed:()=>S.expReview?.previews?`Preview completed ${S.expReview.previews}× and returned`:'No completed Preview yet'},
+  {family:'Q',title:'Q4 · Preview without a Guide',authored:['explanation'],instruction:'Preview the Presentation; the explanation, framing and capability run in a private visit. Exit returns exactly.',
+   done:()=>{const v=S.expReview.visit,controls=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==='control').length;return (S.expReview.previews||0)>0&&!!v&&v.narration>=1&&v.framing&&(controls===0||v.controls>=1);},
+   observed:()=>{const v=S.expReview.visit;return v?`Visit ${v.stop?'at a Stop':'standalone'} · explanation ${v.narration} · framing ${v.framing?'arrived':'not arrived'} · capability ${v.controls}`:'No completed Preview yet';}},
+  {family:'Q',title:'Q5 · Add to the Guide',authored:['guide'],instruction:'Exit Preview, then add the Presentation to the Guide. One Stop, and Peek the occurrence without disturbing the work.',
+   done:()=>e.guide.length===1&&(S.expReview.peeks||0)>0&&!!stopEntry(e,e.guide[0]).id,
+   observed:()=>`${e.guide.length} Stop · ${S.expReview.peeks||0} Peek${(S.expReview.peeks||0)===1?'':'s'} · entry ${e.guide.length?stopEntry(e,e.guide[0]).id:'none'}`},
+  {family:'Q',title:'Q6 · A second Presentation',authored:['presentation','guide'],instruction:'Present another moment and add it to the Guide. Two whole-moment Stops from the order resolver, no manual edge.',
+   done:()=>e.guide.length===2&&Object.keys(e.seams).length===0,
+   observed:()=>`${e.guide.length} Stops · ${Object.keys(e.seams).length} authored edges`},
+  {family:'Q',title:'Q7 · Preview the Guide',authored:['guide'],instruction:'Preview the Guide and press Next from the first Stop to the second: the order resolver and the destination entry run.',
+   done:()=>{const t=S.expReview.visitor?.traversed;return !!t&&t.from===e.guide[0]&&t.to===e.guide[1]&&t.arrived;},
+   observed:()=>{const t=S.expReview.visitor?.traversed;return t?`Traversed ${e.guide.indexOf(t.from)+1} → ${e.guide.indexOf(t.to)+1} · destination entry ${t.arrived?'ran':'did not run'}`:'No traversal yet';}},
+  {family:'Q',title:'Q8 · Explore and rejoin',authored:['presentation'],instruction:'Explore the World during the visit, then Rejoin: participation is kept and framing resumes from where you are, with Auto off.',
+   done:()=>!!S.expReview.visitor?.explored&&!!S.expReview.visitor?.rejoined,
+   observed:()=>{const v=S.expReview.visitor;return `${v?.explored?'explored':'not explored'} · ${v?.rejoined?'rejoined':'not rejoined'} · ${v?.viewStep||0} View step${(v?.viewStep||0)===1?'':'s'}`;}},
+  {family:'A',title:'A1 · Additional Views',instruction:'Add or reuse another Camera View in a Presentation: no new Stop or edge, explanation continues, and Next View stays distinct from Next Stop.',
+   done:()=>Object.values(e.presentations).some(p=>p.uses.filter(id=>e.uses[id]?.viewId).length>=2)&&(S.expReview.visitor?.viewStep||0)>0,
+   observed:()=>{const p=Object.values(e.presentations).sort((a,b)=>b.uses.filter(id=>e.uses[id]?.viewId).length-a.uses.filter(id=>e.uses[id]?.viewId).length)[0];return `${p?.uses.filter(id=>e.uses[id]?.viewId).length||0} framed Views · Guide ${e.guide.length} · View steps ${S.expReview.visitor?.viewStep||0}`;}},
+  {family:'A',title:'A2 · Capability sequence',instruction:'Load the rich example or author a capability sequence: watch a finite operation complete and hand over, then stop a carried run.',
+   done:()=>{const v=S.expReview.visit;return !!v&&v.controls>=1&&v.completed>=1;},
+   observed:()=>{const v=S.expReview.visit;return v?`capabilities ${v.controls} · completed ${v.completed}`:'No completed visit yet';}},
+  {family:'A',title:'A3 · Stop entry policies',instruction:'Compare entries: a Presentation entry, a specific later View, and a hold while the content still runs.',
+   done:()=>{const kinds=new Set(Object.values(e.stops).map(s=>s.entry.kind));return kinds.size>=2&&!!S.expReview.visit;},
+   observed:()=>`entries ${[...new Set(Object.values(e.stops).map(s=>s.entry.kind))].join(', ')||'none'} · last visit ${S.expReview.visit?.stop?'at a Stop':'standalone'}`},
+  {family:'A',title:'A4 · Request simple Travel',instruction:'Open the Seam and Travel: Camera prepares the missing support, and the visitor travels without any graph surgery.',
+   done:()=>{const c=cameraSnapshot();return Object.values(e.seams).some(s=>s.mode==='travel'&&originCoverage(e,c,s.from,s.to).every(r=>!r.missing&&(r.connectionId||r.viewId===r.targetId)))&&(S.expReview.visitor?.stops||[]).length>=2;},
+   observed:()=>{const c=cameraSnapshot(),s=Object.values(e.seams)[0];if(!s)return 'No Seam yet';const rows=originCoverage(e,c,s.from,s.to);return `${s.mode} · ${rows.filter(r=>r.connectionId).length}/${rows.length} origins routed · ${(S.expReview.visitor?.stops||[]).length} stops visited`;}},
+  {family:'A',title:'A5 · Edit the route',instruction:'Edit the Camera route from the Seam: see the real origins, path, anchors and pace, then return explicitly.',
+   done:()=>!!(S.expReview.routeWrite?.edited&&S.expReview.routeWrite?.returned),
+   observed:()=>{const w=S.expReview.routeWrite||{},r=Object.values(ctx.cameraSource.connections)[0];return `${w.edited?'edited':'not edited'} · ${w.returned?'returned':'not returned'} · ${r?`${r.anchors.length} anchor(s), ${r.markers.length} marker(s), pace ${r.speed}`:'no route'}`;}},
+  {family:'A',title:'A6 · Coordinate the Seam',instruction:'Coordinate the local Seam: select a station or event, edit a Hold duration, and Preview exactly-once invocation.',
+   done:()=>{const authored=Object.values(e.seams).some(s=>s.beats.some(b=>b.kind==='hold')&&s.beats.some(b=>b.kind==='invoke'));const worked=!!(S.expReview.coordination?.stationSelected&&S.expReview.coordination?.holdEdited);return authored&&worked&&S.expReview.visit?.invoked===1;},
+   observed:()=>{const s=Object.values(e.seams)[0],beats=s?s.beats:[],c=S.expReview.coordination||{};return `station ${c.stationSelected?'focused':'not focused'} · hold ${c.holdEdited?'edited':'not edited'} · invocations ${beats.filter(b=>b.kind==='invoke').length} · last visit ran ${S.expReview.visit?.invoked??'—'} invocation(s)`;}},
+  {family:'A',title:'A7 · Visitor interaction',instruction:'Activate an interaction while exploring: the real subject answers on the Stage, without leaving exploration.',
+   done:()=>(S.expReview.visitor?.activated?.length||0)>0,
+   observed:()=>{const ids=S.expReview.visitor?.activated||[];return ids.length?`activated ${ids.map(id=>e.definitions[e.uses[id]?.definitionId]?.name||id).join(', ')}`:'Nothing activated yet';}},
+  {family:'A',title:'A8 · Detour and return',instruction:'Take an authored detour, then Return: the parent narration and playhead resume without a second entry.',
+   done:()=>!!S.expReview.visitor?.detoured&&!!S.expReview.visitor?.returned,
+   observed:()=>{const v=S.expReview.visitor;return `${v?.detoured?'detoured':'no detour'} · ${v?.returned?'returned':'not returned'}`;}},
+  {family:'A',title:'A9 · Shared or local scope',instruction:'Predict the reach before editing, cancel one shared proposal, then accept a supported local or shared edit and Undo it.',
+   done:()=>{const s=S.expReview.scope||{};return !!s.cancelled&&!!s.accepted&&!!s.label&&(S.redo||[]).some(entry=>entry.label===s.label);},
+   observed:()=>{const s=S.expReview.scope||{},undone=!!s.label&&(S.redo||[]).some(entry=>entry.label===s.label);return `${s.cancelled?'cancelled once':'nothing cancelled'} · ${s.accepted?`accepted ${s.kind} (${s.uses} use(s), ${s.stops} Stop(s))`:'nothing accepted'} · ${undone?'undone':'not undone yet'}`;}},
+  {family:'A',title:'A10 · Lose and repair a capability',instruction:'Replace a provider profile in the World lens, follow the routed notice, and repair the retained Activity.',
+   done:()=>!!(S.expReview.loss?.lost?.length)&&!!S.expReview.repair?.restored,
+   observed:()=>{const l=S.expReview.loss,r=S.expReview.repair;return `${l?`${l.subjectId} lost ${l.lost.join(', ')||'nothing'}`:'no profile change'} · ${r?.restored?'repaired here':'not repaired'}`;}},
  ];
 }
-export function presenterStep(delta) {const steps=quickstart();S.experiencePresenter=Math.max(0,Math.min(steps.length-1,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}
+// The review aid moves its own cursor and nothing else: Back, Next and Skip change which instruction is
+// shown, never the reading, the selection, the Camera or the documents. Skip is deliberately not a
+// completion: it moves on without claiming the topic was observed.
+export function presenterStep(delta=0) {const n=presenterSteps().length;S.experiencePresenter=Math.max(0,Math.min(n-1,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}
+export const presenterSkip = () => presenterStep(1);
+// Next is earned: it advances only when the current topic's outcome actually holds, so a reviewer cannot
+// move on from a topic they have not completed. Skip is the deliberate alternative.
+export function presenterNext(){const steps=presenterSteps(),i=Math.max(0,Math.min(steps.length-1,S.experiencePresenter||0));if(!presenterCredit(steps[i]).credited)return false;presenterStep(1);return true;}
+// A quickstart topic is credited only when the outcomes its own instruction produces were authored on this
+// document in this session; an advanced topic may be reviewed on explicitly loaded content, and its line
+// says so.
+export function presenterCredit(step) {const seen=!!step.done(),required=step.family==='Q'?(step.authored||[]):[],authored=required.length?required.every(authoredHere):S.expReview.writes>0;return {seen,credited:seen&&(step.family==='A'||authored),authored};}
+// The provenance line names the loader that produced the document on screen, and the authored count says
+// whether anything in it was authored here. Loaded content is never counted as authorship.
+export const presenterSource = () => ({ kind: S.expReview.source, label: { none: 'prototype boot', reset: 'Reset Experience', example: 'Load Example', conformance: 'Load Conformance fixture' }[S.expReview.source] || S.expReview.source, writes: S.expReview.writes });
 
 export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
 
@@ -621,7 +921,7 @@ export const cameraSnapshot=()=>nav.resolvedCamera();
 export function parkExperience() {
  const t=S.task,x=S.experienceContext;
  if(t?.kind.startsWith('experience-')) {
-  const acceptedKeys=['useId','posture','grip','from','to','originUse','connection','station','invokeUse','stop','hints'];
+  const acceptedKeys=['useId','posture','grip','from','to','originUse','connection','station','beat','invokeUse','stop','hints'];
   S.parkedByLens.experience={lens:'experience',identity:t.subject,name:resolveExperience(t.subject)?.item.name||t.subject||'Guide',kind:t.kind,context:structuredClone(x),target:structuredClone(t.target),params:Object.fromEntries(acceptedKeys.filter(k=>k in t.params).map(k=>[k,structuredClone(t.params[k])]))};
  }
  cancelProposal('lens');T.park();nav.discardReturn();S.derivedView=null;S.experienceContext={...x,depth:'ordinary',stop:null,seam:null};ctx.ui();return S.parkedByLens.experience;
@@ -654,10 +954,30 @@ export async function resumeExperience() {
 }
 A.registerLensWork({park:parkExperience,resume:resumeExperience});
 
+// Focusing a Hold's own duration field addresses that beat, and only that beat: the Card, the station row
+// and the Stage read one focus, so the focused event's own station becomes the selected station instead of
+// leaving a stale one highlighted beside the identified Hold.
+export function focusHoldBeat(id) {
+ const t=S.task,seam=S.experienceContext.seam;
+ if(t?.kind!=='experience-coordination'||!seam)return false;
+ const beat=ctx.experience.seams[`${seam.from}>${seam.to}`]?.beats.find(b=>b.id===id);if(!beat)return false;
+ const changed=t.params.beat!==id||(!!beat.stationId&&t.params.station!==beat.stationId);
+ t.params.beat=id;
+ if(beat.stationId)t.params.station=beat.stationId;
+ // Addressing an event is recorded only when the focus actually moved: focusing the beat already in hand
+ // is not new work, so it writes no observation.
+ if(changed)review({coordination:{...(S.expReview.coordination||{}),eventFocused:true}});
+ return changed;
+}
+
 export function updateHold(id,seconds) {
  if(!Number.isFinite(seconds)||seconds<0){A.setStatus('Hold needs a finite nonnegative duration','refuse');return false;}
  const s=S.experienceContext.seam;if(!s)return false;
- return command('Edit Experience station hold',e=>{const beat=e.seams[`${s.from}>${s.to}`]?.beats.find(b=>b.id===id&&b.kind==='hold');if(!beat)throw Error('Hold removed');beat.seconds=seconds;});
+ const result=command('Edit Experience station hold',e=>{const beat=e.seams[`${s.from}>${s.to}`]?.beats.find(b=>b.id===id&&b.kind==='hold');if(!beat)throw Error('Hold removed');beat.seconds=seconds;});
+ // The review aid credits coordination only for work that actually happened: a Hold edit is its own
+ // observation, distinct from a station being selected or a route being traversed.
+ if(result!==false)review({coordination:{...(S.expReview.coordination||{}),holdEdited:true}});
+ return result;
 }
 
 

@@ -33,7 +33,7 @@ qa_ok 'Reset is genuinely empty and the Presenter is closed' "$(qa_js '(()=>{con
 qa_ok 'Reset preserves all World/Scene/Camera truth, including shared and unreferenced artifacts' "$(independent)" "$baseline"
 qa_ok 'Reset adds one aggregate Undo without wiping prior history or moving Camera' "$(undo) / $(pose)" "$((count+1)) / $standpoint"
 # The low floor needs its guidance where the work is: an empty Reset must not hide the placeholder.
-qa_ok 'empty Reset keeps the quickstart placeholder and its observed state truthful' "$(qa_js '(()=>{const p=document.querySelector("#experienceExamples"),step=p?.querySelector("[data-example-step]")?.textContent||"",observed=p?.querySelector("[data-example-observed]")?.textContent||"";return !p?.hidden&&step.includes("1/4")&&observed.includes("No Presentation yet");})()')" true
+qa_ok 'empty Reset keeps the quickstart placeholder and its observed state truthful' "$(qa_js '(()=>{const p=document.querySelector("#experienceExamples"),step=p?.querySelector("[data-example-step]")?.textContent||"",observed=p?.querySelector("[data-example-observed]")?.textContent||"";return !p?.hidden&&step.includes("1/18")&&observed.includes("No Presentation yet");})()')" true
 checkpoint reset-placeholder
 click '#undoBtn'
 qa_ok 'one Undo restores Experience only, at the same standpoint' "$(source_json) / $(pose)" "$old / $standpoint"
@@ -44,6 +44,9 @@ click '#lens [data-lens="world"]'
 fill '[data-exp-scene="casing"]' '0.2'
 click '#lens [data-lens="experience"]'
 # J1's eight core actions: subject, Present, explanation/accept, Capture, Operate, audition/accept, Use, Preview.
+# The job's own effect on Camera is measured against the retained baseline, not a hard-coded count:
+# the example fixture may legitimately carry more Views and Seam connections than it once did.
+qa_js 'window.__jobViews=Object.keys(__me.ctx.cameraSource.views).length,window.__jobConns=Object.keys(__me.ctx.cameraSource.connections).length' >/dev/null
 click '#index [data-act="pres-ref"][data-id="machine"]'
 click '#card [data-act="exp-create"]'
 fill '[data-exp-primary]' 'The casing opens to reveal the drive.'
@@ -53,7 +56,7 @@ before="$(source_json)";count="$(undo)"
 fill '[data-exp-audition="casing"]' '0.6'
 qa_ok 'audition realizes casing geometry without changing any source/history' "$(qa_js 'Math.abs(__me.ctx.stage.items.get("machine").capabilityParts.lid.rotation.z-.72)<.0001') / $(source_json) / $(undo)" "true / $before / $count"
 click '#card [data-act="exp-use"][data-cap="casing"]'
-qa_ok 'eight-action job authors one Presentation, explanation, captured View/use and Activity; no Stop/edge' "$(qa_js '(()=>{const e=__me.ctx.experience,c=__me.ctx.cameraSource,p=Object.values(e.presentations)[0],us=Object.values(e.uses),n=us.filter(u=>e.definitions[u.definitionId]?.kind==="narration"),a=us.filter(u=>e.definitions[u.definitionId]?.kind==="control");return Object.keys(e.presentations).length===1&&p.uses.length===1&&n.length===1&&n[0].primary&&a.length===1&&e.definitions[a[0].definitionId].value===.6&&Object.keys(c.views).length===4&&Object.keys(c.connections).length===0&&e.guide.length===0&&!document.querySelector("#experienceExamples").open&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null;})()')" true
+qa_ok 'eight-action job authors one Presentation, explanation, captured View/use and Activity; no Stop/edge' "$(qa_js '(()=>{const e=__me.ctx.experience,c=__me.ctx.cameraSource,p=Object.values(e.presentations)[0],us=Object.values(e.uses),n=us.filter(u=>e.definitions[u.definitionId]?.kind==="narration"),a=us.filter(u=>e.definitions[u.definitionId]?.kind==="control");return Object.keys(e.presentations).length===1&&p.uses.length===1&&n.length===1&&n[0].primary&&a.length===1&&e.definitions[a[0].definitionId].value===.6&&Object.keys(c.views).length===window.__jobViews+1&&Object.keys(c.connections).length===window.__jobConns&&e.guide.length===0&&!document.querySelector("#experienceExamples").open&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null;})()')" true
 before="$(source_json)";count="$(undo)";standpoint="$(pose)"
 context="$(qa_js '({lens:__me.S.lens,sel:__me.S.sel,context:__me.S.experienceContext,sheet:__me.S.sheet})')"
 click '#headPreview'
@@ -86,7 +89,7 @@ loaded="$(source_json)";camera="$(qa_js '__me.ctx.cameraSource')";count="$(undo)
 fixture exp-example
 # Hoisted like the composition observation: bash 3.2 mis-parses a double-quoted qa_js argument with
 # {a,b} braces when its substitution follows another word, which silently compared empty strings.
-retained="$(qa_js "(()=>{const old=$camera,c=__me.ctx.cameraSource;return Object.entries(old.views).every(([id,v])=>JSON.stringify(c.views[id])===JSON.stringify(v))&&Object.entries(old.connections).every(([id,r])=>JSON.stringify(c.connections[id])===JSON.stringify(r))&&Object.keys(c.views).length===Object.keys(old.views).length+3;})()")"
+retained="$(qa_js "(()=>{const old=$camera,c=__me.ctx.cameraSource;return Object.entries(old.views).every(([id,v])=>JSON.stringify(c.views[id])===JSON.stringify(v))&&Object.entries(old.connections).every(([id,r])=>JSON.stringify(c.connections[id])===JSON.stringify(r))&&Object.keys(c.views).length===Object.keys(old.views).length+5;})()")"
 qa_ok 'second load retains every pre-existing Camera artifact byte-for-byte with fresh IDs' "$retained / $(undo) / $(pose)" "true / $((count+1)) / $standpoint"
 click '#undoBtn'
 qa_ok 'Undo second load restores first load exactly without moving Camera' "$(source_json) / $(pose)" "$loaded / $standpoint"
