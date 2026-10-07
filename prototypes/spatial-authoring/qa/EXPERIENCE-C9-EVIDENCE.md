@@ -844,7 +844,7 @@ acceptance, an MP3 claim, a merge or a phase closure.
 | 5 | [P2] a capability the profile declares but this Stage does not realize was hidden from direct capture and still reachable through offer creation, rebinding and the visitor runtime | one authority (`isRealized`) is consulted by every writer that creates, rebinds or runs capability work — audition, offer draft and acceptance, capture/update/Capture-another, rebind, the repair pickers; an unrealized capability can never become visitor work | unit `an unrealized capability is refused by every writer that could run it`; `revision-check` "the offer picker lists only capabilities this Stage realizes", "a declared-but-unrealized capability can never be authored as visitor work"; mutation `offer-unrealized` |
 | 6 | [P2] focusing a Hold's duration field left the previous station highlighted (Card, station row and Stage disagreed) and the rerender dropped keyboard focus on BODY | `focusHoldBeat` moves the coordination focus onto that Hold's own station and event, and the field the author entered takes focus back after the rerender; a focus that moves nothing records nothing | unit `focusing a Hold addresses that Hold own station, exactly once`; `rich-check` "focusing the Hold moves the coordination focus to that Hold own station and event" |
 | 7 | [P2] any authored write credited every satisfied quickstart topic, so renaming a loaded example completed topics the loader, not the author, had satisfied | authorship is recorded per outcome (`reviewAuthored`/`authoredHere`) and a quickstart topic reads only the outcomes its own instruction produces (advanced topics stay reviewable on loaded content) | unit `a quickstart topic is credited by its own authored outcome, never by any write`; `presenter-check` "an authored edit that is not this topic's outcome is counted, and completes nothing"; mutation `presenter-unrelated-credit` |
-| 8 | [P2] the visit ledger opened empty and recorded only destinations a later command reached, so a Guide visit that entered Stop 1 and travelled to Stop 2 never satisfied the Travel topic | Preview seeds the ledger with the Stop the runtime actually entered (`visitor: {…emptyVisitorLedger(), stops:[entered]}`), so the first Stop is a visit the ledger witnessed | unit `a Guide visit opens its ledger with the Stop it actually entered`; `presenter-check` "the visit opens its ledger with the Stop it entered, before any command", "…and records the Stop it travelled to as a traversal", "…so the supported Travel topic is credited by the visit that really made it"; mutation `visit-ledger-unseeded` |
+| 8 | [P2] the visit ledger opened empty and recorded only destinations a later command reached, so a Guide visit that entered Stop 1 and travelled to Stop 2 never satisfied the Travel topic | Preview seeds the ledger with the Stop the runtime actually entered (`visitor: {…emptyVisitorLedger(), stops:[entered]}`), so the first Stop is a visit the ledger witnessed | unit `a Guide visit opens its ledger with the Stop it actually entered`; `presenter-check` "the visit opens its ledger with the Stop it entered, before any command", "…and records the Stop it travelled to as a traversal", "…so the supported Travel topic is credited by the visit that really made it"; mutation `visit-ledger-unseeded` (superseded by `visit-entry-unseeded` — see the next round) |
 
 ### Verification at this revision
 
@@ -870,6 +870,129 @@ acceptance, an MP3 claim, a merge or a phase closure.
 - `git diff --check` is clean. This change is prototype-only (`prototypes/spatial-authoring/**`): the root
   editor/architecture suites and the repository gates are untouched by it and were not re-run here — the
   review recorded them green apart from the pre-existing missing `40-walls.json` fixture.
+
+## C9.9 advanced topics — four further findings repaired (2026-10-07)
+
+SCOPE: the review aid's *advanced* half (Q2's framing outcome, A2's capability sequence, A3's entry policies
+and Q7/A4's Travel arrival) after a second independent review of the same four slices. The gap it named was
+not coverage but false predicates: the topics were credited by outcomes the instruction does not produce.
+Each finding was reproduced against the executable revision, repaired at its own cause (the runtime's own
+report, the visit's own ledger, or the authored outcome the topic names), and covered by a unit test and a
+product-axis assertion. Nothing here is an owner acceptance, an MP3 claim, a merge or a phase closure.
+
+| # | finding | repair | coverage |
+| --- | --- | --- | --- |
+| 1 | [P2] Load Example and edit only its explanation: Q2 completed while every framing remained loader-provided — its authored requirement recorded the explanation alone, although the instruction also asks for an explicit Camera Capture | `captureView`/`reuseFraming` record the framing outcome the author accepted (`reviewAuthored('framing')`, plus `framed` for the Presentation it was accepted in, reset with the document's provenance), and Q2 requires both outcomes (`authored:['explanation','framing']`), recorded per Presentation so a View captured in another moment is never this one's framing; the aid's line says which half is missing and why | unit `a quickstart topic names every outcome its instruction produces, not any one of them`, `the framing a topic asks for belongs to the moment it was accepted in, through either authored door`; `presenter-check` "…while the explanation alone leaves the topic open: its framing came with the document", "…and an explanation on a moment made here is still only half of it", "…while an accepted Capture of the author's own framing completes it"; mutation `presenter-framing-uncharged` |
+| 2 | [P2] Reset, author narration, one casing Activity and framing, Preview without a Guide: A2 was credited once the casing completed, with no dependent rotor, no handover, no carried run and no visitor Stop — and the completed count included the narration | `visitOutcome.completed` counts completed *capability* work only and adds `handoffs` (the dependent runs a completion actually began); the visitor's own Stop is recorded in the ledger with the run it ended, live at the time and on its authored Experience lifetime; A2 requires the sequence, the handover and that carried stop | unit `the capability-sequence topic needs the handover and the carried run the visitor stopped`; `presenter-check` "the casing completes and hands over to a rotor that is still carried as the visitor's live run", "…while that sequence alone leaves the topic open: no carried run was stopped", "…and the visitor's own Stop ends that carried run, live and on its authored lifetime"; mutation `presenter-sequence-credit` |
+| 3 | [P2] after a standalone Preview, two Stops with presentation/hold entries configured completed A3 without any Guide Preview and without the specific later-View entry: configured policies plus any previous visit were read as if the visit had run them | every Stop entry a visit really makes is recorded in the ledger (`entryRecord`/`reconcileVisitor`: the policy the author configured, whether the named View is a later one, the Camera's own arrival at it, and whether content ran under a hold); A3 requires one visit that ran a Presentation entry, a specific later View and a hold with content still running | unit `the Stop entry-policy topic reads the entries a visit ran, never the policies an author configured`; `presenter-check` "the three policies are authored through the Stop's own Entry control", "…while configured policies alone leave the topic open, with only the entries a visit really made", "…and one visit that ran all three credits it, each where it actually happened"; mutation `presenter-entry-configuration` |
+| 4 | [P2] on an authored machine-to-piano Travel, Next credited Q7 and A4 after 0.028s of a 0.819s movement: `arrivedViewUseId` still named the source View, and its truthiness marked the destination arrived | the runtime reports its own arrival (`arrivedViewUseId` with `arrivedTravel`, set only when a movement completes, from the movement's own Seam route); the ledger records the transition's destination entry View and reconciles arrival from that report, counting a Travel arrival only for the Seam's own route — A4 requires that completed traversal | unit `a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does`; `presenter-check` "…which stays travelling until the Camera really reaches the destination entry", "…and arrives where the Camera does, on the Seam's own route", "…so the supported Travel topic is credited by the visit that really made it"; mutation `visit-arrival-immediate` |
+
+### Verification at this revision
+
+- Prototype Node suite: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **120/120 pass**. The
+  round extended `experience-c9-review.test.mjs` to ten tests: the ledger test now also proves arrival is
+  read from the Camera (a traversal that is entered during the movement is not arrived, and a Travel is
+  counted only when its own route arrives), and four tests were added for the framing pair, the framing's
+  own moment and its second authored door (reusing a Camera View), the capability sequence and the entry
+  policies. Two earlier tests were renamed because their names now say what they prove: row 7's coverage
+  test is `a quickstart topic names every outcome its instruction produces, not any one of them`, and row 8's
+  is `a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does`.
+- Product axes through the real controls (`QA_SHOT=0`, a private server and browser per axis): every axis green —
+  `presenter-check` **52/0** (twelve assertions added: the framing pair, the arrival bookend, the capability
+  sequence, the entry policies), `visitor-check` **42/0**, `experience-check` **30/0**, `rich-check` **34/0**,
+  `composition-check` **27/0**, `conformance-check` **105/0**, `reconciliation-check` **13/0**,
+  `correctness-check` **11/0**, `continuity-check` **55/0**, `revision-check` **38/0**, `precision-c9-check`
+  **55/0**, `creator-check` **23/0** — each with its own "no command or page fault" and "no console or page
+  errors" assertion green. The four new checkpoints (`framing`, `arrival`, `sequence`, `policies`) and the two
+  the repairs read (`a2`, `a3`) exist so each repair can be mutation-tested at the assertion that protects it.
+- One axis was flaky, and the check — not the product — was repaired: `rich-check`'s World Wall assertion waited
+  on 1500 ms of wall time for the visitor runtime's own 1 s unroll tween, so in a backgrounded tab (rAF
+  suspended) the tween never advanced and the assertion read a value the product had not been asked to reach.
+  It failed once in a back-to-back batch run and passed on every serial run. The wait is now
+  `E.stepVisitor(2)` — the visitor's own clock, the same clock the product's runtime uses — so the assertion is
+  deterministic and states the mechanism it depends on; re-run green **34/0** afterwards.
+- Successor proof, `qa/composition-mutation-check.sh` — **68/68 obligations rejected their regression and
+  every named control stayed green** (exit 0). This round added four browser-wiring obligations:
+  `presenter-framing-uncharged` (the framing outcome dropped from Q2's authored requirement),
+  `presenter-sequence-credit` (any completed work crediting the capability sequence),
+  `presenter-entry-configuration` (configured entry kinds read as executed ones) and
+  `visit-arrival-immediate` (the destination read as arrived from the last View the Camera stood at). The rich
+  boundary the clock change touches was re-run with them.
+
+## C9.9 advanced topics — four further findings repaired (2026-10-07, second round)
+
+SCOPE: the same four topics after a third review reproduced each one through the product. The gap was again not
+coverage but false predicates: a credit that outlived the moment it was about, a handover credited to a run
+that never began, a ledger that only saw commanded Stops, and an arrival lost to a cue the destination itself
+started. Each was repaired at its own cause and covered by a unit test, a product-axis assertion and a
+successor obligation. Nothing here is an owner acceptance, an MP3 claim, a merge or a phase closure.
+
+| # | finding | repair | coverage |
+| --- | --- | --- | --- |
+| 1 | [P2] Load Example, edit Understand the drive's explanation, Capture framing on Compare materials, reopen Understand the drive: Q2 completed while its own observed line said the framing came with the document — the per-Presentation record fed only that text, and credit still read the session-wide framing counter | an outcome that belongs to one moment is recorded against that Presentation as well as in the session tally (`reviewMoment`/`momentAuthored`, replacing the framing-list-and-global-counter pair), and Q2's authored requirement is two predicates closing over the moment it assesses, so a Capture or an explanation authored on another Presentation is never this one's | unit `the framing a topic asks for belongs to the moment it was accepted in, through either authored door`; `presenter-check` "…and a Capture on another moment never stands in for the one the topic assesses", "…and returning to it credits the topic again, where the reviewer is reading"; mutation `framing-global` (unit) and `presenter-framing-scope` (product) |
+| 2 | [P2] Load Example, Preview Guide, Next before casing completion, then exit: the rotor stayed stopped with reason `Visit left before dependency` and never started, yet `handoffs` was 1 and A2 completed — excluding only *waiting* and *unavailable* admitted disarmed dependents | `begin` records `a.began` only once a run really started (after every gate that can refuse it), the record survives a later Stop, and `handoffs` counts dependents that began — so a run the visitor stopped still counts and one the visit disarmed never does | unit `a capability sequence counts a handover only when the dependent really began`; `presenter-check` "…so the dependent the visit left behind is no handover, whatever else completed"; mutation `handover-stopped` (unit) and `presenter-handover-disarmed` (product) |
+| 3 | [P2] After configuring a later-View entry and a hold entry, Auto visited all four Stops but the ledger kept only the first, so A3 and A4 stayed incomplete — entries and transitions were appended only inside a visitor command | where the visit is, which Stop entry it made and how the Camera's movements ended are all read from the runtime in `reconcileVisitor`, so a command, a choice, a detour and Auto are one story; the command writes only the facts its own action produced | unit `a Stop reached by Auto is as real as one reached by Next`; `presenter-check` "…and with Auto on, all four Stops and their three entry policies land in the ledger"; mutation `entry-auto-only` (unit) and `visit-entries-auto` (product) |
+| 4 | [P2] A short explanation at the destination whose completion cues another View: the Travel completed and the cue began in the same tick, the `!movement` guard rejected the arrival, and the cue's completion then overwrote `arrivedViewUseId`, so Q7 stayed unseen and A4 incomplete | completed movements are journalled in the runtime (`arrivals`, with `travelArrivals`), an entry records the Camera serial it was made at, and arrival is read by matching that movement rather than the last arrival slot or the absence of a movement | unit `a Travel arrival survives the destination starting its own cue`; `presenter-check` "…which stays travelling until the Camera really reaches the destination entry" (unchanged, still the pre-arrival witness); mutation `arrival-slot` (unit) and `visit-arrival-immediate` (retargeted, product) |
+
+### Verification at this revision
+
+- Prototype Node suite: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **123/123 pass**.
+  `experience-c9-review.test.mjs` is thirteen tests; three were added for the runtime findings above, and the framing test
+  now walks the reviewer's own reproduction (two explained moments, a Capture on one, the other still open).
+- Product axis through the real controls (`QA_SHOT=0`): `presenter-check` **56/0** — four assertions added (the
+  cross-moment Capture, the disarmed handover, the Auto visit) and one updated to state the new semantics
+  truthfully. **A behaviour change is recorded here deliberately:** because a topic about a moment is credited
+  on the moment the aid assesses, the aid's session tally now follows that moment — expanding a Stop onto the
+  loaded example's own Presentation opens Q2 again (its framing came with the document) and the tally reads 0
+  there, which the visit-block assertion now proves rather than hides.
+- Successor proof, `qa/composition-mutation-check.sh` — **75/75 obligations rejected their regression and every
+  named control stayed green** (exit 0): forty-six model/runtime obligations (the C9.9 review suite is now
+  included in the unit run) and twenty-nine browser-wiring obligations, of which this round adds
+  `presenter-framing-scope`, `presenter-handover-disarmed` and `visit-entries-auto`, and retargets three whose
+  anchors the repairs moved (`presenter-framing-uncharged`, `visit-arrival-immediate`, and the renamed
+  `visit-entry-unseeded`, whose defect class is now the opening entry the visit never records).
+
+## C9.9 re-review and folded repair (2026-10-07)
+
+The four second-round repairs were already present in the working tree and passed the initial **123/123**
+Node suite. Re-review confirmed the per-Presentation Q2 credit and actual-begin handover records. Three
+remaining event-recording cases and one capability-sequence predicate failed before this fold and pass afterwards:
+
+| case | cause and folded repair | coverage |
+| --- | --- | --- |
+| Auto enters several Stops between aid readings | Polling the current Stop missed intermediate entries and captured a late Camera serial. The runtime now records each actual entry with its originating visit, policy and completed outcomes; the aid reads those records. | The existing Auto unit test now runs with both 1-second and 8-second readings; Presenter advances its whole 34-second Auto visit before reading it. |
+| Ten queued destination cues evict the entry arrival | The eight-item Camera diagnostic journal could forget a completed Travel before the aid read it. Camera completion now records arrival on its originating entry, which outlives the diagnostic window. | Unit `entry arrival survives more cues than the Camera diagnostic journal retains`; Presenter authors ten cues through the real controls, then proves both Camera completion and retained Q7/A4 credit; mutation `arrival-evicted`. |
+| Return is mistaken for a fresh Stop entry | A changed current Stop was treated as a new entry even when Return restored an existing visit. Only actual entry creates a runtime record; Return resumes without another policy entry. | Unit `Return resumes its Stop without inventing another entry policy`; rich assertion `Return resumes the parent without recording a duplicate Stop entry`; mutations `return-entry` and `visit-return-entry`. |
+| Narration completion stands in for a capability handover | An explanation could finish and start the rotor while an unrelated casing operation had also completed. A2 now requires a capability dependent that actually began on another capability's completion, in addition to the visitor's Stop. | Unit `an explanation finishing is not a capability completion handover`; Presenter authors that dependency through the signal picker, runs and stops it, and keeps A2 open; mutation `handover-narration`. |
+
+Held-content outcomes are recorded while that entry is active, rather than inferred later from completed
+work left by another visit. The movement's visit identity prevents repeated Stops sharing a View from
+borrowing one another's arrival. Camera still evaluates every movement; these are private session outcomes,
+not authored data or a second navigation authority. No production code, root fixtures or gates were changed.
+
+The first mutation run exposed a QA defect introduced while adding Return coverage: Return released the
+Wall projection before the Exit-restoration assertion, allowing `representation-restore` to pass. Exit and
+Return now run in separate visits, preserving both witnesses. This failure is recorded rather than claimed
+as a product pass. Final verification below supersedes that interrupted mutation run.
+
+Verification at the final sources:
+
+- Prototype Node suite **126/126**; the C9 review file has **16 tests**. The four new failing cases were
+  reproduced before their repairs, including the two observation cadences in the existing Auto test.
+- Twelve affected product axes green: Presenter **59/0**, rich **35/0**, visitor **42/0**, Experience **30/0**,
+  composition **27/0**, conformance **105/0**, reconciliation **13/0**, correctness **11/0**, continuity **55/0**,
+  revision **38/0**, precision-c9 **55/0**, creator **23/0**. Presenter and rich were re-run after the final
+  capability-handover requirement and the QA ordering correction. Each axis's fault/error controls passed.
+- Full composition mutation chain **79/79 regressions rejected**, all named controls green, exit **0**:
+  **49** model/runtime and **30** browser obligations. Existing obligations were retargeted to the runtime
+  entry records; the four additions are `arrival-evicted`, `return-entry`, `handover-narration` and
+  `visit-return-entry`.
+- Architecture **276/276**, exit **0**; `git diff --check` clean. Root `npm test`, `npm run check` and
+  `npm run build` were all run and remain red only on the pre-existing missing `40-walls.json` fixture.
+  Root tests report **4951 passed, 1 failed, 1 skipped**, with **32 suites unable to collect** through the
+  same missing import; this is not a passing root gate.
+- Changes remain uncommitted. All owned browsers and private QA servers were released. No closure or
+  production acceptance is claimed.
 
 ## Known limitations
 

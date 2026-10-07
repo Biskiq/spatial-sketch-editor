@@ -63,12 +63,15 @@ export const S = {
   /* `expReview` records what the review aid observes: product outcomes the real paths report, and the
      provenance of the document on screen. `source` names the loader that produced the current document
      ('none' at boot), `writes` counts accepted authoring commands since that load, `authored` names the
-     outcomes this session authored (a Presentation, an explanation, a capture, a Guide Stop), and the rest
-     hold the last real outcome of each product path (a completed visit, a visitor session, a scope
-     decision, a provider loss). A step's outcome is read from here and from the authored documents — never
-     from a field being present or a button having been pressed, and a quickstart topic is credited only
-     for the outcomes its own instruction authors, so any unrelated edit cannot complete it. */
-  expReview: { auditions: 0, previews: 0, source: 'none', writes: 0, peeks: 0, visit: null, visitor: null, scope: null, loss: null },
+     outcomes this session authored (a Presentation, an explanation, a capture, a framing, a Guide Stop),
+     `at` records the outcomes that belong to one moment rather than to the session, keyed by Presentation — a
+     View an author captures or an explanation they write is that moment's, while a loader's framing is not —
+     and the rest hold the last real outcome of each product path (a completed visit, a visitor session, a
+     scope decision, a provider loss). A step's
+     outcome is read from here and from the authored documents — never from a field being present or a
+     button having been pressed, and a quickstart topic is credited only for the outcomes its own
+     instruction authors, so any unrelated edit cannot complete it. */
+  expReview: { auditions: 0, previews: 0, source: 'none', writes: 0, at: {}, peeks: 0, visit: null, visitor: null, scope: null, loss: null },
   /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
   flatHold: null,
   /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */

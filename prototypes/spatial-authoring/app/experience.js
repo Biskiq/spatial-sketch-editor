@@ -30,17 +30,83 @@ export function review(patch) { S.expReview = { ...S.expReview, ...patch }; retu
 // outcomes its own instruction produces, so an unrelated edit — renaming a loaded Presentation, say — can
 // never qualify a predicate that the loader made true.
 export function reviewAuthored(outcome) { const authored={...(S.expReview.authored||{})}; authored[outcome]=(authored[outcome]||0)+1; return review({authored}); }
+// An outcome that belongs to one moment rather than to the session is recorded against that Presentation as
+// well as in the session's tally: a View an author captures, or an explanation they write, is that moment's,
+// and a topic assessing a different moment can never be credited for it. Reset with the document's
+// provenance, so framing that arrived from a loader is never counted as the author's own.
+export function reviewMoment(pid,outcome){if(!pid)return false;reviewAuthored(outcome);
+ const at={...(S.expReview.at||{})};at[pid]=[...new Set([...(at[pid]||[]),outcome])];return review({at});}
 export const authoredHere = (outcome) => (S.expReview.authored?.[outcome]||0) > 0;
-export function reviewSource(source) { return review({ source, writes: 0, authored: {}, auditions: 0, previews: 0, peeks: 0, visit: null, visitor: null, scope: null, loss: null, coordination: null }); }
+export const momentAuthored = (pid,outcome) => !!pid&&(S.expReview.at?.[pid]||[]).includes(outcome);
+export function reviewSource(source) { return review({ source, writes: 0, authored: {}, at: {}, auditions: 0, previews: 0, peeks: 0, visit: null, visitor: null, scope: null, loss: null, coordination: null }); }
 // The ledger a visit opens with. A Guide visit that begins inside its first Stop has already visited it,
 // so entry seeds the ledger with where the visit actually is; nothing else is assumed before a command.
-const emptyVisitorLedger=()=>({stops:[],traversed:null,explored:false,rejoined:false,viewStep:0,activated:[],detoured:false,returned:false,opened:[]});
+// `traversed` is the last transition and `entries` every Stop entry that really ran, so the aid can tell
+// a policy the author configured from one a visit executed; `stopped` records the visitor's own Stops.
+// `at` is the Stop the visit is standing in: a command and Auto both move a visit, so the ledger follows the
+// runtime's own state instead of whichever path arrived there, and the transition it records is the last
+// one between two of them.
+const emptyVisitorLedger=()=>({stops:[],at:null,traversed:null,travelArrivals:0,entries:[],explored:false,rejoined:false,viewStep:0,activated:[],stopped:[],detoured:false,returned:false,opened:[]});
 // What a private visit reported, read from the visitor's own session: the authored work that ran, the
-// framing that arrived and the stop it happened on. Never a counter of the authoring side.
+// framing that arrived and the stop it happened on. Never a counter of the authoring side. `completed`
+// counts capability work only — an explanation that finished playing is not a finite operation that ran
+// to its end — and `handoffs` counts capability runs begun by another capability's completion: a dependent still armed, one
+// this Stage could not run, or one the visit disarmed before it ever ran is no handover, and a dependent
+// the visitor stopped after it began still is.
 function visitOutcome(v) {
   const e = v.source.experience, r = v.runtime, kind = (id) => e.definitions[e.uses[id]?.definitionId]?.kind || null;
-  const ran = Object.values(r.activities);
-  return { stop: r.stopId, stops: r.history.length, framing: !!r.arrivedViewUseId, exploring: r.exploring, caption: r.captions && !!R.narrationCaption(e, r), narration: ran.filter((a) => kind(a.useId) === 'narration').length, controls: ran.filter((a) => kind(a.useId) === 'control').length, completed: ran.filter((a) => a.status === 'complete').length, invoked: ran.filter((a) => e.uses[a.useId]?.start?.kind === 'station').length };
+  const ran = Object.values(r.activities), dependent = (a) => {const start=e.uses[a.useId]?.start;return kind(a.useId)==='control'&&start?.kind==='after'&&start.signal==='complete'&&kind(start.useId)==='control';};
+  return { stop: r.stopId, stops: r.history.length, framing: !!r.arrivedViewUseId, exploring: r.exploring, caption: r.captions && !!R.narrationCaption(e, r), narration: ran.filter((a) => kind(a.useId) === 'narration').length, controls: ran.filter((a) => kind(a.useId) === 'control').length, completed: ran.filter((a) => kind(a.useId) === 'control' && a.status === 'complete').length, handoffs: ran.filter((a) => dependent(a) && a.began).length, invoked: ran.filter((a) => e.uses[a.useId]?.start?.kind === 'station').length };
+}
+// The Stop entry the author configured, as it is about to run: which policy it is (a Presentation entry,
+// one specific View, or an explicit hold), whether that View is a later one rather than the Presentation's
+// own entry, and the View it names. `arrived`/`ran` stay false here: a configured policy is never evidence
+// that a visit entered it, and only the visit's own runtime reports those two outcomes. `since` is the
+// Camera serial the entry was made at, so an arrival only ever counts for the entry that asked for it — two
+// Stops naming one shared Presentation entry must never lend each other their arrival.
+function entryRecord(e,stopId,r){
+ const s=e.stops[stopId];if(!s)return null;
+ const own=stopEntry(e,stopId);
+ return {stopId,kind:s.entry.kind,later:s.entry.kind==='use'&&own.id!==(entryUse(e,s.presentationId)?.id??null),viewUseId:own.id,hold:!!own.hold,arrived:!own.id,ran:false,since:r?.serial??0};
+}
+// The Camera's own completed movements, never the request: the View a visit asked for is reached when the
+// Camera reports a finished movement to exactly that View — read from the movement that made it, not from
+// the last arrival slot, so a cue the destination's own content starts in the same tick cannot hide the
+// Travel that just finished, and not from `movement` either, since a later cue being in flight says nothing
+// about the arrival that already happened. An entry that names no View asks for no Camera move at all, so
+// entering it is its own arrival.
+const arrivalFor=(r,useId,since=0)=>!useId?null:(r.arrivals||[]).filter(a=>a.useId===useId&&a.token>=since).pop()||null;
+// What the visitor's own session reports about the ledger while it runs. Where the visit is, which Stop
+// entry it made and how the Camera's movements ended are all read from the runtime, so a command and Auto
+// are one story rather than two: Auto advances through the same tick that a Next does, and a visit the
+// visitor never commanded is still a visit whose Stops and entries ran. Arrival is read from completed
+// movements rather than at the request, a Travel is counted where the Camera made it, and a hold is credited
+// once content ran under it. Reconciling is idempotent: it writes only the facts that actually changed.
+export function reconcileVisitor(){
+ const v=S.visitor,led=S.expReview.visitor;if(!v||!led)return false;
+ const r=v.runtime,e=v.source.experience;let next=led,changed=false;
+ // Read the entries where the runtime made them, including every intermediate Auto visit. Camera arrival
+ // and held work stay attached to that visit even after later movement or a Return changes the live state.
+ const entries=r.entries||[],fresh=entries.slice((led.entries||[]).length),last=fresh[fresh.length-1];
+ if(last){next={...next,traversed:{from:last.from,to:last.stopId,dest:last.viewUseId,visit:last.visit,arrived:last.arrived,travel:!!last.travel}};changed=true;}
+ else if(r.stopId&&(r.stopId!==led.at)){
+  // Return resumes an existing visit; its new framing can arrive without inventing another policy entry.
+  const dest=entryRecord(e,r.stopId,r);
+  next={...next,traversed:{from:led.at??null,to:r.stopId,dest:dest.viewUseId,arrived:!dest.viewUseId,since:dest.since}};changed=true;
+ }
+ if((r.stopId??null)!==(led.at??null)){next={...next,at:r.stopId??null};changed=true;}
+ const stops=[...new Set([...(next.stops||[]),...entries.map(x=>x.stopId)])];
+ if(stops.length!==(next.stops||[]).length){next={...next,stops};changed=true;}
+ if(JSON.stringify(entries)!==JSON.stringify(led.entries||[])){next={...next,entries};changed=true;}
+ // Every Travel the visit really made, mirrored from the Camera's own count so a Travel that completed
+ // between two readings is never lost. Monotonic: a later reading never lowers it.
+ const travels=Math.max(next.travelArrivals||0,r.travelArrivals||0);
+ if(travels!==(next.travelArrivals||0)){next={...next,travelArrivals:travels};changed=true;}
+ const t=next.traversed;
+ if(t&&!t.arrived){const arrival=t.visit!==undefined?entries.find(x=>x.visit===t.visit&&x.arrived):arrivalFor(r,t.dest,t.since);
+  if(arrival){next={...next,traversed:{...t,arrived:true,travel:!!arrival.travel}};changed=true;}}
+ if(changed)review({visitor:next});
+ return changed;
 }
 export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
@@ -175,7 +241,12 @@ export function presentationValid(id) { const p = ctx.experience.presentations[i
 export function captureView(pid=S.experienceContext.presentation){
  const p=ctx.experience.presentations[pid];if(!p)return false;
  const derived=S.derivedView?.presentation===pid?nav.deriveFraming(p,S.task?.params.hints||[]):null;
- const result=command('Capture Camera View',(e,c)=>{const id=addView(e,c,pid,derived?.pose||nav.plainPose(),derived?.name||(entryUse(e,pid)?'Captured perspective':'Entry framing'),entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});S.derivedView=null;if(S.task?.kind==='experience-hints'){T.end();S.experienceContext.depth='ordinary';}ctx.ui();return result;
+ const result=command('Capture Camera View',(e,c)=>{const id=addView(e,c,pid,derived?.pose||nav.plainPose(),derived?.name||(entryUse(e,pid)?'Captured perspective':'Entry framing'),entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});S.derivedView=null;if(S.task?.kind==='experience-hints'){T.end();S.experienceContext.depth='ordinary';}
+ // Accepting a framing is the outcome the explanation topic pairs with: the capture authors a View this
+ // Presentation now carries, which is exactly what a loader-provided framing can never claim — and it is
+ // recorded against this moment, so a Capture on another Presentation is never this one's framing.
+ if(result)reviewMoment(pid,'framing');
+ ctx.ui();return result;
 }
 export function autoView(pid=S.experienceContext.presentation){
  const p=ctx.experience.presentations[pid];if(!p)return false;const derived=nav.deriveFraming(p);if(!derived){A.setStatus('Focus unresolved · repair before framing','refuse');return false;}
@@ -206,10 +277,13 @@ export function preview(pid=S.experienceContext.presentation,guide=false,experie
  S.visitor={returnToken:token,source:structuredClone({experience:ctx.experience,camera:cameraSnapshot(),scene:ctx.sceneSource}),runtime:createRuntime(ctx.experience,cameraSnapshot(),guide||experience?null:pid,nav.plainPose(),ctx.sceneSource)};
  S.visitorChoice=null;S.visitorPress=null;S.visitorDrag=null;  if(guide)S.visitor.runtime=R.startGuide(S.visitor.source.experience,S.visitor.source.camera,S.visitor.runtime,S.visitor.source.scene);
   // A visit starts with a clean ledger: what the previous visit did is evidence about another document. A
-  // Guide visit that enters its first Stop has already visited it, so the ledger opens with that Stop
-  // instead of recording only the destinations a later command reaches.
-  const entered=S.visitor.runtime.stopId;
-  review({visit:null,visitor:entered?{...emptyVisitorLedger(),stops:[entered]}:null});
+  // Guide visit that enters its first Stop has already visited it, so the ledger opens with that Stop — and
+  // with the entry policy the runtime actually ran there — instead of recording only what a later command
+  // reaches. Whether the Camera arrived at that entry's View, and whether content ran under a hold, are read
+  // from the visit as it runs, never assumed at the moment of entry.
+  const entered=S.visitor.runtime.stopId,entries=S.visitor.runtime.entries;
+  review({visit:null,visitor:entered?{...emptyVisitorLedger(),stops:[entered],at:entered,entries}:null});
+  reconcileVisitor();
  nav.applyPose(S.visitor.runtime.pose);ctx.ui();return true;
 }
 export async function exitPreview() {
@@ -229,6 +303,9 @@ export function visitorFrame(now) {
  if(!S.visitor) {runtimeAt=now;return;}
  const v=S.visitor,dt=Math.min(.25,Math.max(0,(now-runtimeAt)/1000));runtimeAt=now;
  v.runtime=tickRuntime(v.source.experience,v.source.camera,v.runtime,dt,v.source.scene);
+ // The visit's own frame is where an arrival becomes the ledger's: the Camera reaches the View it was
+ // travelling to between commands, so waiting for the next command would never record it.
+ reconcileVisitor();
  if(now-(v.uiAt||0)>160){v.uiAt=now;ctx.ui();}
  if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);
 }
@@ -504,7 +581,7 @@ export function auditionCapability(sid,cid,value,quiet=false){
 export function clearAudition(sid){if(!S.expAudition||!(sid in S.expAudition))return false;delete S.expAudition[sid];ctx.ui();return true;}
 // The explanation is the outcome Q2 names: its own accepted text is what the aid records as authored here,
 // so a cleared field or a merely re-committed value never counts as writing one.
-export function explainPresentation(pid,text){const result=command('Edit explanation',e=>setPrimaryExplanation(e,pid,text));if(result&&String(text??'').trim())reviewAuthored('explanation');return result;}
+export function explainPresentation(pid,text){const result=command('Edit explanation',e=>setPrimaryExplanation(e,pid,text));if(result&&String(text??'').trim())reviewMoment(pid,'explanation');return result;}
 // Use in Experience: one uniquely matching captured use is updated in place; no match captures a new
 // Activity; several matches require a choice and never mutate the first enumerated one. Ambiguity is
 // decided before any command, so a refused choice never leaves an empty history step behind.
@@ -640,7 +717,7 @@ export function choiceRepointCommand(stopId,choiceId,targetId){
  try{return command('Repair choice destination',e=>repointChoice(e,stopId,choiceId,targetId));}
  catch(error){A.setStatus(error.message,'refuse');ctx.ui();return false;}
 }
-export function reuseFraming(pid,vid){return command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));}
+export function reuseFraming(pid,vid){const result=command('Reuse Camera View',(e,c)=>reuseView(e,c,pid,vid));if(result)reviewMoment(pid,'framing');return result;}
 export function visitorCommand(action,id=null){
  const v=S.visitor;if(!v)return false;const e=v.source.experience,c=v.source.camera,scene=v.source.scene,r=v.runtime;
  if(action==='choice-cancel'){S.visitorChoice=null;ctx.ui();return true;}
@@ -672,8 +749,16 @@ export function visitorCommand(action,id=null){
  // resumed and activated is read from the runtime this command produced, never assumed from authoring.
  const led=S.expReview.visitor||emptyVisitorLedger();
  const next={...led};
- if(r.stopId!==v.runtime.stopId&&v.runtime.stopId)next.traversed={from:r.stopId,to:v.runtime.stopId,arrived:!!v.runtime.arrivedViewUseId};
- if(v.runtime.stopId&&!next.stops.includes(v.runtime.stopId))next.stops=[...next.stops,v.runtime.stopId];
+ // Where the visit moved to, which Stop entry it made there and how the Camera's movements ended are not
+ // recorded here: `reconcileVisitor` reads them from the runtime, so a Stop reached by Auto is as real as
+ // one reached by Next. This command only writes the facts its own action produced.
+ // A visitor Stop is recorded with the run it actually ended: only the runtime knows whether that run was
+ // live at the moment, and only the authored descriptor says whether its lifetime is carried by the
+ // Experience rather than owned by the visit. Both facts are what the capability-sequence topic reads.
+ if(action==='stop'&&id){
+  const run=r.activities[id],u=e.uses[run?.useId];
+  if(run)next.stopped=[...(next.stopped||[]),{useId:run.useId,live:run.status==='running',carried:run.status==='running'&&(u?.end?.kind==='experience'||u?.retention?.kind==='experience')}];
+ }
  if(action==='explore')next.explored=true;
  if(action==='rejoin')next.rejoined=true;
  if(action==='next-view'||action==='previous-view')next.viewStep=led.viewStep+1;
@@ -682,6 +767,7 @@ export function visitorCommand(action,id=null){
  if(action==='return')next.returned=true;
  if(action==='open'&&id)next.opened=[...next.opened,id];
  review({visitor:next});
+ reconcileVisitor();
  if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;
 }
 // Direct subject activation during Preview and exploration: a real click activates the offer(s) the used
@@ -845,9 +931,13 @@ export function presenterSteps(){
   {family:'Q',title:'Q1 · Subject and Presentation',authored:['presentation'],instruction:'Select a real World subject in the Index, then Present this. One Presentation, no Guide.',
    done:()=>Object.values(e.presentations).some(p=>p.focus.kind==='subjects'&&p.focus.ids.length&&p.focus.ids.every(id=>!!A.worldOf(id)))&&e.guide.length===0,
    observed:()=>{const p=working();if(!p)return 'No Presentation yet';const ids=p.focus.ids||[],real=ids.filter(id=>!!A.worldOf(id));return `${p.name} · focus ${real.join(', ')||p.focus.kind}${real.length<ids.length?' · unresolved':''} · Guide ${e.guide.length}`;}},
-  {family:'Q',title:'Q2 · Explanation and framing',authored:['explanation'],instruction:'Write the explanation in the Presentation Card, then Capture the suggested framing.',
+  {family:'Q',title:'Q2 · Explanation and framing',
+   // Both outcomes belong to the moment this topic assesses: an explanation or a Capture authored on another
+   // Presentation is that other moment's, so neither one can complete the topic on screen.
+   authored:[()=>momentAuthored(working()?.id,'explanation'),()=>momentAuthored(working()?.id,'framing')],
+   instruction:'Write the explanation in the Presentation Card, then Capture the suggested framing.',
    done:()=>{const p=working();if(!p)return false;const u=primary(p.id);return !!(u&&e.definitions[u.definitionId]?.text.trim())&&p.uses.some(id=>e.uses[id]?.viewId);},
-   observed:()=>{const p=working();if(!p)return 'Waiting for a Presentation';const u=primary(p.id),text=u?e.definitions[u.definitionId]?.text.trim():'';return `${text?`“${text.slice(0,48)}${text.length>48?'…':''}”`:'No explanation'} · ${p.uses.filter(id=>e.uses[id]?.viewId).length} View(s)`;}},
+   observed:()=>{const p=working();if(!p)return 'Waiting for a Presentation';const u=primary(p.id),text=u?e.definitions[u.definitionId]?.text.trim():'',framed=momentAuthored(p.id,'framing');return `${text?`“${text.slice(0,48)}${text.length>48?'…':''}”`:'No explanation'} · framing ${framed?`accepted here (${p.uses.filter(id=>e.uses[id]?.viewId).length} View(s))`:p.uses.some(id=>e.uses[id]?.viewId)?'came with the document, not accepted here':'not accepted here'}`;}},
   {family:'Q',title:'Q3 · Operate and Use',authored:['capture'],instruction:'Select the subject again, operate a capability, then Use in this Presentation.',
    done:()=>!!captured()&&(S.expReview?.auditions||0)>0,
    observed:()=>{const u=captured();const d=u&&e.definitions[u.definitionId],tries=S.expReview?.auditions||0;return `${d?`${d.name||d.capabilityId} captured${u.presentationId?` in ${e.presentations[u.presentationId]?.name||'a Presentation'}`:''}`:'No captured capability yet'}${tries?` · ${tries} audition${tries===1?'':'s'}`:''}`;}},
@@ -862,7 +952,7 @@ export function presenterSteps(){
    observed:()=>`${e.guide.length} Stops · ${Object.keys(e.seams).length} authored edges`},
   {family:'Q',title:'Q7 · Preview the Guide',authored:['guide'],instruction:'Preview the Guide and press Next from the first Stop to the second: the order resolver and the destination entry run.',
    done:()=>{const t=S.expReview.visitor?.traversed;return !!t&&t.from===e.guide[0]&&t.to===e.guide[1]&&t.arrived;},
-   observed:()=>{const t=S.expReview.visitor?.traversed;return t?`Traversed ${e.guide.indexOf(t.from)+1} → ${e.guide.indexOf(t.to)+1} · destination entry ${t.arrived?'ran':'did not run'}`:'No traversal yet';}},
+   observed:()=>{const t=S.expReview.visitor?.traversed;return t?`Traversed ${e.guide.indexOf(t.from)+1} → ${e.guide.indexOf(t.to)+1} · destination entry ${t.arrived?'reached by the Camera':'still travelling'}`:'No traversal yet';}},
   {family:'Q',title:'Q8 · Explore and rejoin',authored:['presentation'],instruction:'Explore the World during the visit, then Rejoin: participation is kept and framing resumes from where you are, with Auto off.',
    done:()=>!!S.expReview.visitor?.explored&&!!S.expReview.visitor?.rejoined,
    observed:()=>{const v=S.expReview.visitor;return `${v?.explored?'explored':'not explored'} · ${v?.rejoined?'rejoined':'not rejoined'} · ${v?.viewStep||0} View step${(v?.viewStep||0)===1?'':'s'}`;}},
@@ -870,14 +960,14 @@ export function presenterSteps(){
    done:()=>Object.values(e.presentations).some(p=>p.uses.filter(id=>e.uses[id]?.viewId).length>=2)&&(S.expReview.visitor?.viewStep||0)>0,
    observed:()=>{const p=Object.values(e.presentations).sort((a,b)=>b.uses.filter(id=>e.uses[id]?.viewId).length-a.uses.filter(id=>e.uses[id]?.viewId).length)[0];return `${p?.uses.filter(id=>e.uses[id]?.viewId).length||0} framed Views · Guide ${e.guide.length} · View steps ${S.expReview.visitor?.viewStep||0}`;}},
   {family:'A',title:'A2 · Capability sequence',instruction:'Load the rich example or author a capability sequence: watch a finite operation complete and hand over, then stop a carried run.',
-   done:()=>{const v=S.expReview.visit;return !!v&&v.controls>=1&&v.completed>=1;},
-   observed:()=>{const v=S.expReview.visit;return v?`capabilities ${v.controls} · completed ${v.completed}`:'No completed visit yet';}},
+   done:()=>{const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return !!v&&v.controls>=1&&v.completed>=1&&v.handoffs>=1&&stopped.some(s=>s.carried);},
+   observed:()=>{const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return v?`capabilities ${v.controls} · completed ${v.completed} · handovers ${v.handoffs} · carried runs stopped ${stopped.filter(s=>s.carried).length}`:'No completed visit yet';}},
   {family:'A',title:'A3 · Stop entry policies',instruction:'Compare entries: a Presentation entry, a specific later View, and a hold while the content still runs.',
-   done:()=>{const kinds=new Set(Object.values(e.stops).map(s=>s.entry.kind));return kinds.size>=2&&!!S.expReview.visit;},
-   observed:()=>`entries ${[...new Set(Object.values(e.stops).map(s=>s.entry.kind))].join(', ')||'none'} · last visit ${S.expReview.visit?.stop?'at a Stop':'standalone'}`},
+   done:()=>{const ent=S.expReview.visitor?.entries||[];return ent.some(x=>x.kind==='presentation'&&x.arrived)&&ent.some(x=>x.kind==='use'&&x.later&&x.arrived)&&ent.some(x=>x.kind==='hold'&&x.ran);},
+   observed:()=>{const ent=S.expReview.visitor?.entries||[],n=k=>ent.filter(x=>x.kind===k&&(x.arrived||x.ran)).length;return `entries the visit ran · Presentation ${n('presentation')} · later View ${ent.filter(x=>x.kind==='use'&&x.later&&x.arrived).length} · hold with content running ${ent.filter(x=>x.kind==='hold'&&x.ran).length}`;}},
   {family:'A',title:'A4 · Request simple Travel',instruction:'Open the Seam and Travel: Camera prepares the missing support, and the visitor travels without any graph surgery.',
-   done:()=>{const c=cameraSnapshot();return Object.values(e.seams).some(s=>s.mode==='travel'&&originCoverage(e,c,s.from,s.to).every(r=>!r.missing&&(r.connectionId||r.viewId===r.targetId)))&&(S.expReview.visitor?.stops||[]).length>=2;},
-   observed:()=>{const c=cameraSnapshot(),s=Object.values(e.seams)[0];if(!s)return 'No Seam yet';const rows=originCoverage(e,c,s.from,s.to);return `${s.mode} · ${rows.filter(r=>r.connectionId).length}/${rows.length} origins routed · ${(S.expReview.visitor?.stops||[]).length} stops visited`;}},
+   done:()=>{const c=cameraSnapshot(),led=S.expReview.visitor;return Object.values(e.seams).some(s=>s.mode==='travel'&&originCoverage(e,c,s.from,s.to).every(r=>!r.missing&&(r.connectionId||r.viewId===r.targetId)))&&(led?.stops||[]).length>=2&&(led?.travelArrivals||0)>0;},
+   observed:()=>{const c=cameraSnapshot(),s=Object.values(e.seams)[0],led=S.expReview.visitor;if(!s)return 'No Seam yet';const rows=originCoverage(e,c,s.from,s.to);return `${s.mode} · ${rows.filter(r=>r.connectionId).length}/${rows.length} origins routed · ${(led?.stops||[]).length} stops visited · ${led?.travelArrivals||0} Travel arrived`;}},
   {family:'A',title:'A5 · Edit the route',instruction:'Edit the Camera route from the Seam: see the real origins, path, anchors and pace, then return explicitly.',
    done:()=>!!(S.expReview.routeWrite?.edited&&S.expReview.routeWrite?.returned),
    observed:()=>{const w=S.expReview.routeWrite||{},r=Object.values(ctx.cameraSource.connections)[0];return `${w.edited?'edited':'not edited'} · ${w.returned?'returned':'not returned'} · ${r?`${r.anchors.length} anchor(s), ${r.markers.length} marker(s), pace ${r.speed}`:'no route'}`;}},
@@ -909,12 +999,15 @@ export function presenterNext(){const steps=presenterSteps(),i=Math.max(0,Math.m
 // A quickstart topic is credited only when the outcomes its own instruction produces were authored on this
 // document in this session; an advanced topic may be reviewed on explicitly loaded content, and its line
 // says so.
-export function presenterCredit(step) {const seen=!!step.done(),required=step.family==='Q'?(step.authored||[]):[],authored=required.length?required.every(authoredHere):S.expReview.writes>0;return {seen,credited:seen&&(step.family==='A'||authored),authored};}
+// A step's authored requirement is a list of outcomes. Most are the session's own record; one that belongs to
+// a particular moment is named by a predicate closing over the moment the topic assesses, so work authored on
+// another Presentation can never stand in for the one on screen.
+export function presenterCredit(step) {const seen=!!step.done(),required=step.family==='Q'?(step.authored||[]):[],authored=required.length?required.every(r=>typeof r==='function'?!!r():authoredHere(r)):S.expReview.writes>0;return {seen,credited:seen&&(step.family==='A'||authored),authored};}
 // The provenance line names the loader that produced the document on screen, and the authored count says
 // whether anything in it was authored here. Loaded content is never counted as authorship.
 export const presenterSource = () => ({ kind: S.expReview.source, label: { none: 'prototype boot', reset: 'Reset Experience', example: 'Load Example', conformance: 'Load Conformance fixture' }[S.expReview.source] || S.expReview.source, writes: S.expReview.writes });
 
-export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
+export function stepVisitor(seconds){const v=S.visitor;if(!v)return false;v.runtime=R.tickRuntime(v.source.experience,v.source.camera,v.runtime,seconds,v.source.scene);reconcileVisitor();if(!v.runtime.exploring)nav.applyPose(v.runtime.pose);ctx.ui();return true;}
 
 export const cameraSnapshot=()=>nav.resolvedCamera();
 
@@ -979,5 +1072,3 @@ export function updateHold(id,seconds) {
  if(result!==false)review({coordination:{...(S.expReview.coordination||{}),holdEdited:true}});
  return result;
 }
-
-
