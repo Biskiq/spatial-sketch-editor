@@ -6,6 +6,8 @@ import * as A from './actions.js';
 import { applyField } from './ui.js';
 import { cancelProposal } from './cancel.js';
 import * as E from './experience.js';
+import { runExperienceStep } from './experience-walkthrough.js';
+import { onCancel } from './cancel.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -149,21 +151,48 @@ export const JOURNEYS = [
 ];
 
 let J = 0, I = 0;
+let walkthrough = true, experienceRun = null;
+const hasAuthoringDraft = () => !!(S.pending || S.busy || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expRebindAsk || S.expCaptureAsk || S.expOfferDraft);
+onCancel(reason => { if (experienceRun && ['reset', 'esc'].includes(reason)) experienceRun.cancelled = true; }, 14, 'Presenter walkthrough');
+
+async function experienceNext() {
+  if (experienceRun) return;
+  const i = S.experiencePresenter || 0, step = E.presenterSteps()[i];
+  if (walkthrough && !S.visitor && !hasAuthoringDraft() && !E.presenterCredit(step).credited) {
+    const job = { cancelled: false, lens: 'experience' }; experienceRun = job;
+    const current = () => !job.cancelled && S.lens === job.lens && (S.experiencePresenter || 0) === i;
+    renderJourneys();
+    try {
+      await runExperienceStep(step.title.split(' · ')[0], { current, lens: which => {
+        job.changingLens = true;
+        try { A.switchLens(which); job.lens = S.lens; } finally { job.changingLens = false; }
+      } });
+    } catch (error) {
+      if (current()) A.setStatus(error.message, 'refuse');
+    } finally { experienceRun = null; renderJourneys(); }
+    if (!current()) return;
+  }
+  E.presenterNext();
+  if (i === E.presenterSteps().length - 1) $('#journeys').classList.remove('open');
+  renderJourneys();
+}
 
 // One Presenter chrome and controller, with lens-owned content. World keeps its scripted demonstrations;
-// Experience navigation only changes instructions and reads outcomes from the existing product commands.
+// Experience optionally demonstrates the current task through the existing product commands.
 export function renderJourneys() {
   const panel = $('#journeys');
   if (!panel) return;
   const experience = S.lens === 'experience';
+  if (experienceRun && !experienceRun.changingLens && S.lens !== experienceRun.lens) experienceRun.cancelled = true;
   panel.dataset.lens = S.lens;
   panel.classList.toggle('presenter-visiting', !!S.visitor);
   html($('#jToggle'), `${experience ? 'Experience walkthrough' : 'Guided journeys'} <kbd>J</kbd>`);
   for (const el of panel.querySelectorAll('[data-experience-guidance]')) el.hidden = !experience;
   const prev = panel.querySelector('[data-jact=prev]'), next = panel.querySelector('[data-jact=next]');
   prev.textContent = experience ? 'Back' : '‹';
-  prev.disabled = experience && !(S.experiencePresenter > 0);
-  next.disabled = false;
+  prev.disabled = !!experienceRun || (experience && !(S.experiencePresenter > 0));
+  next.disabled = !!experienceRun;
+  panel.querySelector('[data-jact=skip]').disabled = !!experienceRun;
   for (const [button, action, delta] of [[prev, 'exp-presenter', '-1'], [next, 'exp-presenter', '1'], [panel.querySelector('[data-jact=skip]'), 'exp-presenter-skip', '']]) {
     if (experience) { button.dataset.act = action; button.dataset.delta = delta; }
     else { delete button.dataset.act; delete button.dataset.delta; }
@@ -179,6 +208,9 @@ export function renderJourneys() {
     $('#jTitle').textContent = `${i + 1}/${steps.length} · ${step.title}`;
     $('#jBody')._presenterHtml = null;
     $('#jBody').textContent = (S.visitor ? 'Read-only while Preview is active · ' : '') + step.instruction;
+    html($('#jWalkthrough'), S.visitor
+      ? '<span>Next browses instructions during Preview. Exit Preview to demonstrate an authoring task.</span>'
+      : `<button data-jact="walkthrough" aria-pressed="${walkthrough}" ${experienceRun ? 'disabled' : ''}>Walkthrough ${walkthrough ? 'on' : 'off'}</button><span>${experienceRun ? 'Demonstrating this task… Close to stop.' : walkthrough ? hasAuthoringDraft() ? 'Your current edit stays open. Next browses; finish or cancel the edit to demonstrate a task.' : 'Next completes this task for you; Skip moves on without doing it.' : 'Try the task yourself. Next moves on; outcomes are feedback.'}</span>`);
     const observed = panel.querySelector('[data-example-observed]');
     observed.textContent = `Observed · ${step.observed()}`;
     observed.dataset.seen = String(credit.seen); observed.dataset.credited = String(credit.credited);
@@ -189,11 +221,13 @@ export function renderJourneys() {
     const provenance = panel.querySelector('[data-example-source]');
     provenance.textContent = `Source · ${source.label} · ${source.writes} authored edit${source.writes === 1 ? '' : 's'}`;
     provenance.dataset.source = source.kind; provenance.dataset.writes = String(source.writes);
-    next.disabled = !credit.credited;
+    next.disabled = !!experienceRun;
+    next.textContent = experienceRun ? 'Working…' : i === steps.length - 1 ? 'Finish' : 'Next ›';
     $('#jCount').textContent = `${i + 1} / ${steps.length}`;
     return;
   }
   const j = JOURNEYS[J];
+  next.textContent = 'Next ›';
   const st = j.steps[I];
   html($('#jTabs'), JOURNEYS.map((x, k) => `<button class="${k === J ? 'on' : ''}" data-j="${k}"><span>${x.id}</span>${esc(x.name)}</button>`).join(''));
   $('#jKicker').textContent = j.kicker;
@@ -221,6 +255,7 @@ async function play(j, i, replay = true) {
 export function initJourneys() {
   const panel = $('#journeys');
   panel.addEventListener('click', (e) => {
+    if (experienceRun && !e.target.closest('[data-jact=close]')) return;
     const tj = e.target.closest('[data-j]');
     if (tj && S.lens === 'world' && !S.visitor) { play(+tj.dataset.j, 0, false); return; }
     const ts = e.target.closest('[data-step]');
@@ -234,9 +269,10 @@ export function initJourneys() {
     if (!a) return;
     // This controller owns the shared navigation buttons; product delegation must not run them twice.
     e.stopPropagation();
-    if (a.dataset.jact === 'close') { panel.classList.remove('open'); return; }
+    if (a.dataset.jact === 'close') { if (experienceRun) experienceRun.cancelled = true; panel.classList.remove('open'); return; }
     if (S.lens === 'experience') {
-      if (a.dataset.jact === 'next') E.presenterNext();
+      if (a.dataset.jact === 'next') { experienceNext(); return; }
+      if (a.dataset.jact === 'walkthrough' && !S.visitor) walkthrough = !walkthrough;
       if (a.dataset.jact === 'prev') E.presenterStep(-1);
       if (a.dataset.jact === 'skip') E.presenterSkip();
       renderJourneys(); return;
@@ -250,7 +286,10 @@ export function initJourneys() {
     if (a.dataset.jact === 'prev' && I > 0) play(J, I - 1);
     if (a.dataset.jact === 'replay') play(J, I);
   });
-  $('#jToggle').addEventListener('click', () => panel.classList.toggle('open'));
+  $('#jToggle').addEventListener('click', () => {
+    if (experienceRun && panel.classList.contains('open')) experienceRun.cancelled = true;
+    panel.classList.toggle('open');
+  });
   renderJourneys();
   const q = new URLSearchParams(location.search);
   if (q.get('journey') && S.lens === 'world' && !S.visitor) {

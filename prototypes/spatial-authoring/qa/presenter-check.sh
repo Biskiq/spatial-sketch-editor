@@ -154,18 +154,20 @@ qa_ok "…crediting no quickstart topic even though the example satisfies their 
 press '[data-act=exp-presenter-skip]'
 last="$(step '')"
 qa_ok "…and saying so where the reviewer is reading" "$(field stepText) / $(field credit)" "2/18 · Q2 · Explanation and framing / Loaded content · not authored here, so this quickstart topic stays open"
-qa_ok "…and Next stays disabled while the topic outcome is not earned" "$(field nextDisabled)" "True"
+press '#journeys [data-jact=walkthrough]'
+qa_ok "…and Next stays available while the topic outcome is not observed" "$(field nextDisabled)" "False"
 IDX_P="$(field index)"
 next_aid
 last="$(step '')"
-qa_ok "…and pressing Next on an unearned topic does not move the aid" "$(field index) / $(field stepText)" "$IDX_P / 2/18 · Q2 · Explanation and framing"
+qa_ok "…and Next advances an unobserved topic in guidance mode" "$(field index) / $(field stepText)" "$((IDX_P + 1)) / 3/18 · Q3 · Operate and Use"
+back; last="$(step '')"
 checkpoint provenance
 
 qa_say "-- an unrelated authored edit never completes a quickstart topic"
 W0="$(field writes)"
 rename_once 'Renamed example'
 last="$(step '')"
-qa_ok "an authored edit that is not this topic's outcome is counted, and completes nothing" "$(field writes) / $(is 'd["credited"] == ""') / $(field stepText) / $(field nextDisabled)" "$((W0 + 1)) / True / 2/18 · Q2 · Explanation and framing / True"
+qa_ok "an authored edit that is not this topic's outcome is counted, and completes nothing" "$(field writes) / $(is 'd["credited"] == ""') / $(field stepText) / $(field nextDisabled)" "$((W0 + 1)) / True / 2/18 · Q2 · Explanation and framing / False"
 checkpoint unrelated
 
 # Three authored commands precede the capture: the rename above, this topic's own explanation edit, and the

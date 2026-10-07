@@ -1,10 +1,10 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
 TYPE: prototype implementation/review evidence for C9.1–C9.9; final owner acceptance pending.
-STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented, reviewed and verified, including revision/repair, rich fixture/coordination, precise Camera and observational guidance. The bounded shared-Presenter follow-up is complete and ready for MP3/MP4 owner review. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
+STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented and reviewed. The owner-directed optional walkthrough correction is in verification: Next demonstrates the current task when on, or browses without an outcome gate when off. The preceding proof below belongs to its recorded executable, not this correction. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
 SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up before final human acceptance. No production migration, broader shell overhaul, six-QA visual reconciliation, merge, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.
 
-## Current follow-up provenance
+## Preceding observational follow-up provenance (historical)
 
 - Baseline committed revision: `dad60dffd79e064c8af14e75cb888ad80d2f87e3` on `prototype-v2`.
 - **Final committed executable: `1f1e711535be3363f48024df2ec19ed3bcf27fc8`**,

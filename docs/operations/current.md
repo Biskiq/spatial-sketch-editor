@@ -6,7 +6,10 @@ CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION A
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
 NEXT: #113 C9.1–C9.9 are implemented and reviewed; the bounded shared-Presenter
-       follow-up is verified and ready for MP3/MP4 owner review. World retains its A–F workflow; Experience
+       follow-up is implemented; the owner's optional walkthrough correction is in verification.
+       Next demonstrates the current task when walkthrough is on, or browses without a completion gate
+       when off. Back/Skip stay source-neutral; Preview exposes no authoring walkthrough controls.
+       World retains its A–F workflow; Experience
        has its own ordinary authoring walkthrough in that same mechanism. A2 binds
        the visitor's Stop to the observed handoff target and run identity.
        MP1 (2026-10-04) and MP2 (2026-10-05) are owner-accepted. **MP3 and MP4
@@ -24,7 +27,7 @@ PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 
        + real World ↔ Experience continuity → Paper PA0–PA12 in the next PR → prototype
        detour closes → F exact-interface amendments → T1/T2/T3/T4.
        #113 — C1–C8 in-scope conformance complete; C9.1–C9.9 implemented/reviewed,
-       awaiting MP3/MP4 owner acceptance; the bounded walkthrough follow-up is complete.
+       awaiting MP3/MP4 owner acceptance after the optional walkthrough correction is verified.
        C9 plan and evidence above own capability-first acceptance and final executable
        provenance. Earlier conformance authority →
        ../roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md.
