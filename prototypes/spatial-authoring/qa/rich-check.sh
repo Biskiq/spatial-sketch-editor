@@ -48,11 +48,21 @@ click '#experienceDeck [data-act=exp-preview-guide]'
 byText '[data-command=detour]' 'See the wall assembly'
 qa_ok 'the off-Guide Wall assembly is a deliberate visitor entry whose transient invocation runs there' "$(qa_js "(()=>{const r=__me.S.visitor.runtime;return r.stopId==='$wall_stop'&&!!r.active['$unfold_use']&&!!document.querySelector('[data-command=return]')&&!!r.overrides.wallAssembly;})()")" true
 qa_ok 'the Wall detour arrives through the Wall entry View, so the unroll happens in view' "$(qa_js "__me.S.visitor.runtime.arrivedViewUseId==='$wall_entry_use'")" true
-qa_js '(async()=>{await new Promise(r=>setTimeout(r,1500));await __me.qa.render();return true;})()' >/dev/null
+# The unroll is the visitor runtime's own motion tween, so the visitor's own clock is what advances it:
+# a backgrounded tab stops rAF, and a wall-clock wait would then assert against a tween that never ran.
+qa_js '(async()=>{__me.E.stepVisitor(2);await __me.qa.render();return true;})()' >/dev/null
 qa_ok 'Preview unrolls the authored World Wall through its own evaluator' "$(qa_js '(()=>{const u=__me.ctx.stage.d("rotunda").u,o=__me.S.visitor.runtime.overrides.wallAssembly;return u>0.9&&!!o&&o.unfolded.value>0.9;})()')" true
 qa_ok 'the unroll writes no source and no history' "$(hash) / $(undo)" "$source_before / $count_before"
 click '[data-act=exp-exit-preview]'
 qa_ok 'Exit restores the author Wall reading exactly and clears the visitor session' "$(qa_jsv '__me.ctx.stage.d("rotunda").u') / $(qa_js '!__me.S.visitor') / $(hash) / $(undo)" "$reading_before / true / $source_before / $count_before"
+# Return releases the detour's projection itself, so it gets a separate visit: it must never clear the
+# Wall before the Exit-restoration assertion above has a chance to detect a broken restoration path.
+click '#experienceDeck [data-act=exp-preview-guide]'
+byText '[data-command=detour]' 'See the wall assembly'
+entries_before="$(qa_jsv '__me.S.expReview.visitor.entries.length')"
+click '[data-command=return]'
+qa_ok 'Return resumes the parent without recording a duplicate Stop entry' "$(qa_jsv '__me.S.expReview.visitor.entries.length') / $(qa_jsv '__me.S.visitor.runtime.stopId')" "$entries_before / $first"
+click '[data-act=exp-exit-preview]'
 checkpoint wall
 
 # ---- The loaded Seam's local coordination is reviewable without building a timeline.

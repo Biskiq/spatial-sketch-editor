@@ -22,8 +22,22 @@ const carriedWork=(r,e)=>id=>{
  if(a.status==='stopped'||a.status==='unavailable')return null;
  return {spent:Math.max(0,Number(a.elapsed)||0)};
 };
+// A completed movement is a Camera fact a visit reads later, so completions are journalled rather than kept
+// in one slot: the last-arrival field alone loses a Travel when the destination's own content starts a cue
+// in the same tick, since the cue's completion then overwrites the arrival the visit never got to read. Each
+// diagnostic names the movement that made it. Entry outcomes below retain their own facts independently
+// of this bounded diagnostic window.
+const ARRIVAL_JOURNAL=8;
+const recordArrival=(r,m)=>{r.arrivedViewUseId=m.useId;r.arrivedTravel=!!m.travel;
+ r.arrivals=[...r.arrivals,{useId:m.useId,travel:!!m.travel,token:m.token}].slice(-ARRIVAL_JOURNAL);
+ // An entry's outcome outlives the short diagnostic journal. The movement's originating visit prevents
+ // repeated Stops using the same View from borrowing an earlier visit's arrival.
+ for(const entry of r.entries)if(!entry.arrived&&entry.visit===m.visit&&entry.viewUseId===m.useId){entry.arrived=true;entry.travel=!!m.travel;}
+ // Every Travel the visit really made, counted where the Camera made it: a Seam route supplied by the
+ // author, never ordinary framing, and never the request that asked for it.
+ if(m.travel)r.travelArrivals=(r.travelArrivals||0)+1;};
 export function createRuntime(e,c,pid,pose,scene=createSceneCapabilities()) {
- const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,arrivedViewUseId:null,viewingSuppressed:false,cueFloor:-1,captions:true,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,remainingFrom:0,readiness:BREATHING,refusal:null};
+ const r={time:0,serial:0,visit:0,visitCounter:0,presentationId:null,stopId:null,viewUseId:null,arrivedViewUseId:null,arrivedTravel:false,arrivals:[],travelArrivals:0,entries:[],viewingSuppressed:false,cueFloor:-1,captions:true,pose:copy(pose),movement:null,queue:[],activities:{},active:{},overrides:{},signals:{},autoplay:false,exploring:false,history:[],bookmarks:[],log:[],elapsed:0,remainingFrom:0,readiness:BREATHING,refusal:null};
  r.scene=copy(scene);armScope(r,e,c,scene,null);
  if(pid)enterPresentation(r,e,c,scene,pid);
  const u=entryUse(e,pid);if(u)requestView(r,e,c,u.id,'cut');
@@ -34,9 +48,11 @@ export function requestView(r,e,c,id,speed='auto',path=null,seam=null,connection
  if(r.movement){r.queue.push({id,speed,path,seam,connectionId});return true;}
  const route=path||viewPath(r.pose,resolved.view.pose);
  const timing=movementTiming(c,seam,route,speed,connectionId);
- r.movement={token:++r.serial,path:route,...timing,elapsed:0};r.viewUseId=id;r.refusal=null;
- if(!r.movement.duration){r.pose=evaluatePath(route,1);r.arrivedViewUseId=id;r.movement=null;}
- else r.movement.useId=id;
+ // A movement carrying a supplied route is the Seam's own Travel invocation; a speed-only request is
+ // ordinary framing (a cue, a Stop entry, a View step), so the movement records which one it is. The
+ // arrival carries it too: only then can the visit say a Travel finished rather than merely started.
+ r.movement={token:++r.serial,visit:r.visit,useId:id,path:route,travel:!!path,...timing,elapsed:0};r.viewUseId=id;r.refusal=null;
+ if(!r.movement.duration){r.pose=evaluatePath(route,1);recordArrival(r,r.movement);r.movement=null;}
  return true;
 }
 function removeOwned(r,token){for(const channels of Object.values(r.overrides))for(const [key,patch] of Object.entries(channels))if(patch.owner===token)delete channels[key];}
@@ -44,6 +60,12 @@ function stopRun(r,e,token,reason){const a=r.activities[token];if(!a)return;a.st
  for(const b of Object.values(r.activities))if(b.status==='waiting'&&b.visit===a.visit&&e.uses[b.useId]?.start.useId===a.useId)stopRun(r,e,b.token,'Dependency disarmed');
 }
 function put(r,sid,channel,value,token){r.overrides[sid]??={};r.overrides[sid][channel]={value,owner:token};}
+function recordHeldWork(r,e){
+ const entry=r.entries.find(x=>x.visit===r.visit);
+ if(!entry?.hold||entry.ran||r.stopId!==entry.stopId||!r.viewingSuppressed)return;
+ entry.ran=Object.values(r.activities).some(a=>e.uses[a.useId]?.presentationId===r.presentationId&&
+  (a.status==='running'||(a.status==='complete'&&a.visit===entry.visit)));
+}
 function emit(r,e,c,scene,a,signal){
  // Completion ownership follows its originating visit/run. A stale run cannot signal a later visit.
  if(r.active[a.useId]!==a.token)return;
@@ -87,7 +109,10 @@ function begin(r,e,c,scene,token,interaction=false){
   if(cap.kind==='motion'&&current===value)a.duration=0;
   put(r,d.subjectId,cap.channel,cap.kind==='motion'&&a.duration?current:value,token);
  }
- note(r,'Started '+(d.name||u.id));if(a.duration===0)complete(r,e,c,scene,token);return true;
+ // A run that really began is recorded as such, and stays recorded: a dependent stopped later still handed
+ // over here, while one disarmed or refused before it ran never did. This is the fact a capability sequence
+ // reads, because a run's status after the fact cannot tell the two apart.
+ a.began=true;recordHeldWork(r,e);note(r,'Started '+(d.name||u.id));if(a.duration===0)complete(r,e,c,scene,token);return true;
 }
 function armScope(r,e,c,scene,pid){
  const incoming=Object.values(e.uses).filter(u=>{
@@ -232,7 +257,7 @@ export function gateState(e,c,r){
  if(seam.mode==='travel'){const invocation=travelInvocation(e,c,r,from,to,seam);if(invocation.refusal)return {allowed:false,reason:invocation.refusal};}
  return {allowed:true,reason:''};
 }
-function goStop(r,e,c,scene,id,record=true,ignoreTravel=false){
+function goStop(r,e,c,scene,id,record=true,ignoreTravel=false,entryFrom=r.stopId){
  const s=e.stops[id];if(!s||!e.presentations[s.presentationId]){r.refusal='Stop or Presentation missing';return false;}
  const entry=stopEntry(e,id),to=resolveUse(e,c,entry.id);if(entry.missing||(entry.id&&!to)){r.refusal='Framing removed — repair or explicitly keep viewpoint';return false;}
  const old=r.stopId,seam=old?getSeam(e,old,id):null,from=resolveUse(e,c,r.viewUseId);let path=null,speed='cut',connectionId=null;const origin=copy(r.pose);
@@ -240,7 +265,11 @@ function goStop(r,e,c,scene,id,record=true,ignoreTravel=false){
  if(record&&old)r.history.push(old);
  enterPresentation(r,e,c,scene,s.presentationId);r.stopId=id;r.exploring=false;r.refusal=null;
  r.viewingSuppressed=!!entry.hold;r.cueFloor=entry.id?(cueSeconds(e,e.uses[entry.id]?.cue)??-1):-1;
- if(to)requestView(r,e,c,to.use.id,speed,path,seam,connectionId);else {r.viewUseId=null;r.arrivedViewUseId=null;}
+ // Record the actual visit, before requesting its Camera entry. Auto can enter several Stops between
+ // observations; Return restores a visit and therefore never appends another entry here.
+ r.entries.push({stopId:id,from:entryFrom,visit:r.visit,kind:s.entry.kind,later:s.entry.kind==='use'&&entry.id!==(entryUse(e,s.presentationId)?.id??null),viewUseId:entry.id,hold:!!entry.hold,arrived:!entry.id,ran:false,since:r.serial+1});
+ if(to)requestView(r,e,c,to.use.id,speed,path,seam,connectionId);else {r.viewUseId=null;r.arrivedViewUseId=null;r.arrivedTravel=false;}
+ recordHeldWork(r,e);
  r.pacingFallback=s.pacing.kind==='signal'&&signalEmitted(r,s.pacing.ref);
  r.readiness=estimatePresentation(e,c,s.presentationId,origin,entry.id,r.movement,scene,{cues:!entry.hold,cueFloor:r.cueFloor,carried:carriedWork(r,e)});note(r,'Entered Stop '+id);return true;
 }
@@ -292,7 +321,7 @@ function endParkedVisit(r,e,scene,b){
  if(b.stopId)r.history.splice(b.history.length,0,b.stopId);
 }
 export function chooseRuntime(e,c,current,targetId,detour=false,scene=createSceneCapabilities()){
- const r=copy(current);
+ const r=copy(current),entryFrom=r.stopId;
  // A choice whose destination left with its Presentation is refused before anything the visitor already
  // has is parked: a broken authored reference never costs them their parent visit, their narration or
  // their current Stop.
@@ -302,7 +331,7 @@ export function chooseRuntime(e,c,current,targetId,detour=false,scene=createScen
  // A go choice abandons the parked parent: the visitor chose to continue, not to come back, so the
  // parent's own visit is ended under its own identity before its bookmark is forgotten.
  else while(r.bookmarks.length)endParkedVisit(r,e,scene,r.bookmarks.pop());
- goStop(r,e,c,scene,targetId,!detour,true);return r;
+ goStop(r,e,c,scene,targetId,!detour,true,entryFrom);return r;
 }
 // Opening another available Presentation is a deliberate visitor navigation request: from a Guide it
 // parks the current Stop with one bounded return bookmark, otherwise it starts a fresh visit. The
@@ -348,7 +377,7 @@ export function tickRuntime(e,c,current,seconds,scene=createSceneCapabilities())
   if(r.movement){const m=r.movement;m.elapsed=Math.min(m.duration,m.elapsed+dt);let held=0,progress=null;
    for(const h of m.holds||[]){if(m.elapsed>=h.at+h.seconds)held+=h.seconds;else if(m.elapsed>=h.at){progress=h.progress;break;}}
    for(const invocation of m.invokes||[]){if(!invocation.fired&&m.elapsed>=invocation.at){invocation.fired=true;const u=e.uses[invocation.useId];if(u)begin(r,e,c,scene,makeRun(r,e,c,scene,u));}}
-   r.pose=evaluatePath(m.path,progress??(m.travelDuration?(m.elapsed-held)/m.travelDuration:1));if(m.elapsed>=m.duration-1e-9){r.arrivedViewUseId=m.useId;r.movement=null;}
+   r.pose=evaluatePath(m.path,progress??(m.travelDuration?(m.elapsed-held)/m.travelDuration:1));if(m.elapsed>=m.duration-1e-9){recordArrival(r,m);r.movement=null;}
   }
   for(const a of Object.values(r.activities).filter(a=>a.status==='running')){
    if(r.active[a.useId]!==a.token){stopRun(r,e,a.token,'Superseded run');continue;}
@@ -358,6 +387,7 @@ export function tickRuntime(e,c,current,seconds,scene=createSceneCapabilities())
    if(a.duration!==null&&a.elapsed>=a.duration){a.elapsed=a.duration;complete(r,e,c,scene,a.token);}
   }
   if(!r.movement&&r.queue.length){const q=r.queue.shift();requestView(r,e,c,q.id,q.speed,q.path,q.seam,q.connectionId);}
+  recordHeldWork(r,e);
   // Dwell is authored time at the Stop, measured on the preserved Stop clock; the remaining-work deadline
   // and the pacing fallback are measured from the rebased playhead, so a Return neither rewinds a dwell nor
   // reads carried work as already done.

@@ -23,7 +23,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -266,6 +266,43 @@ elif kind == 'profile-unvalidated':
     replace('app/experience-capabilities.js',
             " if(!PROFILES[profile])throw Error('Unknown provider profile');\n",
             "")
+elif kind == 'framing-global':
+    # The topic's outcomes are session-wide again, so a Capture or an explanation on another moment stands in
+    # for the one the topic is assessing.
+    replace('app/experience.js',
+            "authored:[()=>momentAuthored(working()?.id,'explanation'),()=>momentAuthored(working()?.id,'framing')],",
+            "authored:['explanation','framing'],")
+elif kind == 'handover-stopped':
+    # Every dependent that is not still armed counts as a handover, so a dependent the visit disarmed before
+    # it ever ran is credited to the capability sequence.
+    replace('app/experience.js',
+            "handoffs: ran.filter((a) => dependent(a) && a.began).length",
+            "handoffs: ran.filter((a) => dependent(a) && a.status !== 'waiting' && a.status !== 'unavailable').length")
+elif kind == 'entry-auto-only':
+    # Auto entries are omitted at the runtime path that actually makes them.
+    replace('app/experience-runtime.js',
+            " r.entries.push({stopId:id,",
+            " if(!r.autoplay)r.entries.push({stopId:id,")
+elif kind == 'arrival-slot':
+    # A queued destination cue hides the completion of the entry movement.
+    replace('app/experience-runtime.js',
+            "if(!entry.arrived&&entry.visit===m.visit&&entry.viewUseId===m.useId)",
+            "if(!r.queue.length&&!entry.arrived&&entry.visit===m.visit&&entry.viewUseId===m.useId)")
+elif kind == 'arrival-evicted':
+    # Entry outcomes are forgotten when their Camera diagnostic falls out of the short journal.
+    replace('app/experience-runtime.js',
+            "].slice(-ARRIVAL_JOURNAL);",
+            "].slice(-ARRIVAL_JOURNAL);for(const entry of r.entries)if(entry.viewUseId&&!r.arrivals.some(a=>a.useId===entry.viewUseId&&a.token>=entry.since))entry.arrived=false;")
+elif kind == 'return-entry':
+    # Resuming the parent invents another entry, although no new visit starts.
+    replace('app/experience-runtime.js',
+            " Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});",
+            " Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});r.entries.push({...r.entries.find(x=>x.visit===b.visit)});")
+elif kind == 'handover-narration':
+    # Any dependency, including narration completion, counts as a finite capability handover.
+    replace('app/experience.js',
+            "&&start.signal==='complete'&&kind(start.useId)==='control'",
+            "")
 elif kind == 'hold-seconds':
     # An authored Experience hold no longer delays arrival, so the visitor's move ignores it.
     replace('app/experience-coordination.js',
@@ -320,9 +357,16 @@ PY
     shared-entry-origin) name='every eligible Presentation View and the private Stop entry are legitimate origins'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;
     go-continuation) name='C9.5 a go choice is a distinct authored continuation'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     abandoned-parked-work) name='C9.5 a go choice ends the parked parent local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
+    framing-global) name='the framing a topic asks for belongs to the moment it was accepted in, through either authored door'; control='a quickstart topic names every outcome its instruction produces, not any one of them' ;;
+    handover-stopped) name='a capability sequence counts a handover only when the dependent really began'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
+    entry-auto-only) name='a Stop reached by Auto is as real as one reached by Next'; control='a quickstart topic names every outcome its instruction produces, not any one of them' ;;
+    arrival-slot) name='a Travel arrival survives the destination starting its own cue'; control='a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does' ;;
+    arrival-evicted) name='entry arrival survives more cues than the Camera diagnostic journal retains'; control='a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does' ;;
+    return-entry) name='Return resumes its Stop without inventing another entry policy'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
+    handover-narration) name='an explanation finishing is not a capability completion handover'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
   esac
   log="$work/pure-$kind.log"
-  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" "$work/pure-$kind/tests/experience-revision.test.mjs" >"$log" 2>&1; then
+  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" "$work/pure-$kind/tests/experience-revision.test.mjs" "$work/pure-$kind/tests/experience-c9-review.test.mjs" >"$log" 2>&1; then
     echo "FAIL: model/runtime accepted the $kind regression"
     exit 1
   fi
@@ -341,7 +385,7 @@ PY
 done
 
 # ------------------------------------------------- browser wiring obligations
-for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-ledger-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-unearned; do
+for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-entry-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-unearned presenter-framing-uncharged presenter-sequence-credit presenter-entry-configuration visit-arrival-immediate presenter-framing-scope presenter-handover-disarmed visit-entries-auto visit-return-entry; do
   python3 - "$QA_DIR/.." "$work/$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -436,14 +480,13 @@ elif kind == 'presenter-unrelated-credit':
     # Any authored write counts as authorship for every satisfied quickstart topic, so an edit that is not
     # a topic's own outcome completes it on a document the loader produced.
     replace('app/experience.js',
-            "const seen=!!step.done(),required=step.family==='Q'?(step.authored||[]):[],authored=required.length?required.every(authoredHere):S.expReview.writes>0;",
+            "const seen=!!step.done(),required=step.family==='Q'?(step.authored||[]):[],authored=required.length?required.every(r=>typeof r==='function'?!!r():authoredHere(r)):S.expReview.writes>0;",
             "const seen=!!step.done(),authored=S.expReview.writes>0;")
-elif kind == 'visit-ledger-unseeded':
-    # A visit opens an empty ledger, so the Stop it entered is invisible and only the destinations a later
-    # command reaches are ever recorded.
-    replace('app/experience.js',
-            "  const entered=S.visitor.runtime.stopId;\n  review({visit:null,visitor:entered?{...emptyVisitorLedger(),stops:[entered]}:null});\n",
-            "  review({visit:null,visitor:emptyVisitorLedger()});\n")
+elif kind == 'visit-entry-unseeded':
+    # The opening Stop is visited, but its entry outcome is absent.
+    replace('app/experience-runtime.js',
+            " r.entries.push({stopId:id,",
+            " if(entryFrom)r.entries.push({stopId:id,")
 elif kind == 'peek-unrecorded':
     # A quiet Peek selection is no longer recorded, so the quickstart Peek topic can never complete.
     replace('app/experience.js',
@@ -474,6 +517,50 @@ elif kind == 'presenter-visit-controls':
     replace('app/experience-ui.js',
             "for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=visiting;",
             "for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=false;")
+elif kind == 'presenter-framing-uncharged':
+    # The framing outcome is dropped from the topic's authored requirement, so an explanation alone completes
+    # a topic whose instruction also asks for an explicit Capture — on framing the loader supplied.
+    replace('app/experience.js',
+            "authored:[()=>momentAuthored(working()?.id,'explanation'),()=>momentAuthored(working()?.id,'framing')],",
+            "authored:[()=>momentAuthored(working()?.id,'explanation')],")
+elif kind == 'presenter-sequence-credit':
+    # Any completed work credits the capability sequence, so a visit that finished an explanation and a bare
+    # Activity is credited without the handover or the carried run the topic names.
+    replace('app/experience.js',
+            "const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return !!v&&v.controls>=1&&v.completed>=1&&v.handoffs>=1&&stopped.some(s=>s.carried);",
+            "const v=S.expReview.visit;return !!v&&v.controls>=1&&v.completed>=1;")
+elif kind == 'presenter-entry-configuration':
+    # Configured entry policies are read as if the visit had run them, so two kinds of Entry in the document
+    # complete a topic about comparing what the visitor actually met.
+    replace('app/experience.js',
+            "const ent=S.expReview.visitor?.entries||[];return ent.some(x=>x.kind==='presentation'&&x.arrived)&&ent.some(x=>x.kind==='use'&&x.later&&x.arrived)&&ent.some(x=>x.kind==='hold'&&x.ran);",
+            "const kinds=new Set(Object.values(e.stops).map(s=>s.entry.kind));return kinds.size>=2&&!!S.expReview.visit;")
+elif kind == 'presenter-framing-scope':
+    # The topic's outcomes are session-wide again, so a Capture on another moment completes the topic that is
+    # assessing a Presentation still framed by the loader.
+    replace('app/experience.js',
+            "authored:[()=>momentAuthored(working()?.id,'explanation'),()=>momentAuthored(working()?.id,'framing')],",
+            "authored:['explanation','framing'],")
+elif kind == 'presenter-handover-disarmed':
+    # A dependent the visit disarmed before it ever ran is counted as a handover, so the capability sequence
+    # is credited for a sequence that never happened.
+    replace('app/experience.js',
+            "handoffs: ran.filter((a) => dependent(a) && a.began).length",
+            "handoffs: ran.filter((a) => dependent(a) && a.status !== 'waiting' && a.status !== 'unavailable').length")
+elif kind == 'visit-entries-auto':
+    # Auto makes visits without recording their entry outcomes.
+    replace('app/experience-runtime.js',
+            " r.entries.push({stopId:id,",
+            " if(!r.autoplay)r.entries.push({stopId:id,")
+elif kind == 'visit-arrival-immediate':
+    # The destination borrows the last arrival while its own movement is still in flight.
+    replace('app/experience-runtime.js',
+            "hold:!!entry.hold,arrived:!entry.id,ran:false",
+            "hold:!!entry.hold,arrived:!!r.arrivedViewUseId,ran:false")
+elif kind == 'visit-return-entry':
+    replace('app/experience-runtime.js',
+            " Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});",
+            " Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});r.entries.push({...r.entries.find(x=>x.visit===b.visit)});")
 elif kind == 'profile-loss-silent':
     # Provider replacement applies the profile but the adapter keeps reporting the previous declared
     # capabilities, so loss/gain is silently invisible.
@@ -532,9 +619,9 @@ PY
     choice-unresolved)
       axis=rich; boundary='QA_RICH_UNTIL=retained-choice'
       expected='the runtime refuses the unresolved destination without parking the parent visit'; control='removing a Presentation retains the authored labelled choice as an unresolved, repairable reference' ;;
-    visit-ledger-unseeded)
-      axis=presenter; boundary='QA_PRESENTER_UNTIL=advanced'
-      expected='the visit opens its ledger with the Stop it entered, before any command'; control='a visit that ran no station invocation leaves Coordinate incomplete' ;;
+    visit-entry-unseeded)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=policies'
+      expected='…while configured policies alone leave the topic open, with only the entries a visit really made'; control='the visit opens its ledger with the Stop it entered, before any command' ;;
     presenter-unrelated-credit)
       axis=presenter; boundary='QA_PRESENTER_UNTIL=unrelated'
       expected="an authored edit that is not this topic's outcome is counted, and completes nothing"; control='loading the example is named as the source and counts no authored edit' ;;
@@ -553,6 +640,30 @@ PY
     presenter-visit-controls)
       axis=presenter; boundary='QA_PRESENTER_UNTIL=visit'
       expected='…with every authoring control inside it unmounted'; control="during the visit the aid is still there, marked as a visit's guidance" ;;
+    presenter-framing-uncharged)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=framing'
+      expected='…while the explanation alone leaves the topic open: its framing came with the document'; control='an edit authored here is counted, named as authored, and is one Undo' ;;
+    presenter-sequence-credit)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=sequence'
+      expected='…while that sequence alone leaves the topic open: no carried run was stopped'; control='the visit opens its ledger with the Stop it entered, before any command' ;;
+    presenter-entry-configuration)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=policies'
+      expected='…while configured policies alone leave the topic open, with only the entries a visit really made'; control='the visit opens its ledger with the Stop it entered, before any command' ;;
+    visit-arrival-immediate)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=arrival'
+      expected='…which stays travelling until the Camera really reaches the destination entry'; control='…and records the Stop it travelled to as a traversal' ;;
+    presenter-framing-scope)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=moment'
+      expected='…and a Capture on another moment never stands in for the one the topic assesses'; control='an edit authored here is counted, named as authored, and is one Undo' ;;
+    presenter-handover-disarmed)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=handover'
+      expected='…so the dependent the visit left behind is no handover, whatever else completed'; control='the visit opens its ledger with the Stop it entered, before any command' ;;
+    visit-return-entry)
+      axis=rich; boundary='QA_RICH_UNTIL=wall'
+      expected='Return resumes the parent without recording a duplicate Stop entry'; control='the unroll writes no source and no history' ;;
+    visit-entries-auto)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=auto'
+      expected='…and with Auto on, all four Stops and their three entry policies land in the ledger'; control='the visit opens its ledger with the Stop it entered, before any command' ;;
   esac
   log="$work/$kind.log"
   if QA_SHOT=0 QA_SESSION="c9-mutation-$kind" env "$boundary" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
