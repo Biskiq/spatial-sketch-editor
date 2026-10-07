@@ -1,6 +1,6 @@
 # C9 — final model-first Experience reconciliation for #113
 
-**Status: C9.1–C9.9 implemented and reviewed; the bounded shared-Presenter follow-up is in final verification (2026-10-07).** MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. **MP3 and MP4 remain pending owner review**: automated verification, browser rehearsal and walkthrough completion do not accept either gate.
+**Status: C9.1–C9.9 implemented, reviewed and verified; awaiting MP3/MP4 owner acceptance (2026-10-07).** The bounded shared-Presenter follow-up is complete, with exact executable provenance in the C9 evidence record. MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. **MP3 and MP4 remain pending owner review**: automated verification, browser rehearsal and walkthrough completion do not accept either gate.
 C9.6 revision/repair, C9.7 rich fixture/coordination, C9.8 precise Camera and C9.9 observational walkthrough are implemented, with their review repairs and proof in the
 [C9 evidence record](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
 The current owner instruction authorizes one bounded follow-up, verification, commit and push before final human acceptance; no merge, production migration, Paper adoption, broader shell reconciliation or phase closure.
@@ -85,7 +85,7 @@ accounted for even though the original 4.1 plan concentrated on cues. Presenter
 contains labelled provider-mutating shortcuts and some weak outcome checks.
 Preserve useful behavior; do not transplant those mechanisms.
 
-### Current-state diagnosis
+### Initial pre-C9 diagnosis
 
 Inspected unified [model/mutations][v-model], [commands and UI wiring][v-commands],
 [runtime][v-runtime], [Cards/visitor/Presenter][v-ui], [capability adapters][v-caps],
@@ -676,7 +676,7 @@ No new workspace rail, second renderer or shell composition is proposed.
 
 The existing Presenter panel and controller switch content by lens. World retains its existing A–F workflow unchanged; Experience shows only the coherent Q1–Q8 authoring workflow and A1–A10 advanced work below. This walkthrough is editor guidance, distinct from the authored Experience Guide and its Stops. It adds no navigation, selection or history authority.
 
-Presenter reads source plus recorded product/runtime outcomes. Back/Skip/close/reopen and section selection change instructions only. Next is earned by the specific outcome, not a button press or field existence. Do not count loaded content as Reset authoring or credit a skipped outcome. Preview may retain read-only guidance; all authoring controls remain unavailable. Explicit Reset and Load Example are separate labelled source-loading commands; no state preparation, provider mutation or Camera positioning happens inside step navigation.
+The Experience walkthrough reads source plus recorded product/runtime outcomes. Its Back/Skip/close/reopen and section selection change instructions only. Next is earned by the specific outcome, not a button press or field existence. Do not count loaded content as Reset authoring or credit a skipped outcome. Preview may retain read-only guidance; all authoring controls remain unavailable. Explicit Reset and Load Example are separate labelled source-loading commands; no state preparation, provider mutation or Camera positioning happens inside Experience step navigation. World retains its existing scripted demonstrations.
 
 The normal progression is real World subject → Present → explanation/framing → operate/Use → Preview Presentation → add to Guide → second Presentation → Preview Guide/Next → explore/rejoin. The advanced part extends that same authored visit with additional Views, lifecycle, entry policies, Travel, route/coordination, interaction, detour, scope/Camera precision and repair. A2 retains the observed capability handoff's `fromUseId → toUseId` and target run token; the visitor must stop that same live carried target run. An unrelated carried Stop, including another run of the same use, cannot complete it.
 

@@ -1,15 +1,114 @@
-# C9 Experience reconciliation — evidence record (C9.1–C9.5)
+# C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
 TYPE: prototype implementation/review evidence for C9.1–C9.9; final owner acceptance pending.
-STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented and reviewed, including revision/repair, rich fixture/coordination, precise Camera and observational guidance. The bounded shared-Presenter follow-up is implemented and in final verification. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
+STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented, reviewed and verified, including revision/repair, rich fixture/coordination, precise Camera and observational guidance. The bounded shared-Presenter follow-up is complete and ready for MP3/MP4 owner review. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
 SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up before final human acceptance. No production migration, broader shell overhaul, six-QA visual reconciliation, merge, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.
 
 ## Current follow-up provenance
 
 - Baseline committed revision: `dad60dffd79e064c8af14e75cb888ad80d2f87e3` on `prototype-v2`.
-- Final follow-up verification/provenance is being recorded. Historical increment counts below belong to their own revisions or explicitly identified intermediate stages; they are not current-head claims.
+- **Final committed executable: `1f1e711535be3363f48024df2ec19ed3bcf27fc8`**,
+  `C9: give Experience its own workflow in the shared Presenter`, child of the baseline.
+  Every final run in this block ran after that commit, with a clean executable tree.
+- This evidence packet, live-status updates and one capture form an **evidence-only child** of that
+  executable. No `app/`, `index.html`, `styles/`, `tests/` or QA script bytes change in that child.
+  Inspect the pushed branch head and compare it to the executable above; final code proof is anchored
+  to the exact committed revision actually tested, rather than claiming runs against a later edit.
+- Historical increment counts below belong to their own revisions or explicitly identified
+  intermediate stages. They are not final follow-up claims.
 
-## Executable revision
+### Changed behavior and design decisions
+
+- **One lens-switched Presenter:** the existing panel/controller keeps World's A–F scripts,
+  Replay, tabs and instruction position. Experience replaces that content with Q1–Q8 followed by
+  A1–A10; no second tutorial panel, framework, selection model or history is created.
+- **An actual creator workflow:** select a World subject → Present → explanation/framing →
+  operate/Use → standalone Preview → add to Guide → second Presentation → Preview Guide/Next →
+  explore/rejoin. Each step names its instruction, real action and observed outcome. Back and explicit
+  Skip change only the cursor; earned Next observes product results and advances once. Reset/Load
+  Example remain separate, explicit source-loader commands. The walkthrough is editor guidance,
+  distinct from authored Experience Guide/Stops.
+- **Preview remains isolated:** the shared guidance may remain visible read-only; loaders and all
+  authoring controls remain unavailable. Product execution uses the existing private visitor
+  session and Camera evaluator; exiting returns the exact source/history/selection/viewpoint.
+- **A2 proves the dependent run:** observed capability handoffs retain `fromUseId → toUseId` and
+  the target run token. The visitor must stop that same live carried target run. A different carried
+  use, or another run of the same use, cannot earn the capability-sequence outcome.
+- Self-review also closed two misleading quickstart completions: a Guide visit cannot substitute
+  for standalone Preview (Q4), and repeated Stops of one Presentation cannot substitute for a second
+  Presentation (Q6). Both now have regression and same-defect mutation proof.
+- Guidance placement changes are bounded to Experience: its toggle sits above the Guide Deck, and
+  the scrollable panel moves left in a narrow Card sheet so actual authoring controls remain reachable.
+  World interaction and the wider shell remain intact.
+
+### Final verification at the committed executable (2026-10-07)
+
+- `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **130/130**, exit **0**;
+  `experience-c9-review.test.mjs` contains **20** tests, including both A2 identity counterexamples.
+- The smallest sufficient affected browser proof uses the existing `qa/run-all.sh` axes at
+  **1440×900**, all with exit **0** and no console/page errors:
+
+  | Axis | Assertions passed |
+  | --- | ---: |
+  | World journeys A–F | 59 |
+  | World shell | 47 |
+  | Lens/parked work | 81 |
+  | Standalone creator | 23 |
+  | Composition/compact Guide | 27 |
+  | Presenter, all 18 topics | 59 |
+  | Shared Experience workflow Q1–Q8 | 33 |
+  | Visitor execution | 42 |
+  | World ↔ Experience continuity | 55 |
+  | Responsive/keyboard | 15 |
+  | Numerical/nested correctness | 11 |
+  | **Affected-axis total** | **452** |
+
+- The same actual Q1–Q8 workflow at **1024×700** adds **33/33**, exit **0**:
+  **485/485 browser assertions total**. This proves visible product controls, both lens directions,
+  disabled unearned Next, exact Preview return, source-neutral tutorial navigation, distinct
+  Presentations/Guide Next and a real canvas exploration gesture/rejoin. It is automated rehearsal,
+  not owner comprehension or MP3/MP4 acceptance.
+- One [narrow workflow capture](../screens/experience-c9/shared-walkthrough-1024.png) comes from that
+  final 1024×700 run, after earning Q1–Q8 and advancing to A1. The tally reflects predicates in the
+  current session, not stored tutorial history or human acceptance. No six-QA campaign was run.
+- `bash prototypes/spatial-authoring/qa/mutation-check.sh` — **94/94 regressions rejected**, all
+  named unaffected controls green, exit **0** (3 World + 7 V2 + 53 model/runtime + 31 browser).
+  The complete chain includes `handover-identity`, `handover-run-identity`, `quickstart-standalone`,
+  `quickstart-second-moment` and `presenter-lens-content`; neither A2 defect nor World content in
+  Experience survives its witness. Intentional mutant failures are rejection proof, not product failures.
+- Verification repairs were folded before the executable froze: the visitor witness closes its
+  explicit loader disclosure before opening guidance; the narrow gesture samples unobstructed canvas;
+  moved Presenter/placeholder mutation anchors target the shared renderer. All 84 composition anchors
+  were applied on disposable copies, and the complete 94-obligation chain was rerun successfully.
+- Logs for this exact final run are `/tmp/pr113-c9-final-node.log`, the corresponding
+  `/tmp/pr113-c9-final-<axis>.log`, `/tmp/pr113-c9-final-narrow.log` and
+  `/tmp/pr113-c9-final-mutations.log`. Earlier preflight attempts are not the final counts above.
+
+### Repository gates and donor oracle at the same executable
+
+- Unconditional `npm run test:arch` — **276/276**, 24 files, exit **0**.
+- Root `npm test` — **4951 pass, 1 fail, 1 skip**; 32 suites cannot collect and the one collected
+  failure imports the same missing P23B fixture declared under *Known limitations*. Exit **1**.
+- Root `npm run check` — **1 missing-module error, 0 warnings**, exit **1**; root `npm run build`
+  cannot resolve that same fixture, exit **1**. The fixture remains outside this follow-up's scope.
+  These root gates are unresolved: this packet is ready for prototype owner review, not merge.
+- Museum check/build were run explicitly because root commands stop at the editor failure:
+  **0 errors/0 warnings**, build succeeds, both exit **0**.
+- The unchanged donor oracle: typecheck/build succeed, **62/62 domain/history tests** and
+  **21/21 Playwright journeys/regressions** pass. The browser runner used a private ephemeral port,
+  one worker and `reuseExistingServer: false`; its browser and server were released. Donor success
+  is reported separately from successor proof.
+- `git diff --check` is clean. QA browsers/private servers are released; no external browser was closed.
+
+### Owner-review frontier
+
+C9.6–C9.9 are implemented/reviewed work, not an unstarted queue. The plan, current baton,
+[PR checkpoint][checkpoint] and P25 router now agree: **MP3 — Travel and agency** and
+**MP4 — rich capability acceptance** still require explicit owner outcomes. Review MP3 with the
+Presenter closed; inspect the new Experience guidance as part of MP4, alongside the capabilities
+and shared structural seams. No acceptance, merge, phase closure or production cutover is implied.
+
+## Historical executable revisions — C9.1–C9.5
 
 - Branch `prototype-v2`; base commit `abaa7592730f565a8d47fd8480d69f0907dfe6c7` ("C9.1
   review pass"). The C9.1 slice was committed by the owner's review pass.

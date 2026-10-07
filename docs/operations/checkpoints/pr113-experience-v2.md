@@ -1,8 +1,8 @@
 # PR #113 Experience V2 — checkpoint
 
 TYPE: prototype implementation / owner-review handoff
-STATUS: C9.1–C9.9 implemented and reviewed; bounded shared-Presenter follow-up in final verification.
-GOAL: finish the bounded follow-up and hand PR #113 to the owner for MP3/MP4 acceptance; no merge or closure.
+STATUS: C9.1–C9.9 implemented, reviewed and verified; awaiting MP3/MP4 owner acceptance.
+GOAL: owner review of PR #113 at the final C9 executable; no merge or closure.
 
 CONSTRAINTS:
 - Prototype-local only. Preserve one Camera evaluator/navigation authority, Experience policy ownership,
@@ -33,6 +33,10 @@ ESTABLISHED:
 - MP3/MP4 remain pending human review. Trials (cursor/detour parent pause) are not permanent architecture.
 
 EVIDENCE:
+- Executable `1f1e711535be3363f48024df2ec19ed3bcf27fc8` on `prototype-v2`; the final packet is its evidence-only child.
+- Final proof: prototype Node **130/130**, affected browser checks **485/485** (11 axes plus narrow workflow),
+  complete mutation chain **94/94 rejected**, architecture **276/276**. Donor **62/62 + 21/21 browser**;
+  donor typecheck/build and Museum check/build pass. Root test/check/build retain the fixture blocker below.
 - `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` owns final counts, mutations and repository-gate limits.
 - `prototypes/spatial-authoring/qa/walkthrough-check.sh` drives Q1–Q8 and both lens directions through visible controls.
 - `prototypes/spatial-authoring/tests/experience-c9-review.test.mjs` and
@@ -43,7 +47,8 @@ DO NOT REPEAT:
 - Do not regenerate six visual QA specimens or treat a green Presenter as human acceptance.
 
 CURRENT:
-- Implementation is complete; final verification and committed executable provenance are being recorded.
+- The bounded implementation, self-review repairs and final verification are complete. Review the
+  committed executable above through the final evidence packet; executable bytes are unchanged in its child.
 - The missing P23B fixture remains a separate repository-gate blocker outside this authorized mutation scope.
 
 NEXT:
