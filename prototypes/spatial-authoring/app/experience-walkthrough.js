@@ -20,6 +20,25 @@ export async function runExperienceStep(code, { current = () => true, lens = A.s
     }
     requireCurrent();
   };
+  // Bounded progression to one named Stop. A refused traversal — a blocked Gate, an unresolved
+  // destination, a missing framing — leaves the visit exactly where it was, so waiting for the Stop to
+  // change would never end. Each step is therefore compared with the Stop it started from, the runtime's
+  // own refusal is reported instead of a silent spin, and `tries` bounds the whole walk however the
+  // Guide is authored. The frame yield keeps the Presenter's controls (and its own cancellation) live
+  // while the demonstration runs.
+  const advanceTo = async (owned, target, tries = 24) => {
+    for (let step = 0; step < tries; step++) {
+      requireCurrent();
+      if (owned.runtime.stopId === target) return;
+      const from = owned.runtime.stopId;
+      E.visitorCommand('next');
+      await wait(() => S.visitor !== owned || !owned.runtime.movement);
+      if (S.visitor !== owned) throw Error('Preview was closed');
+      if (owned.runtime.stopId === from) throw Error(owned.runtime.refusal || 'Next cannot leave this Stop; the demonstration stopped');
+      await pause(0);
+    }
+    throw Error('The Guide never reached the Stop this task demonstrates');
+  };
   const visit = async (begin, act = null, finishNarration = false) => {
     requireCurrent();
     if (!begin()) throw Error('Preview is unavailable for this content');
@@ -148,10 +167,7 @@ export async function runExperienceStep(code, { current = () => true, lens = A.s
       E.updateStop(atView, 'entry', { kind: 'use', useId: later }); E.updateStop(hold, 'entry', { kind: 'hold' });
       if (!first) throw Error('Entry framing needs repair');
       await guideVisit(async owned => {
-        while (owned.runtime.stopId !== hold) {
-          requireCurrent(); E.visitorCommand('next'); await wait(() => S.visitor !== owned || !owned.runtime.movement);
-          if (S.visitor !== owned) throw Error('Preview was closed');
-        }
+        await advanceTo(owned, hold);
         await wait(() => owned.runtime.entries.some(x => x.kind === 'hold' && x.ran));
       }); break;
     }
@@ -178,11 +194,30 @@ export async function runExperienceStep(code, { current = () => true, lens = A.s
       await visit(() => E.previewExperience(), async () => { E.visitorCommand('explore'); E.visitorCommand('activate', offer); }); break;
     }
     case 'A8': {
-      const { a, b } = pair();
-      const choice = E.command('Add detour choice', e => { const id = fresh(e, 'choice'); e.stops[a].choices.push({ id, label: 'Walkthrough detour', targetId: b, kind: 'detour' }); return id; });
+      pair();
+      // The choice is authored on the Stop the Guide visit actually enters, so taking it is the detour the
+      // visitor would take. Its destination is then read from that authored record: the runtime resolves a
+      // Stop identity, never the choice identity the author wrote, and a destination that has since left
+      // is a refusal this demonstration must report rather than assume away.
+      const b = ctx.experience.guide[1], from = ctx.experience.guide[0];
+      const choice = E.command('Add detour choice', e => { const id = fresh(e, 'choice'); e.stops[from].choices.push({ id, label: 'Walkthrough detour', targetId: b, kind: 'detour' }); return id; });
+      const authored = ctx.experience.stops[from]?.choices.find(c => c.id === choice);
+      if (!authored || authored.targetId === from || !ctx.experience.stops[authored.targetId]) throw Error('The authored detour choice needs repair');
+      const destination = authored.targetId;
+      // The demonstration is judged by what the runtime did, not by the commands it was given: the parent
+      // must be parked, the visitor must really be in the detour, Return must restore that same parent
+      // visit, and no Stop entry may be invented by coming back. A refused detour or Return fails here.
       await guideVisit(async owned => {
-        E.visitorCommand('detour', choice); await wait(() => S.visitor !== owned || !owned.runtime.movement);
-        if (S.visitor !== owned) throw Error('Preview was closed'); E.visitorCommand('return');
+        if (owned.runtime.stopId !== from) throw Error('The detour is taken from its own Stop');
+        const parent = owned.runtime.stopId, parentVisit = owned.runtime.visit, entries = owned.runtime.entries.length;
+        E.visitorCommand('detour', destination);
+        await wait(() => S.visitor !== owned || !owned.runtime.movement);
+        if (S.visitor !== owned) throw Error('Preview was closed');
+        const parked = owned.runtime.bookmarks[owned.runtime.bookmarks.length - 1];
+        if (owned.runtime.stopId !== destination || !parked || parked.stopId !== parent) throw Error(owned.runtime.refusal || 'The detour was refused');
+        E.visitorCommand('return');
+        if (owned.runtime.stopId !== parent || owned.runtime.visit !== parentVisit) throw Error('Return did not restore the parent visit');
+        if (owned.runtime.entries.length !== entries + 1) throw Error('Return created another Stop entry');
       }); break;
     }
     case 'A9': {

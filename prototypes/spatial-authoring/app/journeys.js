@@ -155,22 +155,35 @@ let walkthrough = true, experienceRun = null;
 const hasAuthoringDraft = () => !!(S.pending || S.busy || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expRebindAsk || S.expCaptureAsk || S.expOfferDraft);
 onCancel(reason => { if (experienceRun && ['reset', 'esc'].includes(reason)) experienceRun.cancelled = true; }, 14, 'Presenter walkthrough');
 
+// Next is never gated by the demonstration, including when a task cannot complete: a refused or failed
+// task is reported where the reviewer is reading and the cursor still advances, while the outcome
+// predicates keep earning their own topics from real product results.
+// Which outcome Next produced is decided from what the product did, and the record is written before the
+// panel renders, so what the reviewer reads is the attempt they just made.
 async function experienceNext() {
   if (experienceRun) return;
   const i = S.experiencePresenter || 0, step = E.presenterSteps()[i];
-  if (walkthrough && !S.visitor && !hasAuthoringDraft() && !E.presenterCredit(step).credited) {
+  const draft = hasAuthoringDraft(), credited = E.presenterCredit(step).credited;
+  if (walkthrough && !S.visitor && !draft && !credited) {
     const job = { cancelled: false, lens: 'experience' }; experienceRun = job;
     const current = () => !job.cancelled && S.lens === job.lens && (S.experiencePresenter || 0) === i;
     renderJourneys();
+    let ran = false, failure = null;
     try {
-      await runExperienceStep(step.title.split(' · ')[0], { current, lens: which => {
+      ran = (await runExperienceStep(step.title.split(' · ')[0], { current, lens: which => {
         job.changingLens = true;
         try { A.switchLens(which); job.lens = S.lens; } finally { job.changingLens = false; }
-      } });
+      } })) === true;
     } catch (error) {
+      failure = error.message;
       if (current()) A.setStatus(error.message, 'refuse');
-    } finally { experienceRun = null; renderJourneys(); }
-    if (!current()) return;
+    } finally { experienceRun = null; }
+    const stopped = !current();
+    E.recordDemonstration(step.title, E.demonstrationOutcome({ stopped, error: failure, ran }));
+    renderJourneys();
+    if (stopped) return;
+  } else {
+    E.recordDemonstration(step.title, E.demonstrationOutcome({ visitor: !!S.visitor, walkthrough, draft, complete: credited }));
   }
   E.presenterNext();
   if (i === E.presenterSteps().length - 1) $('#journeys').classList.remove('open');
@@ -221,6 +234,16 @@ export function renderJourneys() {
     const provenance = panel.querySelector('[data-example-source]');
     provenance.textContent = `Source · ${source.label} · ${source.writes} authored edit${source.writes === 1 ? '' : 's'}`;
     provenance.dataset.source = source.kind; provenance.dataset.writes = String(source.writes);
+    const demo = panel.querySelector('[data-example-demonstration]');
+    const d = S.expReview.demo;
+    demo.dataset.state = d ? d.state : 'none';
+    demo.textContent = !d ? 'No demonstration attempted yet'
+      : d.state === 'demonstrated' ? `Demonstrated by Next · ${d.title} · ${d.message}`
+        : d.state === 'failed' ? `Demonstration failed · ${d.title} · ${d.message}`
+          : d.state === 'stopped' ? `Demonstration stopped · ${d.title} · ${d.message}`
+            : d.state === 'complete' ? `Already complete · ${d.title} · ${d.message}`
+              : d.state === 'skipped' ? `Skipped · ${d.title} · ${d.message}`
+                : `Browsed, not demonstrated · ${d.title} · ${d.message}`;
     next.disabled = !!experienceRun;
     next.textContent = experienceRun ? 'Working…' : i === steps.length - 1 ? 'Finish' : 'Next ›';
     $('#jCount').textContent = `${i + 1} / ${steps.length}`;
@@ -274,7 +297,11 @@ export function initJourneys() {
       if (a.dataset.jact === 'next') { experienceNext(); return; }
       if (a.dataset.jact === 'walkthrough' && !S.visitor) walkthrough = !walkthrough;
       if (a.dataset.jact === 'prev') E.presenterStep(-1);
-      if (a.dataset.jact === 'skip') E.presenterSkip();
+      if (a.dataset.jact === 'skip') {
+        const skipped = E.presenterSteps()[S.experiencePresenter || 0];
+        if (skipped) E.recordDemonstration(skipped.title, E.demonstrationOutcome({ skipped: true }));
+        E.presenterSkip();
+      }
       renderJourneys(); return;
     }
     if (S.visitor) return;
