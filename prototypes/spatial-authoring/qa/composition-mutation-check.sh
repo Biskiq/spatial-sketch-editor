@@ -14,7 +14,10 @@
 # authored outcome, the aid's cursor must prepare nothing, and no authoring control may be mounted inside a
 # visit. The review round adds a merged rebind proposal that must wait as one decision, a declared-but-
 # unrealized capability that may not become visitor work, and a retained choice whose destination left with
-# its Presentation.
+# its Presentation. The walkthrough follow-up adds the detour credited from the visitor's command instead of
+# the runtime outcome it produced, the refused traversal a demonstration retries instead of reporting, the
+# detour taken by choice identity instead of the Stop its authored record names, and the demonstration
+# outcome that calls a task which could not run a demonstrated one.
 # QA_MUTATIONS is an optional comma-separated subset for the inner loop; unset runs every obligation.
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,7 +27,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration handover-identity handover-run-identity quickstart-standalone quickstart-second-moment presentation-global-credit; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration handover-identity handover-run-identity quickstart-standalone quickstart-second-moment presentation-global-credit detour-credit-attempted walkthrough-progress-unbounded walkthrough-detour-identity demonstration-outcome-conflated; do
   if [ -n "${QA_MUTATIONS:-}" ]; then
     case ",$QA_MUTATIONS," in *,"$kind",*) ;; *) continue ;; esac
   fi
@@ -330,6 +333,30 @@ elif kind == 'hold-seconds':
     replace('app/experience-coordination.js',
             "accumulated += hold.seconds;",
             "accumulated += 0;")
+elif kind == 'detour-credit-attempted':
+    # The visitor's own command is credited instead of the runtime outcome it produced, so a refused detour
+    # and a Return with nothing parked earn the detour topic anyway.
+    replace('app/experience.js',
+            " if(action==='detour'&&v.runtime.bookmarks.length>r.bookmarks.length&&!!v.runtime.stopId&&v.runtime.stopId!==r.stopId)next.detoured=true;\n if(action==='return'&&!!r.bookmarks.length&&v.runtime.bookmarks.length<r.bookmarks.length&&v.runtime.stopId===r.bookmarks[r.bookmarks.length-1].stopId)next.returned=true;",
+            " if(action==='detour')next.detoured=true;\n if(action==='return')next.returned=true;")
+elif kind == 'walkthrough-progress-unbounded':
+    # A refused traversal is retried instead of detected, so the demonstration loses the runtime's own
+    # reason and its clean failure.
+    replace('app/experience-walkthrough.js',
+            "      if (owned.runtime.stopId === from) throw Error(owned.runtime.refusal || 'Next cannot leave this Stop; the demonstration stopped');",
+            "      if (false) throw Error(owned.runtime.refusal || 'Next cannot leave this Stop; the demonstration stopped');")
+elif kind == 'walkthrough-detour-identity':
+    # The demonstration hands the runtime the choice identity the author wrote instead of the Stop identity
+    # its own record names, so the detour it claims to take is refused.
+    replace('app/experience-walkthrough.js',
+            "      const destination = authored.targetId;",
+            "      const destination = choice;")
+elif kind == 'demonstration-outcome-conflated':
+    # A demonstration that could not run is reported as a demonstrated task, so the panel calls a failure a
+    # success.
+    replace('app/experience.js',
+            " if (error) return { state: 'failed', message: error };",
+            " if (error) return { state: 'demonstrated', message: 'The task ran in the product' };")
 else:
     # An impossible dependency scope is accepted as if it could still fire.
     replace('app/experience-model.js',
@@ -375,6 +402,10 @@ PY
     rebind-overwrites-trigger) name='C9.6 rename and rebind repair a contribution while keeping trigger and target distinct'; control='C9.6 provider profile replacement gains and loses declared capabilities with the instance kept' ;;
     profile-unvalidated) name='C9.6 provider profile replacement gains and loses declared capabilities with the instance kept'; control='C9.6 rename Presentation keeps identity and shared use' ;;
     hold-seconds) name='C9.4 readiness and Auto count the route and its holds exactly once'; control='multi-origin coordination executes only the traversed connection' ;;
+    detour-credit-attempted) name='a refused detour or Return is never credited as a detour the visitor took'; control='a detour parks its parent, returns to that same visit and records no second entry' ;;
+    walkthrough-progress-unbounded) name='a blocked traversal fails the A3 demonstration cleanly instead of looping'; control='the A8 demonstration takes its authored detour and returns to the parent visit' ;;
+    walkthrough-detour-identity) name='the A8 demonstration takes its authored detour and returns to the parent visit'; control='a detour parks its parent, returns to that same visit and records no second entry' ;;
+    demonstration-outcome-conflated) name='the four demonstration outcomes are never conflated with one another'; control='a refused detour or Return is never credited as a detour the visitor took' ;;
     standalone-open) name='C9.5 opening another standalone Presentation ends the departing visit local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     shared-entry-origin) name='every eligible Presentation View and the private Stop entry are legitimate origins'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;
     go-continuation) name='C9.5 a go choice is a distinct authored continuation'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
@@ -412,7 +443,7 @@ PY
 done
 
 # ------------------------------------------------- browser wiring obligations
-for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-entry-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-gated presenter-framing-uncharged presenter-sequence-credit presenter-entry-configuration visit-arrival-immediate presenter-framing-scope presenter-handover-disarmed visit-entries-auto visit-return-entry presenter-lens-content presenter-walkthrough-disconnected presenter-cancel-ignored; do
+for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-entry-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-gated presenter-framing-uncharged presenter-sequence-credit presenter-entry-configuration visit-arrival-immediate presenter-framing-scope presenter-handover-disarmed visit-entries-auto visit-return-entry presenter-lens-content presenter-walkthrough-disconnected presenter-cancel-ignored presenter-demo-failure-silent; do
   if [ -n "${QA_MUTATIONS:-}" ]; then
     case ",$QA_MUTATIONS," in *,"$kind",*) ;; *) continue ;; esac
   fi
@@ -542,6 +573,12 @@ elif kind == 'presenter-cancel-ignored':
     replace('app/experience-walkthrough.js',
             "const requireCurrent = () => { if (!current()) throw Error('Walkthrough cancelled'); };",
             "const requireCurrent = () => {};")
+elif kind == 'presenter-demo-failure-silent':
+    # A demonstration that could not complete is recorded as a demonstrated task, so a failure is presented
+    # to the reviewer as success.
+    replace('app/journeys.js',
+            "    E.recordDemonstration(step.title, E.demonstrationOutcome({ stopped, error: failure, ran }));",
+            "    E.recordDemonstration(step.title, E.demonstrationOutcome({ ran: true }));")
 elif kind == 'presenter-loaded-credit':
     # The review aid credits a topic whenever its outcome is visible, so loaded content counts as
     # authorship and a reviewer is told they have done work they never did.
@@ -689,6 +726,9 @@ PY
     presenter-loaded-credit)
       axis=presenter; boundary='QA_PRESENTER_UNTIL=provenance'
       expected='…crediting no quickstart topic even though the example satisfies their outcomes'; control='loading the example is named as the source and counts no authored edit' ;;
+    presenter-demo-failure-silent)
+      axis=walkthrough-demo; boundary='QA_DEMO_UNTIL=refused'
+      expected='a refused traversal is reported as a failed demonstration, never as a successful one'; control='Next performs Q1 through the actual Presentation command' ;;
     presenter-skip-prepares)
       axis=presenter; boundary='QA_PRESENTER_UNTIL=navigation'
       expected='…without touching the documents, the history, the selection, the Camera or the tally'; control='the aid carries all eighteen topics' ;;

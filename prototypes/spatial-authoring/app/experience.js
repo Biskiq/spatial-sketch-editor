@@ -38,7 +38,25 @@ export function reviewMoment(pid,outcome){if(!pid)return false;reviewAuthored(ou
  const at={...(S.expReview.at||{})};at[pid]=[...new Set([...(at[pid]||[]),outcome])];return review({at});}
 export const authoredHere = (outcome) => (S.expReview.authored?.[outcome]||0) > 0;
 export const momentAuthored = (pid,outcome) => !!pid&&(S.expReview.at?.[pid]||[]).includes(outcome);
-export function reviewSource(source) { return review({ source, writes: 0, authored: {}, at: {}, auditions: 0, previews: 0, peeks: 0, visit: null, visitor: null, scope: null, loss: null, coordination: null }); }
+export function reviewSource(source) { return review({ source, writes: 0, authored: {}, at: {}, auditions: 0, previews: 0, peeks: 0, visit: null, visitor: null, scope: null, loss: null, coordination: null, demo: null }); }
+// The optional Next demonstration reports what the product actually did, and the four outcomes are never
+// conflated: a task that ran was demonstrated; a refusal or a failed task is named as such and earns
+// nothing; Next with the walkthrough off, an unfinished edit open or a Preview already active is
+// deliberate browsing; an explicit Skip is its own state. Two further states stay honest — a
+// reviewer-initiated stop, and a topic whose outcome was already on screen. This is advisory feedback:
+// it gates nothing and is never itself an outcome.
+export function demonstrationOutcome({ skipped = false, stopped = false, error = null, ran = false, complete = false, visitor = false, walkthrough = true, draft = false } = {}) {
+ if (skipped) return { state: 'skipped', message: 'Skipped without running the task' };
+ if (stopped) return { state: 'stopped', message: 'Stopped before the task ran' };
+ if (error) return { state: 'failed', message: error };
+ if (ran) return { state: 'demonstrated', message: 'The task ran in the product' };
+ if (visitor) return { state: 'browsed', message: 'A Preview is already active, so Next browsed the instruction' };
+ if (!walkthrough) return { state: 'browsed', message: 'The walkthrough is off, so Next browsed the instruction' };
+ if (draft) return { state: 'browsed', message: 'An unfinished edit stayed open, so Next browsed the instruction' };
+ if (complete) return { state: 'complete', message: 'The outcome was already on screen, so Next did not repeat the task' };
+ return { state: 'browsed', message: 'Next browsed the instruction without running the task' };
+}
+export function recordDemonstration(title, outcome) { return review({ demo: { title, ...outcome } }); }
 // The ledger a visit opens with. A Guide visit that begins inside its first Stop has already visited it,
 // so entry seeds the ledger with where the visit actually is; nothing else is assumed before a command.
 // `traversed` is the last transition and `entries` every Stop entry that really ran, so the aid can tell
@@ -760,8 +778,11 @@ export function visitorCommand(action,id=null){
  if(action==='rejoin')next.rejoined=true;
  if(action==='next-view'||action==='previous-view')next.viewStep=led.viewStep+1;
  if(action==='activate'&&id&&!next.activated.includes(id))next.activated=[...next.activated,id];
- if(action==='detour')next.detoured=true;
- if(action==='return')next.returned=true;
+ // A detour and a Return are credited from what the runtime did, never from the command having been
+ // issued: a choice whose destination needs repair is refused before it parks anything, and a Return
+ // with no bookmark resumes nothing. Those are not detours the visitor took, so they earn nothing.
+ if(action==='detour'&&v.runtime.bookmarks.length>r.bookmarks.length&&!!v.runtime.stopId&&v.runtime.stopId!==r.stopId)next.detoured=true;
+ if(action==='return'&&!!r.bookmarks.length&&v.runtime.bookmarks.length<r.bookmarks.length&&v.runtime.stopId===r.bookmarks[r.bookmarks.length-1].stopId)next.returned=true;
  if(action==='open'&&id)next.opened=[...next.opened,id];
  review({visitor:next});
  reconcileVisitor();

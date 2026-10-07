@@ -536,3 +536,111 @@ test('the Stop entry-policy topic reads the entries a visit ran, never the polic
  assert.equal(credit('A3'),true);
  assert.equal(E.review().visitor.entries.filter(x=>x.kind==='hold').length,1);
 });
+
+// --- PR #113 review follow-up: the A8 detour identity, the A3 bound and Next's own reporting ---
+// A detour and a Return are credited only for what the runtime really did. The visitor's commands are
+// attempts: an unresolvable destination and a Return with nothing parked are refused, and the topic that
+// reads the ledger must stay open for them.
+test('a refused detour or Return is never credited as a detour the visitor took',()=>{
+ const {e}=liveFixture();E.loadExample();E.previewGuide();
+ const parent=e.guide[0],choice=e.stops[parent].choices[0];
+ assert.equal(typeof choice.targetId,'string');
+ const source=JSON.stringify(A.domainSnapshot()),undo=S.undo.length,sel=S.sel;
+ // The identity the runtime resolves is a Stop. The choice identity the author wrote is not one, and a
+ // refused detour never becomes a detour the visitor took however the command reads afterwards.
+ E.visitorCommand('detour',choice.id);
+ assert.equal(S.visitor.runtime.stopId,parent);
+ assert.equal(S.visitor.runtime.bookmarks.length,0);
+ assert.match(S.visitor.runtime.refusal,/repair/);
+ assert.equal(!!S.expReview.visitor.detoured,false);
+ assert.equal(!!S.expReview.visitor.returned,false);
+ // A Return with nothing parked resumes nothing, so it is not a Return either.
+ assert.equal(E.visitorCommand('return'),true);
+ assert.equal(S.visitor.runtime.stopId,parent);
+ assert.equal(!!S.expReview.visitor.returned,false);
+ // Neither attempt authored anything, moved history, or disturbed the selection.
+ assert.equal(JSON.stringify(A.domainSnapshot()),source);
+ assert.equal(S.undo.length,undo);assert.equal(S.sel,sel);
+});
+
+test('a detour parks its parent, returns to that same visit and records no second entry',()=>{
+ const {e}=liveFixture();E.loadExample();E.previewGuide();
+ const parent=e.guide[0],destination=e.stops[parent].choices[0].targetId;
+ const parentVisit=S.visitor.runtime.visit,entries=S.visitor.runtime.entries.length;
+ assert.equal(E.visitorCommand('detour',destination),true);
+ const parked=S.visitor.runtime.bookmarks[S.visitor.runtime.bookmarks.length-1];
+ assert.equal(parked.stopId,parent);
+ assert.equal(parked.visit,parentVisit);
+ assert.equal(S.visitor.runtime.stopId,destination);
+ assert.equal(S.visitor.runtime.entries.length,entries+1);        // exactly the detour's own entry
+ assert.equal(S.expReview.visitor.detoured,true);
+ assert.equal(!!S.expReview.visitor.returned,false);
+ assert.equal(E.visitorCommand('return'),true);
+ assert.equal(S.visitor.runtime.stopId,parent);
+ assert.equal(S.visitor.runtime.visit,parentVisit);               // the same parent visit, resumed
+ assert.equal(S.visitor.runtime.bookmarks.length,0);
+ assert.equal(S.visitor.runtime.entries.length,entries+1);        // Return invents no Stop entry
+ assert.equal(S.expReview.visitor.returned,true);
+});
+
+// The walkthrough drives the product's own visitor runtime, which the browser advances every frame. A Node
+// test supplies that same clock through the product's own `stepVisitor`, so a demonstration that enters a
+// Preview can settle here too; no other shim is added.
+async function demonstrated(step){
+ const tick=setInterval(()=>{ if(S.visitor) try{E.stepVisitor(.25);}catch{/* the visit can end mid-frame */} },16);
+ try { return await step(); } finally { clearInterval(tick); }
+}
+// The A8 demonstration is the same story through the product's own walkthrough: it must take the choice it
+// authored, from that choice's own Stop, and return to the parent visit it parked.
+test('the A8 demonstration takes its authored detour and returns to the parent visit',async()=>{
+ liveFixture();E.loadExample();
+ const {runExperienceStep}=await import('../app/experience-walkthrough.js');
+ assert.equal(await demonstrated(()=>runExperienceStep('A8',{lens:()=>{}})),true);
+ const led=E.review().visitor,parent=led.stops[0];
+ assert.equal(led.detoured,true);
+ assert.equal(led.returned,true);
+ assert.equal(S.visitor,null);                                    // the demonstration released its own Preview
+ assert.equal(led.entries.filter(x=>x.stopId===parent).length,1); // Return invented no second entry
+ assert.equal(led.stops.length>=2,true);                          // the destination was really visited
+});
+
+// A refused traversal must fail the demonstration cleanly: the runtime's own refusal is reported and the
+// bounded walk ends, rather than re-issuing Next forever against a Stop that cannot move.
+test('a blocked traversal fails the A3 demonstration cleanly instead of looping',async()=>{
+ const {e}=liveFixture();E.loadExample();
+ const {runExperienceStep}=await import('../app/experience-walkthrough.js');
+ // The Stop the Guide visit starts in can no longer leave itself: its own Next is authored as End.
+ e.stops[e.guide[0]].next={kind:'end'};
+ const started=performance.now();
+ await assert.rejects(()=>demonstrated(()=>runExperienceStep('A3',{lens:()=>{}})),/End of Guide/);
+ assert.ok(performance.now()-started<10000);
+ assert.equal(S.visitor,null);                                    // the owned Preview was released
+ assert.equal(E.presenterCredit(step('A3')).credited,false);      // and no completion was invented
+});
+
+// Next reports what the product did. The four outcomes are never conflated, and the record is advisory:
+// it gates nothing and is not itself an outcome.
+test('the four demonstration outcomes are never conflated with one another',()=>{
+ liveFixture();
+ assert.equal(E.demonstrationOutcome({ran:true}).state,'demonstrated');
+ const failure=E.demonstrationOutcome({error:'Waiting for authored Gate'});
+ assert.equal(failure.state,'failed');
+ assert.match(failure.message,/Waiting for authored Gate/);
+ assert.equal(E.demonstrationOutcome({walkthrough:false}).state,'browsed');
+ assert.equal(E.demonstrationOutcome({draft:true}).state,'browsed');
+ assert.equal(E.demonstrationOutcome({visitor:true}).state,'browsed');
+ assert.equal(E.demonstrationOutcome({skipped:true}).state,'skipped');
+ assert.equal(E.demonstrationOutcome({stopped:true}).state,'stopped');
+ assert.equal(E.demonstrationOutcome({complete:true}).state,'complete');
+ // A run the reviewer stopped is stopped, never reported as a success or as the product's failure.
+ assert.equal(E.demonstrationOutcome({stopped:true,error:'Walkthrough cancelled'}).state,'stopped');
+ // Recording it is feedback only: it writes no source and credits no topic.
+ const writes=E.review().writes;
+ E.recordDemonstration('Q4 · Preview without a Guide',E.demonstrationOutcome({error:'The product outcome is still pending'}));
+ assert.equal(E.review().demo.state,'failed');
+ assert.equal(E.review().writes,writes);
+ assert.equal(E.presenterCredit(step('Q4')).credited,false);
+ // Reset/Load clears it with the document's own provenance.
+ E.reviewSource('reset');
+ assert.equal(E.review().demo,null);
+});

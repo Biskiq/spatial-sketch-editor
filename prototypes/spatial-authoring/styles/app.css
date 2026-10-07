@@ -661,6 +661,10 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .j-dots button.on { background: var(--tape); }
 .j-count { font: 500 var(--txs) var(--mono); color: #7E8A85; }
 .j-outcome { margin: 0; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
+/* The demonstration's own outcome is stated, never styled as success: a refusal reads as a refusal. */
+.j-outcome[data-example-demonstration][data-state=failed] { color: #E4A08C; }
+.j-outcome[data-example-demonstration][data-state=demonstrated],
+.j-outcome[data-example-demonstration][data-state=complete] { color: #A9D3B4; }
 .j-walkthrough { display: flex; align-items: center; gap: 8px; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
 .j-walkthrough button { flex-shrink: 0; border: 0; background: #222A27; color: #fff; border-radius: 3px; padding: 5px 8px; font-size: var(--tsm); }
 .j-nav > button:disabled { opacity: .45; cursor: default; }
