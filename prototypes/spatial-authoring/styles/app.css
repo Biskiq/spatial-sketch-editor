@@ -661,6 +661,8 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .j-dots button.on { background: var(--tape); }
 .j-count { font: 500 var(--txs) var(--mono); color: #7E8A85; }
 .j-outcome { margin: 0; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
+.j-walkthrough { display: flex; align-items: center; gap: 8px; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
+.j-walkthrough button { flex-shrink: 0; border: 0; background: #222A27; color: #fff; border-radius: 3px; padding: 5px 8px; font-size: var(--tsm); }
 .j-nav > button:disabled { opacity: .45; cursor: default; }
 .journeys[data-lens="experience"] { top: 94px; bottom: auto; max-height: calc(100vh - 250px); overflow: auto; }
 .journeys[data-lens="experience"] .j-count { margin-left: auto; }

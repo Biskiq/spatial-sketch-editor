@@ -22,8 +22,9 @@ qa/run-all.sh composition  # C9.2/C9.3: composition execution and compact Guide
 qa/run-all.sh revision     # C9.6: revision, removal, repair and provider capability loss
 qa/run-all.sh rich         # C9.7: the rich example, the native Wall, retained choices and local coordination
 qa/run-all.sh precision-c9 # C9.8: the precise Camera, its deliberate property depth and one live tape
-qa/run-all.sh presenter    # C9.9: Experience topics, provenance, outcomes and earned navigation
+qa/run-all.sh presenter    # C9.9: Experience topics, provenance, advisory outcomes and ungated navigation
 qa/run-all.sh walkthrough  # shared Presenter: lens isolation and actual Q1–Q8 author workflow (also at 1024×700)
+qa/run-all.sh walkthrough-demo # optional Next demonstrations Q1–Q8/A1–A10, cancellation, Preview and Undo
 qa/run-all.sh visitor      # visitor controls, effects, Gates and isolation
 qa/run-all.sh reconciliation # saved controls and narrow Guide/Card/precision/visitor
 qa/run-all.sh continuity   # stage S8: both-directions parking, neutral Resume, Preview return, history

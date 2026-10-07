@@ -26,6 +26,7 @@ const {createMuseum}=await import('../app/model.js');
 const {S,ctx}=await import('../app/state.js');
 const THREE=await import('three');
 const E=await import('../app/experience.js');
+const A=await import('../app/actions.js');
 const pose={target:[0,1,0],az:.7,el:.3,frameH:8,flat:0};
 // A minimal Stage adapter: the assertions are about authored documents and their writers, never rendering.
 function liveFixture(){
@@ -181,6 +182,48 @@ test('focusing a Hold addresses that Hold own station, exactly once',()=>{
 
 const step=(title)=>E.presenterSteps().find(s=>s.title.startsWith(title));
 const credit=(title)=>E.presenterCredit(step(title)).credited;
+
+test('Next remains available for an unobserved task without writing or inventing completion',()=>{
+ liveFixture();M.clearExperience(ctx.experience);S.experiencePresenter=0;
+ const source=JSON.stringify(A.domainSnapshot()),undo=S.undo.length,sel=S.sel;
+ assert.equal(credit('Q1'),false);
+ assert.equal(E.presenterNext(),true);
+ assert.equal(S.experiencePresenter,1);
+ assert.equal(credit('Q1'),false);
+ assert.equal(JSON.stringify(A.domainSnapshot()),source);
+ assert.equal(S.undo.length,undo);assert.equal(S.sel,sel);
+});
+
+test('a task demonstration refuses to author inside an existing private Preview',async()=>{
+ liveFixture();const pid=E.present({kind:'subjects',ids:['machine']});E.preview(pid);
+ const source=JSON.stringify(A.domainSnapshot()),undo=S.undo.length,sel=S.sel,visit=S.visitor;
+ const {runExperienceStep}=await import('../app/experience-walkthrough.js');
+ assert.equal(await runExperienceStep('Q1'),false);
+ assert.equal(JSON.stringify(A.domainSnapshot()),source);
+ assert.equal(S.undo.length,undo);assert.equal(S.sel,sel);assert.equal(S.visitor,visit);
+ await E.exitPreview();
+});
+
+test('a cancelled task demonstration performs no product action',async()=>{
+ liveFixture();M.clearExperience(ctx.experience);
+ const source=JSON.stringify(A.domainSnapshot()),undo=S.undo.length;
+ const {runExperienceStep}=await import('../app/experience-walkthrough.js');
+ assert.equal(await runExperienceStep('Q1',{current:()=>false}),false);
+ assert.equal(JSON.stringify(A.domainSnapshot()),source);assert.equal(S.undo.length,undo);
+});
+
+test('an undone Presentation cannot credit a different loaded moment',()=>{
+ const {e}=liveFixture();M.clearExperience(e);
+ const loaded=M.addPresentation(e,{kind:'subjects',ids:['piano']});
+ const made=E.present({kind:'subjects',ids:['machine']});
+ assert.equal(credit('Q1'),true);
+ ctx.stage.setMuseum=()=>{};
+ ctx.stage.root=new THREE.Group();
+ A.undo();E.openPresentation(loaded);
+ assert.equal(!!ctx.experience.presentations[made],false);
+ assert.equal(E.presenterCredit(step('Q1')).seen,true);
+ assert.equal(credit('Q1'),false);
+});
 
 test('the standalone walkthrough topic requires a standalone Preview, not a Guide visit',async()=>{
  liveFixture();const loaded=E.loadExample();

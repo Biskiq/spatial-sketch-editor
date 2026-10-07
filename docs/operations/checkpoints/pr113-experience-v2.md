@@ -1,8 +1,8 @@
 # PR #113 Experience V2 — checkpoint
 
 TYPE: prototype implementation / owner-review handoff
-STATUS: C9.1–C9.9 implemented, reviewed and verified; awaiting MP3/MP4 owner acceptance.
-GOAL: owner review of PR #113 at the final C9 executable; no merge or closure.
+STATUS: C9.1–C9.9 implemented/reviewed; owner-directed optional walkthrough correction in verification.
+GOAL: finish ungated Next/task demonstrations, then hand PR #113 back for MP3/MP4 owner review.
 
 CONSTRAINTS:
 - Prototype-local only. Preserve one Camera evaluator/navigation authority, Experience policy ownership,
@@ -28,8 +28,9 @@ ESTABLISHED:
   are `4e8cc8e7` and `dad60dff`; they are not unstarted work.
 - A2 now retains the capability handoff's source use, target use and target run; the visitor's Stop
   must match that same live carried run. Unrelated carried work and another run of the same use fail.
-- C9 ordinary walkthrough uses real product commands, earned Next, Back and explicit Skip. Lens switching,
-  navigation and close/reopen preserve source/history/selection/Camera. Preview guidance has no writers.
+- Owner update 2026-10-07 supersedes earned Next/source-neutral Next: outcomes are advisory. With the
+  optional walkthrough on (default), Next demonstrates the current task through existing product commands
+  before advancing. Off, Next only browses. Back/Skip and mode selection author nothing; Preview has no writers.
 - MP3/MP4 remain pending human review. Trials (cursor/detour parent pause) are not permanent architecture.
 
 EVIDENCE:
@@ -47,12 +48,14 @@ DO NOT REPEAT:
 - Do not regenerate six visual QA specimens or treat a green Presenter as human acceptance.
 
 CURRENT:
-- The bounded implementation, self-review repairs and final verification are complete. Review the
-  committed executable above through the final evidence packet; executable bytes are unchanged in its child.
+- Optional task scripts cover Q1–Q8 and A1–A10 in the shared controller. Checking actual Next actions,
+  Preview read-only behavior, cancellation, Undo, retained World behavior and same-defect mutations.
+- The executable/proof above belongs to the preceding observational-guidance revision, not this correction.
 - The missing P23B fixture remains a separate repository-gate blocker outside this authorized mutation scope.
 
 NEXT:
-1. Owner performs **MP3 — Travel and agency** at the pushed head with the Presenter closed.
+1. Finish affected proof/mutations, record exact committed executable, and commit/push the owner correction.
+   Then the owner performs **MP3 — Travel and agency** at the pushed head with the Presenter closed.
    Recipe; each step names what must be observable, not merely what to click:
    - *explicit Travel preparation*: in an ordinary session build a Guide whose departure
      Presentation holds more than one Framed use, open the Seam and choose Travel. One step

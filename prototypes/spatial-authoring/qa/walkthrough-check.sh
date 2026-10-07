@@ -27,9 +27,10 @@ click '#lens [data-lens=experience]'
 qa_ok 'Experience switches the same panel to its workflow, with no World content or Replay' "$(qa_js '(document.querySelectorAll(".journeys").length===1&&document.querySelector("#jTitle").textContent.includes("Q1")&&document.querySelectorAll("#jTabs [data-j]").length===0&&document.querySelector("#journeys [data-jact=replay]").hidden&&!document.querySelector("#journeys [data-jact=skip]").hidden)')" true
 qa_ok 'switching the Presenter content preserves source, history, selection and Camera' "$(snapshot)" "$before"
 if [ "${QA_WALKTHROUGH_UNTIL:-}" = lens ]; then qa_summary 'C9 follow-up · lens boundary'; exit; fi
+click '#journeys [data-jact=walkthrough]'
 click '#experienceExamples > summary'; click '#experienceExamples [data-act=exp-reset]'; click '#experienceExamples > summary'
 before="$(snapshot)"
-qa_ok 'empty Reset leaves Next unearned' "$(qa_js 'document.querySelector("#journeys [data-jact=next]").disabled')" true
+qa_ok 'empty Reset leaves Next available without inventing an outcome' "$(qa_js '(!document.querySelector("#journeys [data-jact=next]").disabled&&!__me.E.presenterCredit(__me.E.presenterSteps()[0]).credited)')" true
 click '#journeys [data-jact=skip]'; click '#journeys [data-jact=prev]'
 qa_ok 'explicit Skip and Back author nothing and credit no skipped outcome' "$(snapshot) / $(at) / $(qa_js '__me.E.presenterCredit(__me.E.presenterSteps()[0]).credited')" "$before / 0 / false"
 click '#lens [data-lens=world]'

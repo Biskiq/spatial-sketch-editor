@@ -18,6 +18,8 @@
 #   qa/run-all.sh rich         C9.7 rich example, native Wall and local coordination only
 #   qa/run-all.sh precision-c9 C9.8 the precise Camera, its property depth and one tape only
 #   qa/run-all.sh presenter    C9.9 the review aid's eighteen topics and its own honesty only
+#   qa/run-all.sh walkthrough shared lens workflow and advisory outcomes
+#   qa/run-all.sh walkthrough-demo optional task demonstrations and cancellation
 #   qa/run-all.sh reconciliation shared-shell, saved controls and narrow Experience proof
 #   qa/run-all.sh continuity   both-directions parking, neutral Resume, Preview return, history only
 #   qa/run-all.sh responsive   viewport/DPR, keyboard and motion only
@@ -61,6 +63,7 @@ case "$WHICH" in
   precision-c9) run "C9.8 · the precise Camera, its depth and one tape" precision-c9-check ;;
   presenter) run "C9.9 · the review aid's eighteen topics" presenter-check ;;
   walkthrough) run "C9 follow-up · shared Experience workflow" walkthrough-check ;;
+  walkthrough-demo) run "C9 follow-up · optional task demonstrations" walkthrough-demo-check ;;
   experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
   visitor) run "Visitor execution" visitor-check ;;
   reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
@@ -86,6 +89,7 @@ case "$WHICH" in
     run "C9.8 · the precise Camera, its depth and one tape" precision-c9-check
     run "C9.9 · the review aid's eighteen topics" presenter-check
     run "C9 follow-up · shared Experience workflow" walkthrough-check
+    run "C9 follow-up · optional task demonstrations" walkthrough-demo-check
     run "Visitor execution" visitor-check
     run "Shared shell and narrow Experience" reconciliation-check
     run "Stage S8 · full continuity between the two lenses" continuity-check
@@ -93,7 +97,7 @@ case "$WHICH" in
     run "Additional source and nested correctness" correctness-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|conformance|creator|composition|revision|rich|precision-c9|presenter|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|conformance|creator|composition|revision|rich|precision-c9|presenter|walkthrough|walkthrough-demo|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
     exit 2
     ;;
 esac

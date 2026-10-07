@@ -113,7 +113,7 @@ export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
   const label = f.kind === 'subjects' && f.ids.length === 1 ? thing(f.ids[0])?.item?.name : null;
   const id = command('Create Presentation', e => addPresentation(e, f, label || 'Untitled Presentation'));
-  if (id) reviewAuthored('presentation');
+  if (id) reviewMoment(id,'presentation');
   // A fresh subject-focused moment suggests Camera framing immediately: derived intent, never an
   // authored View, and Capture is what accepts it.
   const derived = nav.deriveFraming(ctx.experience.presentations[id]);
@@ -925,8 +925,8 @@ export function presenterSteps(){
  const primary=pid=>primaryExplanation(e,pid);
  const captured=()=>Object.values(e.uses).find(u=>!u.viewId&&u.presentationId&&u.kind!=='interaction'&&e.definitions[u.definitionId]?.kind==='control')||null;
  return [
-  {family:'Q',title:'Q1 · Subject and Presentation',authored:['presentation'],instruction:'Select a real World subject in the Index, then Present this. One Presentation, no Guide.',
-   done:()=>Object.values(e.presentations).some(p=>p.focus.kind==='subjects'&&p.focus.ids.length&&p.focus.ids.every(id=>!!A.worldOf(id)))&&e.guide.length===0,
+  {family:'Q',title:'Q1 · Subject and Presentation',authored:[()=>momentAuthored(working()?.id,'presentation')],instruction:'Select a real World subject in the Index, then Present this. One Presentation, no Guide.',
+   done:()=>{const p=working();return !!(p&&p.focus.kind==='subjects'&&p.focus.ids.length&&p.focus.ids.every(id=>!!A.worldOf(id)))&&e.guide.length===0;},
    observed:()=>{const p=working();if(!p)return 'No Presentation yet';const ids=p.focus.ids||[],real=ids.filter(id=>!!A.worldOf(id));return `${p.name} · focus ${real.join(', ')||p.focus.kind}${real.length<ids.length?' · unresolved':''} · Guide ${e.guide.length}`;}},
   {family:'Q',title:'Q2 · Explanation and framing',
    // Both outcomes belong to the moment this topic assesses: an explanation or a Capture authored on another
@@ -985,14 +985,12 @@ export function presenterSteps(){
    observed:()=>{const l=S.expReview.loss,r=S.expReview.repair;return `${l?`${l.subjectId} lost ${l.lost.join(', ')||'nothing'}`:'no profile change'} · ${r?.restored?'repaired here':'not repaired'}`;}},
  ];
 }
-// The review aid moves its own cursor and nothing else: Back, Next and Skip change which instruction is
-// shown, never the reading, the selection, the Camera or the documents. Skip is deliberately not a
-// completion: it moves on without claiming the topic was observed.
+// Cursor navigation is always available and never invents a product outcome. The shared Presenter's
+// optional walkthrough executes the task separately through ordinary product commands before Next.
+// Back and Skip only change instructions; the outcome predicates remain truthful, advisory feedback.
 export function presenterStep(delta=0) {const n=presenterSteps().length;S.experiencePresenter=Math.max(0,Math.min(n-1,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}
 export const presenterSkip = () => presenterStep(1);
-// Next is earned: it advances only when the current topic's outcome actually holds, so a reviewer cannot
-// move on from a topic they have not completed. Skip is the deliberate alternative.
-export function presenterNext(){const steps=presenterSteps(),i=Math.max(0,Math.min(steps.length-1,S.experiencePresenter||0));if(!presenterCredit(steps[i]).credited)return false;presenterStep(1);return true;}
+export function presenterNext(){presenterStep(1);return true;}
 // A quickstart topic is credited only when the outcomes its own instruction produces were authored on this
 // document in this session; an advanced topic may be reviewed on explicitly loaded content, and its line
 // says so.
