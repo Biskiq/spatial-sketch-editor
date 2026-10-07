@@ -5,9 +5,11 @@ import { ease } from './stage.js';
 import * as A from './actions.js';
 import { applyField } from './ui.js';
 import { cancelProposal } from './cancel.js';
+import * as E from './experience.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const html = (el, value) => { if (el._presenterHtml !== value) { el.innerHTML = value; el._presenterHtml = value; } };
 const idle = async () => { await new Promise((r) => setTimeout(r, 30)); while (S.busy) await new Promise((r) => setTimeout(r, 30)); };
 
 function edit(label, fn) {
@@ -148,40 +150,98 @@ export const JOURNEYS = [
 
 let J = 0, I = 0;
 
-function render() {
+// One Presenter chrome and controller, with lens-owned content. World keeps its scripted demonstrations;
+// Experience navigation only changes instructions and reads outcomes from the existing product commands.
+export function renderJourneys() {
+  const panel = $('#journeys');
+  if (!panel) return;
+  const experience = S.lens === 'experience';
+  panel.dataset.lens = S.lens;
+  panel.classList.toggle('presenter-visiting', !!S.visitor);
+  html($('#jToggle'), `${experience ? 'Experience walkthrough' : 'Guided journeys'} <kbd>J</kbd>`);
+  for (const el of panel.querySelectorAll('[data-experience-guidance]')) el.hidden = !experience;
+  const prev = panel.querySelector('[data-jact=prev]'), next = panel.querySelector('[data-jact=next]');
+  prev.textContent = experience ? 'Back' : '‹';
+  prev.disabled = experience && !(S.experiencePresenter > 0);
+  next.disabled = false;
+  for (const [button, action, delta] of [[prev, 'exp-presenter', '-1'], [next, 'exp-presenter', '1'], [panel.querySelector('[data-jact=skip]'), 'exp-presenter-skip', '']]) {
+    if (experience) { button.dataset.act = action; button.dataset.delta = delta; }
+    else { delete button.dataset.act; delete button.dataset.delta; }
+  }
+  panel.querySelector('[data-jact=replay]').hidden = experience;
+  panel.querySelector('[data-jact=skip]').hidden = !experience;
+  $('#jDots').hidden = experience;
+  if (experience) {
+    const steps = E.presenterSteps(), i = Math.max(0, Math.min(steps.length - 1, S.experiencePresenter || 0)), step = steps[i];
+    const credit = E.presenterCredit(step), source = E.presenterSource();
+    html($('#jTabs'), ['Quickstart', 'Advanced'].map((name, k) => `<button class="${step.family === (k ? 'A' : 'Q') ? 'on' : ''}" data-experience-part="${k}">${name}</button>`).join(''));
+    $('#jKicker').textContent = `Experience · ${step.family === 'Q' ? 'author a guided visit' : 'extend and revise the visit'}`;
+    $('#jTitle').textContent = `${i + 1}/${steps.length} · ${step.title}`;
+    $('#jBody')._presenterHtml = null;
+    $('#jBody').textContent = (S.visitor ? 'Read-only while Preview is active · ' : '') + step.instruction;
+    const observed = panel.querySelector('[data-example-observed]');
+    observed.textContent = `Observed · ${step.observed()}`;
+    observed.dataset.seen = String(credit.seen); observed.dataset.credited = String(credit.credited);
+    const creditEl = panel.querySelector('[data-example-credit]');
+    creditEl.textContent = credit.credited ? 'Outcome seen · this topic is complete' : credit.seen ? 'Loaded content · not authored here, so this quickstart topic stays open' : 'Not observed yet';
+    creditEl.dataset.state = credit.credited ? 'complete' : credit.seen ? 'seen' : 'open';
+    panel.querySelector('[data-example-tally]').textContent = `${steps.filter(s => E.presenterCredit(s).credited).length}/${steps.length} topics complete in this session`;
+    const provenance = panel.querySelector('[data-example-source]');
+    provenance.textContent = `Source · ${source.label} · ${source.writes} authored edit${source.writes === 1 ? '' : 's'}`;
+    provenance.dataset.source = source.kind; provenance.dataset.writes = String(source.writes);
+    next.disabled = !credit.credited;
+    $('#jCount').textContent = `${i + 1} / ${steps.length}`;
+    return;
+  }
   const j = JOURNEYS[J];
   const st = j.steps[I];
-  $('#jTabs').innerHTML = JOURNEYS.map((x, k) => `<button class="${k === J ? 'on' : ''}" data-j="${k}"><span>${x.id}</span>${esc(x.name)}</button>`).join('');
+  html($('#jTabs'), JOURNEYS.map((x, k) => `<button class="${k === J ? 'on' : ''}" data-j="${k}"><span>${x.id}</span>${esc(x.name)}</button>`).join(''));
   $('#jKicker').textContent = j.kicker;
   $('#jTitle').textContent = st.t;
-  $('#jBody').innerHTML = st.b;
-  $('#jDots').innerHTML = j.steps.map((_, k) => `<button class="${k === I ? 'on' : k < I ? 'done' : ''}" data-step="${k}" aria-label="Step ${k + 1}"></button>`).join('');
+  html($('#jBody'), st.b);
+  html($('#jDots'), j.steps.map((_, k) => `<button class="${k === I ? 'on' : k < I ? 'done' : ''}" data-step="${k}" aria-label="Step ${k + 1}"></button>`).join(''));
   $('#jCount').textContent = `${I + 1} / ${j.steps.length}`;
 }
 
 async function play(j, i, replay = true) {
+  if (S.lens !== 'world' || S.visitor) return;
   J = j; I = i;
-  render();
+  renderJourneys();
   const steps = JOURNEYS[j].steps;
   if (replay) {
     const m = S.motion, seen = { ...S.seen };
     S.motion = 'instant';
-    for (let k = 0; k < i; k++) { await steps[k].run(); await idle(); }
-    S.motion = m;
-    S.seen = seen;
+    try {
+      for (let k = 0; k < i; k++) { if (S.lens !== 'world' || S.visitor) return; await steps[k].run(); await idle(); }
+    } finally { S.motion = m; S.seen = seen; }
   }
-  await steps[i].run();
+  if (S.lens === 'world' && !S.visitor) await steps[i].run();
 }
 
 export function initJourneys() {
   const panel = $('#journeys');
   panel.addEventListener('click', (e) => {
     const tj = e.target.closest('[data-j]');
-    if (tj) { play(+tj.dataset.j, 0, false); return; }
+    if (tj && S.lens === 'world' && !S.visitor) { play(+tj.dataset.j, 0, false); return; }
     const ts = e.target.closest('[data-step]');
-    if (ts) { play(J, +ts.dataset.step); return; }
+    if (ts && S.lens === 'world' && !S.visitor) { play(J, +ts.dataset.step); return; }
+    const part = e.target.closest('[data-experience-part]');
+    if (part && S.lens === 'experience') {
+      const at = +part.dataset.experiencePart ? E.presenterSteps().findIndex(s => s.family === 'A') : 0;
+      E.presenterStep(at - (S.experiencePresenter || 0)); renderJourneys(); return;
+    }
     const a = e.target.closest('[data-jact]');
     if (!a) return;
+    // This controller owns the shared navigation buttons; product delegation must not run them twice.
+    e.stopPropagation();
+    if (a.dataset.jact === 'close') { panel.classList.remove('open'); return; }
+    if (S.lens === 'experience') {
+      if (a.dataset.jact === 'next') E.presenterNext();
+      if (a.dataset.jact === 'prev') E.presenterStep(-1);
+      if (a.dataset.jact === 'skip') E.presenterSkip();
+      renderJourneys(); return;
+    }
+    if (S.visitor) return;
     const n = JOURNEYS[J].steps.length;
     if (a.dataset.jact === 'next') {
       if (I + 1 < n) play(J, I + 1, false);
@@ -189,12 +249,11 @@ export function initJourneys() {
     }
     if (a.dataset.jact === 'prev' && I > 0) play(J, I - 1);
     if (a.dataset.jact === 'replay') play(J, I);
-    if (a.dataset.jact === 'close') panel.classList.remove('open');
   });
   $('#jToggle').addEventListener('click', () => panel.classList.toggle('open'));
-  render();
+  renderJourneys();
   const q = new URLSearchParams(location.search);
-  if (q.get('journey')) {
+  if (q.get('journey') && S.lens === 'world' && !S.visitor) {
     const j = Math.max(0, JOURNEYS.findIndex((x) => x.id === q.get('journey').toUpperCase()));
     const i = Math.min(+(q.get('step') || 0), JOURNEYS[j].steps.length - 1);
     panel.classList.add('open');

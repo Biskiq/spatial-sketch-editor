@@ -70,45 +70,18 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**C1–C8 in-scope conformance complete; C9.1–C9.3 accepted through MP2, C9.4/C9.5 implemented and verified, stopped for MP3 (2026-10-05):**
-[standalone replacement plan](./design/experience-v2-prototype/conformance-plan.md) ·
+**C1–C8 in-scope conformance complete; C9.1–C9.9 implemented and reviewed, awaiting MP3/MP4 owner acceptance (2026-10-07).**
+[Standalone conformance plan](./design/experience-v2-prototype/conformance-plan.md) ·
 [shared executable](../../../prototypes/spatial-authoring/README.md) ·
-[current conformance evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
-The [S0–S9 plan](./design/experience-v2-prototype/implementation-plan.md) remains prior evidence,
-not acceptance authority, along with [S0–S9 acceptance](../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md).
-The replacement corrects V2 composition, disclosure, Camera/return and QA gaps with
-fresh C1–C8 behavioral and blocking visual gates. External manual review then exposed
-authoring-model and ordinary-workflow gaps against Prototype 4.1. The additional
-[C9 authoring-completeness plan](./design/experience-v2-prototype/authoring-completeness-plan.md)
-defines capability-first parity/journey acceptance, retaining blocking shell,
-information-home, disclosure, spatial/temporal and ownership seams. Travel and
-fresh repeated-Stop visits are owner-ratified; cursor/detour-pause remain trials.
-Experience Reset preserves independent World/Camera truth and shared history.
-MP1 follows C9.1 before lifecycle/Guide expansion — owner-accepted 2026-10-04;
-MP2 precedes Travel/agency and was owner-accepted 2026-10-05, with its three
-observations recorded as non-blocking (shell density later, Guide snap/cut
-superseded by C9.4, View/Presentation removal at C9.6). C9.4 and C9.5 are
-implemented, self-reviewed, independently reviewed and verified at the pushed
-executable revision; the review's four findings — Rejoin/detour Return rebuilding
-remaining work, the missing interaction-only Preview Experience, availability
-modelled but not authorable, and a same-View Travel shortcut ignoring the live pose
-— are all repaired with regression and mutation coverage. A later self-review pass repaired one
-further defect (Rejoin/Return restored the playhead but not a held Stop's viewing intent,
-`022c64f4`) and ruled one candidate finding by design (Close keeps the standalone Presentation as
-its Rejoin target, matching §3/P12/J5/I6/V1). MP3 is the next human gate and has only been
-rehearsed in the browser, never owner-executed; C9.6–C9.9 and Paper are not started.
-Capability
-acceptance remains pending; detailed density/type/proportion and broader visual
-refinement follow in a dedicated, separately scoped UI/UX slice. C9 requires only
-targeted structural/reachability evidence, not exhaustive specimen comparison.
-The proposed [Experience UX pruning and shell reconciliation plan](./design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md)
-defines that later slice, including one compact Guide home, bounded deeper Guide work,
-Camera/advanced information homes and strict responsive/visual acceptance. Its post-C9
-matrix recommends compatible homes for remaining C9.6–C9.9 work and separates stable
-design from slice-specific API/proof dependencies; it changes no accepted C9 semantic
-scope and authorizes no implementation before owner review. C9's capability/MP4 order
-and this phase's current baton remain unchanged.
-The missing P23B fixture remains a separate repository-gate blocker.
-The donor stays a runnable regression oracle; the integrated design folder retains the finalized
-synthesis and boards. This work authorizes no T3 production implementation and closes no phase.
-Paper PA0–PA12 follows #113, before returning to F. This is separate from pre-redesign plans above.
+[conformance evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) ·
+[C9 plan](./design/experience-v2-prototype/authoring-completeness-plan.md) ·
+[current C9 evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
+The earlier S0–S9 implementation and acceptance remain prior evidence, not C9 acceptance authority.
+
+MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. C9.4/C9.5 Travel/agency and C9.6–C9.9 revision/repair, rich fixture/coordination, Camera precision and observational walkthrough are implemented, with reviewed repairs, regressions and same-defect mutations. The current bounded follow-up switches the shared Presenter by lens: World keeps A–F, Experience guides actual ordinary authoring before advanced work. It also requires A2's visitor Stop to match the observed capability handoff's target use and run. Final verification/provenance live in the C9 evidence record.
+
+**MP3 and MP4 remain owner gates.** Browser rehearsal, automated tests and Presenter completion are evidence only. Travel and fresh repeated-Stop visits are owner-ratified; cursor/detour-pause policies remain trials. Experience Reset preserves independent World/Camera truth and shared history. Capability acceptance retains blocking ownership, disclosure, correspondence and reachability seams, with no six-QA specimen reconciliation.
+
+Detailed visual refinement belongs to the later, separately scoped and unstarted [Experience UX pruning and shell reconciliation plan](./design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md). Its post-C9 matrix proposes future homes for the implemented capabilities and authorizes no implementation here. The donor remains a runnable regression oracle; the finalized synthesis and boards remain retained design evidence. The missing P23B fixture is a separate repository-gate blocker.
+
+No T3 production implementation, phase closure, merge or Paper work is authorized by this prototype follow-up. Paper PA0–PA12 follows #113, before returning to F.

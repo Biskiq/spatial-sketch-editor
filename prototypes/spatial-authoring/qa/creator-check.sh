@@ -33,7 +33,7 @@ qa_ok 'Reset is genuinely empty and the Presenter is closed' "$(qa_js '(()=>{con
 qa_ok 'Reset preserves all World/Scene/Camera truth, including shared and unreferenced artifacts' "$(independent)" "$baseline"
 qa_ok 'Reset adds one aggregate Undo without wiping prior history or moving Camera' "$(undo) / $(pose)" "$((count+1)) / $standpoint"
 # The low floor needs its guidance where the work is: an empty Reset must not hide the placeholder.
-qa_ok 'empty Reset keeps the quickstart placeholder and its observed state truthful' "$(qa_js '(()=>{const p=document.querySelector("#experienceExamples"),step=p?.querySelector("[data-example-step]")?.textContent||"",observed=p?.querySelector("[data-example-observed]")?.textContent||"";return !p?.hidden&&step.includes("1/18")&&observed.includes("No Presentation yet");})()')" true
+qa_ok 'empty Reset keeps the quickstart placeholder and its observed state truthful' "$(qa_js '(()=>{const p=document.querySelector("#journeys"),step=p?.querySelector("[data-example-step]")?.textContent||"",observed=p?.querySelector("[data-example-observed]")?.textContent||"",instruction=p?.querySelector("[data-example-instruction]")?.textContent||"";return !p?.hidden&&step.includes("1/18")&&observed.includes("No Presentation yet")&&instruction.includes("Present this");})()')" true
 checkpoint reset-placeholder
 click '#undoBtn'
 qa_ok 'one Undo restores Experience only, at the same standpoint' "$(source_json) / $(pose)" "$old / $standpoint"

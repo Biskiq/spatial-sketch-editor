@@ -15,6 +15,7 @@
 # visit. The review round adds a merged rebind proposal that must wait as one decision, a declared-but-
 # unrealized capability that may not become visitor work, and a retained choice whose destination left with
 # its Presentation.
+# QA_MUTATIONS is an optional comma-separated subset for the inner loop; unset runs every obligation.
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/c9-mutations.XXXXXX")"
@@ -23,7 +24,10 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration handover-identity handover-run-identity quickstart-standalone quickstart-second-moment; do
+  if [ -n "${QA_MUTATIONS:-}" ]; then
+    case ",$QA_MUTATIONS," in *,"$kind",*) ;; *) continue ;; esac
+  fi
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -298,6 +302,20 @@ elif kind == 'return-entry':
     replace('app/experience-runtime.js',
             " Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});",
             " Object.assign(r,b,{movement:null,queue:[],exploring:false,autoplay:false});r.entries.push({...r.entries.find(x=>x.visit===b.visit)});")
+elif kind == 'quickstart-standalone':
+    replace('app/experience.js', "&&!!v&&!v.stop&&v.narration", "&&!!v&&v.narration")
+elif kind == 'quickstart-second-moment':
+    replace('app/experience.js',
+            "e.guide.length===2&&new Set(e.guide.map(id=>e.stops[id]?.presentationId)).size===2&&Object.keys(e.seams).length===0",
+            "e.guide.length===2&&Object.keys(e.seams).length===0")
+elif kind == 'handover-identity':
+    replace('app/experience.js',
+            "v.handoffRuns.some(h=>stopped.some(s=>s.carried&&s.live&&s.useId===h.toUseId&&s.token===h.toRun))",
+            "stopped.some(s=>s.carried)")
+elif kind == 'handover-run-identity':
+    replace('app/experience.js',
+            "v.handoffRuns.some(h=>stopped.some(s=>s.carried&&s.live&&s.useId===h.toUseId&&s.token===h.toRun))",
+            "v.handoffRuns.some(h=>stopped.some(s=>s.carried&&s.live&&s.useId===h.toUseId))")
 elif kind == 'handover-narration':
     # Any dependency, including narration completion, counts as a finite capability handover.
     replace('app/experience.js',
@@ -363,6 +381,10 @@ PY
     arrival-slot) name='a Travel arrival survives the destination starting its own cue'; control='a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does' ;;
     arrival-evicted) name='entry arrival survives more cues than the Camera diagnostic journal retains'; control='a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does' ;;
     return-entry) name='Return resumes its Stop without inventing another entry policy'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
+    quickstart-standalone) name='the standalone walkthrough topic requires a standalone Preview, not a Guide visit'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
+    quickstart-second-moment) name='the second-Presentation walkthrough topic cannot be earned with repeated Stops of one moment'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
+    handover-identity) name='a capability handover plus an unrelated carried Stop never completes the sequence'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
+    handover-run-identity) name='the sequence Stop must match the dependent run, even when the use identity matches'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
     handover-narration) name='an explanation finishing is not a capability completion handover'; control='the capability-sequence topic needs the handover and the carried run the visitor stopped' ;;
   esac
   log="$work/pure-$kind.log"
@@ -385,7 +407,10 @@ PY
 done
 
 # ------------------------------------------------- browser wiring obligations
-for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-entry-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-unearned presenter-framing-uncharged presenter-sequence-credit presenter-entry-configuration visit-arrival-immediate presenter-framing-scope presenter-handover-disarmed visit-entries-auto visit-return-entry; do
+for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-entry-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-unearned presenter-framing-uncharged presenter-sequence-credit presenter-entry-configuration visit-arrival-immediate presenter-framing-scope presenter-handover-disarmed visit-entries-auto visit-return-entry presenter-lens-content; do
+  if [ -n "${QA_MUTATIONS:-}" ]; then
+    case ",$QA_MUTATIONS," in *,"$kind",*) ;; *) continue ;; esac
+  fi
   python3 - "$QA_DIR/.." "$work/$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -396,13 +421,13 @@ def replace(rel, old, new):
     assert s.count(old) == 1, (kind, rel, 'mutation anchor moved', s.count(old))
     p.write_text(s.replace(old, new))
 if kind == 'reset-placeholder':
-    # The review aid's placeholder goes blank exactly when the Experience is empty.
-    replace('app/experience-ui.js',
-            "if(instruction)instruction.textContent=visiting?'Read-only while Preview is active · '+step.instruction:step.instruction;",
-            "if(instruction)instruction.textContent=Object.values(ctx.experience.presentations).length?(visiting?'Read-only while Preview is active · '+step.instruction:step.instruction):'';")
-    replace('app/experience-ui.js',
-            "if(observed){observed.textContent=`Observed · ${step.observed()}`;",
-            "if(observed){observed.textContent=Object.values(ctx.experience.presentations).length?`Observed · ${step.observed()}`:'';")
+    # The shared review aid's placeholder goes blank exactly when the Experience is empty.
+    replace('app/journeys.js',
+            "$('#jBody').textContent = (S.visitor ? 'Read-only while Preview is active · ' : '') + step.instruction;",
+            "$('#jBody').textContent = Object.values(ctx.experience.presentations).length ? step.instruction : '';")
+    replace('app/journeys.js',
+            "observed.textContent = `Observed · ${step.observed()}`;",
+            "observed.textContent = Object.values(ctx.experience.presentations).length ? `Observed · ${step.observed()}` : '';")
 elif kind == 'first-offer':
     # Visitor View offers silently collapse to the first eligible one.
     replace('app/experience-ui.js',
@@ -492,14 +517,19 @@ elif kind == 'peek-unrecorded':
     replace('app/experience.js',
             " review({peeks:(S.expReview.peeks||0)+1});\n cancelProposal('selection');A.select(id);",
             " cancelProposal('selection');A.select(id);")
+elif kind == 'presenter-lens-content':
+    # The shared panel continues rendering World content in Experience.
+    replace('app/journeys.js',
+            "const experience = S.lens === 'experience';",
+            "const experience = false;")
 elif kind == 'presenter-next-unearned':
     # Next is offered past a topic whose outcome was never reached, and the aid advances anyway.
-    replace('app/experience-ui.js',
-            "if(nextBtn)nextBtn.disabled=presenter.hidden?false:!credit.credited;",
-            "if(nextBtn)nextBtn.disabled=false;")
-    replace('app/experience.js',
-            "if (action === 'exp-presenter') {const d=Number(el.dataset.delta);if(d>0){if(!presenterNext())A.setStatus('Complete this topic, or Skip it','refuse');}else presenterStep(d);}",
-            "if (action === 'exp-presenter') {const d=Number(el.dataset.delta);presenterStep(d);}")
+    replace('app/journeys.js',
+            "next.disabled = !credit.credited;",
+            "next.disabled = false;")
+    replace('app/journeys.js',
+            "if (a.dataset.jact === 'next') E.presenterNext();",
+            "if (a.dataset.jact === 'next') E.presenterStep(1);")
 elif kind == 'presenter-loaded-credit':
     # The review aid credits a topic whenever its outcome is visible, so loaded content counts as
     # authorship and a reviewer is told they have done work they never did.
@@ -513,7 +543,11 @@ elif kind == 'presenter-skip-prepares':
             "S.experiencePresenter=Math.max(0,Math.min(n-1,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}",
             "S.experiencePresenter=Math.max(0,Math.min(n-1,(S.experiencePresenter||0)+delta));if(ctx.experience.guide.length)A.select(ctx.experience.guide[S.experiencePresenter%ctx.experience.guide.length]);ctx.ui();return S.experiencePresenter;}")
 elif kind == 'presenter-visit-controls':
-    # The authoring loaders stay mounted inside a visit, so authoring controls appear in Preview.
+    # Reintroduce the actual exposure, including the outer visibility guard: Preview mounts available
+    # authoring loaders beside the otherwise read-only walkthrough.
+    replace('app/experience-ui.js',
+            "presenter.hidden=S.lens!=='experience'||visiting;",
+            "presenter.hidden=S.lens!=='experience';if(visiting){presenter.open=true;presenter.style.setProperty('display','block','important');}")
     replace('app/experience-ui.js',
             "for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=visiting;",
             "for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=false;")
@@ -527,7 +561,7 @@ elif kind == 'presenter-sequence-credit':
     # Any completed work credits the capability sequence, so a visit that finished an explanation and a bare
     # Activity is credited without the handover or the carried run the topic names.
     replace('app/experience.js',
-            "const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return !!v&&v.controls>=1&&v.completed>=1&&v.handoffs>=1&&stopped.some(s=>s.carried);",
+            "const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return !!v&&v.controls>=1&&v.completed>=1&&v.handoffs>=1&&v.handoffRuns.some(h=>stopped.some(s=>s.carried&&s.live&&s.useId===h.toUseId&&s.token===h.toRun));",
             "const v=S.expReview.visit;return !!v&&v.controls>=1&&v.completed>=1;")
 elif kind == 'presenter-entry-configuration':
     # Configured entry policies are read as if the visit had run them, so two kinds of Entry in the document
@@ -628,6 +662,9 @@ PY
     peek-unrecorded)
       axis=presenter; boundary='QA_PRESENTER_UNTIL=advanced'
       expected="a quiet Peek selection records the Peek without expanding the occurrence"; control='leaving the visit gives the authoring controls back' ;;
+    presenter-lens-content)
+      axis=walkthrough; boundary='QA_WALKTHROUGH_UNTIL=lens'
+      expected='Experience switches the same panel to its workflow, with no World content or Replay'; control='World uses the retained A–F Presenter content and Replay' ;;
     presenter-next-unearned)
       axis=presenter; boundary='QA_PRESENTER_UNTIL=provenance'
       expected='…and Next stays disabled while the topic outcome is not earned'; control='loading the example is named as the source and counts no authored edit' ;;

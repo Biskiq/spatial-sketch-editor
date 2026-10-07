@@ -660,6 +660,11 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .j-dots button.done { background: #56625D; }
 .j-dots button.on { background: var(--tape); }
 .j-count { font: 500 var(--txs) var(--mono); color: #7E8A85; }
+.j-outcome { margin: 0; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
+.j-nav > button:disabled { opacity: .45; cursor: default; }
+.journeys[data-lens="experience"] { top: 94px; bottom: auto; max-height: calc(100vh - 250px); overflow: auto; }
+.journeys[data-lens="experience"] .j-count { margin-left: auto; }
+body[data-lens="experience"] .j-toggle { top: 94px; bottom: auto; }
 
 body.shot .journeys, body.shot .j-toggle { display: none !important; }
 
@@ -689,6 +694,8 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
   .doc { padding-left: 0; border-left: 0; }
   .trail-wrap { flex-basis: 190px; }
   .j-toggle, .journeys { right: 12px; }
+  body[data-lens="experience"].sheet-card .journeys,
+  body[data-lens="experience"].sheet-card .j-toggle { left: 12px; right: auto; }
   body.sheet-index .index, body.sheet-card .card {
     display: flex; flex-direction: column; position: fixed; top: 40px; bottom: 26px; z-index: 24;
     background: var(--chassis); box-shadow: 0 18px 44px rgba(23, 32, 29, .38);
@@ -725,7 +732,7 @@ body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0
 .head-preview { flex-shrink: 0; font: inherit; font-size: var(--tsm); padding: 4px 8px; background: var(--instrument); border: 1px solid var(--rule); border-radius: 3px; }
 .experience-presenter { position: fixed; top: 48px; right: 340px; z-index: 40; width: 265px; padding: 8px; background: var(--chassis); border: 1px dashed var(--ink-3); border-radius: 4px; font-size: var(--txs); }
 .experience-presenter summary { cursor: pointer; }
-body.shot .experience-presenter, .visitor-preview .experience-presenter, .visitor-preview .journeys, .visitor-preview .j-toggle { display: none !important; }
+body.shot .experience-presenter, .visitor-preview .experience-presenter { display: none !important; }
 .exp-deck input, .exp-deck select, .stop-details select { max-width: 100%; min-width: 0; }
 .beat-strip { flex-wrap: wrap; }
 .beat input { width: 60px; }

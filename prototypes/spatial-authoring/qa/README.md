@@ -22,14 +22,15 @@ qa/run-all.sh composition  # C9.2/C9.3: composition execution and compact Guide
 qa/run-all.sh revision     # C9.6: revision, removal, repair and provider capability loss
 qa/run-all.sh rich         # C9.7: the rich example, the native Wall, retained choices and local coordination
 qa/run-all.sh precision-c9 # C9.8: the precise Camera, its deliberate property depth and one live tape
-qa/run-all.sh presenter    # C9.9: the review aid's eighteen topics and its own honesty
+qa/run-all.sh presenter    # C9.9: Experience topics, provenance, outcomes and earned navigation
+qa/run-all.sh walkthrough  # shared Presenter: lens isolation and actual Q1–Q8 author workflow (also at 1024×700)
 qa/run-all.sh visitor      # visitor controls, effects, Gates and isolation
 qa/run-all.sh reconciliation # saved controls and narrow Guide/Card/precision/visitor
 qa/run-all.sh continuity   # stage S8: both-directions parking, neutral Resume, Preview return, history
 qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
 qa/run-all.sh correctness  # numerical validators, summary history, nested parking and cancellation
 qa/mutation-check.sh       # protected regressions on disposable copies (World, V2, C9.2/C9.3)
-qa/composition-mutation-check.sh # C9.2/C9.3 targeted obligations only (also chained by mutation-check)
+qa/composition-mutation-check.sh # C9 composition/runtime/walkthrough obligations (also chained by mutation-check)
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 

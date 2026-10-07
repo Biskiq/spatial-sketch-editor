@@ -56,7 +56,8 @@ const emptyVisitorLedger=()=>({stops:[],at:null,traversed:null,travelArrivals:0,
 function visitOutcome(v) {
   const e = v.source.experience, r = v.runtime, kind = (id) => e.definitions[e.uses[id]?.definitionId]?.kind || null;
   const ran = Object.values(r.activities), dependent = (a) => {const start=e.uses[a.useId]?.start;return kind(a.useId)==='control'&&start?.kind==='after'&&start.signal==='complete'&&kind(start.useId)==='control';};
-  return { stop: r.stopId, stops: r.history.length, framing: !!r.arrivedViewUseId, exploring: r.exploring, caption: r.captions && !!R.narrationCaption(e, r), narration: ran.filter((a) => kind(a.useId) === 'narration').length, controls: ran.filter((a) => kind(a.useId) === 'control').length, completed: ran.filter((a) => kind(a.useId) === 'control' && a.status === 'complete').length, handoffs: ran.filter((a) => dependent(a) && a.began).length, invoked: ran.filter((a) => e.uses[a.useId]?.start?.kind === 'station').length };
+  const handoffRuns=ran.filter(a=>dependent(a)&&a.began).map(a=>({fromUseId:e.uses[a.useId].start.useId,toUseId:a.useId,toRun:a.token}));
+  return { stop: r.stopId, stops: r.history.length, framing: !!r.arrivedViewUseId, exploring: r.exploring, caption: r.captions && !!R.narrationCaption(e, r), narration: ran.filter((a) => kind(a.useId) === 'narration').length, controls: ran.filter((a) => kind(a.useId) === 'control').length, completed: ran.filter((a) => kind(a.useId) === 'control' && a.status === 'complete').length, handoffs: ran.filter((a) => dependent(a) && a.began).length, handoffRuns, invoked: ran.filter((a) => e.uses[a.useId]?.start?.kind === 'station').length };
 }
 // The Stop entry the author configured, as it is about to run: which policy it is (a Presentation entry,
 // one specific View, or an explicit hold), whether that View is a later one rather than the Presentation's
@@ -143,7 +144,7 @@ export function handleExperienceAction(el) {
   if (!action?.startsWith('exp-')) return false;
   // A private visit is read-only for authoring, but the review aid's own navigation is not authoring:
   // Back, Next and Skip move its cursor and never the documents, so they stay usable during Preview.
-  if(S.visitor&&!['exp-visitor','exp-exit-preview','exp-presenter','exp-presenter-skip'].includes(action))return true;
+  if(S.visitor&&!['exp-visitor','exp-exit-preview'].includes(action))return true;
   if (action === 'exp-create') present();
   if (action === 'exp-open') openPresentation(el.dataset.id);
   if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
@@ -216,10 +217,6 @@ export function handleExperienceAction(el) {
   if (action === 'exp-reset') resetExperience();
   if (action === 'exp-conformance') loadConformance();
   if (action === 'exp-example') loadExample();
-  // Next is earned: it advances only when the current topic's own outcome holds. Skip stays the
-  // deliberate way to move on without claiming the topic was observed.
-  if (action === 'exp-presenter') {const d=Number(el.dataset.delta);if(d>0){if(!presenterNext())A.setStatus('Complete this topic, or Skip it','refuse');}else presenterStep(d);}
-  if (action === 'exp-presenter-skip') presenterSkip();
   if (action === 'exp-resume') resumeExperience();
   if (action === 'exp-dismiss-parked') {S.parkedByLens.experience=null;ctx.ui();}
   if (action === 'exp-capture') captureView();
@@ -757,7 +754,7 @@ export function visitorCommand(action,id=null){
  // Experience rather than owned by the visit. Both facts are what the capability-sequence topic reads.
  if(action==='stop'&&id){
   const run=r.activities[id],u=e.uses[run?.useId];
-  if(run)next.stopped=[...(next.stopped||[]),{useId:run.useId,live:run.status==='running',carried:run.status==='running'&&(u?.end?.kind==='experience'||u?.retention?.kind==='experience')}];
+  if(run)next.stopped=[...(next.stopped||[]),{useId:run.useId,token:run.token,live:run.status==='running',carried:run.status==='running'&&(u?.end?.kind==='experience'||u?.retention?.kind==='experience')}];
  }
  if(action==='explore')next.explored=true;
  if(action==='rejoin')next.rejoined=true;
@@ -942,13 +939,13 @@ export function presenterSteps(){
    done:()=>!!captured()&&(S.expReview?.auditions||0)>0,
    observed:()=>{const u=captured();const d=u&&e.definitions[u.definitionId],tries=S.expReview?.auditions||0;return `${d?`${d.name||d.capabilityId} captured${u.presentationId?` in ${e.presentations[u.presentationId]?.name||'a Presentation'}`:''}`:'No captured capability yet'}${tries?` · ${tries} audition${tries===1?'':'s'}`:''}`;}},
   {family:'Q',title:'Q4 · Preview without a Guide',authored:['explanation'],instruction:'Preview the Presentation; the explanation, framing and capability run in a private visit. Exit returns exactly.',
-   done:()=>{const v=S.expReview.visit,controls=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==='control').length;return (S.expReview.previews||0)>0&&!!v&&v.narration>=1&&v.framing&&(controls===0||v.controls>=1);},
+   done:()=>{const v=S.expReview.visit,controls=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==='control').length;return (S.expReview.previews||0)>0&&!!v&&!v.stop&&v.narration>=1&&v.framing&&(controls===0||v.controls>=1);},
    observed:()=>{const v=S.expReview.visit;return v?`Visit ${v.stop?'at a Stop':'standalone'} · explanation ${v.narration} · framing ${v.framing?'arrived':'not arrived'} · capability ${v.controls}`:'No completed Preview yet';}},
   {family:'Q',title:'Q5 · Add to the Guide',authored:['guide'],instruction:'Exit Preview, then add the Presentation to the Guide. One Stop, and Peek the occurrence without disturbing the work.',
    done:()=>e.guide.length===1&&(S.expReview.peeks||0)>0&&!!stopEntry(e,e.guide[0]).id,
    observed:()=>`${e.guide.length} Stop · ${S.expReview.peeks||0} Peek${(S.expReview.peeks||0)===1?'':'s'} · entry ${e.guide.length?stopEntry(e,e.guide[0]).id:'none'}`},
   {family:'Q',title:'Q6 · A second Presentation',authored:['presentation','guide'],instruction:'Present another moment and add it to the Guide. Two whole-moment Stops from the order resolver, no manual edge.',
-   done:()=>e.guide.length===2&&Object.keys(e.seams).length===0,
+   done:()=>e.guide.length===2&&new Set(e.guide.map(id=>e.stops[id]?.presentationId)).size===2&&Object.keys(e.seams).length===0,
    observed:()=>`${e.guide.length} Stops · ${Object.keys(e.seams).length} authored edges`},
   {family:'Q',title:'Q7 · Preview the Guide',authored:['guide'],instruction:'Preview the Guide and press Next from the first Stop to the second: the order resolver and the destination entry run.',
    done:()=>{const t=S.expReview.visitor?.traversed;return !!t&&t.from===e.guide[0]&&t.to===e.guide[1]&&t.arrived;},
@@ -959,9 +956,9 @@ export function presenterSteps(){
   {family:'A',title:'A1 · Additional Views',instruction:'Add or reuse another Camera View in a Presentation: no new Stop or edge, explanation continues, and Next View stays distinct from Next Stop.',
    done:()=>Object.values(e.presentations).some(p=>p.uses.filter(id=>e.uses[id]?.viewId).length>=2)&&(S.expReview.visitor?.viewStep||0)>0,
    observed:()=>{const p=Object.values(e.presentations).sort((a,b)=>b.uses.filter(id=>e.uses[id]?.viewId).length-a.uses.filter(id=>e.uses[id]?.viewId).length)[0];return `${p?.uses.filter(id=>e.uses[id]?.viewId).length||0} framed Views · Guide ${e.guide.length} · View steps ${S.expReview.visitor?.viewStep||0}`;}},
-  {family:'A',title:'A2 · Capability sequence',instruction:'Load the rich example or author a capability sequence: watch a finite operation complete and hand over, then stop a carried run.',
-   done:()=>{const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return !!v&&v.controls>=1&&v.completed>=1&&v.handoffs>=1&&stopped.some(s=>s.carried);},
-   observed:()=>{const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return v?`capabilities ${v.controls} · completed ${v.completed} · handovers ${v.handoffs} · carried runs stopped ${stopped.filter(s=>s.carried).length}`:'No completed visit yet';}},
+  {family:'A',title:'A2 · Capability sequence',instruction:'Load the rich example or author a sequence: watch the casing complete and hand over to the rotor, then Stop that same carried rotor run and exit Preview.',
+   done:()=>{const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return !!v&&v.controls>=1&&v.completed>=1&&v.handoffs>=1&&v.handoffRuns.some(h=>stopped.some(s=>s.carried&&s.live&&s.useId===h.toUseId&&s.token===h.toRun));},
+   observed:()=>{const v=S.expReview.visit,stopped=S.expReview.visitor?.stopped||[];return v?`capabilities ${v.controls} · completed ${v.completed} · handovers ${v.handoffs} · handover targets stopped ${v.handoffRuns.filter(h=>stopped.some(s=>s.carried&&s.live&&s.useId===h.toUseId&&s.token===h.toRun)).length}`:'No completed visit yet';}},
   {family:'A',title:'A3 · Stop entry policies',instruction:'Compare entries: a Presentation entry, a specific later View, and a hold while the content still runs.',
    done:()=>{const ent=S.expReview.visitor?.entries||[];return ent.some(x=>x.kind==='presentation'&&x.arrived)&&ent.some(x=>x.kind==='use'&&x.later&&x.arrived)&&ent.some(x=>x.kind==='hold'&&x.ran);},
    observed:()=>{const ent=S.expReview.visitor?.entries||[],n=k=>ent.filter(x=>x.kind===k&&(x.arrived||x.ran)).length;return `entries the visit ran · Presentation ${n('presentation')} · later View ${ent.filter(x=>x.kind==='use'&&x.later&&x.arrived).length} · hold with content running ${ent.filter(x=>x.kind==='hold'&&x.ran).length}`;}},
@@ -980,7 +977,7 @@ export function presenterSteps(){
   {family:'A',title:'A8 · Detour and return',instruction:'Take an authored detour, then Return: the parent narration and playhead resume without a second entry.',
    done:()=>!!S.expReview.visitor?.detoured&&!!S.expReview.visitor?.returned,
    observed:()=>{const v=S.expReview.visitor;return `${v?.detoured?'detoured':'no detour'} · ${v?.returned?'returned':'not returned'}`;}},
-  {family:'A',title:'A9 · Shared or local scope',instruction:'Predict the reach before editing, cancel one shared proposal, then accept a supported local or shared edit and Undo it.',
+  {family:'A',title:'A9 · Shared or local scope',instruction:'Open Precise Camera from a View. Choose a property on its Card and use its Stage grip or tape. Predict the reach, cancel a shared proposal, then accept a local or shared edit and Undo it.',
    done:()=>{const s=S.expReview.scope||{};return !!s.cancelled&&!!s.accepted&&!!s.label&&(S.redo||[]).some(entry=>entry.label===s.label);},
    observed:()=>{const s=S.expReview.scope||{},undone=!!s.label&&(S.redo||[]).some(entry=>entry.label===s.label);return `${s.cancelled?'cancelled once':'nothing cancelled'} · ${s.accepted?`accepted ${s.kind} (${s.uses} use(s), ${s.stops} Stop(s))`:'nothing accepted'} · ${undone?'undone':'not undone yet'}`;}},
   {family:'A',title:'A10 · Lose and repair a capability',instruction:'Replace a provider profile in the World lens, follow the routed notice, and repair the retained Activity.',
