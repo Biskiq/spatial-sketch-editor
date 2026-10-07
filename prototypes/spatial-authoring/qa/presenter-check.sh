@@ -35,7 +35,7 @@ BLOB='(() => {
   const t = (s) => document.querySelector(s);
   const all = (s) => [...document.querySelectorAll(s)];
   const text = (s) => { const e = t(s); return e ? e.textContent : null; };
-  const p = t("#experienceExamples");
+  const p = t("#journeys");
   const steps = E.presenterSteps();
   const credits = steps.map((s) => [s.title, E.presenterCredit(s).seen, E.presenterCredit(s).credited]);
   const authoring = all("#experienceExamples [data-authoring]");
@@ -51,20 +51,20 @@ BLOB='(() => {
     seenOpen: credits.filter((c) => c[1] && !c[2]).map((c) => c[0].split(" · ")[0]).join(","),
     seen: credits.filter((c) => c[1]).length,
     hidden: p ? p.hidden : null,
-    open: p ? p.open : null,
+    open: p ? p.classList.contains("open") : null,
     visiting: p ? p.classList.contains("presenter-visiting") : null,
-    stepText: text("#experienceExamples [data-example-step]"),
-    instruction: text("#experienceExamples [data-example-instruction]"),
-    observed: text("#experienceExamples [data-example-observed]"),
-    credit: text("#experienceExamples [data-example-credit]"),
-    creditState: (t("#experienceExamples [data-example-credit]") || { dataset: {} }).dataset.state || null,
-    tally: text("#experienceExamples [data-example-tally]"),
-    tallyCount: (text("#experienceExamples [data-example-tally]") || "").split("/")[0],
-    source: text("#experienceExamples [data-example-source]"),
-    sourceKind: (t("#experienceExamples [data-example-source]") || { dataset: {} }).dataset.source || null,
+    stepText: text("#journeys [data-example-step]"),
+    instruction: text("#journeys [data-example-instruction]"),
+    observed: text("#journeys [data-example-observed]"),
+    credit: text("#journeys [data-example-credit]"),
+    creditState: (t("#journeys [data-example-credit]") || { dataset: {} }).dataset.state || null,
+    tally: text("#journeys [data-example-tally]"),
+    tallyCount: (text("#journeys [data-example-tally]") || "").split("/")[0],
+    source: text("#journeys [data-example-source]"),
+    sourceKind: (t("#journeys [data-example-source]") || { dataset: {} }).dataset.source || null,
     writes: S.expReview.writes,
     authoringHidden: authoring.map((e) => e.hidden),
-    loadersVisible: all("#experienceExamples [data-authoring] button").filter((b) => !b.hidden && b.getBoundingClientRect().width > 0).length,
+    loadersVisible: all("#experienceExamples [data-authoring] button").filter((b) => b.checkVisibility()).length,
     a6: (() => { const s = steps.find((x) => x.title.startsWith("A6")); return s ? E.presenterCredit(s).credited : null; })(),
     a4: (() => { const s = steps.find((x) => x.title.startsWith("A4")); return s ? E.presenterCredit(s).credited : null; })(),
     ledger: S.expReview.visitor ? (S.expReview.visitor.stops || []).length : null,
@@ -87,7 +87,7 @@ BLOB='(() => {
     peeks: S.expReview.peeks || 0,
     coordination: S.expReview.coordination || null,
     expanded: !!document.querySelector(".stop-card.expanded"),
-    nextDisabled: (() => { const b = [...document.querySelectorAll("#experienceExamples [data-act=exp-presenter]")].find((x) => x.dataset.delta === "1"); return b ? b.disabled : null; })(),
+    nextDisabled: (() => { const b = [...document.querySelectorAll("#journeys [data-act=exp-presenter]")].find((x) => x.dataset.delta === "1"); return b ? b.disabled : null; })(),
     visitor: !!S.visitor,
     hash: window.__me.qa.hash(),
     undo: S.undo.length,
@@ -123,8 +123,8 @@ checkpoint() { if [ "${QA_PRESENTER_UNTIL:-}" = "$1" ]; then qa_summary "C9.9 bo
 # handler is still the one exercised, and no quotation can end the expression early.
 back() { qa_js "(()=>{const b=[...document.querySelectorAll('[data-act=exp-presenter]')].find(e=>e.dataset.delta==='-1');if(!b)return false;b.click();return true;})()" >/dev/null; qa_frames; }
 next_aid() { qa_js "(()=>{const b=[...document.querySelectorAll('[data-act=exp-presenter]')].find(e=>e.dataset.delta==='1');if(!b)return false;b.click();return true;})()" >/dev/null; qa_frames; }
-open_aid() { press '#experienceExamples > summary'; }
-close_aid() { qa_js "(()=>{const d=document.querySelector(\"#experienceExamples\");if(!d||!d.open)return false;d.querySelector(\"summary\").click();return true;})()" >/dev/null; qa_frames; }
+open_aid() { press '#jToggle'; }
+close_aid() { press '#journeys [data-jact=close]'; }
 # One authored edit through the product's own field: real caret, real value, real Enter. The explanation
 # is the field whose own topic Q2 observes, so the credit it earns is the outcome, not a stray write.
 author_once() { qa_scroll_center '#card [data-exp-primary]'; agent-browser click '#card [data-exp-primary]' >/dev/null 2>&1; qa_frames; agent-browser fill '#card [data-exp-primary]' "$1" >/dev/null 2>&1; qa_key_dispatch Enter; }
@@ -254,7 +254,7 @@ back
 last="$(step '')"
 qa_ok "…and Back returns to the same topic, still read-only" "$(field index) / $(field stepText)" "$IDX_V / 1/18 · Q1 · Subject and Presentation"
 last="$(step 'document.querySelector("[data-act=exp-exit-preview]").click();')"
-qa_ok "leaving the visit gives the authoring controls back, at the same topic" "$(field visitor) / $(is 'd["authoringHidden"] == [False]') / $(field loadersVisible) / $(field stepText)" "False / True / 3 / 1/18 · Q1 · Subject and Presentation"
+qa_ok "leaving the visit gives the authoring controls back, at the same topic" "$(field visitor) / $(is 'd["authoringHidden"] == [False]') / $(field loadersVisible) / $(field stepText)" "False / True / 0 / 1/18 · Q1 · Subject and Presentation"
 checkpoint visit
 
 qa_say "-- advanced topics read real outcomes, not loaded content"

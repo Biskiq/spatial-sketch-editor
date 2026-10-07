@@ -182,6 +182,27 @@ test('focusing a Hold addresses that Hold own station, exactly once',()=>{
 const step=(title)=>E.presenterSteps().find(s=>s.title.startsWith(title));
 const credit=(title)=>E.presenterCredit(step(title)).credited;
 
+test('the standalone walkthrough topic requires a standalone Preview, not a Guide visit',async()=>{
+ liveFixture();const loaded=E.loadExample();
+ E.explainPresentation(loaded.presentation,'The casing protects the rotor.');
+ E.previewGuide();E.stepVisitor(6);await E.exitPreview();
+ assert.ok(E.review().visit.narration>=1&&E.review().visit.framing&&E.review().visit.controls>=1);
+ assert.equal(credit('Q4'),false);
+ E.preview(loaded.presentation);E.stepVisitor(6);await E.exitPreview();
+ assert.equal(credit('Q4'),true);
+});
+
+test('the second-Presentation walkthrough topic cannot be earned with repeated Stops of one moment',()=>{
+ const {e}=liveFixture();
+ const first=E.present({kind:'subjects',ids:['machine']});
+ E.addToGuide(first);const secondStop=E.addToGuide(first);
+ assert.equal(e.guide.length,2);
+ assert.equal(credit('Q6'),false);
+ const second=E.present({kind:'subjects',ids:['piano']});
+ E.updateStop(secondStop,'presentationId',second);
+ assert.equal(credit('Q6'),true);
+});
+
 test('a quickstart topic names every outcome its instruction produces, not any one of them',()=>{
  const {e}=liveFixture();
  const loaded=E.loadExample();
@@ -285,7 +306,38 @@ test('the capability-sequence topic needs the handover and the carried run the v
  assert.equal(E.review().visitor.stopped.length,1);
  assert.equal(E.review().visitor.stopped[0].carried,true);        // its authored lifetime is the Experience
  await E.exitPreview();
+ const handoff=E.review().visit.handoffRuns[0];
+ assert.equal(handoff.fromUseId,rotor.start.useId);
+ assert.equal(handoff.toUseId,rotor.id);
+ assert.equal(handoff.toRun,E.review().visitor.stopped[0].token);
  assert.equal(credit('A2'),true);
+});
+
+test('a capability handover plus an unrelated carried Stop never completes the sequence',async()=>{
+ const {e}=liveFixture();E.loadExample();
+ const pid=e.stops[e.guide[0]].presentationId;
+ const piano=M.addContribution(e,pid,{kind:'control',name:'Unrelated carried music',subjectId:'piano',capabilityId:'music',value:true});
+ e.uses[piano].end={kind:'experience'};
+ E.previewGuide();E.stepVisitor(6);
+ assert.equal(S.visitor.runtime.activities[S.visitor.runtime.active[piano]].status,'running');
+ E.visitorCommand('stop',S.visitor.runtime.active[piano]);await E.exitPreview();
+ assert.equal(E.review().visit.handoffs,1);
+ assert.ok(E.review().visit.completed>=1);
+ assert.equal(E.review().visitor.stopped[0].carried,true);
+ assert.equal(E.review().visitor.stopped[0].useId,piano);
+ assert.notEqual(E.review().visit.handoffRuns[0].toUseId,piano);
+ assert.equal(credit('A2'),false);
+});
+
+test('the sequence Stop must match the dependent run, even when the use identity matches',async()=>{
+ const {e}=liveFixture();E.loadExample();
+ const rotor=Object.values(e.uses).find(u=>e.definitions[u.definitionId]?.capabilityId==='rotor');
+ E.previewGuide();E.stepVisitor(6);
+ E.visitorCommand('stop',S.visitor.runtime.active[rotor.id]);await E.exitPreview();
+ assert.equal(credit('A2'),true);
+ // A retained Stop from another run of this same use cannot borrow the observed handover.
+ E.review().visitor.stopped[0].token='another-visit/run';
+ assert.equal(credit('A2'),false);
 });
 
 test('a capability sequence counts a handover only when the dependent really began',async()=>{

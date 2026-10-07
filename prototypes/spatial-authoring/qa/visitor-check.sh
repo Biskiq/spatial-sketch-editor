@@ -14,9 +14,12 @@ qa_frames
 # assertion protects "a fresh load yields the authored Guide and never starts playback", not one count.
 qa_ok 'Load Example is deterministic and never starts playback' "$(qa_js '(!__me.S.visitor && __me.ctx.experience.guide.length===3 && __me.ctx.experience.presentations[__me.S.sel].uses.length===3)')" 'true'
 qa_js '__me.S.presenterSource=JSON.stringify(__me.A.domainSnapshot())' >/dev/null
-# The outside-product disclosure stays open across source changes.
+# The shared Presenter opens on the Experience workflow, independent of the example loader.
+agent-browser click '#experienceExamples > summary' >/dev/null
+agent-browser click '#jToggle' >/dev/null
 agent-browser click '[data-act="exp-presenter-skip"]' >/dev/null
 qa_frames
+agent-browser click '#journeys [data-jact=close]' >/dev/null
 qa_ok 'Presenter Skip observes without source or playback' "$(qa_js '(!__me.S.visitor && __me.S.presenterSource===JSON.stringify(__me.A.domainSnapshot()))')" 'true'
 # Author a visit-local Gate on the independent Piano offer, then exercise real visitor controls.
 # The example's own offers are triggered by subjects the first Stop does not frame, so the harness

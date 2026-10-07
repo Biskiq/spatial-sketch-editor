@@ -1,140 +1,53 @@
 # PR #113 Experience V2 — checkpoint
 
-TYPE: implementation / verification (C9 continuation)
-STATUS: C9.1–C9.3 implemented and accepted through **MP2 (accepted by the owner 2026-10-05)**;
-C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation and agency)
-implemented, self-reviewed and verified at the executable revision recorded below; stopped at
-the MP3 human gate.
-GOAL: complete the C9 authoring-completeness slice through C9.5 and stop for the MP3 human
-review; no merge or phase closure.
+TYPE: prototype implementation / owner-review handoff
+STATUS: C9.1–C9.9 implemented and reviewed; bounded shared-Presenter follow-up in final verification.
+GOAL: finish the bounded follow-up and hand PR #113 to the owner for MP3/MP4 acceptance; no merge or closure.
 
 CONSTRAINTS:
-- Prototype-local implementation; no Paper adoption, production formats or phase closure.
-- The owner authorized implementation through MP2; MP1 was explicitly accepted by the
-  owner on 2026-10-04 and MP2 on 2026-10-05. C9.4/C9.5 were authorized to proceed
-  autonomously after MP2 acceptance and stop at MP3.
-- Commit provenance, correct against live Git: the C9.1 slice is committed by the owner's
-  review pass as `abaa7592`; C9.2/C9.3 as `12652d9b`, the first external-review repair as
-  `db83a9d7`, and the second review repair as `9a44678a`; the C9.4/C9.5 increment is
-  `c118c08b`. All are pushed to `origin/prototype-v2` (the evidence/status update is the
-  docs-only child of the commit it records). No merge or closure was performed.
-- AGENTS.md rule 11 requires expanded scope before changing the unrelated missing fixture.
-- Donor stays unchanged; every QA axis closes its own browser and server.
+- Prototype-local only. Preserve one Camera evaluator/navigation authority, Experience policy ownership,
+  private visitor execution, deterministic selection/history and exact Preview return.
+- One Presenter panel/controller switches lens content. World A–F remains unchanged; Experience
+  guides actual authoring. This is editor guidance, distinct from authored Guide/Stops.
+- The owner authorized implementation, self-review/repair, verification, commit and push for this follow-up.
+- MP1 accepted 2026-10-04 and MP2 accepted 2026-10-05. MP3 and MP4 require explicit owner acceptance;
+  automation, rehearsals and Presenter completion cannot accept them.
+- No production migration, missing-fixture restoration, Paper work, broader shell overhaul or six-QA reconciliation.
 
 READ:
-- `docs/README.md` router; `apps/editor/tests/README.md` verification doctrine.
-- `docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md` (C9).
-- `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` (C9.1–C9.3 record).
-- Browser-hygiene, agent-browser and slice-closeout skills.
+- `docs/README.md`; `apps/editor/tests/README.md` verification contract.
+- `docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md`.
+- `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` — exact executable provenance and review/proof.
 
-## Established — S0–S9 (prior evidence, retained)
+ESTABLISHED:
+- C1–C8 conformance and S0–S9 prior evidence remain retained in their acceptance records.
+- C9.1–C9.5 are implemented, with reviewed Travel, lifecycle, interaction, detour, held-viewing,
+  remaining-work and Preview-isolation repairs. Their historical run counts keep their own revisions.
+- C9.6–C9.9 are implemented and reviewed: revision/removal/repair, rich example/local coordination,
+  deliberate Camera precision and observational quickstart/advanced outcomes. The prior review commits
+  are `4e8cc8e7` and `dad60dff`; they are not unstarted work.
+- A2 now retains the capability handoff's source use, target use and target run; the visitor's Stop
+  must match that same live carried run. Unrelated carried work and another run of the same use fail.
+- C9 ordinary walkthrough uses real product commands, earned Next, Back and explicit Skip. Lens switching,
+  navigation and close/reopen preserve source/history/selection/Camera. Preview guidance has no writers.
+- MP3/MP4 remain pending human review. Trials (cursor/detour parent pause) are not permanent architecture.
 
-- Branch `prototype-v2`; actual PR https://github.com/Biskiq/spatial-sketch-editor/pull/113.
-- S0–S9 implementation and review repairs are complete; [S0–S9 acceptance][s0s9] and
-  [C1–C8 conformance acceptance][c8] remain prior evidence, not C9 acceptance authority.
-- The missing P23B fixture is a pre-existing repository-gate blocker, also absent at #113's
-  base; exact original identity and recovery guidance are recorded in the C1–C8 acceptance.
-  Restoration needs separately authorized work and was not performed.
+EVIDENCE:
+- `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` owns final counts, mutations and repository-gate limits.
+- `prototypes/spatial-authoring/qa/walkthrough-check.sh` drives Q1–Q8 and both lens directions through visible controls.
+- `prototypes/spatial-authoring/tests/experience-c9-review.test.mjs` and
+  `prototypes/spatial-authoring/qa/composition-mutation-check.sh` protect A2 use/run identity.
 
-## Established — C9 (this increment)
-
-- C9.1 committed (`abaa7592`); **MP1 accepted explicitly by the owner 2026-10-04**.
-  Standalone J1 loop inspected with the Presenter closed; no comprehension result invented.
-- **MP2 accepted by the owner 2026-10-05**: the reviewed J1 repeat, A/B Guide creation,
-  Preview/Next, Peek-level Stop editing and deliberate Overview enter/leave worked with
-  predictable View/Stop/Presentation scope and no workflow failure. Three observations were
-  recorded as non-blocking and assigned outward: shell/control density → the later UI/UX
-  refinement slice; Guide snap/cut → superseded by C9.4; incomplete View/Presentation
-  removal → C9.6 revision/repair.
-- C9.2/C9.3 implemented and verified, committed as `12652d9b` (the full record, changed
-  paths, repairs and limitations are in [the C9 evidence record][c9]).
-- External MP2 review (2026-10-05) named five blockers; all five are repaired at their
-  owning authority with pure and browser regression coverage: the route writer ends on Stop
-  selection (stale Stage clicks refuse), the primary explanation keeps its binding through
-  regrouping, Experience-scoped narration keeps captions and View cues without satisfying a
-  later Stop's Gate, Auto derives from remaining Experience work and never interrupts a live
-  Camera move, and impossible dependency/cue/Stop-condition scopes are repairable,
-  unavailable work. A second review pass then folded C9.1 as accepted and blocked the
-  combined C9.2/C9.3 verdict on station activation, cue-scope consistency and remaining-work
-  edge cases; all three are repaired at their owning authority (the station is now the
-  Activity's single trigger and only automatic work is invokable, cue scope and Gate/pacing
-  scope are separate predicates that agree with `emit`, and remaining work is modelled once as
-  runtime completion instead of elapsed subtraction at every node), with regression and
-  same-defect mutation coverage. Details and coverage in the evidence record.
-- Prototype verification at the repaired revision `9a44678a`: pure Node suite **75/75**
-  (10 then 14 external-review cases); `qa/run-all.sh all` **18 axes / 762 assertions / 0
-  failures, rc=0** — every axis rerun at that one revision (`/tmp/c9-all-final.log`);
-  `qa/mutation-check.sh` 23/23 same-defect rejections for the first pass and 28/28 for the
-  second, rc=0 (World 3, V2 7, C9 18: the original six, the seven external-review
-  obligations — route writer, explanation binding, Experience output, completed work, live
-  move, Auto clock, dependency scope — and five second-pass obligations: invocation
-  repeating on every tick, a visitor offer becoming traversal work, a stopped remainder
-  waited for, a carried dependency paying its elapsed time twice, and the cue predicate
-  collapsed back onto the strict scope predicate. The 13th, entry-plus-station double
-  activation, was re-targeted from the tick-repeat defect to the activation contract itself).
-- C9.4/C9.5 (Camera default Travel and live invocation; visitor participation and agency)
-  implemented, self-reviewed and verified: pure Node suite **93/93**; `qa/run-all.sh all`
-  **18 axes / 780 assertions / 0 failures, rc=0** at the reviewed revision (`/tmp/c945b-all.log`);
-  `qa/mutation-check.sh` **39/39** same-defect rejections (26 model/runtime + 3 World/lens + 7 V2
-  conformance + 3 wiring), with the composition-only rerun green on its 29 C9 obligations. Seven
-  self-review findings were repaired, two of them in surrounding C9.1–C9.3 behavior (an origin
-  already at the destination View was painted and refused as a Travel gap, and the
-  departure-readiness rule had two copies so removing one would have left the other refusing early
-  Next), and the N1-superseded axis steps were rewritten rather than worked around.
-- An **independent review** of the pushed C9.4/C9.5 executable then named four acceptance blockers;
-  this repair pass fixed all four at their owning authority, each with behavior coverage and a
-  same-defect mutation: Rejoin and detour Return now resume the playhead (remaining work rather than a
-  rebuilt estimate, a cue whose signal already fired skipped, future cues kept, and the parent's own
-  remainder and cue floor restored on Return); **Preview Experience** exists as the world-only entry
-  that needs no Presentation, Stop or Guide; offer **availability is authorable** with Experience-wide
-  as the default, written in the same aggregate edit and switchable from the Card without changing the
-  offer's home; and a same-View Seam is zero-distance only while the visitor is standing there,
-  otherwise the ordinary Camera framing invocation from the live pose. The review also caught this
-  record naming the missing P23B fixture path outside its `EVIDENCE-PATHS` region, which the repository
-  documentation gate reads as a claim about a missing file; that text is repaired and the gate is green
-  at this revision. Details in the evidence record.
-- Product defects found and fixed during verification: Guide band reachability (band
-  measured 285.84px vs Card reserve 216px), visitor transcript crash on View uses without
-  `.start`, and the parked-detour parent-visit regression. Details in the evidence record.
-- Root repository gates at `9a44678a`: `test:arch` **276/276** rc=0; `npm test` 33 files
-  failed / 339 passed / 1 skipped, 4951 passed / 1 failed / 1 skipped rc=1; `check` 1
-  missing-module error / 0 warnings; `build` unresolved import; `git diff --check` rc=0.
-  Logs `/tmp/c9-{arch,root-test,check,build}-final.log`. Every red gate is the same
-  missing P23B fixture, reported separately, not hidden.
-- Donor `prototypes/experience-authoring` (separately reported): typecheck, 62/62 domain
-  tests, production build and Playwright regressions; tree unchanged.
+DO NOT REPEAT:
+- C9.6–C9.9 implementation or the repaired review rounds. Use current evidence, not old router status.
+- Do not regenerate six visual QA specimens or treat a green Presenter as human acceptance.
 
 CURRENT:
-- MP2 accepted by the owner 2026-10-05 with three non-blocking observations recorded;
-  C9.4/C9.5 implemented, self-reviewed and verified, committed as `c118c08b` and pushed, with
-  the evidence/status docs as its docs-only child. C9.6–C9.9 and Paper are not started.
-- A further self-review pass and the MP3 rehearsal at the frozen revision found and repaired
-  one defect and closed one candidate finding as by-design:
-  - **Repaired (`022c64f4`):** `resumeGuide` and `returnDetour` preserved the playhead, cue
-    floor and carried reading but not the Stop's **held viewing intent**, while the planner was
-    told `cues: !entry.hold` — a held Stop's remainder excluded a cue the runtime could still
-    perform. Both now restore `viewingSuppressed` before planning; one new test and the
-    `rejoin-held-cue` obligation cover it.
-  - **Examined and ruled by design (no code change):** after Close from a standalone
-    Presentation the runtime keeps `presentationId`. That retention is the Rejoin target
-    `resumeGuide`'s standalone branch depends on, is asserted by the reviewed
-    open/close/rejoin case, and matches §3/P12/J5/I6/V1 — Close returns to exploration while the
-    visit is preserved, and an offer staying live in exploration is the contracted behaviour.
-    The drafted change was withdrawn before it was committed.
-- MP3 was rehearsed end to end in the real browser at the frozen revision; every recipe step was
-  observed with measured values (recorded in the evidence record), including the review repairs:
-  Rejoin re-derived readiness **42.000 → 32.939 = 2 + (40 − 9.06)** on the same run token, Return
-  restored the parent's own remainder (**16.187**, not the detour's 2.819), Travel preparation left
-  every origin supported in one Undo, Cut on the same Seam snapped (`movement: null`), a mid-flight
-  redirect started from the live pose, and a moved-away same-View Seam flew back from the live pose
-  with no invented edge. Click-versus-drag and explicit-choice interaction were observed through the
-  product's own pointer path; the injected-event limitation and its `agent-browser` successor proof
-  are recorded in the evidence record.
-- The prototype is left usable for the MP3 walkthrough; QA axis servers close themselves and
-  no session is left running.
+- Implementation is complete; final verification and committed executable provenance are being recorded.
+- The missing P23B fixture remains a separate repository-gate blocker outside this authorized mutation scope.
 
 NEXT:
-1. Owner performs **MP3 — Travel and agency** at the pushed head, with the Presenter closed.
+1. Owner performs **MP3 — Travel and agency** at the pushed head with the Presenter closed.
    Recipe; each step names what must be observable, not merely what to click:
    - *explicit Travel preparation*: in an ordinary session build a Guide whose departure
      Presentation holds more than one Framed use, open the Seam and choose Travel. One step
@@ -187,22 +100,11 @@ NEXT:
      same View, press Next while standing at that View (instant, zero distance), then Explore away and
      press Next again: the Camera must fly back from where it actually is rather than snap, and no route
      may be invented.
-2. Record the MP3 outcome. Only then start C9.6 revision/repair; it is explicitly not started.
-3. Keep root gates current; carry the missing-fixture blocker explicitly and do not fabricate
-   or restore it without separate authorization.
+2. Owner performs **MP4 — rich capability acceptance**: loaded route/station/invoke/Hold, visitor
+   interaction/detour/return, revision/repair, additional Views/entry policies, shared/local scope and
+   precise Camera. Review the Experience walkthrough and recheck shared structural seams.
+3. Record explicit owner outcomes before C9 acceptance, merge/closure or onward Paper work.
 
 OPEN:
-- MP3 outcome (human evidence; automated assertions cannot substitute). The owner's own walkthrough
-  is still outstanding; this record contains only the rehearsal.
-- Push completed for C9.4/C9.5 (`c118c08b` plus its docs-only evidence child) and for the
-  self-review repair (`022c64f4`); the branch is at the pushed head and PR #113 stays open and
-  unmerged.
-- All 18 axes are verified at the frozen self-review revision (**18 axes, 780 assertions, 0
-  failures, rc=0**; logs `/tmp/c9-all.log`, `/tmp/c9-pure.log` 94/94, `/tmp/c9-mut.log` 40/40);
-  no axis is carried from an earlier pass.
-- Root repository gates stay red on the pre-existing missing P23B fixture, reported separately and
-  not restored; the documentation-reference gate is green (22/22).
-
-[s0s9]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-ACCEPTANCE.md
-[c8]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
-[c9]: ../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md
+- MP3 and MP4 owner acceptance; detailed visual refinement remains the separately scoped UI/UX slice.
+- The pre-existing missing P23B fixture still blocks full repository test/check/build; no fabricated fix.

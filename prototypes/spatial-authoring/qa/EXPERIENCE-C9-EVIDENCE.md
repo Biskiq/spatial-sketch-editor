@@ -1,19 +1,13 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.5)
 
-TYPE: prototype acceptance evidence (C9.1–C9.5 accepted; C9.6–C9.9 implemented in the working tree with
-their own product axes and review-round coverage; Paper not started; nothing stopped for MP3)
-STATUS: **MP2 accepted by the owner 2026-10-05.** C9.1–C9.3 implemented; the five external MP2
-review blockers repaired with regression coverage, then the review's folded second-pass findings
-(station activation contract, cue-scope consistency, remaining-work edge cases, stale provenance)
-repaired with their own coverage; C9.4 (Camera default Travel and live invocation) and C9.5
-(visitor participation and agency) then implemented, self-reviewed and verified at the executable
-revision recorded below. MP3 is not claimed; the slice stops at the MP3 human gate.
-No merge, phase closure or Paper work was requested or performed. Commit/push provenance is
-recorded exactly under *Executable revision*; nothing here claims an uncommitted increment that
-Git already holds as commits.
-SCOPE: [C9 authoring-completeness plan][plan] C9.1–C9.5 only. This record supersedes
-nothing in the [C1–C8 conformance record][c8]: that remains the acceptance authority for
-C1–C8 behavioral/visual conformance.
+TYPE: prototype implementation/review evidence for C9.1–C9.9; final owner acceptance pending.
+STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented and reviewed, including revision/repair, rich fixture/coordination, precise Camera and observational guidance. The bounded shared-Presenter follow-up is implemented and in final verification. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
+SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up before final human acceptance. No production migration, broader shell overhaul, six-QA visual reconciliation, merge, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.
+
+## Current follow-up provenance
+
+- Baseline committed revision: `dad60dffd79e064c8af14e75cb888ad80d2f87e3` on `prototype-v2`.
+- Final follow-up verification/provenance is being recorded. Historical increment counts below belong to their own revisions or explicitly identified intermediate stages; they are not current-head claims.
 
 ## Executable revision
 
@@ -24,9 +18,8 @@ C1–C8 behavioral/visual conformance.
   repair pass is `db83a9d7`, and the second repair pass is `9a44678a`; all three are pushed to
   `origin/prototype-v2`. This record's evidence update and the two status docs form the
   docs-only child of `9a44678a` and are pushed with it, so the pushed head names the exact
-  authenticated executable. An earlier revision of this record and of the checkpoint described
-  C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push performed"; that was stale
-  and was corrected by the second repair pass, and the push itself followed on owner
+  authenticated executable. An earlier revision of this record and of the checkpoint misreported
+  C9.2/C9.3 commit/push provenance; that stale description was corrected by the second repair pass, and the push itself followed on owner
   instruction.
 - **C9.4/C9.5 are `c118c08b`** ("C9.4/9.5 implementation"), pushed to `origin/prototype-v2` as the
   child of `1b9cf745`. `1b9cf745` ("C9.2-3 full-axis verification") is the docs-only child of the
@@ -251,7 +244,7 @@ assertion with a same-defect mutation obligation.
   `stopped-remainder`/`carried-dependency` mutations that reintroduce each defect while the
   unaffected completed-work control stays green.
 - **Operational provenance (P2).** The evidence record, checkpoint and `current.md` still
-  described C9.2/C9.3 as an uncommitted working-tree diff with "no commit/push performed".
+  misreported C9.2/C9.3 commit/push provenance.
   Git says otherwise (`12652d9b`, then `db83a9d7`, both on `origin/prototype-v2`), so the
   provenance is corrected in all three records; this second repair pass is its own commit
   (`9a44678a`), pushed on the owner's later instruction, and the full axis driver was then
@@ -506,9 +499,7 @@ which is why the pose was restored by Rejoin before the click that opened the ch
 A second external review re-read the C9.1–C9.5 implementation at `2725917f` and named five acceptance
 gaps the green suite did not exercise. Each is repaired at its owning authority with behaviour-level
 coverage — a new protected assertion and a same-defect mutation obligation — and the whole acceptance
-run was re-executed at the repaired revision rather than read from this record. These repairs are an
-uncommitted working-tree change at the time of writing; the executable revision that carries them is
-recorded when this pass is committed.
+run was re-executed at the repaired revision rather than read from this record. These repairs were subsequently committed in `056ae3f9`; the numbers in this subsection are historical stage evidence, not final follow-up verification.
 
 - **P1 Return followed by Auto cut off unfinished narration** (`app/experience-runtime.js`).
   `returnDetour` restored the parked parent's `elapsed` clock but recomputed `readiness` as the
@@ -577,7 +568,7 @@ Re-run at the repaired working tree, not read from this record:
 
 ## Third external C9.4/C9.5 review — three detour findings repaired (2026-10-05)
 
-The same review re-read the uncommitted round-1 repairs and named three related defects in the detour
+The same review re-read the first repair stage before its commit and named three related defects in the detour
 lifecycle. All three live in `app/experience-runtime.js` and are repaired there, each with a
 behaviour-level assertion and its own mutation obligation. This section supersedes the round-1
 description of the Return repair above: zeroing `elapsed` was that pass's fix and is not the repair
@@ -623,8 +614,7 @@ of record.
 
 ### Repairs re-verified after the detour review (2026-10-05)
 
-Re-run at the repaired working tree, not read from this record; the repairs are still an uncommitted
-working-tree change.
+Re-run at the repaired intermediate stage before commit `056ae3f9`; these historical counts are not current-head claims.
 
 - `node --test tests/*.test.mjs` — **102/102 pass**, 0 fail. Three new cases (the authored dwell, the
   resumed carried work, and the abandoned parent in Back history) plus the rewritten round-1 Return
@@ -827,7 +817,7 @@ reported separately; it was not restored, hidden or fabricated.
 passed** (1.1m) on an owned Vite server, which was stopped afterwards; `.last-run.json`
 reports `{"status":"passed","failedTests":[]}`; the donor tree is unchanged.
 
-## C9.6–C9.9 review round — eight findings repaired (2026-10-07)
+## C9.6–C9.9 review round — eight findings repaired (2026-10-07, `4e8cc8e7`)
 
 SCOPE: the C9.6 (revision, removal, repair), C9.7 (rich example and local coordination), C9.8 (precise
 Camera) and C9.9 (review aid) implementation carried in the working tree, after an independent review of
@@ -846,7 +836,7 @@ acceptance, an MP3 claim, a merge or a phase closure.
 | 7 | [P2] any authored write credited every satisfied quickstart topic, so renaming a loaded example completed topics the loader, not the author, had satisfied | authorship is recorded per outcome (`reviewAuthored`/`authoredHere`) and a quickstart topic reads only the outcomes its own instruction produces (advanced topics stay reviewable on loaded content) | unit `a quickstart topic is credited by its own authored outcome, never by any write`; `presenter-check` "an authored edit that is not this topic's outcome is counted, and completes nothing"; mutation `presenter-unrelated-credit` |
 | 8 | [P2] the visit ledger opened empty and recorded only destinations a later command reached, so a Guide visit that entered Stop 1 and travelled to Stop 2 never satisfied the Travel topic | Preview seeds the ledger with the Stop the runtime actually entered (`visitor: {…emptyVisitorLedger(), stops:[entered]}`), so the first Stop is a visit the ledger witnessed | unit `a Guide visit opens its ledger with the Stop it actually entered`; `presenter-check` "the visit opens its ledger with the Stop it entered, before any command", "…and records the Stop it travelled to as a traversal", "…so the supported Travel topic is credited by the visit that really made it"; mutation `visit-ledger-unseeded` (superseded by `visit-entry-unseeded` — see the next round) |
 
-### Verification at this revision
+### Historical verification at this review stage
 
 - Prototype Node suite: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **117/117 pass**.
   The round added `experience-c9-review.test.mjs` (seven tests, one per repair) and extended
@@ -887,7 +877,7 @@ product-axis assertion. Nothing here is an owner acceptance, an MP3 claim, a mer
 | 3 | [P2] after a standalone Preview, two Stops with presentation/hold entries configured completed A3 without any Guide Preview and without the specific later-View entry: configured policies plus any previous visit were read as if the visit had run them | every Stop entry a visit really makes is recorded in the ledger (`entryRecord`/`reconcileVisitor`: the policy the author configured, whether the named View is a later one, the Camera's own arrival at it, and whether content ran under a hold); A3 requires one visit that ran a Presentation entry, a specific later View and a hold with content still running | unit `the Stop entry-policy topic reads the entries a visit ran, never the policies an author configured`; `presenter-check` "the three policies are authored through the Stop's own Entry control", "…while configured policies alone leave the topic open, with only the entries a visit really made", "…and one visit that ran all three credits it, each where it actually happened"; mutation `presenter-entry-configuration` |
 | 4 | [P2] on an authored machine-to-piano Travel, Next credited Q7 and A4 after 0.028s of a 0.819s movement: `arrivedViewUseId` still named the source View, and its truthiness marked the destination arrived | the runtime reports its own arrival (`arrivedViewUseId` with `arrivedTravel`, set only when a movement completes, from the movement's own Seam route); the ledger records the transition's destination entry View and reconciles arrival from that report, counting a Travel arrival only for the Seam's own route — A4 requires that completed traversal | unit `a Guide visit opens its ledger with the Stop it entered and arrives where the Camera does`; `presenter-check` "…which stays travelling until the Camera really reaches the destination entry", "…and arrives where the Camera does, on the Seam's own route", "…so the supported Travel topic is credited by the visit that really made it"; mutation `visit-arrival-immediate` |
 
-### Verification at this revision
+### Historical verification at this review stage
 
 - Prototype Node suite: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **120/120 pass**. The
   round extended `experience-c9-review.test.mjs` to ten tests: the ledger test now also proves arrival is
@@ -934,7 +924,7 @@ successor obligation. Nothing here is an owner acceptance, an MP3 claim, a merge
 | 3 | [P2] After configuring a later-View entry and a hold entry, Auto visited all four Stops but the ledger kept only the first, so A3 and A4 stayed incomplete — entries and transitions were appended only inside a visitor command | where the visit is, which Stop entry it made and how the Camera's movements ended are all read from the runtime in `reconcileVisitor`, so a command, a choice, a detour and Auto are one story; the command writes only the facts its own action produced | unit `a Stop reached by Auto is as real as one reached by Next`; `presenter-check` "…and with Auto on, all four Stops and their three entry policies land in the ledger"; mutation `entry-auto-only` (unit) and `visit-entries-auto` (product) |
 | 4 | [P2] A short explanation at the destination whose completion cues another View: the Travel completed and the cue began in the same tick, the `!movement` guard rejected the arrival, and the cue's completion then overwrote `arrivedViewUseId`, so Q7 stayed unseen and A4 incomplete | completed movements are journalled in the runtime (`arrivals`, with `travelArrivals`), an entry records the Camera serial it was made at, and arrival is read by matching that movement rather than the last arrival slot or the absence of a movement | unit `a Travel arrival survives the destination starting its own cue`; `presenter-check` "…which stays travelling until the Camera really reaches the destination entry" (unchanged, still the pre-arrival witness); mutation `arrival-slot` (unit) and `visit-arrival-immediate` (retargeted, product) |
 
-### Verification at this revision
+### Historical verification at this review stage
 
 - Prototype Node suite: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **123/123 pass**.
   `experience-c9-review.test.mjs` is thirteen tests; three were added for the runtime findings above, and the framing test
@@ -975,7 +965,7 @@ Wall projection before the Exit-restoration assertion, allowing `representation-
 Return now run in separate visits, preserving both witnesses. This failure is recorded rather than claimed
 as a product pass. Final verification below supersedes that interrupted mutation run.
 
-Verification at the final sources:
+Historical verification at the final re-review sources (committed as `dad60dff`):
 
 - Prototype Node suite **126/126**; the C9 review file has **16 tests**. The four new failing cases were
   reproduced before their repairs, including the two observation cadences in the existing Auto test.
@@ -991,8 +981,7 @@ Verification at the final sources:
   `npm run build` were all run and remain red only on the pre-existing missing `40-walls.json` fixture.
   Root tests report **4951 passed, 1 failed, 1 skipped**, with **32 suites unable to collect** through the
   same missing import; this is not a passing root gate.
-- Changes remain uncommitted. All owned browsers and private QA servers were released. No closure or
-  production acceptance is claimed.
+- These final re-review sources were committed in `dad60dff`. The **126/126**, twelve affected axes and **79/79** mutations above describe that executable increment, not the later follow-up. All owned browsers and private QA servers were released. No owner acceptance, closure or production acceptance is claimed.
 
 ## Known limitations
 
@@ -1002,26 +991,13 @@ blocker; identity as recorded at base `abaa7592`
   pre-existing repository-gate blocker, external to C9. It was not restored, hidden or
   fabricated.
 EVIDENCE-PATHS: end
-- MP2 is human evidence and is not claimed here; no visual refinement campaign was started
-  (that belongs to the dedicated UI/UX slice).
-- The reviewed C9.4/C9.5 increment reran the pure suite, the complete prototype axis driver, the full
-  mutation chain and the root repository gates at its own executable revision, after the
-  documentation-reference repair (arch 276/276 rc=0; test/check/build red only on the missing P23B
-  fixture, unchanged). All 18 axes are therefore proven at the reviewed executable revision; none is
-  carried from an earlier pass, and nothing above is inherited from the C9.2/C9.3 increment's run. The
-  evidence and status docs land as a docs-only commit on top of it, so the pushed head and the tested
-  executable differ only in those docs.
+- MP1 and MP2 are explicitly owner-accepted. MP3 and MP4 remain pending. No visual refinement campaign was started; it belongs to the later dedicated UI/UX slice.
+- Historical C9.4/C9.5 and C9.6–C9.9 increment counts above retain their own provenance. Use the current follow-up block for final code, tests/mutations and repository-gate status.
 - A station-bound Activity's route and named station are validated where they are read
   (Camera travel and the coordination strip): Experience holds stable identity, never a copy
   of route geometry, so a deleted anchor or station still refuses locally at travel time.
-- C9.5's agency is deliberately bounded: no View or Presentation deletion (C9.6 revision/
-  repair), no automatic offer execution, and the parent pause/bookmark policy stays experimental
-  rather than being promoted to permanent architecture. MP3 has not been claimed; the increment
-  stops at the human gate.
-- No merge, phase closure or Paper work is claimed or performed. C9.2/C9.3 (`12652d9b`), the
-  first repair pass (`db83a9d7`), the second repair pass (`9a44678a`, with the evidence and
-  status docs as its docs-only child) and C9.4/C9.5 (`c118c08b`) are committed and pushed to
-  `origin/prototype-v2`.
+- C9.6 now supports bounded View/Presentation removal and repair. Automatic offer execution remains excluded, and parent pause/bookmark policies remain experimental.
+- No merge, phase closure, production acceptance, Paper work or six-QA reconciliation is claimed or performed. MP3 and MP4 require owner review of this committed executable.
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md

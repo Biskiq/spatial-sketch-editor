@@ -149,35 +149,29 @@
     <div class="j-head"><span class="j-outside">Presenter · not part of the product</span><button data-jact="close" aria-label="Close journeys">×</button></div>
     <div class="j-tabs" id="jTabs"></div>
     <div class="j-kicker" id="jKicker"></div>
-    <div class="j-title" id="jTitle"></div>
-    <div class="j-body" id="jBody"></div>
+    <div class="j-title" id="jTitle" data-example-step></div>
+    <div class="j-body" id="jBody" data-example-instruction></div>
+    <p class="j-outcome" data-experience-guidance data-example-observed aria-live="polite" hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-credit aria-live="polite" hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-tally hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-source hidden></p>
     <div class="j-nav">
       <button data-jact="prev" aria-label="Previous step">‹</button>
       <div class="j-dots" id="jDots"></div>
       <span class="j-count" id="jCount"></span>
       <button data-jact="replay" title="Replay this step">Replay</button>
+      <button data-jact="skip" hidden>Skip</button>
       <button class="j-next" data-jact="next">Next ›</button>
     </div>
   </section>
   <button class="j-toggle" id="jToggle">Guided journeys <kbd>J</kbd></button>
 
-  <details class="experience-presenter" id="experienceExamples" hidden aria-label="Experience review aid, outside the product">
-    <summary>Experience review aid · outside the product</summary>
-    <p class="exp-presenter-note" data-example-source></p>
+  <details class="experience-presenter" id="experienceExamples" hidden aria-label="Experience examples, outside the product">
+    <summary>Experience examples · outside the product</summary>
     <div class="exp-presenter-load" data-authoring>
       <button class="verb" data-act="exp-reset">Reset Experience</button>
       <button class="verb" data-act="exp-example">Load Example</button>
       <button class="verb" data-act="exp-conformance">Load Conformance fixture</button>
-    </div>
-    <p data-example-step>1/18</p>
-    <p data-example-instruction class="exp-presenter-note"></p>
-    <p data-example-observed class="exp-presenter-note" aria-live="polite"></p>
-    <p data-example-credit class="exp-presenter-note" aria-live="polite"></p>
-    <p data-example-tally class="exp-presenter-note"></p>
-    <div class="exp-presenter-nav">
-      <button class="verb" data-act="exp-presenter" data-delta="-1">Back</button>
-      <button class="verb" data-act="exp-presenter-skip">Skip</button>
-      <button class="verb" data-act="exp-presenter" data-delta="1">Next</button>
     </div>
   </details>
 

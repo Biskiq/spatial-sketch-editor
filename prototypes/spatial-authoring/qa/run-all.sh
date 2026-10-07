@@ -60,6 +60,7 @@ case "$WHICH" in
   rich) run "C9.7 · rich example and local coordination" rich-check ;;
   precision-c9) run "C9.8 · the precise Camera, its depth and one tape" precision-c9-check ;;
   presenter) run "C9.9 · the review aid's eighteen topics" presenter-check ;;
+  walkthrough) run "C9 follow-up · shared Experience workflow" walkthrough-check ;;
   experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
   visitor) run "Visitor execution" visitor-check ;;
   reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
@@ -84,6 +85,7 @@ case "$WHICH" in
     run "C9.7 · rich example and local coordination" rich-check
     run "C9.8 · the precise Camera, its depth and one tape" precision-c9-check
     run "C9.9 · the review aid's eighteen topics" presenter-check
+    run "C9 follow-up · shared Experience workflow" walkthrough-check
     run "Visitor execution" visitor-check
     run "Shared shell and narrow Experience" reconciliation-check
     run "Stage S8 · full continuity between the two lenses" continuity-check

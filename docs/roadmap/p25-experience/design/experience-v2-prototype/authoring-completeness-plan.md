@@ -1,32 +1,11 @@
 # C9 — final model-first Experience reconciliation for #113
 
-**Status: C9.1–C9.3 implemented and accepted through MP2 (owner-accepted 2026-10-05);
-C9.4 (Camera default Travel and live invocation) and C9.5 (visitor participation and agency)
-implemented, self-reviewed, independently reviewed and verified; stopped at the MP3 human gate
-(2026-10-05).** The independent review of the pushed executable named four acceptance blockers
-(Rejoin/detour Return rebuilding remaining work, the missing interaction-only Preview Experience,
-availability modelled but not authorable, and a same-View Travel shortcut ignoring the live pose),
-and all four are repaired at their owning authority with regression and same-defect mutation
-coverage — V2/V7 (rejoin and detour remainder), I3/J6 (world-only session), I4 (availability) and
-N1 (live pose) respectively. A further self-review pass then repaired one defect — Rejoin and Return
-restored the playhead, cue floor and carried reading but not a held Stop's viewing intent, while the
-planner was told `cues: !entry.hold` — and closed one candidate finding as by design (Close keeps the
-standalone Presentation as its Rejoin target, per §3/P12/J5/I6/V1); both outcomes, with the MP3
-rehearsal measurements, are in the evidence record.
-The owner authorized implementation through MP2; C9.1 is implemented and MP1 was accepted
-explicitly by the owner (2026-10-04). MP2's three recorded observations are non-blocking and
-assigned outward (shell density → the later UI/UX slice, Guide snap/cut → superseded by C9.4,
-View/Presentation removal → C9.6). C9.2/C9.3 product work and its verification are complete;
-the review repair record, the C9.4/C9.5 behavior record and current counts live in the
+**Status: C9.1–C9.9 implemented and reviewed; the bounded shared-Presenter follow-up is in final verification (2026-10-07).** MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. **MP3 and MP4 remain pending owner review**: automated verification, browser rehearsal and walkthrough completion do not accept either gate.
+C9.6 revision/repair, C9.7 rich fixture/coordination, C9.8 precise Camera and C9.9 observational walkthrough are implemented, with their review repairs and proof in the
 [C9 evidence record](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
-MP3 has not been claimed; C9.6 revision/repair is not started. Owner-ratified C9 decisions:
-Travel preparation/live invocation (§5, N1) and fresh repeated-Stop visits (§3, N2).
-This is the additional, bounded authoring-completeness slice for
-[PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), in the existing
-[unified prototype][unified]. It replaces the final Experience acceptance boundary
-where the [C1–C8 plan][c1-c8] omitted or weakened donor behavior. C1–C8's achieved
-shell, ownership and advanced-state conformance remain evidence to preserve;
-their PASS labels do not establish authoring completeness under C9.
+The current owner instruction authorizes one bounded follow-up, verification, commit and push before final human acceptance; no merge, production migration, Paper adoption, broader shell reconciliation or phase closure.
+Owner-ratified C9 decisions remain Travel preparation/live invocation (§5, N1) and fresh repeated-Stop visits (§3, N2).
+This bounded slice for [PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), in the existing [unified prototype][unified], extends the [C1–C8 conformance boundary][c1-c8] with donor-complete authoring workflows. C1–C8's achieved shell, ownership and advanced-state conformance remain evidence to preserve; their PASS labels do not establish C9 acceptance.
 
 **Outcome:** one useful Experience authoring model, reachable from Reset, combining
 Prototype 4.1's creator ergonomics and behavioral richness with V2's World |
@@ -693,15 +672,13 @@ One active tape is allowed on Stage; a duplicate full numeric form is not.
 Through remains clearly authoring with editor chrome; Preview removes it.
 No new workspace rail, second renderer or shell composition is proposed.
 
-### Observational Presenter, split into quickstart and advanced walkthrough
+### One lens-switched Presenter, with an Experience authoring walkthrough
 
-Presenter reads source plus recorded product/runtime outcomes. Back/Skip/close/
-reopen change instructions only. Next is earned by the specific outcome, not a
-button press or field existence. Do not count loaded content as Reset authoring
-or invent a completion when a reviewer skips. Keep the review aid usable while
-Preview is active without mounting any authoring controls there. Explicit Reset
-and Load Example remain separate, labelled source-loading commands; no secret
-state preparation, provider mutation or Camera positioning inside step navigation.
+The existing Presenter panel and controller switch content by lens. World retains its existing A–F workflow unchanged; Experience shows only the coherent Q1–Q8 authoring workflow and A1–A10 advanced work below. This walkthrough is editor guidance, distinct from the authored Experience Guide and its Stops. It adds no navigation, selection or history authority.
+
+Presenter reads source plus recorded product/runtime outcomes. Back/Skip/close/reopen and section selection change instructions only. Next is earned by the specific outcome, not a button press or field existence. Do not count loaded content as Reset authoring or credit a skipped outcome. Preview may retain read-only guidance; all authoring controls remain unavailable. Explicit Reset and Load Example are separate labelled source-loading commands; no state preparation, provider mutation or Camera positioning happens inside step navigation.
+
+The normal progression is real World subject → Present → explanation/framing → operate/Use → Preview Presentation → add to Guide → second Presentation → Preview Guide/Next → explore/rejoin. The advanced part extends that same authored visit with additional Views, lifecycle, entry policies, Travel, route/coordination, interaction, detour, scope/Camera precision and repair. A2 retains the observed capability handoff's `fromUseId → toUseId` and target run token; the visitor must stop that same live carried target run. An unrelated carried Stop, including another run of the same use, cannot complete it.
 
 | Step | Creator/visitor action and observed outcome |
 | --- | --- |
@@ -714,14 +691,14 @@ state preparation, provider mutation or Camera positioning inside step navigatio
 | Q7 | Preview Guide and Next A → B; order resolver and distinct destination visit actually used |
 | Q8 | Free exploration and rejoin; move Stage, keep participation/visit, resume framing from live pose with Auto off |
 | A1 | Add/use additional Views; no new Stop/edge, explanation continues, Next View distinct from Next Stop |
-| A2 | Loaded capability sequence/lifetime; observe casing completion → rotor, early disarming, carried run and visitor Stop |
+| A2 | Loaded capability sequence/lifetime; observe casing completion → rotor, early disarming, then visitor Stop of that same carried rotor run |
 | A3 | Stop entry policies; compare Presentation entry, specific later View and hold while content still runs |
 | A4 | Request simple Travel; Camera prepares support, visitor travels without graph surgery |
 | A5 | Open advanced Edit route; see truthful origins, path, anchors, pace, gap/repair and explicit return |
 | A6 | Coordinate local Seam; select station/event/Hold, see counterparts, edit duration and Preview exactly-once invoke/hold |
 | A7 | Visitor interaction; activate Switch → Light on Stage or accessible control while exploring |
 | A8 | Detour/return; parent narration/playhead resumes, no duplicate entry, new travel from current pose |
-| A9 | Shared versus local edit scope; predict reach before editing, cancel shared proposal, accept supported local/shared edit, Undo |
+| A9 | Shared versus local Camera edit scope; open precise property/grip/tape, predict reach before editing, cancel shared proposal, accept supported local/shared edit, Undo |
 | A10 | Lose rotor capability via World profile control, follow notice and repair; preserve other content and show truthful affected Preview behavior |
 
 A creator may stop after Q7 with a usable guided Experience, or after Q4 with a

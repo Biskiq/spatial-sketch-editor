@@ -6,30 +6,19 @@ isolated visitor execution and both directions of continuity. The accepted World
 Instrument and Precision. [PLATE §0.8](../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111)
 owns destination shell design; this static prototype establishes no production interface or cutover.
 
-**Replacement C1–C8 in-scope conformance is complete; independent external review pending.** The [active C1–C8 plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
-owns the corrections; [fresh product recipes](./qa/CONFORMANCE-MANIFEST.md) and
-[conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) own current proof.
-S0–S9 evidence remains historical and supplies no replacement acceptance.
-External manual review exposed Experience model/workflow gaps against Prototype 4.1.
-The revised [C9 authoring-completeness plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md)
-is ready for implementation, with owner-ratified Travel and fresh repeated-Stop
-decisions, independent Camera/World preservation on Experience Reset, and early
-manual checkpoints. Capability acceptance retains blocking PLATE/disclosure/
-ownership/correspondence/reachability seams; detailed visual refinement follows
-in its own UI/UX slice. C9 is unstarted; this executable still has the current
-C1–C8 behavior, including its older Reset and Travel restrictions.
+**C1–C8 conformance complete; C9.1–C9.9 implemented/reviewed, awaiting MP3/MP4 owner acceptance.** The [C9 plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md) owns authoring-completeness scope; [C9 evidence](./qa/EXPERIENCE-C9-EVIDENCE.md) owns current executable provenance and verification. [Conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) retains C1–C8 proof. MP1 and MP2 are owner-accepted; automated proof and Presenter completion accept no human gate. Travel and fresh repeated-Stop visits are owner-ratified. Detailed visual refinement remains the later UI/UX slice, and no production interface or cutover is established here.
 
 ```sh
 cd prototypes/spatial-authoring
 python3 -m http.server 8826
-# http://localhost:8826/                 explore; J opens the A–F presenter
+# http://localhost:8826/                 explore; J opens the Presenter for the active lens
 # http://localhost:8826/rationale.html   current rationale and specimens
 # ?journey=A&step=0&motion=instant       reproducible presenter entry
-bash qa/run-all.sh                     # all sixteen browser axes; private server/browser per axis
+bash qa/run-all.sh                     # all registered browser axes; private server/browser per axis
 bash scripts/shoot.sh                  # regenerate specimens into qa/out/specimens
 ```
 
-No build step. Three.js is vendored; Google Fonts have system fallbacks. The presenter and
+No build step. Three.js is vendored; Google Fonts have system fallbacks. The Presenter and
 `window.__me` are prototype facilities outside the product interaction model.
 
 - [rationale.html](./rationale.html) — current shell, inherited A–F, intermediate readings and return.
@@ -60,8 +49,7 @@ Overview expands a Stop, Seam connects supported Camera Views, and Coordinate bi
 invocations to stable Camera stations. Card headers distinguish shared framing from occurrence reach.
 Head Preview works with no Guide or Views and returns to the exact authoring context.
 
-With screenshot mode off, the outside-product Experience examples disclosure offers Reset and
-Load Example or Load Conformance. Back/Skip observes only; loading never plays or positions the Camera. The donor at
+With screenshot mode off, the shared Presenter switches by lens: World retains A–F; Experience has an earned, observational Q1–Q8 authoring workflow followed by advanced topics. Back/Skip/close/reopen changes instructions only. Preview can retain read-only guidance while all authoring controls stay unavailable. This guidance is separate from the authored Guide/Stops. The separate Experience examples disclosure offers explicit Reset, Load Example and Load Conformance commands; loading never plays or positions the Camera. The donor at
 [`../experience-authoring/`](../experience-authoring/README.md) stays runnable with its 4.1 tests.
 The integrated design folder retains the finalized synthesis/boards, rather than another executable.
 The [replacement #113 conformance plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)

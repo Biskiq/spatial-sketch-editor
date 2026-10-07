@@ -6,7 +6,7 @@ import { stations } from './camera-evaluation.js';
 import { coordinateTiming, movementTiming } from './experience-coordination.js';
 import { originCoverage, getSeam, resolveNext, stopEntry, viewReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
-import { resolveExperience, experienceParkedContext, presenterSteps, presenterSkip, presenterCredit, presenterSource, retainedContributions, linkedDefinitionReach, pendingDescriptor } from './experience.js';
+import { resolveExperience, experienceParkedContext, retainedContributions, linkedDefinitionReach, pendingDescriptor } from './experience.js';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const button=(act,text,id='',role='action')=>`<button class="exp-action ${act.startsWith('exp-remove-')?'destructive':role}" data-act="${act}" data-id="${esc(id)}">${text}</button>`;
 export function experienceIndex() {
@@ -166,39 +166,11 @@ export function renderExperienceSurfaces() {
  el.hidden=!S.visitor;
  const presenter=document.querySelector('#experienceExamples');
  if(presenter){
-  // The review aid is usable while Preview is active: its instruction and observed outcome stay visible as
-  // read-only guidance, and every authoring control inside it is unmounted for the visit. A step's
-  // outcome is read from the documents and from what the product reported — never from the click that
-  // opened it, and never from a reviewer having reached the end of the list.
+  // Explicit loaders are separate from the shared walkthrough. Preview exposes neither loaders nor
+  // authoring controls; the Presenter controller keeps its read-only instructions available.
   const visiting=!!S.visitor;
-  presenter.hidden=S.lens!=='experience';
-  presenter.classList.toggle('presenter-visiting',visiting);
+  presenter.hidden=S.lens!=='experience'||visiting;
   for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=visiting;
-  const steps=presenterSteps(),i=Math.max(0,Math.min(steps.length-1,S.experiencePresenter||0)),step=steps[i];
-  const title=presenter.querySelector('[data-example-step]');
-  if(title)title.textContent=`${i+1}/${steps.length} · ${step.title}`;
-  const instruction=presenter.querySelector('[data-example-instruction]');
-  if(instruction)instruction.textContent=visiting?'Read-only while Preview is active · '+step.instruction:step.instruction;
-  const observed=presenter.querySelector('[data-example-observed]');
-  const credit=presenterCredit(step);
-  // Next is earned: its own control is disabled until the current topic's outcome holds, while Skip stays
-  // enabled as the deliberate way to move on.
-  // The control is only ever inert while the aid is actually shown in the Experience lens: a hidden
-  // review aid must not present a disabled control to the product shell at rest.
-  const nextBtn=[...presenter.querySelectorAll('[data-act=exp-presenter]')].find(b=>b.dataset.delta==='1');
-  if(nextBtn)nextBtn.disabled=presenter.hidden?false:!credit.credited;
-  if(observed){observed.textContent=`Observed · ${step.observed()}`;observed.dataset.seen=String(credit.seen);observed.dataset.credited=String(credit.credited);}
-  const creditEl=presenter.querySelector('[data-example-credit]');
-  if(creditEl){
-   creditEl.textContent=credit.credited?'Outcome seen · this topic is complete'
-    :credit.seen?(step.family==='A'?'Outcome seen on loaded content · advanced review only':'Loaded content · not authored here, so this quickstart topic stays open')
-    :'Not observed yet';
-   creditEl.dataset.state=credit.credited?'complete':credit.seen?'seen':'open';
-  }
-  const tally=presenter.querySelector('[data-example-tally]');
-  if(tally)tally.textContent=`${steps.filter(s=>presenterCredit(s).credited).length}/${steps.length} topics complete in this session`;
-  const source=presenter.querySelector('[data-example-source]');
-  if(source){const p=presenterSource();source.textContent=`Source · ${p.label} · ${p.writes} authored edit${p.writes===1?'':'s'}`;source.dataset.source=p.kind;source.dataset.writes=String(p.writes);}
  }
  if(S.visitor) { const html=visitorHtml();if(el._html!==html){el.innerHTML=html;el._html=html;} }
 

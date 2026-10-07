@@ -1,4 +1,5 @@
 import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces, sceneCapabilityCard, experienceParkedHtml } from './experience-ui.js';
+import { renderJourneys } from './journeys.js';
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
 import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf } from './fixtures.js';
 import {
@@ -35,6 +36,7 @@ export function renderUI() {
   renderWhereStatic();
   renderSummary();
   renderExperienceSurfaces();
+  renderJourneys();
 }
 
 // ---------------------------------------------------------------- head
