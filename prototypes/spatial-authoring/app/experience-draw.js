@@ -1,9 +1,8 @@
 // Projections of resolved Camera output. Selection and editorial context stay canonical.
-import { originCoverage,stopEntry,resolveUse,getSeam } from './experience-model.js';
+import { originCoverage,stopEntry,resolveUse,getSeam,gripLabels } from './experience-model.js';
 import { S,ctx } from './state.js';
 import { resolvedCamera,readingFor,framingInstrument } from './navigation.js';
 import { eye,routeGeometry } from './camera-evaluation.js';
-import { gripLabels } from './experience-ui.js';
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const project=p=>ctx.stage.project(p),ov=()=>ctx.ov;
 function safe(at){const deck=document.querySelector('#experienceDeck'),bottom=deck?deck.getBoundingClientRect().top-document.querySelector('#stage').getBoundingClientRect().top:ctx.stage.h-16;return {x:Math.max(68,Math.min(ctx.stage.w-85,at.x)),y:Math.max(90,Math.min(bottom-35,at.y))};}
@@ -62,6 +61,24 @@ function drawSeam(e,c,x){
   }
  }
 }
+// A grip the author cannot hit is not a supported grip, and a grip on top of another takes the tap meant
+// for it. The world-anchored grips (target X/Y/Z) must stay on the thing they move, so the grips whose
+// gesture reads pointer movement instead of the chip's own position take the nearest clear seat.
+function seats(anchors){
+ const fixed=['x','y','z'].filter(k=>anchors[k]).map(k=>anchors[k]);
+ const moves=['frameH','az','el'].filter(k=>anchors[k]);
+ const offsets=[[0,0],[0,-24],[-26,0],[26,0],[0,-48],[-26,-24],[26,-24],[0,-72],[-52,0],[52,0],[0,24]];
+ for(const key of moves){
+  const home=anchors[key];let seat=home;
+  for(const o of offsets){const at={x:home.x+o[0],y:home.y+o[1]};
+   if(at.x<70||at.y<92)continue;
+   const rest=[...fixed,...moves.filter(k=>k!==key).map(k=>anchors[k])];
+   if(rest.some(q=>Math.hypot(q.x-at.x,q.y-at.y)<25))continue;
+   seat=at;break;
+  }
+  anchors[key]=seat;fixed.push(seat);
+ }
+}
 function drawPrecision(c){
  const t=S.task,v=c.views[t?.target?.id];if(!v)return;
  const p=S.cameraDraft?.pose||v.pose,reading=readingFor({...v,pose:p}),grip=t.params.grip;
@@ -80,6 +97,7 @@ function drawPrecision(c){
   ov().chip('observer',observer.x,observer.y+28,'◉ Observer','tape exp-view-pin',{'data-exp-observer':v.id,tag:'span',pri:1000});
   anchors={frameH:corners[1],az:{x:observer.x+40,y:observer.y},el:{x:observer.x,y:observer.y-40},x:{x:target.x+45,y:target.y},y:{x:target.x,y:target.y-45},z:{x:target.x-45,y:target.y}};
  }
+ seats(anchors);
  for(const [key,at] of Object.entries(anchors)){const active=key===grip;ov().chip('precise-grip-'+key,at.x,at.y,active?'●':'○','tape exp-camera-grip '+(active?'active':''),{'data-grip':key,...(active?{'data-exp-camera':v.id}:{'data-act':'exp-grip'}),tag:'button',pri:1000,'aria-label':gripLabels[key]});}
  const at=anchors[grip],value=['x','y','z'].includes(grip)?p.target[['x','y','z'].indexOf(grip)]:p[grip];
  if(at)ov().chip('camera-active-tape',Math.max(75,Math.min(ctx.stage.w-110,at.x-65)),at.y+30,`<label class="numeric-tape">${gripLabels[grip]} <input type="number" step=".1" data-exp-precision="${grip}" value="${Number(value.toFixed(3))}" aria-label="${gripLabels[grip]}"></label>`,'exp-active-tape',{'data-active-tape':grip,tag:'div',pri:1000});

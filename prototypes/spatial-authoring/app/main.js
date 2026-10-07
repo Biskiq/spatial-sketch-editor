@@ -1311,6 +1311,20 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
  if(d.expBoundaryPresentation){const u=ctx.experience.uses[d.expBoundaryPresentation];E.updateActivity(u.id,'end',{...u.end,presentationId:value});}
  if(d.expRetention){const u=ctx.experience.uses[d.expRetention];E.updateActivity(u.id,'retention',value==='default'?null:value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:{kind:value});}
  if(d.expViewSpeed)E.updateViewSpeed(d.expViewSpeed,value);
+ // C9.6 revision and repair writers, all reached from the selected contribution's own Card.
+ if(d.expLinkDefinition)E.linkDefinitionCommand(d.expLinkDefinition,value);
+ if(d.expRebindSubject)E.rebindContributionCommand(d.expRebindSubject,{subjectId:value});
+ if(d.expRebindCapability)E.rebindContributionCommand(d.expRebindCapability,{capabilityId:value});
+ if(d.expRebindTrigger)E.rebindContributionCommand(d.expRebindTrigger,{triggerSubjectId:value});
+ if(d.expRebindAvailability)E.rebindContributionCommand(d.expRebindAvailability,{availability:value||null});
+ // A retained reference whose Camera View or home no longer resolves is repaired through its own writers:
+ // repoint a View use to a resolving Camera View, or rehome it into an existing Presentation.
+ if(d.expRepair){const u=ctx.experience.uses[d.expRepair];if(u&&value)E.command('Repair retained framing',e=>{const use=e.uses[d.expRepair];if(use)use.viewId=value;});}
+ if(d.expRehome){const u=ctx.experience.uses[d.expRehome];if(u&&value)E.command('Rehome retained reference',e=>{const use=e.uses[d.expRehome];if(!use)throw Error('Reference removed');const p=e.presentations[value];if(!p)throw Error('Presentation removed');use.presentationId=value;if(use.viewId&&!p.uses.includes(use.id))p.uses.push(use.id);});}
+ // A retained choice names its own Stop: its destination is repaired locally, or the choice is removed,
+ // so no authored continuation is left pointing at a Stop that no longer exists.
+ if(d.expChoiceTarget)E.choiceRepointCommand(d.id,d.expChoiceTarget,value);
+ if(d.expProfile)E.replaceProfileCommand(d.expProfile,value);
  if(d.expGate)E.command('Set connection Gate',e=>e.stops[d.expGate].gate=value?JSON.parse(value):null);
  if(d.expPacing)E.updateStop(d.expPacing,'pacing',value==='dwell'?{kind:'dwell',seconds:5}:value==='signal'?{kind:'signal',ref:{useId:'',signal:'complete'}}:{kind:'auto'});
  if(d.expPacingSignal)E.updateStop(d.expPacingSignal,'pacing',{kind:'signal',ref:value?JSON.parse(value):{useId:'',signal:'complete'}});
@@ -1323,20 +1337,40 @@ document.addEventListener('change',event=>{const d=event.target.dataset,value=ev
 
 document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
 
+// Focusing a Hold's own duration field moves the coordination strip's event focus onto that beat: the Card
+// and the Stage then read the event the author is actually addressing, while the canonical Stop selection
+// (S.sel) is untouched. Invoke controls carry the same beat identity through their own data attribute.
+document.addEventListener('focusin',event=>{const el=event.target;if(S.visitor||!el||!el.dataset)return;
+ // The focused event's own station moves with the focus, so the Card, the station row and the Stage read
+ // one event rather than two; and because the rerender replaces the field the author just entered, that
+ // field takes focus back. A focus already matching its beat changes nothing and rerenders nothing.
+ if(el.dataset.expHold&&E.focusHoldBeat(el.dataset.expHold)){
+  requestUI();
+  requestAnimationFrame(()=>{const again=document.querySelector(`[data-exp-hold="${el.dataset.expHold}"]`);if(again&&again!==el)again.focus();});
+ }});
+
 // A field is identified by the presence of its data attribute, never by a truthy value: the primary
 // explanation is a valueless attribute, and an empty string must still be a real, committable field.
-const experienceField = el => el?.dataset && ['expField','expDef','expPrecision','expScene','expHold','expPrimary','expMarkerField','expStopNumber'].some(k=>k in el.dataset);
+const experienceField = el => el?.dataset && ['expField','expActName','expDef','expPrecision','expScene','expHold','expPrimary','expMarkerField','expStopNumber'].some(k=>k in el.dataset);
 let experienceDraft=null,fieldEpoch=0;
-document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};});
-onCancel(()=>{fieldEpoch++;if(experienceDraft){experienceDraft.el.value=experienceDraft.value;experienceDraft=null;}},8,'Experience field draft');
+document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;
+ if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};
+ // A rejection bumps the epoch and keeps the draft on record so a cancel can restore the field. Typing in
+ // that same field again is a fresh attempt: the draft is re-anchored to the current epoch, so a corrected
+ // value can be accepted instead of being forever compared against a stale epoch.
+ else if(experienceDraft.epoch!==fieldEpoch)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:experienceDraft.value};});
+onCancel(()=>{fieldEpoch++;if(experienceDraft){const {el}=experienceDraft;if(el.isConnected)el.value=el.defaultValue;experienceDraft=null;}},8,'Experience field draft');
 document.addEventListener('keydown',event=>{
  const el=event.target;if(!experienceField(el)||S.visitor)return;
  if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();cancelProposal('field-cancel');requestUI();return;}
  if(event.key!=='Enter'||event.shiftKey)return;
  event.preventDefault();event.stopImmediatePropagation();
  if(!el.isConnected||experienceDraft?.lens!==S.lens||experienceDraft?.epoch!==fieldEpoch)return;
- experienceDraft=null;
- if('expField' in el.dataset)E.updatePresentation(el.dataset.id,el.dataset.expField,el.value);
+ // The draft stays on record so a later cancel can put the field back; bumping the epoch is what stops
+ // a repeated Enter from committing the same unaccepted value twice.
+ fieldEpoch++;
+ if('expField' in el.dataset){const k=el.dataset.expField;if(k==='name')E.renamePresentationById(el.dataset.id,el.value);else E.updatePresentation(el.dataset.id,k,el.value);}
+ if('expActName' in el.dataset)E.renameContributionCommand(el.dataset.expActName,el.value);
  if('expPrimary' in el.dataset)E.explainPresentation(el.dataset.id,el.value);
  if('expDef' in el.dataset){const value=el.dataset.expDef==='duration'?(el.value===''?null:Number(el.value)):el.value;if(el.dataset.expDef!=='duration'||value===null||(Number.isFinite(value)&&value>0))E.editDefinition(el.dataset.id,el.dataset.expDef,value);}
  if('expMarkerField' in el.dataset)E.updateMarker(el.dataset.id,el.dataset.marker,el.dataset.expMarkerField,el.dataset.expMarkerField==='time'?Number(el.value):el.value);

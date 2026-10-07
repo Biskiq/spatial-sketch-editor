@@ -5,7 +5,16 @@
 # entry-plus-station double invoke in the model/runtime; empty Reset hidden placeholder (C9.1),
 # silent first-offer choice and Peek forcing L2 in the wiring; and the C9.4/C9.5 ownership classes —
 # departure instead of live start, View addition creating connectivity, Cut flying the route, a
-# non-traversed route's station executing, and visit-runtime work writing authored source.
+# non-traversed route's station executing, and visit-runtime work writing authored source. C9.7 adds the
+# authored hold's real duration, the restored Layout representation after a visit, and the station-only
+# Activity that must not also be armed on entry. C9.8 adds the precise Camera's deliberate depth: the
+# property list belongs to the Camera Card, every offered grip must have its own hit test, one value is
+# live on one tape, and a declined draft must not stay on screen. C9.9 adds the review aid's own
+# honesty: loaded content must credit no quickstart topic, a quickstart topic is credited only by its own
+# authored outcome, the aid's cursor must prepare nothing, and no authoring control may be mounted inside a
+# visit. The review round adds a merged rebind proposal that must wait as one decision, a declared-but-
+# unrealized capability that may not become visitor work, and a retained choice whose destination left with
+# its Presentation.
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/c9-mutations.XXXXXX")"
@@ -14,7 +23,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds; do
   python3 - "$QA_DIR/.." "$work/pure-$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -219,8 +228,8 @@ elif kind == 'go-continuation':
     # A go choice is rendered and executed as a detour: it parks the parent and exposes Return instead of
     # continuing, and carries no distinct continuation command.
     replace('app/experience-ui.js',
-            "visitorButton(c.kind==='go'?'go':'detour',esc(c.label),c.targetId)",
-            "visitorButton('detour',esc(c.label),c.targetId)")
+            "visitorButton(c.kind==='go'?'go':'detour',esc(c.label)+(t.missing?' · repair required':''),c.targetId)",
+            "visitorButton('detour',esc(c.label)+(t.missing?' · repair required':''),c.targetId)")
     replace('app/experience.js',
             "\n // A go choice continues: it abandons any parked parent instead of parking one, so Back (not Return) is\n // the way it can be revisited.\n if(action==='go')v.runtime=R.chooseRuntime(e,c,r,id,false,scene);",
             "")
@@ -230,6 +239,38 @@ elif kind == 'abandoned-parked-work':
     replace('app/experience-runtime.js',
             " else while(r.bookmarks.length)endParkedVisit(r,e,scene,r.bookmarks.pop());",
             " else r.bookmarks=[];")
+elif kind == 'remove-preserves-content':
+    # Removing a Presentation destroys its retained contributions with it, so nothing is left to repair.
+    replace('app/experience-model.js',
+            " delete e.presentations[pid];\n for(const id of stops){e.guide=e.guide.filter(x=>x!==id);delete e.stops[id];}",
+            " delete e.presentations[pid];for(const id of uses)delete e.uses[id];\n for(const id of stops){e.guide=e.guide.filter(x=>x!==id);delete e.stops[id];}")
+elif kind == 'duplicate-shares-definition':
+    # Duplicate aliases the original definition, so editing the copy silently rewrites both uses.
+    replace('app/experience-model.js',
+            "  e.uses[nid]={...copy(u),id:nid,presentationId:home,definitionId:did,primary:false,primaryFor:undefined};",
+            "  e.uses[nid]={...copy(u),id:nid,presentationId:home,definitionId:u.definitionId,primary:false,primaryFor:undefined};")
+elif kind == 'missing-entry-hold':
+    # A Stop whose explicit View reference was removed is read as an intentional hold instead of an
+    # unresolved repair case, so the missing framing is silently accepted.
+    replace('app/experience-model.js',
+            " return {id:uid||null,hold:!uid&&s.entry.kind==='presentation',missing:s.entry.kind==='use'&&!e.uses[uid]};",
+            " return {id:uid||null,hold:!uid||(s.entry.kind==='use'&&!e.uses[uid]),missing:false};")
+elif kind == 'rebind-overwrites-trigger':
+    # Rebinding the operated target also overwrites the activation subject, so an offer silently
+    # changes what activates it.
+    replace('app/experience-model.js',
+            " if(patch.subjectId!==undefined)d.subjectId=patch.subjectId;",
+            " if(patch.subjectId!==undefined){d.subjectId=patch.subjectId;u.triggerSubjectId=patch.subjectId;}")
+elif kind == 'profile-unvalidated':
+    # An undeclared provider profile is accepted, so capability gain/loss is invented.
+    replace('app/experience-capabilities.js',
+            " if(!PROFILES[profile])throw Error('Unknown provider profile');\n",
+            "")
+elif kind == 'hold-seconds':
+    # An authored Experience hold no longer delays arrival, so the visitor's move ignores it.
+    replace('app/experience-coordination.js',
+            "accumulated += hold.seconds;",
+            "accumulated += 0;")
 else:
     # An impossible dependency scope is accepted as if it could still fire.
     replace('app/experience-model.js',
@@ -269,13 +310,19 @@ PY
     carried-pause) name='C9.5 a go choice resumes carried parent work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     abandoned-history) name='C9.5 a go choice keeps the visited parent reachable through Back history'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     detour-history-order) name='C9.5 a go choice restores the parked parent before entries recorded during the detour'; control='C9.5 a go choice keeps the visited parent reachable through Back history' ;;
+    remove-preserves-content) name='C9.6 removePresentation keeps definitions, Camera Views and dangling references repairable'; control='C9.6 rename Presentation keeps identity and shared use' ;;
+    duplicate-shares-definition) name='C9.6 duplicate makes an independent identity and definition; a View duplicate shares Camera'; control='C9.6 make-local detaches a shared definition; link shares it again' ;;
+    missing-entry-hold) name='C9.6 removeContribution unlinks a View use locally and leaves the Camera View intact'; control='C9.6 rename Presentation keeps identity and shared use' ;;
+    rebind-overwrites-trigger) name='C9.6 rename and rebind repair a contribution while keeping trigger and target distinct'; control='C9.6 provider profile replacement gains and loses declared capabilities with the instance kept' ;;
+    profile-unvalidated) name='C9.6 provider profile replacement gains and loses declared capabilities with the instance kept'; control='C9.6 rename Presentation keeps identity and shared use' ;;
+    hold-seconds) name='C9.4 readiness and Auto count the route and its holds exactly once'; control='multi-origin coordination executes only the traversed connection' ;;
     standalone-open) name='C9.5 opening another standalone Presentation ends the departing visit local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     shared-entry-origin) name='every eligible Presentation View and the private Stop entry are legitimate origins'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;
     go-continuation) name='C9.5 a go choice is a distinct authored continuation'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     abandoned-parked-work) name='C9.5 a go choice ends the parked parent local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
   esac
   log="$work/pure-$kind.log"
-  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" >"$log" 2>&1; then
+  if node --test "$work/pure-$kind/tests/experience-composition.test.mjs" "$work/pure-$kind/tests/experience-runtime.test.mjs" "$work/pure-$kind/tests/experience-mp2-review.test.mjs" "$work/pure-$kind/tests/camera-conformance.test.mjs" "$work/pure-$kind/tests/experience-travel-agency.test.mjs" "$work/pure-$kind/tests/experience-revision.test.mjs" >"$log" 2>&1; then
     echo "FAIL: model/runtime accepted the $kind regression"
     exit 1
   fi
@@ -294,7 +341,7 @@ PY
 done
 
 # ------------------------------------------------- browser wiring obligations
-for kind in reset-placeholder first-offer peek-l2; do
+for kind in reset-placeholder first-offer peek-l2 orphan-hidden profile-loss-silent representation-restore station-entry-arming precision-cluster grip-seat tape-pair stale-draft rebind-shared-silent rebind-merged-silent offer-unrealized choice-unresolved presenter-unrelated-credit visit-ledger-unseeded peek-unrecorded presenter-loaded-credit presenter-skip-prepares presenter-visit-controls presenter-next-unearned; do
   python3 - "$QA_DIR/.." "$work/$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -305,18 +352,134 @@ def replace(rel, old, new):
     assert s.count(old) == 1, (kind, rel, 'mutation anchor moved', s.count(old))
     p.write_text(s.replace(old, new))
 if kind == 'reset-placeholder':
-    # The quickstart placeholder goes blank exactly when the Experience is empty.
+    # The review aid's placeholder goes blank exactly when the Experience is empty.
     replace('app/experience-ui.js',
-            "if(instruction)instruction.textContent=steps[i].instruction;",
-            "if(instruction)instruction.textContent=Object.values(ctx.experience.presentations).length?steps[i].instruction:'';")
+            "if(instruction)instruction.textContent=visiting?'Read-only while Preview is active · '+step.instruction:step.instruction;",
+            "if(instruction)instruction.textContent=Object.values(ctx.experience.presentations).length?(visiting?'Read-only while Preview is active · '+step.instruction:step.instruction):'';")
     replace('app/experience-ui.js',
-            "observed.textContent=`Observed · ${steps[i].observed()}${done?' · outcome seen':''}`;",
-            "observed.textContent=Object.values(ctx.experience.presentations).length?`Observed · ${steps[i].observed()}${done?' · outcome seen':''}`:'';")
+            "if(observed){observed.textContent=`Observed · ${step.observed()}`;",
+            "if(observed){observed.textContent=Object.values(ctx.experience.presentations).length?`Observed · ${step.observed()}`:'';")
 elif kind == 'first-offer':
     # Visitor View offers silently collapse to the first eligible one.
     replace('app/experience-ui.js',
             "eligibleViews(e,r.presentationId).map(id=>visitorButton('look'",
             "eligibleViews(e,r.presentationId).slice(0,1).map(id=>visitorButton('look'")
+elif kind == 'orphan-hidden':
+    # Retained contributions whose home was removed are dropped from the Experience inventory, so their
+    # repair writer has no reachable home.
+    replace('app/experience-ui.js',
+            " + (retainedContributions().length?",
+            " + (false?")
+elif kind == 'representation-restore':
+    # Exit no longer puts the authored Layout representation back, so a visit leaves the World unrolled.
+    replace('app/experience-scene.js',
+            " if(!snapshot?.length||!ctx.stage?.d)return;",
+            " if(true||!snapshot?.length||!ctx.stage?.d)return;")
+elif kind == 'station-entry-arming':
+    # A station-only Activity is also armed on entry, so it runs on entry and again at its station.
+    replace('app/experience-runtime.js',
+            "if(u.viewId||u.kind==='interaction'||u.start.kind==='station'||activationScope(u)!==pid)return false;",
+            "if(u.viewId||u.kind==='interaction'||activationScope(u)!==pid)return false;")
+elif kind == 'precision-cluster':
+    # The floating six-property cluster comes back into the Instrument, so deliberate depth is replaced
+    # by a dashboard over the drawing while the Camera work is already active.
+    replace('app/experience-ui.js',
+            "<p class=\"c-hint\">Active property · ${esc(gripLabels[t.params.grip]||'none')} — select another grip on the drawing; the full list stays in the Camera Card.</p>",
+            "<div class=\"camera-grips\">${Object.entries(gripLabels).map(([g,label])=>button('exp-grip',label).replace('data-id=',`data-grip=\"${g}\" data-id=`)).join('')}</div>")
+elif kind == 'grip-seat':
+    # Grips keep their nominal anchor even when another grip already covers it, so one supported grip
+    # cannot be reached by the pointer at all.
+    replace('app/experience-draw.js',
+            " seats(anchors);\n",
+            "")
+elif kind == 'tape-pair':
+    # A second tape is rendered beside the active one, so two values look live at the same time.
+    replace('app/experience-draw.js',
+            " if(at)ov().chip('camera-active-tape',",
+            " if(at){ov().chip('camera-active-tape-b',at.x-150,at.y+60,`<label class=\"numeric-tape\">Frame height <input type=\"number\" data-exp-precision=\"frameH\" value=\"1\"></label>`,'exp-active-tape',{'data-active-tape':'frameH',tag:'div',pri:1000});ov().chip('camera-active-tape',")
+    replace('app/experience-draw.js',
+            ",'exp-active-tape',{'data-active-tape':grip,tag:'div',pri:1000});",
+            ",'exp-active-tape',{'data-active-tape':grip,tag:'div',pri:1000});}")
+elif kind == 'stale-draft':
+    # Nothing puts a dropped draft back: the pooled tape keeps displaying the declined number and no
+    # cancel restores the field, which is exactly the state this slice fixed.
+    replace('app/overlay.js',
+            "if (e._html === html && !this.stale(e)) return;",
+            "if (e._html === html) return;")
+    replace('app/main.js',
+            "onCancel(()=>{fieldEpoch++;if(experienceDraft){const {el}=experienceDraft;if(el.isConnected)el.value=el.defaultValue;experienceDraft=null;}},8,'Experience field draft');",
+            "onCancel(()=>{fieldEpoch++;experienceDraft=null;},8,'Experience field draft');")
+elif kind == 'rebind-shared-silent':
+    # Replacing a descriptor on a linked definition silently reaches every linked Activity.
+    replace('app/experience.js',
+            " if(reach.length>1){S.expRebindAsk={id,patch:merged,definitionId,reach};ctx.ui();return true;}",
+            " if(false){S.expRebindAsk={id,patch:merged,definitionId,reach};ctx.ui();return true;}")
+elif kind == 'rebind-merged-silent':
+    # Reach is read from the field this call touched, so a use-only change applies the definition edit a
+    # still-pending scope Ask was holding and every linked Activity changes before acceptance.
+    replace('app/experience.js',
+            "const reachesDefinition=['subjectId','capabilityId','value'].some(k=>merged[k]!==undefined);",
+            "const reachesDefinition=['subjectId','capabilityId','value'].some(k=>patch[k]!==undefined);")
+elif kind == 'offer-unrealized':
+    # Offer creation ignores whether this Stage realizes the capability, so declared-but-unrealized work is
+    # authored as a visitor offer that can never run.
+    replace('app/experience.js',
+            " const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);\n if(!cap){A.setStatus('Choose a capability this subject declares','refuse');ctx.ui();return false;}\n if(!isRealized(cap)){A.setStatus(`${cap.label} · declared by the provider but not realized by this Stage`,'refuse');ctx.ui();return false;}",
+            " const draft=S.expOfferDraft;if(!draft)return false;const cap=capability(ctx.sceneSource,draft.subjectId,draft.capabilityId);if(!cap)return false;")
+elif kind == 'choice-unresolved':
+    # A choice whose destination left with its Presentation is followed anyway: the parent visit is parked
+    # before the Stop is found missing, and the visitor loses their narration and their Stop.
+    replace('app/experience-runtime.js',
+            " const destination=e.stops[targetId];\n if(!destination||!e.presentations[destination.presentationId]){r.refusal='Choice destination needs repair before it can be followed';return r;}\n",
+            "")
+elif kind == 'presenter-unrelated-credit':
+    # Any authored write counts as authorship for every satisfied quickstart topic, so an edit that is not
+    # a topic's own outcome completes it on a document the loader produced.
+    replace('app/experience.js',
+            "const seen=!!step.done(),required=step.family==='Q'?(step.authored||[]):[],authored=required.length?required.every(authoredHere):S.expReview.writes>0;",
+            "const seen=!!step.done(),authored=S.expReview.writes>0;")
+elif kind == 'visit-ledger-unseeded':
+    # A visit opens an empty ledger, so the Stop it entered is invisible and only the destinations a later
+    # command reaches are ever recorded.
+    replace('app/experience.js',
+            "  const entered=S.visitor.runtime.stopId;\n  review({visit:null,visitor:entered?{...emptyVisitorLedger(),stops:[entered]}:null});\n",
+            "  review({visit:null,visitor:emptyVisitorLedger()});\n")
+elif kind == 'peek-unrecorded':
+    # A quiet Peek selection is no longer recorded, so the quickstart Peek topic can never complete.
+    replace('app/experience.js',
+            " review({peeks:(S.expReview.peeks||0)+1});\n cancelProposal('selection');A.select(id);",
+            " cancelProposal('selection');A.select(id);")
+elif kind == 'presenter-next-unearned':
+    # Next is offered past a topic whose outcome was never reached, and the aid advances anyway.
+    replace('app/experience-ui.js',
+            "if(nextBtn)nextBtn.disabled=presenter.hidden?false:!credit.credited;",
+            "if(nextBtn)nextBtn.disabled=false;")
+    replace('app/experience.js',
+            "if (action === 'exp-presenter') {const d=Number(el.dataset.delta);if(d>0){if(!presenterNext())A.setStatus('Complete this topic, or Skip it','refuse');}else presenterStep(d);}",
+            "if (action === 'exp-presenter') {const d=Number(el.dataset.delta);presenterStep(d);}")
+elif kind == 'presenter-loaded-credit':
+    # The review aid credits a topic whenever its outcome is visible, so loaded content counts as
+    # authorship and a reviewer is told they have done work they never did.
+    replace('app/experience.js',
+            "return {seen,credited:seen&&(step.family==='A'||authored),authored};",
+            "return {seen,credited:seen,authored};")
+elif kind == 'presenter-skip-prepares':
+    # Moving the aid's cursor also selects and positions the work, so navigation prepares state instead
+    # of only changing which instruction is shown.
+    replace('app/experience.js',
+            "S.experiencePresenter=Math.max(0,Math.min(n-1,(S.experiencePresenter||0)+delta));ctx.ui();return S.experiencePresenter;}",
+            "S.experiencePresenter=Math.max(0,Math.min(n-1,(S.experiencePresenter||0)+delta));if(ctx.experience.guide.length)A.select(ctx.experience.guide[S.experiencePresenter%ctx.experience.guide.length]);ctx.ui();return S.experiencePresenter;}")
+elif kind == 'presenter-visit-controls':
+    # The authoring loaders stay mounted inside a visit, so authoring controls appear in Preview.
+    replace('app/experience-ui.js',
+            "for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=visiting;",
+            "for(const el of presenter.querySelectorAll('[data-authoring]'))el.hidden=false;")
+elif kind == 'profile-loss-silent':
+    # Provider replacement applies the profile but the adapter keeps reporting the previous declared
+    # capabilities, so loss/gain is silently invisible.
+    replace('app/experience-capabilities.js',
+            "export function capability(scene,sid,id) {return capabilities(scene,sid).find(c=>c.id===id)||null;}",
+            "export function capability(scene,sid,id) {return capabilities({...scene,subjects:{...scene.subjects,[sid]:{...scene.subjects[sid],profile:scene.subjects[sid]?.profile==='machineBase'?'machine':scene.subjects[sid]?.profile}}},sid).find(c=>c.id===id)||null;}")
 else:
     # Peek (awareness) forces the explicit L2 occurrence disclosure.
     replace('app/experience.js',
@@ -333,6 +496,63 @@ PY
     peek-l2)
       axis=composition; boundary='QA_COMPOSITION_UNTIL=peek'
       expected='Peek selects the Stop'; control='two Presentations create exactly two Stops' ;;
+    orphan-hidden)
+      axis=revision; boundary='QA_REVISION_UNTIL=remove'
+      expected='the retained contributions are listed for repair without resurrecting the removed home'; control='rename accepts once' ;;
+    profile-loss-silent)
+      axis=revision; boundary='QA_REVISION_UNTIL=rebind'
+      expected='the lost capability is a routed repair notice on the retained Activity, not a silent change'; control='rename accepts once' ;;
+    representation-restore)
+      axis=rich; boundary='QA_RICH_UNTIL=wall'
+      expected='Exit restores the author Wall reading exactly'; control='Preview unrolls the authored World Wall through its own evaluator' ;;
+    station-entry-arming)
+      axis=rich; boundary='QA_RICH_UNTIL=traced'
+      expected='the destination visit does not arm the station-only Activity on entry'; control='Next travels the authored route, carrying its hold and its station invocation' ;;
+    precision-cluster)
+      axis=precision-c9; boundary='QA_PRECISION_C9_UNTIL=entry'
+      expected='…and the Instrument names it, keeping the full list in the Card'; control='the Card property opens the precise Camera on that View and use, with that grip selected' ;;
+    grip-seat)
+      axis=precision-c9; boundary='QA_PRECISION_C9_UNTIL=entry'
+      expected='every offered grip has its own hit test, on a seat no other grip covers'; control='exactly one property is live on exactly one Stage tape' ;;
+    tape-pair)
+      axis=precision-c9; boundary='QA_PRECISION_C9_UNTIL=entry'
+      expected='exactly one property is live on exactly one Stage tape'; control='the Card property opens the precise Camera on that View and use, with that grip selected' ;;
+    stale-draft)
+      axis=precision-c9; boundary='QA_PRECISION_C9_UNTIL=draft'
+      expected='declining puts the authored value back on its one tape'; control='a typed value in a shared View is a proposal, not an edit' ;;
+    rebind-shared-silent)
+      axis=revision; boundary='QA_REVISION_UNTIL=shared-scope'
+      expected='replacing a shared descriptor discloses its real reach and writes nothing yet'; control='rename accepts once' ;;
+    rebind-merged-silent)
+      axis=revision; boundary='QA_REVISION_UNTIL=merged-rebind'
+      expected='a use-only change while the Ask is open never writes the merged definition edit'; control='rename accepts once' ;;
+    offer-unrealized)
+      axis=revision; boundary='QA_REVISION_UNTIL=unrealized-offers'
+      expected='a declared-but-unrealized capability can never be authored as visitor work'; control='the mesh provider now declares Annotate as a gained capability' ;;
+    choice-unresolved)
+      axis=rich; boundary='QA_RICH_UNTIL=retained-choice'
+      expected='the runtime refuses the unresolved destination without parking the parent visit'; control='removing a Presentation retains the authored labelled choice as an unresolved, repairable reference' ;;
+    visit-ledger-unseeded)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=advanced'
+      expected='the visit opens its ledger with the Stop it entered, before any command'; control='a visit that ran no station invocation leaves Coordinate incomplete' ;;
+    presenter-unrelated-credit)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=unrelated'
+      expected="an authored edit that is not this topic's outcome is counted, and completes nothing"; control='loading the example is named as the source and counts no authored edit' ;;
+    peek-unrecorded)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=advanced'
+      expected="a quiet Peek selection records the Peek without expanding the occurrence"; control='leaving the visit gives the authoring controls back' ;;
+    presenter-next-unearned)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=provenance'
+      expected='…and Next stays disabled while the topic outcome is not earned'; control='loading the example is named as the source and counts no authored edit' ;;
+    presenter-loaded-credit)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=provenance'
+      expected='…crediting no quickstart topic even though the example satisfies their outcomes'; control='loading the example is named as the source and counts no authored edit' ;;
+    presenter-skip-prepares)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=navigation'
+      expected='…without touching the documents, the history, the selection, the Camera or the tally'; control='the aid carries all eighteen topics' ;;
+    presenter-visit-controls)
+      axis=presenter; boundary='QA_PRESENTER_UNTIL=visit'
+      expected='…with every authoring control inside it unmounted'; control="during the visit the aid is still there, marked as a visit's guidance" ;;
   esac
   log="$work/$kind.log"
   if QA_SHOT=0 QA_SESSION="c9-mutation-$kind" env "$boundary" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then

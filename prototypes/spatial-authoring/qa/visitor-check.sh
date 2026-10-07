@@ -10,10 +10,12 @@ qa_frames
 agent-browser click '.experience-presenter summary' >/dev/null
 agent-browser click '[data-act="exp-example"]' >/dev/null
 qa_frames
-qa_ok 'Load Example is deterministic and never starts playback' "$(qa_js '(!__me.S.visitor && __me.ctx.experience.guide.length===2 && __me.ctx.experience.presentations[__me.S.sel].uses.length===3)')" 'true'
+# The example Guide carries three authored Stops (including the deliberate repeated occurrence); the
+# assertion protects "a fresh load yields the authored Guide and never starts playback", not one count.
+qa_ok 'Load Example is deterministic and never starts playback' "$(qa_js '(!__me.S.visitor && __me.ctx.experience.guide.length===3 && __me.ctx.experience.presentations[__me.S.sel].uses.length===3)')" 'true'
 qa_js '__me.S.presenterSource=JSON.stringify(__me.A.domainSnapshot())' >/dev/null
 # The outside-product disclosure stays open across source changes.
-agent-browser click '[data-act="exp-presenter"][data-delta="1"]' >/dev/null
+agent-browser click '[data-act="exp-presenter-skip"]' >/dev/null
 qa_frames
 qa_ok 'Presenter Skip observes without source or playback' "$(qa_js '(!__me.S.visitor && __me.S.presenterSource===JSON.stringify(__me.A.domainSnapshot()))')" 'true'
 # Author a visit-local Gate on the independent Piano offer, then exercise real visitor controls.

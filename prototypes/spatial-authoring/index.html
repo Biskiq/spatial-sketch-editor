@@ -161,16 +161,24 @@
   </section>
   <button class="j-toggle" id="jToggle">Guided journeys <kbd>J</kbd></button>
 
-  <details class="experience-presenter" id="experienceExamples" hidden aria-label="Experience examples outside the product">
-    <summary>Experience examples · outside the product</summary>
-    <button class="verb" data-act="exp-reset">Reset Experience</button>
-    <button class="verb" data-act="exp-example">Load Example</button>
-    <button class="verb" data-act="exp-conformance">Load Conformance fixture</button>
-    <p data-example-step>1/4 · Subject and Presentation</p>
+  <details class="experience-presenter" id="experienceExamples" hidden aria-label="Experience review aid, outside the product">
+    <summary>Experience review aid · outside the product</summary>
+    <p class="exp-presenter-note" data-example-source></p>
+    <div class="exp-presenter-load" data-authoring>
+      <button class="verb" data-act="exp-reset">Reset Experience</button>
+      <button class="verb" data-act="exp-example">Load Example</button>
+      <button class="verb" data-act="exp-conformance">Load Conformance fixture</button>
+    </div>
+    <p data-example-step>1/18</p>
     <p data-example-instruction class="exp-presenter-note"></p>
     <p data-example-observed class="exp-presenter-note" aria-live="polite"></p>
-    <button class="verb" data-act="exp-presenter" data-delta="-1">Back</button>
-    <button class="verb" data-act="exp-presenter" data-delta="1">Next</button>
+    <p data-example-credit class="exp-presenter-note" aria-live="polite"></p>
+    <p data-example-tally class="exp-presenter-note"></p>
+    <div class="exp-presenter-nav">
+      <button class="verb" data-act="exp-presenter" data-delta="-1">Back</button>
+      <button class="verb" data-act="exp-presenter-skip">Skip</button>
+      <button class="verb" data-act="exp-presenter" data-delta="1">Next</button>
+    </div>
   </details>
 
   <script type="module" src="app/main.js"></script>

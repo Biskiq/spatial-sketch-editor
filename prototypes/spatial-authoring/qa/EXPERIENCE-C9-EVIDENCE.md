@@ -1,6 +1,7 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.5)
 
-TYPE: prototype acceptance evidence (C9.1–C9.5 implemented; C9.6–C9.9 and Paper not started; stopped for MP3)
+TYPE: prototype acceptance evidence (C9.1–C9.5 accepted; C9.6–C9.9 implemented in the working tree with
+their own product axes and review-round coverage; Paper not started; nothing stopped for MP3)
 STATUS: **MP2 accepted by the owner 2026-10-05.** C9.1–C9.3 implemented; the five external MP2
 review blockers repaired with regression coverage, then the review's folded second-pass findings
 (station activation contract, cue-scope consistency, remaining-work edge cases, stale provenance)
@@ -825,6 +826,50 @@ reported separately; it was not restored, hidden or fabricated.
 `npm run build` rc=0 (one 898kB chunk-size warning, no error); Playwright e2e **21/21
 passed** (1.1m) on an owned Vite server, which was stopped afterwards; `.last-run.json`
 reports `{"status":"passed","failedTests":[]}`; the donor tree is unchanged.
+
+## C9.6–C9.9 review round — eight findings repaired (2026-10-07)
+
+SCOPE: the C9.6 (revision, removal, repair), C9.7 (rich example and local coordination), C9.8 (precise
+Camera) and C9.9 (review aid) implementation carried in the working tree, after an independent review of
+those four slices alone. Each finding was reproduced against the executable revision, repaired at its own
+cause, and covered by a unit test, a product axis assertion, or both. Nothing here is an owner
+acceptance, an MP3 claim, a merge or a phase closure.
+
+| # | finding | repair | coverage |
+| --- | --- | --- | --- |
+| 1 | [P1] a use-only change (Activated by) made while a shared-edit Ask was open applied the pending descriptor immediately, so every linked Activity changed before acceptance | reach is computed from the complete merged proposal in `rebindContributionCommand`, so the merged edit waits as one disclosed decision instead of the touched field alone deciding | unit `a merged rebind proposal waits for the shared-edit acceptance and the Card reads it`; `revision-check` "the linked offer proposal waits with its reach disclosed and nothing written", "a use-only change while the Ask is open never writes the merged definition edit", "accepting the merged proposal writes the shared definition for every linked Activity and the use-owned trigger only for the Activity that was edited"; mutation `rebind-merged-silent` |
+| 2 | [P2] during a scoped replacement the Card reset the Subject control to the stored subject and offered that subject's capabilities, so the proposed capability could not be chosen and an incompatible pair could be accepted | the Card and the repair controls render the descriptor the author proposes (`pendingDescriptor`), never the stored one | unit `a merged rebind proposal waits for the shared-edit acceptance and the Card reads it`; `revision-check` "the pending subject drives the capability picker of the shared proposal" and "…of the linked offer proposal" |
+| 3 | [P2] descriptor repair kept the captured value, leaving a value Preview rejects while Presenter reported the repair complete | `rebindContribution` adapts the retained value to the capability it now describes (`compatibleValue`), and repair is credited only when the retained instruction resolves | unit `a descriptor replacement adapts the value it keeps and credits repair only once it resolves` |
+| 4 | [P2] a retained choice whose destination left with its Presentation offered no local repair/removal, and Preview still armed it: following it parked the parent, paused narration and cleared the active Stop before reporting the missing Stop | the owning Stop exposes local repair and removal (`choiceRepointCommand`/`choiceRemoveCommand`), Preview disables the unresolved choice, and the runtime refuses it before any parking | unit `a retained choice is repaired and removed locally, and a visit refuses it before parking`; `rich-check` "the Stop that authors the broken choice offers its own repair and removal", "Preview marks the retained unresolved choice unavailable instead of offering it", "the runtime refuses the unresolved destination without parking the parent visit", "repairing the destination points the authored choice at a resolving Stop", "removing the choice is one Experience Undo"; mutation `choice-unresolved` |
+| 5 | [P2] a capability the profile declares but this Stage does not realize was hidden from direct capture and still reachable through offer creation, rebinding and the visitor runtime | one authority (`isRealized`) is consulted by every writer that creates, rebinds or runs capability work — audition, offer draft and acceptance, capture/update/Capture-another, rebind, the repair pickers; an unrealized capability can never become visitor work | unit `an unrealized capability is refused by every writer that could run it`; `revision-check` "the offer picker lists only capabilities this Stage realizes", "a declared-but-unrealized capability can never be authored as visitor work"; mutation `offer-unrealized` |
+| 6 | [P2] focusing a Hold's duration field left the previous station highlighted (Card, station row and Stage disagreed) and the rerender dropped keyboard focus on BODY | `focusHoldBeat` moves the coordination focus onto that Hold's own station and event, and the field the author entered takes focus back after the rerender; a focus that moves nothing records nothing | unit `focusing a Hold addresses that Hold own station, exactly once`; `rich-check` "focusing the Hold moves the coordination focus to that Hold own station and event" |
+| 7 | [P2] any authored write credited every satisfied quickstart topic, so renaming a loaded example completed topics the loader, not the author, had satisfied | authorship is recorded per outcome (`reviewAuthored`/`authoredHere`) and a quickstart topic reads only the outcomes its own instruction produces (advanced topics stay reviewable on loaded content) | unit `a quickstart topic is credited by its own authored outcome, never by any write`; `presenter-check` "an authored edit that is not this topic's outcome is counted, and completes nothing"; mutation `presenter-unrelated-credit` |
+| 8 | [P2] the visit ledger opened empty and recorded only destinations a later command reached, so a Guide visit that entered Stop 1 and travelled to Stop 2 never satisfied the Travel topic | Preview seeds the ledger with the Stop the runtime actually entered (`visitor: {…emptyVisitorLedger(), stops:[entered]}`), so the first Stop is a visit the ledger witnessed | unit `a Guide visit opens its ledger with the Stop it actually entered`; `presenter-check` "the visit opens its ledger with the Stop it entered, before any command", "…and records the Stop it travelled to as a traversal", "…so the supported Travel topic is credited by the visit that really made it"; mutation `visit-ledger-unseeded` |
+
+### Verification at this revision
+
+- Prototype Node suite: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **117/117 pass**.
+  The round added `experience-c9-review.test.mjs` (seven tests, one per repair) and extended
+  `experience-revision.test.mjs`.
+- Product axes through the real controls (`QA_SHOT=0`, a private server and browser per axis):
+  `revision-check` **38/0**, `rich-check` **34/0**, `precision-c9-check` **55/0**, `presenter-check`
+  **40/0**, each with its own "no command or page fault" and "no console or page errors" assertion green.
+- Successor proof, `qa/composition-mutation-check.sh` — **64/64 obligations rejected their regression and
+  every named control stayed green** (exit 0): 42 pure model/runtime obligations on disposable copies of
+  the Node suite and 22 browser-wiring obligations. This round added five: a merged rebind that slips past
+  the scope Ask (`rebind-merged-silent`), an unrealized capability authored as visitor work
+  (`offer-unrealized`), an unresolved choice followed before parking (`choice-unresolved`), any write
+  crediting a quickstart topic (`presenter-unrelated-credit`) and a visit ledger that opens without the
+  Stop it entered (`visit-ledger-unseeded`). Two anchors were re-pointed at the repaired source (the
+  go-choice renderer, whose label now names a needed repair) so that obligation still fails when its
+  defect is reintroduced.
+- Two harness defects were found and fixed while proving the new assertions, and are recorded rather than
+  hidden: one new eval was written as a statement list (invalid inside the harness's `await (…)` wrapper),
+  and `qa_js` could take a whole axis down under `set -e` when an eval came back empty; it now reports the
+  empty observation and lets the assertion that asked for it fail.
+- `git diff --check` is clean. This change is prototype-only (`prototypes/spatial-authoring/**`): the root
+  editor/architecture suites and the repository gates are untouched by it and were not re-run here — the
+  review recorded them green apart from the pre-existing missing `40-walls.json` fixture.
 
 ## Known limitations
 
