@@ -120,18 +120,21 @@ print(json.dumps(v))' 2>/dev/null
 # behaviour failure.
 qa_js() {
   local out="" i probe
+  # A caller runs under `set -e`, so an eval that came back without output must not take the
+  # script down with it: the retries below are the harness's, and an eval that never answers is
+  # reported as an empty observation, which fails the assertion that asked for it.
   for i in 1 2 3; do
-    out="$(qa_js_once "$1")"
+    out="$(qa_js_once "$1" || true)"
     [ -n "$out" ] && break
     sleep 0.4
   done
   if [ -z "$out" ]; then
     for _ in $(seq 1 30); do
-      probe="$(agent-browser eval '1+1' 2>/dev/null | tail -1)"
-      [ "$probe" = "2" ] && break
+      probe="$(agent-browser eval '1+1' 2>/dev/null | tail -1 || true)"
+      if [ "$probe" = "2" ]; then break; fi
       sleep 1
     done
-    out="$(qa_js_once "$1")"
+    out="$(qa_js_once "$1" || true)"
   fi
   printf '%s' "$out"
 }
@@ -146,6 +149,16 @@ print(v if isinstance(v, str) else json.dumps(v))' 2>/dev/null; }
 # would hang the harness and leave the session wedged; the page exposes a render instead.
 qa_frames() {
   agent-browser eval "(async () => { if (window.__me && window.__me.qa) { await window.__me.qa.render(); } else { await new Promise((r) => setTimeout(r, 60)); } return true; })()" >/dev/null 2>&1
+}
+
+# A control inside a scrollable Card can be on screen yet under the fixed Guide band at non-ordinary
+# Experience depth, so a real pointer click reports the covering band instead. scrollintoview alone can
+# leave it at the viewport edge; centering it in its scroll container keeps the hit test on the control.
+qa_scroll_center() { # qa_scroll_center <selector>
+  local js
+  js="$(python3 -c 'import json, sys
+print("(()=>{const e=document.querySelector(%s);if(!e)return false;e.scrollIntoView({block:%s,inline:%s});return true;})()" % (json.dumps(sys.argv[1]), json.dumps("center"), json.dumps("nearest")))' "$1")"
+  qa_js "$js" >/dev/null
 }
 
 # The page answered at all (its module booted). Under load an eval can come back empty for a
@@ -213,22 +226,22 @@ qa_click_chip() { # qa_click_chip <data-edit substring> [name]
   return 0
 }
 
-qa_move() { agent-browser mouse move "$1" "$2" >/dev/null 2>&1; }
+qa_move() { agent-browser mouse move "$1" "$2" >/dev/null 2>&1 || return; qa_frames; }
 
 # A key press, then a real settle. Two things must be true of the press itself:
 #   * in this environment `agent-browser press <letter>` leaves the key held down — the page keeps
 #     receiving thousands of keydowns a second, forever, so the key's command re-runs at every later
 #     state change (closing a reading and watching it open again is the visible symptom). A printable
 #     key is therefore dispatched as the keydown the page listens for. Escape uses the same focused
-#     dispatch: native Escape repeatedly stalled after canceling a numeric writer. Enter/Tab/arrows
-#     retain native default behavior.
+#     dispatch: native Escape stalled, and native Enter could remain held and accept a later repair
+#     candidate. Enter uses the same focused dispatch; Tab/arrows retain native default behavior.
 #   * a press and an eval issued back to back race: the eval can come back empty while the page is
 #     still handling the key, which reads as a behaviour failure. The settle below covers that, and
 #     callers that need the key's *effect* wait for the state it causes.
 qa_press() { # qa_press <key>
   local k
   case "$1" in
-    Escape) qa_key_dispatch "$1"; return ;;
+    Escape|Enter) qa_key_dispatch "$1"; return ;;
     ?)
       k="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1")"
       agent-browser eval "(() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: $k, bubbles: true, cancelable: true })); return true; })()" >/dev/null 2>&1
@@ -245,13 +258,13 @@ qa_press() { # qa_press <key>
 qa_key_dispatch() { # qa_key_dispatch <key> [shift]
   local k
   k="$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1")"
-  agent-browser eval "(() => { const t = document.activeElement || document.body; t.dispatchEvent(new KeyboardEvent('keydown', { key: $k, bubbles: true, cancelable: true, shiftKey: ${2:-false} })); return true; })()" >/dev/null 2>&1
+  agent-browser eval "(() => { const t = document.activeElement || document.body; const e = new KeyboardEvent('keydown', { key: $k, bubbles: true, cancelable: true, shiftKey: ${2:-false} }); t.dispatchEvent(e); if ($k === 'Enter' && !e.defaultPrevented && t.matches('button') && !t.disabled) t.click(); t.dispatchEvent(new KeyboardEvent('keyup', { key: $k, bubbles: true, shiftKey: ${2:-false} })); return true; })()" >/dev/null 2>&1
   agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
   qa_frames
 }
 
-qa_down() { agent-browser mouse down left >/dev/null 2>&1; }
-qa_up() { agent-browser mouse up left >/dev/null 2>&1; }
+qa_down() { agent-browser mouse down left >/dev/null 2>&1 || return; qa_frames; }
+qa_up() { agent-browser mouse up left >/dev/null 2>&1 || return; qa_frames; }
 
 # Real pointer drag from the centre of an element, in steps, then release.
 qa_drag() { # qa_drag <selector> <dx> <dy> [name]

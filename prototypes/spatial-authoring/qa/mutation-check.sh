@@ -4,7 +4,7 @@ set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 work="$(mktemp -d "${TMPDIR:-/tmp}/world-mutations.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
-for kind in host camera; do
+for kind in host camera selection; do
   python3 - "$QA_DIR/.." "$work/$kind" "$kind" <<'PY'
 import pathlib, shutil, sys
 src, dst, kind = sys.argv[1:]
@@ -14,13 +14,16 @@ s = p.read_text()
 if kind == 'host':
     old = '  const cur = S.session;\n  const side = opts.side || 1;'
     new = '  select(r.wall.id);\n'+old
+elif kind == 'camera':
+    old = "cancelProposal('lens');S.lens=which;"
+    new = old+" if(which==='world'){nav.setCam(home3D());nav.releaseHold();}"
 else:
-    old = "    S.lens = 'world';\n    cancelProposal('lens');"
-    new = "    S.lens = 'world';\n    nav.setCam(home3D()); nav.releaseHold();\n    cancelProposal('lens');"
+    old = "cancelProposal('lens');S.lens=which;"
+    new = old+" if(which==='experience')select('pres-highlights');"
 assert s.count(old) == 1, 'mutation anchor moved'
 p.write_text(s.replace(old,new))
 PY
-  axis=shell; [ "$kind" = camera ] && axis=lens
+  axis=shell; [ "$kind" = host ] || axis=lens
   log="$work/$kind.log"
   if QA_SHOT=0 QA_SESSION="world-mutation-$kind" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
     echo "FAIL: $axis accepted the $kind regression"; exit 1
@@ -32,3 +35,5 @@ PY
   echo "PASS: $axis rejects $kind regression, with unaffected controls green"
   rg '^FAIL|PASS=[0-9]+ FAIL=' "$log"
 done
+bash "$QA_DIR/conformance-mutation-check.sh"
+bash "$QA_DIR/composition-mutation-check.sh"

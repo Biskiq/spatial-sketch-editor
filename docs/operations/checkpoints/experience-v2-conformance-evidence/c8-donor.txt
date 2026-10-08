@@ -1,0 +1,12 @@
+
+> biskiq-experience-prototype@0.0.0 test
+> vitest run
+
+
+ RUN  v5.0.2 /Users/tony/Documents/Biskiq/spatial-sketch-editor/prototypes/experience-authoring
+
+
+ Test Files  2 passed (2)
+      Tests  62 passed (62)
+   Start at  14:08:08
+   Duration  231ms (transform 71%, tests 15%, import 11%, worker 3%)

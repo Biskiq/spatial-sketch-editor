@@ -12,6 +12,16 @@
 #   qa/run-all.sh browse       Browse/Search and the Details grammar only
 #   qa/run-all.sh repair       the unresolved reference and its Repair only
 #   qa/run-all.sh lens         the lens, parked World work and explicit Resume only
+#   qa/run-all.sh experience   Experience wiring and the visitor's isolated preview only
+#   qa/run-all.sh visitor      visitor execution controls and source isolation only
+#   qa/run-all.sh revision     C9.6 revision, removal and repair only
+#   qa/run-all.sh rich         C9.7 rich example, native Wall and local coordination only
+#   qa/run-all.sh precision-c9 C9.8 the precise Camera, its property depth and one tape only
+#   qa/run-all.sh presenter    C9.9 the review aid's eighteen topics and its own honesty only
+#   qa/run-all.sh walkthrough shared lens workflow and advisory outcomes
+#   qa/run-all.sh walkthrough-demo optional task demonstrations and cancellation
+#   qa/run-all.sh reconciliation shared-shell, saved controls and narrow Experience proof
+#   qa/run-all.sh continuity   both-directions parking, neutral Resume, Preview return, history only
 #   qa/run-all.sh responsive   viewport/DPR, keyboard and motion only
 #   qa/run-all.sh correctness  remaining source and nested-return obligations
 #
@@ -45,6 +55,19 @@ case "$WHICH" in
   browse) run "Stage S4 · Browse/Search and Details" browse-check ;;
   repair) run "Stage S5 · an unresolved reference and its repair" repair-check ;;
   lens) run "Stage S6 · the lens, parked work and explicit Resume" lens-check ;;
+  conformance) run "V2 conformance · product journeys" conformance-check ;;
+  creator) run "C9.1 · standalone creator and domain preservation" creator-check ;;
+  composition) run "C9.2/C9.3 · composition and compact Guide" composition-check ;;
+  revision) run "C9.6 · revision, removal and repair" revision-check ;;
+  rich) run "C9.7 · rich example and local coordination" rich-check ;;
+  precision-c9) run "C9.8 · the precise Camera, its depth and one tape" precision-c9-check ;;
+  presenter) run "C9.9 · the review aid's eighteen topics" presenter-check ;;
+  walkthrough) run "C9 follow-up · shared Experience workflow" walkthrough-check ;;
+  walkthrough-demo) run "C9 follow-up · optional task demonstrations" walkthrough-demo-check ;;
+  experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
+  visitor) run "Visitor execution" visitor-check ;;
+  reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
+  continuity) run "Stage S8 · full continuity between the two lenses" continuity-check ;;
   responsive) run "Stage S7 · responsive and keyboard" responsive-check ;;
   correctness) run "Additional source and nested correctness" correctness-check ;;
   all)
@@ -57,11 +80,24 @@ case "$WHICH" in
     run "Stage S4 · Browse/Search and Details" browse-check
     run "Stage S5 · an unresolved reference and its repair" repair-check
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
+    run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check
+    run "V2 conformance · product journeys" conformance-check
+    run "C9.1 · standalone creator and domain preservation" creator-check
+    run "C9.2/C9.3 · composition and compact Guide" composition-check
+    run "C9.6 · revision, removal and repair" revision-check
+    run "C9.7 · rich example and local coordination" rich-check
+    run "C9.8 · the precise Camera, its depth and one tape" precision-c9-check
+    run "C9.9 · the review aid's eighteen topics" presenter-check
+    run "C9 follow-up · shared Experience workflow" walkthrough-check
+    run "C9 follow-up · optional task demonstrations" walkthrough-demo-check
+    run "Visitor execution" visitor-check
+    run "Shared shell and narrow Experience" reconciliation-check
+    run "Stage S8 · full continuity between the two lenses" continuity-check
     run "Stage S7 · responsive and keyboard" responsive-check
     run "Additional source and nested correctness" correctness-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|responsive|correctness|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|conformance|creator|composition|revision|rich|precision-c9|presenter|walkthrough|walkthrough-demo|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
     exit 2
     ;;
 esac

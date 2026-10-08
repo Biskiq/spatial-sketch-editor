@@ -1,25 +1,24 @@
 #!/usr/bin/env bash
-# Stage S6 axis: the lens, parked World work and explicit Resume.
+# World parking and refusal grammar. Both-direction continuity belongs to continuity-check.sh.
 #
 # Minimum testing (see qa/README.md; session lifecycle in .agents/skills/browser-hygiene): one browser,
 # one pass, one eval per block — a block performs its command and returns every value its assertions
 # need as a single JSON blob.
 #
 # What it proves, and only this:
-#   * Crossing lenses parks World work as an *inactive* record, not a hidden session: the reading is
+#   * Crossing lenses parks invoked work as an *inactive* record, not a hidden session: the reading is
 #     really torn down (the wall's unroll is back to zero, no Instrument stands, no knife, no preview),
 #     the realized eye and FOV do not move, and no source, history or trail entry is written.
-#   * The bridge is one read-only continuity fixture sharing this one selection slot and this Camera:
-#     Select Presentation and Select referenced window are the only identities it offers, ordinary
-#     Camera input still works, and World work and Search are refused by name from inside it.
+#   * Experience locates real Presentation and Scene identities; canonical selection carries and
+#     World work/Search refuse by name while Experience is the lens in hand.
 #   * Return is ordinary: no reading, no Instrument, no restored Browse/Search and no Camera
 #     restoration. Resume is contextual — offered on the parked identity, explained locally when the
 #     selection moved on, and refused rather than guessed when the target or its relationship changed.
-#   * Resume is a fresh invocation: reading parameters are reapplied, no Camera snapshot is restored,
-#     the return context starts at the standpoint where Resume was asked for, and Put it back returns
-#     there — movement made in the other lens survives.
-#   * A lens switch cancels once: an open numeric draft and a live line aim leave no value behind, and
-#     late keys cannot commit or revive anything.
+#   * Resume is a fresh invocation that does not move the rendered standpoint: reading parameters are
+#     reapplied, no Camera snapshot is restored, the return context starts at the standpoint Resume was
+#     asked from, and Put it back returns there — movement made in the other lens survives.
+#   * A lens switch cancels once: an open numeric draft, a live line aim
+#     leave no value behind, and late keys cannot commit or revive anything.
 #
 # Usage: qa/lens-check.sh
 set -u
@@ -65,7 +64,7 @@ BLOB='(() => {
     resumeBtn: !!t("#card [data-act=\"resume\"]"),
     parkedSel: t("#card [data-act=\"sel\"]") ? t("#card [data-act=\"sel\"]").dataset.id : null,
     parkedNote: t("#card .relation.parked") ? t("#card .relation.parked").textContent : null,
-    presVerb: !!t("#index [data-act=\"pres-sel\"]"),
+    openPresentation: !!t("#index [data-act=\"exp-open\"]"),
     slotVerb: !!t("#index [data-act=\"pres-ref\"]"),
     preview: ctx.stage.previewPlace ? JSON.stringify(ctx.stage.previewPlace) : null,
     unroll: ctx.stage.items.has("rotunda") ? +(ctx.stage.d("rotunda").u || 0).toFixed(3) : null,
@@ -128,7 +127,7 @@ lens_to() { # lens_to <world|experience>
   qa_fail_msg "the $want lens did not come into hand"
   return 1
 }
-bridge() { lens_to experience; }
+experience() { lens_to experience; }
 world() { lens_to world; }
 
 # ---------------------------------------------------------------- the axis
@@ -140,45 +139,44 @@ qa_faults_clear
 qa_say "-- crossing with nothing in hand: an ordinary context, and the same Camera"
 ordinary gwin || qa_fail_msg "could not reach the ordinary state before the crossing block"
 E0="$(field eye)"; F0="$(field fov)"; H0="$(field hash)"; U0="$(field undo)"; TR0="$(field trail)"
-bridge
+experience
 qa_ok "crossing changes the lens in hand" "$(field lens)" "experience"
 qa_ok "nothing was in hand, so nothing was parked" "$(field parked)" "None"
-qa_ok "the bridge lists its one Presentation and the World subject it references" "$(field indexTitle) / $(field indexRows) / $(field presVerb) / $(field slotVerb)" "Saltmarsh Highlights / 2 / True / True"
-qa_okc "…and the Card for the selected World subject says whose subject it is" "$(field cardKick)" "From the World lens · read-only here"
+qa_ok "the Experience Index is its own real work, a locator for Presentations and existing Scene subjects" "$(field indexTitle) / $(field openPresentation) / $(field slotVerb)" "Experience / True / True"
+qa_okc "…and the World subject it holds is named as the World's" "$(field cardKick)" "From the World lens"
 qa_ok "the Camera is exactly where the World left it" "$(eyediff "$(field eye)" "$E0")" "0"
 qa_okn "…FOV and framing included" "$(field fov)" "$F0" "0.001"
 qa_ok "…and nothing was written: no building change, no history, no trail entry" "$(field hash) / $(field undo) / $(field trail)" "$H0 / $U0 / $TR0"
-qa_ok "no World Instrument stands in the bridge" "$(field instr)" "False"
+qa_ok "no World Instrument stands in the Experience lens" "$(field instr)" "False"
 qa_press /
 last="$(step '')"
-qa_okc "Search is refused by name from inside the bridge" "$(field status)" "Search is World work"
+qa_okc "Search is refused by name from inside the Experience lens" "$(field status)" "Search is World work"
 qa_ok "…and no listing was opened" "$(field finder)" "False"
 last="$(step "await A.face('gwin');")"
 qa_okc "World work is refused by name too, and nothing opened" "$(field status)" "That is World work"
 qa_ok "…with no reading, no work in hand and no history" "$(field reading) / $(field task) / $(field undo)" "none / none / $U0"
 
-qa_say "-- the two identities the bridge offers: the Presentation, and the window it references"
-tap '#index [data-act="pres-sel"]'
+qa_say "-- the identities the Experience offers: its own Presentation, and the Scene subject it references"
+tap '#index [data-act="exp-open"][data-id="pres-highlights"]'
 last="$(step '')"
-qa_ok "Select Presentation changes the canonical identity to the fixture itself" "$(field sel) / $(field cardTitle)" "pres-highlights / Saltmarsh Highlights"
-qa_ok "…and its Card is the fixture's own, not the World's" "$(field cardKick)" "Experience · continuity fixture"
-qa_okc "…announcing what this lens really is" "$(field status)" "read-only continuity fixture"
-qa_ok "…without opening anything or moving the Camera" "$(field reading) / $(field eye)" "none / $E0"
-tap '#card [data-act="pres-ref"]'
+qa_ok "opening a Presentation makes it the canonical identity" "$(field sel) / $(field cardTitle)" "pres-highlights / Saltmarsh Highlights"
+qa_ok "…and its Card is the Experience's own, not the World's" "$(field cardKick)" "Presentation · Experience"
+qa_ok "…without opening a reading or moving the Camera" "$(field reading) / $(field eye)" "none / $E0"
+tap '#card [data-act="pres-ref"][data-id="gwin"]'
 last="$(step '')"
-qa_ok "Select referenced window selects the World subject by identity" "$(field sel) / $(field cardTitle)" "gwin / Garden window"
+qa_ok "Selecting the referenced window selects the World subject by identity" "$(field sel) / $(field cardTitle)" "gwin / Garden window"
 qa_okc "…and the Card says whose subject it is" "$(field cardKick)" "From the World lens"
-qa_ok "selection stays selection in the bridge: nothing opened, nothing written" "$(field reading) / $(field undo) / $(field eye)" "none / $U0 / $E0"
+qa_ok "selection stays selection in the Experience: nothing opened, nothing written" "$(field reading) / $(field undo) / $(field eye)" "none / $U0 / $E0"
 world
 qa_ok "coming back is ordinary: no reading, no work, no Instrument, no listing" "$(field reading) / $(field task) / $(field instr) / $(field finder)" "none / none / False / False"
-qa_ok "…with the Camera still where the bridge left it" "$(field eye)" "$E0"
+qa_ok "…with the Camera still where the Experience left it" "$(field eye)" "$E0"
 
 qa_say "-- parking an unrolled reading: inactive, not hidden, and the eye does not move"
 ordinary gwin || qa_fail_msg "could not reach the ordinary state before the parking block"
 last="$(step "await A.face('gwin'); await A.unrollTo(0.5);")"
 qa_ok "a half-unrolled reading is open about the window on its host wall" "$(field reading) / $(field u) / $(field task)" "face/rotunda/gwin / 0.500 / face|gwin|rotunda||opening"
 P_EYE="$(field eye)"; P_FOV="$(field fov)"; P_HASH="$(field hash)"; P_UNDO="$(field undo)"; P_TRAIL="$(field trail)"
-bridge
+experience
 qa_ok "the parked record holds the identity, the host and the reading parameters" "$(field parkedJson)" '{"name":"Garden window","identity":"gwin","chain":["face"],"canceled":[],"ok":true,"reason":"","fix":null}'
 qa_ok "the reading is really gone, not hidden: no session, no work, no knife" "$(field reading) / $(field task) / $(field knife)" "none / none / False"
 qa_ok "…the wall is back where it was built, and the Instrument has no Work to show" "$(field unroll) / $(field instr)" "0 / False"
@@ -194,30 +192,32 @@ qa_say "-- movement in the other lens survives; a foreign selection makes Resume
 qa_press 1
 last="$(step '')"
 M_EYE="$(field eye)"
-qa_ok "Plan in the bridge is the same Camera: a real key moves the shared standpoint" "$(python3 -c 'import json,sys; print(1 if json.loads(sys.argv[1]) != json.loads(sys.argv[2]) else 0)' "$M_EYE" "$P_EYE")" "1"
+qa_ok "Plan in the Experience is the same Camera: a real key moves the shared standpoint" "$(python3 -c 'import json,sys; print(1 if json.loads(sys.argv[1]) != json.loads(sys.argv[2]) else 0)' "$M_EYE" "$P_EYE")" "1"
 qa_ok "…and explicit Camera input ends the parked pose's hold" "$(field held)" "False"
 qa_ok "…and the parked reading is still inactive, still the same record" "$(field reading) / $(field parkedChain)" "none / face"
-tap '#index [data-act="pres-sel"]'
+tap '#index [data-act="exp-open"][data-id="pres-highlights"]'
 last="$(step '')"
 world
-qa_ok "returning with the foreign identity keeps it, and the World Card says whose it is" "$(field sel) / $(field cardTitle) / $(field cardKick)" "pres-highlights / Saltmarsh Highlights / Foreign identity · not a World subject"
+qa_ok "returning with a foreign identity keeps it, and the World Card says whose it is" "$(field sel) / $(field cardTitle) / $(field cardKick)" "pres-highlights / Saltmarsh Highlights / Foreign identity · not a World subject"
 qa_ok "Resume is contextual: with another identity selected it is not offered" "$(field resumeBtn) / $(field parkedSel)" "False / gwin"
 qa_okc "…and the reason is named locally, with the one act that would fix it" "$(field parkedNote)" "is selected now"
 last="$(step 'await A.resumeParked();')"
 qa_okc "asking for Resume anyway is refused, not guessed" "$(field status)" "Resume is not available"
 qa_ok "…leaving the World ordinary and the record untouched" "$(field reading) / $(field task) / $(field parkedOk)" "none / none / False"
 
-qa_say "-- explicit Select, then Resume: revalidated parameters, a fresh return context"
+qa_say "-- explicit Select, then Resume: revalidated parameters, a fresh return context, no movement"
 tap '#card [data-act="sel"][data-id="gwin"]'
 last="$(step '')"
 qa_ok "Selecting the parked identity by hand makes Resume available" "$(field sel) / $(field resumeBtn)" "gwin / True"
-R_EYE="$(field eye)"
+R_EYE="$(field eye)"; R_FOV="$(field fov)"
 tap '#card [data-act="resume"]'
 last="$(step '')"
 qa_okc "Resume announces the fresh invocation it just made" "$(field status)" "Resumed the work on"
 qa_ok "Resume re-enters the reading with its decoded parameters" "$(field reading) / $(field u) / $(field side)" "face/rotunda/gwin / 0.500 / 1"
 qa_ok "…and the work in hand with it, about the window and its host wall" "$(field task)" "face|gwin|rotunda||opening"
 qa_ok "…entered from the standpoint Resume was asked at, so the pre-crossing root is not reused" "$(field origin) / $(field crumbs)" "Plan / 0"
+qa_ok "Resume is neutral: the rendered standpoint does not move" "$(eyediff "$(field eye)" "$R_EYE")" "0"
+qa_okn "…FOV and framing included" "$(field fov)" "$R_FOV" "0.001"
 qa_ok "the record is consumed by the explicit request, and nothing was written" "$(field parked) / $(field hash) / $(field undo)" "None / $P_HASH / $P_UNDO"
 qa_ok "the resumed work is a view state with a visible Instrument" "$(field instr)" "True"
 qa_press Escape
@@ -226,14 +226,14 @@ qa_ok "the first Esc clears the beacon the selection left, and the reading stand
 qa_press Escape
 last="$(step '')"
 qa_ok "Put it back returns within the new invocation, not to where it was parked" "$(field reading) / $(field crumbs)" "none / 0"
-qa_ok "…to the standpoint Resume was asked from, so the bridge's own movement survives" "$(eyediff "$(field eye)" "$R_EYE")" "0"
+qa_ok "…to the standpoint Resume was asked from, so movement in Experience survives" "$(eyediff "$(field eye)" "$R_EYE")" "0"
 qa_ok "…and never re-enters the parked reading" "$(field parked) / $(field task) / $(field undo)" "None / none / $P_UNDO"
 
 qa_say "-- a repair: an unaccepted candidate is canceled, never parked"
 ordinary panel || qa_fail_msg "could not reach the ordinary state before the repair block"
 last="$(step "A.repairTask('panel'); await A.pickRepairWall('south'); A.declareRepair('s', 3.0);")"
 qa_ok "a repair is in hand with a declared candidate drawn" "$(field task) / $(field preview)" "repair|panel|panel|wall:south|reference / {\"art\":\"panel\",\"wall\":\"south\",\"s\":3,\"y\":1.6}"
-bridge
+experience
 qa_ok "crossing parks the repair as its own work, with no reading invented" "$(field parkedJson)" '{"name":"Unplaced panel","identity":"panel","chain":["repair"],"canceled":[],"ok":true,"reason":"","fix":null}'
 qa_ok "…the declared candidate is taken off the drawing, not carried over" "$(field preview) / $(field task)" "None / none"
 world
@@ -253,7 +253,7 @@ qa_click_chip 'op\",\"id\":\"gwin\",\"key\":\"sill' || qa_fail_msg "no on-drawin
 agent-browser fill '#typeinInput' '2.4' >/dev/null 2>&1
 last="$(step '')"
 qa_ok "a real click on a number opens the draft writer, and it holds a typed value" "$(field typein)" "True"
-bridge
+experience
 qa_ok "crossing closes the writer and parks the reading underneath it" "$(field typein) / $(field parkedChain) / $(field held)" "False / face / True"
 last="$(step "const i = document.querySelector('#typeinInput'); i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));")"
 qa_ok "a late Enter on the writer that was dropped cannot commit the draft" "$(field hash) / $(field undo) / $(field gwinHead)" "$H1 / $U1 / 3.4"
@@ -265,7 +265,7 @@ qa_drag '#gl' -160 8
 last="$(step '')"
 K_HASH="$(field hash)"; K_UNDO="$(field undo)"
 qa_ok "a real drag leaves a live aim, not an open reading" "$(field knife) / $(field reading)" "True / none"
-bridge
+experience
 qa_ok "crossing cancels the aim and parks nothing: an aim is a proposal" "$(field knife) / $(field parked)" "False / None"
 qa_press Enter
 last="$(step '')"
@@ -277,7 +277,7 @@ qa_say "-- changed and missing targets are explained, never substituted"
 ordinary harbor || qa_fail_msg "could not reach the ordinary state before the changed-target block"
 last="$(step "await A.face('harbor');")"
 qa_ok "an artwork reading is open about its host wall" "$(field reading)" "face/north/north"
-bridge
+experience
 last="$(step "A.editOnce('QA: the Harbour at Dusk now hangs on the south wall', () => A.applyArtPlacement('harbor', { wall: 'south', s: 4.0, y: 1.6 }));")"
 qa_ok "an accepted edit elsewhere moves the artwork to another host" "$(field harborHost)" "south"
 world
@@ -292,7 +292,7 @@ last="$(step 'await A.closeAll(); A.dismissParked();')"
 ordinary panel || qa_fail_msg "could not reach the ordinary state before the missing-target block"
 last="$(step "A.dimensionTask('panel');")"
 qa_ok "in-place work on the unplaced panel is in hand" "$(field task)" "dims|panel|panel||measure"
-bridge
+experience
 last="$(step "ctx.museum.art = ctx.museum.art.filter((a) => a.id !== 'panel');")"
 qa_ok "the fixture loses the artwork while the work is parked" "$(field panelGone)" "True"
 world

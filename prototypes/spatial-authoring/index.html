@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Museum Editor · World Authoring Prototype — P26 continuous spatial authoring</title>
+<title>Museum Editor · Unified World and Experience V2 Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Onest:wght@400;500;600;700&family=Martian+Mono:wdth,wght@75..112.5,400..600&display=swap" rel="stylesheet">
@@ -11,27 +11,26 @@
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
 </head>
 <body class="app">
-  <!-- Head: the document's identity and its history. The lens says what kind of document this is;
-       World is the one a building is authored in. -->
+  <!-- Head: the project identity, authoring lens and shared source history. -->
   <header class="head">
     <a class="brand" href="rationale.html" title="Design rationale"><span class="brand-mark" aria-hidden="true"></span><span class="brand-text">Museum Editor</span></a>
-    <!-- The lens says what kind of document is in hand. Both lenses are real: the Experience one is the
-         prototype's read-only continuity fixture, not a disabled promise of unbuilt work. -->
+    <!-- Both lenses share canonical selection, Stage, Camera and source history. -->
     <div class="lens" id="lens" role="tablist" aria-label="Lens">
       <button class="lens-btn on" data-act="lens" data-lens="world" role="tab" aria-selected="true" title="World: the museum, authored in place">World</button>
-      <button class="lens-btn" data-act="lens" data-lens="experience" role="tab" aria-selected="false" title="Experience: one read-only Presentation fixture, sharing this selection and this Camera">Experience</button>
+      <button class="lens-btn" data-act="lens" data-lens="experience" role="tab" aria-selected="false" title="Experience: author meaning, Views and visitor composition in the same World">Experience</button>
     </div>
-    <div class="doc"><span class="doc-name">Saltmarsh Museum</span><span class="doc-state" id="docState">All changes saved</span></div>
+    <div class="doc"><span class="doc-name">Saltmarsh Museum</span><span class="active-experience" id="activeExperience" hidden></span><span class="doc-state" id="docState">All changes saved</span></div>
     <button class="find-btn" data-act="find" title="Search anything (/)">Search anything <kbd>/</kbd></button>
     <!-- The narrow shell's sheets: the Index and the Card over the stage, for the widths where the
          columns are not there. They are hidden at wider widths, never disabled. -->
     <button class="sheet-btn" data-act="sheet-index" aria-expanded="false" title="Show the Index over the stage">Index</button>
     <button class="sheet-btn" data-act="sheet-card" aria-expanded="false" title="Show the Card over the stage">Card</button>
-    <div class="head-hist" aria-label="Building history">
+    <div class="head-hist" aria-label="Project source history">
       <button class="icon-btn" id="undoBtn" data-act="undo" aria-label="Undo">↶<span class="count" id="undoCount"></span></button>
-      <span class="undo-label" id="undoLabel">No building changes yet</span>
+      <span class="undo-label" id="undoLabel">No source changes yet</span>
       <button class="icon-btn" id="redoBtn" data-act="redo" aria-label="Redo">↷</button>
     </div>
+    <button class="head-preview" id="headPreview" data-act="exp-preview">Preview</button>
     <a class="rationale-link" href="rationale.html">Design rationale</a>
   </header>
 
@@ -91,9 +90,9 @@
           <span><kbd>/</kbd> search anything</span><span><kbd>[</kbd> <kbd>]</kbd> view trail</span>
           <span><kbd>↵</kbd> select the result · accept a repair</span><span><kbd>⇧↵</kbd> open its location</span>
           <span><kbd>S</kbd> square up to a wall</span><span>pull a curved wall’s corner · unroll it</span>
-          <span><kbd>⌘Z</kbd> undo building changes</span><span><kbd>Shift</kbd> make a move instant</span>
+          <span><kbd>⌘Z</kbd> undo source changes</span><span><kbd>Shift</kbd> make a move instant</span>
           <span><kbd>M</kbd> mirror looking up</span><span><kbd>⌥ Drag</kbd> tilt out of a flat view</span>
-          <span>the lens button · World, or the read-only continuity fixture</span><span>Resume · offered on the parked work's own identity</span>
+          <span>the lens button · World or Experience</span><span>Resume · offered on the parked work's own identity</span>
           <span><kbd>P</kbd> Precision: the work's numbers, by keyboard</span><span>Measure in place · from the Card’s In place section</span>
           <span><kbd>G</kbd> wall grid · off shows the wall’s real material</span><span>Wall grid, Reduce motion · the status rail</span>
           <span>double-click a wall · face it</span><span>double-click a ceiling · lift it</span>
@@ -150,17 +149,33 @@
     <div class="j-head"><span class="j-outside">Presenter · not part of the product</span><button data-jact="close" aria-label="Close journeys">×</button></div>
     <div class="j-tabs" id="jTabs"></div>
     <div class="j-kicker" id="jKicker"></div>
-    <div class="j-title" id="jTitle"></div>
-    <div class="j-body" id="jBody"></div>
+    <div class="j-title" id="jTitle" data-example-step></div>
+    <div class="j-body" id="jBody" data-example-instruction></div>
+    <div class="j-walkthrough" id="jWalkthrough" data-experience-guidance hidden></div>
+    <p class="j-outcome" data-experience-guidance data-example-observed aria-live="polite" hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-credit aria-live="polite" hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-tally hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-source hidden></p>
+    <p class="j-outcome" data-experience-guidance data-example-demonstration aria-live="polite" hidden></p>
     <div class="j-nav">
       <button data-jact="prev" aria-label="Previous step">‹</button>
       <div class="j-dots" id="jDots"></div>
       <span class="j-count" id="jCount"></span>
       <button data-jact="replay" title="Replay this step">Replay</button>
+      <button data-jact="skip" hidden>Skip</button>
       <button class="j-next" data-jact="next">Next ›</button>
     </div>
   </section>
   <button class="j-toggle" id="jToggle">Guided journeys <kbd>J</kbd></button>
+
+  <details class="experience-presenter" id="experienceExamples" hidden aria-label="Experience examples, outside the product">
+    <summary>Experience examples · outside the product</summary>
+    <div class="exp-presenter-load" data-authoring>
+      <button class="verb" data-act="exp-reset">Reset Experience</button>
+      <button class="verb" data-act="exp-example">Load Example</button>
+      <button class="verb" data-act="exp-conformance">Load Conformance fixture</button>
+    </div>
+  </details>
 
   <script type="module" src="app/main.js"></script>
 </body>

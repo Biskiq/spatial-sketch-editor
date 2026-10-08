@@ -66,8 +66,11 @@ This revision is separate from the pre-redesign production plans below.
 **Prototype adoption (#112) accepted 2026-10-02:** [closed plan and recovery](./design/world-authoring-prototype/implementation-plan.md)
 · [current World executable](../../../prototypes/spatial-authoring/README.md)
 · [acceptance/harvest](../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md).
-The shell is adopted in place with A–F preserved. Next: **#113**, real Experience V2 executable
-and both directions of continuity. F and T1/T2/T3 production gates remain unchanged.
+The shell is adopted in place with A–F preserved. **#113 replacement implementation under conformance review:**
+[active C1–C8 plan](../p25-experience/design/experience-v2-prototype/conformance-plan.md) corrects the shared executable;
+[fresh evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) records current proof.
+S0–S9 evidence is historical. Repository gates remain blocked by the missing P23B fixture;
+final external review is pending. F and T1/T2/T3 production gates remain unchanged.
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.
 
@@ -89,8 +92,8 @@ SHELL DESIGN AUTHORITY: PLATE §0.8–§0.8.4 (promoted shared/World laws,
                         since 2026-10-03, World Paper authoring)
                         #111's syntheses/QA retain final design records/specimens
 EXECUTABLE STATE:       World Authoring Prototype adopts the accepted shell in place
-                        (#112), retaining A–F; Experience is a read-only bridge
-                        pending #113 — prototype evidence only
+                        (#112), retaining A–F; #113 implements Experience V2
+                        and both-lens continuity — prototype evidence only
 PRODUCTION STATE:       unchanged — planning / re-derived T1; no production child
                         becomes implementation-ready because #111 exists
 ```

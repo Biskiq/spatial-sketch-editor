@@ -1,0 +1,183 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import * as M from '../app/experience-model.js';import * as R from '../app/experience-runtime.js';import {createSceneCapabilities,capability,setSceneValue} from '../app/experience-capabilities.js';
+const pose={target:[0,1,0],az:.7,el:.3,frameH:8,flat:0};
+function fixture(){const e=M.createExperience(),c=M.createCamera(),scene=createSceneCapabilities(),p=M.addPresentation(e,{kind:'subjects',ids:['machine']}),q=M.addPresentation(e,{kind:'environment'});return {e,c,scene,p,q};}
+function control(f,sid,cid,value,pid=f.p,kind='behavior',trigger=null){return M.addContribution(f.e,pid,{kind:'control',name:cid,subjectId:sid,capabilityId:cid,value},kind,trigger);}
+function narration(f,duration=4){return M.addContribution(f.e,f.p,{kind:'narration',name:'Explain',text:'The casing protects moving parts. Inside the rotor transfers power.',duration,markers:[{id:'inside',label:'Inside',fraction:.5}]},'narration');}
+function runtime(f){return R.createRuntime(f.e,f.c,f.p,pose,f.scene);}
+function tick(f,r,t){return R.tickRuntime(f.e,f.c,r,t,f.scene);}
+function guide(f){const a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.q);return {a,b};}
+test('A0–A2 low-floor independent Presentation, View and Guide; no-View standalone',()=>{const f=fixture(),r=runtime(f);assert.equal(r.stopId,null);assert.deepEqual(r.pose,pose);assert.deepEqual(f.e.guide,[]);assert.deepEqual(f.c.connections,{});});
+test('A3 independent Piano activation, finite playback and visitor Stop',()=>{const f=fixture(),id=control(f,'piano','music',true,null,'interaction');let r=R.activateRuntime(f.e,f.c,runtime(f),id,f.scene);assert.equal(R.projectedValue(f.scene,r,'piano','playing'),true);const token=r.active[id];r=R.stopActivityRuntime(f.e,r,token);assert.equal(R.projectedValue(f.scene,r,'piano','playing'),false);r=R.activateRuntime(f.e,f.c,r,id,f.scene);r=tick(f,r,12);assert.equal(r.activities[r.active[id]].status,'complete');assert.equal(R.projectedValue(f.scene,r,'piano','playing'),false);});
+test('A4 Switch activation targets Light; unavailable capability refused',()=>{const f=fixture(),id=control(f,'light','intensity',3,f.p,'interaction','switch');let r=R.activateRuntime(f.e,f.c,runtime(f),id,f.scene);assert.equal(f.e.uses[id].triggerSubjectId,'switch');assert.equal(R.projectedValue(f.scene,r,'light','intensity'),3);f.scene.subjects.light.profile='mesh';r=R.activateRuntime(f.e,f.c,r,id,f.scene);assert.equal(r.activities[r.active[id]].status,'unavailable');assert.equal(capability(f.scene,'switch','intensity'),null);});
+test('A5 narration phrases, captions and Camera cues share simulation clock',()=>{const f=fixture(),n=narration(f),u=M.addView(f.e,f.c,f.p,{...pose,target:[3,1,0]},'Inside');f.e.uses[u].cue={useId:n,signal:'marker:inside'};let r=tick(f,runtime(f),2);assert.equal(r.viewUseId,u);assert.equal(R.signalEmitted(r,{useId:n,signal:'marker:inside'}),true);assert.match(R.narrationCaption(f.e,r),/casing|rotor/);});
+test('A6 Auto measures overlapping work and finite readiness, never sums concurrent narration',()=>{const f=fixture();narration(f,10);control(f,'machine','casing',1);assert.equal(R.estimatePresentation(f.e,f.c,f.p,pose),12);const g=fixture();control(g,'machine','casing',1);assert.equal(R.estimatePresentation(g.e,g.c,g.p,pose),3.5);});
+test('A7 Camera cue queues while travel is active; readiness shares evaluation',()=>{const f=fixture(),u=M.addView(f.e,f.c,f.p,{...pose,target:[20,1,0]},'Far'),v=M.addView(f.e,f.c,f.p,{...pose,target:[25,1,0]},'Further');let r=runtime(f);R.requestView(r,f.e,f.c,u);R.requestView(r,f.e,f.c,v);assert.equal(r.queue.length,1);r=tick(f,r,10);assert.deepEqual(r.pose.target,[25,1,0]);assert.equal(r.queue.length,0);});
+test('A8 manual Next is immediate while Auto waits natural readiness',()=>{const f=fixture();narration(f,10);const {a,b}=guide(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);assert.equal(r.stopId,a);assert.equal(R.nextRuntime(f.e,f.c,r,f.scene).stopId,b);r.autoplay=true;r=tick(f,r,11);assert.equal(r.stopId,a);r=tick(f,r,1);assert.equal(r.stopId,b);});
+test('A9 Gate is shared by manual/Auto and signals are visit-local',()=>{const f=fixture(),id=control(f,'piano','music',true,f.p,'interaction');const {a,b}=guide(f);f.e.stops[a].gate={useId:id,signal:'complete'};let r=R.startGuide(f.e,f.c,runtime(f),f.scene);assert.equal(R.gateState(f.e,f.c,r).allowed,false);r=R.activateRuntime(f.e,f.c,r,id,f.scene);r=tick(f,r,12);assert.equal(R.gateState(f.e,f.c,r).allowed,true);r=R.nextRuntime(f.e,f.c,r,f.scene);assert.equal(r.stopId,b);r=R.previousRuntime(f.e,f.c,r,f.scene);assert.equal(r.stopId,a);assert.equal(R.gateState(f.e,f.c,r).allowed,false);});
+test('A10 leaving disarms waiting dependency and Cancel releases owned effect',()=>{const f=fixture(),n=narration(f,10),id=control(f,'machine','rotor',true);f.e.uses[id].start={kind:'after',useId:n,signal:'complete'};guide(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);const wait=r.active[id];r=R.nextRuntime(f.e,f.c,r,f.scene);r=tick(f,r,20);assert.equal(r.activities[wait].status,'stopped');assert.equal(R.projectedValue(f.scene,r,'machine','running'),false);});
+test('A11 Finish completes after leaving and Continue loop persists until visitor Stop',()=>{const f=fixture(),open=control(f,'machine','casing',1),loop=control(f,'machine','rotor',true);f.e.uses[open].retention={kind:'experience'};f.e.uses[loop].end={kind:'experience'};guide(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);const a=r.active[open],b=r.active[loop];r=R.nextRuntime(f.e,f.c,r,f.scene);r=tick(f,r,2);assert.equal(r.activities[a].status,'complete');assert.equal(R.projectedValue(f.scene,r,'machine','open'),1);assert.equal(R.projectedValue(f.scene,r,'machine','running'),true);r=R.stopActivityRuntime(f.e,r,b);assert.equal(R.projectedValue(f.scene,r,'machine','running'),false);});
+test('A12 exploration disarms Camera, rejoin starts at live pose with Auto off',()=>{const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'Entry','entry');guide(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r.autoplay=true;r=R.exploreRuntime(r,{...pose,target:[8,1,0]});const visit=r.visit;r=R.resumeGuide(f.e,f.c,r,{...pose,target:[9,1,0]});assert.equal(r.autoplay,false);assert.equal(r.visit,visit);assert.deepEqual(r.movement.path[0].target,[9,1,0]);assert.equal(r.viewUseId,u);});
+test('A13 detour pause is observational; return does not replay parent entry',()=>{const f=fixture(),n=narration(f,10);const {a,b}=guide(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,2);const token=r.active[n],visit=r.visit;r=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);assert.equal(r.activities[token].status,'paused');r=R.returnDetour(f.e,f.c,r,f.scene);assert.equal(r.stopId,a);assert.equal(r.visit,visit);assert.equal(r.active[n],token);assert.equal(r.activities[token].elapsed,2);});
+test('A14 repeated Presentation Stops are distinct visits; View changes do not restart',()=>{const f=fixture(),n=narration(f,1),u=M.addView(f.e,f.c,f.p,pose,'Entry','entry');const a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.p);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);const visit=r.visit,token=r.active[n];r=R.lookRuntime(f.e,f.c,r,u);assert.equal(r.visit,visit);r=R.nextRuntime(f.e,f.c,r,f.scene);assert.equal(r.stopId,b);assert.notEqual(r.visit,visit);assert.notEqual(r.active[n],token);const stale=R.completeRun(f.e,f.c,r,token,f.scene);assert.equal(R.signalEmitted(stale,{useId:n,signal:'complete'}),false);assert.equal(stale.activities[stale.active[n]].status,'running');assert.notEqual(a,b);});
+test('A15 covered by Camera reach/detachment tests; original Set remains shared after local entry',()=>{const f=fixture(),uid=M.addView(f.e,f.c,f.p,pose,'Entry','entry'),a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.p);const local=M.detachUse(f.e,f.c,uid,a);assert.equal(M.stopEntry(f.e,a).id,local);assert.equal(M.stopEntry(f.e,b).id,uid);});
+test('A16 structural removal/reorder retains explicit broken references for repair',()=>{const f=fixture();const {a,b}=guide(f);f.e.stops[a].next={kind:'target',id:b};M.removeStop(f.e,b);assert.equal(M.resolveNext(f.e,a).missing,true);assert.equal(f.e.stops[a].next.id,b);});
+test('A17 dependency cycles and missing framing never silently become hold',()=>{const f=fixture(),x=control(f,'machine','casing',1),y=control(f,'machine','rotor',true);f.e.uses[x].start={kind:'after',useId:y,signal:'complete'};f.e.uses[y].start={kind:'after',useId:x,signal:'complete'};assert.equal(M.contributionIssues(f.e,f.c,f.scene,capability).filter(i=>i.message==='Dependency cycle').length,2);const {a,b}=guide(f),uid=M.addView(f.e,f.c,f.q,pose,'Required','entry');M.removeView(f.e,f.c,f.e.uses[uid].viewId);const r=R.startGuide(f.e,f.c,runtime(f),f.scene);assert.equal(R.gateState(f.e,f.c,r).allowed,false);assert.equal(R.nextRuntime(f.e,f.c,r,f.scene).stopId,a);assert.equal(f.e.stops[b].entry.kind,'presentation');});
+test('A18 Scene source edits and session effects are separate; session-only source writes refused',()=>{const f=fixture(),id=control(f,'light','intensity',4);setSceneValue(f.scene,'light','intensity',1);const r=runtime(f);assert.equal(R.projectedValue(f.scene,r,'light','intensity'),4);assert.equal(f.scene.subjects.light.properties.intensity,1);assert.throws(()=>setSceneValue(f.scene,'piano','music',true),/session-only/);assert.equal(r.activities[r.active[id]].status,'complete');});
+test('A19 runtime flows freeze all authored domains',()=>{const f=fixture();narration(f);control(f,'machine','rotor',true);guide(f);const source=JSON.stringify(f);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,5);r=R.exploreRuntime(r);r=R.resumeGuide(f.e,f.c,r);r=R.nextRuntime(f.e,f.c,r,f.scene);assert.equal(JSON.stringify(f),source);});
+test('A20 bounded stepping is deterministic within 1e-8 at supported boundaries',()=>{const f=fixture();narration(f);control(f,'machine','casing',1);const base=runtime(f),a=tick(f,base,4);let b=base;for(let i=0;i<16;i++)b=tick(f,b,.25);assert.ok(Math.abs(a.time-b.time)<1e-8);assert.deepEqual(a.overrides,b.overrides);assert.deepEqual(a.signals,b.signals);});
+test('A21–A22 Presenter/Reset are observational; fixture construction deterministic',()=>{const f=fixture(),r=runtime(f),source=JSON.stringify(f);const plan=R.estimatePresentation(f.e,f.c,f.p,pose);assert.equal(plan,2);assert.equal(JSON.stringify(f),source);assert.equal(r.autoplay,false);assert.deepEqual(createSceneCapabilities(),createSceneCapabilities());});
+test('C9.1 ordinary loop executes: the explanation and a captured audition run in a no-Guide Preview',()=>{
+ const f=fixture();
+ assert.equal(M.setPrimaryExplanation(f.e,f.p,'The casing protects the moving rotor.').created,true);
+ const captured=M.captureCapability(f.e,f.p,'machine','casing',.5,'Open casing');assert.equal(captured.created,true);
+ assert.equal(M.presentationUses(f.e,f.p).length,2);assert.equal(Object.keys(f.e.definitions).length,2);
+ assert.deepEqual(f.e.guide,[]);assert.deepEqual(f.c.connections,{});
+ const source=JSON.stringify(f);
+ let r=runtime(f);assert.equal(r.stopId,null);assert.equal(r.presentationId,f.p);
+ r=tick(f,r,2);
+ assert.match(R.narrationCaption(f.e,r),/casing/i);
+ assert.equal(R.projectedValue(f.scene,r,'machine','open'),.5);
+ assert.equal(JSON.stringify(f),source);
+ assert.equal(M.setPrimaryExplanation(f.e,f.p,'The casing protects the moving rotor.').created,false);
+ assert.equal(M.captureCapability(f.e,f.p,'machine','casing',1,'Open casing').updated,true);
+ assert.equal(M.captureUses(f.e,f.p,'machine','casing').length,1);assert.equal(M.presentationUses(f.e,f.p).length,2);
+});
+test('fixed framing review and relative lowering never mutate authored Camera',()=>{const f=fixture(),id=M.addView(f.e,f.c,f.p,pose,'Camera'),v=f.c.views[f.e.uses[id].viewId];v.focusAt=[-10,1,1];const source=JSON.stringify(f.c);assert.match(M.lowerCamera(f.c,{machine:[-8,1,1]}).views[v.id].review,/review fixed/);v.anchor='relative';const current=JSON.stringify(f.c);assert.deepEqual(M.lowerCamera(f.c,{machine:[-8,1,1]}).views[v.id].pose.target,[-8,1,1]);assert.equal(JSON.stringify(f.c),current);assert.notEqual(current,source);});
+test('station-bound holds delay arrival; invoked controls run once at Camera station',()=>{const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry'),id=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId);const {a,b}=guide(f),controlId=control(f,'light','intensity',4,null);const seam=M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,id,'arrival',2);M.addInvocationBeat(f.e,f.c,a,b,id,'departure',controlId);let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=R.nextRuntime(f.e,f.c,r,f.scene);const duration=r.movement.duration;r=tick(f,r,.25);const token=r.active[controlId];assert.equal(R.projectedValue(f.scene,r,'light','intensity'),4);r=tick(f,r,duration);assert.equal(r.active[controlId],token);assert.equal(r.movement,null);assert.deepEqual(r.pose.target,[10,1,0]);assert.equal(seam.mode,'travel');});
+
+test('multi-origin coordination executes only the traversed connection, and Cut skips route beats',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'First','entry'),other=M.addView(f.e,f.c,f.p,{...pose,target:[-10,1,0]},'Other'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry');
+ const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),unused=M.addConnection(f.c,f.e.uses[other].viewId,f.e.uses[v].viewId),{a,b}=guide(f);
+ M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,unused,'arrival',30);
+ // The target is automatic work: a station never invokes a visitor offer, and binding it moves the
+ // Activity's trigger to the station, so nothing here runs on entry either.
+ const invocation=control(f,'light','intensity',4,f.q);M.addInvocationBeat(f.e,f.c,a,b,unused,'departure',invocation,f.scene);
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=R.nextRuntime(f.e,f.c,r,f.scene);
+ assert.equal(r.movement.duration,r.movement.travelDuration);r=tick(f,r,4);assert.equal(r.active[invocation],undefined);
+ M.addBeat(f.e,f.c,a,b,route,'arrival',2);M.editSeam(f.e,a,b,{mode:'cut'});
+ r=R.nextRuntime(f.e,f.c,R.startGuide(f.e,f.c,runtime(f),f.scene),f.scene);assert.equal(r.movement,null);assert.deepEqual(r.pose.target,[10,1,0]);
+});
+test('Auto includes queued cues after the actual route and its holds',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[7,1,0]},'To','entry'),cue=M.addView(f.e,f.c,f.q,{...pose,target:[14,1,0]},'Cue');
+ const n=M.addContribution(f.e,f.q,{kind:'narration',name:'Cue',text:'Go here',duration:1,markers:[]},'narration');f.e.uses[cue].cue={useId:n,signal:'complete'};
+ const route=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),{a,b}=guide(f);M.addStop(f.e,f.p);M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,route,'arrival',5);
+ let r=R.nextRuntime(f.e,f.c,R.startGuide(f.e,f.c,runtime(f),f.scene),f.scene);assert.equal(r.readiness,9);
+ r.autoplay=true;r=tick(f,r,8);assert.equal(r.stopId,b);r=tick(f,r,1);assert.notEqual(r.stopId,b);
+});
+test('missing focus refuses framing, and an explicit missing Stop entry remains repairable',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'Required','entry'),{a}=guide(f);f.c.views[f.e.uses[u].viewId].unresolved=true;
+ const r=runtime(f);assert.match(r.refusal,/Framing removed/);assert.deepEqual(r.pose,pose);
+ f.e.stops[a].entry={kind:'use',useId:'deleted-use'};assert.equal(M.stopEntry(f.e,a).missing,true);
+});
+test('detour to another occurrence of the same Presentation resumes the parent narration run',()=>{
+ const f=fixture(),n=narration(f,10),a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.p);
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,2);const token=r.active[n],visit=r.visit;
+ r=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);r=tick(f,r,1);r=R.returnDetour(f.e,f.c,r,f.scene);r=tick(f,r,.25);
+ assert.equal(r.stopId,a);assert.equal(r.visit,visit);assert.equal(r.active[n],token);assert.equal(r.activities[token].status,'running');assert.equal(r.activities[token].elapsed,2.25);
+});
+test('Travel with a deleted coordination station refuses locally instead of dropping its hold',()=>{
+ const f=fixture(),u=M.addView(f.e,f.c,f.p,pose,'From','entry'),v=M.addView(f.e,f.c,f.q,{...pose,target:[10,1,0]},'To','entry'),id=M.addConnection(f.c,f.e.uses[u].viewId,f.e.uses[v].viewId),{a,b}=guide(f);
+ const anchor=M.addAnchor(f.c,id,[3,1,0]);M.editSeam(f.e,a,b,{mode:'travel'});M.addBeat(f.e,f.c,a,b,id,anchor,2);f.c.connections[id].anchors=[];
+ const r=R.startGuide(f.e,f.c,runtime(f),f.scene);assert.equal(R.gateState(f.e,f.c,r).allowed,false);assert.match(R.nextRuntime(f.e,f.c,r,f.scene).refusal,/station.*repair/i);
+});
+test('C9.5 Return preserves the parent Stop clock while Auto still waits the remaining work',()=>{
+ const f=fixture(),n=narration(f,10),{a,b}=guide(f);
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,7);   // 7 of the parent's 10 seconds are spent
+ const detour=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);
+ let back=R.returnDetour(f.e,f.c,detour,f.scene);
+ assert.equal(back.elapsed,7);                                   // the Stop clock is preserved, not rewound
+ assert.ok(Math.abs(back.readiness-(R.BREATHING+3))<1e-9);       // and the deadline is the work still owed
+ back.autoplay=true;
+ back=tick(f,back,1);                                            // Auto measures from the rebased playhead
+ assert.equal(back.stopId,a);
+ back=tick(f,back,R.BREATHING+3);
+ assert.equal(back.activities[back.active[n]].status,'complete'); // the narration finished rather than being cancelled
+ assert.equal(back.stopId,b);
+});
+test('C9.5 Return preserves an authored dwell instead of restarting it',()=>{
+ const f=fixture(),{a,b}=guide(f);
+ f.e.stops[a].pacing={kind:'dwell',seconds:10};
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,7);   // 7 of the dwell's 10 seconds are spent
+ const detour=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);
+ let back=R.returnDetour(f.e,f.c,detour,f.scene);
+ assert.equal(back.elapsed,7);                                   // the dwell clock comes back with it
+ back.autoplay=true;
+ back=tick(f,back,2);                                            // 9 < 10: the same dwell, not a fresh one
+ assert.equal(back.stopId,a);
+ back=tick(f,back,1.5);                                          // past the authored 10: Auto advances
+ assert.equal(back.stopId,b);
+});
+test('C9.5 a go choice resumes carried parent work whose departure policy continues it',()=>{
+ const f=fixture(),{e,c}=f;
+ const finish=narration(f,20);e.uses[finish].interruption='finish';
+ const carried=narration(f,40);e.uses[carried].end={kind:'experience'};
+ const a=M.addStop(e,f.p),b=M.addStop(e,f.q),again=M.addStop(e,f.p);
+ e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ e.stops[b].choices.push({id:'choice-go',label:'Continue',targetId:again,kind:'go'});
+ // Enter the Guide directly (no prior standalone entry of the same Presentation), so the carried runs are
+ // genuinely the parent visit's own and a detour is what suspends them.
+ let r=R.startGuide(e,c,R.createRuntime(e,c,null,pose,f.scene),f.scene);r=tick(f,r,2);
+ const fToken=r.active[finish],cToken=r.active[carried];
+ const detour=R.chooseRuntime(e,c,r,b,true,f.scene);
+ assert.equal(detour.activities[fToken].status,'paused');
+ assert.equal(detour.activities[cToken].status,'paused');
+ const go=R.chooseRuntime(e,c,detour,again,false,f.scene);
+ assert.equal(go.activities[fToken].status,'running');           // Finish keeps its playhead rather than staying suspended
+ assert.equal(go.activities[fToken].elapsed,detour.activities[fToken].elapsed);
+ assert.equal(go.activities[cToken].status,'running');           // Experience-end work still outlives its visit
+});
+test('C9.5 a go choice keeps the visited parent reachable through Back history',()=>{
+ const f=fixture(),{e,c}=f;
+ const a=M.addStop(e,f.p),b=M.addStop(e,f.q),dest=M.addStop(e,f.p);
+ e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ e.stops[b].choices.push({id:'choice-go',label:'Continue',targetId:dest,kind:'go'});
+ let r=R.startGuide(e,c,runtime(f),f.scene);                     // at A
+ r=R.chooseRuntime(e,c,r,b,true,f.scene);                        // detour B parks A; the bookmark owns the return
+ assert.equal(r.stopId,b);
+ const go=R.chooseRuntime(e,c,r,dest,false,f.scene);             // Go continues and abandons the bookmark
+ assert.equal(go.stopId,dest);
+ assert.deepEqual(go.history,[a,b]);                             // but the visited parent is ordinary history again
+ assert.equal(R.previousRuntime(e,c,go,f.scene).stopId,b);
+ assert.equal(R.previousRuntime(e,c,R.previousRuntime(e,c,go,f.scene),f.scene).stopId,a);
+});
+test('C9.5 a go choice restores the parked parent before entries recorded during the detour',()=>{
+ const f=fixture(),{e,c}=f;
+ const a=M.addStop(e,f.p),b=M.addStop(e,f.q),mid=M.addStop(e,f.p),dest=M.addStop(e,f.p);
+ e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ e.stops[mid].choices.push({id:'choice-go',label:'Continue',targetId:dest,kind:'go'});
+ let r=R.startGuide(e,c,runtime(f),f.scene);                     // at A
+ r=R.chooseRuntime(e,c,r,b,true,f.scene);                        // detour B parks A; the bookmark owns the return
+ const during=R.nextRuntime(e,c,r,f.scene);                      // Next C is recorded while the detour is live
+ assert.equal(during.stopId,mid);assert.equal(during.bookmarks.length,1);
+ let back=R.chooseRuntime(e,c,during,dest,false,f.scene);        // Go D abandons the bookmark
+ assert.equal(back.stopId,dest);
+ assert.deepEqual(back.history,[a,b,mid]);                       // the parent precedes the detour's own entries
+ back=R.previousRuntime(e,c,back,f.scene);assert.equal(back.stopId,mid);   // Back C
+ back=R.previousRuntime(e,c,back,f.scene);assert.equal(back.stopId,b);     // then B · not A
+ back=R.previousRuntime(e,c,back,f.scene);assert.equal(back.stopId,a);     // then A
+});
+test('C9.5 opening another standalone Presentation ends the departing visit local work',()=>{
+ const f=fixture(),n=narration(f,20),glow=control(f,'mesh','emphasis',true);f.e.uses[glow].retention={kind:'visit'};
+ const r=R.createRuntime(f.e,f.c,f.p,pose,f.scene);
+ assert.equal(typeof r.active[n],'string');
+ assert.equal(R.projectedValue(f.scene,r,'mesh','highlight'),true);        // the visit-retained effect is projected now
+ const opened=R.openPresentationRuntime(f.e,f.c,r,f.q,f.scene);
+ assert.equal(opened.presentationId,f.q);
+ assert.equal(opened.activities[r.active[n]].status,'stopped');            // A's narration no longer runs in B
+ assert.equal(R.projectedValue(f.scene,opened,'mesh','highlight'),false);  // and its retained effect is released
+});
+test('C9.5 a go choice ends the parked parent local work instead of leaving it paused',()=>{
+ const f=fixture(),n=narration(f,10),a=M.addStop(f.e,f.p),b=M.addStop(f.e,f.q),again=M.addStop(f.e,f.p);
+ f.e.stops[a].choices.push({id:'choice-detour',label:'Side',targetId:b,kind:'detour'});
+ f.e.stops[b].choices.push({id:'choice-go',label:'Continue',targetId:again,kind:'go'});
+ let r=R.startGuide(f.e,f.c,runtime(f),f.scene);r=tick(f,r,4);
+ const token=r.active[n];
+ const detour=R.chooseRuntime(f.e,f.c,r,b,true,f.scene);
+ assert.equal(detour.activities[token].status,'paused');
+ const go=R.chooseRuntime(f.e,f.c,detour,again,false,f.scene);
+ assert.equal(go.bookmarks.length,0);assert.equal(go.stopId,again);
+ assert.equal(go.activities[token].status,'stopped');           // the abandoned parent was ended, not left parked
+ assert.notEqual(go.active[n],token);                           // so a fresh occurrence starts a new run
+ assert.equal(go.activities[go.active[n]].status,'running');
+});

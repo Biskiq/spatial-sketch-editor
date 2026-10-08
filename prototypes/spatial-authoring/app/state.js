@@ -3,9 +3,7 @@ import { byId, findThing } from './model.js';
 // Editor session state. Nothing here is architecture: the museum lives in ctx.museum,
 // and view state (standpoint, what is open, the trail) never enters Undo.
 export const S = {
-  /* which kind of document is in hand. World is where a building is authored; the Experience lens is,
-     in this prototype, one read-only continuity fixture that proves parking, a foreign identity and
-     explicit Resume. The lens is a document state, not a mode of the tools. */
+  /* Two authoring lenses over the same project, with one canonical selection and Camera. */
   lens: 'world',
   sel: null,
   hover: null,
@@ -47,7 +45,33 @@ export const S = {
   /* An inactive task remembered for explicit Resume, and only that: the original identity, the
      resolving targets and the reading/task parameters. Never a Camera, a selection snapshot, an
      unaccepted proposal or a geometry object. See actions.js (parkWorldWork / parkedContext). */
-  parked: null,
+  parkedByLens: {world:null,experience:null},
+  // Compatibility view for retained World QA; storage is the one lens-keyed map.
+  get parked() { return this.parkedByLens.world; },
+  set parked(value) { this.parkedByLens.world=value; },
+  /* A listing a crossing is leaving, remembered beside the parked record rather than inside it: it is
+     context, not work, and only an explicit Resume puts it back. Never a selection, never a Camera. */
+  browseMemory: null,
+  /* Experience session state, never source and never Undo. `expAudition` projects supported capability
+     values temporarily while a World subject is operated; `expCaptureAsk` holds the ambiguous
+     captured-use choice; `expReview` records the product outcomes the quickstart instructions observe. */
+  expAudition: null,
+  expCaptureAsk: null,
+  /* A shared-contribution replacement that reaches more than one linked Activity waits here for an
+     explicit local/shared acceptance, so a rebind can never silently change every linked use. */
+  expRebindAsk: null,
+  /* `expReview` records what the review aid observes: product outcomes the real paths report, and the
+     provenance of the document on screen. `source` names the loader that produced the current document
+     ('none' at boot), `writes` counts accepted authoring commands since that load, `authored` names the
+     outcomes this session authored (a Presentation, an explanation, a capture, a framing, a Guide Stop),
+     `at` records the outcomes that belong to one moment rather than to the session, keyed by Presentation — a
+     View an author captures or an explanation they write is that moment's, while a loader's framing is not —
+     and the rest hold the last real outcome of each product path (a completed visit, a visitor session, a
+     scope decision, a provider loss). A step's
+     outcome is read from here and from the authored documents — never from a field being present or a
+     button having been pressed, and a quickstart topic is credited only for the outcomes its own
+     instruction authors, so any unrelated edit cannot complete it. */
+  expReview: { auditions: 0, previews: 0, source: 'none', writes: 0, at: {}, peeks: 0, visit: null, visitor: null, scope: null, loss: null },
   /* realized flatness held while a reading is deactivated, so parking cannot move the eye */
   flatHold: null,
   /* browse/search context: query, page and focused place/relation. Never selection, never a standpoint. */
@@ -81,7 +105,7 @@ export const ctx = {
 
 export const W = (id) => byId(ctx.museum.walls, id);
 export const C = (id) => byId(ctx.museum.ceilings, id);
-export const thing = (id) => (id ? findThing(ctx.museum, id) : null);
+export const thing = (id) => (id ? findThing(ctx.museum, id) || (ctx.sceneSource?.subjects[id] ? {kind:'objects',item:ctx.sceneSource.subjects[id]} : null) : null);
 export const clone = (o) => JSON.parse(JSON.stringify(o));
 export const galleryName = (id) => byId(ctx.museum.galleries, id)?.name;
 

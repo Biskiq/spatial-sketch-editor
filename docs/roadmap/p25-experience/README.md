@@ -67,3 +67,21 @@ alongside the [final World design](../../../prototypes/world-experience-shell-ro
 Card/Deck composition and progressive Camera disclosure are fixed destination design;
 exact metrics, the remaining V2 usability experiments and implementation mechanisms
 remain later work. Promotion changes no T3 implementation gate.
+
+## Unified Experience V2 prototype (#113)
+
+**C1–C8 in-scope conformance complete; C9.1–C9.9 implemented and reviewed, awaiting MP3/MP4 owner acceptance (2026-10-07).**
+[Standalone conformance plan](./design/experience-v2-prototype/conformance-plan.md) ·
+[shared executable](../../../prototypes/spatial-authoring/README.md) ·
+[conformance evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) ·
+[C9 plan](./design/experience-v2-prototype/authoring-completeness-plan.md) ·
+[current C9 evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
+The earlier S0–S9 implementation and acceptance remain prior evidence, not C9 acceptance authority.
+
+MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. C9.4/C9.5 Travel/agency and C9.6–C9.9 revision/repair, rich fixture/coordination, Camera precision and observational walkthrough are implemented, with reviewed repairs, regressions and same-defect mutations. The completed bounded follow-up switches the shared Presenter by lens: World keeps A–F, Experience guides actual ordinary authoring before advanced work. It also requires A2's visitor Stop to match the observed capability handoff's target use and run. The owner-directed optional walkthrough correction is in verification: Next demonstrates the current task when on, or browses without a completion gate when off. Back/Skip remain source-neutral and Preview exposes no authoring walkthrough controls. Prior proof at `1f1e711535be3363f48024df2ec19ed3bcf27fc8` belongs to the preceding iteration; counts, exact executable provenance and limits live in the C9 evidence record.
+
+**MP3 and MP4 remain owner gates.** Browser rehearsal, automated tests and Presenter completion are evidence only. Travel and fresh repeated-Stop visits are owner-ratified; cursor/detour-pause policies remain trials. Experience Reset preserves independent World/Camera truth and shared history. Capability acceptance retains blocking ownership, disclosure, correspondence and reachability seams, with no six-QA specimen reconciliation.
+
+Detailed visual refinement belongs to the later, separately scoped and unstarted [Experience UX pruning and shell reconciliation plan](./design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md). Its post-C9 matrix proposes future homes for the implemented capabilities and authorizes no implementation here. The donor remains a runnable regression oracle; the finalized synthesis and boards remain retained design evidence. The missing P23B fixture is a separate repository-gate blocker.
+
+No T3 production implementation, phase closure, merge or Paper work is authorized by this prototype follow-up. Paper PA0–PA12 follows #113, before returning to F.

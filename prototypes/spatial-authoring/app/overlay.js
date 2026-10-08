@@ -65,7 +65,21 @@ export class Overlay {
   }
 
   setCls(e, cls) { if (e._cls !== cls) { e.setAttribute('class', cls); e._cls = cls; } }
-  setHtml(e, html) { if (e._html !== html) { e.innerHTML = html; e._html = html; } }
+  setHtml(e, html) {
+    if (e._html === html && !this.stale(e)) return;
+    e.innerHTML = html;
+    e._html = html;
+  }
+
+  // A pooled control's displayed value must never outlive the value it was rendered from. Typing writes
+  // the input's value property, not the markup, so a later render that produces the same markup would
+  // otherwise leave a dropped or declined draft on screen. The field being typed in is left alone.
+  stale(e) {
+    for (const i of e.querySelectorAll('input[value]')) {
+      if (i !== document.activeElement && i.value !== i.getAttribute('value')) return true;
+    }
+    return false;
+  }
 
   chip(key, x, y, html, cls = 'tape', attrs = {}) {
     // An editable number is a control: give it the same keyboard activation as any other button.
@@ -76,10 +90,14 @@ export class Overlay {
     e.style.top = `${y.toFixed(1)}px`;
     // A pooled label can be reassigned (an editable value becomes a reference or back), so a
     // wrapper attribute from its previous role must never survive into this frame.
-    for (const k of ['data-edit', 'data-sel', 'data-gap']) {
+    // Experience switches a pooled grip between an activation button and the one live gesture.
+    // World retains its established overlay metadata contract.
+    const previous = /\bexp-/.test(cls) ? (e._attrs || []) : [];
+    for (const k of new Set(['data-edit', 'data-sel', 'data-gap', ...previous])) {
       if (!(k in attrs) && e.hasAttribute(k)) e.removeAttribute(k);
     }
     for (const [k, v] of Object.entries(attrs)) if (k !== 'tag' && k !== 'pri' && e.getAttribute(k) !== String(v)) e.setAttribute(k, v);
+    if(/\bexp-/.test(cls))e._attrs = Object.keys(attrs).filter(k=>k!=='tag'&&k!=='pri');
     e._pri = /\bactive\b/.test(cls) ? Math.max(attrs.pri ?? 0, 96) : (attrs.pri ?? defaultPri(cls));
     return e;
   }

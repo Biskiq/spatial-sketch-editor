@@ -92,13 +92,17 @@ block 'OS preference at boot: reduced motion without changing speed' '
   check(q.state().reduced && S.osReduced && !S.reduceMotion && S.motion === "brisk", "boot preference");
   A.select("gwin"); await A.face("gwin"); await settle(); s7.reducedPose = pose();
   check(el("#caption").hidden, "reduced caption"); await A.closeAll(); await settle();'
+# The emulated media change reaches the page asynchronously, so poll the state it drives instead of
+# sleeping a fixed span that a loaded machine can outrun.
 agent-browser set media light no-preference >/dev/null
 block 'live OS change: normal travel reaches identical endpoint' '
-  await new Promise(r => setTimeout(r, 60)); check(!q.state().reduced && !S.osReduced, "live preference");
+  for (let i = 0; i < 100 && (q.state().reduced || S.osReduced); i++) await new Promise(r => setTimeout(r, 50));
+  check(!q.state().reduced && !S.osReduced, "live preference");
   await A.face("gwin"); await settle(); check(pose() === s7.reducedPose, "different endpoint");'
 agent-browser set media light reduced-motion >/dev/null
 block 'user override preserves OS preference and motion speed' '
-  await new Promise(r => setTimeout(r, 60)); el("#motionBtn").click(); el("#motionBtn").click(); await settle();
+  for (let i = 0; i < 100 && !S.osReduced; i++) await new Promise(r => setTimeout(r, 50));
+  el("#motionBtn").click(); el("#motionBtn").click(); await settle();
   check(q.state().reduced && !S.reduceMotion && S.motion === "brisk", "override canceled OS/speed");'
 qa_faults_ok 'no command or page faults'
 qa_browser_errors_ok 'no browser errors'

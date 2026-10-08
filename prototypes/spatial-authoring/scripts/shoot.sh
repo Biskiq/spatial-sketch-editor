@@ -37,7 +37,7 @@ shot exit-summary "A.editOnce(\"Garden window arch rise\",()=>A.applyOpening(\"g
 shot repair-preview "A.undo(); $reset"' A.select("panel"); A.repairTask("panel"); A.pickRepairWall("south"); A.declareRepair("s",3); A.declareRepair("y",1.6);'
 shot world-search "$reset document.querySelector(\"[data-act=find]\").click(); const i=document.querySelector(\"#finderInput\"); i.value=\"panel\"; i.dispatchEvent(new Event(\"input\",{bubbles:true}));"
 shot lens-parked 'document.querySelector("#finderInput").dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true})); await A.face("gwin"); await A.unrollTo(.5); A.switchLens("experience");'
-shot lens-foreign 'A.selectBridge("pres-highlights");'
+shot lens-foreign 'A.select("pres-highlights");'
 shot world-resume 'A.switchLens("world"); A.select("gwin");'
 agent-browser set viewport 1024 768 >/dev/null
 shot narrow-card 'await new Promise(r=>setTimeout(r,80)); document.querySelector("[data-act=sheet-card]").click();'

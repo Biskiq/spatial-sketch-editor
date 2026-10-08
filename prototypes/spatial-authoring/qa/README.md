@@ -1,4 +1,4 @@
-# World Authoring Prototype QA
+# Unified World and Experience Prototype QA
 
 The prototype's acceptance lives beside its executable here, not in a design folder. Each script
 owns its own static server for **this** checkout (an ephemeral port), waits for real readiness, and
@@ -14,10 +14,24 @@ qa/run-all.sh shell        # the World shell's composition: one head, Index, Car
 qa/run-all.sh precision    # stage S3: spatial tasks, in-place measurement, Precision
 qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the Details grammar
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
-qa/run-all.sh lens         # stage S6: the lens, parked work, and explicit Resume from the bridge
+qa/run-all.sh lens         # stage S6: the lens, parked work, and World parking and refusal grammar
+qa/run-all.sh experience   # stage S7: Experience wiring and the visitor's isolated preview
+qa/run-all.sh conformance  # V2 product journeys and visible Camera/Set/coordination geometry
+qa/run-all.sh creator      # C9.1: standalone creator loop, domain preservation and compact reach
+qa/run-all.sh composition  # C9.2/C9.3: composition execution and compact Guide
+qa/run-all.sh revision     # C9.6: revision, removal, repair and provider capability loss
+qa/run-all.sh rich         # C9.7: the rich example, the native Wall, retained choices and local coordination
+qa/run-all.sh precision-c9 # C9.8: the precise Camera, its deliberate property depth and one live tape
+qa/run-all.sh presenter    # C9.9: Experience topics, provenance, advisory outcomes and ungated navigation
+qa/run-all.sh walkthrough  # shared Presenter: lens isolation and actual Q1–Q8 author workflow (also at 1024×700)
+qa/run-all.sh walkthrough-demo # optional Next demonstrations Q1–Q8/A1–A10, cancellation, Preview and Undo
+qa/run-all.sh visitor      # visitor controls, effects, Gates and isolation
+qa/run-all.sh reconciliation # saved controls and narrow Guide/Card/precision/visitor
+qa/run-all.sh continuity   # stage S8: both-directions parking, neutral Resume, Preview return, history
 qa/run-all.sh responsive   # stage S7: viewport/DPR, keyboard controls and live reduced motion
 qa/run-all.sh correctness  # numerical validators, summary history, nested parking and cancellation
-qa/mutation-check.sh       # protected regressions on disposable copies
+qa/mutation-check.sh       # protected regressions on disposable copies (World, V2, C9.2/C9.3)
+qa/composition-mutation-check.sh # C9 composition/runtime/walkthrough obligations (also chained by mutation-check)
 qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accepted baseline changed)
 ```
 
@@ -42,7 +56,10 @@ What the harness knows about keys, measured rather than assumed:
 - `agent-browser press <printable key>` does not release the key: the page then receives thousands of
   keydowns a second, forever, so the key's command re-runs whenever the state changes (close a reading
   and watch it open again). `qa_press` therefore dispatches the keydown itself for a single-character
-  key, and dispatches Escape on the focused element after native Escape stalls, and keeps native Enter, Tab and arrows.
+  key. Escape uses a focused dispatch after native Escape stalls. Repair reentry also exposed a
+  retained native Enter accepting the next candidate, so `qa_press Enter` uses the same single
+  focused keydown, uncanceled button activation and keyup. Tab/arrows retain native default
+  behavior. Assertions/tolerances are unchanged.
 - With a live knife aim on screen, `press` hangs for about 30 seconds and drops the key. Where that
   matters, `qa_key_dispatch` dispatches the keydown explicitly instead.
 - A press can therefore also land after the eval that followed it, which is why key-driven assertions
@@ -81,7 +98,11 @@ What the harness knows about keys, measured rather than assumed:
   The Instrument overlays the stage rather than taking layout space, so the stage rect is constant
   across all 50 checkpoints and invoking work cannot change the fit of a reading.
 - B7–B9 preserve the originally unselected Section subject as null; only these three expectations changed during S8, independently protected by correctness parking checks.
-- Screens are captures, never the assertion mechanism.
+- Raster equality is not a contract. **Written V2 visual conformance is a blocking acceptance gate**:
+  review all six full-window states against the original boards, with seven explicit dimensional
+  verdicts and the required comparison pairs. Automated visibility, hit reachability and geometry
+  assertions support that review; they do not substitute for it. Required L0/L1/L2 density,
+  spatial instruments and semantic control hierarchy cannot be waived as observational.
 
 ## Coverage limits (recorded, not hidden)
 
@@ -98,7 +119,12 @@ What the harness knows about keys, measured rather than assumed:
    evidence, not assertions.
 6. Shell composition is asserted as geometry and inventory (what exists, where it sits, which verbs a
    subject offers), not as appearance: colour, type and spacing are the design system's business and
-   are reviewed by eye. The S7 axis also measures narrow desktop and DPR2.
+   are reviewed by eye. The World responsive axis measures narrow desktop and DPR2; reconciliation owns narrow Experience.
+7. [Conformance manifest](./CONFORMANCE-MANIFEST.md) owns the new product recipes. Fresh captures,
+   read-only state/source sidecars and full-board pairs live in `screens/experience-conformance/`;
+   the [new conformance review](./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) owns their verdicts.
+   `screens/experience-v2/` and [S0–S9 acceptance](./EXPERIENCE-ACCEPTANCE.md) remain historical;
+   their prior pass labels confer no replacement acceptance.
 
 ## Files
 
@@ -115,8 +141,19 @@ What the harness knows about keys, measured rather than assumed:
 | `precision-check.sh` | stage S3: Look's three routes, the retained first gesture, in-place measurement, one active surface, Precision and its refusal, and a number reached where no handle is legible |
 | `browse-check.sh` | stage S4: one bounded dense list with paging and an honest register, browse/context that never selects or moves, Select that changes identity only, Open location/Bring into view/Include/Reveal/Face each on the named record, and Details Expand/Focus/Select/Open task as four distinct effects |
 | `repair-check.sh` | stage S5: the quiet rest warning for an unresolved reference, the locator that is never a host, Repair's explicit wall pick and declared station/height, the fixture's own refusals, one accepted edit with Undo/Redo moving the reference and not the view, canceled and left-unresolved work writing nothing, and Owner/Source/Reach as supported facts |
-| `lens-check.sh` | stage S6: crossing lenses parks World work as an inactive record with the realized eye and FOV unmoved, the read-only bridge's two identities and its named refusals for World work and Search, the foreign Card on return, contextual Resume explained locally for a changed selection or a changed/missing target, Resume as a fresh invocation with a fresh return context, and one cancellation covering an open draft and a live aim |
+| `lens-check.sh` | World parking semantics, inactive teardown, neutral Resume, canonical/foreign identities, World/Search refusal grammar, target/selection revalidation and canceled World writers/aims; both-direction/Preview/history ownership is below |
+| `experience-check.sh` | ordinary authoring, shared history, unordered Set, Guide/Seam, 2-of-3 coverage, Camera reach/detachment and stable coordination wiring |
+| `visitor-check.sh` | outside-product example/Presenter, visitor takeover, independent Piano, visible Switch → Light session effect, keyboard Gate parity, captions/cues, exploration/rejoin and frozen source/history |
+| `continuity-check.sh` | both-direction parking, neutral Resume, canceled live framing drag, exact Preview/accepted-inspection return, interleaved history and inert World footer controls |
+| `conformance-check.sh` | actual product journeys QA-1…6, no-View Preview, derived Auto/Capture, repeated Meaning scope, local entry, real observer routes and anchors, stable mirrored stations, shared route scope, spatial precision, neutral Resume/fresh return, Escape/lost capture; permitted authored source loaders only |
+| `creator-check.sh` | C9.1 from a retained non-empty Camera baseline: Reset preserving World/Camera/history, the eight-action subject→explanation→Capture→operate→Use→Preview loop through real controls, update-not-duplicate, Escape cancellation, real-clock Preview and exact return, two labelled loads plus aggregate Undo, and compact 1024 controls |
+| `composition-check.sh` | C9.2/C9.3: organization independent of activation/boundary, Hold and later-entry cue policy, fresh repeated-Stop visits, explicit cue/Gate block and release, opt-in View suggestions, transcript/captions, compact Peek Stop editing with advanced dwell/Gate, and direct Preview Guide |
+| `revision-check.sh` | C9.6/J8: rename once, Duplicate as an independent identity, Make local/Link, a descriptor replacement that discloses its real reach and waits as one merged proposal, a local fork that leaves the linked original alone, removal that keeps definitions/Views/references repairable, provider profile gain/loss with a routed repair, and a declared-but-unrealized capability refused by every writer |
+| `rich-check.sh` | C9.7: the loaded example's World Wall unroll through its own evaluator (advanced on the visitor's own clock, never on wall time), Return resuming without another Stop entry, an authored Hold whose duration is real, the station-only Activity that never arms on entry, a rebound invocation refused rather than run twice, the retained choice whose destination left with its Presentation, and its local repair/removal |
+| `precision-c9-check.sh` | C9.8: the precise Camera's property depth — one live tape, every grip hit-testable on seats that do not cover each other, a declined draft that never stays on screen, and the Camera Card that owns the full list |
+| `presenter-check.sh` | C9.9: eighteen topics with real predicates, explicit provenance, loaded content crediting no quickstart topic, a topic credited only by every outcome its own instruction authors on the moment it assesses (an explanation without the framing it asks for is not Q2, and a Capture on another moment never stands in for it), a visit ledger that opens with the Stop it entered and arrives only where the Camera arrives, a Travel credited for its own route's arrival even after ten destination View cues, a capability sequence credited for a handover that really began and the carried run the visitor stopped (a dependent the visit left behind is none), entry policies credited for every Stop Auto entered between readings, navigation that prepares nothing, and read-only guidance during Preview |
+| `reconciliation-check.sh` | Head/Index/owner/reach, saved Stop controls/Undo and 1024×768 Guide/Card/precision/visitor reachability without Camera refit |
 | `responsive-check.sh` | S7 viewport/DPR, sheet focus and pose stability, keyboard aim/fields/refusal, live OS reduced motion and identical endpoints |
 | `correctness-check.sh` | remaining numerical and nested-lifecycle obligations, no duplicate broad shell suite |
-| `mutation-check.sh` | same-defect replacement proof, disposable copies only |
+| `mutation-check.sh` / `conformance-mutation-check.sh` / `composition-mutation-check.sh` | same-defect replacement proof in disposable copies: World plus seven V2 boundaries and the C9 obligations, including the C9.6–C9.9 wiring — a silent merged rebind, an unrealized capability authored as visitor work, an unresolved choice followed before parking, any write crediting a quickstart topic, a visit ledger that opens without the Stop it entered, a topic charged for framing it never authored, any completed work crediting the capability sequence, configured entry kinds read as executed ones, and a destination read as arrived from the last View the Camera stood at, a topic charged for framing it never authored on the moment it assesses, a dependent the visit disarmed counted as a handover, an Auto visit's Stops invisible to the ledger, and a completed Travel lost to a cue the destination itself started, entry arrival evicted from a diagnostic window, Return mistaken for another entry, and narration completion credited as a capability handover |
 | `run-all.sh` | the axis driver |

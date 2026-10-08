@@ -106,7 +106,7 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
 .lens .lens-on, .lens button.on { background: var(--instrument); color: var(--ink); }
 .lens button:hover { color: var(--ink); }
 .lens button:focus-visible { outline: 2px solid var(--sel-edge); outline-offset: 1px; }
-/* the bridge's own glyph, and the parked-work block: a relation between two documents, not a warning */
+/* the Presentation glyph, and the parked-work block: a relation between two documents, not a warning */
 .glyph.pres { border-width: 1.5px 1.5px 3px; }
 .relation.parked { background: var(--recess); color: var(--ink-2); box-shadow: inset 3px 0 0 var(--ochre-deep); }
 .relation.parked .lnk { color: var(--ink); }
@@ -506,7 +506,9 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .btn { border: 1px solid var(--rule); background: var(--instrument); border-radius: 3px; padding: 5px 10px; font-weight: 600; font-size: var(--tmd); }
 
 /* ---------- the Card ---------- */
-.card { grid-area: card; overflow: auto; border-left: 1px solid var(--rule); padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+.card { grid-area: card; min-height: 0; overflow: auto; border-left: 1px solid var(--rule); padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+/* Card depth scrolls inside its landmark; controls never shrink or spill beneath the status rail. */
+.card > * { flex-shrink: 0; }
 .c-head { display: flex; flex-direction: column; gap: 2px; }
 .c-k { font: 600 var(--txs) var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 .c-t { font: 700 var(--t2xl)/1.1 var(--display); letter-spacing: -0.015em; }
@@ -658,6 +660,17 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .j-dots button.done { background: #56625D; }
 .j-dots button.on { background: var(--tape); }
 .j-count { font: 500 var(--txs) var(--mono); color: #7E8A85; }
+.j-outcome { margin: 0; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
+/* The demonstration's own outcome is stated, never styled as success: a refusal reads as a refusal. */
+.j-outcome[data-example-demonstration][data-state=failed] { color: #E4A08C; }
+.j-outcome[data-example-demonstration][data-state=demonstrated],
+.j-outcome[data-example-demonstration][data-state=complete] { color: #A9D3B4; }
+.j-walkthrough { display: flex; align-items: center; gap: 8px; font-size: var(--tsm); line-height: 1.45; color: #B9C4BF; }
+.j-walkthrough button { flex-shrink: 0; border: 0; background: #222A27; color: #fff; border-radius: 3px; padding: 5px 8px; font-size: var(--tsm); }
+.j-nav > button:disabled { opacity: .45; cursor: default; }
+.journeys[data-lens="experience"] { top: 94px; bottom: auto; max-height: calc(100vh - 250px); overflow: auto; }
+.journeys[data-lens="experience"] .j-count { margin-left: auto; }
+body[data-lens="experience"] .j-toggle { top: 94px; bottom: auto; }
 
 body.shot .journeys, body.shot .j-toggle { display: none !important; }
 
@@ -687,6 +700,8 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
   .doc { padding-left: 0; border-left: 0; }
   .trail-wrap { flex-basis: 190px; }
   .j-toggle, .journeys { right: 12px; }
+  body[data-lens="experience"].sheet-card .journeys,
+  body[data-lens="experience"].sheet-card .j-toggle { left: 12px; right: auto; }
   body.sheet-index .index, body.sheet-card .card {
     display: flex; flex-direction: column; position: fixed; top: 40px; bottom: 26px; z-index: 24;
     background: var(--chassis); box-shadow: 0 18px 44px rgba(23, 32, 29, .38);
@@ -700,3 +715,183 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
 /* The Motion control in the view bar does what the system preference does, so the choice is
    available without changing an OS setting. */
 body.reduce-motion * { transition: none !important; }
+/* Experience meaning shares the Card landmark and existing shell material. */
+body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0 1fr 0; }
+.visitor-preview > .head, .visitor-preview > .index, .visitor-preview > .card, .visitor-preview > footer, .visitor-preview .stage-tools, .visitor-preview #instrument, .visitor-preview #truth, .visitor-preview #ovHtml, .visitor-preview #ovSvg, .visitor-preview #where { display: none !important; }
+#visitorSurface { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(600px, 90%); padding: 18px; color: #f8f5ea; background: #242623ed; border-radius: 8px; }
+.visitor-title { font-size: 22px; }
+.contribution, .offer-draft, .stop-details { margin: 10px 14px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; font-size: 12px; }
+.contribution textarea { width: 100%; min-height: 70px; margin: 8px 0; font: inherit; }
+.offer-draft label, .stop-details label, .contribution details label { display: flex; justify-content: space-between; gap: 8px; margin: 8px 0; }
+.offer-draft select { max-width: 165px; }
+.cue-select { display: block; font-size: 10px; margin: 6px 0; }
+.cue-select select { width: 100%; }
+.visitor-preview #visitorSurface { z-index: 20; max-height: 48%; overflow: auto; }
+.visitor-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#visitorSurface .verb { width: auto; display: inline-flex; margin: 4px; padding: 6px 10px; color: #f6f2e5; border-color: #6b6a5e; }
+.visitor-caption { min-height: 24px; color: #f1dbad; }
+#visitorSurface [disabled] { opacity: .45; }
+
+/* Experience uses the existing Head row; no Stage geometry changes with lens context. */
+.doc { min-width: 0; gap: 8px; }
+.active-experience { font-size: var(--txs); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 155px; }
+.head-preview { flex-shrink: 0; font: inherit; font-size: var(--tsm); padding: 4px 8px; background: var(--instrument); border: 1px solid var(--rule); border-radius: 3px; }
+.experience-presenter { position: fixed; top: 48px; right: 340px; z-index: 40; width: 265px; padding: 8px; background: var(--chassis); border: 1px dashed var(--ink-3); border-radius: 4px; font-size: var(--txs); }
+.experience-presenter summary { cursor: pointer; }
+body.shot .experience-presenter, .visitor-preview .experience-presenter { display: none !important; }
+.exp-deck input, .exp-deck select, .stop-details select { max-width: 100%; min-width: 0; }
+.beat-strip { flex-wrap: wrap; }
+.beat input { width: 60px; }
+@media (max-width: 1280px) { .head { gap: 8px; } .doc-name { font-size: var(--tsm); } .active-experience { max-width: 125px; } }
+@media (max-width: 1060px) {
+  .active-experience { max-width: 100px; }
+  .experience-presenter { left: 12px; right: auto; }
+  .exp-deck { left: 12px; right: 12px; }
+  .seam-bookends { grid-template-columns: 1fr 1.1fr 1fr; gap: 6px; }
+  .seam-bookends article { min-width: 0; padding: 6px; }
+}
+
+.stop-card.compact { min-width: 95px; max-width: 125px; }
+.stop-summary { max-width: 165px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Experience consumes PLATE roles. Camera domain accent is the existing §7 domain token;
+   action surfaces, selection, manipulation, focus and refusal reuse the shared prototype tokens. */
+:root { --camera: #347d89; }
+body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); color:var(--ink); }
+.exp-action { font:500 var(--tsm) var(--ui); color:var(--ink); background:var(--instrument); border:1px solid var(--rule); border-radius:3px; padding:5px 8px; cursor:pointer; }
+.exp-action:hover:not(:disabled) { background:var(--chassis-hover); border-color:var(--ink-3); }
+.exp-action.primary { background:var(--ink); color:var(--instrument); border-color:var(--ink); }
+.exp-action.destructive { background:var(--refuse-bg); color:var(--refuse-ink); border-color:var(--refuse-edge); }
+.exp-action.reference { background:transparent; border-color:transparent; padding:2px 0; text-align:left; }
+.exp-action[aria-pressed="true"] { background:var(--recess); border-color:var(--ink-3); box-shadow:inset 0 -2px var(--ink-2); }
+.exp-action:disabled { opacity:.45; cursor:default; }
+.exp-action:focus-visible,.set-node:focus-visible,.peek-stop:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+.exp-label { display:block; margin:8px 16px; font-size:var(--tsm); }
+.exp-label input,.exp-label textarea { width:100%; margin-top:4px; padding:6px; border:1px solid var(--rule); background:var(--instrument); font:inherit; color:var(--ink); border-radius:3px; }
+.exp-label textarea { min-height:64px; resize:vertical; }
+.exp-focus,.exp-fact { margin:10px 16px; font-size:var(--tmd); line-height:1.5; }
+.exp-set { margin:8px 16px; display:flex; flex-direction:column; gap:6px; }
+.exp-view { display:flex; align-items:center; gap:8px; font-size:var(--tsm); }
+.exp-view .reference { color:var(--camera); flex:1; }
+.exp-view span { color:var(--ink-3); font-size:var(--txs); }
+.exp-more { margin:12px 16px; font-size:var(--tsm); }
+.exp-more summary { cursor:pointer; color:var(--ink-2); }
+.exp-deck { position:absolute; bottom:12px; left:12px; right:12px; z-index:35; padding:10px; background:var(--chassis); border:1px solid var(--rule); border-radius:3px; color:var(--ink); }
+/* Expanded editorial work owns shell breadth without resizing the shared Stage/Camera. */
+.exp-deck:not(.ordinary) { position:fixed; bottom:38px; }
+/* While that band is fixed over the bottom of the viewport, the Card keeps its own content scrollable
+   clear of it: identity, actions and details stay reachable instead of hiding behind the band. */
+body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px); }
+.exp-deck.ordinary { display:flex; align-items:center; justify-content:space-between; gap:12px; height:34px; padding:3px 10px; font-size:var(--txs); }
+.peek-occurrences { display:flex; gap:12px; }
+.peek-stop { background:none; border:0; font:500 var(--txs) var(--ui); color:var(--ink-2); cursor:pointer; }
+.peek-stop.selected { color:var(--sel-edge); font-weight:700; }
+.deck-head { display:flex; align-items:center; justify-content:space-between; font-size:var(--tsm); margin-bottom:6px; }
+.stop-strip { display:flex; align-items:center; gap:4px; overflow-x:auto; }
+.stop-strip>.seam-link { flex:0 0 10px; width:10px; padding:0; }
+.stop-card { flex:1 0 90px; min-width:90px; padding:8px; border:1px solid var(--rule); background:var(--instrument); font-size:var(--tsm); border-radius:3px; }
+.stop-card .exp-action { width:100%; }
+.stop-card.compact { flex:0 0 50px; min-width:50px; max-width:50px; }
+.stop-card.compact .reference { font-size:var(--txs); }
+.stop-card.density-summary { flex:1 0 98px; min-width:94px; max-width:115px; }
+.stop-card.expanded { flex:3 0 330px; min-width:330px; max-width:380px; }
+.stop-card.selected { border-color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); }
+.stop-card small,.scope-note { font-size:var(--txs); color:var(--ink-3); }
+.stop-summary { margin:5px 0; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.stop-thumbnail { float:right; width:44px; height:40px; color:var(--ink-3); }
+.occurrence-content { display:grid; grid-template-columns:1fr 1.1fr; gap:10px; }
+.occurrence-content p { margin:6px 0; line-height:1.35; }
+.occurrence-content .exp-action { width:auto; }
+.set-constellation { position:relative; width:100%; min-width:175px; height:145px; margin:4px 0; }
+.set-constellation svg { position:absolute; width:100%; height:100%; }
+.set-ray { fill:none; stroke:var(--camera); stroke-width:.6; stroke-dasharray:2 3; }
+.set-focus { fill:var(--ink-3); }
+.set-node { position:absolute; transform:translate(-50%,-50%); font:500 var(--t2xs) var(--ui); color:var(--camera); background:var(--instrument); border:1px solid var(--rule); border-radius:3px; padding:3px; white-space:nowrap; cursor:pointer; }
+.set-node small { display:block; font-size:8px; }
+.set-node.selected { border-color:var(--sel-edge); }
+.exp-view-pin { color:var(--camera); border:1px solid var(--camera); background:var(--instrument); font-size:var(--tsm); padding:4px 7px; }
+.exp-view-pin small { display:block; font-size:var(--t2xs); }
+.exp-view-pin.selected,.exp-stop-pin.selected { border:2px solid var(--sel-edge); background:var(--sel-soft); }
+.ov-svg .exp-view-glyph { fill:var(--camera); fill-opacity:.2; stroke:var(--camera); stroke-width:1; }
+.ov-svg .exp-view-origin { fill:var(--camera); stroke:var(--instrument); stroke-width:1; }
+.exp-focus-ray { fill:none; stroke:var(--camera); stroke-width:1; stroke-dasharray:4 5; opacity:.7; }
+.exp-leader { fill:none; stroke:var(--ink-3); stroke-width:1; }
+.exp-stop-pin { width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--instrument); border:2px solid var(--instrument); font:600 var(--tsm) var(--ui); padding:0; }
+.exp-derived { color:var(--view-ink); background:var(--view-soft); border:1px dashed var(--view); }
+.seam-link { border:0; background:none; color:var(--ink-3); cursor:pointer; font-size:var(--tmd); }
+.seam-bookends { display:grid; grid-template-columns:minmax(180px,1fr) minmax(0,2.4fr) minmax(160px,1fr); gap:10px; font-size:var(--tsm); }
+.seam-bookends article { padding:8px; background:var(--instrument); border:1px solid var(--rule); border-radius:3px; min-width:0; }
+.seam-bookends h3 { font:600 var(--tlg) var(--display); margin:4px 0; }
+.seam-bookends p { margin:5px 0; }
+.origin-row { display:flex; justify-content:space-between; align-items:center; gap:5px; margin:4px 0; font-size:var(--txs); }
+.exp-route-path { fill:none; stroke:var(--camera); stroke-width:1.5; }
+.exp-route-path.working { stroke-width:2.5; }
+.exp-anchor { color:var(--camera); background:var(--instrument); border:1px solid var(--camera); cursor:grab; padding:2px 5px; }
+.exp-anchor.working { border-color:var(--sel-edge); color:var(--sel-edge); }
+.exp-gap { color:var(--refuse-ink); background:var(--refuse-bg); border:1px solid var(--refuse-edge); font-size:var(--txs); }
+.exp-sample { fill:var(--camera); font-size:16px; }
+.exp-station { color:var(--camera); background:var(--instrument); border:1px solid var(--camera); font-size:var(--t2xs); padding:3px; }
+.exp-station.active { border-color:var(--sel-edge); color:var(--sel-edge); }
+#experienceInstrument { position:absolute; top:48px; left:12px; right:12px; z-index:36; pointer-events:none; font-size:var(--tsm); }
+#experienceInstrument button { pointer-events:auto; }
+.camera-toolbar { display:flex; align-items:center; gap:8px; }
+.camera-toolbar b { margin-right:auto; background:var(--instrument); padding:6px 8px; border:1px solid var(--camera); border-radius:3px; }
+.camera-postures,.camera-grips { display:inline-flex; gap:4px; margin-top:6px; padding:4px; background:var(--chassis); border:1px solid var(--rule); border-radius:3px; }
+.camera-grips { float:right; flex-wrap:wrap; max-width:380px; }
+.exp-frame-gate { fill:none; stroke:var(--camera); stroke-width:2; }
+.exp-horizon { fill:none; stroke:var(--camera); stroke-width:1; stroke-dasharray:7 5; }
+.exp-target { fill:none; stroke:var(--camera); stroke-width:1.5; }
+.exp-frustum { fill:var(--open-soft); fill-opacity:.1; stroke:var(--camera); stroke-width:1.5; }
+.exp-frustum-ray { fill:none; stroke:var(--camera); stroke-width:1; }
+.exp-camera-grip { border-radius:50%; background:var(--instrument); color:var(--camera); border:1px solid var(--camera); width:17px; height:17px; padding:0; cursor:pointer; }
+.exp-camera-grip.active { background:var(--sel); border:2px solid var(--sel-edge); color:var(--ink); cursor:ew-resize; }
+.exp-camera-grip.active[data-grip="frameH"],.exp-camera-grip.active[data-grip="el"] { cursor:ns-resize; }
+.exp-active-tape { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; }
+.numeric-tape { display:flex; align-items:center; gap:6px; padding:4px 7px; background:var(--instrument); border:1px solid var(--sel-edge); color:var(--ink); border-radius:3px; font:500 var(--txs) var(--mono); white-space:nowrap; }
+.numeric-tape input { width:55px; font:inherit; color:var(--ink); border:1px solid var(--rule); background:var(--instrument); padding:2px; }
+.ask-rule { margin:12px 16px; padding:10px; border:1px solid var(--camera); background:var(--instrument); font-size:var(--tsm); }
+.ask-rule p { line-height:1.4; }
+.ask-rule .exp-action { margin:4px 3px 0 0; }
+.coordination-strip { padding-top:8px; margin-top:8px; border-top:1px solid var(--rule); font-size:var(--tsm); }
+.coordination-strip label { display:inline-flex; gap:6px; margin:4px; }
+.beat-strip { display:flex; flex-wrap:wrap; gap:6px; }
+.beat { border:1px solid var(--rule); padding:5px; background:var(--instrument); }
+#visitorSurface .exp-action { margin:4px; }
+@media(max-width:1060px){.stop-card.expanded{flex-basis:300px}.exp-deck{left:12px;right:12px}.camera-grips{max-width:220px}.seam-bookends{gap:5px}.seam-bookends article{padding:5px}}
+.seam-unrelated { display:flex; gap:12px; float:left; width:26px; flex-direction:column; margin-right:8px; }
+.station-projection { display:grid; grid-template-columns:44px 1fr; align-items:center; gap:4px; }
+.station-projection>span { font-size:var(--txs); color:var(--ink-3); }
+.station-lane { position:relative; height:36px; margin:0 36px; border-top:1px solid var(--camera); }
+.station-tick { position:absolute; transform:translate(-50%,-50%); top:0; background:none; border:0; color:var(--camera); cursor:pointer; font:500 var(--tsm) var(--ui); }
+.station-tick small { display:block; white-space:nowrap; font-size:var(--t2xs); }
+.station-tick.active { color:var(--sel-edge); font-weight:700; }
+.temporal-lane { height:28px; position:relative; margin:0 36px; border-top:1px solid var(--rule); }
+.coord-beat,.coord-hold { position:absolute; top:1px; transform:translateX(-50%); white-space:nowrap; background:var(--instrument); font:500 var(--t2xs) var(--ui); color:var(--ink); border:1px solid var(--rule); padding:3px; }
+.coord-beat small { margin-left:4px; }
+.coord-beat.active { border-color:var(--sel-edge); }
+.coord-hold input { width:45px; border:1px solid var(--rule); background:var(--instrument); font:inherit; }
+.coord-actions { display:flex; align-items:center; gap:5px; margin-top:5px; flex-wrap:wrap; }
+/* Local Seam actions and context remain shallow as coordination is disclosed. */
+.exp-deck .c-acts { flex-direction:row; flex-wrap:wrap; margin:5px 0; }
+.exp-deck .exp-action { width:auto; }
+.exp-deck .stop-card>.exp-action.reference { display:block; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.exp-deck .seam-bookends { font-size:var(--txs); }
+.exp-deck .seam-bookends article { padding:6px; }
+.exp-deck .seam-bookends .c-acts { gap:4px; }
+.exp-deck .seam-bookends p { margin:4px 0; }
+.exp-deck .seam-instrument { line-height:1.25; }
+.exp-deck.coordination .seam-instrument p { display:none; }
+.exp-deck.coordination .seam-bookends { font-size:var(--t2xs); }
+.exp-deck.coordination .origin-row .exp-action { padding:3px 5px; }
+.exp-deck.coordination .coordination-strip { padding-top:5px; margin-top:5px; }
+.exp-deck.coordination .station-lane { height:25px; }
+.exp-deck.coordination .temporal-lane { height:24px; }
+.exp-deck.coordination .origin-row { margin:2px 0; }
+.exp-station.active { background:var(--instrument); box-shadow:0 0 0 1px var(--sel-edge); border-color:var(--sel-edge); color:var(--sel-edge); }
+
+.exp-deck .coordination-strip .deck-head { flex-wrap:wrap; gap:5px; }
+.exp-deck .seam-instrument .seam-route-summary { display:block; }
+@media(max-width:1060px){.exp-deck .seam-bookends{grid-template-columns:minmax(150px,1fr) minmax(0,2.4fr) minmax(130px,1fr)}}
+
+.hold-duration { position:absolute; top:5px; height:12px; background:var(--ink-3); opacity:.35; pointer-events:none; }
+.coord-hold { z-index:1; }

@@ -52,6 +52,7 @@ qa_ok "and keeps the selection" "$(qa_jsv 'window.__me.qa.state().sel')" "pears"
 echo "-- facing the Garden window"
 qa_js "(() => { const A = window.__me.A; A.select('gwin'); A.face('gwin'); return 'ok'; })()" >/dev/null
 qa_js "window.__me.qa.idle()" >/dev/null
+qa_frames
 qa_ok "setup: facing the Garden window" "$(qa_jsv 'window.__me.qa.reading()')" "Facing Garden window"
 
 echo "-- a real handle drag, released"

@@ -1,0 +1,39 @@
+ M docs/operations/current.md
+ M docs/roadmap/p25-experience/README.md
+ M docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md
+ M docs/roadmap/p26-spatial-depth/README.md
+ M docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md
+ M prototypes/README.md
+ M prototypes/spatial-authoring/IMPLEMENTER-REFERENCE.md
+ M prototypes/spatial-authoring/README.md
+ M prototypes/spatial-authoring/app/actions.js
+ M prototypes/spatial-authoring/app/camera-evaluation.js
+ M prototypes/spatial-authoring/app/experience-draw.js
+ M prototypes/spatial-authoring/app/experience-model.js
+ M prototypes/spatial-authoring/app/experience-runtime.js
+ M prototypes/spatial-authoring/app/experience-ui.js
+ M prototypes/spatial-authoring/app/experience.js
+ M prototypes/spatial-authoring/app/main.js
+ M prototypes/spatial-authoring/app/navigation.js
+ M prototypes/spatial-authoring/app/overlay.js
+ M prototypes/spatial-authoring/app/stage.js
+ M prototypes/spatial-authoring/app/ui.js
+ M prototypes/spatial-authoring/index.html
+ M prototypes/spatial-authoring/qa/README.md
+ M prototypes/spatial-authoring/qa/continuity-check.sh
+ M prototypes/spatial-authoring/qa/experience-check.sh
+ M prototypes/spatial-authoring/qa/interaction-check.sh
+ M prototypes/spatial-authoring/qa/lib.sh
+ M prototypes/spatial-authoring/qa/mutation-check.sh
+ M prototypes/spatial-authoring/qa/reconciliation-check.sh
+ M prototypes/spatial-authoring/qa/run-all.sh
+ M prototypes/spatial-authoring/styles/app.css
+?? docs/operations/checkpoints/experience-v2-conformance-evidence/
+?? docs/operations/checkpoints/experience-v2-conformance.md
+?? prototypes/spatial-authoring/app/conformance-fixture.js
+?? prototypes/spatial-authoring/qa/CONFORMANCE-MANIFEST.md
+?? prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
+?? prototypes/spatial-authoring/qa/conformance-check.sh
+?? prototypes/spatial-authoring/qa/conformance-mutation-check.sh
+?? prototypes/spatial-authoring/screens/experience-conformance/
+?? prototypes/spatial-authoring/tests/camera-conformance.test.mjs

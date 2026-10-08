@@ -5,9 +5,13 @@ import { ease } from './stage.js';
 import * as A from './actions.js';
 import { applyField } from './ui.js';
 import { cancelProposal } from './cancel.js';
+import * as E from './experience.js';
+import { runExperienceStep } from './experience-walkthrough.js';
+import { onCancel } from './cancel.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const html = (el, value) => { if (el._presenterHtml !== value) { el.innerHTML = value; el._presenterHtml = value; } };
 const idle = async () => { await new Promise((r) => setTimeout(r, 30)); while (S.busy) await new Promise((r) => setTimeout(r, 30)); };
 
 function edit(label, fn) {
@@ -147,41 +151,160 @@ export const JOURNEYS = [
 ];
 
 let J = 0, I = 0;
+let walkthrough = true, experienceRun = null;
+const hasAuthoringDraft = () => !!(S.pending || S.busy || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expRebindAsk || S.expCaptureAsk || S.expOfferDraft);
+onCancel(reason => { if (experienceRun && ['reset', 'esc'].includes(reason)) experienceRun.cancelled = true; }, 14, 'Presenter walkthrough');
 
-function render() {
+// Next is never gated by the demonstration, including when a task cannot complete: a refused or failed
+// task is reported where the reviewer is reading and the cursor still advances, while the outcome
+// predicates keep earning their own topics from real product results.
+// Which outcome Next produced is decided from what the product did, and the record is written before the
+// panel renders, so what the reviewer reads is the attempt they just made.
+async function experienceNext() {
+  if (experienceRun) return;
+  const i = S.experiencePresenter || 0, step = E.presenterSteps()[i];
+  const draft = hasAuthoringDraft(), credited = E.presenterCredit(step).credited;
+  if (walkthrough && !S.visitor && !draft && !credited) {
+    const job = { cancelled: false, lens: 'experience' }; experienceRun = job;
+    const current = () => !job.cancelled && S.lens === job.lens && (S.experiencePresenter || 0) === i;
+    renderJourneys();
+    let ran = false, failure = null;
+    try {
+      ran = (await runExperienceStep(step.title.split(' · ')[0], { current, lens: which => {
+        job.changingLens = true;
+        try { A.switchLens(which); job.lens = S.lens; } finally { job.changingLens = false; }
+      } })) === true;
+    } catch (error) {
+      failure = error.message;
+      if (current()) A.setStatus(error.message, 'refuse');
+    } finally { experienceRun = null; }
+    const stopped = !current();
+    E.recordDemonstration(step.title, E.demonstrationOutcome({ stopped, error: failure, ran }));
+    renderJourneys();
+    if (stopped) return;
+  } else {
+    E.recordDemonstration(step.title, E.demonstrationOutcome({ visitor: !!S.visitor, walkthrough, draft, complete: credited }));
+  }
+  E.presenterNext();
+  if (i === E.presenterSteps().length - 1) $('#journeys').classList.remove('open');
+  renderJourneys();
+}
+
+// One Presenter chrome and controller, with lens-owned content. World keeps its scripted demonstrations;
+// Experience optionally demonstrates the current task through the existing product commands.
+export function renderJourneys() {
+  const panel = $('#journeys');
+  if (!panel) return;
+  const experience = S.lens === 'experience';
+  if (experienceRun && !experienceRun.changingLens && S.lens !== experienceRun.lens) experienceRun.cancelled = true;
+  panel.dataset.lens = S.lens;
+  panel.classList.toggle('presenter-visiting', !!S.visitor);
+  html($('#jToggle'), `${experience ? 'Experience walkthrough' : 'Guided journeys'} <kbd>J</kbd>`);
+  for (const el of panel.querySelectorAll('[data-experience-guidance]')) el.hidden = !experience;
+  const prev = panel.querySelector('[data-jact=prev]'), next = panel.querySelector('[data-jact=next]');
+  prev.textContent = experience ? 'Back' : '‹';
+  prev.disabled = !!experienceRun || (experience && !(S.experiencePresenter > 0));
+  next.disabled = !!experienceRun;
+  panel.querySelector('[data-jact=skip]').disabled = !!experienceRun;
+  for (const [button, action, delta] of [[prev, 'exp-presenter', '-1'], [next, 'exp-presenter', '1'], [panel.querySelector('[data-jact=skip]'), 'exp-presenter-skip', '']]) {
+    if (experience) { button.dataset.act = action; button.dataset.delta = delta; }
+    else { delete button.dataset.act; delete button.dataset.delta; }
+  }
+  panel.querySelector('[data-jact=replay]').hidden = experience;
+  panel.querySelector('[data-jact=skip]').hidden = !experience;
+  $('#jDots').hidden = experience;
+  if (experience) {
+    const steps = E.presenterSteps(), i = Math.max(0, Math.min(steps.length - 1, S.experiencePresenter || 0)), step = steps[i];
+    const credit = E.presenterCredit(step), source = E.presenterSource();
+    html($('#jTabs'), ['Quickstart', 'Advanced'].map((name, k) => `<button class="${step.family === (k ? 'A' : 'Q') ? 'on' : ''}" data-experience-part="${k}">${name}</button>`).join(''));
+    $('#jKicker').textContent = `Experience · ${step.family === 'Q' ? 'author a guided visit' : 'extend and revise the visit'}`;
+    $('#jTitle').textContent = `${i + 1}/${steps.length} · ${step.title}`;
+    $('#jBody')._presenterHtml = null;
+    $('#jBody').textContent = (S.visitor ? 'Read-only while Preview is active · ' : '') + step.instruction;
+    html($('#jWalkthrough'), S.visitor
+      ? '<span>Next browses instructions during Preview. Exit Preview to demonstrate an authoring task.</span>'
+      : `<button data-jact="walkthrough" aria-pressed="${walkthrough}" ${experienceRun ? 'disabled' : ''}>Walkthrough ${walkthrough ? 'on' : 'off'}</button><span>${experienceRun ? 'Demonstrating this task… Close to stop.' : walkthrough ? hasAuthoringDraft() ? 'Your current edit stays open. Next browses; finish or cancel the edit to demonstrate a task.' : 'Next completes this task for you; Skip moves on without doing it.' : 'Try the task yourself. Next moves on; outcomes are feedback.'}</span>`);
+    const observed = panel.querySelector('[data-example-observed]');
+    observed.textContent = `Observed · ${step.observed()}`;
+    observed.dataset.seen = String(credit.seen); observed.dataset.credited = String(credit.credited);
+    const creditEl = panel.querySelector('[data-example-credit]');
+    creditEl.textContent = credit.credited ? 'Outcome seen · this topic is complete' : credit.seen ? 'Loaded content · not authored here, so this quickstart topic stays open' : 'Not observed yet';
+    creditEl.dataset.state = credit.credited ? 'complete' : credit.seen ? 'seen' : 'open';
+    panel.querySelector('[data-example-tally]').textContent = `${steps.filter(s => E.presenterCredit(s).credited).length}/${steps.length} topics complete in this session`;
+    const provenance = panel.querySelector('[data-example-source]');
+    provenance.textContent = `Source · ${source.label} · ${source.writes} authored edit${source.writes === 1 ? '' : 's'}`;
+    provenance.dataset.source = source.kind; provenance.dataset.writes = String(source.writes);
+    const demo = panel.querySelector('[data-example-demonstration]');
+    const d = S.expReview.demo;
+    demo.dataset.state = d ? d.state : 'none';
+    demo.textContent = !d ? 'No demonstration attempted yet'
+      : d.state === 'demonstrated' ? `Demonstrated by Next · ${d.title} · ${d.message}`
+        : d.state === 'failed' ? `Demonstration failed · ${d.title} · ${d.message}`
+          : d.state === 'stopped' ? `Demonstration stopped · ${d.title} · ${d.message}`
+            : d.state === 'complete' ? `Already complete · ${d.title} · ${d.message}`
+              : d.state === 'skipped' ? `Skipped · ${d.title} · ${d.message}`
+                : `Browsed, not demonstrated · ${d.title} · ${d.message}`;
+    next.disabled = !!experienceRun;
+    next.textContent = experienceRun ? 'Working…' : i === steps.length - 1 ? 'Finish' : 'Next ›';
+    $('#jCount').textContent = `${i + 1} / ${steps.length}`;
+    return;
+  }
   const j = JOURNEYS[J];
+  next.textContent = 'Next ›';
   const st = j.steps[I];
-  $('#jTabs').innerHTML = JOURNEYS.map((x, k) => `<button class="${k === J ? 'on' : ''}" data-j="${k}"><span>${x.id}</span>${esc(x.name)}</button>`).join('');
+  html($('#jTabs'), JOURNEYS.map((x, k) => `<button class="${k === J ? 'on' : ''}" data-j="${k}"><span>${x.id}</span>${esc(x.name)}</button>`).join(''));
   $('#jKicker').textContent = j.kicker;
   $('#jTitle').textContent = st.t;
-  $('#jBody').innerHTML = st.b;
-  $('#jDots').innerHTML = j.steps.map((_, k) => `<button class="${k === I ? 'on' : k < I ? 'done' : ''}" data-step="${k}" aria-label="Step ${k + 1}"></button>`).join('');
+  html($('#jBody'), st.b);
+  html($('#jDots'), j.steps.map((_, k) => `<button class="${k === I ? 'on' : k < I ? 'done' : ''}" data-step="${k}" aria-label="Step ${k + 1}"></button>`).join(''));
   $('#jCount').textContent = `${I + 1} / ${j.steps.length}`;
 }
 
 async function play(j, i, replay = true) {
+  if (S.lens !== 'world' || S.visitor) return;
   J = j; I = i;
-  render();
+  renderJourneys();
   const steps = JOURNEYS[j].steps;
   if (replay) {
     const m = S.motion, seen = { ...S.seen };
     S.motion = 'instant';
-    for (let k = 0; k < i; k++) { await steps[k].run(); await idle(); }
-    S.motion = m;
-    S.seen = seen;
+    try {
+      for (let k = 0; k < i; k++) { if (S.lens !== 'world' || S.visitor) return; await steps[k].run(); await idle(); }
+    } finally { S.motion = m; S.seen = seen; }
   }
-  await steps[i].run();
+  if (S.lens === 'world' && !S.visitor) await steps[i].run();
 }
 
 export function initJourneys() {
   const panel = $('#journeys');
   panel.addEventListener('click', (e) => {
+    if (experienceRun && !e.target.closest('[data-jact=close]')) return;
     const tj = e.target.closest('[data-j]');
-    if (tj) { play(+tj.dataset.j, 0, false); return; }
+    if (tj && S.lens === 'world' && !S.visitor) { play(+tj.dataset.j, 0, false); return; }
     const ts = e.target.closest('[data-step]');
-    if (ts) { play(J, +ts.dataset.step); return; }
+    if (ts && S.lens === 'world' && !S.visitor) { play(J, +ts.dataset.step); return; }
+    const part = e.target.closest('[data-experience-part]');
+    if (part && S.lens === 'experience') {
+      const at = +part.dataset.experiencePart ? E.presenterSteps().findIndex(s => s.family === 'A') : 0;
+      E.presenterStep(at - (S.experiencePresenter || 0)); renderJourneys(); return;
+    }
     const a = e.target.closest('[data-jact]');
     if (!a) return;
+    // This controller owns the shared navigation buttons; product delegation must not run them twice.
+    e.stopPropagation();
+    if (a.dataset.jact === 'close') { if (experienceRun) experienceRun.cancelled = true; panel.classList.remove('open'); return; }
+    if (S.lens === 'experience') {
+      if (a.dataset.jact === 'next') { experienceNext(); return; }
+      if (a.dataset.jact === 'walkthrough' && !S.visitor) walkthrough = !walkthrough;
+      if (a.dataset.jact === 'prev') E.presenterStep(-1);
+      if (a.dataset.jact === 'skip') {
+        const skipped = E.presenterSteps()[S.experiencePresenter || 0];
+        if (skipped) E.recordDemonstration(skipped.title, E.demonstrationOutcome({ skipped: true }));
+        E.presenterSkip();
+      }
+      renderJourneys(); return;
+    }
+    if (S.visitor) return;
     const n = JOURNEYS[J].steps.length;
     if (a.dataset.jact === 'next') {
       if (I + 1 < n) play(J, I + 1, false);
@@ -189,12 +312,14 @@ export function initJourneys() {
     }
     if (a.dataset.jact === 'prev' && I > 0) play(J, I - 1);
     if (a.dataset.jact === 'replay') play(J, I);
-    if (a.dataset.jact === 'close') panel.classList.remove('open');
   });
-  $('#jToggle').addEventListener('click', () => panel.classList.toggle('open'));
-  render();
+  $('#jToggle').addEventListener('click', () => {
+    if (experienceRun && panel.classList.contains('open')) experienceRun.cancelled = true;
+    panel.classList.toggle('open');
+  });
+  renderJourneys();
   const q = new URLSearchParams(location.search);
-  if (q.get('journey')) {
+  if (q.get('journey') && S.lens === 'world' && !S.visitor) {
     const j = Math.max(0, JOURNEYS.findIndex((x) => x.id === q.get('journey').toUpperCase()));
     const i = Math.min(+(q.get('step') || 0), JOURNEYS[j].steps.length - 1);
     panel.classList.add('open');

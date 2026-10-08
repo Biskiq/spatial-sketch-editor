@@ -1,3 +1,4 @@
+import { buildCapabilitySubjects, realizeCapabilities } from './experience-scene.js';
 import * as THREE from 'three';
 import { S, ctx, W, C, thing, clone, recordFault, labelOf } from './state.js';
 import { createMuseum, fmt, wallLength, frameAt, modS, openingTopAt, bbox } from './model.js';
@@ -7,6 +8,7 @@ import { tickTweens, run, dur } from './anim.js';
 import * as A from './actions.js';
 import * as nav from './navigation.js';
 import * as T from './tasks.js';
+import * as E from './experience.js';
 import { onCancel, cancelProposal } from './cancel.js';
 import { drawAll } from './draw.js';
 import { requestUI, renderUI, updateTilt, updateWhere, updateStripLive, fieldValue, applyField, applySeg, mapInv, renderBrowse, browseShown, recordOf, placeNameOf } from './ui.js';
@@ -19,21 +21,16 @@ const canvas = $('#gl');
 const stageEl = $('#stage');
 
 ctx.museum = createMuseum();
+E.initExperience();
 const stage = new Stage(canvas, ctx.museum);
 ctx.stage = stage;
+buildCapabilitySubjects();
 ctx.ov = new Overlay($('#ovSvg'), $('#ovHtml'));
 ctx.ui = requestUI;
 
 // ---------------------------------------------------------------- frame
 
 const UP = new V3(0, 1, 0), DOWN = new V3(0, -1, 0);
-const dirOf = (az, el) => new V3(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az));
-const angleTo = (c, home) => A.deg(dirOf(c.az, c.el).angleTo(dirOf(home.az, home.el)));
-// How far off the session's square home the view may wander before the paper is withdrawn. The
-// band was 2.5° - 20°, which is inside the range of an ordinary pan: a small turn repainted the
-// whole frame from vellum to mat. 4° - 30° keeps the paper while you inspect the wall off-square,
-// and leaves the withdrawal itself to the rate limit below.
-const detent = (home, c) => 1 - A.smooth(4, 30, angleTo(c, home));
 
 // The mat <-> paper swap repaints the entire frame, and its target hangs on the camera's own angle
 // (the session detent above, or the tilt into Plan). Following that target frame by frame swapped
@@ -56,17 +53,12 @@ function slewPaper(target, now) {
 }
 
 function frameState() {
+  stage.authoring=!S.visitor;
   const c = stage.cam;
   const s = S.session;
-  const freeFlat = A.smooth(70, 88.5, A.deg(c.el));
-  let flat = freeFlat;
-  let planF = freeFlat;
-  const clips = [];
-  let hCap = null;
-  if (s) {
-    const det = detent(s.home, c);
-    flat = A.lerp(freeFlat, det * (s.flatWanted ?? 1), s.settle);
-    planF = freeFlat * (1 - s.settle);
+  const {flat,planF}=nav.readingProjection();
+  const clips=[];let hCap=null;
+  if(s){
     if (s.kind === 'face') clips.push(s.clip);
     if (s.kind === 'section') clips.push(s.planes.keep, s.planes.depthKeep);
     if (s.kind === 'lookup') {
@@ -90,16 +82,11 @@ function frameState() {
     }
     if (inPlace) { clips.push(k.planes.keep, k.planes.depthKeep); stage.capV.visible = true; }
   }
-  // A parked reading holds the flatness it was rendered with: the derived formula must not dolly
-  // the eye just because the reading stopped being open. Explicit spatial input releases it.
-  const held = nav.hold();
-  if (held != null) { flat = held; planF = held; }
   if (planF > 0.01) {
     const h = A.lerp(9.5, 1.2, ease(planF));
     clips.push(new THREE.Plane(DOWN.clone(), h));
     hCap = h;
   }
-  c.flat = flat;
   stage.paper = slewPaper(flat, performance.now());
   // clipped and set-aside geometry would cast shadows that no longer match what is drawn
   stage.shadowsOff = planF > 0.02 || (s && s.kind !== 'lift') || !!(k?.p1);
@@ -167,7 +154,9 @@ function frame(now) { requestAnimationFrame(frame); frameOnce(now); }
 function frameOnce(now) {
   try {
     tickTweens(now);
+    E.visitorFrame(now);
     frameState();
+    realizeCapabilities();
     if (now - lastRestyle > 90) { stage.restyle(); lastRestyle = now; }
     const inset = peekInset();
     stage.render(inset);
@@ -220,6 +209,9 @@ let drag = null;
 let hoverQueued = false;
 
 canvas.addEventListener('pointerdown', (e) => {
+  if (S.visitor) { E.visitorPointer?.(e); return; }
+  if(S.experienceContext.depth === 'route' && e.button===0 && !e.altKey) { const p=groundAt(e); if(p)E.routePoint(p); return; }
+  if(S.task?.kind === 'experience-region') { const p=groundAt(e); if(p)E.regionPoint(p); return; }
   canvas.setPointerCapture(e.pointerId);
   S.popover = null;
   if (S.knife && e.button === 0 && !e.altKey) {
@@ -240,6 +232,7 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
+  if(S.visitor)return;
   S.pointer = { x: e.clientX - cr().left, y: e.clientY - cr().top };
   if (drag?.kind === 'knife') {
     const g = groundAt(e);
@@ -257,26 +250,14 @@ canvas.addEventListener('pointermove', (e) => {
     drag.x = e.clientX; drag.y = e.clientY;
     if (Math.abs(e.clientX - drag.x0) + Math.abs(e.clientY - drag.y0) > 4) drag.moved = true;
     if (!drag.moved || S.busy) return;
-    // Explicit spatial input: the standpoint is being re-derived by hand, so any parked hold ends.
-    nav.releaseHold();
-    const c = stage.cam;
-    if (drag.mode === 'orbit') {
-      c.az -= dx * 0.006;
-      const lo = S.session?.kind === 'lookup' ? -Math.PI / 2 + 1e-4 : S.session ? -0.2 : 0.06;
-      c.el = Math.max(lo, Math.min(Math.PI / 2, c.el + dy * 0.005));
-    } else {
-      const wpp = stage.worldPerPx();
-      const m = stage.camera.matrixWorld.elements;
-      const right = new V3(m[0], m[1], m[2]), up = new V3(m[4], m[5], m[6]);
-      c.target.addScaledVector(right, -dx * wpp * (stage.cam.mirror ? -1 : 1)).addScaledVector(up, dy * wpp);
-    }
+    nav.manipulate({dx,dy,mode:drag.mode});
     return;
   }
   if (!hoverQueued) {
     hoverQueued = true;
     requestAnimationFrame(() => {
       hoverQueued = false;
-      if (drag || S.knife) return;
+      if (drag || S.knife || S.visitor) return;
       A.setHover(resolveHit(stage.pick(e.clientX, e.clientY)));
       canvas.style.cursor = S.hover ? 'pointer' : '';
     });
@@ -306,6 +287,7 @@ canvas.addEventListener('pointerup', (e) => {
 });
 
 canvas.addEventListener('dblclick', (e) => {
+  if(S.visitor)return;
   const id = resolveHit(stage.pick(e.clientX, e.clientY));
   const t = thing(id);
   if (!t) return;
@@ -318,6 +300,7 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
+  if (S.visitor&&!S.visitor.runtime.exploring)return;
   if (S.busy) return;
   nav.releaseHold();
   const c = stage.cam;
@@ -326,22 +309,14 @@ canvas.addEventListener('wheel', (e) => {
   stage.camera.getWorldDirection(dir);
   const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(dir.clone().negate(), c.target);
   const p = stage.rayPlane(e.clientX, e.clientY, pl);
-  c.frameH = Math.max(2.5, Math.min(120, c.frameH * f));
-  if (p) c.target.lerp(p, 1 - f);
+  nav.manipulate({zoom:f,point:p});
   clearTimeout(wheelT);
   wheelT = setTimeout(requestUI, 160);
 }, { passive: false });
 let wheelT = 0;
 
 function settleAfterOrbit() {
-  const s = S.session, c = stage.cam;
-  if (s) {
-    if (angleTo(c, s.home) < 14) run(() => A.fly({ ...stage.camState(), az: s.home.az, el: s.home.el }, dur('settle', 420)));
-    return;
-  }
-  const el = A.deg(c.el);
-  if (el > 79 && el < 89.99) run(async () => { await A.fly({ ...stage.camState(), el: Math.PI / 2, az: Math.round(c.az / (Math.PI / 2)) * (Math.PI / 2) }, dur('settle', 420)); A.pushTrail('Plan'); });
-  else if (el <= 79) { S.last3D = stage.camState(); if (S.trail[S.trailPos]?.kind === 'plan') A.pushTrail('3D'); }
+  nav.settleAfterOrbit({onPlan:()=>A.pushTrail('Plan'),on3D:()=>{if(S.trail[S.trailPos]?.kind==='plan')A.pushTrail('3D');}});
 }
 
 // ---------------------------------------------------------------- handles on the drawing
@@ -349,6 +324,7 @@ function settleAfterOrbit() {
 let hdrag = null;
 let direct = null;
 ctx.ov.html.addEventListener('pointerdown', (e) => {
+  if(E.beginCameraDrag(e)||E.beginAnchorDrag(e))return;
   // D's direct openings: pull the dog-ear to unroll, lift the tab to raise the lid — from where you stand
   const peel = e.target.closest('[data-peel]');
   const lid = e.target.closest('[data-lid]');
@@ -414,11 +390,12 @@ function clearActiveEdit() {
 // Lost capture, pointercancel and Esc are the same policy: whatever was being written is dropped,
 // nothing is accepted, and no trailing pointerup/change/blur can commit it afterwards.
 window.addEventListener('pointercancel', () => { cancelProposal('pointercancel'); requestUI(); });
-window.addEventListener('lostpointercapture', () => { if (hdrag || direct || typeSpec) cancelProposal('lost-capture'); requestUI(); });
+window.addEventListener('lostpointercapture', () => { if (hdrag || direct || typeSpec || S.cameraDraft || S.expDrag) cancelProposal('lost-capture'); requestUI(); });
 
 // This module holds the pointer writers, so it registers how to drop them. Order 10: the writer
 // stops before the candidate snapshot it was written against is rolled back (actions.js, order 60).
 onCancel(() => {
+  drag=null;
   if (direct) { direct = null; document.body.classList.remove('dragging'); }
   if (hdrag) { clearActiveEdit(); hdrag = null; document.body.classList.remove('dragging'); }
   if (typeSpec) closeTypein();
@@ -650,7 +627,12 @@ document.addEventListener('click', (e) => {
   const trail = t.closest('[data-trail]');
   if (trail) { A.gotoTrail(+trail.dataset.trail); return; }
   const mo = t.closest('[data-motion]');
-  if (mo) { S.motion = mo.dataset.motion; A.setStatus(motionText(), 'view'); return; }
+  // The Motion speeds are World work: the Experience plays its own moves and never retunes the
+  // World's profiles. The control stays in the footer, but from the other lens it refuses.
+  if (mo) {
+    if (S.lens !== 'world') { A.setStatus('Motion speeds are World work — switch back to the World lens to change them', 'refuse'); return; }
+    S.motion = mo.dataset.motion; A.setStatus(motionText(), 'view'); return;
+  }
   const act = t.closest('[data-act]');
   if (act) {
     const a = act.dataset.act;
@@ -700,7 +682,9 @@ const WORLD_ACT = new Set(['sel', 'open-loc', 'lookat', 'include', 'reveal', 'fa
 
 function doAct(a, el) {
   const s = S.session;
+  if (S.visitor && !a?.startsWith('exp-')) return;
   if (WORLD_ACT.has(a)) closeFinder();
+  if (E.handleExperienceAction(el)) { requestUI(); return; }
   switch (a) {
     // Back leaves the reading when there is one; with nothing open it only drops unaccepted work,
     // so the same control is never a dead end.
@@ -770,6 +754,9 @@ function doAct(a, el) {
     case 'lookat': A.lookAt(el.dataset.id ?? S.sel); break;
     case 'faceit': A.face(el.dataset.id ?? S.sel); break;
     case 'grid':
+      // Wall grid is World work: it is a reading of the wall being authored. The control stays in
+      // the footer, but from the other lens it refuses — same layout, same stage rect.
+      if (S.lens !== 'world') { A.setStatus('Wall grid is World work — switch back to the World lens to change it', 'refuse'); break; }
       S.wallDrafting = !S.wallDrafting;
       A.syncSheets();
       A.setStatus(S.wallDrafting
@@ -793,13 +780,11 @@ function doAct(a, el) {
     case 'sheet-index': toggleSheet('index'); break;
     case 'sheet-card': toggleSheet('card'); break;
     // ----- the lens, and the parked work the crossing leaves behind -----
-    // The bridge is a read-only fixture: its two explicit selections are the only things it offers, and
-    // it shares this one selection slot with the World. Resume is offered only on the parked identity,
-    // with the World lens in hand, and never automatically.
-    case 'lens': closeFinder(); A.switchLens(el.dataset.lens); break;
+    // Crossings park invoked work; returning is ordinary and Resume remains explicit.
+    case 'lens': {const browse=!finder.hidden||S.browse.focus; if(S.lens==='world'&&browse)A.rememberBrowse({...S.browse}); A.switchLens(el.dataset.lens);closeFinder();break;}
     case 'resume': A.resumeParked(); break;
     case 'parked-off': A.dismissParked(); break;
-    case 'pres-sel': case 'pres-ref': closeFinder(); A.selectBridge(el.dataset.id); break;
+    case 'pres-ref': closeFinder(); A.select(el.dataset.id); break;
     case 'summary-undo': A.undoSummary(); break;
     case 'summary-keep': S.summary = null; requestUI(); break;
     case 'beacon-off': S.beacon = null; requestUI(); break;
@@ -816,10 +801,10 @@ function doAct(a, el) {
 const finder = $('#finder'), finderInput = $('#finderInput');
 
 // Search is World work — a reading of the museum's subjects and records. It is not available from
-// inside the read-only bridge, and the refusal names the reason instead of opening an empty list.
+// inside Experience, and the refusal names the reason instead of opening an empty list.
 function searchRequest(q = '') {
   if (S.lens !== 'world') {
-    A.setStatus('Search is World work — the Experience lens is a read-only continuity fixture. Switch back to the World lens to search the museum', 'refuse');
+    A.setStatus('Search is World work — switch back to the World lens to search the museum', 'refuse');
     return;
   }
   openFinder(q);
@@ -1017,7 +1002,7 @@ $('#tilt').addEventListener('pointerdown', (e) => {
   const setFrom = (x) => {
     nav.releaseHold();
     const t = 1 - Math.max(0, Math.min(1, (x - track.left) / track.width));
-    stage.cam.el = A.rad(20 + 70 * t);
+    nav.manipulate({el:A.rad(20+70*t)});
   };
   setFrom(e.clientX);
   const move = (ev) => setFrom(ev.clientX);
@@ -1029,6 +1014,7 @@ $('#tilt').addEventListener('pointerdown', (e) => {
 // ---------------------------------------------------------------- keyboard
 
 window.addEventListener('keydown', (e) => {
+  if (S.visitor) { if (e.key === 'Escape') E.exitPreview(); if(e.key==='ArrowRight')E.visitorCommand('next');if(e.key==='ArrowLeft')E.visitorCommand('back');return; }
   if (e.key === 'Shift') S.shift = true;
   if (e.target.matches?.('input, textarea')) return;
   const k = e.key.toLowerCase();
@@ -1039,10 +1025,11 @@ window.addEventListener('keydown', (e) => {
     case 'escape': {
       // The one policy first: an unaccepted writer, draft, preview or aim is dropped before any
       // reading is touched. Shift-Esc is still a direct whole-chain return, after that cancel.
-      const held = S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
+      const held = S.cameraDraft || S.expDrag || S.expAsk || S.expSourceAsk || S.expRouteAsk || S.expOfferDraft || S.expCaptureAsk || experienceDraft || S.pending || S.preview || S.popover || typeSpec || hdrag || direct || S.knife;
       if (held) cancelProposal('esc');
       if (e.shiftKey) { closeSheets(false); if (S.session) A.closeAll(); requestUI(); break; }
       if (held) { requestUI(); break; }
+      if(S.lens==='experience'&&S.task?.kind.startsWith('experience-')){E.closeExperienceWork();requestUI();break;}
       if (!$('#help').hidden) $('#help').hidden = true;
       else if (S.beacon) { S.beacon = null; requestUI(); }
       // A sheet is the surface in front: Esc closes it before anything about the reading changes, and
@@ -1206,7 +1193,10 @@ const QA = {
   async render() {
     frameOnce(performance.now());
     renderUI();
-    await new Promise((r) => setTimeout(r, 0));
+    // Include the browser's layout/resize turn before observing a completed picture. Preview
+    // changes the Stage rectangle; an immediate frame can otherwise retain its previous aspect.
+    await new Promise((r) => setTimeout(r, 25));
+    resize();
     frameOnce(performance.now());
     return true;
   },
@@ -1244,7 +1234,7 @@ osMotion.addEventListener('change', (e) => { S.osReduced = e.matches; applyMotio
 function boot() {
   resize();
   const c = A.home3D();
-  Object.assign(stage.cam, { target: c.target, az: c.az, el: c.el, frameH: c.frameH, flat: 0 });
+  nav.setCam({...c,flat:0});
   S.last3D = stage.camState();
   A.pushTrail('3D');
   renderUI();
@@ -1258,6 +1248,7 @@ function boot() {
   if (q.get('shot')) document.body.classList.add('shot');
   // Capability dispatch: the shell asks the task seam, which routes to these operations. Parking
   // uses the neutral teardown so no lens change ever animates back to an origin pose.
+  A.registerBrowseResume(context=>{S.browse={...context};openFinder(context.q||'');});
   T.setDispatch({
     face: (o) => A.face(o?.id ?? S.sel),
     unroll: (o) => A.unfold(o?.id),
@@ -1271,10 +1262,122 @@ function boot() {
   });
   T.setNeutralize(() => A.parkReading());
   requestAnimationFrame(frame);
-  window.__me = { S, ctx, A, JOURNEYS, nav, tasks: T, qa: QA };
+  window.__me = { E, S, ctx, A, JOURNEYS, nav, tasks: T, qa: QA };
   window.__me.ready = true;
   document.body.dataset.ready = '1';
   window.addEventListener('error', (e) => recordFault('page', e.error || e.message));
   window.addEventListener('unhandledrejection', (e) => recordFault('promise', e.reason));
 }
 boot();
+
+
+
+window.addEventListener('pointermove',e=>{if(S.cameraDraft)E.moveCameraDrag(e,groundAt(e));if(S.expDrag){const p=groundAt(e);if(p)E.moveAnchorDrag(p);}});
+window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
+
+
+
+document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);});
+// A subject-local audition updates projection on input without re-rendering the Card (so a range drag
+// is never interrupted), and announces on change. It is session state, never source and never history.
+document.addEventListener('input',event=>{const el=event.target;if(S.visitor||!el.dataset.expAudition)return;E.auditionCapability(el.dataset.id,el.dataset.expAudition,Number(el.value),true);});
+document.addEventListener('change',event=>{const el=event.target;if(S.visitor||!el.dataset.expAudition)return;E.auditionCapability(el.dataset.id,el.dataset.expAudition,Number(el.value),false);});
+
+document.addEventListener('change',event=>{
+ const el=event.target;  if(el.dataset.expOffer)E.changeOfferField(el.dataset.expOffer,el.value);
+  // Availability is authored explicitly and independently of the offer's organizational home; an empty
+  // choice is Experience-wide, never "the Presentation I happen to be standing in".
+  if(el.dataset.expAvailability)E.updateActivity(el.dataset.expAvailability,'availability',el.value||null);
+
+ if(el.dataset.expReuse)E.reuseFraming(el.dataset.expReuse,el.value);
+ if(el.dataset.expCue)E.updateUse(el.dataset.expCue,'cue',el.value?JSON.parse(el.value):null);
+ if(el.dataset.expRepair)E.command('Repair missing framing',e=>{e.uses[el.dataset.expRepair].viewId=el.value;});
+
+});
+// Preview pointer tracking: a drag orbits the exploring visitor's own viewpoint, a real click activates
+// the offer under the used subject, and the release decides which one happened.
+window.addEventListener('pointermove',event=>{if(S.visitor)E.visitorMove?.(event);});
+window.addEventListener('pointerup',()=>{if(S.visitor)E.visitorRelease?.();});
+
+document.addEventListener('change',event=>{const d=event.target.dataset,value=event.target.value;
+ if(d.expInterruption)E.command('Set interruption',e=>e.uses[d.expInterruption].interruption=value||null);
+ if(d.expAfter){const u=ctx.experience.uses[d.expAfter];E.updateActivity(u.id,'start',value?{...u.start,kind:'after',...JSON.parse(value)}:{kind:'visit',presentationId:u.start.presentationId||u.presentationId});}
+ if(d.expHome)E.updateActivity(d.expHome,'presentationId',value||null);
+ // A station trigger is authored by invoking the Activity at a Seam station, never by this select: an
+ // invented one would be a trigger no traversal can ever fire. Leaving an existing binding is explicit.
+ if(d.expStart){const u=ctx.experience.uses[d.expStart],invented=value==='station'&&u.start.kind!=='station';if(!invented)E.updateActivity(u.id,'start',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:value==='after'?{kind:value,scope:'visit',presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation,useId:'',signal:'complete'}:{kind:value});}
+ if(d.expStartPresentation){const u=ctx.experience.uses[d.expStartPresentation];E.updateActivity(u.id,'start',{...u.start,presentationId:value||null,...(u.start.kind==='after'?{scope:value?'visit':'experience'}:{})});}
+ if(d.expBoundary){const u=ctx.experience.uses[d.expBoundary];E.updateActivity(u.id,'end',value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:{kind:value});}
+ if(d.expBoundaryPresentation){const u=ctx.experience.uses[d.expBoundaryPresentation];E.updateActivity(u.id,'end',{...u.end,presentationId:value});}
+ if(d.expRetention){const u=ctx.experience.uses[d.expRetention];E.updateActivity(u.id,'retention',value==='default'?null:value==='visit'?{kind:value,presentationId:u.start.presentationId||u.presentationId||S.experienceContext.presentation}:{kind:value});}
+ if(d.expViewSpeed)E.updateViewSpeed(d.expViewSpeed,value);
+ // C9.6 revision and repair writers, all reached from the selected contribution's own Card.
+ if(d.expLinkDefinition)E.linkDefinitionCommand(d.expLinkDefinition,value);
+ if(d.expRebindSubject)E.rebindContributionCommand(d.expRebindSubject,{subjectId:value});
+ if(d.expRebindCapability)E.rebindContributionCommand(d.expRebindCapability,{capabilityId:value});
+ if(d.expRebindTrigger)E.rebindContributionCommand(d.expRebindTrigger,{triggerSubjectId:value});
+ if(d.expRebindAvailability)E.rebindContributionCommand(d.expRebindAvailability,{availability:value||null});
+ // A retained reference whose Camera View or home no longer resolves is repaired through its own writers:
+ // repoint a View use to a resolving Camera View, or rehome it into an existing Presentation.
+ if(d.expRepair){const u=ctx.experience.uses[d.expRepair];if(u&&value)E.command('Repair retained framing',e=>{const use=e.uses[d.expRepair];if(use)use.viewId=value;});}
+ if(d.expRehome){const u=ctx.experience.uses[d.expRehome];if(u&&value)E.command('Rehome retained reference',e=>{const use=e.uses[d.expRehome];if(!use)throw Error('Reference removed');const p=e.presentations[value];if(!p)throw Error('Presentation removed');use.presentationId=value;if(use.viewId&&!p.uses.includes(use.id))p.uses.push(use.id);});}
+ // A retained choice names its own Stop: its destination is repaired locally, or the choice is removed,
+ // so no authored continuation is left pointing at a Stop that no longer exists.
+ if(d.expChoiceTarget)E.choiceRepointCommand(d.id,d.expChoiceTarget,value);
+ if(d.expProfile)E.replaceProfileCommand(d.expProfile,value);
+ if(d.expGate)E.command('Set connection Gate',e=>e.stops[d.expGate].gate=value?JSON.parse(value):null);
+ if(d.expPacing)E.updateStop(d.expPacing,'pacing',value==='dwell'?{kind:'dwell',seconds:5}:value==='signal'?{kind:'signal',ref:{useId:'',signal:'complete'}}:{kind:'auto'});
+ if(d.expPacingSignal)E.updateStop(d.expPacingSignal,'pacing',{kind:'signal',ref:value?JSON.parse(value):{useId:'',signal:'complete'}});
+ if(d.expNext)E.command('Set Next',e=>e.stops[d.expNext].next=value==='order'||value==='end'?{kind:value}:{kind:'target',id:value});
+ if(d.expEntry)E.command('Set explicit Stop entry',e=>e.stops[d.expEntry].entry=value==='presentation'||value==='hold'?{kind:value}:{kind:'use',useId:value});
+ // A choice is authored with its kind: a detour parks the current Stop for one bounded Return, while a go
+ // choice continues into the target. The label names which, so the visitor control reads the authored intent.
+ if(d.expChoiceKind&&value)E.command('Add '+d.expChoiceKind+' choice',e=>e.stops[d.id].choices.push({id:'choice-'+(++e.serial),targetId:value,label:(d.expChoiceKind==='go'?'Continue to ':'Explore ')+e.stops[value].name,kind:d.expChoiceKind}));
+});
+
+document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!==undefined&&S.task){S.task.params.invokeUse=event.target.value;requestUI();}});
+
+// Focusing a Hold's own duration field moves the coordination strip's event focus onto that beat: the Card
+// and the Stage then read the event the author is actually addressing, while the canonical Stop selection
+// (S.sel) is untouched. Invoke controls carry the same beat identity through their own data attribute.
+document.addEventListener('focusin',event=>{const el=event.target;if(S.visitor||!el||!el.dataset)return;
+ // The focused event's own station moves with the focus, so the Card, the station row and the Stage read
+ // one event rather than two; and because the rerender replaces the field the author just entered, that
+ // field takes focus back. A focus already matching its beat changes nothing and rerenders nothing.
+ if(el.dataset.expHold&&E.focusHoldBeat(el.dataset.expHold)){
+  requestUI();
+  requestAnimationFrame(()=>{const again=document.querySelector(`[data-exp-hold="${el.dataset.expHold}"]`);if(again&&again!==el)again.focus();});
+ }});
+
+// A field is identified by the presence of its data attribute, never by a truthy value: the primary
+// explanation is a valueless attribute, and an empty string must still be a real, committable field.
+const experienceField = el => el?.dataset && ['expField','expActName','expDef','expPrecision','expScene','expHold','expPrimary','expMarkerField','expStopNumber'].some(k=>k in el.dataset);
+let experienceDraft=null,fieldEpoch=0;
+document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;
+ if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};
+ // A rejection bumps the epoch and keeps the draft on record so a cancel can restore the field. Typing in
+ // that same field again is a fresh attempt: the draft is re-anchored to the current epoch, so a corrected
+ // value can be accepted instead of being forever compared against a stale epoch.
+ else if(experienceDraft.epoch!==fieldEpoch)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:experienceDraft.value};});
+onCancel(()=>{fieldEpoch++;if(experienceDraft){const {el}=experienceDraft;if(el.isConnected)el.value=el.defaultValue;experienceDraft=null;}},8,'Experience field draft');
+document.addEventListener('keydown',event=>{
+ const el=event.target;if(!experienceField(el)||S.visitor)return;
+ if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();cancelProposal('field-cancel');requestUI();return;}
+ if(event.key!=='Enter'||event.shiftKey)return;
+ event.preventDefault();event.stopImmediatePropagation();
+ if(!el.isConnected||experienceDraft?.lens!==S.lens||experienceDraft?.epoch!==fieldEpoch)return;
+ // The draft stays on record so a later cancel can put the field back; bumping the epoch is what stops
+ // a repeated Enter from committing the same unaccepted value twice.
+ fieldEpoch++;
+ if('expField' in el.dataset){const k=el.dataset.expField;if(k==='name')E.renamePresentationById(el.dataset.id,el.value);else E.updatePresentation(el.dataset.id,k,el.value);}
+ if('expActName' in el.dataset)E.renameContributionCommand(el.dataset.expActName,el.value);
+ if('expPrimary' in el.dataset)E.explainPresentation(el.dataset.id,el.value);
+ if('expDef' in el.dataset){const value=el.dataset.expDef==='duration'?(el.value===''?null:Number(el.value)):el.value;if(el.dataset.expDef!=='duration'||value===null||(Number.isFinite(value)&&value>0))E.editDefinition(el.dataset.id,el.dataset.expDef,value);}
+ if('expMarkerField' in el.dataset)E.updateMarker(el.dataset.id,el.dataset.marker,el.dataset.expMarkerField,el.dataset.expMarkerField==='time'?Number(el.value):el.value);
+ if('expStopNumber' in el.dataset&&Number.isFinite(Number(el.value))&&Number(el.value)>0)E.updateStop(el.dataset.id,'pacing',{kind:'dwell',seconds:Number(el.value)});
+ if('expPrecision' in el.dataset)E.proposeFraming(el.dataset.expPrecision,el.value);
+ if('expHold' in el.dataset)E.updateHold(el.dataset.expHold,Number(el.value));
+ if('expScene' in el.dataset)E.sourceCapability(el.dataset.id,el.dataset.expScene,Number(el.value));
+},true);
+
+document.addEventListener('keydown',event=>{const el=event.target.closest?.('[data-exp-anchor]');if(!el||S.visitor)return;const moves={ArrowLeft:[-.25,0],ArrowRight:[.25,0],ArrowUp:[0,-.25],ArrowDown:[0,.25]},m=moves[event.key];if(m){event.preventDefault();event.stopImmediatePropagation();E.nudgeAnchor(el.dataset.connection,el.dataset.expAnchor,...m);}},true);
