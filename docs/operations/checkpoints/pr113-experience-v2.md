@@ -1,8 +1,9 @@
 # PR #113 Experience V2 — checkpoint
 
 TYPE: prototype implementation / owner-review handoff
-STATUS: C9.1–C9.9 implemented/reviewed; owner-directed optional walkthrough correction in verification.
-GOAL: finish ungated Next/task demonstrations, then hand PR #113 back for MP3/MP4 owner review.
+STATUS: C9.1–C9.9 implemented/reviewed; owner-directed optional walkthrough correction and its review
+       follow-up verified at `3a009763`, awaiting MP3/MP4 owner review.
+GOAL: hand PR #113 back for MP3/MP4 owner review with ungated Next/task demonstrations.
 
 CONSTRAINTS:
 - Prototype-local only. Preserve one Camera evaluator/navigation authority, Experience policy ownership,
@@ -31,13 +32,21 @@ ESTABLISHED:
 - Owner update 2026-10-07 supersedes earned Next/source-neutral Next: outcomes are advisory. With the
   optional walkthrough on (default), Next demonstrates the current task through existing product commands
   before advancing. Off, Next only browses. Back/Skip and mode selection author nothing; Preview has no writers.
+- Walkthrough review follow-up 2026-10-07: A8's detour demonstration takes the Stop its authored choice names
+  (the runtime resolves a Stop, not a choice), the session credits `detoured`/`returned` only from the runtime
+  outcomes; A3's progression is bounded, progress-checked and fails with the refusal the runtime reported; and
+  the panel states the last demonstration's own outcome (demonstrated, failed, browsed, stopped, complete,
+  skipped). Next stays ungated in every one of those cases.
 - MP3/MP4 remain pending human review. Trials (cursor/detour parent pause) are not permanent architecture.
 
 EVIDENCE:
-- Executable `1f1e711535be3363f48024df2ec19ed3bcf27fc8` on `prototype-v2`; the final packet is its evidence-only child.
-- Final proof: prototype Node **130/130**, affected browser checks **485/485** (11 axes plus narrow workflow),
-  complete mutation chain **94/94 rejected**, architecture **276/276**. Donor **62/62 + 21/21 browser**;
-  donor typecheck/build and Museum check/build pass. Root test/check/build retain the fixture blocker below.
+- Preceding executable `1f1e711535be3363f48024df2ec19ed3bcf27fc8` on `prototype-v2` (shared Experience
+  Presenter); its proof was Node **130/130**, affected browser checks **485/485**, mutation chain **94/94**,
+  architecture **276/276**. Donor **62/62 + 21/21 browser**; donor typecheck/build and Museum check/build pass.
+- Walkthrough follow-up executable `3a00976361922b464fcfbaecc3251eaad74a2d4e` (three review findings repaired);
+  its evidence-only child records the proof: prototype Node **139/139**, all 24 `qa/run-all.sh` axes
+  **1073/1073**, complete successor proof **102/102 rejected** (`qa/mutation-check.sh`: 3 World, 7 V2 and 92
+  composition obligations), architecture **276/276**. Root test/check/build retain the fixture blocker below.
 - `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` owns final counts, mutations and repository-gate limits.
 - `prototypes/spatial-authoring/qa/walkthrough-check.sh` drives Q1–Q8 and both lens directions through visible controls.
 - `prototypes/spatial-authoring/tests/experience-c9-review.test.mjs` and
@@ -48,14 +57,15 @@ DO NOT REPEAT:
 - Do not regenerate six visual QA specimens or treat a green Presenter as human acceptance.
 
 CURRENT:
-- Optional task scripts cover Q1–Q8 and A1–A10 in the shared controller. Checking actual Next actions,
-  Preview read-only behavior, cancellation, Undo, retained World behavior and same-defect mutations.
-- The executable/proof above belongs to the preceding observational-guidance revision, not this correction.
+- Optional task scripts cover Q1–Q8 and A1–A10 in the shared controller, with Next ungated, Preview read-only,
+  cancellation, Undo, retained World behavior and same-defect mutations all verified at `3a009763`.
+- The walkthrough review follow-up is complete: the detour identity and its observational credit, the bounded
+  A3 progression, and the demonstration's own reported outcome are repaired, covered and mutated.
 - The missing P23B fixture remains a separate repository-gate blocker outside this authorized mutation scope.
 
 NEXT:
-1. Finish affected proof/mutations, record exact committed executable, and commit/push the owner correction.
-   Then the owner performs **MP3 — Travel and agency** at the pushed head with the Presenter closed.
+1. The owner correction is verified, committed and pushed at `3a009763`; the owner performs
+   **MP3 — Travel and agency** at that pushed head with the Presenter closed.
    Recipe; each step names what must be observable, not merely what to click:
    - *explicit Travel preparation*: in an ordinary session build a Guide whose departure
      Presentation holds more than one Framed use, open the Seam and choose Travel. One step
