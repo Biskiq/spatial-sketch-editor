@@ -1,7 +1,7 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
 TYPE: prototype implementation/review evidence for C9.1–C9.9; final owner acceptance pending.
-STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented and reviewed. The owner-directed optional walkthrough correction is in verification: Next demonstrates the current task when on, or browses without an outcome gate when off. The preceding proof below belongs to its recorded executable, not this correction. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
+STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented and reviewed, and the owner-directed optional walkthrough correction with its review follow-up is verified at `3a009763`: Next demonstrates the current task when the walkthrough is on, or browses without an outcome gate when it is off, and says which of those happened. Each earlier proof below belongs to its own recorded executable. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
 SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up before final human acceptance. No production migration, broader shell overhaul, six-QA visual reconciliation, merge, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.
 
 ## Preceding observational follow-up provenance (historical)
@@ -1081,6 +1081,54 @@ Historical verification at the final re-review sources (committed as `dad60dff`)
   Root tests report **4951 passed, 1 failed, 1 skipped**, with **32 suites unable to collect** through the
   same missing import; this is not a passing root gate.
 - These final re-review sources were committed in `dad60dff`. The **126/126**, twelve affected axes and **79/79** mutations above describe that executable increment, not the later follow-up. All owned browsers and private QA servers were released. No owner acceptance, closure or production acceptance is claimed.
+
+## Walkthrough review follow-up — three findings repaired (2026-10-07, `3a009763`)
+
+SCOPE: the owner-directed optional Next demonstration, after an independent walkthrough review at `508727c5`.
+The owner's decision is preserved unchanged: **Presenter Next is never gated by task completion.** With the
+walkthrough on, Next attempts the current task and then advances; with it off, Next browses. Skip and Back stay
+source-neutral, the mode switch authors nothing, and the outcome predicates keep reporting only what the
+product actually did. Three findings were repaired at their own causes — a detour demonstrated with the wrong
+identity, a demonstration loop with no progress bound, and a failure the panel did not report.
+
+| # | finding | repair | coverage |
+| --- | --- | --- | --- |
+| 1 | [P1] A8 handed `visitorCommand('detour', …)` the *choice* identity the author wrote, while the runtime resolves a *destination Stop*: the transition was refused before it parked anything, yet `detoured` and `returned` were recorded from the attempted commands, so A8 earned its topic for a detour nobody took | the demonstration reads the destination from the choice it has just authored and takes that Stop, and the ledger writes `detoured`/`returned` only from the runtime outcomes the command produced: a parked parent plus a real entry for a detour, and a consumed bookmark restored to that same parent visit for a Return. The A8 body separately fails unless the parent was parked, the visitor really entered the detour, the same visit was restored and no second Stop entry was recorded | unit `a refused detour or Return is never credited as a detour the visitor took`, `a detour parks its parent, returns to that same visit and records no second entry`, `the A8 demonstration takes its authored detour and returns to the parent visit`; `walkthrough-demo-check` "A8 has an actual product outcome after Next"; mutations `detour-credit-attempted` and `walkthrough-detour-identity` |
+| 2 | [P1] A3 re-issued `visitorCommand('next')` in an unbounded loop until the Hold Stop was reached. A blocked Gate, an unresolved destination or any other refusal leaves the Stop unchanged, so the loop never ended and never yielded: the demonstration spun in microtasks, and its own Presenter controls stopped responding | progression is bounded and compared with the Stop each step started from, the refusal the runtime itself reported becomes the demonstration's failure, and every step yields a frame; `tries` caps the walk however the Guide is authored, so no configuration can loop here | unit `a blocked traversal fails the A3 demonstration cleanly instead of looping`; `walkthrough-demo-check` "a refused traversal still advances the instruction cursor", "a refused traversal is reported as a failed demonstration, never as a successful one", "naming the runtime refusal where the reviewer is reading", "and crediting the task nothing it could not do"; mutation `walkthrough-progress-unbounded` |
+| 3 | [P2] a demonstration that could not complete reported nothing of its own: the refusal reached the status line and the cursor advanced, leaving a reviewer unable to tell a demonstrated task from a refused one, from deliberate browsing, or from an explicit Skip | one record decides and states the outcome — demonstrated, failed, browsed, stopped, complete or skipped — written from what the product did before the panel renders, and shown as the panel's own line naming the topic it concerned; a failure still advances the instruction cursor and never creates completion credit | unit `the four demonstration outcomes are never conflated with one another`; `walkthrough-demo-check` "an explicit Skip is named as a skip, not as a demonstrated task", "Next with the walkthrough off is reported as browsing, not as a demonstrated task", "Next inside a private Preview is reported as browsing, not as a failed or successful task", "a task that really ran is reported as demonstrated, from what the product did", "a refused traversal is reported as a failed demonstration, never as a successful one"; mutations `demonstration-outcome-conflated` and `presenter-demo-failure-silent` |
+
+### Changed behaviour recorded deliberately
+
+The panel gains one line for the option Next already owned: the last demonstration's outcome, with the topic
+it concerned. Navigation itself is unchanged — Next stays ungated, a failure reports the runtime's own refusal
+and still advances the instruction cursor, and the completion predicates keep their own authority. No redesign
+of Presenter navigation, no new completion gate, no six-QA visual reconciliation and no production change.
+
+### Verification at this follow-up's executable (`3a009763`)
+
+- `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **139/139**, exit **0**;
+  `experience-c9-review.test.mjs` carries **29** tests, five of them added here. Two of the additions drive
+  `runExperienceStep` itself (A8 and the blocked A3); a Node test supplies the browser's own frame clock
+  through the product's `stepVisitor`, so no other shim is introduced.
+- `qa/run-all.sh` (24 axes, 1440×900, `QA_SHOT=0`, a private server and browser per axis) — **1073/1073**,
+  exit **0**, every axis's own "no command or page fault" and "no console or page errors" control green. The
+  two axes this round changed report `walkthrough-demo-check` **59/0** (eight assertions added: the Skip, the
+  walkthrough-off and in-Preview browsing states, the demonstrated state, and the refused traversal's cursor,
+  state, message and credit) and `walkthrough-check` **33/0**.
+- Successor proof, `qa/composition-mutation-check.sh` — **92/92 obligations rejected their regression with
+  every named control green**, exit **0**: 58 model/runtime and 34 browser-wiring obligations, five added here
+  (four model/runtime and `presenter-demo-failure-silent`). The complete successor proof, `qa/mutation-check.sh`
+  (which drives the World, V2 and composition chains), is **102/102**, exit **0** — 3 World shell/lens, 7 V2
+  conformance and the 92 above.
+- Unconditional `npm run test:arch` — **276/276**, 24 files, exit **0**; `git diff --check` clean. Root
+  `npm test` / `npm run check` / `npm run build` retain the pre-existing P23B fixture blocker below. The
+  donor oracle and the Museum check/build were not re-run: this follow-up changes prototype-local Experience
+  code only, and the donor/Museum results recorded above belong to the preceding executable.
+- One harness flake is recorded rather than hidden: the first complete chain run stopped at
+  `presenter-framing-scope` with `FAIL page at … never answered an eval`, so every assertion of that boundary
+  read an empty observation. Re-run in isolation the same obligation passed with its expected failure and its
+  named green control, and the complete chain then ran **92/92**. That was the harness's page boot under many
+  sequential browser sessions, not a product or mutation result, and no assertion was weakened for it.
 
 ## Known limitations
 
