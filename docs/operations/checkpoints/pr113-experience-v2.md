@@ -2,7 +2,7 @@
 
 TYPE: prototype implementation / owner-review handoff
 STATUS: C9.1–C9.9 implemented/reviewed; owner-directed optional walkthrough correction and its review
-       follow-up verified at `3a009763`, awaiting MP3/MP4 owner review.
+       follow-ups verified, awaiting MP3/MP4 owner review.
 GOAL: hand PR #113 back for MP3/MP4 owner review with ungated Next/task demonstrations.
 
 CONSTRAINTS:
@@ -47,6 +47,10 @@ EVIDENCE:
   its evidence-only child records the proof: prototype Node **139/139**, all 24 `qa/run-all.sh` axes
   **1073/1073**, complete successor proof **102/102 rejected** (`qa/mutation-check.sh`: 3 World, 7 V2 and 92
   composition obligations), architecture **276/276**. Root test/check/build retain the fixture blocker below.
+- Q7/A4 follow-up `fbfff35c` (a refused Q7/A4 Next is reported as a failure, not a demonstrated task):
+  prototype Node **140/140**, the three movable axes **151/151** with their no-fault controls green,
+  architecture **276/276**. The remaining 21 axes and the complete successor proof keep their `3a009763`
+  figures, since this repair changes prototype-local walkthrough code only.
 - `prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md` owns final counts, mutations and repository-gate limits.
 - `prototypes/spatial-authoring/qa/walkthrough-check.sh` drives Q1–Q8 and both lens directions through visible controls.
 - `prototypes/spatial-authoring/tests/experience-c9-review.test.mjs` and
@@ -61,11 +65,13 @@ CURRENT:
   cancellation, Undo, retained World behavior and same-defect mutations all verified at `3a009763`.
 - The walkthrough review follow-up is complete: the detour identity and its observational credit, the bounded
   A3 progression, and the demonstration's own reported outcome are repaired, covered and mutated.
+- The Q7/A4 follow-up is complete: a plain Next is judged by the visitor's actual Stop transition and Camera
+  arrival, so a refused Gate or End is reported as a failed demonstration rather than a demonstrated task.
 - The missing P23B fixture remains a separate repository-gate blocker outside this authorized mutation scope.
 
 NEXT:
-1. The owner correction is verified, committed and pushed at `3a009763`; the owner performs
-   **MP3 — Travel and agency** at that pushed head with the Presenter closed.
+1. The owner correction and its Q7/A4 follow-up are verified, committed and pushed at `fbfff35c`; the owner
+   performs **MP3 — Travel and agency** at that pushed head with the Presenter closed.
    Recipe; each step names what must be observable, not merely what to click:
    - *explicit Travel preparation*: in an ordinary session build a Guide whose departure
      Presentation holds more than one Framed use, open the Seam and choose Travel. One step
