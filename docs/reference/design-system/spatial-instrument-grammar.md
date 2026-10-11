@@ -239,7 +239,7 @@ This reference owns their spatial and linked visual grammar.
 | **View endpoint** (● with frustum, View name) | A Camera View or generated departure/arrival; never a second authored endpoint |
 | **Path point** (small open ○, unlabeled) | Authored, manipulable interior point; shown and hit-eligible only in Path posture |
 | **Selected path point** (amber ring ◎) | The one active manipulation target, mirrored in the straightened Deck lane |
-| **Cue marker** (amber ◆) | Experience Cue at its station; shown in Journey posture, never in Path posture |
+| **Cue marker** (amber ◆) | One occurrence-local Experience Cue at its station — the (Guide edge, Camera connection, station) triple; shown in Journey posture, never in Path posture |
 | **Camera rig** | The evaluated Camera during Rehearse; read-only |
 | **Gap cue** | Missing supported Travel with reason/repair; never drawn as a valid path |
 
@@ -255,13 +255,15 @@ geometry, Cues and the rig, and hides path handles. Its Deck is a time axis whos
 positions come from Camera evaluation plus pauses. The Path posture Deck is a straightened
 topology lane with the same points and selection, and no time. Stations are departure, a
 path point, a named marker or arrival; generated samples cannot become stations. A Cue
-binds to a station, not to seconds, and survives pace and geometry edits. Mirror
+binds to a station within one Guide edge and Camera connection, not to seconds, and survives pace and geometry edits. The Deck lane names the Guide edge occurrence it shows, since one Camera connection may serve several. Mirror
 corresponding selection in Stage and Deck without equating their screen positions. Path
 geometry is edited only on Stage; the Deck never becomes a second path editor.
 
 Camera infrastructure uses the shell's teal owner role plus line/shape; active selection and
 manipulation add amber locally. Neutral Guide-order connectors never appear on Stage as
-Camera topology.
+Camera topology. In the Guide Deck, edge chips are per-Stop outgoing resolved continuation
+(see PLATE §0.8.1): a connector between adjacent chips is drawn only when the resolved
+destination is that neighbor.
 
 ## Temporary feedback and task lifecycle
 
