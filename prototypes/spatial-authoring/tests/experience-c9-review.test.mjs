@@ -618,6 +618,27 @@ test('a blocked traversal fails the A3 demonstration cleanly instead of looping'
  assert.equal(E.presenterCredit(step('A3')).credited,false);      // and no completion was invented
 });
 
+// The same refusal that bounds A3 also governs the tasks that simply press Next: Q7 and A4 must report the
+// visitor's own refused transition and name the runtime's reason, never claim a traversal the product never
+// made. A refused Next leaves the visit on the Stop it started from, so the demonstration fails cleanly.
+test('a refused visitor transition fails the Q7 and A4 demonstrations instead of reporting success',async()=>{
+ const {runExperienceStep}=await import('../app/experience-walkthrough.js');
+ // Q7: the Guide's first Stop cannot leave itself, so its own End policy refuses Next.
+ {const {e}=liveFixture();E.loadExample();e.stops[e.guide[0]].next={kind:'end'};
+  await assert.rejects(()=>demonstrated(()=>runExperienceStep('Q7',{lens:()=>{}})),/End of Guide/);
+  assert.equal(S.visitor,null);                                   // the owned Preview was released
+  assert.equal(E.presenterCredit(step('Q7')).seen,false);         // and no traversal was recorded
+  assert.equal(E.presenterCredit(step('Q7')).credited,false);}
+ // A4: the Travel Seam is authored, but its own Gate has not fired, so the visit never crosses.
+ {const {e}=liveFixture();E.loadExample();
+  const telling=Object.values(e.uses).find(u=>e.definitions[u.definitionId]?.kind==='narration');
+  e.stops[e.guide[0]].gate={useId:telling.id,signal:'complete'};
+  await assert.rejects(()=>demonstrated(()=>runExperienceStep('A4',{lens:()=>{}})),/Waiting for authored Gate/);
+  assert.equal(S.visitor,null);
+  assert.equal(E.presenterCredit(step('A4')).seen,false);         // no Travel arrival was invented
+  assert.equal(E.presenterCredit(step('A4')).credited,false);}
+});
+
 // Next reports what the product did. The four outcomes are never conflated, and the record is advisory:
 // it gates nothing and is not itself an outcome.
 test('the four demonstration outcomes are never conflated with one another',()=>{

@@ -1130,6 +1130,33 @@ of Presenter navigation, no new completion gate, no six-QA visual reconciliation
   named green control, and the complete chain then ran **92/92**. That was the harness's page boot under many
   sequential browser sessions, not a product or mutation result, and no assertion was weakened for it.
 
+## Q7/A4 Next refusal — reporting gap closed (2026-10-11, working tree)
+
+SCOPE: the two walkthrough topics that press a plain visitor Next — Q7 Preview the Guide and A4 Request simple
+Travel — after an independent re-review of the walkthrough follow-up at `2b1eb035`.
+
+FINDING [P2]: `experience-walkthrough.js` issued `visitorCommand('next')` for Q7 and A4 without checking the
+transition it produced. A refused Gate or End policy leaves the visit on the Stop it started from, so the
+demonstration finished, returned `true`, and the Presenter recorded *Demonstrated by Next · The task ran in the
+product* while the topic's own completion predicate stayed false — the same reporting problem already fixed
+for A3 and A8, at a narrower scope.
+
+REPAIR: one bounded `crossTo` step issues Next, waits for the Camera to settle, and reads the runtime's own
+outcome — the visit must really stand on the destination Stop, its destination entry must have arrived, and,
+for Travel, the Camera's own completed route must have counted. Any other outcome fails the demonstration and
+names the runtime's reason, while Next stays ungated and the instruction cursor still advances.
+
+COVERAGE: unit `a refused visitor transition fails the Q7 and A4 demonstrations instead of reporting success`
+(an authored End refuses Q7's Next; an unfired Gate refuses A4's Travel); mutation `walkthrough-next-unverified`
+whose control is `the A8 demonstration takes its authored detour and returns to the parent visit`.
+
+VERIFICATION for this working tree: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **140/140**
+pass, exit **0**; `QA_MUTATIONS=walkthrough-next-unverified bash qa/composition-mutation-check.sh` — the mutated
+copy rejects the protected test with its named control green. The 24-axis browser chain, the complete successor
+proof and the architecture gate were not re-run here; their recorded counts belong to `3a009763`. The GitHub PR
+description still reads "earned Next" and names `99fd53e5` as final verification; it must be refreshed once this
+repair is committed and pushed.
+
 ## Known limitations
 
 EVIDENCE-PATHS: start — the deleted P23B fixture this record reports as an external

@@ -17,7 +17,9 @@
 # its Presentation. The walkthrough follow-up adds the detour credited from the visitor's command instead of
 # the runtime outcome it produced, the refused traversal a demonstration retries instead of reporting, the
 # detour taken by choice identity instead of the Stop its authored record names, and the demonstration
-# outcome that calls a task which could not run a demonstrated one.
+# outcome that calls a task which could not run a demonstrated one. The Q7/A4 follow-up adds the plain Next
+# that is trusted to have moved the visit, so a refused Gate or End is never compared with the Stop the visit
+# actually stands in.
 # QA_MUTATIONS is an optional comma-separated subset for the inner loop; unset runs every obligation.
 set -eu
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -27,7 +29,7 @@ trap 'rm -rf "$work"' EXIT
 # ------------------------------------------------- pure model/runtime obligations
 # The protected test must be the one that fails, and a named neighbour must stay green: a suite
 # that broke wholesale or crashed on import would prove nothing about the assertion.
-for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration handover-identity handover-run-identity quickstart-standalone quickstart-second-moment presentation-global-credit detour-credit-attempted walkthrough-progress-unbounded walkthrough-detour-identity demonstration-outcome-conflated; do
+for kind in organization hold-cue double-invoke invoke-repeat offer-invoke route-writer explanation-binding experience-output completed-work stopped-remainder carried-dependency live-move auto-clock cue-scope scope-validation live-departure implicit-connectivity cut-flight traversed-only offer-automatic visitor-source-write same-view-snap rejoin-full-estimate skip-fired-cue detour-readiness rejoin-held-cue offer-availability-write return-clock standalone-open shared-entry-origin go-continuation abandoned-parked-work return-dwell carried-pause abandoned-history detour-history-order remove-preserves-content duplicate-shares-definition missing-entry-hold rebind-overwrites-trigger profile-unvalidated hold-seconds framing-global handover-stopped entry-auto-only arrival-slot arrival-evicted return-entry handover-narration handover-identity handover-run-identity quickstart-standalone quickstart-second-moment presentation-global-credit detour-credit-attempted walkthrough-progress-unbounded walkthrough-detour-identity demonstration-outcome-conflated walkthrough-next-unverified; do
   if [ -n "${QA_MUTATIONS:-}" ]; then
     case ",$QA_MUTATIONS," in *,"$kind",*) ;; *) continue ;; esac
   fi
@@ -351,6 +353,12 @@ elif kind == 'walkthrough-detour-identity':
     replace('app/experience-walkthrough.js',
             "      const destination = authored.targetId;",
             "      const destination = choice;")
+elif kind == 'walkthrough-next-unverified':
+    # A plain Next is trusted to have moved the visit: a refused Gate or End is never compared with the Stop
+    # the visit actually stands in, so a demonstration that traversed nothing still reports success.
+    replace('app/experience-walkthrough.js',
+            "    if (!moved || !arrival?.arrived || (travel && !((owned.runtime.travelArrivals || 0) > arrivals)))",
+            "    if (false)")
 elif kind == 'demonstration-outcome-conflated':
     # A demonstration that could not run is reported as a demonstrated task, so the panel calls a failure a
     # success.
@@ -405,6 +413,7 @@ PY
     detour-credit-attempted) name='a refused detour or Return is never credited as a detour the visitor took'; control='a detour parks its parent, returns to that same visit and records no second entry' ;;
     walkthrough-progress-unbounded) name='a blocked traversal fails the A3 demonstration cleanly instead of looping'; control='the A8 demonstration takes its authored detour and returns to the parent visit' ;;
     walkthrough-detour-identity) name='the A8 demonstration takes its authored detour and returns to the parent visit'; control='a detour parks its parent, returns to that same visit and records no second entry' ;;
+    walkthrough-next-unverified) name='a refused visitor transition fails the Q7 and A4 demonstrations instead of reporting success'; control='the A8 demonstration takes its authored detour and returns to the parent visit' ;;
     demonstration-outcome-conflated) name='the four demonstration outcomes are never conflated with one another'; control='a refused detour or Return is never credited as a detour the visitor took' ;;
     standalone-open) name='C9.5 opening another standalone Presentation ends the departing visit local work'; control='C9.5 open/close/rejoin and one bounded detour never write authored documents' ;;
     shared-entry-origin) name='every eligible Presentation View and the private Stop entry are legitimate origins'; control='C9.4 preparation creates only missing scoped routes, reuses the rest, and is idempotent' ;;

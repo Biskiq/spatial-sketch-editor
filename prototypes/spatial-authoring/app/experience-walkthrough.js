@@ -39,6 +39,23 @@ export async function runExperienceStep(code, { current = () => true, lens = A.s
     }
     throw Error('The Guide never reached the Stop this task demonstrates');
   };
+  // A task that simply presses Next is judged by what the visit did, never by the command having been
+  // issued: a Gate or End policy can refuse movement and leave the visit exactly where it was, and a Seam's
+  // Travel can be refused after its Stop is entered. The transition, the destination entry's own Camera
+  // arrival and — for Travel — the route's own completed arrival are all read from the runtime, so a refused
+  // transition fails the demonstration and names the runtime's reason instead of completing a task it never
+  // performed. The destination is compared with the Stop the visit actually stands in, so an authored Gate
+  // that has not fired cannot be reported as a traversal.
+  const crossTo = async (owned, to, travel = false) => {
+    const from = owned.runtime.stopId, arrivals = owned.runtime.travelArrivals || 0;
+    E.visitorCommand('next');
+    await wait(() => S.visitor !== owned || !owned.runtime.movement);
+    if (S.visitor !== owned) throw Error('Preview was closed');
+    const moved = owned.runtime.stopId !== from && owned.runtime.stopId === to;
+    const arrival = (owned.runtime.entries || []).filter(x => x.stopId === to).pop();
+    if (!moved || !arrival?.arrived || (travel && !((owned.runtime.travelArrivals || 0) > arrivals)))
+      throw Error(owned.runtime.refusal || 'The visit did not complete the transition this task demonstrates');
+  };
   const visit = async (begin, act = null, finishNarration = false) => {
     requireCurrent();
     if (!begin()) throw Error('Preview is unavailable for this content');
@@ -134,7 +151,7 @@ export async function runExperienceStep(code, { current = () => true, lens = A.s
     }
     case 'Q6': { pair(); break; }
     case 'Q7': {
-      pair(); await guideVisit(async () => { E.visitorCommand('next'); }); break;
+      pair(); await guideVisit(async owned => crossTo(owned, ctx.experience.guide[1])); break;
     }
     case 'Q8': {
       pair(); await guideVisit(async () => {
@@ -172,7 +189,7 @@ export async function runExperienceStep(code, { current = () => true, lens = A.s
       }); break;
     }
     case 'A4': {
-      travel(); await guideVisit(async () => E.visitorCommand('next')); break;
+      const { b } = travel(); await guideVisit(async owned => crossTo(owned, b, true)); break;
     }
     case 'A5': {
       const { route } = travel(); await E.editRoute(route); requireCurrent();
