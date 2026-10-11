@@ -1130,7 +1130,7 @@ of Presenter navigation, no new completion gate, no six-QA visual reconciliation
   named green control, and the complete chain then ran **92/92**. That was the harness's page boot under many
   sequential browser sessions, not a product or mutation result, and no assertion was weakened for it.
 
-## Q7/A4 Next refusal — reporting gap closed (2026-10-11, working tree)
+## Q7/A4 Next refusal — reporting gap closed (2026-10-11, `40b65091`)
 
 SCOPE: the two walkthrough topics that press a plain visitor Next — Q7 Preview the Guide and A4 Request simple
 Travel — after an independent re-review of the walkthrough follow-up at `2b1eb035`.
@@ -1150,12 +1150,10 @@ COVERAGE: unit `a refused visitor transition fails the Q7 and A4 demonstrations 
 (an authored End refuses Q7's Next; an unfired Gate refuses A4's Travel); mutation `walkthrough-next-unverified`
 whose control is `the A8 demonstration takes its authored detour and returns to the parent visit`.
 
-VERIFICATION for this working tree: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **140/140**
+VERIFICATION at this repair: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **140/140**
 pass, exit **0**; `QA_MUTATIONS=walkthrough-next-unverified bash qa/composition-mutation-check.sh` — the mutated
 copy rejects the protected test with its named control green. The 24-axis browser chain, the complete successor
-proof and the architecture gate were not re-run here; their recorded counts belong to `3a009763`. The GitHub PR
-description still reads "earned Next" and names `99fd53e5` as final verification; it must be refreshed once this
-repair is committed and pushed.
+proof and the architecture gate were not re-run here; their recorded counts belong to `3a009763`.
 
 ## Known limitations
 
