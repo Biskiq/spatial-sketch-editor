@@ -136,3 +136,12 @@ NEXT:
 OPEN:
 - External review/merge of #113. Final visual UX is unaccepted and belongs to PR #114 (owner visual acceptance is its gate).
 - The pre-existing missing P23B fixture still blocks full repository test/check/build; no fabricated fix.
+
+AMENDMENT (2026-10-11, owner-ruled independent-review round, docs/design-only):
+- A1 resolved Guide-edge continuation, A2 Cue triple identity, A3 atomic grouped-Cue move
+  with refusal and multi-hold `Edit holds` (no silent consolidation), A4 nominal-origin
+  Journey, A5 ordinary Add explanation, A6 Default eligibility, A7 QA-2/QA-4 annotations.
+- Normative text: PLATE §0.8.1; spatial-instrument grammar (markers/projections only);
+  reconciliation record items 13–20 (body kept as written); PR #114 plan (§2–§3, UX2/UX4–UX7,
+  QA 2/4 criteria, risks, deferred). D8 mid-Guide Preview and explicit hold consolidation
+  deferred; D10 aim redistribution awaits the UX5 proof. No executable files changed.

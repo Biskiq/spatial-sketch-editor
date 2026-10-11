@@ -39,6 +39,43 @@ Where this record and PLATE differ, PLATE wins. The six boards it describes now 
 12. **§33's PR boundary is superseded by the ratified sequence:** #113 (C9 acceptance +
     this reconciliation) → #114 (UX implementation) → #115 (Paper PA0–PA12).
 
+**Follow-up adjudications, independent review round (2026-10-11, owner-ruled; normative
+text is PLATE §0.8.1 and the PR #114 plan — the body below is kept as written):**
+
+13. **Guide edge = resolved continuation.** Identity is *(from Stop, resolved Next
+    destination)*: order-default, explicit nonadjacent destination, End, or
+    invalidated/needs-repair — never positional adjacency. Deck edge chips are per-Stop
+    outgoing indicators; inter-chip connectors appear only for truly adjacent
+    destinations. Selection revalidates against the resolved Next and clears/reports
+    rather than retargeting. No graph editor; Next stays distinct from Go/detour
+    run-time Stop resolution.
+14. **Cue = (Guide edge, Camera connection, station).** Occurrence-local choreography
+    survives shared Camera connections. Path-point identity stays connection + anchor.
+    No persisted Cue entity.
+15. **Grouped-Cue move is one validated history transaction** within the same Guide edge
+    and Camera connection: every constituent beat plus each invoked Activity's station
+    binding updates together, or the move refuses without mutation. Occupied
+    destinations refuse, never merge. Selection follows success; Undo restores the
+    grouping. One hold: Pause edits it directly. Several: the Card shows summed Pause
+    plus hold count with **Edit holds** for individuals — never silent consolidation.
+    Explicit consolidation is deferred, not required for #114.
+16. **Journey Deck shows the selected origin's nominal Journey**, with the origin visible
+    and changeable in Journey posture. Rehearse/runtime equality holds for identical
+    invocation inputs only. Early Next, live departure and one Camera evaluator are
+    preserved; the total does not imply visitor actions completed.
+17. **The Presentation Card keeps ordinary Add explanation**, visible with no content,
+    opening the existing focused writer; authored content becomes a quiet summary/edit
+    door. The permanent textarea is not restored.
+18. **Default stays eligible as a visitor choice** whatever the entry View; it is an
+    entry role, not an exclusion rule.
+19. **QA-2/QA-4 deltas are annotated, not regenerated:** QA-2 gains origin + Guide-edge
+    disclosure; QA-4 gains the outgoing-chip vocabulary and keeps the resolved-View
+    Stage label. Boards stay semantic guardrails.
+20. **Deferred past #114:** contextual mid-Guide Preview entry (no fabricated carried
+    history); Camera aim-redistribution ruling awaits the early UX5 insertion/removal
+    proof. UX6/UX7 measures the late-Journey edit → real Preview → exact-return loop
+    and reports its cost for a later owner decision.
+
 ---
 
 # 1. Product model

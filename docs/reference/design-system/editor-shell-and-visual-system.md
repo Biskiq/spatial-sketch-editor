@@ -466,10 +466,10 @@ create a parallel shell, renderer, Camera system or selection store.
 | **View** | One Camera composition used by a Presentation. A Presentation's Views are **unordered**; exactly one is its **Default View** (the `entry` role) when it has Views | Pose: Camera · use/role: Experience |
 | **Stop** | One occurrence of a Presentation in a Guide, with occurrence-local entry policy, Next, pacing, Gate and choices. Editing a Stop never silently edits the shared Presentation | Experience |
 | **Guide** | An optional ordered sequence of Stops | Experience |
-| **Guide edge** | The transition into the following Stop (the former *Seam*): **Cut** or **Travel**. It references Camera support; it owns no geometry | Experience |
+| **Guide edge** | The directed, resolved Next continuation out of one Stop (the former *Seam*): **Cut** or **Travel**. Its identity is the pair *(from Stop, resolved Next destination)* — order-default, an explicit nonadjacent destination, End (no outgoing edge), or invalidated/needs-repair — never positional Deck adjacency. It references Camera support; it owns no geometry. Authored Go/detour visitor choices resolve Stops at run time and are not Guide edges | Experience |
 | **Camera Path** | Camera-owned movement between two Views (a Camera connection): generated endpoints, authored interior **path points**, pace, evaluation. Reusable by any Guide edge whose origin/entry Views it connects | Camera |
-| **Journey** | The timing of one Camera Path as played for a Guide edge: Camera movement time plus Experience pauses, with Cues | Experience over Camera evaluation |
-| **Cue** | An Experience moment bound to a stable Camera station on that path (departure, path point, named marker or arrival): its actions and optional pause. Its time is derived, never authored | Experience |
+| **Journey** | The timing of one Camera Path as played for a Guide edge **from one selected origin (the nominal Journey)**: Camera movement time plus Experience pauses, with Cues | Experience over Camera evaluation |
+| **Cue** | An occurrence-local Experience moment: the invocation beats and holds sharing one **(Guide edge, Camera connection, station)** triple, where station is departure, path point, named marker or arrival. Its name comes from the named station/marker, else from its first action; its time is derived, never authored. No persisted Cue entity | Experience |
 
 **View relation ≠ Guide order ≠ Camera connectivity ≠ Journey time.** No representation
 may imply one from another. A Cue never authors a Camera pose: a turn mid-path is Camera
@@ -527,12 +527,15 @@ preview in the Card**; it moves no Camera. Look through and Edit Camera are expl
 
 A Presentation Card shows identity, Focus, the Views list (the keyboard inventory, ★ on the
 Default), Guide use and `+ Capture view`; its menu holds Rename, Advanced authoring and
-Remove. Narration, behaviors and offers are not ordinary fields: when authored they earn one
-quiet summary that opens Advanced authoring. A View Card shows the View, its preview and its
+Remove. It keeps one compact ordinary **Add explanation** entry, visible even when no
+explanation exists, which opens the existing focused explanation writer; once authored,
+the entry becomes a quiet summary that reopens it. Other narration, behaviors and offers
+are not ordinary fields: when authored they earn one quiet summary that opens Advanced authoring. A View Card shows the View, its preview and its
 operations, then the owning Presentation as context, not as a second editor.
 
 Default is shared by every use of the Presentation; a Stop's Specific View entry overrides
-it locally. A Presentation without Views is valid ("No View · uses current viewpoint"). An
+it locally. Default is an entry role, not an exclusion rule: it remains eligible as a
+visitor View choice, including when the visitor entered through another View. A Presentation without Views is valid ("No View · uses current viewpoint"). An
 unset Default and a missing referenced View are distinct named states. **Remove from
 Presentation** unlinks one use and discloses its Default, Stop-entry, Cue and Travel
 consequences; it never deletes Camera truth used elsewhere or picks a replacement silently.
@@ -555,8 +558,11 @@ No capability inventory, Play/Stop/On/Off rows or adapter controls rest on the C
 
 No Guide means no Guide Deck. **Add to Guide** creates one Stop and selects it. The **Guide
 Deck** is the single Guide home: `GUIDE · name · n Stops`, compact named Stop chips in order
-(number, Presentation name, optional entry-View image), edge chips naming Cut or Travel, and
-`Edit Guide`. It stays bounded, a shallow band rather than half the window. There is no
+(number, Presentation name, optional entry-View image), outgoing edge chips per Stop, and
+`Edit Guide`. An edge chip names the Stop's resolved continuation: order-default Cut/Travel,
+an explicit destination (`→ C`), End, or needs-repair. An inter-chip connector is drawn
+only when the resolved destination is the adjacent Stop; a nonadjacent destination is shown
+on the outgoing Stop's own chip, never as a false adjacency. It stays bounded, a shallow band rather than half the window. There is no
 Peek/Overview/Expand vocabulary, no expanded L2 occurrence and no second Guide editor.
 `Edit Guide` is the deliberate order posture: move, repeat and remove Stops in one context
 menu, with Undo.
@@ -567,11 +573,14 @@ Selecting a Stop edits that occurrence in the Card: Presentation link (Open Pres
 an entry **policy**; Stage labels the resolved View by its own name. Pacing, dwell, Gate and
 visitor choices sit under deliberate Stop detail.
 
-Selecting an edge edits movement: **Cut \| Travel**, the aggregate origin coverage
-("reachable from 2 of 3 Views") and `Edit Camera Path`. **Cut** creates no Camera edge.
+Selecting an edge edits the resolved continuation's movement: **Cut \| Travel**, the aggregate origin coverage
+("reachable from 2 of 3 Views") and `Edit Camera Path`. Edge selection is revalidated
+against the resolved Next on every read: a stale pair clears or reports needs-repair and is
+never silently retargeted to a positional neighbor. **Cut** creates no Camera edge.
 **Travel** is the explicit Camera-owned preparation that reuses existing Camera Paths and
 creates only missing direct ones; gaps remain explicit. Ordinary Guide editing never draws
-Camera Paths across the Stage.
+Camera Paths across the Stage. There is no graph editor: branching is shown only through the
+outgoing chip's destination indicator.
 
 ### Camera Path and Journey postures
 
@@ -589,14 +598,27 @@ without time, Cues, narration or holds. No `Anchor N` labels, coordinate panel o
 Curve/Smooth controls unless Camera exposes a real author-facing mode. Draw only the
 geometry the evaluator actually follows.
 
-**Journey posture edits time and Cues.** Stage keeps the path quiet and handle-free, shows
+**Journey posture edits time and Cues for one selected origin's nominal Journey.** The origin
+is shown and changeable within Journey posture, without a round-trip through Path posture.
+Stage keeps the path quiet and handle-free, shows
 Cue markers (◆) at their stations and, during Rehearse, the moving Camera rig. The Deck is a
 real time axis from 0:00 to the derived total, with Cues placed by evaluated time and a
-playhead. A selected Cue's Card shows its name, **At** (derived), **Pause** (its hold, the
-one Experience-authored duration), **Actions** and `Edit cue`. Moving a Cue rebinds it to
-another station; a Cue never stores seconds. Deep Cue editing is a deliberate posture.
+playhead; its header names the Guide edge and the selected origin, since one Camera
+connection may serve several Guide occurrences. A selected Cue's Card shows its name, the
+Guide occurrence and shared Camera reach, **At** (derived), **Pause** (the summed hold
+durations at its station, with hold count when more than one), **Actions** and `Edit cue`.
+With one hold, Pause edits that hold directly; with several, **Edit holds** inspects or
+edits the individual holds — a summary-field edit never silently consolidates, deletes or
+replaces distinct authored holds. Moving a Cue rebinds its beats to another station within
+the same Guide edge and Camera connection, as one validated history transaction that updates
+every constituent beat together with each invoked Activity's station binding, or refuses
+without mutation; an occupied destination station refuses rather than merging. Selection
+follows a successful move, and Undo restores the previous grouping. A Cue never stores seconds. Deep Cue editing is a deliberate posture.
 **Total = Camera movement time + pauses**, derived from the same Camera evaluation and
-coordination timing used at run time; there is no second animation model.
+coordination timing used at run time; there is no second animation model. Rehearse and
+runtime agree for identical invocation inputs; a visitor departing early or from another
+eligible View may observe different times without anything being broken. The total does not
+imply every visitor action has completed.
 
 **Rehearse is editor playback; Preview is the visitor run.** Rehearse plays and scrubs one
 Journey through Camera evaluation, moving a rig marker while the authoring view stays
@@ -651,9 +673,9 @@ this text, the text wins.
 | Board | Guards | Interpretation note |
 | --- | --- | --- |
 | `qa-1-camera-path.png` | Direct path geometry, Path vs Journey, endpoint/point/selection species, From coverage, no timing | Curvature drawn only if the evaluator follows it |
-| `qa-2-journey.png` | Time over movement, no path handles, Rehearse/scrub, shallow Cue summary | Cue *At* is derived |
+| `qa-2-journey.png` | Time over movement, no path handles, Rehearse/scrub, shallow Cue summary | Cue *At* is derived; the Deck shows the selected origin's nominal Journey and names its Guide edge and origin, and the Cue Card discloses the Guide occurrence |
 | `qa-3-presentation-views.png` | Focus, compact View markers, ★ Default, preview in Card, `+ Present` | The owner summary beneath the View is context, not a second inspector |
-| `qa-4-guide-stops.png` | One Guide home, Stop vs edge, Cut/Travel, no Camera paths | The Stage label must name the resolved View, not "Presentation Default" |
+| `qa-4-guide-stops.png` | One Guide home, Stop vs edge, Cut/Travel, no Camera paths | The Stage label must name the resolved View, not "Presentation Default". Edge chips show resolved outgoing continuation (order-default, explicit destination, End, needs-repair); connectors only join truly adjacent destinations |
 | `qa-5-scene-subject.png` | Stage browsing, `Browse World`, usage before capability, closed disclosure | The highlighted Index row is drift; no related Presentation is selected |
 | `qa-6-visitor-preview.png` | Isolation, Back/Next, View choices in visitor language, one Exit Preview | Use the real renderer |
 | `camera-precision-outside.png`, `camera-precision-through.png` | Edit Camera precision postures, truthful observer/frustum, one tape, explicit return | Retained from the 2026-10-01 set; their Index/Head/status-line chrome is superseded by this section |
