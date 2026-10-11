@@ -1,6 +1,11 @@
 # Museum Editor visual reference registry
 
-**Status:** active visual registry — P21+ primary visual set promoted 2026-09-04.  
+**Status:** landed-era visual registry — P21+ primary visual set promoted 2026-09-04; pruned 2026-10-11 (PR #113 asset consolidation).\
+**Destination design:** this registry describes the landed editor's P21-era imagery only. Destination shell and
+World | Experience design live in [PLATE](./editor-shell-and-visual-system.md) and its routed design evidence;
+nothing here competes with them. Images removed in the 2026-10-11 pruning (legacy Camera sequence/sidebar/timeline
+mockups, unreferenced timeline drafts, top-level `collapsed`/`expanded-new` drafts, superseded Scene states and the
+Future Experience concept) remain recoverable from Git history.\
 **Authority:** source/tests → architecture + shell/workspace behavior specs → `docs/reference/design-system/design-plan-p21.md` for P21+ shell/IA → `docs/reference/design-system/design-specs.md` for visual language/tokens → `docs/reference/design-system/p21-visual-implementation-references.md` + the visual references registered here for concrete P21 composition.
 
 The P21+ images now define the **primary visual composition and chrome direction** for the editor. Older Scene/Camera images are retained as specialized state/interaction references; they no longer govern shell placement, toolbar placement, persistence chrome, current terminology, or general P21+ visual composition.
@@ -45,7 +50,6 @@ These images are intentionally richer future product references. Their **visual 
 | File | Surface | Status |
 |---|---|---|
 | `Future/project-hub-cover-enabled.png` | Project Hub with visual project shelf + dense project list | **Future Hub visual North Star**. Cover pipeline and illustrative metadata are deferred. |
-| `Future/experience-3d-concept.png` | Experience authoring over shared Spatial truth | **Future Experience polish/reference**. `Event → Target → Action` is directional; exact tree, trigger taxonomy, audio/UI/variables features remain illustrative. Spatial remains authoritative for geometry, camera topology, and motion. |
 | `Future/assets-concept.png` | project-level Assets management surface | **Future Assets visual direction**. One asset system; Type/Source are filters. Exact management capabilities remain deferred. |
 | `Future/publish-concept.png` | project-level Publish/release surface | **Future Publish visual direction**. Single release destination/action hierarchy is directional; Releases/Settings/custom domain/embed internals remain illustrative unless separately ratified. |
 
@@ -59,15 +63,11 @@ The files under `docs/reference/design-system/gallery/Scene/` are **not P21 shel
 | File | Retained specialized purpose |
 |---|---|
 | `Scene/scene-plan-layout.png` | populated Layout-state content reference until a populated P21 Layout visual exists; shell is legacy |
-| `Scene/scene-plan-staging.png` | historical pre-P10 staging/footprint reference only; `Arrange` terminology now wins |
 | `Scene/scene-empty-plan.png` | legacy empty-Plan reference; superseded visually by `P21/scene-plan-layout.png` |
-| `Scene/scene-empty-3d.png` | empty Scene 3D state |
 | `Scene/scene-3d-object-selection.png` | legacy selected-object composition; superseded visually by `P21/scene-3d.png` |
 | `Scene/scene-3d-object-selection-xyz-gizmo.png` | authoritative complete XYZ transform-gizmo detail |
 | `Scene/scene-3d-layout-selection.png` | selected Layout surface in Scene 3D |
 | `Scene/scene-3d-assets.png` | Scene 3D contextual asset browse/place state |
-| `Scene/scene-object-inspector.png` | detailed object Inspector state |
-| `Scene/scene-assets-import.png` | import processing/ready/failed state |
 
 ## Legacy / specialized Camera references
 
@@ -77,29 +77,11 @@ The files under `docs/reference/design-system/gallery/Camera/` are **not P21 she
 
 | File | Retained specialized purpose |
 |---|---|
-| `Camera/camera-plan-overview.png` | legacy Camera Plan overview; visually superseded by `P21/camera-plan.png` |
-| `Camera/camera-plan-flow.png` | graph/Sequence authoring behavior |
-| `Camera/camera-plan-branch.png` | Unsequenced branch behavior |
-| `Camera/camera-3d-overview.png` | legacy Camera 3D overview; visually superseded by `P21/camera-3d.png` |
-| `Camera/camera-3d-framing.png` | framing-specific state |
-| `Camera/camera-sidebar.png` | historical populated sidebar reference |
-| `Camera/camera-sidebar-empty.png` | empty Sequence sidebar |
-| `Camera/camera-sidebar-neighbors.png` | legacy neighbor disclosure |
-| `Camera/camera-sidebar-neighbor-accordion.png` | specialized shipped neighbor-accordion behavior |
-| `Camera/camera-preview-scopes.png` | Camera / Edge / Sequence preview scopes |
-| `Camera/camera-preview-edge.png` | Preview Camera + Preview Edge entry |
-| `Camera/camera-path-edit.png` | path edit while preserving Sequence |
-| `Camera/camera-sequence-reroot.png` | Sequence re-root |
-| `Camera/camera-sequence-insert-zones.png` | Start/Between/End insertion validity |
-| `Camera/camera-sequence-remove-camera.png` | head/middle/tail removal |
-| `Camera/camera-sequence-delete-protection.png` | protected edge/node deletion |
-| `Camera/camera-timeline-expanded.png` | legacy expanded Timeline detail; P21 Camera images now own overall composition |
-| `Camera/camera-timeline-collapsed.png` | canonical collapsed 48px Timeline state until replaced |
-| `Camera/camera-timeline-sequence-only.png` | Sequence-only Timeline projection |
+| `Camera/camera-timeline-expanded.png` | legacy expanded Timeline detail cited by the landed Camera workspace specs; P21 Camera images own overall composition. The destination has no global Camera Timeline (PLATE §0.8.1) |
 
 ## Other retained visual assets
 
-Top-level legacy images such as `collapsed.png`, `expanded-new.png`, and `x-y-z-box.png` remain in Git history/current tree for their specialized purpose. They do not override the P21 shell. Orientation behavior/render details continue to defer to the dedicated orientation specs and current implementation/tests.
+The top-level `x-y-z-box.png` remains for the orientation-box specs; the former `collapsed.png` / `expanded-new.png` drafts live in Git history only. It does not override the P21 shell. Orientation behavior/render details continue to defer to the dedicated orientation specs and current implementation/tests.
 
 ## Visual QA
 

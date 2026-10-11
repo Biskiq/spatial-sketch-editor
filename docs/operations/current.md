@@ -5,46 +5,33 @@ PHASE: F — foundation contracts; status/order → ../roadmap/README.md;
 CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION AUTHORIZED.
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
-NEXT: #113 C9.1–C9.9 are implemented and reviewed; the bounded shared-Presenter
-       follow-up is implemented; the owner's optional walkthrough correction and its review follow-up
-       are verified at `3a009763`. Next demonstrates the current task when walkthrough is on, or
-       browses without a completion gate when off, and states which of those happened; a demonstration
-       that cannot complete reports the runtime's own refusal and still advances the cursor.
-       Back/Skip stay source-neutral; Preview exposes no authoring walkthrough controls.
-       World retains its A–F workflow; Experience
-       has its own ordinary authoring walkthrough in that same mechanism. A2 binds
-       the visitor's Stop to the observed handoff target and run identity.
-       MP1 (2026-10-04) and MP2 (2026-10-05) are owner-accepted. **MP3 and MP4
-       remain human gates**; neither rehearsal, automated proof nor Presenter
-       completion supplies owner acceptance. Review Travel/agency and rich capability
-       semantics before accepting C9. No merge, closure, production migration,
-       Paper work or six-QA visual reconciliation.
-       Plan → ../roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md.
+NEXT: #113 is complete and ready for external review/merge. C9.1–C9.9 are implemented and
+       reviewed; MP1–MP4 are owner-accepted **for functionality** (MP3/MP4 2026-10-11), not
+       as final visual UX. The six-QA Experience UX reconciliation is locked in PLATE §0.8.1
+       (docs/design/assets only; the prototype still shows the earlier expression).
+       After merge: PR #114 implements that UX in the prototype → plan
+       ../roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md.
+       Not started; no #114, Paper or production work is authorized by #113.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md.
 RESUME: ./checkpoints/pr113-experience-v2.md — owner-review frontier and exact proof.
 PRODUCTION ROUTE: (resumes after the prototype detour closes, below) remains F interface
        amendments, then re-derived T1 Spatial/P26, T2 Composition/P24, T3 Experience/P25 and
        T4 Release. P26 implementation and the architecture validation window remain gated.
-PROTOTYPE BATON (owner-decided sequence, 2026-10-03): #112 close/merge → #113 Experience V2
-       + real World ↔ Experience continuity → Paper PA0–PA12 in the next PR → prototype
-       detour closes → F exact-interface amendments → T1/T2/T3/T4.
-       #113 — C1–C8 in-scope conformance complete; C9.1–C9.9 implemented/reviewed,
-       awaiting MP3/MP4 owner acceptance at the pushed walkthrough-follow-up head.
-       C9 plan and evidence above own capability-first acceptance and final executable
-       provenance. Earlier conformance authority →
+PROTOTYPE BATON (owner-decided 2026-10-03; #114 inserted 2026-10-11): #112 close/merge →
+       #113 Experience V2 + real World ↔ Experience continuity + six-QA UX design lock →
+       #114 Experience UX implementation → #115 Paper PA0–PA12 → prototype detour closes →
+       F exact-interface amendments → T1/T2/T3/T4.
+       #113 — C1–C8 conformance and C9.1–C9.9 complete; MP3/MP4 functionally accepted;
+       UX reconciliation locked → ../reference/design-system/editor-shell-and-visual-system.md
+       §0.8.1 (QA boards: #experience-qa-boards). Earlier conformance authority →
        ../roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md.
-       Proof and Paper handoff →
-       ../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md.
        The missing P23B fixture remains a separate repository-gate blocker;
-       restoration needs separate scope authorization. The owner authorized this
-       follow-up's implementation, self-review, verification, commit and push.
-       This work satisfies no F/T1 gate.
-       C9 acceptance prioritizes capability semantics and blocking structural seams;
-       detailed visual refinement belongs to the following dedicated UI/UX slice,
-       separately scoped and unstarted. No PR placement assigned by this plan.
-       PAPER — next PR after #113, not started: World Paper adoption, PA0–PA12 →
+       restoration needs separate scope authorization. This work satisfies no F/T1 gate.
+       #114 — not started: implements PLATE §0.8.1 in the prototype (UX0–UX7), keeping C9
+       capability and MP3/MP4 recipes green; owner visual acceptance is its gate.
+       PAPER (#115) — after #114, not started: World Paper adoption, PA0–PA12 →
        ../roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md;
-       contract → PLATE §0.8.4 (accepted 2026-10-03).
+       contract → PLATE §0.8.4 (accepted 2026-10-03). PA0 reconciles against #114's tree.
 BLOCKERS: none for F. Owner calls remain: P23B phase-wide compaction and P23B.1/.2
        review statuses → ../roadmap/p23b-geometry-performance/README.md;
        PLATE keyboard focus and mat↔paper transition (motion-speed placement settled by §0.8.4) →

@@ -380,7 +380,7 @@ slice-closeout workflow was inspected: its implementation-review/merge-ready bou
 crossed while independent review and the repository gate blocker remain.
 
 Paper PA0 consumes this executable, the replacement plan and this record, with shared Stage,
-selection, Camera, aggregate history and cancellation seams preserved. Paper remains the next
-PR only after #113's external review/landing; it inherits no failed Experience obligation.
+selection, Camera, aggregate history and cancellation seams preserved. Paper (#115) follows #113's
+landing and the #114 Experience UX implementation; it inherits no failed Experience obligation.
 Historical S0–S9 acceptance remains untouched. The live P25 router and operations/current point
 to this evidence and the external-review baton; F/T and major-phase status remain unchanged.

@@ -38,8 +38,8 @@ Camera inspection. Experience composes visitor meaning and occurrences and may e
 Camera authoring. Neither lens is a new semantic document. Layout owns architecture
 and its runtime-safe representation; Scene owns objects and world presentation;
 Camera owns Views, connectivity, routes, framing, projection and evaluation;
-Experience owns Presentations, Guide occurrences/order, beats, holds, continuation
-and contextual orchestration. Typed resources remain independently owned.
+Experience owns Presentations, Guide occurrences/order, Cues and their pauses,
+continuation and contextual orchestration. Typed resources remain independently owned.
 
 The shell preserves these invariants:
 
@@ -101,9 +101,9 @@ INDEX / locator       STAGE — dominant spatial work       CARD — selected id
 | --- | --- | --- | --- |
 | **Head** | Persistent project/application context, lens switch, save/history and Preview | App actions and source-history access; Paper details below | Active Experience identity in context; the same app and project actions |
 | **Index** | Where am I, and where is that thing? Locator and orientation, not a primary property editor | Local place/level path, relation-aware surroundings, subject Search and Browse | Presentations and relevant relationships, including Guide awareness where present |
-| **Stage** | Continuous spatial truth, focused readings, spatial instruments and direct manipulation | Architecture, objects, inspection, drafting and manipulation | Working Set, Camera rig/routes, Stop entry pins and local spatial coordination |
-| **Card** | What is canonically selected, what does it mean here, and what owns/reaches beyond this use? | Quiet identity; invoked structure/reach disclosure | Stable semantic strata for meaning, Camera use and occurrence scope |
-| **Lower task home** | Contextual work at the lower working edge, with span chosen by information structure and selection identity kept in the Card | One **World Instrument** for the invoked task | One shell-owned **Experience Deck** for Guide order, Seam and coordination |
+| **Stage** | Continuous spatial truth, focused readings, spatial instruments and direct manipulation | Architecture, objects, inspection, drafting and manipulation | Presentation focus and View markers, Stop entry pins, Camera Path geometry or Journey Cues by posture |
+| **Card** | What is canonically selected, what does it mean here, and what owns/reaches beyond this use? | Quiet identity; invoked structure/reach disclosure | One inspector for the selected Presentation, View, subject, Stop, Guide edge, path point or Cue |
+| **Lower task home** | Contextual work at the lower working edge, with span chosen by information structure and selection identity kept in the Card | One **World Instrument** for the invoked task | One shell-owned **Experience Deck**: Guide sequence, Camera Path topology or Journey time |
 
 The wide shell has Index left, dominant Stage center and Card right. The Card is a
 stable vertical landmark; its lower strata or width may compress when spatial work
@@ -128,8 +128,7 @@ not the lens name, technical complexity or number of uses affected by an edit.
   repair does not earn shell breadth merely by exposing advanced controls.
 - **Breadth work** may occupy the lower band beneath **Index + Stage + Card**
   when horizontal order, neighboring comparison or linked relationships materially
-  require that continuity. Guide Overview, Seam bookends and local coordination
-  are canonical examples. Their upper Index/Card landmarks retain their meanings;
+  require that continuity. The Experience Guide, Camera Path and Journey Decks are canonical examples. Their upper Index/Card landmarks retain their meanings;
   occupying the band beneath them is not itself sidebar collapse or an ownership change.
 
 A feature claiming breadth must show what information must remain simultaneously
@@ -144,9 +143,8 @@ their information; remaining space supplies separation and legibility. Keep span
 stable within a task posture rather than jumping with hover, grip activation or
 small content changes. A deliberate task/depth change can require a different span.
 
-**Peek is the shallow posture of the same shell-owned Deck**, with a compact rail
-at the Stage edge; it need not paint the full breadth required by Overview/Seam.
-This preserves a recognizable lower landmark without a large empty panel.
+**The Experience Deck stays bounded**: compact Stop chips or a single path/time
+lane, sized from content, never a large empty panel or half the window (§0.8.1).
 After semantic span is decided, overlay, crop or minimal layout reallocation,
 exact dimensions and responsive thresholds remain implementation/usability choices.
 They must preserve spatial memory and never imply Camera navigation.
@@ -445,218 +443,220 @@ are not fixed by this Paper contract. The production keymap belongs to its plann
 
 <a id="081-finalized-experience-shell-expression"></a>
 
-Experience uses the shared shell to author visitor meaning and encounter. It does
-not create a parallel shell or renderer. The following distinctions are visible,
-not merely data-model facts:
+**Reconciled 2026-10-11 (PR #113) — locked for PR #114.** This expression adopts the
+[Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
+and its [six QA boards](#experience-qa-boards), with the adjudications recorded here. It
+supersedes the 2026-10-01 expression (Set, Peek/Overview/fisheye L0–L2, Seam triptych,
+Coordinate strip, Auto/Hints/Capture ladder) wherever they differ. It reorganizes exposure
+only: every accepted C9 capability keeps its semantics and remains reachable. The unified
+prototype still shows the earlier expression until PR #114 implements this one; it is
+not shipped. Change it only for a concrete contradiction found during implementation.
 
-| Concept | Meaning and owner |
-| --- | --- |
-| **Presentation** | Reusable visitor meaning, focus and participation; Experience-owned |
-| **Camera View** | Reusable framing; Camera-owned even when authored here |
-| **Set** | One Presentation's unordered uses of Camera Views, with Presentation-local roles |
-| **Stop** | One stable Guide occurrence referencing a Presentation; distinct from that Presentation and from a runtime visit |
-| **Seam** | The transition between adjacent occurrences into the following Stop; local Guide work referencing Camera support |
+Experience uses the shared shell to author visitor meaning and encounter. It does not
+create a parallel shell, renderer, Camera system or selection store.
 
-**View progression ≠ Guide order ≠ Camera connectivity.** No visual graph or order
-strip may imply otherwise.
+> **World provides things. A Presentation gives them visitor meaning. Views decide how
+> they are seen. The Guide decides when they are met. A Camera Path decides how the
+> Camera moves. A Journey decides what happens during that movement. Preview shows only
+> the result.** Keep the big picture spatial and quiet; reveal precision where asked.
 
-### Scale × Depth
+| Concept | Meaning | Owner |
+| --- | --- | --- |
+| **Presentation** | A reusable visitor-facing moment: focus on one or more subjects, a region or the environment, plus its Views. Not a container, Scene group or Camera target | Experience |
+| **View** | One Camera composition used by a Presentation. A Presentation's Views are **unordered**; exactly one is its **Default View** (the `entry` role) when it has Views | Pose: Camera · use/role: Experience |
+| **Stop** | One occurrence of a Presentation in a Guide, with occurrence-local entry policy, Next, pacing, Gate and choices. Editing a Stop never silently edits the shared Presentation | Experience |
+| **Guide** | An optional ordered sequence of Stops | Experience |
+| **Guide edge** | The transition into the following Stop (the former *Seam*): **Cut** or **Travel**. It references Camera support; it owns no geometry | Experience |
+| **Camera Path** | Camera-owned movement between two Views (a Camera connection): generated endpoints, authored interior **path points**, pace, evaluation. Reusable by any Guide edge whose origin/entry Views it connects | Camera |
+| **Journey** | The timing of one Camera Path as played for a Guide edge: Camera movement time plus Experience pauses, with Cues | Experience over Camera evaluation |
+| **Cue** | An Experience moment bound to a stable Camera station on that path (departure, path point, named marker or arrival): its actions and optional pause. Its time is derived, never authored | Experience |
 
-Scale asks **what am I working on?** Depth asks **how much instrument do I need?**
-They are independent, not a mandatory ladder through all contexts.
+**View relation ≠ Guide order ≠ Camera connectivity ≠ Journey time.** No representation
+may imply one from another. A Cue never authors a Camera pose: a turn mid-path is Camera
+Path work, and a Cue may only align with it.
 
-| Scale contexts | Independent depth examples |
-| --- | --- |
-| Subject, Presentation, Camera View, Stop occurrence, Guide/Seam | Camera: Auto → Hints → Capture → Precise; Seam: route/pace → Coordination → Precision |
+### Information homes
 
-Changing scale does not force technical depth. Camera precision is directly reachable
-from a View without a Guide, and broad Guide context does not require precision.
+**Stage communicates spatial structure; Card communicates the selected item's detail and
+operations; Deck communicates sequence, topology or time by posture.** Only one posture
+is visually dominant, and only one entity inspector is shown at a time.
 
-### Ordinary Presentation and its Card
+| Context | Stage | Index | Card (canonical selection) | Lower Deck |
+| --- | --- | --- | --- | --- |
+| **Presentation** ([QA 3](#experience-qa-boards)) | Focus mark plus compact named **View markers** around it; ★ on the Default | Presentations; Guide row; `+ Present` | Presentation: Focus, Views list (★ Default), Guide use, `+ Capture view`, menu | Guide Deck if a Guide exists |
+| **View** (QA 3) | Same constellation, selected marker emphasized | Same | View: rendered Camera preview, Look through, Set as Default, Edit Camera, Rename, Remove from Presentation; owning Presentation summary beneath | Same |
+| **Scene subject** ([QA 5](#experience-qa-boards)) | The subject's own geometry, selected | Same, plus `Browse World` | Subject: identity, Present this, **Used in Experience**, `+ Add behavior`, `+ Visitor interaction` | Same |
+| **Guide / Stop** ([QA 4](#experience-qa-boards)) | Numbered Stop entry pins; the selected Stop's resolved entry View. No Camera paths | Guide row selected | Stop: Presentation link, Entry, Next, Movement summary, `Edit movement` | **Guide Deck**: ordered Stop chips with Cut/Travel edge chips, `Edit Guide` |
+| **Guide edge** | Origin and destination entry Views only | Same | Edge: `A → B`, **Cut \| Travel**, origin coverage, `Edit Camera Path` | Guide Deck, edge selected |
+| **Camera Path posture** ([QA 1](#experience-qa-boards)) | View endpoints, path, path points; `+ Path point`. No Cues | Path \| Journey switch; **From** origins with connected/gap status | Camera Path (pace, used by) or Path point (Remove point, Camera at this point, Look through, used by) | Straightened path topology, no time |
+| **Journey posture** ([QA 2](#experience-qa-boards)) | Quiet path, endpoints, Cue markers; Camera rig during Rehearse. No path handles | Same switch; total time and Cue count | Cue: At, Pause, Actions, `Edit cue`, Look through | Time axis with Cues, playhead and `Rehearse` |
+| **Edit Camera** | The precise Camera instrument (Outside/Through/Plan) | Unchanged | Camera View facts and reach | None, or the one active tape |
+| **Preview** ([QA 6](#experience-qa-boards)) | Visitor runtime only | — | — | — |
 
-Ordinary Experience shows Index, a dominant 3D Stage and a quiet Card, with no full
-Deck, global timeline or Camera rig. No Guide means no Guide rail. A Guide that
-exists earns quiet Peek awareness rather than an automatically expanded workspace.
+### Head and Index
 
-Selecting a World subject exposes its relation to Experience. **Present this**
-deliberately creates or opens a Presentation; lens switching creates nothing. A fresh
-Presentation initially shows **Meaning · Focus · Show** plus an explicit
-**Add behavior or offer** entry. Content earns additional **Happens**, **Visitor can**
-and **Guide** strata; empty slots are not permanent machinery. Preview requires no
-Guide or authored Camera graph.
+Head keeps the shared shell's responsibilities: project/active Experience identity, World |
+Experience, Undo/Redo with verb labels, and **one Preview control with a scope menu**
+(Presentation, Guide, Experience-wide). There are no other Preview entries in Index, Deck,
+Card or Presenter. The boards omit Undo/Redo; it stays. No fabricated save status.
 
-The Card is a structured semantic surface: identity/target and shared-use reach at
-the top, meaning/focus, Camera Show/View facts where relevant, supported behavior or
-visitor offers, and Guide/use relations. It declares **Presentation**, **Camera View**
-or **This Stop** honestly. Lower strata collapse; the header stays stable. Its vertical
-structure does not turn into the Deck.
+The Experience Index is a locator: **Presentations** and **Guide** rows, a single
+`+ Present` creation action and `Browse World`. It holds no permanent Scene-object
+inventory and no editors. It echoes only the canonical selection; a Presentation related
+to a selected Scene subject is never painted as selected. In Camera Path/Journey posture its
+header becomes **Camera Path** with the **Path | Journey** switch. Path posture lists the
+**From** origin Views of the selected edge with connected/gap status (the multi-origin
+coverage); choosing one chooses the connection being edited.
 
-A Stop Card distinguishes this occurrence's entry View, Cut/Travel, pace invocation,
-continuation, Gate and visitor choices from the shared Presentation's meaning and
-Camera facts. Repeated occurrences may differ without duplicating shared meaning.
-Opening a shared meaning/View writer from a Stop makes its owner and wider reach
-legible and invokes the Ask Rule before acceptance.
+### Presentation, Views and Default View
 
-### Set representation and visibility
+Creation has **one canonical action, `+ Present`**, which captures the current eligible
+composition as a new Presentation with one Default View, in one history step. A selected
+Scene subject offers **Present this**, the same model with that subject as focus and Camera's
+recommended framing. There are no permanent `+ Presentation`, `Present environment` or
+`Present region` species; region and environment are focus operations. Presenting from a
+Plan reading asks for explicit visitor intent (compose in 3D, or use the plan as a visitor
+View, or cancel) and never captures Plan silently. Lens switching and inspection create nothing.
 
-A Set is a **Presentation-local unordered constellation**, not numbered Views or a
-filmstrip. Views are located around their actual focus on Stage and schematically
-around that focus when disclosed inside an occurrence. Names and supported roles
-such as Entry, cue use, visitor choice or suggested framing explain each use. Use
-roles are Experience facts; View pose/projection remain Camera facts.
+Views are unordered. On Stage they are **compact markers placed semi-spatially around the
+Presentation focus**: bearing/side preserved in the current Stage orientation, distance
+compressed, no metric claim, no numbers, arrows or sequence. Stage never shows a wall of
+thumbnails. The Default carries a restrained ★ and its name, not a banner. Selecting a
+marker or a Views-list row selects that View use and shows its **faithful rendered Camera
+preview in the Card**; it moves no Camera. Look through and Edit Camera are explicit.
 
-A Show list in the Card is an inventory/door to those uses, not a sequence. Spatial
-focus connectors and schematic constellation links cannot be read as Camera edges.
-Coexisting Views create no route, progression or Stop. Shared-use labels disclose
-reuse without creating extra View identities.
+A Presentation Card shows identity, Focus, the Views list (the keyboard inventory, ★ on the
+Default), Guide use and `+ Capture view`; its menu holds Rename, Advanced authoring and
+Remove. Narration, behaviors and offers are not ordinary fields: when authored they earn one
+quiet summary that opens Advanced authoring. A View Card shows the View, its preview and its
+operations, then the owning Presentation as context, not as a second editor.
 
-| Context | Stage disclosure |
-| --- | --- |
-| Ordinary Presentation, 3D or Plan | Only the working Presentation's Set, at the appropriate spatial scale |
-| Guide overview | Numbered Stop entry pins only; no View constellations, entry-facing glyphs or Camera topology |
-| Expanded occurrence | That occurrence's Presentation Set, spatially on Stage and schematically inside the occurrence |
-| Seam | Possible origin Views, destination entry View and relevant Camera relationships for that Seam |
-| Explicit connectivity inspection | Wider Camera connectivity only by a separate request |
+Default is shared by every use of the Presentation; a Stop's Specific View entry overrides
+it locally. A Presentation without Views is valid ("No View · uses current viewpoint"). An
+unset Default and a missing referenced View are distinct named states. **Remove from
+Presentation** unlinks one use and discloses its Default, Stop-entry, Cue and Travel
+consequences; it never deletes Camera truth used elsewhere or picks a replacement silently.
 
-Directional View glyphs at disclosed Set/Seam depth describe framing orientation;
-they do not turn Guide overview into a Camera graph or establish new projection data.
+### Scene subjects
 
-### Experience Deck: shell ownership and Guide density
+**The Stage is the primary Scene browser:** a visible subject is normally clickable.
+`Browse World` (and Head search) opens the shared World locator for hidden, occluded,
+tiny, off-screen, logical or keyboard-only subjects; it selects through the same
+selection authority and moves no Camera unless a navigation verb is chosen.
 
-The **Experience shell owns one stable bottom Deck**. Its disclosure posture and
-outer composition stay recognizable regardless of which Guide occurrence or Seam
-is active. Guide contents populate it; a child editor does not replace it with its
-own workbench. It occupies the lower shell span beneath the working regions when
-expanded: Overview, Seam and coordination qualify for the shared breadth rule.
-It is not an instrument trapped inside the Card or Index. The groups inside it
-retain useful sizes rather than expanding every field to fill that span.
+The subject Card leads with identity and kind, then **Present this**, then **Used in
+Experience** (each Presentation, Stop or Experience-wide use and what it does), then
+`+ Add behavior` and `+ Visitor interaction`. Capability selection, audition and
+configuration appear **only after** one of those is invoked, for the one chosen operation.
+No capability inventory, Play/Stop/On/Off rows or adapter controls rest on the Card.
+**Scene subject selection and Presentation selection remain distinct identities.**
 
-| Posture | Composition and purpose |
-| --- | --- |
-| **Peek** | A very shallow rail at the Stage edge: current occurrence/position and quiet Guide awareness. It overlays or minimally occupies the edge; no full workspace resize |
-| **Overview** | A Deck heading with Guide/order context and position, then occurrence cards along editorial order. Stage supplies spatial occurrence locations |
-| **Seam** | The same Deck forms two adjacent occurrence bookends around a wider central Seam instrument; unrelated occurrences compress strongly |
+### Guide, Stops and Guide edges
 
-No Guide means no Deck rail. Adding the first Stop starts Peek, not a full-height
-Deck. Expanding is creator intent. Exact heights, crop/dock behavior and spacing
-remain implementation/usability choices; the stable lower home and relative rank do not.
+No Guide means no Guide Deck. **Add to Guide** creates one Stop and selects it. The **Guide
+Deck** is the single Guide home: `GUIDE · name · n Stops`, compact named Stop chips in order
+(number, Presentation name, optional entry-View image), edge chips naming Cut or Travel, and
+`Edit Guide`. It stays bounded, a shallow band rather than half the window. There is no
+Peek/Overview/Expand vocabulary, no expanded L2 occurrence and no second Guide editor.
+`Edit Guide` is the deliberate order posture: move, repeat and remove Stops in one context
+menu, with Undo.
 
-Overview is a **fisheye**, not equal-width cards or a text-only strip:
+Selecting a Stop edits that occurrence in the Card: Presentation link (Open Presentation),
+**Entry** (Presentation Default · Specific View · Keep current viewpoint), **Next**,
+**Movement** summary and `Edit movement`, which selects the edge. *Presentation Default* is
+an entry **policy**; Stage labels the resolved View by its own name. Pacing, dwell, Gate and
+visitor choices sit under deliberate Stop detail.
 
-- **L0:** compact identity/position for distant occurrences.
-- **L1:** thumbnail, title, entry View name and warning state where relevant.
-- **L2:** expanded occurrence with Presentation summary, unordered View constellation
-  and Guide-specific details.
+Selecting an edge edits movement: **Cut \| Travel**, the aggregate origin coverage
+("reachable from 2 of 3 Views") and `Edit Camera Path`. **Cut** creates no Camera edge.
+**Travel** is the explicit Camera-owned preparation that reuses existing Camera Paths and
+creates only missing direct ones; gaps remain explicit. Ordinary Guide editing never draws
+Camera Paths across the Stage.
 
-The active occurrence expands as appropriate; nearby occurrences may stay L1 and
-distant ones compress toward L0. Expansion to L2 is its own context, not forced by
-every selection. Repeated Presentations keep separate Stop identities and positions,
-with shared-use context exposed without implying a fork. Neutral editorial connectors
-belong in the Deck; they must not become spatial Camera routes on Stage.
+### Camera Path and Journey postures
 
-The Deck supplies **editorial order**; Stage supplies **spatial occurrence location**;
-Card supplies **semantic identity, ownership and scope**. These complementary homes
-must compose together. Showing isolated controls or equal cards does not satisfy the
-Guide overview requirement.
+`Edit Camera Path` enters one task with two postures over the same connection; switching
+posture changes neither selection nor Camera. Opening it does not move the authoring view.
 
-### Seam triptych and information homes
+**Path posture edits geometry on Stage.** Show View endpoints (● with frustum), the evaluated
+path and small unlabeled path points (○); the selected point has the amber ring (◎). Points
+are added only through the armed **`+ Path point`** action; ordinary clicks never create
+geometry. Points drag directly. A selected point's Card offers Remove point, **Camera at
+this point** (a preview evaluated by the Camera kernel at that station, with Look through)
+and Used by. The path's own Card carries its one **Pace** writer and shared-use reach. The
+Deck is a straightened topology overview (endpoints, points, selection mirrored with Stage),
+without time, Cues, narration or holds. No `Anchor N` labels, coordinate panel or
+Curve/Smooth controls unless Camera exposes a real author-facing mode. Draw only the
+geometry the evaluator actually follows.
 
-Opening a Seam changes the Deck posture, **not the Camera standpoint or Stage reading**.
-Inspecting a relationship is different from editing its spatial support. Draw route,
-anchor manipulation or route repair may explicitly request a useful Plan reading,
-with a return crumb through Camera/navigation. Plan is preferred for route work,
-not a compulsory consequence of opening the Seam.
+**Journey posture edits time and Cues.** Stage keeps the path quiet and handle-free, shows
+Cue markers (◆) at their stations and, during Rehearse, the moving Camera rig. The Deck is a
+real time axis from 0:00 to the derived total, with Cues placed by evaluated time and a
+playhead. A selected Cue's Card shows its name, **At** (derived), **Pause** (its hold, the
+one Experience-authored duration), **Actions** and `Edit cue`. Moving a Cue rebinds it to
+another station; a Cue never stores seconds. Deep Cue editing is a deliberate posture.
+**Total = Camera movement time + pauses**, derived from the same Camera evaluation and
+coordination timing used at run time; there is no second animation model.
 
-The Seam composition is a triptych with compressed unrelated order at its sides:
+**Rehearse is editor playback; Preview is the visitor run.** Rehearse plays and scrubs one
+Journey through Camera evaluation, moving a rig marker while the authoring view stays
+put. Look through at the playhead is explicit. Rehearse writes no source and executes no
+visitor actions; it marks Cues as they pass.
 
-| Home | Required information |
-| --- | --- |
-| **Origin bookend** | Prior Stop and Presentation identity, possible origin Views, and each origin's supported/gap status |
-| **Central Seam instrument** | Seam identity into the following Stop; Cut/Travel; aggregate reachability/spatial status; Camera route summary and pace; Coordinate entry or active coordination depth |
-| **Destination bookend** | Following Stop and Presentation identity, with that Stop's entry View clearly named |
-| **Stage** | Scoped spatial route support, View positions, authored anchors, derived points, gap location, spatial pace cues and direct manipulation |
-| **Card** | Canonical target and property owner/reach; details of the active occurrence-local beat/hold or Camera edit when needed |
+### Camera View precision
 
-Card can compress to its identity header during path work and expand for semantic
-editing. It does not absorb the triptych or become a duplicate route/coordination
-control panel. A task detail can describe a beat under **This Stop** while keeping
-that Stop's canonical identity; task focus need not manufacture another selection.
+`Edit Camera` from a View opens the precise Camera task (Outside, Through, Plan) at the
+current standpoint, with one active grip tape, the Camera Card and explicit return; see
+[Camera framing instruments](./spatial-instrument-grammar.md#camera-framing-instruments).
+Recommended framing (formerly Auto/Hints) is an invoked option, not a ladder; capture is
+`+ Capture view`. A selected View's movement-speed preference is advanced Camera request
+detail, never a Guide pace writer.
 
-Travel asks whether **every View the visitor may legitimately occupy at the end of
-the origin Stop** can reach the destination entry View. Show per-origin status and
-an aggregate such as “reachable from 2 of 3 Views.” Fixing one origin does not claim
-all are fixed. Multiple origins are not merely decoration around one tested route.
+### Advanced authoring
 
-**Cut** is occurrence-local entry policy and creates no Camera edge; no spatial
-connection is drawn across the world. **Travel** references supported Camera
-connectivity and cannot fabricate motion. Missing support remains an explicit gap.
-Camera owns route geometry and pace; Experience owns the occurrence's choice/use and
-coordination. Shared route/pace edits must disclose their reach.
+One invoked **Advanced authoring** home per Presentation/Experience reaches narration and
+captions, behaviors and lifecycle, visitor offers and availability, automatic View switching
+(formerly "Automatic View cue", renamed so *Cue* means Journey Cues only) and suggestions.
+Its writers are the existing ones. Repair notices route to their exact owner. The final
+deep Cue/scripting shell is deliberately unresolved; implementations use a focused Card
+editor and invent no workspace, language or timeline.
 
-### Local coordination and Camera/Experience responsibilities
+### Visitor Preview
 
-Normal Seam depth shows route, pace and spatial status without a temporal strip.
-**Coordinate**, or existing coordination on that Seam, exposes a compact local strip
-inside the **central Seam panel**. The bookends and shared shell remain, and Stage
-stays dominant. Coordination is not a fourth permanent workspace or a global timeline.
+Preview is the museum experience, not the editor with panels hidden. It removes Head,
+lenses, Index, Card, Deck, grid, Camera geometry and every author term (Presentation, View,
+Default, Stop number, Cue, capability names). The visitor sees content, **Back** and **Next**,
+alternate Views as semantic choices labelled by their names (thumbnails optional), offers and
+exactly one restrained **Exit Preview**. It runs the actual runtime and renderer; generated
+board artwork is not a fidelity target.
 
-The strip has distinct **Route/stations · Beats · Holds** information homes. The
-Camera route/station row is quiet orientation; the event row shows occurrence-local
-beats; the hold row shows occurrence-local durations. A selected beat/hold exposes
-its binding and reach in the Card. The central panel carries extended relation/time
-structure rather than forcing that structure into vertical Card fields.
+### Experience visual language
 
-The [route/station instrument grammar](./spatial-instrument-grammar.md#camera-routes-and-experience-coordination-projections)
-defines Stage route, authored-anchor, derived-helper, View/end, beat/hold and gap
-species, plus spatial/temporal correspondence. The lower strip must visibly compose
-those relationships, not merely contain controls with matching labels. It consumes
-the shared semantic color/state roles; it does not invent another palette or graph.
+Experience consumes the shared [material, color, type and state roles](#visual-and-state-grammar-07):
+warm ivory working surfaces, charcoal type, teal for Camera infrastructure, small amber for
+selection and the active manipulation, thin borders, minimal shadow, compact controls, a
+dominant Stage, a contextual Card and a bounded Deck. Avoid glossy dashboard styling,
+heavy cards, gradients, floating tool clusters and dense Stage labels. Stage carries no
+numbers, capability lists, timing labels, Camera parameters or scripting text.
 
-Spatial and temporal projections reference **one authored relationship**. Stable
-station references are departure, an authored anchor, arrival or a named marker.
-A beat binds to the station rather than an independently authored seconds value;
-its attachment survives route-pace changes. Generated intermediate points cannot
-become station references. Mirror corresponding station/event emphasis in both
-projections without equating their geometric screen positions.
+### Experience QA boards
 
-**Path geometry is edited only on Stage.** The strip displays Camera stations and
-lets Experience coordination be authored; it never becomes a second route editor.
-Invocation time mapping evaluates through Camera. Existing coordination does not
-silently retarget if its referenced station or route becomes unavailable; domain
-validation/repair remains authoritative.
+The boards in [`Design-QAs/`](../../../prototypes/integrated-experience-authoring/Design-QAs/)
+are **acceptance guardrails for information homes, hierarchy, selected-entity semantics,
+visible-versus-disclosed capability, posture, terminology and Camera/Experience separation**.
+They are not pixel specifications. Generated assets, lighting, icons, exact spacing,
+incidental labels and the Head's project chip establish nothing. Where an image conflicts with
+this text, the text wins.
 
-The destination has **no permanent global Camera Timeline**, five Camera track
-lanes, duplicate scrubber or generic video-editor workbench. The maintained
-editor's legacy Timeline is a landed implementation description, not the source
-of Seam composition or Experience ownership.
-
-### Progressive Camera precision
-
-Camera disclosure proceeds through:
-
-| Depth | What it exposes |
-| --- | --- |
-| **Auto** | Derived framing |
-| **Hints** | Near/far, side, height, look-at and movement intent |
-| **Capture** | Explicit creation of a reusable Camera View |
-| **Precise** | A direct Camera instrument on Stage with Camera-owned facts and reach in the Card |
-
-Precise depth has three available postures on the **same Camera View/route**:
-
-- **Outside:** see the observer in the room to work on architecture relationship,
-  height, distance, target or route. A subordinate framed-view inset may assist it.
-- **Through:** look through the View; the image becomes the framing instrument,
-  with frame gate, horizon/height, lens and target grips as supported.
-- **Plan:** work on spatial relationships, connectivity, routes and anchors.
-
-The posture switch belongs to this local Camera task. The
-[Camera framing instrument grammar](./spatial-instrument-grammar.md#camera-framing-instruments)
-defines truthful observer/target representation, framing grips and active-grip tapes.
-The Outside specimen's circle is one possible guide, not a required orbit constraint.
-Chrome and Card remain visible in Through so it is unmistakably authoring, with an
-explicit spatial return. Through and Outside are both available; the initial posture
-is a usability choice. Capture is deliberate, never an effect of lens switching or
-inspection.
+| Board | Guards | Interpretation note |
+| --- | --- | --- |
+| `qa-1-camera-path.png` | Direct path geometry, Path vs Journey, endpoint/point/selection species, From coverage, no timing | Curvature drawn only if the evaluator follows it |
+| `qa-2-journey.png` | Time over movement, no path handles, Rehearse/scrub, shallow Cue summary | Cue *At* is derived |
+| `qa-3-presentation-views.png` | Focus, compact View markers, ★ Default, preview in Card, `+ Present` | The owner summary beneath the View is context, not a second inspector |
+| `qa-4-guide-stops.png` | One Guide home, Stop vs edge, Cut/Travel, no Camera paths | The Stage label must name the resolved View, not "Presentation Default" |
+| `qa-5-scene-subject.png` | Stage browsing, `Browse World`, usage before capability, closed disclosure | The highlighted Index row is drift; no related Presentation is selected |
+| `qa-6-visitor-preview.png` | Isolation, Back/Next, View choices in visitor language, one Exit Preview | Use the real renderer |
+| `camera-precision-outside.png`, `camera-precision-through.png` | Edit Camera precision postures, truthful observer/frustum, one tape, explicit return | Retained from the 2026-10-01 set; their Index/Head/status-line chrome is superseded by this section |
 
 ## Visual and state grammar (§0.7)
 
@@ -859,12 +859,12 @@ current identity.
 **Park is inactive remembered session context.** On lens exit, cancel unaccepted
 writers/drags, deactivate invoked task surfaces and temporary readings together,
 and retain accepted source edits. World inspection and Browse/Search procedure park;
-Experience's invoked Deck/Seam and precise Camera procedure use the same rule.
+Experience's Edit Guide, Camera Path/Journey postures and precise Camera procedure use the same rule.
 Parking authors nothing and owns no Camera snapshot/history.
 
 Returning shows **current selection and Camera standpoint at ordinary lens rest**.
-World has no active Instrument or inspection; Experience may show Peek for an
-existing Guide but does not reopen Guide or precision work. The toggle restores no
+World has no active Instrument or inspection; Experience may show the compact Guide Deck for an existing Guide but does not reopen
+Edit Guide, Camera Path/Journey or precision work. The toggle restores no
 old Browse context, task, selection, reading or Camera pose.
 
 Resume is explicit in relevant Look/Details, condition or Experience task context.
@@ -913,7 +913,7 @@ At narrow desktop width the Index becomes an invoked sheet behind a compact
 location control; Card becomes an invoked sheet behind a selected-identity control.
 Stage stays dominant, with the active lower task surface in a coherent home.
 Conditional recovery appears if current context cannot identify the selected subject.
-Experience Index may compress to a spine during dense Seam work, while Card identity
+Experience Index may compress to a spine during Camera Path/Journey work, while Card identity
 remains legible/recoverable and the Deck still belongs to the shell.
 
 For World Paper, location and identity controls live in Head. Hide side panels uses
@@ -936,9 +936,12 @@ Only the choices below remain open; they do not reopen the shell architecture.
 | Choice | Fixed constraint |
 | --- | --- |
 | Initial precise Camera posture: Through or Outside | Both are available, use the same Camera authority, and keep authoring distinct from Preview |
-| Deck crop/docking, exact dimensions and density thresholds | Peek stays quiet; Overview/Seam retain their composition and Stage dominance; layout changes never navigate |
+| Deck crop/docking, exact dimensions and density thresholds | The Experience Deck stays bounded with one posture at a time and Stage dominance; layout changes never navigate |
 | Domain-specific instrument geometry, occlusion aids and overlap disambiguation | Follow [spatial-instrument grammar](./spatial-instrument-grammar.md); preserve truthful relationships, semantic species and reachable operations without inventing constraints |
-| Station-bound coordination comprehension | Verify behavior remains understandable after anchor moves, pace changes and shared-route edits; binding/ownership semantics are fixed |
+| Station-bound Cue comprehension | Verify Cues remain understandable after path-point moves, pace changes and shared-path edits; binding/ownership semantics are fixed |
+| Deep Cue/scripting shell | A focused Card editor meanwhile; no new workspace, language or timeline until designed |
+| Dense View constellations | Markers stay unordered and semi-spatial; clustering/label-on-hover only if real density requires it |
+| Camera Path interpolation | Drawn geometry follows the Camera evaluator; any smoothing is a Camera evaluation decision, not a shell control |
 | Exact keyboard-focus treatment | Independent visible non-hue focus remains required; the demo's two-tone ring is a candidate, not a mandated measurement |
 | Accent-tinted pressed fill reconsideration | The recessed/edge/inset baseline remains; no second treatment is introduced by a feature |
 | Mat ↔ vellum transition timing and wipe/crossfade | Prevent flicker, preserve continuous spatial meaning and reduced-motion endpoints; demo timings are not product law |
@@ -959,8 +962,9 @@ Its proposal must make these outcomes visible together:
   ownership across both lenses and narrow desktop.
 - Calm resting context, purposeful disclosure and the correct lens-specific task
   home; richer capability does not create permanent parallel chrome.
-- Experience's unordered Set, fisheye Guide occurrences, Seam triptych and local
-  station/beat/hold coordination as complete compositions, not a checklist of controls.
+- Experience's unordered Views with one Default, compact Guide Deck with Stop/edge
+  inspectors, Camera Path and Journey postures with Rehearse, and usage-first Scene
+  subjects, as complete compositions rather than a checklist of controls.
 - Camera geometry/evaluation distinct from Experience order/coordination, with
   explicit scope and gaps, generated/authored distinctions and no legacy Timeline model.
 - Coherent material, typography, controls, selection/active-lens hierarchy, accessible
@@ -983,7 +987,8 @@ fallback specification that a future designer must reopen or an authority cycle.
 | Evidence | Role |
 | --- | --- |
 | [World final synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [World QA package](../../../prototypes/world-experience-shell-round/QA-package/) | Shared/World design record and all ten composition/disclosure specimens |
-| [Experience V2 final synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) and [Experience Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/) | Experience design record and canonical Presentation, Guide, occurrence, Seam, coordination and precision specimens |
+| [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md) and [Experience Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/) | Experience design record (2026-10-11) and the eight canonical specimens indexed in [§0.8.1](#experience-qa-boards) |
+| [Experience V2 final synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | Superseded 2026-10-01 Experience record (Set, Peek/Overview, Seam, Coordinate); provenance only. Its boards were retired 2026-10-11 except the two Camera precision specimens; Git history keeps the rest |
 | [World Paper proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) | Accepted World-only refinements, owner rulings and schematic rationale |
 | [P26 surface calibration acceptance](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md), [specification](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md) and [prototype journeys](../../../prototypes/spatial-authoring/README.md) | Mat/vellum/grid/state calibration and deep World interaction evidence; shortcuts are not production mechanisms |
 | [Shell ratifications](./editor-shell-ratifications.md) and [Atlas](./editor-shell-atlas/index.html) | Existing role-system and state evidence; the Atlas's landed composition does not redefine this destination |

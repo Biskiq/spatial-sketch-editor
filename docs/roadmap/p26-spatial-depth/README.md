@@ -74,13 +74,13 @@ final external review is pending. F and T1/T2/T3 production gates remain unchang
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.
 
-**Paper authoring adoption — next PR after #113, not started:** [Paper adoption plan](./design/paper-authoring-prototype/implementation-plan.md)
+**Paper authoring adoption — PR #115, after #114, not started:** [Paper adoption plan](./design/paper-authoring-prototype/implementation-plan.md)
 · [accepted contract, PLATE §0.8.4](../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 · [rationale](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md).
 It adopts the accepted World Paper shell into the same World executable as PA0–PA12 in
 dependency-ordered slices, preserving A–F and the #112 seams. The owner-decided sequence is
-#112 close/merge → #113 Experience V2 + real World ↔ Experience continuity → Paper PA0–PA12 in
-the next PR → prototype detour closes → F exact-interface amendments → T1/T2/T3/T4; Paper's
+#112 close/merge → #113 Experience V2 + real World ↔ Experience continuity → #114 Experience UX
+implementation → #115 Paper PA0–PA12 → prototype detour closes → F exact-interface amendments → T1/T2/T3/T4; Paper's
 position is decided, not an open call. Prototype evidence only; no F/T1 gate moves.
 
 **Shell/design authority vs executable state (2026-10-01, PR #111):**

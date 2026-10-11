@@ -39,7 +39,7 @@ back. View navigation stays separate from source Undo.
 Lens crossing cancels proposals and parks procedures inactive in their owning lens. Returning is
 ordinary. Explicit Resume revalidates current identity and targets, reactivates accepted parameters
 and keeps the current realized Camera. World-only footer controls refuse in Experience; their
-retirement and Paper authoring belong to the next PR.
+retirement and Paper authoring belong to PR #115, after the #114 Experience UX implementation.
 
 In Experience, explicitly open Saltmarsh Highlights or create a Presentation from a selected World
 subject, a region or the environment. Auto/Hints derive framing; explicit Capture adds a Camera View
@@ -47,14 +47,16 @@ and its use atomically to the unordered Set. Hints and
 Precise Camera are local depth, independent of Guide work. Add to Guide creates occurrences;
 Overview expands a Stop, Seam connects supported Camera Views, and Coordinate binds holds or
 invocations to stable Camera stations. Card headers distinguish shared framing from occurrence reach.
-Head Preview works with no Guide or Views and returns to the exact authoring context.
+Head Preview works with no Guide or Views and returns to the exact authoring context. This describes the
+current executable; the locked destination Experience UX (PLATE §0.8.1 — Presentation/Views/Default, Guide
+edges, Camera Path and Journey postures) is implemented by PR #114.
 
 With screenshot mode off, the shared Presenter switches by lens: World retains A–F; Experience guides Q1–Q8 authoring followed by advanced topics. Its optional walkthrough is on by default: Next demonstrates the current task through ordinary product commands, then advances. Off, Next only browses; outcomes are advisory and never block it. Back/Skip/close/reopen author nothing. Preview can retain read-only guidance while the authoring walkthrough option and all other writers stay unavailable. This guidance is separate from the authored Guide/Stops. The separate Experience examples disclosure offers explicit Reset, Load Example and Load Conformance commands; loading never plays or positions the Camera. The donor at
 [`../experience-authoring/`](../experience-authoring/README.md) stays runnable with its 4.1 tests.
-The integrated design folder retains the finalized synthesis/boards, rather than another executable.
+The integrated design folder retains the UX reconciliation, the six QA boards and two Camera precision specimens, rather than another executable.
 The [replacement #113 conformance plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
 owns this replacement's implementation scope; [historical Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) maps S0–S9 evidence.
-Paper PA0 must reconcile against this unified tree. F and production T1/T2/T3/T4 remain gated.
+Paper PA0 (#115) must reconcile against this unified tree as left by #114. F and production T1/T2/T3/T4 remain gated.
 
 The predecessor shell, reconciliation and comparisons are preserved in Git; their interaction
 rules are harvested into the current reference/tests. The stable phase-local path is a

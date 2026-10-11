@@ -56,7 +56,7 @@ The executable remains native ESM/DOM with one shared Stage in
 A–F behavior; the [donor][donor] remains runnable. No alternate application,
 iframe, renderer, architecture reconstruction, production migration, general
 route search/collision planner, general scheduler or media platform is introduced.
-Paper PA0–PA12 remains the subsequent [Paper adoption plan][paper]. It does not
+Paper PA0–PA12 remains the subsequent [Paper adoption plan][paper] (#115, after the #114 UX implementation). It does not
 absorb missing Experience shell, Set, route, coordination or precision behavior.
 
 ### Inspection baseline and proof limits
@@ -96,17 +96,22 @@ and current captures; the §2 corrections remain the standing obligations.
 
 All eight boards were visually inspected. Names below identify evidence, not
 state assertions. The extra boards strengthen the six-state contract.
+*2026-10-11:* the boards marked *retired* were superseded by the
+[Experience UX reconciliation boards](../../../../reference/design-system/editor-shell-and-visual-system.md#experience-qa-boards)
+and removed from the tree. Each survives beside its C8 capture in the `qa-*-board-pair.jpg`
+specimens (the links below now open those pairs) and in Git history (last present at `6f972bc1`). The two Camera precision
+boards remain as `camera-precision-through.png` and `camera-precision-outside.png`.
 
 | Board | Use in this plan |
 |---|---|
-| [Museum Piano Hall Tour Editor][b1] | QA-1: dominant 3D Stage, spatial View constellation, quiet vertical Card, optional Peek |
-| [Museum Tour Planner Interface][b2] | QA-2: spatial numbered Stops and L0/L1 occurrence overview |
-| [Museum Guide Planning Dashboard][b3] | QA-3: L2 occurrence, shared Set on Stage and in Deck, local/shared Card strata |
-| [Museum Floorplan Route Editor][b4] | QA-4: useful Plan, scoped multi-origin route, View/entry glyphs, authored anchors, gap, two bookends |
-| [Museum Hall Tour Dashboard Mockup][b5] | QA-5: same route with spatial/temporal station correspondence, beats and holds |
+| Museum Piano Hall Tour Editor *(retired)* | QA-1: dominant 3D Stage, spatial View constellation, quiet vertical Card, optional Peek |
+| Museum Tour Planner Interface *(retired)* | QA-2: spatial numbered Stops and L0/L1 occurrence overview |
+| Museum Guide Planning Dashboard *(retired)* | QA-3: L2 occurrence, shared Set on Stage and in Deck, local/shared Card strata |
+| Museum Floorplan Route Editor *(retired)* | QA-4: useful Plan, scoped multi-origin route, View/entry glyphs, authored anchors, gap, two bookends |
+| Museum Hall Tour Dashboard Mockup *(retired)* | QA-5: same route with spatial/temporal station correspondence, beats and holds |
 | [Under the Lid: Hall Tour Editor][b6] | QA-6 primary: Through framing gate, active grip/tape, return, editor chrome |
 | [Museum Camera View Editor][b6-outside] | QA-6 companion: Outside observer, frustum/target relationship and posture controls |
-| [Museum Tour Editor Interface][b-ask] | QA-3/QA-6 companion: repeated meaning, explicit scope decision and entry specialization |
+| Museum Tour Editor Interface *(retired)* | QA-3/QA-6 companion: repeated meaning, explicit scope decision and entry specialization |
 
 ## 2. State-by-state reconciliation
 
@@ -880,14 +885,14 @@ before any merge-readiness or formal closeout claim. No major phase closes here.
 [qa]: ../../../../../prototypes/spatial-authoring/qa/README.md
 [tests]: ../../../../../apps/editor/tests/README.md
 [browser-hygiene]: ../../../../../.agents/skills/browser-hygiene/SKILL.md
-[b1]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Piano Hall Tour Editor.png>
-[b2]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Tour Planner Interface.png>
-[b3]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Guide Planning Dashboard.png>
-[b4]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Floorplan Route Editor.png>
-[b5]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Hall Tour Dashboard Mockup.png>
-[b6]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Under the Lid_ Hall Tour Editor.png>
-[b6-outside]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Camera View Editor.png>
-[b-ask]: <../../../../../prototypes/integrated-experience-authoring/Design-QAs/Museum Tour Editor Interface.png>
+[b1]: ../../../../../prototypes/spatial-authoring/screens/experience-conformance/qa-1-ordinary-board-pair.jpg
+[b2]: ../../../../../prototypes/spatial-authoring/screens/experience-conformance/qa-2-overview-board-pair.jpg
+[b3]: ../../../../../prototypes/spatial-authoring/screens/experience-conformance/qa-3-occurrence-board-pair.jpg
+[b4]: ../../../../../prototypes/spatial-authoring/screens/experience-conformance/qa-4-route-board-pair.jpg
+[b5]: ../../../../../prototypes/spatial-authoring/screens/experience-conformance/qa-5-coordination-board-pair.jpg
+[b-ask]: ../../../../../prototypes/spatial-authoring/screens/experience-conformance/qa-3-scope-board-pair.jpg
+[b6]: ../../../../../prototypes/integrated-experience-authoring/Design-QAs/camera-precision-through.png
+[b6-outside]: ../../../../../prototypes/integrated-experience-authoring/Design-QAs/camera-precision-outside.png
 [q1]: ../../../../../prototypes/spatial-authoring/screens/experience-v2/qa-1-ordinary.png
 [q2]: ../../../../../prototypes/spatial-authoring/screens/experience-v2/qa-2-overview.png
 [q3]: ../../../../../prototypes/spatial-authoring/screens/experience-v2/qa-3-occurrence.png

@@ -1,9 +1,10 @@
 # World Paper authoring — prototype adoption plan
 
 Status: **planned 2026-10-03, review-ready, not started.** No slice is implemented. The
-owner-decided sequence places this plan **after #113**: #112 close/merge → #113 Experience V2 +
-real World ↔ Experience continuity → Paper PA0–PA12 in the next PR → prototype detour closes →
-F exact-interface amendments → T1/T2/T3/T4 (§11 item 7, §12).
+owner-decided sequence places this plan as **PR #115, after #113 and #114**: #112 close/merge →
+#113 Experience V2 + real World ↔ Experience continuity → #114 Experience UX implementation →
+#115 Paper PA0–PA12 → prototype detour closes → F exact-interface amendments → T1/T2/T3/T4
+(§11 item 7, §12; #114 inserted 2026-10-11). Requirements below are unchanged by that insertion.
 Contract: [PLATE §0.8.4](../../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 (normative), within PLATE §0.8–§0.8.3; Wall-role domain destination in
 [architecture](../../../../reference/architecture.md) §Ownership.
@@ -144,9 +145,11 @@ Each slice records:
 
 - **Updated entry authority:** reconcile against the [replacement C1–C8 conformance plan](../../../p25-experience/design/experience-v2-prototype/conformance-plan.md)
   and [fresh conformance evidence](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md).
-  C8 in-scope acceptance is complete (2026-10-04); independent #113 review and its separate
-  missing-fixture repository blocker remain. PA0 inherits the tested executable and
-  current proof after #113 lands; no Paper work starts in the C8 task.
+  C8 in-scope acceptance is complete (2026-10-04) and #113's C9 capability is owner-accepted
+  for functionality (2026-10-11); the separate missing-fixture repository blocker remains.
+  PA0 inherits the tested executable and current proof after **#114** lands (its Experience UX
+  rebuilds the shared Head, Index and Deck — see the [PR #114 plan](../../../p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md));
+  no Paper work starts in #113 or #114.
   S0–S9 proof is historical. Re-record all current World/Experience axes; the pre-replacement
   counts below are provenance, not the new entry baseline. Preserve neutral Resume, current
   invocation returns, observer-anchor semantics, scope proposals, spatial Set/route/rig and
@@ -858,7 +861,7 @@ Explicitly out of scope:
 - generated ceilings for derived rooms;
 - deletion of fixture walls;
 - multi-level work;
-- Experience V2 work (#113);
+- Experience V2 work (#113) and its UX implementation (#114);
 - touch, pen and trackpad feel studies;
 - screen-reader listening trials.
 
@@ -882,10 +885,11 @@ Explicitly out of scope:
    may decide later.
 6. **Selection-set kinds.** The prototype limits sets to objects and structures. Which domain kinds
    support sets in production follows the selection facade's placement sets.
-7. **#113 ordering — decided 2026-10-03.** #113 lands first (it is the current baton); Paper
-   PA0–PA12 is the next PR after it, then the prototype detour closes. #113 edits the lens bridge,
-   Head and `ui.js`, which PA2, PA4 and PA5 also touch, so PA2 onward rebases on #113's Head.
-   - PA0 and PA1 conflict with nothing, but they land in the Paper PR after #113, not before it.
+7. **Ordering — decided 2026-10-03, #114 inserted 2026-10-11.** #113 lands first, then #114
+   (Experience UX implementation); Paper PA0–PA12 is #115, then the prototype detour closes.
+   #113 and #114 edit the lens bridge, Head and `ui.js`, which PA2, PA4 and PA5 also touch, so
+   PA2 onward rebases on #114's Head (one Preview ▾, no trail/undo counts in chrome).
+   - PA0 and PA1 conflict with nothing, but they land in #115, not before it.
    - The Experience Deck is never touched by this plan.
 8. **PLATE open calls** (keyboard focus treatment, mat ↔ paper timing) stay open. Visual work uses
    the existing treatments without ratifying them.
@@ -893,8 +897,8 @@ Explicitly out of scope:
 ## 12. Recommended implementation sequence
 
 1. PA0. Then PA1, which is domain-only and digest-stable and can be prepared without waiting on
-   any other slice, all inside the Paper PR after #113.
-2. After #113 merges (the decided order): PA2 → PA3, then PA4 → PA5.
+   any other slice, all inside #115.
+2. After #114 merges (the decided order): PA2 → PA3, then PA4 → PA5.
 3. PA6 → PA7.
 4. PA8 (needs PA1) → PA9.
 5. PA10.

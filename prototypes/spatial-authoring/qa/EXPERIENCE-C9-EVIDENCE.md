@@ -1,7 +1,7 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
 TYPE: prototype implementation/review evidence for C9.1–C9.9; final owner acceptance pending.
-STATUS: **MP1 owner-accepted 2026-10-04; MP2 owner-accepted 2026-10-05. MP3 and MP4 remain human gates.** C9.1–C9.9 are implemented and reviewed, and the owner-directed optional walkthrough correction with its review follow-up is verified at `3a009763`: Next demonstrates the current task when the walkthrough is on, or browses without an outcome gate when it is off, and says which of those happened. Each earlier proof below belongs to its own recorded executable. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
+STATUS: **C9 complete. MP1 owner-accepted 2026-10-04, MP2 2026-10-05, MP3 and MP4 2026-10-11 — MP3/MP4 accepted for functionality, not as final visual UX** (executable `40b65091`, pushed head `6f972bc1`). The six-QA UX reconciliation is locked in PLATE §0.8.1 (#113, docs only); UX implementation is pending in PR #114. C9.1–C9.9 are implemented and reviewed, and the owner-directed optional walkthrough correction with its review follow-up is verified at `3a009763`: Next demonstrates the current task when the walkthrough is on, or browses without an outcome gate when it is off, and says which of those happened. Each earlier proof below belongs to its own recorded executable. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
 SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up before final human acceptance. No production migration, broader shell overhaul, six-QA visual reconciliation, merge, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.
 
 ## Preceding observational follow-up provenance (historical)
@@ -103,8 +103,9 @@ SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up 
 ### Owner-review frontier
 
 C9.6–C9.9 are implemented/reviewed work, not an unstarted queue. The plan, current baton,
-[PR checkpoint][checkpoint] and P25 router now agree: **MP3 — Travel and agency** and
-**MP4 — rich capability acceptance** still require explicit owner outcomes. Review MP3 with the
+[PR checkpoint][checkpoint] and P25 router now agree. *2026-10-11:* the owner accepted
+**MP3 — Travel and agency** and **MP4 — rich capability acceptance** for functionality, not as
+final visual UX; the text below records the frontier as it stood before that outcome. Review MP3 with the
 Presenter closed; inspect the new Experience guidance as part of MP4, alongside the capabilities
 and shared structural seams. No acceptance, merge, phase closure or production cutover is implied.
 
@@ -1167,13 +1168,13 @@ blocker; identity as recorded at base `abaa7592`
   pre-existing repository-gate blocker, external to C9. It was not restored, hidden or
   fabricated.
 EVIDENCE-PATHS: end
-- MP1 and MP2 are explicitly owner-accepted. MP3 and MP4 remain pending. No visual refinement campaign was started; it belongs to the later dedicated UI/UX slice.
+- MP1–MP4 are explicitly owner-accepted; MP3/MP4 (2026-10-11) for functionality only. No visual refinement was implemented; the locked UX (PLATE §0.8.1) is implemented by PR #114.
 - Historical C9.4/C9.5 and C9.6–C9.9 increment counts above retain their own provenance. Use the current follow-up block for final code, tests/mutations and repository-gate status.
 - A station-bound Activity's route and named station are validated where they are read
   (Camera travel and the coordination strip): Experience holds stable identity, never a copy
   of route geometry, so a deleted anchor or station still refuses locally at travel time.
 - C9.6 now supports bounded View/Presentation removal and repair. Automatic offer execution remains excluded, and parent pause/bookmark policies remain experimental.
-- No merge, phase closure, production acceptance, Paper work or six-QA reconciliation is claimed or performed. MP3 and MP4 require owner review of this committed executable.
+- No merge, phase closure, production acceptance or Paper work is claimed or performed. The six-QA reconciliation is a docs/design lock only; the executable still shows the earlier expression.
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md

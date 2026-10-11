@@ -1,12 +1,43 @@
 # Museum Editor V2 Experience UX Reconciliation
 ## Model, Shell, Visual Language, and QA Guardrails
 
-**Status:** Design synthesis / reconciliation proposal for final adjudication in PR #113  
-**Purpose:** Give the planner a single coherent interpretation of the Experience model and the new six-image QA set before updating canonical references and preparing the implementation overhaul.
+**Status: adopted 2026-10-11 (PR #113) with the adjudications below; design record, not the
+normative text.** The locked contract is [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
+(with the [spatial-instrument grammar](../../../docs/reference/design-system/spatial-instrument-grammar.md#camera-routes-and-experience-coordination-projections));
+the implementation plan is the [PR #114 plan](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md).
+Where this record and PLATE differ, PLATE wins. The six boards it describes now live in
+[`../Design-QAs/`](../Design-QAs/) as `qa-1-camera-path.png` … `qa-6-visitor-preview.png`.
 
-This document synthesizes the product direction reached during the post-C9 UX review. It should be reviewed against the current prototype, accepted C9 behavior, existing shell references, and older V2 design boards.
+**Adjudications made during adoption** (the body below is kept as written):
 
-The QA images are **design guardrails, not pixel-perfect implementation specifications**. Where this synthesis or a new QA board conflicts with an older Experience-authoring board, the new reconciliation is intended to supersede the older interaction expression after explicit adjudication.
+1. **Seam → Guide edge.** The edge becomes a selectable Experience identity whose Card owns
+   Cut/Travel. Origin coverage (multi-origin Travel) survives as the Path posture's
+   **From** list, as board 1 shows, and as the edge Card's aggregate.
+2. **Cue is a projection, not a new document entity.** A Cue groups the existing
+   station-bound invocation beats and hold on one Camera station. *At* is derived;
+   *Pause* is the hold; *Actions* are the invocations. No persisted Cue type or seconds
+   field. The View-level "Automatic View cue" is renamed *View switching* so that *Cue* is unambiguous.
+3. **Path geometry is drawn as evaluated.** The current Camera evaluator interpolates
+   path points linearly, so the boards' smooth curves are illustrative. Insertion and removal
+   of path points are new bounded Camera operations in PR #114. Smoothing is not.
+4. **Shape species are fixed.** ● View endpoint, ○ path point (derived samples unmarked),
+   ◎ selection, ◆ Cue. This replaces the earlier filled-diamond anchor baseline.
+5. **Rehearse executes no visitor actions.** It evaluates and scrubs Camera movement and
+   marks Cues as they pass. Visitor execution belongs to Preview.
+6. **Index carries both `+ Present` and `Browse World`.** The boards show one or the
+   other by state. Head keeps Undo/Redo, which the boards omit.
+7. **The View Card may show its owning Presentation beneath it** as context (board 3).
+   That is not a second inspector.
+8. **Visitor View choices use the View's own name.** No separate visitor-label field is
+   added; author vocabulary never appears in Preview.
+9. **Camera precision (Edit Camera) keeps its 2026-10-01 Outside/Through specimens**, which
+   none of the six boards covers. They are retained as `camera-precision-*.png`.
+10. **Stop chips may show the entry View's image**, from the same bounded image pass as
+    the View Card preview. Stage never shows thumbnails.
+11. **Remove from Presentation** is a local unlink with disclosed consequences. It is
+    implemented only if the bounded unlink is supported. It never becomes graph deletion.
+12. **§33's PR boundary is superseded by the ratified sequence:** #113 (C9 acceptance +
+    this reconciliation) → #114 (UX implementation) → #115 (Paper PA0–PA12).
 
 ---
 
