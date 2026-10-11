@@ -1,9 +1,10 @@
 # PR #113 Experience V2 — checkpoint
 
-TYPE: prototype implementation / owner-review handoff
-STATUS: C9.1–C9.9 implemented/reviewed; owner-directed optional walkthrough correction and its review
-       follow-ups verified, awaiting MP3/MP4 owner review.
-GOAL: hand PR #113 back for MP3/MP4 owner review with ungated Next/task demonstrations.
+TYPE: prototype implementation / closeout handoff
+STATUS: complete — ready for external review and merge (2026-10-11). C9.1–C9.9 implemented/reviewed;
+       MP1–MP4 owner-accepted (MP3/MP4 2026-10-11, for functionality, not final visual UX) at executable
+       `40b65091`. The six-QA UX reconciliation is locked in PLATE §0.8.1 (docs/design/assets only).
+GOAL: hand PR #113 to external review; PR #114 then implements the locked UX.
 
 CONSTRAINTS:
 - Prototype-local only. Preserve one Camera evaluator/navigation authority, Experience policy ownership,
@@ -11,9 +12,10 @@ CONSTRAINTS:
 - One Presenter panel/controller switches lens content. World A–F remains unchanged; Experience
   guides actual authoring. This is editor guidance, distinct from authored Guide/Stops.
 - The owner authorized implementation, self-review/repair, verification, commit and push for this follow-up.
-- MP1 accepted 2026-10-04 and MP2 accepted 2026-10-05. MP3 and MP4 require explicit owner acceptance;
-  automation, rehearsals and Presenter completion cannot accept them.
-- No production migration, missing-fixture restoration, Paper work, broader shell overhaul or six-QA reconciliation.
+- MP1 accepted 2026-10-04, MP2 2026-10-05, MP3 and MP4 2026-10-11 (functionality only). Automation,
+  rehearsals and Presenter completion never accept a gate.
+- No production migration, missing-fixture restoration, Paper work or UX implementation in #113. The final
+  round is docs/design/assets only: PLATE §0.8.1 lock, asset pruning, PR #114 plan, sequence #113 → #114 → #115.
 
 READ:
 - `docs/README.md`; `apps/editor/tests/README.md` verification contract.
@@ -37,7 +39,7 @@ ESTABLISHED:
   outcomes; A3's progression is bounded, progress-checked and fails with the refusal the runtime reported; and
   the panel states the last demonstration's own outcome (demonstrated, failed, browsed, stopped, complete,
   skipped). Next stays ungated in every one of those cases.
-- MP3/MP4 remain pending human review. Trials (cursor/detour parent pause) are not permanent architecture.
+- MP3/MP4 owner-accepted 2026-10-11 for functionality. Trials (cursor/detour parent pause) are not permanent architecture.
 
 EVIDENCE:
 - Preceding executable `1f1e711535be3363f48024df2ec19ed3bcf27fc8` on `prototype-v2` (shared Experience
@@ -58,7 +60,7 @@ EVIDENCE:
 
 DO NOT REPEAT:
 - C9.6–C9.9 implementation or the repaired review rounds. Use current evidence, not old router status.
-- Do not regenerate six visual QA specimens or treat a green Presenter as human acceptance.
+- Do not reopen the locked UX model or treat a green Presenter as human acceptance.
 
 CURRENT:
 - Optional task scripts cover Q1–Q8 and A1–A10 in the shared controller, with Next ungated, Preview read-only,
@@ -70,8 +72,11 @@ CURRENT:
 - The missing P23B fixture remains a separate repository-gate blocker outside this authorized mutation scope.
 
 NEXT:
-1. The owner correction and its Q7/A4 follow-up are verified, committed and pushed at `fbfff35c`; the owner
-   performs **MP3 — Travel and agency** at that pushed head with the Presenter closed.
+0. External review and merge of #113; then PR #114 per
+   `docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md`.
+   Items 1–2 are the accepted MP3/MP4 recipes, retained as #114's regression recipes (re-pointed to the
+   new homes as each control moves; `Seam` becomes the Guide edge).
+1. **MP3 — Travel and agency** (accepted 2026-10-11), performed with the Presenter closed.
    Recipe; each step names what must be observable, not merely what to click:
    - *explicit Travel preparation*: in an ordinary session build a Guide whose departure
      Presentation holds more than one Framed use, open the Seam and choose Travel. One step
@@ -124,11 +129,10 @@ NEXT:
      same View, press Next while standing at that View (instant, zero distance), then Explore away and
      press Next again: the Camera must fly back from where it actually is rather than snap, and no route
      may be invented.
-2. Owner performs **MP4 — rich capability acceptance**: loaded route/station/invoke/Hold, visitor
+2. **MP4 — rich capability acceptance** (accepted 2026-10-11): loaded route/station/invoke/Hold, visitor
    interaction/detour/return, revision/repair, additional Views/entry policies, shared/local scope and
    precise Camera. Review the Experience walkthrough and recheck shared structural seams.
-3. Record explicit owner outcomes before C9 acceptance, merge/closure or onward Paper work.
 
 OPEN:
-- MP3 and MP4 owner acceptance; detailed visual refinement remains the separately scoped UI/UX slice.
+- External review/merge of #113. Final visual UX is unaccepted and belongs to PR #114 (owner visual acceptance is its gate).
 - The pre-existing missing P23B fixture still blocks full repository test/check/build; no fabricated fix.

@@ -106,11 +106,10 @@ Strict P21 exposes `Spatial` only in project navigation until future project sur
 Future references live under `docs/reference/design-system/gallery/Future/`:
 
 - `project-hub-cover-enabled.png`
-- `experience-3d-concept.png`
 - `assets-concept.png`
 - `publish-concept.png`
 
-Those images are deliberate visual/product North-Star references. Their overall surface identity and polish are useful direction, but their internal feature details remain illustrative unless separately ratified.
+Those images are deliberate visual/product North-Star references. (The former `experience-3d-concept.png` was retired 2026-10-11: Experience direction now lives in [PLATE §0.8.1](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression).) Their overall surface identity and polish are useful direction, but their internal feature details remain illustrative unless separately ratified.
 
 In particular:
 

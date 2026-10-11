@@ -16,8 +16,8 @@ The [4.1 plan](../../../../../prototypes/experience-authoring/PROTOTYPE_4_1_PLAN
 and donor tests are harvest material. [Test doctrine](../../../../../apps/editor/tests/README.md)
 owns verification and replacement proof.
 
-**Sequence:** #112 (merged) → #113 → Paper PA0–PA12 in the next PR → prototype
-detour closes → F exact-interface amendments → T1/T2/T3/T4.
+**Sequence:** #112 (merged) → #113 → #114 Experience UX implementation → #115 Paper
+PA0–PA12 → prototype detour closes → F exact-interface amendments → T1/T2/T3/T4.
 
 **Scope:** prototype-local native ESM/DOM modules, fixture subjects, tests and
 routed documentation. No production formats, package extraction, framework
@@ -26,7 +26,7 @@ scripting, media platform, general Presentation fork, or Paper adoption — expl
 pointer rail, Head-search removal and status-rail retirement, Card rewrite (facts, kind-line, scoped
 list), drafting-state words and Paper⟷3D switch, derived room topology and Wall roles,
 Draw/Opening/Place/Measure/Divide creation paths, and narrow sheets/keymap work (Paper PA0–PA12 in
-the next PR). S8 makes World-only footer controls inert in Experience without changing layout; their
+#115). S8 makes World-only footer controls inert in Experience without changing layout; their
 removal or redesign stays Paper-owned. Exact CSS metrics remain implementation choices consistent
 with the existing shell; QA rasters are specimens, never pixel contracts.
 

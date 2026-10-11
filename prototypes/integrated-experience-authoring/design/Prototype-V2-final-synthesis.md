@@ -2,6 +2,12 @@
 
 ## 0. Decision
 
+> **Superseded for Experience UX (2026-10-11, PR #113).** The [Experience UX reconciliation](./experience-ux-reconciliation.md),
+> promoted into [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression),
+> replaces this record's Set, Peek/Overview/fisheye, Seam triptych, Coordinate strip and
+> Auto/Hints/Capture exposure. Its retired boards remain in Git history; only the two
+> Camera precision specimens are kept. This record is provenance only.
+
 **Status — finalized Experience prototype design, promoted into the durable destination
 shell design (2026-10-01, PR #111).** Its shell requirements live in
 [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression);

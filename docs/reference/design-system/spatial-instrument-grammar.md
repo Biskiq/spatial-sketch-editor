@@ -39,8 +39,7 @@ the truth about that category.
 - A guide/handle must map to a supported operation and frame. A drawn circle,
   plane, axis or tangent must not imply an orbit, constant distance, collision
   boundary, tangent freedom or geometric constraint the domain does not possess.
-- Schematic geometry is permitted when its role is clear: an unordered Set around
-  a focus, a View-direction glyph, or station correspondence. It must not claim
+- Schematic geometry is permitted when its role is clear: an unordered View constellation around a focus, a View-direction glyph, or station correspondence. It must not claim
   metric accuracy, Camera connectivity or authored identity it does not have.
 - Distinguish accepted geometry from proposed/refused geometry and altered
   inspection readings. Do not represent a temporary reading as source movement
@@ -74,8 +73,8 @@ may identify X/Y/Z; they do not become arbitrary feature-selection colors.
 | **Snap/guide** | Relation shape and text at the winning location, with state distinct from selection and refusal |
 
 Owner/state cannot depend on hue alone. Reinforce through shape, line, icon, label,
-position or pattern. A Camera anchor remains recognizable as an anchor when selected;
-a Stop beat remains an event when aligned with that station. An Experience focus
+position or pattern. A Camera path point remains recognizable as a path point when selected; a Journey Cue
+remains an Experience event when aligned with that station. An Experience focus
 reference does not select the World subject it references. Keyboard focus stays
 visible independently of all of these states.
 
@@ -176,7 +175,7 @@ retains its as-built relationship and honest measured-axis labels.
 The [Camera contract](../components/camera-tour.md) defines View intent, legal
 framing/projection operations, routes and evaluation. The
 [Experience shell](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-defines Auto/Hints/Capture/Precise disclosure and Outside/Through/Plan homes.
+defines Present/Capture, invoked recommended framing, Edit Camera and the Outside/Through/Plan homes.
 The requirements below describe their Stage representation.
 
 ### Outside: observer and framing relationship
@@ -207,59 +206,62 @@ operation; decorative corners are not proof that framing is editable. Only the
 active grip has its numeric tape. Editor chrome, canonical View/scope Card and
 explicit return distinguish Through from visitor Preview.
 
-### Plan and View glyphs
+### Plan and View markers
 
-Plan locates Views and Camera support at map scale. Directional glyphs used in
-Set/Seam work are a schematic reading of evaluated framing, not permission to
-invent a finite projection shape, FOV writer or route. The maintained Camera Plan's
-framing restrictions remain current until cutover. Feature exposure follows the
-destination's scoped Set/Seam disclosure, not a permanent graph blanket.
+Plan locates Views and Camera support at map scale. Directional View markers are a
+schematic reading of evaluated framing, not permission to invent a finite projection
+shape, FOV writer or path. The maintained Camera Plan's framing restrictions remain
+current until cutover.
 
-A Presentation's View constellation shows observer/direction/focus relationships.
-Its focus connectors are reference links, not Camera edges; its schematic form
-remains unordered. A Guide overview uses numbered Stop entry pins rather than
-Camera-facing glyphs. Stop numbers are occurrence order, not Camera node order.
-Co-located pins must retain true location plus distinct occurrence access; no
-specific fan-out or stacking technique is mandated.
+A Presentation's **View constellation** places compact markers semi-spatially around the
+Presentation focus: bearing/side preserved in the current Stage orientation, distance
+compressed, aim shown by the marker's direction. It claims no metric location, sequence
+or connectivity: no numbers, arrows, inter-View lines or thumbnails on Stage. The Default
+carries a restrained ★. Crowding is resolved deterministically (displacement within the
+bearing sector, then a counted stack); the Card's Views list always reaches every View.
+A Guide uses numbered Stop entry pins rather than View constellations; Stop numbers are
+occurrence order, not Camera node order. Co-located pins keep true location plus distinct
+access; no specific fan-out technique is mandated.
 
-## Camera routes and Experience coordination projections
+## Camera Paths and Journey projections
 
-Camera supplies the route, authored interior anchors, generated endpoints/samples,
-pace/stations and evaluated timing. Experience supplies occurrence order and its
-local station-bound beats/holds. The shell owns when the selected Seam and its
-local strip are disclosed. This reference owns their spatial/linked visual grammar.
+<a id="camera-routes-and-experience-coordination-projections"></a>
+
+Camera supplies the path (connection), authored interior path points, generated
+endpoints/samples, pace, stations and evaluated timing. Experience supplies the Guide edge's
+choice of Cut/Travel and its station-bound Cues and pauses. The shell decides when the Camera
+Path or Journey posture is disclosed ([PLATE §0.8.1](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)).
+This reference owns their spatial and linked visual grammar.
 
 | Representation | Stable meaning |
 | --- | --- |
-| **Restrained Camera route line with pace cues** | Actual supported Camera path; not Guide order or a fabricated straight connection |
-| **Operative authored-anchor mark** (filled diamond baseline) | Authored manipulable interior anchor on Stage |
-| **Quiet derived-helper mark** (hollow/dashed baseline) | Derived/read-only sample/helper, not an authored anchor or bindable station |
-| **View/end marker** | Camera View or generated departure/arrival endpoint, never a second authored endpoint anchor |
-| **Event/beat marker** | Experience-owned occurrence event, visibly distinct from a Camera station even when aligned |
-| **Hold bar with duration** | Occurrence-local hold, not a copied Camera timing track |
-| **Gap cue** | Missing supported travel with reason/repair; never a line that reads as a valid route |
+| **Camera Path line** | The geometry the Camera evaluator actually follows; never Guide order or a fabricated connection. Draw curvature only if evaluation curves |
+| **View endpoint** (● with frustum, View name) | A Camera View or generated departure/arrival; never a second authored endpoint |
+| **Path point** (small open ○, unlabeled) | Authored, manipulable interior point; shown and hit-eligible only in Path posture |
+| **Selected path point** (amber ring ◎) | The one active manipulation target, mirrored in the straightened Deck lane |
+| **Cue marker** (amber ◆) | Experience Cue at its station; shown in Journey posture, never in Path posture |
+| **Camera rig** | The evaluated Camera during Rehearse; read-only |
+| **Gap cue** | Missing supported Travel with reason/repair; never drawn as a valid path |
 
-Filled diamonds versus hollow/dashed derived markers are the accepted baseline for
-the anchor/helper distinction, supported by both the written diagram and repeated
-QA. Preserve that operative-versus-derived distinction through shape/line treatment,
-labels and eligibility in both projections. Exact silhouettes may vary in a feature
-design that preserves equally clear species and consistent counterpart meanings;
-the distinction is mandatory, a universal diamond gizmo is not. Radii, dash lengths,
-tick counts, frustum tints and event silhouettes are not frozen. Triangle versus
-circular beat marks do not decide event ownership.
+Shape carries the species: ● Camera endpoint, ○ Camera path point, ◆ Experience Cue. Derived
+samples are not marked at all, so an open circle always means an operative path point.
+This replaces the earlier filled-diamond anchor baseline; the operative-versus-derived and
+Camera-versus-Experience distinctions it protected are unchanged. Exact radii and
+silhouettes are not frozen.
 
-Local route and coordination projections show corresponding stations and event
-attachments. Named authored stations are distinct from generated samples. A selected
-beat/hold highlights its corresponding location without replacing canonical selection
-for mere task focus. Route editing stays on Stage; the local strip displays stations
-and authors Experience coordination, never a second path. This is a representation
-rule over domain references, not a new station-binding format.
+Path posture shows geometry and hides Cues, timing and narration labels; ordinary clicks
+never add points, only the armed `+ Path point` action does. Journey posture shows quiet
+geometry, Cues and the rig, and hides path handles. Its Deck is a time axis whose Cue
+positions come from Camera evaluation plus pauses. The Path posture Deck is a straightened
+topology lane with the same points and selection, and no time. Stations are departure, a
+path point, a named marker or arrival; generated samples cannot become stations. A Cue
+binds to a station, not to seconds, and survives pace and geometry edits. Mirror
+corresponding selection in Stage and Deck without equating their screen positions. Path
+geometry is edited only on Stage; the Deck never becomes a second path editor.
 
-Camera infrastructure uses the shell's cyan/teal owner role plus line/shape/labels;
-active selection/manipulation adds ochre locally. Experience events/holds have distinct
-species and information rows. Neutral Guide-order connectors do not migrate onto
-Stage as Camera topology. Shared infrastructure remains distinguishable from this
-occurrence's coordination without arbitrary per-feature colors.
+Camera infrastructure uses the shell's teal owner role plus line/shape; active selection and
+manipulation add amber locally. Neutral Guide-order connectors never appear on Stage as
+Camera topology.
 
 ## Temporary feedback and task lifecycle
 
@@ -294,10 +296,9 @@ techniques are optional within the semantic species and distinctions above:
   and [QA package](../../../prototypes/world-experience-shell-round/QA-package/):
   temporary readings, measured-axis honesty, selection/task distinction, one writer,
   local refusal, repair and narrow task continuity.
-- [Experience synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
+- [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
   and [Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/):
-  observer/target relationship, Outside/Through precision, unordered spatial/schematic
-  Sets, Stop pins, scoped route species and mirrored station/event/hold projections.
+  Camera Path and Journey species, View constellation, Stop pins and the retained Outside/Through precision specimens (PLATE §0.8.1 indexes them).
 - [Landed visual specifications](./design-specs.md), [Camera graphics/input contract](../components/camera-tour.md)
   and [placement adapters](../components/placement.md): existing exact geometry,
   selection, hit arbitration and cancellation policies in their maintained contexts.

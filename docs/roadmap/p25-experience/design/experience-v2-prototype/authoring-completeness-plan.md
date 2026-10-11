@@ -1,6 +1,6 @@
 # C9 — final model-first Experience reconciliation for #113
 
-**Status: C9.1–C9.9 implemented and reviewed; optional walkthrough correction in verification (2026-10-07).** The owner's latest direction removes the Next outcome gate and offers task demonstrations through the shared Presenter. Exact executable provenance belongs to the C9 evidence record. MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. **MP3 and MP4 remain pending owner review**: automated verification, browser rehearsal and walkthrough completion do not accept either gate.
+**Status: complete (2026-10-11).** C9.1–C9.9 are implemented and reviewed, and the optional walkthrough correction (Next ungated; outcomes advisory and truthful) is verified. Exact executable provenance belongs to the C9 evidence record. MP1 was owner-accepted 2026-10-04, MP2 2026-10-05, and **MP3 and MP4 on 2026-10-11 — for functionality, not as final visual UX.** The six-QA UX reconciliation is locked in [PLATE §0.8.1](../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) by #113 (docs only); its implementation is pending in PR #114 ([plan](./ux-pruning-and-shell-reconciliation-plan.md)).
 C9.6 revision/repair, C9.7 rich fixture/coordination, C9.8 precise Camera and C9.9 observational walkthrough are implemented, with their review repairs and proof in the
 [C9 evidence record](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md).
 The current owner instruction authorizes one bounded follow-up, verification, commit and push before final human acceptance; no merge, production migration, Paper adoption, broader shell reconciliation or phase closure.
@@ -811,7 +811,7 @@ Final C9 evidence records executable revision/hash, exact journey recipes,
 read-only authored/runtime snapshots, provenance-separated per-row dispositions,
 MP1–MP4 outcomes, the minimal structural captures and all verification results.
 Capability acceptance hands visual refinement to the separately bounded UI/UX
-slice; it is not exhaustive visual sign-off or merge readiness. Paper follows #113; no phase is closed
+slice (PR #114); it is not exhaustive visual sign-off or merge readiness. Paper (#115) follows #114; no phase is closed
 by this plan or by C9 completion alone.
 
 ## 10. Implementation slices in dependency order

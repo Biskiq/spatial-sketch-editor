@@ -1,3 +1,5 @@
+# Historical C8 generator. Six of its source boards were retired 2026-10-11 (last present at
+# 6f972bc1); the two Camera precision boards were renamed camera-precision-{through,outside}.png.
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 root=Path('/Users/tony/Documents/Biskiq/spatial-sketch-editor')
