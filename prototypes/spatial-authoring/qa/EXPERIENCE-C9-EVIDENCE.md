@@ -103,7 +103,8 @@ SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up 
 ### Owner-review frontier
 
 C9.6–C9.9 are implemented/reviewed work, not an unstarted queue. The plan, current baton,
-[PR checkpoint][checkpoint] and P25 router now agree. *2026-10-11:* the owner accepted
+PR checkpoint (retired at #113 closeout; status in the P25 README, recipes in the PR #114 plan)
+and P25 router now agree. *2026-10-11:* the owner accepted
 **MP3 — Travel and agency** and **MP4 — rich capability acceptance** for functionality, not as
 final visual UX; the text below records the frontier as it stood before that outcome. Review MP3 with the
 Presenter closed; inspect the new Experience guidance as part of MP4, alongside the capabilities
@@ -165,7 +166,11 @@ and shared structural seams. No acceptance, merge, phase closure or production c
     `EXPERIENCE-ACCEPTANCE.md` (declares the deleted fixture path per the documented
     `EVIDENCE-PATHS` convention), new `composition-check.sh`, `creator-check.sh`,
     `composition-mutation-check.sh`, new `EXPERIENCE-C9-EVIDENCE.md` (this record)
-  - docs: `docs/operations/current.md`, `docs/operations/checkpoints/pr113-experience-v2.md`,
+  - docs: `docs/operations/current.md`,
+    EVIDENCE-PATHS: start — files this 2026-10-11 pass touched, as written then; the checkpoint
+    was retired at #113 closeout (status → P25 README, recipes → PR #114 plan §9)
+    `docs/operations/checkpoints/pr113-experience-v2.md`,
+    EVIDENCE-PATHS: end
     `docs/roadmap/p25-experience/README.md`,
     `docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md`
     (first pass; the second pass updates the last three plus this record)
@@ -1178,4 +1183,30 @@ EVIDENCE-PATHS: end
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
-[checkpoint]: ../../../docs/operations/checkpoints/pr113-experience-v2.md
+
+## Closeout preservation — #113 (2026-10-11)
+
+```text
+CLOSEOUT PRESERVATION — #113 unified Experience V2 prototype + C9 (2026-10-11)
+prose compacted:                 1   C9 plan stub at its own path (full body at the anchor below)
+reference promotions:            3   PLATE §0.8.1 (A1/A2/A4/A5/A6 + QA notes) ·
+                                     spatial-instrument grammar (Cue triple, occurrence lane, chip rule) ·
+                                     PR #114 plan (§2/§3, UX2/UX4–UX7, QA 2/4, risks, deferred, MP recipes)
+renderable evidence archived:    0 files (six QA boards + two precision specimens stay live in
+                                     prototypes/integrated-experience-authoring/Design-QAs/ as #114 acceptance input)
+evidence stubs / manifests:      0   no live path moved
+transient artifacts removed:     1   docs/operations/checkpoints/pr113-experience-v2.md (durable status →
+                                     P25 README, MP recipes → PR #114 plan §9; never archived raw)
+historical anchor:               74e86104 · tag closed/p25-experience-v2 (see P25 README for push state)
+new live → archive prose links:  0
+manual-owed verification rows:   2   MP3/MP4 owner functional acceptance (2026-10-11, recipes in PR #114 plan §9);
+                                     owner visual acceptance deferred to PR #114 (its gate)
+remaining deferred items:        4   P23B fixture blocker (repository gate) · #114 implementation ·
+                                     #115 Paper PA0–PA12 · D8 mid-Guide Preview + hold consolidation (past #114)
+```
+
+Acceptance provenance (recorded, not rerun for this docs-only closeout): prototype Node
+**140/140** (`fbfff35c`); all 24 `qa/run-all.sh` axes **1073/1073** with complete successor
+proof **102/102 rejected** (`3a009763`); movable-axis controls **151/151**; architecture
+**276/276**; docs-reference gate **22/22** and arch lane **276/276** re-verified on the
+amended tree. Root test/check/build retain only the known P23B fixture failure.

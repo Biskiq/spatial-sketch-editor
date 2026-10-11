@@ -3,7 +3,7 @@
 **Status: final plan, locked design (2026-10-11, PR #113). Implementation belongs to PR #114
 and starts only when the owner opens it.** This plan implements the locked Experience
 expression in [PLATE §0.8.1][plate-081], with its [instrument grammar][grammar] and
-[eight QA boards][boards], in the unified prototype. It re-presents accepted C9
+[six QA boards and two Camera precision specimens][boards], in the unified prototype. It re-presents accepted C9
 capability; it does not reopen product or design questions. A concrete contradiction found
 in code is reported and resolved in the owning reference, not improvised in the UI.
 
@@ -175,7 +175,7 @@ with a moved control whose old recipe is still green only because it was not run
 | **UX3 — Scene subject** | UX1 | Subject Card (§3.7), invoked behavior/interaction chooser using existing descriptors and audition/capture writers | QA 5 acceptance. Audition writes nothing; capture/update/ambiguity semantics unchanged |
 | **UX4 — Guide, Stops, edges** | UX2 | Guide Deck (per-Stop outgoing resolved-continuation chips), Edit Guide ordering menu, Stop Card, edge identity and Card (Cut/Travel, coverage, Edit Camera Path). Retire Peek/Overview/Expand/L2/triptych | QA 4 acceptance. One-, six- and repeated-Stop fixtures, plus explicit-nonadjacent-Next, reorder, Undo, End and return-to-order fixtures. Travel preparation is still one Undo step and creates no edge from View work or Preview |
 | **UX5 — Camera Path posture** | UX4 | Posture task + Path\|Journey switch. *From* list (connection choice). Path point species, armed insert, drag, remove (§3.2), with the insertion/removal proof first: retained identities/positions, aim, Cue bindings/timing, shared reach and Undo. The proof decides whether aim redistribution is acceptable; no new Camera aim editor is authorized here. Path/point Cards with Pace and Camera at this point. Straightened Deck lane naming the Guide edge occurrence | QA 1 acceptance. Shared-path Ask, refusal and Undo proven. Ordinary click adds nothing |
-| **UX6 — Journey and Rehearse** | UX5 | Cue projection (§3.4), time Deck for the selected origin's nominal Journey (origin visible/changeable in posture; header names Guide edge + origin), Cue Card with occurrence disclosure, focused *Edit cue* (existing hold/invoke/rebind writers) plus `Edit holds`, atomic grouped-Cue move with refusal proof, Rehearse/scrub (§3.5), Look through at playhead. Shared-connection double-occurrence fixtures (distinct pauses, one selection each). No mid-Guide Preview entry | QA 2 acceptance. Exactly-once/traversed-route-only execution unchanged in Preview. Rehearse writes and executes nothing. Late-Journey edit → real Preview → exact-return loop measured and cost-reported |
+| **UX6 — Journey and Rehearse** | UX5 | Cue projection (§3.4), time Deck for the selected origin's nominal Journey (origin visible/changeable in posture; header names Guide edge + origin), Cue Card with occurrence disclosure, focused *Edit cue* (existing Hold/Invoke writers reused where applicable) plus `Edit holds`, atomic grouped-Cue station movement as a **new operation to implement and test in UX6** (all affected beats plus required Activity bindings as one validated history transaction; occupied destinations refuse; no silent merging or hold consolidation), Rehearse/scrub (§3.5), Look through at playhead. Shared-connection double-occurrence fixtures (distinct pauses, one selection each). No mid-Guide Preview entry | QA 2 acceptance. Exactly-once/traversed-route-only execution unchanged in Preview. Rehearse writes and executes nothing. Late-Journey edit → real Preview → exact-return loop measured and cost-reported |
 | **UX7 — Preview, Presenter, integrated acceptance** | UX1–UX6 | Visitor surface audit (§7 QA 6). Q1–Q8/A1–A10 recipes re-pointed. Responsive/keyboard pass. Final capture packet and written verdict | All gates in §6–§7. Owner visual review requested |
 
 UX3 may run in parallel with UX2. UX5 needs UX4's edge identity, and UX6 needs UX5's posture.
@@ -198,7 +198,7 @@ UX3 may run in parallel with UX2. UX5 needs UX4's edge identity, and UX6 needs U
   writes no Camera intent.
 - **Reduced motion:** Rehearse supports stepping; the rig marker does not need continuous animation.
 
-## 7. Acceptance criteria (the eight boards)
+## 7. Acceptance criteria (six boards + two specimens)
 
 Boards are guardrails for homes, hierarchy and semantics, not pixels ([PLATE §0.8.1][plate-081]).
 A criterion passes only when the real writer and domain effect are exercised.
@@ -231,12 +231,7 @@ A criterion passes only when the real writer and domain effect are exercised.
 - **Behavior:** all 24 `qa/run-all.sh` axes, the prototype Node suite and the complete successor
   mutation proof (World + V2 + composition obligations) keep passing. Moved controls get new
   selectors, not weaker assertions.
-- **MP3 recipe** ([checkpoint][checkpoint]) stays executable through the new homes: Travel
-  preparation, visible flight, early Next, redirect/rejoin, exploration, interaction/choice,
-  detour/return, cursor/pause, remainder, availability, Experience-only Preview, same-View
-  Travel.
-- **MP4 recipe** stays executable: route/station/invoke/Hold, interaction/detour/return,
-  revision/repair, additional Views/entry policies, shared/local scope, precise Camera.
+- **MP3/MP4 recipes** (promoted from the retired #113 checkpoint; `Seam` below is the Guide edge) stay executable through the new homes. Re-point each control to its new home in the slice that moves it (UX7).
 - **Presenter:** Q1–Q8/A1–A10 demonstrations work through visible controls. Next stays
   ungated, and outcomes stay advisory and truthful (including the Q7/A4 refusal reporting).
 - **Isolation, history, selection:** Preview isolation, exact return and one Undo per accepted
@@ -244,6 +239,68 @@ A criterion passes only when the real writer and domain effect are exercised.
 - **World:** A–F journeys and shell checks are unchanged.
 - **Repository:** `npm run test:arch` is green. Root test/check/build retain only the known
   P23B fixture failure, reported as such.
+
+### MP3/MP4 regression recipes (owner-accepted for functionality 2026-10-11)
+
+Perform with the Presenter closed. Each step names what must be observable, not merely what to click.
+
+**MP3 — Travel and agency.**
+
+- *Explicit Travel preparation*: in an ordinary session build a Guide whose departure
+  Presentation holds more than one Framed use, open the Seam and choose Travel. One step
+  must leave every legitimate origin supported (`Prepared n Camera route … · Camera owns
+  route geometry`), no origin as a gap, and the whole preparation as one Undo step. Adding
+  or selecting a View, and starting a Preview, must never add Camera connectivity by
+  themselves.
+- *Visible Camera flight*: Preview on a Travel Seam and press Next. The Camera must fly the
+  authored route instead of snapping; Cut on the same Seam must snap and execute no route
+  beats.
+- *Early/manual navigation during movement*: press Next again while the first flight is in
+  flight. The new move must start from where the Camera actually is, on the supported
+  directed route, with no "finish the current move" demand, and arrive at the authored
+  destination.
+- *Redirect and rejoin*: redirect to another eligible View mid-visit, then Rejoin. Rejoin
+  must restore the Stop's viewing intent from the live pose without replaying route stations
+  or queued cues.
+- *Exploration*: Explore and orbit freely — no offer may fire from exploration.
+- *Direct visitor interaction*: click a used subject, then (separately) drag over it. A click
+  activates what the subject offers; a drag only orbits.
+- *Multiple-offer behavior*: on a subject offering more than one interaction, a click must
+  open an explicit choice naming each offer's activation and target subject, with Cancel;
+  nothing may run before the visitor chooses, and any deliberate navigation must settle an
+  open choice.
+- *Deliberate View choice*: the eligible View controls must re-frame without restarting
+  narration incorrectly — compare caption/transcript state before and after.
+- *Standalone/Guide Presentation open and close*: open another available Presentation — a
+  Guide Stop is parked with exactly one Return that restores it with no duplicate entry;
+  Close on a standalone Presentation returns to exploration, never to authoring.
+- *One side detour and return*: take one authored detour, then Return; a second detour
+  before returning must be refused with a visible reason rather than replacing the first.
+- *Predicted versus observed cursor/pause*: predict a Stop's readiness/Auto count (Camera
+  movement counted once, invoked station work counted at its own station) and compare it
+  with the visitor panel; pause and resume Auto and confirm the clock continues rather than
+  restarting.
+- *Rejoin and Return keep the remainder*: in a Stop whose work is a long narration,
+  let part of it play, Explore, and Rejoin — the panel must owe only the part not yet played, a cue
+  whose moment already passed must not be claimed again, and a cue still ahead must still arrive.
+  Take one detour mid-Stop and Return: the parent's own remaining work and cue floor must come back,
+  not the detour's.
+- *Availability authoring*: add an offer from a Presentation and confirm the draft
+  offers availability with Experience-wide selected; accept it and confirm the Card reads
+  `Experience-wide` while the offer stays homed in that Presentation; switch it to another
+  Presentation and confirm one Undo step and one changed scope.
+- *Preview the Experience without a Presentation*: with an Experience-wide offer and
+  no Presentation selected, `Preview Experience` must start a world-only visit (no Presentation, Stop
+  or Guide), offer that participation, and return to authoring untouched. Without any Experience-wide
+  offer the entry must be absent rather than start an empty visit.
+- *Same-View Travel after moving*: on a Seam whose origin and destination are the
+  same View, press Next while standing at that View (instant, zero distance), then Explore away and
+  press Next again: the Camera must fly back from where it actually is rather than snap, and no route
+  may be invented.
+
+**MP4 — rich capability acceptance:** loaded route/station/invoke/Hold, visitor
+interaction/detour/return, revision/repair, additional Views/entry policies, shared/local scope
+and precise Camera. Review the Experience walkthrough and recheck shared structural seams.
 
 ## 10. Visual and interaction verification
 
@@ -278,4 +335,3 @@ A criterion passes only when the real writer and domain effect are exercised.
 [c9-proof]: ../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md
 [prototype]: ../../../../../prototypes/spatial-authoring/README.md
 [paper]: ../../../p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md
-[checkpoint]: ../../../../operations/checkpoints/pr113-experience-v2.md
