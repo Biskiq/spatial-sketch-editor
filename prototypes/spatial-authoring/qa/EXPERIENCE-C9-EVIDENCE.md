@@ -1150,10 +1150,14 @@ COVERAGE: unit `a refused visitor transition fails the Q7 and A4 demonstrations 
 (an authored End refuses Q7's Next; an unfired Gate refuses A4's Travel); mutation `walkthrough-next-unverified`
 whose control is `the A8 demonstration takes its authored detour and returns to the parent visit`.
 
-VERIFICATION at this repair: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **140/140**
-pass, exit **0**; `QA_MUTATIONS=walkthrough-next-unverified bash qa/composition-mutation-check.sh` — the mutated
-copy rejects the protected test with its named control green. The 24-axis browser chain, the complete successor
-proof and the architecture gate were not re-run here; their recorded counts belong to `3a009763`.
+VERIFICATION at this repair: `node --test prototypes/spatial-authoring/tests/*.test.mjs` — **140/140** pass,
+exit **0**; `QA_MUTATIONS=walkthrough-next-unverified bash qa/composition-mutation-check.sh` — the mutated copy
+rejects the protected test with its named control green. The axes this repair can move were re-run at
+`a8cf2800` with `QA_SHOT=0`: `walkthrough-demo` **59/0**, `walkthrough` **33/0**, `presenter` **59/0** —
+**151/151**, every axis's no-command-fault and no-console/page-error control green, Q7 and A4 each earning
+their real product outcome after Next. Unconditional `npm run test:arch` — **276/276**, 24 files, exit **0**.
+The remaining 21 axes and the complete successor proof were not re-run for this repair; their recorded counts
+belong to `3a009763`.
 
 ## Known limitations
 
