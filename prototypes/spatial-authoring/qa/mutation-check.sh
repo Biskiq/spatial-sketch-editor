@@ -37,3 +37,4 @@ PY
 done
 bash "$QA_DIR/conformance-mutation-check.sh"
 bash "$QA_DIR/composition-mutation-check.sh"
+bash "$QA_DIR/locator-mutation-check.sh"

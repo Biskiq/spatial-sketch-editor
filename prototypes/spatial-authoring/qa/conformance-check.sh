@@ -31,7 +31,7 @@ hit='e=>{const r=e.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.wi
 # QA-1: Reset, select a subject, explicitly Present, edit Meaning, derive, Capture.
 click '#lens [data-lens="experience"]'
 fixture exp-reset
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 click '#card [data-act="exp-create"]'
 fill '[data-exp-field="name"]' 'Why the drive matters'
 fill '[data-exp-primary]' 'A casing, a rotor, and a path for power.'
@@ -67,7 +67,7 @@ click '#card > details:nth-of-type(3) .contribution [data-act="pres-ref"]'
 conformance_ok 'the captured Activity reads as an honest identity, never a schema term' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("Activity · Experience")+"|"+(document.querySelector("#card").textContent.includes("Operates Machine · Open casing"))')" '"true|true"'
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 before="$(source_hash)";standpoint="$(pose)"
-click '#headPreview'
+qa_preview_presentation
 conformance_ok 'no-Guide/no-View Preview runs the authored explanation and captured capability' "$(qa_js '(!!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&Object.keys(__me.ctx.cameraSource.views).length===0&&!!__me.S.visitor.runtime.overrides.machine?.open&&Object.values(__me.S.visitor.runtime.activities).some(a=>a.status==="running"))') / $(source_hash)" "true / $before"
 conformance_ok 'the visitor caption speaks the explanation typed through the real control' "$(qa_js 'document.querySelector(".visitor-caption").textContent.includes("A casing, a rotor")')" true
 click '[data-act="exp-exit-preview"]'
@@ -94,7 +94,7 @@ capture qa-1-plan
 click '.stage-tools [data-act="3d"]'
 click '#card [data-act="exp-bring"]'
 conformance_ok '3D returns the same Set through explicit navigation' "$(qa_js '[...document.querySelectorAll("[data-exp-view]")].map(e=>e.dataset.id).sort()') / $(source_hash)" "$set_ids / $before"
-click '#headPreview'
+qa_preview_presentation
 conformance_ok 'visitor removes and deactivates every authoring instrument' "$(qa_js '(__me.S.task===null&&!document.querySelector("[data-exp-camera]")&&getComputedStyle(document.querySelector("#ovHtml")).display==="none")')" true
 click '[data-act="exp-exit-preview"]'
 click '#card [data-act="exp-add-guide"]'
@@ -105,7 +105,7 @@ capture qa-1-peek
 # the deterministic fixture identities are reissued. World context survives the same load.
 fixture exp-conformance
 conformance_ok 'fixture never selects or opens work, and a replaced Experience selection is invalidated, never retargeted' "$(qa_js '__me.S.sel') / $(qa_js '(__me.S.experienceContext.depth==="ordinary"&&__me.ctx.experience.guide.length===6&&__me.S.task===null)')" 'null / true'
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 fixture exp-conformance
 conformance_ok 'a World subject selection survives the same labelled load' "$(qa_js '__me.S.sel')" '"machine"'
 # Ambiguous captures: two matching Activities in one Presentation. The choice is real product UI;
@@ -116,7 +116,7 @@ click '#card [data-act="exp-offer"]'
 agent-browser select '[data-exp-offer="kind"]' behavior >/dev/null;qa_frames
 fill '[data-exp-offer="value"]' '1'
 click '#card [data-act="exp-offer-accept"]'
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'two matching captures ask which Activity to update, never mutating either' "$(qa_js '(()=>{const e=__me.ctx.experience,a=__me.S.expCaptureAsk,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&u.presentationId===pid&&e.definitions[u.definitionId]?.capabilityId==="casing");return !!a&&a.matches.length===2&&us.length===2&&us.every(u=>e.definitions[u.definitionId].value===1);})()')" true
 qa_press Escape
@@ -128,7 +128,7 @@ conformance_ok 'Capture another creates a third Activity and leaves both existin
 conformance_ok 'Capture another writes one history step and creates no Camera View' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / $views"
 # A visitor offer is authored through the real subject control and stays an offer: subject-activated
 # availability work, never an automatic Activity a traversal could start.
-click '#index [data-act="pres-ref"][data-id="piano"]'
+qa_locator_select piano
 click '#card [data-act="exp-offer"][data-kind="interaction"]'
 click '#card [data-act="exp-offer-accept"]'
 offer="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.kind==="interaction")?.id')"
@@ -314,7 +314,7 @@ qa_move "${stage_point%,*}" "${stage_point#*,}";qa_down;qa_up
 conformance_ok 'a later Stage press cannot add an anchor to the old route' "$(qa_js "JSON.stringify(__me.ctx.cameraSource.connections['$route_id'].anchors)")" "$anchors_before"
 # QA-6 no Guide; use the ordinary no-Guide example through actual controls again.
 fixture exp-reset
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 click '#card [data-act="exp-create"]'
 click '#card [data-act="exp-auto"]'
 click '#card [data-act="exp-capture"]'
@@ -333,7 +333,7 @@ count="$(undo)";fill '[data-exp-precision]' '4.0'
 conformance_ok 'typed active framing value accepts one Camera transaction' "$(undo) / $(qa_js '(__me.ctx.cameraSource.views[__me.S.task.target.id].pose.frameH===4)')" "$((count+1)) / true"
 capture qa-6-precise
 standpoint="$(pose)";before="$(source_hash)"
-click '#headPreview'
+qa_preview_presentation
 conformance_ok 'Preview rig and input removed; source frozen' "$(qa_js '(!document.querySelector("[data-exp-camera]")&&!document.querySelector("#experienceInstrument")&&__me.S.task===null)') / $(source_hash)" "true / $before"
 capture qa-6-visitor
 checkpoint preview

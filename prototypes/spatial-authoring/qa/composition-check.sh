@@ -15,14 +15,14 @@ pose(){ qa_js '__me.qa.realized()'; }
 checkpoint(){ if [ "${QA_COMPOSITION_UNTIL:-}" = "$1" ];then qa_summary "C9 boundary $1";exit;fi; }
 # Repeat J1, then extend it without learning lifecycle or Camera graphs.
 click '#lens [data-lens=experience]';fixture exp-reset
-click '#index [data-id=machine]';click '#card [data-act=exp-create]'
+qa_locator_select machine;click '#card [data-act=exp-create]'
 fill '[data-exp-primary]' 'The casing protects the rotor. Power travels through the drive.'
 click '#card [data-act=exp-capture]';click '#card [data-operate=machine]'
 fill '[data-exp-audition=casing]' '1';click '#card [data-act=exp-use][data-cap=casing]'
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click "#index [data-act=exp-open][data-id='$pid']";click '#card [data-act=exp-add-guide]'
 a="$(qa_jsv '__me.ctx.experience.guide[0]')"
-click '#index [data-id=piano]';click '#card [data-act=exp-create]'
+qa_locator_select piano;click '#card [data-act=exp-create]'
 fill '[data-exp-primary]' 'Listen to the piano.'
 click '#card [data-act=exp-add-guide]'
 b="$(qa_jsv '__me.ctx.experience.guide[1]')"
@@ -33,7 +33,7 @@ qa_ok 'Peek selects the Stop and exposes normal Entry/Next without opening L2 or
 checkpoint peek
 choose '[data-exp-entry]' hold
 qa_ok 'local Stop entry affects neither shared Presentation entry nor Camera' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js '(__me.ctx.experience.stops[__me.ctx.experience.guide[0]].entry.kind==="hold"&&Object.values(__me.ctx.experience.uses).some(u=>u.role==="entry"))')" "$camera / true"
-click '#undoBtn';click '#experienceDeck [data-act=exp-preview-guide]'
+click '#undoBtn';qa_preview_guide
 qa_ok 'Preview Guide enters the first Stop directly; manual Next is immediately available' "$(qa_js '(__me.S.visitor.runtime.stopId===__me.ctx.experience.guide[0]&&!document.querySelector("[data-command=next]").disabled&&!document.querySelector("[data-command=start]"))')" true
 before="$(source_json)"
 click '[data-command=next]'
@@ -89,7 +89,7 @@ source_camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 qa_js 'window.__guideBefore=JSON.stringify(__me.ctx.experience.guide)' >/dev/null
 click '#card [data-act=exp-view-order-move][data-id=use-2][data-delta="1"]'
 qa_ok 'suggestion reorder leaves entry, Stop order and Camera connectivity unchanged' "$(qa_js '(__me.ctx.experience.uses["use-2"].role==="entry"&&JSON.stringify(__me.ctx.experience.guide)===window.__guideBefore)') / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "true / $source_camera"
-click '#headPreview'
+qa_preview_presentation
 qa_ok 'visitor offers entry and all three Views, explicit suggestion steps, coherent transcript and captions' "$(qa_js '(document.querySelectorAll("[data-command=look]").length===3&&document.querySelector("[data-command=next-view]")&&document.querySelector(".visitor-transcript").textContent.includes("Follow the output")&&document.querySelector(".visitor-caption").textContent.includes("The casing"))')" true
 checkpoint offers
 click '[data-command=captions]'
@@ -101,7 +101,7 @@ click '.stop-details > details > summary';choose '[data-exp-pacing]' dwell
 fill '[data-exp-stop-number=dwell]' '3'
 choose '[data-exp-gate]' '{"useId":"contribution-8","signal":"complete"}'
 qa_ok 'compact Stop Card authors advanced dwell and explicit Gate without Overview' "$(qa_js '(()=>{const s=__me.ctx.experience.stops[__me.S.sel];return s.pacing.seconds===3&&s.gate.useId==="contribution-8"&&__me.S.experienceContext.depth==="ordinary";})()')" true
-click '#experienceDeck [data-act=exp-preview-guide]'
+qa_preview_guide
 qa_ok 'authored Gate blocks button and keyboard continuation, independent of natural readiness' "$(qa_js '(document.querySelector("[data-command=next]").disabled&&__me.S.visitor.runtime.stopId===__me.S.visitor.source.experience.guide[0])')" true
 # MP2: toggling Auto must not restart the Stop's remaining-work clock; it is a real visitor control.
 qa_js '__me.E.stepVisitor(1)' >/dev/null;qa_frames

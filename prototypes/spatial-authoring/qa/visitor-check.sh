@@ -29,7 +29,7 @@ qa_js '(()=>{const d="definition-frame-offer",u="use-frame-offer";return __me.E.
 # Author the visit-local Gate on the independent Piano offer, then freeze the source the visitor must
 # never write. The snapshot is taken after all fixture authoring so it measures the session, not the setup.
 qa_js '(()=>{const e=__me.ctx.experience;const id=Object.values(e.uses).find(u=>u.kind==="interaction"&&u.triggerSubjectId==="piano").id;__me.E.command("Gate fixture",e=>e.stops[e.guide[0]].gate={useId:id,signal:"complete"});__me.S.visitorBefore={source:JSON.stringify(__me.A.domainSnapshot()),sel:__me.S.sel,undo:__me.S.undo.length,pose:JSON.stringify(__me.nav.plainPose())};return true;})()' >/dev/null
-agent-browser click '[data-act="exp-preview"]' >/dev/null
+qa_preview_presentation
 qa_frames
 agent-browser click '[data-command="start"]' >/dev/null
 qa_frames
@@ -109,9 +109,11 @@ qa_ok 'availability switches to a named Presentation as one ordinary edit' "$(qa
 # Experience-wide participation stays reachable from it.
 agent-browser click '[data-act="lens"][data-lens="experience"]' >/dev/null
 qa_frames
-qa_ok 'an Experience-wide offer exposes the Experience-only Preview entry' "$(qa_js '!!document.querySelector("#index [data-act=exp-preview-experience]")')" 'true'
+# UX1: the entry lives in the Head's one Preview menu, and the Experience scope is there because a
+# world-only offer exists — the same condition the Index used to speak for.
+qa_ok 'an Experience-wide offer exposes the Experience-only Preview entry' "$(qa_js '!!document.querySelector("#previewScopes [data-scope=experience]")')" 'true'
 qa_js '__me.S.wideBefore={source:JSON.stringify(__me.A.domainSnapshot()),undo:__me.S.undo.length}' >/dev/null
-agent-browser click '#index [data-act="exp-preview-experience"]' >/dev/null
+qa_preview_experience
 qa_frames
 qa_ok 'Preview Experience starts a world-only visit with no Presentation, Stop or Guide' "$(qa_js '(()=>{const r=__me.S.visitor.runtime;return !!__me.S.visitor&&r.presentationId===null&&r.stopId===null&&!r.exploring&&r.overrides&&Object.keys(r.overrides).length===0;})()')" 'true'
 wideOffer="$(qa_jsv 'Object.values(__me.S.visitor.source.experience.uses).find(u=>u.kind==="interaction"&&!u.availability&&__me.ctx.sceneSource.subjects[u.triggerSubjectId])?.id')"
@@ -126,7 +128,7 @@ qa_ok 'the world-only visit restores authoring without writing source' "$(qa_js 
 # local work under its own identity instead of leaving a narration running and its effects projected.
 agent-browser click '#index [data-act="exp-open"]' >/dev/null
 qa_frames
-agent-browser click '[data-act="exp-preview"]' >/dev/null
+qa_preview_presentation
 qa_frames
 narration="$(qa_jsv '(()=>{const v=__me.S.visitor,r=v.runtime;return (Object.values(r.activities).find(a=>a.status==="running"&&v.source.experience.definitions[v.source.experience.uses[a.useId]?.definitionId]?.kind==="narration")||{}).token||"";})()')"
 other="$(qa_jsv "Object.values(__me.S.visitor.source.experience.presentations).find(p=>p.id!==__me.S.visitor.runtime.presentationId).id")"
@@ -162,7 +164,7 @@ qa_frames
 # The policy is authored before Preview opens, because the visitor session reads a frozen source.
 carriedUse="$(qa_jsv "(()=>{const e=__me.ctx.experience,pid=e.stops['$guideA'].presentationId;const u=Object.values(e.uses).find(x=>!x.viewId&&e.definitions[x.definitionId]?.kind==='narration'&&(x.start?.kind==='experience'||((x.start?.kind==='visit'||!x.start)&&(x.start?.presentationId??x.presentationId)===pid)));if(u)__me.E.command('Set departure policy',e2=>e2.uses[u.id].interruption='finish');return u?u.id:'';})()")"
 qa_ok 'a narration at this Stop carries departure policy finish rather than cancel' "$(qa_js "'$carriedUse'?true:false")" 'true'
-agent-browser click '[data-act="exp-preview"]' >/dev/null
+qa_preview_presentation
 qa_frames
 agent-browser click '[data-command="start"]' >/dev/null
 qa_frames

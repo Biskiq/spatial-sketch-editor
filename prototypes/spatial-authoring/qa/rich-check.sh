@@ -44,7 +44,7 @@ wall_stop="$(qa_jsv '(()=>{const e=__me.ctx.experience;for(const s of Object.val
 reading_before="$(qa_jsv '__me.ctx.stage.d("rotunda").u')"
 source_before="$(hash)";count_before="$(undo)"
 wall_entry_use="$(qa_jsv '(()=>{const e=__me.ctx.experience;for(const s of Object.values(e.stops)){const c=s.choices.find(c=>c.label==="See the wall assembly");if(c){const st=e.stops[c.targetId];return st&&st.entry.kind==="presentation"?(Object.values(e.uses).find(u=>u.presentationId===st.presentationId&&u.viewId&&u.role==="entry")?.id||""):"";}}return "";})()')"
-click '#experienceDeck [data-act=exp-preview-guide]'
+qa_preview_guide
 byText '[data-command=detour]' 'See the wall assembly'
 qa_ok 'the off-Guide Wall assembly is a deliberate visitor entry whose transient invocation runs there' "$(qa_js "(()=>{const r=__me.S.visitor.runtime;return r.stopId==='$wall_stop'&&!!r.active['$unfold_use']&&!!document.querySelector('[data-command=return]')&&!!r.overrides.wallAssembly;})()")" true
 qa_ok 'the Wall detour arrives through the Wall entry View, so the unroll happens in view' "$(qa_js "__me.S.visitor.runtime.arrivedViewUseId==='$wall_entry_use'")" true
@@ -57,7 +57,7 @@ click '[data-act=exp-exit-preview]'
 qa_ok 'Exit restores the author Wall reading exactly and clears the visitor session' "$(qa_jsv '__me.ctx.stage.d("rotunda").u') / $(qa_js '!__me.S.visitor') / $(hash) / $(undo)" "$reading_before / true / $source_before / $count_before"
 # Return releases the detour's projection itself, so it gets a separate visit: it must never clear the
 # Wall before the Exit-restoration assertion above has a chance to detect a broken restoration path.
-click '#experienceDeck [data-act=exp-preview-guide]'
+qa_preview_guide
 byText '[data-command=detour]' 'See the wall assembly'
 entries_before="$(qa_jsv '__me.S.expReview.visitor.entries.length')"
 click '[data-command=return]'
@@ -120,7 +120,7 @@ click '[data-act=exp-route-return]';click '[data-act=exp-close]'
 checkpoint writers
 
 # ---- Preview executes the traversed route only, once, at its own station.
-click '#experienceDeck [data-act=exp-preview-guide]'
+qa_preview_guide
 qa_js "window.__stationUse='$station_use'" >/dev/null
 click '[data-command=next]'
 qa_ok 'the destination visit does not arm the station-only Activity on entry' "$(qa_js '(()=>{const v=__me.S.visitor;const r=v.runtime;const armed=r.active[window.__stationUse];return armed===undefined&&Object.values(r.activities).filter(a=>v.source.experience.uses[a.useId].start.kind==="station").length===0;})()')" true
@@ -132,7 +132,7 @@ checkpoint traced
 # ---- Cut executes none of it; a rebound invocation refuses locally instead of double running.
 click '[data-command=back]';click '[data-act=exp-exit-preview]'
 openseam;click '[data-act=exp-cut]';click '[data-act=exp-close]'
-click '#experienceDeck [data-act=exp-preview-guide]'
+qa_preview_guide
 click '[data-command=next]'
 qa_ok 'Cut executes no route beat and no station invocation' "$(qa_js '(()=>{const v=__me.S.visitor,r=v.runtime,m=r.movement;return (!m||(!m.holds.length&&!m.invokes.length))&&!Object.values(r.activities).some(a=>v.source.experience.uses[a.useId].start.kind==="station");})()')" true
 click '[data-act=exp-exit-preview]'
@@ -145,7 +145,7 @@ press "#card [data-act=pres-ref][data-id='$station_work']"
 click '#card > details:nth-of-type(1) > summary'
 choose '[data-exp-start]' visit
 qa_ok 'rebinding the invocation to entry is honestly authored state' "$(qa_js '(()=>{const e=__me.ctx.experience;const u=e.uses[window.__stationWork];const s=Object.values(e.seams)[0];return u.start.kind==="visit"&&s.beats.some(b=>b.kind==="invoke"&&b.useId===u.id);})()')" true
-click '#experienceDeck [data-act=exp-preview-guide]'
+qa_preview_guide
 qa_ok 'Preview refuses the transition locally rather than running the Activity twice' "$(qa_js '(()=>{const b=document.querySelector("[data-command=next]"),v=__me.S.visitor;return b.disabled&&/triggered elsewhere/.test(document.querySelector(".visitor-controls").textContent)&&!Object.values(v.runtime.activities).some(a=>v.source.experience.uses[a.useId].start.kind==="station");})()')" true
 click '[data-command=next]'
 qa_ok 'the refusal keeps the visitor where they were: no fallback and no partial traversal' "$(qa_js '(__me.S.visitor.runtime.stopId===__me.S.visitor.source.experience.guide[0]&&!__me.S.visitor.runtime.movement)')" true
@@ -173,7 +173,7 @@ click "#experienceDeck [data-act=exp-stop][data-id='$owner_stop']"
 qa_js "(()=>{window.__ownerStop='$owner_stop';window.__brokenChoice='$broken_choice';return true;})()" >/dev/null
 qa_js '(()=>{window.__brokenTarget=__me.ctx.experience.stops[window.__ownerStop].choices.find(c=>c.id===window.__brokenChoice).targetId;return true;})()' >/dev/null
 qa_ok 'the Stop that authors the broken choice offers its own repair and removal' "$(qa_js '(()=>{return !!document.querySelector("[data-exp-choice-target="+JSON.stringify(window.__brokenChoice)+"]")&&!!document.querySelector("[data-act=exp-choice-remove]");})()')" true
-press '#card [data-act=exp-preview-guide]'
+qa_preview_guide
 qa_ok 'Preview marks the retained unresolved choice unavailable instead of offering it' "$(qa_js '(()=>{const b=[...document.querySelectorAll("[data-command=detour],[data-command=go]")].find(x=>/Compare materials detour/.test(x.textContent));return !!b&&b.disabled&&/repair required/.test(b.textContent);})()')" true
 qa_js 'window.__brokenStop=__me.S.visitor.runtime.stopId' >/dev/null
 qa_ok 'the runtime refuses the unresolved destination without parking the parent visit' "$(qa_js '(()=>{__me.E.visitorCommand("detour",window.__brokenTarget);const r=__me.S.visitor.runtime;return r.stopId===window.__brokenStop&&r.bookmarks.length===0&&/repair/.test(r.refusal||"");})()')" true

@@ -279,9 +279,13 @@ export function preview(pid=S.experienceContext.presentation,guide=false,experie
  // Three entries, one runtime: Preview this Presentation, Preview Guide, and Preview Experience — the
  // world-only session that needs no Presentation, Stop or Guide at all (I3/J6). The Experience entry
  // refuses only when there is genuinely nothing to visit: no Experience-wide offer to participate in.
- const wide=Object.values(ctx.experience.uses).some(u=>u.kind==='interaction'&&!u.availability);
- if(S.visitor || (!guide&&!experience&&!ctx.experience.presentations[pid]) || (guide&&!ctx.experience.guide.length) || (experience&&!wide)) return false;
- cancelProposal('preview');
+ const wide=Object.values(ctx.experience.uses).some(u=>u.kind==='interaction'&&!u.availability);  if(S.visitor || (!guide&&!experience&&!ctx.experience.presentations[pid]) || (guide&&!ctx.experience.guide.length) || (experience&&!wide)) return false;
+  // The one Preview control is a menu, and the scope has been taken: it closes behind the visit, so
+  // Exit Preview returns to the shell as the author left it rather than to an open menu.
+  // The menu is shell chrome, and this module is also exercised headlessly (the Node suite stubs a
+  // document with no querySelector), so the lookup is optional rather than assumed.
+  const menu=globalThis.document?.querySelector?.('#headPreview');if(menu)menu.open=false;
+  cancelProposal('preview');
  const token={lens:S.lens,sel:S.sel,context:structuredClone(S.experienceContext),origin:nav.captureOrigin('Preview return'),inspection:A.captureInspection(),expand:S.expand,sheet:{...S.sheet},browse:{...S.browse},representation:captureRepresentation()};
  // Suspend authoring without writing source or passing through lens parking. Auditions are cleared
  // before entry: the visit sees authored source, never an authoring projection.

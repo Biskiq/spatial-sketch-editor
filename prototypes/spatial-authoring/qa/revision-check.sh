@@ -27,7 +27,7 @@ checkpoint(){ if [ "${QA_REVISION_UNTIL:-}" = "$1" ];then qa_summary "C9.6 bound
 
 # ---- From genuinely empty Reset: the ordinary creator loop, then real revision work.
 click '#lens [data-lens=experience]';fixture exp-reset
-click '#index [data-id=machine]';click '#card [data-act=exp-create]'
+qa_locator_select machine;click '#card [data-act=exp-create]'
 fill '[data-exp-primary]' 'The casing protects the rotor.'
 click '#card [data-act=exp-capture]'
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
@@ -89,7 +89,7 @@ checkpoint shared-scope
 # ---- P1/P2: a merged proposal waits as one decision, and a use-only change never writes the definition
 # field a still-pending scope Ask is holding. Two linked offers, one subject (definition) choice, one
 # activation (use-only) choice.
-click '#index [data-id=light]'
+qa_locator_select light
 press '#card [data-act=exp-offer][data-kind=interaction]'
 press '#card [data-act=exp-offer-accept]'
 offer="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.kind==="interaction").id')"
@@ -142,7 +142,7 @@ qa_ok 'one Undo restores the Presentation, its Guide occurrence and its referenc
 checkpoint remove
 
 # ---- Provider profile replacement: capability loss, routed repair notice, compatible rebind.
-click '#index [data-id=machine]'
+qa_locator_select machine
 click '[data-act=lens][data-lens=world]'
 qa_ok 'the World subject Details owns the declared profile' "$(qa_js '(!!document.querySelector("[data-exp-profile]")&&document.querySelector("[data-exp-profile]").value==="machine")')" true
 choose '[data-exp-profile]' machineBase

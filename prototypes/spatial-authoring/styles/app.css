@@ -112,13 +112,9 @@ kbd { font: 500 var(--t2xs) var(--mono); font-stretch: 80%; padding: 1px 4px; bo
 .relation.parked .lnk { color: var(--ink); }
 .doc { display: flex; align-items: baseline; gap: 10px; padding-left: 14px; border-left: 1px solid var(--rule); }
 .doc-name { font: 600 14px var(--ui); }
-.doc-state { color: var(--ink-3); font-size: var(--txs); }
 .head-hist { margin-left: auto; display: flex; align-items: center; gap: 4px; }
 .icon-btn { position: relative; border: 0; background: none; width: 26px; height: 26px; border-radius: 3px; font-size: 15px; color: var(--ink-2); }
 .icon-btn:hover:not(:disabled) { background: var(--chassis-hover); }
-.icon-btn .count { position: absolute; right: -3px; top: -2px; font-size: var(--t2xs); background: var(--tape); color: var(--ink); border-radius: 6px; padding: 0 3px; line-height: 13px; }
-.icon-btn .count:empty { display: none; }
-.undo-label { font-size: var(--txs); color: var(--ink-3); max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rationale-link { font-size: var(--txs); color: var(--ink-2); text-decoration: none; border: 1px solid var(--rule); padding: 4px 8px; border-radius: 3px; background: var(--instrument); }
 .rationale-link:hover { border-color: var(--ink-3); }
 
@@ -623,13 +619,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .status-text.edit { color: #2F5A43; font-weight: 600; }
 .status-text.view { color: var(--view-ink); }
 .status-text.refuse { color: var(--coral-ink); font-weight: 600; }
-.trail-wrap { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 460px; }
-.trail-k { color: var(--ink-3); flex: none; }
-.trail { display: flex; align-items: center; gap: 2px; overflow: hidden; min-width: 0; }
-.tr-stop { border: 0; background: none; padding: 1px 6px; border-radius: 3px; font-size: var(--txs); color: var(--ink-2); flex: none; }
-.tr-stop:hover { background: var(--chassis-hover); }
-.tr-stop.on { background: var(--instrument); color: var(--ink); box-shadow: 0 0 0 1px var(--rule); }
-.tr-sep { color: var(--ink-3); flex: none; }
 .motion { display: flex; align-items: center; gap: 2px; flex: none; }
 .motion-k { color: var(--ink-3); margin-right: 4px; }
 .motion button { border: 0; background: none; padding: 1px 6px; border-radius: 3px; font-size: var(--txs); color: var(--ink-3); }
@@ -685,8 +674,6 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
 @media (max-width: 1280px) {
   body.app { grid-template-columns: 236px minmax(0, 1fr) 300px; }
   .j-toggle, .journeys { right: 312px; }
-  .undo-label { max-width: 140px; }
-  .trail-wrap { flex-basis: 300px; }
 }
 /* ---------- the narrow shell: two sheets over one stage ---------- */
 /* Below the width where the Index and the Card stop being columns, the Head offers the same two panels
@@ -696,9 +683,8 @@ body.shot .journeys, body.shot .j-toggle { display: none !important; }
   body.app { grid-template-columns: 0 minmax(0, 1fr) 0; }
   .index, .card { display: none; }
   .sheet-btn { display: inline-flex; }
-  .undo-label, .brand-text { display: none; }
+  .brand-text { display: none; }
   .doc { padding-left: 0; border-left: 0; }
-  .trail-wrap { flex-basis: 190px; }
   .j-toggle, .journeys { right: 12px; }
   body[data-lens="experience"].sheet-card .journeys,
   body[data-lens="experience"].sheet-card .j-toggle { left: 12px; right: auto; }
@@ -735,7 +721,17 @@ body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0
 /* Experience uses the existing Head row; no Stage geometry changes with lens context. */
 .doc { min-width: 0; gap: 8px; }
 .active-experience { font-size: var(--txs); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 155px; }
-.head-preview { flex-shrink: 0; font: inherit; font-size: var(--tsm); padding: 4px 8px; background: var(--instrument); border: 1px solid var(--rule); border-radius: 3px; }
+/* One Preview control for the shell, and the scopes it can really start. The menu is a disclosure, not
+   a modal: it opens under its own summary, leaves the reading and the Camera alone, and closes behind
+   the visit it starts. */
+.head-preview { position: relative; flex-shrink: 0; }
+.head-preview > summary { list-style: none; cursor: pointer; font-size: var(--tsm); padding: 4px 8px; background: var(--instrument); border: 1px solid var(--rule); border-radius: 3px; }
+.head-preview > summary::-webkit-details-marker { display: none; }
+.head-preview > summary:hover, .head-preview[open] > summary { border-color: var(--ink-3); }
+.head-preview .caret { color: var(--ink-3); }
+.preview-scopes { position: absolute; right: 0; top: calc(100% + 4px); z-index: 26; min-width: 216px; display: flex; flex-direction: column; padding: 4px; background: var(--instrument); border: 1px solid var(--rule); border-radius: 4px; box-shadow: 0 10px 26px rgba(23, 32, 29, .18); }
+.preview-scopes button { text-align: left; border: 0; background: none; padding: 6px 8px; border-radius: 3px; font: inherit; font-size: var(--tsm); color: var(--ink-2); white-space: nowrap; }
+.preview-scopes button:hover, .preview-scopes button:focus-visible { background: var(--chassis-hover); color: var(--ink); }
 .experience-presenter { position: fixed; top: 48px; right: 340px; z-index: 40; width: 265px; padding: 8px; background: var(--chassis); border: 1px dashed var(--ink-3); border-radius: 4px; font-size: var(--txs); }
 .experience-presenter summary { cursor: pointer; }
 body.shot .experience-presenter, .visitor-preview .experience-presenter { display: none !important; }

@@ -64,17 +64,39 @@ function renderHead() {
     b.classList.toggle('on', on);
     b.setAttribute('aria-expanded', String(on));
   }
-  const active=$('#activeExperience'), preview=$('#headPreview');
+  const active=$('#activeExperience');
   active.hidden=S.lens!=='experience';active.textContent=ctx.experience.name;
-  preview.dataset.id=S.experienceContext.presentation||'pres-highlights';
-  preview.disabled=!ctx.experience.presentations[preview.dataset.id];
-  preview.title=preview.disabled?'Open a Presentation to Preview':'Preview '+ctx.experience.presentations[preview.dataset.id].name;
+  renderPreviewScopes();
+  // Undo and Redo stay; the transaction count, the last-change label and the invented “saved” state
+  // do not. Session lifetime belongs in Keys, and history depth is not something the chrome claims.
   ub.disabled = !u; rb.disabled = !r;
   ub.title = u ? `Undo “${u.label}” (⌘Z)` : 'Nothing to undo';
   rb.title = r ? `Redo “${r.label}” (⇧⌘Z)` : 'Nothing to redo';
-  $('#undoLabel').textContent = u ? u.label : 'No source changes yet';
-  $('#undoCount').textContent = S.undo.length ? String(S.undo.length) : '';
-  $('#docState').textContent = S.undo.length ? `${S.undo.length} change${S.undo.length > 1 ? 's' : ''} · saved` : 'All changes saved';
+}
+
+// The one Preview control's scopes, computed from what can actually start. A scope that cannot run is
+// absent rather than disabled — nothing offered is inert — and when no scope can run the control is
+// absent too, because there is nothing to promise. Presentation names itself; the Guide and the
+// world-only visit say how much they carry.
+export function previewScopes() {
+  const e = ctx.experience, pid = S.experienceContext.presentation || 'pres-highlights';
+  const out = [];
+  if (e.presentations[pid]) out.push({ scope: 'presentation', act: 'exp-preview', id: pid, label: `Presentation · ${e.presentations[pid].name}` });
+  if (e.guide.length) out.push({ scope: 'guide', act: 'exp-preview-guide', id: '', label: `Guide · ${e.guide.length} Stop${e.guide.length === 1 ? '' : 's'}` });
+  if (Object.values(e.uses).some((u) => u.kind === 'interaction' && !u.availability)) out.push({ scope: 'experience', act: 'exp-preview-experience', id: '', label: 'Experience · world-only visit' });
+  return out;
+}
+
+function renderPreviewScopes() {
+  const menu = $('#headPreview'), scopes = $('#previewScopes');
+  if (!menu || !scopes) return;
+  const list = previewScopes();
+  menu.hidden = !list.length;
+  // A disclosure, not an ARIA menu: the scopes are ordinary buttons reached with Tab, so no roving
+  // focus or menu key model is claimed that the shell does not implement.
+  const html = list.map((s) => `<button data-act="${s.act}" data-scope="${s.scope}" data-id="${esc(s.id)}" title="Start the visitor at this scope — Exit Preview returns to this exact authoring context">${esc(s.label)}</button>`).join('');
+  if (scopes._html !== html) { scopes.innerHTML = html; scopes._html = html; }
+  menu.querySelector('summary')?.setAttribute('aria-expanded', String(menu.open));
 }
 
 // ---------------------------------------------------------------- stage tools
@@ -233,10 +255,34 @@ export function relationsOf(id) {
 
 const PAGE = 9;
 
-// One list per museum, rebuilt only when the fixture changes: Browse cannot invent a second registry.
-const recCache = { museum: null, list: [] };
+// One list per source, rebuilt when the museum or the Scene's own subjects change: Browse cannot invent
+// a second registry, and the Experience lens reaches the same subjects the World lists. The Scene's own
+// subjects are deduplicated by identity — a subject the World already lists keeps its World row and a
+// subject only the Scene has is listed for what it really is, with a logical subject marked as having no
+// Stage geometry instead of being promised a flight.
+const recCache = { museum: null, scene: null, list: [] };
 export function records() {
-  if (recCache.museum !== ctx.museum) { recCache.museum = ctx.museum; recCache.list = recordList(ctx.museum); }
+  if (recCache.museum !== ctx.museum || recCache.scene !== ctx.sceneSource) {
+    recCache.museum = ctx.museum;
+    recCache.scene = ctx.sceneSource;
+    const list = recordList(ctx.museum);
+    const seen = new Set(list.map((r) => r.id));
+    for (const s of Object.values(ctx.sceneSource?.subjects || {})) {
+      if (!s?.id || seen.has(s.id)) continue;
+      seen.add(s.id);
+      const logical = s.profile === 'environment' || s.profile === 'representation';
+      list.push({
+        id: s.id,
+        name: s.name || s.id,
+        kind: `Scene subject · ${s.profile || 'no profile'}${logical ? ' · no Stage geometry' : ''}`,
+        where: logical ? 'Experience Scene' : 'the Stage',
+        ref: '',
+        geom: !logical,
+        register: false,
+      });
+    }
+    recCache.list = list;
+  }
   return recCache.list;
 }
 
@@ -255,7 +301,9 @@ function ctxOn(c) {
 // metadata record is in the register — never inferred into a gallery from the coordinates it lacks.
 function inContext(r, f) {
   if (!f || f.kind === 'rel') return true;
-  if (f.kind === 'records') return !r.geom;
+  // The register is the register: a Scene subject without Stage geometry is not a record, so it is
+  // listed in the whole-museum context and never borrowed into the records office.
+  if (f.kind === 'records') return r.register === true;
   if (!r.geom) return false;
   // An unresolved reference is a fact about the document, not about a place: it stays listed in every
   // context, exactly as the Index shows it in every context.
@@ -372,7 +420,7 @@ function recordsIndex() {
   let html = `<div class="ix-head"><span class="ix-title">Records register</span><span class="ix-place">no Stage location</span>${S.browse.focus?.kind === 'records' ? '<span class="ix-note">focused · context, not selection</span>' : ''}</div>`;
   html += `<div class="ix-hint">Sheets, files and photographs this museum keeps elsewhere. They can be selected — an identity is an identity — but there is no geometry here to open, reveal or fly to.</div>`;
   html += `<div class="ix-group">Kept elsewhere</div>`;
-  for (const r of records().filter((x) => !x.geom)) html += recordIndexRow(r);
+  for (const r of records().filter((x) => x.register === true)) html += recordIndexRow(r);
   html += `<div class="ix-row rec"><button class="ix-go" data-act="ctx" data-ctx="" title="Back to the whole museum"><span class="ix-name">Back to the museum</span></button></div>`;
   return html;
 }
@@ -887,8 +935,10 @@ export function updateStripLive() {
 }
 
 // ---------------------------------------------------------------- status rail
-// What just happened, where the view has been, and the two settings that are not building changes:
-// drafting paper on the wall you are working on, and whether a move is watched at all.
+// What just happened, and the two settings that are not building changes: drafting paper on the wall
+// you are working on, and whether a move is watched at all. The View trail is not here: navigation and
+// its exact return stay (the `[`/`]` transport and A.gotoTrail), but the chrome no longer lists the
+// standpoints, because a list of where the view has been is not a thing the shell can keep honest.
 
 function renderStatus() {
   const st = S.status;
@@ -903,12 +953,6 @@ function renderStatus() {
     const say = fresh && st.kind === 'refuse' ? st.text : '';
     if (ann._say !== say) { ann._say = say; ann.textContent = say; }
   }
-  let html = '';
-  S.trail.forEach((e, i) => {
-    html += `${i ? '<span class="tr-sep">›</span>' : ''}<button class="tr-stop${i === S.trailPos ? ' on' : ''}" data-trail="${i}" title="Go back to this standpoint (view only)">${esc(e.label)}</button>`;
-  });
-  const tr = $('#trail');
-  if (tr._html !== html) { tr.innerHTML = html; tr._html = html; tr.scrollLeft = tr.scrollWidth; }
   document.querySelectorAll('#motion button').forEach((b) => b.classList.toggle('on', b.dataset.motion === S.motion));
   renderMotion();
   renderDrafting();

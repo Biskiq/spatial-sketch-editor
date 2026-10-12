@@ -185,7 +185,8 @@ checkpoint framing
 # A moment of the author's own, made through the product's own doors: present the selected subject, write its
 # explanation, then accept its framing by Capture. Those two authored outcomes are what complete the topic.
 MOMENT="$(page '__me.S.experienceContext.presentation')"
-last="$(step 'document.querySelector("#index [data-id=light]").click();')"
+qa_locator_select light
+last="$(step '')"
 press '#card [data-act=exp-create]'
 author_once "The light answers the machine, and this is authored here"
 last="$(step '')"
@@ -239,7 +240,7 @@ checkpoint navigation
 qa_say "-- the aid stays usable during Preview, read-only and without authoring controls"
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
 press '[data-act=exp-expand-stop]'
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '')"
 qa_ok "during the visit the aid is still there, marked as a visit's guidance" "$(field visitor) / $(field hidden) / $(field visiting)" "True / False / True"
 qa_ok "…with every authoring control inside it unmounted" "$(is 'd["authoringHidden"] == [True]') / $(field loadersVisible)" "True / 0"
@@ -265,7 +266,7 @@ press '[data-act=exp-stop]'
 last="$(step '')"
 qa_ok "a quiet Peek selection records the Peek without expanding the occurrence" "$(field peeks) / $(field expanded)" "$((PEEKS_0 + 1)) / False"
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '__me.E.stepVisitor(6);')"
 press '[data-act=exp-exit-preview]'
 last="$(step '')"
@@ -274,7 +275,7 @@ qa_ok "a visit that ran no station invocation leaves Coordinate incomplete" "$(f
 # Next travelling to the second is that Stop being reached. A topic about Travel reads both.
 qa_say "-- a Guide visit that really travelled credits Travel with the Stop it entered"
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '')"
 qa_ok "the visit opens its ledger with the Stop it entered, before any command" "$(field ledger) / $(field walked)" "1 / False"
 press '[data-command=next]'
@@ -293,7 +294,7 @@ checkpoint advanced
 
 qa_say "-- a capability sequence is the handover and the carried run the visitor ended"
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '__me.E.stepVisitor(6);')"
 qa_ok "the casing completes and hands over to a rotor that is still carried as the visitor's live run" "$(field rotorState) / $(field stopped)" "running / 0"
 press '[data-act=exp-exit-preview]'
@@ -303,7 +304,7 @@ last="$(step '')"
 qa_ok "…while that sequence alone leaves the topic open: no carried run was stopped" "$(field a2) / $(field stopped)" "False / 0"
 checkpoint sequence
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '__me.E.stepVisitor(6);')"
 ROTOR="$(field rotor)"
 press "[data-command=stop][data-id='$ROTOR']"
@@ -328,7 +329,7 @@ open_rotor_relationships() {
 open_rotor_relationships
 NARRATION_SIGNAL="$(page "JSON.stringify({useId:'$NARRATION_USE',signal:'complete'})")"
 select_control "#card [data-exp-after='$ROTOR_USE']" "$NARRATION_SIGNAL"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '__me.E.stepVisitor(20);')"
 ROTOR="$(field rotor)"
 press "[data-command=stop][data-id='$ROTOR']"
@@ -345,7 +346,7 @@ qa_say "-- a handover is a dependent that really began, never one the visit left
 # Leaving the first Stop before its finite operation completes disarms the dependent: the rotor is stopped as
 # a dependency the visit left, and it never starts, however the operation ends.
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 press '[data-command=next]'
 last="$(step '__me.E.stepVisitor(6);')"
 press '[data-act=exp-exit-preview]'
@@ -355,7 +356,7 @@ checkpoint handover
 # The policies comparison below reads the last visit's ledger, so leave it a single Stop entered once, exactly
 # as a visit that was opened and closed without a command leaves it.
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 press '[data-act=exp-exit-preview]'
 last="$(step '')"
 
@@ -379,7 +380,7 @@ qa_ok "the three policies are authored through the Stop's own Entry control" "$(
 qa_ok "…while configured policies alone leave the topic open, with only the entries a visit really made" "$(field a3) / $(field entries)" "False / presentation:false:true:false"
 checkpoint policies
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 last="$(step '__me.E.stepVisitor(6);')"
 press '[data-command=next]'
 last="$(step '__me.E.stepVisitor(6);')"
@@ -397,7 +398,7 @@ qa_say "-- a Stop reached by Auto is as real as one reached by Next"
 # The same four Stops, entered by the runtime's own pacing instead of by a command: Auto advances through the
 # tick, so the visit's Stops and the policies they ran have to be read from the runtime, not from commands.
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 press '[data-command=auto]'
 # One reading after the whole run: every intermediate entry and its outcomes must survive without the
 # aid polling each Stop before the runtime proceeds to the next.
@@ -429,7 +430,7 @@ for _ in $(seq 1 10); do
   select_control '[data-exp-cue]' "$CUE_SIGNAL"
   press '[data-act=exp-source-accept]'
 done
-press '[data-act=exp-preview-guide]'
+qa_preview_guide
 press '[data-command=next]'
 last="$(step '__me.E.stepVisitor(60);')"
 qa_ok 'a completed Travel stays credited after ten destination View cues' "$(field visited) / $(field travelArrivals) / $(field q7) / $(field a4)" 'arrived / 1 / True / True'

@@ -284,6 +284,90 @@ qa_drag() { # qa_drag <selector> <dx> <dy> [name]
   return 0
 }
 
+# ---------------------------------------------------------------- the one Preview home (UX1)
+# Preview lives once, in the Head, as a menu of the scopes that can actually start. Every axis takes it
+# the way an author does: a real click opens the menu, a real click takes a scope by name. A scope that
+# cannot run is absent rather than disabled, so a recipe for a scope that does not exist fails loudly
+# here instead of clicking nothing and asserting about a visit that never began.
+
+# A real pointer click at an element's centre (down + up, with the settle the other helpers use).
+qa_click() { # qa_click <selector>
+  local p x y
+  p="$(qa_at "$1")"
+  case "$p" in none | '' | null) qa_fail_msg "no live control at $1"; return 1 ;; esac
+  x="${p%,*}"; y="${p#*,}"
+  qa_move "$x" "$y"; qa_down; qa_up
+  qa_frames
+  return 0
+}
+
+qa_preview() { # qa_preview <presentation|guide|experience>
+  qa_js "(() => { const m = document.querySelector('#headPreview'); return !!(m && !m.hidden); })()" | grep -q true \
+    || { qa_fail_msg "no Preview control in the Head"; return 1; }
+  qa_click '#headPreview > summary' || return 1
+  local n
+  n="$(qa_js "document.querySelectorAll('#previewScopes [data-scope=\"$1\"]').length")"
+  [ "$n" = "1" ] || { qa_fail_msg "the Preview menu offers no $1 scope (found $n)"; return 1; }
+  qa_click "#previewScopes [data-scope=\"$1\"]" || return 1
+  agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
+  qa_frames
+  return 0
+}
+qa_preview_presentation() { qa_preview presentation; }
+qa_preview_guide() { qa_preview guide; }
+qa_preview_experience() { qa_preview experience; }
+
+# ---------------------------------------------------------------- the one shared locator (UX1)
+# A subject is reached the way an author reaches it: the locator is opened from the shell, the subject
+# is named in its real field, and the row the locator offers is taken — by its own Select with a real
+# pointer click, or with the keyboard's ArrowDown then Enter. Nothing here reaches into app state, and
+# a subject that is not listed fails by name.
+
+qa_locator_open() { # qa_locator_open [act]  — the shell's own search entry, or an act that points at it
+  local act="${1:-find}"
+  # Always the whole museum: a recipe names a subject, never a context some earlier block left behind.
+  qa_js "(() => { const b = document.querySelector('[data-act=\"$act\"]'); if (b) b.click(); const chip = document.querySelector('#finderCtx [data-act=\"ctx\"][data-ctx=\"\"]'); if (chip && !chip.classList.contains('on')) chip.click(); return 1; })()" >/dev/null
+  qa_frames
+}
+qa_locator_query() { # qa_locator_query <text>
+  agent-browser fill '#finderInput' "$1" >/dev/null 2>&1
+  agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
+  qa_frames
+}
+qa_locator_row() { # qa_locator_row <id>  — the row's own Select, with a real pointer click
+  local n
+  n="$(qa_js "document.querySelectorAll('#finderList li[data-rec=\"$1\"]').length")"
+  [ "$n" = "1" ] || { qa_fail_msg "the locator lists $n rows for $1"; return 1; }
+  agent-browser scrollintoview "#finderList li[data-rec=\"$1\"]" >/dev/null 2>&1
+  qa_click "#finderList li[data-rec=\"$1\"] [data-act=sel]" || return 1
+  agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
+  qa_frames
+  return 0
+}
+# qa_locator_select <id> [pointer|keyboard]  — and nothing else: the identity changes, the visit does not
+qa_locator_select() { # qa_locator_select <id> [pointer|keyboard]
+  qa_locator_open find || return 1
+  qa_locator_query "$1" || return 1
+  if [ "${2:-pointer}" = keyboard ]; then
+    # The keyboard walks the list it was given: ArrowDown until the row the author wants is the one the
+    # locator highlights, then Enter. A name can match a record as well as a subject, so the walk is the
+    # honest path — it is also exactly what a keyboard user does.
+    local at i
+    agent-browser press ArrowDown >/dev/null 2>&1
+    for i in $(seq 1 24); do
+      at="$(qa_jsv 'window.__me.S.browse.at')"
+      [ "$at" = "$1" ] && break
+      agent-browser press ArrowDown >/dev/null 2>&1
+    done
+    agent-browser press Enter >/dev/null 2>&1
+    agent-browser eval "(async () => { await window.__me.qa.idle(); return true; })()" >/dev/null 2>&1
+    qa_frames
+  else
+    qa_locator_row "$1" || return 1
+  fi
+  return 0
+}
+
 # ---------------------------------------------------------------- assertions
 
 qa_ok() { # name actual expected

@@ -105,8 +105,8 @@ the home and posture instead of the id and the `exp-deck <depth>` class.
 
 | Current surface | Vocabulary it drags | Owning slice |
 | --- | --- | --- |
-| Index `+ Presentation` / `Present environment` / `Present region`; "Scene subjects" list; Head trail, undo counts, `All changes saved` | Scene list, trail, Saved | **UX1** |
-| Guide Preview entries (Head, Index, Deck, Stop Card, Experience-wide) | `exp-preview*`, Overview | **UX1** (consolidate to one Head `Preview ▾`) |
+| Index `+ Presentation` / `Present environment` / `Present region`; "Scene subjects" list; Head trail, undo counts, `All changes saved` | Scene list, trail, Saved | **UX1 — landed**: the Index names Presentations, the Guide, `+ Present`, `Present environment`, `Present region` and `Browse World`; the Scene list is retired (every subject it named is reached through the shared locator, proven in [`locator-check.sh`](./locator-check.sh)); the trail, the transaction count, the last-change label and the fabricated Saved state are gone from chrome while the trail machinery and Undo stay |
+| Guide Preview entries (Head, Index, Deck, Stop Card, Experience-wide) | `exp-preview*`, Overview | **UX1 — landed**: one Head `Preview ▾` menu (`#headPreview` + `#previewScopes`), whose scopes are the ones that can start; every other entry is removed and asserted absent |
 | "Show · unordered Set" rows, `.exp-set` / `.set-node`, Auto/Hints/Capture/Bring into view, reuse-a-Camera-View | unordered Set | **UX2** |
 | Scene subject capability rows, audition/Use | Peek (Card at Peek) | **UX3** |
 | Peek band, Overview strip, Expand/L2, stop cards, stop thumbnails, Seam triptych (Cut/Travel, coverage, Prepare) | Peek, Overview, Seam, Expand/L2, triptych | **UX4** |
@@ -133,9 +133,11 @@ later slices can be compared against them:
 
 Deviations and facts this inventory records rather than hides:
 
-- **Five Preview entries exist today** — Head `Preview`, Index `Preview Guide`, Deck `Preview Guide`,
-  Stop Card `Preview Guide`, Index `Preview Experience`. The plan's one-Head-`Preview ▾` consolidation
-  is UX1's exit gate; UX0 deliberately does not assert the target state.
+- **Five Preview entries existed at UX0** — Head `Preview`, Index `Preview Guide`, Deck `Preview Guide`,
+  Stop Card `Preview Guide`, Index `Preview Experience`. UX1 consolidated them into the Head's one
+  `Preview ▾` menu and now asserts it in both axes: `experience-shell-check.sh` for the control (one
+  control, every scope inside it, closed behind the visit) and `locator-check.sh` for the scopes it
+  offers and the strict “nothing outside the menu can start a visit”.
 - **The band's worst measured share is 33.2 %** against the §6 40 % reservation at 1440×900 — it holds,
   with little headroom, before UX4/UX6 reorganise the Deck.
 - **The Overview strip clamps its summaries**: `.stop-summary` renders 143 px of text in a 29 px box

@@ -11,9 +11,10 @@
 # names its own posture (`data-deck-posture`), so #114's UX1–UX7 slices can move a control between
 # homes and re-point the recipe that owns it instead of weakening an assertion.
 #
-# What this axis deliberately does NOT assert yet: "exactly one Preview control" — five preview
-# entries exist today (head, Index, Deck, Stop Card, Experience-wide). That consolidation is UX1's exit
-# gate, and the coupling is inventoried in ./experience-ux-selector-inventory.md.
+# UX1's consolidation is asserted here rather than in a second axis: the shell offers exactly one
+# Preview control (the Head's `Preview ▾` menu), every scope it offers lives inside it, and the menu
+# closes behind the visit it starts. The locator coverage that UX1's other exit gate claims — every
+# subject the retired Index Scene list named, by pointer and keyboard — is asserted in ./locator-check.sh.
 #
 # Usage: qa/experience-shell-check.sh [label]
 set -u
@@ -74,7 +75,10 @@ window.ux0 = (() => {
     pose: __me.nav.plainPose()
   });
   const stageRect = () => JSON.stringify(document.querySelector('[data-home=stage]').getBoundingClientRect());
-  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect };
+  // UX1: the shell has one Preview control, and every control that can start a visit is inside it.
+  const previewOutside = () => [...document.querySelectorAll('[data-act^=exp-preview]')]
+    .filter((b) => !document.querySelector('#headPreview').contains(b)).length;
+  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect, previewOutside };
 })()
 JS
 )" >/dev/null; }
@@ -144,10 +148,24 @@ qa_ok 'opening the edge posture writes no source, history or Camera intent' "$(q
 qa_ok 'the Card keeps its identity reachable while the band is open' "$(qa_jsv 'JSON.stringify([window.ux0.cardIdentityReachable(), window.ux0.band().headingReachable])')" '[true,true]'
 qa_ok 'the band sits under the reserved share in every posture reached so far' "$(band_under "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$peek")" "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$guide")" "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$edge")" 0.40)" true
 
-echo "-- the visitor surface is the only visible home in Preview"
+echo "-- one Preview control, and the visitor surface is the only visible home in Preview"
+# UX1 consolidated every Preview entry into the Head's `Preview ▾` menu: the control exists once, its
+# scopes are the ones that can actually start, and nothing elsewhere in the shell can begin a visit.
+preview_control="$(qa_jsv 'JSON.stringify([window.ux0.previewOutside(), document.querySelector("#headPreview").hidden, document.querySelectorAll("#previewScopes button[data-scope]").length > 0])')"
+qa_ok 'the shell offers exactly one Preview control, and every scope it offers is inside it' \
+  "$preview_control" '[0,false,true]'
 context_before="$(qa_jsv 'window.ux0.fingerprint()')"
 preview_posture="$(bandof posture)"
-tap '#headPreview'
+qa_click '#headPreview > summary' >/dev/null 2>&1
+sleep 0.5
+# The menu is chrome, and it opens over the shell: every scope it offers must be a real hit target inside
+# the viewport, and opening it must not push the document sideways.
+qa_ok 'the open Preview menu offers every scope as a real hit target, with no sideways scroll' \
+  "$(qa_js '[...document.querySelectorAll("#previewScopes button")].every((b) => window.ux0.reachable(b))') / $(qa_js 'document.querySelector("#headPreview").open') / $(qa_js 'document.documentElement.scrollWidth - innerWidth')" \
+  'true / true / 0'
+qa_click '#headPreview > summary' >/dev/null 2>&1
+qa_preview_presentation || qa_fail_msg 'the Head Preview menu did not start the Presentation scope'
+qa_ok 'the menu closes behind the visit it started' "$(qa_js 'document.querySelector("#headPreview").open')" 'false'
 qa_ok 'Preview hides every authoring home and unmounts the Deck' "$(qa_jsv 'JSON.stringify({ preview: document.querySelector("[data-home=preview]").checkVisibility(), head: document.querySelector("[data-home=head]").checkVisibility(), index: document.querySelector("[data-home=index]").checkVisibility(), card: document.querySelector("[data-home=card]").checkVisibility(), deck: document.querySelectorAll("[data-home=deck]").length, presenter: document.querySelector("#experienceExamples").checkVisibility() })')" '{"preview":true,"head":false,"index":false,"card":false,"deck":0,"presenter":false}'
 qa_ok 'exactly one Exit Preview, and no authoring writer or nested home inside the visitor surface' "$(qa_jsv 'JSON.stringify([[...document.querySelectorAll("[data-act=exp-exit-preview]")].filter((b) => b.checkVisibility()).length, !!document.querySelector("[data-home=preview] [data-home]"), !!document.querySelector("[data-home=preview] [data-exp-primary]"), !!document.querySelector("[data-home=preview] [data-act=exp-capture]")])')" '[1,false,false,false]'
 qa_snap 'experience-shell-1440-preview'

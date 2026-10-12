@@ -39,7 +39,7 @@ click '#undoBtn'
 qa_ok 'one Undo restores Experience only, at the same standpoint' "$(source_json) / $(pose)" "$old / $standpoint"
 click '#redoBtn'
 # A World source edit is also retained across Reset and its Undo; normal edit cuts the Redo branch.
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 click '#lens [data-lens="world"]'
 fill '[data-exp-scene="casing"]' '0.2'
 click '#lens [data-lens="experience"]'
@@ -47,7 +47,7 @@ click '#lens [data-lens="experience"]'
 # The job's own effect on Camera is measured against the retained baseline, not a hard-coded count:
 # the example fixture may legitimately carry more Views and Seam connections than it once did.
 qa_js 'window.__jobViews=Object.keys(__me.ctx.cameraSource.views).length,window.__jobConns=Object.keys(__me.ctx.cameraSource.connections).length' >/dev/null
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 click '#card [data-act="exp-create"]'
 fill '[data-exp-primary]' 'The casing opens to reveal the drive.'
 click '#card [data-act="exp-capture"]'
@@ -59,7 +59,7 @@ click '#card [data-act="exp-use"][data-cap="casing"]'
 qa_ok 'eight-action job authors one Presentation, explanation, captured View/use and Activity; no Stop/edge' "$(qa_js '(()=>{const e=__me.ctx.experience,c=__me.ctx.cameraSource,p=Object.values(e.presentations)[0],us=Object.values(e.uses),n=us.filter(u=>e.definitions[u.definitionId]?.kind==="narration"),a=us.filter(u=>e.definitions[u.definitionId]?.kind==="control");return Object.keys(e.presentations).length===1&&p.uses.length===1&&n.length===1&&n[0].primary&&a.length===1&&e.definitions[a[0].definitionId].value===.6&&Object.keys(c.views).length===window.__jobViews+1&&Object.keys(c.connections).length===window.__jobConns&&e.guide.length===0&&!document.querySelector("#experienceExamples").open&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null;})()')" true
 before="$(source_json)";count="$(undo)";standpoint="$(pose)"
 context="$(qa_js '({lens:__me.S.lens,sel:__me.S.sel,context:__me.S.experienceContext,sheet:__me.S.sheet})')"
-click '#headPreview'
+qa_preview_presentation
 qa_ok 'standalone Preview has private visit, actual explanation/casing and no editor writers' "$(qa_js '(!!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&document.querySelector(".visitor-caption").textContent.includes("The casing opens")&&!!__me.S.visitor.runtime.overrides.machine?.open&&__me.S.task===null&&!document.querySelector("#experienceInstrument")&&getComputedStyle(document.querySelector("#ovHtml")).display==="none")')" true
 # At least one real-clock pass; no clock-stepping or source-building test API.
 qa_ok 'real-clock Preview runs the visible casing effect and keeps all source/history frozen' "$(qa_js '(async()=>{await new Promise(r=>setTimeout(r,120));await __me.qa.render();return __me.S.visitor.runtime.time>0&&__me.ctx.stage.items.get("machine").capabilityParts.lid.rotation.z>.24;})()') / $(source_json) / $(undo)" "true / $before / $count"
@@ -77,7 +77,7 @@ agent-browser fill '[data-exp-primary]' 'Unaccepted replacement.' >/dev/null
 qa_press Escape
 qa_ok 'Escape cancels the explanation draft with zero source/history writes' "$(source_json) / $(undo) / $(qa_js 'document.querySelector("[data-exp-primary]").value')" "$before / $count / \"The casing opens to reveal the drive.\""
 # Preserve the edited World, every retained View, current selection and aggregate history on Reset.
-click '#index [data-act="pres-ref"][data-id="machine"]'
+qa_locator_select machine
 baseline="$(independent)";old="$(source_json)";count="$(undo)";standpoint="$(pose)"
 fixture exp-reset
 qa_ok 'Reset after prior World/Camera history preserves independent truth, selected subject and standpoint' "$(independent) / $(qa_js '__me.S.sel') / $(pose) / $(undo)" "$baseline / \"machine\" / $standpoint / $((count+1))"
