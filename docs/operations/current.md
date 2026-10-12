@@ -36,9 +36,12 @@ NEXT: #114 (Experience UX implementation per
        timeline, Cues, Hold/Invoke authoring, grouped station movement, Rehearse) is in progress at a
        recorded checkpoint (see the evidence record's WIP list: the covering QA axes are unrun at this
        commit, and the strip's Hold inputs are still the C9 writer). The plan's 2026-10-12 conformance
-       revision (§5.1–§5.8, the §7 checklist, one owner call in §12) specifies what UX4–UX6 still owe
-       (one-row Guide lane, timing-free Path posture, Journey Cards without the C9 strip) and light
-       UX1–UX3 fixes; the next implementation pass follows §5.1's order. UX7 is where implementation
+       revision (§5.1–§5.8, the §7 checklist) specifies what UX4–UX6 still owe (one-row Guide lane,
+       timing-free Path posture, Journey Cards without the C9 strip) and light UX1–UX3 fixes. The same
+       day's review reconciled it with the code (§3.1, §3.2, §5.4, §5.5): edge, point and Cue stay session
+       readings under the selected Stop, a new path point goes into the nearest segment, keyboard focus
+       survives re-renders, and Camera Path entry keeps its return capture. No owner call is open (§12).
+       The next implementation pass follows §5.1's order. UX7 is where implementation
        stops for the owner's design discussion. Paper and production work stay unauthorized.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md (UX0–UX3) with
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md (with
