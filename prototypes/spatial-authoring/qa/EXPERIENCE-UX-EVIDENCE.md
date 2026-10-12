@@ -441,6 +441,112 @@ selected — with the audition still writing nothing and capture, update and amb
   are agent verification; density, hierarchy and the visual weight of the derived rows are the owner's
   review, which happens once on the integrated prototype after UX7.
 
+---
+
+## UX3 review corrections (landed · lightweight policy)
+
+**Findings repaired (review of head `949caab`), each verified through its own scenario rather than
+re-described as equivalent:**
+
+- **Focus-only Stop reach.** `usedInExperienceHtml()` derived Stops from the homes of behaviours/offers
+  only, so a Presentation that merely *focuses* the subject — the ordinary `Present → Add to Guide` case,
+  which authors no behaviour — contributed no Stop row. The Stops are now the union of the focus
+  Presentations and the behaviour/offer homes. A focused smoke drove the real workflow: `Present this` on
+  a Scene subject → `+ Add to Guide` → the subject's Card shows exactly one `[data-exp-used=stop]` row whose
+  button is `data-act=exp-stop` and whose id is `guide[0]`; before the Guide Stop existed the section had
+  none (`0`), which is the defect the fix closes.
+- **Choose vs author wording.** The chooser's per-capability button read `Add <capability>`, which implied
+  the click authored a behaviour; it actually opens that capability's audition/configuration, and nothing is
+  authored until a capture is accepted. The button now reads `Configure <capability>…`, and the chooser says
+  so explicitly. Verified: the button text is `Configure Open casing…` and the chooser contains *nothing is
+  authored until you accept a capture there*.
+- **Density of `Used in Experience`.** The section was a stacked two-line row per reference and could
+  dominate the Card. Rows are now one compact line each — the owner's name as the hit target, its short
+  kind/scope note beside it, elided rather than wrapped — so the section reads as a reference index, not a
+  second inspector. QA 5's order (identity → `Present this` → `Used in Experience` → the two doors) and the
+  row contract recipes read are unchanged.
+
+Focused checks run: `node --test tests/*.test.mjs` **140/140**, `qa/run-all.sh conformance`
+**143/0**, and the dedicated scenario above. Broad suites and mutation chains were not run (plan §9).
+
+---
+
+## UX4 — Guide, Stops and edges (landed · functional gate verified, visual acceptance deferred)
+
+**Exit gate (plan §5):** QA 4 acceptance (§7) — one Guide home in a bounded Deck; Stop and edge each have
+ their own Card, never both; Cut/Travel lives on the edge; edge chips show the resolved outgoing
+ continuation (order-default, explicit destination, End, needs-repair); connectors join only truly adjacent
+ destinations; no Camera paths on Stage in Guide posture; the resolved entry View is labelled by its own
+ name.
+
+### What UX4 changed
+
+| Artifact | Change |
+| --- | --- |
+| `app/experience-ui.js` | `renderDeck()` now renders **one Guide lane** (`guideLane`, `.gd-lane`) in every posture instead of the Peek pip strip and the Overview L2 cards. Each Stop is a named chip (`.gd-stop-card` + `.peek-stop.gd-stop`, showing `◉ n · Presentation`) followed by its own **edge chip** (`edgeChip`): `→ Stop m · Name` when the resolved destination is the truly adjacent Guide position, `⇥ Stop m · Name` when it is an explicit non-adjacent Next, `⊘ End` for an explicit End / end of Guide, and a non-interactive `! needs repair` status for an unresolvable destination. The band head carries **Edit Guide** (`guideOrderHtml`: move ←/→, repeat, remove) and Close. `stopDetails` is restructured to QA 4's order (Entry, Next, then a `Stop detail` disclosure for Pacing/Gate/choices); ordering/repeat/removal moved to the Deck. The **edge Card** (`edgeCard`, exported) replaces the Seam triptych: continuation identity, Cut/Travel, aggregate `Reachable from n of m Views` with the one `Prepare missing routes` repair, the `Edit Camera Path` door, an `Origins from this Stop` list, the destination entry, and the coordination strip. `staleEdgeCard` reports a pair whose destination no longer resolves and never retargets. The retired `seamHtml`, `occurrenceHtml`, `subjectThumbnail`, `setHtml` and `constellation` exports are removed. |
+| `app/experience.js` | `openSeam` is the edge selection (kept `data-act=exp-seam` with `data-from`/`data-to`, so the moved control keeps its recipe); `openPresentation` clears a selected edge so opening a Presentation inspects the Presentation; `exp-remove-stop` clears an edge that named the removed Stop rather than leaving a stale bookend. |
+| `styles/app.css` | the lane, Stop chip, edge chip, Edit Guide menu, origin rows, and the narrow rule that keeps the band under its reserved share. |
+| `qa/experience-check.sh`, `qa/composition-check.sh`, `qa/conformance-check.sh`, `qa/reconciliation-check.sh`, `qa/rich-check.sh` | re-pointed the recipes the slice genuinely moved: the retired L2 Set / thumbnail strip / stop-summary and the two `#experienceDeck` coverage strings now read the edge Card (`#card [data-edge-coverage]`), the coordination strip's home is the Card, and a View use is selected from the shared Presentation's own Views list. No assertion was loosened. |
+| `tests/experience-travel-agency.test.mjs` | the coverage reading now calls the edge Card (`UI.edgeCard`) where `UI.seamHtml` used to be. |
+| `screens/experience-ux4/` | four captures: the ordinary Guide lane at 1440×900, the open Guide band, the edge Card, and the narrow band at 1024×768. |
+
+### Readings (focused)
+
+| Proof | Result |
+| --- | --- |
+| `node --test prototypes/spatial-authoring/tests/*.test.mjs` | **140 / 140 pass**, exit 0 |
+| `qa/run-all.sh experience` | **30 / 0** |
+| `qa/run-all.sh composition` | **27 / 0** |
+| `qa/run-all.sh experience-shell` | **42 / 0** (including the band's ≤ 40 % share at 1440×900 and 1024×768) |
+| `qa/run-all.sh conformance` | **143 / 0** |
+| `qa/run-all.sh reconciliation` | **13 / 0** |
+| `qa/run-all.sh rich` | **35 / 0** |
+| `qa/run-all.sh walkthrough` / `walkthrough-demo` / `presenter` | **33 / 0**, **59 / 0**, **59 / 0** |
+| `qa/run-all.sh creator` / `visitor` / `continuity` | **25 / 0**, **42 / 0**, **55 / 0** |
+
+The banned §9 sweeps (`run-all.sh all`, `mutation-check.sh`, the mutation chains) were **not** run; the
+mutation scripts remain in the tree unchanged and unrun. That is the owner-ratified policy, not a pass.
+
+### The lane, as read from the page (conformance fixture, 1440×900)
+
+```
+○ 1 · Materials          Entry · Gallery entry · auto   → Stop 2 · Piano
+○ 2 · Piano              Entry · Gallery entry · auto   → Stop 3 · Power switch
+○ 3 · Power switch       Entry · Gallery entry · auto   → Stop 4 · How the drive works
+○ 4 · How the drive works Entry · Entry · auto           → Stop 5 · Gallery light
+○ 5 · Gallery light      Entry · Gallery entry · auto   → Stop 6 · How the drive works
+○ 6 · How the drive works Entry · Entry · auto           ⊘ End of Guide
+```
+
+Each edge chip carries `data-act=exp-seam` with `data-from`/`data-to` (the control the recipes already
+used) and `data-continuation=order|explicit|end|repair`; every Stop chip is `data-act=exp-stop`. The narrow
+band measured **~33 %** of a 768 px viewport after the ≤1060 px rule, against the 40 % reservation; no
+document horizontal scroll and no scroller inside the lane.
+
+### The new slice is not a tautology (focused replacement checks, in-tree)
+
+| Reintroduced defect | Rejected at |
+| --- | --- |
+| the Peek pip strip restored beside the lane | experience-shell · *a Guide mounts, with one Deck naming its own posture* / conformance · *Overview … the one Guide lane naming every Stop* |
+| Stops derived from behaviour homes alone (the UX3 defect) | the focused smoke: `[data-exp-used=stop]` count `1` after `Add to Guide`, `0` before |
+| the L2 thumbnail strip restored | conformance · *…the one Guide lane naming every Stop* (`!document.querySelector(".stop-thumbnail")`) |
+| the edge Card rendered inside the Deck home | conformance · *Coordination lives on the edge Card, inside the one Card home…* |
+| a removed Stop leaving a stale edge that retargets | `staleEdgeCard` reports it; `exp-remove-stop` clears the selection |
+
+### Recorded facts and limits
+
+- **Deferred to later slices (recorded, not fixed):** the edge Card's per-origin list is a plain open
+disclosure rather than the Path posture's dedicated *From* list (UX5); the coordination strip is still the
+C9 surface restyled only in home (UX6 owns the Journey timeline, Cues, Hold/Invoke authoring, grouped
+station movement and Rehearse); the Route/Camera-Path Deck band is still the C9 route reading (UX5).
+- **Rehearse, Cues and the Journey timeline do not exist yet** — UX4 deliberately left the coordination
+  strip's behaviour untouched so UX6 can replace its surface without re-litigating the model.
+- **The `exp-guide`/`exp-close` pair still opens and closes the Guide band**, and `data-deck-posture` still
+  names the posture, so the shell axis's band laws and continuity's `overview` read are unchanged.
+- **Visual acceptance of UX4 is deferred, not claimed.** The four captures and the readings are agent
+  verification; density, hierarchy and the visual weight of the lane and the edge Card are the owner's
+  single integrated review after UX7.
+
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [axis]: ./experience-shell-check.sh

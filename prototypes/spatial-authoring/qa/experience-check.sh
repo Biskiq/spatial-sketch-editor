@@ -56,7 +56,9 @@ qa_frames
 qa_ok 'Overview has occurrence cards and keeps Camera' "$(qa_js '(document.querySelectorAll(".stop-card").length === 2 && __me.S.guidePose === JSON.stringify(__me.nav.plainPose()))')" 'true'
 agent-browser click '.stop-card [data-act="exp-expand-stop"]' >/dev/null
 qa_frames
-qa_ok 'expanded occurrence exposes same unordered Set' "$(qa_js '(document.querySelectorAll(".stop-card.expanded .set-node").length === 3 && __me.ctx.experience.presentations["pres-highlights"].uses.length === 3)')" 'true'
+# UX4: the L2 Set strip is retired; the expanded Stop is the Deck's own chip and its Card is the Stop
+# Card. The shared Presentation still carries the same three Views.
+qa_ok 'expanded Stop is the Deck chip and reads its Stop Card, with the shared Views intact' "$(qa_js '(document.querySelectorAll(".stop-card.expanded").length === 1 && __me.ctx.experience.presentations["pres-highlights"].uses.length === 3 && !!document.querySelector("#card [data-stop-entry]"))')" 'true'
 agent-browser click '.stop-card.expanded [data-act="exp-move-stop"][data-delta="1"]' >/dev/null
 qa_frames
 qa_ok 'reorder changes order only' "$(qa_js '(__me.ctx.experience.guide[1] === __me.S.sel && Object.keys(__me.ctx.cameraSource.connections).length === 0)')" 'true'
@@ -68,7 +70,8 @@ agent-browser click '[data-act="exp-connect"]' >/dev/null
 qa_frames
 agent-browser click '[data-act="exp-connect"]' >/dev/null
 qa_frames
-qa_ok 'two origins have reach; third remains a gap' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 2 of 3")')" 'true'
+# UX4: the coverage reading lives on the edge Card, not the Deck.
+qa_ok 'two origins have reach; third remains a gap' "$(qa_js 'document.querySelector("#card [data-edge-coverage]").textContent.includes("Reachable from 2 of 3")')" 'true'
 agent-browser click '[data-act="exp-cut"]' >/dev/null
 qa_frames
 qa_ok 'Cut creates no edge' "$(qa_js 'Object.keys(__me.ctx.cameraSource.connections).length')" '2'
@@ -77,7 +80,7 @@ qa_ok 'Cut creates no edge' "$(qa_js 'Object.keys(__me.ctx.cameraSource.connecti
 # No per-origin graph surgery is left to the author, and no duplicate edge is written.
 agent-browser click '[data-act="exp-travel"]' >/dev/null
 qa_frames
-qa_ok 'explicit Travel completes the Seam support in one authored step' "$(qa_js '(Object.keys(__me.ctx.cameraSource.connections).length === 3 && document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3") && document.querySelector("#experienceDeck").textContent.includes("All origins supported"))')" 'true'
+qa_ok 'explicit Travel completes the Seam support in one authored step' "$(qa_js '(Object.keys(__me.ctx.cameraSource.connections).length === 3 && document.querySelector("#card [data-edge-coverage]").textContent.includes("Reachable from 3 of 3") && document.querySelector("#card").textContent.includes("All origins supported"))')" 'true'
 qa_ok 'Travel reports prepared versus reused support with the Camera owner' "$(qa_js '(/Prepared 1 Camera route/.test(__me.S.status.text) && /Camera owns route geometry/.test(__me.S.status.text))')" 'true'
 agent-browser click '[data-act="exp-route"]' >/dev/null
 qa_frames
@@ -94,8 +97,12 @@ qa_frames
 qa_js '__me.S.preciseBefore={pose:JSON.stringify(__me.nav.plainPose()),undo:__me.S.undo.length}' >/dev/null
 # The occurrence band is fixed over the viewport bottom; scroll Card content clear of it before any
 # real pointer click, exactly as the other product recipes do.
-agent-browser scrollintoview '#card .exp-view [data-act="pres-ref"]' >/dev/null
-agent-browser click '#card .exp-view [data-act="pres-ref"]' >/dev/null
+# UX4: the Stop Card no longer carries the retired L2 Set. A View use is reached from the shared
+# Presentation the Stop names, then selected in that Presentation's own Views list.
+agent-browser click '#card [data-act="exp-open"]' >/dev/null
+qa_frames
+agent-browser scrollintoview '#card [data-exp-views] [data-exp-view-use]' >/dev/null
+agent-browser click '#card [data-exp-views] [data-exp-view-use]' >/dev/null
 qa_frames
 agent-browser scrollintoview '#card [data-act="exp-precise"]' >/dev/null
 agent-browser click '#card [data-act="exp-precise"]' >/dev/null
