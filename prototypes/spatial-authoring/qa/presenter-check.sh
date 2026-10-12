@@ -187,7 +187,7 @@ checkpoint framing
 MOMENT="$(page '__me.S.experienceContext.presentation')"
 qa_locator_select light
 last="$(step '')"
-press '#card [data-act=exp-create]'
+press '#card [data-act=exp-create-this]'
 author_once "The light answers the machine, and this is authored here"
 last="$(step '')"
 qa_ok "…and an explanation on a moment made here is still only half of it" "$(field q2) / $(field writes)" "False / $((W1 + 2))"

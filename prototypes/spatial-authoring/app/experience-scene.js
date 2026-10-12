@@ -42,18 +42,25 @@ export function realizeCapabilities() {
  realizeRepresentation(scene,runtime);
 }
 // The neutral generation key for anything derived from the realized World: the museum's own source
-// values plus the Scene's authored revision. A derivative render, a cached image or any other derived
-// artifact keys on this seam rather than on object identity, so a World edit or a Scene edit can never
-// be served from a picture of the previous state. Memoized by identity, so a per-render lookup is free.
-let sigMuseum = null, sigRev = null, sigValue = '';
+// values, the Scene's authored revision, and the source epoch the history settles at. A derivative
+// render, a cached image or any other derived artifact keys on this seam rather than on object identity,
+// so a World edit, a Scene edit, Undo or Redo can never be served from a picture of the previous state.
+//
+// Identity alone is not a generation: the World writers mutate the museum **in place** (applyWallTop
+// writes `w.top`, applyArtPlacement writes `a.wall`), so `ctx.museum` can stay the same object while what
+// a picture would show has changed. The epoch is advanced by the history itself — commitEdit and
+// every restore — which is the same authority that owns Undo. Memoized on all three inputs, so a
+// per-render lookup is free and only a settled edit recomputes it.
+let sigMuseum = null, sigRev = null, sigEpoch = -1, sigValue = '';
 export function worldSignature() {
   const rev = ctx.sceneSource?.revision ?? 0;
-  if (sigMuseum === ctx.museum && sigRev === rev) return sigValue;
+  const epoch = S.sourceEpoch ?? 0;
+  if (sigMuseum === ctx.museum && sigRev === rev && sigEpoch === epoch) return sigValue;
   const s = JSON.stringify(ctx.museum);
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-  sigMuseum = ctx.museum; sigRev = rev;
-  sigValue = `${h.toString(16)}.${rev}`;
+  sigMuseum = ctx.museum; sigRev = rev; sigEpoch = epoch;
+  sigValue = `${h.toString(16)}.${rev}.${epoch}`;
   return sigValue;
 }
 // A Layout representation invocation is projected through the same declared Scene channel as any other

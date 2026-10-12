@@ -151,33 +151,53 @@ export function planCaptureSupport() {
 }
 const planReading = () => (ctx.stage?.cam?.flat ?? 0) > 0.97;
 
-// The one canonical creation action. It writes the Presentation, its first View use as the Default and
-// the Camera View that use reads in one history step, with no Stop, route or narration. `+ Present`
-// captures the live composition: in-flight motion is stopped at the sampled pose rather than hurried to
-// a destination nobody asked for. `Present this` uses Camera's recommended framing for the selected
-// subject's extent; a logical subject with no extent captures the current view instead. Invalid input
-// changes nothing, because every writer runs inside the one command.
+// The one canonical creation action, and the subject door beside it. Both write the Presentation, its
+// first View use as the Default and the Camera View that use reads in one history step, with no Stop,
+// route or narration; they differ in which reading they author (§0.8.1):
+//   * `+ Present` (the Index's creation action) captures the **current eligible composition** — the live
+//     Camera — with in-flight motion stopped at the sampled pose rather than hurried to a destination
+//     nobody asked for.
+//   * `Present this` (a selected Scene subject's own door) authors **Camera's recommended framing** for
+//     that subject's extent. A logical subject with no extent captures the current view instead.
+// Invalid input changes nothing, because every writer runs inside the one command.
 export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
+  return creation(f, { recommended: false });
+}
+export function presentThis(id = null) {
+  const sid = id || S.sel;
+  // Only a real World subject can be presented this way, and an Experience entity is not one: the
+  // inspector that offers the door is a subject's own Card.
+  if (!sid || resolveExperience(sid) || !thing(sid)) return false;
+  return creation({ kind: 'subjects', ids: [sid] }, { recommended: true });
+}
+// A Plan reading is asked about before anything is created, and the answer carries the intent with it:
+// *Compose in 3D* continues in 3D with whichever reading this door authors, *Use the plan as the visitor
+// View* authors the plan itself, *Cancel* writes nothing. Plan is never captured silently.
+function creation(f, intent) {
   if (planReading() && !S.expPlanAsk) {
     cancelProposal('invoke');
-    S.expPlanAsk = { focus: structuredClone(f) };
+    S.expPlanAsk = { focus: structuredClone(f), recommended: !!intent.recommended };
     A.setStatus('Presenting from a Plan reading · choose how the visitor should meet this', 'info');
     ctx.ui();
     return false;
   }
-  return commitPresent(f);
+  return commitPresent(f, intent);
 }
-export function commitPresent(f, pose = null) {
-  const derived = f.kind === 'subjects' ? nav.deriveFraming({ focus: f }) : null;
+export function commitPresent(f, { pose = null, recommended = false } = {}) {
+  // An explicitly supplied pose is the reading the author chose, and it always wins: choosing the plan as
+  // the visitor View authors the plan the author was looking at, never the recommended 3D framing of the
+  // same subject. Recommended framing is reached only by the door that asks for it.
+  const derived = recommended && !pose ? nav.deriveFraming({ focus: f }) : null;
   // The live capture is taken through the same interruption the cancellation policy uses, so the pose
   // that is authored is the pose that was on screen, not the endpoint of a move in flight.
   const live = pose || nav.interruptMotion();
+  const authored = pose || derived?.pose || live;
   const name = pose ? 'Plan reading' : derived ? derived.name : 'Current view';
   const label = f.kind === 'subjects' && f.ids.length === 1 ? thing(f.ids[0])?.item?.name : null;
   const pid = command('Present', (e, c) => {
     const id = addPresentation(e, f, label || 'Untitled Presentation');
-    addView(e, c, id, derived?.pose || live, name, 'entry');
+    addView(e, c, id, authored, name, 'entry');
     return id;
   });
   S.expPlanAsk = null;
@@ -196,13 +216,17 @@ export function acceptPlanIntent(mode) {
   // half-way out of the plan.
   if (mode === 'compose') {
     S.expPlanAsk = null;
+    // The intent the door was opened with survives the move: `+ Present` composes the live reading it
+    // stands in, `Present this` takes Camera's recommended framing for the subject it was opened on.
+    const intent = { recommended: !!ask.recommended };
     const arrived = A.go3D();
-    return arrived && typeof arrived.then === 'function' ? arrived.then(() => commitPresent(ask.focus)) : commitPresent(ask.focus);
+    return arrived && typeof arrived.then === 'function' ? arrived.then(() => commitPresent(ask.focus, intent)) : commitPresent(ask.focus, intent);
   }
   const support = planCaptureSupport();
   if (!support.ok) { A.setStatus(support.reason, 'refuse'); ctx.ui(); return false; }
   S.expPlanAsk = null;
-  return commitPresent(ask.focus, support.pose);
+  // The plan itself is what is authored here, so the recommended framing is never substituted for it.
+  return commitPresent(ask.focus, { pose: support.pose });
 }
 // Set as Default writes the entry role inside the owning Presentation alone: Guide order, Camera routes
 // and a Stop's own entry override are untouched, and the former Default simply stops being one. It goes
@@ -289,6 +313,9 @@ export function handleExperienceAction(el) {
   // Back, Next and Skip move its cursor and never the documents, so they stay usable during Preview.
   if(S.visitor&&!['exp-visitor','exp-exit-preview'].includes(action))return true;
   if (action === 'exp-create') present();
+  // `Present this`: the same aggregate creation, authoring Camera's recommended framing for the subject
+  // whose Card offers it. `+ Present` stays the live-composition door.
+  if (action === 'exp-create-this') presentThis(el.dataset.id || null);
   // UX2: creation, its Default View and the View operations the Card offers. Focus operations replace
   // the retired `Present environment`/`Present region` species: both edit the Presentation they are
   // taken from rather than creating another one.

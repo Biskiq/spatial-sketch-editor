@@ -1467,6 +1467,9 @@ export function commitEdit(label) {
   if (JSON.stringify(S.pending) === JSON.stringify(ctx.museum) && JSON.stringify(S.pendingDomains) === JSON.stringify(domainSnapshot())) { S.pending = null; return; }
   S.undo.push({ label, before: S.pending, domains: S.pendingDomains, sel: S.sel });
   S.redo = [];
+  // The one place an accepted write settles is where the source's generation advances: the museum was
+  // mutated in place, so anything derived from it (the View preview's image) is now about an older World.
+  S.sourceEpoch = (S.sourceEpoch || 0) + 1;
   S.pending = null;
   if (!S.session) S.summary = null;
   setStatus(`${label} · added to Undo`, 'edit');
@@ -1489,6 +1492,10 @@ export function restoreQuiet(m, domains) {
     }
   }
   ctx.museum = m;
+  // Every restore — cancel, Undo, Redo, a reset — settles the source at a different World, so its
+  // generation advances here too. Identity usually changes with it; the epoch is what makes the rule hold
+  // for the in-place writers as well.
+  S.sourceEpoch = (S.sourceEpoch || 0) + 1;
   st().setMuseum(m);
   buildCapabilitySubjects();
   const s = S.session;

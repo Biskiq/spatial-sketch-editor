@@ -32,7 +32,7 @@ hit='e=>{const r=e.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.wi
 click '#lens [data-lens="experience"]'
 fixture exp-reset
 qa_locator_select machine
-click '#card [data-act="exp-create"]'
+click '#card [data-act="exp-create-this"]'
 # UX2: `Present this` is aggregate. One Undo step writes the Presentation, its first View use as the
 # Default and the Camera View that use reads, so the Card names that View in its own Views list before
 # anything else happens. The accepted no-View reading this axis proves further down is reached the way an
@@ -121,7 +121,18 @@ click '#card [data-act="exp-bring"]'
 conformance_ok 'QA-1 visible working Set, quiet Card, no Guide/graph/rig' "$(qa_js "(document.querySelectorAll('[data-exp-view]').length===2&&[...document.querySelectorAll('[data-exp-view]')].every($visible)&&!document.querySelector('#experienceDeck')&&!document.querySelector('[data-frame-gate]')&&__me.ctx.experience.guide.length===0&&Object.keys(__me.ctx.cameraSource.connections).length===0&&document.querySelectorAll('#card .verb').length===0)")" true
 capture qa-1-ordinary
 conformance_ok 'Set markers are actual hit targets' "$(qa_js "[...document.querySelectorAll('[data-exp-view]')].every($hit)")" true
-conformance_ok 'Set has visible direction glyphs separate from identity plates' "$(qa_js '(document.querySelectorAll("[data-view-direction]").length===2&&[...document.querySelectorAll("[data-view-direction]")].every(e=>{const r=e.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width*r.height>30&&!at?.closest("[data-exp-view]");}))')" true
+# The constellation's own law (§0.8.1, spatial-instrument grammar): compact named markers around the
+# focus, each carrying *its own direction*, and no metric claim — so no marker stands at a projected
+# standpoint, no leader joins one reading to another, and nothing here implies a View order. The direction
+# is still a rendered fact and not part of the name: each glyph is its own element, visible, and its centre
+# addresses the glyph itself rather than the identity plate. UX2 review: projecting the eye and joining it
+# to the compressed marker drew a screen length between two different readings.
+conformance_ok 'each View marker carries its own visible direction glyph, drawn with it and not in the plate' \
+  "$(qa_js '(document.querySelectorAll("[data-view-direction]").length===2&&document.querySelectorAll(".exp-view-pin").length===2&&[...document.querySelectorAll("[data-view-direction]")].every(e=>{const r=e.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width*r.height>30&&!at?.closest("[data-exp-view]");}))')" true
+conformance_ok 'each glyph is drawn beside its own marker, not at a projected standpoint' \
+  "$(qa_js '(()=>{const pins=[...document.querySelectorAll(".exp-view-pin")].map(p=>p.getBoundingClientRect()).sort((a,b)=>a.top-b.top);const gl=[...document.querySelectorAll("[data-view-direction]")].map(g=>g.getBoundingClientRect()).sort((a,b)=>a.top-b.top);return pins.length===gl.length&&pins.every((p,i)=>{const g=gl[i];return Math.abs((p.x+p.width/2)-(g.x+g.width/2))<24&&g.top>=p.top-1&&g.top<=p.bottom+44;});})()')" true
+conformance_ok 'the constellation makes no metric claim: no standpoint glyph, no leader, no origin square' \
+  "$(qa_js '(!document.querySelector(".exp-leader")&&!document.querySelector(".exp-view-origin")&&!document.querySelector("[data-view-order]")&&!document.querySelector(".exp-route-path"))')" true
 # The Presentation this block re-focuses is opened the way an author opens it — from its Index row, and
 # only here, at the end of the QA-1 journey: re-focusing a Presentation on its environment is a real
 # change of what it presents, so nothing downstream may still depend on it naming the machine subject.
@@ -408,12 +419,12 @@ qa_locator_select machine
 click '.stage-tools [data-act="plan"]'
 pres_before="$(qa_js 'Object.keys(__me.ctx.experience.presentations).length')"
 before="$(source_hash)"; count="$(undo)"
-click '#card [data-act="exp-create"]'
+click '#card [data-act="exp-create-this"]'
 conformance_ok 'Presenting from a Plan reading offers the intent choice and creates nothing yet' "$(qa_js 'Object.keys(__me.ctx.experience.presentations).length') / $(qa_js '(()=>{const a=document.querySelector("[data-plan-ask]");return !!a&&!!document.querySelector("[data-act=exp-plan-compose]")&&!!document.querySelector("[data-act=exp-plan-cancel]");})()') / $(source_hash)" "$pres_before / true / $before"
 click '#card [data-act="exp-plan-cancel"]'
 conformance_ok 'Cancel creates nothing, keeps the Plan reading and closes the choice' "$(qa_js 'Object.keys(__me.ctx.experience.presentations).length') / $(undo) / $(qa_js '(__me.nav.plainPose().el>1.5&&!__me.S.expPlanAsk&&!document.querySelector("[data-plan-ask]"))')" "$pres_before / $count / true"
 click '.stage-tools [data-act="3d"]'
-click '#card [data-act="exp-create"]'
+click '#card [data-act="exp-create-this"]'
 click '#card [data-act="exp-auto"]'
 click '#card [data-act="exp-capture"]'
 click '#card [data-act="exp-bring"]'
@@ -465,6 +476,46 @@ p="$(qa_at '[data-exp-camera]')";qa_move "${p%,*}" "${p#*,}";qa_down;qa_move "${
 agent-browser eval 'document.querySelector("[data-exp-camera]").dispatchEvent(new PointerEvent("lostpointercapture",{bubbles:true}))' >/dev/null
 qa_up;qa_frames
 conformance_ok 'lost capture cancels audition, with no late release commit' "$(pose) / $(source_hash) / $(undo)" "$standpoint / $before / $count"
+# -------------------------------------------------------------------------------------------------
+# UX2 review (P1, creation fidelity): one aggregate command, two doors, and the reading each door
+# authors. `+ Present` captures the live composition; `Present this` authors Camera's recommended framing
+# for the subject's extent. Every reading below is the pose the Camera source actually persisted — the
+# request the author authored — compared against the same authority that produced it, never against what
+# happened to be on screen when the assertion ran.
+fixture exp-reset
+click '#lens [data-lens="experience"]'
+qa_locator_select machine
+click '#index [data-act="exp-create"]'
+conformance_ok '+ Present captures the live composition, focused on the selected subject' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId];return [p.focus.kind+"|"+p.focus.ids.join(","), u.role, u.name, v.pose.flat].join(" / ");})()')" '"subjects|machine / entry / Current view / 0"'
+conformance_ok '…and the pose it persists is the standpoint the author was standing at' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId].pose,q=__me.nav.plainPose(),near=(a,b)=>Math.abs(a-b)<0.002;return near(v.az,q.az)&&near(v.el,q.el)&&near(v.frameH,q.frameH)&&v.target.every((n,i)=>near(n,q.target[i]));})()')" true
+conformance_ok '…and never the recommended framing of the same subject, which is a different reading' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId].pose,d=__me.nav.deriveFraming({focus:p.focus}).pose;return !(Math.abs(v.az-d.az)<1e-6&&Math.abs(v.el-d.el)<1e-6&&Math.abs(v.frameH-d.frameH)<1e-6);})()')" true
+# The subject's own door asks Camera for the framing, and what it persists is that framing — the same
+# numbers `deriveFraming` answers with, read back from the authored View rather than from the call.
+qa_locator_select machine
+click '#card [data-act="exp-create-this"]'
+conformance_ok 'Present this authors Camera'"'"'s recommended framing for the subject extent' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId],d=__me.nav.deriveFraming({focus:p.focus}).pose,near=(a,b)=>Math.abs(a-b)<0.002;return [u.name, v.pose.flat===0&&near(v.pose.az,d.az)&&near(v.pose.el,d.el)&&near(v.pose.frameH,d.frameH)&&v.pose.target.every((n,i)=>near(n,d.target[i]))].join(" / ");})()')" '"Auto framing / true"'
+# With motion in flight the live capture samples where the Camera actually is: the pose that is authored
+# is the pose that was on screen, and the move is stopped rather than hurried to its destination.
+qa_locator_select machine
+qa_js '(__me.A.go3D(), true)' >/dev/null
+click '#index [data-act="exp-create"]'
+conformance_ok '+ Present with motion in flight authors the sampled pose, not a destination' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId].pose,q=__me.nav.plainPose(),near=(a,b)=>Math.abs(a-b)<0.002;return near(v.az,q.az)&&near(v.el,q.el)&&near(v.frameH,q.frameH)&&near(v.flat,q.flat);})()')" true
+conformance_ok '…and the interruption leaves the standpoint there, with nothing still travelling' "$(qa_js '(async()=>{const q=__me.nav.plainPose();await new Promise(r=>setTimeout(r,320));await __me.qa.render();const p=__me.nav.plainPose();return Math.abs(p.az-q.az)<1e-9&&Math.abs(p.frameH-q.frameH)<1e-9;})()')" true
+# From a Plan reading the author is asked first, and each answer authors its own reading: the plan itself,
+# or the recommended 3D framing that composing in 3D arrives at. The plan is never captured silently.
+click '.stage-tools [data-act="plan"]'
+qa_locator_select machine
+click '#card [data-act="exp-create-this"]'
+conformance_ok 'from a Plan reading the door still asks before it creates' "$(qa_js '(()=>{const p=__me.S.expPlanAsk;return !!p&&!!document.querySelector("[data-plan-ask]");})()')" true
+click '#card [data-act="exp-plan-view"]'
+conformance_ok 'Use the plan as the visitor View authors the plan reading itself' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId];return [u.name, v.pose.flat===1, !!p].join(" / ");})()')" '"Plan reading / true / true"'
+conformance_ok '…not the recommended 3D framing of the same subject' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId].pose,d=__me.nav.deriveFraming({focus:p.focus}).pose;return !(v.flat===d.flat&&Math.abs(v.az-d.az)<1e-6&&Math.abs(v.frameH-d.frameH)<1e-6);})()')" true
+click '.stage-tools [data-act="plan"]'
+qa_locator_select machine
+click '#card [data-act="exp-create-this"]'
+click '#card [data-act="exp-plan-compose"]'
+conformance_ok 'Compose in 3D from a Plan reading authors the recommended framing it arrived at' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],u=e.uses[p.uses.find(id=>e.uses[id].viewId)],v=__me.ctx.cameraSource.views[u.viewId],d=__me.nav.deriveFraming({focus:p.focus}).pose,near=(a,b)=>Math.abs(a-b)<0.002;return [u.name, v.pose.flat===0&&near(v.pose.az,d.az)&&near(v.pose.frameH,d.frameH), __me.nav.plainPose().flat===0].join(" / ");})()')" '"Auto framing / true / true"'
+
 qa_faults_ok 'conformance commands'
 qa_browser_errors_ok 'conformance browser'
 qa_summary 'V2 product conformance'

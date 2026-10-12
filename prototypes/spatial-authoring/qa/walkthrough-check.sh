@@ -41,7 +41,7 @@ qa_ok 'Experience returns to its own instruction cursor' "$(at)" 0
 # UX1: the Experience Index no longer lists Scene subjects as its own Select buttons; the one shared
 # locator is how an author reaches one, and Select is still identity only.
 sheet index; qa_locator_select machine
-sheet card; click '#card [data-act=exp-create]'
+sheet card; click '#card [data-act=exp-create-this]'
 earned Q1; advance Q1 1
 qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor.'
@@ -69,7 +69,7 @@ click ".peek-stop[data-id='$stop']"
 earned Q5; advance Q5 5
 # UX1: the Experience Index no longer lists Scene subjects; the shared locator is the way to one.
 sheet index; qa_locator_select piano
-sheet card; click '#card [data-act=exp-create]'
+sheet card; click '#card [data-act=exp-create-this]'
 qa_card_explanation
 fill '[data-exp-primary]' 'Listen to the piano.'
 click '#card [data-act=exp-add-guide]'

@@ -39,10 +39,17 @@ export function drawExperience(){
 // ----- UX2: Views on the Stage -------------------------------------------------
 // Views are unordered, and the Stage says so. Each View is a compact named marker placed
 // *semi-spatially around the Presentation's focus*: its bearing and side are preserved in the current
-// Stage orientation, its distance is compressed onto a short ring, and no leader, number, arrow or
-// sequence appears — so nothing here claims a metric position or an order. The Default carries a
-// restrained ★ and its name. A marker is still a real hit target and selects its own View use, the same
-// canonical identity the Views list selects.
+// Stage orientation, its distance is compressed onto a short ring, and no number, sequence or inter-View
+// line appears — so nothing here claims a metric position or an order. The Default carries a restrained
+// ★ and its name. A marker is still a real hit target and selects its own View use, the same canonical
+// identity the Views list selects.
+//
+// The aim is the *marker's own direction*: a View-direction glyph drawn with its marker, oriented by
+// where that View looks in the same published basis its bearing is read in. It is not the View's
+// standpoint — projecting the eye and joining it here with a leader drew a screen length between two
+// different readings (a metric location and a compressed schematic one), which is exactly the metric
+// claim the constellation may not make, and at three Views the leaders and stacked glyphs were the
+// clutter they read as. Aim stays shown; position stays unclaimed.
 const VIEW_RING_MIN=92,VIEW_RING_MAX=230,VIEW_MIN_ARC=104,VIEW_MIN_DY=27;
 // The screen bearing of a world direction, in the Camera's own published basis: the semi-spatial
 // placement asks only where a View stands *around the focus*, never how far away it is, so it reads the
@@ -105,17 +112,15 @@ function drawViews(e,c,p,x){
  if(x.stop){const uid=stopEntry(e,x.stop).id;if(!rows.some(r=>r.id===uid)){const view=c.views[e.uses[uid]?.viewId];if(view)rows.push({id:uid,use:{id:uid,role:'this Stop entry',name:e.uses[uid]?.name},view,...bearingTo(view.pose)});}}
  placeViews(rows,focusAt,bounds).forEach(({item,at})=>{
   const def=item.use.role==='entry';
-  // What the View looks at, drawn where it stands and joined to its own marker: the direction is what a
-  // View *is*, so it survives the compressed placement, and the leader keeps the two readings one marker.
-  // A standpoint the current reading cannot project (the author is standing in this very View) draws no
-  // glyph rather than a fabricated one.
-  const trueAt=project(eye(item.view.pose));
-  if(Number.isFinite(trueAt.x)&&Number.isFinite(trueAt.y)&&!trueAt.behind){
-   if(Math.hypot(trueAt.x-at.x,trueAt.y-at.y)>5)ov().line('leader-'+item.id,trueAt,at,'exp-leader');
-   const target=project(item.view.pose.target),angle=Math.atan2(target.y-trueAt.y,target.x-trueAt.x),a={x:trueAt.x+Math.cos(angle-.5)*30,y:trueAt.y+Math.sin(angle-.5)*30},b={x:trueAt.x+Math.cos(angle+.5)*30,y:trueAt.y+Math.sin(angle+.5)*30};
-   ov().path('view-glyph-'+item.id,[trueAt,a,b],'exp-view-glyph',true,{'data-view-direction':item.view.id});
-   ov().path('view-origin-'+item.id,[{x:trueAt.x-3,y:trueAt.y-3},{x:trueAt.x+3,y:trueAt.y-3},{x:trueAt.x+3,y:trueAt.y+3},{x:trueAt.x-3,y:trueAt.y+3}],'exp-view-origin',true);
-  }
+  // Which way this View looks, read as a screen bearing in the Camera's own published basis — the same
+  // basis its bearing around the focus is placed in, so the glyph and the marker agree about 'that way'.
+  // Every View has an aim, including the one the author is standing in, so no viewpoint needs a fallback.
+  const observer=eye(item.view.pose),aim=[item.view.pose.target[0]-observer[0],item.view.pose.target[1]-observer[1],item.view.pose.target[2]-observer[2]];
+  const aimAngle=screenBearing(aim,az,el),apex={x:at.x,y:at.y+28};
+  const a={x:apex.x+Math.cos(aimAngle-.5)*20,y:apex.y+Math.sin(aimAngle-.5)*20},b={x:apex.x+Math.cos(aimAngle+.5)*20,y:apex.y+Math.sin(aimAngle+.5)*20};
+  // Just under its own marker, and its centre stays clear of the identity plate for every aim direction,
+  // so the direction is a rendered fact beside the name rather than part of the name.
+  ov().path('view-glyph-'+item.id,[apex,a,b],'exp-view-glyph',true,{'data-view-direction':item.view.id});
   ov().chip('view-'+item.id,at.x,at.y,`${def?'★ ':''}${esc(item.use.name||item.view.name)}`,'tape exp-view-pin '+(S.sel===item.id?'selected':''),{'data-act':'pres-ref','data-id':item.id,'data-exp-view':item.view.id,'data-view-default':def?'true':'',tag:'button','aria-label':`${item.use.name||item.view.name}${def?' · Default View':''}`,pri:97});
  });
  // The focus mark is the point the markers are placed around: a place, not a Camera target.

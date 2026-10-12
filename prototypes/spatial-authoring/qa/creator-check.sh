@@ -48,7 +48,7 @@ click '#lens [data-lens="experience"]'
 # the example fixture may legitimately carry more Views and Seam connections than it once did.
 qa_js 'window.__jobViews=Object.keys(__me.ctx.cameraSource.views).length,window.__jobConns=Object.keys(__me.ctx.cameraSource.connections).length' >/dev/null
 qa_locator_select machine
-click '#card [data-act="exp-create"]'
+click '#card [data-act="exp-create-this"]'
 # UX2: the first-time creator's own path. Present is aggregate (a Default View and its Camera View arrive
 # with the Presentation), the explanation is one ordinary door on the Card, and Capture accepts a framing.
 qa_ok 'Present is aggregate: one command, one Default View use and the Camera View it reads, in one Undo' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],used=p.uses.map(id=>e.uses[id]);return Object.keys(e.presentations).length===1&&used.length===1&&used[0].role==="entry"&&!!__me.ctx.cameraSource.views[used[0].viewId]&&!!document.querySelector("[data-exp-views] [data-exp-view-use]");})()')" true
