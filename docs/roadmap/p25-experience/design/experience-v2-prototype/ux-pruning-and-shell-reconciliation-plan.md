@@ -4,7 +4,8 @@
 have landed and UX6 is at a recorded checkpoint. UX1–UX3 are implemented, with focused verification
 recorded and the owner provisionally satisfied; like every slice, their visual and integrated functional
 acceptance happens once, after UX7. §5.1–§5.8 (revised 2026-10-12) are the binding surface specification
-for what UX4–UX6 still owe and for the light UX1–UX3 corrections. That work belongs to the existing slices.
+for what UX4–UX6 still owe and for the light UX1–UX3 corrections, and §3.1–§3.2 were reconciled with the
+landed code in the same review. That work belongs to the existing slices.
 There is no separate polish phase. This plan implements the locked Experience
 expression in [PLATE §0.8.1][plate-081], with its [instrument grammar][grammar] and
 [six QA boards and two Camera precision specimens][boards], in the unified prototype. It re-presents accepted C9
@@ -80,22 +81,55 @@ Anchors are to the [prototype][prototype] `app/` files at the baseline (`ui` =
 All of the following are prototype session or Camera-source changes inside existing
 authorities. Verify each assumption in code before building on it (§8).
 
-1. **Selection identities.** `S.sel` gains three kinds, resolved by `subject()`:
-   - **Guide edge**: the resolved continuation pair (`from` Stop, `resolveNext(from)` destination), today held as `S.experienceContext.seam`. Revalidate on every read; a stale pair clears or reports needs-repair, never retargets to a positional neighbor.
-   - **Path point**: connection id + anchor identity.
-   - **Cue**: Guide edge + connection id + station identity.
+1. **Selection identities, as landed in UX4–UX6. Do not migrate them into `S.sel`.** `S.sel` stays the
+   one canonical selection with its current kinds (Presentation, View use, Camera View, Stop, Scene
+   subject). A Guide edge, a Path point and a Cue are readings under the selected Stop, held in session
+   context, and are never added as `S.sel` kinds:
+   - **Guide edge**: `S.experienceContext.seam`, the resolved continuation pair (`from`, `resolveNext(from)`).
+   - **Path point**: `S.experienceContext.point`, the connection id plus the anchor id.
+   - **Cue**: `S.task.params.station` on the edge's `S.task.params.connection`.
 
-   They are selected deterministically, stored in the Undo snapshot's `sel`, and cleared by
-   `restoreQuiet` when invalid. A Scene subject never resolves as a Presentation. Posture
-   (Guide / Camera Path / Journey / Edit Camera) is session context, not selection.
-2. **Stable path-point identity.** `+ Path point` inserts at the clicked segment, and Remove
-   deletes. Both are Camera operations through the existing shared-route Ask and one history
-   step. If anchors or stations are index-keyed ("Anchor N", even parameter steps at
-   cam:15–19), first give anchors stable ids. Then cover Cue/beat rebinding and the existing
-   refusal for a removed station with tests. Insertion must not silently retarget a Cue.
-   Interpolation stays as the evaluator defines it. Draw exactly what it evaluates. The
-   early UX5 insertion/removal proof decides whether aim redistribution is acceptable; it
-   authorizes no new Camera aim editor.
+   Four rules make them behave as one selection:
+   - **Owner.** Opening an edge selects its from-Stop (`openSeam` calls `A.select(from)` before setting the
+     pair). `S.sel` is then the edge's from-Stop while an edge, Path, point or Cue reading is open. Today
+     `openSeam` leaves `S.sel` on whatever was selected before, which can be another Stop.
+   - **An outside selection closes the reading.** When `A.select(id)` changes `S.sel` to anything else (a
+     Stage pick, Browse World, an Index row, a Card reference), the reading closes the way `selectStop`
+     leaves a procedure: `T.end()`, then Guide posture (`depth='overview'` with its `experience-overview`
+     task), with the pair, point, armed state and rehearsal cleared. The Camera does not move and no
+     return is restored (§5.5). Build it as one hook that `select()` calls when the id changes, before it
+     renders, registered by `experience.js` in its existing `A.registerLensWork({…})` call. Today the
+     reading survives such a pick: after a Stage subject pick, `S.sel` is the subject but the Card still
+     reads `Guide edge` (real-browser probe, 2026-10-12).
+   - **Revalidate on read and never retarget.** The edge Card already checks `resolveNext(from).id===to` on
+     every render (`staleEdgeCard`). A point whose anchor is gone falls back to the Path Card, and a station
+     that holds no Cue falls back to the Journey Card. Undo and Redo restore `S.sel` only, and the readings
+     then revalidate. Nothing here enters the Undo snapshot or `restoreQuiet`.
+   - **One look.** While a reading is open, the Stop chips and pins render unselected (§5.2.5).
+
+   A Scene subject never resolves as a Presentation. Posture (Guide / Camera Path / Journey / Edit Camera)
+   is session context, not selection.
+2. **Path points: identity and insertion order.** Identity is already stable: anchors get ids from
+   `fresh(c,'anchor')`, and stations and beats bind to those ids. The evaluator follows the anchors' array
+   order (`connectionPath` is the origin, then the anchors in order, then the destination). So nothing is
+   re-keyed. What is missing is the order: `addAnchor` appends. On a path with two points, a point placed
+   before Point 1 becomes Point 3, and the path doubles back (observer x 0 → 10 → 20 → 5 → 30 in a kernel
+   check, 2026-10-12).
+   - **Required (UX5 correction, §5.5).** The armed `+ Path point` inserts into the drawn path where the
+     author clicked. Take `routeGeometry(…).samples`, the line the Stage draws. Find the sample segment
+     nearest the click in plan (x, z), and read the progress `p` of the nearest point on it. Insert at
+     `at` = the number of anchors whose station progress is below `p`, so a tie goes before the existing
+     point. The proposal carries the index (`{addAnchor:position, at}`), and
+     `addAnchor(c, id, position, at = route.anchors.length)` splices.
+     Remove still deletes by id. Both stay Camera writes through the existing shared-route Ask, in one
+     history step.
+   - A Cue stays bound to its anchor id through an insertion, and only its time moves. The refusal for a
+     removed station is unchanged.
+   - **Aim redistribution is accepted for #114.** Each point's aim is interpolated from the two endpoints
+     by its index. Any add or remove (an append too) therefore re-aims the other points, while their
+     positions stay exact. That is how the evaluator is defined. The Point Card's preview shows the
+     result, and no aim editor is added.
+   - Display names come from the order (`Point n`), never from the stored `Anchor n` name (§3.4).
 3. **Camera at this point.** `evaluatePath` at the station's progress gives the pose, which is
    rendered by the image pass (item 6). If a station's pose cannot be evaluated truthfully, the
    Card says so; it never fabricates one.
@@ -183,7 +217,7 @@ the control a slice moved, plus a small real-browser smoke path, and no automati
 | **UX2 — Presentation and Views** · landed; light fixes §5.3 | UX1 | Aggregate Present + Plan intent (§3.8). Presentation Card with ordinary `Add explanation` (existing focused writer; quiet summary/edit door once authored). Views list + Stage View markers (semi-spatial placement around a resolved focus anchor, deterministic crowding). View Card with preview (image pass §3.6, neutrality proven first per §8). Set as Default, Rename, Remove (§3.10), Recommended framing, Use existing View. *Advanced authoring* home receiving narration/contributions/suggestions/View switching | QA 3 acceptance (§7). Creator narration/capture/offer jobs still execute through the new doors. First-time creator scenario (Present → explain → capture → Preview) works without Presenter |
 | **UX3 — Scene subject** · landed; light fixes §5.3 | UX1 | Subject Card (§3.7), invoked behavior/interaction chooser using existing descriptors and audition/capture writers | QA 5 acceptance. Audition writes nothing; capture/update/ambiguity semantics unchanged |
 | **UX4 — Guide, Stops, edges** · landed; owes §5.4 | UX2 | Guide Deck (per-Stop outgoing resolved-continuation chips), Edit Guide ordering menu, Stop Card, edge identity and Card (Cut/Travel, coverage, Edit Camera Path). Retire Peek/Overview/Expand/L2/triptych | QA 4 acceptance; §7 checklist C3–C5. One-, six- and repeated-Stop fixtures, plus explicit-nonadjacent-Next, reorder, Undo, End and return-to-order fixtures. Travel preparation is still one Undo step and creates no edge from View work or Preview |
-| **UX5 — Camera Path posture** · landed; owes §5.5 | UX4 | Posture task + Path\|Journey switch. *From* list (connection choice). Path point species, armed insert, drag, remove (§3.2), with the insertion/removal proof first: retained identities/positions, aim, Cue bindings/timing, shared reach and Undo. The proof decides whether aim redistribution is acceptable; no new Camera aim editor is authorized here. Path/point Cards with Pace and Camera at this point. Straightened Deck lane naming the Guide edge occurrence | QA 1 acceptance; §7 checklist C6. Shared-path Ask, refusal and Undo proven. Ordinary click adds nothing |
+| **UX5 — Camera Path posture** · landed; owes §5.5 | UX4 | Posture task + Path\|Journey switch. *From* list (connection choice). Path point species, armed insert, drag, remove (§3.2), with the insertion/removal proof first: retained identities/positions, aim, Cue bindings/timing, shared reach and Undo. Aim redistribution is accepted and insertion goes into the nearest segment (§3.2); no new Camera aim editor is authorized here. Path/point Cards with Pace and Camera at this point. Straightened Deck lane naming the Guide edge occurrence | QA 1 acceptance; §7 checklist C6. Shared-path Ask, refusal and Undo proven. Ordinary click adds nothing |
 | **UX6 — Journey and Rehearse** · checkpoint; owes §5.6–§5.7 | UX5 | Cue projection (§3.4), time Deck for the selected origin's nominal Journey (origin visible/changeable in posture; header names Guide edge + origin), Cue Card with occurrence disclosure, focused *Edit cue* (existing Hold/Invoke writers reused where applicable) plus `Edit holds`, atomic grouped-Cue station movement as a **new operation to implement and test in UX6** (all affected beats plus required Activity bindings as one validated history transaction; occupied destinations refuse; no silent merging or hold consolidation), Rehearse/scrub (§3.5), Look through at playhead. Shared-connection double-occurrence fixtures (distinct pauses, one selection each). No mid-Guide Preview entry | QA 2 acceptance; §7 checklist C7. Exactly-once/traversed-route-only execution unchanged in Preview. Rehearse writes and executes nothing. Late-Journey edit → real Preview → exact-return loop measured and cost-reported |
 | **UX7 — Preview, Presenter, integrated acceptance** · not started | UX1–UX6 | Visitor surface audit (§7 QA 6). Q1–Q8/A1–A10 recipes re-pointed. Responsive/keyboard pass. Final capture packet and written verdict | All gates in §6–§7. Owner visual review requested |
 
@@ -203,7 +237,15 @@ UX3 may run in parallel with UX2. UX5 needs UX4's edge identity, and UX6 needs U
 §7 captures → stop before UX7 for the owner. Record each part under its own slice's evidence heading
 (UX4 correction, UX5 correction, UX6). The rules below fix composition, hierarchy, ownership and layout
 behavior. Where they leave a detail open (an icon, a 1–2 px nudge), take the established visual system's
-nearest role.
+nearest role. The same order carries the four reconciliations from the 2026-10-12 review: the selection
+owner and close rule (§3.1) and the Deck focus helper (§5.4) go with §5.4, and insertion order (§3.2) and
+the posture's return (§5.5) go with §5.5.
+
+**Names.** Every hook that §5 or §5.8 calls *kept* exists at `44011d6`. These names are new, and the pass
+creates them: `unwindExperience()`, `cueName()`, the selection hook (§3.1), the focus helper (§5.4),
+`#pathInstrument`, the actions `exp-cue-look` and `exp-journey-origin`, and the hooks `data-gd-step`,
+`data-path-origin`, `data-posture`, `data-cue-actions`, `data-exp-cue-edit` and `data-stop-reach`. New CSS
+classes are the ones the §5 blocks define.
 
 ### 5.2 Shared surface rules
 
@@ -286,8 +328,8 @@ Everything not named here stays as accepted.
 
 ### 5.4 UX4 correction — Guide Deck, Stop and edge
 
-**Overflow behavior (ratified).** The Guide lane is one non-wrapping row that scrolls horizontally inside
-the lane. It has edge fades, step buttons, and an always-revealed selected chip, and connectors scroll
+**Overflow behavior (decided; endorsed in the 2026-10-12 review).** The Guide lane is one non-wrapping
+row that scrolls horizontally inside the lane. It has edge fades, step buttons, and an always-revealed selected chip, and connectors scroll
 with their chips. Chips shrink to a readable minimum before the lane scrolls, so a normal Guide (up to 6
 Stops) fits at 1440×900 with no scrolling. A dense Guide scrolls while the band keeps its height. Not
 adopted: wrapping (it grew to a five-row grid at 20 Stops and covered the Stage), number-only chips
@@ -388,6 +430,22 @@ Behavior:
   by 80 % of the lane width (`behavior:'smooth'`, or `'auto'` under reduced motion); a captured `scroll`
   updates the fade classes; `wheel` with vertical delta over an overflowing lane scrolls it horizontally.
   None of these writes source, history or Camera intent.
+- **Keyboard focus survives the rebuild.** Today Enter on a focused chip selects the Stop, the Deck is
+  rebuilt, focus drops to `<body>`, and the next Tab lands on `Edit Guide` (real-browser probe,
+  2026-10-12). Reuse the World Instrument's landed restore (`app/ui.js`, the `was`/`restore` pair near
+  line 845) as one small helper. Before replacing `innerHTML`, if focus is inside the home, remember the
+  control's `data-act` and its identity attributes (`data-id`, `data-from`, `data-to`, `data-anchor`,
+  `data-delta`, `data-posture`). After the rebuild and the `scrollLeft` restore, focus the control that
+  matches all of them. Failing that, focus one that matches the identity attributes alone (a posture
+  segment loses its `data-act` once it is current). Failing that, focus the selected chip, or else leave
+  focus alone. Use `focus({preventScroll:true})`, so the reveal rule above stays the only thing that
+  scrolls. Apply the helper to the Deck, to the Experience Index (the From rows and the Path | Journey
+  switch) and to the Experience lens's `renderCard` rebuild, which today restores only `[data-field]`
+  inputs. Opening and closing `<details>` keep their §5.2.7 state.
+- **Step buttons stay out of the Tab order** (`tabindex="-1"` and an `aria-label`). Keyboard users Tab
+  through the chips, and a focused chip scrolls clear of the fades through the lane's
+  `scroll-padding-inline`. The steps are a pointer convenience. No roving and no extra key handling are
+  added.
 - **Ordinary posture** (the compact strip inside the Stage) uses the same `.gd-scroll` lane. Its first
   child replaces the `deck-head` row and its `Open Guide` button with a name block whose kicker and title
   are one button:
@@ -437,7 +495,7 @@ on an outside press, or after Remove. The shadow is the one the Head Preview men
 ```text
 STOP 3
 Power switch
-Presentation · Power switch · in 1 Stop        name is a reference button (exp-open); line keeps data-stop-reach
+Presentation · Power switch · in 1 Stop        name is a reference button (exp-open); line carries data-stop-reach (new)
 Entry     [Presentation Default (Gallery entry) ▾]   data-exp-entry; the row keeps data-stop-entry
 Next      [Guide order (Stop 4 · How the drive works) ▾]   data-exp-next
 Movement  Travel · Gallery entry → Entry · Camera Path ready   (or Cut / End of Guide / Camera Path · 1 gap)
@@ -482,16 +540,32 @@ Remove the `Owner · … · mode` line, the Pace select (Pace lives on the Camer
 the `Origins from this Stop` disclosure (the Path posture's From list owns per-origin work), the
 `Destination entry` section (now in `.c-ref`), `coordinationDetail()` and `coordinationHtml()`. Offer
 `Edit Camera Path` whenever at least one route exists. `openSeam` stops entering the Journey when the edge
-already has beats, so selecting an edge chip always shows this Card.
+already has beats, so selecting an edge chip always shows this Card, and it selects the edge's from-Stop
+first (§3.1).
 
 ### 5.5 UX5 correction — Camera Path posture (QA 1)
 
 **Entry and switching keep the standpoint**, as [PLATE §0.8.1][plate-081] requires ("Opening it does not
-move the authoring view"; "switching posture changes neither selection nor Camera"). Today
-`editRoute()` calls `nav.beginReturn(…)` and `await bringIntoView()`, so entry, and every Journey → Path
-switch, flies the Camera into Plan. Remove both calls. `Bring route into view` on the Path and Journey
-Cards is the explicit framing: it frames in Plan and sets the return context that the crumb's Put it
-back restores. See §12.
+move the authoring view"; "switching posture changes neither selection nor Camera"). The owner confirmed
+this in the 2026-10-12 review (§12). Today `editRoute()` calls `nav.beginReturn(…)` and then
+`await bringIntoView()`, so entry and every Journey → Path switch fly the Camera into Plan. Only the
+framing goes. The capture stays, because navigation keeps one return slot: without a fresh capture at
+entry, the crumb would restore whatever an older `Bring … into view` left there (reproduced in a
+real-browser probe). The posture owns one return context, captured at entry and used only by its own
+exits:
+
+| Moment | Camera | Return context |
+| --- | --- | --- |
+| Enter from the edge Card (`Edit Camera Path`) | Does not move. Drop `await bringIntoView()` and the epoch check after it from `editRoute()` | Captured: `nav.beginReturn('Return to Guide edge')` stays |
+| Switch Path ↔ Journey, or pick another From row | Does not move | Kept. `editRoute()` captures only when depth is not already `route` or `coordination`; today a Journey → Path switch captures again |
+| `Bring route into view`; Look through at a point, the playhead or a Cue | Moves, on request | Kept. Inside the posture `bringIntoView()` passes `captureReturn:false` to `framePoints`, and Look through never captures |
+| Exit by the crumb or Esc (`returnRouteReading()`) | `nav.putBack()` returns to the entry standpoint, so nothing moves if the author never moved | Used up |
+| Any other exit: an outside selection (§3.1), the lens switch, Preview | Does not move | Not restored. Each later user of the slot captures at its own entry, and Preview keeps its own token |
+
+`resumeExperience` already captures at reactivation, so a resumed posture follows the same table. The
+landed checks stay true as written: `route crumb restores previous standpoint` (experience axis),
+`resumed route return uses the current invocation standpoint` (conformance axis) and P1 in
+`tests/experience-mp2-review.test.mjs` (selecting elsewhere never restores).
 
 **Index** (`cameraPathIndexHtml`). While depth is `route` or `coordination`, `experienceIndex()` returns
 only this home and does not append the ordinary Index beneath it:
@@ -500,7 +574,8 @@ only this home and does not append the ordinary Index beneath it:
 ‹ Stop 3 → Stop 4               crumb: button data-act="exp-route-return"; back to the edge Card
 Camera Path                     .ix-title
 [ Path | Journey ]              .exp-seg at full width, container keeps data-exp-posture-switch; current segment
-                                aria-pressed with no data-act; the other is exp-route / exp-coordinate
+                                aria-pressed with no data-act; the other is exp-route / exp-coordinate;
+                                both carry data-posture="path" / "journey" (the focus key, §5.4)
 JOURNEY  Gallery entry → Entry  (Journey only) then "Total · 4.0 s · 2 Cues"  (data-exp-journey-total kept)
 FROM                            data-path-from kept
   Gallery entry     ✓ connected     row = one button, data-path-origin="<viewId>"; Path: exp-route
@@ -565,6 +640,8 @@ disclosure, which becomes a plain list. Esc clears the point and returns to the 
   `position:absolute; left:12px; bottom:calc(var(--guide-band-h, 0px) + 12px); z-index:36;` and holds one
   default md button, `+ Path point` (`data-act="exp-path-point"`, `aria-pressed`), which reads
   `Cancel point` while armed. While armed, a Stage tape beside it reads `Click the Stage to place the point · Esc cancels`.
+  The armed press inserts the point into the nearest segment of the drawn path, not at the end (§3.2), and
+  disarms.
 
 **Deck: straightened topology** (`pathTopologyLane`). Today its `topo-*` classes have no CSS at all.
 
@@ -679,21 +756,23 @@ first by the existing `held` path. The levels, in order:
 1. An armed point disarms.
 2. A selected point clears.
 3. A selected Cue clears (the station parameter returns to the first free station).
-4. Path or Journey returns to the edge Card through `returnRouteReading()`, which also drops the
-   rehearsal and sets the task kind back to `experience-seam`.
-5. An edge returns to Guide posture with its from-Stop selected.
+4. Path or Journey returns to the edge Card through `returnRouteReading()`. It puts the Camera back to the
+   entry standpoint (§5.5), and it now also drops the rehearsal and sets the task kind back to
+   `experience-seam`.
+5. An edge returns to Guide posture. Its from-Stop is already `S.sel` (§3.1), so the Stop Card shows.
 6. Guide posture returns to rest.
 
 The open Edit Guide menu closes first. Precision keeps its own Esc. The visible exits are the Index crumb
 (Path/Journey) and `Done` (Guide posture). No Card carries `Close` or `Put it back` for these postures.
 
-### 5.8 Test expectations to retire or re-point
+### 5.8 Test expectations to retire, re-point or add
 
 These recipes encode retired homes. Re-point each one in the slice that moves its control, never by
 loosening it. Line numbers are approximate at `64de0ef`. The hooks `exp-guide`, `exp-close`, `stop-card`,
 `peek-stop`, `data-deck-posture`, `data-exp-anchor`, `data-endpoint`, `data-edge-coverage`,
 `data-stop-entry`, `data-exp-station`, `data-exp-pace` and `data-path-from` are kept on purpose.
-`experience-shell-check.sh`, `capture-experience-shell.sh` and both walkthrough axes need no change.
+`experience-shell-check.sh`, `capture-experience-shell.sh` and both walkthrough axes need no re-pointing;
+the shell axis only gains two of the new checks below.
 
 | Where | Expectation today | Disposition |
 | --- | --- | --- |
@@ -702,7 +781,7 @@ loosening it. Line numbers are approximate at `64de0ef`. The hooks `exp-guide`, 
 | `qa/experience-check.sh` ~62–67, 100 | Expanded chip and `.stop-card.expanded [exp-move-stop]` | **Re-point** the move to `[data-exp-guide-menu] [data-edit-stop="<id>"] [data-act=exp-move-stop][data-delta="1"]`, opening the menu first |
 | `qa/reconciliation-check.sh` ~16, 28–31 | Stop Card text "affect this Stop" / "Meaning and Views"; `Show in Guide` and `.stop-card.expanded` at 1024 | **Re-point**: shared reach is `#card [data-stop-reach]` naming `n Stop(s)`, and local is the Entry/Next selects. At 1024, assert the band is under 40 % and at most 112 px, with the selected chip visible in the lane |
 | `qa/presenter-check.sh` ~242 | `press [data-act=exp-expand-stop]` | **Re-point** to `exp-stop`; the `expanded` field then reads False throughout, as ~267 already expects |
-| `qa/experience-check.sh` ~90–92; `qa/conformance-check.sh` ~357–366 | Entering the Path posture requests Plan | **Re-point**: after entering, click `#card [data-act=exp-bring]`, then assert Plan and the crumb. Every recipe that presses the Stage in Path posture clicks it first |
+| `qa/experience-check.sh` ~90–92; `qa/conformance-check.sh` ~357–366 | Entering the Path posture requests Plan | **Re-point**: after entering, click `#card [data-act=exp-bring]`, then assert Plan and the crumb. Every recipe that presses the Stage in Path posture clicks it first. The crumb check that follows (~95, `route crumb restores previous standpoint`) stays as written; after the Bring it proves that the crumb returns to the entry standpoint (§5.5) |
 | `qa/conformance-check.sh` ~357 | `#card [data-path-from]`, `#card [data-act=exp-path-point]` | **Re-point** to `#index [data-path-from]` and `#pathInstrument [data-act=exp-path-point]` |
 | `qa/conformance-check.sh` ~379–381; `qa/experience-check.sh` ~161–163; `qa/rich-check.sh` ~71, 156 | `exp-coordinate` on the edge or Path Card (`Edit cue timing`) | **Re-point** to the edge Card's `exp-route`, then `#index [data-exp-posture-switch] [data-act=exp-coordinate]`. Retire ~379, "the Path Card keeps the same edge cue-timing door" |
 | `qa/conformance-check.sh` ~382–400, 421; `qa/rich-check.sh` ~72–86, 157–158 | The C9 strip: `.station-projection`, `.station-tick`, `.coord-beat`, `.coord-hold`, `[data-hold-duration]`, `[data-coordination-detail]`, `.coordination-strip` text | **Re-point** to the Journey homes. Station choice is the Journey Card's `[data-exp-station]`, and `+ Cue` (`exp-beat`) then selects the new Cue. The Activity picker (`[data-exp-invoke-use]`, `exp-invoke-beat`) and the hold value (`[data-exp-hold]`) are inside `#card [data-exp-cue-edit]`, so open Edit cue first. Mirrored Cue selection is `.jd-cue.selected` with the Stage's `.exp-station.active`. Binding and "trigger elsewhere" are `#card [data-cue-action]`. Retire ~399, "Coordination lives on the edge Card" |
@@ -710,6 +789,16 @@ loosening it. Line numbers are approximate at `64de0ef`. The hooks `exp-guide`, 
 | `qa/conformance-check.sh` ~410–412; `qa/experience-check.sh` ~168–171; `qa/rich-check.sh` ~101–104 | Pace changes `.coord-hold` text; `[data-exp-pace]` in the Journey or edge Card | **Re-point**: read `#card [data-cue-at]` or `.jd-cue[data-cue-at]`. Change Pace in Path posture, where the only `[data-exp-pace]` lives, then switch back |
 | `qa/conformance-check.sh` ~439–440 | `exp-coordinate` on a two-route edge yields `chooseRoute` | **Retire**, because the From list is the explicit choice. Keep the shared-route pace Ask, reached through Path posture |
 | `qa/experience-check.sh` ~177–186 | `.journey-deck .jd-head b`, `[data-exp-journey-origin]`, `#card .jd-cue-row`, `#card .station-projection`, `#card [data-exp-pace]`; selecting `[data-exp-cue-move]` | **Re-point**: `.deck-block .deck-s` names the edge, and the origin is `#index [data-path-origin][aria-current=true]`. Cue markers live on the Deck only. The Cue Card has `[data-cue-at] [data-cue-pause] [data-cue-actions]`, and Edit cue (opened first) holds `[data-exp-cue-move] [data-act=exp-beat] [data-act=exp-invoke-beat]` |
+
+**New focused checks** for the four 2026-10-12 reconciliations. Each is a few assertions in a file the pass
+already runs, not a new axis or mutation script:
+
+| Check | Where | Asserts |
+| --- | --- | --- |
+| Insertion order | a Node test in `tests/` | A point placed before Point 1 on a two-point path lands at index 0, and the evaluated observers run in path order. A beat bound to Point 1 keeps its anchor id |
+| Posture return | `qa/experience-check.sh`, after the re-pointed Bring | Path → Journey → Path, then the crumb: the pose equals the entry standpoint (`S.seamPose`), and entering moved no Camera |
+| Outside selection | `qa/experience-shell-check.sh` | With an edge open, `__me.A.select(<subject>)` (what a Stage pick runs) shows the subject's Card, clears `S.experienceContext.seam` and leaves the pose unchanged. Opening an edge chip makes `S.sel` its from-Stop |
+| Keyboard focus | `qa/experience-shell-check.sh` | Focus Stop 1's chip and press Enter: the same chip still has focus, and Tab reaches its edge chip |
 
 ## 6. Responsive, keyboard and accessibility
 
@@ -725,6 +814,8 @@ loosening it. Line numbers are approximate at `64de0ef`. The hooks `exp-guide`, 
     *From* list, Deck path points and Cues.
   - Deck lanes are traversed with Tab and Shift-Tab in order, and focusing a chip, point or Cue scrolls
     it into view. Arrow-key roving is not required in #114.
+  - Activating a control keeps focus on it across the re-render, in the Deck, the Experience Index and
+    the Card (§5.4). The lane's step buttons are pointer-only.
   - Enter opens; Esc unwinds one level (cancel draft → leave posture → rest) and is never Undo.
   - Armed `+ Path point` is cancellable.
   - Focus visibility does not depend on hue alone. The lane's 4 px padding keeps chip focus rings
@@ -743,7 +834,7 @@ lightweight checklist below by looking at real captures next to the boards.
 
 | Board | Must be true |
 | --- | --- |
-| **QA 1 Camera Path** | Stage shows endpoints, the evaluated path and ○ points with amber ◎ selection, and no Cues/timing. `+ Path point` is the only creation path, and it lives on the Stage. Point Card shows Remove, an evaluated Camera preview, Look through and Used by. Deck lane mirrors selection with no time. *From* lists origins with connected/gap status. Entering or switching posture moves no Camera |
+| **QA 1 Camera Path** | Stage shows endpoints, the evaluated path and ○ points with amber ◎ selection, and no Cues/timing. `+ Path point` is the only creation path, and it lives on the Stage. Point Card shows Remove, an evaluated Camera preview, Look through and Used by. Deck lane mirrors selection with no time. *From* lists origins with connected/gap status. A point added between two others lands between them. Entering or switching posture moves no Camera, and the crumb returns to the entry standpoint |
 | **QA 2 Journey** | Path handles are not hit-eligible. ◆ Cues sit at their stations. The time Deck runs 0:00 → derived total for the selected origin's nominal Journey, which equals Camera time + pauses, and names its Guide edge and origin. Rehearse plays and scrubs with a moving rig while the author view is unchanged. Cue Card shows occurrence, At/Pause/Actions/Edit cue (summed Pause with hold count and `Edit holds` when several). Moving a Cue rebinds its beats plus Activity bindings atomically within the edge; occupied stations refuse. The Card's move offers only valid stations, and Stage dragging of Cues is not required. No C9 strip, Pace writer or Cue list in any Card |
 | **QA 3 Presentation/Views** | One `+ Present`. Compact named markers around the focus, ★ Default, no Stage thumbnails or order cues. Selecting a View shows its faithful rendered preview and operations in the Card without moving the Camera. Set as Default leaves Guide/Camera/Stop overrides intact |
 | **QA 4 Guide/Stops** | One Guide home in a bounded, single-row Deck whose height does not grow with Stop count. Stop and edge each have their own Card, never both, and never both look selected. Cut/Travel lives on the edge. Edge chips show resolved outgoing continuation (order-default, explicit destination, End, needs-repair); connectors only join truly adjacent destinations. No Camera paths on Stage in Guide posture. The resolved entry View is labelled by its own name. No `Detail`/Expand on chips |
@@ -771,14 +862,14 @@ Stops. Compare each capture with its board.
 
 | Risk / assumption | Verify | If false |
 | --- | --- | --- |
-| Anchors/stations have stable identity | `model` connection anchors, `cam` `stations()`, beat binding fields | Add ids + fixture migration in prototype source, with rebinding tests (§3.2) |
-| Seam-key selection survives Undo/reorder | `restoreQuiet`, guide reorder paths | Resolve the edge by the continuation pair (`from`, `resolveNext(from)`). If either Stop is removed or the Next no longer resolves there, clear the selection (and any dependent Cue selection), never retarget it |
+| Anchors/stations have stable identity | `model` connection anchors, `cam` `stations()`, beat binding fields | **Verified 2026-10-12:** ids are stable and beats bind by id. Only the insertion order is missing (§3.2) |
+| Seam-key selection survives Undo/reorder | `restoreQuiet`, guide reorder paths | **Verified 2026-10-12:** the edge revalidates on every read (`staleEdgeCard`) and never retargets. What was missing is the owner and close rule (§3.1) |
 | Image pass can restore every live state | `stage.js` frame/restyle, `main.js:frameState`, `experience-scene.js:realizeCapabilities` | Narrow the projection rather than add a renderer. Prove neutrality (selection, ghost, clipping, audition, capability state, failure, edits/cache) before UX2 View-Card work. If a fidelity gap remains, report it before UX2 exit |
 | Cue name source | beat/marker fields | Derive the label, adding no persisted Cue type |
 | C9.6 local View unlink | removal APIs | Bounded unlink per §3.10, or omit Remove with an explicit owner note |
 | QA string coupling | UX0 inventory, §5.8 | Migrate selectors to semantic hooks in the slice that moves the control. Never weaken assertions to pass |
 | Rehearse timing equals run-time timing | `experience-coordination.js` | One mapping function shared by both, with a unit test asserting equality for identical invocation inputs (distinct live departures may differ) |
-| Path entry no longer frames the route | recipes that press the Stage after `exp-route` | Click `Bring route into view` first (§5.8). Do not restore auto-framing in `editRoute` |
+| Path entry no longer frames the route | recipes that press the Stage after `exp-route` | Click `Bring route into view` first (§5.8). Do not restore auto-framing in `editRoute`, and keep its entry capture (§5.5) |
 
 ## 9. Verification this PR performs (owner-ratified lightweight policy, 2026-10-12)
 
@@ -918,15 +1009,23 @@ and precise Camera. Review the Experience walkthrough and recheck shared structu
 - Production cutover and persisted Experience format.
 - Paper (PR #115), including the World status-rail controls that still show in the Experience lens.
 
-## 12. Open owner calls
+## 12. Owner calls
 
-1. **Camera Path entry framing.** The prototype flies into a Plan framing of the route on
-   `Edit Camera Path` and on every Journey → Path switch. That behavior predates the lock and was part
-   of C9 when MP3/MP4 were accepted for functionality, yet PLATE §0.8.1 says opening the posture does not
-   move the authoring view and switching changes no Camera. **Recommendation, and the §5.5 default:**
-   follow PLATE. Entry and switching keep the standpoint, and `Bring route into view` frames on request.
-   If the owner prefers the C9 auto-framing, the change is to keep `bringIntoView()` in `editRoute()` and
-   amend PLATE's sentence. The rest of §5.5 is unaffected.
+None is open. The owner's 2026-10-12 review settled these:
+
+1. **Camera Path entry framing follows PLATE.** The prototype flew into a Plan framing of the route on
+   `Edit Camera Path` and on every Journey → Path switch. That behavior predates the lock and was part of
+   C9 when MP3/MP4 were accepted for functionality, but PLATE §0.8.1 says opening the posture does not move
+   the authoring view and switching changes no Camera. Entry and switching now keep the standpoint,
+   `Bring route into view` frames on request, and the posture's return works as in the §5.5 table. Going
+   back to the C9 auto-framing would mean restoring `bringIntoView()` in `editRoute()` and amending
+   PLATE's sentence.
+2. **The Guide overflow policy** in §5.4 (one row that scrolls, chips shrinking first) was endorsed with
+   the rest of the conformance revision.
+
+The review's four code reconciliations are implementation-level and conflict with no ratified semantics:
+the selection owner and close rule (§3.1), insertion order (§3.2), the Deck focus helper (§5.4) and the
+posture's return (§5.5).
 
 [plate-081]: ../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [grammar]: ../../../../reference/design-system/spatial-instrument-grammar.md#camera-routes-and-experience-coordination-projections
