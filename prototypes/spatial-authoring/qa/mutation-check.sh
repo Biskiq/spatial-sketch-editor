@@ -25,7 +25,7 @@ p.write_text(s.replace(old,new))
 PY
   axis=shell; [ "$kind" = host ] || axis=lens
   log="$work/$kind.log"
-  if QA_SHOT=0 QA_SESSION="world-mutation-$kind" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
+  if QA_SHOT=0 QA_SESSION="world-mutation-$kind-$$" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
     echo "FAIL: $axis accepted the $kind regression"; exit 1
   fi
   # Both an invariant failure and unaffected passing controls are required; a crashed harness proves nothing.
@@ -38,3 +38,4 @@ done
 bash "$QA_DIR/conformance-mutation-check.sh"
 bash "$QA_DIR/composition-mutation-check.sh"
 bash "$QA_DIR/locator-mutation-check.sh"
+bash "$QA_DIR/views-mutation-check.sh"

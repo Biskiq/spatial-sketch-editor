@@ -1,7 +1,7 @@
 // Projections of resolved Camera output. Selection and editorial context stay canonical.
 import { originCoverage,stopEntry,resolveUse,getSeam,gripLabels } from './experience-model.js';
 import { S,ctx } from './state.js';
-import { resolvedCamera,readingFor,framingInstrument } from './navigation.js';
+import { resolvedCamera,readingFor,framingInstrument,focusPoint } from './navigation.js';
 import { eye,routeGeometry } from './camera-evaluation.js';
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const project=p=>ctx.stage.project(p),ov=()=>ctx.ov;
@@ -33,10 +33,93 @@ export function drawExperience(){
  }
  if(x.depth==='precision'){drawPrecision(c);return;}
  const p=e.presentations[x.presentation];if(!p)return;
- const rows=p.uses.flatMap(id=>{const use=e.uses[id],view=c.views[use?.viewId];return view?[{id,use,view,position:eye(view.pose)}]:[];});
- if(x.stop){const uid=stopEntry(e,x.stop).id,view=c.views[e.uses[uid]?.viewId];if(view&&!rows.some(r=>r.id===uid))rows.push({id:uid,use:{role:'this Stop entry'},view,position:eye(view.pose)});}
- layout(rows).forEach(row=>marker(row));
- if(S.derivedView?.presentation===p.id){const at=safe(project(eye(S.derivedView.pose)));ov().chip('derived-view',at.x,at.y,'◌ Auto · derived, Capture to keep','tape exp-derived',{'data-derived-view':true,tag:'span',pri:96});}
+ drawViews(e,c,p,x);
+ if(S.derivedView?.presentation===p.id){const at=safe(project(eye(S.derivedView.pose)));ov().chip('derived-view',at.x,at.y,'◌ Recommended framing · Capture to keep','tape exp-derived',{'data-derived-view':true,tag:'span',pri:96});}
+}
+// ----- UX2: Views on the Stage -------------------------------------------------
+// Views are unordered, and the Stage says so. Each View is a compact named marker placed
+// *semi-spatially around the Presentation's focus*: its bearing and side are preserved in the current
+// Stage orientation, its distance is compressed onto a short ring, and no leader, number, arrow or
+// sequence appears — so nothing here claims a metric position or an order. The Default carries a
+// restrained ★ and its name. A marker is still a real hit target and selects its own View use, the same
+// canonical identity the Views list selects.
+const VIEW_RING_MIN=92,VIEW_RING_MAX=230,VIEW_MIN_ARC=104,VIEW_MIN_DY=27;
+// The screen bearing of a world direction, in the Camera's own published basis: the semi-spatial
+// placement asks only where a View stands *around the focus*, never how far away it is, so it reads the
+// orientation the Stage is drawn in rather than a projected position (which is undefined for a View the
+// author is already standing in).
+function screenBearing(dir,az,el){
+ const sx=dir[0]*Math.cos(az)-dir[2]*Math.sin(az);
+ const sy=-(-dir[0]*Math.sin(el)*Math.sin(az)+dir[1]*Math.cos(el)-dir[2]*Math.sin(el)*Math.cos(az));
+ return Math.abs(sx)<1e-6&&Math.abs(sy)<1e-6?0:Math.atan2(sy,sx);
+}
+function ringPosition(item,at){return {x:at.x+Math.cos(item.angle)*item.radius,y:at.y+Math.sin(item.angle)*item.radius};}
+// Deterministic crowding: markers keep their own bearing and are pushed apart along the ring by equal
+// steps until every pair is separated, so the same Views always stack the same way. Markers that the
+// stage edge then pulls together are separated vertically, and each remains its own real hit target.
+function placeViews(items,at,bounds){
+ const n=items.length;if(!n)return [];
+ const placed=items.map(item=>{const scale=Math.max(0,Math.min(1,item.len/420));const radius=Math.min(VIEW_RING_MAX,Math.max(VIEW_RING_MIN,VIEW_RING_MIN+Math.max(0,n-1)*22+scale*26));return {...item,angle:item.bearing,radius};});
+ for(let pass=0;pass<30;pass++){
+  let moved=false;
+  for(let i=0;i<placed.length;i++)for(let j=i+1;j<placed.length;j++){
+   const a=ringPosition(placed[i],at),b=ringPosition(placed[j],at),d=Math.hypot(a.x-b.x,a.y-b.y);
+   if(d>=VIEW_MIN_ARC||d===0)continue;
+   const push=(VIEW_MIN_ARC-d)/Math.max(1,placed[i].radius)+0.02;
+   placed[i].angle-=push/2;placed[j].angle+=push/2;moved=true;
+  }
+  if(!moved)break;
+ }
+ const out=placed.map(item=>({item,at:safe(ringPosition(item,at))}));
+ for(let pass=0;pass<40;pass++){
+  let moved=false;
+  for(let i=0;i<out.length;i++)for(let j=i+1;j<out.length;j++){
+   const a=out[i].at,b=out[j].at;
+   if(Math.abs(a.x-b.x)>=VIEW_MIN_ARC||Math.abs(a.y-b.y)>=VIEW_MIN_DY)continue;
+   const step=(VIEW_MIN_DY-Math.abs(a.y-b.y))/2+1;
+   const down=b.y>=a.y?1:-1;
+   b.y=Math.max(bounds.top,Math.min(bounds.bottom,b.y+down*step));
+   a.y=Math.max(bounds.top,Math.min(bounds.bottom,a.y-down*step));
+   moved=true;
+  }
+  if(!moved)break;
+ }
+ return out;
+}
+function stageBounds(){
+ const stageEl=document.querySelector('#stage'),deck=document.querySelector('#experienceDeck'),top=90;
+ const stageRect=stageEl?.getBoundingClientRect();
+ const bottom=deck&&stageRect?deck.getBoundingClientRect().top-stageRect.top-35:ctx.stage.h-35;
+ return {top,bottom:Math.max(top+40,bottom)};
+}
+function drawViews(e,c,p,x){
+ const bounds=stageBounds();
+ // The focus is read twice on purpose: its *world* point is what each View stands around, and its
+ // projected point is only where the ring is drawn. The bearing is a comparison between two world
+ // positions, so it stays defined when the focus itself is hidden or off-stage.
+ const focusWorld=focusPoint(p)||[-2,1,0];
+ const focusAt=safe(project(focusWorld));
+ const {az,el}=ctx.stage.cam;
+ const bearingTo=pose=>{const e2=eye(pose),dir=[e2[0]-focusWorld[0],e2[1]-focusWorld[1],e2[2]-focusWorld[2]];return {bearing:screenBearing(dir,az,el),len:Math.hypot(dir[0],dir[1],dir[2])||1};};
+ const rows=p.uses.flatMap(id=>{const use=e.uses[id],view=c.views[use?.viewId];if(!view)return[];return [{id,use,view,...bearingTo(view.pose)}];});
+ if(x.stop){const uid=stopEntry(e,x.stop).id;if(!rows.some(r=>r.id===uid)){const view=c.views[e.uses[uid]?.viewId];if(view)rows.push({id:uid,use:{id:uid,role:'this Stop entry',name:e.uses[uid]?.name},view,...bearingTo(view.pose)});}}
+ placeViews(rows,focusAt,bounds).forEach(({item,at})=>{
+  const def=item.use.role==='entry';
+  // What the View looks at, drawn where it stands and joined to its own marker: the direction is what a
+  // View *is*, so it survives the compressed placement, and the leader keeps the two readings one marker.
+  // A standpoint the current reading cannot project (the author is standing in this very View) draws no
+  // glyph rather than a fabricated one.
+  const trueAt=project(eye(item.view.pose));
+  if(Number.isFinite(trueAt.x)&&Number.isFinite(trueAt.y)&&!trueAt.behind){
+   if(Math.hypot(trueAt.x-at.x,trueAt.y-at.y)>5)ov().line('leader-'+item.id,trueAt,at,'exp-leader');
+   const target=project(item.view.pose.target),angle=Math.atan2(target.y-trueAt.y,target.x-trueAt.x),a={x:trueAt.x+Math.cos(angle-.5)*30,y:trueAt.y+Math.sin(angle-.5)*30},b={x:trueAt.x+Math.cos(angle+.5)*30,y:trueAt.y+Math.sin(angle+.5)*30};
+   ov().path('view-glyph-'+item.id,[trueAt,a,b],'exp-view-glyph',true,{'data-view-direction':item.view.id});
+   ov().path('view-origin-'+item.id,[{x:trueAt.x-3,y:trueAt.y-3},{x:trueAt.x+3,y:trueAt.y-3},{x:trueAt.x+3,y:trueAt.y+3},{x:trueAt.x-3,y:trueAt.y+3}],'exp-view-origin',true);
+  }
+  ov().chip('view-'+item.id,at.x,at.y,`${def?'★ ':''}${esc(item.use.name||item.view.name)}`,'tape exp-view-pin '+(S.sel===item.id?'selected':''),{'data-act':'pres-ref','data-id':item.id,'data-exp-view':item.view.id,'data-view-default':def?'true':'',tag:'button','aria-label':`${item.use.name||item.view.name}${def?' · Default View':''}`,pri:97});
+ });
+ // The focus mark is the point the markers are placed around: a place, not a Camera target.
+ ov().chip('view-focus',focusAt.x,focusAt.y,'◇ focus','tape exp-focus-mark',{'data-exp-focus':true,tag:'span',pri:96});
 }
 function drawSeam(e,c,x){
  const seam=getSeam(e,x.seam.from,x.seam.to),rows=originCoverage(e,c,x.seam.from,x.seam.to),items=[];

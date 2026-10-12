@@ -1,4 +1,5 @@
 import { buildCapabilitySubjects, realizeCapabilities } from './experience-scene.js';
+import { imageTurn, imageStats } from './experience-image.js';
 import * as THREE from 'three';
 import { S, ctx, W, C, thing, clone, recordFault, labelOf } from './state.js';
 import { createMuseum, fmt, wallLength, frameAt, modS, openingTopAt, bbox } from './model.js';
@@ -155,6 +156,9 @@ function frameOnce(now) {
   try {
     tickTweens(now);
     E.visitorFrame(now);
+    // One derivative image per idle turn at most: the View preview is produced by the Stage's own
+    // renderer, never in competition with the frame the author is looking at (see experience-image.js).
+    imageTurn();
     frameState();
     realizeCapabilities();
     if (now - lastRestyle > 90) { stage.restyle(); lastRestyle = now; }
@@ -1185,6 +1189,10 @@ const QA = {
   museum() { return clone(ctx.museum); },
   hash() { return museumHash(ctx.museum); },
   faultList() { return S.faults.slice(); },
+  /* the View preview's derivative image pass, as numbers: what it has drawn, what it holds, what the last
+     draw was projected as, and how long it took. The neutrality law is a claim about these readings, so an
+     axis reads them rather than inferring the pass from a picture that cannot say what it left out. */
+  images() { return imageStats(); },
   clearFaults() { S.faults.length = 0; return true; },
   async idle() { while (S.busy) await new Promise((r) => setTimeout(r, 30)); return true; },
   /* draw one frame now and settle the pending UI batch, so an assertion about what is on screen does
@@ -1339,6 +1347,13 @@ document.addEventListener('change',event=>{if(event.target.dataset.expInvokeUse!
 // Focusing a Hold's own duration field moves the coordination strip's event focus onto that beat: the Card
 // and the Stage then read the event the author is actually addressing, while the canonical Stop selection
 // (S.sel) is untouched. Invoke controls carry the same beat identity through their own data attribute.
+// A native disclosure owns its own open state; the one the Experience Card records is only so a render
+// during use cannot close the writer the author has open. Nothing is re-rendered by this: the element is
+// already showing what is recorded.
+document.addEventListener('toggle',event=>{const el=event.target;if(S.visitor||!el?.dataset)return;
+ if(el.dataset.expExplain)E.noteExplanationDisclosure(el.dataset.expExplain,el.open);
+},true);
+
 document.addEventListener('focusin',event=>{const el=event.target;if(S.visitor||!el||!el.dataset)return;
  // The focused event's own station moves with the focus, so the Card, the station row and the Stage read
  // one event rather than two; and because the rerender replaces the field the author just entered, that
@@ -1350,7 +1365,7 @@ document.addEventListener('focusin',event=>{const el=event.target;if(S.visitor||
 
 // A field is identified by the presence of its data attribute, never by a truthy value: the primary
 // explanation is a valueless attribute, and an empty string must still be a real, committable field.
-const experienceField = el => el?.dataset && ['expField','expActName','expDef','expPrecision','expScene','expHold','expPrimary','expMarkerField','expStopNumber'].some(k=>k in el.dataset);
+const experienceField = el => el?.dataset && ['expField','expActName','expDef','expPrecision','expScene','expHold','expPrimary','expViewName','expMarkerField','expStopNumber'].some(k=>k in el.dataset);
 let experienceDraft=null,fieldEpoch=0;
 document.addEventListener('input',event=>{const el=event.target;if(!experienceField(el)||S.visitor)return;
  if(!experienceDraft||experienceDraft.el!==el)experienceDraft={el,epoch:fieldEpoch,lens:S.lens,value:el.defaultValue};
@@ -1371,6 +1386,9 @@ document.addEventListener('keydown',event=>{
  if('expField' in el.dataset){const k=el.dataset.expField;if(k==='name')E.renamePresentationById(el.dataset.id,el.value);else E.updatePresentation(el.dataset.id,k,el.value);}
  if('expActName' in el.dataset)E.renameContributionCommand(el.dataset.expActName,el.value);
  if('expPrimary' in el.dataset)E.explainPresentation(el.dataset.id,el.value);
+ // A View's name is the one every use of that View reads, so the rename is the shared-use proposal the
+ // other shared View edits already use: it discloses its reach before it writes.
+ if('expViewName' in el.dataset)E.updateUse(el.dataset.expViewName,'name',el.value);
  if('expDef' in el.dataset){const value=el.dataset.expDef==='duration'?(el.value===''?null:Number(el.value)):el.value;if(el.dataset.expDef!=='duration'||value===null||(Number.isFinite(value)&&value>0))E.editDefinition(el.dataset.id,el.dataset.expDef,value);}
  if('expMarkerField' in el.dataset)E.updateMarker(el.dataset.id,el.dataset.marker,el.dataset.expMarkerField,el.dataset.expMarkerField==='time'?Number(el.value):el.value);
  if('expStopNumber' in el.dataset&&Number.isFinite(Number(el.value))&&Number(el.value)>0)E.updateStop(el.dataset.id,'pacing',{kind:'dwell',seconds:Number(el.value)});

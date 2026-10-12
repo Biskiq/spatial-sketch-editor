@@ -96,7 +96,8 @@ function renderPreviewScopes() {
   // focus or menu key model is claimed that the shell does not implement.
   const html = list.map((s) => `<button data-act="${s.act}" data-scope="${s.scope}" data-id="${esc(s.id)}" title="Start the visitor at this scope — Exit Preview returns to this exact authoring context">${esc(s.label)}</button>`).join('');
   if (scopes._html !== html) { scopes.innerHTML = html; scopes._html = html; }
-  menu.querySelector('summary')?.setAttribute('aria-expanded', String(menu.open));
+  // No manual `aria-expanded` on the summary: a native <details> already reports its own expanded state
+  // to assistive technology, and a copy kept here could only ever disagree with it between renders.
 }
 
 // ---------------------------------------------------------------- stage tools
@@ -260,11 +261,18 @@ const PAGE = 9;
 // subjects are deduplicated by identity — a subject the World already lists keeps its World row and a
 // subject only the Scene has is listed for what it really is, with a logical subject marked as having no
 // Stage geometry instead of being promised a flight.
-const recCache = { museum: null, scene: null, list: [] };
+//
+// The Scene is invalidated by its own `revision`, not by object identity: an authored change mutates the
+// subject in place (a profile, a name, an added or removed subject), so identity alone would keep serving
+// the row that source no longer describes. Every Scene writer bumps the revision, so a rebuild is exactly
+// as up to date as the last accepted Scene edit — no Reset, and no reload, is needed to see it.
+const recCache = { museum: null, scene: null, revision: null, list: [] };
+const sceneRevision = () => ctx.sceneSource?.revision ?? null;
 export function records() {
-  if (recCache.museum !== ctx.museum || recCache.scene !== ctx.sceneSource) {
+  if (recCache.museum !== ctx.museum || recCache.scene !== ctx.sceneSource || recCache.revision !== sceneRevision()) {
     recCache.museum = ctx.museum;
     recCache.scene = ctx.sceneSource;
+    recCache.revision = sceneRevision();
     const list = recordList(ctx.museum);
     const seen = new Set(list.map((r) => r.id));
     for (const s of Object.values(ctx.sceneSource?.subjects || {})) {

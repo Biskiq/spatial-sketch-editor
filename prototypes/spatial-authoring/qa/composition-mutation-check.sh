@@ -75,9 +75,11 @@ elif kind == 'offer-invoke':
             " if(u.kind==='interaction')return 'A visitor offer is activated by its subject; bind a separate Activity to invoke automatically';\n",
             "")
 elif kind == 'route-writer':
-    # Selecting another Stop no longer ends the route writer.
+    # Selecting another Stop no longer ends the route writer. UX2 retired the `hints` posture with the
+    # Framing Hints toolbar, so the anchor follows the current procedure list; the protected defect — every
+    # non-occurrence writer ending on a Stop selection — is the same one.
     replace('app/experience.js',
-            "const procedure=['occurrence','seam','route','coordination','precision','hints'].includes(x.depth);",
+            "const procedure=['occurrence','seam','route','coordination','precision'].includes(x.depth);",
             "const procedure=['occurrence'].includes(x.depth);")
 elif kind == 'explanation-binding':
     # The explanation binding collapses back onto the organizational home.
@@ -770,7 +772,7 @@ PY
       expected='…and with Auto on, all four Stops and their three entry policies land in the ledger'; control='the visit opens its ledger with the Stop it entered, before any command' ;;
   esac
   log="$work/$kind.log"
-  if QA_SHOT=0 QA_SESSION="c9-mutation-$kind" env "$boundary" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
+  if QA_SHOT=0 QA_SESSION="c9-mutation-$kind-$$" env "$boundary" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
     echo "FAIL: $axis accepted the $kind regression"
     exit 1
   fi

@@ -146,6 +146,12 @@ d = json.loads(sys.argv[1]); print(eval(sys.argv[2], {"d": d, "json": json}))' "
 press() { qa_js "(()=>{const e=document.querySelector(\"$1\");if(!e)return false;e.click();return true;})()" >/dev/null; qa_frames; }
 pointer() { # pointer <selector>
   local p x y
+  # A real author brings the control into the middle of its container before clicking it. The Guide band is
+  # fixed over the bottom of the viewport, so a control low in a Card is on screen yet under the band, where
+  # the pointer would address the band instead of the control (UX2's View Card is taller than C9's, because
+  # it carries the rendered preview above these controls). Centering first is what keeps the hit test on the
+  # control being exercised — a Stage grip, which lives outside any scroller, is unaffected.
+  qa_scroll_center "$1"
   p="$(qa_at "$1")"
   case "$p" in none | '' | null) qa_fail_msg "no element to click: $1"; return 1 ;; esac
   x="${p%,*}"; y="${p#*,}"
@@ -190,7 +196,9 @@ press '#experienceDeck [data-act=exp-guide]'
 last="$(step 'A.select("use-16");')"
 UNDO_0="$(field undo)"
 STANDING="$(field standing)"
-qa_ok "the Camera Card names the View use and offers the precise Camera while no Camera work is active" "$(field cardTitle) / $(field preciseEntry) / $(field cardVerbs)" "Machine overview / True / exp-precise exp-bring"
+# UX2: the View Card's own verbs are the precise Camera and Look through; Bring into view is the
+# locator's navigation verb, asserted where the locator lives.
+qa_ok "the Camera Card names the View use and offers the precise Camera while no Camera work is active" "$(field cardTitle) / $(field preciseEntry) / $(field cardVerbs)" "Machine overview / True / exp-precise exp-look"
 qa_ok "the full property list is one Card disclosure, named for what each property does" "$(field propSummary) / $(field propLabels)" "Precise Camera · properties / Frame height, Aim horizontally, Aim vertically, Target X, Target height, Target Z"
 qa_okc "…and says where the value will be live" "$(field propHint)" "one value is live at a time on its Stage tape"
 qa_ok "the ordinary Movement writer is deliberate depth in the Card, not an exposed field" "$(field movement) / $(field movementExposed)" "Camera request preference · Movement / in detail"

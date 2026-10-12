@@ -43,7 +43,12 @@ export function camAt(a, b, e, arc = 0) {
 
 let travelGeneration=0;
 export const travelEpoch=()=>travelGeneration;
-onCancel(reason=>{if(['lens','preview','reset','presenter-reset'].includes(reason)){travelGeneration++;cancelTweens();}},1,'Camera interruption');
+// Stop in-flight motion where it actually is, without applying its endpoint: the standpoint stays at the
+// sampled pose rather than being hurried to a destination nobody asked for. One authority, used by the
+// cancellation policy below and by anything that has to read a pose that is standing still.
+// It returns the pose in the authored (plain) shape, because that is what a View is authored from.
+export function interruptMotion(){travelGeneration++;cancelTweens();return plainPose();}
+onCancel(reason=>{if(['lens','preview','reset','presenter-reset'].includes(reason)){interruptMotion();}},1,'Camera interruption');
 export async function fly(to, ms, arc = 0) {
   const token=travelGeneration;
   // An explicit move is the moment the standpoint is re-derived: any parked hold is released.
@@ -178,9 +183,19 @@ export function framePoints(points,{plan=false,captureReturn=true}={}){
  if(plan)target[2]+=frameH*offset*.6;else target[1]-=frameH*offset*.4;
  return fly({target:new V3(...target),az:plan?0:.7,el:plan?Math.PI/2:1.08,flat:plan?1:0,frameH,mirror:false},dur('camera',600));
 }
+// The anchor a Presentation's focus resolves to, in Camera's own terms: the subject's own position, a
+// region's centre, or the room's neutral reading. One authority, so the recommended framing, the derived
+// hint set and the Stage's semi-spatial View markers around the focus can never disagree about where
+// the focus is. It is Camera's answer about a resolved World point, never a reconstruction of geometry.
+export function focusPoint(p){
+ if(!p)return null;
+ if(p.focus.kind==='subjects')return worldPosition(p.focus.ids[0])||null;
+ if(p.focus.kind==='region')return p.focus.min.map((n,i)=>(n+p.focus.max[i])/2);
+ return [-2,1,0];
+}
 // Derived framing is Camera intent, never an authored View or an Experience pose policy.
 export function deriveFraming(p,hints=[]){
- const target=p.focus.kind==='subjects'?worldPosition(p.focus.ids[0]):p.focus.kind==='region'?p.focus.min.map((n,i)=>(n+p.focus.max[i])/2):[-2,1,0];
+ const target=focusPoint(p);
  if(!target)return null;
  const pose={target:[...target],az:1.2,el:.25,frameH:3,flat:0,mirror:false};
  for(const hint of hints){if(hint==='Near')pose.frameH=2.5;if(hint==='Far')pose.frameH=5;if(hint==='Left')pose.az-=.65;if(hint==='Right')pose.az+=.65;}

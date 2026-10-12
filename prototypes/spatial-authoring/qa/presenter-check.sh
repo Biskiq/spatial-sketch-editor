@@ -127,10 +127,10 @@ open_aid() { press '#jToggle'; }
 close_aid() { press '#journeys [data-jact=close]'; }
 # One authored edit through the product's own field: real caret, real value, real Enter. The explanation
 # is the field whose own topic Q2 observes, so the credit it earns is the outcome, not a stray write.
-author_once() { qa_scroll_center '#card [data-exp-primary]'; agent-browser click '#card [data-exp-primary]' >/dev/null 2>&1; qa_frames; agent-browser fill '#card [data-exp-primary]' "$1" >/dev/null 2>&1; qa_key_dispatch Enter; }
+author_once() { qa_card_explanation; qa_scroll_center '#card [data-exp-primary]'; agent-browser click '#card [data-exp-primary]' >/dev/null 2>&1; qa_frames; agent-browser fill '#card [data-exp-primary]' "$1" >/dev/null 2>&1; qa_key_dispatch Enter; }
 # An authored edit that is not the topic's own outcome: the Presentation's own name field, through the
 # product's real control.
-rename_once() { qa_scroll_center '#card [data-exp-field=name]'; agent-browser click '#card [data-exp-field=name]' >/dev/null 2>&1; qa_frames; agent-browser fill '#card [data-exp-field=name]' "$1" >/dev/null 2>&1; qa_key_dispatch Enter; }
+rename_once() { qa_card_menu; qa_scroll_center '#card [data-exp-field=name]'; agent-browser click '#card [data-exp-field=name]' >/dev/null 2>&1; qa_frames; agent-browser fill '#card [data-exp-field=name]' "$1" >/dev/null 2>&1; qa_key_dispatch Enter; }
 
 qa_open
 qa_say "== C9.9 · the review aid's eighteen topics"
@@ -322,9 +322,9 @@ CASING_USE="$(page 'Object.values(__me.ctx.experience.uses).find(u=>__me.ctx.exp
 NARRATION_USE="$(page "Object.values(__me.ctx.experience.uses).find(u=>u.primaryFor==='$MAIN').id")"
 open_rotor_relationships() {
   press "#index [data-act=exp-open][data-id=$MAIN]"
-  qa_js '(()=>{[...document.querySelectorAll("#card summary")].find(s=>s.textContent.startsWith("Additional contributions")).click();return true;})()' >/dev/null
-  press "#card [data-act=pres-ref][data-id=$ROTOR_USE]"
-  qa_js '(()=>{[...document.querySelectorAll("#card summary")].find(s=>s.textContent.startsWith("Activity relationships")).click();return true;})()' >/dev/null
+  qa_card_advanced
+  press "#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id=$ROTOR_USE]"
+  press '#card [data-exp-activity-details] > summary'
 }
 open_rotor_relationships
 NARRATION_SIGNAL="$(page "JSON.stringify({useId:'$NARRATION_USE',signal:'complete'})")"
@@ -415,9 +415,10 @@ COMPARE="$(page '__me.ctx.experience.stops[__me.ctx.experience.guide[1]].present
 press "#index [data-act=exp-open][data-id=$COMPARE]"
 author_once 'Look at the materials.'
 TELLING="$(page "Object.values(__me.ctx.experience.uses).find(u=>u.primaryFor==='$COMPARE').id")"
-qa_js '(()=>{[...document.querySelectorAll("#card summary")].find(s=>s.textContent.startsWith("Additional contributions")).click();return true;})()' >/dev/null
+# The explanation's own door holds the route to its Activity, where its timing and named phrases live.
+qa_card_explanation
 press "#card [data-act=pres-ref][data-id=$TELLING]"
-qa_js '(()=>{[...document.querySelectorAll("#card summary")].find(s=>s.textContent.startsWith("Explanation timing")).click();return true;})()' >/dev/null
+press '#card [data-exp-narration-details] > summary'
 agent-browser fill '#card [data-exp-def=duration]' '0.1' >/dev/null 2>&1
 qa_key_dispatch Enter
 press '[data-act=exp-source-accept]'
@@ -426,8 +427,9 @@ for _ in $(seq 1 10); do
   press "#index [data-act=exp-open][data-id=$COMPARE]"
   press '#card [data-act=exp-capture]'
   CUE="$(page "__me.ctx.experience.presentations['$COMPARE'].uses.at(-1)")"
-  press "#card [data-act=pres-ref][data-id=$CUE]"
-  select_control '[data-exp-cue]' "$CUE_SIGNAL"
+  # A View's own cue is authored in the one Advanced authoring home, named for the View it switches to.
+  qa_card_advanced
+  select_control "#card [data-exp-advanced-home] [data-exp-cue='$CUE']" "$CUE_SIGNAL"
   press '[data-act=exp-source-accept]'
 done
 qa_preview_guide

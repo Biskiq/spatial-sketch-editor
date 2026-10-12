@@ -57,6 +57,13 @@ export const S = {
      captured-use choice; `expReview` records the product outcomes the quickstart instructions observe. */
   expAudition: null,
   expCaptureAsk: null,
+  /* UX2 session disclosures, never source and never Undo: `expPlanAsk` holds a Plan-reading capture that
+     is waiting for explicit visitor intent (nothing is created before the choice), `expExplain` names the
+     Presentation whose ordinary explanation writer is open, and `expAdvanced` says whether the one
+     Advanced authoring home is shown. */
+  expPlanAsk: null,
+  expExplain: null,
+  expAdvanced: false,
   /* A shared-contribution replacement that reaches more than one linked Activity waits here for an
      explicit local/shared acceptance, so a rebind can never silently change every linked use. */
   expRebindAsk: null,

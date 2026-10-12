@@ -1,3 +1,4 @@
+import { worldInterpolate, realization } from './camera-evaluation.js';
 import { conformanceFixture } from './conformance-fixture.js';
 import { createSceneCapabilities, capability, capabilities, setSceneValue, replaceProfile, isRealized } from './experience-capabilities.js';
 import { buildCapabilitySubjects, realizeCapabilities, captureRepresentation, restoreRepresentation } from './experience-scene.js';
@@ -8,7 +9,7 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice, viewUseReach } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -127,16 +128,140 @@ export function reconcileVisitor(){
  if(changed)review({visitor:next});
  return changed;
 }
+// ----- UX2 creation: one aggregate Present, its Default View and the Camera View it reads -------
+
+// Presentation from a Plan reading never captures the plan silently: the author is asked for visitor
+// intent first, and nothing is created before that choice. The offer to use the plan itself as a visitor
+// View is made only if the visitor's own Camera kernel would reproduce it, and the question is asked of
+// that kernel rather than assumed here: the reading is carried through the shared evaluator at both
+// interpolation settings, and it must still come back as a plan with a finite projection.
+export function planCaptureSupport() {
+  const pose = { ...nav.plainPose(), flat: 1 };
+  for (const tFlat of [0, 1]) {
+    if (Math.abs((worldInterpolate(pose, pose, 1, tFlat).flat ?? 0) - 1) > 1e-6) {
+      return { ok: false, reason: 'The visitor Camera kernel does not carry a plan reading through a pose, so a plan capture could not honestly be shown to the visitor.' };
+    }
+  }
+  const aspect = (ctx.stage?.w || 16) / Math.max(1, ctx.stage?.h || 9);
+  const projection = realization(pose, aspect);
+  if (!(projection.fov > 0) || !Number.isFinite(projection.dist)) {
+    return { ok: false, reason: 'A plan reading cannot be evaluated as a Camera projection, so it is not offered as a visitor View.' };
+  }
+  return { ok: true, pose };
+}
+const planReading = () => (ctx.stage?.cam?.flat ?? 0) > 0.97;
+
+// The one canonical creation action. It writes the Presentation, its first View use as the Default and
+// the Camera View that use reads in one history step, with no Stop, route or narration. `+ Present`
+// captures the live composition: in-flight motion is stopped at the sampled pose rather than hurried to
+// a destination nobody asked for. `Present this` uses Camera's recommended framing for the selected
+// subject's extent; a logical subject with no extent captures the current view instead. Invalid input
+// changes nothing, because every writer runs inside the one command.
 export function present(focus = null) {
   const f = focus || (S.sel && !resolveExperience(S.sel) ? { kind: 'subjects', ids: [S.sel] } : { kind: 'environment' });
+  if (planReading() && !S.expPlanAsk) {
+    cancelProposal('invoke');
+    S.expPlanAsk = { focus: structuredClone(f) };
+    A.setStatus('Presenting from a Plan reading · choose how the visitor should meet this', 'info');
+    ctx.ui();
+    return false;
+  }
+  return commitPresent(f);
+}
+export function commitPresent(f, pose = null) {
+  const derived = f.kind === 'subjects' ? nav.deriveFraming({ focus: f }) : null;
+  // The live capture is taken through the same interruption the cancellation policy uses, so the pose
+  // that is authored is the pose that was on screen, not the endpoint of a move in flight.
+  const live = pose || nav.interruptMotion();
+  const name = pose ? 'Plan reading' : derived ? derived.name : 'Current view';
   const label = f.kind === 'subjects' && f.ids.length === 1 ? thing(f.ids[0])?.item?.name : null;
-  const id = command('Create Presentation', e => addPresentation(e, f, label || 'Untitled Presentation'));
-  if (id) reviewMoment(id,'presentation');
-  // A fresh subject-focused moment suggests Camera framing immediately: derived intent, never an
-  // authored View, and Capture is what accepts it.
-  const derived = nav.deriveFraming(ctx.experience.presentations[id]);
-  if (derived) S.derivedView = { presentation: id, ...derived };
-  openPresentation(id); return id;
+  const pid = command('Present', (e, c) => {
+    const id = addPresentation(e, f, label || 'Untitled Presentation');
+    addView(e, c, id, derived?.pose || live, name, 'entry');
+    return id;
+  });
+  S.expPlanAsk = null;
+  S.derivedView = null;
+  if (!pid) return false;
+  reviewMoment(pid, 'presentation');
+  openPresentation(pid);
+  return pid;
+}
+export function acceptPlanIntent(mode) {
+  const ask = S.expPlanAsk;
+  if (!ask) return false;
+  if (mode === 'cancel') { S.expPlanAsk = null; A.setStatus('Plan capture cancelled · nothing was created', 'info'); ctx.ui(); return false; }
+  // Composing in 3D is a real move to the authored reading: the Presentation is created once that move has
+  // arrived, so the live capture samples the 3D standpoint the author asked for rather than a pose
+  // half-way out of the plan.
+  if (mode === 'compose') {
+    S.expPlanAsk = null;
+    const arrived = A.go3D();
+    return arrived && typeof arrived.then === 'function' ? arrived.then(() => commitPresent(ask.focus)) : commitPresent(ask.focus);
+  }
+  const support = planCaptureSupport();
+  if (!support.ok) { A.setStatus(support.reason, 'refuse'); ctx.ui(); return false; }
+  S.expPlanAsk = null;
+  return commitPresent(ask.focus, support.pose);
+}
+// Set as Default writes the entry role inside the owning Presentation alone: Guide order, Camera routes
+// and a Stop's own entry override are untouched, and the former Default simply stops being one. It goes
+// through the same shared-use writer the role control always used, so every Stop that enters through this
+// View is still disclosed and accepted before anything is written.
+export function setDefaultView(useId) {
+  const u = ctx.experience.uses[useId];
+  if (!u?.viewId || u.role === 'entry') return false;
+  return changeRole(useId, 'entry');
+}
+// Remove from Presentation is the bounded local unlink C9.6's removal already implements: the use leaves
+// its Presentation, the Camera View is never deleted, and a Stop that entered through it keeps an
+// explicit, repairable missing entry. No replacement Default is picked, and Undo restores exactly.
+export function removeViewUse(useId) {
+  const u = ctx.experience.uses[useId];
+  if (!u?.viewId) return false;
+  const reach = viewUseReach(ctx.experience, ctx.cameraSource, useId);
+  const home = u.presentationId;
+  const result = command('Remove View from Presentation', e => removeContribution(e, useId));
+  if (!result) return false;
+  const left = [reach.default ? 'the Default is now unset' : '', reach.stopEntry ? 'a Stop entered through it' : '', reach.cue ? 'a View switching cue' : '', reach.origins.length ? `${reach.origins.length} Guide edge${reach.origins.length === 1 ? '' : 's'} used it as an origin` : ''].filter(Boolean);
+  A.setStatus(`View unlinked · Camera framing kept${left.length ? ' · ' + left.join(', ') : ''}`, 'edit');
+  if (S.sel === useId) A.select(home && ctx.experience.presentations[home] ? home : null);
+  ctx.ui();
+  return result;
+}
+// Look through is the View's explicit framing operation: it adopts the View's pose through Camera's own
+// seam and moves no source, no selection and no history. Selecting a View never does this by itself.
+export function lookThroughView(id) {
+  const u = ctx.experience.uses[id];
+  const v = ctx.cameraSource.views[u?.viewId || id];
+  if (!v?.pose) { A.setStatus('This View has no resolvable Camera pose to look through', 'refuse'); ctx.ui(); return false; }
+  nav.lookThrough({ ...v.pose, target: [...v.pose.target] });
+  A.setStatus(`Looking through ${u?.name || v.name}`, 'view');
+  ctx.ui();
+  return true;
+}
+// The ordinary explanation entry opens the existing focused writer; once content is authored the entry
+// becomes a quiet summary that reopens the same writer. It is session state, never source or history.
+export function openExplanation(pid = S.experienceContext.presentation) {
+  if (!pid || !ctx.experience.presentations[pid]) return false;
+  S.expExplain = S.expExplain === pid ? null : pid;
+  ctx.ui();
+  return true;
+}
+// The writer is a native disclosure, so the browser owns its open state; this only records which
+// Presentation the author opened, so a re-render while the writer is being used does not close it under
+// their hands. It renders nothing: the element already shows the state that is being recorded.
+export function noteExplanationDisclosure(pid, open) {
+  if (!ctx.experience.presentations[pid]) return false;
+  if (open) S.expExplain = pid; else if (S.expExplain === pid) S.expExplain = null;
+  return true;
+}
+// Advanced authoring is one home for the depth that is not ordinary: intent, narration and behaviors,
+// View switching and the derived suggestions. Opening it writes nothing.
+export function toggleAdvanced(on = null) {
+  S.expAdvanced = on == null ? !S.expAdvanced : !!on;
+  ctx.ui();
+  return S.expAdvanced;
 }
 export function openPresentation(id) {
   if (!ctx.experience.presentations[id]) return false;
@@ -164,6 +289,19 @@ export function handleExperienceAction(el) {
   // Back, Next and Skip move its cursor and never the documents, so they stay usable during Preview.
   if(S.visitor&&!['exp-visitor','exp-exit-preview'].includes(action))return true;
   if (action === 'exp-create') present();
+  // UX2: creation, its Default View and the View operations the Card offers. Focus operations replace
+  // the retired `Present environment`/`Present region` species: both edit the Presentation they are
+  // taken from rather than creating another one.
+  if (action === 'exp-plan-compose') return acceptPlanIntent('compose'), true;
+  if (action === 'exp-plan-view') return acceptPlanIntent('view'), true;
+  if (action === 'exp-plan-cancel') return acceptPlanIntent('cancel'), true;
+  if (action === 'exp-default') setDefaultView(el.dataset.id);
+  if (action === 'exp-remove-view') removeViewUse(el.dataset.id);
+  if (action === 'exp-explain') openExplanation(el.dataset.id || undefined);
+  if (action === 'exp-look') lookThroughView(el.dataset.id);
+  if (action === 'exp-advanced') toggleAdvanced(el.dataset.on === undefined ? null : el.dataset.on === 'true');
+  if (action === 'exp-focus-environment') { const pid = el.dataset.id; if (ctx.experience.presentations[pid]) updatePresentation(pid, 'focus', { kind: 'environment' }); }
+  if (action === 'exp-focus-region') { cancelProposal('invoke'); T.begin({ kind: 'experience-region', subject: S.sel, params: { first: null, presentation: el.dataset.id || S.experienceContext.presentation } }); A.setStatus('Choose two corners on the Stage to focus this Presentation on a region'); }
   if (action === 'exp-open') openPresentation(el.dataset.id);
   if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
   if (action === 'exp-guide') guideOverview();
@@ -182,7 +320,6 @@ export function handleExperienceAction(el) {
   if (action === 'exp-connect') connectOrigin(el.dataset.id);
   if (action === 'exp-route') editRoute(el.dataset.id);
   if (action === 'exp-route-return') returnRouteReading();
-  if(action==='exp-hints'&&autoView()){S.experienceContext.depth='hints';ctx.ui();}
   if (action === 'exp-hint') {const v=ctx.cameraSource.views[S.task?.target?.id];if(v)proposeFraming(el.dataset.key,Number(el.dataset.value));}
   if (action === 'exp-precise') preciseView(el.dataset.id);
   if (action === 'exp-precise-property') {if(!preciseProperty(el.dataset.id,el.dataset.grip))A.setStatus('That property needs a resolving Camera View','refuse');}
@@ -247,8 +384,9 @@ export function handleExperienceAction(el) {
   if(action==='exp-route-cancel')cancelProposal('route-cancel');
   if (action === 'exp-preview') preview(el.dataset.id || undefined);
   if (action === 'exp-exit-preview') exitPreview();
-  if (action === 'exp-region') { cancelProposal('invoke'); T.begin({kind:'experience-region',subject:S.sel,params:{first:null}}); A.setStatus('Choose two corners on the Stage to present a region'); }
-  if (action === 'exp-environment') present({ kind: 'environment' });
+  // `exp-region` survives as one of the two focus operations the Presentation menu offers; the retired
+  // `Present region` and `Present environment` species are gone, so neither creates a Presentation.
+  if (action === 'exp-region') { cancelProposal('invoke'); T.begin({kind:'experience-region',subject:S.sel,params:{first:null,presentation:el.dataset.id||S.experienceContext.presentation}}); A.setStatus('Choose two corners on the Stage to focus this Presentation on a region'); }
   return true;
 }
 export function presentationValid(id) { const p = ctx.experience.presentations[id]; return !!p && validateFocus(p, id => !!A.worldOf(id)); }
@@ -256,7 +394,10 @@ export function presentationValid(id) { const p = ctx.experience.presentations[i
 export function captureView(pid=S.experienceContext.presentation){
  const p=ctx.experience.presentations[pid];if(!p)return false;
  const derived=S.derivedView?.presentation===pid?nav.deriveFraming(p,S.task?.params.hints||[]):null;
- const result=command('Capture Camera View',(e,c)=>{const id=addView(e,c,pid,derived?.pose||nav.plainPose(),derived?.name||(entryUse(e,pid)?'Captured perspective':'Entry framing'),entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});S.derivedView=null;if(S.task?.kind==='experience-hints'){T.end();S.experienceContext.depth='ordinary';}
+ const result=command('Capture Camera View',(e,c)=>{const id=addView(e,c,pid,derived?.pose||nav.plainPose(),derived?.name||(entryUse(e,pid)?'Captured perspective':'Entry framing'),entryUse(e,pid)?'choice':'entry');const v=c.views[e.uses[id].viewId];v.focusAt=e.presentations[pid].focus.kind==='subjects'?A.worldOf(e.presentations[pid].focus.ids[0]):null;return id;});
+ // Accepting a derived framing ends the recommendation it came from: the offer belongs to the moment that
+ // asked for it, so an accepted Capture leaves no tray behind and no suggestion still claiming to be next.
+ S.derivedView=null;if(S.task?.kind==='experience-hints')T.end();
  // Accepting a framing is the outcome the explanation topic pairs with: the capture authors a View this
  // Presentation now carries, which is exactly what a loader-provided framing can never claim — and it is
  // recorded against this moment, so a Capture on another Presentation is never this one's framing.
@@ -332,7 +473,11 @@ export function visitorFrame(now) {
 export function regionPoint(p) {
  if(S.task?.kind!=='experience-region') return false;
  if(!S.task.params.first) { S.task.params.first=[p.x,0,p.z];A.setStatus('Choose the opposite corner'); }
- else { const first=S.task.params.first,second=[p.x,3,p.z];T.end();present({kind:'region',min:first.map((n,i)=>Math.min(n,second[i])),max:first.map((n,i)=>Math.max(n,second[i]))}); }
+ else { const first=S.task.params.first,second=[p.x,3,p.z];const pid=S.task.params.presentation;T.end();
+  // A region is a focus operation on the Presentation it was taken from, never a new Presentation: the
+  // retired `Present region` species is gone, and the shared edit is still the one source proposal.
+  if(ctx.experience.presentations[pid])updatePresentation(pid,'focus',{kind:'region',min:first.map((n,i)=>Math.min(n,second[i])),max:first.map((n,i)=>Math.max(n,second[i]))});
+  else A.setStatus('Presentation removed · the region focus was not written','refuse'); }
  ctx.ui();return true;
 }
 
@@ -348,7 +493,7 @@ export function selectStop(id){
  // Selecting a Stop ends any writer or procedure that belonged to the previous context: an old route
  // writer must not stay armed behind the new selection. Peek is awareness, not disclosure, so the
  // context normalizes to the same Peek-level reading; the realized viewpoint is preserved.
- const procedure=['occurrence','seam','route','coordination','precision','hints'].includes(x.depth);
+ const procedure=['occurrence','seam','route','coordination','precision'].includes(x.depth);
  if(procedure){S.derivedView=null;T.end();}
  const depth=procedure?'overview':x.depth;
  S.experienceContext={...x,depth,stop:null,presentation:stop.presentationId,seam:null};
@@ -840,6 +985,9 @@ onCancel(reason=>{
 function clearExperienceTransients(){
  S.experienceContext={presentation:null,depth:'ordinary',stop:null,seam:null};
  S.derivedView=null;S.expAudition=null;S.expOfferDraft=null;S.expCaptureAsk=null;S.expAsk=null;S.expSourceAsk=null;S.expRouteAsk=null;S.expRebindAsk=null;
+ // UX2 session disclosures: a Plan capture waiting for intent, the open explanation writer and the
+ // Advanced authoring home all belong to the moment that was cleared, never to the next document.
+ S.expPlanAsk=null;S.expExplain=null;S.expAdvanced=false;
  S.expReview={auditions:0,previews:0};S.parkedByLens.experience=null;T.end();
 }
 // Remove only the context that no longer resolves: a World subject or a retained Camera View stays

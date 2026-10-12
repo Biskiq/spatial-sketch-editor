@@ -341,6 +341,22 @@ export function removePresentation(e,pid) {
  for(const [key,seam] of Object.entries(e.seams))if(!e.stops[seam.from]||!e.stops[seam.to])delete e.seams[key];
  return {stops,uses};
 }
+// What removing one ordinary View use would leave behind, read from existing references alone: the
+// Default it carries, the Stops whose entry resolves to it, the View cue it holds and the Guide edges it
+// is an origin or destination of. Removal never deletes Camera truth used elsewhere and never picks a
+// replacement Default, so this is the disclosure the author reads before the unlink — not a plan for
+// rewriting something else afterwards.
+export function viewUseReach(e,c,useId) {
+ const u=e.uses[useId];if(!u||!u.viewId)return null;
+ const p=e.presentations[u.presentationId];
+ const stops=Object.values(e.stops).filter(s=>stopEntry(e,s.id).id===useId).map(s=>({id:s.id,name:s.name,order:e.guide.indexOf(s.id)}));
+ const origins=[];
+ for(const [key,s] of Object.entries(e.seams)){
+  const rows=originCoverage(e,c,s.from,s.to);
+  if(rows.some(r=>r.useId===useId))origins.push({key,from:s.from,to:s.to});
+ }
+ return {id:useId,name:u.name||c.views[u.viewId]?.name||useId,retained:!p,default:u.role==='entry',stopEntry:!!u.stopId,stops,cue:!!u.cue,origins};
+}
 // Remove one contribution use. A View use is unlinked locally; the Camera View is never deleted, and a
 // Stop that entered through it keeps an explicit, repairable missing entry rather than a hold.
 export function removeContribution(e,id) {

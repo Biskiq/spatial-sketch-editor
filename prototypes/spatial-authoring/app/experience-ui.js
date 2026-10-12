@@ -4,9 +4,10 @@ import { resolvedCamera, readingFor } from './navigation.js';
 import { eye, routeGeometry } from './camera-evaluation.js';
 import { stations } from './camera-evaluation.js';
 import { coordinateTiming, movementTiming } from './experience-coordination.js';
-import { originCoverage, getSeam, resolveNext, stopEntry, viewReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget } from './experience-model.js';
+import { originCoverage, getSeam, resolveNext, stopEntry, entryUse, viewReach, viewUseReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
-import { resolveExperience, experienceParkedContext, retainedContributions, linkedDefinitionReach, pendingDescriptor } from './experience.js';
+import { imageFor } from './experience-image.js';
+import { resolveExperience, experienceParkedContext, retainedContributions, linkedDefinitionReach, pendingDescriptor, planCaptureSupport } from './experience.js';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const button=(act,text,id='',role='action')=>`<button class="exp-action ${act.startsWith('exp-remove-')?'destructive':role}" data-act="${act}" data-id="${esc(id)}">${text}</button>`;
 export function experienceIndex() {
@@ -22,10 +23,11 @@ export function experienceIndex() {
   // World lens searches and the same Select the Card, the Index and the beacon resolve. What stays here
   // is what the locator cannot be: the acts that create something, and the two logical subjects whose
   // presentation is not a flight to a Stage position.
+  // Creation has one canonical action. Region and environment are focus operations on a Presentation
+  // (reached from its own Card), so they are not siblings of `+ Present` any more — the Index creates
+  // exactly one kind of thing and holds no editors.
   + `<div class="ix-group">Add</div><div class="ix-note">Presenting an identity is explicit; nothing is presented by browsing.</div>`
-  + `<div class="ix-row"><button class="ix-go" data-act="exp-create">+ Present</button><span class="ix-note">a Presentation on the selected identity, or a new one</span></div>`
-  + `<div class="ix-row"><button class="ix-go" data-act="exp-environment">Present environment</button><span class="ix-note">the logical subject with no Stage geometry</span></div>`
-  + `<div class="ix-row"><button class="ix-go" data-act="exp-region">Present region</button><span class="ix-note">two corners on the Stage</span></div>`
+  + `<div class="ix-row"><button class="ix-go" data-act="exp-create">+ Present</button><span class="ix-note">a Presentation with one Default View, on the selected identity or a new one</span></div>`
   + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button><span class="ix-note">every subject the Scene and the museum have, found by name</span></div>`;
 }
 const reuseCount=id=>Object.values(ctx.experience.stops).filter(s=>s.presentationId===id).length;
@@ -40,11 +42,29 @@ const captureScope=()=>ctx.experience.presentations[S.experienceContext.presenta
 function experienceCardBody(){
  const r=resolveExperience(S.sel),e=ctx.experience,c=resolvedCamera();
  if(r?.kind==='Presentation'){
-  const p=r.item,focus=p.focus.kind==='subjects'?p.focus.ids.map(id=>`${esc(thing(id)?.item.name||id)} ${button('pres-ref','Select',id,'reference')}`).join(', '):esc(p.focus.kind);
+  const p=r.item;
+  // Focus is a line, not a pair of verbs. It names the subject this Presentation is about, and that name
+  // is selectable in the shell's ordinary grammar — the same click-a-name-to-select-it the locator, the
+  // Index and the Stage use. Operating a subject belongs to that subject's own Card, so no Operate verb
+  // is offered here; the name takes the author there.
+  const focus=p.focus.kind==='subjects'?p.focus.ids.map(id=>`<button class="exp-action reference" data-act="pres-ref" data-exp-focus-subject="${esc(id)}" data-id="${esc(id)}">${esc(thing(id)?.item.name||ctx.sceneSource?.subjects?.[id]?.name||id)}</button>`).join(', '):esc(p.focus.kind==='region'?'a region on the Stage':p.focus.kind);
   const explanation=primaryExplanation(e,p.id),text=explanation?e.definitions[explanation.definitionId]?.text||'':'';
-  const others=Object.values(e.uses).filter(u=>u.presentationId===p.id&&!u.viewId&&!isPrimaryExplanation(e,p.id,u)).length;
-  const subjectId=p.focus.kind==='subjects'?p.focus.ids[0]:null;
-  return `<div class="c-head"><div class="c-k">Presentation · Experience</div><div class="c-t">${esc(p.name)}</div><div class="c-ref">${reuseCount(p.id)} Guide occurrences · ${p.uses.length} Views</div></div>${nameHtml(p)}<label class="exp-label">What the visitor hears in Preview<textarea data-exp-primary data-id="${p.id}" placeholder="Write one sentence the visitor will hear.">${esc(text)}</textarea></label><div class="c-sec">Focus</div><div class="exp-focus">${focus}${subjectId?`<br>${button('pres-ref','Operate '+esc(thing(subjectId)?.item.name||subjectId),subjectId,'reference').replace('data-id=',`data-operate="${subjectId}" data-id=`)}`:''}</div><div class="c-sec">Show · unordered Set</div>${setHtml(p)}<div class="c-acts">${button('exp-auto','Auto')}${button('exp-hints','Hints')}${button('exp-capture','Capture','', 'primary')}${button('exp-bring','Bring into view')}${button('exp-add-guide','Add to Guide',p.id)}</div><details class="exp-more"><summary>Reuse a Camera View</summary><select data-exp-reuse="${p.id}"><option value="">Choose Camera View</option>${Object.values(c.views).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select></details><details class="exp-more"><summary>Intent · shared summary</summary>${intentHtml(p)}</details><details class="exp-more"><summary>Additional contributions · ${others}</summary>${explanation?button('pres-ref','Explanation timing and phrases',explanation.id,'reference'):''}${button('exp-narration','Add narration')}${contributionsHtml(p.id)}</details><details class="exp-more"><summary>Advanced · add behavior or offer</summary><div class="c-acts">${button('exp-offer','Add behavior or offer')}</div>${offerHtml()}</details>${presentationActions(p)}${presentationDetails(p)}${askHtml()}`;
+  const others=Object.values(e.uses).filter(u=>u.presentationId===p.id&&!u.viewId&&!isPrimaryExplanation(e,p.id,u));
+  const def=entryUse(e,p.id),defView=def?c.views[def.viewId]:null;
+  return `<div class="c-head"><div class="c-k">Presentation · Experience</div><div class="c-t">${esc(p.name)}</div><div class="c-ref">${reuseCount(p.id)} Guide occurrences · ${p.uses.length} View${p.uses.length===1?'':'s'} · ${def?`★ ${esc(def.name||defView?.name||'Default View')}`:'No Default · uses the current viewpoint'}</div></div>`
+   + `<div class="c-sec">Focus</div><div class="exp-focus"><span class="exp-fact">Focus · ${focus}</span></div>`
+   + `<details class="exp-more" data-exp-menu="focus"><summary>Change focus…</summary><div class="c-acts">${button('exp-focus-environment','This environment',p.id)}${button('exp-focus-region','A region on the Stage',p.id)}</div><p class="c-hint">Environment and region are focus operations on this Presentation; neither creates a second one.</p></details>`
+   + `<div class="c-sec">Views · ${p.uses.length}${def?'':` · <span class="exp-gap" role="status">No Default · uses the current viewpoint</span>`}</div>${viewsList(p)}`
+   // The Views section's own row: what a View is made from and what it is used for. Recommended framing
+   // is here rather than on a Stage toolbar, and the derived suggestions it arms appear in this Card.
+   + `<div class="c-acts">${button('exp-capture','+ Capture view','','primary')}${button('exp-auto','Recommended framing…')}${button('exp-bring','Bring Views into view')}${button('exp-add-guide','Add to Guide',p.id)}</div>`
+   + framingTrayHtml(p)
+   + `<details class="exp-more" data-exp-menu="reuse"><summary>Use an existing Camera View</summary><label class="exp-label">Use an existing Camera View<select data-exp-reuse="${p.id}"><option value="">Choose Camera View</option>${Object.values(c.views).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select></label><p class="c-hint">Reusing a View shares one Camera framing with every other use of it.</p></details>`
+   + explanationHtml(p,text,explanation)
+   + advancedSummary(others)
+   + `<details class="exp-more" data-exp-menu="presentation"><summary>Presentation menu / Rename</summary>${nameHtml(p)}<div class="c-acts">${button('exp-advanced','Advanced authoring')}</div>${presentationActions(p)}</details>`
+   + (S.expAdvanced?advancedHtml(p,others):'')
+   + askHtml();
  }
  if(r?.kind==='Stop'){
   const p=e.presentations[r.item.presentationId],entry=stopEntry(e,r.item.id),view=c.views[e.uses[entry.id]?.viewId];
@@ -52,8 +72,30 @@ function experienceCardBody(){
  }
  if(r?.kind==='View use'&&!r.item.viewId)return activityCard(r.item);
  if(r?.kind==='View use'||r?.kind==='Camera View'){
-  const v=c.views[r.kind==='View use'?r.item.viewId:r.item.id],reach=v?viewReach(e,v.id):{uses:[],stops:[]},p=e.presentations[r.item.presentationId];
-  return `<div class="c-head"><div class="c-k">${r.kind} · ${r.owner}</div><div class="c-t">${esc(v?.name||'Missing framing')}</div><div class="c-ref">Owner · Experience role / Camera framing<br>${p?'In '+esc(p.name)+(r.item.stopId?' · this Stop entry':' · shared Presentation Set')+'<br>':''}Reach · ${reach.uses.length} uses · ${reach.stops.length} Stops</div></div><div class="c-sec">Camera framing</div><p class="exp-fact">${esc(v?.anchor||'Unresolved')} · Perspective${v?.review?'<br>'+esc(v.review):''}</p><div class="c-acts">${r.kind==='View use'&&v&&S.task?.kind!=='experience-camera'?button('exp-precise','Precise Camera',r.item.id):''}${button('exp-bring','Bring into view')}</div>${v?`<details class="exp-more"><summary>Precise Camera · properties</summary><div class="c-acts">${Object.entries(gripLabels).map(([g,label])=>button('exp-precise-property',label,r.item.id).replace('data-id=',`data-grip="${g}" data-id=`)).join('')}</div><p class="c-hint">A property opens Precision with that grip active; one value is live at a time on its Stage tape.</p></details>`:''}${v?`<details class="exp-more"><summary>Camera request preference · Movement</summary><label class="exp-label">Movement · Camera<select data-exp-view-speed="${r.item.id}">${['cut','slow','auto','fast'].map(speed=>`<option ${speed===(v.speed||'auto')?'selected':''}>${speed}</option>`).join('')}</select></label><p class="c-hint">How a framing request moves to this View when it is a destination. It never re-authors the Seam's Travel or its Camera route.</p></details>`:''}${r.kind==='View use'&&!r.item.stopId&&e.presentations[r.item.presentationId]?`<div class="c-sec">Current use · Experience</div><p class="exp-fact">${esc(r.item.role)}</p><div class="c-acts">${button('exp-role','Entry',r.item.id).replace('data-id=','data-role="entry" data-id=')}${button('exp-role','Visitor choice',r.item.id).replace('data-id=','data-role="choice" data-id=')}</div>${cueSelect(r.item.id)}`:''}${r.kind==='View use'?issuesHtml(r.item.id):''}${r.kind==='View use'&&!e.presentations[r.item.presentationId]?`<div class="c-acts">${button('exp-remove-contribution','Remove retained View use',r.item.id)}</div>`:''}${askHtml()}`;
+  const useId=r.kind==='View use'?r.item.id:null;
+  const v=c.views[r.kind==='View use'?r.item.viewId:r.item.id],reach=v?viewReach(e,v.id):{uses:[],stops:[]},p=r.kind==='View use'?e.presentations[r.item.presentationId]:null;
+  const name=(r.kind==='View use'?r.item.name:null)||v?.name||'Missing framing';
+  const isDefault=r.kind==='View use'&&r.item.role==='entry';
+  const consequence=r.kind==='View use'?viewUseReach(e,c,useId):null;
+  const preview=r.kind==='View use'&&v?viewPreviewHtml(useId,v):'';
+  // The Card shows the View, its faithful preview and its operations, then the owning Presentation as
+  // context — never as a second editor of the same thing. An unset Default ('No Default yet'), a missing
+  // referenced View ('repair required') and a use whose home Presentation was removed are three distinct
+  // states, and the last one is named as what it is rather than read as a Camera-owned framing.
+  const orphaned=r.kind==='View use'&&!!r.item.presentationId;
+  const home=p?`In ${esc(p.name)} · ${r.item.stopId?'this Stop entry':'the shared Views'}`:orphaned?'Removed home · retained for repair':`Camera truth, used by ${reach.uses.length} use${reach.uses.length===1?'':'s'}`;
+  const role=r.kind==='View use'?(isDefault?'★ Default View':entryUse(e,r.item.presentationId)?'A visitor View choice':'No Default yet'):'Camera-owned framing';
+  const framing=v?` · ${esc(v.anchor||'Unresolved')} framing`:' · repair required';
+  return `<div class="c-head"><div class="c-k">${r.kind==='View use'?'View · Experience':'Camera View · Camera'}</div><div class="c-t">${esc(name)}</div><div class="c-ref">${home}<br>${role}${framing}<br>Reach · ${reach.uses.length} uses · ${reach.stops.length} Stops</div></div>`
+   + preview
+   + `<div class="c-sec">Camera framing</div><p class="exp-fact">${esc(v?.anchor||'Unresolved')} · Perspective${v?.review?'<br>'+esc(v.review):''}</p><div class="c-acts">${r.kind==='View use'&&v&&S.task?.kind!=='experience-camera'?button('exp-precise','Edit Camera',useId):''}${v?button('exp-look','Look through',useId||v.id):''}</div>`
+   + viewOperationsHtml(r,v,useId)
+   + (v?`<details class="exp-more"><summary>Precise Camera · properties</summary><div class="c-acts">${Object.entries(gripLabels).map(([g,label])=>button('exp-precise-property',label,useId||v.id).replace('data-id=',`data-grip="${g}" data-id=`)).join('')}</div><p class="c-hint">A property opens Precision with that grip active; one value is live at a time on its Stage tape.</p></details>`:'')
+   + (v?`<details class="exp-more"><summary>Camera request preference · Movement</summary><label class="exp-label">Movement · Camera<select data-exp-view-speed="${useId||v.id}">${['cut','slow','auto','fast'].map(speed=>`<option ${speed===(v.speed||'auto')?'selected':''}>${speed}</option>`).join('')}</select></label><p class="c-hint">How a framing request moves to this View when it is a destination. It never re-authors the Seam's Travel or its Camera route.</p></details>`:'')
+   + (p?`<div class="c-sec">Owning Presentation</div><p class="exp-fact">${esc(p.name)} · ${reuseCount(p.id)} Guide occurrences · ${p.uses.length} Views</p>${button('exp-open','Open Presentation',p.id,'reference')}`:'')
+   + (consequence?.retained?`<div class="c-acts">${button('exp-remove-contribution','Remove retained View use',useId)}</div>`:'')
+   + (r.kind==='View use'?issuesHtml(useId):'')
+   + askHtml();
  }
  const s=ctx.sceneSource.subjects[S.sel];
  if(s)return experienceSubjectCard(s);
@@ -73,7 +115,7 @@ function presentationActions(p){
  const e=ctx.experience,stops=Object.values(e.stops).filter(s=>s.presentationId===p.id),uses=Object.values(e.uses).filter(u=>u.presentationId===p.id);
  const cued=uses.filter(u=>u.cue).length,offers=uses.filter(u=>u.kind==='interaction').length;
  const plural=(n,word)=>`${n} ${word}${n===1?'':'s'}`;
- return `<details class="exp-more"><summary>Presentation actions · remove</summary><p class="c-hint">Removing keeps every shared definition, View use and retained reference: ${plural(stops.length,'Stop')} leave the Guide; ${plural(uses.length,'retained reference')} stay repairable (${plural(cued,'cue')}, ${plural(offers,'offer')}). Camera Views are never deleted.</p>${button('exp-remove-presentation','Remove Presentation',p.id)}</details>`;
+ return `<details class="exp-more" data-exp-menu="remove"><summary>Presentation actions · remove</summary><p class="c-hint">Removing keeps every shared definition, View use and retained reference: ${plural(stops.length,'Stop')} leave the Guide; ${plural(uses.length,'retained reference')} stay repairable (${plural(cued,'cue')}, ${plural(offers,'offer')}). Camera Views are never deleted.</p>${button('exp-remove-presentation','Remove Presentation',p.id)}</details>`;
 }
 // C9.6 revise operations on one selected contribution. Copy gives a new identity, Make local detaches the
 // definition, Link shares an existing definition, and Replace rebinds compatible descriptors. The writer
@@ -85,7 +127,7 @@ function reviseHtml(u,d){
  // While a scoped replacement waits for acceptance, the controls render what the author is proposing: the
  // capability list follows the pending subject, so the second choice of one shared proposal stays possible.
  const proposed=pendingDescriptor(u.id,d);
- return `<details class="exp-more"><summary>Revise · copy · link · replace</summary>`
+ return `<details class="exp-more" data-exp-menu="revise"><summary>Revise · copy · link · replace</summary>`
   +`<label class="exp-label">Name<input data-exp-act-name="${u.id}" value="${esc(d.name||'')}"></label>`
   +`<div class="c-acts">${button('exp-duplicate-contribution','Duplicate',u.id)}${button('exp-make-local','Make this definition local',u.id)}</div>`
   +(shared.length?`<label class="exp-label">Link to a shared ${esc(d.kind)} definition<select data-exp-link-definition="${u.id}"><option value="">Choose a shared definition</option>${shared.map(x=>`<option value="${x.id}">${esc(x.name||x.id)}</option>`).join('')}</select></label>`:'')
@@ -158,6 +200,94 @@ function coordinationDetail(){
  return `<div class="c-sec">Local coordination · task focus</div><div class="exp-fact" data-coordination-detail><b>${title} at ${esc(station.label)}</b><br>Owner · Experience · Seam into Stop ${destination}<br>Reach · this transition ×1${beats.map(b=>`<p>${b.kind==='hold'?`Hold · ${b.seconds}s`:`${esc(e.definitions[e.uses[b.useId]?.definitionId]?.name||'Contribution needs repair')} · ${esc(station.label)} · trigger moves here`}</p>`).join('')}</div>`;
 }
 
+// ----- UX2: the Views list, the ordinary explanation entry, Advanced authoring and the rendered preview
+
+// The Views list is the keyboard inventory of the same Views the Stage marks semi-spatially: unordered,
+// exactly one Default, and no order cue anywhere. Each row selects its View use — the canonical
+// identity — and writes nothing.
+const viewName=(e,id)=>{const u=e.uses[id];return u?.name||resolvedCamera().views[u?.viewId]?.name||'Missing framing';};
+export function viewsList(p){
+ const e=ctx.experience,c=resolvedCamera();
+ if(!p.uses.length)return `<p class="c-hint">No View yet · this Presentation uses the current viewpoint.</p>`;
+ return `<div class="exp-views" data-exp-views aria-label="Views · unordered, one Default">${p.uses.map(id=>{
+  const u=e.uses[id],v=c.views[u?.viewId],isDefault=u?.role==='entry';
+  return `<div class="exp-view${S.sel===id?' selected':''}"><button class="exp-action reference" data-act="pres-ref" data-id="${id}" data-exp-view-use="${id}"><span class="exp-star">${isDefault?'★':''}</span>${esc(viewName(e,id))}<small>${isDefault?'Default':u?.stopId?'this Stop entry':v?.review?'review':'visitor choice'}${v?'':' · repair required'}</small></button></div>`;
+ }).join('')}</div>`;
+}
+// One compact ordinary explanation entry, visible even when nothing is authored. It opens the existing
+// focused writer; once content exists it reads as that writer's quiet summary, and the same door carries
+// the one route to that explanation's own Activity — where its timing and named phrases are authored. The
+// depth stays behind the writer's own disclosure rather than becoming a second inventory on the Card.
+function explanationHtml(p,text,explanation){
+ const open=S.expExplain===p.id;
+ const summary=text?`Explanation · ${esc(text.length>58?text.slice(0,55)+'…':text)}`:'Add explanation';  return `<details class="exp-more" data-exp-explain="${p.id}"${open?' open':''}><summary>${open?'What the visitor hears in Preview':summary}</summary>`
+  +`<label class="exp-label">What the visitor hears in Preview<textarea data-exp-primary data-id="${p.id}" placeholder="Write one sentence the visitor will hear.">${esc(text)}</textarea></label>`
+  +`<div class="c-acts">${explanation?button('pres-ref','Explanation timing and phrases',explanation.id,'reference'):''}${button('exp-explain','Close explanation',p.id)}</div>`
+  +`<p class="c-hint">The explanation is the one authored text a visitor hears; Intent is the author's own summary.</p></details>`;
+}
+// Narration, behaviors and offers are not ordinary fields. When any is authored it earns one quiet
+// summary that opens the single Advanced authoring home.
+function advancedSummary(others){
+ if(!others.length)return '';
+ const kinds=[...new Set(others.map(u=>ctx.experience.definitions[u.definitionId]?.kind||'missing'))];
+ return `<div class="exp-summary"><button class="exp-action reference" data-act="exp-advanced" data-on="true">${others.length} ${kinds.every(k=>k==='narration')?'narration':kinds.length===1?kinds[0]:'narration, behaviors and offers'} · open Advanced authoring</button></div>`;
+}
+// The one Advanced authoring home: intent, narration and behaviors, View switching and the derived View
+// suggestions. Opening it writes nothing and changes no exposure outside itself.
+function advancedHtml(p,others){
+ const e=ctx.experience;
+ const switching=p.uses.map(id=>`<div class="exp-view-switch"><span>${esc(viewName(e,id))}</span>${cueSelect(id)}</div>`).join('');
+ return `<details class="exp-more advanced" data-exp-advanced-home open><summary>Advanced authoring</summary>`
+  +`<div class="c-sec">Intent · shared summary</div>${intentHtml(p)}`
+  +`<div class="c-sec">Narration, behaviors and offers · ${others.length}</div><div class="c-acts">${button('exp-narration','Add narration')}${button('exp-offer','Add behavior or offer')}</div>${contributionsHtml(p.id)}${offerHtml()}`
+  +`<div class="c-sec">View switching</div>${switching||'<p class="c-hint">A View cue is authored per View.</p>'}`
+  +`<div class="c-sec">View suggestions · estimate</div>${suggestionsHtml(p)}`
+  +`</details>`;
+}
+// The recommended-framing tray: the derived suggestion and its four variations, in the Views section that
+// offers them. A variation re-derives Camera intent only; `+ Capture view` is what accepts a View, so
+// nothing in this tray writes source or history.
+export function framingTrayHtml(p){
+ const d=S.derivedView?.presentation===p.id?S.derivedView:null;
+ if(!d)return '';
+ const picked=S.task?.kind==='experience-hints'?(S.task.params.hints||[]):[];
+ return `<div class="exp-hints" data-exp-hints><p class="exp-fact" role="status" data-exp-hint-read>Recommended framing · ${esc(d.name||'derived')}${picked.length?' · '+esc(picked.join(', ')):' · no variation chosen yet'}</p>`
+  +`${['Near','Far','Left','Right'].map(label=>button('exp-derived-hint',label).replace('data-id=',`data-hint="${esc(label)}" aria-pressed="${picked.includes(label)}" data-id=`)).join('')}`
+  +`<p class="c-hint">Derived Camera intent, never an authored View: Capture is what accepts it.</p>`
+  +`<div class="c-acts">${button('exp-close','Close recommendation')}</div></div>`;
+}
+// The rendered Camera preview: an image the Stage's own renderer produced from this View's resolved
+// pose, with a named placeholder while it is being drawn and a named reason if it cannot be. Selecting
+// the View has already moved no Camera.
+function viewPreviewHtml(useId,v){
+ const img=imageFor(v.id);
+ const box=`<div class="exp-preview" data-exp-preview="${useId}">`;
+ if(img.state==='ready')return `${box}<img src="${img.url}" alt="Rendered Camera preview of ${esc(viewName(ctx.experience,useId))}" data-exp-preview-image></div>`;
+ if(img.state==='pending')return `${box}<p class="exp-fact" role="status" data-exp-preview-pending>Rendering this View…</p></div>`;
+ return `${box}<p class="exp-fact" role="status">Camera preview unavailable · ${esc(img.reason)}</p></div>`;
+}
+// The View's own operations. Set as Default writes the entry role inside the owning Presentation alone;
+// Remove from Presentation is the bounded local unlink, disclosed before it happens; Rename edits the
+// name every use of this View reads.
+function viewOperationsHtml(r,v,useId){
+ if(r.kind!=='View use')return `<div class="c-acts">${v?button('exp-look','Look through',v.id):''}</div>`;
+ const e=ctx.experience,u=r.item,isDefault=u.role==='entry',reach=viewUseReach(e,resolvedCamera(),useId);
+ const retained=!e.presentations[u.presentationId];
+ const left=[reach?.default?'this is the Default View, so the Default is left unset':''].filter(Boolean).join('');
+ return `<div class="c-sec">View operations</div>`
+  +`<div class="exp-ops" data-exp-ops>${isDefault?`<p class="exp-fact" data-view-default>★ Default View · every use of this Presentation enters here unless a Stop overrides it</p>`:button('exp-default','Set as Default',useId)}`
+  +`<label class="exp-label">Rename<input data-exp-view-name="${useId}" value="${esc(u.name||v?.name||'')}"></label>`
+  +`${retained?'':button('exp-remove-view','Remove from Presentation',useId)}`
+  +`</div>`
+  +`<p class="c-hint" data-view-consequences>Removing unlinks this use only: the Camera framing is kept for every other use, and no replacement Default is chosen${left?' · '+esc(left):''}. A Stop that entered through it stays an explicit, repairable missing entry.</p>`;
+}
+// The derived View suggestions: an estimate and a free View order, both Camera/Experience intent that
+// writes no entry, Stop or Camera edge.
+function suggestionsHtml(p){const plan=presentationPlan(ctx.experience,resolvedCamera(),p.id,ctx.stage?{...ctx.stage.cam,target:ctx.stage.cam.target.toArray()}:null,undefined,null,ctx.sceneSource);return `${button('exp-view-order',p.viewOrder?'Free View choice':'Suggest a View order',p.id).replace('data-id=',`data-clear="${!!p.viewOrder}" data-id=`)}${p.viewOrder?orderedViews(ctx.experience,p.id).map(id=>`<p>${esc(viewName(ctx.experience,id))} ${button('exp-view-order-move','←',id).replace('data-id=','data-delta="-1" data-id=')}${button('exp-view-order-move','→',id).replace('data-id=','data-delta="1" data-id=')}</p>`).join(''):''}<p class="exp-fact">Estimated ${plan.readiness.toFixed(2)}s · current standpoint<br>Narration ${plan.narrationEnd.toFixed(2)}s · finite work ${plan.finiteEnd.toFixed(2)}s · persistent start ${plan.persistentStart.toFixed(2)}s · Camera ${plan.cameraArrival.toFixed(2)}s · +2s breathing.</p><p class="c-hint">Suggestions never change entry, Stops or Camera edges.</p>`;}
+// The Stop Card's own projection of the *shared* Presentation's Views, unchanged by UX2: the Stop Card
+// belongs to UX4, and this is the projection two accepted axes read (the schematic L2 Set and its spatial
+// counterpart). The Presentation Card no longer uses it — its row's Set exposure is the Views list plus
+// the Stage markers — so the retirement of this wording happens where the Stop Card is restructured.
 export function setHtml(p){return `<div class="exp-set" aria-label="Unordered View Set">${p.uses.map(id=>{const u=ctx.experience.uses[id],v=resolvedCamera().views[u?.viewId];return `<div class="exp-view">${button('pres-ref',`◁ ${esc(v?.name||'Missing View')}`,id,'reference')}<span>${esc(u.role)}${v?.review?' · review':''}</span></div>`;}).join('')||'<p class="c-hint">Auto suggests a framing. Capture adds it to this Set.</p>'}</div>`;}
 export function constellation(p){
  const c=resolvedCamera(),rows=p.uses.map(id=>({id,use:ctx.experience.uses[id],v:c.views[ctx.experience.uses[id]?.viewId]})).filter(r=>r.v),pts=rows.map(r=>eye(r.v.pose)),focus=rows[0]?.v.pose.target||[0,0,0];
@@ -183,8 +313,10 @@ export function renderExperienceSurfaces() {
 
 export function renderDeck(){
  let el=document.querySelector('#experienceDeck'),instrument=document.querySelector('#experienceInstrument');const e=ctx.experience,x=S.experienceContext;
- const cameraDepth=['hints','precision'].includes(x.depth);
- if(cameraDepth&&S.lens==='experience'&&!S.visitor){if(!instrument){instrument=document.createElement('section');instrument.id='experienceInstrument';document.querySelector('#stage').append(instrument);}const html=x.depth==='precision'?precisionHtml():hintsHtml();if(instrument._html!==html){instrument.innerHTML=html;instrument._html=html;}}else instrument?.remove();
+ // One Stage instrument remains: Edit Camera's precision pass. The recommended-framing tray is not an
+ // instrument any more — it lives in the Views section of the Presentation Card that asks for it.
+ const cameraDepth=x.depth==='precision';
+ if(cameraDepth&&S.lens==='experience'&&!S.visitor){if(!instrument){instrument=document.createElement('section');instrument.id='experienceInstrument';document.querySelector('#stage').append(instrument);}const html=precisionHtml();if(instrument._html!==html){instrument.innerHTML=html;instrument._html=html;}}else instrument?.remove();
  if(S.lens!=='experience'||S.visitor||!e.guide.length){el?.remove();document.body.classList.remove('guide-band');document.body.style.removeProperty('--guide-band-h');return;}  if(!el){el=document.createElement('section');el.id='experienceDeck';el.dataset.home='deck';document.body.append(el);}
  const depth=cameraDepth?'ordinary':x.depth;const home=depth==='ordinary'?document.querySelector('#stage'):document.body;if(el.parentElement!==home)home.append(el);el.className=`exp-deck ${depth}`;el.dataset.deckPosture=depth;
  // The non-ordinary Guide band is fixed over the bottom of the viewport. It declares itself on the body
@@ -223,7 +355,6 @@ export function precisionHtml(){
  const reading=readingFor({...v,pose:S.cameraDraft?.pose||v.pose});t.params.posture=reading;
  return `<div class="camera-toolbar"><b>Precise Camera · ${esc(v.name)} · ${reading} · Authoring</b>${button('exp-camera-return','Put it back')}${button('exp-close','Close')}</div><div class="camera-postures">${['outside','through','plan'].map(p=>button('exp-posture',p==='through'?'Look through':p).replace('data-id=',`aria-pressed="${reading===p}" data-posture="${p}" data-id=`)).join('')}</div><p class="c-hint">Active property · ${esc(gripLabels[t.params.grip]||'none')} — select another grip on the drawing; the full list stays in the Camera Card.</p>`;
 }
-export function hintsHtml(){return `<div class="camera-toolbar"><b>Framing Hints · derived intent</b>${button('exp-close','Close')}</div><p>Choose a suggestion, then Capture to author a View.</p>${['Near','Far','Left','Right'].map(label=>button('exp-derived-hint',label).replace('data-id=',`data-hint="${label}" data-id=`)).join('')}${button('exp-capture','Capture','', 'primary')}`;}
 export function coordinationHtml(seam){
  const camera=resolvedCamera(),route=camera.connections[S.task?.params.connection],geometry=route&&routeGeometry(camera,route.id),timing=coordinateTiming(camera,seam),s=S.experienceContext.seam,ids=[...new Set(originCoverage(ctx.experience,camera,s.from,s.to).map(r=>r.connectionId).filter(Boolean))];
  if(!geometry)return `<div class="coordination-strip"><b>Choose the Camera route to coordinate</b>${ids.map(id=>button('exp-route-choice',esc(camera.views[camera.connections[id].from]?.name),id)).join('')}</div>`;
@@ -233,6 +364,11 @@ export function coordinationHtml(seam){
  return `<div class="coordination-strip"><div class="deck-head"><b>Local coordination · ${esc(camera.views[route.from]?.name)} → ${esc(camera.views[route.to]?.name)} · ${geometry.seconds.toFixed(2)}s travel · ${clock.duration.toFixed(2)}s with holds</b><select data-exp-station aria-label="Camera station">${stations.map(s=>`<option value="${s.id}" ${s.id===S.task.params.station?'selected':''}>${esc(s.label)}</option>`).join('')}</select></div><div class="station-projection"><span>Route</span><div class="station-lane">${stations.map(s=>`<button style="left:${percent(stationTime(s))}%" class="station-tick ${S.task.params.station===s.id?'active':''}" data-act="exp-station-focus" data-id="${s.id}" data-station-counterpart="${s.id}" title="${esc(s.label)}">${s.id==='departure'||s.id==='arrival'?'●':'◆'}<small>${esc(s.label)}</small></button>`).join('')}</div><span>Beats</span><div class="temporal-lane">${timing.filter(b=>b.connectionId===route.id&&b.kind==='invoke').map(b=>`<button style="left:${percent(b.at??0)}%" data-act="exp-station-focus" data-id="${b.stationId}" data-beat="${b.id}" class="coord-beat ${(S.task.params.beat?S.task.params.beat===b.id:S.task.params.station===b.stationId)?'active':''}">● ${esc(ctx.experience.definitions[ctx.experience.uses[b.useId]?.definitionId]?.name||'Repair')}<small>${b.at===null?'Repair':b.at.toFixed(2)+'s'}</small></button>`).join('')}</div><span>Holds</span><div class="temporal-lane">${timing.filter(b=>b.connectionId===route.id&&b.kind==='hold').map(b=>`<label class="coord-hold ${S.task.params.beat===b.id?'active':''}" style="left:${percent(b.at??0)}%" data-beat="${b.id}">${b.at===null?'Repair':b.at.toFixed(2)+'s'} · <input type="number" min="0" step=".25" data-exp-hold="${b.id}" value="${b.seconds}" aria-label="Hold seconds">s</label><span class="hold-duration" style="left:${percent(b.at??0)}%;width:${b.seconds/Math.max(.001,clock.duration)*90}%" data-hold-duration="${b.id}" aria-label="${b.seconds}s hold at ${esc(stations.find(s=>s.id===b.stationId)?.label||'unresolved station')}"></span>`).join('')}</div></div><div class="coord-actions">${button('exp-beat','Hold here')}${button('exp-mark-station','Name mid-route station')}<select data-exp-invoke-use><option value="">Choose Activity</option>${Object.values(ctx.experience.uses).filter(invokable).map(u=>`<option value="${u.id}" ${S.task.params.invokeUse===u.id?'selected':''}>${esc(ctx.experience.definitions[u.definitionId]?.name)}</option>`).join('')}</select>${button('exp-invoke-beat','Invoke here').replace('class=',(S.task.params.invokeUse?'':'disabled ')+'class=')}<small>Binding moves that Activity's trigger to this station; a visitor offer stays with its subject. Path geometry stays on Stage.</small></div>${timing.filter(b=>b.at===null||b.reason).map(b=>`<p class="exp-gap">${esc(b.reason||'Station needs repair')}</p>`).join('')}${timing.filter(b=>b.kind==='invoke'&&!stationBound(b)).map(b=>`<p class="exp-gap" role="status">${esc(ctx.experience.definitions[ctx.experience.uses[b.useId]?.definitionId]?.name||'Coordinated Activity')} is triggered elsewhere · Invoke here restores its station binding</p>`).join('')}</div>`;
 }
 export function askHtml(){
+ // UX2: a Plan reading never captures itself. The choice is explicit, and nothing is created before it:
+ // composing in 3D, using the plan as the visitor's own View (offered only when the visitor's Camera
+ // kernel would reproduce it), or cancelling.
+ const plan=S.expPlanAsk;
+ if(plan){const support=planCaptureSupport();return `<div class="ask-rule" data-plan-ask role="status"><b>Present from a Plan reading</b><p>Nothing is created until you choose how the visitor should meet this${plan.focus.kind==='subjects'?' subject':''}.</p>${button('exp-plan-compose','Compose in 3D','','primary')}${support.ok?button('exp-plan-view','Use the plan as the visitor View'):`<p class="exp-gap" data-plan-view-unavailable>${esc(support.reason)}</p>`}${button('exp-plan-cancel','Cancel')}</div>`;}
  const source=S.expSourceAsk,ask=S.expAsk,route=S.expRouteAsk,rebind=S.expRebindAsk;
  // P1 — a descriptor replacement on a linked definition is a shared edit: it discloses the real reach
  // and waits for an explicit local fork or shared acceptance before anything is written.
@@ -283,10 +419,9 @@ function activityDetails(u){
  // A station binding is authored from the Seam's coordination strip, never invented here: the option only
  // appears as the current binding, so the same Activity always has exactly one visible trigger.
  const scope=activationScope(u),end=boundaryScope(u),retention=u.retention||u.end;
- return `<details class="exp-more"><summary>Activity relationships · optional</summary><label class="exp-label">Organized in<select data-exp-home="${u.id}"><option value="">Experience</option>${presentationOptions(u.presentationId)}</select></label><label class="exp-label">Starts<select data-exp-start="${u.id}">${[...[['visit','Presentation entry'],['experience','Experience start'],['after','After a supported signal']],...u.start.kind==='station'?[['station','Invoked at a Seam station']]:[]].map(([k,label])=>`<option value="${k}" ${u.start.kind===k?'selected':''}>${label}</option>`).join('')}</select></label>${u.start.kind==='station'?`<p class="exp-fact">Invoked by ${stationBindingLabel(u)}<br>The station is this Activity's only trigger; a visitor offer is never invoked by a traversal.</p>`:''}${['visit','after'].includes(u.start.kind)?`<label class="exp-label">Activation Presentation<select data-exp-start-presentation="${u.id}">${u.start.kind==='after'?`<option value="" ${scope===null?'selected':''}>Experience-wide listener</option>`:''}${presentationOptions(scope)}</select></label>`:''}${u.start.kind==='after'?`<label class="exp-label">Start signal${signalPicker('data-exp-after',u.id,{useId:u.start.useId,signal:u.start.signal},r=>r.useId!==u.id)}</label>`:''}<label class="exp-label">Running lifetime<select data-exp-boundary="${u.id}">${[['visit','Leave a Presentation'],['complete','This operation completes'],['experience','Stop or Experience end']].map(([k,label])=>`<option value="${k}" ${u.end.kind===k?'selected':''}>${label}</option>`).join('')}</select></label>${u.end.kind==='visit'?`<label class="exp-label">Lifetime Presentation<select data-exp-boundary-presentation="${u.id}">${presentationOptions(end)}</select></label>`:''}<label class="exp-label">Keep result until<select data-exp-retention="${u.id}">${[['default','Use running boundary'],['visit','Leave activation Presentation'],['complete','Operation completes'],['experience','Experience end']].map(([k,label])=>`<option value="${k}" ${(u.retention?.kind||'default')===k?'selected':''}>${label}</option>`).join('')}</select></label><label class="exp-label">On departure<select data-exp-interruption="${u.id}"><option value="">Adapter default</option>${['cancel','finish','continue'].map(k=>`<option ${u.interruption===k?'selected':''}>${k}</option>`).join('')}</select></label><p class="c-hint">Organization is a locator, never a start trigger. Lifetime, waiting scope and retained results are independent.</p></details>`;
+ return `<details class="exp-more" data-exp-activity-details><summary>Activity relationships · optional</summary><label class="exp-label">Organized in<select data-exp-home="${u.id}"><option value="">Experience</option>${presentationOptions(u.presentationId)}</select></label><label class="exp-label">Starts<select data-exp-start="${u.id}">${[...[['visit','Presentation entry'],['experience','Experience start'],['after','After a supported signal']],...u.start.kind==='station'?[['station','Invoked at a Seam station']]:[]].map(([k,label])=>`<option value="${k}" ${u.start.kind===k?'selected':''}>${label}</option>`).join('')}</select></label>${u.start.kind==='station'?`<p class="exp-fact">Invoked by ${stationBindingLabel(u)}<br>The station is this Activity's only trigger; a visitor offer is never invoked by a traversal.</p>`:''}${['visit','after'].includes(u.start.kind)?`<label class="exp-label">Activation Presentation<select data-exp-start-presentation="${u.id}">${u.start.kind==='after'?`<option value="" ${scope===null?'selected':''}>Experience-wide listener</option>`:''}${presentationOptions(scope)}</select></label>`:''}${u.start.kind==='after'?`<label class="exp-label">Start signal${signalPicker('data-exp-after',u.id,{useId:u.start.useId,signal:u.start.signal},r=>r.useId!==u.id)}</label>`:''}<label class="exp-label">Running lifetime<select data-exp-boundary="${u.id}">${[['visit','Leave a Presentation'],['complete','This operation completes'],['experience','Stop or Experience end']].map(([k,label])=>`<option value="${k}" ${u.end.kind===k?'selected':''}>${label}</option>`).join('')}</select></label>${u.end.kind==='visit'?`<label class="exp-label">Lifetime Presentation<select data-exp-boundary-presentation="${u.id}">${presentationOptions(end)}</select></label>`:''}<label class="exp-label">Keep result until<select data-exp-retention="${u.id}">${[['default','Use running boundary'],['visit','Leave activation Presentation'],['complete','Operation completes'],['experience','Experience end']].map(([k,label])=>`<option value="${k}" ${(u.retention?.kind||'default')===k?'selected':''}>${label}</option>`).join('')}</select></label><label class="exp-label">On departure<select data-exp-interruption="${u.id}"><option value="">Adapter default</option>${['cancel','finish','continue'].map(k=>`<option ${u.interruption===k?'selected':''}>${k}</option>`).join('')}</select></label><p class="c-hint">Organization is a locator, never a start trigger. Lifetime, waiting scope and retained results are independent.</p></details>`;
 }
-function narrationDetail(u,d){return `<details class="exp-more"><summary>Explanation timing · phrases</summary><label class="exp-label">Text<textarea data-exp-def="text" data-id="${u.id}">${esc(d.text)}</textarea></label><label class="exp-label">Duration seconds · optional<input type="number" min=".1" step=".5" data-exp-def="duration" data-id="${u.id}" value="${d.duration??''}" placeholder="${narrationDuration(d).toFixed(1)} inferred"></label><p class="c-hint">Explicit marker seconds never rescale after text or duration changes.</p>${narrationPassages(d).map(p=>button('exp-passage',`Name passage · ${esc(p.text)}`,u.id).replace('data-id=',`data-time="${p.start}" data-label="${esc(p.text)}" data-id=`)).join('')}${button('exp-marker','Add named phrase',u.id)}${d.markers.map(m=>`<label class="exp-label">Phrase label<input data-exp-marker-field="label" data-marker="${m.id}" data-id="${u.id}" value="${esc(m.label)}"></label><label class="exp-label">At seconds<input type="number" min="0" step=".5" data-exp-marker-field="time" data-marker="${m.id}" data-id="${u.id}" value="${m.time??m.fraction*narrationDuration(d)}"></label>${button('exp-marker-remove','Remove phrase',u.id).replace('data-id=',`data-marker="${m.id}" data-id=`)}`).join('')}</details>`;}
-function presentationDetails(p){const plan=presentationPlan(ctx.experience,resolvedCamera(),p.id,ctx.stage?{...ctx.stage.cam,target:ctx.stage.cam.target.toArray()}:null,undefined,null,ctx.sceneSource);return `<details class="exp-more"><summary>View suggestions · estimate</summary>${button('exp-view-order',p.viewOrder?'Free View choice':'Suggest a View order',p.id).replace('data-id=',`data-clear="${!!p.viewOrder}" data-id=`)}${p.viewOrder?orderedViews(ctx.experience,p.id).map(id=>`<p>${esc(ctx.experience.uses[id].name)} ${button('exp-view-order-move','←',id).replace('data-id=','data-delta="-1" data-id=')}${button('exp-view-order-move','→',id).replace('data-id=','data-delta="1" data-id=')}</p>`).join(''):''}<p class="exp-fact">Estimated ${plan.readiness.toFixed(2)}s · current standpoint<br>Narration ${plan.narrationEnd.toFixed(2)}s · finite work ${plan.finiteEnd.toFixed(2)}s · persistent start ${plan.persistentStart.toFixed(2)}s · Camera ${plan.cameraArrival.toFixed(2)}s · +2s breathing.</p><p class="c-hint">Suggestions never change entry, Stops or Camera edges.</p></details>`;}
+function narrationDetail(u,d){return `<details class="exp-more" data-exp-narration-details><summary>Explanation timing · phrases</summary><label class="exp-label">Text<textarea data-exp-def="text" data-id="${u.id}">${esc(d.text)}</textarea></label><label class="exp-label">Duration seconds · optional<input type="number" min=".1" step=".5" data-exp-def="duration" data-id="${u.id}" value="${d.duration??''}" placeholder="${narrationDuration(d).toFixed(1)} inferred"></label><p class="c-hint">Explicit marker seconds never rescale after text or duration changes.</p>${narrationPassages(d).map(p=>button('exp-passage',`Name passage · ${esc(p.text)}`,u.id).replace('data-id=',`data-time="${p.start}" data-label="${esc(p.text)}" data-id=`)).join('')}${button('exp-marker','Add named phrase',u.id)}${d.markers.map(m=>`<label class="exp-label">Phrase label<input data-exp-marker-field="label" data-marker="${m.id}" data-id="${u.id}" value="${esc(m.label)}"></label><label class="exp-label">At seconds<input type="number" min="0" step=".5" data-exp-marker-field="time" data-marker="${m.id}" data-id="${u.id}" value="${m.time??m.fraction*narrationDuration(d)}"></label>${button('exp-marker-remove','Remove phrase',u.id).replace('data-id=',`data-marker="${m.id}" data-id=`)}`).join('')}</details>`;}
 const signalOptions=()=>Object.values(ctx.experience.uses).flatMap(u=>{const d=ctx.experience.definitions[u.definitionId];if(d?.kind==='narration')return [{useId:u.id,signal:'complete'},...d.markers.map(m=>({useId:u.id,signal:`marker:${m.id}`}))];if(d?.kind==='control'&&capability(ctx.sceneSource,d.subjectId,d.capabilityId)?.kind!=='loop')return [{useId:u.id,signal:'complete'}];return [];}).filter(ref=>supportedSignal(ctx.experience,ctx.sceneSource,ref));
 export function cueSelect(id) {
  const use=ctx.experience.uses[id];

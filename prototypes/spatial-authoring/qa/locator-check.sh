@@ -164,6 +164,27 @@ qa_ok "a logical subject says it has no Stage geometry and offers Select alone" 
 qa_ok "a realized subject keeps the recovery its real position calls for, acting on its own name" \
   "$(emp 'any(v.startswith("light:sel") and "," in v for v in d["rowVerbs"]) or any(v.startswith("switch:sel") and "," in v for v in d["rowVerbs"])')" "1"
 
+qa_say "-- an authored Scene change reaches the locator without Reset"
+# The Scene is invalidated by its own revision, not by object identity. An authored change mutates a
+# subject in place — a new subject, a renamed one, a changed profile — and bumps the revision, so all
+# three must read in the listing exactly as the source now reads: no Reset, no reload, no new object.
+qa_locator_open find >/dev/null
+scene_before="$(qa_jsv 'JSON.stringify((() => { const s = window.__me.ctx.sceneSource; return [s.subjects.light.name, s.subjects.atmosphere.profile, !!s.subjects.qaAdded]; })())')"
+last="$(step "const s = ctx.sceneSource; s.subjects.qaAdded = { id: 'qaAdded', name: 'QA added fixture', profile: 'light', x: -6, z: 3, properties: { intensity: 1 } }; s.subjects.light.name = 'Light renamed'; s.subjects.atmosphere.profile = 'light'; s.revision++; S.browse.focus = null; S.browse.q = 'QA added';")"
+qa_ok "a subject added to the Scene is listed straight away, for what it really is" \
+  "$(emp '"qaAdded" in d["rows"] and any(v.startswith("qaAdded:sel") for v in d["rowVerbs"])')" "1"
+last="$(step "S.browse.q = 'Light renamed';")"
+qa_ok "a renamed subject answers to its new name" "$(field rows)" "['light']"
+last="$(step "S.browse.q = 'Museum atmosphere';")"
+qa_ok "a changed profile re-lists the subject with the actions that profile has, and drops the no-Stage-geometry mark" \
+  "$(emp 'all(not n.startswith("atmosphere:no location here") for n in d["rowNotes"]) and any(v.startswith("atmosphere:sel") and "," in v for v in d["rowVerbs"])')" "1"
+last="$(step "const s = ctx.sceneSource; delete s.subjects.qaAdded; s.subjects.light.name = 'Light'; s.subjects.atmosphere.profile = 'environment'; s.revision++; S.browse.q = 'QA added';")"
+qa_ok "…and putting the Scene back takes the added row away again" "$(emp 'd["rows"] == []')" "1"
+last="$(step "S.browse.q = '';")" # the probe leaves no query behind for the blocks that follow
+qa_ok "with the Scene's own fields left exactly as the probe found them" \
+  "$(qa_jsv 'JSON.stringify((() => { const s = window.__me.ctx.sceneSource; return [s.subjects.light.name, s.subjects.atmosphere.profile, !!s.subjects.qaAdded]; })())')" \
+  "$scene_before"
+
 qa_say "-- the register is still the register: it never borrows a Scene subject"
 last="$(step "S.browse.focus = { kind: 'records' };")"
 last="$(step '')"

@@ -35,16 +35,23 @@ QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WHICH="${1:-all}"
 rc=0
 export QA_CLOSE_ON_EXIT=1
+# This run's token: the axis names below stay readable while the session each axis uses is unique to this
+# process. QA_RUN_TOKEN may be pinned to reproduce a run's session name.
+RUN_TOKEN="${QA_RUN_TOKEN:-$$-$(date +%s)}"
 
 run() { # run <name> <script>
   echo
   echo "=================================================================="
   echo "  $1"
   echo "=================================================================="
-  QA_SESSION="p26-qa-$2" QA_OUT="$QA_DIR/out/$2" bash "$QA_DIR/$2.sh" || rc=1
+  # One session name per axis *per run*: the axis is still named for the reader, but the run token keeps
+  # two concurrent invocations (another worktree, another agent, a parallel mutation proof) from sharing
+  # one browser. Cleanup uses the same name, so nothing is left behind either.
+  local session="p26-qa-$2-$RUN_TOKEN"
+  QA_SESSION="$session" QA_OUT="$QA_DIR/out/$2" bash "$QA_DIR/$2.sh" || rc=1
   # The axis closes its own browser on every exit path; this is belt and braces for a hard kill, so
   # the next axis never starts behind a live helper. Never --all: that would close another agent's.
-  QA_SESSION="p26-qa-$2" agent-browser close >/dev/null 2>&1 || true
+  QA_SESSION="$session" agent-browser close >/dev/null 2>&1 || true
 }
 
 case "$WHICH" in

@@ -761,15 +761,32 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
 .exp-action.reference { background:transparent; border-color:transparent; padding:2px 0; text-align:left; }
 .exp-action[aria-pressed="true"] { background:var(--recess); border-color:var(--ink-3); box-shadow:inset 0 -2px var(--ink-2); }
 .exp-action:disabled { opacity:.45; cursor:default; }
-.exp-action:focus-visible,.set-node:focus-visible,.peek-stop:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+.exp-action:focus-visible,.set-node:focus-visible,.peek-stop:focus-visible,.exp-view-pin:focus-visible,.exp-focus-mark:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 .exp-label { display:block; margin:8px 16px; font-size:var(--tsm); }
 .exp-label input,.exp-label textarea { width:100%; margin-top:4px; padding:6px; border:1px solid var(--rule); background:var(--instrument); font:inherit; color:var(--ink); border-radius:3px; }
 .exp-label textarea { min-height:64px; resize:vertical; }
 .exp-focus,.exp-fact { margin:10px 16px; font-size:var(--tmd); line-height:1.5; }
-.exp-set { margin:8px 16px; display:flex; flex-direction:column; gap:6px; }
+/* UX2 · the Views list: the keyboard inventory of the same unordered Views the Stage marks around the
+   Presentation focus. Exactly one row carries ★, and no row implies an order. */
+.exp-views { margin:8px 16px; display:flex; flex-direction:column; gap:6px; }
 .exp-view { display:flex; align-items:center; gap:8px; font-size:var(--tsm); }
 .exp-view .reference { color:var(--camera); flex:1; }
-.exp-view span { color:var(--ink-3); font-size:var(--txs); }
+.exp-view small,.exp-view span { display:block; color:var(--ink-3); font-size:var(--txs); }
+.exp-view .exp-star { display:inline; color:var(--sel-edge); font-size:var(--tmd); }
+.exp-view.selected .reference { border-left:2px solid var(--sel-edge); padding-left:6px; }
+.exp-ops { margin:8px 16px; display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
+.exp-ops .exp-label { margin:0; flex:1 1 160px; }
+.exp-ops .exp-action { flex:0 0 auto; }
+.exp-summary { margin:10px 16px; }
+.exp-view-switch { margin:8px 16px; font-size:var(--tsm); }
+.exp-view-switch .cue-select { display:block; margin-top:4px; }
+/* The rendered Camera preview is a normal-World projection produced by the Stage's own renderer. */
+.exp-preview { margin:8px 16px; border:1px solid var(--rule); background:var(--recess); padding:6px; }
+.exp-preview img { display:block; width:100%; height:auto; image-rendering:auto; }
+.exp-preview .exp-fact { margin:2px 0; font-size:var(--txs); color:var(--ink-3); }
+.exp-more.advanced { border-left:2px solid var(--rule); padding-left:10px; }
+/* The focus mark the View markers are placed around: a place on the drawing, never a Camera target. */
+.exp-focus-mark { color:var(--ink-3); border:1px dashed var(--ink-3); background:transparent; font-size:var(--txs); padding:3px 6px; }
 .exp-more { margin:12px 16px; font-size:var(--tsm); }
 .exp-more summary { cursor:pointer; color:var(--ink-2); }
 .exp-deck { position:absolute; bottom:12px; left:12px; right:12px; z-index:35; padding:10px; background:var(--chassis); border:1px solid var(--rule); border-radius:3px; color:var(--ink); }
@@ -808,6 +825,8 @@ body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px);
 .exp-view-pin { color:var(--camera); border:1px solid var(--camera); background:var(--instrument); font-size:var(--tsm); padding:4px 7px; }
 .exp-view-pin small { display:block; font-size:var(--t2xs); }
 .exp-view-pin.selected,.exp-stop-pin.selected { border:2px solid var(--sel-edge); background:var(--sel-soft); }
+/* The framing marks stay Camera-coloured: a View's own standpoint (the direction glyph) and the small
+   origin square the leader joins to its marker. `.ov-svg path` resets fill, so both must state it. */
 .ov-svg .exp-view-glyph { fill:var(--camera); fill-opacity:.2; stroke:var(--camera); stroke-width:1; }
 .ov-svg .exp-view-origin { fill:var(--camera); stroke:var(--instrument); stroke-width:1; }
 .exp-focus-ray { fill:none; stroke:var(--camera); stroke-width:1; stroke-dasharray:4 5; opacity:.7; }

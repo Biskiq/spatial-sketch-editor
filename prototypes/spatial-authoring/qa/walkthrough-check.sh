@@ -43,10 +43,11 @@ qa_ok 'Experience returns to its own instruction cursor' "$(at)" 0
 sheet index; qa_locator_select machine
 sheet card; click '#card [data-act=exp-create]'
 earned Q1; advance Q1 1
+qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor.'
 click '#card [data-act=exp-capture]'
 earned Q2; advance Q2 2
-click '#card [data-operate=machine]'
+click '#card [data-exp-focus-subject=machine]'
 before="$(qa_jsv 'JSON.stringify(__me.A.domainSnapshot())')"
 fill '[data-exp-audition=casing]' '0.6'
 qa_ok 'operating the capability auditions without authoring' "$(qa_jsv 'JSON.stringify(__me.A.domainSnapshot())')" "$before"
@@ -69,6 +70,7 @@ earned Q5; advance Q5 5
 # UX1: the Experience Index no longer lists Scene subjects; the shared locator is the way to one.
 sheet index; qa_locator_select piano
 sheet card; click '#card [data-act=exp-create]'
+qa_card_explanation
 fill '[data-exp-primary]' 'Listen to the piano.'
 click '#card [data-act=exp-add-guide]'
 qa_ok 'the second Presentation becomes a distinct Stop with no manual Camera graph' "$(qa_js '(()=>{const e=__me.ctx.experience;return e.guide.length===2&&e.stops[e.guide[0]].presentationId!==e.stops[e.guide[1]].presentationId&&Object.keys(e.seams).length===0;})()')" true

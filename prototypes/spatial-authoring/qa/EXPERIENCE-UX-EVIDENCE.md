@@ -221,6 +221,97 @@ does not claim screen-reader or assistive-device coverage, which stays a prototy
   overwritten: `qa/capture-experience-shell.sh` still defaults to that directory, so a UX1 capture pass
   must name its own output path (as `screens/experience-ux1/` here does).
 
+## UX2 — Presentation and Views (landed)
+
+**Exit gate (plan §5):** QA 3 acceptance (§7), the creator narration/capture/offer jobs still executing
+through the new doors, and a first-time creator working Present → explain → capture → Preview without the
+Presenter.
+
+### What UX2 changed
+
+| Artifact | Change |
+| --- | --- |
+| `app/experience.js` | aggregate `present()`/`commitPresent()`: one command writes the Presentation, its first View use as the Default and the Camera View that use reads, capturing the live framing through the same interruption the cancellation policy uses. A Plan reading asks first (`planCaptureSupport`, `acceptPlanIntent` — compose in 3D, or use the plan as a visitor View only where the visitor kernel really reproduces it, or cancel) and creates nothing before the choice. `setDefaultView` is the one Default writer (the shared-use writer, so every Stop that enters through that View is disclosed first), `removeViewUse` is the bounded local unlink whose consequences are stated as they happen, `openExplanation`/`noteExplanationDisclosure` are the one ordinary explanation door, `toggleAdvanced` is the one advanced home, `lookThroughView` is the View's explicit framing operation. The Framing Hints posture and its Stage toolbar are retired: the recommended framing is asked for in the Card that offers it, and accepted by the same `+ Capture view` that authors any View. |
+| `app/experience-ui.js` | one ordinary Presentation Card (identity, Focus line, `+ Capture view`, the Views list with exactly one ★ Default, the recommended-framing tray, one `Add explanation` door, the Presentation menu carrying Rename / Advanced authoring / Remove / **Change focus…**), the View Card (rendered preview, its own operations — Set as Default, Rename, Remove from Presentation — with the consequences of a removal named before it happens, Look through, Edit Camera), and the single Advanced authoring home (intent, narration/behaviors/offers, View switching, derived suggestions). The Index keeps one creation entry (`+ Present`) and one locator door (`Browse World`); `Present environment` and `Present region` are now focus operations on the Presentation they belong to. |
+| `app/experience-image.js` (new) | the derivative image pass: one small target at the Stage's own aspect, a ≤32-image session cache keyed by resolved pose + World generation + aspect, at most one draw per idle turn, nothing drawn while a command, flight, gesture, numeric draft or visit is in progress, a refusal remembered rather than retried every turn, and a failure named rather than thrown. |
+| `app/stage.js` | `snapshotPose()` — the Stage's own renderer, Scene and builders, on a camera of the Stage's own, as a normal-World projection (no paper, selection, ghost, drafting aid or clipping) — with every state it touches restored in a synchronous `finally`; and `lastSnapshot`, the projection it actually drew, recorded beside the picture. |
+| `app/main.js` | one image turn per frame pass, and `qa.images()` — drawn, cached, queued, worst backlog, last draw in ms, last failure and last projection — as a read-only probe. |
+| `styles/app.css` | the Views list, the View Card and its preview box, the pending/unavailable placeholder, the advanced home. |
+| `qa/lib.sh` | the Card-door helpers (`qa_card_door`, `qa_card_explanation`, `qa_card_menu`, `qa_card_remove`, `qa_card_advanced`): one place that opens a native disclosure the way an author does, and never toggles one shut. |
+| `qa/experience-shell-check.sh` | +10 assertions (27 → 37), all of them the image pass's two laws read as numbers. |
+| `qa/conformance-check.sh` | the QA-1 journey re-pointed onto the new doors (aggregate Present, the explanation door, Advanced authoring, the Views list, Remove from Presentation, Set as Default, the recommended-framing tray in the Card that offers it), plus the one-creation-entry and Change-focus readings — 122 assertions. |
+| `qa/capture-experience-views.sh` (new) | the QA 3 capture pass: five states at both review sizes, each paired with a reading of what was photographed (the Views list really unordered with one ★ Default, the preview a render rather than its placeholder, the same controls reachable inside the narrow sheet). |
+| `qa/views-mutation-check.sh` (new) | this slice's replacement proof, chained into `qa/mutation-check.sh`; one leg can be re-run by name. |
+| `qa/creator-check.sh`, `composition-check.sh`, `locator-check.sh`, `presenter-check.sh`, `precision-c9-check.sh`, `reconciliation-check.sh`, `revision-check.sh`, `rich-check.sh`, `visitor-check.sh`, `walkthrough-check.sh`, `walkthrough-demo-check.sh` | re-pointed to the controls this slice moved, in this slice — never weakened to keep an old recipe green. |
+| `screens/experience-ux2/` | the five QA 3 captures, regenerated from this slice's source after the last edit. |
+
+### Readings
+
+| Proof | Result |
+| --- | --- |
+| all 26 axes (`qa/run-all.sh all`) | **green, 0 failures: 1,160 assertions** — journeys 59, interaction 56, flows 44, policy 41, World shell 47, precision 38, browse 60, repair 47, lens 82, Experience 30, **experience-shell 37**, locator 30, **conformance 122**, creator 25, composition 27, revision 38, rich 35, precision-c9 55, presenter 59, walkthrough 33, walkthrough-demo 59, visitor 42, reconciliation 13, continuity 55, responsive 15, correctness 11 |
+| `qa/capture-experience-views.sh` | **9 readings green** — the Presentation with its unordered Views list and its one ★ Default, the View's own operations with the rendered picture, the one Advanced authoring home, and the same two states reachable inside the narrow Card sheet, with the standpoint unmoved by any selection (five captures in `screens/experience-ux2/`) |
+| `node --test prototypes/spatial-authoring/tests/*.test.mjs` | **140 / 140 pass**, exit 0 |
+| `qa/views-mutation-check.sh` | **8 regressions rejected, none accepted, exit 0** (13 inner-axis failures, each one the caught mutation) |
+| QA 1–6 recipes on the moved controls | re-pointed in this slice through `lib.sh`'s Card doors and the Views list; the whole set is the 26-axis row above |
+
+### The image pass, as numbers
+
+The audited draw is taken with live session state the pass has to put back — an audition, projected and
+realized on the Stage — and the comparison is between the state the selection left and the state the pass
+left behind, with the draw provably inside that window.
+
+| Reading | Result |
+| --- | --- |
+| cold draw | one draw for one new pose, nothing left pending, worst backlog 1 |
+| draw time | cold **40 ms**, second View **3 ms**, asserted against the §3.6 ceiling of 50 ms |
+| cache | 1 entry after one pose, 2 after two, reported against the ≤32 bound |
+| warm re-selection | **0 draws**: the picture is served from the session cache |
+| neutrality | source digest, Undo/Redo depth, selection, audition, standpoint, realized camera and Stage rect identical; the live camera object is the same object afterwards |
+| realization | the restored audition is realized on the Stage (`lid.rotation.z = 0.72`), not merely remembered in session state |
+| projection | paper 0, authoring treatment off, no clipping — a normal-World reading |
+| refused draw | a named reason where the picture would be (`Camera preview unavailable · …`), no image pretending to be one, the refusal remembered rather than retried, live state intact, nothing counted as drawn |
+
+### The new slice is not a tautology
+
+| Reintroduced defect | Rejected at | Unaffected controls |
+| --- | --- | --- |
+| aggregate Present writes the Presentation but no View use | conformance · *Present this is one aggregate command…* | 116 green |
+| …and writes that View as a visitor choice instead of the Default | conformance · *Present this is one aggregate command…* | 116 green |
+| Presenting from a Plan reading captures the plan without asking | conformance · *Presenting from a Plan reading offers the intent choice…* | 111 green |
+| unlinking one View use takes two history steps | conformance · *Remove from Presentation unlinks one use in one history step* | 111 green |
+| Set as Default writes straight to source, bypassing the shared-use Ask | conformance · *shared Set role change asks before source/history changes* | 111 green |
+| the retired `Present region` row restored beside the one `+ Present` | conformance · *the Index offers exactly one creation entry…* | 116 green |
+| the derivative image drawn with the authoring treatment | experience-shell · *one idle turn drew the picture once…* | 34 green |
+| the image pass never gives the live camera back | experience-shell · *the pass wrote nothing…* | 34 green |
+
+### Recorded facts and limits
+
+- **An audition cannot already be live when a View is selected**: selecting a View use drops a
+  subject-local audition (the subject has stopped being the subject of work), so the audited reading sets
+  the audition through the same writer the Subject Card's own control calls, in the same synchronous turn
+  as the selection. The reading says so, and asserts it (`the audited draw is taken with live session
+  state, not an idle page`), so the neutrality claim is never vacuous.
+- **Set-aside/ghost geometry is reported, not asserted.** `lastSnapshot.awayHidden` is in the reading, but
+  the example authors no set-aside geometry at the moment of the audited draw, so it is a fact about the
+  fixture rather than a proof. The authoring-treatment law it belongs to is asserted through
+  `paper === 0`, `authoring === false` and `clips === 0`, and the `image-paper` mutation reintroduces an
+  authoring projection and is rejected.
+- **The draw-time ceiling is asserted per draw, not averaged.** The draws measured here are well inside
+  the 50 ms the plan allows; a machine under load could exceed it, and the assertion would report that
+  honestly rather than be loosened to pass.
+- **Re-focusing a Presentation on its environment is a real change of what it presents**, and nothing in
+  the product re-focuses one back onto a subject, so the one-creation-entry and Change-focus readings sit
+  at the end of the QA-1 journey, after everything that depends on that Presentation naming the machine
+  subject.
+- **What UX2 deliberately leaves where it is**: the Stop Card's own projection of a shared Presentation's
+  Views (the schematic L2 Set the accepted composition axis reads), the Deck and its postures, the Seam
+  triptych, the coordination strip and the Stop Card itself belong to UX4–UX6. UX2 moved creation, the
+  Views and the View operations, and re-pointed every recipe that reached them.
+- **The retired Framing Hints posture** is replaced by the Card's recommended-framing tray. The C9.2/C9.3
+  obligations still hold: the `route-writer` mutation leg's anchor follows the procedure list without the
+  retired posture, and the axis still rejects that defect.
+
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [axis]: ./experience-shell-check.sh

@@ -49,7 +49,7 @@ PY
     always-offered) axis=locator; expected='absent rather than inert' ;;
   esac
   log="$work/$kind.log"
-  if QA_SHOT=0 QA_SESSION="ux1-mutation-$kind" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
+  if QA_SHOT=0 QA_SESSION="ux1-mutation-$kind-$$" bash "$work/$kind/qa/$axis-check.sh" >"$log" 2>&1; then
     echo "FAIL: $axis accepted the $kind regression"
     exit 1
   fi

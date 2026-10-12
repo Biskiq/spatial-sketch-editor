@@ -78,7 +78,38 @@ window.ux0 = (() => {
   // UX1: the shell has one Preview control, and every control that can start a visit is inside it.
   const previewOutside = () => [...document.querySelectorAll('[data-act^=exp-preview]')]
     .filter((b) => !document.querySelector('#headPreview').contains(b)).length;
-  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect, previewOutside };
+  // UX2: the View preview's image pass is a derivative reading with two laws — bounded and neutral. Both
+  // are claims about readings, so one function gathers exactly what a draw may not move: source digest,
+  // history, the canonical selection, the standpoint, the session audition, the values the audition is
+  // realized as, the held reading, the realized camera and the stage rect.
+  const passState = () => JSON.stringify({
+    fp: fingerprint(),
+    audition: JSON.stringify(S.expAudition || null),
+    hold: __me.nav.hold(),
+    realized: JSON.stringify(q.realized()),
+    stage: stageRect()
+  });
+  // The values an audition is realized as on the Stage: what the pass has to have put back, not merely
+  // remembered in session state.
+  const machineCaps = () => {
+    const i = __me.ctx.stage.items.get('machine');
+    return [i?.capabilityParts?.lid?.rotation?.z ?? null, i?.capabilityParts?.rotor?.rotation?.y ?? null].map((n) => (n === null ? n : +n.toFixed(4)));
+  };
+  // What one produced image must read as, given the pass's draw count before the window opened: draws this
+  // window, still pending, worst backlog ever, session cache size, the failure it reported (or 'ok'), the
+  // time it took under the §3.6 ceiling, the picture being a real render rather than a placeholder, and the
+  // projection being a normal-World reading — no paper, no selection/ghost/drafting treatment, no clipping.
+  const imageReading = (drawsBefore) => {
+    const i = q.images();
+    const el = document.querySelector('[data-exp-preview] [data-exp-preview-image]');
+    const p = i.projection || {};
+    return [i.drawn - drawsBefore, i.queued, i.peak, i.cached, i.lastFail || 'ok', i.lastMs < 50,
+      !!el, /^data:image\//.test(el?.getAttribute('src') || ''),
+      p.paper === 0 && p.authoring === false && p.clips === 0].join('|');
+  };
+  // The live camera object the pass must never replace: it swaps its own in and restores the reference.
+  const liveCamHeld = () => __me.ctx.stage.cam === window.ux2Cam;
+  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect, previewOutside, passState, imageReading, liveCamHeld, machineCaps };
 })()
 JS
 )" >/dev/null; }
@@ -163,6 +194,19 @@ sleep 0.5
 qa_ok 'the open Preview menu offers every scope as a real hit target, with no sideways scroll' \
   "$(qa_js '[...document.querySelectorAll("#previewScopes button")].every((b) => window.ux0.reachable(b))') / $(qa_js 'document.querySelector("#headPreview").open') / $(qa_js 'document.documentElement.scrollWidth - innerWidth')" \
   'true / true / 0'
+# The disclosure is native. `<details>` already reports its own expanded state, so the summary must not
+# carry a second `aria-expanded` that could disagree with it, and a real Enter must open and close it.
+qa_ok 'the Preview summary states its expansion natively, with no aria-expanded copy to disagree with it' \
+  "$(qa_js 'document.querySelector("#headPreview > summary").getAttribute("aria-expanded")') / $(qa_js 'document.querySelector("#headPreview").open')" \
+  'null / true'
+qa_js 'document.querySelector("#headPreview > summary").focus()' >/dev/null
+agent-browser press Enter >/dev/null 2>&1
+qa_frames
+qa_ok 'a real Enter on the focused summary closes the disclosure (native activation, no scripted state)' \
+  "$(qa_js 'document.querySelector("#headPreview").open') / $(qa_js 'document.querySelector("#headPreview > summary").getAttribute("aria-expanded")')" 'false / null'
+agent-browser press Enter >/dev/null 2>&1
+qa_frames
+qa_ok '…and a second Enter opens it again' "$(qa_js 'document.querySelector("#headPreview").open')" 'true'
 qa_click '#headPreview > summary' >/dev/null 2>&1
 qa_preview_presentation || qa_fail_msg 'the Head Preview menu did not start the Presentation scope'
 qa_ok 'the menu closes behind the visit it started' "$(qa_js 'document.querySelector("#headPreview").open')" 'false'
@@ -172,7 +216,99 @@ qa_snap 'experience-shell-1440-preview'
 tap '[data-act=exp-exit-preview]'
 qa_ok 'leaving Preview restores the exact authoring context: same source, history, selection, standpoint and Deck posture' "$(qa_jsv 'window.ux0.fingerprint()') / $(bandof posture)" "$context_before / $preview_posture"
 
-echo "-- the narrow review size keeps the same laws"
+# A field is committed the way an author commits it: a real fill, then the key that accepts the value.
+fill(){ agent-browser fill "$1" "$2" >/dev/null; qa_press Enter; }
+# A selector goes to the page as a JSON string, never interpolated into JavaScript source: a selector
+# legitimately contains quotes, and a hand-built literal would turn a working control into a syntax error
+# the harness would read as a missing one.
+jsq() { python3 -c 'import json, sys; print("document.querySelector(%s)" % json.dumps(sys.argv[1]))' "$1"; }
+# Select something and read the pass state in the SAME synchronous turn: no frame, and therefore no draw,
+# can happen between the click and the reading, so the draw that follows is provably inside the window
+# whose two ends are compared. A second argument may put session state back the way the author had it, in
+# that same turn — a View selection drops a subject audition, so the two are taken together.
+pick() { # pick <selector> [session statements-in-one-expression]
+  qa_jsv "(async () => { const e = $(jsq "$1"); if (!e) return 'missing'; e.click(); ${2:-} window.ux2Cam = __me.ctx.stage.cam; return window.ux0.passState(); })()"
+}
+# The pass draws on an idle turn, and a backgrounded tab has no animation loop of its own, so the frames are
+# driven rather than waited for. Returns nonzero if the picture never arrives.
+wait_image() { # wait_image <selector>
+  local js; js="!!$(jsq "$1")"
+  for _ in $(seq 1 30); do qa_frames; [ "$(qa_js "$js")" = "true" ] && return 0; done
+  return 1
+}
+
+echo "-- the View preview image pass: bounded, and neutral to the author"
+# UX2: the View Card shows a picture the Stage's own renderer produced from the View's resolved pose. The
+# plan holds that pass to two laws — bounded (§3.6: one draw per idle turn, a small session cache, under
+# 50 ms) and neutral (§8/§10.3: no source, history, selection or clock write; the author's own projection,
+# standpoint and session state restored in the same synchronous turn; live navigation never moved). It is
+# read here because the shell axis owns the pass's interaction; what the picture looks like belongs to the
+# View Card, and is read by the QA 3 capture pass and the conformance axis.
+pid="$(qa_jsv '__me.S.experienceContext.presentation')"
+row() { printf '[data-exp-views] [data-exp-view-use="%s"]' "$1"; }
+view() { qa_jsv "(__me.ctx.experience.presentations[__me.S.experienceContext.presentation].uses[$1])"; }
+# Selecting a View use drops a subject-local audition, so the audition that the pass must put back is set in
+# the same turn as the selection, through the writer the Subject Card's own control calls.
+audition="__me.E.auditionCapability('machine','casing',0.6);"
+tap "#index [data-act=exp-open][data-id=\"$pid\"]"
+use_cold="$(view 0)"; use_warm="$(view 2)"; use_fail="$(view 1)"
+draws="$(qa_jsv '__me.qa.images().drawn')"
+pre="$(pick "$(row "$use_cold")" "$audition")"
+# The reading is not vacuous: the window really carries live session state for the pass to restore.
+qa_ok 'the audited draw is taken with live session state, not an idle page' \
+  "$(qa_jsv 'JSON.stringify(__me.S.expAudition)') / $(qa_js 'window.ux0.liveCamHeld()')" \
+  '{"machine":{"open":0.6}} / true'
+qa_ok 'a View is selected by its own row, and the selection is the only thing that moved' \
+  "$(qa_js '__me.S.sel')" "\"$use_cold\""
+wait_image "[data-exp-preview=\"$use_cold\"] [data-exp-preview-image]" || qa_fail_msg "the preview never rendered for $use_cold"
+cold_ms="$(qa_jsv '__me.qa.images().lastMs')"
+qa_ok 'one idle turn drew the picture once, from the Stage renderer itself, with nothing left pending' \
+  "$(qa_jsv "window.ux0.imageReading($draws)")" '1|0|1|1|ok|true|true|true|true'
+qa_ok 'the pass wrote nothing: source, history, selection, audition, standpoint, realized camera and stage exactly as the selection left them' \
+  "$(qa_jsv 'window.ux0.passState()') / $(qa_js 'window.ux0.liveCamHeld()')" "$pre / true"
+qa_ok '…and the audition it restored is realized on the Stage, not merely remembered as session state' \
+  "$(qa_jsv 'JSON.stringify(window.ux0.machineCaps())')" '[0.72,0]'
+# Warm: the same View again. Its pose is resolved and its picture is already drawn, so it costs no draw.
+tap "#index [data-act=exp-open][data-id=\"$pid\"]"
+warm="$(pick "$(row "$use_cold")")"
+qa_frames
+qa_ok 'a View already drawn is served from the session cache: a warm selection costs no draw' \
+  "$(qa_jsv "window.ux0.imageReading($((draws + 1)))")" '0|0|1|1|ok|true|true|true|true'
+qa_ok '…and the cache is the bounded session cache the plan allows, reported as it stands' \
+  "$(qa_js '__me.qa.images().cached<=32') / $(qa_jsv '__me.qa.images().cached')" 'true / 1'
+# A second, never-drawn View: exactly one further draw, keyed by its own pose, with the same neutrality and
+# the same live session state to put back.
+tap "#index [data-act=exp-open][data-id=\"$pid\"]"
+pre2="$(pick "$(row "$use_warm")" "$audition")"
+wait_image "[data-exp-preview=\"$use_warm\"] [data-exp-preview-image]" || qa_fail_msg "the preview never rendered for $use_warm"
+second_ms="$(qa_jsv '__me.qa.images().lastMs')"
+qa_ok 'a second View is drawn in its own turn from its own pose, and leaves the author just as untouched' \
+  "$(qa_jsv "window.ux0.imageReading($((draws + 1)))") / $(qa_jsv 'window.ux0.passState()') / $(qa_jsv 'JSON.stringify(window.ux0.machineCaps())')" \
+  "1|0|1|2|ok|true|true|true|true / $pre2 / [0.72,0]"
+qa_say "qa: image pass · cold ${cold_ms} ms · second ${second_ms} ms · cache $(qa_jsv '__me.qa.images().cached') of 32 · one draw per new pose, one job outstanding at a time"
+# Failure: the draw is refused at the Stage's own seam. A refusal must leave a named reason where the picture
+# would be, keep the live page intact, and not be retried every turn; with the renderer back, the refusal is
+# still remembered rather than the View being quietly redrawn behind the author. Statements must be one
+# expression here: the harness awaits whatever it is handed, and a bare statement list is a syntax error it
+# would report as an empty observation.
+qa_js "(() => { window.ux2Real = __me.ctx.stage.snapshotPose; __me.ctx.stage.snapshotPose = () => null; return true; })()" >/dev/null
+tap "#index [data-act=exp-open][data-id=\"$pid\"]"
+fail_pre="$(pick "$(row "$use_fail")")"
+for _ in $(seq 1 12); do
+  qa_frames
+  [ "$(qa_js "!!document.querySelector('[data-exp-preview=\"$use_fail\"] [role=status]')")" = "true" ] && break
+done
+qa_ok 'a refused draw leaves a named reason where the picture would be, and no image pretending to be one' \
+  "$(qa_js "document.querySelector('[data-exp-preview=\"$use_fail\"] [role=status]')?.textContent?.includes('Camera preview unavailable')") / $(qa_js "document.querySelector('[data-exp-preview=\"$use_fail\"] [data-exp-preview-image]')===null")" \
+  'true / true'
+qa_js "(() => { __me.ctx.stage.snapshotPose = window.ux2Real; return true; })()" >/dev/null
+qa_frames
+qa_ok '…the live authoring state is intact, the refusal is remembered, and nothing was drawn for it' \
+  "$(qa_jsv 'window.ux0.passState()') / $(qa_js "document.querySelector('[data-exp-preview=\"$use_fail\"] [data-exp-preview-image]')===null") / $(qa_jsv '__me.qa.images().drawn')" \
+  "$fail_pre / true / $((draws + 2))"
+
+
+qa_say "-- the narrow review size keeps the same laws"
 agent-browser set viewport 1024 768 >/dev/null
 qa_frames
 tap '#experienceDeck [data-act=exp-close]'
