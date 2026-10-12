@@ -33,7 +33,10 @@ fill '[data-exp-primary]' 'The casing protects the rotor.'
 click '#card [data-act=exp-capture]'
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click '#card [data-exp-focus-subject=machine]'
+# UX3: each captured Activity is authored through the subject's own door, one invoked operation at a time.
+qa_subject_invoke casing
 fill '[data-exp-audition=casing]' '1';click '#card [data-act=exp-use][data-cap=casing]'
+qa_subject_invoke rotor
 click '#card [data-act=exp-use][data-cap=rotor]'
 click "#index [data-act=exp-open][data-id='$pid']"
 qa_ok 'Reset authoring captured two real Activities in one Presentation' "$(qa_js '(Object.values(__me.ctx.experience.uses).filter(u=>__me.ctx.experience.definitions[u.definitionId]?.kind==="control").length===2&&Object.keys(__me.ctx.experience.presentations).length===1)')" true
@@ -92,7 +95,7 @@ checkpoint shared-scope
 # field a still-pending scope Ask is holding. Two linked offers, one subject (definition) choice, one
 # activation (use-only) choice.
 qa_locator_select light
-press '#card [data-act=exp-offer][data-kind=interaction]'
+press '#card [data-act=exp-add-interaction]'
 press '#card [data-act=exp-offer-accept]'
 offer="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.kind==="interaction").id')"
 offer_def="$(qa_jsv "__me.ctx.experience.uses['$offer'].definitionId")"
@@ -166,7 +169,13 @@ choose '[data-exp-profile]' meshAnnotated
 qa_ok 'the mesh provider now declares Annotate as a gained capability' "$(qa_js '__me.ctx.sceneSource.subjects.mesh.profile==="meshAnnotated"')" true
 click '[data-act=lens][data-lens=experience]'
 qa_js '__me.A.select("mesh")' >/dev/null;qa_frames
-qa_ok 'the unrealized Annotate is reported unsupported on its Card, not offered as a working control' "$(qa_js '(document.querySelector("#card").textContent.includes("not realized")&&!document.querySelector("#card [data-act=exp-use][data-cap=annotate]"))')" true
+# UX3: no capability control is on screen at rest, so eligibility is read where it now lives — the chooser
+# over declared descriptors, which reports the unrealized one and offers no way to invoke it, while the
+# realized descriptor beside it is offered. The same eligibility refuses the direct call below.
+click '#card [data-act=exp-add-behavior]'
+qa_ok 'the unrealized Annotate is reported in the chooser and never offered as an invocation' "$(qa_js '(()=>{const c=document.querySelector("#card [data-exp-chooser]");return !!c&&c.textContent.includes("not realized")&&!c.querySelector("[data-act=exp-choose-capability][data-cap=annotate]")&&!!c.querySelector("[data-act=exp-choose-capability][data-cap=emphasis]");})()')" true
+qa_ok 'invoking the unrealized capability is refused from the chooser path and records no audition' "$(qa_js '(__me.E.invokeCapability("mesh","annotate")===false&&!(__me.S.expAudition&&__me.S.expAudition.mesh&&"annotated" in __me.S.expAudition.mesh))')" true
+click '#card [data-act=exp-choose-cancel]'
 qa_ok 'operating the unrealized capability is explicitly refused and records no audition' "$(qa_js '(__me.E.auditionCapability("mesh","annotate",true)===false&&!(__me.S.expAudition&&__me.S.expAudition.mesh&&"annotated" in __me.S.expAudition.mesh))')" true
 # Offer creation reads the same eligibility: the picker lists only what this Stage realizes, and the
 # declared-but-unrealized one can never be authored as visitor work.

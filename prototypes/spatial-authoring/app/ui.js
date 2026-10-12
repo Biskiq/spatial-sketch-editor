@@ -692,6 +692,22 @@ function renderCard() {
     for(const detail of el.querySelectorAll('details'))if(openDetails.includes(detail.querySelector('summary')?.textContent))detail.open=true;
     if (focused) el.querySelector(`[data-field='${focused}']`)?.focus?.();
   }
+  // UX3: a choice the author just opened, and the operation it led to, are what they are looking for — and
+  // replacing the Card's content puts its scroll back at the top. So each is brought into the Card's own
+  // view once, the same impulse as an Ask being lifted above the identity: a pending decision reads from its
+  // own first row, the invoked operation reads as a row. None is ever yanked twice — the state that brought
+  // it in is remembered — so a later re-render leaves the reading where the author scrolled it.
+  const decision = el.querySelector('[data-exp-chooser]') || el.querySelector('[data-exp-offer-draft]') || el.querySelector('[data-exp-invoked]');
+  const pending = !!(S.expChoose || S.expOfferDraft);
+  const brought = S.expChoose ? `choose:${S.expChoose.subject}`
+    : S.expOfferDraft ? `offer:${S.expOfferDraft.kind}:${S.expOfferDraft.subjectId}`
+      : S.expInvoked ? `invoked:${S.expInvoked.subject}:${S.expInvoked.capability}` : '';
+  if (!brought) delete el.dataset.expBrought;
+  else if (decision && el.dataset.expBrought !== brought) {
+    el.dataset.expBrought = brought;
+    const r = decision.getBoundingClientRect(), c = el.getBoundingClientRect();
+    if (r.bottom > c.bottom - 1 || r.top < c.top + 1) decision.scrollIntoView({ block: pending ? 'start' : 'nearest', inline: 'nearest' });
+  }
 }
 
 function emptyCard() {

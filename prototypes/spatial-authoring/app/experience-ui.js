@@ -165,27 +165,80 @@ function stationBindingLabel(u){
  const from=e.guide.indexOf(s.seam?.from),to=e.guide.indexOf(s.seam?.to);
  return `${esc(station?.label||'Missing station')} · Seam ${from<0?'—':from+1} → ${to<0?'—':to+1}${e.stops[s.seam?.to]?'':' · Repair required'}`;
 }
-// The selected World subject in Experience: subject-local descriptor controls operate an ephemeral
-// audition; Use in Experience captures it as an Activity in the named working Presentation (or
-// explicitly at Experience scope) and updates a uniquely matching capture instead of duplicating it.
+// The selected World subject in Experience (UX3 · §3.7). The Card reads in the order QA 5 names:
+// identity, `Present this`, the derived `Used in Experience` reach, then the subject's own two doors. No
+// capability control is on screen at rest: `+ Add behavior` opens a chooser over the descriptors the
+// provider already declares, and invoking one is what puts that operation's existing audition and capture
+// writers on screen. Capture, update and ambiguity semantics are exactly the ones UX2 left in place, and
+// an audition still writes no source and no history.
 function experienceSubjectCard(s){
- const caps=capabilities(ctx.sceneSource,s.id),pid=captureScope(),p=pid?ctx.experience.presentations[pid]:null;
- const rows=caps.map(cap=>{
-  const value=auditioned(s,cap),matches=captureUses(ctx.experience,pid,s.id,cap.id),held=matches.length===1?matches[0]:null;
-  const scoped=matches.filter(u=>u.presentationId===pid).length;
-  const unreal=cap.realized===false;
-  const control=unreal?`<span class="exp-fact" role="status">Declared by the provider · not realized by this Stage</span>`:cap.control==='range'
-   ?`<input type="number" min="${cap.min??0}" max="${cap.max??1}" step=".1" data-exp-audition="${cap.id}" data-id="${s.id}" value="${Number(value)}" aria-label="${esc(cap.label)} audition">`
-   :`<div class="c-acts"><button class="exp-action" data-act="exp-audition" data-id="${s.id}" data-cap="${cap.id}" data-value="true" aria-pressed="${value===true}">${cap.kind==='state'?'On':'Play'}</button><button class="exp-action" data-act="exp-audition" data-id="${s.id}" data-cap="${cap.id}" data-value="false" aria-pressed="${value===false}">${cap.kind==='state'?'Off':'Stop'}</button></div>`;
-  const capture=unreal?'':pid
-   ?`<button class="exp-action ${held?'':'primary'}" data-act="exp-use" data-id="${s.id}" data-cap="${cap.id}">${held?(scoped?`Update captured ${esc(cap.label)}`:`Capture in ${esc(p.name)}`):`Use in ${esc(p.name)}`}</button>`
-   :`<button class="exp-action primary" data-act="exp-use-scope" data-id="${s.id}" data-cap="${cap.id}">Use at Experience scope</button>`;
-  return `<div class="exp-cap"><div class="exp-fact"><b>${esc(cap.label)}</b> · ${esc(cap.kind)} · ${unreal?'not realized':cap.sourceEditable?'source-editable':'session only'}<br>Audition · ${unreal?'reported unsupported':esc(valueLabel(cap,value))}${held?` · Captured${scoped?' in this Presentation':' (another Presentation)'}`:''}${matches.length>1?` · ${matches.length} captured uses — choose which to update`:''}</div><label class="exp-label">Try it ${control}</label><p class="c-hint">Temporary projection; source and history are untouched.</p><div class="c-acts">${capture}${matches.length>1?matches.map(u=>button('exp-capture-choice',`Update ${esc(ctx.experience.definitions[u.definitionId]?.name||'capture')}`,u.id)).join('')+button('exp-capture-new','Capture another'):''}</div></div>`;
- }).join('');
- const offers=button('exp-offer','Let visitors activate…',s.id).replace('data-id=',`data-kind="interaction" data-id=`);
+ const caps=capabilities(ctx.sceneSource,s.id);
  return `<div class="c-head"><div class="c-k">From the World lens</div><div class="c-t">${esc(s.name)}</div><div class="c-ref">Scene · ${esc(s.id)}<br>Selection stays this subject; the Presentation is named explicitly.</div></div>`
-  +(caps.length?`<div class="c-sec">Capabilities · operate, then Use</div>${rows}`:'<p class="c-hint">This subject declares no capabilities in the current profile.</p>')
-  +`<div class="c-sec">Presentation</div><div class="c-acts">${button('exp-create-this','Present this',s.id)}${offers}${S.expAudition?.[s.id]?button('exp-audition-clear','Clear audition',s.id):''}</div>${offerHtml()}${S.expCaptureAsk?captureAskHtml():''}${askHtml()}`;
+  +`<div class="c-sec">Presentation</div><div class="c-acts">${button('exp-create-this','Present this',s.id,'primary')}</div><p class="c-hint">Authors Camera's recommended framing for this subject's extent; a logical subject with no extent captures the current view.</p>`
+  +usedInExperienceHtml(s)
+  +subjectWorkHtml(s,caps)
+  +offerHtml()
+  +(S.expCaptureAsk?captureAskHtml():'')
+  +askHtml();
+}
+// The derived reach of one subject, read from existing references and read-only: the Presentations that
+// focus it, the behaviors and offers that target or are triggered by it, and the Stops presenting the
+// Presentations those live in. Each row opens its owner; none of them is a second editor, and none of them
+// marks a Presentation as the current selection.
+function usedInExperienceHtml(s){
+ const e=ctx.experience,sid=s.id;
+ const focuses=Object.values(e.presentations).filter(p=>p.focus.kind==='subjects'&&p.focus.ids.includes(sid));
+ const uses=Object.values(e.uses).filter(u=>{const d=e.definitions[u.definitionId];return (d?.kind==='control'&&d.subjectId===sid)||(u.kind==='interaction'&&u.triggerSubjectId===sid);});
+ const homes=[...new Set(uses.map(u=>u.presentationId).filter(Boolean))];
+ const stops=Object.values(e.stops).filter(st=>homes.includes(st.presentationId));
+ const row=(kind,id,act,label,note)=>`<div class="exp-used" data-exp-used="${kind}" data-id="${esc(id)}"><button class="exp-action reference" data-act="${act}" data-id="${esc(id)}">${label}</button><small>${note}</small></div>`;
+ const rows=[
+  ...focuses.map(p=>row('presentation',p.id,'exp-open',esc(p.name),`Presentation · focuses this subject · ${p.uses.length} View${p.uses.length===1?'':'s'}`)),
+  ...uses.map(u=>{const d=e.definitions[u.definitionId],home=e.presentations[u.presentationId];
+   return row('contribution',u.id,'pres-ref',`Open · ${esc(d?.name||'Missing contribution')}`,`${u.kind==='interaction'?`Offer · activated by ${esc(ctx.sceneSource.subjects[u.triggerSubjectId]?.name||'Missing activation')}`:'Behavior · targets this subject'} · ${esc(home?home.name:'Removed home · retained for repair')}`);}),
+  ...stops.map(st=>row('stop',st.id,'exp-stop',`Stop ${e.guide.indexOf(st.id)+1} · ${esc(st.name)}`,`Guide · ${esc(e.presentations[st.presentationId]?.name||'Missing Presentation')}`))];
+ return `<div class="c-sec">Used in Experience · ${rows.length}</div><div data-exp-used-in>${rows.join('')||'<p class="c-hint">Nothing in this Experience uses this subject yet.</p>'}</div>`;
+}
+// The subject's own doors, and the one operation behind them. `+ Visitor interaction` opens the existing
+// offer draft with this subject as its target and activation, so the offer writers are the ones an
+// Advanced-home offer already uses; `+ Add behavior` opens the chooser below.
+function subjectWorkHtml(s,caps){
+ const chooser=S.expChoose?.subject===s.id?S.expChoose:null;
+ const invoked=S.expInvoked?.subject===s.id?caps.find(c=>c.id===S.expInvoked.capability):null;
+ return `<div class="c-sec">Behavior · visitor interaction</div><div class="c-acts">${button('exp-add-behavior','+ Add behavior',s.id)}${button('exp-add-interaction','+ Visitor interaction',s.id)}</div><p class="c-hint">No capability is operated from this Card until one is added.</p>`
+  +(chooser?chooserHtml(s,caps):'')
+  +(invoked?capabilityWorkHtml(s,invoked):'');
+}
+// The chooser is a session choice over declared descriptors, not a second descriptor editor: what the
+// provider declares is listed, a descriptor this Stage does not realize is reported rather than offered,
+// and nothing here writes source or history.
+function chooserHtml(s,caps){
+ const rows=caps.map(cap=>{
+  const unreal=cap.realized===false;
+  return `<div class="exp-cap" data-exp-choice="${esc(cap.id)}"><div class="exp-fact"><b>${esc(cap.label)}</b> · ${esc(cap.kind)} · ${unreal?'not realized':cap.sourceEditable?'source-editable':'session only'}</div>`
+   +(unreal?`<p class="c-hint" role="status">Declared by the provider · not realized by this Stage, so it cannot be invoked here.</p>`
+    :`<div class="c-acts">${button('exp-choose-capability',`Add ${esc(cap.label)}`,s.id).replace('data-id=',`data-cap="${esc(cap.id)}" data-id=`)}</div>`)
+   +`</div>`;}).join('');
+ return `<div class="ask-rule" data-exp-chooser="${esc(s.id)}"><b>Add a behavior</b><p>What this subject declares; adding one invokes it and shows that operation's audition.</p>${rows||'<p class="c-hint">This subject declares no capabilities in the current profile.</p>'}${button('exp-choose-cancel','Cancel')}</div>`;
+}
+// One invoked operation: the ephemeral audition it is operated with, the value a capture would hold, and
+// the one capture writer in the named working Presentation (or explicitly at Experience scope). This is
+// the UX2 writer unchanged; what UX3 changed is when it appears — a capability control exists only once
+// its own operation has been invoked. The unrealized branches stay as the provider-swap guard they always
+// were: a replaced profile can leave an invoked id declared but no longer realized, and the row then reports
+// that rather than operating a capability this Stage does not consume.
+function capabilityWorkHtml(s,cap){
+ const pid=captureScope(),p=pid?ctx.experience.presentations[pid]:null;
+ const value=auditioned(s,cap),matches=captureUses(ctx.experience,pid,s.id,cap.id),held=matches.length===1?matches[0]:null;
+ const scoped=matches.filter(u=>u.presentationId===pid).length;
+ const unreal=cap.realized===false;
+ const control=unreal?`<span class="exp-fact" role="status">Declared by the provider · not realized by this Stage</span>`:cap.control==='range'
+  ?`<input type="number" min="${cap.min??0}" max="${cap.max??1}" step=".1" data-exp-audition="${cap.id}" data-id="${s.id}" value="${Number(value)}" aria-label="${esc(cap.label)} audition">`
+  :`<div class="c-acts"><button class="exp-action" data-act="exp-audition" data-id="${s.id}" data-cap="${cap.id}" data-value="true" aria-pressed="${value===true}">${cap.kind==='state'?'On':'Play'}</button><button class="exp-action" data-act="exp-audition" data-id="${s.id}" data-cap="${cap.id}" data-value="false" aria-pressed="${value===false}">${cap.kind==='state'?'Off':'Stop'}</button></div>`;
+ const capture=unreal?'':pid
+  ?`<button class="exp-action ${held?'':'primary'}" data-act="exp-use" data-id="${s.id}" data-cap="${cap.id}">${held?(scoped?`Update captured ${esc(cap.label)}`:`Capture in ${esc(p.name)}`):`Use in ${esc(p.name)}`}</button>`
+  :`<button class="exp-action primary" data-act="exp-use-scope" data-id="${s.id}" data-cap="${cap.id}">Use at Experience scope</button>`;
+ return `<div class="exp-cap" data-exp-invoked="${esc(cap.id)}"><div class="exp-fact"><b>${esc(cap.label)}</b> · ${esc(cap.kind)} · ${unreal?'not realized':cap.sourceEditable?'source-editable':'session only'}<br>Audition · ${unreal?'reported unsupported':esc(valueLabel(cap,value))}${held?` · Captured${scoped?' in this Presentation':' (another Presentation)'}`:''}${matches.length>1?` · ${matches.length} captured uses — choose which to update`:''}</div><label class="exp-label">Try it ${control}</label><p class="c-hint">Temporary projection; source and history are untouched.</p><div class="c-acts">${capture}${matches.length>1?matches.map(u=>button('exp-capture-choice',`Update ${esc(ctx.experience.definitions[u.definitionId]?.name||'capture')}`,u.id)).join('')+button('exp-capture-new','Capture another'):''}${S.expAudition?.[s.id]?button('exp-audition-clear','Clear audition',s.id,'reference'):''}${button('exp-invoke-close','Close',s.id,'reference')}</div></div>`;
 }
 function captureAskHtml(){
  const ask=S.expCaptureAsk;
@@ -450,7 +503,7 @@ export function offerHtml() {
  const draft=S.expOfferDraft;if(!draft)return '';
  const scene=ctx.sceneSource,cap=capability(scene,draft.subjectId,draft.capabilityId);
  const subjects=selected=>Object.values(scene.subjects).map(s=>`<option value="${s.id}" ${selected===s.id?'selected':''}>${esc(s.name)}</option>`).join('');
- return `<div class="offer-draft"><b>Add behavior or offer</b><label>Kind <select data-exp-offer="kind"><option value="behavior">Behavior</option><option value="interaction" ${draft.kind==='interaction'?'selected':''}>Visitor offer</option></select></label><label>Target <select data-exp-offer="subjectId">${subjects(draft.subjectId)}</select></label><label>Capability <select data-exp-offer="capabilityId">${capabilities(scene,draft.subjectId).filter(isRealized).map(c=>`<option value="${c.id}" ${c.id===draft.capabilityId?'selected':''}>${esc(c.label)}</option>`).join('')}</select></label>${cap?.control==='range'?`<label>Value <input type="number" data-exp-offer="value" value="${Number(draft.value)}" min="${cap.min}" max="${cap.max}" step=".1"></label>`:`<label>Value <select data-exp-offer="value"><option value="true">On / Play</option><option value="false" ${draft.value==='false'?'selected':''}>Off / Stop</option></select></label>`}${draft.kind==='interaction'?`<label>Activation <select data-exp-offer="trigger">${subjects(draft.trigger)}</select></label><label>Availability <select data-exp-offer="availability"><option value="">Experience-wide</option>${Object.values(ctx.experience.presentations).map(p=>`<option value="${p.id}" ${draft.availability===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><p class="c-hint">Availability is independent of this Presentation's meaning. Experience-wide is the default.</p>`:''}<div class="c-acts">${button('exp-offer-accept','Add')}${button('exp-offer-cancel','Cancel')}</div></div>`;
+ return `<div class="offer-draft" data-exp-offer-draft><b>Add behavior or offer</b><label>Kind <select data-exp-offer="kind"><option value="behavior">Behavior</option><option value="interaction" ${draft.kind==='interaction'?'selected':''}>Visitor offer</option></select></label><label>Target <select data-exp-offer="subjectId">${subjects(draft.subjectId)}</select></label><label>Capability <select data-exp-offer="capabilityId">${capabilities(scene,draft.subjectId).filter(isRealized).map(c=>`<option value="${c.id}" ${c.id===draft.capabilityId?'selected':''}>${esc(c.label)}</option>`).join('')}</select></label>${cap?.control==='range'?`<label>Value <input type="number" data-exp-offer="value" value="${Number(draft.value)}" min="${cap.min}" max="${cap.max}" step=".1"></label>`:`<label>Value <select data-exp-offer="value"><option value="true">On / Play</option><option value="false" ${draft.value==='false'?'selected':''}>Off / Stop</option></select></label>`}${draft.kind==='interaction'?`<label>Activation <select data-exp-offer="trigger">${subjects(draft.trigger)}</select></label><label>Availability <select data-exp-offer="availability"><option value="">Experience-wide</option>${Object.values(ctx.experience.presentations).map(p=>`<option value="${p.id}" ${draft.availability===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><p class="c-hint">Availability is independent of this Presentation's meaning. Experience-wide is the default.</p>`:''}<div class="c-acts">${button('exp-offer-accept','Add')}${button('exp-offer-cancel','Cancel')}</div></div>`;
 }
 // C9.6 repair: the choices this Stop actually authors, each read against the Stop it names. A destination
 // that left with its Presentation is repairable or removable here — the one place the author reads that

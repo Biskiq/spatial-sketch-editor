@@ -48,6 +48,8 @@ fill '[data-exp-primary]' 'The casing protects the rotor.'
 click '#card [data-act=exp-capture]'
 earned Q2; advance Q2 2
 click '#card [data-exp-focus-subject=machine]'
+# UX3: the audition the Q3 recipe earns is reached through the subject's own door, as an author reaches it.
+qa_subject_invoke casing
 before="$(qa_jsv 'JSON.stringify(__me.A.domainSnapshot())')"
 fill '[data-exp-audition=casing]' '0.6'
 qa_ok 'operating the capability auditions without authoring' "$(qa_jsv 'JSON.stringify(__me.A.domainSnapshot())')" "$before"

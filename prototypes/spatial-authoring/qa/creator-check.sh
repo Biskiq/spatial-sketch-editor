@@ -56,6 +56,9 @@ click '#card [data-exp-explain] > summary'
 fill '[data-exp-primary]' 'The casing opens to reveal the drive.'
 click '#card [data-act="exp-capture"]'
 click '#card [data-exp-focus-subject="machine"]'
+# UX3: the subject's Card offers its own door, and invoking one operation is what shows that operation's
+# audition and its one capture writer.
+qa_subject_invoke casing
 before="$(source_json)";count="$(undo)"
 fill '[data-exp-audition="casing"]' '0.6'
 qa_ok 'audition realizes casing geometry without changing any source/history' "$(qa_js 'Math.abs(__me.ctx.stage.items.get("machine").capabilityParts.lid.rotation.z-.72)<.0001') / $(source_json) / $(undo)" "true / $before / $count"
@@ -70,7 +73,9 @@ qa_ok 'real-clock Preview runs the visible casing effect and keeps all source/hi
 click '[data-act="exp-exit-preview"]'
 qa_ok 'Preview exit restores exact lens/identity/context/sheets, realized Camera and frozen source/history' "$(qa_js '({lens:__me.S.lens,sel:__me.S.sel,context:__me.S.experienceContext,sheet:__me.S.sheet})') / $(pose) / $(source_json) / $(undo)" "$context / $standpoint / $before / $count"
 qa_ok 'exit removes audition/visitor effects and restores the authored World value' "$(qa_js '(__me.S.expAudition===null&&__me.S.visitor===null&&Math.abs(__me.ctx.stage.items.get("machine").capabilityParts.lid.rotation.z-.24)<.0001)')" true
-# Update rather than duplicate, then cancel an explanation draft.
+# Update rather than duplicate, then cancel an explanation draft. Leaving Preview dropped the invoked
+# operation together with the audition it carried, so the same door is walked again.
+qa_subject_invoke casing
 fill '[data-exp-audition="casing"]' '0.9'
 click '#card [data-act="exp-use"][data-cap="casing"]'
 qa_ok 're-capture updates the uniquely matching Activity, never duplicating it' "$(qa_js '(()=>{const e=__me.ctx.experience,a=Object.values(e.uses).filter(u=>e.definitions[u.definitionId]?.kind==="control");return a.length===1&&e.definitions[a[0].definitionId].value===.9;})()')" true
@@ -99,16 +104,27 @@ click '#undoBtn'
 qa_ok 'Undo second load restores first load exactly without moving Camera' "$(source_json) / $(pose)" "$loaded / $standpoint"
 click '#undoBtn'
 qa_ok 'Undo first load restores independent World/Camera and prior Experience exactly' "$(source_json)" "$old"
-qa_ok 'Undo invalidates replaced working context without losing the valid World selection' "$(qa_js '(__me.S.experienceContext.presentation===null&&__me.S.experienceContext.depth==="ordinary"&&__me.S.sel==="machine"&&document.querySelector("#card").textContent.includes("Use at Experience scope"))')" true
+# UX3: the subject Card no longer shows any capability control at rest, so what this reading holds is that
+# the valid World selection still resolves to that subject's own Card — with its own doors, and nothing
+# operated until one of them is used.
+qa_ok 'Undo invalidates replaced working context without losing the valid World selection' "$(qa_js '(__me.S.experienceContext.presentation===null&&__me.S.experienceContext.depth==="ordinary"&&__me.S.sel==="machine"&&document.querySelector("#card .c-k").textContent.includes("World lens")&&!!document.querySelector("#card [data-act=exp-add-behavior]")&&!document.querySelector("#card [data-exp-audition]"))')" true
 # Compact viewport: ordinary controls remain reachable through accepted sheets, no advanced depth.
 agent-browser set viewport 1024 768 >/dev/null;qa_frames
 click '[data-act="sheet-index"]'
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 click '[data-act="sheet-card"]'
 qa_ok 'narrow ordinary Card reaches the explanation door and Capture with no Overview, lifecycle or precision work' "$(qa_js '(()=>{const hit=el=>{const r=el.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&(at===el||el.contains(at));};return hit(document.querySelector("[data-exp-explain] > summary"))&&hit(document.querySelector("[data-act=exp-capture]"))&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null&&!document.querySelector("#experienceDeck");})()')" true
-click '#card [data-exp-explain] > summary'
+# The door is opened the way an author opens it — never toggled shut — and the field is scrolled into the
+# sheet's own view before the reading, which is reachability rather than whatever happened to be on screen.
+qa_card_explanation
+qa_scroll_center '#card [data-exp-primary]'
 qa_ok '…opening that door reaches the ordinary writer inside the narrow sheet' "$(qa_js '(()=>{const el=document.querySelector("[data-exp-primary]"),r=el.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el;})()')" true
 click '#card [data-exp-focus-subject="machine"]'
+qa_subject_invoke casing
+# The narrow sheet opens at the top of the Card, and the invoked operation sits below the derived reach in
+# the order QA 5 fixes — so the author scrolls to it, and the reading is that it is reachable, not that it
+# happened to be on screen when the sheet opened.
+qa_scroll_center '#card [data-exp-audition=casing]'
 qa_ok 'narrow subject Card reaches casing audition and Use' "$(qa_js '(()=>{const els=[document.querySelector("[data-exp-audition=casing]"),document.querySelector("[data-act=exp-use][data-cap=casing]")];return els.every(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&(hit===el||el.contains(hit));});})()')" true
 qa_snap c9-creator-narrow
 qa_faults_ok 'creator commands'
