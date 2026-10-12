@@ -379,6 +379,26 @@ qa_locator_row() { # qa_locator_row <id>  — the row's own Select, with a real 
   qa_frames
   return 0
 }
+# UX3 · the subject's own door path. A capability control exists only once its operation has been invoked,
+# so a recipe that audits an audition or captures an Activity walks the three steps an author does: select
+# the subject, open `+ Add behavior`, choose the descriptor. Opening the door writes nothing and the chooser
+# only lists what the provider declares, so this is navigation to a control, never a state being faked.
+qa_subject_invoke() { # qa_subject_invoke <capability>   (the subject's Card must already be selected)
+  local out
+  # Two turns, because opening the door renders the chooser: one eval cannot both click and read a Card the
+  # page has not drawn yet, and a helper that assumed otherwise would read as "the descriptor is missing".
+  out="$(qa_js "(() => { const d = document.querySelector('#card [data-act=\"exp-add-behavior\"]'); if (!d) return 'no door'; d.click(); return 'ok'; })()")"
+  qa_frames
+  [ "$out" = '"ok"' ] || { qa_fail_msg "the selected subject's Card offers no behavior door ($out)"; return 1; }
+  out="$(qa_js "(() => { const c = document.querySelector('#card [data-act=\"exp-choose-capability\"][data-cap=\"$1\"]'); if (!c) return 'no descriptor'; c.click(); return 'ok'; })()")"
+  qa_frames
+  [ "$out" = '"ok"' ] || { qa_fail_msg "the descriptor chooser did not offer $1 ($out)"; return 1; }
+  return 0
+}
+qa_subject_operation() { # qa_subject_operation <subject> <capability>
+  qa_locator_select "$1" || return 1
+  qa_subject_invoke "$2"
+}
 # qa_locator_select <id> [pointer|keyboard]  — and nothing else: the identity changes, the visit does not
 qa_locator_select() { # qa_locator_select <id> [pointer|keyboard]
   qa_locator_open find || return 1

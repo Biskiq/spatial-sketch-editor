@@ -351,6 +351,89 @@ at the same time, never weakened.
   a document, never in Undo, and never read by the Experience model. It exists because the World writers
   mutate in place, which is exactly why object identity was the wrong key rather than a missing signal.
 
+---
+
+## UX3 — Scene subject (landed · functional gate verified, visual acceptance deferred to the single post-UX7 review)
+
+**Exit gate (plan §5):** QA 5 acceptance (§7) — a visible subject selects on click, `Browse World` reaches
+the rest through that same selection, the Card reads identity → `Present this` → Used in Experience →
+Add behavior / Visitor interaction, no capability control is on screen at rest, and no Presentation looks
+selected — with the audition still writing nothing and capture, update and ambiguity semantics unchanged.
+
+### What UX3 changed
+
+| Artifact | Change |
+| --- | --- |
+| `app/experience-ui.js` | the Scene subject Card restructured into the order QA 5 fixes: identity, `Present this` (the subject's own door, authoring Camera's recommended framing for its extent), the derived `Used in Experience` reach (`usedInExperienceHtml`), then `Behavior · visitor interaction` with the subject's two doors. Capability rows are no longer rendered at rest: `chooserHtml` lists the declared descriptors under `[data-exp-chooser]`, and `capabilityWorkHtml` is the UX2 audition/capture row rendered only for the one invoked operation (`[data-exp-invoked]`), with `Clear audition` and `Close` beside it. |
+| `app/experience.js` | `openCapabilityChooser` / `closeCapabilityChooser` / `invokeCapability` / `closeInvokedCapability`: session-only door and invocation writers, all consulting the one `isRealized` eligibility, writing no source and no history. `+ Visitor interaction` opens the existing offer draft with this subject as its target and activation, so the offer writers are the ones the Advanced home already used. The audition's own cancellation reasons drop the chooser and the invoked operation with it, and every Experience reset clears them. |
+| `app/state.js` | `expChoose` / `expInvoked`, documented as session bookkeeping: never authored, never in Undo. |
+| `app/ui.js` | a pending decision, and the operation it led to, are brought into the Card's own view once — the chooser and the offer draft from their own first row, the invoked operation as a row — because replacing the Card's content resets its scroll. Nothing is written, the Stage and Camera are untouched, and the state that brought it in is remembered, so a later re-render never yanks a reading the author has scrolled. |
+| `styles/app.css` | the derived reach's rows: one reference row per fact, its note under it, no selection treatment. |
+| `qa/lib.sh` | `qa_subject_operation` / `qa_subject_invoke`: the author's own three steps to an audition or a capture (select the subject, open `+ Add behavior`, choose the descriptor), in two evals because the chooser is rendered by the click that opens it. |
+| `qa/conformance-check.sh` | +9 QA 5 readings (134 → 143): the Card's order, no capability control at rest, no Presentation looking selected, the chooser over exactly the declared descriptors operating nothing, Cancel leaving nothing operated or written, the derived reach as references to their owners, reading it selecting and writing nothing, one row opening its owner, and the door writing nothing on the way to the operation. |
+| `qa/creator-check.sh`, `composition-check.sh`, `revision-check.sh`, `walkthrough-check.sh` | re-pointed to the door path where they reached an audition or a capture directly, plus two readings re-pointed where they named a control that legitimately no longer exists at rest (the "Use at Experience scope" text, and a narrow reachability reading that now scrolls to the operation it invokes). Nothing was weakened: the assertions state the same domain facts through the controls that now carry them, and the narrow one is stricter about *what* is reachable. |
+| `qa/capture-experience-subject.sh` (new) | the QA 5 capture pass: the subject's Card at rest, the chooser its behavior door opens, the offer draft its interaction door opens, and the invoked operation, at 1440×900 and inside the 1024×768 sheet — each capture paired with a reading of what was photographed. |
+| `qa/subject-mutation-check.sh` (new) | this slice's replacement proof, chained into `qa/mutation-check.sh`; one leg can be re-run by name. |
+| `screens/experience-ux3/` | the six QA 5 captures, taken from this slice's source after the last edit. |
+
+### Readings
+
+| Proof | Result |
+| --- | --- |
+| all 26 axes (`qa/run-all.sh all`) | **green, 0 failures: 1,187 assertions** — journeys 59, interaction 56, flows 44, policy 41, World shell 47, precision 38, browse 60, repair 47, lens 82, Experience 30, experience-shell 42, locator 30, **conformance 143**, creator 25, composition 27, **revision 39**, rich 35, precision-c9 55, presenter 59, walkthrough 33, walkthrough-demo 59, visitor 42, reconciliation 13, continuity 55, responsive 15, correctness 11 |
+| `qa/capture-experience-subject.sh` (new) | **16 readings green, six captures** — the subject's Card at rest with both doors and no capability control, its QA 5 order, its derived reach as references and not a second editor, the chooser over exactly the declared descriptors with nothing operated (and Cancel writing nothing), the offer draft opened by the interaction door with this subject as its target and activation and in view, the invoked operation brought into the Card's view with its audition and capture writer (and that opening the door and invoking wrote nothing), and the same states inside the narrow sheet |
+| `node --test prototypes/spatial-authoring/tests/*.test.mjs` | **140 / 140 pass**, exit 0 |
+| `qa/mutation-check.sh` (all six proof scripts) | **126 replacement legs, every reintroduced regression rejected, none accepted, exit 0** — six of them UX3's (`rest-controls`, `door-direct`, `door-writes`, `derived-selected`, `order`, `unrealized-offered`) |
+
+### The new slice is not a tautology
+
+| Reintroduced defect | Rejected at | Unaffected controls |
+| --- | --- | --- |
+| a capability control rendered at rest, before anything was invoked | conformance · *no capability control is at rest on a Scene subject Card* (3 assertions trip) | 140 green |
+| `+ Add behavior` invokes the first declared descriptor instead of opening the chooser | conformance · *the behavior door opens a chooser over the declared descriptors and operates nothing* | 140 green |
+| opening the door authors a capture, so reading what a subject declares writes source and history | conformance · *Cancel closes the chooser, leaving nothing operated and nothing written* | 140 green |
+| a derived row marks its Presentation as the current selection | conformance · *no Presentation looks selected while a Scene subject is* | 142 green |
+| the derived reach promoted above `Present this` | conformance · *a Scene subject Card is ordered identity…* | 142 green |
+| the chooser offers a descriptor this Stage does not realize | revision · *the unrealized Annotate is reported in the chooser and never offered as an invocation* | 38 green |
+
+### Recorded facts and limits
+
+- **The subject's Card is not an operator at rest, and that is the whole slice.** The audition and capture
+  writers are the UX2 ones, unchanged: what UX3 changed is *when* they appear. A reader of this record can
+  check that directly — the conformance readings for capturing, updating and disambiguating an Activity
+  (`Use in this Presentation captures one Activity holding the auditioned value`, `updating the captured
+  value reuses that Activity and never duplicates it`, `two matching captures ask which Activity to update`,
+  `Capture another creates a third Activity…`) are the pre-existing ones and were not rewritten; only the
+  three clicks that reach them are new.
+- **The two doors are distinguishable by what they author.** `Present this` authors Camera's recommended
+  framing for the subject's extent (and the live view for a logical subject with no extent); `+ Visitor
+  interaction` opens the ordinary offer draft, whose kind, target, capability, value, activation and
+  availability are the same writers the Advanced home reaches. Neither writes unless it is accepted.
+- **The derived reach is a derivation, not a document.** It is computed on every render from the existing
+  references (Presentation focus, control definitions targeting the subject, an offer's activation) and the
+  Stops that present the Presentations those live in. Removing a Presentation, a behavior or a Stop removes
+  its row; nothing is cached and nothing is authored. `Used in Experience · 0` is a real state with its own
+  hint, reached on a subject nothing uses yet.
+- **A row opens its owner, and only that.** A Presentation row is `data-act=exp-open`; a behavior or offer
+  row is `data-act=pres-ref`, the same selection the Views list and the Stage markers make; a Stop row is
+  `data-act=exp-stop`. None of them edits, and the reading asserts that opening one leaves the source and
+  the history untouched.
+- **What UX3 deliberately left where it is**: the Deck and its postures, the Stop Card, the Seam and
+  Journey surfaces and the visitor runtime belong to UX4–UX6; the Advanced authoring home keeps its own
+  offer and narration writers, since an offer authored there is the same offer this slice's door opens.
+  `Present this` on a *World museum identity* keeps the Card body UX2 gave it (`foreignExperienceCard`),
+  which is a different Card from a Scene subject's.
+- **Two recipe readings moved for honest reasons, and both are recorded rather than described as
+  equivalent.** `creator-check.sh`'s Undo-invalidation reading named the string `Use at Experience scope`,
+  which cannot be on a Card at rest any more: it now reads the same fact (the replaced working context is
+  invalid while the World selection still resolves) through the subject's own Card. Its narrow reading now
+  scrolls to the invoked operation before asserting reachability, because the operation sits below the
+  derived reach in the order QA 5 fixes — reachability is what is asserted, not that the sheet happened to
+  open with the control on screen.
+- **Visual acceptance of UX3 is deferred, not claimed.** The captures and the geometry/behaviour readings
+  are agent verification; density, hierarchy and the visual weight of the derived rows are the owner's
+  review, which happens once on the integrated prototype after UX7.
+
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [axis]: ./experience-shell-check.sh

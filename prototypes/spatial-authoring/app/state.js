@@ -31,6 +31,12 @@ export const S = {
      authored, never in Undo. */
   sourceEpoch: 0,
   refusal: null,
+  /* UX3 · the Scene subject's own doors. `expChoose` names the subject whose descriptor chooser is open,
+     and `expInvoked` names the one operation invoked in that subject's Card — the operation whose existing
+     audition and one capture writer are then on screen. Both are session bookkeeping only: opening a door
+     or invoking an operation writes no source and no history. */
+  expChoose: null,
+  expInvoked: null,
   /* the one value a gesture or the numeric editor currently owns, for emphasis only */
   activeEdit: null,
   reveal: null,

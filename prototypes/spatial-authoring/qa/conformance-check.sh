@@ -49,18 +49,50 @@ conformance_ok 'quickstart observes the real Presentation it was asked for, not 
 # C9.1 ordinary loop: the subject-local audition is session state; Use captures one honest Activity.
 click '#card [data-exp-focus-subject="machine"]'
 conformance_ok 'the Presentation Card reaches the subject it presents' "$(qa_js '__me.S.sel')" '"machine"'
+pid_now="$(qa_jsv '__me.S.experienceContext.presentation')"
+before="$(source_hash)"; count="$(undo)"
+# QA 5: the subject's own Card reads identity → Present this → Used in Experience → the two doors, and no
+# capability control is on screen at rest. The derivation is read-only, so it is present with nothing yet.
+conformance_ok 'a Scene subject Card is ordered identity → Present this → Used in Experience → the two doors' \
+  "$(qa_jsv 'JSON.stringify([...document.querySelectorAll("#card > .c-sec")].map(e=>e.textContent.trim().split(" · ")[0]))')" \
+  '["Presentation","Used in Experience","Behavior"]'
+conformance_ok 'no capability control is at rest on a Scene subject Card' "$(qa_js '(!document.querySelector("#card [data-exp-audition]")&&!document.querySelector("#card [data-act=exp-use]")&&!document.querySelector("#card [data-act=exp-use-scope]")&&!document.querySelector("#card [data-act=exp-audition]")&&!!document.querySelector("#card [data-act=exp-add-behavior]")&&!!document.querySelector("#card [data-act=exp-add-interaction]"))')" true
+# The door itself: opening it is a session choice that operates nothing, and what it offers is exactly what
+# the provider declares — the machine declares casing and rotor plus the two local effects every subject has.
+click '#card [data-act=exp-add-behavior]'
+conformance_ok 'the behavior door opens a chooser over the declared descriptors and operates nothing' \
+  "$(qa_jsv 'JSON.stringify((()=>{const c=document.querySelector("#card [data-exp-chooser]"),rows=[...document.querySelectorAll("#card [data-exp-choice]")].map(e=>e.dataset.expChoice);return [!!c,rows.join(","),!document.querySelector("#card [data-exp-audition]"),!document.querySelector("#card [data-act=exp-use]"),!!c&&!!c.querySelector("[data-act=exp-choose-cancel]")];})())')" \
+  '[true,"casing,rotor,highlight,visibility",true,true,true]'
+click '#card [data-act=exp-choose-cancel]'
+conformance_ok 'Cancel closes the chooser, leaving nothing operated and nothing written' "$(qa_js '(!document.querySelector("#card [data-exp-chooser]")&&!document.querySelector("#card [data-exp-audition]")&&!document.querySelector("#card [data-exp-invoked]"))') / $(source_hash) / $(undo)" "true / $before / $count"
+# A Presentation is never the current selection while a Scene subject is: the derived rows are references,
+# and neither they nor the Index carry the selection treatment.
+conformance_ok 'no Presentation looks selected while a Scene subject is' "$(qa_js '(__me.S.sel==="machine"&&!document.querySelector("#card .exp-view.selected")&&!document.querySelector("#index .ix-row.selected")&&![...document.querySelectorAll("#card [data-exp-used]")].some(e=>e.matches(".selected,.on,[aria-current]")))')" true
+# The derivation is read from existing references and read-only: the Presentation that focuses this
+# subject is listed as a reference to its owner, and opening that row is the same selection the Index makes.
+conformance_ok 'the derivation lists the Presentation focusing this subject as a reference to its owner' \
+  "$(qa_jsv 'JSON.stringify((()=>{const rows=[...document.querySelectorAll("#card [data-exp-used-in] [data-exp-used=presentation]")];return [rows.length>0,rows.every(r=>r.querySelector("button").dataset.act==="exp-open"),rows.some(r=>r.dataset.id===__me.S.experienceContext.presentation)];})())')" \
+  '[true,true,true]'
+conformance_ok 'reading that derivation selects nothing and writes nothing' "$(qa_js '__me.S.sel') / $(source_hash) / $(undo)" "\"machine\" / $before / $count"
+click '#card [data-exp-used-in] [data-exp-used=presentation] button'
+conformance_ok '…and the row opens its owner: that Presentation is the selection, not a second editor' "$(qa_js '__me.S.sel') / $(qa_js 'document.querySelector("#card .c-k").textContent.includes("Presentation")')" "\"$pid_now\" / true"
+click '#card [data-exp-focus-subject="machine"]'
 before="$(source_hash)"; count="$(undo)"; views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')"
+qa_subject_invoke casing
+conformance_ok 'the subject door and the descriptor chooser write nothing on their way to the operation' "$(source_hash) / $(undo)" "$before / $count"
 fill '[data-exp-audition="casing"]' '0.6'
 conformance_ok 'operating the subject auditions on the real Stage without source or history' "$(qa_jsv 'JSON.stringify(__me.S.expAudition)')" '{"machine":{"open":0.6}}'
 conformance_ok '…and the audition writes no source and no history' "$(source_hash) / $(undo)" "$before / $count"
 conformance_ok 'the audition is stated as a temporary projection' "$(qa_js 'document.querySelector("#card").textContent.includes("Temporary projection")')" true
 # Outside Preview there is no visitor runtime: a real session clock must turn a running audition so the
 # effect is visible, and stopping drops the phase again — still with no source or history.
+qa_subject_invoke rotor
 click '#card [data-act="exp-audition"][data-cap="rotor"][data-value="true"]'
 conformance_ok 'an auditioned running capability advances on a session clock outside Preview' "$(qa_js '(async()=>{const rot=()=>__me.ctx.stage.items.get("machine").capabilityParts.rotor.rotation.y;await __me.qa.render();const a=rot();await new Promise(r=>setTimeout(r,60));await __me.qa.render();return __me.S.expAudition.machine.running===true&&a>=0&&rot()>a;})()')" true
 conformance_ok '…with source and history still untouched' "$(source_hash) / $(undo)" "$before / $count"
 click '#card [data-act="exp-audition"][data-cap="rotor"][data-value="false"]'
 conformance_ok 'stopping the audition drops the phase' "$(qa_js '(__me.S.expAudition.machine.running===false&&__me.ctx.stage.items.get("machine").capabilityParts.rotor.rotation.y===0)')" true
+qa_subject_invoke casing
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'Use in this Presentation captures one Activity holding the auditioned value' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==="control"),d=us[0]&&e.definitions[us[0].definitionId];return us.length===1&&us[0].presentationId===pid&&d.subjectId==="machine"&&d.capabilityId==="casing"&&d.value===0.6&&e.guide.length===0&&Object.keys(e.stops).length===0;})()')" true
 conformance_ok 'the Activity capture writes one history step and creates no Camera View of its own' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / $views"
@@ -195,10 +227,13 @@ agent-browser select '[data-exp-offer="kind"]' behavior >/dev/null;qa_frames
 fill '[data-exp-offer="value"]' '1'
 click '#card [data-act="exp-offer-accept"]'
 qa_locator_select machine
+qa_subject_invoke casing
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'two matching captures ask which Activity to update, never mutating either' "$(qa_js '(()=>{const e=__me.ctx.experience,a=__me.S.expCaptureAsk,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&u.presentationId===pid&&e.definitions[u.definitionId]?.capabilityId==="casing");return !!a&&a.matches.length===2&&us.length===2&&us.every(u=>e.definitions[u.definitionId].value===1);})()')" true
 qa_press Escape
 conformance_ok 'Escape drops the ambiguous proposal with its audition: no stale choice survives' "$(qa_js '(__me.S.expCaptureAsk===null&&__me.S.expAudition===null)')" true
+# Escape dropped the invoked operation with the ambiguous proposal, so the door is walked again.
+qa_subject_invoke casing
 click '#card [data-act="exp-use"][data-cap="casing"]'
 count="$(undo)"; views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')"
 click '#card [data-act="exp-capture-new"]'
@@ -207,7 +242,8 @@ conformance_ok 'Capture another writes one history step and creates no Camera Vi
 # A visitor offer is authored through the real subject control and stays an offer: subject-activated
 # availability work, never an automatic Activity a traversal could start.
 qa_locator_select piano
-click '#card [data-act="exp-offer"][data-kind="interaction"]'
+# UX3: the subject's own offer door opens the same draft with this subject as target and activation.
+click '#card [data-act="exp-add-interaction"]'
 click '#card [data-act="exp-offer-accept"]'
 offer="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.kind==="interaction")?.id')"
 conformance_ok 'a visitor offer is authored as an offer, never as automatic work' "$(qa_js "(()=>{const u=__me.ctx.experience.uses['$offer'];return !!u&&u.kind==='interaction'&&u.triggerSubjectId==='piano'&&u.start.kind==='visit'&&!u.viewId;})()")" true

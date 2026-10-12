@@ -19,6 +19,8 @@ qa_locator_select machine;click '#card [data-act=exp-create-this]'
 qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor. Power travels through the drive.'
 click '#card [data-act=exp-capture]';click '#card [data-exp-focus-subject=machine]'
+# UX3: a capability control exists only once its operation is invoked, so the author's door is walked first.
+qa_subject_invoke casing
 fill '[data-exp-audition=casing]' '1';click '#card [data-act=exp-use][data-cap=casing]'
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click "#index [data-act=exp-open][data-id='$pid']";click '#card [data-act=exp-add-guide]'

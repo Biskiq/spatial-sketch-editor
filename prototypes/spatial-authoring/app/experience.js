@@ -374,6 +374,14 @@ export function handleExperienceAction(el) {
   if (action === 'exp-beat') beatAtStation(S.task?.params.station||'departure');
   if (action === 'exp-route-scope') acceptRoutePace();
   if (action === 'exp-narration') addNarration();
+  // UX3: the subject's two doors and the one operation invoked behind them. `+ Visitor interaction` opens
+  // the existing offer draft with this subject as its target and activation, so the offer writers are the
+  // same ones an Advanced-home offer uses.
+  if (action === 'exp-add-behavior') openCapabilityChooser(el.dataset.id);
+  if (action === 'exp-choose-capability') invokeCapability(el.dataset.id,el.dataset.cap);
+  if (action === 'exp-choose-cancel') closeCapabilityChooser();
+  if (action === 'exp-invoke-close') closeInvokedCapability();
+  if (action === 'exp-add-interaction') beginOffer('interaction',el.dataset.id||null);
   if (action === 'exp-offer') beginOffer(el.dataset.kind||'behavior',el.dataset.id||null);
   if (action === 'exp-offer-accept') acceptOffer();
   if (action === 'exp-offer-cancel') cancelProposal('offer-cancel');
@@ -749,6 +757,27 @@ export function acceptOffer() {
 }
 export function changeOfferField(key,value){if(!S.expOfferDraft)return;if(key==='availability'){S.expOfferDraft.availability=value||null;ctx.ui();return;}S.expOfferDraft[key]=value;if(key==='subjectId'){const cap=capabilities(ctx.sceneSource,value).find(isRealized);S.expOfferDraft.capabilityId=cap?.id;S.expOfferDraft.value=cap?.control==='range'?cap.max:true;}ctx.ui();}
 
+// ----- the subject's own doors (UX3) ---------------------------------------
+
+// §3.7/§3.9 QA 5: no capability control is on screen at rest. The subject's Card carries two doors, and
+// the behavior door opens a chooser over the descriptors the provider already declares — nothing is
+// invented, and no descriptor is offered that this Stage does not realize. Opening a door writes nothing.
+// Invoking one shows that single operation's audition and its one capture writer, which are the writers
+// UX2 already had; nothing about audition, capture, update or ambiguity changes here.
+export function openCapabilityChooser(sid) {
+  if(!ctx.sceneSource.subjects[sid])return false;
+  S.expChoose={subject:sid,door:'behavior'};ctx.ui();return true;
+}
+export function closeCapabilityChooser(){if(!S.expChoose)return false;S.expChoose=null;ctx.ui();return true;}
+export function invokeCapability(sid,cid) {
+  const cap=capability(ctx.sceneSource,sid,cid);if(!cap)return false;
+  // The same eligibility every writer consults: a descriptor the provider declares but this Stage does not
+  // realize is reported rather than invoked as work that appears to run.
+  if(!isRealized(cap)){A.setStatus(`${cap.label} · declared by the provider but not realized by this Stage`,'refuse');ctx.ui();return false;}
+  S.expChoose=null;S.expInvoked={subject:sid,capability:cid};ctx.ui();return true;
+}
+export function closeInvokedCapability(){if(!S.expInvoked)return false;S.expInvoked=null;ctx.ui();return true;}
+
 // ----- subject-local capability auditions and capture ---------------------
 
 // The audition projects a supported value on the real Stage without touching Scene source, Experience
@@ -1002,6 +1031,9 @@ onCancel(()=>{S.expOfferDraft=null;},12,'Experience offer draft');
 onCancel(reason=>{
  if(!['esc','lens','preview','reset','task-end','invoke','selection'].includes(reason))return;
  S.expAudition=null;
+ // The invoked operation is the same kind of session work as the audition it carries, so the same reasons
+ // that drop one drop the other — and the chooser that was standing open with it.
+ S.expChoose=null;S.expInvoked=null;
  // The ambiguity choice holds the same session work as the audition: dropping the audition must also
  // drop the stale choice, so a value the user walked away from can never be accepted later.
  S.expCaptureAsk=null;
@@ -1015,6 +1047,9 @@ function clearExperienceTransients(){
  // UX2 session disclosures: a Plan capture waiting for intent, the open explanation writer and the
  // Advanced authoring home all belong to the moment that was cleared, never to the next document.
  S.expPlanAsk=null;S.expExplain=null;S.expAdvanced=false;
+  // UX3 session doors: the descriptor chooser and the invoked operation belong to the subject that was
+  // being worked, never to the next document.
+  S.expChoose=null;S.expInvoked=null;
  S.expReview={auditions:0,previews:0};S.parkedByLens.experience=null;T.end();
 }
 // Remove only the context that no longer resolves: a World subject or a retained Camera View stays
