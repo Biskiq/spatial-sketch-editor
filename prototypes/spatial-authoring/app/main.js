@@ -147,6 +147,7 @@ function truthBar() {
 
 let lastRestyle = 0;
 let lastErr = '';
+let lastFrame = 0;
 function frame(now) { requestAnimationFrame(frame); frameOnce(now); }
 
 // One pass of the frame work, callable on demand. The animation loop uses it, and so does the QA
@@ -154,11 +155,16 @@ function frame(now) { requestAnimationFrame(frame); frameOnce(now); }
 // be able to ask for a frame instead of waiting for one.
 function frameOnce(now) {
   try {
+    // The one clock the frame pass hands to anything that advances on its own; a rehearsal clamps it, so an
+    // on-demand QA frame can never jump the playhead more than a quarter of a second.
+    const dt = lastFrame ? (now - lastFrame) / 1000 : 0;
+    lastFrame = now;
     tickTweens(now);
     E.visitorFrame(now);
     // One derivative image per idle turn at most: the View preview is produced by the Stage's own
     // renderer, never in competition with the frame the author is looking at (see experience-image.js).
     imageTurn();
+    E.rehearseTurn(dt);
     frameState();
     realizeCapabilities();
     if (now - lastRestyle > 90) { stage.restyle(); lastRestyle = now; }
@@ -1286,7 +1292,14 @@ window.addEventListener('pointerup',()=>{E.endCameraDrag();E.endAnchorDrag();});
 
 
 
-document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);});
+document.addEventListener('change',event=>{const el=event.target;if(el.dataset.expStation!==undefined&&S.task){S.task.params.station=el.value;requestUI();}if(el.dataset.expPace!==undefined)E.routePace(el.value);
+ // UX6: the Journey's two selects. Choosing an origin selects that origin's supported route (so the Deck's
+ // total is the Journey the author is actually reading), and choosing a station moves the whole Cue.
+ if(el.dataset.expJourneyOrigin!==undefined)E.setJourneyOrigin(el.value);
+ if(el.dataset.expCueMove!==undefined&&el.value)E.moveCueCommand(el.value);});
+// The Rehearse playhead. A scrub is a session reading: it moves the rig and writes nothing, so it is
+// handled on input rather than on commit, and the source is never touched.
+document.addEventListener('input',event=>{const el=event.target;if(el.dataset?.expRehearse===undefined||S.visitor)return;E.rehearsalAt(Number(el.value));});
 // A subject-local audition updates projection on input without re-rendering the Card (so a range drag
 // is never interrupted), and announces on change. It is session state, never source and never history.
 document.addEventListener('input',event=>{const el=event.target;if(S.visitor||!el.dataset.expAudition)return;E.auditionCapability(el.dataset.id,el.dataset.expAudition,Number(el.value),true);});

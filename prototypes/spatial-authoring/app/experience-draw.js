@@ -3,6 +3,7 @@ import { originCoverage,stopEntry,resolveUse,getSeam,gripLabels } from './experi
 import { S,ctx } from './state.js';
 import { resolvedCamera,readingFor,framingInstrument,focusPoint } from './navigation.js';
 import { eye,routeGeometry } from './camera-evaluation.js';
+import { journeyClock } from './experience-coordination.js';
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const project=p=>ctx.stage.project(p),ov=()=>ctx.ov;
 function safe(at){const deck=document.querySelector('#experienceDeck'),bottom=deck?deck.getBoundingClientRect().top-document.querySelector('#stage').getBoundingClientRect().top:ctx.stage.h-16;return {x:Math.max(68,Math.min(ctx.stage.w-85,at.x)),y:Math.max(90,Math.min(bottom-35,at.y))};}
@@ -140,11 +141,25 @@ function drawSeam(e,c,x){
   const route=c.connections[id];if(S.expDrag?.connection===id){const a=route.anchors.find(a=>a.id===S.expDrag.anchor);if(a)a.position=[...S.expDrag.position];}const geometry=routeGeometry(c,id);if(!geometry)continue;
   const selected=id===S.task?.params.connection;
   ov().path('route-'+id,geometry.samples.map(s=>project(s.observer)),'exp-route-path '+(selected?'working':''),false,{'data-exp-route':id});
-  for(const a of route.anchors){const at=project(S.expDrag?.anchor===a.id?S.expDrag.position:a.position);if(!at.behind)ov().chip('anchor-'+a.id,at.x,at.y,'◆','tape exp-anchor '+(selected?'working':''),{'data-exp-anchor':a.id,'data-connection':id,tag:'button',pri:1000,'aria-label':`${a.name} · Camera observer anchor`});}
+  // QA 2: in the Journey the authored point is a station a Cue can sit on, not a handle — it is drawn the
+  // same way and is deliberately not hit-eligible, so a press on the drawing lands on the drawing.
+  for(const a of route.anchors){const at=project(S.expDrag?.anchor===a.id?S.expDrag.position:a.position);if(at.behind)continue;
+   if(x.depth==='coordination')ov().chip('anchor-'+a.id,at.x,at.y,'◆','tape exp-station-point',{'data-exp-station-point':a.id,tag:'span',pri:1,'aria-label':`${a.name} · Camera station`});
+   else ov().chip('anchor-'+a.id,at.x,at.y,'◆','tape exp-anchor '+(selected?'working':''),{'data-exp-anchor':a.id,'data-connection':id,tag:'button',pri:1000,'aria-label':`${a.name} · Camera observer anchor`});}
   geometry.samples.filter((s,i)=>i%5===0&&i>0&&i<40).forEach((s,i)=>{const at=project(s.observer);ov().text(`sample-${id}-${i}`,at.x,at.y,'·','exp-sample');});
   if((x.depth==='coordination'||seam.beats.length)&&selected){
    for(const station of geometry.stations){const at=project(station.observer),beats=seam.beats.filter(b=>b.connectionId===id&&b.stationId===station.id),active=S.task.params.station===station.id;
     ov().chip(`station-${id}-${station.id}`,at.x,at.y-22,`${station.id==='departure'||station.id==='arrival'?'○':'◇'} ${esc(station.label)}${beats.length?' · '+beats.map(b=>b.kind==='hold'?b.seconds+'s hold':'beat').join(', '):''}`,'tape exp-station '+(active?'active':''),{'data-act':'exp-station-focus','data-id':station.id,'data-exp-station-label':station.id,tag:'button',pri:1000});
+   }
+  }
+  // UX6: the Journey's playhead. The rehearsal rig is drawn from the same clock the Deck and the visit use,
+  // at the pose `evaluatePath` gives for the playhead's time. It is a reading on the Stage, not a Camera
+  // move: the author's own standpoint is untouched, no invocation runs and no source is written.
+  if(x.depth==='coordination'&&S.rehearse&&selected){
+   const clock=journeyClock(c,seam,S.rehearse.connectionId);
+   if(clock&&clock.connectionId===id){
+    const rig=project(eye(clock.poseAt(S.rehearse.t)));
+    if(!rig.behind)ov().chip('journey-rig',rig.x,rig.y,'◇ rig',`tape exp-rig ${S.rehearse.playing?'playing':''}`,{'data-exp-rig':'','data-exp-rig-playing':S.rehearse.playing?'true':'false',tag:'span',pri:1001,'aria-label':'Rehearsal playhead'});
    }
   }
  }
