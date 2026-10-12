@@ -3,9 +3,9 @@ import { gateState, narrationCaption, presentationPlan } from './experience-runt
 import { resolvedCamera, readingFor } from './navigation.js';
 import { routeGeometry } from './camera-evaluation.js';
 import { coordinateTiming, movementTiming } from './experience-coordination.js';
-import { originCoverage, getSeam, resolveNext, stopEntry, entryUse, viewReach, viewUseReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget } from './experience-model.js';
+import { originCoverage, getSeam, resolveNext, stopEntry, entryUse, viewReach, viewUseReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget, connectionReach } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
-import { imageFor } from './experience-image.js';
+import { imageFor, imageForPose } from './experience-image.js';
 import { resolveExperience, experienceParkedContext, retainedContributions, linkedDefinitionReach, pendingDescriptor, planCaptureSupport } from './experience.js';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const button=(act,text,id='',role='action')=>`<button class="exp-action ${act.startsWith('exp-remove-')?'destructive':role}" data-act="${act}" data-id="${esc(id)}">${text}</button>`;
@@ -52,6 +52,10 @@ function experienceCardBody(){
   // Revalidate on every read (§3.1): a pair whose destination no longer resolves is reported as stale,
   // never retargeted to a positional neighbour. The resolved edge is a real offer, not an automatic move.
   if(!e.stops[from]||!e.stops[to]||resolveNext(e,from).id!==to)return staleEdgeCard(x.seam);
+  // UX5: the Camera Path posture replaces the edge reading — the Camera half of the edge is what is being
+  // edited, and its *From* list, its points and its Pace belong in one Card rather than under the edge's
+  // movement controls. The edge itself is read again by putting the Path away.
+  if(x.depth==='route')return pathCard(x.seam);
   return edgeCard(x.seam);
  }
  if(r?.kind==='Presentation'){
@@ -429,8 +433,18 @@ export function renderDeck(){
 // The one Guide lane. The band adds its own head (Edit Guide ordering and a Close); the ordinary posture
 // keeps the same lane as a strip with the one door that opens the band. Nothing here is a second
 // inspector: a Stop chip selects the Stop, an edge chip selects the edge.
-function guideLane(e){const band=S.experienceContext.depth!=='ordinary';const ops=band?`${guideOrderHtml(e)}${button('exp-close','Close Guide')}`:button('exp-guide','Open Guide');
- return `<div class="deck-head"><b>Guide · ${e.guide.length} Stop${e.guide.length===1?'':'s'}</b><div class="gd-ops">${ops}</div></div><ol class="gd-lane" data-guide-lane>${e.guide.map((id,i)=>guideItem(e,id,i)).join('')}</ol>`;}
+function guideLane(e){const x=S.experienceContext,band=x.depth!=='ordinary';const ops=band?`${guideOrderHtml(e)}${button('exp-close','Close Guide')}`:button('exp-guide','Open Guide');
+ return `<div class="deck-head"><b>Guide · ${e.guide.length} Stop${e.guide.length===1?'':'s'}</b><div class="gd-ops">${ops}</div></div>${x.depth==='route'?pathLane():''}<ol class="gd-lane" data-guide-lane>${e.guide.map((id,i)=>guideItem(e,id,i)).join('')}</ol>`;}
+// UX5: the straightened Deck lane. In the Path posture the Deck names the one Guide edge the Path belongs
+// to and lays this route's authored points out in a straight line, so the spatial Stage drawing and the
+// Deck read the same points in the same order. A point chip selects its point; the Guide lane under it is
+// still the one Guide home and is never restructured by path editing.
+function pathLane(){
+ const x=S.experienceContext,c=resolvedCamera(),route=c.connections[S.task?.params?.connection];
+ if(!route||!x.seam)return '';
+ const e=ctx.experience,at=id=>e.guide.indexOf(id)+1,name=id=>e.stops[id]?.name||'Missing Stop';
+ return `<div class="path-lane" data-path-lane="${route.id}"><div class="path-head"><b>Camera Path · Stop ${at(x.seam.from)} → Stop ${at(x.seam.to)}</b><small>${esc(name(x.seam.from))} → ${esc(name(x.seam.to))} · ${esc(route.speed)} pace</small></div><div class="path-strip">${route.anchors.map((a,i)=>`<button class="path-point ${x.point?.anchorId===a.id?'selected':''}" data-act="exp-point-select" data-connection="${route.id}" data-anchor="${a.id}" aria-label="Path point ${i+1}">${x.point?.anchorId===a.id?'◉':'○'} ${i+1}</button>`).join('')||'<small class="path-empty">no authored point — the route is its two endpoints</small>'}</div><div class="path-tail">${x.armed?'<span role="status">Armed · click the Stage</span>':`<span>${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')}</span>`}</div></div>`;
+}
 // Edit Guide is the Deck's ordering context: order is the fallback continuation, and a Stop may repeat a
 // Presentation. It writes through the same move/remove/attach writers the Stop Card used.
 function guideOrderHtml(e){
@@ -470,6 +484,57 @@ function staleEdgeCard({from,to}){
   +`<p class="exp-gap" role="status">The edge is kept as a reported gap; nothing was retargeted to a neighbour.</p>`
   +`<div class="c-acts">${resolved.id?button('exp-seam','Open the resolved edge',from).replace('data-id=',`data-from="${from}" data-to="${resolved.id}" data-id=`):''}${button('exp-close','Close')}</div>`;
 }
+// ----- UX5: the Camera Path posture — the edge's Camera half in one home -----------------------------
+// The Path Card is the Camera side of one Guide edge. *From* is the origins that can really reach this
+// route, with their connected / gap status and their own door; the points are the authored interior path
+// points in their authored order; the selected point is its own small identity with Remove, an evaluated
+// Camera preview, Look through and the Guide edges the path reaches. Pace stays Camera's, as it always
+// was, and `+ Path point` is the only creation path: it arms, a Stage click places the point, Escape and
+// the same control cancel. Nothing here is a second manipulation system — the Stage's own ◆ chips stay
+// the direct path, and every write goes through the one route proposal and its one Undo step.
+function pathCard(seam){
+ const e=ctx.experience,c=resolvedCamera(),x=S.experienceContext,t=S.task,route=c.connections[t?.params?.connection];
+ const at=id=>e.guide.indexOf(id)+1;
+ if(!route)return `<div class="c-head"><div class="c-k">Camera Path · needs repair</div><div class="c-t">No resolving route</div><div class="c-ref">Owner · Camera</div></div><p class="exp-gap" role="status">The route this Path was reading no longer resolves.</p><div class="c-acts">${button('exp-route-return','Put it back')}</div>`;
+ const geometry=routeGeometry(c,route.id),rows=originCoverage(e,c,seam.from,seam.to),reaches=connectionReach(e,c,route.id);
+ const point=x.point?.connectionId===route.id?route.anchors.find(a=>a.id===x.point.anchorId):null;
+ const station=point&&geometry?geometry.stations.find(s=>s.id===point.id):null;
+ const supported=r=>!r.missing&&(!!r.connectionId||r.viewId===r.targetId);
+ return `<div class="c-head"><div class="c-k">Camera Path · Camera</div><div class="c-t">${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')}</div><div class="c-ref">Owner · Camera · ${esc(route.speed)} pace<br>Guide edge · Stop ${at(seam.from)} → Stop ${at(seam.to)}<br>Reach · ${reaches.length} Guide edge${reaches.length===1?'':'s'}</div></div>`
+  +`<div class="c-sec">From · ${rows.length}</div><div class="path-from" data-path-from>${rows.map(r=>`<div class="origin-row"><span>${esc(c.views[r.viewId]?.name||'Missing View')} · ${supported(r)?'connected':r.missing?'needs repair':'gap'}</span>${r.connectionId?button('exp-route',r.connectionId===route.id?'This route':'Open route',r.connectionId):r.missing?'':button('exp-connect','Connect',r.useId)}</div>`).join('')||'<p class="c-hint">No eligible origin on this Stop.</p>'}<p class="c-hint">An origin is a View this edge can really leave from; an unprepared origin stays an explicit gap.</p></div>`
+  +`<div class="c-sec">Path points · ${route.anchors.length}</div><div class="path-points" data-path-points>${route.anchors.map((a,i)=>`<button class="path-point ${point?.id===a.id?'selected':''}" data-act="exp-point-select" data-connection="${route.id}" data-anchor="${a.id}" aria-label="Path point ${i+1}"${point?.id===a.id?' aria-current="true"':''}>${point?.id===a.id?'◉':'○'} ${i+1}</button>`).join('')||'<p class="c-hint">No authored path point yet — the route is its two endpoints and Camera\'s own evaluation between them.</p>'}</div>`
+  // Arming is a mode, not the commit: the primary weight belongs to the button that places the point, so
+  // while the insertion is armed the control reads as the state it holds (`Cancel point`) and keeps its
+  // label; `+ Path point` is the primary action only when nothing is armed.
+  +`<div class="c-acts"><button class="exp-action${x.armed?'':' primary'}" data-act="exp-path-point" aria-pressed="${!!x.armed}">${x.armed?'Cancel point':'+ Path point'}</button></div>`
+  +`<p class="c-hint" data-path-armed role="status">${x.armed?'Armed · click the Stage to place the point. Nothing is written until you click; Esc cancels.':'The only creation path: arm this, then click the Stage. A plain click selects and adds nothing.'}</p>`
+  +(point?pathPointDetail(route,point,station,reaches):'')
+  +`<div class="c-sec">Pace · Camera</div><label class="exp-label">Pace · Camera<select data-exp-pace>${['slow','auto','fast'].map(speed=>`<option ${route.speed===speed?'selected':''}>${speed}</option>`).join('')}</select></label>`
+  +`<p class="exp-fact">Camera owns this geometry${geometry?` · ${geometry.seconds.toFixed(2)}s travel`:''} · ${route.anchors.length} point${route.anchors.length===1?'':'s'} · ${route.markers.length} named station${route.markers.length===1?'':'s'}</p>`
+  // Two quiet doors: bringing the route into view is a Camera navigation aid, and the edge's cue timing is
+  // the other half of the same edge — named, not rebuilt here (the Journey home is UX6's).
+  +`<div class="c-acts">${button('exp-bring','Bring route into view','','reference')}${button('exp-coordinate','Edit cue timing','','reference')}${button('exp-route-return','Put it back')}</div>`
+  +askHtml();
+}
+// One selected path point reads in the order the author works in: where it is on the route, what the
+// Camera actually sees there, what can be done with it, and which Guide edges the route serves. The
+// preview is the same image pass the View preview uses — one renderer, one cache, keyed on the pose the
+// route kernel evaluated — and `Look through` is the Camera's own framing operation, not a second one.
+function pathPointDetail(route,point,station,reaches){
+ const index=route.anchors.findIndex(a=>a.id===point.id);
+ const pct=station?.progress!=null?Math.round(station.progress*100):null;
+ const pose=station?.pose||null;
+ const img=pose?imageForPose(pose):{state:'unavailable',reason:'This path point has no resolvable Camera pose'};
+ const preview=`<div class="exp-preview" data-exp-point-preview="${point.id}">`+(img.state==='ready'?`<img src="${img.url}" alt="Rendered Camera preview at path point ${index+1}" data-exp-preview-image>`:img.state==='pending'?'<p class="exp-fact" role="status">Rendering this point…</p>':`<p class="exp-fact" role="status">Camera preview unavailable · ${esc(img.reason)}</p>`)+'</div>';
+ const stops=reaches.map(r=>`Stop ${ctx.experience.guide.indexOf(r.from)+1} → Stop ${ctx.experience.guide.indexOf(r.to)+1}`);
+ return `<div class="c-sec">Selected point · ${index+1}</div><div class="path-point-card" data-path-point="${point.id}">`
+  +`<p class="exp-fact" data-point-read>${esc(point.name||`Path point ${index+1}`)}${pct!==null?` · ${pct}% along the route`:''} · observer ${point.position.map(n=>Number(n).toFixed(2)).join(', ')}</p>`
+  +preview
+  +`<div class="c-acts">${pose?button('exp-look-point','Look through'):''}${button('exp-point-remove','Remove path point')}</div>`
+  +`<p class="c-hint">Removing one point keeps every other point, the pace and the Experience references this route serves; the path re-evaluates through Camera's own kernels.</p>`
+  +`<details class="exp-more" data-exp-point-used><summary>Used by · ${stops.length} Guide edge${stops.length===1?'':'s'}</summary>${stops.map(s=>`<p class="exp-fact">${esc(s)}</p>`).join('')||'<p class="c-hint">No Guide edge uses this route.</p>'}</details>`
+  +`</div>`;
+}
 // The edge's own Card (UX4). It owns the continuation identity, Cut/Travel, aggregate origin coverage
 // with the one explicit repair, and the door to the Camera Path posture; per-origin rows are a compact
 // disclosure here (UX5 promotes them to the Path posture's *From* list). The coordination strip stays
@@ -491,8 +556,10 @@ export function edgeCard({from,to}){
    :'<p class="c-hint">All origins supported · Camera owns the routes.</p>')
   +(unsupported?'<p class="exp-gap" role="status">An origin or destination entry needs repair before Camera can support it</p>':'')
   +(active?`<p class="exp-fact">Camera path · ${esc(c.views[active.from]?.name||'Unknown')} → ${esc(c.views[active.to]?.name||'Unknown')} · shared</p><label class="exp-label">Pace · Camera<select data-exp-pace>${['slow','auto','fast'].map(speed=>`<option ${active.speed===speed?'selected':''}>${speed}</option>`).join('')}</select></label>`:'')
-  +`<div class="c-acts">${active?button('exp-route','Edit Camera Path',active.id):''}${button('exp-coordinate','Edit cue timing')}${x.depth==='route'?button('exp-route-return','Put it back'):''}</div>`
-  +(x.depth==='route'?'<p class="c-hint">Stage click adds an observer anchor; drag ◆ or use arrow keys.</p>':'')
+  // UX5: the Path posture owns route editing, so the edge keeps the one door to it and no duplicated
+  // route controls; the per-origin rows stay here as the compact aggregate, and the Path Card promotes
+  // them to its own *From* list.
+  +`<div class="c-acts">${active?button('exp-route','Edit Camera Path',active.id):''}${button('exp-coordinate','Edit cue timing')}</div>`
   +`<details class="exp-more" data-exp-edge-origins open><summary>Origins from this Stop · ${rows.length}</summary>${rows.map(r=>`<div class="origin-row"><span>${esc(c.views[r.viewId]?.name||'Missing View')} · ${r.connectionId?'reach':r.missing?'needs repair':r.viewId===r.targetId?'same View':'no route'}</span>${r.connectionId?button('exp-route','Edit route',r.connectionId):r.missing?'':button('exp-connect','Connect',r.useId)}</div>`).join('')||'<p class="c-hint">No eligible origin on this Stop.</p>'}</details>`
   +`<div class="c-sec">Destination entry</div><p class="exp-fact">Entry · ${esc(c.views[e.uses[entryTo.id]?.viewId]?.name||(entryTo.hold?'Keep current viewpoint':'Missing entry · repair'))}</p>`
   +`<div class="c-acts">${button('exp-bring','Bring route into view','','reference')}</div>`

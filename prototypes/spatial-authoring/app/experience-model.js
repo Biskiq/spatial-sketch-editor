@@ -101,6 +101,14 @@ export function addAnchor(c,id,position) {
  const route=c.connections[id];if(!route)throw Error('Connection removed');
  const aid=fresh(c,'anchor');route.anchors.push({id:aid,name:`Anchor ${route.anchors.length+1}`,position:[...position]});return aid;
 }
+// Removing one authored path point is a Camera geometry edit like adding or moving one: the route, its
+// other points and every Experience reference to them are untouched, so a removed point leaves no
+// dangling station behind it.
+export function removeAnchor(c,id,anchorId) {
+ const route=c.connections[id];if(!route)throw Error('Connection removed');
+ const at=route.anchors.findIndex(a=>a.id===anchorId);if(at<0)throw Error('Path point already removed');
+ route.anchors.splice(at,1);return true;
+}
 export function viewReach(e,viewId) {
  const uses=Object.values(e.uses).filter(u=>u.viewId===viewId);
  const stops=Object.values(e.stops).filter(s=>uses.some(u=>stopEntry(e,s.id).id===u.id || (e.presentations[s.presentationId]?.uses.includes(u.id))));

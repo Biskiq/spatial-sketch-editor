@@ -9,11 +9,13 @@ import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice, viewUseReach } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, removeAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice, viewUseReach } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
-  S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null };
+  // UX5 adds two session readings to the one context: the armed `+ Path point` insertion and the selected
+  // path point. Neither is source, selection or history — the Camera route itself stays the authored truth.
+  S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null, armed: false, point: null };
 }
 export const resolveExperience = (id) => subject(ctx.experience, ctx.cameraSource, id);
 export function command(label, edit) {
@@ -292,7 +294,7 @@ export function openPresentation(id) {
   // Opening a Presentation is a different inspection from an edge: the edge selection clears so the Card
   // shows the Presentation, not a stale edge. A focused Stop is kept, because a Stop's own entry edit is
   // authored against the Stop the author was in.
-  A.select(id); S.experienceContext = { ...S.experienceContext, presentation: id, seam: null }; ctx.ui(); return true;
+  A.select(id); S.experienceContext = { ...S.experienceContext, presentation: id, seam: null, armed:false, point:null }; ctx.ui(); return true;
 }
 const definitionReach=(e,id)=>Object.values(e.uses).filter(u=>u.definitionId===id).flatMap(u=>{const stops=Object.values(e.stops).filter(s=>s.presentationId===u.presentationId);return stops.length?stops.map(s=>({id:u.id+'@'+s.id,name:`${e.definitions[id]?.name} · Stop ${e.guide.indexOf(s.id)+1}`})):[{id:u.id,name:e.presentations[u.presentationId]?.name||'Experience-wide interaction'}];});
 const presentationReach=(e,id)=>Object.values(e.stops).filter(s=>s.presentationId===id).map(s=>({id:s.id,name:`Stop ${e.guide.indexOf(s.id)+1} · ${s.name}`}));
@@ -350,6 +352,13 @@ export function handleExperienceAction(el) {
   if (action === 'exp-connect') connectOrigin(el.dataset.id);
   if (action === 'exp-route') editRoute(el.dataset.id);
   if (action === 'exp-route-return') returnRouteReading();
+  // UX5: a path point is authored by arming `+ Path point` and then clicking the Stage. Arming writes
+  // nothing; an ordinary click in the Path posture selects what it hits (or clears the point reading) and
+  // never adds a point, so the one creation path is the one the author asked for.
+  if (action === 'exp-path-point') armPathPoint();
+  if (action === 'exp-point-select') selectPathPoint(el.dataset.connection,el.dataset.anchor);
+  if (action === 'exp-point-remove') removePathPoint();
+  if (action === 'exp-look-point') lookThroughPoint();
   if (action === 'exp-hint') {const v=ctx.cameraSource.views[S.task?.target?.id];if(v)proposeFraming(el.dataset.key,Number(el.dataset.value));}
   if (action === 'exp-precise') preciseView(el.dataset.id);
   if (action === 'exp-precise-property') {if(!preciseProperty(el.dataset.id,el.dataset.grip))A.setStatus('That property needs a resolving Camera View','refuse');}
@@ -537,7 +546,7 @@ export function selectStop(id){
  const procedure=['occurrence','seam','route','coordination','precision'].includes(x.depth);
  if(procedure){S.derivedView=null;T.end();}
  const depth=procedure?'overview':x.depth;
- S.experienceContext={...x,depth,stop:null,presentation:stop.presentationId,seam:null};
+ S.experienceContext={...x,depth,stop:null,presentation:stop.presentationId,seam:null,armed:false,point:null};
  if(depth==='overview')T.begin({kind:'experience-overview',subject:id,params:{}});
  ctx.ui();return true;
 }
@@ -549,7 +558,7 @@ export function expandStop(id) {
   // A Peek is awareness, not work: the review aid records that it happened, never that it wrote anything.
   review({ peeks: (S.expReview.peeks || 0) + 1 });
  const stop=ctx.experience.stops[id];if(!stop)return false;
- cancelProposal('invoke');A.select(id);S.experienceContext={...S.experienceContext,depth:'occurrence',stop:id,presentation:stop.presentationId,seam:null};
+ cancelProposal('invoke');A.select(id);S.experienceContext={...S.experienceContext,depth:'occurrence',stop:id,presentation:stop.presentationId,seam:null,armed:false,point:null};
  T.begin({kind:'experience-occurrence',subject:id,target:{id},params:{stop:id}});ctx.ui();return true;
 }
 export function closeExperienceWork() {cancelProposal('task-end');S.derivedView=null;T.end();S.experienceContext.depth='ordinary';S.experienceContext.stop=null;S.experienceContext.seam=null;ctx.ui();}
@@ -603,10 +612,12 @@ export async function editRoute(id) {
  cancelProposal('invoke');
  const epoch=nav.travelEpoch();
  nav.beginReturn('Return to Seam reading');
- S.experienceContext.depth='route';S.task.params.connection=id;
+ // Entering the Path posture disarms insertion and clears any previously selected point: the reading
+ // belongs to the route being opened, never to the one that was left.
+ S.experienceContext.depth='route';S.experienceContext.armed=false;S.experienceContext.point=null;S.task.params.connection=id;
  await bringIntoView();if(epoch!==nav.travelEpoch())return false;review({routeWrite:{...S.expReview.routeWrite,edited:true}});ctx.ui();return true;
 }
-export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';review({routeWrite:{...S.expReview.routeWrite,returned:true}});ctx.ui();}
+export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';S.experienceContext.armed=false;S.experienceContext.point=null;review({routeWrite:{...S.expReview.routeWrite,returned:true}});ctx.ui();}
 function routeProposal(id,patch,label){
  const route=ctx.cameraSource.connections[id];if(!route)return false;
  // A proposal is only ever made by the writer the context currently holds: a stale route selection
@@ -620,12 +631,59 @@ export function routePoint(p){
  if(!['route','coordination'].includes(x.depth)||!x.seam||!id)return false;
  if(!['experience-seam','experience-coordination'].includes(t.kind))return false;
  if(!ctx.cameraSource.connections[id])return false;
+ // UX5 · §3.2: `+ Path point` is the only creation path. An unarmed Stage click is not a point, whatever
+ // posture the shell happens to be in, so the insertion cannot be performed by accident.
+ if(!x.armed)return false;
  const position=[p.x,1.5,p.z];
- return routeProposal(id,{addAnchor:position},'Add Camera interior anchor');
+ const result=routeProposal(id,{addAnchor:position},'Add Camera path point');
+ if(result!==false)x.armed=false;
+ return result;
 }
+// Arming is a session reading with no writer behind it: nothing is authored until a point is placed, and
+// the same control disarms, so the author can never be left holding an armed insertion they cannot see.
+export function armPathPoint(){
+ const x=S.experienceContext;
+ if(S.visitor||x.depth!=='route'||S.task?.kind!=='experience-seam')return false;
+ x.armed=!x.armed;
+ if(x.armed){x.point=null;A.setStatus('Armed · click the Stage to place a Camera path point · Esc cancels','tool');}
+ ctx.ui();return x.armed;
+}
+// One path point, selected by its own identity on the Stage or in the Deck lane. Selecting reads the
+// Camera route's authored point; it writes no source, no history and no standpoint.
+export function selectPathPoint(connectionId,anchorId){
+ const x=S.experienceContext,route=ctx.cameraSource.connections[connectionId];
+ if(!route||x.depth!=='route')return false;
+ const anchor=route.anchors.find(a=>a.id===anchorId);
+ x.point=anchor?{connectionId,anchorId:anchor.id}:null;
+ if(anchor&&S.task)S.task.params.connection=connectionId;
+ ctx.ui();return !!anchor;
+}
+// Removing a point goes through the same proposal and writer an added or moved point does, so a shared
+// route asks before anything is written and one acceptance is one Undo step.
+export function removePathPoint(){
+ const x=S.experienceContext,p=x.point;if(!p||x.depth!=='route')return false;
+ const route=ctx.cameraSource.connections[p.connectionId];
+ if(!route?.anchors.some(a=>a.id===p.anchorId)){x.point=null;ctx.ui();return false;}
+ const result=routeProposal(p.connectionId,{removeAnchor:p.anchorId},'Remove Camera path point');
+ if(result!==false)x.point=null;
+ return result;
+}
+// Look through is the Camera's own framing operation, reused verbatim: the point's pose is evaluated from
+// the route kernel and adopted through the one navigation seam. It moves no source and no history.
+export function lookThroughPoint(){
+ const p=S.experienceContext.point;if(!p)return false;
+ const station=nav.routeGeometry(nav.resolvedCamera(),p.connectionId)?.stations.find(s=>s.id===p.anchorId);
+ if(!station?.pose){A.setStatus('This path point has no resolvable Camera pose to look through','refuse');ctx.ui();return false;}
+ nav.lookThrough({...station.pose,target:[...station.pose.target]});
+ A.setStatus('Looking through the Camera path at this point','view');ctx.ui();return true;
+}
+// The armed insertion is session work like any other: Escape drops it without touching the route.
+onCancel(()=>{if(S.experienceContext.armed){S.experienceContext.armed=false;}},6,'Experience path insertion');
 export function beginAnchorDrag(event){
  const el=event.target.closest('[data-exp-anchor]');if(!el||S.visitor)return false;event.preventDefault();event.stopPropagation();cancelProposal('gesture');
  const a=ctx.cameraSource.connections[el.dataset.connection]?.anchors.find(a=>a.id===el.dataset.expAnchor);if(!a)return false;
+ // UX5: putting the pointer on a point selects it — the drag then moves the point it selected.
+ S.experienceContext.point={connectionId:el.dataset.connection,anchorId:a.id};
  S.expDrag={connection:el.dataset.connection,anchor:a.id,position:[...a.position],base:[...a.position],moved:false};S.anchorFocus={connection:el.dataset.connection,anchor:a.id};el.setPointerCapture(event.pointerId);return true;
 }
 export function moveAnchorDrag(p){const d=S.expDrag;if(!d)return false;d.position=[p.x,d.base[1],p.z];d.moved=d.position.some((n,i)=>Math.abs(n-d.base[i])>.01);ctx.ui();return true;}
@@ -635,7 +693,7 @@ onCancel(()=>{S.expDrag=null;},5,'Experience pointer');
 
 export function preciseView(uid) {
  const resolved=resolveUse(ctx.experience,ctx.cameraSource,uid);if(!resolved)return false;
- cancelProposal('invoke');A.select(uid);S.experienceContext={...S.experienceContext,depth:'precision',presentation:resolved.use.presentationId};
+ cancelProposal('invoke');A.select(uid);S.experienceContext={...S.experienceContext,depth:'precision',presentation:resolved.use.presentationId,armed:false,point:null};
  nav.beginReturn('Before precise Camera');
  T.begin({kind:'experience-camera',subject:uid,target:{id:resolved.view.id},params:{useId:uid,posture:'outside',grip:'frameH'}});ctx.ui();return true;
 }
@@ -725,7 +783,7 @@ export function routePace(speed){const id=S.task?.params.connection;if(!id||!['s
 export function acceptRoutePace(){
  const ask=S.expRouteAsk;if(!ask)return false;const affected=connectionReach(ctx.experience,ctx.cameraSource,ask.id);
  if(JSON.stringify(affected)!==JSON.stringify(ask.affected)){ask.affected=affected;ctx.ui();return false;}
- command(ask.label,(e,c)=>{const route=c.connections[ask.id];if(!route)throw Error('Route removed');if(ask.patch.speed)route.speed=ask.patch.speed;if(ask.patch.addAnchor)addAnchor(c,ask.id,ask.patch.addAnchor);if(ask.patch.anchor){const a=route.anchors.find(a=>a.id===ask.patch.anchor);if(!a)throw Error('Anchor removed');a.position=[...ask.patch.position];}});S.expRouteAsk=null;ctx.ui();return true;
+ command(ask.label,(e,c)=>{const route=c.connections[ask.id];if(!route)throw Error('Route removed');if(ask.patch.speed)route.speed=ask.patch.speed;if(ask.patch.addAnchor)addAnchor(c,ask.id,ask.patch.addAnchor);if(ask.patch.removeAnchor)removeAnchor(c,ask.id,ask.patch.removeAnchor);if(ask.patch.anchor){const a=route.anchors.find(a=>a.id===ask.patch.anchor);if(!a)throw Error('Anchor removed');a.position=[...ask.patch.position];}});S.expRouteAsk=null;ctx.ui();return true;
 }
 onCancel(()=>{S.expRouteAsk=null;},12,'Camera route pace proposal');
 
@@ -1047,8 +1105,7 @@ onCancel(reason=>{
 // Session transients every Experience reset or load clears: context, auditions, drafts and the
 // review observations. It never touches selection, Camera or World truth — those are settled by the
 // caller against the retained domains.
-function clearExperienceTransients(){
- S.experienceContext={presentation:null,depth:'ordinary',stop:null,seam:null};
+function clearExperienceTransients(){  S.experienceContext={presentation:null,depth:'ordinary',stop:null,seam:null,armed:false,point:null};
  S.derivedView=null;S.expAudition=null;S.expOfferDraft=null;S.expCaptureAsk=null;S.expAsk=null;S.expSourceAsk=null;S.expRouteAsk=null;S.expRebindAsk=null;
  // UX2 session disclosures: a Plan capture waiting for intent, the open explanation writer and the
  // Advanced authoring home all belong to the moment that was cleared, never to the next document.
@@ -1253,7 +1310,7 @@ export function parkExperience() {
   const acceptedKeys=['useId','posture','grip','from','to','originUse','connection','station','beat','invokeUse','stop','hints'];
   S.parkedByLens.experience={lens:'experience',identity:t.subject,name:resolveExperience(t.subject)?.item.name||t.subject||'Guide',kind:t.kind,context:structuredClone(x),target:structuredClone(t.target),params:Object.fromEntries(acceptedKeys.filter(k=>k in t.params).map(k=>[k,structuredClone(t.params[k])]))};
  }
- cancelProposal('lens');T.park();nav.discardReturn();S.derivedView=null;S.experienceContext={...x,depth:'ordinary',stop:null,seam:null};ctx.ui();return S.parkedByLens.experience;
+ cancelProposal('lens');T.park();nav.discardReturn();S.derivedView=null;S.experienceContext={...x,depth:'ordinary',stop:null,seam:null,armed:false,point:null};ctx.ui();return S.parkedByLens.experience;
 }
 export function experienceParkedContext() {
  const p=S.parkedByLens.experience;if(!p)return null;

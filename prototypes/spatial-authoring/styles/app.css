@@ -759,7 +759,10 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
 .exp-action.primary { background:var(--ink); color:var(--instrument); border-color:var(--ink); }
 .exp-action.destructive { background:var(--refuse-bg); color:var(--refuse-ink); border-color:var(--refuse-edge); }
 .exp-action.reference { background:transparent; border-color:transparent; padding:2px 0; text-align:left; }
-.exp-action[aria-pressed="true"] { background:var(--recess); border-color:var(--ink-3); box-shadow:inset 0 -2px var(--ink-2); }
+/* A pressed action keeps ink text on the recess background: a primary button's own colour is the
+   instrument tone, which is the same tone as the recess, so without this a pressed primary renders as a
+   blank box. The state must always be readable, whichever variant is pressed. */
+.exp-action[aria-pressed="true"] { background:var(--recess); color:var(--ink); border-color:var(--ink-3); box-shadow:inset 0 -2px var(--ink-2); }
 .exp-action:disabled { opacity:.45; cursor:default; }
 .exp-action:focus-visible,.set-node:focus-visible,.peek-stop:focus-visible,.exp-view-pin:focus-visible,.exp-focus-mark:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 .exp-label { display:block; margin:8px 16px; font-size:var(--tsm); }
@@ -947,3 +950,23 @@ body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px);
    resolved entry View is named on the Stop Card, so at the narrow review size the lane drops the chip's
    second line and tightens instead of pushing the band past 40 %. */
 @media(max-width:1060px){ .gd-stop-card .gd-entry { display:none; } .gd-lane { gap:2px 5px; } .gd-stop-card .gd-stop { font-size:var(--txs); } }
+
+/* UX5: the Camera Path posture. The Deck's straightened lane names the one Guide edge the Path belongs
+   to and lays the route's authored points out in a straight line, so the Stage's spatial drawing and the
+   Deck read the same points in the same order. Point chips are the ordinary hit target; the selected one
+   is marked ◉ exactly as the Stage marks it, and arming says so in words rather than only in colour. */
+.path-lane { display:flex; align-items:center; flex-wrap:wrap; gap:4px 10px; margin:0 0 6px; padding:4px 8px; background:var(--recess); border:1px solid var(--rule); border-radius:3px; }
+.path-lane .path-head { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.path-lane .path-head b { font:600 var(--tsm) var(--ui); color:var(--ink); }
+.path-lane .path-head small { font-size:var(--txs); color:var(--ink-3); }
+.path-lane .path-strip { display:flex; align-items:center; gap:4px; flex:1 1 auto; flex-wrap:wrap; }
+.path-lane .path-tail { font-size:var(--txs); color:var(--ink-3); white-space:nowrap; }
+.path-lane .path-empty { font-size:var(--txs); color:var(--ink-3); }
+.path-point { border:1px solid var(--rule); background:var(--instrument); border-radius:3px; font:500 var(--tsx) var(--ui); color:var(--ink-2); padding:1px 6px; cursor:pointer; }
+.path-point.selected { border-color:var(--sel-edge); color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); font-weight:700; }
+.path-points { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin:2px 0 4px; }
+.path-point-card { border:1px solid var(--rule); border-radius:3px; padding:2px 0 6px; background:var(--recess); }
+.path-point-card .exp-preview { margin:6px 12px; }
+.path-point-card > .c-acts, .path-point-card > .c-hint, .path-point-card > .exp-fact, .path-point-card > .exp-more { margin-left:12px; margin-right:12px; }
+.path-from .origin-row .exp-action { padding:2px 5px; }
+@media(max-width:1060px){ .path-lane .path-head small { display:none; } }

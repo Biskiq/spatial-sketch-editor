@@ -5,6 +5,11 @@ QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$QA_DIR/lib.sh"
 qa_open
 qa_faults_clear
+# A control inside the scrollable Card can be on screen yet under the fixed Guide band at non-ordinary
+# Experience depth (UX4/UX5), so a real click would land on the band. Center it in the Card's own scroll
+# container first, the same way the shell's pointer path does, and only then click it.
+card_click(){ agent-browser scrollintoview "$1" >/dev/null;qa_scroll_center "$1";agent-browser click "$1" >/dev/null;qa_frames; }
+
 agent-browser click '[data-act="lens"][data-lens="experience"]' >/dev/null
 qa_frames
 qa_ok 'ordinary Experience has no Deck or reading' "$(qa_js '(!__me.S.session && !document.querySelector("#experienceDeck"))')" 'true'
@@ -85,7 +90,7 @@ qa_ok 'Travel reports prepared versus reused support with the Camera owner' "$(q
 agent-browser click '[data-act="exp-route"]' >/dev/null
 qa_frames
 qa_ok 'explicit route work requests Plan and return crumb' "$(qa_js '(__me.S.experienceContext.depth === "route" && !!document.querySelector("[data-act=exp-route-return]") && __me.ctx.stage.cam.el > 1.5)')" 'true'
-agent-browser click '[data-act="exp-route-return"]' >/dev/null
+card_click '[data-act="exp-route-return"]'
 qa_frames
 qa_ok 'route crumb restores previous standpoint' "$(qa_js '(__me.S.seamPose === JSON.stringify(__me.nav.plainPose()))')" 'true'
 agent-browser click '[data-act="exp-close"]' >/dev/null
@@ -129,17 +134,37 @@ agent-browser click '[data-act="exp-seam"]' >/dev/null
 qa_frames
 agent-browser click '[data-act="exp-route"]' >/dev/null
 qa_frames
+# UX5: a plain Stage press is never a new point. The author arms `+ Path point`, and that is the only
+# creation path; an unarmed press leaves the route exactly as it was.
+p="$(qa_at '#gl' 360 180)"; qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
+qa_ok 'a plain Stage press adds no Camera path point' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '0'
+card_click '[data-act="exp-path-point"]'
+qa_ok 'arming the Path point writes nothing and names the click it waits for' "$(qa_jsv 'JSON.stringify([!!__me.S.experienceContext.armed, __me.S.experienceContext.point===null, __me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length])')" '[true,true,0]'
 p="$(qa_at '#gl' 360 180)"; qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
 qa_ok 'Stage authors one interior anchor' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '1'
-agent-browser click '[data-act="exp-route-return"]' >/dev/null
+qa_ok 'placing the point disarms the insertion' "$(qa_js '__me.S.experienceContext.armed')" 'false'
+# UX5: the point is an identity of its own — selecting it reads its position on the route, its evaluated
+# Camera preview and its operations, and Look through adopts that pose through Camera's own seam.
+card_click "[data-act='exp-point-select']"
+qa_ok 'selecting a path point reads its identity, position and preview without writing' "$(qa_jsv 'JSON.stringify([__me.S.experienceContext.point?.anchorId===__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors[0].id, !!document.querySelector("#card [data-path-point]"), document.querySelector("#card [data-point-read]").textContent.includes("% along the route"), !!document.querySelector("#card [data-exp-point-preview]"), !!document.querySelector("#card [data-act=exp-look-point]"), !!document.querySelector("#card [data-act=exp-point-remove]")])')" '[true,true,true,true,true,true]'
+# One assignment per eval: the harness evaluates a single expression, so two statements in one call
+# would never run.
+qa_js 'window.__poseBefore=JSON.stringify(__me.nav.plainPose())' >/dev/null
+qa_js 'window.__undoBefore=__me.S.undo.length' >/dev/null
+card_click "[data-act='exp-look-point']"
+qa_ok 'Look through a path point moves the standpoint and writes no history' "$(qa_js '(JSON.stringify(__me.nav.plainPose())!==window.__poseBefore&&__me.S.undo.length===window.__undoBefore)')" 'true'
+card_click "[data-act='exp-point-remove']"
+qa_ok 'removing the selected point is one ordinary Camera edit' "$(qa_jsv 'JSON.stringify([__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length, __me.S.experienceContext.point===null, __me.S.undo.at(-1).label])')" '[0,true,"Remove Camera path point"]'
+agent-browser click '#undoBtn' >/dev/null
 qa_frames
-agent-browser click '[data-act="exp-coordinate"]' >/dev/null
+qa_ok 'Undo restores the removed path point' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '1'
+card_click '[data-act="exp-route-return"]'
 qa_frames
+card_click '[data-act="exp-coordinate"]'
 station="$(qa_jsv '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors[0].id')"
 agent-browser select '[data-exp-station]' "$station" >/dev/null
 qa_frames
-agent-browser click '[data-act="exp-beat"]' >/dev/null
-qa_frames
+card_click '[data-act="exp-beat"]'
 qa_js '__me.S.beatBefore={ref:JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats),time:document.querySelector(".coord-hold").textContent}' >/dev/null
 agent-browser select '[data-exp-pace]' 'slow' >/dev/null
 qa_frames

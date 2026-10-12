@@ -214,7 +214,9 @@ let hoverQueued = false;
 
 canvas.addEventListener('pointerdown', (e) => {
   if (S.visitor) { E.visitorPointer?.(e); return; }
-  if(S.experienceContext.depth === 'route' && e.button===0 && !e.altKey) { const p=groundAt(e); if(p)E.routePoint(p); return; }
+  // UX5: only an armed `+ Path point` turns a Stage press into a new point. An unarmed press in the Path
+  // posture falls through to the shell's ordinary click, which adds nothing to the route.
+  if(S.experienceContext.depth === 'route' && S.experienceContext.armed && e.button===0 && !e.altKey) { const p=groundAt(e); if(p)E.routePoint(p); return; }
   if(S.task?.kind === 'experience-region') { const p=groundAt(e); if(p)E.regionPoint(p); return; }
   canvas.setPointerCapture(e.pointerId);
   S.popover = null;
