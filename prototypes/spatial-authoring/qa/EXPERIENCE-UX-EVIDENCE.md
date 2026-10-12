@@ -627,6 +627,79 @@ Deck lane: Camera Path · Stop 1 → Stop 2   Materials → Piano · auto pace  
   verification; the density and hierarchy of the Path Card and the straightened lane are the owner's single
   integrated review after UX7.
 
+## UX5 review correction — the Deck in the boards' language (landed · checkpoint)
+
+**What was wrong.** The Deck was still the pre-reconciliation reading: a full-width head row above the
+lane, and every Stop drawn as a cramped mini-card — a truncated `n · Presentation` line, an `Entry · …`
+reading and a full-width `Detail` button stacked inside the retired 50 px Peek width. Set against the
+locked specimens (QA 1 Camera Path, QA 2 Journey, QA 4 Guide) the deviation is hierarchy and proportion,
+not behaviour: the boards draw **one shallow band** whose left **name block** carries the posture's
+label, its one reading and its own actions, and whose right **lane** carries that posture's content.
+
+**What changed** (`app/experience-ui.js`, `styles/app.css`):
+
+- `deckBlock({k,t,s,ops})` — one name block per posture; the band is a flex row of block + lane.
+- **Guide (QA 4):** `GUIDE · <Guide name> · n Stops`, then compact named Stop chips in order reading the
+  occurrence number, the Stop's own name and `Presentation · <name>`. `Entry`/`Next`/pacing stay the
+  selected Stop's Card and ordering stays `Edit Guide`, so the chip carries no second inspector. The
+  continuation chip names its continuation in one word (`Cut` / `Travel`, `⇥ Stop n`, `⊘ End`,
+  `! needs repair`) instead of a sentence, and its `aria-label` still names the destination.
+- **Path (QA 1):** `CAMERA PATH`, `<origin View> → <destination View>`, `Guide · Stop n → Stop m`; the
+  lane keeps the straightened topology, and its tail now reads only pace / armed state rather than
+  repeating the Guide occurrence the name block already names.
+- **Journey (QA 2):** `JOURNEY`, the View pair, the Guide occurrence, `Rehearse` as the block's primary
+  action (Pause/Stop appear while a rehearsal is live; `Look through` is Camera's own exit), and a real
+  time axis — `0:00 → total`, one ◆ per Cue carrying that Cue's name beneath it, the playhead, and the
+  axis itself as the scrub surface, so no second control repeats it.
+- **Index header:** keeps the one `Path | Journey` switch and carries the Journey's own
+  origin → destination, `Total · n s` and `n Cues`. The Deck no longer repeats the switch
+  (`postureSwitch()` is retired): one control, one home.
+- **Narrow review:** under 1060 px the chips drop to one line and the name block narrows, so the band
+  stays inside the §6 40 % reservation and the Card stays reachable.
+
+**A defect the comparison found, and fixed.** `cueCard` handed the *selected pair* to `coordinationHtml`,
+whose `coordinateTiming` reads the resolved seam's beats. The resulting `TypeError` was thrown inside
+`renderUI()` **before** `renderExperienceSurfaces()`, so entering the Journey left the Card and the whole
+Deck showing the Path posture while the Index looked current — a silent half-render. `cueCard` now
+resolves its seam and `coordinationHtml(seam, pair)` takes the pair separately. The probe that found it
+(a console-error capture plus posture/Card readings after each click) now reads clean.
+
+### Readings (conformance fixture, driven by pointer/keyboard)
+
+| Reading | Result |
+| --- | --- |
+| Band, Guide posture (6 Stops, 1440×900) | first child `.deck-block` is the element a pointer hits; 6 `.gd-stop-card.compact`, 6 `.gd-edge`; one deck, `[data-deck-posture]` = `overview` |
+| Band, 1024×768 | 99 px · 12.8 % of the viewport; chips one line, no nested scroller, no sideways document scroll |
+| Postures reached | `overview` → `route` (`[data-path-lane]`) → `coordination` (`[data-journey-deck]`), Card `Camera Path · Camera` → `Cue · Journey` |
+| Console errors across the Journey path | none (was `TypeError: … reading 'map'` in `coordinateTiming`) |
+| Node tests | `node --test tests/*.test.mjs` → **144/144 pass** (incl. the new `experience-journey.test.mjs`) |
+
+## UX6 — the Journey (checkpoint · behaviour and surfaces landed, browser gate unrun)
+
+**What landed.** One clock (`journeyClock` in `app/experience-coordination.js`) mapping Camera movement
+time plus Experience pauses through the same `movementTiming` the visitor runtime uses; Cue identity as
+the (Guide edge, connection, station) triple with `cueMembers` / `cueDestinations`; the atomic cue move as
+one history transaction (`moveCueCommand`) and the origin choice (`setJourneyOrigin`); the session
+playhead (`rehearsePlay` / `Pause` / `Stop` / `rehearsalAt` / `rehearsalLook`, driven by `rehearseTurn`
+and drawn as the Stage rig plus the Deck playhead); the Journey Deck and the Cue Card; and a focused Node
+test file (`tests/experience-journey.test.mjs`) plus the Experience axis's Journey smoke block.
+
+### Recorded WIP at this checkpoint (not claimed as done)
+
+- **The covering QA axes are unrun after the last edits.** `qa/run-all.sh experience` (which owns the
+  Journey block) and `experience-shell` (which owns the band's share/heading laws) have not been run at
+  this commit; #114 makes those owner-directed per slice, and this checkpoint records them as **unrun**,
+  not green. The Node suite is green (144/144).
+- **The coordination strip still writes holds.** `.coord-hold` keeps its `[data-exp-hold]` input in the
+  Journey posture while the Cue Card's Pause writes the same field. §0.8.1 wants the strip to be the
+  projection; the change is a control-ownership decision (the historical `qa/rich-check.sh` asserts an
+  input inside `.coord-hold`), so it is deferred rather than smuggled into a layout correction.
+- **The Guide chip keeps a `Detail` disclosure.** The boards' chip has no expansion; `Expand` is still a
+  live conformance assertion (QA 3), so the chip keeps one quiet `Detail` control until that reading is
+  re-pointed.
+- **UX7 is not started**, and **owner visual acceptance remains once, after UX7** — the captures in
+  `screens/experience-ux4`, `-ux5` and `-ux6` are agent verification, not acceptance.
+
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [axis]: ./experience-shell-check.sh
