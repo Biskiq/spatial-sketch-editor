@@ -65,7 +65,11 @@ BLOB='(() => {
     parkedSel: t("#card [data-act=\"sel\"]") ? t("#card [data-act=\"sel\"]").dataset.id : null,
     parkedNote: t("#card .relation.parked") ? t("#card .relation.parked").textContent : null,
     openPresentation: !!t("#index [data-act=\"exp-open\"]"),
-    slotVerb: !!t("#index [data-act=\"pres-ref\"]"),
+    // The retired Scene-subject list is replaced by the Index locator affordances: one row that
+    // presents, and one Browse World row that reaches every Scene subject through the shared locator
+    // instead of listing them as a column of Select buttons.
+    presentAct: !!t("#index [data-act=\"exp-create\"]"),
+    browseWorld: !!t("#index [data-act=\"find-world\"]"),
     preview: ctx.stage.previewPlace ? JSON.stringify(ctx.stage.previewPlace) : null,
     unroll: ctx.stage.items.has("rotunda") ? +(ctx.stage.d("rotunda").u || 0).toFixed(3) : null,
     gwinHead: w.openings.find((o) => o.id === "gwin").head,
@@ -142,7 +146,7 @@ E0="$(field eye)"; F0="$(field fov)"; H0="$(field hash)"; U0="$(field undo)"; TR
 experience
 qa_ok "crossing changes the lens in hand" "$(field lens)" "experience"
 qa_ok "nothing was in hand, so nothing was parked" "$(field parked)" "None"
-qa_ok "the Experience Index is its own real work, a locator for Presentations and existing Scene subjects" "$(field indexTitle) / $(field openPresentation) / $(field slotVerb)" "Experience / True / True"
+qa_ok "the Experience Index is its own real work: a Presentation, + Present, and one Browse World that reaches the Scene's subjects" "$(field indexTitle) / $(field openPresentation) / $(field presentAct) / $(field browseWorld)" "Experience / True / True / True"
 qa_okc "…and the World subject it holds is named as the World's" "$(field cardKick)" "From the World lens"
 qa_ok "the Camera is exactly where the World left it" "$(eyediff "$(field eye)" "$E0")" "0"
 qa_okn "…FOV and framing included" "$(field fov)" "$F0" "0.001"
@@ -150,8 +154,14 @@ qa_ok "…and nothing was written: no building change, no history, no trail entr
 qa_ok "no World Instrument stands in the Experience lens" "$(field instr)" "False"
 qa_press /
 last="$(step '')"
-qa_okc "Search is refused by name from inside the Experience lens" "$(field status)" "Search is World work"
-qa_ok "…and no listing was opened" "$(field finder)" "False"
+# The one locator is shared now: from inside the Experience it opens on the museum's subjects and
+# records and on the Scene's own subjects, and opening it selects nothing, opens nothing and writes
+# nothing — the identity it reports is the one the crossing carried.
+qa_ok "the one locator opens from inside the Experience lens" "$(field finder)" "True"
+qa_ok "…and opening it selected nothing, opened no reading and wrote no history" "$(field sel) / $(field reading) / $(field undo)" "gwin / none / $U0"
+qa_locator_select switch pointer
+last="$(step '')"
+qa_ok "…and a Scene subject it lists is taken by its own Select, identity and nothing else" "$(field sel) / $(field reading) / $(field undo)" "switch / none / $U0"
 last="$(step "await A.face('gwin');")"
 qa_okc "World work is refused by name too, and nothing opened" "$(field status)" "That is World work"
 qa_ok "…with no reading, no work in hand and no history" "$(field reading) / $(field task) / $(field undo)" "none / none / $U0"

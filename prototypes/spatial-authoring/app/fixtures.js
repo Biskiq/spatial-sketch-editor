@@ -87,6 +87,9 @@ export function listingOf(id, kind, museum) {
 
 // The museum's own subjects (which have geometry) and the metadata records (which do not). `geom` is
 // the honest flag the row verbs are derived from: no geometry, no Open location, no recovery verbs.
+// `register` says the row is a record of the register rather than a subject that happens to have no
+// Stage geometry — the Scene's own logical subjects are the latter, and they are never borrowed into
+// the records office.
 export function browseRecords(museum) {
   const wallOf = (id) => museum.walls.find((w) => w.id === id) || null;
   const out = [];
@@ -101,6 +104,6 @@ export function browseRecords(museum) {
     out.push({ id: a.id, name: a.name, kind: 'Artwork · Scene', where: w ? `on the ${w.name}` : 'unresolved wall reference', ref: '', geom: true });
   }
   for (const o of museum.objects) out.push({ id: o.id, name: o.name, kind: 'Object · Scene', where: listingOf(o.id, 'objects', museum), ref: '', geom: true });
-  for (const r of METADATA) out.push({ ...r, geom: false });
+  for (const r of METADATA) out.push({ ...r, geom: false, register: true });
   return out;
 }

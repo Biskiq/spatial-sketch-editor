@@ -48,7 +48,7 @@ agent-browser set viewport 1024 768 >/dev/null;qa_frames
 qa_ok 'compact desktop preserves source and requested Camera without refit, and exposes sheet controls' "$(qa_js '__me.qa.hash()') / $(qa_js '__me.nav.plainPose()') / $(qa_js '(document.querySelector("#headPreview").getBoundingClientRect().right<=innerWidth&&document.documentElement.scrollWidth===innerWidth)')" "$source / $requested / true"
 qa_snap narrow-precision
 pose="$(qa_js '__me.qa.realized()')"
-click '#headPreview'
+qa_preview_presentation
 qa_ok 'narrow visitor fills viewport, authoring controls inactive' "$(qa_js '(document.querySelector("#gl").getBoundingClientRect().width===innerWidth&&!__me.S.task&&document.querySelector("[data-act=exp-exit-preview]").getBoundingClientRect().right<=innerWidth)')" true
 qa_snap narrow-visitor
 click '[data-act=exp-exit-preview]'

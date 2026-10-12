@@ -21,18 +21,23 @@
       <button class="lens-btn on" data-act="lens" data-lens="world" role="tab" aria-selected="true" title="World: the museum, authored in place">World</button>
       <button class="lens-btn" data-act="lens" data-lens="experience" role="tab" aria-selected="false" title="Experience: author meaning, Views and visitor composition in the same World">Experience</button>
     </div>
-    <div class="doc"><span class="doc-name">Saltmarsh Museum</span><span class="active-experience" id="activeExperience" hidden></span><span class="doc-state" id="docState">All changes saved</span></div>
+    <div class="doc"><span class="doc-name">Saltmarsh Museum</span><span class="active-experience" id="activeExperience" hidden></span></div>
     <button class="find-btn" data-act="find" title="Search anything (/)">Search anything <kbd>/</kbd></button>
     <!-- The narrow shell's sheets: the Index and the Card over the stage, for the widths where the
          columns are not there. They are hidden at wider widths, never disabled. -->
     <button class="sheet-btn" data-act="sheet-index" aria-expanded="false" title="Show the Index over the stage">Index</button>
     <button class="sheet-btn" data-act="sheet-card" aria-expanded="false" title="Show the Card over the stage">Card</button>
     <div class="head-hist" aria-label="Project source history">
-      <button class="icon-btn" id="undoBtn" data-act="undo" aria-label="Undo">↶<span class="count" id="undoCount"></span></button>
-      <span class="undo-label" id="undoLabel">No source changes yet</span>
+      <button class="icon-btn" id="undoBtn" data-act="undo" aria-label="Undo">↶</button>
       <button class="icon-btn" id="redoBtn" data-act="redo" aria-label="Redo">↷</button>
     </div>
-    <button class="head-preview" id="headPreview" data-act="exp-preview">Preview</button>
+    <!-- One Preview control for the whole shell. Its scopes are rendered from what can actually run,
+         so a scope that cannot start is absent rather than disabled, and no second Preview entry
+         exists anywhere else in the shell (Index, Deck, Stop Card or Presentation). -->
+    <details class="head-preview" id="headPreview" hidden>
+      <summary data-act="preview-menu" title="Preview the Experience — one scope at a time">Preview <span class="caret" aria-hidden="true">▾</span></summary>
+      <div class="preview-scopes" id="previewScopes" role="group" aria-label="What to preview"></div>
+    </details>
     <a class="rationale-link" href="rationale.html">Design rationale</a>
   </header>
 
@@ -133,7 +138,6 @@
     <!-- Refusals answer a request and name what did not happen, so they are announced assertively;
          the rail itself stays polite. Both are the same words the shell shows. -->
     <span class="sr" id="announcer" role="alert" aria-live="assertive"></span>
-    <div class="trail-wrap"><span class="trail-k">View trail</span><div class="trail" id="trail"></div></div>
     <div class="rail-util">
       <button id="draftBtn" data-act="grid" aria-pressed="true" title="Wall grid: the wall you are working on wears drafting paper with a 1 m / 5 m grid. Turn it off to see the wall’s real material (G).">Wall grid</button>
       <button id="motionBtn" data-act="motion" aria-pressed="false" title="Reduce motion: every view move becomes an instant change — the same as the system reduced-motion setting. The speeds stay in Motion.">Reduce motion</button>

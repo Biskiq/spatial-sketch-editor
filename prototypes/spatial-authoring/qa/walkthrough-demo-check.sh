@@ -73,7 +73,7 @@ if [ "${QA_DEMO_UNTIL:-}" = cancel ]; then qa_summary 'C9 Next cancellation'; ex
 click '#jToggle'
 
 # Preview authoring remains unavailable even when Next normally offers to do a task.
-before="$(snapshot)"; click '#headPreview'
+before="$(snapshot)"; qa_preview_presentation
 qa_ok 'Preview unmounts the walkthrough authoring option' "$(qa_js '(!document.querySelector("#journeys [data-jact=walkthrough]")&&document.querySelector("#jWalkthrough").textContent.includes("Next browses instructions"))')" true
 click '#journeys [data-jact=next]'
 qa_ok 'Next stays read-only during a separately entered Preview' "$(snapshot) / $(qa_js '!!__me.S.visitor') / $(at)" "$before / true / 4"

@@ -279,11 +279,13 @@ qa_okc "Wall grid refuses by name from the Experience" "$(field status)" "Wall g
 tap '#motion [data-motion="instant"]'
 last="$(step '')"
 qa_okc "a Motion speed refuses by name too" "$(field status)" "Motion speeds are World work"
-# The trail auto-scrolls to its newest entry, so the first stop can sit scrolled out of the strip —
-# transport is refused whichever stop is pressed, and the newest one is the one a pointer reaches.
+# The chrome no longer draws the View trail, so the transport is reached the way the shell documents
+# it: the `[` key, calling the same A.trailStep(-1) the retired strip's stops called. The refusal is
+# exercised from a real transported attempt — so the trail must still hold a standpoint to step back
+# to, and the harness says so rather than asserting about a step that never happened.
 TRAILN="$(qa_js 'window.__me.S.trail.length')"
-TRAILN="$((TRAILN - 1))"
-tap "#trail [data-trail=\"$TRAILN\"]"
+[ "${TRAILN:-0}" -ge 2 ] || qa_fail_msg "fewer than two standpoints on the trail, so transport could not be attempted"
+qa_press '['
 last="$(step '')"
 qa_okc "trail transport refuses by name as well" "$(field status)" "That is World work"
 qa_ok "…and nothing happened: no drafting, speed or trail change" "$(field drafting) / $(field motion) / $(field trailPos)" "$F_DRAFT / $F_MOTION / $F_POS"

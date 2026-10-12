@@ -13,14 +13,20 @@ export function experienceIndex() {
   const e = ctx.experience;
   return `<div class="ix-head"><span class="ix-title">Experience</span><span class="ix-note">Meaning in the same World</span></div><div class="ix-group">Presentations</div>`
   + Object.values(e.presentations).map(p => `<div class="ix-row${S.sel === p.id ? ' sel' : ''}"><button class="ix-go" data-act="exp-open" data-id="${p.id}"><span class="glyph pres"></span><span class="ix-name">${esc(p.name)}</span></button></div>`).join('')
-  + (e.guide.length ? `<div class="ix-group">Guide</div><div class="ix-row"><button class="ix-go" data-act="exp-guide">${esc(e.name)} · ${e.guide.length} Stops</button></div>${button('exp-preview-guide','Preview Guide')}` : '')
-  // I3/J6: a world-only visit needs no Presentation, Stop or Guide — it exists as soon as the Experience
-  // offers participation anywhere. One runtime, three entries.
-  + (Object.values(e.uses).some(u=>u.kind==='interaction'&&!u.availability) ? `<div class="ix-group">Experience-wide</div><div class="ix-row"><button class="ix-go" data-act="exp-preview-experience">Preview Experience</button></div>` : '')
+  + (e.guide.length ? `<div class="ix-group">Guide</div><div class="ix-row"><button class="ix-go" data-act="exp-guide">${esc(e.name)} · ${e.guide.length} Stops</button></div>` : '')
   // C9.6: retained contributions whose organizational home was removed stay listed with a route to their
   // repair writer. The inventory never resurrects the removed Presentation or rehomes the instruction.
   + (retainedContributions().length?`<div class="ix-group">Retained contributions</div><div class="ix-note">Their home was removed; each stays repairable.</div>${retainedContributions().map(o=>`<div class="ix-row${S.sel===o.id?' sel':''}"><button class="ix-go" data-act="exp-select-orphan" data-id="${o.id}">${esc(o.name)} · repair</button></div>`).join('')}`:'')
-  + `<div class="ix-group">Scene subjects</div><div class="ix-note">Select an existing identity; presenting it is explicit.</div>${Object.values(ctx.sceneSource.subjects).map(s=>`<div class="ix-row"><button class="ix-go" data-act="pres-ref" data-id="${s.id}">${esc(s.name)}</button></div>`).join('')}<div class="c-acts">${button('exp-create','+ Presentation')}${button('exp-environment','Present environment')}${button('exp-region','Present region')}</div>`;
+  // The Scene's own subject list is retired here: every subject it listed is reached through the one
+  // shared locator instead (`Browse World`, below), deduplicated by identity, which is the same list the
+  // World lens searches and the same Select the Card, the Index and the beacon resolve. What stays here
+  // is what the locator cannot be: the acts that create something, and the two logical subjects whose
+  // presentation is not a flight to a Stage position.
+  + `<div class="ix-group">Add</div><div class="ix-note">Presenting an identity is explicit; nothing is presented by browsing.</div>`
+  + `<div class="ix-row"><button class="ix-go" data-act="exp-create">+ Present</button><span class="ix-note">a Presentation on the selected identity, or a new one</span></div>`
+  + `<div class="ix-row"><button class="ix-go" data-act="exp-environment">Present environment</button><span class="ix-note">the logical subject with no Stage geometry</span></div>`
+  + `<div class="ix-row"><button class="ix-go" data-act="exp-region">Present region</button><span class="ix-note">two corners on the Stage</span></div>`
+  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button><span class="ix-note">every subject the Scene and the museum have, found by name</span></div>`;
 }
 const reuseCount=id=>Object.values(ctx.experience.stops).filter(s=>s.presentationId===id).length;
 const valueLabel=(cap,v)=>{if(!cap)return String(v);if(cap.control==='range')return String(Number(v));if(cap.kind==='playback')return v?'Playing':'Stopped';return v?'On':'Off';};
@@ -42,7 +48,7 @@ function experienceCardBody(){
  }
  if(r?.kind==='Stop'){
   const p=e.presentations[r.item.presentationId],entry=stopEntry(e,r.item.id),view=c.views[e.uses[entry.id]?.viewId];
-  return `<div class="c-head"><div class="c-k">This Stop · ${e.guide.indexOf(r.item.id)+1}</div><div class="c-t">${esc(p?.name||'Missing Presentation')}</div><div class="c-ref">Owner · Experience · occurrence ×1<br>Entry, Next, Pacing and Gate affect this Stop.<br>Meaning and Set affect all ${reuseCount(p?.id)} Stops.</div></div><div class="c-sec">This occurrence</div><div class="exp-fact">Entry · ${esc(view?.name||(entry.hold?'Keep current viewpoint':'Repair required'))}</div>${stopDetails(r.item)}<div class="c-acts">${button('exp-expand-stop','Expand occurrence',r.item.id)}${button('exp-preview-guide','Preview Guide')}${resolveNext(e,r.item.id).id?button('exp-seam','Open Seam',r.item.id).replace('data-id=',`data-from="${r.item.id}" data-to="${resolveNext(e,r.item.id).id}" data-id=`):''}</div>${coordinationDetail()}<div class="c-sec">Shared Presentation · ${reuseCount(p?.id)} occurrences</div>${p?`<p class="exp-fact">${esc(p.meaning)}</p>${setHtml(p)}<details class="exp-more"><summary>Edit shared Meaning</summary>${meaningHtml(p)}</details>${button('exp-open','Open shared Presentation',p.id,'reference')}`:'Repair required'}${askHtml()}`;
+  return `<div class="c-head"><div class="c-k">This Stop · ${e.guide.indexOf(r.item.id)+1}</div><div class="c-t">${esc(p?.name||'Missing Presentation')}</div><div class="c-ref">Owner · Experience · occurrence ×1<br>Entry, Next, Pacing and Gate affect this Stop.<br>Meaning and Set affect all ${reuseCount(p?.id)} Stops.</div></div><div class="c-sec">This occurrence</div><div class="exp-fact">Entry · ${esc(view?.name||(entry.hold?'Keep current viewpoint':'Repair required'))}</div>${stopDetails(r.item)}<div class="c-acts">${button('exp-expand-stop','Expand occurrence',r.item.id)}${resolveNext(e,r.item.id).id?button('exp-seam','Open Seam',r.item.id).replace('data-id=',`data-from="${r.item.id}" data-to="${resolveNext(e,r.item.id).id}" data-id=`):''}</div>${coordinationDetail()}<div class="c-sec">Shared Presentation · ${reuseCount(p?.id)} occurrences</div>${p?`<p class="exp-fact">${esc(p.meaning)}</p>${setHtml(p)}<details class="exp-more"><summary>Edit shared Meaning</summary>${meaningHtml(p)}</details>${button('exp-open','Open shared Presentation',p.id,'reference')}`:'Repair required'}${askHtml()}`;
  }
  if(r?.kind==='View use'&&!r.item.viewId)return activityCard(r.item);
  if(r?.kind==='View use'||r?.kind==='Camera View'){
@@ -186,7 +192,7 @@ export function renderDeck(){
  document.body.classList.toggle('guide-band',depth!=='ordinary');
  if(depth==='ordinary')document.body.style.removeProperty('--guide-band-h');
  let html;
- if(depth==='ordinary')html=`<span>Guide · ${e.guide.length} Stops</span><div class="peek-occurrences">${e.guide.map((id,i)=>`<button class="peek-stop ${S.sel===id?'selected':''}" data-act="exp-stop" data-id="${id}" aria-label="Stop ${i+1}: ${esc(e.stops[id].name)}">${S.sel===id?'◉':'○'} ${i+1}</button>`).join('')}</div>${button('exp-guide','Overview')}${button('exp-preview-guide','Preview Guide')}`;
+ if(depth==='ordinary')html=`<span>Guide · ${e.guide.length} Stops</span><div class="peek-occurrences">${e.guide.map((id,i)=>`<button class="peek-stop ${S.sel===id?'selected':''}" data-act="exp-stop" data-id="${id}" aria-label="Stop ${i+1}: ${esc(e.stops[id].name)}">${S.sel===id?'◉':'○'} ${i+1}</button>`).join('')}</div>${button('exp-guide','Overview')}`;
  else html=`<div class="deck-head"><b>Guide overview · ${e.guide.length} occurrences</b>${button('exp-close','Peek')}</div><div class="stop-strip">${e.guide.map((id,i)=>occurrenceHtml(id,i)).join('')}</div>`;
  if(x.seam&&['seam','route','coordination'].includes(depth))html=seamHtml(x.seam);
  if(el._html!==html){el.innerHTML=html;el._html=html;}

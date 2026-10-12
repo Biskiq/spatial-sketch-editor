@@ -39,8 +39,7 @@ agent-browser click '[data-act="exp-capture"]' >/dev/null
 qa_frames
 qa_ok 'three Views coexist without Guide or edges' "$(qa_js '(__me.ctx.experience.presentations["pres-highlights"].uses.length === 3 && __me.ctx.experience.guide.length === 0 && Object.keys(__me.ctx.cameraSource.connections).length === 0)')" 'true'
 qa_js '__me.S.previewBefore = { source:JSON.stringify(__me.A.domainSnapshot()),pose:JSON.stringify(__me.nav.plainPose()),sel:__me.S.sel,lens:__me.S.lens }' >/dev/null
-agent-browser click '#headPreview' >/dev/null
-qa_frames
+qa_preview_presentation
 qa_ok 'Preview without Guide takes over authoring' "$(qa_js '(!!__me.S.visitor && document.body.classList.contains("visitor-preview") && __me.S.visitor.runtime.stopId === null)')" 'true'
 agent-browser click '[data-act="exp-exit-preview"]' >/dev/null
 qa_frames

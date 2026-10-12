@@ -153,8 +153,78 @@ consolidation, the Guide/Camera Path/Journey postures and the visitor-surface au
 UX1–UX7, and the missing P23B fixture remains a separate repository-gate blocker that no #114 slice
 touches.
 
+## UX1 — shared chrome and the one locator (landed)
+
+**Exit gate (plan §5):** one Head `Preview ▾` with scopes, the duplicate Preview entries removed, the
+trail/counts/fake-Saved retired from chrome, the Index restructured (`+ Present`, `Browse World`, Guide
+row), locator coverage (§3.9) and the Scene list retired — **every formerly listed subject reachable by
+pointer and keyboard, exactly one Preview control, World shell/return regressions green.**
+
+### What UX1 changed
+
+| Artifact | Change |
+| --- | --- |
+| `index.html` | the Head's single control is `<details id="headPreview"><summary>Preview ▾</summary><div id="previewScopes"></div></details>`; the status rail no longer carries `#trail`, and the Head no longer carries `#undoCount`, `#undoLabel` or `#docState` |
+| `app/ui.js` | `previewScopes()` renders the scopes that can actually start (Presentation, Guide, world-only Experience) and hides the control when none can; `records()` now appends the Scene's own subjects, deduplicated by identity, marked `register:false` and, when logical, as having no Stage geometry; `inContext`'s register context follows the `register` flag instead of “no geometry”; the status rail draws no trail |
+| `app/experience-ui.js` | Index restructured: Presentations, Guide row, retained contributions, then `+ Present`, `Present environment`, `Present region` and `Browse World`; the “Scene subjects” column and the Index/Deck/Stop-Card `Preview Guide` entries are gone |
+| `app/main.js` | one shared `searchRequest` (the locator works from both lenses), the `find-world` act, and no `data-trail` dispatch |
+| `app/fixtures.js` | metadata rows declare `register: true` — the register context regression this slice found and fixed (see below) |
+| `app/experience.js` | the Preview menu closes behind the visit it starts, so Exit returns to a plain shell |
+| `styles/app.css` | `.head-preview` is a disclosure with a scope menu; `.trail*`, `.tr-*`, `.doc-state` and `.undo-label` are deleted |
+| [`qa/locator-check.sh`][locator] | the new UX1 axis: 25 assertions, one browser, registered in `qa/run-all.sh` as `locator` (order: after `experience-shell`) |
+| `qa/experience-shell-check.sh` | its UX0 deferral is now asserted: one Preview control, every scope inside it, the open menu's scopes as real hit targets with no sideways scroll, and the menu closed behind the visit (24 assertions) |
+| `qa/lib.sh` | `qa_click`, `qa_preview[_presentation|_guide|_experience]` and `qa_locator_open/query/row/select` — the one place every axis now reaches the Preview menu and the locator |
+| [`qa/locator-mutation-check.sh`][locmut] | the successor proof this slice adds to `qa/mutation-check.sh` |
+
+Two facts are stated rather than implied. First, `present()` and the two logical-subject presenters
+(`exp-environment`, `exp-region`) are unchanged: UX1 moved the entry points, and UX2 owns the
+aggregate Present. Second, the shell still lists its own `+ Present` row because presenting an identity
+is explicit and the locator never presents anything by selecting.
+
+### Readings
+
+| Proof | Result |
+| --- | --- |
+| `qa/locator-check.sh` | **25 / 25 green** — one Preview control at rest in both lenses, the menu's scopes, the menu closing behind the visit, one Exit Preview, the retired Scene list, `Browse World`, 7/7 formerly listed subjects by **pointer** and 7/7 by **keyboard** (ArrowDown to the row, Enter), one row per identity, a logical subject marked “no Stage geometry · Select only”, the register never borrowing a Scene subject, selection presenting/writing nothing, the control **absent rather than inert** when nothing can start (probed against the live Experience and restored), and the World shell unchanged |
+| `qa/experience-shell-check.sh` | **24 / 24 green** — its UX0 deferral (“the axis deliberately does NOT assert exactly one Preview control”) is now asserted: one control, every scope inside it, the open menu's scopes hit-reachable with no sideways scroll, and the menu closed behind the visit |
+| the other 24 axes | **green**, each on its own run: journey 59, interaction 56, flows 44, policy 41, shell 47, precision 38, browse 60, repair 47, lens 82, experience 30, conformance 105, creator 23, composition 27, revision 38, rich 35, precision-c9 55, presenter 59, walkthrough 33, walkthrough-demo 59, visitor 42, reconciliation 13, continuity 55, responsive 15, correctness 11 |
+| `node --test prototypes/spatial-authoring/tests/*.test.mjs` | **140 / 140 pass**, exit 0 |
+| `qa/locator-mutation-check.sh` | **5 regressions rejected, 0 accepted** — see the table below |
+| `qa/mutation-check.sh` (the whole chain, UX1 chained in) | **exit 0** — 49 mutation legs rejected, none accepted, run from this checkout so the model leg of `composition-mutation-check.sh` can load `three` |
+| captures | `screens/experience-ux1/` — the same five states as the UX0 before-state pair, from this slice's source |
+
+### The new axis is not a tautology
+
+| Reintroduced defect | Rejected at | Unaffected controls |
+| --- | --- | --- |
+| a second Preview entry, restored in the Index | *the shell offers exactly one Preview control…* (experience-shell) | green |
+| the retired “Scene subjects” column, restored | *no longer lists Scene subjects as its own Select buttons* (locator) | green |
+| the locator stops listing the Scene's own subjects | *every formerly listed subject is reachable by pointer through the locator* — 0 / 7, then the keyboard row | green |
+| a record without Stage geometry is no longer a register record | *the register lists records only, and no Scene subject is borrowed into it* (locator, and browse) | green |
+| the one control stops being conditioned on what can start (offered while inert) | *…and with nothing that can start, the one control is absent rather than inert* (locator) | green |
+
+### One defect this slice found and fixed
+
+Introducing the `register` flag exposed that the metadata rows never carried one: `inContext`'s register
+context was `!r.geom`, and once the Scene's logical subjects (which also have no geometry) joined the
+shared list, “no geometry” stopped meaning “a record”. The flag was added to the fixture in the same
+slice, and the assertion that protects it is `the register lists records only, and no Scene subject is
+borrowed into it` — with the fourth mutation above proving the assertion rejects its absence.
+
+### Recorded limits
+
+- The keyboard proof walks the locator's own rows with ArrowDown/Enter from the real search field; it
+does not claim screen-reader or assistive-device coverage, which stays a prototype-acceptance limit.
+- The Preview menu is chrome, so its visual treatment (the scope menu's paper, spacing and caret) is
+  reviewed by eye against PLATE §0.7, not asserted here.
+- `screens/experience-ux-before/` remains UX0's before-state baseline and is deliberately **not**
+  overwritten: `qa/capture-experience-shell.sh` still defaults to that directory, so a UX1 capture pass
+  must name its own output path (as `screens/experience-ux1/` here does).
+
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [axis]: ./experience-shell-check.sh
+[locator]: ./locator-check.sh
+[locmut]: ./locator-mutation-check.sh
 [capture]: ./capture-experience-shell.sh
 [inventory]: ./experience-ux-selector-inventory.md

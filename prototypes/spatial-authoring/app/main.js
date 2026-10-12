@@ -624,8 +624,6 @@ document.addEventListener('click', (e) => {
   if (seg) { applySeg(JSON.parse(seg.dataset.seg)); requestUI(); return; }
   const stop = t.closest('[data-unroll]');
   if (stop) { A.unrollTo(+stop.dataset.unroll); return; }
-  const trail = t.closest('[data-trail]');
-  if (trail) { A.gotoTrail(+trail.dataset.trail); return; }
   const mo = t.closest('[data-motion]');
   // The Motion speeds are World work: the Experience plays its own moves and never retunes the
   // World's profiles. The control stays in the footer, but from the other lens it refuses.
@@ -773,6 +771,9 @@ function doAct(a, el) {
       requestUI();
       break;
     case 'find': searchRequest(); break;
+    // Browse World from the Experience: the same listing, opened at the whole museum rather than at
+    // whatever context was left behind. It is the door the Index's retired Scene list now points through.
+    case 'find-world': S.browse.focus = null; searchRequest(); break;
     // ----- the narrow shell's sheets -----------------------------------------------------------
     // The Index and the Card over the stage, at the widths where the shell has no columns for them.
     // A sheet is a disclosure: it changes what is shown, moves focus into itself, and leaves the
@@ -800,13 +801,11 @@ function doAct(a, el) {
 
 const finder = $('#finder'), finderInput = $('#finderInput');
 
-// Search is World work — a reading of the museum's subjects and records. It is not available from
-// inside Experience, and the refusal names the reason instead of opening an empty list.
+// Search/Browse is one surface in both lenses. It reads the museum's own subjects and records and the
+// Scene's own subjects, deduplicated by identity, so every subject the Experience lists is reachable
+// from inside Experience as well as from the World. Opening it is context only: nothing is selected,
+// opened or written until a result's own Select is taken.
 function searchRequest(q = '') {
-  if (S.lens !== 'world') {
-    A.setStatus('Search is World work — switch back to the World lens to search the museum', 'refuse');
-    return;
-  }
   openFinder(q);
 }
 

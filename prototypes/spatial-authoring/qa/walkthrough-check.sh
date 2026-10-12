@@ -38,7 +38,9 @@ qa_ok 'World returns to its own Presenter step' "$(qa_jsv 'document.querySelecto
 click '#lens [data-lens=experience]'
 qa_ok 'Experience returns to its own instruction cursor' "$(at)" 0
 
-sheet index; click '#index [data-id=machine]'
+# UX1: the Experience Index no longer lists Scene subjects as its own Select buttons; the one shared
+# locator is how an author reaches one, and Select is still identity only.
+sheet index; qa_locator_select machine
 sheet card; click '#card [data-act=exp-create]'
 earned Q1; advance Q1 1
 fill '[data-exp-primary]' 'The casing protects the rotor.'
@@ -53,7 +55,8 @@ earned Q3; advance Q3 3
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 sheet index; click "#index [data-act=exp-open][data-id='$pid']"
 before="$(snapshot)"
-click '#headPreview'
+# UX1: Preview is one control in the Head; the Presentation scope is the one this step names.
+qa_preview_presentation
 qa_ok 'Preview keeps the shared walkthrough visible and read-only, with authoring unavailable' "$(qa_js '(()=>{const p=document.querySelector("#journeys"),field=document.querySelector("#card [data-exp-primary]");return !!__me.S.visitor&&p.checkVisibility()&&p.classList.contains("presenter-visiting")&&p.querySelector("#jBody").textContent.startsWith("Read-only")&&p.querySelectorAll("[data-authoring]").length===0&&!document.querySelector("#experienceExamples").checkVisibility()&&!field?.checkVisibility();})()')" true
 qa_js '__me.E.stepVisitor(4)' >/dev/null; qa_frames
 click '[data-act=exp-exit-preview]'
@@ -63,13 +66,16 @@ sheet card; click '#card [data-act=exp-add-guide]'
 stop="$(qa_jsv '__me.ctx.experience.guide[0]')"
 click ".peek-stop[data-id='$stop']"
 earned Q5; advance Q5 5
-sheet index; click '#index [data-id=piano]'
+# UX1: the Experience Index no longer lists Scene subjects; the shared locator is the way to one.
+sheet index; qa_locator_select piano
 sheet card; click '#card [data-act=exp-create]'
 fill '[data-exp-primary]' 'Listen to the piano.'
 click '#card [data-act=exp-add-guide]'
 qa_ok 'the second Presentation becomes a distinct Stop with no manual Camera graph' "$(qa_js '(()=>{const e=__me.ctx.experience;return e.guide.length===2&&e.stops[e.guide[0]].presentationId!==e.stops[e.guide[1]].presentationId&&Object.keys(e.seams).length===0;})()')" true
 earned Q6; advance Q6 6
-click '#experienceDeck [data-act=exp-preview-guide]'
+# UX1: the Deck no longer carries a Preview entry — the Head's one menu does, and the Guide scope is
+# the visit this step continues from.
+qa_preview_guide
 click '[data-command=next]'
 earned Q7; advance Q7 7
 click '[data-command=explore]'

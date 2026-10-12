@@ -38,7 +38,7 @@ shot 'experience-shell-1440-ordinary'
 tap '#experienceDeck [data-act=exp-guide]'
 shot 'experience-shell-1440-guide'
 
-tap '#headPreview'
+qa_preview_presentation
 shot 'experience-shell-1440-preview'
 tap '[data-act=exp-exit-preview]'
 
