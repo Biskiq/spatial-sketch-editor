@@ -780,9 +780,12 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
 .exp-summary { margin:10px 16px; }
 /* UX3 · the derived reach of one Scene subject: rows are references that open their owner, so they read as
    a list of what exists rather than as another editor. */
-.exp-used { margin:6px 16px; font-size:var(--tsm); }
-.exp-used .exp-action { display:block; }
-.exp-used small { display:block; font-size:var(--txs); color:var(--ink-3); }
+/* UX3 density: `Used in Experience` is a reference index, not a second inspector. One compact line per
+   reference — the owner's name as the hit target, its short kind/scope note beside it, elided rather than
+   wrapped — so a subject used in many places cannot dominate the Card. */
+.exp-used { display:grid; grid-template-columns:minmax(0,auto) 1fr; align-items:baseline; gap:1px 8px; margin:2px 16px; font-size:var(--tsm); }
+.exp-used .exp-action { display:block; text-align:left; }
+.exp-used small { min-width:0; font-size:var(--txs); color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .exp-view-switch { margin:8px 16px; font-size:var(--tsm); }
 .exp-view-switch .cue-select { display:block; margin-top:4px; }
 /* The rendered Camera preview is a normal-World projection produced by the Stage's own renderer. */

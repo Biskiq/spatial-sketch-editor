@@ -182,22 +182,29 @@ function experienceSubjectCard(s){
   +askHtml();
 }
 // The derived reach of one subject, read from existing references and read-only: the Presentations that
-// focus it, the behaviors and offers that target or are triggered by it, and the Stops presenting the
-// Presentations those live in. Each row opens its owner; none of them is a second editor, and none of them
-// marks a Presentation as the current selection.
+// focus it, the behaviors and offers that target or are triggered by it, and the Stops presenting any of
+// those Presentations. A Stop counts whether its Presentation merely *focuses* the subject (Present → Add
+// to Guide authors no behavior, so this is the common case) or reaches it through a behavior/offer homed
+// there — reading the Stops from behaviour homes alone silently dropped the focus-only Stops. Each row
+// opens its owner; none of them is a second editor, and none of them marks a Presentation as the current
+// selection. The rows are compact and single-line: the section is a reference index, so it must not read
+// as a second inspector weighting the Card.
 function usedInExperienceHtml(s){
  const e=ctx.experience,sid=s.id;
  const focuses=Object.values(e.presentations).filter(p=>p.focus.kind==='subjects'&&p.focus.ids.includes(sid));
  const uses=Object.values(e.uses).filter(u=>{const d=e.definitions[u.definitionId];return (d?.kind==='control'&&d.subjectId===sid)||(u.kind==='interaction'&&u.triggerSubjectId===sid);});
- const homes=[...new Set(uses.map(u=>u.presentationId).filter(Boolean))];
+ // Stops of the Presentations that focus this subject, unioned with the homes of the behaviours/offers
+ // that reach it: a Presentation that focuses the subject and is in the Guide is a reference even when it
+ // authors no behavior.
+ const homes=[...new Set([...focuses.map(p=>p.id),...uses.map(u=>u.presentationId).filter(Boolean)])];
  const stops=Object.values(e.stops).filter(st=>homes.includes(st.presentationId));
  const row=(kind,id,act,label,note)=>`<div class="exp-used" data-exp-used="${kind}" data-id="${esc(id)}"><button class="exp-action reference" data-act="${act}" data-id="${esc(id)}">${label}</button><small>${note}</small></div>`;
  const rows=[
-  ...focuses.map(p=>row('presentation',p.id,'exp-open',esc(p.name),`Presentation · focuses this subject · ${p.uses.length} View${p.uses.length===1?'':'s'}`)),
+  ...focuses.map(p=>row('presentation',p.id,'exp-open',esc(p.name),`${p.uses.length} View${p.uses.length===1?'':'s'}`)),
   ...uses.map(u=>{const d=e.definitions[u.definitionId],home=e.presentations[u.presentationId];
-   return row('contribution',u.id,'pres-ref',`Open · ${esc(d?.name||'Missing contribution')}`,`${u.kind==='interaction'?`Offer · activated by ${esc(ctx.sceneSource.subjects[u.triggerSubjectId]?.name||'Missing activation')}`:'Behavior · targets this subject'} · ${esc(home?home.name:'Removed home · retained for repair')}`);}),
+   return row('contribution',u.id,'pres-ref',`${esc(d?.name||'Missing contribution')}`,`${u.kind==='interaction'?`offer · by ${esc(ctx.sceneSource.subjects[u.triggerSubjectId]?.name||'missing activation')}`:'behavior'} · ${esc(home?home.name:'removed home')}`);}),
   ...stops.map(st=>row('stop',st.id,'exp-stop',`Stop ${e.guide.indexOf(st.id)+1} · ${esc(st.name)}`,`Guide · ${esc(e.presentations[st.presentationId]?.name||'Missing Presentation')}`))];
- return `<div class="c-sec">Used in Experience · ${rows.length}</div><div data-exp-used-in>${rows.join('')||'<p class="c-hint">Nothing in this Experience uses this subject yet.</p>'}</div>`;
+ return `<div class="c-sec">Used in Experience · ${rows.length}</div><div class="exp-used-in" data-exp-used-in>${rows.join('')||'<p class="c-hint">Nothing in this Experience uses this subject yet.</p>'}</div>`;
 }
 // The subject's own doors, and the one operation behind them. `+ Visitor interaction` opens the existing
 // offer draft with this subject as its target and activation, so the offer writers are the ones an
@@ -217,9 +224,12 @@ function chooserHtml(s,caps){
   const unreal=cap.realized===false;
   return `<div class="exp-cap" data-exp-choice="${esc(cap.id)}"><div class="exp-fact"><b>${esc(cap.label)}</b> · ${esc(cap.kind)} · ${unreal?'not realized':cap.sourceEditable?'source-editable':'session only'}</div>`
    +(unreal?`<p class="c-hint" role="status">Declared by the provider · not realized by this Stage, so it cannot be invoked here.</p>`
-    :`<div class="c-acts">${button('exp-choose-capability',`Add ${esc(cap.label)}`,s.id).replace('data-id=',`data-cap="${esc(cap.id)}" data-id=`)}</div>`)
+    :`<div class="c-acts">${button('exp-choose-capability',`Configure ${esc(cap.label)}…`,s.id).replace('data-id=',`data-cap="${esc(cap.id)}" data-id=`)}</div>`)
    +`</div>`;}).join('');
- return `<div class="ask-rule" data-exp-chooser="${esc(s.id)}"><b>Add a behavior</b><p>What this subject declares; adding one invokes it and shows that operation's audition.</p>${rows||'<p class="c-hint">This subject declares no capabilities in the current profile.</p>'}${button('exp-choose-cancel','Cancel')}</div>`;
+ // Wording distinguishes choosing from authoring: this door opens a capability's audition/configuration,
+ // and nothing is authored until a capture is accepted there. "Add X" read as if the button itself wrote
+ // a behavior, which it never does.
+ return `<div class="ask-rule" data-exp-chooser="${esc(s.id)}"><b>Add a behavior</b><p>What this subject declares. Choosing one opens its audition to configure — nothing is authored until you accept a capture there.</p>${rows||'<p class="c-hint">This subject declares no capabilities in the current profile.</p>'}${button('exp-choose-cancel','Cancel')}</div>`;
 }
 // One invoked operation: the ephemeral audition it is operated with, the value a capture would hold, and
 // the one capture writer in the named working Presentation (or explicitly at Experience scope). This is
