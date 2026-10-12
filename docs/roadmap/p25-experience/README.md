@@ -70,7 +70,7 @@ remain later work. Promotion changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
-**Accepted and closed (2026-10-11); merge-ready.** C1–C8 in-scope conformance and C9.1–C9.9 are implemented and reviewed; MP1–MP4 are owner-accepted for functionality, not as final visual UX. Slice id `p25-experience-v2`: tag `closed/p25-experience-v2` anchors the retired C9 plan body (this is the first use of the `closed/` tag convention).
+**Accepted and closed (2026-10-11).** C1–C8 in-scope conformance and C9.1–C9.9 are implemented and reviewed; MP1–MP4 are owner-accepted for functionality, not as final visual UX. Slice id `p25-experience-v2`: annotated tag `closed/p25-experience-v2` (pushed to origin; target `74e8610464ad6c2cee913a3423d867dcc61f2a20`) anchors the retired C9 plan body (first use of the `closed/` tag convention).
 [Standalone conformance plan](./design/experience-v2-prototype/conformance-plan.md) ·
 [shared executable](../../../prototypes/spatial-authoring/README.md) ·
 [conformance evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) ·
