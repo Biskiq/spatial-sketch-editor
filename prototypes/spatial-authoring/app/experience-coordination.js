@@ -1,4 +1,4 @@
-import { connectionPath, pathSeconds, stationProgress } from './camera-evaluation.js';
+import { connectionPath, pathSeconds, stationProgress, evaluatePath, routeGeometry } from './camera-evaluation.js';
 // Experience owns holds; Camera owns stations and path timing. Never copy station geometry here.
 export function movementTiming(camera, seam, path, speed, connectionId = null) {
  const travelDuration = pathSeconds(path, speed);
@@ -12,6 +12,64 @@ export function movementTiming(camera, seam, path, speed, connectionId = null) {
  const invokes = located.filter(beat => beat.kind === 'invoke').map(beat => ({...beat,
   at: beat.progress*travelDuration+holds.filter(hold => hold.progress < beat.progress).reduce((sum,hold) => sum+hold.seconds,0), fired:false}));
  return {travelDuration, duration:travelDuration+accumulated, holds, invokes};
+}
+// UX6: the one time mapping. The Journey Deck, the Cue Card, Rehearse and the visitor runtime all read
+// it, so a playhead cannot disagree with the visit it rehearses — Cue times, the total and the inverse
+// (time → path progress) come from the same holds the run uses. A Cue is not an authored object: its
+// identity is the (Guide edge, connection, station) triple, so one Camera route serving two edges shows
+// two Cues, each with its own pause, even though the geometry underneath is shared.
+export function journeyClock(camera, seam, connectionId, speedOverride = null) {
+ const route = camera.connections[connectionId];
+ const geometry = route ? routeGeometry(camera, connectionId) : null;
+ if (!geometry) return null;
+ // The nominal Journey is read with Travel in force, exactly as `coordinateTiming` reads a beat's time:
+ // a Cut edge has a nominal length to rehearse even though the visit snaps through it, and the reading
+ // says which of the two it is.
+ const timing = movementTiming(camera, {...seam, mode:'travel'}, geometry.path, speedOverride || route.speed, connectionId);
+ const active = seam?.mode === 'travel';
+ const holds = [...timing.holds].sort((a, b) => a.at - b.at);
+ const cues = [];
+ for (const station of geometry.stations) {
+  const members = (seam?.beats || []).filter(b => b.connectionId === connectionId && b.stationId === station.id);
+  if (!members.length) continue;
+  const cueHolds = members.filter(b => b.kind === 'hold')
+   .map(b => ({ id: b.id, seconds: b.seconds, at: holds.find(h => h.id === b.id)?.at ?? null })).sort((a, b) => a.at - b.at);
+  const cueInvokes = members.filter(b => b.kind === 'invoke')
+   .map(b => ({ id: b.id, useId: b.useId, at: timing.invokes.find(i => i.id === b.id)?.at ?? null }));
+  const times = [...cueHolds, ...cueInvokes].map(b => b.at).filter(v => v !== null);
+  cues.push({ id: station.id, stationId: station.id, connectionId, label: station.label,
+   progress: station.progress, pose: station.pose, observer: station.observer,
+   at: times.length ? Math.min(...times) : null,
+   pause: cueHolds.reduce((n, h) => n + h.seconds, 0), holds: cueHolds, invokes: cueInvokes,
+   name: cueInvokes.length ? null : cueHolds.length ? 'Pause' : 'Cue' });
+ }
+ const duration = timing.duration;
+ // The inverse of the holds mapping: inside a hold the path stands still while the clock runs on.
+ const progressAt = (t) => {
+  const time = Math.max(0, Math.min(duration, t));
+  let paused = 0;
+  for (const h of holds) {
+   if (time >= h.at + h.seconds) paused += h.seconds;
+   else if (time > h.at) return h.progress;
+  }
+  return timing.travelDuration ? Math.max(0, Math.min(1, (time - paused) / timing.travelDuration)) : 1;
+ };
+ return { connectionId, route, geometry, path: geometry.path, travelDuration: timing.travelDuration, duration,
+  active, reason: active ? null : 'Inactive while the edge is Cut',
+  cues, holds: timing.holds, invokes: timing.invokes, pause: holds.reduce((n, h) => n + h.seconds, 0),
+  progressAt, poseAt: (t) => evaluatePath(geometry.path, progressAt(t)), observerAt: (t) => evaluatePath(geometry.path, progressAt(t)) };
+}
+// A Cue's member beats, by its identity — the one reader both the Card and the move operation use.
+export function cueMembers(seam, connectionId, stationId) {
+ return (seam?.beats || []).filter(b => b.connectionId === connectionId && b.stationId === stationId);
+}
+// The stations a Cue may move to: every authored station on its own connection except the one it already
+// holds and any station another Cue already occupies. Nothing is offered that the writer would refuse.
+export function cueDestinations(camera, seam, connectionId, stationId) {
+ const geometry = routeGeometry(camera, connectionId);
+ if (!geometry) return [];
+ const occupied = new Set((seam?.beats || []).filter(b => b.connectionId === connectionId && b.stationId !== stationId).map(b => b.stationId));
+ return geometry.stations.filter(s => s.id !== stationId && !occupied.has(s.id));
 }
 export function coordinateTiming(camera,seam) {
  return seam.beats.map(beat=>{

@@ -467,6 +467,26 @@ export function definitionReachByUse(e,definitionId) {
  return Object.values(e.uses).filter(u=>u.definitionId===definitionId).map(u=>({id:u.id,name:u.name||e.definitions[definitionId]?.name||u.id,home:u.presentationId?e.presentations[u.presentationId]?.name||'Missing Presentation':'Experience scope'}));
 }
 
+// UX6: moving a Cue is one validated transaction. Cue identity is the (Guide edge, connection, station)
+// triple, so the move rebinds every beat sharing that triple — distinct pauses included — together with
+// each invoked Activity's station binding, or it refuses without mutating anything. An occupied
+// destination refuses rather than merging two Cues, and nothing is consolidated or renamed on the way.
+export function moveCue(e,c,a,b,connectionId,stationId,toStationId) {
+ if(!stationId||!toStationId)throw Error('A Cue needs a station to move from and to');
+ if(stationId===toStationId)throw Error('That is already the Cue\u2019s station');
+ const seam=getSeam(e,a,b),route=c.connections[connectionId];
+ if(!route)throw Error('Camera connection removed');
+ const members=seam.beats.filter(x=>x.connectionId===connectionId&&x.stationId===stationId);
+ if(!members.length)throw Error('This Cue has no beats to move');
+ const valid=['departure',...route.anchors.map(x=>x.id),...route.markers.map(x=>x.id),'arrival'];
+ if(!valid.includes(toStationId))throw Error('A Cue moves only onto an authored Camera station');
+ if(seam.beats.some(x=>x.connectionId===connectionId&&x.stationId===toStationId))throw Error('That station already holds a Cue; a move never merges two');
+ const invokes=members.filter(x=>x.kind==='invoke');
+ for(const beat of invokes){const u=e.uses[beat.useId];if(!u)throw Error('An invoked Activity was removed');if(u.start.kind==='station'&&u.start.connectionId!==connectionId)throw Error('An invoked Activity is bound to another Camera connection');}
+ for(const beat of members)beat.stationId=toStationId;
+ for(const beat of invokes)e.uses[beat.useId].start.stationId=toStationId;
+ return {id:stationId,stationId:toStationId,beats:members.map(x=>x.id),invokes:invokes.map(x=>x.useId)};
+}
 export function addInvocationBeat(e,c,a,b,connectionId,stationId,useId,scene=null) {
  const u=e.uses[useId],refusal=invokableRefusal(e,scene,u);
  if(refusal)throw Error(refusal);

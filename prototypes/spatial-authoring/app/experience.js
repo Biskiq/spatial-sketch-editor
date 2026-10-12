@@ -3,13 +3,14 @@ import { conformanceFixture } from './conformance-fixture.js';
 import { createSceneCapabilities, capability, capabilities, setSceneValue, replaceProfile, isRealized } from './experience-capabilities.js';
 import { buildCapabilitySubjects, realizeCapabilities, captureRepresentation, restoreRepresentation } from './experience-scene.js';
 import * as nav from './navigation.js';
+import { journeyClock } from './experience-coordination.js';
 import * as T from './tasks.js';
 import { cancelProposal, onCancel } from './cancel.js';
 import * as R from './experience-runtime.js';
 import { createRuntime, tickRuntime } from './experience-runtime.js';
 import { S, ctx, thing } from './state.js';
 import * as A from './actions.js';
-import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, removeAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice, viewUseReach } from './experience-model.js';
+import { createExperience, createCamera, subject, addPresentation, validateFocus, addView, entryUse, setRole, addStop, moveStop, resolveNext, editSeam, stopEntry, originCoverage, addConnection, addAnchor, removeAnchor, resolveUse, viewReach, detachUse, editView, addBeat, connectionReach, moveCue, addContribution, fresh, reuseView, lowerCamera, addInvocationBeat, clearExperience, setPrimaryExplanation, primaryExplanation, captureUses, captureCapability, captureNew, presentationUses, narrationDuration, narrationPassages, eligibleViews, prepareTravelSupport, renamePresentation, removePresentation, removeContribution, duplicateContribution, makeDefinitionLocal, linkDefinition, renameContribution, rebindContribution, orphanContributions, definitionReachByUse, gripLabels, removeChoice, repointChoice, viewUseReach } from './experience-model.js';
 export function initExperience() {
   ctx.sceneSource=createSceneCapabilities();
   ctx.experience = createExperience(); ctx.cameraSource = createCamera();
@@ -384,6 +385,14 @@ export function handleExperienceAction(el) {
   // is an ordinary refusal the author can read — never a page fault and never a silent second trigger.
   if (action === 'exp-invoke-beat') {const s=S.experienceContext.seam;try{command('Invoke Activity at Camera station',(e,c)=>addInvocationBeat(e,c,s.from,s.to,S.task.params.connection,S.task.params.station,S.task.params.invokeUse,ctx.sceneSource));}catch(error){A.setStatus(error.message,'refuse');ctx.ui();}}
   if (action === 'exp-beat') beatAtStation(S.task?.params.station||'departure');
+  // UX6: the Journey's own operations. Selecting a Cue selects exactly one occurrence of the edge;
+  // moving it is one validated transaction; the origin chooses the Journey the Deck is measured from;
+  // Rehearse is a session playhead that writes nothing and runs nothing.
+  if (action === 'exp-cue-select') selectCue(el.dataset.id);
+  if (action === 'exp-rehearse-play') rehearsePlay();
+  if (action === 'exp-rehearse-pause') rehearsePause();
+  if (action === 'exp-rehearse-stop') rehearseStop();
+  if (action === 'exp-rehearse-look') rehearsalLook();
   if (action === 'exp-route-scope') acceptRoutePace();
   if (action === 'exp-narration') addNarration();
   // UX3: the subject's two doors and the one operation invoked behind them. `+ Visitor interaction` opens
@@ -774,11 +783,97 @@ export function coordinate(){
  if(!S.task.params.connection){const used=[...new Set(seam.beats.map(b=>b.connectionId).filter(id=>ids.includes(id)))];if(used.length===1)S.task.params.connection=used[0];else if(ids.length===1)S.task.params.connection=ids[0];else {x.depth='coordination';S.task.kind='experience-coordination';S.task.params.chooseRoute=true;ctx.ui();return true;}}
  if(!S.task.params.connection){A.setStatus('Connect a Camera route before coordinating','refuse');return false;}
  x.depth='coordination';S.task.kind='experience-coordination';S.task.params.chooseRoute=false;
- const route=ctx.cameraSource.connections[S.task.params.connection];if(!nav.stations(route).some(s=>s.id===S.task.params.station))S.task.params.station='departure';ctx.ui();return true;
+ const route=ctx.cameraSource.connections[S.task.params.connection];if(!nav.stations(route).some(s=>s.id===S.task.params.station))S.task.params.station='departure';
+  // Entering or refreshing the Journey starts it at zero: a playhead measured against the route the author
+  // just left would be a reading of nothing.
+  S.rehearse=null;ctx.ui();return true;
 }
 export function beatAtStation(stationId,seconds=1) {
  const {from,to}=S.experienceContext.seam;return command('Add station-bound Experience hold',(e,c)=>addBeat(e,c,from,to,S.task.params.connection,stationId,seconds));
 }
+
+// ----- UX6: Journey — Cues, the time Deck and Rehearse ---------------------------------------------
+// The Journey is the edge's Experience half read as time. Cue identity is the (Guide edge, connection,
+// station) triple, so a shared Camera route shows one Cue per edge with its own pause, and everything that
+// reads time here reads the same `journeyClock` the visitor runtime uses.
+const cueClock = () => {
+ const x=S.experienceContext;if(x.depth!=='coordination'||!x.seam)return null;
+ return journeyClock(ctx.cameraSource,ctx.experience.seams[`${x.seam.from}>${x.seam.to}`],S.task?.params?.connection);
+};
+// What the Deck, the playhead and the Stage rig read: the clock and where the rehearsal currently stands.
+// A rehearsal belongs to one connection — changing the origin or the edge drops it rather than showing a
+// playhead that measures a route the author left.
+export const rehearsalReading = () => {
+ const clock=cueClock();if(!clock)return null;
+ const r=S.rehearse&&S.rehearse.connectionId===clock.connectionId?S.rehearse:null;
+ const t=r?Math.max(0,Math.min(clock.duration,r.t)):0;
+ return {clock,t,playing:!!r?.playing,pose:clock.poseAt(t)};
+};
+export function selectCue(stationId) {
+ const x=S.experienceContext;if(x.depth!=='coordination'||!S.task)return false;
+ const clock=cueClock();if(!clock||!clock.cues.some(k=>k.stationId===stationId))return false;
+ if(S.task.params.station===stationId&&!S.task.params.beat)return false;
+ S.task.params.station=stationId;delete S.task.params.beat;
+ review({coordination:{...(S.expReview.coordination||{}),stationSelected:true}});
+ ctx.ui();return true;
+}
+// A move is the one Journey write that is not a beat-level edit: the whole Cue moves, or none of it does.
+export function moveCueCommand(toStationId) {
+ const x=S.experienceContext;if(x.depth!=='coordination'||!x.seam||!S.task||!toStationId)return false;
+ const {from,to}=x.seam,connectionId=S.task.params.connection,stationId=S.task.params.station;
+ try {
+  const result=command('Move Experience cue to Camera station',(e,c)=>moveCue(e,c,from,to,connectionId,stationId,toStationId));
+  if(result===false||result===undefined)return false;
+  S.task.params.station=toStationId;delete S.task.params.beat;
+  A.setStatus('Cue moved · every beat and its Activity binding moved with it','tool');
+  ctx.ui();return true;
+ } catch(error) { A.setStatus(error.message,'refuse');ctx.ui();return false; }
+}
+// The origin decides which nominal Journey the Deck measures: choosing one selects its supported route.
+export function setJourneyOrigin(viewId) {
+ const x=S.experienceContext;if(x.depth!=='coordination'||!x.seam||!S.task)return false;
+ const row=originCoverage(ctx.experience,ctx.cameraSource,x.seam.from,x.seam.to).find(r=>r.viewId===viewId&&r.connectionId);
+ if(!row){A.setStatus('That origin has no Camera route to travel; the Journey needs a supported origin','refuse');ctx.ui();return false;}
+ S.task.params.connection=row.connectionId;S.task.params.originUse=row.useId;S.task.params.station='departure';
+ return coordinate();
+}
+// Rehearse is a session playhead over the same clock the visit runs on. It writes no source, changes no
+// selection and runs no invocation: it draws where the Camera would be, and the one operation it offers is
+// Camera's own Look through.
+export function rehearsePlay() {
+ const reading=rehearsalReading();if(!reading)return false;
+ const r=S.rehearse?.connectionId===reading.clock.connectionId?S.rehearse:{connectionId:reading.clock.connectionId,t:0,playing:false};
+ r.playing=true;S.rehearse=r;
+ review({rehearse:{...(S.expReview.rehearse||{}),played:true}});
+ A.setStatus('Rehearsing · this is a playhead, not a visit: nothing is written and no action is run','tool');
+ ctx.ui();return true;
+}
+export function rehearsePause() { const r=S.rehearse;if(!r||!r.playing)return false;r.playing=false;ctx.ui();return true; }
+export function rehearseStop() { if(!S.rehearse)return false;S.rehearse=null;ctx.ui();return true; }
+export function rehearsalAt(t) {
+ const reading=rehearsalReading();if(!reading)return false;
+ const r=S.rehearse?.connectionId===reading.clock.connectionId?S.rehearse:{connectionId:reading.clock.connectionId,t:0,playing:false};
+ r.t=Math.max(0,Math.min(reading.clock.duration,Number(t)||0));r.playing=false;S.rehearse=r;ctx.ui();return true;
+}
+export function rehearsalLook() {
+ const reading=rehearsalReading();if(!reading)return false;
+ nav.lookThrough({...reading.pose,target:[...reading.pose.target]});
+ A.setStatus('Looking through the Journey at the playhead','view');ctx.ui();return true;
+}
+// The frame pass drives the playhead. The Stage rig is drawn every frame anyway, and the Deck's own reading
+// is patched in place, so a running rehearsal does not re-render the whole Card at frame rate.
+export function rehearseTurn(dt) {
+ const r=S.rehearse;if(!r||!r.playing||S.visitor)return false;
+ const clock=cueClock();if(!clock||clock.connectionId!==r.connectionId){S.rehearse=null;return false;}
+ r.t+=Math.max(0,Math.min(.25,dt||0));
+ if(r.t>=clock.duration){r.t=clock.duration;r.playing=false;}
+ const total=Math.max(.001,clock.duration),pct=`${Math.max(1.5,Math.min(98.5,(r.t/total)*100))}%`;
+ document.querySelectorAll('[data-exp-playhead]').forEach(el=>{el.style.left=pct;});
+ const read=document.querySelector('[data-exp-rehearse-time]');
+ if(read)read.textContent=`${Math.floor(r.t/60)}:${String(Math.floor(r.t%60)).padStart(2,'0')}.${Math.floor((r.t%1)*10)} / ${Math.floor(clock.duration/60)}:${String(Math.floor(clock.duration%60)).padStart(2,'0')}`;
+ return true;
+}
+onCancel(()=>{S.rehearse=null;},6,'Experience rehearsal');
 export function routePace(speed){const id=S.task?.params.connection;if(!id||!['slow','auto','fast'].includes(speed))return false;return routeProposal(id,{speed},'Set Camera route pace');}
 export function acceptRoutePace(){
  const ask=S.expRouteAsk;if(!ask)return false;const affected=connectionReach(ctx.experience,ctx.cameraSource,ask.id);
@@ -1112,7 +1207,7 @@ function clearExperienceTransients(){  S.experienceContext={presentation:null,de
  S.expPlanAsk=null;S.expExplain=null;S.expAdvanced=false;
   // UX3 session doors: the descriptor chooser and the invoked operation belong to the subject that was
   // being worked, never to the next document.
-  S.expChoose=null;S.expInvoked=null;
+  S.expChoose=null;S.expInvoked=null;  S.rehearse=null;
  S.expReview={auditions:0,previews:0};S.parkedByLens.experience=null;T.end();
 }
 // Remove only the context that no longer resolves: a World subject or a retained Camera View stays
