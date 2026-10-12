@@ -49,14 +49,18 @@ click '#lens [data-lens="experience"]'
 qa_js 'window.__jobViews=Object.keys(__me.ctx.cameraSource.views).length,window.__jobConns=Object.keys(__me.ctx.cameraSource.connections).length' >/dev/null
 qa_locator_select machine
 click '#card [data-act="exp-create"]'
+# UX2: the first-time creator's own path. Present is aggregate (a Default View and its Camera View arrive
+# with the Presentation), the explanation is one ordinary door on the Card, and Capture accepts a framing.
+qa_ok 'Present is aggregate: one command, one Default View use and the Camera View it reads, in one Undo' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],used=p.uses.map(id=>e.uses[id]);return Object.keys(e.presentations).length===1&&used.length===1&&used[0].role==="entry"&&!!__me.ctx.cameraSource.views[used[0].viewId]&&!!document.querySelector("[data-exp-views] [data-exp-view-use]");})()')" true
+click '#card [data-exp-explain] > summary'
 fill '[data-exp-primary]' 'The casing opens to reveal the drive.'
 click '#card [data-act="exp-capture"]'
-click '#card .exp-focus [data-operate="machine"]'
+click '#card [data-exp-focus-subject="machine"]'
 before="$(source_json)";count="$(undo)"
 fill '[data-exp-audition="casing"]' '0.6'
 qa_ok 'audition realizes casing geometry without changing any source/history' "$(qa_js 'Math.abs(__me.ctx.stage.items.get("machine").capabilityParts.lid.rotation.z-.72)<.0001') / $(source_json) / $(undo)" "true / $before / $count"
 click '#card [data-act="exp-use"][data-cap="casing"]'
-qa_ok 'eight-action job authors one Presentation, explanation, captured View/use and Activity; no Stop/edge' "$(qa_js '(()=>{const e=__me.ctx.experience,c=__me.ctx.cameraSource,p=Object.values(e.presentations)[0],us=Object.values(e.uses),n=us.filter(u=>e.definitions[u.definitionId]?.kind==="narration"),a=us.filter(u=>e.definitions[u.definitionId]?.kind==="control");return Object.keys(e.presentations).length===1&&p.uses.length===1&&n.length===1&&n[0].primary&&a.length===1&&e.definitions[a[0].definitionId].value===.6&&Object.keys(c.views).length===window.__jobViews+1&&Object.keys(c.connections).length===window.__jobConns&&e.guide.length===0&&!document.querySelector("#experienceExamples").open&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null;})()')" true
+qa_ok 'eight-action job authors one Presentation, its Default View, its explanation, the captured View and its Activity; no Stop/edge' "$(qa_js '(()=>{const e=__me.ctx.experience,c=__me.ctx.cameraSource,p=Object.values(e.presentations)[0],used=p.uses.map(id=>e.uses[id]),us=Object.values(e.uses),n=us.filter(u=>e.definitions[u.definitionId]?.kind==="narration"),a=us.filter(u=>e.definitions[u.definitionId]?.kind==="control");return Object.keys(e.presentations).length===1&&used.length===2&&used.filter(u=>u.role==="entry").length===1&&used.filter(u=>u.role!=="entry"&&u.viewId).length===1&&n.length===1&&n[0].primary&&a.length===1&&e.definitions[a[0].definitionId].value===.6&&Object.keys(c.views).length===window.__jobViews+2&&Object.keys(c.connections).length===window.__jobConns&&e.guide.length===0&&!document.querySelector("#experienceExamples").open&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null;})()')" true
 before="$(source_json)";count="$(undo)";standpoint="$(pose)"
 context="$(qa_js '({lens:__me.S.lens,sel:__me.S.sel,context:__me.S.experienceContext,sheet:__me.S.sheet})')"
 qa_preview_presentation
@@ -101,8 +105,10 @@ agent-browser set viewport 1024 768 >/dev/null;qa_frames
 click '[data-act="sheet-index"]'
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 click '[data-act="sheet-card"]'
-qa_ok 'narrow ordinary Card reaches explanation and Capture with no Overview, lifecycle or precision work' "$(qa_js '(()=>{const el=document.querySelector("[data-exp-primary]"),r=el.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null&&!document.querySelector("#experienceDeck");})()')" true
-click '#card .exp-focus [data-operate="machine"]'
+qa_ok 'narrow ordinary Card reaches the explanation door and Capture with no Overview, lifecycle or precision work' "$(qa_js '(()=>{const hit=el=>{const r=el.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&(at===el||el.contains(at));};return hit(document.querySelector("[data-exp-explain] > summary"))&&hit(document.querySelector("[data-act=exp-capture]"))&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null&&!document.querySelector("#experienceDeck");})()')" true
+click '#card [data-exp-explain] > summary'
+qa_ok '…opening that door reaches the ordinary writer inside the narrow sheet' "$(qa_js '(()=>{const el=document.querySelector("[data-exp-primary]"),r=el.getBoundingClientRect();return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)===el;})()')" true
+click '#card [data-exp-focus-subject="machine"]'
 qa_ok 'narrow subject Card reaches casing audition and Use' "$(qa_js '(()=>{const els=[document.querySelector("[data-exp-audition=casing]"),document.querySelector("[data-act=exp-use][data-cap=casing]")];return els.every(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width>0&&r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight&&(hit===el||el.contains(hit));});})()')" true
 qa_snap c9-creator-narrow
 qa_faults_ok 'creator commands'

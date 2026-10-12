@@ -776,4 +776,94 @@ export class Stage {
     this.renderer.render(this.scene, this.camera);
     if (inset) this.renderInset(inset.cam, inset.rect, inset.prep);
   }
+
+  // ----- one derivative image of one Camera pose -----------------------------
+  // The Stage's own small projection of the same renderer, Scene and builders, feeding a View's
+  // rendered preview. It is a normal-World reading: what belongs to authoring (selection highlight,
+  // inspection, clipping and drafting aids, set-aside geometry) is not applied, and the requested pose
+  // is placed on a camera of its own, so producing an image never moves live navigation. Every state
+  // it does touch is restored in a synchronous `finally`, so the next frame — and the author — see the
+  // stage exactly as it was. It returns null rather than throwing, so a failed draw leaves the caller
+  // with a named placeholder and an intact page.
+  snapshotPose(camState, w, h) {
+    if (!camState?.target) return null;
+    const r = this.renderer;
+    const saved = {
+      cam: this.cam, paper: this.paper, authoring: this.authoring, shadowsOff: this.shadowsOff,
+      fog: this.scene.fog, bg: this.scene.background, clips: this.clips,
+      capH: this.capH.visible, capV: this.capV.visible, hemi: this.hemi.intensity, sun: this.sun.intensity,
+      away: Object.values(this.aways).map((a) => [a, a.group.visible]),
+      scene: this.scene,
+    };
+    let target = this.thumbTarget;
+    try {
+      if (!target || target.width !== w || target.height !== h) {
+        target?.dispose();
+        target = this.thumbTarget = new THREE.WebGLRenderTarget(w, h, { type: THREE.UnsignedByteType });
+      }
+      this.cam = { target: new V3(...camState.target), az: camState.az, el: camState.el, frameH: camState.frameH, flat: camState.flat ?? 0, mirror: !!camState.mirror };
+      this.paper = 0;
+      // No selection, inspection or set-aside geometry: the projection is the authored World as a
+      // visitor arriving at this pose would see it, and nothing here is an authored write.
+      this.authoring = false;
+      this.shadowsOff = false;
+      this.setClips([]);
+      this.capH.visible = false;
+      this.capV.visible = false;
+      for (const [a] of saved.away) a.group.visible = false;
+      this.restyle();
+      // What was actually projected, recorded beside the picture: an authoring treatment that leaked into a
+      // derivative render would otherwise be invisible to every reading of the image, and a picture cannot
+      // be asked what it left out. QA reads this; nothing renders it.
+      this.lastSnapshot = {
+        paper: this.paper, authoring: !!this.authoring, clips: this.clips.length,
+        capsHidden: !this.capH.visible && !this.capV.visible,
+        awayHidden: saved.away.every(([, v]) => !v), w, h,
+      };
+      Stage.placeCamera(this.peekCam, this.cam, w / Math.max(1, h));
+      this.scene.fog.near = this.dist + 40;
+      this.scene.fog.far = this.dist + 200;
+      r.setRenderTarget(target);
+      r.clear(true, true, true);
+      r.render(this.scene, this.peekCam);
+      r.setRenderTarget(null);
+      const px = new Uint8Array(w * h * 4);
+      r.readRenderTargetPixels(target, 0, 0, w, h, px);
+      return imageUrl(px, w, h);
+    } catch (e) {
+      console.error('stage.snapshotPose failed', e);
+      try { r.setRenderTarget(null); } catch { /* the renderer is already back on the canvas */ }
+      return null;
+    } finally {
+      this.cam = saved.cam;
+      this.paper = saved.paper;
+      this.authoring = saved.authoring;
+      this.shadowsOff = saved.shadowsOff;
+      this.scene.background = saved.bg;
+      this.setClips(saved.clips);
+      this.capH.visible = saved.capH;
+      this.capV.visible = saved.capV;
+      for (const [a, v] of saved.away) a.group.visible = v;
+      this.restyle();
+      this.applyCamera();
+      this.applyPaper();
+      this.hemi.intensity = saved.hemi;
+      this.sun.intensity = saved.sun;
+    }
+  }
+}
+
+// A render-target readback is bottom-up; a canvas image is top-down. Flipping here is what makes the
+// preview the same picture the visitor sees rather than its mirror.
+function imageUrl(px, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const img = g.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    const src = (h - 1 - y) * w * 4;
+    img.data.set(px.subarray(src, src + w * 4), y * w * 4);
+  }
+  g.putImageData(img, 0, 0);
+  return c.toDataURL('image/jpeg', 0.72);
 }

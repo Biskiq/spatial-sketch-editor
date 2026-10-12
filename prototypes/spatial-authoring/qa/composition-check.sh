@@ -16,17 +16,19 @@ checkpoint(){ if [ "${QA_COMPOSITION_UNTIL:-}" = "$1" ];then qa_summary "C9 boun
 # Repeat J1, then extend it without learning lifecycle or Camera graphs.
 click '#lens [data-lens=experience]';fixture exp-reset
 qa_locator_select machine;click '#card [data-act=exp-create]'
+qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor. Power travels through the drive.'
-click '#card [data-act=exp-capture]';click '#card [data-operate=machine]'
+click '#card [data-act=exp-capture]';click '#card [data-exp-focus-subject=machine]'
 fill '[data-exp-audition=casing]' '1';click '#card [data-act=exp-use][data-cap=casing]'
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click "#index [data-act=exp-open][data-id='$pid']";click '#card [data-act=exp-add-guide]'
 a="$(qa_jsv '__me.ctx.experience.guide[0]')"
 qa_locator_select piano;click '#card [data-act=exp-create]'
+qa_card_explanation
 fill '[data-exp-primary]' 'Listen to the piano.'
 click '#card [data-act=exp-add-guide]'
 b="$(qa_jsv '__me.ctx.experience.guide[1]')"
-qa_ok 'two Presentations create exactly two Stops and one explicit Camera View, no edges' "$(qa_js '(Object.keys(__me.ctx.experience.presentations).length===2&&__me.ctx.experience.guide.length===2&&Object.keys(__me.ctx.cameraSource.views).length===1&&Object.keys(__me.ctx.cameraSource.connections).length===0&&__me.S.experienceContext.depth==="ordinary")')" true
+qa_ok 'two Presentations create exactly two Stops, each with the one Default View its own Present captured, and no edges' "$(qa_js '(Object.keys(__me.ctx.experience.presentations).length===2&&__me.ctx.experience.guide.length===2&&Object.keys(__me.ctx.cameraSource.views).length===3&&Object.values(__me.ctx.experience.presentations).every(p=>p.uses.map(id=>__me.ctx.experience.uses[id]).filter(u=>u.viewId&&u.role==="entry").length===1)&&Object.keys(__me.ctx.cameraSource.connections).length===0&&__me.S.experienceContext.depth==="ordinary")')" true
 camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')";standpoint="$(pose)"
 click ".peek-stop[data-id='$a']"
 qa_ok 'Peek selects the Stop and exposes normal Entry/Next without opening L2 or moving Camera' "$(qa_js '(__me.S.sel===__me.ctx.experience.guide[0]&&__me.S.experienceContext.depth==="ordinary"&&__me.S.task===null&&document.querySelector("[data-exp-entry]")&&document.querySelector("[data-exp-next]")&&!document.querySelector(".stop-card.expanded"))') / $(pose)" "true / $standpoint"
@@ -52,9 +54,11 @@ qa_ok 'leaving Overview returns to compact Peek without changing Camera source' 
 # Loaded richer composition is editable; definitions and relationships are real source controls.
 fixture exp-example
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
-click '#card > details:nth-of-type(3) > summary'
-click '#card [data-act=pres-ref][data-id=contribution-6]'
-click '#card > details:nth-of-type(1) > summary'
+# In the loaded example the primary explanation is an Activity of its own: its own door holds the route
+# to it, and from there its timing and phrases are the same writer they always were.
+qa_card_explanation
+click '#card [data-exp-explain] [data-act=pres-ref][data-id=contribution-6]'
+click '#card [data-exp-narration-details] > summary'
 fill '[data-exp-def=duration]' '20'
 click '#card [data-act=exp-passage]'
 phrase="$(qa_jsv '__me.ctx.experience.definitions[__me.ctx.experience.uses[__me.S.sel].definitionId].markers.at(-1).id')"
@@ -68,21 +72,22 @@ qa_ok 'named passage has stable explicit seconds and editable label' "$passage" 
 fill '[data-exp-def=text]' 'The casing protects the rotor. Follow the output.'
 marker_time="$(qa_js "__me.ctx.experience.definitions[__me.ctx.experience.uses[__me.S.sel].definitionId].markers.find(m=>m.id==='$phrase').time")"
 qa_ok 'text edit preserves explicit marker placement rather than rescaling' "$marker_time" 4
-click "#index [data-act=exp-open][data-id='$pid']";click '#card > details:nth-of-type(3) > summary'
-click '#card [data-act=pres-ref][data-id=contribution-8]';click '#card > details > summary'
+click "#index [data-act=exp-open][data-id='$pid']";click '#card [data-act=exp-advanced]'
+click '#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id=contribution-8]';click '#card [data-exp-activity-details] > summary'
 choose '[data-exp-home]' presentation-15
 qa_ok 'regrouping Activity changes only its home, preserving explicit activation and boundary' "$(qa_js '(()=>{const u=__me.ctx.experience.uses["contribution-8"];return u.presentationId==="presentation-15"&&u.start.presentationId==="presentation-1"&&u.end.kind==="experience";})()')" true
 checkpoint regroup
 choose '[data-exp-retention]' experience
-click "#index [data-act=exp-open][data-id='$pid']";click '#card > details:nth-of-type(3) > summary'
-click '#card [data-act=pres-ref][data-id=contribution-10]';click '#card > details > summary'
+click "#index [data-act=exp-open][data-id='$pid']";click '#card [data-act=exp-advanced]'
+click '#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id=contribution-10]';click '#card [data-exp-activity-details] > summary'
 choose '[data-exp-start-presentation]' ''
 qa_ok 'dependency listener scope is editable independently of Activity home and lifetime' "$(qa_js '(()=>{const u=__me.ctx.experience.uses["contribution-10"];return u.start.scope==="experience"&&u.start.presentationId===null&&u.presentationId==="presentation-1"&&u.end.kind==="experience";})()')" true
 choose '[data-exp-start-presentation]' presentation-1
-# Optional View suggestions are not entry or Guide authority.
+# Optional View suggestions are not entry or Guide authority. They live in the one Advanced authoring home
+# the Card offers, and the free View order it writes is still neither entry nor Guide order.
 click "#index [data-act=exp-open][data-id='$pid']"
-click '#card > details:last-of-type > summary'
-click '#card [data-act=exp-view-order]'
+qa_card_advanced
+click '#card [data-exp-advanced-home] [data-act=exp-view-order]'
 source_camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 # The Guide order is captured rather than assumed: the example fixture may legitimately grow, and the
 # invariant is that a suggestion reorder touches neither entry, Stop order nor Camera connectivity.
@@ -117,13 +122,14 @@ click '[data-act=exp-exit-preview]'
 # MP2: the primary explanation keeps its binding when its organizational home moves. With the binding
 # collapsed onto the home, editing A here would create a second narration instead of updating this one.
 click "#index [data-act=exp-open][data-id='$pid']"
-click '#card > details:nth-of-type(3) > summary'
-click '#card [data-act=pres-ref][data-id=contribution-6]'
-click '#card > details:nth-of-type(2) > summary'
+qa_card_explanation
+click '#card [data-exp-explain] [data-act=pres-ref][data-id=contribution-6]'
+click '#card [data-exp-activity-details] > summary'
 choose '[data-exp-home]' presentation-15
 explanation_bound="$(qa_js '(()=>{const u=__me.ctx.experience.uses["contribution-6"];return u.presentationId==="presentation-15"&&u.primaryFor==="presentation-1";})()')"
 qa_ok 'regrouping the primary explanation changes its home and keeps its binding to Presentation A' "$explanation_bound" true
 click "#index [data-act=exp-open][data-id='$pid']"
+qa_card_explanation
 qa_ok 'Presentation A still shows its bound explanation after the home move' "$(qa_js 'document.querySelector("[data-exp-primary]").value.includes("Follow the output")')" true
 fill '[data-exp-primary]' 'The casing protects the moving rotor.'
 qa_ok 'editing Presentation A after regrouping updates the original explanation exactly once' "$(qa_js '(()=>{const e=__me.ctx.experience,u=e.uses["contribution-6"],nar=Object.values(e.uses).filter(x=>e.definitions[x.definitionId]?.kind==="narration");return e.definitions[u.definitionId].text==="The casing protects the moving rotor."&&nar.length===1&&nar[0].id==="contribution-6";})()')" true

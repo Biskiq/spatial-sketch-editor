@@ -20,7 +20,7 @@ choose(){ agent-browser select "$1" "$2" >/dev/null;qa_frames; }
 press(){ qa_js "(()=>{const e=document.querySelector(\"$1\");if(!e)return false;e.click();return true;})()" >/dev/null;qa_frames; }
 # The Revise disclosure is the Card's own named one, wherever it sits: a control use also carries the
 # Activity-relationships disclosure, an offer does not, and a select needs the disclosure actually open.
-revise_open(){ qa_js "(()=>{const d=[...document.querySelectorAll('#card > details')].find(x=>/Revise/.test(x.querySelector('summary')?.textContent||''));if(!d)return false;if(!d.open)d.querySelector('summary').click();return true;})()" >/dev/null;qa_frames; }
+revise_open(){ qa_card_door '#card [data-exp-menu=revise]'; }
 fixture(){ click '#experienceExamples > summary';click "[data-act='$1']";click '#experienceExamples > summary'; }
 # A mutation stops at the first boundary it protects, so later unrelated state cannot mask it.
 checkpoint(){ if [ "${QA_REVISION_UNTIL:-}" = "$1" ];then qa_summary "C9.6 boundary $1";exit;fi; }
@@ -28,10 +28,11 @@ checkpoint(){ if [ "${QA_REVISION_UNTIL:-}" = "$1" ];then qa_summary "C9.6 bound
 # ---- From genuinely empty Reset: the ordinary creator loop, then real revision work.
 click '#lens [data-lens=experience]';fixture exp-reset
 qa_locator_select machine;click '#card [data-act=exp-create]'
+qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor.'
 click '#card [data-act=exp-capture]'
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
-click '#card [data-operate=machine]'
+click '#card [data-exp-focus-subject=machine]'
 fill '[data-exp-audition=casing]' '1';click '#card [data-act=exp-use][data-cap=casing]'
 click '#card [data-act=exp-use][data-cap=rotor]'
 click "#index [data-act=exp-open][data-id='$pid']"
@@ -40,22 +41,23 @@ checkpoint authoring
 
 # ---- Rename accepts once and keeps identity.
 undo0="$(qa_jsv '__me.S.undo.length')"
+qa_card_menu
 fill '[data-exp-field=name]' 'The drive explained'
 qa_ok 'rename accepts once, keeps stable identity and writes exactly one Undo step' "$(qa_js '(__me.ctx.experience.presentations[__me.S.sel].name==="The drive explained"&&__me.S.undo.at(-1).label==="Rename Presentation")') / $(($(qa_jsv '__me.S.undo.length')-undo0))" 'true / 1'
 checkpoint rename
 
 # ---- Duplicate is an independent identity; editing the copy never reaches the original.
 casing="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>__me.ctx.experience.definitions[u.definitionId]?.capabilityId==="casing").id')"
-click '#card > details:nth-of-type(3) > summary'
-click "#card [data-act=pres-ref][data-id='$casing']"
-# The selected Activity Card's own disclosure order: (1) Activity relationships, (2) Revise.
-click '#card > details:nth-of-type(2) > summary'
+click '#card [data-act=exp-advanced]'
+click "#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id='$casing']"
+# The selected Activity Card's own named door: the Revise writer.
+click '#card [data-exp-menu=revise] > summary'
 press '#card [data-act=exp-duplicate-contribution]'
 dup="$(qa_jsv '__me.S.sel')"
 qa_ok 'Duplicate creates a new identity with its own definition copy' "$(qa_js '(()=>{const e=__me.ctx.experience,cs=Object.values(e.uses).filter(u=>e.definitions[u.definitionId]?.capabilityId==="casing");return cs.length===2&&cs[0].definitionId!==cs[1].definitionId&&cs[0].id!==cs[1].id;})()')" true
 # The Rename writer names the selected use, so a typed name saves to its definition as one Undo. The
 # selection changed with the duplicate, so the Revise disclosure is reopened.
-click '#card > details:nth-of-type(2) > summary'
+qa_card_door '#card [data-exp-menu=revise]'
 fill '[data-exp-act-name]' 'Casing work'
 qa_ok 'renaming the shared contribution saves as one Undo' "$(qa_js '(__me.ctx.experience.definitions[__me.ctx.experience.uses[__me.S.sel].definitionId].name==="Casing work"&&__me.S.undo.at(-1).label==="Rename contribution")')" true
 choose '[data-exp-rebind-subject]' piano
@@ -72,7 +74,7 @@ qa_ok 'the detached local definition is a fresh identity' "$(qa_js '(()=>{const 
 checkpoint duplicate
 
 # ---- P1: replacing a descriptor on a shared definition discloses its reach and waits for acceptance.
-click '#card > details:nth-of-type(2) > summary'
+revise_open
 choose '[data-exp-link-definition]' "$shared"
 qa_ok 'the two Activities share one definition before the descriptor replacement' "$(qa_js '(()=>{const e=__me.ctx.experience;return e.uses[__me.S.sel].definitionId===e.uses["'"$casing"'"].definitionId;})()')" true
 choose '[data-exp-rebind-subject]' light
@@ -95,8 +97,8 @@ press '#card [data-act=exp-offer-accept]'
 offer="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.kind==="interaction").id')"
 offer_def="$(qa_jsv "__me.ctx.experience.uses['$offer'].definitionId")"
 click "#index [data-act=exp-open][data-id='$pid']"
-click '#card > details:nth-of-type(3) > summary'
-click "#card [data-act=pres-ref][data-id='$offer']"
+qa_card_advanced
+click "#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id='$offer']"
 revise_open
 press '#card [data-act=exp-duplicate-contribution]'
 revise_open
@@ -120,7 +122,7 @@ click '#card [data-act=exp-add-guide]'
 qa_ok 'the Presentation has exactly one Guide occurrence before removal' "$(qa_jsv '__me.ctx.experience.guide.length')" 1
 views_before="$(qa_jsv 'Object.keys(__me.ctx.cameraSource.views).length')"
 undo_before="$(qa_jsv '__me.S.undo.length')"
-click '#card > details:nth-of-type(5) > summary'
+qa_card_remove
 click '#card [data-act=exp-remove-presentation]'
 qa_ok 'removal takes exactly its own occurrences and one Undo, and leaves the Presentation gone' "$(qa_js '(__me.ctx.experience.presentations["'"$pid"'"]===undefined&&__me.ctx.experience.guide.length===0)') / $(qa_js '(__me.S.undo.length===1+'"$undo_before"'&&__me.S.undo.at(-1).label==="Remove Presentation")')" 'true / true'
 qa_ok 'shared definitions, retained references and Camera Views survive the removal' "$(qa_js '(()=>{const e=__me.ctx.experience,cs=Object.values(e.uses).filter(u=>e.definitions[u.definitionId]?.capabilityId==="casing");return cs.length===2&&cs.every(u=>e.definitions[u.definitionId]?.value!==undefined)&&e.definitions["'"$shared"'" ]!==undefined&&Object.keys(__me.ctx.cameraSource.views).length==='"$views_before"';})()')" true
@@ -150,8 +152,8 @@ qa_ok 'replacing the profile drops the rotor capability while keeping the casing
 click '[data-act=lens][data-lens=experience]'
 rotor="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>__me.ctx.experience.definitions[u.definitionId]?.capabilityId==="rotor").id')"
 click "#index [data-act=exp-open][data-id='$pid']"
-click '#card > details:nth-of-type(3) > summary'
-click "#card [data-act=pres-ref][data-id='$rotor']"
+qa_card_advanced
+click "#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id='$rotor']"
 qa_ok 'the lost capability is a routed repair notice on the retained Activity, not a silent change' "$(qa_js '(!!document.querySelector("[data-exp-rebind-capability]")&&/Repair/.test(document.querySelector("#card").textContent)&&document.querySelector("#card").textContent.includes("unavailable"))')" true
 choose '[data-exp-rebind-capability]' casing
 qa_ok 'a compatible rebind repairs the instruction in place, keeping its identity' "$(qa_js '(()=>{const e=__me.ctx.experience,d=e.definitions[e.uses["'"$rotor"'"].definitionId];return d.capabilityId==="casing"&&d.subjectId==="machine"&&e.uses["'"$rotor"'"].start.kind==="visit";})()')" true

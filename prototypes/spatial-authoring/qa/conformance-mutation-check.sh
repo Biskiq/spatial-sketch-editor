@@ -40,7 +40,7 @@ PY
     preview) boundary=preview;expected='Preview rig and input removed' ;;
   esac
   log="$work/$kind.log"
-  if QA_SHOT=0 QA_SESSION="v2-mutation-$kind" QA_CONFORMANCE_UNTIL="$boundary" bash "$work/$kind/qa/conformance-check.sh" >"$log" 2>&1;then
+  if QA_SHOT=0 QA_SESSION="v2-mutation-$kind-$$" QA_CONFORMANCE_UNTIL="$boundary" bash "$work/$kind/qa/conformance-check.sh" >"$log" 2>&1;then
     echo "FAIL: successor accepted $kind regression";exit 1
   fi
   # A reached failed boundary plus unaffected green controls, never a crash or empty observation.

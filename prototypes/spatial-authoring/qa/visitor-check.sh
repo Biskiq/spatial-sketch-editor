@@ -85,10 +85,10 @@ qa_ok 'runtime freezes source/history and restores authoring' "$(qa_js '(__me.S.
 agent-browser click '#index [data-act="exp-open"]' >/dev/null
 qa_frames
 home="$(qa_jsv '__me.S.experienceContext.presentation')"
-qa_js '(()=>{const b=document.querySelector("#card [data-act=exp-offer]");if(!b)return false;const d=b.closest("details");if(d)d.open=true;return true;})()' >/dev/null
-qa_frames
-qa_scroll_center '#card [data-act="exp-offer"]'
-agent-browser click '#card [data-act="exp-offer"]' >/dev/null
+# UX2: a behavior or offer is authored in the one Advanced authoring home the Card offers; the draft, its
+# kind, its availability and its acceptance are the same writers the Card reached before.
+qa_card_advanced
+agent-browser click '#card [data-exp-advanced-home] [data-act="exp-offer"]' >/dev/null
 qa_frames
 agent-browser select '[data-exp-offer="kind"]' interaction >/dev/null
 qa_frames

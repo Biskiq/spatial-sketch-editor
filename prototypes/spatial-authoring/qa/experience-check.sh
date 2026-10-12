@@ -11,6 +11,7 @@ qa_ok 'ordinary Experience has no Deck or reading' "$(qa_js '(!__me.S.session &&
 agent-browser click '[data-act="exp-open"][data-id="pres-highlights"]' >/dev/null
 qa_frames
 qa_ok 'explicit Presentation uses canonical identity' "$(qa_js '__me.S.sel')" '"pres-highlights"'
+qa_card_menu
 agent-browser fill '[data-exp-field="name"]' 'Garden meaning' >/dev/null
 agent-browser press Enter >/dev/null
 qa_frames

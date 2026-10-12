@@ -39,7 +39,11 @@ qa_snap narrow-card
 click '[data-act="sheet-card"]'
 agent-browser set viewport 1440 900 >/dev/null;qa_frames
 click '#card .exp-view [data-act=pres-ref]'
-qa_ok 'View use Card shows owner and current-use meaning' "$(qa_js '(document.querySelector("#card").textContent.includes("Experience role / Camera framing")&&document.querySelector("#card").textContent.includes("Current use"))')" true
+# UX2: the View Card names the Presentation it belongs to, its own current meaning (★ Default / a visitor
+# View choice / no Default yet) and its own operations — the same canonical identity the Views list and the
+# Stage's View markers select, never a second reading of the same thing.
+owner="$(qa_jsv '(() => { const e = __me.ctx.experience, u = e.uses[__me.S.sel]; return e.presentations[u && u.presentationId] ? e.presentations[u.presentationId].name : ""; })()')"
+qa_ok 'View use Card shows its owning Presentation and its own current meaning' "$(qa_js "(() => { const c = document.querySelector('#card'), t = c.textContent; return c.querySelector('.c-k').textContent.includes('View · Experience') && t.includes('$owner') && c.querySelector('.c-ref').textContent.includes('Reach ·') && /★ Default View|A visitor View choice|No Default yet/.test(t) && !!c.querySelector('[data-exp-ops]'); })()")" true
 click '#card [data-act=exp-precise]'
 click '[data-act=exp-posture][data-posture=through]'
 requested="$(qa_js '__me.nav.plainPose()')";source="$(qa_js '__me.qa.hash()')"

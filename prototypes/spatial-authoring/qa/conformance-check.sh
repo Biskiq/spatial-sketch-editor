@@ -33,14 +33,23 @@ click '#lens [data-lens="experience"]'
 fixture exp-reset
 qa_locator_select machine
 click '#card [data-act="exp-create"]'
-fill '[data-exp-field="name"]' 'Why the drive matters'
+# UX2: `Present this` is aggregate. One Undo step writes the Presentation, its first View use as the
+# Default and the Camera View that use reads, so the Card names that View in its own Views list before
+# anything else happens. The accepted no-View reading this axis proves further down is reached the way an
+# author reaches it — by unlinking that one use — rather than by a creation command that no longer exists.
+conformance_ok 'Present this is one aggregate command: a Presentation, one Default View use and the Camera View it reads' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,p=e.presentations[pid],c=__me.ctx.cameraSource,us=p.uses.map(id=>e.uses[id]);return Object.keys(e.presentations).length===1&&us.length===1&&us[0].role==="entry"&&!!c.views[us[0].viewId]&&!!document.querySelector("[data-exp-views] [data-exp-view-use]");})()')" true
+# The ordinary explanation is one door on the Card, and the Presentation's name is written in the Card's
+# own menu: both are opened the way an author opens them, never through a selector the control never had.
+click '#card [data-exp-explain] > summary'
 fill '[data-exp-primary]' 'A casing, a rotor, and a path for power.'
+click '#card [data-exp-menu="presentation"] > summary'
+fill '[data-exp-field="name"]' 'Why the drive matters'
 conformance_ok 'the explanation field commits one authored narration through the real control' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,primary=Object.values(e.uses).filter(u=>u.primary);return primary.length===1&&primary[0].presentationId===pid&&e.definitions[primary[0].definitionId].kind==="narration"&&e.definitions[primary[0].definitionId].text==="A casing, a rotor, and a path for power.";})()')" true
 conformance_ok 'quickstart observes the real Presentation it was asked for, not a button press' "$(qa_js '(()=>{const s=document.querySelector("[data-example-step]").textContent,o=document.querySelector("[data-example-observed]").textContent;return s.includes("1/18")&&o.includes("Why the drive matters");})()')" true
 # C9.1 ordinary loop: the subject-local audition is session state; Use captures one honest Activity.
-click '#card .exp-focus [data-operate="machine"]'
+click '#card [data-exp-focus-subject="machine"]'
 conformance_ok 'the Presentation Card reaches the subject it presents' "$(qa_js '__me.S.sel')" '"machine"'
-before="$(source_hash)"; count="$(undo)"
+before="$(source_hash)"; count="$(undo)"; views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')"
 fill '[data-exp-audition="casing"]' '0.6'
 conformance_ok 'operating the subject auditions on the real Stage without source or history' "$(qa_jsv 'JSON.stringify(__me.S.expAudition)')" '{"machine":{"open":0.6}}'
 conformance_ok '…and the audition writes no source and no history' "$(source_hash) / $(undo)" "$before / $count"
@@ -54,38 +63,94 @@ click '#card [data-act="exp-audition"][data-cap="rotor"][data-value="false"]'
 conformance_ok 'stopping the audition drops the phase' "$(qa_js '(__me.S.expAudition.machine.running===false&&__me.ctx.stage.items.get("machine").capabilityParts.rotor.rotation.y===0)')" true
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'Use in this Presentation captures one Activity holding the auditioned value' "$(qa_js '(()=>{const e=__me.ctx.experience,pid=__me.S.experienceContext.presentation,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==="control"),d=us[0]&&e.definitions[us[0].definitionId];return us.length===1&&us[0].presentationId===pid&&d.subjectId==="machine"&&d.capabilityId==="casing"&&d.value===0.6&&e.guide.length===0&&Object.keys(e.stops).length===0;})()')" true
-conformance_ok 'the capture writes one history step and creates no Camera View' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / 0"
+conformance_ok 'the Activity capture writes one history step and creates no Camera View of its own' "$(undo) / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "$((count+1)) / $views"
 fill '[data-exp-audition="casing"]' '0.9'
 click '#card [data-act="exp-use"][data-cap="casing"]'
 conformance_ok 'updating the captured value reuses that Activity and never duplicates it' "$(qa_js '(()=>{const e=__me.ctx.experience,us=Object.values(e.uses).filter(u=>!u.viewId&&e.definitions[u.definitionId]?.kind==="control");return us.length===1&&e.definitions[us[0].definitionId].value===0.9&&document.querySelector("#card").textContent.includes("Captured in this Presentation");})()')" true
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
-conformance_ok 'the Presentation lists the captured Activity by what it operates, where and how it starts' "$(qa_js '(()=>{const t=document.querySelector("#card details:nth-of-type(3)").textContent;return t.includes("Open casing")&&t.includes("Machine")&&t.includes("in Why the drive matters")&&t.includes("Starts on Presentation entry");})()')" true
+# UX2: the Presentation's ordinary Card carries identity, its Views and one explanation door. The captured
+# Activity is not an ordinary field, so it reads in the one Advanced authoring home — still by what it
+# operates, where it belongs and how it starts, opened from the Card rather than by a positional details.
+click '#card [data-act="exp-advanced"]'
+conformance_ok 'Advanced authoring lists the captured Activity by what it operates, where and how it starts' "$(qa_js '(()=>{const t=document.querySelector("#card [data-exp-advanced-home]").textContent;return t.includes("Open casing")&&t.includes("Machine")&&t.includes("in Why the drive matters")&&t.includes("Starts on Presentation entry");})()')" true
 # Open the Activity through its real, scroll-reachable contribution row.
-click '#card details:nth-of-type(3) > summary'
-click '#card > details:nth-of-type(3) .contribution [data-act="pres-ref"]'
+click '#card [data-exp-advanced-home] .contribution [data-act="pres-ref"]'
 conformance_ok 'the captured Activity reads as an honest identity, never a schema term' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("Activity · Experience")+"|"+(document.querySelector("#card").textContent.includes("Operates Machine · Open casing"))')" '"true|true"'
+click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
+# UX2: the accepted no-View Presentation is reached the way an author reaches it — Remove from
+# Presentation unlinks the use — and the unlink is proven here rather than assumed: one history step, the
+# Default left unset with no replacement picked, and the Camera framing kept as Camera truth for every
+# other use. Nothing is destroyed to prove a View is optional.
+click '#card [data-exp-views] [data-exp-view-use]'
+conformance_ok 'selecting a View opens the View’s own Card, never the Presentation’s' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("View · Experience")&&__me.S.sel!==__me.S.experienceContext.presentation')" true
+before="$(source_hash)"; count="$(undo)"; camera_views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')"
+# §3.10: the bounded unlink states what it will leave behind before it happens, and says what it left
+# behind once it has. Both are read from the product's own words on the Card and in the status rail.
+conformance_ok 'the removal states what it leaves behind before it happens' \
+  "$(qa_js '(()=>{const t=document.querySelector("#card [data-view-consequences]")?.textContent||"";return t.includes("Camera framing is kept")&&t.includes("no replacement Default is chosen");})()')" true
+click '#card [data-act="exp-remove-view"]'
+conformance_ok '…and the status names what the unlink left: the Default unset, the Camera framing kept' \
+  "$(qa_js '(/Camera framing kept/.test(__me.S.status.text)&&/the Default is now unset/.test(__me.S.status.text))')" true
+conformance_ok 'Remove from Presentation unlinks one use in one history step' "$(undo)" "$((count+1))"
+conformance_ok '…leaving the Default unset, no replacement chosen and the Camera framing intact' "$(qa_jsv "JSON.stringify((__me.ctx.experience.presentations['$pid']||{uses:[]}).uses)") / $(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')" "[] / $camera_views"
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 before="$(source_hash)";standpoint="$(pose)"
 qa_preview_presentation
-conformance_ok 'no-Guide/no-View Preview runs the authored explanation and captured capability' "$(qa_js '(!!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&Object.keys(__me.ctx.cameraSource.views).length===0&&!!__me.S.visitor.runtime.overrides.machine?.open&&Object.values(__me.S.visitor.runtime.activities).some(a=>a.status==="running"))') / $(source_hash)" "true / $before"
+conformance_ok 'no-Guide/no-View Preview runs the authored explanation and captured capability' "$(qa_js "(()=>{const e=__me.ctx.experience,p=e.presentations['$pid'];return !!__me.S.visitor&&__me.S.visitor.runtime.stopId===null&&!!p&&p.uses.map(id=>e.uses[id]).filter(u=>u.viewId).length===0&&!!__me.S.visitor.runtime.overrides.machine?.open&&Object.values(__me.S.visitor.runtime.activities).some(a=>a.status==='running');})()") / $(source_hash)" "true / $before"
 conformance_ok 'the visitor caption speaks the explanation typed through the real control' "$(qa_js 'document.querySelector(".visitor-caption").textContent.includes("A casing, a rotor")')" true
 click '[data-act="exp-exit-preview"]'
 conformance_ok 'no-View Preview restores complete standpoint' "$(pose)" "$standpoint"
 before="$(source_hash)"; count="$(undo)"
 click '#card [data-act="exp-auto"]'
 conformance_ok 'Auto is derived intent, with no source/history change' "$(source_hash) / $(undo)" "$before / $count"
-click '#card [data-act="exp-hints"]'
-click '[data-act="exp-derived-hint"][data-hint="Left"]'
-click '#experienceInstrument [data-act="exp-capture"]'
-click '#card [data-act="exp-hints"]'
-click '[data-act="exp-derived-hint"][data-hint="Right"]'
-click '#experienceInstrument [data-act="exp-capture"]'
+# UX2: the recommended framing is asked for in the Views section of the Card that offers it, and the
+# derived suggestions it arms appear in that same Card. There is no Framing Hints Stage toolbar any more;
+# Capture is the same ordinary `+ Capture view`, and it is what accepts a recommendation. Accepting one
+# selects the View it authored, so the author returns to the Presentation to ask for the next.
+click '#card [data-act="exp-auto"]'
+click '[data-exp-hints] [data-act="exp-derived-hint"][data-hint="Left"]'
+conformance_ok 'a derived suggestion is offered in the Card and re-derives intent, not source' "$(source_hash) / $(qa_js '(__me.S.derivedView?.name||"")')" "$before / \"Left of focus\""
+click '#card [data-act="exp-capture"]'
+click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
+click '#card [data-act="exp-auto"]'
+click '[data-exp-hints] [data-act="exp-derived-hint"][data-hint="Right"]'
+click '#card [data-act="exp-capture"]'
+click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 click '#card [data-act="exp-bring"]'
 conformance_ok 'QA-1 visible working Set, quiet Card, no Guide/graph/rig' "$(qa_js "(document.querySelectorAll('[data-exp-view]').length===2&&[...document.querySelectorAll('[data-exp-view]')].every($visible)&&!document.querySelector('#experienceDeck')&&!document.querySelector('[data-frame-gate]')&&__me.ctx.experience.guide.length===0&&Object.keys(__me.ctx.cameraSource.connections).length===0&&document.querySelectorAll('#card .verb').length===0)")" true
 capture qa-1-ordinary
 conformance_ok 'Set markers are actual hit targets' "$(qa_js "[...document.querySelectorAll('[data-exp-view]')].every($hit)")" true
 conformance_ok 'Set has visible direction glyphs separate from identity plates' "$(qa_js '(document.querySelectorAll("[data-view-direction]").length===2&&[...document.querySelectorAll("[data-view-direction]")].every(e=>{const r=e.getBoundingClientRect(),at=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.width*r.height>30&&!at?.closest("[data-exp-view]");}))')" true
+# The Presentation this block re-focuses is opened the way an author opens it — from its Index row, and
+# only here, at the end of the QA-1 journey: re-focusing a Presentation on its environment is a real
+# change of what it presents, so nothing downstream may still depend on it naming the machine subject.
+click '#index [data-act=exp-open]'
+# §7 QA 3 asks for exactly one creation entry, and UX2 consolidated the retired `Present environment` and
+# `Present region` rows into the Card's own Change focus menu. A capability that moved has to stay
+# reachable, so both are exercised here on the real controls: each re-focuses *this* Presentation rather
+# than creating a second one, and the environment focus is one history step.
+conformance_ok 'the Index offers exactly one creation entry, with no second presenter beside it' \
+  "$(qa_js '[...document.querySelectorAll("#index [data-act]")].map((b) => b.dataset.act).filter((a) => a === "exp-create" || a?.startsWith("exp-environment") || a?.startsWith("exp-region")).join(",")')" \
+  '"exp-create"'
+focus_pid="$(qa_jsv '__me.S.experienceContext.presentation')"
+focus_pres="$(qa_js 'Object.keys(__me.ctx.experience.presentations).length')"
+focus_undo="$(undo)"
+qa_card_door '#card [data-exp-menu=focus]'
+conformance_ok 'the Presentation offers the retired environment and region presenters as focus operations on itself' \
+  "$(qa_js '(()=>{const d=document.querySelector("#card [data-exp-menu=focus]");return !!d&&!!d.querySelector("[data-act=exp-focus-environment]")&&!!d.querySelector("[data-act=exp-focus-region]");})()')" true
+click '#card [data-act="exp-focus-environment"]'
+conformance_ok 'focusing this environment re-focuses that Presentation in one history step and creates no second one' \
+  "$(qa_jsv "JSON.stringify([Object.keys(__me.ctx.experience.presentations).length, __me.ctx.experience.presentations['$focus_pid'].focus])") / $(undo)" \
+  "[$focus_pres,{\"kind\":\"environment\"}] / $((focus_undo+1))"
+qa_card_door '#card [data-exp-menu=focus]'
+click '#card [data-act="exp-focus-region"]'
+conformance_ok 'focusing a region opens the existing region work on that Presentation, still without a second one' \
+  "$(qa_js "(__me.S.task?.kind==='experience-region'&&__me.S.task.params.presentation==='$focus_pid'&&Object.keys(__me.ctx.experience.presentations).length===$focus_pres)")" true
+qa_press Escape
+qa_frames
+conformance_ok '…and cancelling leaves that Presentation focusing its environment, with nothing written' \
+  "$(qa_js "(!__me.S.task&&Object.keys(__me.ctx.experience.presentations).length===$focus_pres&&__me.ctx.experience.presentations['$focus_pid'].focus.kind==='environment')")" true
 checkpoint ordinary
 set_ids="$(qa_js '[...document.querySelectorAll("[data-exp-view]")].map(e=>e.dataset.id).sort()')";before="$(source_hash)"
 click '.stage-tools [data-act="plan"]'
@@ -111,8 +176,10 @@ conformance_ok 'a World subject selection survives the same labelled load' "$(qa
 # Ambiguous captures: two matching Activities in one Presentation. The choice is real product UI;
 # Escape drops it whole, and Capture another is an explicit create that touches neither existing value.
 click '#index [data-act="exp-open"][data-id="presentation-1"]'
-click '#card > details:nth-of-type(4) > summary'
-click '#card [data-act="exp-offer"]'
+# UX2: a behavior or offer is authored in the one Advanced authoring home, reached from the Card; the
+# offer draft, its kind and its acceptance are the same writers the Card reached before.
+click '#card [data-act="exp-advanced"]'
+click '#card [data-exp-advanced-home] [data-act="exp-offer"]'
 agent-browser select '[data-exp-offer="kind"]' behavior >/dev/null;qa_frames
 fill '[data-exp-offer="value"]' '1'
 click '#card [data-act="exp-offer-accept"]'
@@ -172,9 +239,27 @@ click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
 click "[data-exp-view][data-id='$uid']"
 conformance_ok 'spatial Set selects the same canonical use' "$(qa_js '__me.S.sel') / $(pose)" "\"$uid\" / $standpoint"
 count="$(undo)"
-click '#card [data-act="exp-role"][data-role="entry"]'
+# UX2: one Default is written by one ordinary control, Set as Default, and it goes through the same
+# shared-use writer the role pair used — so every Stop that enters through this View is disclosed first.
+click '#card [data-act="exp-default"]'
 conformance_ok 'shared Set role change asks before source/history changes' "$(qa_js '(!!__me.S.expSourceAsk)') / $(source_hash) / $(undo)" "true / $before / $count"
 click '[data-act="exp-source-cancel"]'
+# §7 QA 3: Set as Default leaves Guide order, Camera routes and Stop overrides intact. The proposal is
+# accepted here — the cancel above already proved nothing is written without it — and the whole change is
+# the one history step the ask promised. A Stop's entry record is read as what it is: the default
+# presentation entry, or the explicit override the local-entry block below and the reconciliation axis
+# author and re-read.
+role_state='JSON.stringify({guide:__me.ctx.experience.guide,connections:Object.keys(__me.ctx.cameraSource.connections),entries:Object.values(__me.ctx.experience.stops).map((s)=>s.entry),defaults:(()=>{const e=__me.ctx.experience,p=e.presentations[__me.S.experienceContext.presentation];return p?p.uses.filter((id)=>e.uses[id]?.role==="entry"):[]})()})'
+strip_defaults(){ python3 -c 'import json,sys; d=json.loads(sys.argv[1]); d.pop("defaults",None); print(json.dumps(d,sort_keys=True))' "$1"; }
+only_default(){ python3 -c 'import json,sys; print(json.dumps(json.loads(sys.argv[1])["defaults"]))' "$1"; }
+role_before="$(qa_jsv "$role_state")"
+click '#card [data-act="exp-default"]'
+click '[data-act="exp-source-accept"]'
+role_after="$(qa_jsv "$role_state")"
+conformance_ok 'accepting it leaves Guide order, Camera routes and every Stop entry record byte-identical' "$(strip_defaults "$role_after")" "$(strip_defaults "$role_before")"
+conformance_ok '…and the one ★ Default is the View that asked for it, in one history step' "$(only_default "$role_after") / $(undo)" "[\"$uid\"] / $((count+1))"
+click '#undoBtn'
+conformance_ok 'Undo restores the former Default and the same untouched Guide, routes and Stop entries' "$(only_default "$(qa_jsv "$role_state")") / $(strip_defaults "$(qa_jsv "$role_state")")" "$(only_default "$role_before") / $(strip_defaults "$role_before")"
 click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
 click '#card > .exp-more > summary'
 before="$(source_hash)"; count="$(undo)"
@@ -315,6 +400,19 @@ conformance_ok 'a later Stage press cannot add an anchor to the old route' "$(qa
 # QA-6 no Guide; use the ordinary no-Guide example through actual controls again.
 fixture exp-reset
 qa_locator_select machine
+# UX2: presenting from a Plan reading is a real choice rather than a silent capture — nothing is created
+# until the author says how the visitor should meet this subject. The reading is taken with the shell's own
+# depth control, so what is proven is the state the shell really puts the author in. Cancel writes nothing
+# and leaves the reading alone; the author then works in 3D again, which is the reading this example is
+# authored from, and the rest of the block is the same ordinary path it always was.
+click '.stage-tools [data-act="plan"]'
+pres_before="$(qa_js 'Object.keys(__me.ctx.experience.presentations).length')"
+before="$(source_hash)"; count="$(undo)"
+click '#card [data-act="exp-create"]'
+conformance_ok 'Presenting from a Plan reading offers the intent choice and creates nothing yet' "$(qa_js 'Object.keys(__me.ctx.experience.presentations).length') / $(qa_js '(()=>{const a=document.querySelector("[data-plan-ask]");return !!a&&!!document.querySelector("[data-act=exp-plan-compose]")&&!!document.querySelector("[data-act=exp-plan-cancel]");})()') / $(source_hash)" "$pres_before / true / $before"
+click '#card [data-act="exp-plan-cancel"]'
+conformance_ok 'Cancel creates nothing, keeps the Plan reading and closes the choice' "$(qa_js 'Object.keys(__me.ctx.experience.presentations).length') / $(undo) / $(qa_js '(__me.nav.plainPose().el>1.5&&!__me.S.expPlanAsk&&!document.querySelector("[data-plan-ask]"))')" "$pres_before / $count / true"
+click '.stage-tools [data-act="3d"]'
 click '#card [data-act="exp-create"]'
 click '#card [data-act="exp-auto"]'
 click '#card [data-act="exp-capture"]'

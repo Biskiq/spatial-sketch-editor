@@ -14,7 +14,8 @@
 #   QA_BASE     base URL to measure; when unset the harness serves $QA_PROTO itself
 #   QA_PORT     preferred port for that server (default: an ephemeral one)
 #   QA_OUT      directory for captures (default qa/out)
-#   QA_SESSION  agent-browser session name (default qa-<pid>)
+#   QA_SESSION  agent-browser session name; when unset it is derived from this shell's pid, so two
+#               worktrees (or two axes) can never share one browser by accident
 #   QA_VIEW_W / QA_VIEW_H   viewport (default 1440x900)
 #   QA_QUERY    query string appended to index.html (default shot=1&motion=instant)
 #   QA_SHOT     set to 0 to skip screenshots
@@ -24,7 +25,10 @@ set -u
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 QA_PROTO="$(cd "$QA_DIR/.." && pwd)"
 QA_OUT="${QA_OUT:-$QA_DIR/out}"
-QA_SESSION="${QA_SESSION:-p26-qa}"
+# A browser session name must be unique per run: a shared name means two concurrent axes drive the same
+# page and read each other's state, which looks exactly like a product failure. A caller may still name
+# its own session; the default is this process's pid.
+QA_SESSION="${QA_SESSION:-p26-qa-$$}"
 QA_BASE="${QA_BASE:-}"
 QA_PORT="${QA_PORT:-}"
 QA_VIEW_W="${QA_VIEW_W:-1440}"
@@ -316,6 +320,37 @@ qa_preview() { # qa_preview <presentation|guide|experience>
 qa_preview_presentation() { qa_preview presentation; }
 qa_preview_guide() { qa_preview guide; }
 qa_preview_experience() { qa_preview experience; }
+
+# ---------------------------------------------------------------- the ordinary Card's one writer (UX2)
+# The Presentation Card keeps one compact ordinary explanation entry, and its name is written in the Card's
+# own menu. Both are native disclosures: the browser owns the open state, and the writer inside is reachable
+# exactly when an author has opened the door. A recipe opens one the way an author does — a real pointer
+# click on its summary — and only when it is closed, so a repeated step can never close it again.
+
+qa_card_door() { # qa_card_door <selector of the element that carries the disclosure>
+  local sel="$1"
+  if [ "$(qa_js "document.querySelector(\"$sel\")?.open===true")" = "true" ]; then return 0; fi
+  qa_scroll_center "$sel > summary"
+  agent-browser click "$sel > summary" >/dev/null 2>&1 || { qa_fail_msg "no Card door at $sel"; return 1; }
+  qa_frames
+  return 0
+}
+# The two ordinary doors, named once so no recipe has to remember the markup.
+qa_card_explanation() { qa_card_door '#card [data-exp-explain]'; }
+qa_card_menu() { qa_card_door '#card [data-exp-menu=presentation]'; }
+# Removal is the Card menu's own nested disclosure: the menu is opened first, so the summary inside it is a
+# real visible target rather than an element hidden behind a closed parent.
+qa_card_remove() { qa_card_menu; qa_card_door '#card [data-exp-menu=remove]'; }
+# Advanced authoring is one home behind the Card menu's button, not a disclosure of its own: it is opened
+# only when it is not already open, so a repeated step can never toggle the author back out of it.
+qa_card_advanced() {
+  if [ "$(qa_js 'document.querySelector("#card [data-exp-advanced-home]")!==null')" = "true" ]; then return 0; fi
+  qa_card_menu
+  qa_scroll_center '#card [data-exp-menu=presentation] [data-act=exp-advanced]'
+  agent-browser click '#card [data-exp-menu=presentation] [data-act=exp-advanced]' >/dev/null 2>&1 || { qa_fail_msg 'no Advanced authoring door on the Card'; return 1; }
+  qa_frames
+  return 0
+}
 
 # ---------------------------------------------------------------- the one shared locator (UX1)
 # A subject is reached the way an author reaches it: the locator is opened from the shell, the subject

@@ -50,7 +50,9 @@ click '#journeys [data-jact=prev]'
 click '#journeys [data-jact=next]'; wait_idle
 qa_ok 'Next performs Q1 through the actual Presentation command' "$(qa_js '(Object.values(__me.ctx.experience.presentations).length===1&&__me.E.presenterCredit(__me.E.presenterSteps()[0]).credited)')" true
 qa_ok 'a task that really ran is reported as demonstrated, from what the product did' "$(state) / $(demo)" "demonstrated / Demonstrated by Next · Q1 · Subject and Presentation · The task ran in the product"
-qa_ok 'the demonstrated Presentation uses ordinary aggregate Undo' "$(qa_jsv '__me.S.undo.at(-1).label')" 'Create Presentation'
+# UX2: the same ordinary aggregate command, under the verb the Card now uses for it: one Present step
+# writes the Presentation, its Default View use and the Camera View it reads.
+qa_ok 'the demonstrated Presentation uses ordinary aggregate Undo' "$(qa_jsv '__me.S.undo.at(-1).label')" 'Present'
 if [ "${QA_DEMO_UNTIL:-}" = first ]; then qa_summary 'C9 Next first task'; exit; fi
 qa_js '__me.E.beginOffer("interaction","machine")' >/dev/null
 draft="$(qa_jsv 'JSON.stringify(__me.S.expOfferDraft)')"; before="$(snapshot)"
@@ -61,6 +63,7 @@ qa_ok 'the ordinary cancellation pipeline releases the draft without authoring' 
 advance Q2 2; advance Q3 3
 
 # A long narration makes cancellation observable before natural task completion. This is a real field.
+qa_card_explanation
 agent-browser fill '[data-exp-primary]' 'The machine has a casing around its rotor. The protective casing keeps the moving rotor safe while the visitor explores the drive, studies its parts, compares its material, and listens to a longer explanation before moving to the next Presentation.' >/dev/null
 qa_press Enter
 click '#journeys [data-jact=next]'
@@ -79,7 +82,7 @@ click '#journeys [data-jact=next]'
 qa_ok 'Next stays read-only during a separately entered Preview' "$(snapshot) / $(qa_js '!!__me.S.visitor') / $(at)" "$before / true / 4"
 qa_ok 'Next inside a private Preview is reported as browsing, not as a failed or successful task' "$(state)" 'browsed'
 click '#journeys [data-jact=prev]'; click '[data-act=exp-exit-preview]'
-agent-browser fill '[data-exp-primary]' 'The casing protects the rotor.' >/dev/null; qa_press Enter
+qa_card_explanation; agent-browser fill '[data-exp-primary]' 'The casing protects the rotor.' >/dev/null; qa_press Enter
 advance Q4 4; advance Q5 5; advance Q6 6; advance Q7 7; advance Q8 8
 advance A1 9; advance A2 10
 # A traversal the runtime refuses must fail the demonstration cleanly rather than spin: the Stop the Guide

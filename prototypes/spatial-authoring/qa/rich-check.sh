@@ -141,8 +141,9 @@ station_work="$station_use"
 qa_js "window.__stationWork='$station_work'" >/dev/null
 home="$(qa_jsv '(__me.ctx.experience.uses[window.__stationWork].presentationId)')"
 click "#index [data-act=exp-open][data-id='$home']"
-press "#card [data-act=pres-ref][data-id='$station_work']"
-click '#card > details:nth-of-type(1) > summary'
+qa_card_advanced
+press "#card [data-exp-advanced-home] .contribution [data-act=pres-ref][data-id='$station_work']"
+click '#card [data-exp-activity-details] > summary'
 choose '[data-exp-start]' visit
 qa_ok 'rebinding the invocation to entry is honestly authored state' "$(qa_js '(()=>{const e=__me.ctx.experience;const u=e.uses[window.__stationWork];const s=Object.values(e.seams)[0];return u.start.kind==="visit"&&s.beats.some(b=>b.kind==="invoke"&&b.useId===u.id);})()')" true
 qa_preview_guide
@@ -162,7 +163,7 @@ checkpoint repair
 # ---- C9.6/J8: removing a Presentation retains the authored labelled choice that targeted it.
 compare_pid="$(qa_jsv 'Object.values(__me.ctx.experience.presentations).find(p=>p.name=="Compare materials").id')"
 click "#index [data-act=exp-open][data-id='$compare_pid']"
-click '#card > details:nth-of-type(5) > summary'
+qa_card_remove
 click '#card [data-act=exp-remove-presentation]'
 qa_ok 'removing a Presentation retains the authored labelled choice as an unresolved, repairable reference' "$(qa_js '(()=>{const e=__me.ctx.experience;for(const s of Object.values(e.stops)){const c=s.choices.find(c=>/Compare materials detour/.test(c.label));if(c)return !!c.label&&!e.stops[c.targetId];}return false;})()')" true
 # ---- The retained choice is repairable and removable from its own Stop, and Preview never offers it.
