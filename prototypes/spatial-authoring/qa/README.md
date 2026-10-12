@@ -16,6 +16,7 @@ qa/run-all.sh browse       # stage S4: Browse/Search context, result verbs, the 
 qa/run-all.sh repair       # stage S5: the unresolved reference, Repair, and Owner/Source/Reach
 qa/run-all.sh lens         # stage S6: the lens, parked work, and World parking and refusal grammar
 qa/run-all.sh experience   # stage S7: Experience wiring and the visitor's isolated preview
+qa/run-all.sh experience-shell # PR #114 UX0: the shell's homes, the Deck band and the visitor surface
 qa/run-all.sh conformance  # V2 product journeys and visible Camera/Set/coordination geometry
 qa/run-all.sh creator      # C9.1: standalone creator loop, domain preservation and compact reach
 qa/run-all.sh composition  # C9.2/C9.3: composition execution and compact Guide
@@ -143,6 +144,7 @@ What the harness knows about keys, measured rather than assumed:
 | `repair-check.sh` | stage S5: the quiet rest warning for an unresolved reference, the locator that is never a host, Repair's explicit wall pick and declared station/height, the fixture's own refusals, one accepted edit with Undo/Redo moving the reference and not the view, canceled and left-unresolved work writing nothing, and Owner/Source/Reach as supported facts |
 | `lens-check.sh` | World parking semantics, inactive teardown, neutral Resume, canonical/foreign identities, World/Search refusal grammar, target/selection revalidation and canceled World writers/aims; both-direction/Preview/history ownership is below |
 | `experience-check.sh` | ordinary authoring, shared history, unordered Set, Guide/Seam, 2-of-3 coverage, Camera reach/detachment and stable coordination wiring |
+| `experience-shell-check.sh` | PR #114 UX0: the shell's six homes exist once each and the visitor surface is hidden while authoring; a Guide mounts exactly one Deck naming its own posture in one home; the band stays under 40 % of the viewport at 1440×900 and 1024×768, its heading stays hit-reachable at the same time as the Card's identity, nothing inside it scrolls and the document never scrolls sideways; opening a posture or an invoked sheet writes no source, history, selection or Camera intent and resizes no Stage; Preview hides every authoring home, offers exactly one Exit Preview and returns the exact context. Controls are addressed by `data-home`/`data-act` so #114's slices re-point a recipe instead of weakening it |
 | `visitor-check.sh` | outside-product example/Presenter, visitor takeover, independent Piano, visible Switch → Light session effect, keyboard Gate parity, captions/cues, exploration/rejoin and frozen source/history |
 | `continuity-check.sh` | both-direction parking, neutral Resume, canceled live framing drag, exact Preview/accepted-inspection return, interleaved history and inert World footer controls |
 | `conformance-check.sh` | actual product journeys QA-1…6, no-View Preview, derived Auto/Capture, repeated Meaning scope, local entry, real observer routes and anchors, stable mirrored stations, shared route scope, spatial precision, neutral Resume/fresh return, Escape/lost capture; permitted authored source loaders only |

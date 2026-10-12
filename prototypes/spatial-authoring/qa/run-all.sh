@@ -13,6 +13,7 @@
 #   qa/run-all.sh repair       the unresolved reference and its Repair only
 #   qa/run-all.sh lens         the lens, parked World work and explicit Resume only
 #   qa/run-all.sh experience   Experience wiring and the visitor's isolated preview only
+#   qa/run-all.sh experience-shell  the Experience shell's composition: homes, the Deck band and the visitor surface
 #   qa/run-all.sh visitor      visitor execution controls and source isolation only
 #   qa/run-all.sh revision     C9.6 revision, removal and repair only
 #   qa/run-all.sh rich         C9.7 rich example, native Wall and local coordination only
@@ -65,6 +66,7 @@ case "$WHICH" in
   walkthrough) run "C9 follow-up · shared Experience workflow" walkthrough-check ;;
   walkthrough-demo) run "C9 follow-up · optional task demonstrations" walkthrough-demo-check ;;
   experience) run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check ;;
+  experience-shell) run "PR #114 · the Experience shell's composition" experience-shell-check ;;
   visitor) run "Visitor execution" visitor-check ;;
   reconciliation) run "Shared shell and narrow Experience" reconciliation-check ;;
   continuity) run "Stage S8 · full continuity between the two lenses" continuity-check ;;
@@ -81,6 +83,7 @@ case "$WHICH" in
     run "Stage S5 · an unresolved reference and its repair" repair-check
     run "Stage S6 · the lens, parked work and explicit Resume" lens-check
     run "Stage S7 · Experience wiring and the visitor's isolated preview" experience-check
+    run "PR #114 · the Experience shell's composition" experience-shell-check
     run "V2 conformance · product journeys" conformance-check
     run "C9.1 · standalone creator and domain preservation" creator-check
     run "C9.2/C9.3 · composition and compact Guide" composition-check
@@ -97,7 +100,7 @@ case "$WHICH" in
     run "Additional source and nested correctness" correctness-check
     ;;
   *)
-    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|conformance|creator|composition|revision|rich|precision-c9|presenter|walkthrough|walkthrough-demo|experience|visitor|reconciliation|continuity|responsive|correctness|all)"
+    echo "qa: unknown axis '$WHICH' (journey|interaction|flows|policy|shell|precision|browse|repair|lens|conformance|creator|composition|revision|rich|precision-c9|presenter|walkthrough|walkthrough-demo|experience|experience-shell|visitor|reconciliation|continuity|responsive|correctness|all)"
     exit 2
     ;;
 esac

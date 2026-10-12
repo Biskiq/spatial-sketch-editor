@@ -161,8 +161,7 @@ export function constellation(p){
 export function renderExperienceSurfaces() {
  renderDeck();
  document.body.classList.toggle('visitor-preview',!!S.visitor);
- let el=document.querySelector('#visitorSurface');
- if(!el){el=document.createElement('section');el.id='visitorSurface';document.querySelector('#stage').append(el);}
+ let el=document.querySelector('#visitorSurface');  if(!el){el=document.createElement('section');el.id='visitorSurface';el.dataset.home='preview';document.querySelector('#stage').append(el);}
  el.hidden=!S.visitor;
  const presenter=document.querySelector('#experienceExamples');
  if(presenter){
@@ -180,9 +179,8 @@ export function renderDeck(){
  let el=document.querySelector('#experienceDeck'),instrument=document.querySelector('#experienceInstrument');const e=ctx.experience,x=S.experienceContext;
  const cameraDepth=['hints','precision'].includes(x.depth);
  if(cameraDepth&&S.lens==='experience'&&!S.visitor){if(!instrument){instrument=document.createElement('section');instrument.id='experienceInstrument';document.querySelector('#stage').append(instrument);}const html=x.depth==='precision'?precisionHtml():hintsHtml();if(instrument._html!==html){instrument.innerHTML=html;instrument._html=html;}}else instrument?.remove();
- if(S.lens!=='experience'||S.visitor||!e.guide.length){el?.remove();document.body.classList.remove('guide-band');document.body.style.removeProperty('--guide-band-h');return;}
- if(!el){el=document.createElement('section');el.id='experienceDeck';document.body.append(el);}
- const depth=cameraDepth?'ordinary':x.depth;const home=depth==='ordinary'?document.querySelector('#stage'):document.body;if(el.parentElement!==home)home.append(el);el.className=`exp-deck ${depth}`;
+ if(S.lens!=='experience'||S.visitor||!e.guide.length){el?.remove();document.body.classList.remove('guide-band');document.body.style.removeProperty('--guide-band-h');return;}  if(!el){el=document.createElement('section');el.id='experienceDeck';el.dataset.home='deck';document.body.append(el);}
+ const depth=cameraDepth?'ordinary':x.depth;const home=depth==='ordinary'?document.querySelector('#stage'):document.body;if(el.parentElement!==home)home.append(el);el.className=`exp-deck ${depth}`;el.dataset.deckPosture=depth;
  // The non-ordinary Guide band is fixed over the bottom of the viewport. It declares itself on the body
  // so the Card insets its own content and nothing in it becomes permanently unreachable behind the band.
  document.body.classList.toggle('guide-band',depth!=='ordinary');
