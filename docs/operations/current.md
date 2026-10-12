@@ -35,8 +35,11 @@ NEXT: #114 (Experience UX implementation per
        axis — with the Path | Journey switch and the Journey's numbers in the Index header. UX6 (Journey
        timeline, Cues, Hold/Invoke authoring, grouped station movement, Rehearse) is in progress at a
        recorded checkpoint (see the evidence record's WIP list: the covering QA axes are unrun at this
-       commit, and the strip's Hold inputs are still the C9 writer). UX7 is where implementation stops
-       for the owner's design discussion. Paper and production work stay unauthorized.
+       commit, and the strip's Hold inputs are still the C9 writer). The plan's 2026-10-12 conformance
+       revision (§5.1–§5.8, the §7 checklist, one owner call in §12) specifies what UX4–UX6 still owe
+       (one-row Guide lane, timing-free Path posture, Journey Cards without the C9 strip) and light
+       UX1–UX3 fixes; the next implementation pass follows §5.1's order. UX7 is where implementation
+       stops for the owner's design discussion. Paper and production work stay unauthorized.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md (UX0–UX3) with
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md (with
        closeout preservation report) for the accepted C9 baseline it starts from.
