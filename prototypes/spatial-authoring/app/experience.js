@@ -289,7 +289,10 @@ export function toggleAdvanced(on = null) {
 }
 export function openPresentation(id) {
   if (!ctx.experience.presentations[id]) return false;
-  A.select(id); S.experienceContext.presentation = id; ctx.ui(); return true;
+  // Opening a Presentation is a different inspection from an edge: the edge selection clears so the Card
+  // shows the Presentation, not a stale edge. A focused Stop is kept, because a Stop's own entry edit is
+  // authored against the Stop the author was in.
+  A.select(id); S.experienceContext = { ...S.experienceContext, presentation: id, seam: null }; ctx.ui(); return true;
 }
 const definitionReach=(e,id)=>Object.values(e.uses).filter(u=>u.definitionId===id).flatMap(u=>{const stops=Object.values(e.stops).filter(s=>s.presentationId===u.presentationId);return stops.length?stops.map(s=>({id:u.id+'@'+s.id,name:`${e.definitions[id]?.name} · Stop ${e.guide.indexOf(s.id)+1}`})):[{id:u.id,name:e.presentations[u.presentationId]?.name||'Experience-wide interaction'}];});
 const presentationReach=(e,id)=>Object.values(e.stops).filter(s=>s.presentationId===id).map(s=>({id:s.id,name:`Stop ${e.guide.indexOf(s.id)+1} · ${s.name}`}));
@@ -396,7 +399,10 @@ export function handleExperienceAction(el) {
   if (action === 'exp-marker-remove') removeMarker(el.dataset.id,el.dataset.marker);
   if (action === 'exp-passage') addMarker(el.dataset.id,el.dataset.label,Number(el.dataset.time));
   if (action === 'exp-visitor') visitorCommand(el.dataset.command,el.dataset.id);
-  if (action === 'exp-remove-stop') command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==el.dataset.id);delete e.stops[el.dataset.id];});
+  if (action === 'exp-remove-stop') {const removed=el.dataset.id;command('Remove Guide Stop',e=>{e.guide=e.guide.filter(id=>id!==removed);delete e.stops[removed];});
+   // UX4: a removed Stop takes the edges that named it with it — the selection clears rather than pointing
+   // at a bookend that no longer exists (a stale edge reached by reorder is still reported, never retargeted).
+   const s=S.experienceContext.seam;if(s&&(s.from===removed||s.to===removed))S.experienceContext.seam=null;ctx.ui();}
   if (action === 'exp-remove-contribution') removeContributionCommand(el.dataset.id);
   // ----- C9.6 revision and repair (J8) -----
   if (action === 'exp-remove-presentation') removePresentationCommand(el.dataset.id);

@@ -50,7 +50,9 @@ click '#experienceDeck [data-act=exp-guide]'
 click ".stop-card[data-stop='$a'] [data-act=exp-stop]"
 qa_ok 'Overview selection remains L1 until Expand is explicitly invoked' "$(qa_js '(__me.S.experienceContext.depth==="overview"&&!document.querySelector(".stop-card.expanded"))')" true
 click ".stop-card[data-stop='$a'] [data-act=exp-expand-stop]"
-qa_ok 'explicit Expand reaches L2 and both projections of the same View use' "$(qa_js '(__me.S.experienceContext.depth==="occurrence"&&!!document.querySelector(".set-node")&&!!document.querySelector("[data-exp-view]"))')" true
+# UX4: the L2 Set is retired. Expand is the explicit disclosure of the Stop's own detail: the Deck chip
+# opens and the Stop Card reads its own Entry. Selecting the Stop (above) stayed L1.
+qa_ok 'explicit Expand reaches the Stop detail and the Deck chip, never a second inspector' "$(qa_js '(__me.S.experienceContext.depth==="occurrence"&&!!document.querySelector(".stop-card.expanded")&&!!document.querySelector("#card [data-stop-entry]"))')" true
 click '#experienceDeck [data-act=exp-close]'
 qa_ok 'leaving Overview returns to compact Peek without changing Camera source' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js '(__me.S.experienceContext.depth==="ordinary")')" "$camera / true"
 # Loaded richer composition is editable; definitions and relationships are real source controls.

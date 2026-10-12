@@ -108,13 +108,14 @@ test('C9.4 Travel selection is one aggregate Undo; Cut and View addition create 
  // Adding a View is ordinary framing work: it creates no route and the Seam reports the real gap.
  view(e,c,f.p,{...pose,target:[6,1,0]},'Extra','choice');
  assert.equal(Object.keys(c.connections).length,2);
- const seam=UI.seamHtml({from:a,to:b});
+ // UX4: the Seam triptych moved to the edge Card; the coverage reading is read from its new home.
+ const seam=UI.edgeCard({from:a,to:b});
  assert.match(seam,/Travel needs support for the new View/);
  assert.match(seam,/exp-prepare/);
  assert.ok(E.prepareSeamSupport());
  assert.equal(Object.keys(c.connections).length,3);
  assert.match(S.status.text,/Prepared 1 Camera route/);
- assert.match(UI.seamHtml({from:a,to:b}),/All origins supported/);
+ assert.match(UI.edgeCard({from:a,to:b}),/All origins supported/);
 });
 
 test('C9.4 Cut executes no Travel route beats or flight; Travel runs them once at the traversed station',()=>{

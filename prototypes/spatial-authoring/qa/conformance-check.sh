@@ -253,8 +253,10 @@ click '[data-act="plan"]'
 # Explicit useful framing; opening overview itself is neutral.
 # Bring into view stays a product control on the stable Card.
 click '#card [data-act="exp-bring"]'
-conformance_ok 'QA-2 six distinct reachable pins, L0/L1, no Set or graph' "$(qa_js '(()=>{const a=[...document.querySelectorAll(".exp-stop-pin")];return !!(a.length===6&&a.every(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.x>=0&&r.right<=innerWidth&&r.y>=0&&r.bottom<=innerHeight&&getComputedStyle(e).visibility!=="hidden"&&(hit===e||e.contains(hit));})&&a.every((e,i)=>a.every((f,j)=>i===j||Math.hypot(e.getBoundingClientRect().x-f.getBoundingClientRect().x,e.getBoundingClientRect().y-f.getBoundingClientRect().y)>12))&&!document.querySelector("[data-exp-view]")&&!document.querySelector("[data-exp-route]")&&document.querySelector(".stop-card.compact")&&document.querySelector(".stop-card.density-summary")&&__me.nav.plainPose().flat>.97);})()')" true
-conformance_ok 'Overview owns shell breadth beneath Index and Card, with Guide locator and subject thumbnails' "$(qa_js '(()=>{const r=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return r.left<stage.left&&r.right>stage.right&&r.width>innerWidth*.95&&!!document.querySelector("#index [data-act=exp-guide]")&&document.querySelectorAll(".stop-thumbnail[role=img]").length>=2;})()')" true
+conformance_ok 'QA-2 six distinct reachable pins, L0/L1, no Set or graph' "$(qa_js '(()=>{const a=[...document.querySelectorAll(".exp-stop-pin")];return !!(a.length===6&&a.every(e=>{const r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return r.x>=0&&r.right<=innerWidth&&r.y>=0&&r.bottom<=innerHeight&&getComputedStyle(e).visibility!=="hidden"&&(hit===e||e.contains(hit));})&&a.every((e,i)=>a.every((f,j)=>i===j||Math.hypot(e.getBoundingClientRect().x-f.getBoundingClientRect().x,e.getBoundingClientRect().y-f.getBoundingClientRect().y)>12))&&!document.querySelector("[data-exp-view]")&&!document.querySelector("[data-exp-route]")&&document.querySelectorAll(".gd-stop-card").length===6&&document.querySelectorAll(".gd-stop-card.compact").length===6&&document.querySelectorAll(".gd-edge").length>=5&&!document.querySelector(".set-constellation")&&__me.nav.plainPose().flat>.97);})()')" true
+# UX4: the Overview L2 thumbnail strip is retired. The one Guide home is the Deck's lane, and every Stop
+# is a named chip with its own continuation chip.
+conformance_ok 'Overview owns shell breadth beneath Index and Card, with the one Guide lane naming every Stop' "$(qa_js '(()=>{const r=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return r.left<stage.left&&r.right>stage.right&&r.width>innerWidth*.95&&!!document.querySelector("#index [data-act=exp-guide]")&&document.querySelectorAll(".gd-stop-card").length===6&&[...document.querySelectorAll(".gd-stop-card .peek-stop")].length===6&&!document.querySelector(".stop-thumbnail");})()')" true
 capture qa-2-overview
 checkpoint overview
 standpoint="$(pose)";camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
@@ -274,14 +276,19 @@ conformance_ok 'occurrence selection/disclosure preserves realized Camera and Ca
 capture qa-2-selected
 stop="$(qa_jsv '__me.ctx.experience.guide[3]')"
 click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
-conformance_ok 'QA-3 unclipped L2 schematic Set and spatial Set' "$(qa_js "(document.querySelectorAll('.set-node').length===3&&document.querySelectorAll('[data-exp-view]').length===3&&[...document.querySelectorAll('.set-node')].every($visible)&&!document.querySelector('.stop-card.expanded input')&&document.querySelector('.stop-card.expanded').scrollHeight===document.querySelector('.stop-card.expanded').clientHeight)")" true
+# UX4: Expand opens the Stop's own detail in the one Deck home and reads its Stop Card; the retired L2
+# Set is gone, and the Deck chip never carries an editor inside it.
+conformance_ok 'QA-3 Expand opens the Stop detail in the Deck and its Stop Card, with no editor in the chip' "$(qa_js "(document.querySelectorAll('.gd-stop-card.expanded').length===1&&document.querySelectorAll('[data-exp-view]').length===3&&!document.querySelector('.set-node')&&!document.querySelector('.stop-card.expanded input')&&document.querySelector('.stop-card.expanded').scrollHeight===document.querySelector('.stop-card.expanded').clientHeight&&!!document.querySelector('#card [data-stop-entry]'))")" true
 conformance_ok 'QA-3 all six occurrence cards stay readable and reachable at L2' "$(qa_js "[...document.querySelectorAll('.stop-card [data-act=exp-stop]')].every(e=>($visible)(e)&&($hit)(e))")" true
 capture qa-3-occurrence
 # Both Set projections select the same canonical use without navigating or mutating Camera.
 uid="$(qa_jsv '__me.ctx.experience.presentations[__me.S.experienceContext.presentation].uses[1]')"
 standpoint="$(pose)";before="$(source_hash)"
-click ".set-node[data-id='$uid']"
-conformance_ok 'schematic Set selects canonical View use without navigation/source edit' "$(qa_js '__me.S.sel') / $(pose) / $(source_hash)" "\"$uid\" / $standpoint / $before"
+# UX4: a View use is selected from the shared Presentation's own Views list (the Stop Card's retired L2
+# Set is gone), without navigating or editing Camera source.
+click '#card [data-act="exp-open"]'
+click "#card [data-exp-views] [data-exp-view-use='$uid']"
+conformance_ok 'the Presentation Views list selects the canonical View use without navigation/source edit' "$(qa_js '__me.S.sel') / $(pose) / $(source_hash)" "\"$uid\" / $standpoint / $before"
 click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
 click "[data-exp-view][data-id='$uid']"
 conformance_ok 'spatial Set selects the same canonical use' "$(qa_js '__me.S.sel') / $(pose)" "\"$uid\" / $standpoint"
@@ -340,7 +347,7 @@ conformance_ok 'opening Seam does not move realized Camera' "$(pose)" "$standpoi
 click '[data-act="exp-travel"]'
 qa_frames
 route="$(qa_jsv '[...document.querySelectorAll("[data-exp-route]")][0].dataset.expRoute')"
-conformance_ok 'explicit Travel supports every legitimate origin in one authored step' "$(qa_js "(document.querySelector('#experienceDeck').textContent.includes('Reachable from 3 of 3')&&document.querySelector('#experienceDeck').textContent.includes('All origins supported'))")" 'true'
+conformance_ok 'explicit Travel supports every legitimate origin in one authored step' "$(qa_js "(document.querySelector('#card [data-edge-coverage]').textContent.includes('Reachable from 3 of 3')&&document.querySelector('#card').textContent.includes('All origins supported'))")" 'true'
 conformance_ok 'Travel leaves no origin as a gap and offers no per-origin surgery' "$(qa_js "(!document.querySelector('[data-exp-gap]')&&!document.querySelector('[data-act=exp-prepare]'))")" 'true'
 conformance_ok 'Travel reports prepared versus reused support with the Camera owner' "$(qa_js "(/Prepared [0-9]+ Camera route/.test(__me.S.status.text)&&/Camera owns route geometry/.test(__me.S.status.text))")" 'true'
 conformance_ok 'one Travel preparation is one aggregate Undo step' "$(qa_js "__me.S.undo.at(-1).label==='Prepare Camera routes and select Travel'")" 'true'
@@ -377,7 +384,9 @@ conformance_ok 'station focus highlights both projections without replacing cano
 conformance_ok 'QA-5 keeps exact QA-4 Camera source and realized standpoint' "$(pose) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "$standpoint / $before"
 conformance_ok 'QA-5 station projections mirror, with local beat/hold lanes' "$(qa_js '(()=>{const spatial=[...document.querySelectorAll("[data-exp-station-label]")],temporal=[...document.querySelectorAll("[data-station-counterpart]")];return temporal.length>=3&&temporal.every(t=>spatial.some(s=>s.dataset.expStationLabel===t.dataset.stationCounterpart))&&!!document.querySelector(".coord-beat")&&!!document.querySelector(".coord-hold")&&document.querySelector("[data-hold-duration]").getBoundingClientRect().width>20;})()')" true
 conformance_ok 'coordination preserves every supported origin identity and the destination' "$(qa_js "([...document.querySelectorAll('[data-endpoint]')].every(e=>($visible)(e)&&($hit)(e))&&!document.querySelector('[data-exp-gap]'))")" true
-conformance_ok 'Coordination composes inside the central triptych and Card exposes local binding/reach' "$(qa_js '(()=>{const central=document.querySelector(".seam-instrument"),strip=document.querySelector(".coordination-strip"),deck=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return central.contains(strip)&&strip.getBoundingClientRect().right<=central.getBoundingClientRect().right&&deck.left<stage.left&&deck.right>stage.right&&!!document.querySelector("#card [data-coordination-detail]")&&document.querySelector("#card [data-coordination-detail]").textContent.includes("Reach · this transition ×1");})()')" true
+# UX4: the Seam triptych is retired. Coordination lives on the edge Card, inside the one Card home, and
+# the Stop Card's own local binding detail is a separate inspection reached from that Stop.
+conformance_ok 'Coordination lives on the edge Card, inside the one Card home, with local binding/reach' "$(qa_js '(()=>{const card=document.querySelector("#card"),strip=document.querySelector("#card .coordination-strip"),deck=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return !!card&&!!strip&&card.contains(strip)&&strip.getBoundingClientRect().right<=card.getBoundingClientRect().right&&deck.left<stage.left&&deck.right>stage.right&&!!document.querySelector("#card [data-coordination-detail]")&&document.querySelector("#card [data-coordination-detail]").textContent.includes("Reach · this transition ×1");})()')" true
 conformance_ok 'the Stop Card declares the station binding instead of a second trigger' "$(qa_js 'document.querySelector("#card [data-coordination-detail]").textContent.includes("trigger moves here")')" true
 capture qa-5-coordination
 checkpoint coordination
@@ -405,7 +414,7 @@ click '[data-act="exp-route-return"]'
 conformance_ok 'resumed route return uses the current invocation standpoint' "$(pose)" "$standpoint"
 # Every origin was already supported by the one Travel preparation; Cut then keeps that Camera
 # connectivity while painting and executing no traversal.
-conformance_ok 'the prepared support survives the resumed route work unrepaired' "$(qa_js 'document.querySelector("#experienceDeck").textContent.includes("Reachable from 3 of 3")&&!document.querySelector("[data-act=exp-prepare]")')" true
+conformance_ok 'the prepared support survives the resumed route work unrepaired' "$(qa_js 'document.querySelector("#card [data-edge-coverage]").textContent.includes("Reachable from 3 of 3")&&!document.querySelector("[data-act=exp-prepare]")')" true
 camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 click '[data-act="exp-cut"]'
 conformance_ok 'Cut preserves Camera source, paints no real route or anchor' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js '(!document.querySelector("[data-exp-route]")&&!document.querySelector("[data-exp-anchor]"))')" "$camera / true"

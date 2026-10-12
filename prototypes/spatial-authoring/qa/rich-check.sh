@@ -74,7 +74,8 @@ hold="$(qa_jsv 'Object.values(__me.ctx.experience.seams)[0].beats.find(b=>b.kind
 station="$(qa_jsv 'Object.values(__me.ctx.experience.seams)[0].beats.find(b=>b.kind==="invoke").stationId')"
 identity="$(qa_js '__me.S.sel')"
 click ".station-tick[data-id='$station']"
-qa_ok 'selecting the named station focuses its own counterpart and keeps the canonical Stop selection' "$(qa_js '__me.S.sel') / $(qa_js "(__me.S.task.params.station==='$station'&&!!document.querySelector(\"[data-station-counterpart='$station']\")&&document.querySelector('#experienceDeck').textContent.includes('Power station'))")" "$identity / true"
+# UX4: the coordination strip (and its station label) now lives on the edge Card, not the Deck.
+qa_ok 'selecting the named station focuses its own counterpart and keeps the canonical Stop selection' "$(qa_js '__me.S.sel') / $(qa_js "(__me.S.task.params.station==='$station'&&!!document.querySelector(\"[data-station-counterpart='$station']\")&&document.querySelector('#card').textContent.includes('Power station'))")" "$identity / true"
 # Focusing the Hold is a distinct event focus: it addresses that Hold own station, not the invocation
 # selected a moment earlier, while the canonical Stop selection is untouched.
 hold_station="$(qa_jsv "Object.values(__me.ctx.experience.seams)[0].beats.find(x=>x.id==='$hold').stationId")"
@@ -152,7 +153,7 @@ click '[data-command=next]'
 qa_ok 'the refusal keeps the visitor where they were: no fallback and no partial traversal' "$(qa_js '(__me.S.visitor.runtime.stopId===__me.S.visitor.source.experience.guide[0]&&!__me.S.visitor.runtime.movement)')" true
 click '[data-act=exp-exit-preview]'
 openseam;click '[data-act=exp-travel]'
-click '#experienceDeck [data-act=exp-coordinate]'
+click '[data-act=exp-coordinate]'
 qa_ok 'the strip names the rebound Activity and offers its station repair' "$(qa_js '(/triggered elsewhere/.test(document.querySelector(".coordination-strip").textContent)&&!!document.querySelector("[data-act=exp-invoke-beat]"))')" true
 click "[data-act=exp-station-focus][data-id='$station']"
 choose '[data-exp-invoke-use]' "$station_work"

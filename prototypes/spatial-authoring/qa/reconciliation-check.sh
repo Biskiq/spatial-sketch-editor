@@ -13,7 +13,7 @@ click '#index [data-act="exp-open"][data-id="presentation-1"]'
 click '[data-act="exp-guide"]'
 id="$(qa_jsv '__me.ctx.experience.guide[3]')"
 click ".stop-card[data-stop='$id'] [data-act=exp-stop]"
-qa_ok 'Stop Card names local and shared reach' "$(qa_js '(document.querySelector("#card").textContent.includes("affect this Stop")&&document.querySelector("#card").textContent.includes("Meaning and Set"))')" true
+qa_ok 'Stop Card names local and shared reach' "$(qa_js '(document.querySelector("#card").textContent.includes("affect this Stop")&&document.querySelector("#card").textContent.includes("Meaning and Views"))')" true
 click '.stop-details > details > summary'
 agent-browser select '[data-exp-next]' end >/dev/null;qa_frames
 agent-browser select '[data-exp-pacing]' dwell >/dev/null;qa_frames
@@ -38,7 +38,10 @@ qa_ok 'narrow Card sheet exposes the selected Stop and local Entry control' "$(q
 qa_snap narrow-card
 click '[data-act="sheet-card"]'
 agent-browser set viewport 1440 900 >/dev/null;qa_frames
-click '#card .exp-view [data-act=pres-ref]'
+# UX4: the Stop Card's retired L2 Set is gone; a View use is reached from the shared Presentation the Stop
+# names, then selected in that Presentation's own Views list.
+click '#card [data-act="exp-open"]'
+click '#card [data-exp-views] [data-exp-view-use]'
 # UX2: the View Card names the Presentation it belongs to, its own current meaning (★ Default / a visitor
 # View choice / no Default yet) and its own operations — the same canonical identity the Views list and the
 # Stage's View markers select, never a second reading of the same thing.

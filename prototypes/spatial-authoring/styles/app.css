@@ -918,3 +918,32 @@ body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px);
 
 .hold-duration { position:absolute; top:5px; height:12px; background:var(--ink-3); opacity:.35; pointer-events:none; }
 .coord-hold { z-index:1; }
+
+/* UX4: one Guide home — the Guide Deck lane. A named Stop chip and its own resolved-continuation edge
+   chip beside it; the Stop and edge Cards carry the depth, so the lane never grows into a dashboard.
+   Connectors (`→`) are drawn only for a truly adjacent destination; an explicit jump (`⇥`), an End and a
+   needs-repair continuation each say so. Peek pips, the Overview L2 strip and the Seam triptych are gone. */
+.exp-deck.ordinary { display:block; height:auto; min-height:30px; padding:5px 10px; }
+.gd-lane { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
+.gd-item { display:flex; align-items:center; gap:4px; min-width:0; }
+.gd-stop-card { display:flex; flex-direction:column; gap:1px; flex:0 1 auto; min-width:0; }
+.gd-stop-card .gd-stop { background:none; border:0; font:500 var(--tsm) var(--ui); color:var(--ink); cursor:pointer; text-align:left; padding:1px 4px; }
+.gd-stop-card .gd-stop.selected { color:var(--sel-edge); font-weight:700; }
+.gd-stop-card .gd-entry { font-size:var(--txs); color:var(--ink-3); padding:0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gd-stop-card .occurrence-content { margin-top:4px; padding:6px; background:var(--instrument); border:1px solid var(--rule); border-radius:3px; }
+.gd-stop-card .occurrence-content p { margin:2px 0; font-size:var(--txs); }
+.gd-stop-card .occurrence-content .exp-action { width:auto; }
+.gd-edge { border:1px dashed var(--rule); background:var(--instrument); border-radius:3px; font:500 var(--txs) var(--ui); padding:2px 6px; cursor:pointer; color:var(--ink-2); }
+.gd-edge.explicit { border-style:solid; }
+.gd-edge.end, .gd-edge.gap { border:0; background:none; color:var(--ink-3); cursor:default; padding:2px 3px; }
+.gd-edge.gap { color:var(--sel-edge); }
+.gd-edge.selected { border-color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); color:var(--ink); }
+.gd-ops { display:flex; align-items:center; gap:6px; }
+.gd-menu { margin:0; }
+.gd-menu .gd-edit { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:3px 0; font-size:var(--txs); }
+.gd-menu .gd-edit .c-acts { margin:0; }
+.origin-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:2px 0; font-size:var(--txs); }
+/* UX4 narrow: the band must stay under its reserved share and the Card must stay reachable. The Stop's
+   resolved entry View is named on the Stop Card, so at the narrow review size the lane drops the chip's
+   second line and tightens instead of pushing the band past 40 %. */
+@media(max-width:1060px){ .gd-stop-card .gd-entry { display:none; } .gd-lane { gap:2px 5px; } .gd-stop-card .gd-stop { font-size:var(--txs); } }

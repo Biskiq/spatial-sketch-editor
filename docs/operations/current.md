@@ -20,8 +20,12 @@ NEXT: #114 (Experience UX implementation per
        rows are compact one-line references. The owner also ratified a lightweight verification policy
        (plan §9, 2026-10-12): a slice runs only the focused axes/tests covering the control it moved plus
        a small real-browser smoke path, and broad regression/mutation sweeps are owner-directed rather
-       than per-slice gates. UX4 (Guide, Stops, edges) is the next slice. Paper and production work stay
-       unauthorized.
+       than per-slice gates. UX4 (Guide, Stops, edges) has landed: one Guide home in a bounded Deck — a
+       named Stop chip followed by its own resolved-continuation edge chip (order / explicit / End /
+       needs-repair, a connector only for a truly adjacent destination), Edit Guide ordering, a
+       restructured Stop Card and an edge Card that owns Cut/Travel, coverage and the Camera Path door —
+       the Peek pips, Overview L2 strip, Expand disclosure and Seam triptych are retired. UX5 (Camera Path
+       posture) is the next slice. Paper and production work stay unauthorized.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md (UX0–UX3) with
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md (with
        closeout preservation report) for the accepted C9 baseline it starts from.
