@@ -694,9 +694,12 @@ test file (`tests/experience-journey.test.mjs`) plus the Experience axis's Journ
   Journey posture while the Cue Card's Pause writes the same field. §0.8.1 wants the strip to be the
   projection; the change is a control-ownership decision (the historical `qa/rich-check.sh` asserts an
   input inside `.coord-hold`), so it is deferred rather than smuggled into a layout correction.
+  *Decided in the [plan][plan] §5.6: the strip leaves every Card, and the Cue Card's Edit cue holds the
+  hold writer; the recipes move per §5.8.*
 - **The Guide chip keeps a `Detail` disclosure.** The boards' chip has no expansion; `Expand` is still a
   live conformance assertion (QA 3), so the chip keeps one quiet `Detail` control until that reading is
-  re-pointed.
+  re-pointed. *Decided in the plan §5.4: `Detail` is retired, and the Expand readings are retired or
+  re-pointed per §5.8.*
 - **UX7 is not started**, and **owner visual acceptance remains once, after UX7** — the captures in
   `screens/experience-ux4`, `-ux5` and `-ux6` are agent verification, not acceptance.
 
