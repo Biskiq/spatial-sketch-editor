@@ -67,6 +67,14 @@ assertion costs no browser round trip. If a run is dragging, cut checks — neve
 tens of minutes. The agent runs the axes: handing the command to the owner is not a substitute for a
 run, and a slow suite is fixed by making it smaller and self-closing rather than by passing it on.
 
+**PR #114 verification policy (owner-ratified 2026-10-12).** For the duration of #114, `qa/run-all.sh all`,
+`qa/mutation-check.sh` and the historical mutation chains are **owner-directed**, not per-slice gates:
+a slice runs only the axes and Node tests that cover the control it moved, plus a small real-browser
+smoke path, and it records the focused checks it actually ran (plan §9). This document still describes
+the full set because those axes remain the coverage of record — it is the *when*, not the *what*, that
+changed. An interrupted run is inspected and reported, never silently restarted, and an unrun test is
+recorded as unrun rather than green. Fan the full sweep in only when the owner asks for it.
+
 What the harness knows about keys, measured rather than assumed:
 
 - `agent-browser press <printable key>` does not release the key: the page then receives thousands of

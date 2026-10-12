@@ -165,7 +165,10 @@ authorities. Verify each assumption in code before building on it (§8).
 ## 5. Implementation slices
 
 Each slice is a usable increment with its tests/QA updated in the same slice. No slice ends
-with a moved control whose old recipe is still green only because it was not run.
+with a moved control whose old recipe is still green only because it was not run — where a
+recipe moves it is re-pointed to the control's new home, never weakened. **How much is run per
+slice is set by §9's owner-ratified lightweight policy (2026-10-12): the focused tests that cover
+the control a slice moved, plus a small real-browser smoke path, and no automatic full suite.**
 
 | Slice | Depends on | Work | Exit gate |
 | --- | --- | --- | --- |
@@ -226,19 +229,45 @@ A criterion passes only when the real writer and domain effect are exercised.
 | QA string coupling | UX0 inventory | Migrate selectors to semantic hooks in the slice that moves the control. Never weaken assertions to pass |
 | Rehearse timing equals run-time timing | `experience-coordination.js` | One mapping function shared by both, with a unit test asserting equality for identical invocation inputs (distinct live departures may differ) |
 
-## 9. Regression coverage that must stay green
+## 9. Verification this PR performs (owner-ratified lightweight policy, 2026-10-12)
 
-- **Behavior:** all 24 `qa/run-all.sh` axes, the prototype Node suite and the complete successor
-  mutation proof (World + V2 + composition obligations) keep passing. Moved controls get new
-  selectors, not weaker assertions.
-- **MP3/MP4 recipes** (promoted from the retired #113 checkpoint; `Seam` below is the Guide edge) stay executable through the new homes. Re-point each control to its new home in the slice that moves it (UX7).
-- **Presenter:** Q1–Q8/A1–A10 demonstrations work through visible controls. Next stays
-  ungated, and outcomes stay advisory and truthful (including the Q7/A4 refusal reporting).
-- **Isolation, history, selection:** Preview isolation, exact return and one Undo per accepted
-  command. Session state is never in source.
-- **World:** A–F journeys and shell checks are unchanged.
-- **Repository:** `npm run test:arch` is green. Root test/check/build retain only the known
-  P23B fixture failure, reported as such.
+> **This section supersedes the earlier full-suite gate.** #114 is a UX prototype whose blocking
+gate is the owner's hands-on visual review, not an exhaustive automated suite. §5's per-slice gate
+and §10's evidence rules are read through this section: the earlier requirement that *all* 24+ axes,
+the Node suite and the complete successor mutation chain stay green at every slice/checkpoint is
+withdrawn here and kept as history rather than silently obeyed. The owner may still direct a broad
+sweep at any time (typically after the integrated visual review); the change is that it is no longer
+automatic.
+
+- **Focused tests per slice.** Each slice runs the assertions that protect the behaviour it changed —
+the specific axes and Node test files covering the control it moved — plus a small real-browser smoke
+path through the feature's own workflow. It does **not** run `qa/run-all.sh all`, `qa/mutation-check.sh`,
+or any historical mutation chain by default, before review, or at a slice checkpoint.
+- **No new mutation scripts by default.** The existing mutation scripts stay in the tree (retained, not
+deleted, and runnable when a slice genuinely needs replacement proof). New ones are added only when a
+change protects a central invariant and the owner asks for it.
+- **Interrupted runs are reported, not restarted.** If a mutation or suite process was interrupted, its
+available result is inspected and reported honestly, and it is not automatically restarted.
+- **Broad regression or mutation runs are owner-directed.** A full sweep happens because the owner asked
+for one, not at slice-close.
+- **Small, meaningful evidence.** Prefer a handful of screenshots and interaction observations that show
+the slice's workflow, recorded in that slice's evidence section. Per-slice full-board packets and
+accumulated interim capture directories are not required.
+- **Never weaken a test to claim a pass.** An assertion changes only when a control genuinely moved, and
+then it is re-pointed to the control's new home — not loosened. An unrun or stale test is reported as
+unrun, never as green.
+- **What each slice that touches them still checks:** Preview isolation and exact return, one Undo per
+accepted command, deterministic selection, and one Camera authority. These are the prototype's
+architectural invariants and outrank visual polish.
+- **Deferred, recorded rather than fixed.** Rare edge cases, low-impact regressions and expensive
+performance proofs are recorded as limitations in the slice's evidence instead of being fixed.
+- **MP3/MP4 recipes** (promoted from the retired #113 checkpoint; `Seam` below is the Guide edge) stay
+executable through the new homes, and each control is re-pointed to its new home in the slice that moves
+it. They are the owner's hands-on plan, not an automated per-slice requirement.
+- **World:** A–F journeys and shell checks are unchanged by #114; they are re-run only under an
+owner-directed sweep.
+- **Repository:** `npm run test:arch` and the root gates retain only the known P23B fixture failure,
+reported as such.
 
 ### MP3/MP4 regression recipes (owner-accepted for functionality 2026-10-11)
 
@@ -302,19 +331,21 @@ Perform with the Presenter closed. Each step names what must be observable, not 
 interaction/detour/return, revision/repair, additional Views/entry policies, shared/local scope
 and precise Camera. Review the Experience walkthrough and recheck shared structural seams.
 
-## 10. Visual and interaction verification
+## 10. Visual and interaction verification (lightweight, owner-ratified 2026-10-12)
 
-1. Each slice ends with real-browser captures of its board state at both review sizes.
-   Compare them side by side with the board and write findings in the #114 evidence record
-   (hierarchy, homes, density, species, selection, disclosure).
-2. UX7 assembles **one bounded packet**: ≤ 10 JPEG captures in
-   `prototypes/spatial-authoring/screens/experience-ux/` (six boards + precision + three narrow
-   states), plus a short verdict table. Retire any interim captures; do not accumulate packets.
-3. Interaction is proven by the shell axis: posture switching, Esc unwinding, keyboard paths,
-   no navigation on layout change, and image-pass neutrality (no source/history/selection/clock
-   writes, restored live state, cold/warm timing and cache bounds reported).
-4. Request owner visual acceptance of the packet and a hands-on pass. Automation does not
-   accept UX.
+1. Each slice ends with a **small** set of real-browser captures of the state it changed — the slice's
+   primary workflow at 1440×900 and, where the invoked sheet is involved, 1024×768 — each with a short
+   reading of what it shows (hierarchy, homes, density, selection, disclosure). A handful of meaningful
+   captures replaces the earlier per-slice full-board packet; interim capture directories are not
+   accumulated.
+2. Interaction checks are focused: the shell/posture axis plus a real pointer-and-keyboard smoke path
+   through the slice's own controls, together with the invariants §9 names (Preview isolation and return,
+   one Undo per accepted command, no navigation on layout change, and image-pass neutrality where the
+   slice touches it). Each check runs as a plain command whose exit status is read.
+3. UX7 assembles **one bounded packet**: ≤ 10 JPEG captures in
+   `prototypes/spatial-authoring/screens/experience-ux/`, plus a short verdict table.
+4. Request owner visual acceptance of the packet and a hands-on pass. Automation does not accept UX; the
+   owner's visual review is the gate, and it decides whether any further automated suite is warranted.
 
 ## 11. Deferred, not part of #114
 

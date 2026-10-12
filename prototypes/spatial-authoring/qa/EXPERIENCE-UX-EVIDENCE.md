@@ -9,6 +9,13 @@ locked design, and the [composition axis][axis] owns the executable assertions.
 `48447fb4d26c4285d956d0b09c84587a93db99a8` (identical to `origin/main` at the time) with a clean
 working tree. No commit is made by this record.
 
+**Verification policy (owner-ratified 2026-10-12):** [plan §9][plan]'s lightweight policy supersedes the
+earlier full-suite gate for the remainder of #114. UX0–UX3's records below were written under the earlier
+policy and keep their readings as history; from **UX4** on, each slice records only the focused checks it
+actually ran — the axes/Node tests covering the control it moved plus a small real-browser smoke path —
+and defers broad regression or mutation sweeps to the owner. An unrun or stale check is recorded as
+unrun, never as green.
+
 ---
 
 ## UX0 — harness and baseline (landed)

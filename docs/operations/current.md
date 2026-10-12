@@ -13,8 +13,15 @@ NEXT: #114 (Experience UX implementation per
        the Views list, the one Advanced authoring home, and the bounded neutral image pass behind the
        View preview) and UX3 (Scene subject: the subject's Card in the QA 5 order — identity, Present
        this, the derived Used in Experience reach, and the subject's own behavior and visitor-interaction
-       doors — with no capability control at rest) have landed; UX4 (Guide, Stops, edges) is the next
-       slice. Paper and production work stay unauthorized.
+       doors — with no capability control at rest) have landed. UX3's review corrections also landed: the
+       derived reach now counts a Presentation that merely *focuses* the subject (a Present → Add to Guide
+       Stop is a reference even with no behavior authored), the descriptor chooser is worded as choosing
+       and configuring a capability rather than adding an authored behavior, and the `Used in Experience`
+       rows are compact one-line references. The owner also ratified a lightweight verification policy
+       (plan §9, 2026-10-12): a slice runs only the focused axes/tests covering the control it moved plus
+       a small real-browser smoke path, and broad regression/mutation sweeps are owner-directed rather
+       than per-slice gates. UX4 (Guide, Stops, edges) is the next slice. Paper and production work stay
+       unauthorized.
        Evidence → ../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md (UX0–UX3) with
        ../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md (with
        closeout preservation report) for the accepted C9 baseline it starts from.
