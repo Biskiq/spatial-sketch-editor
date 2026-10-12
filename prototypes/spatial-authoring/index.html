@@ -11,8 +11,10 @@
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
 </head>
 <body class="app">
-  <!-- Head: the project identity, authoring lens and shared source history. -->
-  <header class="head">
+  <!-- Head: the project identity, authoring lens and shared source history. `data-home` names which
+       of the shell's six homes an element is; the Experience shell check and the #114 slices address a
+       control by its home rather than by the class or text it happens to wear today. -->
+  <header class="head" data-home="head">
     <a class="brand" href="rationale.html" title="Design rationale"><span class="brand-mark" aria-hidden="true"></span><span class="brand-text">Museum Editor</span></a>
     <!-- Both lenses share canonical selection, Stage, Camera and source history. -->
     <div class="lens" id="lens" role="tablist" aria-label="Lens">
@@ -36,10 +38,10 @@
 
   <!-- Index: what is in this place and what is attached to the subject — local context, not a
        document tree. A row's own action is Select; relation navigation never writes selection. -->
-  <aside class="index" id="index" aria-label="Index of this place"></aside>
+  <aside class="index" id="index" data-home="index" aria-label="Index of this place"></aside>
 
   <main class="work">
-    <div class="stage" id="stage">
+    <div class="stage" id="stage" data-home="stage">
       <canvas id="gl" tabindex="0" aria-label="Museum model — the drawing and the building"></canvas>
       <svg id="ovSvg" class="ov-svg" aria-hidden="true"></svg>
       <div id="ovHtml" class="ov-html"></div>
@@ -111,7 +113,7 @@
 
   <!-- Card: the stable identity of the selection — its ref and name, its own numbers, what it is
        attached to, and what to do when the view cannot show it. -->
-  <aside class="card" id="card" aria-label="Selected subject"></aside>
+  <aside class="card" id="card" data-home="card" aria-label="Selected subject"></aside>
 
   <!-- Search: one bounded list of the museum's subjects and its records. Query, place context and page
        are context only — browsing never selects and never moves the Camera; every result carries its
