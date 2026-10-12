@@ -1,6 +1,6 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
-TYPE: prototype implementation/review evidence for C9.1–C9.9; final owner acceptance pending.
+TYPE: prototype implementation/review evidence for C9.1–C9.9; MP1–MP4 owner functional acceptance recorded, final visual UX acceptance deferred to PR #114.
 STATUS: **C9 complete. MP1 owner-accepted 2026-10-04, MP2 2026-10-05, MP3 and MP4 2026-10-11 — MP3/MP4 accepted for functionality, not as final visual UX** (executable `40b65091`, pushed head `6f972bc1`). The six-QA UX reconciliation is locked in PLATE §0.8.1 (#113, docs only); UX implementation is pending in PR #114. C9.1–C9.9 are implemented and reviewed, and the owner-directed optional walkthrough correction with its review follow-up is verified at `3a009763`: Next demonstrates the current task when the walkthrough is on, or browses without an outcome gate when it is off, and says which of those happened. Each earlier proof below belongs to its own recorded executable. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
 SCOPE: [C9 authoring-completeness plan][plan] and the owner's bounded follow-up before final human acceptance. No production migration, broader shell overhaul, six-QA visual reconciliation, merge, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.
 
@@ -1197,7 +1197,7 @@ renderable evidence archived:    0 files (six QA boards + two precision specimen
 evidence stubs / manifests:      0   no live path moved
 transient artifacts removed:     1   docs/operations/checkpoints/pr113-experience-v2.md (durable status →
                                      P25 README, MP recipes → PR #114 plan §9; never archived raw)
-historical anchor:               74e86104 · tag closed/p25-experience-v2 (see P25 README for push state)
+historical anchor:               74e86104 · annotated tag closed/p25-experience-v2 (pushed to origin; target 74e86104)
 new live → archive prose links:  0
 manual-owed verification rows:   2   MP3/MP4 owner functional acceptance (2026-10-11, recipes in PR #114 plan §9);
                                      owner visual acceptance deferred to PR #114 (its gate)

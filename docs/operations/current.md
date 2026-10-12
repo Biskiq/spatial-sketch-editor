@@ -5,9 +5,7 @@ PHASE: F — foundation contracts; status/order → ../roadmap/README.md;
 CHILD: F.1–F.5 target contract WRITTEN and OWNER-RATIFIED; NO IMPLEMENTATION AUTHORIZED.
        Normative text → ../reference/composition-execution.md. Draft each exact interface
        with its first consumer and ratify it as an amendment; tracks do not mint their own.
-NEXT: #113 is accepted and closed (merge-ready; merge decision with owner). C9.1–C9.9 and
-       the six-QA UX lock with A1–A7 amendments are final; MP1–MP4 owner-accepted for
-       functionality, visual UX unaccepted. #114 (Experience UX implementation per
+NEXT: #114 (Experience UX implementation per
        ../roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md)
        is the next candidate — not started; the owner opens it. No #114, Paper or production
        work is authorized until then.
