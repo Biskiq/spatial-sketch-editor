@@ -35,6 +35,16 @@ tap() { # tap <selector>
 read_ok() { # read_ok <name> <expression of the page>
   qa_ok "$1" "$(qa_js "$2")" true
 }
+# The Advanced authoring door is a toggle, so it is used only when the home is not already up: a capture
+# must not close the home it means to photograph. lib.sh's `qa_card_advanced` applies the same rule.
+advanced_open() { # advanced_open
+  local missing
+  missing="$(qa_js 'document.querySelector("#card [data-exp-advanced-home]")===null')"
+  if [ "$missing" = "true" ]; then
+    tap '#card [data-exp-menu=presentation] > summary'
+    tap '#card [data-exp-menu=presentation] [data-act=exp-advanced]'
+  fi
+}
 shot() { # shot <name>
   qa_snap "$1"
   qa_say "qa: captured $QA_OUT/$1.png"
@@ -91,22 +101,68 @@ read_ok 'the photographed Card is that View, with its own operations and the ren
 qa_ok 'selecting a View in the list leaves the standpoint exactly where it was' "$(qa_js '__me.nav.plainPose()')" "$pose_before"
 
 # The one Advanced authoring home: narration, behaviors and offers, View switching and the derived
-# suggestions, behind the Card's own menu.
+# suggestions, behind the Card's own menu. Photographed as its **contents**: the door is opened, the home
+# is scrolled into the Card's own view, and its controls are reached the way an author reaches them — so a
+# capture of the collapsed entry cannot stand in for what advanced authoring actually shows.
+# `reached` is scroll reachability *and* hit reachability in one reading: the control is put in the Card's
+# view, and the point at its own centre must address it rather than a covering edge.
+reached() { # reached <selector> -> true | missing | off-screen | covered | no-answer
+  local js out
+  js="$(python3 -c 'import json, sys
+print("""(() => { const el = document.querySelector(%s); if (!el) return \"missing\"; el.scrollIntoView({ block: "center", inline: "nearest" }); const r = el.getBoundingClientRect(); if (!(r.width > 0 && r.height > 0 && r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight)) return \"off-screen\"; const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!hit && (hit === el || el.contains(hit) || hit.contains(el)) ? \"true\" : \"covered\"; })()""" % json.dumps(sys.argv[1]))' "$1")"
+  out="$(qa_jsv "$js")"
+  [ -n "$out" ] || out='no-answer'
+  printf '%s' "$out"
+}
 tap '#index [data-act=exp-open]'
-tap '#card [data-exp-menu=presentation] > summary'
-tap '#card [data-exp-menu=presentation] [data-act=exp-advanced]'
+advanced_open
+qa_scroll_center '#card [data-exp-advanced-home]'
 shot 'qa3-1440-advanced'
-read_ok 'the photographed state is the one Advanced authoring home, with View switching for every View' \
-  "(() => { const h = document.querySelector('#card [data-exp-advanced-home]'); const p = __me.ctx.experience.presentations[__me.S.experienceContext.presentation]; return !!h && h.open && !!h.querySelector('[data-act=exp-offer]') && h.querySelectorAll('[data-exp-cue]').length === p.uses.length; })()"
+read_ok 'the photographed state is the one Advanced authoring home, expanded with all four of its sections' \
+  "(() => { const h = document.querySelector('#card [data-exp-advanced-home]'); const p = __me.ctx.experience.presentations[__me.S.experienceContext.presentation]; if (!h || !h.open) return false; const text = h.textContent; return ['Intent · shared summary','Narration, behaviors and offers','View switching','View suggestions'].every((s) => text.includes(s)) && h.querySelectorAll('[data-exp-cue]').length === p.uses.length; })()"
+# The View switching section's own cue control is addressed by the cue the first View use carries, so the
+# reading names a real control rather than whatever selector happens to match first.
+CUE="$(qa_jsv '(() => { const c = document.querySelector("#card [data-exp-advanced-home] [data-exp-cue]"); return c ? c.getAttribute("data-exp-cue") : ""; })()')"
+ADV="#card [data-exp-advanced-home]"
+# `qa_ok` compares what was read against what the law expects; `read_ok` above is for a single page
+# expression that must answer true. The readings here are already decided values, so they are compared.
+qa_ok '…and its controls are reached inside the Card, not merely present in the markup' \
+  "$(reached "$ADV [data-exp-field=meaning]") / $(reached "$ADV [data-act=exp-offer]") / $(reached "$ADV [data-exp-cue='$CUE']") / $(reached "$ADV [data-act=exp-view-order]") / $(reached "$ADV [data-act=exp-narration]")" \
+  'true / true / true / true / true'
+# Proof of keyboard access is the browser's real key on a focused summary: a dispatched KeyboardEvent
+# cannot perform a disclosure's default action, so an Enter that only ran a listener would pass a
+# dispatched-key reading and fail the author. The summary is the home's own — always present, and the
+# control that owns this whole section — with a contribution's own collapsed details preferred when the
+# captured state has one, so the reading never depends on how much the example happens to have authored.
+ADV_SUMMARY='(() => { const h = document.querySelector("#card [data-exp-advanced-home]"); const s = h.querySelector("[data-exp-activity-details] > summary") || h.querySelector(":scope > summary"); return s ? { open: s.closest("details").open, which: s.textContent.trim().slice(0, 32) } : null; })()'
+act_summary="$(qa_jsv "JSON.stringify($ADV_SUMMARY)")"
+qa_say "qa: keyboard proof target · $act_summary"
+if [ -n "$act_summary" ] && [ "$act_summary" != "null" ]; then
+  qa_js "(() => { const h = document.querySelector('#card [data-exp-advanced-home]'); (h.querySelector('[data-exp-activity-details] > summary') || h.querySelector(':scope > summary')).focus(); return true; })()" >/dev/null
+  agent-browser press Enter >/dev/null 2>&1
+  qa_frames
+  qa_ok 'a real Enter on a focused summary inside the Advanced home toggles it (native activation, not a listener)' \
+    "$(qa_jsv "JSON.stringify($ADV_SUMMARY)")" \
+    "$(python3 -c 'import json,sys; d=json.loads(sys.argv[1]); d["open"]=not d["open"]; print(json.dumps(d, separators=(",", ":")))' "$act_summary")"
+  agent-browser press Enter >/dev/null 2>&1
+  qa_frames
+  qa_ok '…and a second Enter returns it to the state it was photographed in' \
+    "$(qa_jsv "JSON.stringify($ADV_SUMMARY)")" "$act_summary"
+fi
 
 # The narrow pair: the Card is an invoked sheet over an unresized Stage, and the Views list and the
 # rendered preview stay reachable inside it. The sheet shows what is selected, so the Presentation is
 # selected again first — the narrow pair reads the same two states as the wide one.
+# The same two states inside the narrow Card sheet, including the Advanced home's contents: the sheet
+# scrolls like the wide Card, so the same scroll-and-hit reading is taken there rather than assumed.
 tap '#index [data-act=exp-open]'
 agent-browser set viewport 1024 768 >/dev/null
 qa_frames
 tap '[data-act=sheet-card]'
 shot 'qa3-1024-presentation-views'
+# What the narrow shot actually photographs, said out loud: the Card's own identity block and the rows it
+# shows, so a narrow-sheet reading can never fail (or pass) without naming the state it read.
+qa_say "qa: narrow sheet · $(qa_jsv 'JSON.stringify({ kind: (document.querySelector("#card .c-k")||{}).textContent || null, title: (document.querySelector("#card .c-t")||{}).textContent || null, rows: document.querySelectorAll("[data-exp-views] [data-exp-view-use]").length, advanced: !!document.querySelector("#card [data-exp-advanced-home]"), sheet: {...__me.S.sheet}, sel: __me.S.sel })')"
 read_ok 'inside the narrow sheet the Views list is fully reachable and still carries its one ★ Default' \
   "(() => { const rows = [...document.querySelectorAll('[data-exp-views] [data-exp-view-use]')]; const c = document.querySelector('#card').getBoundingClientRect(); return !!__me.S.sheet.card && c.right <= innerWidth && c.left >= 0 && rows.length > 0 && rows.every($(reach_predicate_js)) && $(default_star_js); })()"
 pose_before="$(qa_js '__me.nav.plainPose()')"
@@ -116,6 +172,22 @@ shot 'qa3-1024-view-preview'
 read_ok 'inside the narrow sheet the View preview and its operations are reachable too' \
   "(() => { const ops = document.querySelector('#card [data-exp-ops]'); return !!ops && $(reach_js '#card [data-exp-ops]') && $(reach_js '[data-exp-preview-image]'); })()"
 qa_ok 'the narrow View selection leaves the standpoint exactly where it was' "$(qa_js '__me.nav.plainPose()')" "$pose_before"
+
+# The narrow Advanced home: the Presentation is selected again through the Index sheet, the same door is
+# opened, and the same scroll-and-hit readings are taken inside the narrow Card sheet — the two review
+# sizes photograph the same four sections, not one entry and one pair of contents.
+# The Presentation is reached through the View Card's own `Open Presentation` door — a control this sheet
+# is already showing — rather than by toggling two sheets to get back to the Index.
+tap '#card [data-act=exp-open]'
+advanced_open
+qa_scroll_center '#card [data-exp-advanced-home]'
+shot 'qa3-1024-advanced'
+qa_say "qa: narrow Advanced · $(qa_jsv 'JSON.stringify({ kind: (document.querySelector("#card .c-k")||{}).textContent || null, advanced: !!document.querySelector("#card [data-exp-advanced-home]"), open: !!(document.querySelector("#card [data-exp-advanced-home]")||{}).open, sheet: {...__me.S.sheet}, sel: __me.S.sel })')"
+read_ok 'the narrow sheet photographs the same Advanced home, expanded with all four of its sections' \
+  "(() => { const h = document.querySelector('#card [data-exp-advanced-home]'); const r = document.querySelector('#card').getBoundingClientRect(); if (!h || !h.open || r.right > innerWidth || r.left < 0) return false; const text = h.textContent; return ['Intent · shared summary','Narration, behaviors and offers','View switching','View suggestions'].every((s) => text.includes(s)) && __me.S.sheet.card; })()"
+qa_ok '…and its controls are reached inside the narrow sheet, not merely present in the markup' \
+  "$(reached "$ADV [data-exp-field=meaning]") / $(reached "$ADV [data-act=exp-offer]") / $(reached "$ADV [data-act=exp-narration]") / $(reached "$ADV [data-act=exp-view-order]")" \
+  'true / true / true / true'
 
 qa_faults_ok 'no command or page faults while capturing'
 qa_ok 'every QA 3 reading above passed' "$qa_fail" 0

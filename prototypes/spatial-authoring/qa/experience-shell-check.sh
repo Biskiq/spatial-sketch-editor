@@ -75,6 +75,46 @@ window.ux0 = (() => {
     pose: __me.nav.plainPose()
   });
   const stageRect = () => JSON.stringify(document.querySelector('[data-home=stage]').getBoundingClientRect());
+  // The Index as text, not as boxes: every line of text a row paints must be on its own line, inside its
+  // own row and inside the column. A row whose label and explanation are two elements is one laid-out
+  // thing, but a label that shrinks to nothing while its text still paints does not overlap as *boxes* —
+  // so the reading is of painted line boxes, which is what the author sees. UX2 review: `+ Present` and
+  // `Browse World` painted their labels across their own explanations at 1440×900.
+  const indexText = () => {
+    const idx = document.querySelector('#index');
+    if (!idx || !idx.getBoundingClientRect().width) return { index: 0, rows: 0 };
+    const ix = idx.getBoundingClientRect();
+    const lines = (node, out) => {
+      for (const child of node.childNodes) {
+        if (child.nodeType === 3) {
+          if (!child.textContent.trim()) continue;
+          const r = document.createRange();
+          r.selectNodeContents(child);
+          for (const b of r.getClientRects()) if (b.width > 0.5) out.push({ text: child.textContent.trim().slice(0, 24), l: b.left, r: b.right, t: b.top, b: b.bottom });
+        } else if (child.nodeType === 1) lines(child, out);
+      }
+      return out;
+    };
+    const out = { index: Math.round(ix.width), rows: 0, overflow: 0, collide: 0, escape: 0 };
+    for (const row of idx.querySelectorAll('.ix-row')) {
+      out.rows++;
+      const rr = row.getBoundingClientRect();
+      const ls = lines(row, []).filter((b) => b.t >= rr.top - 1 && b.b <= rr.bottom + 1);
+      if (row.scrollWidth > row.clientWidth + 1) out.overflow++;
+      for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+        const a = ls[i], c = ls[j];
+        if (Math.abs(a.t - c.t) < 4 && a.r > c.l + 0.5 && c.r > a.l + 0.5) out.collide++;
+      }
+      if (ls.some((b) => b.r > rr.right + 0.5 || b.r > ix.right + 0.5)) out.escape++;
+    }
+    return out;
+  };
+  // The law is the five facts; the counts behind them are reported beside it rather than asserted, because
+  // how many rows the Index holds depends on what the axis has authored by then and is not the law.
+  const indexLineLaw = () => {
+    const r = indexText();
+    return [r.index > 0, r.rows > 0, r.overflow === 0, r.collide === 0, r.escape === 0].join('|');
+  };
   // UX1: the shell has one Preview control, and every control that can start a visit is inside it.
   const previewOutside = () => [...document.querySelectorAll('[data-act^=exp-preview]')]
     .filter((b) => !document.querySelector('#headPreview').contains(b)).length;
@@ -109,7 +149,7 @@ window.ux0 = (() => {
   };
   // The live camera object the pass must never replace: it swaps its own in and restores the reference.
   const liveCamHeld = () => __me.ctx.stage.cam === window.ux2Cam;
-  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect, previewOutside, passState, imageReading, liveCamHeld, machineCaps };
+  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect, previewOutside, passState, imageReading, liveCamHeld, machineCaps, indexText, indexLineLaw };
 })()
 JS
 )" >/dev/null; }
@@ -152,6 +192,11 @@ qa_ok 'every home the shell sketch names exists exactly once (the Deck is built 
 qa_ok 'the stage home owns the drawing' "$(qa_js 'document.querySelector("[data-home=stage]").contains(document.querySelector("#gl"))')" true
 qa_ok 'the visitor surface is not the authoring shell: hidden, and the Deck is not built before a Guide exists' "$(qa_jsv 'JSON.stringify([document.querySelector("[data-home=preview]").checkVisibility(), window.ux0.deck() === null])')" '[false,true]'
 qa_ok 'exactly one inspector, and no work in hand at rest' "$(qa_jsv 'JSON.stringify([document.querySelectorAll("[data-home=card]").length, document.querySelectorAll("#experienceInstrument, #instrument:not([hidden])").length])')" '[1,0]'
+# The Index is text an author reads: two lines may not be painted on top of each other, and no line may
+# leave the row it belongs to or the column. Measured as painted line boxes at both review sizes.
+qa_ok 'every line the Index paints is on its own line, inside its row and inside the column' \
+  "$(qa_jsv 'window.ux0.indexLineLaw()')" 'true|true|true|true|true'
+qa_say "qa: Index at 1440×900 · $(qa_jsv 'JSON.stringify(window.ux0.indexText())')"
 
 echo "-- the Deck is one bounded lane in one home"
 tap '#experienceExamples [data-act=exp-example]'
@@ -286,6 +331,41 @@ qa_ok 'a second View is drawn in its own turn from its own pose, and leaves the 
   "$(qa_jsv "window.ux0.imageReading($((draws + 1)))") / $(qa_jsv 'window.ux0.passState()') / $(qa_jsv 'JSON.stringify(window.ux0.machineCaps())')" \
   "1|0|1|2|ok|true|true|true|true / $pre2 / [0.72,0]"
 qa_say "qa: image pass · cold ${cold_ms} ms · second ${second_ms} ms · cache $(qa_jsv '__me.qa.images().cached') of 32 · one draw per new pose, one job outstanding at a time"
+# A derivative picture is a reading of one World, so it is fogged — and keyed — as its own projection. The
+# fog belongs to the picture's own eye distance; `lastSnapshot.dist` is that distance and the fog is read
+# from it, never from the standpoint the author happens to be standing at. The second half of the reading is
+# the non-vacuity check: in this state the two distances really do differ, so a pass that reached for the
+# live camera would be reported here rather than admired.
+qa_ok 'the picture is fogged at its own eye distance, not at the standpoint the author is standing at' \
+  "$(qa_jsv '(()=>{const p=__me.qa.images().projection,f=(d)=>Math.abs(p.fog[0]-(d+40))<0.001&&Math.abs(p.fog[1]-(d+200))<0.001;return [f(p.dist), Math.abs(p.dist-__me.qa.realized().dist)>0.001&&f(__me.qa.realized().dist)].join("|");})()')" 'true|false'
+# The World a picture was drawn from can change under it: the World writers mutate the museum in place, so
+# the generation a picture is keyed on is the history's own settle point, not the museum's object identity.
+# An accepted write through that authority (the same writer and history seam the wall-top control calls) must
+# move the generation, and selecting the View again must draw rather than serve the picture of the old World.
+qa_js "(window.ux0.coldUrl = document.querySelector('[data-exp-preview=\"$use_cold\"] [data-exp-preview-image]').src, true)" >/dev/null
+world_before="$(qa_jsv '__me.qa.images().world')"
+drawn_before="$(qa_jsv '__me.qa.images().drawn')"
+# The write's own result is read from the model, not from an expected shape typed into this axis.
+wtop() { qa_jsv 'JSON.stringify(__me.ctx.museum.walls.find((w) => w.id === "rotunda").top)'; }
+top_before="$(wtop)"
+qa_js "(__me.A.setTopForm('rotunda', 'gable'), true)" >/dev/null
+top_after="$(wtop)"
+[ "$top_after" != "$top_before" ] && wrote=true || wrote=false
+qa_ok 'an accepted World write moves the generation every held picture is keyed on, and really lands in the model' \
+  "$(qa_js "(__me.qa.images().world || '') !== '$world_before'") / $(qa_js '__me.ctx.museum.walls.find((w) => w.id === "rotunda").top.form === "gable"') / $wrote" \
+  'true / true / true'
+tap "#index [data-act=exp-open][data-id=\"$pid\"]"
+pick "$(row "$use_cold")" >/dev/null
+wait_image "[data-exp-preview=\"$use_cold\"] [data-exp-preview-image]" || qa_fail_msg "the preview never re-drew for $use_cold after the World write"
+# How many pictures the write costs depends on how many Cards were open when the World moved, so the count is
+# read rather than assumed; what cannot vary is that the stale picture is not served — a pass keying on the
+# museum's own object identity would serve it, draw nothing here and leave the same src in place.
+drawn_written="$(qa_jsv '__me.qa.images().drawn')"
+redrawn=$((drawn_written - drawn_before))
+qa_ok 'the View whose World changed is drawn again from the new World, never served the old picture' \
+  "$([ "$redrawn" -ge 1 ] && echo true || echo false) / $(qa_js "document.querySelector('[data-exp-preview=\"$use_cold\"] [data-exp-preview-image]').src !== window.ux0.coldUrl") / $(qa_js '__me.qa.images().queued === 0')" \
+  'true / true / true'
+qa_say "qa: World write · $redrawn picture(s) re-drawn, cache $(qa_jsv '__me.qa.images().cached') · the picture of the old World was not served"
 # Failure: the draw is refused at the Stage's own seam. A refusal must leave a named reason where the picture
 # would be, keep the live page intact, and not be retried every turn; with the renderer back, the refusal is
 # still remembered rather than the View being quietly redrawn behind the author. Statements must be one
@@ -305,7 +385,7 @@ qa_js "(() => { __me.ctx.stage.snapshotPose = window.ux2Real; return true; })()"
 qa_frames
 qa_ok '…the live authoring state is intact, the refusal is remembered, and nothing was drawn for it' \
   "$(qa_jsv 'window.ux0.passState()') / $(qa_js "document.querySelector('[data-exp-preview=\"$use_fail\"] [data-exp-preview-image]')===null") / $(qa_jsv '__me.qa.images().drawn')" \
-  "$fail_pre / true / $((draws + 2))"
+  "$fail_pre / true / $drawn_written"
 
 
 qa_say "-- the narrow review size keeps the same laws"
@@ -315,6 +395,14 @@ tap '#experienceDeck [data-act=exp-close]'
 stage_before="$(qa_jsv 'window.ux0.stageRect()')"
 narrow_before="$(qa_jsv 'window.ux0.fingerprint()')"
 qa_ok 'at 1024×768 the Index and Card leave the columns for the sheets entry, and the homes stay singular' "$(qa_jsv 'JSON.stringify(window.ux0.homes())') / $(qa_jsv 'JSON.stringify({ index: document.querySelector("[data-home=index]").checkVisibility(), card: document.querySelector("[data-home=card]").checkVisibility(), sheets: [...document.querySelectorAll("[data-act^=sheet-]")].filter((b) => b.checkVisibility()).length })')" '{"head":1,"index":1,"stage":1,"card":1,"deck":1,"preview":1} / {"index":false,"card":false,"sheets":2}'
+# The same law at the narrow size, where the Index is an invoked sheet rather than a column: the rows it
+# shows there are the rows above, in a box narrower than any of them is written for. Invoked and closed
+# again before the Card's own sheet, so neither sheet's state is borrowed by the other.
+tap '[data-act=sheet-index]'
+qa_ok 'the narrow Index sheet paints the same lines without overlap, overflow or escape' \
+  "$(qa_jsv 'window.ux0.indexLineLaw()')" 'true|true|true|true|true'
+qa_say "qa: Index sheet at 1024×768 · $(qa_jsv 'JSON.stringify(window.ux0.indexText())')"
+tap '[data-act=sheet-index]'
 tap '[data-act=sheet-card]'
 qa_ok 'an invoked sheet resizes nothing and writes nothing' "$(qa_jsv 'window.ux0.stageRect()') / $(qa_jsv 'window.ux0.fingerprint()')" "$stage_before / $narrow_before"
 tap '#experienceDeck [data-act=exp-guide]'

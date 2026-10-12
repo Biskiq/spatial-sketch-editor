@@ -27,7 +27,7 @@ checkpoint(){ if [ "${QA_REVISION_UNTIL:-}" = "$1" ];then qa_summary "C9.6 bound
 
 # ---- From genuinely empty Reset: the ordinary creator loop, then real revision work.
 click '#lens [data-lens=experience]';fixture exp-reset
-qa_locator_select machine;click '#card [data-act=exp-create]'
+qa_locator_select machine;click '#card [data-act=exp-create-this]'
 qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor.'
 click '#card [data-act=exp-capture]'

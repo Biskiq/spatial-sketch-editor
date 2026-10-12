@@ -23,6 +23,13 @@ export const S = {
   undo: [],
   redo: [],
   pending: null,
+  /* The World source's own generation, advanced wherever the history settles an edit — a committed write,
+     a cancelled one, or a restore. It exists because the World writers mutate the museum **in place**
+     (`applyWallTop` writes `w.top`, `applyArtPlacement` writes `a.wall`), so object identity is not a
+     source generation: anything derived from the realized World keys on this beside the Scene's own
+     revision, and a picture of the previous state can never be served. Session bookkeeping only — never
+     authored, never in Undo. */
+  sourceEpoch: 0,
   refusal: null,
   /* the one value a gesture or the numeric editor currently owns, for emphasis only */
   activeEdit: null,

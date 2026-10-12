@@ -221,7 +221,7 @@ does not claim screen-reader or assistive-device coverage, which stays a prototy
   overwritten: `qa/capture-experience-shell.sh` still defaults to that directory, so a UX1 capture pass
   must name its own output path (as `screens/experience-ux1/` here does).
 
-## UX2 — Presentation and Views (landed)
+## UX2 — Presentation and Views (landed · functional gate verified after its review round, visual acceptance deferred to the single post-UX7 review)
 
 **Exit gate (plan §5):** QA 3 acceptance (§7), the creator narration/capture/offer jobs still executing
 through the new doors, and a first-time creator working Present → explain → capture → Preview without the
@@ -239,20 +239,22 @@ Presenter.
 | `styles/app.css` | the Views list, the View Card and its preview box, the pending/unavailable placeholder, the advanced home. |
 | `qa/lib.sh` | the Card-door helpers (`qa_card_door`, `qa_card_explanation`, `qa_card_menu`, `qa_card_remove`, `qa_card_advanced`): one place that opens a native disclosure the way an author does, and never toggles one shut. |
 | `qa/experience-shell-check.sh` | +10 assertions (27 → 37), all of them the image pass's two laws read as numbers. |
-| `qa/conformance-check.sh` | the QA-1 journey re-pointed onto the new doors (aggregate Present, the explanation door, Advanced authoring, the Views list, Remove from Presentation, Set as Default, the recommended-framing tray in the Card that offers it), plus the one-creation-entry and Change-focus readings — 122 assertions. |
+| `qa/conformance-check.sh` | the QA-1 journey re-pointed onto the new doors (aggregate Present, the explanation door, Advanced authoring, the Views list, Remove from Presentation, Set as Default, the recommended-framing tray in the Card that offers it), plus the one-creation-entry and Change-focus readings — 134 assertions, including the review round's two-door creation readings (each door's own reading, in 3D, in Plan and with motion in flight) and the constellation's three laws. |
 | `qa/capture-experience-views.sh` (new) | the QA 3 capture pass: five states at both review sizes, each paired with a reading of what was photographed (the Views list really unordered with one ★ Default, the preview a render rather than its placeholder, the same controls reachable inside the narrow sheet). |
 | `qa/views-mutation-check.sh` (new) | this slice's replacement proof, chained into `qa/mutation-check.sh`; one leg can be re-run by name. |
 | `qa/creator-check.sh`, `composition-check.sh`, `locator-check.sh`, `presenter-check.sh`, `precision-c9-check.sh`, `reconciliation-check.sh`, `revision-check.sh`, `rich-check.sh`, `visitor-check.sh`, `walkthrough-check.sh`, `walkthrough-demo-check.sh` | re-pointed to the controls this slice moved, in this slice — never weakened to keep an old recipe green. |
+| `app/experience.js`, `app/experience-image.js`, `app/experience-scene.js`, `app/stage.js`, `app/state.js`, `app/actions.js`, `app/experience-ui.js`, `styles/app.css` | the review round after this slice's first review (below): the presented reading's own precedence, one door per creation intent, the source generation a held picture is keyed on, per-projection fog, the Index door rows' own second line, the constellation without metric claims, and the quiet rows in the Presentation Card. |
 | `screens/experience-ux2/` | the five QA 3 captures, regenerated from this slice's source after the last edit. |
 
 ### Readings
 
 | Proof | Result |
 | --- | --- |
-| all 26 axes (`qa/run-all.sh all`) | **green, 0 failures: 1,160 assertions** — journeys 59, interaction 56, flows 44, policy 41, World shell 47, precision 38, browse 60, repair 47, lens 82, Experience 30, **experience-shell 37**, locator 30, **conformance 122**, creator 25, composition 27, revision 38, rich 35, precision-c9 55, presenter 59, walkthrough 33, walkthrough-demo 59, visitor 42, reconciliation 13, continuity 55, responsive 15, correctness 11 |
-| `qa/capture-experience-views.sh` | **9 readings green** — the Presentation with its unordered Views list and its one ★ Default, the View's own operations with the rendered picture, the one Advanced authoring home, and the same two states reachable inside the narrow Card sheet, with the standpoint unmoved by any selection (five captures in `screens/experience-ux2/`) |
+| all 26 axes (`qa/run-all.sh all`, after the review round) | **green, 0 failures: 1,177 assertions** — journeys 59, interaction 56, flows 44, policy 41, World shell 47, precision 38, browse 60, repair 47, lens 82, Experience 30, **experience-shell 42**, locator 30, **conformance 134**, creator 25, composition 27, revision 38, rich 35, precision-c9 55, presenter 59, walkthrough 33, walkthrough-demo 59, visitor 42, reconciliation 13, continuity 55, responsive 15, correctness 11 |
+| `qa/capture-experience-views.sh` | **14 readings green, six captures** — the Presentation with its unordered Views list and its one ★ Default, the View's own operations with the rendered picture, the Advanced authoring home photographed as its **contents** at both sizes (expanded, its four sections read back from the captured state, its controls scrolled into the Card's view and hit-reachable there, native-Enter toggling and return), and the same states reachable inside the narrow Card sheet, with the standpoint unmoved by any selection |
 | `node --test prototypes/spatial-authoring/tests/*.test.mjs` | **140 / 140 pass**, exit 0 |
-| `qa/views-mutation-check.sh` | **8 regressions rejected, none accepted, exit 0** (13 inner-axis failures, each one the caught mutation) |
+| `qa/mutation-check.sh` (all five proof scripts) | **120 replacement legs, every reintroduced regression rejected, none accepted, exit 0** — including the four legs this review round adds (`plan-pose`, `view-metric`, `image-world`, `image-fog`), each one caught by the assertion that protects it with unaffected controls green |
+| `qa/views-mutation-check.sh` alone | **12 regressions rejected, none accepted** |
 | QA 1–6 recipes on the moved controls | re-pointed in this slice through `lib.sh`'s Card doors and the Views list; the whole set is the 26-axis row above |
 
 ### The image pass, as numbers
@@ -272,6 +274,25 @@ left behind, with the draw provably inside that window.
 | projection | paper 0, authoring treatment off, no clipping — a normal-World reading |
 | refused draw | a named reason where the picture would be (`Camera preview unavailable · …`), no image pretending to be one, the refusal remembered rather than retried, live state intact, nothing counted as drawn |
 
+### The review round after this slice's first pass
+
+Every finding was treated as a hypothesis and investigated against the running page before anything was
+changed. Two of the nine were answered by the investigation itself — one of them withdrawn — and the rest
+are fixed, each with the reading that now holds it. Nothing was re-pointed or loosened to make a finding go
+away; where a recipe did move it was because a control genuinely moved, and the assertion was strengthened
+at the same time, never weakened.
+
+| Finding (review of head `74de163`) | Verdict | Fix, and the reading that holds it |
+| --- | --- | --- |
+| **P1 ·** `commitPresent()` preferred `derived?.pose` over the pose it was given, so *Use the plan as the visitor View* could save recommended 3D framing | **confirmed · fixed** | The derivation is now only asked for when no reading was supplied (`recommended && !pose`), and the authored order is `pose || derived?.pose || live`. Both doors keep a law of their own: `Present this` authors Camera's recommended framing for the subject's extent, asserted against `deriveFraming().pose` read back from the authored Camera View; `+ Present` captures the **live composition**, asserted against `nav.plainPose()` in 3D, from a Plan reading, and with motion in flight (where the sampled pose is authored and the move stops rather than being hurried to its destination); and *Use the plan as the visitor View* authors the plan reading (`flat = 1`) **and not** the recommended framing of the same subject. |
+| **P1 ·** `worldSignature()` memoized by museum object identity and Scene revision, so an in-place World edit could leave a cached picture stale | **confirmed mechanism · fixed** | The World writers do mutate the museum in place (`applyWallTop` writes `w.top`, `applyArtPlacement` writes `a.wall`), so object identity cannot be a source generation. Invalidation was moved onto the authority that already exists — `S.sourceEpoch`, advanced where the source's history settles (`commitEdit()` for an accepted write, `restoreQuiet()` for cancel, Undo, Redo and reset) — and folded into `worldSignature()` beside the Scene's revision. No parallel state system: the epoch is session bookkeeping, never authored, never in Undo. Held by a real write through the same writer the wall-top control calls (`…an accepted World write moves the generation every held picture is keyed on…`) and by the picture itself (`…the View whose World changed is drawn again from the new World, never served the old picture` — 2 re-drawn, `src` not the stale one, nothing left queued); the `image-world` leg reintroduces the identity-only key and is rejected. |
+| **P2 ·** the thumbnail's fog read the live Camera's `this.dist` | **confirmed · fixed** | Each picture is fogged at `lastSnapshot.dist` — the eye distance of the projection it actually drew. The reading is non-vacuous by construction: `…fogged at its own eye distance, not at the standpoint the author is standing at` answers `true` for the picture's own distance and `false` for the live standpoint, and that state really does have the two distances differ; the `image-fog` leg restores the live-camera read and is rejected. |
+| **P2 ·** a suspected permanent fog leak through `applyCamera()` | **withdrawn** | `snapshotPose()` restores through `applyCamera()`, and the neutrality reading (source digest, Undo/Redo depth, selection, audition, standpoint, realized camera, Stage rect, and the *same* camera object afterwards) was already green over that restore. There is no leak in this source; the reading stays as evidence, no change was made for it. |
+| **V1 ·** visible Index overlap at 1440×900 involving `+ Present`, `Browse World` and their explanations | **confirmed · fixed** | A door's explanation is now the door's own second line (`.ix-go .ix-note`, the form the Records register row has always used) instead of a sibling racing its button for the row. Measured as **painted line boxes**, not boxes: `every line the Index paints is on its own line, inside its row and inside the column` → 1440×900 `{"index":292,"rows":3,"overflow":0,"collide":0,"escape":0}`, invoked 1024×768 sheet `{"index":420,"rows":7,"overflow":0,"collide":0,"escape":0}`. |
+| **V2 ·** semi-spatial View markers and long leaders against PLATE §0.8.1 | **confirmed · fixed** | The constellation is compact named markers around the focus, each carrying **its own** direction glyph drawn with it; the projected standpoint, the leader joining a metric position to a schematic one, and the origin square are gone. Three readings hold it: each glyph is its own visible element and not part of the identity plate, each glyph is drawn beside its own marker, and the constellation makes no metric claim (no standpoint glyph, no leader, no origin square). Orientation and identity survive (the glyph is the View's own direction); no metric precision and no View ordering is implied. The `view-metric` leg restores the reviewed drawing and is rejected. |
+| **V3 ·** Presentation Card hierarchy | **confirmed · fixed** | One primary write (`+ Capture view`) with its companion (`Recommended framing…`); `Bring Views into view` (a Camera navigation aid) and `Add to Guide` (a structural write) became two quiet rows, so four stacked full-weight buttons no longer read as four co-primary actions. Every act kept its name, its place and its reachability: no recipe had to be re-pointed for this change, and all 26 axes stayed green with it. |
+| **V4 ·** the Advanced screenshot showed its entry, not its contents | **confirmed · fixed** | `qa/capture-experience-views.sh` now photographs the **expanded** home at both review sizes: all four sections read back from the captured state, its controls scrolled into the Card's own view and hit-reachable there, every control inside it natively focusable and enabled, and keyboard access proved with the browser's **real** Enter on a focused summary (which toggles it, and a second Enter returns it to the photographed state) — a dispatched key is not accepted as that proof, because a disclosure's default action is only performed by a real one. Two captures are new: `qa3-1440-advanced.png` and `qa3-1024-advanced.png`. |
+
 ### The new slice is not a tautology
 
 | Reintroduced defect | Rejected at | Unaffected controls |
@@ -284,6 +305,10 @@ left behind, with the draw provably inside that window.
 | the retired `Present region` row restored beside the one `+ Present` | conformance · *the Index offers exactly one creation entry…* | 116 green |
 | the derivative image drawn with the authoring treatment | experience-shell · *one idle turn drew the picture once…* | 34 green |
 | the image pass never gives the live camera back | experience-shell · *the pass wrote nothing…* | 34 green |
+| the Plan door saves the recommended framing instead of the reading it was asked for | conformance · *Use the plan as the visitor View authors the plan reading itself* (6 assertions trip, including both `+ Present` laws and *…never the recommended framing of the same subject*) | 128 green |
+| the constellation drawn at projected standpoints, with a leader and an origin square | conformance · *the constellation makes no metric claim…* (2 assertions trip) | 132 green |
+| a picture keyed on the museum's object identity instead of the source's own generation | experience-shell · *an accepted World write moves the generation…* (2 assertions trip) | 40 green |
+| a picture fogged at the live camera's distance instead of its own projection's | experience-shell · *the picture is fogged at its own eye distance…* (1 assertion trips) | 41 green |
 
 ### Recorded facts and limits
 
@@ -311,6 +336,20 @@ left behind, with the draw provably inside that window.
 - **The retired Framing Hints posture** is replaced by the Card's recommended-framing tray. The C9.2/C9.3
   obligations still hold: the `route-writer` mutation leg's anchor follows the procedure list without the
   retired posture, and the axis still rejects that defect.
+- **Visual acceptance of UX2 is deferred, not claimed.** Everything in this record is agent verification:
+  readings, assertions and captures. The review round's own visual findings (the Index rows, the
+  constellation, the Card's hierarchy, the Advanced home's contents) are fixed and measured as geometry,
+  painted line boxes, hit reachability and real-key behaviour — the appearance itself (colour, type,
+  spacing, density) is reviewed by the owner. Human visual acceptance happens **once**, on the integrated
+  prototype after UX7; UX2's functional gate is verified and its visual gate is pending.
+- **The keyboard proof in the capture pass is a real browser key, not a dispatched event**, because a
+  dispatched `KeyboardEvent` cannot perform a native disclosure's default action. It runs the moment the
+  Advanced home is on screen (the home's own summary always exists), so the reading can never be skipped by
+  a state that happens to have no contributions authored yet.
+- **A picture's generation is session bookkeeping, not authored state.** `S.sourceEpoch` advances only in
+  the two places the World source already settles (an accepted write and a restore); it is never written to
+  a document, never in Undo, and never read by the Experience model. It exists because the World writers
+  mutate in place, which is exactly why object identity was the wrong key rather than a missing signal.
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression

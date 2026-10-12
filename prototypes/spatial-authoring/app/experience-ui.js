@@ -26,9 +26,13 @@ export function experienceIndex() {
   // Creation has one canonical action. Region and environment are focus operations on a Presentation
   // (reached from its own Card), so they are not siblings of `+ Present` any more — the Index creates
   // exactly one kind of thing and holds no editors.
+  // A door's explanation is the door's own second line, not a sibling racing it for the row: the note lives
+  // inside the button, which is the form `.ix-go .ix-note` is written for (the Records register row has
+  // always done it this way). As a sibling the note kept its full nowrap width while `.ix-go`'s `min-width:
+  // 0` let the button collapse to nothing, so the label painted across the explanation at 1440×900.
   + `<div class="ix-group">Add</div><div class="ix-note">Presenting an identity is explicit; nothing is presented by browsing.</div>`
-  + `<div class="ix-row"><button class="ix-go" data-act="exp-create">+ Present</button><span class="ix-note">a Presentation with one Default View, on the selected identity or a new one</span></div>`
-  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button><span class="ix-note">every subject the Scene and the museum have, found by name</span></div>`;
+  + `<div class="ix-row"><button class="ix-go" data-act="exp-create">+ Present<span class="ix-note">a Presentation with one Default View, on the selected identity or a new one</span></button></div>`
+  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World<span class="ix-note">every subject the Scene and the museum have, found by name</span></button></div>`;
 }
 const reuseCount=id=>Object.values(ctx.experience.stops).filter(s=>s.presentationId===id).length;
 const valueLabel=(cap,v)=>{if(!cap)return String(v);if(cap.control==='range')return String(Number(v));if(cap.kind==='playback')return v?'Playing':'Stopped';return v?'On':'Off';};
@@ -55,10 +59,17 @@ function experienceCardBody(){
    + `<div class="c-sec">Focus</div><div class="exp-focus"><span class="exp-fact">Focus · ${focus}</span></div>`
    + `<details class="exp-more" data-exp-menu="focus"><summary>Change focus…</summary><div class="c-acts">${button('exp-focus-environment','This environment',p.id)}${button('exp-focus-region','A region on the Stage',p.id)}</div><p class="c-hint">Environment and region are focus operations on this Presentation; neither creates a second one.</p></details>`
    + `<div class="c-sec">Views · ${p.uses.length}${def?'':` · <span class="exp-gap" role="status">No Default · uses the current viewpoint</span>`}</div>${viewsList(p)}`
-   // The Views section's own row: what a View is made from and what it is used for. Recommended framing
-   // is here rather than on a Stage toolbar, and the derived suggestions it arms appear in this Card.
-   + `<div class="c-acts">${button('exp-capture','+ Capture view','','primary')}${button('exp-auto','Recommended framing…')}${button('exp-bring','Bring Views into view')}${button('exp-add-guide','Add to Guide',p.id)}</div>`
+   // The Views section's own pair: what a View is made from and what accepts it. Recommended framing is
+   // here rather than on a Stage toolbar, it arms the derived suggestions in this Card, and `+ Capture
+   // view` is what accepts one — so the two belong together, and the primary write is the primary action.
+   + `<div class="c-acts">${button('exp-capture','+ Capture view','','primary')}${button('exp-auto','Recommended framing…')}</div>`
    + framingTrayHtml(p)
+   // Two operations of two other species, quiet rather than a wall of equal buttons: bringing the Views
+   // into view is a Camera navigation aid, and adding this Presentation to the Guide is a structural
+   // write. Four full-weight stacked buttons read as four co-primary actions; every act keeps its own
+   // identity and stays where it can be reached, so recipes address them exactly as before.
+   + `<div class="exp-summary">${button('exp-bring','Bring Views into view','','reference')}</div>`
+   + `<div class="exp-summary">${button('exp-add-guide','Add to Guide',p.id,'reference')}</div>`
    + `<details class="exp-more" data-exp-menu="reuse"><summary>Use an existing Camera View</summary><label class="exp-label">Use an existing Camera View<select data-exp-reuse="${p.id}"><option value="">Choose Camera View</option>${Object.values(c.views).map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('')}</select></label><p class="c-hint">Reusing a View shares one Camera framing with every other use of it.</p></details>`
    + explanationHtml(p,text,explanation)
    + advancedSummary(others)
@@ -101,7 +112,7 @@ function experienceCardBody(){
  if(s)return experienceSubjectCard(s);
  const t=thing(S.sel);
  if(S.sel&&!t)return `<div class="c-head"><div class="c-k">Unavailable selected identity</div><div class="c-t">Source no longer resolves</div></div><p class="c-hint">Select a resolving identity. Accepted work cannot silently retarget.</p>`;
- return `<div class="c-head"><div class="c-k">${t?'From the World lens':'Experience'}</div><div class="c-t">${esc(t?.item.name||'Meaning in this World')}</div></div><p class="c-hint">Create or open a Presentation explicitly.</p><div class="c-acts">${button('exp-create',t?'Present this':'+ Presentation')}</div>`;
+ return `<div class="c-head"><div class="c-k">${t?'From the World lens':'Experience'}</div><div class="c-t">${esc(t?.item.name||'Meaning in this World')}</div></div><p class="c-hint">Create or open a Presentation explicitly.</p><div class="c-acts">${t?button('exp-create-this','Present this',t.item.id):button('exp-create','+ Present')}</div>`;
 }
 export function experienceCard(){const html=experienceCardBody().replaceAll(askHtml(),'');return html.replace('<div class="c-sec">',askHtml()+'<div class="c-sec">');}
 export const foreignExperienceCard = () => {
@@ -174,7 +185,7 @@ function experienceSubjectCard(s){
  const offers=button('exp-offer','Let visitors activate…',s.id).replace('data-id=',`data-kind="interaction" data-id=`);
  return `<div class="c-head"><div class="c-k">From the World lens</div><div class="c-t">${esc(s.name)}</div><div class="c-ref">Scene · ${esc(s.id)}<br>Selection stays this subject; the Presentation is named explicitly.</div></div>`
   +(caps.length?`<div class="c-sec">Capabilities · operate, then Use</div>${rows}`:'<p class="c-hint">This subject declares no capabilities in the current profile.</p>')
-  +`<div class="c-sec">Presentation</div><div class="c-acts">${button('exp-create','Present this')}${offers}${S.expAudition?.[s.id]?button('exp-audition-clear','Clear audition',s.id):''}</div>${offerHtml()}${S.expCaptureAsk?captureAskHtml():''}${askHtml()}`;
+  +`<div class="c-sec">Presentation</div><div class="c-acts">${button('exp-create-this','Present this',s.id)}${offers}${S.expAudition?.[s.id]?button('exp-audition-clear','Clear audition',s.id):''}</div>${offerHtml()}${S.expCaptureAsk?captureAskHtml():''}${askHtml()}`;
 }
 function captureAskHtml(){
  const ask=S.expCaptureAsk;

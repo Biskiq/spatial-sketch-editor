@@ -812,6 +812,13 @@ export class Stage {
       this.capV.visible = false;
       for (const [a] of saved.away) a.group.visible = false;
       this.restyle();
+      // The fog belongs to the projection being drawn, not to the standpoint the author happens to be
+      // standing at: `this.dist` is the live camera's own distance, and reading it here would push the
+      // far plane out for a picture taken from close up (or fog a picture taken from far away). The
+      // preview camera's own distance is used, and the live fog is put back by applyCamera() below.
+      const previewDist = Stage.placeCamera(this.peekCam, this.cam, w / Math.max(1, h));
+      this.scene.fog.near = previewDist + 40;
+      this.scene.fog.far = previewDist + 200;
       // What was actually projected, recorded beside the picture: an authoring treatment that leaked into a
       // derivative render would otherwise be invisible to every reading of the image, and a picture cannot
       // be asked what it left out. QA reads this; nothing renders it.
@@ -819,10 +826,10 @@ export class Stage {
         paper: this.paper, authoring: !!this.authoring, clips: this.clips.length,
         capsHidden: !this.capH.visible && !this.capV.visible,
         awayHidden: saved.away.every(([, v]) => !v), w, h,
+        // The projection's own eye distance and the fog it was drawn with, beside the picture: the fog
+        // follows the View's distance, and this is what says so without asking the live camera.
+        dist: previewDist, fog: [this.scene.fog.near, this.scene.fog.far],
       };
-      Stage.placeCamera(this.peekCam, this.cam, w / Math.max(1, h));
-      this.scene.fog.near = this.dist + 40;
-      this.scene.fog.far = this.dist + 200;
       r.setRenderTarget(target);
       r.clear(true, true, true);
       r.render(this.scene, this.peekCam);

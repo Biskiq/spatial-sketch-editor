@@ -15,7 +15,7 @@ pose(){ qa_js '__me.qa.realized()'; }
 checkpoint(){ if [ "${QA_COMPOSITION_UNTIL:-}" = "$1" ];then qa_summary "C9 boundary $1";exit;fi; }
 # Repeat J1, then extend it without learning lifecycle or Camera graphs.
 click '#lens [data-lens=experience]';fixture exp-reset
-qa_locator_select machine;click '#card [data-act=exp-create]'
+qa_locator_select machine;click '#card [data-act=exp-create-this]'
 qa_card_explanation
 fill '[data-exp-primary]' 'The casing protects the rotor. Power travels through the drive.'
 click '#card [data-act=exp-capture]';click '#card [data-exp-focus-subject=machine]'
@@ -23,7 +23,7 @@ fill '[data-exp-audition=casing]' '1';click '#card [data-act=exp-use][data-cap=c
 pid="$(qa_jsv '__me.S.experienceContext.presentation')"
 click "#index [data-act=exp-open][data-id='$pid']";click '#card [data-act=exp-add-guide]'
 a="$(qa_jsv '__me.ctx.experience.guide[0]')"
-qa_locator_select piano;click '#card [data-act=exp-create]'
+qa_locator_select piano;click '#card [data-act=exp-create-this]'
 qa_card_explanation
 fill '[data-exp-primary]' 'Listen to the piano.'
 click '#card [data-act=exp-add-guide]'

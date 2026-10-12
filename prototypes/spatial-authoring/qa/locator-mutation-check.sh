@@ -21,15 +21,15 @@ def replace(file, old, new, root='app'):
 if kind == 'second-entry':
     # A second Preview entry, back in the Index, beside the one menu in the Head.
     replace('experience-ui.js',
-            """+ `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button>""",
+            """+ `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World<span class="ix-note">""",
             """+ button('exp-preview-guide', 'Preview Guide')
-  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button>""")
+  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World<span class="ix-note">""")
 elif kind == 'scene-list':
     # The retired Scene-subject list, restored as its own column of Select buttons.
     replace('experience-ui.js',
-            """+ `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button>""",
+            """+ `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World<span class="ix-note">""",
             """+ `<div class="ix-group">Scene subjects</div>${Object.values(ctx.sceneSource.subjects).map((s) => `<div class="ix-row"><button class="ix-go" data-act="pres-ref" data-id="${s.id}">${esc(s.name)}</button></div>`).join('')}`
-  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World</button>""")
+  + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World<span class="ix-note">""")
 elif kind == 'no-scene-subjects':
     # The locator stops listing the Scene's own subjects.
     replace('ui.js', 'for (const s of Object.values(ctx.sceneSource?.subjects || {})) {', 'for (const s of []) {')

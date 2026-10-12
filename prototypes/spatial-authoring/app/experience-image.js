@@ -34,6 +34,9 @@ let peak = 0; // the most requests ever outstanding at once: the pass never accu
 export const imageStats = () => ({
   drawn, cached: cache.size, queued: queue.length, peak, lastMs: Math.round(lastMs), lastFail,
   projection: ctx.stage?.lastSnapshot ? { ...ctx.stage.lastSnapshot } : null,
+  // The World generation every held picture is keyed on: a World edit, Undo or Redo must move this, and
+  // an axis reads it rather than inferring invalidation from a picture that cannot say which World it is.
+  world: worldSignature(),
 });
 // Enough identity to tell a stale pass from a live one without exposing the page's objects.
 export const imagePassAlive = () => !!ctx.stage && typeof ctx.stage.snapshotPose === 'function';
