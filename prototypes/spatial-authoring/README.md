@@ -14,7 +14,7 @@ python3 -m http.server 8826
 # http://localhost:8826/                 explore; J opens the Presenter for the active lens
 # http://localhost:8826/rationale.html   current rationale and specimens
 # ?journey=A&step=0&motion=instant       reproducible presenter entry
-bash qa/run-all.sh                     # all registered browser axes; private server/browser per axis
+bash qa/run-all.sh                     # all registered browser axes, QA_JOBS at a time; private server/browser per axis
 bash scripts/shoot.sh                  # regenerate specimens into qa/out/specimens
 ```
 

@@ -42,11 +42,23 @@ qa/capture-baseline.sh     # regenerate qa/baseline.json (deliberate: the accept
 Requires `agent-browser` and `python3`. `QA_SHOT=0` skips captures; `QA_BASE=http://host:port` measures
 an already-running copy instead of starting one; `QA_OUT` moves the captures.
 
+The whole sweep (`qa/run-all.sh` with no axis) runs `QA_JOBS` axes at once — 3 by default, `QA_JOBS=1`
+for strictly one at a time. The axes are CPU-bound in this harness (one CLI process per eval,
+software-rendered pages), so the ceiling is cores, not patience: on an 8-core machine the same tree
+measured **285 s at 1, 212 s at 2 and 174 s at 3, all green**, while **6 went slower (290 s) and
+invented six failures**, every one of them a timing-sensitive reading (the image pass's idle-turn and
+cache laws, a visitor caption, and the three Gate-completion reads this suite already documents as
+load-sensitive). More browsers than cores costs wall clock *and* fabricates defects, so raise this
+only with a measurement in hand.
+
 Each axis is one browser session, torn down however its script ends — pass, failure or interrupt — and
-the next axis never starts until that helper is gone. Never fan an axis into sections that each open
-their own browser and server: every copy pays startup again and leaves the machine slower for the run
-after it. Session lifecycle is owned by `.agents/skills/browser-hygiene`; the batching and
-minimum-testing rules below are this harness's own.
+no two axes ever share one: each session's name carries this run's token, so a second run (another
+worktree, another agent) can never be read as this one's, and the sweep stops every axis it started if
+the driver is interrupted. Because several axes run at once, each one's output is buffered and printed
+as a block when it finishes, followed by an axis summary line per axis. Never fan a *single* axis into
+sections that each open their own browser and server: every copy pays startup again and leaves the
+machine slower for the run after it. Session lifecycle is owned by `.agents/skills/browser-hygiene`;
+the batching and minimum-testing rules below are this harness's own.
 
 Minimum testing: an axis asserts only what its stage can break, aims at seconds rather than tens of
 minutes, and is run on its own while a stage is being built; the full set belongs to a checkpoint.
@@ -176,4 +188,4 @@ What the harness knows about keys, measured rather than assumed:
 | `responsive-check.sh` | S7 viewport/DPR, sheet focus and pose stability, keyboard aim/fields/refusal, live OS reduced motion and identical endpoints |
 | `correctness-check.sh` | remaining numerical and nested-lifecycle obligations, no duplicate broad shell suite |
 | `mutation-check.sh` / `conformance-mutation-check.sh` / `composition-mutation-check.sh` / `locator-mutation-check.sh` / `views-mutation-check.sh` | same-defect replacement proof in disposable copies: World plus seven V2 boundaries and the C9 obligations, including the C9.6–C9.9 wiring — a silent merged rebind, an unrealized capability authored as visitor work, an unresolved choice followed before parking, any write crediting a quickstart topic, a visit ledger that opens without the Stop it entered, a topic charged for framing it never authored, any completed work crediting the capability sequence, configured entry kinds read as executed ones, and a destination read as arrived from the last View the Camera stood at, a topic charged for framing it never authored on the moment it assesses, a dependent the visit disarmed counted as a handover, an Auto visit's Stops invisible to the ledger, and a completed Travel lost to a cue the destination itself started, entry arrival evicted from a diagnostic window, Return mistaken for another entry, and narration completion credited as a capability handover. UX1 adds a second Preview entry restored in the Index, the retired Scene-subject column restored, a locator that stops listing the Scene's own subjects, a register whose records are no longer marked as register records, and a one-Preview-control rule that offers the control while it is inert. UX2 adds an aggregate Present that writes no View use or writes it as a visitor choice, a Plan reading captured without asking, an unlink that takes two history steps, a Set as Default written without the shared-use Ask, the retired `Present region` row restored beside the one creation entry, an image drawn with the authoring treatment instead of a normal-World reading, and an image pass that never gives the live camera back |
-| `run-all.sh` | the axis driver |
+| `run-all.sh` | the axis driver and the concurrent sweep: `QA_JOBS` axes at a time (default 3), each keeping its own browser session and ephemeral port, each buffered into one block plus a summary line |
