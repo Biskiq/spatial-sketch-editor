@@ -352,8 +352,15 @@ conformance_ok 'Travel leaves no origin as a gap and offers no per-origin surger
 conformance_ok 'Travel reports prepared versus reused support with the Camera owner' "$(qa_js "(/Prepared [0-9]+ Camera route/.test(__me.S.status.text)&&/Camera owns route geometry/.test(__me.S.status.text))")" 'true'
 conformance_ok 'one Travel preparation is one aggregate Undo step' "$(qa_js "__me.S.undo.at(-1).label==='Prepare Camera routes and select Travel'")" 'true'
 click "[data-act='exp-route'][data-id='$route']"
-# Add a real observer anchor with pointer, away from panels and endpoint controls.
+# UX5: the Path posture is the one route-editing home, and `+ Path point` is the only creation path. A
+# plain Stage press adds nothing, so the press below can only be a point because it was asked for.
+conformance_ok 'the Path posture is one Camera home with an armed-only point insertion' "$(qa_js '(document.querySelector("#card .c-k").textContent.includes("Camera Path")&&document.querySelector("[data-path-lane]")&&!!document.querySelector("#card [data-path-from]")&&!!document.querySelector("#card [data-act=exp-path-point]")&&__me.S.experienceContext.armed===false)')" true
 p="$(qa_jsv '(()=>{const r=document.querySelector("#gl").getBoundingClientRect();return Math.round(r.x+r.width*.53)+","+Math.round(r.y+r.height*.38)})()')"
+qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
+conformance_ok 'an unarmed Stage press adds no path point' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '0'
+click '[data-act="exp-path-point"]'
+qa_frames
+# Add a real observer anchor with pointer, away from panels and endpoint controls.
 qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
 conformance_ok 'QA-4 actual Plan Camera graph, full support, endpoints, anchor and pace' "$(qa_js "(__me.nav.plainPose().flat>.97&&document.querySelectorAll('[data-exp-route]').length===3&&!document.querySelector('[data-exp-gap]')&&document.querySelectorAll('[data-endpoint=origin]').length===3&&document.querySelector('[data-endpoint=destination]')&&document.querySelector('[data-exp-anchor]')&&document.querySelector('[data-exp-pace]')&&!document.querySelector('.station-projection')&&[...document.querySelectorAll('[data-endpoint]')].every($visible))")" true
 conformance_ok 'Stage route samples exactly consume the Camera evaluator and remain above the Deck' "$(qa_js '(()=>{const stage=document.querySelector("#stage").getBoundingClientRect(),bottom=document.querySelector("#experienceDeck").getBoundingClientRect().top-stage.top;return [...document.querySelectorAll("[data-exp-route]")].every(el=>{const r=__me.nav.routeGeometry(__me.nav.resolvedCamera(),el.dataset.expRoute),numbers=el.getAttribute("d").match(/-?\d+(?:\.\d+)?/g).map(Number);return numbers.length===82&&r.samples.every((s,i)=>{const p=__me.ctx.stage.project(s.observer);return Math.abs(numbers[i*2]-p.x)<.06&&Math.abs(numbers[i*2+1]-p.y)<.06&&p.x>0&&p.x<stage.width&&p.y>0&&p.y<bottom;});})&&!document.querySelector("[data-endpoint][data-exp-anchor]");})()')" true
@@ -367,6 +374,9 @@ click '#undoBtn'
 conformance_ok 'Undo restores route source' "$(source_hash)" "$before"
 # Capture route immediately before Coordinate so the QA-4/5 pair proves unchanged spatial route.
 capture qa-4-route
+# UX5: the Path posture is the Camera half of one edge, so the edge's cue timing is a door on the Path
+# Card and opens without putting the Path away. Nothing about the standpoint or the Camera source moves.
+conformance_ok 'the Path Card keeps the same edge cue-timing door' "$(qa_js "(!!document.querySelector('#card [data-act=exp-coordinate]')&&__me.S.experienceContext.depth==='route')")" true
 standpoint="$(pose)"; before="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 click '[data-act="exp-coordinate"]'
 agent-browser select '[data-exp-station]' "$anchor" >/dev/null;qa_frames

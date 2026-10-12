@@ -60,12 +60,21 @@ function box() {
 export function imageFor(viewId) {
   const view = ctx.cameraSource?.views?.[viewId];
   if (!view?.pose?.target) return { state: 'unavailable', reason: 'This View has no resolvable Camera pose' };
+  return imageForPose(view.pose);
+}
+
+// UX5: the same pass serves any evaluated Camera reading, not only an authored View — a Camera Path
+// point's pose is evaluated from the same route kernel, so its preview is produced by the same renderer,
+// keyed on the same resolved pose, and obeys the same three laws. The cache key is already the pose, so
+// no second cache and no second renderer is introduced by asking for a path point's picture.
+export function imageForPose(pose, reason) {
+  if (!pose?.target) return { state: 'unavailable', reason: reason || 'This reading has no resolvable Camera pose' };
   const { w, h } = box();
-  const key = poseKey(view.pose, worldSignature(), w, h);
+  const key = poseKey(pose, worldSignature(), w, h);
   if (cache.has(key)) return { state: 'ready', url: cache.get(key) };
   if (tried.has(key)) return { state: 'unavailable', reason: tried.get(key) };
   if (!queue.some((q) => q.key === key)) {
-    queue.push({ key, pose: { ...view.pose, target: triple(view.pose.target) }, w, h });
+    queue.push({ key, pose: { ...pose, target: triple(pose.target) }, w, h });
     peak = Math.max(peak, queue.length);
   }
   return { state: 'pending' };

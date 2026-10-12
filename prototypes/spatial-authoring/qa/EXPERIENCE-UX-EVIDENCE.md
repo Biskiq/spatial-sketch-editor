@@ -547,6 +547,86 @@ station movement and Rehearse); the Route/Camera-Path Deck band is still the C9 
   verification; density, hierarchy and the visual weight of the lane and the edge Card are the owner's
   single integrated review after UX7.
 
+---
+
+## UX5 — Camera Path posture (landed · functional gate verified, visual acceptance deferred)
+
+**Exit gate (plan §5):** QA 1 acceptance (§7) — the Stage shows the endpoints, the evaluated path and its
+points, with the selected point marked and no Cues or timing on it; `+ Path point` is the only creation
+path; the Point Card carries Remove, an evaluated Camera preview, Look through and Used by; the Deck lane
+is a straightened path that names the Guide edge occurrence; *From* lists origins with connected/gap
+status. Plus the shared-path Ask, refusal and Undo, and the law that an ordinary click adds nothing.
+
+### What UX5 changed
+
+| Artifact | Change |
+| --- | --- |
+| `app/experience-ui.js` | **`pathCard(seam)`** is the Path posture's one Card: the routing head (`Camera Path · Camera`, `View → View`, `Owner · Camera · pace`, `Guide edge · Stop n → Stop m`, `Reach · n Guide edges`), the **`From`** list (`originCoverage` rows with `connected` / `gap` / `needs repair` status and the route or Connect door, the current route marked), the **Path points** chips, `+ Path point`, the armed guidance line, **`pathPointDetail`** (identity, `n% along the route`, observer position, the evaluated preview, `Look through`, `Remove path point`, `Used by`), and Pace/Camera. **`pathLane()`** adds the straightened lane to `guideLane` in the Path posture. `edgeCard` keeps Cut/Travel, aggregate coverage and the one `Edit Camera Path` door, and keeps the edge's own cue-timing door, which the Path Card also offers as a quiet reference. |
+| `app/experience.js` | `armPathPoint()` (reflects the armed state, writes nothing), `selectPathPoint()`, `removePathPoint()` (through the one route proposal, so a shared route asks), `lookThroughPoint()` (Camera's own `nav.lookThrough`, evaluated from the route kernel). `routePoint()` now refuses unless the insertion is armed and disarms on success. The armed reading and the selected point are session state on the one context and are cleared by every depth change, by `editRoute`, by the return crumb and by Escape. `acceptRoutePace`'s writer gained `removeAnchor`. |
+| `app/experience-model.js` | `removeAnchor(c,id,anchorId)` — one point removed, every other point, the pace and the Experience references untouched. |
+| `app/experience-image.js` | `imageForPose(pose)` — the same image pass, keyed on the same resolved pose, now serves any evaluated Camera reading; `imageFor(view)` delegates to it. One renderer, one cache. |
+| `app/main.js` | a Stage press becomes a path point only while the insertion is armed; otherwise the shell's ordinary click runs and the route is untouched. |
+| `styles/app.css` | the lane, the point chips, the point Card, the pressed-action rule (a pressed `primary` action keeps ink text, so the armed control can never read as a blank box). |
+| `qa/experience-check.sh`, `qa/conformance-check.sh` | arming added where a press authors a point; the Card's controls are clicked through the Card's own scroll container (`card_click`) because the fixed Guide band can cover a control at the foot of a tall Card. No assertion was loosened. |
+| `screens/experience-ux5/` | five captures: the empty Path posture, the armed insertion, the Point Card with its preview, the shared-route removal Ask, and the posture at 1024×768. |
+
+### Readings (focused)
+
+| Proof | Result |
+| --- | --- |
+| `node --test prototypes/spatial-authoring/tests/*.test.mjs` | **140 / 140 pass**, exit 0 |
+| `qa/run-all.sh experience` | **37 / 0** (includes the new Path readings) |
+| `qa/run-all.sh conformance` | **146 / 0** |
+| `qa/run-all.sh experience-shell` | **42 / 0** |
+| `qa/run-all.sh composition` | **27 / 0** |
+| `qa/run-all.sh rich` | **35 / 0** |
+| `qa/run-all.sh reconciliation` | **13 / 0** |
+
+The banned §9 sweeps (`run-all.sh all`, `mutation-check.sh`, the mutation chains) were **not** run; the
+mutation scripts remain in the tree unchanged and unrun. That is the owner-ratified policy, not a pass.
+
+### The Path posture, as read from the page (conformance fixture, 1440×900)
+
+```
+CAMERA PATH · CAMERA            Gallery entry → Gallery entry
+Owner · Camera · auto pace      Guide edge · Stop 1 → Stop 2      Reach · 1 Guide edge
+FROM · 1        Gallery entry · connected        [This route]
+PATH POINTS · 1  ◉ 1                                            [+ Path point]
+                The only creation path: arm this, then click the Stage.
+                A plain click selects and adds nothing.
+SELECTED POINT · 1   Anchor 1 · 42% along the route · observer -6.14, 1.50, -1.57
+                     [rendered Camera preview]   [Look through] [Remove path point]
+PACE · CAMERA  auto    Camera owns this geometry · 1.14s travel · 1 point · 0 named stations
+[Bring route into view] [Edit cue timing] [Put it back]
+Deck lane: Camera Path · Stop 1 → Stop 2   Materials → Piano · auto pace   ◉ 1
+```
+
+### The new slice is not a tautology (focused replacement checks, in-tree)
+
+| Reintroduced defect | Rejected at |
+| --- | --- |
+| a Stage press authors a path point without being asked | experience · *a plain Stage press adds no Camera path point*; conformance · *an unarmed Stage press adds no path point* |
+| the Path posture routed through the Seam triptych/L2 reading instead of one Camera home | conformance · *the Path posture is one Camera home with an armed-only point insertion* |
+| a removed point taking the route's other points, pace or references with it | experience · *removing the selected point is one ordinary Camera edit* + *Undo restores the removed path point* |
+| Look through writing source or history instead of only the standpoint | experience · *Look through a path point moves the standpoint and writes no history* |
+| the point preview introducing a second renderer or cache | `imageForPose` is the same keyed pass; `imageStats()` is unchanged in shape |
+| a pressed control rendering as a blank box | the pressed rule keeps ink on the recess background; re-captured armed state reads `Cancel point` |
+
+### Recorded facts and limits
+
+- **Path points are the authored interior anchors, and their identity is the Camera station id.** Selecting
+  one selects the same identity a Seam station names, so a Hold or Invocation authored at that station keeps
+  its reference across a move, and the Experience side is never renamed by a Camera edit.
+- **The Point Card's preview is the View preview's pass.** It is drawn at the evaluated pose of the point,
+  so the picture is the Camera's own reading of that point rather than a second rendering path; while it is
+  being drawn the Card names that (`Rendering this point…`), and a pose that cannot resolve is reported in
+  words rather than shown as an empty box.
+- **Deferred to UX6 (recorded, not fixed):** the coordination strip is still the C9 surface restyled only in
+  home; Hold/Invoke authoring, the Journey timeline, grouped station movement and Rehearse are untouched.
+- **Visual acceptance of UX5 is deferred, not claimed.** The five captures and the readings are agent
+  verification; the density and hierarchy of the Path Card and the straightened lane are the owner's single
+  integrated review after UX7.
+
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression
 [axis]: ./experience-shell-check.sh
