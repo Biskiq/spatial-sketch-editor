@@ -2,16 +2,21 @@ import { capability, capabilities, profileOptions, isRealized } from './experien
 import { gateState, narrationCaption, presentationPlan } from './experience-runtime.js';
 import { resolvedCamera, readingFor } from './navigation.js';
 import { routeGeometry } from './camera-evaluation.js';
-import { coordinateTiming, movementTiming } from './experience-coordination.js';
+import { coordinateTiming, movementTiming, journeyClock, cueDestinations } from './experience-coordination.js';
 import { originCoverage, getSeam, resolveNext, stopEntry, entryUse, viewReach, viewUseReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget, connectionReach } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
 import { imageFor, imageForPose } from './experience-image.js';
-import { resolveExperience, experienceParkedContext, retainedContributions, linkedDefinitionReach, pendingDescriptor, planCaptureSupport } from './experience.js';
+import { resolveExperience, experienceParkedContext, retainedContributions, linkedDefinitionReach, pendingDescriptor, planCaptureSupport, rehearsalReading } from './experience.js';
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const button=(act,text,id='',role='action')=>`<button class="exp-action ${act.startsWith('exp-remove-')?'destructive':role}" data-act="${act}" data-id="${esc(id)}">${text}</button>`;
 export function experienceIndex() {
   const e = ctx.experience;
-  return `<div class="ix-head"><span class="ix-title">Experience</span><span class="ix-note">Meaning in the same World</span></div><div class="ix-group">Presentations</div>`
+  // PLATE §0.8.1: in the Camera Path and Journey postures the Index header becomes **Camera Path** with the
+  // **Path | Journey** switch, and the *From* origins with their connected/gap status are listed here — the
+  // origin choice is a locator decision, not a Card section. The Card keeps the item's own detail (Pace and
+  // used by, or the selected path point), so neither home grows into the other.
+  const pathHome = cameraPathIndexHtml();
+  return pathHome + `<div class="ix-head"><span class="ix-title">Experience</span><span class="ix-note">Meaning in the same World</span></div><div class="ix-group">Presentations</div>`
   + Object.values(e.presentations).map(p => `<div class="ix-row${S.sel === p.id ? ' sel' : ''}"><button class="ix-go" data-act="exp-open" data-id="${p.id}"><span class="glyph pres"></span><span class="ix-name">${esc(p.name)}</span></button></div>`).join('')
   + (e.guide.length ? `<div class="ix-group">Guide</div><div class="ix-row"><button class="ix-go" data-act="exp-guide">${esc(e.name)} · ${e.guide.length} Stops</button></div>` : '')
   // C9.6: retained contributions whose organizational home was removed stay listed with a route to their
@@ -32,6 +37,27 @@ export function experienceIndex() {
   + `<div class="ix-group">Add</div><div class="ix-note">Presenting an identity is explicit; nothing is presented by browsing.</div>`
   + `<div class="ix-row"><button class="ix-go" data-act="exp-create">+ Present<span class="ix-note">a Presentation with one Default View, on the selected identity or a new one</span></button></div>`
   + `<div class="ix-row"><button class="ix-go" data-act="find-world">Browse World<span class="ix-note">every subject the Scene and the museum have, found by name</span></button></div>`;
+}
+// The Camera Path / Journey Index home: the posture switch, and the *From* origins of the selected edge
+// with their real status. One row per origin; choosing one chooses the connection being edited, which is
+// also the origin the Journey's clock is measured from. Nothing here writes source.
+function cameraPathIndexHtml() {
+ const x=S.experienceContext,e=ctx.experience;
+ if(!['route','coordination'].includes(x.depth)||!x.seam)return '';
+ const c=resolvedCamera(),route=c.connections[S.task?.params?.connection];
+ if(!route)return '';
+ const rows=originCoverage(e,c,x.seam.from,x.seam.to),at=id=>e.guide.indexOf(id)+1;
+ const reach=(r)=>!r.missing&&(!!r.connectionId||r.viewId===r.targetId);
+ const journey=x.depth==='coordination',clock=journey?journeyClock(c,e.seams[`${x.seam.from}>${x.seam.to}`],route.id):null;
+ const switchHtml=`<div class="ix-posture" data-exp-posture-switch>${x.depth==='route'?`<span class="ix-current" data-exp-posture="route" aria-current="true">Path</span><button class="exp-action" data-act="exp-coordinate">Journey</button>`:`<button class="exp-action" data-act="exp-route" data-id="${esc(route.id)}">Path</button><span class="ix-current" data-exp-posture="journey" aria-current="true">Journey</span>`}</div>`;
+ return `<div class="ix-head ix-path"><span class="ix-title">Camera Path</span>${switchHtml}</div>`
+  +`<div class="ix-group">Guide edge</div><div class="ix-note">Stop ${at(x.seam.from)} → Stop ${at(x.seam.to)} · ${esc(e.stops[x.seam.from]?.name||'Missing Stop')} → ${esc(e.stops[x.seam.to]?.name||'Missing Stop')}</div>`
+  // QA 2's Index reading: the Journey's own origin → destination, its total and its Cue count. The Deck
+  // carries the axis; the Index carries the numbers the axis cannot label without clutter.
+  +(journey&&clock?`<div class="ix-group">Journey</div><p class="ix-fact">${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')}</p><p class="ix-fact" data-exp-journey-total>Total · ${clock.duration.toFixed(1)} s${clock.reason?` · ${esc(clock.reason)}`:''}</p><p class="ix-note" data-exp-journey-cues>${clock.cues.length} Cue${clock.cues.length===1?'':'s'} on this edge · Camera travel ${fmtClock(clock.travelDuration)} + ${fmtClock(clock.pause)} pause</p>`:'')
+  +`<div class="ix-group">From · ${rows.length}</div><div class="ix-note">An origin is a View this edge can really leave from; choosing one chooses the Camera route being edited and the Journey it is measured from.</div>`
+  +`<div data-path-from>${rows.map(r=>`<div class="ix-row origin-row"><span>${esc(c.views[r.viewId]?.name||'Missing View')} · ${reach(r)?(r.connectionId===route.id?'this route':'connected'):r.missing?'needs repair':'gap'}</span>${r.connectionId?button('exp-route',r.connectionId===route.id?'Path':'Open',r.connectionId):r.missing?'':button('exp-connect','Connect',r.useId)}</div>`).join('')||'<p class="ix-note">No eligible origin on this Stop.</p>'}</div>`
+  +`<label class="ix-origin">Origin<select data-exp-journey-origin aria-label="Journey origin">${[...new Set(rows.filter(r=>r.connectionId).map(r=>r.viewId))].map(id=>`<option value="${esc(id)}" ${id===route.from?'selected':''}>${esc(c.views[id]?.name||'Missing View')}</option>`).join('')||'<option value="">No supported origin</option>'}</select></label>`;
 }
 const reuseCount=id=>Object.values(ctx.experience.stops).filter(s=>s.presentationId===id).length;
 const valueLabel=(cap,v)=>{if(!cap)return String(v);if(cap.control==='range')return String(Number(v));if(cap.kind==='playback')return v?'Playing':'Stopped';return v?'On':'Off';};
@@ -56,6 +82,10 @@ function experienceCardBody(){
   // edited, and its *From* list, its points and its Pace belong in one Card rather than under the edge's
   // movement controls. The edge itself is read again by putting the Path away.
   if(x.depth==='route')return pathCard(x.seam);
+  // UX6: the Journey posture reads the edge as time. The Card inspects one Cue — its occurrence, when it
+  // happens, its pause and its actions — and the coordination strip becomes the projection it always
+  // was, with the editing controls gathered on the Cue Card instead of beside the lanes.
+  if(x.depth==='coordination')return cueCard(x.seam);
   return edgeCard(x.seam);
  }
  if(r?.kind==='Presentation'){
@@ -433,17 +463,52 @@ export function renderDeck(){
 // The one Guide lane. The band adds its own head (Edit Guide ordering and a Close); the ordinary posture
 // keeps the same lane as a strip with the one door that opens the band. Nothing here is a second
 // inspector: a Stop chip selects the Stop, an edge chip selects the edge.
-function guideLane(e){const x=S.experienceContext,band=x.depth!=='ordinary';const ops=band?`${guideOrderHtml(e)}${button('exp-close','Close Guide')}`:button('exp-guide','Open Guide');
- return `<div class="deck-head"><b>Guide · ${e.guide.length} Stop${e.guide.length===1?'':'s'}</b><div class="gd-ops">${ops}</div></div>${x.depth==='route'?pathLane():''}<ol class="gd-lane" data-guide-lane>${e.guide.map((id,i)=>guideItem(e,id,i)).join('')}</ol>`;}
-// UX5: the straightened Deck lane. In the Path posture the Deck names the one Guide edge the Path belongs
-// to and lays this route's authored points out in a straight line, so the spatial Stage drawing and the
-// Deck read the same points in the same order. A point chip selects its point; the Guide lane under it is
-// still the one Guide home and is never restructured by path editing.
-function pathLane(){
+function guideLane(e){const x=S.experienceContext,band=x.depth!=='ordinary';
+ // One posture is visually dominant, and the Deck speaks that posture's language: the Guide's own lane in
+ // the Guide postures, the straightened path topology in the Path posture, the time axis in the Journey.
+ // The two Camera postures name their edge and their lane instead of repeating the Guide's Stop lane
+ // beneath their own (PLATE §0.8.1).
+ if(x.depth==='route')return `${pathHead(e)}${pathTopologyLane()}`;
+ if(x.depth==='coordination')return `${journeyHead(e)}${journeyLane()}`;
+ const stops=`${e.guide.length} Stop${e.guide.length===1?'':'s'}`;
+ const lane=`<ol class="gd-lane" data-guide-lane>${e.guide.map((id,i)=>guideItem(e,id,i)).join('')}</ol>`;
+ // QA 4's band: a name block that reads the Guide, then the lane of Stop chips in order, with `Edit Guide`
+ // (the one ordering posture) and the way back out at the band's right. The ordinary posture keeps the
+ // same lane as a quiet single-line strip with the one door that opens the band.
+ if(!band)return `<div class="deck-head"><b>Guide · ${esc(e.name)} · ${stops}</b><div class="gd-ops">${button('exp-guide','Open Guide')}</div></div>${lane}`;
+ return deckBlock({k:'Guide',t:esc(e.name),s:stops,ops:`${guideOrderHtml(e)}${button('exp-close','Close Guide')}`})+lane;
+}
+// The Deck's own name block, in the boards' proportion: the posture's label, its one reading, a quiet
+// sub-line and the posture's own actions. It is the band's first child, so its heading is what the
+// posture is named by.
+function deckBlock({k,t,s,ops}){return `<div class="deck-block"><small class="deck-k">${k}</small><b class="deck-t">${t}</b>${s?`<small class="deck-s">${s}</small>`:''}${ops?`<div class="gd-ops">${ops}</div>`:''}</div>`;}
+// The Camera postures' own Deck blocks: the posture, the View pair that is the reading, and the Guide
+// occurrence it is measured on. The Path | Journey switch is the Index header's (PLATE §0.8.1: the Index
+// header becomes Camera Path with the switch), so no Deck repeats it.
+function pathHead(e){const x=S.experienceContext,c=resolvedCamera(),at=id=>e.guide.indexOf(id)+1,route=c.connections[S.task?.params?.connection];return deckBlock({k:'Camera Path',t:`${esc(c.views[route?.from]?.name||'Missing View')} → ${esc(c.views[route?.to]?.name||'Missing View')}`,s:`Guide · Stop ${at(x.seam.from)} → Stop ${at(x.seam.to)}`});}
+function journeyHead(e){const x=S.experienceContext,c=resolvedCamera(),at=id=>e.guide.indexOf(id)+1,p=journeyProbe(),route=p?.clock.route;
+ if(!route)return deckBlock({k:'Journey',t:'No supported Camera route',s:`Guide · Stop ${at(x.seam.from)} → Stop ${at(x.seam.to)}`});
+ return deckBlock({k:'Journey',t:`${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')}`,
+  s:`Guide · Stop ${at(x.seam.from)} → Stop ${at(x.seam.to)}${p.clock.reason?` · ${esc(p.clock.reason)}`:''}`,ops:rehearseOps()});
+}
+// UX5: the straightened path topology (PLATE §0.8.1 — "Straightened path topology, no time"). One shallow
+// line of the route's own shape: the origin View, the authored points in their authored order, the
+// destination View, and a connector between each neighbour. No times, no Stop cards, no second inspector;
+// a point chip selects its point, and the Stage draws the same points in the same order.
+function pathTopologyLane(){
  const x=S.experienceContext,c=resolvedCamera(),route=c.connections[S.task?.params?.connection];
  if(!route||!x.seam)return '';
- const e=ctx.experience,at=id=>e.guide.indexOf(id)+1,name=id=>e.stops[id]?.name||'Missing Stop';
- return `<div class="path-lane" data-path-lane="${route.id}"><div class="path-head"><b>Camera Path · Stop ${at(x.seam.from)} → Stop ${at(x.seam.to)}</b><small>${esc(name(x.seam.from))} → ${esc(name(x.seam.to))} · ${esc(route.speed)} pace</small></div><div class="path-strip">${route.anchors.map((a,i)=>`<button class="path-point ${x.point?.anchorId===a.id?'selected':''}" data-act="exp-point-select" data-connection="${route.id}" data-anchor="${a.id}" aria-label="Path point ${i+1}">${x.point?.anchorId===a.id?'◉':'○'} ${i+1}</button>`).join('')||'<small class="path-empty">no authored point — the route is its two endpoints</small>'}</div><div class="path-tail">${x.armed?'<span role="status">Armed · click the Stage</span>':`<span>${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')}</span>`}</div></div>`;
+ const node=(label,tag,attrs)=>`<${tag} class="topo-node" ${attrs}>${label}</${tag}>`;
+ const points=route.anchors.map((a,i)=>{const on=x.point?.anchorId===a.id;
+  return `${i>0||true?'<span class="topo-link" aria-hidden="true">▸</span>':''}${node(`${on?'◉':'○'} ${i+1}`,'button',`data-act="exp-point-select" data-connection="${route.id}" data-anchor="${a.id}" aria-label="Path point ${i+1}"${on?' aria-current="true"':''}`)}`;
+ }).join('');
+ return `<div class="path-lane" data-path-lane="${route.id}">`
+  +node(`▮ ${esc(c.views[route.from]?.name||'Missing View')}`,'span','data-path-end="origin"')
+  +(route.anchors.length?points:node('no authored point','span','class="topo-empty" data-path-points="0"'))
+  +'<span class="topo-link" aria-hidden="true">▸</span>'
+  +node(`▮ ${esc(c.views[route.to]?.name||'Missing View')}`,'span','data-path-end="destination"')
+  +`<span class="topo-tail">${x.armed?'<span role="status">Armed · click the Stage</span>':`${esc(route.speed)} pace`}</span>`
+  +`</div>`;
 }
 // Edit Guide is the Deck's ordering context: order is the fallback continuation, and a Stop may repeat a
 // Presentation. It writes through the same move/remove/attach writers the Stop Card used.
@@ -456,13 +521,19 @@ function guideItem(e,id,i){
  // it (or the Stop Card's own `Show in Guide` is used). Selecting a Stop is L1 — the chip is marked, the
  // Card reads Entry/Next, and no detail opens.
  const selected=S.sel===id||S.experienceContext.stop===id,expanded=S.experienceContext.stop===id;
+ // QA 4's chip, in the board's proportion: the occurrence number, the Stop's own name, and the
+ // Presentation it repeats as the quiet second reading. The chip names itself and nothing else — Entry,
+ // Next and pacing are the Card's reading of the selected Stop, and ordering is `Edit Guide`'s — so six
+ // Stops read as a shallow lane of named chips rather than six stacked mini-cards.
  return `<li class="gd-item" data-stop="${id}"><article class="stop-card gd-stop-card ${expanded?'expanded':'compact'} ${selected?'selected':''}" data-stop="${id}">`
-  +`<button class="peek-stop gd-stop ${selected?'selected':''}" data-act="exp-stop" data-id="${id}" aria-label="Stop ${i+1}: ${esc(s?.name||'Missing Stop')}">${selected?'◉':'○'} ${i+1} · ${esc(p?.name||'Missing Presentation')}</button>`
-  +`<small class="gd-entry">Entry · ${esc(v?.name||(entry.hold?'Keep current viewpoint':'Repair required'))} · ${esc(s?.pacing?.kind||'auto')}</small>`
-  +button('exp-expand-stop','Detail',id)
-  // The expanded chip is only the Stop's ordering handles: the Stop's own detail is the Card's, so the
-  // chip carries no second reading (and the band stays inside its reserved share).
-  +(expanded?`<div class="gd-more">${button('exp-move-stop','←',id).replace('data-id=','data-delta="-1" data-id=')}${button('exp-move-stop','→',id).replace('data-id=','data-delta="1" data-id=')}</div>`:'')
+  +`<button class="peek-stop gd-stop ${selected?'selected':''}" data-act="exp-stop" data-id="${id}" aria-label="Stop ${i+1}: ${esc(s?.name||'Missing Stop')}">`
+  +`<span class="gd-num" aria-hidden="true">${selected?'◉':i+1}</span>`
+  +`<span class="gd-names"><b class="gd-name">${esc(s?.name||'Missing Stop')}</b><small class="gd-pres">Presentation · ${esc(p?.name||'Missing Presentation')}</small></span>`
+  +`</button>`
+  // The expanded chip is the Stop's own occurrence reading plus its ordering handles; both belong to the
+  // deliberate disclosure, so the compact chip stays one shallow line of name and Presentation.
+  +(expanded?`<small class="gd-entry">Entry · ${esc(v?.name||(entry.hold?'Keep current viewpoint':'Repair required'))} · ${esc(s?.pacing?.kind||'auto')}</small><div class="gd-more">${button('exp-move-stop','←',id).replace('data-id=','data-delta="-1" data-id=')}${button('exp-move-stop','→',id).replace('data-id=','data-delta="1" data-id=')}</div>`
+            :button('exp-expand-stop','Detail',id))
   +`</article>${edgeChip(e,id,i)}</li>`;
 }
 // The resolved continuation of one Stop, read from the model (never a positional neighbour): an explicit
@@ -472,9 +543,13 @@ function edgeChip(e,from,i){
  const s=e.stops[from],next=resolveNext(e,from),sel=S.experienceContext.seam;
  if(s?.next.kind==='end')return `<span class="gd-edge end" data-continuation="end">⊘ End</span>`;
  if(next.missing)return `<span class="gd-edge gap" role="status" data-continuation="repair">! needs repair</span>`;
- if(!next.id)return `<span class="gd-edge end" data-continuation="end">⊘ End of Guide</span>`;
+ if(!next.id)return `<span class="gd-edge end" data-continuation="end">⊘ End</span>`;
  const j=e.guide.indexOf(next.id),adjacent=j===i+1,on=sel?.from===from&&sel?.to===next.id;
- return `<button class="gd-edge ${adjacent?'order':'explicit'} ${on?'selected':''}" data-act="exp-seam" data-from="${from}" data-to="${next.id}" data-continuation="${adjacent?'order':'explicit'}" aria-label="Edge from Stop ${i+1} to Stop ${j+1}">${adjacent?'→':'⇥'} Stop ${j+1} · ${esc(e.stops[next.id]?.name||'Missing Stop')}</button>`;
+ // One word, not a sentence: the order-default chip names its movement (PLATE §0.8.1 — order-default
+ // Cut/Travel); an explicit non-adjacent Next names the destination it really resolves to, which is what
+ // keeps it from reading as the positional neighbour beside it (QA 4).
+ const movement=e.seams?.[`${from}>${next.id}`]?.mode==='travel'?'Travel':'Cut';
+ return `<button class="gd-edge ${adjacent?'order':'explicit'} ${on?'selected':''}" data-act="exp-seam" data-from="${from}" data-to="${next.id}" data-continuation="${adjacent?'order':'explicit'}" aria-label="${adjacent?`${movement} edge`:'Next'} from Stop ${i+1} to Stop ${j+1} · ${esc(e.stops[next.id]?.name||'Missing Stop')}">${adjacent?movement:`⇥ Stop ${j+1}`}</button>`;
 }
 // A stale edge: one bookend left, or the destination no longer resolves. It never retargets — the author is
 // told, and the resolved edge (if there still is one) is a deliberate offer.
@@ -496,12 +571,12 @@ function pathCard(seam){
  const e=ctx.experience,c=resolvedCamera(),x=S.experienceContext,t=S.task,route=c.connections[t?.params?.connection];
  const at=id=>e.guide.indexOf(id)+1;
  if(!route)return `<div class="c-head"><div class="c-k">Camera Path · needs repair</div><div class="c-t">No resolving route</div><div class="c-ref">Owner · Camera</div></div><p class="exp-gap" role="status">The route this Path was reading no longer resolves.</p><div class="c-acts">${button('exp-route-return','Put it back')}</div>`;
- const geometry=routeGeometry(c,route.id),rows=originCoverage(e,c,seam.from,seam.to),reaches=connectionReach(e,c,route.id);
+ const geometry=routeGeometry(c,route.id),reaches=connectionReach(e,c,route.id);
  const point=x.point?.connectionId===route.id?route.anchors.find(a=>a.id===x.point.anchorId):null;
  const station=point&&geometry?geometry.stations.find(s=>s.id===point.id):null;
- const supported=r=>!r.missing&&(!!r.connectionId||r.viewId===r.targetId);
+ // The *From* origins live in the Index header (PLATE §0.8.1): choosing an origin is a locator decision.
+ // The Card is the item's own detail — its points, the selected point, Pace and its used-by reach.
  return `<div class="c-head"><div class="c-k">Camera Path · Camera</div><div class="c-t">${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')}</div><div class="c-ref">Owner · Camera · ${esc(route.speed)} pace<br>Guide edge · Stop ${at(seam.from)} → Stop ${at(seam.to)}<br>Reach · ${reaches.length} Guide edge${reaches.length===1?'':'s'}</div></div>`
-  +`<div class="c-sec">From · ${rows.length}</div><div class="path-from" data-path-from>${rows.map(r=>`<div class="origin-row"><span>${esc(c.views[r.viewId]?.name||'Missing View')} · ${supported(r)?'connected':r.missing?'needs repair':'gap'}</span>${r.connectionId?button('exp-route',r.connectionId===route.id?'This route':'Open route',r.connectionId):r.missing?'':button('exp-connect','Connect',r.useId)}</div>`).join('')||'<p class="c-hint">No eligible origin on this Stop.</p>'}<p class="c-hint">An origin is a View this edge can really leave from; an unprepared origin stays an explicit gap.</p></div>`
   +`<div class="c-sec">Path points · ${route.anchors.length}</div><div class="path-points" data-path-points>${route.anchors.map((a,i)=>`<button class="path-point ${point?.id===a.id?'selected':''}" data-act="exp-point-select" data-connection="${route.id}" data-anchor="${a.id}" aria-label="Path point ${i+1}"${point?.id===a.id?' aria-current="true"':''}>${point?.id===a.id?'◉':'○'} ${i+1}</button>`).join('')||'<p class="c-hint">No authored path point yet — the route is its two endpoints and Camera\'s own evaluation between them.</p>'}</div>`
   // Arming is a mode, not the commit: the primary weight belongs to the button that places the point, so
   // while the insertion is armed the control reads as the state it holds (`Cancel point`) and keeps its
@@ -534,6 +609,78 @@ function pathPointDetail(route,point,station,reaches){
   +`<p class="c-hint">Removing one point keeps every other point, the pace and the Experience references this route serves; the path re-evaluates through Camera's own kernels.</p>`
   +`<details class="exp-more" data-exp-point-used><summary>Used by · ${stops.length} Guide edge${stops.length===1?'':'s'}</summary>${stops.map(s=>`<p class="exp-fact">${esc(s)}</p>`).join('')||'<p class="c-hint">No Guide edge uses this route.</p>'}</details>`
   +`</div>`;
+}
+// ----- UX6: the Journey — the time Deck and the Cue Card ---------------------------------------------
+
+// A clock reading is seconds the author can compare at a glance: m:ss.d, from zero.
+const fmtClock = (t) => { const s=Math.max(0,Number(t)||0); return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}.${Math.floor((s%1)*10)}`; };
+// The Journey's one reading: the selected edge, its seam and the clock of the currently selected origin's
+// route. Every Journey surface reads this rather than re-deriving a time of its own.
+const journeyProbe = () => {
+ const x=S.experienceContext;if(!x.seam)return null;
+ const seam=ctx.experience.seams[`${x.seam.from}>${x.seam.to}`];
+ const clock=journeyClock(resolvedCamera(),seam,S.task?.params?.connection);
+ return clock?{seam,clock}:null;
+};
+// The time Deck: 0:00 → the derived total for the selected origin's nominal Journey, naming the Guide edge
+// and the origin it is measured from, with one ◆ marker per Cue and the Rehearse playhead. Marker positions
+// are times rather than progress, because time is what this Deck says it maps.
+function journeyLane(){
+ const p=journeyProbe();
+ if(!p)return `<div class="journey-deck" data-journey-deck><p class="c-hint">Choose a supported origin to read this edge as time.</p></div>`;
+ const {clock}=p,total=Math.max(.001,clock.duration),pct=t=>Math.max(1.5,Math.min(98.5,((t??0)/total)*100));
+ const reading=rehearsalReading(),t=reading?reading.t:0,playing=!!reading?.playing;
+ // QA 2's Deck: one axis from 0:00 to the derived total, a ◆ at each Cue's own time with the Cue's name
+ // beneath it, and the playhead. The whole axis is the scrub surface, so no second control repeats it;
+ // the playhead is what the author drags and what the frame pass patches in place.
+ return `<div class="journey-deck" data-journey-deck><div class="jd-axis">`
+  +`<div class="jd-cues">${clock.cues.map(cue=>`<button class="jd-cue ${S.task?.params?.station===cue.stationId?'selected':''}" style="left:${pct(cue.at)}%" data-act="exp-cue-select" data-id="${cue.stationId}" data-cue-at="${cue.at===null?'':cue.at.toFixed(2)}" aria-label="Cue ${esc(cue.label)} at ${fmtClock(cue.at)}"><span class="jd-diamond" aria-hidden="true">◆</span><small>${esc(cue.label)}</small></button>`).join('')||'<p class="c-hint jd-none">No Cue on this edge yet</p>'}</div>`
+  +`<span class="jd-playhead ${playing?'playing':''}" data-exp-playhead style="left:${pct(t)}%"></span>`
+  +`<input type="range" class="jd-scrub ${playing?'playing':''}" min="0" max="${clock.duration.toFixed(2)}" step="0.05" value="${t.toFixed(2)}" data-exp-rehearse aria-label="Rehearse playhead">`
+  +`<div class="jd-ends"><span class="jd-end">${fmtClock(0)}</span><span class="jd-time" data-exp-rehearse-time>${reading?`${fmtClock(t)} / ${fmtClock(clock.duration)}`:`0:00 / ${fmtClock(clock.duration)}`}</span><span class="jd-end">${fmtClock(clock.duration)}</span></div>`
+  +`</div></div>`;
+}
+// Rehearse is the Journey's one primary action, so it sits in the Journey's own name block (QA 2). Pause
+// and Stop are the states of that same action; Look through is Camera's own explicit exit from the rig.
+function rehearseOps(){
+ const reading=rehearsalReading(),live=!!(reading&&S.rehearse&&S.rehearse.connectionId===reading.clock.connectionId);
+ return button('exp-rehearse-play','Rehearse','','primary')
+  +(live?button('exp-rehearse-pause','Pause'):'')
+  +(live?button('exp-rehearse-stop','Stop'):'')
+  +button('exp-rehearse-look','Look through','','reference');
+}
+// The Cue Card. A Cue is the (Guide edge, connection, station) triple: it reads its occurrence, when it
+// happens, its pause (one hold edits directly; several show the summed pause with `Edit holds` for the
+// individuals) and its actions, then offers the editing writers and an atomic move. The strip below is the
+// projection the author is looking at, not a second set of controls.
+function cueCard(pair){
+ const e=ctx.experience,x=S.experienceContext,c=resolvedCamera(),p=journeyProbe();
+ // The Card is handed the selected pair; the resolved seam carries the beats, so it is read here rather
+ // than assumed from the pair the context keeps.
+ const seam=e.seams[`${pair.from}>${pair.to}`]||pair;
+ const at=id=>e.guide.indexOf(id)+1,name=id=>e.stops[id]?.name||'Missing Stop';
+ if(!p)return `<div class="c-head"><div class="c-k">Journey · needs repair</div><div class="c-t">No supported Camera route</div><div class="c-ref">Owner · Experience<br>Guide edge · Stop ${at(pair.from)} → Stop ${at(pair.to)}</div></div><p class="exp-gap" role="status">This edge has no supported origin route, so it cannot be read as time yet.</p><div class="c-acts">${button('exp-close','Close')}</div>`;
+ const {clock}=p,route=clock.route,params=S.task?.params||{},cue=clock.cues.find(k=>k.stationId===params.station)||null;
+ // The occurrence: one Camera route can serve more than one Guide edge, and each edge has its own Cues.
+ // Both are named, so a shared route never reads as one shared pause or one shared selection.
+ const shared=connectionReach(e,c,route.id).filter(r=>!(r.from===pair.from&&r.to===pair.to));
+ const head=`<div class="c-head"><div class="c-k">Cue · Journey</div><div class="c-t">${esc(cue?(cue.label||`Cue at ${cue.stationId}`):'No Cue selected')}</div><div class="c-ref">Guide edge · Stop ${at(pair.from)} → Stop ${at(pair.to)} · ${esc(name(pair.from))} → ${esc(name(pair.to))}<br>Owner · Experience · occurrence ×1${shared.length?` · this Camera route also serves ${shared.map(r=>`Stop ${at(r.from)} → Stop ${at(r.to)}`).join(', ')}`:''}<br>Origin · ${esc(c.views[route.from]?.name||'Missing View')} → ${esc(c.views[route.to]?.name||'Missing View')} · ${esc(route.speed)} pace</div></div>`;
+ const cueList=clock.cues.length?`<div class="jd-cue-list" data-exp-cue-list>${clock.cues.map(k=>`<button class="exp-action reference jd-cue-row ${k.stationId===params.station?'selected':''}" data-act="exp-cue-select" data-id="${k.stationId}"><span>◆ ${esc(k.label)}</span><small>${fmtClock(k.at)}${k.holds.length?` · ${k.holds.length} hold${k.holds.length===1?'':'s'} ${k.pause}s`:''}${k.invokes.length?` · ${k.invokes.length} action${k.invokes.length===1?'':'s'}`:''}</small></button>`).join('')}</div>`:'<p class="c-hint">No Cue on this route yet — a Cue is a Hold or an Invocation authored at one of its stations.</p>';
+ const pause=!cue?'':cue.holds.length===0?`<p class="exp-fact" data-cue-pause>No pause · the visit moves straight through this station</p>`
+  :cue.holds.length===1?`<label class="exp-label">Pause · this Cue<input type="number" min="0" step=".25" data-exp-hold="${cue.holds[0].id}" value="${cue.holds[0].seconds}" aria-label="Hold seconds">s</label>`
+  :`<p class="exp-fact" data-cue-pause>Pause · ${cue.holds.length} holds · ${fmtClock(cue.pause)} summed</p><details class="exp-more" data-exp-cue-holds><summary>Edit holds · ${cue.holds.length}</summary>${cue.holds.map(h=>`<label class="exp-label">Hold ${fmtClock(h.at)}<input type="number" min="0" step=".25" data-exp-hold="${h.id}" value="${h.seconds}" aria-label="Hold seconds">s</label>`).join('')}<p class="c-hint">Every hold stays its own authored pause; the total is a reading, never a field that consolidates them.</p></details>`;
+ const actions=!cue?'':cue.invokes.length?cue.invokes.map(b=>`<p class="exp-fact" data-cue-action="${b.id}">${esc(e.definitions[e.uses[b.useId]?.definitionId]?.name||'Missing Activity')} · ${b.at===null?'needs repair':fmtClock(b.at)}${stationBound(b)?'':' · trigger elsewhere'}</p>`).join(''):`<p class="c-hint">No action here — this Cue only pauses.</p>`;
+ const move=cue?`<div class="c-sec">Move this Cue</div><label class="exp-label">Station<select data-exp-cue-move aria-label="Move cue to station"><option value="">Choose a station</option>${cueDestinations(c,p.seam,route.id,cue.stationId).map(s=>`<option value="${s.id}">${esc(s.label)}</option>`).join('')}</select></label><p class="c-hint">Only stations this Cue can really take are offered: its own, and any station another Cue already holds, are not. A move rebinds every beat of this Cue and its Activity bindings as one Undo step.</p>`:'';
+ return head
+  +`<div class="c-sec">Cues · ${clock.cues.length}</div>`+cueList
+  +(cue?`<div class="c-sec">At · Pause · Actions</div><p class="exp-fact" data-cue-at>At · ${fmtClock(cue.at)} of ${fmtClock(clock.duration)}</p>`+pause+actions:'')
+  +`<div class="c-sec">Edit cue</div><div class="c-acts">${button('exp-beat','Hold here')}${button('exp-mark-station','Name mid-route station')}<select data-exp-invoke-use><option value="">Choose Activity</option>${Object.values(e.uses).filter(invokable).map(u=>`<option value="${u.id}" ${params.invokeUse===u.id?'selected':''}>${esc(e.definitions[u.definitionId]?.name)}</option>`).join('')}</select>${button('exp-invoke-beat','Invoke here').replace('class=',(params.invokeUse?'':'disabled ')+'class=')}</div><p class="c-hint">A binding moves that Activity's trigger to this station; a visitor offer stays with its subject.</p>`
+  +move
+  +`<div class="c-sec">Pace · Camera</div><label class="exp-label">Pace · Camera<select data-exp-pace>${['slow','auto','fast'].map(speed=>`<option ${route.speed===speed?'selected':''}>${speed}</option>`).join('')}</select></label>`
+  +coordinationDetail()
+  +coordinationHtml(seam, p.seam)
+  +`<div class="c-acts">${button('exp-route','Edit Camera Path',route.id)}${button('exp-close','Close')}</div>`
+  +askHtml();
 }
 // The edge's own Card (UX4). It owns the continuation identity, Cut/Travel, aggregate origin coverage
 // with the one explicit repair, and the door to the Camera Path posture; per-origin rows are a compact
@@ -575,13 +722,16 @@ export function precisionHtml(){
  const reading=readingFor({...v,pose:S.cameraDraft?.pose||v.pose});t.params.posture=reading;
  return `<div class="camera-toolbar"><b>Precise Camera · ${esc(v.name)} · ${reading} · Authoring</b>${button('exp-camera-return','Put it back')}${button('exp-close','Close')}</div><div class="camera-postures">${['outside','through','plan'].map(p=>button('exp-posture',p==='through'?'Look through':p).replace('data-id=',`aria-pressed="${reading===p}" data-posture="${p}" data-id=`)).join('')}</div><p class="c-hint">Active property · ${esc(gripLabels[t.params.grip]||'none')} — select another grip on the drawing; the full list stays in the Camera Card.</p>`;
 }
-export function coordinationHtml(seam){
- const camera=resolvedCamera(),route=camera.connections[S.task?.params.connection],geometry=route&&routeGeometry(camera,route.id),timing=coordinateTiming(camera,seam),s=S.experienceContext.seam,ids=[...new Set(originCoverage(ctx.experience,camera,s.from,s.to).map(r=>r.connectionId).filter(Boolean))];
- if(!geometry)return `<div class="coordination-strip"><b>Choose the Camera route to coordinate</b>${ids.map(id=>button('exp-route-choice',esc(camera.views[camera.connections[id].from]?.name),id)).join('')}</div>`;
+// UX6: the projection, unchanged in what it reads and stripped of the editing controls: the station lane
+// is the route's own spatial projection, and the beat/hold lanes are the authored beats as time. Editing
+// lives on the Cue Card above it, so the strip never competes with the Card for the same decision.
+export function coordinationHtml(seam,pair=S.experienceContext.seam){
+ const camera=resolvedCamera(),route=camera.connections[S.task?.params.connection],geometry=route&&routeGeometry(camera,route.id),timing=coordinateTiming(camera,seam),s=pair||seam,ids=[...new Set(originCoverage(ctx.experience,camera,s.from,s.to).map(r=>r.connectionId).filter(Boolean))];
+ if(!geometry)return `<div class="coordination-strip"><b>Choose the Camera route to journey</b>${ids.map(id=>button('exp-route-choice',esc(camera.views[camera.connections[id].from]?.name),id)).join('')}</div>`;
  const stations=geometry.stations,clock=movementTiming(camera,seam,geometry.path,route.speed,route.id);
  const percent=seconds=>5+seconds/Math.max(.001,clock.duration)*90;
  const stationTime=station=>station.progress*clock.travelDuration+clock.holds.filter(h=>h.progress<station.progress).reduce((n,h)=>n+h.seconds,0);
- return `<div class="coordination-strip"><div class="deck-head"><b>Local coordination · ${esc(camera.views[route.from]?.name)} → ${esc(camera.views[route.to]?.name)} · ${geometry.seconds.toFixed(2)}s travel · ${clock.duration.toFixed(2)}s with holds</b><select data-exp-station aria-label="Camera station">${stations.map(s=>`<option value="${s.id}" ${s.id===S.task.params.station?'selected':''}>${esc(s.label)}</option>`).join('')}</select></div><div class="station-projection"><span>Route</span><div class="station-lane">${stations.map(s=>`<button style="left:${percent(stationTime(s))}%" class="station-tick ${S.task.params.station===s.id?'active':''}" data-act="exp-station-focus" data-id="${s.id}" data-station-counterpart="${s.id}" title="${esc(s.label)}">${s.id==='departure'||s.id==='arrival'?'●':'◆'}<small>${esc(s.label)}</small></button>`).join('')}</div><span>Beats</span><div class="temporal-lane">${timing.filter(b=>b.connectionId===route.id&&b.kind==='invoke').map(b=>`<button style="left:${percent(b.at??0)}%" data-act="exp-station-focus" data-id="${b.stationId}" data-beat="${b.id}" class="coord-beat ${(S.task.params.beat?S.task.params.beat===b.id:S.task.params.station===b.stationId)?'active':''}">● ${esc(ctx.experience.definitions[ctx.experience.uses[b.useId]?.definitionId]?.name||'Repair')}<small>${b.at===null?'Repair':b.at.toFixed(2)+'s'}</small></button>`).join('')}</div><span>Holds</span><div class="temporal-lane">${timing.filter(b=>b.connectionId===route.id&&b.kind==='hold').map(b=>`<label class="coord-hold ${S.task.params.beat===b.id?'active':''}" style="left:${percent(b.at??0)}%" data-beat="${b.id}">${b.at===null?'Repair':b.at.toFixed(2)+'s'} · <input type="number" min="0" step=".25" data-exp-hold="${b.id}" value="${b.seconds}" aria-label="Hold seconds">s</label><span class="hold-duration" style="left:${percent(b.at??0)}%;width:${b.seconds/Math.max(.001,clock.duration)*90}%" data-hold-duration="${b.id}" aria-label="${b.seconds}s hold at ${esc(stations.find(s=>s.id===b.stationId)?.label||'unresolved station')}"></span>`).join('')}</div></div><div class="coord-actions">${button('exp-beat','Hold here')}${button('exp-mark-station','Name mid-route station')}<select data-exp-invoke-use><option value="">Choose Activity</option>${Object.values(ctx.experience.uses).filter(invokable).map(u=>`<option value="${u.id}" ${S.task.params.invokeUse===u.id?'selected':''}>${esc(ctx.experience.definitions[u.definitionId]?.name)}</option>`).join('')}</select>${button('exp-invoke-beat','Invoke here').replace('class=',(S.task.params.invokeUse?'':'disabled ')+'class=')}<small>Binding moves that Activity's trigger to this station; a visitor offer stays with its subject. Path geometry stays on Stage.</small></div>${timing.filter(b=>b.at===null||b.reason).map(b=>`<p class="exp-gap">${esc(b.reason||'Station needs repair')}</p>`).join('')}${timing.filter(b=>b.kind==='invoke'&&!stationBound(b)).map(b=>`<p class="exp-gap" role="status">${esc(ctx.experience.definitions[ctx.experience.uses[b.useId]?.definitionId]?.name||'Coordinated Activity')} is triggered elsewhere · Invoke here restores its station binding</p>`).join('')}</div>`;
+ return `<div class="coordination-strip"><div class="deck-head"><b>Local coordination · ${esc(camera.views[route.from]?.name)} → ${esc(camera.views[route.to]?.name)} · ${geometry.seconds.toFixed(2)}s travel · ${clock.duration.toFixed(2)}s with holds</b><select data-exp-station aria-label="Camera station">${stations.map(s=>`<option value="${s.id}" ${s.id===S.task.params.station?'selected':''}>${esc(s.label)}</option>`).join('')}</select></div><div class="station-projection"><span>Route</span><div class="station-lane">${stations.map(s=>`<button style="left:${percent(stationTime(s))}%" class="station-tick ${S.task.params.station===s.id?'active':''}" data-act="exp-station-focus" data-id="${s.id}" data-station-counterpart="${s.id}" title="${esc(s.label)}">${s.id==='departure'||s.id==='arrival'?'●':'◆'}<small>${esc(s.label)}</small></button>`).join('')}</div><span>Beats</span><div class="temporal-lane">${timing.filter(b=>b.connectionId===route.id&&b.kind==='invoke').map(b=>`<button style="left:${percent(b.at??0)}%" data-act="exp-station-focus" data-id="${b.stationId}" data-beat="${b.id}" class="coord-beat ${(S.task.params.beat?S.task.params.beat===b.id:S.task.params.station===b.stationId)?'active':''}">● ${esc(ctx.experience.definitions[ctx.experience.uses[b.useId]?.definitionId]?.name||'Repair')}<small>${b.at===null?'Repair':b.at.toFixed(2)+'s'}</small></button>`).join('')}</div><span>Holds</span><div class="temporal-lane">${timing.filter(b=>b.connectionId===route.id&&b.kind==='hold').map(b=>`<label class="coord-hold ${S.task.params.beat===b.id?'active':''}" style="left:${percent(b.at??0)}%" data-beat="${b.id}">${b.at===null?'Repair':b.at.toFixed(2)+'s'} · <input type="number" min="0" step=".25" data-exp-hold="${b.id}" value="${b.seconds}" aria-label="Hold seconds">s</label><span class="hold-duration" style="left:${percent(b.at??0)}%;width:${b.seconds/Math.max(.001,clock.duration)*90}%" data-hold-duration="${b.id}" aria-label="${b.seconds}s hold at ${esc(stations.find(s=>s.id===b.stationId)?.label||'unresolved station')}"></span>`).join('')}</div></div>${timing.filter(b=>b.at===null||b.reason).map(b=>`<p class="exp-gap">${esc(b.reason||'Station needs repair')}</p>`).join('')}${timing.filter(b=>b.kind==='invoke'&&!stationBound(b)).map(b=>`<p class="exp-gap" role="status">${esc(ctx.experience.definitions[ctx.experience.uses[b.useId]?.definitionId]?.name||'Coordinated Activity')} is triggered elsewhere · Invoke here restores its station binding</p>`).join('')}</div>`;
 }
 export function askHtml(){
  // UX2: a Plan reading never captures itself. The choice is explicit, and nothing is created before it:

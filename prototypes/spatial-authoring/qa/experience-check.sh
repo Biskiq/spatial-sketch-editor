@@ -170,6 +170,44 @@ agent-browser select '[data-exp-pace]' 'slow' >/dev/null
 qa_frames
 qa_ok 'pace derives timing and keeps stable beat reference' "$(qa_js '(__me.S.beatBefore.ref === JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats) && __me.S.beatBefore.time !== document.querySelector(".coord-hold").textContent)')" 'true'
 qa_ok 'station options contain no generated samples' "$(qa_js '([...document.querySelectorAll("[data-exp-station] option")].every(o=>!o.value.startsWith("sample")))')" 'true'
+
+# ---- UX6: the Journey posture — the time Deck, the Cue Card, the atomic move and Rehearse
+# The time Deck reads the edge as time through the same mapping the visit runs on, in the posture the
+# author is already in (coordination), so this block only asserts the reading, never a new entry path.
+qa_ok 'the time Deck runs 0:00 to the derived total and names its edge and origin' "$(qa_js '(()=>{const r=__me.E.rehearsalReading(),t=document.querySelector("[data-exp-journey-total]"),o=document.querySelector("[data-exp-journey-origin]"),c=__me.ctx.cameraSource.connections[__me.S.task.params.connection],h=document.querySelector(".journey-deck .jd-head b");return !!(document.querySelector("[data-exp-journey-deck]")&&t&&t.textContent.includes("0:00.0")&&Math.abs(r.clock.duration-(r.clock.travelDuration+r.clock.pause))<1e-9&&o&&o.value===c.from&&h&&h.textContent.includes("Journey · Stop"))})()')" 'true'
+qa_ok 'every authored Cue is a marker on the Deck and a row on the Card, placed at its own time' "$(qa_js '(()=>{const r=__me.E.rehearsalReading(),marks=[...document.querySelectorAll(".jd-cue")],rows=[...document.querySelectorAll("#card .jd-cue-row")];return !!(marks.length===r.clock.cues.length&&rows.length===r.clock.cues.length&&marks.every((m,i)=>m.dataset.id===r.clock.cues[i].stationId&&m.textContent.includes(":"))&&document.querySelector("#card [data-exp-cue-list]"))})()')" 'true'
+qa_ok 'the Cue Card reads occurrence, time, pause, actions, projection and Pace' "$(qa_js '(()=>{const k=document.querySelector("#card .c-k");return !!(k&&k.textContent.includes("Cue · Journey")&&document.querySelector("#card [data-cue-at]")&&document.querySelector("#card [data-cue-pause]")&&document.querySelector("#card [data-exp-cue-move]")&&document.querySelector("#card .station-projection")&&document.querySelector("#card [data-exp-pace]")&&document.querySelector("#card [data-act=exp-beat]")&&document.querySelector("#card [data-act=exp-invoke-beat]"))})()')" 'true'
+# QA 2: the authored point is a station a Cue can sit on, never a path handle, in this posture.
+qa_ok 'path handles are not hit-eligible in the Journey' "$(qa_js '(!document.querySelector("[data-exp-anchor]")&&!!document.querySelector("[data-exp-station-point]"))')" 'true'
+# The atomic move: every beat of the Cue and each invoked Activity's binding move together, once.
+station="$(qa_jsv '__me.S.task.params.station')"
+destination="$(qa_jsv '[...document.querySelectorAll("#card [data-exp-cue-move] option")].map(o=>o.value).filter(Boolean)[0]||""')"
+qa_js 'window.__undoBefore=__me.S.undo.length' >/dev/null; qa_js 'window.__sourceBefore=JSON.stringify(__me.A.domainSnapshot())' >/dev/null
+agent-browser select '[data-exp-cue-move]' "$destination" >/dev/null
+qa_frames
+qa_ok 'moving a Cue rebinds every one of its beats and its Activity binding in one Undo step' "$(qa_js "(()=>{const s=__me.ctx.experience.seams[Object.keys(__me.ctx.experience.seams)[0]],moved=s.beats.filter(b=>b.stationId==='$destination');return !!(moved.length>=1&&__me.S.task.params.station==='$destination'&&__me.S.undo.length===window.__undoBefore+1&&moved.every(b=>b.kind!=='invoke'||__me.ctx.experience.uses[b.useId].start.stationId==='$destination')&&s.beats.length===JSON.parse(JSON.stringify(s.beats)).length&&__me.ctx.experience.seams[Object.keys(__me.ctx.experience.seams)[0]].beats.filter(b=>b.stationId==='$station').length===0)})()")" 'true'
+agent-browser click '#undoBtn' >/dev/null
+qa_frames
+qa_ok 'Undo restores the Cue and its Activity binding together' "$(qa_js 'JSON.stringify([__me.S.undo.length===window.__undoBefore, JSON.stringify(__me.A.domainSnapshot())===window.__sourceBefore])')" '[true,true]'
+# Only stations the Cue can take are offered, and a forced move onto one it already holds refuses.
+qa_ok 'only stations this Cue can take are offered' "$(qa_js "(()=>{const o=[...document.querySelectorAll('#card [data-exp-cue-move] option')].map(x=>x.value).filter(Boolean);return !!(o.length>0&&!o.includes('$station'))})()")" 'true'
+qa_js "window.__hashBefore=JSON.stringify(__me.A.domainSnapshot());window.__countBefore=__me.S.undo.length" >/dev/null
+qa_js "__me.E.moveCueCommand('$station')" >/dev/null
+qa_ok 'a refused move reports the reason and mutates nothing' "$(qa_js '(/already the Cue/.test(__me.S.status.text)&&__me.S.undo.length===window.__countBefore&&JSON.stringify(__me.A.domainSnapshot())===window.__hashBefore)')" 'true'
+# Rehearse is a playhead: it moves a rig on Stage and writes nothing.
+qa_js 'window.__poseBefore=JSON.stringify(__me.nav.plainPose());window.__srcBefore=JSON.stringify(__me.A.domainSnapshot());window.__undoCount=__me.S.undo.length' >/dev/null
+card_click '[data-act="exp-rehearse-play"]'
+qa_frames; qa_frames; qa_frames
+qa_ok 'Rehearse advances a playhead rig without writing source, history or the author standpoint' "$(qa_js '(()=>{const r=__me.S.rehearse;return !!(r&&r.t>0&&document.querySelector("[data-exp-rig]")&&document.querySelector("[data-exp-rig-playing=true]")&&JSON.stringify(__me.nav.plainPose())===window.__poseBefore&&__me.S.undo.length===window.__undoCount&&JSON.stringify(__me.A.domainSnapshot())===window.__srcBefore)})()')" 'true'
+card_click '[data-act="exp-rehearse-pause"]'
+qa_ok 'Pause stops the playhead where it stands' "$(qa_js '(__me.S.rehearse&&__me.S.rehearse.playing===false)')" 'true'
+fill '[data-exp-rehearse]' '0.5'
+qa_frames
+qa_ok 'scrubbing the Deck moves the playhead and its rig, writing nothing' "$(qa_js '(()=>{const r=__me.S.rehearse;return !!(r&&Math.abs(r.t-0.5)<0.01&&document.querySelector("[data-exp-playhead]")&&__me.S.undo.length===window.__undoCount&&JSON.stringify(__me.A.domainSnapshot())===window.__srcBefore)})()')" 'true'
+card_click '[data-act="exp-rehearse-look"]'
+qa_ok 'Look through at the playhead moves the standpoint and writes no source' "$(qa_js '(JSON.stringify(__me.nav.plainPose())!==window.__poseBefore&&JSON.stringify(__me.A.domainSnapshot())===window.__srcBefore)')" 'true'
+card_click '[data-act="exp-rehearse-stop"]'
+qa_ok 'Stop drops the rehearsal and leaves the edge as it was' "$(qa_js '(__me.S.rehearse===null&&!document.querySelector("[data-exp-rig]")&&JSON.stringify(__me.A.domainSnapshot())===window.__srcBefore)')" 'true'
 qa_faults_ok 'Experience commands'
 qa_browser_errors_ok 'Experience browser'
 qa_summary 'Unified Experience'
