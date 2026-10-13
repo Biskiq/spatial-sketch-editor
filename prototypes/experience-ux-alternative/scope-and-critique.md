@@ -10,11 +10,16 @@ Route: [README](./README.md) · [design rationale](./design-rationale.md) · [vi
 | Present this / New from standpoint | Object Card → **Present this**; outline **New** (3D captures, Plan places) |
 | Presentation + available Views | Presentation Card: View grid, Default ◆, reorder, tour usage, free-exploration switch |
 | Selected View, Look through, Exit View | View Card; Plan marker drag/aim; Look through with re-aim, Update View, Esc return |
-| Guide overview, several Stops, a revisit | Guide strip (Stop 5 revisits the piano with a different sequence) |
+| Guide as an invoked context | Index → *Salon tour* opens it; × or Esc closes it and its Stage overlays |
+| Guide overview, several Stops, a revisit | Guide instrument (Stop 5 revisits the piano with a different sequence) |
+| Long Guides (15 / 30 Stops) | *Prototype ▾ → Long Guide*: overview bracket, drop on overview, ←/→, ‹ › |
+| Dense content (20 / 50 Views, 40 Presentations) | *Prototype ▾ → Large Presentation / Many Presentations*: dense grid, filter, Index search |
+| Stage visibility | *Show ▾*: Whole Guide / Selection only; markers, frustums, paths, labels |
+| World in the same shell | Head → World: Context Index, object/room/wall Cards, Measure instrument |
 | Selected Stop with guided sequence | Stop Card: Visits block, shot list, Not in this Stop, After this Stop |
-| Direct Guide manipulation | Drag tiles, drag Presentation onto strip, Alt ←/→, ⋯ on selected tile |
+| Direct Guide manipulation | Drag Stop cards, drag a Presentation onto the Guide, Alt ←/→, ⋯ on the selected card |
 | Cut/Travel and Camera path | Connector → Transition Card; Plan path points; wall warning |
-| Playback, scrub, follow | Guide bar transport, scrub rail, Follow camera, Preview this move |
+| Playback, scrub, follow | Guide header transport, overview bar scrub, Follow camera, Preview this move |
 | Guided vs free visitor experience | **Preview**: chooser, guided with Next stop, free with Places and Back to the tour |
 | Narrow layouts | *Simulate width → Tablet / Phone*, or resize |
 
@@ -42,8 +47,8 @@ of reintroducing station/event dropdowns.
 ## 3. Where this disagrees with the brief
 
 1. **No separate Journey or path-topology surface.** The brief asks to simplify them; this design
-   removes them. The Guide strip *is* the timeline (tiles map View holds, connectors map travel
-   time), and the Plan *is* the path editor. Two representations of one sequence will drift; one
+   removes them. The Guide instrument *is* the timeline (its overview bar maps View holds and
+   travel time), and the Plan *is* the path editor. Two representations of one sequence will drift; one
    cannot.
 2. **The Card is an overlay sheet, not a column.** It departs from the literal Index/Stage/Card
    column arrangement. A column either sits empty or resizes the Stage on every selection, which
@@ -91,7 +96,26 @@ of reintroducing station/event dropdowns.
 - Undo is a JSON snapshot stack; selection history is an array; nothing persists across reloads.
 - Thumbnails use a second WebGL context; the visitor preview a third. Fine for a demo, not a
   rendering strategy.
-- The *Prototype ▾* menu (scenarios, simulated width) and `window.__xp` are review facilities, not
-  product UI. The World tab is disabled because World authoring is outside this study.
+- The *Prototype ▾* menu (scenarios, stress content, simulated width) and `window.__xp` are review
+  facilities, not product UI. Stress content is generated (`seedStress` in `app/world.js`).
+- The World domain is representative only: read-only Cards, static bound names, one Measure
+  instrument. It shows shared grammar, not World authoring.
+- Editor visibility (*Show*) and Guide density are session preferences, never serialized.
 - Not verified: touch gestures on real devices, screen-reader flows beyond labelled controls,
   performance with large museums.
+
+## 5. Open decisions after round 2
+
+1. **Does the Guide stay open across Presentation work?** This design says yes until closed
+   (one task: capture a View, then include it in a Stop). The alternative — close when the
+   selection leaves the Guide — is quieter but forces reopening constantly.
+2. **Multiple Guides.** The Index section is plural and the instrument names its Guide, so a
+   second Guide is a second row. Whether two Guides can be open at once is deferred; this design
+   assumes one open at a time.
+3. **Stage visibility defaults.** *Whole Guide* with faint context is the default; *Selection
+   only* is one click. If owners prefer focus by default for long Guides (> 12 Stops), that is a
+   one-line rule.
+4. **World instruments that need width** (Unroll, Section): proposed exception — they take the
+   full Stage width and the Card collapses to its title while they run.
+5. **Serif for authored names** is kept but used less (Card title, Guide name, Stop identity,
+   visitor captions). If the owner prefers UX3’s all-sans identity, only `--font-display` changes.

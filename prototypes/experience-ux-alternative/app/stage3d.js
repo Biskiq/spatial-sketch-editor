@@ -319,11 +319,12 @@ export class Stage3D {
   updateHelpers(doc, emph) {
     this.helpers.clear(); this.viewGlyphs.clear();
     for (const v of Object.values(doc.views)) {
-      const strong = !emph.presId || v.presId === emph.presId;
-      const sel = emph.viewId === v.id;
-      const g = cameraGlyph(sel ? COL.sel : COL.view, sel ? 1 : strong ? 0.95 : 0.3, viewPose(v).fov);
+      if (emph.world) break;
+      const st = emph.views?.get(v.id) || 'normal'; if (st === 'hidden') continue;
+      const sel = st === 'sel';
+      const g = cameraGlyph(sel ? COL.sel : COL.view, sel ? 1 : st === 'strong' ? 0.95 : st === 'normal' ? 0.7 : 0.25, viewPose(v).fov);
       placeGlyph(g, viewPose(v)); g.userData.pick = { type: 'view', id: v.id };
-      g.scale.setScalar(sel ? 1.9 : 1.45);
+      g.scale.setScalar(sel ? 1.9 : st === 'strong' ? 1.45 : 1.2);
       setLayer(g, 1); this.helpers.add(g); this.viewGlyphs.set(v.id, g);
     }
     if (emph.objectId) {
@@ -335,7 +336,7 @@ export class Stage3D {
       const pts = sampleRoute(controlPoints(from, to, doc.paths[pathKey(r.from, r.to)]), 20);
       const n = pts.length;
       const v3 = pts.map(([x, z], i) => new THREE.Vector3(x, from.pos[1] + (to.pos[1] - from.pos[1]) * (i / (n - 1)), z));
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3), new THREE.LineBasicMaterial({ color: r.selected ? COL.routeSel : COL.route, transparent: true, opacity: r.selected ? 1 : 0.55 }));
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3), new THREE.LineBasicMaterial({ color: r.selected ? COL.routeSel : COL.route, transparent: true, opacity: r.selected ? 1 : r.faint ? 0.22 : 0.6 }));
       const shadow = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3.map((p) => new THREE.Vector3(p.x, 0.03, p.z))), new THREE.LineDashedMaterial({ color: 0x1f3a2e, dashSize: 0.25, gapSize: 0.18 }));
       shadow.computeLineDistances();
       setLayer(line, 1); setLayer(shadow, 1); this.helpers.add(line, shadow);

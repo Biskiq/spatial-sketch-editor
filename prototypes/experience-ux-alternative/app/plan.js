@@ -28,9 +28,10 @@ export class Plan {
     // Fit into the Stage area the Card never covers, so opening a Card never needs a camera move.
     // Wide: the Card is a right sheet. Narrow: it is a bottom sheet, so fit above it.
     const app = this.host.closest('.app'); const aw = app ? app.clientWidth : w;
-    const rw = aw > 980 ? 324 : 0, rh = aw > 980 ? 0 : Math.round(h * 0.42);
-    const ppm = Math.min((w - rw - 40) / 37, (h - rh - 70) / 17.5);
-    this.cam = { cx: 20.3 + rw / 2 / ppm, cz: 10 + rh / 2 / ppm, ppm };
+    const { r: rw, b: rh } = this.cb.reserve ? this.cb.reserve(w, h, aw) : { r: 0, b: 0 };
+    const top = 56; // the Stage toolbar
+    const ppm = Math.min((w - rw - 40) / 37, (h - rh - top - 24) / 17.5);
+    this.cam = { cx: 20.3 + rw / 2 / ppm, cz: 10 + (rh - top) / 2 / ppm, ppm };
     this.fitted = true; this.draw();
   }
   sx(x) { return (x - this.cam.cx) * this.cam.ppm + this.w / 2; }
@@ -63,7 +64,7 @@ export class Plan {
     s += '</g>';
     // rooms
     for (const r of rooms) {
-      s += `<polygon class="room room-${r.id}" points="${r.poly.map(([x, z]) => P(x, z)).join(' ')}"/>`;
+      s += `<polygon class="room room-${r.id}${emph.roomId === r.id ? ' is-selected' : ''}" points="${r.poly.map(([x, z]) => P(x, z)).join(' ')}"/>`;
     }
     for (const r of rooms) if (r.name) s += `<text class="room-label" x="${this.sx(r.label[0])}" y="${this.sz(r.label[1])}" text-anchor="middle">${esc(r.name.toUpperCase())}</text>`;
     // objects
@@ -72,12 +73,18 @@ export class Plan {
     s += '<g class="walls">';
     for (const [ax, az, bx, bz] of walls) s += `<line x1="${this.sx(ax)}" y1="${this.sz(az)}" x2="${this.sx(bx)}" y2="${this.sz(bz)}" stroke-width="${Math.max(3, WALL_T * k)}"/>`;
     s += '</g>';
-    // routes
-    for (const r of emph.routes || []) s += this.routeSvg(r);
-    // views
-    const seqIndex = new Map((emph.stopSeq || []).map((id, i) => [id, i + 1]));
-    const order = Object.values(doc.views).sort((a, b) => (a.id === emph.viewId) - (b.id === emph.viewId));
-    for (const v of order) s += this.viewSvg(v, emph, seqIndex.get(v.id));
+    if (emph.bound) s += `<g class="bound-sel">${emph.bound.segs.map(([ax, az, bx, bz]) => `<line x1="${this.sx(ax)}" y1="${this.sz(az)}" x2="${this.sx(bx)}" y2="${this.sz(bz)}" class="${emph.bound.kind}" stroke-width="${Math.max(5, WALL_T * k + 4)}"/>`).join('')}</g>`;
+    if (emph.measure) s += this.measureSvg(emph.measure);
+    if (!emph.world) {
+      // routes: faint first, then context, then the selected one on top
+      const rank = (r) => (r.selected ? 2 : r.faint ? 0 : 1);
+      for (const r of [...(emph.routes || [])].sort((a, b) => rank(a) - rank(b))) s += this.routeSvg(r);
+      // views
+      const seqIndex = new Map((emph.stopSeq || []).map((id, i) => [id, i + 1]));
+      const W8 = { hidden: -1, dim: 0, normal: 1, strong: 2, sel: 3 };
+      const order = Object.values(doc.views).filter((v) => emph.views?.get(v.id) !== 'hidden').sort((a, b) => W8[emph.views?.get(a.id) || 'normal'] - W8[emph.views?.get(b.id) || 'normal']);
+      for (const v of order) s += this.viewSvg(v, emph, seqIndex.get(v.id));
+    }
     // playback puck
     if (emph.puck) {
       const p = emph.puck; const a = Math.atan2(p.dir[2], p.dir[0]);
@@ -118,22 +125,38 @@ export class Plan {
 
   viewSvg(v, emph, seqN) {
     const p = viewPose(v), x = this.sx(v.pos[0]), y = this.sz(v.pos[2]);
-    const sel = emph.viewId === v.id, mine = !emph.presId || emph.presId === v.presId;
+    const state = emph.views?.get(v.id) || 'normal';
+    const sel = state === 'sel', strong = state === 'strong', mine = sel || strong;
     const isDefault = this.doc.presentations.find((pp) => pp.id === v.presId)?.defaultViewId === v.id;
     const deg = v.yaw * 180 / Math.PI;
-    const len = sel ? 46 : 32;
-    const cls = ['view-marker', sel && 'is-selected', !mine && 'is-dim', seqN && 'in-seq'].filter(Boolean).join(' ');
+    const len = sel ? 46 : strong ? 32 : 24;
+    const cls = ['view-marker', sel && 'is-selected', state === 'dim' && 'is-dim', state === 'normal' && 'is-quiet', seqN && 'in-seq'].filter(Boolean).join(' ');
     let s = `<g class="${cls}" data-view="${v.id}" transform="translate(${x},${y})">`;
-    s += `<path transform="rotate(${deg})" d="${wedge(p.fov, len)}" class="cone"/>`;
+    if (sel || (emph.cones !== false && (strong || emph.fewViews))) s += `<path transform="rotate(${deg})" d="${wedge(p.fov, len)}" class="cone"/>`;
     if (sel) s += `<g transform="rotate(${deg})"><line x1="0" y1="0" x2="${len + 8}" y2="0" class="aim-line"/><circle cx="${len + 8}" cy="0" r="6.5" class="aim-handle" data-aim="${v.id}"><title>Drag to aim</title></circle></g>`;
-    s += `<circle r="${sel ? 7.5 : 5.5}" class="dot"/>`;
-    if (isDefault && mine) s += `<path d="M0,-12.5 L3.4,-9 L0,-5.5 L-3.4,-9 Z" class="default-mark"><title>Default View</title></path>`;
+    s += `<circle r="${sel ? 7.5 : strong ? 5.5 : 4.5}" class="dot"/>`;
+    if (isDefault && mine && emph.presId && !emph.stopSeq) s += `<path d="M0,-12.5 L3.4,-9 L0,-5.5 L-3.4,-9 Z" class="default-mark"><title>Default View</title></path>`;
     if (seqN) s += `<g class="seq-badge" transform="translate(-13,-13)"><circle r="8"/><text y="3.6" text-anchor="middle">${seqN}</text></g>`;
+    const tags = emph.stopTags?.get(v.id);
+    if (tags) { const t = tags.length > 2 ? `${tags[0]}·${tags[1]}…` : tags.join('·'); const tw = 8 + t.length * 6.2; s += `<g class="stop-tag" transform="translate(${-tw - 7},-19)"><rect width="${tw}" height="15" rx="4"/><text x="${tw / 2}" y="11" text-anchor="middle">${t}</text></g>`; }
     if (sel) s += `<path class="sel-ring" d="${brackets(13, 13)}"/>`;
-    if (sel || (mine && emph.presId) || seqN || this.hover === v.id) {
+    if (sel || this.hover === v.id || (emph.labels !== false && (seqN || (strong && (emph.presId || emph.transEnds))))) {
       const flip = Math.cos(v.yaw) > 0.3 ? -1 : 1;
       s += `<text class="view-label${sel ? ' strong' : ''}" x="${flip * 12}" y="${Math.sin(v.yaw) > 0.5 ? -12 : 18}" text-anchor="${flip < 0 ? 'end' : 'start'}">${esc(v.name)}</text>`;
     }
+    return s + '</g>';
+  }
+
+  measureSvg(m) {
+    const pts = m.map(([x, z]) => [this.sx(x), this.sz(z)]);
+    let s = '<g class="measure">';
+    if (pts.length === 2) {
+      const [a, b] = pts, d = Math.hypot(m[1][0] - m[0][0], m[1][1] - m[0][1]);
+      s += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="m-line"/>`;
+      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      s += `<g transform="translate(${mx},${my - 14})"><rect x="-30" y="-11" width="60" height="21" rx="10.5" class="m-chip"/><text y="4" text-anchor="middle" class="m-text">${d.toFixed(2)} m</text></g>`;
+    }
+    for (const [x, y] of pts) s += `<circle cx="${x}" cy="${y}" r="5" class="m-pt"/>`;
     return s + '</g>';
   }
 
@@ -144,15 +167,16 @@ export class Plan {
     if (r.mode === 'cut') {
       const a = [this.sx(from.pos[0]), this.sz(from.pos[2])], b = [this.sx(to.pos[0]), this.sz(to.pos[2])];
       const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-      return `<g class="route cut${r.selected ? ' is-selected' : ''}" data-route="${key}"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="cut-line"/><g transform="translate(${mx},${my})"><rect x="-17" y="-9" width="34" height="18" rx="9" class="cut-chip"/><text y="4" text-anchor="middle" class="cut-text">CUT</text></g></g>`;
+      // Context cuts are a quiet dotted line; only the selected or neighbouring cut carries its chip.
+      return `<g class="route cut${r.selected ? ' is-selected' : ''}${r.faint ? ' is-faint' : ''}" data-route="${key}"><line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" class="cut-line"/>${r.faint ? '' : `<g transform="translate(${mx},${my})"><rect x="-17" y="-9" width="34" height="18" rx="9" class="cut-chip"/><text y="4" text-anchor="middle" class="cut-text">CUT</text></g>`}</g>`;
     }
     const cps = controlPoints(from, to, doc.paths[key]);
     const pts = sampleRoute(cps, 20);
     const d = 'M' + pts.map(([x, z]) => `${this.sx(x).toFixed(1)},${this.sz(z).toFixed(1)}`).join(' L');
-    let s = `<g class="route travel${r.selected ? ' is-selected' : ''}${r.warn ? ' is-warn' : ''}" data-route="${key}">`;
+    let s = `<g class="route travel${r.selected ? ' is-selected' : ''}${r.faint ? ' is-faint' : ''}${r.near ? ' is-near' : ''}${r.warn ? ' is-warn' : ''}" data-route="${key}">`;
     s += `<path d="${d}" class="route-hit" data-insert="${key}"/><path d="${d}" class="route-line"/>`;
-    // direction chevrons
-    for (let i = 8; i < pts.length - 4; i += 14) {
+    // direction chevrons (not on faint context routes)
+    if (!r.faint) for (let i = 8; i < pts.length - 4; i += 14) {
       const [x, z] = pts[i], [x2, z2] = pts[i + 1];
       const a = Math.atan2(z2 - z, x2 - x) * 180 / Math.PI;
       s += `<path transform="translate(${this.sx(x)},${this.sz(z)}) rotate(${a})" d="M-4,-4 L2,0 L-4,4" class="chev"/>`;
@@ -171,6 +195,8 @@ export class Plan {
     const wx = this.wx(px), wz = this.wz(py);
     this.svg.setPointerCapture?.(e.pointerId);
     if (this.tool === 'place') { this.drag = { kind: 'place', x: wx, z: wz, yaw: 0, sx: px, sy: py }; this.draw(); return; }
+    if (this.tool === 'measure') { this.cb.onMeasure(wx, wz); return; }
+    if (this.emph.world && !t.closest('[data-obj]')) { this.drag = { kind: 'pan', sx: px, sy: py, cx: this.cam.cx, cz: this.cam.cz, moved: false }; return; }
     const aim = t.closest('[data-aim]'), pt = t.closest('[data-pt]'), ins = t.closest('[data-insert]'), vm = t.closest('[data-view]'), ob = t.closest('[data-obj]'), rt = t.closest('[data-route]');
     if (aim) this.drag = { kind: 'aim', id: aim.dataset.aim, moved: false };
     else if (pt) { const [key, i] = pt.dataset.pt.split('|'); this.drag = { kind: 'pt', key, i: +i, sx: px, sy: py, moved: false }; this.cb.onPick({ type: 'point', key, i: +i }); }
@@ -186,7 +212,7 @@ export class Plan {
       if (e.target && this.svg.contains(e.target)) {
         const h = e.target.closest?.('[data-obj],[data-view]'); const id = h ? (h.dataset.obj || h.dataset.view) : null;
         if (id !== this.hover) { this.hover = id; this.draw(); }
-        this.svg.style.cursor = this.tool === 'place' ? 'crosshair' : '';
+        this.svg.style.cursor = this.tool ? 'crosshair' : '';
       }
       return;
     }
