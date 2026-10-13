@@ -1,5 +1,13 @@
 # Museum Editor — spatial-instrument grammar
 
+> **Scoped Experience proposal (2026-10-13):** [V3](../../roadmap/p25-experience/design/experience-ux-v3/README.md)
+> proposes replacing the compressed View constellation/Stop pins and split
+> Path/Journey projections below with actual observer markers and one compact
+> movement/playback task. Its [design specification](../../roadmap/p25-experience/design/experience-ux-v3/design-system.md)
+> is the active candidate for #114 review, not yet ratified. These older scoped
+> rules remain baseline/provenance; truthful geometry, hit/manipulation laws,
+> Camera evaluation and shared/World representation guarantees remain in force.
+
 **Status: soft-frozen destination reference for Stage-local representation and
 interaction.** Feature designers use this with the
 [shell contract](./editor-shell-and-visual-system.md) and their product/domain

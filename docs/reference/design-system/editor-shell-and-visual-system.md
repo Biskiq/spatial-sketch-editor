@@ -1,5 +1,16 @@
 # Museum Editor — destination shell and visual-system contract (PLATE)
 
+> **Experience replacement proposal (2026-10-13, #114):** the owner commissioned
+> [Experience UX V3](../../roadmap/p25-experience/design/experience-ux-v3/README.md),
+> with one [candidate visual/exposure specification](../../roadmap/p25-experience/design/experience-ux-v3/design-system.md)
+> and [superseding work plan](../../roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md).
+> V3 is the sole active Experience design proposal, awaiting owner ratification.
+> The Experience text here remains the **previously ratified baseline**, not the
+> active #114 implementation mandate. V3 proposes scoped changes to §0.8.1 and
+> Experience material, lower-span, selection/task and return disclosure; it does
+> not silently ratify them or alter shared/World and domain invariants. Production
+> remains unchanged. Read V3 directly for the review package.
+
 **Status: soft-frozen destination shell authority.** This document is the complete
 contract for new Museum Editor shell design: composition, disclosure, information
 homes, material, typography, control hierarchy, state language and return behavior.
@@ -443,6 +454,12 @@ are not fixed by this Paper contract. The production keymap belongs to its plann
 
 <a id="081-finalized-experience-shell-expression"></a>
 
+**Historical #114 target, pending proposed replacement:** the following is the
+2026-10-11 ratified expression. Its lock no longer directs new #114 work: see
+[V3](../../roadmap/p25-experience/design/experience-ux-v3/README.md) and its
+[amendment inventory](../../roadmap/p25-experience/design/experience-ux-v3/decisions-and-risks.md#plate-amendments-proposed).
+The body is retained as prior design provenance; V3 is not yet ratified.
+
 **Reconciled 2026-10-11 (PR #113) — locked for PR #114.** This expression adopts the
 [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
 and its [six QA boards](#experience-qa-boards), with the adjudications recorded here. It
@@ -662,6 +679,10 @@ heavy cards, gradients, floating tool clusters and dense Stage labels. Stage car
 numbers, capability lists, timing labels, Camera parameters or scripting text.
 
 ### Experience QA boards
+
+**Previous target specimens.** These PNGs remain historical evidence. Candidate
+replacement composition/acceptance is the [V3 board package](../../../prototypes/experience-ux-v3/README.md).
+The guardrail wording below describes the earlier ratified target, not V3 approval.
 
 The boards in [`Design-QAs/`](../../../prototypes/integrated-experience-authoring/Design-QAs/)
 are **acceptance guardrails for information homes, hierarchy, selected-entity semantics,

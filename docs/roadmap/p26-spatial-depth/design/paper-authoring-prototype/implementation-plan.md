@@ -148,7 +148,10 @@ Each slice records:
   C8 in-scope acceptance is complete (2026-10-04) and #113's C9 capability is owner-accepted
   for functionality (2026-10-11); the separate missing-fixture repository blocker remains.
   PA0 inherits the tested executable and current proof after **#114** lands (its Experience UX
-  rebuilds the shared Head, Index and Deck — see the [PR #114 plan](../../../p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md));
+  is now in [V3 design review](../../../p25-experience/design/experience-ux-v3/README.md),
+  with one [superseding proposed plan](../../../p25-experience/design/experience-ux-v3/implementation-plan.md)
+  awaiting ratification); PA0 consumes the eventual accepted #114 tree, not the old
+  UX0–UX7 target;
   no Paper work starts in #113 or #114.
   S0–S9 proof is historical. Re-record all current World/Experience axes; the pre-replacement
   counts below are provenance, not the new entry baseline. Preserve neutral Resume, current

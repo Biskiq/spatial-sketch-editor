@@ -41,19 +41,25 @@ ordinary. Explicit Resume revalidates current identity and targets, reactivates 
 and keeps the current realized Camera. World-only footer controls refuse in Experience; their
 retirement and Paper authoring belong to PR #115, after the #114 Experience UX implementation.
 
-In Experience, explicitly open Saltmarsh Highlights or create a Presentation from a selected World
-subject, a region or the environment. Auto/Hints derive framing; explicit Capture adds a Camera View
-and its use atomically to the unordered Set. Hints and
-Precise Camera are local depth, independent of Guide work. Add to Guide creates occurrences;
-Overview expands a Stop, Seam connects supported Camera Views, and Coordinate binds holds or
-invocations to stable Camera stations. Card headers distinguish shared framing from occurrence reach.
-Head Preview works with no Guide or Views and returns to the exact authoring context. This describes the
-current executable; the locked destination Experience UX (PLATE §0.8.1 — Presentation/Views/Default, Guide
-edges, Camera Path and Journey postures) is implemented by PR #114.
+In Experience, the latest #114 source exposes Presentation/Views, Guide/Stop/edge,
+Camera Path and Journey Cards and compact lower lanes. The former Auto/Hints/Set,
+Peek/Seam/Coordinate wording is historical. UX1–UX6 and their review corrections
+are implemented; UX7 is unstarted. [Implementation evidence](./qa/EXPERIENCE-UX-EVIDENCE.md)
+records the current branch's proof/captures, not final owner product/visual acceptance.
+Head Preview is isolated execution with full authoring return; accepted C9 behavior
+remains functional evidence.
+
+**Current design work:** the owner-commissioned [Experience V3 proposal](../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md)
+and [15 PNG boards](../experience-ux-v3/README.md) are the sole active replacement
+review target for #114. [The superseding plan](../../docs/roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md)
+awaits owner ratification; its local View sequences/visual system are not implemented
+here. Do not resume old UX7 or treat the static specimen compositor as a second
+prototype runtime. The historical precision/advanced capabilities remain source
+and evidence; V3 proposes reducing their primary exposure.
 
 With screenshot mode off, the shared Presenter switches by lens: World retains A–F; Experience guides Q1–Q8 authoring followed by advanced topics. Its optional walkthrough is on by default: Next demonstrates the current task through ordinary product commands, then advances. Off, Next only browses; outcomes are advisory and never block it. Back/Skip/close/reopen author nothing. Preview can retain read-only guidance while the authoring walkthrough option and all other writers stay unavailable. This guidance is separate from the authored Guide/Stops. The separate Experience examples disclosure offers explicit Reset, Load Example and Load Conformance commands; loading never plays or positions the Camera. The donor at
 [`../experience-authoring/`](../experience-authoring/README.md) stays runnable with its 4.1 tests.
-The integrated design folder retains the UX reconciliation, the six QA boards and two Camera precision specimens, rather than another executable.
+The integrated design folder preserves historical UX reconciliation, six QA boards and two Camera precision specimens. The V3 design workspace supplies their candidate replacements, rather than another executable.
 The [replacement #113 conformance plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
 owns this replacement's implementation scope; [historical Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) maps S0–S9 evidence.
 Paper PA0 (#115) must reconcile against this unified tree as left by #114. F and production T1/T2/T3/T4 remain gated.

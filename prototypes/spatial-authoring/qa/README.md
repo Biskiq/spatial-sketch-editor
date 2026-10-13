@@ -1,5 +1,13 @@
 # Unified World and Experience Prototype QA
 
+> **Experience design review (2026-10-13):** [V3](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md)
+> and its [candidate PNG acceptance](../../experience-ux-v3/README.md) replace the
+> old #114 work target, pending owner ratification. Existing axes/captures remain
+> evidence for their tested semantics. Obsolete surface assertions are reviewed
+> in the [new plan](../../../docs/roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md);
+> they are not a reason to retain the old product structure. No full/mutation
+> sweep is imposed by this design package.
+
 The prototype's acceptance lives beside its executable here, not in a design folder. Each script
 owns its own static server for **this** checkout (an ephemeral port), waits for real readiness, and
 **exits nonzero** when an assertion fails.

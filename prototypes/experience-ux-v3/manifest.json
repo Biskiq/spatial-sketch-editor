@@ -1,0 +1,117 @@
+{
+  "kind": "generated-design-specimens",
+  "status": "proposed-for-ratification",
+  "inspectedRuntimeHead": "de41341e82f4a745abe85537c59a217c160c60f3",
+  "sourceSha256": {
+    "boards.html": "a7a2515e48d50778536e055de2e8405d4b1b70ed4075c05c5f5a941fc18325ca",
+    "specimens.js": "5a197bcb02f079624233ef6fbebea5087de1357eefe2bd74a6881dde8d68417e",
+    "specimens.css": "f443a5021d36f43066366169bdbf6762921d0bc7c60b3f4e2a12d039475cc9f9"
+  },
+  "boards": [
+    {
+      "id": "01-workspace-start",
+      "title": "Start with one encounter",
+      "width": 1440,
+      "height": 900,
+      "sha256": "79ba394ac906cec56c645f86be40029d0cb90d46e0891cc26378620aeff82813"
+    },
+    {
+      "id": "02-presentation-3d",
+      "title": "Available Views",
+      "width": 1440,
+      "height": 900,
+      "sha256": "5ed10eddec75c1e8c9009275391dac07c0864a0cce86e0b69096e47b9ec12d08"
+    },
+    {
+      "id": "03-view-plan",
+      "title": "Inspect a View without moving",
+      "width": 1440,
+      "height": 900,
+      "sha256": "27e7833cdc7e5395d9026ada58a1c34e4240e13293a48476dabccf4ebd43146e"
+    },
+    {
+      "id": "04-look-through-3d",
+      "title": "Look through, then return",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8e1bbede09ef692e4b15a066e8d57b08169cdd0e5f52bf0eea24cf4b5836da04"
+    },
+    {
+      "id": "05-guide-overview-3d",
+      "title": "Arrange encounters",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a7321c404e1e26c7ef3b17bea31cb2f98fc68766c41f9bf6425cb9caa734ebd0"
+    },
+    {
+      "id": "06-stop-plan",
+      "title": "Curate this occurrence",
+      "width": 1440,
+      "height": 900,
+      "sha256": "96217ce45737b1d6e3362a0d7e3939ae592feec97afa8e97e702f55e8308a50a"
+    },
+    {
+      "id": "07-reorder-guide",
+      "title": "Reorder where the order lives",
+      "width": 1440,
+      "height": 900,
+      "sha256": "1d8745666b9e3c6e387a427f50f6bc9a622d1fa145ede8f631a83db2146c1354"
+    },
+    {
+      "id": "08-movement-path-plan",
+      "title": "Shape the movement",
+      "width": 1440,
+      "height": 900,
+      "sha256": "243c7449d9fea9db83cf7493eb0b291b2ce61b10be8d82260bc2fb6b7cf82d9b"
+    },
+    {
+      "id": "09-playback-3d",
+      "title": "Observe the timing",
+      "width": 1440,
+      "height": 900,
+      "sha256": "124f670490bf0b4e5c839a97f71d34af64df9c24e523d6b8639e3668ead2dd06"
+    },
+    {
+      "id": "10-follow-camera-3d",
+      "title": "Follow the result",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7adfabeba3c92731bdfcb39479a62700d31d516bc2ca653f464c13c08ca1318c"
+    },
+    {
+      "id": "11-visitor-entry",
+      "title": "Choose a visit",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a1f5976ab5faecc6e204608056cb7acbc51a6cf2f78a0cf734e85b58a7cb3a85"
+    },
+    {
+      "id": "12-visitor-guided",
+      "title": "Follow the curated encounter",
+      "width": 1440,
+      "height": 900,
+      "sha256": "c91c3313995aca53e1b70c6a0d7932d040626e399105b07408675a9d19892dbe"
+    },
+    {
+      "id": "13-visitor-explore",
+      "title": "See what catches your eye",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b8f9bef20f12b1d7c1e7946b20de1dd2613b9d4df05cbacbee23d4ba1a002f87"
+    },
+    {
+      "id": "14-narrow-stop",
+      "title": "Curate at a narrower width",
+      "width": 1024,
+      "height": 768,
+      "sha256": "b9f544ec2ec7341e064b1c43cdcea546fcf4c676ccda4c5fe688bd35571eb81a"
+    },
+    {
+      "id": "15-narrow-movement",
+      "title": "Keep the spatial instrument usable",
+      "width": 768,
+      "height": 900,
+      "sha256": "aafaa9fe0039a17ef6a6a381784fc34caa4ca9dea8c01093519aa50aa4750822"
+    }
+  ]
+}
