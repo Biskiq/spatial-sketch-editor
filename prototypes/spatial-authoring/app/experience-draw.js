@@ -3,10 +3,18 @@ import { originCoverage,stopEntry,resolveUse,getSeam,gripLabels } from './experi
 import { S,ctx } from './state.js';
 import { resolvedCamera,readingFor,framingInstrument,focusPoint } from './navigation.js';
 import { eye,routeGeometry } from './camera-evaluation.js';
-import { journeyClock } from './experience-coordination.js';
+import { journeyClock, cueName } from './experience-coordination.js';
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const project=p=>ctx.stage.project(p),ov=()=>ctx.ov;
 function safe(at){const deck=document.querySelector('#experienceDeck'),bottom=deck?deck.getBoundingClientRect().top-document.querySelector('#stage').getBoundingClientRect().top:ctx.stage.h-16;return {x:Math.max(68,Math.min(ctx.stage.w-85,at.x)),y:Math.max(90,Math.min(bottom-35,at.y))};}
+// §5.4: one pin group per resolved entry View. Stops that resolve to the same View share one chip, and
+// each Stop keeps its own numbered button and its own `data-act="exp-stop"`, so distinct access is kept
+// while a repeated Presentation stops fanning out leaders across the Stage.
+function stopPinGroup(row){
+ const {at,trueAt,stops}=row;
+ if(Math.hypot(at.x-trueAt.x,at.y-trueAt.y)>5&&!trueAt.behind)ov().line('leader-'+row.id,trueAt,at,'exp-leader');
+ ov().chip('stop-group-'+row.id,at.x,at.y,stops.map(s=>`<button class="exp-stop-pin ${S.sel===s.id?'selected':''}" data-act="exp-stop" data-id="${esc(s.id)}" aria-label="Stop ${s.index}">${s.index}</button>`).join('<span class="exp-stop-sep" aria-hidden="true">·</span>'),'tape exp-stop-group',{'data-exp-stop-group':esc(row.id),tag:'span',pri:98});
+}
 // Offset labels/pins preserve their true projected position through leaders. Every hit is unique.
 function layout(rows){
  const placed=[],bottom=safe({x:0,y:1e6}).y;
@@ -23,17 +31,35 @@ function marker(row,{number=null,end=null}={}){
  if(number!==null){ov().chip('stop-'+id,at.x,at.y,String(number),'tape exp-stop-pin '+(S.sel===id?'selected':''),{'data-act':'exp-stop','data-id':id,'aria-label':`Stop ${number}`,tag:'button',pri:98});return;}
  const target=project(view.pose.target),angle=Math.atan2(target.y-trueAt.y,target.x-trueAt.x),a={x:trueAt.x+Math.cos(angle-.5)*30,y:trueAt.y+Math.sin(angle-.5)*30},b={x:trueAt.x+Math.cos(angle+.5)*30,y:trueAt.y+Math.sin(angle+.5)*30};
  if(!trueAt.behind){ov().path('view-glyph-'+id,[trueAt,a,b],'exp-view-glyph',true,{'data-view-direction':view.id});ov().path('view-origin-'+id,[{x:trueAt.x-3,y:trueAt.y-3},{x:trueAt.x+3,y:trueAt.y-3},{x:trueAt.x+3,y:trueAt.y+3},{x:trueAt.x-3,y:trueAt.y+3}],'exp-view-origin',true);if(!end)ov().line('focus-'+id,trueAt,target,'exp-focus-ray');}
- ov().chip('view-'+id,at.x,at.y,`${end==='destination'?'◉':'◁'} ${esc(view.name)} <small>${esc(end||use?.role||'Camera')}</small>`,'tape exp-view-pin '+(S.sel===id?'selected':''),{'data-act':'pres-ref','data-id':id,'data-exp-view':view.id,'data-endpoint':end||'',tag:'button',pri:97});
+ // §5.2.6: a chip names the thing it is, with no role sub-line and no ○/◁ prefix. An endpoint is a filled
+ // Camera chip — the edge's two ends are Camera infrastructure, not two more named Views.
+ ov().chip('view-'+id,at.x,at.y,esc(view.name),'tape exp-view-pin '+(end?'endpoint ':'')+(S.sel===id?'selected':''),{'data-act':'pres-ref','data-id':id,'data-exp-view':view.id,'data-endpoint':end||'',tag:'button','aria-label':`${esc(view.name)}${end?` · ${end==='destination'?'arrives here':'departs here'}`:''}`,pri:97});
 }
 export function drawExperience(){
  if(S.lens!=='experience'||S.visitor)return;
  const e=ctx.experience,c=resolvedCamera(),x=S.experienceContext;
  if(x.seam&&['seam','route','coordination'].includes(x.depth)){drawSeam(e,c,x);return;}
  if(x.depth==='overview'){
-  layout(e.guide.flatMap((id,i)=>{const v=resolveUse(e,c,stopEntry(e,id).id)?.view;return v?[{id,view:v,position:v.pose.target,number:i+1}]:[];})).forEach(row=>marker(row,{number:row.number}));return;
+  // §5.4: while an edge is the Card's identity the Stage keeps the edge reading — its origin and
+  // destination entry Views only, with no pins — so Cut/Travel can never be read as a property of a Stop.
+  if(x.seam){drawSeam(e,c,{...x,depth:'seam'});return;}
+  const groups=new Map();
+  e.guide.forEach((id,i)=>{
+   const entry=stopEntry(e,id),view=resolveUse(e,c,entry.id)?.view;
+   if(!view)return;
+   if(!groups.has(entry.id))groups.set(entry.id,{id:entry.id,view,position:view.pose.target,stops:[]});
+   groups.get(entry.id).stops.push({id,index:i+1});
+  });
+  layout([...groups.values()]).forEach(stopPinGroup);return;
  }
  if(x.depth==='precision'){drawPrecision(c);return;}
  const p=e.presentations[x.presentation];if(!p)return;
+ // §5.3: a Presentation's constellation and its ◇ focus mark are drawn only while the canonical selection
+ // is that Presentation, one of its View uses, or — in ordinary depth — one of its Stops. With a Scene
+ // subject selected the Stage shows World geometry and that subject's own selection, so no Presentation
+ // looks selected (QA 5).
+ const ownsSelection=S.sel===p.id||e.uses[S.sel]?.presentationId===p.id||(x.depth==='ordinary'&&e.stops[S.sel]?.presentationId===p.id);
+ if(!ownsSelection)return;
  drawViews(e,c,p,x);
  if(S.derivedView?.presentation===p.id){const at=safe(project(eye(S.derivedView.pose)));ov().chip('derived-view',at.x,at.y,'◌ Recommended framing · Capture to keep','tape exp-derived',{'data-derived-view':true,tag:'span',pri:96});}
 }
@@ -140,26 +166,42 @@ function drawSeam(e,c,x){
  for(const id of ids){
   const route=c.connections[id];if(S.expDrag?.connection===id){const a=route.anchors.find(a=>a.id===S.expDrag.anchor);if(a)a.position=[...S.expDrag.position];}const geometry=routeGeometry(c,id);if(!geometry)continue;
   const selected=id===S.task?.params.connection;
-  ov().path('route-'+id,geometry.samples.map(s=>project(s.observer)),'exp-route-path '+(selected?'working':''),false,{'data-exp-route':id});
-  // QA 2: in the Journey the authored point is a station a Cue can sit on, not a handle — it is drawn the
-  // same way and is deliberately not hit-eligible, so a press on the drawing lands on the drawing.
-  for(const a of route.anchors){const at=project(S.expDrag?.anchor===a.id?S.expDrag.position:a.position);if(at.behind)continue;
-   if(x.depth==='coordination')ov().chip('anchor-'+a.id,at.x,at.y,'◆','tape exp-station-point',{'data-exp-station-point':a.id,tag:'span',pri:1,'aria-label':`${a.name} · Camera station`});
-   else ov().chip('anchor-'+a.id,at.x,at.y,'◆','tape exp-anchor '+(selected?'working':''),{'data-exp-anchor':a.id,'data-connection':id,tag:'button',pri:1000,'aria-label':`${a.name} · Camera observer anchor`});}
-  geometry.samples.filter((s,i)=>i%5===0&&i>0&&i<40).forEach((s,i)=>{const at=project(s.observer);ov().text(`sample-${id}-${i}`,at.x,at.y,'·','exp-sample');});
-  if((x.depth==='coordination'||seam.beats.length)&&selected){
-   for(const station of geometry.stations){const at=project(station.observer),beats=seam.beats.filter(b=>b.connectionId===id&&b.stationId===station.id),active=S.task.params.station===station.id;
-    ov().chip(`station-${id}-${station.id}`,at.x,at.y-22,`${station.id==='departure'||station.id==='arrival'?'○':'◇'} ${esc(station.label)}${beats.length?' · '+beats.map(b=>b.kind==='hold'?b.seconds+'s hold':'beat').join(', '):''}`,'tape exp-station '+(active?'active':''),{'data-act':'exp-station-focus','data-id':station.id,'data-exp-station-label':station.id,tag:'button',pri:1000});
+  // §5.5/§5.6: the posture's own route is the drawn path — 2 px in the Path, a quiet 1.5 px at 60 % in the
+  // Journey. Every other origin's route stays context: 1 px at 35 %, no points and not hit-eligible. The
+  // derived samples are no longer dotted: the grammar says an evaluated sample is not a marked thing.
+  const posture=x.depth==='coordination'?'coordination':'path';
+  const classes=['exp-route-path',selected?(posture==='coordination'?'journey':''):'context'].filter(Boolean).join(' ');
+  ov().path('route-'+id,geometry.samples.map(s=>project(s.observer)),classes,false,{'data-exp-route':id});
+  // §5.5: an authored point is a 14 px Camera ring, never a ◆ chip. It is the handle the author places in
+  // the Path; in the Journey a point is a station a Cue sits on, so no handle is drawn and a press on the
+  // drawing lands on the drawing (QA 2).
+  if(posture==='path')for(const a of route.anchors){
+   const at=project(S.expDrag?.anchor===a.id?S.expDrag.position:a.position);if(at.behind)continue;
+   const number=route.anchors.indexOf(a)+1,current=x.point?.anchorId===a.id;
+   ov().chip('anchor-'+a.id,at.x,at.y,'','tape exp-anchor '+(current?'selected':''),{'data-exp-anchor':a.id,'data-connection':id,tag:'button',pri:1000,'aria-label':`Path point ${number}`});
+  }
+  // §5.6: a Cue chip appears only at stations that really hold a Cue, reads `◆ <Cue name>` with no seconds
+  // and no hold text, and is the same Cue identity the Deck marker and the Card select.
+  if(posture==='coordination'&&selected){
+   const clock=journeyClock(c,seam,id);
+   for(const cue of clock?.cues||[]){
+    const station=geometry.stations.find(s=>s.id===cue.stationId);if(!station)continue;
+    const at=project(station.observer),active=S.task?.params?.station===cue.stationId,name=cueName(e,route,cue);
+    ov().chip(`station-${id}-${cue.stationId}`,at.x,at.y-22,`◆ ${esc(name)}`,'tape exp-station '+(active?'active':''),{'data-act':'exp-cue-select','data-id':cue.stationId,'data-exp-station-label':cue.stationId,tag:'button',pri:1000,'aria-label':`Cue ${esc(name)}`});
    }
   }
-  // UX6: the Journey's playhead. The rehearsal rig is drawn from the same clock the Deck and the visit use,
-  // at the pose `evaluatePath` gives for the playhead's time. It is a reading on the Stage, not a Camera
-  // move: the author's own standpoint is untouched, no invocation runs and no source is written.
+  // §5.6: the rehearsal rig is the View-marker's own frustum glyph plus a 10 px Camera dot at the pose the
+  // clock evaluates. It is a reading on the Stage, not a Camera move: the author's standpoint is untouched,
+  // no invocation runs and no source is written.
   if(x.depth==='coordination'&&S.rehearse&&selected){
    const clock=journeyClock(c,seam,S.rehearse.connectionId);
    if(clock&&clock.connectionId===id){
-    const rig=project(eye(clock.poseAt(S.rehearse.t)));
-    if(!rig.behind)ov().chip('journey-rig',rig.x,rig.y,'◇ rig',`tape exp-rig ${S.rehearse.playing?'playing':''}`,{'data-exp-rig':'','data-exp-rig-playing':S.rehearse.playing?'true':'false',tag:'span',pri:1001,'aria-label':'Rehearsal playhead'});
+    const pose=clock.poseAt(S.rehearse.t),observer=eye(pose),rig=project(observer),target=project(pose.target);
+    if(!rig.behind){
+     const angle=Math.atan2(target.y-rig.y,target.x-rig.x),head={x:rig.x,y:rig.y-26};
+     ov().path('journey-rig-glyph',[head,{x:head.x+Math.cos(angle-.5)*20,y:head.y+Math.sin(angle-.5)*20},{x:head.x+Math.cos(angle+.5)*20,y:head.y+Math.sin(angle+.5)*20}],'exp-view-glyph',true,{'data-exp-rig-glyph':''});
+     ov().chip('journey-rig',rig.x,rig.y,'',`tape exp-rig ${S.rehearse.playing?'playing':''}`,{'data-exp-rig':'','data-exp-rig-playing':S.rehearse.playing?'true':'false',tag:'span',pri:1001,'aria-label':'Rehearsal playhead'});
+    }
    }
   }
  }

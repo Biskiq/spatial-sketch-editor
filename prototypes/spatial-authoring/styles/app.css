@@ -706,7 +706,10 @@ body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0
 .visitor-preview > .head, .visitor-preview > .index, .visitor-preview > .card, .visitor-preview > footer, .visitor-preview .stage-tools, .visitor-preview #instrument, .visitor-preview #truth, .visitor-preview #ovHtml, .visitor-preview #ovSvg, .visitor-preview #where { display: none !important; }
 #visitorSurface { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: min(600px, 90%); padding: 18px; color: #f8f5ea; background: #242623ed; border-radius: 8px; }
 .visitor-title { font-size: 22px; }
-.contribution, .offer-draft, .stop-details { margin: 10px 14px; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; font-size: 12px; }
+.contribution, .offer-draft { margin: 10px 0; padding: 10px; border: 1px solid var(--rule); border-radius: 4px; font-size: 12px; }
+/* `.stop-details` stays an unstyled wrapper: its direct `<details data-exp-stop-detail>` child is the
+   deliberate depth, and the wrapper is a live test hook. */
+.stop-details { font-size: 12px; }
 .contribution textarea { width: 100%; min-height: 70px; margin: 8px 0; font: inherit; }
 .offer-draft label, .stop-details label, .contribution details label { display: flex; justify-content: space-between; gap: 8px; margin: 8px 0; }
 .offer-draft select { max-width: 165px; }
@@ -736,19 +739,12 @@ body.app.visitor-preview { grid-template-columns: 0 1fr 0; grid-template-rows: 0
 .experience-presenter summary { cursor: pointer; }
 body.shot .experience-presenter, .visitor-preview .experience-presenter { display: none !important; }
 .exp-deck input, .exp-deck select, .stop-details select { max-width: 100%; min-width: 0; }
-.beat-strip { flex-wrap: wrap; }
-.beat input { width: 60px; }
 @media (max-width: 1280px) { .head { gap: 8px; } .doc-name { font-size: var(--tsm); } .active-experience { max-width: 125px; } }
 @media (max-width: 1060px) {
   .active-experience { max-width: 100px; }
   .experience-presenter { left: 12px; right: auto; }
   .exp-deck { left: 12px; right: 12px; }
-  .seam-bookends { grid-template-columns: 1fr 1.1fr 1fr; gap: 6px; }
-  .seam-bookends article { min-width: 0; padding: 6px; }
 }
-
-.stop-card.compact { min-width: 95px; max-width: 125px; }
-.stop-summary { max-width: 165px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
 /* Experience consumes PLATE roles. Camera domain accent is the existing §7 domain token;
    action surfaces, selection, manipulation, focus and refusal reuse the shared prototype tokens. */
@@ -764,41 +760,54 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
    blank box. The state must always be readable, whichever variant is pressed. */
 .exp-action[aria-pressed="true"] { background:var(--recess); color:var(--ink); border-color:var(--ink-3); box-shadow:inset 0 -2px var(--ink-2); }
 .exp-action:disabled { opacity:.45; cursor:default; }
-.exp-action:focus-visible,.set-node:focus-visible,.peek-stop:focus-visible,.exp-view-pin:focus-visible,.exp-focus-mark:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
-.exp-label { display:block; margin:8px 16px; font-size:var(--tsm); }
+.exp-action:focus-visible,.gd-stop:focus-visible,.gd-edge:focus-visible,.exp-view-pin:focus-visible,.exp-focus-mark:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+/* §5.2 card anatomy: every block inside the Card aligns to the Card's own left edge, so the header,
+   facts and buttons share one column. The retired 16 px inset is gone; the header alone sets the column. */
+.exp-label { display:block; margin:8px 0; font-size:var(--tsm); }
 .exp-label input,.exp-label textarea { width:100%; margin-top:4px; padding:6px; border:1px solid var(--rule); background:var(--instrument); font:inherit; color:var(--ink); border-radius:3px; }
 .exp-label textarea { min-height:64px; resize:vertical; }
-.exp-focus,.exp-fact { margin:10px 16px; font-size:var(--tmd); line-height:1.5; }
+.exp-focus,.exp-fact { margin:10px 0; font-size:var(--tmd); line-height:1.5; }
+/* §5.2.2 one labelled value or writer is one row: a fixed label column, then the control. */
+.exp-row { display:grid; grid-template-columns:72px minmax(0,1fr); align-items:center; gap:8px; margin:6px 0; }
+.exp-row > .exp-row-k { font:600 var(--txs) var(--ui); letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); }
+.exp-row select,.exp-row input { width:100%; height:26px; padding:0 6px; border:1px solid var(--rule); background:var(--instrument); font:inherit; color:var(--ink); border-radius:3px; }
+/* §5.4 segmented pair (Cut | Travel): one instrument, two mutually exclusive states. */
+.exp-seg { display:inline-flex; border:1px solid var(--rule); border-radius:3px; overflow:hidden; }
+.exp-seg > button { height:26px; padding:0 12px; border:0; border-left:1px solid var(--rule); background:var(--instrument); font:500 var(--tsm) var(--ui); color:var(--ink-2); cursor:pointer; }
+.exp-seg > button:first-child { border-left:0; }
+.exp-seg > button[aria-pressed="true"] { background:var(--recess); color:var(--ink); box-shadow:inset 0 -2px var(--ink-2); }
+/* §5.5 Index facts: the Journey's own readings, quiet and full-width in the locator. */
+.ix-fact { margin:2px 8px; font-size:var(--tsm); color:var(--ink-2); }
 /* UX2 · the Views list: the keyboard inventory of the same unordered Views the Stage marks around the
    Presentation focus. Exactly one row carries ★, and no row implies an order. */
-.exp-views { margin:8px 16px; display:flex; flex-direction:column; gap:6px; }
+.exp-views { margin:8px 0; display:flex; flex-direction:column; gap:6px; }
 .exp-view { display:flex; align-items:center; gap:8px; font-size:var(--tsm); }
 .exp-view .reference { color:var(--camera); flex:1; }
 .exp-view small,.exp-view span { display:block; color:var(--ink-3); font-size:var(--txs); }
 .exp-view .exp-star { display:inline; color:var(--sel-edge); font-size:var(--tmd); }
 .exp-view.selected .reference { border-left:2px solid var(--sel-edge); padding-left:6px; }
-.exp-ops { margin:8px 16px; display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
+.exp-ops { margin:8px 0; display:flex; flex-wrap:wrap; align-items:end; gap:8px; }
 .exp-ops .exp-label { margin:0; flex:1 1 160px; }
 .exp-ops .exp-action { flex:0 0 auto; }
-.exp-summary { margin:10px 16px; }
+.exp-summary { margin:10px 0; }
 /* UX3 · the derived reach of one Scene subject: rows are references that open their owner, so they read as
    a list of what exists rather than as another editor. */
 /* UX3 density: `Used in Experience` is a reference index, not a second inspector. One compact line per
    reference — the owner's name as the hit target, its short kind/scope note beside it, elided rather than
    wrapped — so a subject used in many places cannot dominate the Card. */
-.exp-used { display:grid; grid-template-columns:minmax(0,auto) 1fr; align-items:baseline; gap:1px 8px; margin:2px 16px; font-size:var(--tsm); }
+.exp-used { display:grid; grid-template-columns:minmax(0,auto) 1fr; align-items:baseline; gap:1px 8px; margin:2px 0; font-size:var(--tsm); }
 .exp-used .exp-action { display:block; text-align:left; }
 .exp-used small { min-width:0; font-size:var(--txs); color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.exp-view-switch { margin:8px 16px; font-size:var(--tsm); }
+.exp-view-switch { margin:8px 0; font-size:var(--tsm); }
 .exp-view-switch .cue-select { display:block; margin-top:4px; }
 /* The rendered Camera preview is a normal-World projection produced by the Stage's own renderer. */
-.exp-preview { margin:8px 16px; border:1px solid var(--rule); background:var(--recess); padding:6px; }
+.exp-preview { margin:8px 0; border:1px solid var(--rule); background:var(--recess); padding:6px; }
 .exp-preview img { display:block; width:100%; height:auto; image-rendering:auto; }
 .exp-preview .exp-fact { margin:2px 0; font-size:var(--txs); color:var(--ink-3); }
 .exp-more.advanced { border-left:2px solid var(--rule); padding-left:10px; }
 /* The focus mark the View markers are placed around: a place on the drawing, never a Camera target. */
 .exp-focus-mark { color:var(--ink-3); border:1px dashed var(--ink-3); background:transparent; font-size:var(--txs); padding:3px 6px; }
-.exp-more { margin:12px 16px; font-size:var(--tsm); }
+.exp-more { margin:12px 0; font-size:var(--tsm); }
 .exp-more summary { cursor:pointer; color:var(--ink-2); }
 .exp-deck { position:absolute; bottom:12px; left:12px; right:12px; z-index:35; padding:10px; background:var(--chassis); border:1px solid var(--rule); border-radius:3px; color:var(--ink); }
 /* Expanded editorial work owns shell breadth without resizing the shared Stage/Camera. */
@@ -806,33 +815,6 @@ body[data-lens="experience"] .relation:not(.parked) { background:var(--recess); 
 /* While that band is fixed over the bottom of the viewport, the Card keeps its own content scrollable
    clear of it: identity, actions and details stay reachable instead of hiding behind the band. */
 body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px); }
-.exp-deck.ordinary { display:flex; align-items:center; justify-content:space-between; gap:12px; height:34px; padding:3px 10px; font-size:var(--txs); }
-.peek-occurrences { display:flex; gap:12px; }
-.peek-stop { background:none; border:0; font:500 var(--txs) var(--ui); color:var(--ink-2); cursor:pointer; }
-.peek-stop.selected { color:var(--sel-edge); font-weight:700; }
-.deck-head { display:flex; align-items:center; justify-content:space-between; font-size:var(--tsm); margin-bottom:6px; }
-.stop-strip { display:flex; align-items:center; gap:4px; overflow-x:auto; }
-.stop-strip>.seam-link { flex:0 0 10px; width:10px; padding:0; }
-.stop-card { flex:1 0 90px; min-width:90px; padding:8px; border:1px solid var(--rule); background:var(--instrument); font-size:var(--tsm); border-radius:3px; }
-.stop-card .exp-action { width:100%; }
-.stop-card.compact { flex:0 0 50px; min-width:50px; max-width:50px; }
-.stop-card.compact .reference { font-size:var(--txs); }
-.stop-card.density-summary { flex:1 0 98px; min-width:94px; max-width:115px; }
-.stop-card.expanded { flex:3 0 330px; min-width:330px; max-width:380px; }
-.stop-card.selected { border-color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); }
-.stop-card small,.scope-note { font-size:var(--txs); color:var(--ink-3); }
-.stop-summary { margin:5px 0; line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.stop-thumbnail { float:right; width:44px; height:40px; color:var(--ink-3); }
-.occurrence-content { display:grid; grid-template-columns:1fr 1.1fr; gap:10px; }
-.occurrence-content p { margin:6px 0; line-height:1.35; }
-.occurrence-content .exp-action { width:auto; }
-.set-constellation { position:relative; width:100%; min-width:175px; height:145px; margin:4px 0; }
-.set-constellation svg { position:absolute; width:100%; height:100%; }
-.set-ray { fill:none; stroke:var(--camera); stroke-width:.6; stroke-dasharray:2 3; }
-.set-focus { fill:var(--ink-3); }
-.set-node { position:absolute; transform:translate(-50%,-50%); font:500 var(--t2xs) var(--ui); color:var(--camera); background:var(--instrument); border:1px solid var(--rule); border-radius:3px; padding:3px; white-space:nowrap; cursor:pointer; }
-.set-node small { display:block; font-size:8px; }
-.set-node.selected { border-color:var(--sel-edge); }
 .exp-view-pin { color:var(--camera); border:1px solid var(--camera); background:var(--instrument); font-size:var(--tsm); padding:4px 7px; }
 .exp-view-pin small { display:block; font-size:var(--t2xs); }
 .exp-view-pin.selected,.exp-stop-pin.selected { border:2px solid var(--sel-edge); background:var(--sel-soft); }
@@ -843,21 +825,27 @@ body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px);
 .exp-focus-ray { fill:none; stroke:var(--camera); stroke-width:1; stroke-dasharray:4 5; opacity:.7; }
 .exp-leader { fill:none; stroke:var(--ink-3); stroke-width:1; }
 .exp-stop-pin { width:26px; height:26px; border-radius:50%; background:var(--ink); color:var(--instrument); border:2px solid var(--instrument); font:600 var(--tsm) var(--ui); padding:0; }
-.exp-derived { color:var(--view-ink); background:var(--view-soft); border:1px dashed var(--view); }
-.seam-link { border:0; background:none; color:var(--ink-3); cursor:pointer; font-size:var(--tmd); }
-.seam-bookends { display:grid; grid-template-columns:minmax(180px,1fr) minmax(0,2.4fr) minmax(160px,1fr); gap:10px; font-size:var(--tsm); }
-.seam-bookends article { padding:8px; background:var(--instrument); border:1px solid var(--rule); border-radius:3px; min-width:0; }
-.seam-bookends h3 { font:600 var(--tlg) var(--display); margin:4px 0; }
-.seam-bookends p { margin:5px 0; }
-.origin-row { display:flex; justify-content:space-between; align-items:center; gap:5px; margin:4px 0; font-size:var(--txs); }
-.exp-route-path { fill:none; stroke:var(--camera); stroke-width:1.5; }
-.exp-route-path.working { stroke-width:2.5; }
-.exp-anchor { color:var(--camera); background:var(--instrument); border:1px solid var(--camera); cursor:grab; padding:2px 5px; }
-.exp-anchor.working { border-color:var(--sel-edge); color:var(--sel-edge); }
+/* A Camera route on the Stage: the selected connection is the drawn path, other origins stay quiet. */
+.exp-route-path { fill:none; stroke:var(--camera); stroke-width:2; }
+.exp-route-path.context { stroke-width:1; opacity:.35; }
+/* §5.6: in the Journey the route is the quiet frame the Cues sit on, not a handle the author grabs. */
+.exp-route-path.journey { stroke-width:1.5; opacity:.6; }
+/* §5.4: one Stage pin group per resolved entry View, holding one numbered button per Stop. */
+.exp-stop-group { display:inline-flex; align-items:center; gap:4px; padding:3px 6px; }
+.exp-stop-group .exp-stop-pin { width:22px; height:22px; }
+.exp-stop-sep { color:var(--ink-3); }
+/* §5.5 a path point is a 14 px Camera ring, never a ◆ chip; the selected one fills with the Camera tone
+   and wears the selection halo. The retired amber `.working` (which painted every point selected) is gone. */
+.exp-anchor { width:14px; height:14px; padding:0; border-radius:50%; border:2px solid var(--camera); background:var(--instrument); cursor:grab; }
+.exp-anchor.selected { background:var(--camera); box-shadow:0 0 0 3px var(--sel); }
 .exp-gap { color:var(--refuse-ink); background:var(--refuse-bg); border:1px solid var(--refuse-edge); font-size:var(--txs); }
-.exp-sample { fill:var(--camera); font-size:16px; }
-.exp-station { color:var(--camera); background:var(--instrument); border:1px solid var(--camera); font-size:var(--t2xs); padding:3px; }
-.exp-station.active { border-color:var(--sel-edge); color:var(--sel-edge); }
+/* §5.6 a Cue chip is a named ◆: no seconds, no hold text. The selected Cue takes the selection contour. */
+.exp-station { color:var(--camera); background:var(--instrument); border:1px solid var(--camera); font:500 var(--tsm)/1 var(--ui); padding:3px 6px; }
+.exp-station.active, .exp-station.selected { border:2px solid var(--sel-edge); background:var(--sel-soft); color:var(--ink); font-weight:600; }
+/* §5.2.6 Experience Stage chips speak the UI type, not the tape's mono; measures keep mono. */
+.tape.exp-view-pin, .tape.exp-stop-pin, .tape.exp-station, .tape.exp-rig, .tape.exp-focus-mark, .tape.exp-gap { font:500 var(--tsm)/1 var(--ui); font-stretch:100%; }
+/* §5.2.6 View endpoints are filled Camera chips, so an endpoint reads as Camera infrastructure. */
+.tape.exp-view-pin.endpoint { background:var(--camera); color:var(--instrument); border-color:var(--camera); }
 #experienceInstrument { position:absolute; top:48px; left:12px; right:12px; z-index:36; pointer-events:none; font-size:var(--tsm); }
 #experienceInstrument button { pointer-events:auto; }
 .camera-toolbar { display:flex; align-items:center; gap:8px; }
@@ -875,153 +863,153 @@ body.guide-band .card { padding-bottom: calc(var(--guide-band-h, 216px) + 24px);
 .exp-active-tape { position:absolute; transform:translate(-50%,-50%); pointer-events:auto; }
 .numeric-tape { display:flex; align-items:center; gap:6px; padding:4px 7px; background:var(--instrument); border:1px solid var(--sel-edge); color:var(--ink); border-radius:3px; font:500 var(--txs) var(--mono); white-space:nowrap; }
 .numeric-tape input { width:55px; font:inherit; color:var(--ink); border:1px solid var(--rule); background:var(--instrument); padding:2px; }
-.ask-rule { margin:12px 16px; padding:10px; border:1px solid var(--camera); background:var(--instrument); font-size:var(--tsm); }
+.ask-rule { margin:12px 0; padding:10px; border:1px solid var(--camera); background:var(--instrument); font-size:var(--tsm); }
 .ask-rule p { line-height:1.4; }
 .ask-rule .exp-action { margin:4px 3px 0 0; }
-.coordination-strip { padding-top:8px; margin-top:8px; border-top:1px solid var(--rule); font-size:var(--tsm); }
-.coordination-strip label { display:inline-flex; gap:6px; margin:4px; }
-.beat-strip { display:flex; flex-wrap:wrap; gap:6px; }
-.beat { border:1px solid var(--rule); padding:5px; background:var(--instrument); }
 #visitorSurface .exp-action { margin:4px; }
-@media(max-width:1060px){.stop-card.expanded{flex-basis:300px}.exp-deck{left:12px;right:12px}.camera-grips{max-width:220px}.seam-bookends{gap:5px}.seam-bookends article{padding:5px}}
-.seam-unrelated { display:flex; gap:12px; float:left; width:26px; flex-direction:column; margin-right:8px; }
-.station-projection { display:grid; grid-template-columns:44px 1fr; align-items:center; gap:4px; }
-.station-projection>span { font-size:var(--txs); color:var(--ink-3); }
-.station-lane { position:relative; height:36px; margin:0 36px; border-top:1px solid var(--camera); }
-.station-tick { position:absolute; transform:translate(-50%,-50%); top:0; background:none; border:0; color:var(--camera); cursor:pointer; font:500 var(--tsm) var(--ui); }
-.station-tick small { display:block; white-space:nowrap; font-size:var(--t2xs); }
-.station-tick.active { color:var(--sel-edge); font-weight:700; }
-.temporal-lane { height:28px; position:relative; margin:0 36px; border-top:1px solid var(--rule); }
-.coord-beat,.coord-hold { position:absolute; top:1px; transform:translateX(-50%); white-space:nowrap; background:var(--instrument); font:500 var(--t2xs) var(--ui); color:var(--ink); border:1px solid var(--rule); padding:3px; }
-.coord-beat small { margin-left:4px; }
-.coord-beat.active { border-color:var(--sel-edge); }
-.coord-hold input { width:45px; border:1px solid var(--rule); background:var(--instrument); font:inherit; }
-.coord-actions { display:flex; align-items:center; gap:5px; margin-top:5px; flex-wrap:wrap; }
-/* Local Seam actions and context remain shallow as coordination is disclosed. */
-.exp-deck .c-acts { flex-direction:row; flex-wrap:wrap; margin:5px 0; }
+@media(max-width:1060px){.exp-deck{left:12px;right:12px}.camera-grips{max-width:220px}}
 .exp-deck .exp-action { width:auto; }
-.exp-deck .stop-card>.exp-action.reference { display:block; width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.exp-deck .seam-bookends { font-size:var(--txs); }
-.exp-deck .seam-bookends article { padding:6px; }
-.exp-deck .seam-bookends .c-acts { gap:4px; }
-.exp-deck .seam-bookends p { margin:4px 0; }
-.exp-deck .seam-instrument { line-height:1.25; }
-.exp-deck.coordination .seam-instrument p { display:none; }
-.exp-deck.coordination .seam-bookends { font-size:var(--t2xs); }
-.exp-deck.coordination .origin-row .exp-action { padding:3px 5px; }
-.exp-deck.coordination .coordination-strip { padding-top:5px; margin-top:5px; }
-.exp-deck.coordination .station-lane { height:25px; }
-.exp-deck.coordination .temporal-lane { height:24px; }
-.exp-deck.coordination .origin-row { margin:2px 0; }
-.exp-station.active { background:var(--instrument); box-shadow:0 0 0 1px var(--sel-edge); border-color:var(--sel-edge); color:var(--sel-edge); }
-
-.exp-deck .coordination-strip .deck-head { flex-wrap:wrap; gap:5px; }
-.exp-deck .seam-instrument .seam-route-summary { display:block; }
-@media(max-width:1060px){.exp-deck .seam-bookends{grid-template-columns:minmax(150px,1fr) minmax(0,2.4fr) minmax(130px,1fr)}}
-
-.hold-duration { position:absolute; top:5px; height:12px; background:var(--ink-3); opacity:.35; pointer-events:none; }
-.coord-hold { z-index:1; }
-
 /* PR #114 Deck: one band, in the boards' proportion (QA 1/2/4). Left is the posture's **name block** —
-   its small-caps label, its one reading and the posture's own actions; right is the posture's **lane**:
-   the Guide's ordered Stop chips, the Path's straightened topology, or the Journey's time axis. One
-   posture is dominant and the band stays a shallow strip, never half the window (§0.8.1). */
-.exp-deck:not(.ordinary) { display:flex; align-items:center; gap:18px; }
-.deck-block { flex:0 0 232px; min-width:0; padding-left:12px; border-left:3px solid var(--ink-2); display:flex; flex-direction:column; gap:2px; }
+   its small-caps label, its title line and a foot row (the Guide's count, the posture's own ops); right is
+   the posture's **lane**: the Guide's ordered Stop chips, the Path's straightened topology, or the Journey's
+   time axis. One posture is dominant and the band stays a shallow strip, never half the window (§0.8.1).
+   The band's height is the same for 1, 6 or 20 Stops: a lane never wraps and never grows; a dense Guide
+   scrolls horizontally inside its own lane. */
+.exp-deck:not(.ordinary) { display:flex; align-items:center; gap:16px; padding:10px 12px; }
+.deck-block { flex:0 0 200px; min-width:0; padding-left:12px; border-left:3px solid var(--ink-2); display:flex; flex-direction:column; gap:2px; }
 .deck-block .deck-k { font:600 var(--t2xs) var(--ui); letter-spacing:.09em; text-transform:uppercase; color:var(--ink-3); }
-.deck-block .deck-t { font:600 var(--tsm) var(--ui); color:var(--ink); }
+.deck-block .deck-t { font:600 var(--tmd) var(--ui); color:var(--ink); }
 .deck-block .deck-s { font-size:var(--txs); color:var(--ink-3); }
-.deck-block .gd-ops { margin-top:5px; flex-wrap:wrap; }
+.deck-block .deck-t, .deck-block .deck-s { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.deck-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+.deck-block .gd-ops { display:flex; align-items:center; gap:6px; flex-wrap:nowrap; margin:0; }
+.deck-block > .gd-ops { margin-top:6px; }
+.deck-block .gd-ops .exp-action { width:auto; }
 .exp-deck .gd-ops { display:flex; align-items:center; gap:5px; }
 .exp-deck .gd-ops .exp-action { width:auto; }
-.gd-menu { margin:0; }
-.gd-menu .gd-edit { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:3px 0; font-size:var(--txs); }
-.gd-menu .gd-edit .c-acts { margin:0; }
-/* The Guide's lane (QA 4): compact named Stop chips in order, each followed by its own resolved
-   continuation. A chip names the occurrence (number, Stop name, the Presentation it repeats); Entry,
-   Next and pacing are the selected Stop's Card, and ordering is `Edit Guide`, so six Stops read as one
-   shallow lane rather than six stacked mini-cards. The edge chip names the continuation in one word —
-   the order-default movement, or the destination an explicit non-adjacent Next really resolves to. */
-.exp-deck.ordinary { display:block; height:auto; min-height:30px; padding:5px 10px; }
-.gd-lane { list-style:none; margin:0; padding:0; flex:1 1 auto; display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; min-width:0; }
-.gd-item { display:flex; align-items:center; gap:6px; min-width:0; }
-.gd-stop-card { display:flex; align-items:center; gap:8px; flex:0 1 auto; min-width:0; padding:6px 9px; border:1px solid var(--rule); background:var(--instrument); border-radius:3px; }
-/* The lane's own chips size from their names; the retired Peek/Overview card widths (50px compact, 330px
-   expanded) must not clamp them, so the lane states its own span at a higher specificity. */
-.gd-lane .gd-stop-card.compact { flex:0 1 auto; min-width:150px; max-width:300px; }
-.gd-lane .gd-stop-card.expanded { flex:0 1 auto; min-width:180px; max-width:300px; }
-.gd-stop-card .gd-stop { display:flex; align-items:center; gap:8px; background:none; border:0; padding:0; margin:0; cursor:pointer; text-align:left; min-width:0; font:inherit; }
-.gd-num { flex:0 0 auto; display:grid; place-items:center; width:20px; height:20px; border-radius:50%; border:1px solid var(--rule); font:600 var(--txs) var(--ui); color:var(--ink-2); }
-.gd-names { display:flex; flex-direction:column; min-width:0; }
-.gd-name { font:600 var(--tsm) var(--ui); color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.gd-pres { font-size:var(--txs); color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.gd-stop-card.selected { border-color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); }
-.gd-stop-card.selected .gd-num { border-color:var(--sel-edge); color:var(--sel-edge); background:var(--sel-soft); }
-.gd-stop-card.selected .gd-name { color:var(--sel-edge); }
-/* The retired card's `.stop-card .exp-action { width:100% }` would take the whole chip and squeeze the
-   name out, so the chip states its own control width. */
-.gd-stop-card>.exp-action { flex:0 0 auto; width:auto; max-width:none; padding:2px 6px; font-size:var(--t2xs); }
-.gd-stop-card .gd-more { display:flex; gap:4px; flex:0 0 auto; }
-.gd-stop-card .gd-more .exp-action { width:auto; max-width:none; padding:2px 6px; }
-.gd-stop-card .gd-entry { font-size:var(--txs); color:var(--ink-3); }
-.gd-stop-card.expanded { flex-direction:column; align-items:flex-start; gap:3px; max-width:300px; }
-.gd-stop-card.expanded .gd-name, .gd-stop-card.expanded .gd-pres { white-space:normal; overflow:visible; text-overflow:clip; }
-.gd-edge { border:1px dashed var(--rule); background:var(--instrument); border-radius:3px; font:500 var(--t2xs) var(--ui); letter-spacing:.02em; padding:3px 7px; cursor:pointer; color:var(--ink-2); white-space:nowrap; }
-.gd-edge.explicit { border-style:solid; }
-.gd-edge.end, .gd-edge.gap { border:0; background:none; color:var(--ink-3); cursor:default; padding:3px 4px; }
-.gd-edge.gap { color:var(--sel-edge); }
-.gd-edge.selected { border-color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); color:var(--ink); }
-.gd-stop-card .occurrence-content { margin-top:4px; padding:6px; background:var(--instrument); border:1px solid var(--rule); border-radius:3px; }
-.gd-stop-card .occurrence-content p { margin:2px 0; font-size:var(--txs); }
-.gd-stop-card .occurrence-content .exp-action { width:auto; }
+/* The Journey's name block is wider: its foot row carries the edge reference and a fourth row of ops. */
+.exp-deck.coordination .deck-block { flex-basis:232px; }
+@media (max-width:1060px) { .deck-block { flex-basis:168px; } .exp-deck.coordination .deck-block { flex-basis:200px; } }
+body.guide-band .index { padding-bottom: calc(var(--guide-band-h, 216px) + 24px); }
+.gd-menu { position:relative; margin:0; }
+.gd-menu > summary { list-style:none; height:24px; display:inline-flex; align-items:center; padding:0 8px; border:1px solid var(--rule); border-radius:3px; background:var(--instrument); font:500 var(--txs) var(--ui); color:var(--ink-2); cursor:pointer; }
+.gd-menu > summary::-webkit-details-marker { display:none; }
+.gd-menu[open] > summary { background:var(--recess); color:var(--ink); }
+.gd-menu-pop { position:absolute; left:0; bottom:calc(100% + 8px); z-index:40; width:320px; max-height:min(420px, 60vh); overflow-y:auto; padding:6px; background:var(--instrument); border:1px solid var(--rule); border-radius:4px; box-shadow:0 10px 26px rgba(23,32,29,.18); }
+.gd-menu .gd-edit { min-height:28px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; }
+.gd-menu .gd-edit > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:var(--txs); }
+.gd-menu .gd-edit .c-acts { display:flex; align-items:center; gap:4px; margin:0; }
+.gd-menu .gd-edit .exp-action { width:auto; padding:1px 6px; font-size:var(--t2xs); }
+.gd-menu .gd-edit[aria-current="true"] { background:var(--recess); }
+.gd-menu .gd-edit .c-acts { display:flex; align-items:center; gap:4px; margin:0; }
+/* §5.2.4 action sizes: md is a row's own height, sm is a compact secondary. */
+.exp-action.md { height:26px; padding:0 10px; }
+.exp-action.sm { height:22px; padding:0 7px; font-size:var(--txs); }
+/* §5.3 the Presentation Card's Guide line: what the Presentation is used by, then the one default door. */
+.exp-guide-use { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0; font-size:var(--tsm); color:var(--ink-2); }
+/* A one-row writer whose value sits beside its label rather than under it. */
+.exp-inline { display:inline-flex; align-items:center; gap:4px; font-size:var(--tsm); color:var(--ink-2); }
+.exp-inline input { width:64px; height:26px; padding:0 6px; border:1px solid var(--rule); background:var(--instrument); font:inherit; color:var(--ink); border-radius:3px; }
+.exp-refuse-text { color:var(--refuse-ink); }
+/* §5.5 the Index's Camera Path home: the crumb, the Path | Journey switch and the From rows. */
+.ix-posture { display:flex; margin:6px 8px; }
+.ix-posture .exp-seg { display:flex; width:100%; }
+.ix-posture .exp-seg > * { flex:1 1 0; height:26px; display:inline-flex; align-items:center; justify-content:center; border:0; border-left:1px solid var(--rule); background:var(--instrument); font:500 var(--tsm) var(--ui); color:var(--ink-2); cursor:pointer; }
+.ix-posture .exp-seg > *:first-child { border-left:0; }
+.ix-posture .exp-seg > *[aria-pressed="true"] { background:var(--recess); color:var(--ink); box-shadow:inset 0 -2px var(--ink-2); }
+.ix-crumb { display:block; margin:2px 8px; text-align:left; }
+.ix-row.origin-row[aria-current="true"] { background:var(--recess); }
+/* §5.5 the Stage's armed insertion: the click it waits for, beside the control that armed it. */
+.exp-armed { font:500 var(--tsm) var(--ui); color:var(--ink-2); background:var(--instrument); border:1px solid var(--rule); border-radius:3px; padding:3px 6px; }
+.gd-menu .gd-edit.current { background:var(--recess); box-shadow:inset 3px 0 0 var(--ink-2); border-radius:3px; }
+/* The Guide's lane (QA 4): compact named Stop chips in one non-wrapping row, each followed by its own
+   resolved continuation. A chip names the occurrence (number, Stop name, and the Presentation it repeats
+   only when the Stop carries its own different name); Entry, Next and pacing are the selected Stop's Card,
+   and ordering is `Edit Guide`. The lane scrolls horizontally when it must, so the band's height never
+   depends on Stop count. */
+.gd-scroll { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:4px; }
+.gd-lane { flex:1 1 auto; min-width:0; list-style:none; margin:0; padding:4px; display:flex; flex-wrap:nowrap; align-items:center; overflow-x:auto; overflow-y:hidden; scroll-padding-inline:28px; overscroll-behavior-x:contain; scrollbar-width:none; }
+.gd-lane::-webkit-scrollbar { display:none; }
+.gd-scroll.more-before .gd-lane { mask-image:linear-gradient(to right, transparent, #000 28px); }
+.gd-scroll.more-after .gd-lane { mask-image:linear-gradient(to left, transparent, #000 28px); }
+.gd-scroll.more-before.more-after .gd-lane { mask-image:linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+.gd-step { flex:0 0 24px; height:24px; padding:0; border:1px solid var(--rule); border-radius:3px; background:var(--instrument); color:var(--ink-2); font:600 var(--tmd) var(--ui); cursor:pointer; }
+.gd-step:hover:not(:disabled) { border-color:var(--ink-3); }
+.gd-step:disabled { opacity:.4; }
+.gd-item { display:contents; }
+.gd-stop-card { flex:0 1 auto; min-width:112px; max-width:184px; height:34px; display:flex; align-items:center; padding:0 10px 0 6px; border:1px solid var(--rule); border-radius:3px; background:var(--instrument); }
+.gd-stop { flex:1 1 auto; min-width:0; height:100%; display:flex; align-items:center; gap:8px; margin:0; padding:0; border:0; background:none; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.gd-num { flex:0 0 20px; height:20px; display:grid; place-items:center; border-radius:50%; border:1px solid var(--rule); font:600 var(--txs) var(--ui); color:var(--ink-2); }
+.gd-names { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+.gd-name { font:600 var(--tmd) var(--ui); color:var(--ink); }
+.gd-pres { font-size:var(--txs); color:var(--ink-3); }
+.gd-name, .gd-pres { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gd-lane.scrolls .gd-stop-card { flex-shrink:0; }
+.gd-stop-card:hover { border-color:var(--ink-3); background:var(--chassis-hover); }
+.gd-stop-card.selected { border-color:var(--sel-edge); background:var(--sel-soft); box-shadow:inset 0 0 0 1px var(--sel-edge); }
+.gd-stop-card.selected .gd-num { background:var(--sel); border-color:var(--sel-edge); color:var(--ink); }
+.gd-edge { flex:0 0 auto; height:20px; padding:0 6px; border:1px solid var(--rule); border-radius:3px; background:var(--instrument); font:500 var(--txs) var(--ui); color:var(--ink-2); white-space:nowrap; cursor:pointer; }
+.gd-edge.order { position:relative; margin:0 12px; }
+.gd-edge.order::before, .gd-edge.order::after { content:''; position:absolute; top:50%; width:12px; border-top:1px solid var(--ink-3); }
+.gd-edge.order::before { right:100%; } .gd-edge.order::after { left:100%; }
+.gd-edge.travel { color:var(--camera); border-color:var(--camera); }
+.gd-edge.explicit { margin:0 16px 0 6px; }
+.gd-edge.end { border:0; background:none; color:var(--ink-3); margin:0 4px 0 8px; cursor:default; }
+.gd-edge.gap { background:var(--refuse-bg); border-color:var(--refuse-edge); color:var(--refuse-ink); margin:0 16px 0 6px; cursor:default; }
+.gd-edge.selected { border-color:var(--sel-edge); background:var(--sel-soft); box-shadow:inset 0 0 0 1px var(--sel-edge); color:var(--ink); }
 .origin-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:2px 0; font-size:var(--txs); }
-/* Narrow review: the band must stay under its reserved share and the Card must stay reachable. The chips
-   drop to one line and the name block narrows instead of pushing the band past 40 %. */
-@media(max-width:1060px){ .exp-deck:not(.ordinary) { gap:10px; } .deck-block { flex-basis:170px; } .gd-stop-card .gd-pres { display:none; } .gd-stop-card.expanded .gd-pres { display:block; } .gd-lane { gap:4px 6px; } .gd-stop-card { padding:4px 6px; } }
+/* Ordinary posture: the same lane as a shallow strip whose first child is one door that opens the band. */
+.exp-deck.ordinary { display:flex; align-items:center; gap:10px; padding:6px 8px; height:auto; }
+.exp-deck.ordinary .deck-block { flex:0 0 auto; max-width:180px; border-left-width:2px; padding-left:8px; }
+.deck-open { display:flex; flex-direction:column; align-items:flex-start; padding:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+@media(max-width:1060px){ .gd-lane { gap:4px; } .gd-stop-card { min-width:104px; } }
 
 /* UX5: the Camera Path posture. The Deck's straightened lane lays the route's authored points out in a
-   straight line, so the Stage's spatial drawing and the Deck read the same points in the same order.
-   Point chips are the ordinary hit target; the selected one is marked ◉ exactly as the Stage marks it,
-   and arming says so in words rather than only in colour. The head above names the View pair. */
-.path-lane { flex:1 1 auto; min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; padding:6px 10px; background:var(--recess); border:1px solid var(--rule); border-radius:3px; }
-.path-lane .path-strip { display:flex; align-items:center; gap:4px; flex:1 1 auto; flex-wrap:wrap; }
-.path-lane .path-tail { font-size:var(--txs); color:var(--ink-3); white-space:nowrap; margin-left:auto; }
-.path-lane .path-empty { font-size:var(--txs); color:var(--ink-3); }
-.path-point { border:1px solid var(--rule); background:var(--instrument); border-radius:3px; font:500 var(--tsx) var(--ui); color:var(--ink-2); padding:1px 6px; cursor:pointer; }
-.path-point.selected { border-color:var(--sel-edge); color:var(--sel-edge); box-shadow:inset 0 0 0 1px var(--sel-soft); font-weight:700; }
-.path-points { display:flex; align-items:center; flex-wrap:wrap; gap:4px; margin:2px 0 4px; }
-.path-point-card { border:1px solid var(--rule); border-radius:3px; padding:2px 0 6px; background:var(--recess); }
-.path-point-card .exp-preview { margin:6px 12px; }
-.path-point-card > .c-acts, .path-point-card > .c-hint, .path-point-card > .exp-fact, .path-point-card > .exp-more { margin-left:12px; margin-right:12px; }
-.path-from .origin-row .exp-action { padding:2px 5px; }
-@media(max-width:1060px){ .path-lane .path-head small { display:none; } }
+   straight line — the origin View, the authored points in their order, the destination View — so the Stage's
+   spatial drawing and the Deck read the same points in the same order. No time, no pace, no armed text. */
+.path-lane { flex:1 1 auto; min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:start; padding:0 8px; background:none; border:0; }
+.topo-track { position:relative; list-style:none; margin:0; padding:0 8px; height:28px; display:flex; align-items:center; justify-content:space-evenly; }
+.topo-track::before { content:''; position:absolute; left:0; right:0; top:50%; border-top:2px solid var(--camera); }
+.topo-point { position:relative; width:14px; height:14px; padding:0; border-radius:50%; border:2px solid var(--camera); background:var(--instrument); cursor:pointer; }
+.topo-point.selected { background:var(--camera); box-shadow:0 0 0 3px var(--sel); }
+.topo-end { display:grid; grid-template-rows:28px auto; justify-items:center; min-width:72px; }
+.topo-end i { align-self:center; width:12px; height:12px; border-radius:50%; background:var(--camera); }
+.topo-end small { font:500 var(--txs) var(--ui); color:var(--ink-2); max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.topo-empty { font-size:var(--txs); color:var(--ink-3); background:var(--instrument); padding:0 4px; }
+/* The Stage's own Camera-Path instrument: `+ Path point`, the one creation path, lives on the Stage beside
+   Edit Camera's precision pass. It sits clear of the Deck band and never resizes the Stage. */
+.stage-instrument { position:absolute; left:12px; bottom:calc(var(--guide-band-h, 0px) + 12px); z-index:36; display:flex; align-items:center; gap:8px; }
 
 /* UX6: the Journey posture (QA 2). The lane is a real time axis from 0:00 to the derived total, with a ◆
-   at each Cue's evaluated time and the Cue's name beneath it, and the Rehearse playhead. The whole axis is
-   the scrub surface — the playhead is what the author drags and what the frame pass patches in place — so
-   no second control repeats it. Rehearse itself is the name block's primary action. */
-.journey-deck { flex:1 1 auto; min-width:0; padding:6px 10px; background:var(--recess); border:1px solid var(--rule); border-radius:3px; }
-.journey-deck .jd-axis { position:relative; height:70px; }
+   on a tick at each Cue's evaluated time and the Cue's name beneath it, and the Rehearse playhead. The whole
+   axis is the scrub surface — the playhead is what the author drags and what the frame pass patches in place.
+   No recess box: the axis sits on the band. Rehearse is the name block's own ops row, not the lane's, and
+   with no Cue the axis shows only its ends. */
+.journey-deck { flex:1 1 auto; min-width:0; background:none; border:0; padding:0 16px; }
+.journey-deck .jd-axis { position:relative; height:72px; }
+.journey-deck .jd-track { position:absolute; left:0; right:0; top:28px; height:2px; background:var(--ink-3); }
+.journey-deck .jd-track::before, .journey-deck .jd-track::after { content:''; position:absolute; top:-2px; width:6px; height:6px; border-radius:50%; background:var(--ink-3); }
+.journey-deck .jd-track::before { left:0; } .journey-deck .jd-track::after { right:0; }
 .journey-deck .jd-cues { position:absolute; inset:0; }
-.journey-deck .jd-cue { position:absolute; top:20px; transform:translateX(-50%); z-index:2; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:0; padding:0 2px; cursor:pointer; font:500 var(--t2xs) var(--ui); color:var(--ink-3); white-space:nowrap; }
-.journey-deck .jd-cue .jd-diamond { font-size:11px; line-height:1; color:var(--sel-edge); }
-.journey-deck .jd-cue small { font-size:var(--t2xs); color:var(--ink-3); }
-.journey-deck .jd-cue.selected { color:var(--ink); font-weight:700; }
-.journey-deck .jd-scrub { position:absolute; left:0; right:0; top:22px; height:16px; margin:0; z-index:1; appearance:none; -webkit-appearance:none; background:transparent; cursor:pointer; }
+.journey-deck .jd-cue { position:absolute; top:10px; transform:translateX(-50%); z-index:2; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:0; padding:0 2px; cursor:pointer; font:500 var(--txs) var(--ui); color:var(--ink-2); white-space:nowrap; max-width:120px; }
+.journey-deck .jd-cue .jd-diamond { font-size:12px; line-height:1; color:var(--sel); }
+.journey-deck .jd-cue small { font-size:var(--txs); color:var(--ink-2); max-width:120px; overflow:hidden; text-overflow:ellipsis; }
+.journey-deck .jd-cue.selected { color:var(--ink); font-weight:600; }
+.journey-deck .jd-cue.selected .jd-diamond { outline:2px solid var(--sel-edge); outline-offset:1px; border-radius:1px; }
+.journey-deck .jd-scrub { position:absolute; left:0; right:0; top:24px; height:20px; margin:0; z-index:1; appearance:none; -webkit-appearance:none; background:transparent; cursor:pointer; }
 .journey-deck .jd-scrub:focus-visible { outline:2px solid var(--sel-edge); outline-offset:3px; }
-.journey-deck .jd-scrub::-webkit-slider-runnable-track { height:1px; background:var(--rule); }
+.journey-deck .jd-scrub::-webkit-slider-runnable-track { height:2px; background:transparent; }
 .journey-deck .jd-scrub::-webkit-slider-thumb { -webkit-appearance:none; width:1px; height:1px; border:0; background:transparent; }
-.journey-deck .jd-scrub::-moz-range-track { height:1px; background:var(--rule); }
+.journey-deck .jd-scrub::-moz-range-track { height:2px; background:transparent; }
 .journey-deck .jd-scrub::-moz-range-thumb { width:1px; height:1px; border:0; background:transparent; }
-.journey-deck .jd-playhead { position:absolute; top:12px; height:22px; width:2px; background:var(--ink-2); transform:translateX(-50%); }
-.journey-deck .jd-playhead::before { content:''; position:absolute; left:-4px; top:-6px; width:10px; height:10px; border-radius:50%; background:inherit; }
-.journey-deck .jd-playhead.playing { background:var(--sel-edge); }
-.journey-deck .jd-ends { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; align-items:baseline; gap:12px; font:500 var(--txs) var(--ui); color:var(--ink-3); }
+.journey-deck .jd-playhead { position:absolute; top:8px; height:22px; width:2px; background:var(--camera); transform:translateX(-50%); }
+.journey-deck .jd-playhead::before { content:''; position:absolute; left:-4px; top:-6px; width:10px; height:10px; border-radius:50%; background:var(--camera); }
+.journey-deck .jd-playhead.playing { background:var(--camera); }
+.journey-deck .jd-ends { position:absolute; left:0; right:0; top:38px; display:flex; justify-content:space-between; align-items:baseline; gap:12px; font:500 var(--txs) var(--mono); font-stretch:78%; color:var(--ink-3); }
 .journey-deck .jd-time { font-variant-numeric:tabular-nums; color:var(--ink-2); }
-.journey-deck .jd-none { position:absolute; left:50%; top:32px; transform:translateX(-50%); margin:0; white-space:nowrap; }
-.jd-cue-list { display:flex; flex-direction:column; gap:2px; }
-.jd-cue-row { display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:2px 0; }
-.jd-cue-row.selected { color:var(--sel-edge); font-weight:700; }
-.jd-cue-row small { font-size:var(--txs); color:var(--ink-3); white-space:nowrap; }
-.exp-rig { border:1px dashed var(--sel-edge); color:var(--sel-edge); background:var(--instrument); border-radius:3px; font:600 var(--txs) var(--ui); padding:1px 5px; }
-.exp-rig.playing { border-style:solid; }
+/* The rehearse clock takes the Journey name block's foot row while a rehearsal exists (10 px mono). */
+.deck-block [data-exp-rehearse-time] { font:500 var(--txs) var(--mono); font-stretch:78%; color:var(--ink-2); }
+/* §5.6 the Rehearse rig is a 10 px Camera dot at the evaluated pose (the teal frustum glyph is drawn with
+   the View-marker glyph path), so the playhead reads as Camera infrastructure rather than a label. */
+.exp-rig { width:10px; height:10px; padding:0; border:0; border-radius:50%; background:var(--camera); }
+.exp-rig.playing { box-shadow:0 0 0 3px var(--sel-soft); }

@@ -1,4 +1,4 @@
-import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces, sceneCapabilityCard, experienceParkedHtml } from './experience-ui.js';
+import { experienceIndex, experienceCard, foreignExperienceCard, renderExperienceSurfaces, sceneCapabilityCard, experienceParkedHtml, captureFocusKey, restoreFocusKey } from './experience-ui.js';
 import { renderJourneys } from './journeys.js';
 import { S, ctx, W, C, thing, refOf, labelOf } from './state.js';
 import { PLACES, placeOf, placesOfBound, placesOfThing, browseRecords as recordList, metadataOf } from './fixtures.js';
@@ -182,7 +182,9 @@ function sharedNoteFor(wid, place) {
 function renderIndex() {
   const el = $('#index');
   if (!el) return;
-  if (S.lens !== 'world') { const html = experienceIndex(); if (el._html !== html) { el.innerHTML = html; el._html = html; } return; }
+  // §5.4: the Experience Index is rebuilt by the same writer as the Deck, so it hands the keyboard back to the
+  // control the author used (a From row, or a Path | Journey posture segment).
+  if (S.lens !== 'world') { const html = experienceIndex(); if (el._html !== html) { const key = captureFocusKey(el); el.innerHTML = html; el._html = html; restoreFocusKey(el, key); } return; }
   const f = S.browse.focus;
   const focused = f?.kind === 'place' ? placeOf(f.id) : null;
   const place = focused || (S.sel ? placeFor(S.sel) : null);
@@ -686,11 +688,15 @@ function renderCard() {
   }
   if (el._html !== html) {
     const focused = document.activeElement?.dataset?.field;
+    // §5.4: an Experience Card is rebuilt the same way, so a control the author activated keeps the keyboard
+    // across the re-render. A World numeric field keeps its own caret restore, which is the narrower case.
+    const focusKey = captureFocusKey(el);
     const openDetails=el._identity===id?[...el.querySelectorAll('details[open]')].map(d=>d.querySelector('summary')?.textContent):[];
     el.innerHTML = html;
     el._html = html;el._identity=id;
     for(const detail of el.querySelectorAll('details'))if(openDetails.includes(detail.querySelector('summary')?.textContent))detail.open=true;
     if (focused) el.querySelector(`[data-field='${focused}']`)?.focus?.();
+    else restoreFocusKey(el, focusKey);
   }
   // UX3: a choice the author just opened, and the operation it led to, are what they are looking for — and
   // replacing the Card's content puts its scroll back at the top. So each is brought into the Card's own

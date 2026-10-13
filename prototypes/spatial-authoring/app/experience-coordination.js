@@ -37,7 +37,7 @@ export function journeyClock(camera, seam, connectionId, speedOverride = null) {
   const cueInvokes = members.filter(b => b.kind === 'invoke')
    .map(b => ({ id: b.id, useId: b.useId, at: timing.invokes.find(i => i.id === b.id)?.at ?? null }));
   const times = [...cueHolds, ...cueInvokes].map(b => b.at).filter(v => v !== null);
-  cues.push({ id: station.id, stationId: station.id, connectionId, label: station.label,
+  cues.push({ id: station.id, stationId: station.id, connectionId, label: stationLabel(route, station.id),
    progress: station.progress, pose: station.pose, observer: station.observer,
    at: times.length ? Math.min(...times) : null,
    pause: cueHolds.reduce((n, h) => n + h.seconds, 0), holds: cueHolds, invokes: cueInvokes,
@@ -59,6 +59,28 @@ export function journeyClock(camera, seam, connectionId, speedOverride = null) {
   cues, holds: timing.holds, invokes: timing.invokes, pause: holds.reduce((n, h) => n + h.seconds, 0),
   progressAt, poseAt: (t) => evaluatePath(geometry.path, progressAt(t)), observerAt: (t) => evaluatePath(geometry.path, progressAt(t)) };
 }
+// §3.4/§5.6: one station name for every reader. An authored path point reads as the point it is, a
+// named mid-route marker keeps its own name, and `Anchor n` — a Camera field name — is never shown.
+export function stationLabel(route, stationId) {
+ if (stationId === 'departure') return 'Departure';
+ if (stationId === 'arrival') return 'Arrival';
+ const at = (route?.anchors || []).findIndex(a => a.id === stationId);
+ if (at >= 0) return `Point ${at + 1}`;
+ return route?.markers?.find(m => m.id === stationId)?.name || 'Station';
+}
+// §3.4/§5.6: one Cue name for the Deck, the Card and the Stage. A named mid-route station names the Cue;
+// otherwise the first Activity it invokes does; otherwise the Cue reads as the pause it holds. Nothing here
+// is persisted — the name is derived from what the author already authored.
+export function cueName(experience, route, cue) {
+ if (!cue) return '';
+ const marker = route?.markers?.find(m => m.id === cue.stationId);
+ if (marker?.name) return marker.name;
+ const first = cue.invokes?.[0];
+ const action = first ? experience?.definitions?.[experience?.uses?.[first.useId]?.definitionId]?.name : null;
+ if (action) return action;
+ const at = stationLabel(route, cue.stationId);
+ return cue.holds?.length ? `Pause · ${at}` : `Cue at ${at}`;
+}
 // A Cue's member beats, by its identity — the one reader both the Card and the move operation use.
 export function cueMembers(seam, connectionId, stationId) {
  return (seam?.beats || []).filter(b => b.connectionId === connectionId && b.stationId === stationId);
@@ -68,8 +90,8 @@ export function cueMembers(seam, connectionId, stationId) {
 export function cueDestinations(camera, seam, connectionId, stationId) {
  const geometry = routeGeometry(camera, connectionId);
  if (!geometry) return [];
- const occupied = new Set((seam?.beats || []).filter(b => b.connectionId === connectionId && b.stationId !== stationId).map(b => b.stationId));
- return geometry.stations.filter(s => s.id !== stationId && !occupied.has(s.id));
+ const occupied = new Set((seam?.beats || []).filter(b => b.connectionId === connectionId && b.stationId !== stationId).map(b => b.stationId));  const route = camera.connections[connectionId];
+  return geometry.stations.filter(s => s.id !== stationId && !occupied.has(s.id)).map(s => ({ ...s, label: stationLabel(route, s.id) }));
 }
 export function coordinateTiming(camera,seam) {
  return seam.beats.map(beat=>{
