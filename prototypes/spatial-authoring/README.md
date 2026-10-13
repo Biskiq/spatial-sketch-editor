@@ -1,69 +1,79 @@
-# Unified World and Experience V2 Prototype
+# World Spatial Interaction Reference — V2
 
-**Current unified executable reference**, adopted in place under #112 and extended by
-#113 (2026-10-03). It preserves World journeys A–F and implements Experience V2 authoring,
-isolated visitor execution and both directions of continuity. The accepted World shell keeps: local Index, dominant Stage, selected identity Card, invoked Look/Details,
-Instrument and Precision. [PLATE §0.8](../../docs/reference/design-system/editor-shell-and-visual-system.md#08-accepted-destination-shell--unified-world--experience-direction-2026-10-01-pr-111)
-owns destination shell design; this static prototype establishes no production interface or cutover.
+**Primary enduring role:** executable advanced World interaction and behavioral QA.
+The retained World journeys A–F cover Plan ↔ 3D/Camera continuity, Rotunda curved-wall
+Unroll and partial readings, Section/Cut authoring, Ceiling Lift, nested Look,
+cancellation, exact return and the practised/everyday creator variants.
 
-**C1–C8 conformance complete; C9.1–C9.9 implemented/reviewed, MP1–MP4 owner-accepted for functionality (MP3/MP4 2026-10-11; not final visual UX).** The [C9 plan stub](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md) records closed scope; [C9 evidence](./qa/EXPERIENCE-C9-EVIDENCE.md) owns current executable provenance and verification. [Conformance evidence](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) retains C1–C8 proof. Automated proof and Presenter completion accept no human gate. Travel and fresh repeated-Stop visits are owner-ratified. Detailed visual refinement remains the later UI/UX slice, and no production interface or cutover is established here.
+This executable was adopted under #112 and extended by #113/#114. Its Experience
+V2 authoring, visitor execution and both-lens continuity remain **historical
+functional/regression evidence**, not the accepted Experience UX. The owner accepts
+[Conservatory](../experience-ux-alternative/README.md); the promoted
+[PLATE contract](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+owns shared shell and Experience authoring. [Paper §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+retains World 2D authoring depth; Conservatory's World mock does not replace it.
+
+**Preservation, not further V2 development.** UX1–UX6 and their review corrections
+remain in this branch with their tests, helpers and captures.
+[The #114 branch-diff disposition](./qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition)
+inventories what is retained and why. Do not continue UX1–UX7, implement UX3/V3 or
+Paper PA0–PA12, or remove cross-domain modules merely to make this executable
+World-only. They protect Camera, history, selection and World continuity.
+
+C1–C8 and C9.1–C9.9 remain recorded functionality acceptance: MP1–MP4 were accepted
+by the owner for functionality (MP3/MP4 2026-10-11), and #113 is closed.
+[C9 recovery](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md)
+and [C9 evidence](./qa/EXPERIENCE-C9-EVIDENCE.md) preserve that boundary.
+No production interface, codec, Camera evaluator, snapshot history or renderer
+strategy is promoted from this static prototype.
 
 ```sh
 cd prototypes/spatial-authoring
 python3 -m http.server 8826
 # http://localhost:8826/                 explore; J opens the Presenter for the active lens
-# http://localhost:8826/rationale.html   current rationale and specimens
-# ?journey=A&step=0&motion=instant       reproducible presenter entry
-bash qa/run-all.sh                     # all registered browser axes, QA_JOBS at a time; private server/browser per axis
+# http://localhost:8826/rationale.html   retained rationale and specimens
+# ?journey=A&step=0&motion=instant       reproducible World Presenter entry
+bash qa/run-all.sh journey             # World A–F checkpoints; focused behavioral reference
 bash scripts/shoot.sh                  # regenerate specimens into qa/out/specimens
 ```
 
-No build step. Three.js is vendored; Google Fonts have system fallbacks. The Presenter and
-`window.__me` are prototype facilities outside the product interaction model.
+No build step. Three.js is vendored; Google Fonts have system fallbacks. The
+Presenter and `window.__me` are prototype review facilities, not product UI.
+[QA routing/policy](./qa/README.md) owns executable checks and their proof limits;
+a documentation change alone does not require the full prototype sweep.
 
-- [rationale.html](./rationale.html) — current shell, inherited A–F, intermediate readings and return.
-- [IMPLEMENTER-REFERENCE.md](./IMPLEMENTER-REFERENCE.md) — formulas, validators, cancellation,
-  navigation/task seams and the limits of these mechanisms.
-- [qa/ACCEPTANCE.md](./qa/ACCEPTANCE.md) — acceptance, coverage/harvest and preservation evidence.
-- [qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) — replacement C1–C8 behavior, board comparisons, gates and Paper handoff.
-- [qa/EXPERIENCE-ACCEPTANCE.md](./qa/EXPERIENCE-ACCEPTANCE.md) — historical S0–S9 evidence.
-- [qa/README.md](./qa/README.md) — current executable checks and their actual proof limits.
+- [rationale.html](./rationale.html) — retained shell, A–F, intermediate readings and return.
+- [IMPLEMENTER-REFERENCE.md](./IMPLEMENTER-REFERENCE.md) — formulas, validators,
+  cancellation/navigation/task seams and limits; mechanisms are not production contracts.
+- [qa/ACCEPTANCE.md](./qa/ACCEPTANCE.md) — World acceptance, coverage and preservation.
+- [qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md](./qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md)
+  — historical C1–C8 functional proof; board comparisons/Paper handoff are historical.
+- [qa/EXPERIENCE-UX-EVIDENCE.md](./qa/EXPERIENCE-UX-EVIDENCE.md) — #114 V2 inventory
+  and prior UX1–UX6 proof, with obsolete visual-gate wording preserved as history.
+- [qa/EXPERIENCE-ACCEPTANCE.md](./qa/EXPERIENCE-ACCEPTANCE.md) — historical S0–S9.
 
-Try the Garden window's Look → Unroll, or pull the Rotunda dog-ear and stop anywhere. O unrolls,
-S squares up, K defines a Section (arrows slide/turn, −/= depth, Tab side, Enter opens).
-Lift a ceiling, preview its gap correction, then U looks up. Measure reaches numbers in place;
-P opens Precision. / searches; row verbs distinguish selection from navigation/recovery.
-Esc leaves the foremost writer/Precision/task, Back returns one reading, Shift-Esc puts the chain
-back. View navigation stays separate from source Undo.
+Try the Garden window's Look → Unroll, or pull the Rotunda dog-ear and stop anywhere.
+O unrolls, S squares up, K defines a Section (arrows slide/turn, −/= depth, Tab side,
+Enter opens). Lift a ceiling, preview its gap correction, then U looks up.
+Measure reaches numbers in place; P opens Precision. / searches; result verbs
+distinguish selection, location, navigation and recovery. Esc leaves the foremost
+writer/Precision/task; Back returns one reading; Shift-Esc puts the chain back.
+Spatial navigation remains separate from source Undo.
 
-Lens crossing cancels proposals and parks procedures inactive in their owning lens. Returning is
-ordinary. Explicit Resume revalidates current identity and targets, reactivates accepted parameters
-and keeps the current realized Camera. World-only footer controls refuse in Experience; their
-retirement and Paper authoring belong to PR #115, after the #114 Experience UX implementation.
+Lens crossing cancels proposals and parks procedures inactive. Return is ordinary;
+explicit Resume revalidates identity/targets and keeps the current realized Camera.
+World-only footer controls remain inert in Experience. Their old Paper/#115
+implementation assignment is retired, without altering this executable.
 
-In Experience, the latest #114 source exposes Presentation/Views, Guide/Stop/edge,
-Camera Path and Journey Cards and compact lower lanes. The former Auto/Hints/Set,
-Peek/Seam/Coordinate wording is historical. UX1–UX6 and their review corrections
-are implemented; UX7 is unstarted. [Implementation evidence](./qa/EXPERIENCE-UX-EVIDENCE.md)
-records the current branch's proof/captures, not final owner product/visual acceptance.
-Head Preview is isolated execution with full authoring return; accepted C9 behavior
-remains functional evidence.
+The shared Presenter retains A–F in World and historical Q1–Q8/advanced topics in
+Experience. Its optional Next demonstrations use ordinary commands; outcomes are
+advisory, never acceptance. Back/Skip/close/reopen author nothing. Read-only Preview
+guidance remains separate from authored Guides. Reset/Load Example/Load Conformance
+are explicit prototype facilities; they never silently play or move Camera.
+The [Experience donor](../experience-authoring/README.md) remains runnable regression
+evidence, and old design boards stay in their existing directories.
 
-**Current design work:** the owner-commissioned [Experience V3 proposal](../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md)
-and [15 PNG boards](../experience-ux-v3/README.md) are the sole active replacement
-review target for #114. [The superseding plan](../../docs/roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md)
-awaits owner ratification; its local View sequences/visual system are not implemented
-here. Do not resume old UX7 or treat the static specimen compositor as a second
-prototype runtime. The historical precision/advanced capabilities remain source
-and evidence; V3 proposes reducing their primary exposure.
-
-With screenshot mode off, the shared Presenter switches by lens: World retains A–F; Experience guides Q1–Q8 authoring followed by advanced topics. Its optional walkthrough is on by default: Next demonstrates the current task through ordinary product commands, then advances. Off, Next only browses; outcomes are advisory and never block it. Back/Skip/close/reopen author nothing. Preview can retain read-only guidance while the authoring walkthrough option and all other writers stay unavailable. This guidance is separate from the authored Guide/Stops. The separate Experience examples disclosure offers explicit Reset, Load Example and Load Conformance commands; loading never plays or positions the Camera. The donor at
-[`../experience-authoring/`](../experience-authoring/README.md) stays runnable with its 4.1 tests.
-The integrated design folder preserves historical UX reconciliation, six QA boards and two Camera precision specimens. The V3 design workspace supplies their candidate replacements, rather than another executable.
-The [replacement #113 conformance plan](../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
-owns this replacement's implementation scope; [historical Experience acceptance](./qa/EXPERIENCE-ACCEPTANCE.md) maps S0–S9 evidence.
-Paper PA0 (#115) must reconcile against this unified tree as left by #114. F and production T1/T2/T3/T4 remain gated.
-
-The predecessor shell, reconciliation and comparisons are preserved in Git; their interaction
-rules are harvested into the current reference/tests. The stable phase-local path is a
-[forward pointer](../../docs/roadmap/p26-spatial-depth/Final-Design-Prototype/README.md), with no second executable.
+**Baton:** #114 accepted unified design → #115 parallel-track planning cutover →
+foundation-gated production implementation. No new V2 or Paper prototype work.
+The old phase-local [forward pointer](../../docs/roadmap/p26-spatial-depth/Final-Design-Prototype/README.md)
+continues to route here; there is no second executable.

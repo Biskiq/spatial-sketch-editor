@@ -1,10 +1,11 @@
 # Museum Editor V2 Experience UX Reconciliation
 
 > **Historical adopted V2 design record (2026-10-13).** Its prior lock/adjudications
-> remain preserved below. The sole active #114 replacement proposal is
-> [Experience V3](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md),
-> with [new candidate boards](../../experience-ux-v3/README.md). V3 awaits owner
-> ratification; neither this provenance record nor its PNGs directs continued UX7 work.
+> remain preserved below as originally written. #114 accepts
+> [Conservatory](../../experience-ux-alternative/README.md), promoted into
+> [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+> UX3/V3 and UX0–UX7 are inactive; this record's lock, PNG guardrails and old
+> #114 → #115 Paper sequence are historical, not current execution instructions.
 
 ## Model, Shell, Visual Language, and QA Guardrails
 

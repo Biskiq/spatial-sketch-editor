@@ -1,14 +1,14 @@
 # PR #114 — Experience V2 UX pruning and shell implementation
 
-> **SUPERSEDED WORK ENTRY (2026-10-13).** New #114 work starts at the
-> [V3 proposal](../experience-ux-v3/README.md) and its single
-> [superseding implementation plan](../experience-ux-v3/implementation-plan.md).
-> The owner commissioned replacement design/docs/mockups; V3 semantics await
-> ratification and application implementation is not authorized by that commission.
-> Do not continue UX7 from this body. Everything below is the former plan's
-> preserved historical scope/status, including its earlier “active” and checkpoint
-> wording. Latest UX4–UX6 review corrections are in the existing evidence record;
-> they establish no final owner visual acceptance. This file is not another active plan.
+> **SUPERSEDED / INACTIVE (2026-10-13, #114).** The owner accepts
+> [Conservatory](../../../../../prototypes/experience-ux-alternative/README.md);
+> [PLATE](../../../../reference/design-system/editor-shell-and-visual-system.md)
+> owns the destination. UX1–UX6/review corrections remain historical functional
+> evidence; UX7 is unstarted and must not continue. UX3/V3 is also superseded,
+> not a replacement work entry. [#115](../../../README.md#next-task-handoff--115)
+> owns parallel-track planning; the old Paper sequence is retired.
+> Everything below is the original plan's historical scope/status, including
+> earlier “active”, checkpoint and acceptance wording. It is not an active plan.
 
 **Status: active plan for PR #114 (open since 2026-10-11) over the design locked in PR #113.** UX0–UX5
 have landed and UX6 is at a recorded checkpoint. UX1–UX3 are implemented, with focused verification

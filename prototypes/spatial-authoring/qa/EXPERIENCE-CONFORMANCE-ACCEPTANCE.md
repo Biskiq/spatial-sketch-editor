@@ -1,5 +1,12 @@
 # Experience V2 replacement conformance review
 
+**Historical functionality/provenance after #114 (2026-10-13).** The source,
+checks, former plan/board gates and Paper handoff below describe their stated
+revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
+and [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning.
+Useful functional assertions remain evidence, not current shell acceptance.
+
 **C8 in-scope behavioral and visual acceptance complete, 2026-10-04; independent external review pending.**
 Repository verification remains blocked by the pre-existing missing P23B fixture. This is review-ready
 prototype evidence, with no merge-readiness, PR closure or major-phase closure claim.

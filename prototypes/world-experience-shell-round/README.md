@@ -1,7 +1,15 @@
-# World | Experience shell round — accepted unified shell design package
+# World | Experience shell round — retained accepted design record
 
 **Audience:** agents + humans.
 **Hub:** [`../README.md`](../README.md) (prototype family) · [`../../docs/README.md`](../../docs/README.md) (documentation router).
+
+**#114 reconciliation (2026-10-13):** [Conservatory](../experience-ux-alternative/README.md)
+is the accepted unified UX/shared visual shell, promoted into
+[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md).
+This earlier accepted World record retains valid discovery, procedure, repair
+and return rationale; conflicting permanent Card/Deck/color treatment is superseded.
+Paper retains 2D authoring depth and V2 retains A–F spatial behavior. The historical
+freeze and adoption account below is preserved as provenance.
 
 **Status:** **finalized / frozen World design, promoted into durable destination
 shell design alongside V2 Experience** (PR #111, 2026-10-01). The independent design
@@ -92,6 +100,7 @@ Implementation-dependent questions this design round deliberately leaves open:
 #112 World adoption is accepted: [current executable](../spatial-authoring/README.md),
 [QA acceptance](../spatial-authoring/qa/ACCEPTANCE.md) and
 [closed plan](../../docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md).
-#113 builds the finalized V2 Experience executable against the shared shell and validates actual
-World ↔ Experience continuity. The World bridge is read-only; production F/T1 gates are unchanged.
+#113 is closed with functionality acceptance; V2 Experience and World ↔ Experience
+continuity stay regression evidence. The current baton is #114 accepted unified
+design → #115 parallel-track planning → foundation-gated production implementation.
 The ten boards and syntheses here remain frozen design evidence, independent of executable QA.

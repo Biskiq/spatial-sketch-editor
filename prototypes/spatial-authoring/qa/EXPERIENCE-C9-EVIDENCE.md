@@ -1,5 +1,12 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
+**Historical functionality/provenance after #114 (2026-10-13).** The source,
+checks, former plan/board gates and Paper handoff below describe their stated
+revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
+and [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning.
+Useful functional assertions remain evidence, not current shell acceptance.
+
 TYPE: prototype implementation/review evidence for C9.1–C9.9; MP1–MP4 owner functional acceptance recorded, final visual UX acceptance deferred to PR #114.
 STATUS: **C9 complete. MP1 owner-accepted 2026-10-04, MP2 2026-10-05, MP3 and MP4 2026-10-11 — MP3/MP4 accepted for functionality, not as final visual UX** (last executable change `40b65091`; historical executable review head `6f972bc1`). The six-QA UX reconciliation is locked in PLATE §0.8.1 (#113, docs only); UX implementation is pending in PR #114. C9.1–C9.9 are implemented and reviewed, and the owner-directed optional walkthrough correction with its review follow-up is verified at `3a009763`: Next demonstrates the current task when the walkthrough is on, or browses without an outcome gate when it is off, and says which of those happened. Each earlier proof below belongs to its own recorded executable. Automated proof, browser rehearsals and Presenter completion do not accept MP3 or MP4.
 SCOPE: the accepted C9 executable and owner-directed follow-up. The subsequent six-QA reconciliation in #113 locks the docs/design contract in PLATE §0.8.1; its visual UX implementation remains #114 work. No production migration, runtime shell-UX overhaul, phase closure or Paper work. This record preserves [C1–C8 conformance evidence][c8] and does not replace its authority.

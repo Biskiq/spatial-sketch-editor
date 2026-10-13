@@ -5,10 +5,10 @@
 
 - **Delivered:** C9.1–C9.9 implemented and reviewed in the unified `spatial-authoring/`
   prototype; MP1–MP4 owner-accepted for functionality (not final visual UX). Closed with #113.
-- **Contract:** design lock lives in [PLATE §0.8.1](../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-  (with A1–A7 amendments) as the prior ratified baseline. The sole active #114
-  replacement proposal/plan is [V3](../experience-ux-v3/README.md), awaiting owner
-  ratification; the former UX plan is historical.
+- **Contract:** the former #113 design lock/A1–A7 is historical. Current
+  [PLATE §0.8.1](../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
+  promotes accepted Conservatory UX; C9 keeps functionality/regression evidence.
+  UX3/V3 and UX0–UX7 are inactive, with original records retained.
 - **Provenance:** [PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), branch
   `prototype-v2`; slice id `p25-experience-v2`.
 - **Evidence:** [C9 evidence](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md)

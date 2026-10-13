@@ -10,10 +10,15 @@ interface ownership, required/optional extensions) in the target contract
 direction **before P24/P25/P26 or later capabilities are re-planned**. F is
 contract-writing against the destination — not another architecture research
 cycle, and not a requirement to implement the complete composition kernel.
-Independent operational work (the P23B baton — that phase CLOSED 2026-09-29, so nothing runs
-beside F now) continues by owner decision;
+Independent operational work continues by owner decision;
 consumers must share these formats from their first new persisted or
 cross-domain implementation.
+
+**Current handoff (#114, 2026-10-13):** accepted unified design →
+[#115 parallel-track planning cutover](../README.md#next-task-handoff--115) →
+foundation-gated production implementation. #115 plans against these ratified
+targets and preserves exact-interface amendments with first consumers. Neither
+design acceptance nor planning changes F implementation authorization.
 
 **Authority:** [`../../reference/decisions/northstar-ratification-2026-09-27.md`](../../reference/decisions/northstar-ratification-2026-09-27.md)
 §6 and §10; destination statements live in

@@ -1,15 +1,98 @@
-# PR #114 — Experience UX implementation: evidence
+# PR #114 — V2 branch disposition and historical Experience UX evidence
 
-> **Historical target evidence (2026-10-13):** this record preserves #114's
-> prior UX implementation and actual captures. Its final UX4–UX6 follow-up
-> supersedes earlier WIP bullets. New design work starts at the unratified
-> [V3 package](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md).
-> These measurements/captures are not owner visual acceptance or V3 conformance.
+**Current role:** preservation/assessment of the existing V2 diff, followed by its
+original UX implementation evidence. Conservatory is the accepted UX direction;
+[PLATE][plate] owns the promoted design. The former [UX plan][plan], UX3/V3 and
+their PNGs are inactive. The old gate/status wording below is historical, not
+instructions to resume UX7 or require another owner visual verdict.
 
-**Role:** the evidence record for [#114][plan], the slice at a time. Each slice appends its own
-section: what changed, the real-browser readings, and the regression proofs that carry its exit gate.
-This record is evidence, not authority — the plan owns the work, [PLATE §0.8.1][plate] owns the
-locked design, and the [composition axis][axis] owns the executable assertions.
+## #114 V2 branch-diff disposition
+
+**Inventory baseline:** PR base `48447fb4d26c4285d956d0b09c84587a93db99a8` to
+inspected pre-reconciliation head `426698573e883bc3a16b265ff9efc5be744c5fec`.
+These are evidence anchors, not a moving operational baton.
+
+```sh
+git diff --name-status 48447fb4d26c4285d956d0b09c84587a93db99a8...426698573e883bc3a16b265ff9efc5be744c5fec -- prototypes/spatial-authoring
+```
+
+| Group | Files | Disposition |
+| --- | ---: | --- |
+| Runtime/shell | 16 | Retain historical UX1–UX6 implementation and useful functional corrections; no accepted Experience shell or production mechanism is inferred |
+| QA scripts | 28 | Retain selector adaptations, behavioral/mutation proof and isolated-session/bounded-sweep harness work; old surface assertions describe V2 only |
+| Node tests | 3 | Retain path-point, Journey/coordination and Travel-agency coverage; not visual acceptance |
+| Captures | 45 | Retain before/after provenance in place, never a pixel/layout gate |
+| Documentation | 5 | Reconcile routing/status here; keep implementation records and tested-contract provenance |
+| **Total** | **97** | No runtime/test/capture is reverted, deleted or refactored by this task |
+
+**Runtime assessment.** Experience modules carry thumbnail generation, usage-first
+subject disclosure, Presentation/View operations, Guide/edge Cards, path-point
+editing and station-bound Journey/Cue playback. Their always-present Guide lane,
+semi-spatial View constellation, split Path/Journey lanes and earlier Card
+composition are superseded UX, retained as historical executable evidence.
+
+Shared changes are consequential to preservation: `actions.js` keeps one selection
+hook and advances the World source generation at history settlement;
+`navigation.js` centralizes motion interruption/focus resolution; `stage.js`
+renders derivative View previews with state restoration; `main.js` wires the
+single frame clock, shared locator and cancellation; `state.js` holds only the
+added session disclosures/generation; `fixtures.js`/`ui.js` distinguish register
+records from logical Scene subjects and restore keyboard focus. Shared Head
+markup removes fabricated save/history counts and consolidates Preview. The
+removed visible trail list leaves `gotoTrail` and keyboard spatial return intact.
+These are prototype mechanisms/functional changes, not new production authorities.
+
+**World preservation.** Git comparison confirms no branch change to the World
+journey definitions, canonical prototype World model, drawing/task/cancellation
+modules, A–F baseline or the ten core World QA scripts listed below. Rotunda
+Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look and Plan ↔ 3D
+return remain routed and executable. The shared files above are not World-only,
+so removing them or their Experience modules would risk protected invariants.
+
+**Decision/limits.** Retain this existing diff in #114 with explicit historical
+classification. No substantial code change or unresolved semantic incompatibility
+is required to make that disposition; this is a bounded diff assessment, not a
+new execution of A–F or blanket acceptance of obsolete UI. Existing load-sensitive
+image-pass readings and other prior limits remain recorded below. A later source
+defect needs its own scope and focused proof, not a design-driven bulk revert.
+No new V2 development is authorized. Wide World-instrument/overlay arbitration
+remains a non-blocking delivery refinement in PLATE, not an invented solution here.
+
+### Exact file inventory
+
+**Runtime/shell:** `app/actions.js`, `app/experience-coordination.js`, `app/experience-draw.js`, `app/experience-image.js`, `app/experience-model.js`, `app/experience-scene.js`, `app/experience-ui.js`, `app/experience.js`, `app/fixtures.js`, `app/main.js`, `app/navigation.js`, `app/stage.js`, `app/state.js`, `app/ui.js`, `index.html`, `styles/app.css`.
+
+**QA scripts:** `qa/capture-experience-shell.sh`, `qa/capture-experience-subject.sh`, `qa/capture-experience-ux456.sh`, `qa/capture-experience-views.sh`, `qa/composition-check.sh`, `qa/composition-mutation-check.sh`, `qa/conformance-check.sh`, `qa/conformance-mutation-check.sh`, `qa/continuity-check.sh`, `qa/creator-check.sh`, `qa/experience-check.sh`, `qa/experience-shell-check.sh`, `qa/lens-check.sh`, `qa/lib.sh`, `qa/locator-check.sh`, `qa/locator-mutation-check.sh`, `qa/mutation-check.sh`, `qa/precision-c9-check.sh`, `qa/presenter-check.sh`, `qa/reconciliation-check.sh`, `qa/revision-check.sh`, `qa/rich-check.sh`, `qa/run-all.sh`, `qa/subject-mutation-check.sh`, `qa/views-mutation-check.sh`, `qa/visitor-check.sh`, `qa/walkthrough-check.sh`, `qa/walkthrough-demo-check.sh`.
+
+**Node tests:** `tests/experience-journey.test.mjs`, `tests/experience-path-points.test.mjs`, `tests/experience-travel-agency.test.mjs`.
+
+**Documentation:** `README.md`, `qa/CONFORMANCE-MANIFEST.md`, `qa/EXPERIENCE-UX-EVIDENCE.md`, `qa/README.md`, `qa/experience-ux-selector-inventory.md`.
+
+**Captures:** `screens/experience-ux-before/` (5), `screens/experience-ux1/` (5), `screens/experience-ux2/` (6), `screens/experience-ux3/` (6), `screens/experience-ux4/` (6), `screens/experience-ux456/` (10), `screens/experience-ux5/` (6), `screens/experience-ux6/` (1).
+
+**Unchanged World anchors:** `app/journeys.js`, `app/model.js`, `app/draw.js`, `app/tasks.js`, `app/cancel.js`, `qa/baseline.json`, `qa/journey-check.sh`, `qa/interaction-check.sh`, `qa/flow-check.sh`, `qa/policy-check.sh`, `qa/shell-check.sh`, `qa/precision-check.sh`, `qa/browse-check.sh`, `qa/repair-check.sh`, `qa/responsive-check.sh`, `qa/correctness-check.sh`.
+
+### #114 documentation-reconciliation verification (2026-10-13)
+
+| Check | Result / limit |
+| --- | --- |
+| Documentation references, links, paths and anchors | **22/22 pass**: `npx vitest run --config vitest.arch.config.ts tests/docs` from `apps/editor` |
+| Required architecture lane | **276/276 pass, 24 files**: root `npm run test:arch` |
+| Preservation checks | Paper's detailed authoring body unchanged; all six UX3/V3 bodies and PA0–PA12 body unchanged beneath inactive notices; the 16 World anchors above unchanged from PR base |
+| Scope / whitespace | Every reconciliation change is Markdown; no production/prototype runtime, tests, scripts or images changed; `git diff --check` passes |
+| Prototype execution | Full suite, focused browser runs and mutation chains **not rerun**: this task changes documentation only, with prior functionality evidence retained below |
+| Other repository gates | Root full test/check/build **not rerun**. The previously reported missing P23B `40-walls.json` remains absent/untracked; separate scope, not an unfinished design gate |
+
+Design acceptance is the owner's Conservatory decision, not these automated
+checks. No phase close, production implementation, #115 plan or merge occurs here.
+
+## Historical implementation record
+
+The remaining body is preserved from the earlier UX0–UX6 work. Its numbers are
+recorded checks at their stated revisions, not newly verified by this
+documentation task. The latest follow-up recorded Node **148/148** and a serial
+**26-axis** pass; concurrent image-pass failures and unrun mutation chains remain
+explicit. Its post-UX7 visual gate is superseded by Conservatory acceptance.
 
 **Branch / head:** `prototype-v2-ux-overhaul`, started from the #113 closeout head
 `48447fb4d26c4285d956d0b09c84587a93db99a8` (identical to `origin/main` at the time) with a clean

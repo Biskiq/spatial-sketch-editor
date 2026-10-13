@@ -6,8 +6,12 @@
 > [PLATE §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination),
 > which wins wherever this file differs. This file remains the rationale and design evidence. Nothing
 > here is built or shipped, it proposes no persisted format, and the landed editor keeps its current
-> shell until an explicit cutover. The prototype adoption plan is the
-> [Paper adoption plan](../../docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md).
+> shell until an explicit cutover. The [Paper adoption plan](../../docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md)
+> is inactive historical evidence; PA0–PA12 is unimplemented and is not #115 work.
+> #114 reconciles only conflicting shell/exposure: Conservatory supplies overlay
+> Card, Index and shared visual/instrument treatment; Paper retains authoring depth.
+> The original proposal below remains as accepted in 2026-10-03, not rewritten as
+> though those later shell choices were always present.
 >
 > **Builds on** the accepted [World Authoring Prototype](../spatial-authoring/README.md) (#112),
 > inside the accepted World | Experience shell

@@ -1,5 +1,18 @@
 # PR #114 — Experience UX V3 superseding implementation plan
 
+**Status: SUPERSEDED / INACTIVE (2026-10-13, #114).** The owner accepted
+[Conservatory Round 2](../../../../../prototypes/experience-ux-alternative/README.md).
+[PLATE](../../../../reference/design-system/editor-shell-and-visual-system.md)
+owns the promoted unified shell and Experience authoring/UX acceptance.
+This UX3/V3 package, standalone plan and generated PNGs are retained rationale
+and Git provenance; none is an active design or implementation instruction.
+Do not execute V3-A–V3-F or resume UX7. Next work is
+[#115 parallel-track planning](../../../README.md#next-task-handoff--115).
+
+**Original proposal/audit follows as historical text.** Earlier “active”,
+“canonical”, pending-ratification and PNG-acceptance statements below describe
+the superseded commission; they do not reopen current design acceptance.
+
 **Status: proposed, implementation gated on owner ratification (2026-10-13).**
 This is the **single replacement plan entry** for the Experience work on
 `prototype-v2-ux-overhaul`. It supersedes the pending direction of the

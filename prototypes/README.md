@@ -47,61 +47,45 @@ path such as `prototypes/spatial-authoring/README.md` resolves from the reposito
 root and is verified like `docs/` and `apps/` paths. Prototypes are outside
 production authority; their documentation is still a route a reader follows.
 
-| Folder | Durable artifact | Status |
+| Reference | Role after #114 | Entry |
 | --- | --- | --- |
-| [`paper-authoring-commission/`](./paper-authoring-commission/designer-packet/COMMISSION.md) | **Independent 2D Paper design commission package** — one standalone Markdown brief with curated shell/surface references | Context preparation within the accepted World \| Experience shell. Its in-repository destination proposal, [`PAPER-SHELL-PROPOSAL.md`](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md), was **accepted by the owner 2026-10-03** (four refinement reviews, all rulings, corrected Wall semantics) and promoted into PLATE §0.8.4; the proposal remains rationale and design evidence. The [Paper adoption plan](../docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md) plans the work in [`spatial-authoring/`](./spatial-authoring/README.md); nothing is implemented. No commission dispatch and no production cutover. Copy only its `designer-packet/` folder for the independent handoff; the sibling `INTERNAL.txt` stays in the repository. |
-| [`experience-ux-v3/`](./experience-ux-v3/README.md) | **Experience V3 design proposal and 15 PNG specimens** — [product/design/plan entry](../docs/roadmap/p25-experience/design/experience-ux-v3/README.md) | Owner-commissioned independent replacement for #114, 2026-10-13. Proposed for ratification; static visual compositor, not another application or runtime. Old boards/captures preserved; no implementation or production authorization. |
-| [`integrated-experience-authoring/`](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | **Experience V2 prototype design** — [UX reconciliation](./integrated-experience-authoring/design/experience-ux-reconciliation.md) (adopted 2026-10-11) + six QA boards and two Camera precision specimens in [`Design-QAs/`](./integrated-experience-authoring/Design-QAs/); the earlier [final synthesis](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) is superseded where they conflict | Historical target: accepted in #110, promoted in #111 and locked in #113 (2026-10-11). V3 is now the sole active #114 replacement proposal, awaiting ratification. This retains the design records and boards; the [historical V2 conformance plan](../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md) records the replacement in the single `spatial-authoring/` executable; C1–C8 and C9 are complete ([C8 evidence](./spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md), [C9 evidence](./spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md)). S0–S9 acceptance is historical. It establishes no persisted formats or implementation mechanisms. Retired-exploration findings remain [reconciliation evidence](./integrated-experience-authoring/design/retired-exploration-findings.md). |
-| [`world-experience-shell-round/`](./world-experience-shell-round/README.md) | **Finalized World shell design package** — [final synthesis](./world-experience-shell-round/design/design-synthesis.md) + canonical [QA package](./world-experience-shell-round/QA-package/) | Finalized/frozen; shell requirements promoted into PLATE §0.8 (PR #111, 2026-10-01), alongside V2 Experience. Supersedes P26 shell/chrome/tool exposure/disclosure where covered; journeys A–F remain the deep World behavioral oracle. World adoption is accepted in [`spatial-authoring/`](./spatial-authoring/README.md), #112; #113 supplies the Experience executable/continuity proof. Promotion fixes destination design, with no production cutover. |
-| [`spatial-authoring/`](./spatial-authoring/README.md) | **Unified World and Experience V2 Prototype** | World shell + inherited P26 **A–F**, capabilities and spatial laws (#112), with real Experience V2 authoring, visitor execution and both-lens continuity (#113). [World adoption record](./spatial-authoring/qa/ACCEPTANCE.md) · [current conformance evidence/specimens](./spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md). C9 owner-accepted for functionality (MP3/MP4 2026-10-11); #113 closed. #114 has UX1–UX6/review corrections; V3 design review now replaces its pending UX direction. Repository gates blocked by the missing P23B fixture. No production cutover. |
-| [`experience-authoring/`](./experience-authoring/README.md) | **Experience Authoring Prototype** | Retained Experience behavioral evidence / regression oracle. **Not current shell authority** — its shell is superseded by the accepted V2 synthesis above. |
-| [`object-composition-prototype/`](./object-composition-prototype/README.md) | **Objects & Assemblies prototype (Commission 2)** | Retained unratified proposal for object-first composition, capability disclosure, reach and repair behavior. Secondary composition shell-pressure evidence for the unified round; its shell and model are not being reopened or adopted by that round. |
+| **Conservatory** | Accepted unified UX, Experience authoring and shared visual shell; interactive states/journeys are the primary Experience UX acceptance language | [experience-ux-alternative](./experience-ux-alternative/README.md) |
+| **World Paper design** | Accepted 2D authoring-depth and precision contract: tools, drafting, dimensions, discovery and advanced procedures; shared shell reconciled with Conservatory | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
+| **V2 Spatial Authoring** | World Spatial Interaction Reference: Plan ↔ 3D continuity, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look/return and World journeys A–F/QA. Experience V2 is historical functional/regression evidence | [spatial-authoring](./spatial-authoring/README.md) · [#114 branch-diff disposition](./spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) |
+| **Object Composition** | Supporting unratified inspection, assembly, provenance, reach and repair research; no product/model/shell authority | [object-composition-prototype](./object-composition-prototype/README.md) |
+| **Production editor** | Actual implemented 2D Layout editing, Scene authoring, rendering and system architecture; existing capabilities are reused, not rebuilt because a prototype resembles them | [architecture](../docs/reference/architecture.md) · [landed shell](../docs/reference/components/shell.md) |
 
-## Authority semantics — retention and explicit shell promotion
+Other retained evidence stays in its existing directories:
 
-Relocating a prototype into a durable family changes **where it is kept**, not
-what it is authoritative for. The separate owner promotion in #111 places both
-finalized designs' shell requirements in PLATE, not in prototype code. In particular:
+- [UX3/V3 proposal](../docs/roadmap/p25-experience/design/experience-ux-v3/README.md)
+  and [15 generated PNGs](./experience-ux-v3/README.md): superseded design/rationale,
+  with the standalone plan inactive. No PNG/layout-equivalence acceptance.
+- [Integrated Experience V2](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
+  and [earlier Design-QAs](./integrated-experience-authoring/Design-QAs/README.md):
+  historical Experience design and functional evidence.
+- [World shell round](./world-experience-shell-round/README.md): earlier accepted
+  discovery/procedure/return rationale and specimens; Conservatory supersedes
+  conflicting shell treatment.
+- [Experience Authoring donor](./experience-authoring/README.md): runnable
+  behavioral/regression evidence, no current UX authority.
+- [Paper commission](./paper-authoring-commission/designer-packet/COMMISSION.md):
+  original brief and accepted proposal rationale. [PA0–PA12](../docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md)
+  is inactive/unimplemented; #115 is parallel-track planning.
 
-- **Experience UX reconciliation + six QA boards** (`integrated-experience-authoring/`) —
-  the historical locked Experience target (2026-10-11), now subject to the active unratified V3 proposal, superseding the earlier V2 synthesis
-  where they conflict. Its shell requirements live in **PLATE §0.8.1**, the durable authority:
-  Presentation/Views/Default, Guide/Stops/edges, Camera Path and Journey postures, Ask Rule
-  and progressive Camera disclosure. The retained
-  synthesis/QA record supplies rationale and specimens, not persisted formats or
-  implementation mechanisms.
-- **World Authoring Prototype** — accepted executable/QA reference retaining the P26
-  direction. Its implementation shortcuts (analytic caps, JavaScript modules,
-  whole-model snapshots, tiny-FOV orthographic stand-in, independent
-  clipping/membership logic, whole-model JSON Undo) are **evidence of interaction
-  intent, not production contracts**. Its accepted unified World shell replaces the predecessor in place (#112); journeys A–F remain behavioral authority. Its Experience lens implements V2 authoring and visitor execution with both-lens continuity (#113).
-- **Unified World | Experience shell round** — the accepted design package lives
-  here because it evolved retained prototype design. Its shell requirements are
-  promoted into **PLATE §0.8**, alongside the finalized Experience expression;
-  §0.8.2 owns explicit parked-task return. The ratchet preserves P26
-  journeys/capabilities/interaction laws and accepted V2 Experience semantics. It
-  supersedes P26 shell, chrome, tool exposure and disclosure where its synthesis
-  explicitly covers them. C2 supplied secondary composition pressure, not
-  destination UI. The accepted shell is adopted by the World prototype (#112);
-  V2 Experience/cross-lens implementation extends it in #113. This sequence grants no production implementation or
-  persistence authority, and PLATE §0.8 owns the durable destination shell laws.
-- **Experience Authoring Prototype** — retained Experience behavioral evidence /
-  regression oracle, not current shell authority. Its architecture and shell have
-  **not** been reconciled with PLATE, F or the current domain ownership, and no
-  reconciliation is authorized by its being kept here. Its shell is superseded by
-  the accepted V2 synthesis above; its behavior remains the oracle for what the
-  implemented V2 must still do.
-- **PLATE** ([`../docs/reference/design-system/editor-shell-and-visual-system.md`](../docs/reference/design-system/editor-shell-and-visual-system.md))
-  owns both the landed shell descriptions and the explicitly promoted destination
-  shell design (§0.8–§0.8.4). Those states remain distinct until cutover. Retention
-  or prototype acceptance alone never amends PLATE; owner promotions do (#111 for
-  §0.8–§0.8.3, the 2026-10-03 Paper acceptance for §0.8.4).
-  Promotion authorizes no production cutover.
-- **F** ([`../docs/reference/composition-execution.md`](../docs/reference/composition-execution.md))
-  remains the composition/execution target authority.
-- **Layout / Scene / Camera / Experience ownership** remains governed by the
-  current reference contracts ([`../docs/reference/architecture.md`](../docs/reference/architecture.md)).
-- **No production code change is authorized by a prototype being runnable here.**
+## Authority semantics
+
+[PLATE](../docs/reference/design-system/editor-shell-and-visual-system.md) owns
+the promoted destination shell/Experience design and reconciled Paper depth.
+Prototype acceptance supplies UX/behavioral evidence, not mock data formats,
+Camera evaluators, snapshot Undo or renderer architecture.
+[F](../docs/reference/composition-execution.md), [architecture](../docs/reference/architecture.md)
+and routed domain contracts preserve ownership, validity, history and isolation.
+Production behavior remains separately described until its explicit cutover.
+
+The accepted design ends the prototype-design detour: **#114 accepted unified
+design → #115 parallel-track planning cutover → foundation-gated production
+implementation**. UX1–UX7, V3-A–V3-F and PA0–PA12 are not active prototype work.
+No directory reorganization or new V2 development is required.
 
 ## Running them
 
@@ -110,7 +94,10 @@ round is a design package (synthesis + QA boards), not a runnable application;
 its accepted direction is adopted by the spatial-authoring prototype in #112.
 
 ```sh
-# World Authoring Prototype — no build step, vendored Three.js
+# Conservatory — accepted interactive design, no build step
+cd prototypes/experience-ux-alternative && python3 -m http.server 8841
+
+# World Spatial Interaction Reference — no build step, vendored Three.js
 cd prototypes/spatial-authoring && python3 -m http.server 8826   # http://localhost:8826/
 
 # Experience Authoring Prototype — Vite + Vitest + Playwright

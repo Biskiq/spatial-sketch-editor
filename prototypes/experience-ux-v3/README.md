@@ -1,5 +1,15 @@
 # Experience V3 — proposed design QA boards
 
+**Status: SUPERSEDED historical UX3/V3 specimens (#114, 2026-10-13).**
+The owner accepts [interactive Conservatory](../experience-ux-alternative/README.md);
+[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+owns current UX acceptance. These 15 PNGs, compositor and original notes are
+preserved provenance, not pixel/layout-equivalence or implementation gates.
+The standalone V3 plan is inactive; no generation or runtime changes are needed.
+
+**Original specimen/review notes follow as history**, including their former
+pending-ratification and acceptance language.
+
 **Generated design specimens, not runtime screenshots. Proposed 2026-10-13;
 owner ratification pending.** This package is the visual companion to the
 [product proposal](../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md),

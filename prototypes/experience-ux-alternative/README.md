@@ -1,10 +1,28 @@
 # Museum Editor — "Conservatory" (World + Experience)
 
-**Status:** design refinement, 2026-10-13 — round 2 of the Conservatory proposal, now the
-candidate unified Museum Editor design. A coded visual prototype with mock data.
+**Status:** owner-accepted unified Museum Editor design, 2026-10-13 (#114).
+Conservatory Round 2 is the minimum shared UX/visual direction. The owner reviewed
+initial, dense Presentation/View, long Guide and representative World states.
+Round 2 delivery: `8ead6b148e404f38a6ff91db7801ad1a6fa35426`; exact ratification
+revision: `426698573e883bc3a16b265ff9efc5be744c5fec`, including subsequent Index
+highlight CSS changes at `41a4c4dd` and `42669857`; interaction code is unchanged
+since Round 2.
+
+The promoted [PLATE contract](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+owns accepted principles, shell treatment, Experience authoring and
+[UX acceptance](../../docs/reference/design-system/editor-shell-and-visual-system.md#experience-design-acceptance).
+This remains a coded visual prototype with mock data.
 Not an application, not a runtime, not a persisted format, not implementation authority.
 Round 1 was designed without reading Experience UX3; round 2 studied UX3 and adopted parts of
 it selectively (see [design rationale §0](./design-rationale.md#0-round-2-what-changed)).
+
+**Accepted with non-blocking refinements:** Index collapse inconsistencies, Camera
+visibility edge cases and Selection-only behavior. Guide scrolling/overview,
+Card positioning, responsive density and aesthetics may improve in production;
+they are not unfinished design gates and are not being fixed in #114. One active
+Guide context may remain open during related Presentation/View work. World's
+mock is representative shell evidence; [Paper §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+and [V2 World spatial behavior](../spatial-authoring/README.md) retain deep authoring.
 
 ```sh
 cd prototypes/experience-ux-alternative

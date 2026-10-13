@@ -3,8 +3,10 @@
 Historical #113 tested contract: [replacement plan](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md).
 Historical S0–S9 evidence supplies no acceptance. The captures/recipes below belong
 to the closed #113 conformance scope; preserve `screens/experience-conformance/`.
-New #114 design review starts at the unratified [V3 package](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md).
-V3 targets live in their own package; new runtime evidence must be separately named.
+Current accepted UX is [Conservatory](../../experience-ux-alternative/README.md),
+promoted into [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+UX3/V3 is superseded. This manifest and its old board/recipe language remain
+historical functional evidence, not a current UX or implementation gate.
 
 | State | Product journey | Positive reading | Forbidden | Successor |
 |---|---|---|---|---|
