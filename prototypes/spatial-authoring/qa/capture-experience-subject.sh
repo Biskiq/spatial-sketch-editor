@@ -55,7 +55,7 @@ shot 'qa5-1440-subject-card'
 read_ok 'the photographed Card is the machine subject at rest, with both doors and no capability control' \
   "(() => { const c = document.querySelector('#card'); return __me.S.sel === 'machine' && c.querySelector('.c-k').textContent.trim() === 'SCENE OBJECT' && !!c.querySelector('[data-act=exp-add-behavior]') && !!c.querySelector('[data-act=exp-add-interaction]') && $(at_rest); })()"
 read_ok 'the photographed order is identity → Present this → Used in Experience → the two doors' \
-  "JSON.stringify([...document.querySelectorAll('#card > .c-sec')].map(e=>e.textContent.trim().split(' · ')[0])) === JSON.stringify(['Presentation','Used in Experience','Behavior'])"
+  "(() => { const c = document.querySelector('#card'); const label = (el) => el.classList.contains('c-head') ? 'identity' : el.querySelector('[data-act=exp-create-this]') ? 'Present this' : el.querySelector('[data-act=exp-add-behavior]') ? 'two doors' : el.classList.contains('c-sec') && el.textContent.trim().startsWith('Used in Experience') ? 'Used in Experience' : null; return JSON.stringify([...c.children].map(label).filter(Boolean)) === JSON.stringify(['identity','Present this','Used in Experience','two doors']); })()"
 read_ok 'the derived reach is read-only: every row is a reference to its owner, none is a second editor' \
   "(() => { const rows = [...document.querySelectorAll('#card [data-exp-used-in] [data-exp-used]')]; return rows.length > 0 && rows.every(r => !!r.querySelector('button') && !r.querySelector('[data-act=exp-use],[data-act=exp-audition],[data-act=exp-choose-capability]')); })()"
 
