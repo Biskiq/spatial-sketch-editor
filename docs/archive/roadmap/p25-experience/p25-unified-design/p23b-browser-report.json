@@ -1,0 +1,2377 @@
+{
+  "methodVersion": 5,
+  "methodVersionReason": "v5 fixes the interaction evidence: deferred boundaries always start where the synchronous input ended (so a frame encloses its own flush instead of pooling two origins), the canonical planner/apply call is its own plan-apply boundary rather than adapter CPU work, every action is classified by the outcome it actually reached (accepted/setup/rejected/suppressed/unclassified) with the reported distribution restricted to warm-up-excluded accepted samples, capture sessions are isolated and settled before summarizing, and the interaction capture runs on the size-40 straight and all-curved matrix cells in one session. Interaction timings remain advisory.",
+  "createdAt": "2026-10-13T19:23:00.866Z",
+  "warmup": 5,
+  "samples": 20,
+  "browser": {
+    "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+    "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+    "treeDirty": false,
+    "date": "2026-10-13T19:22:54.403Z",
+    "browser": {
+      "name": "Chrome",
+      "version": "155.0.0.0",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+    },
+    "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+    "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+    "operatingSystem": "15.7.2 (build 24G325)",
+    "nodeVersion": "v26.7.0",
+    "devicePixelRatio": 2,
+    "graphics": {
+      "api": "WebGL2",
+      "vendor": "Google Inc. (Apple)",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "source": "diagnostic-canvas"
+    },
+    "warmup": 5,
+    "samples": 20,
+    "methodVersion": 5,
+    "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+  },
+  "workloads": [
+    {
+      "fixtureId": "p23b-12-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "3c91ddc928aad8b9ff3d31c0a288bde1b46228c3d9d20bcdb8a1d1a9a882e401",
+      "roomCount": 3,
+      "provenance": {
+        "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-10-13T19:22:54.408Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "155.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 2,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 5,
+        "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 2.5,
+          "p50": 2.5,
+          "p95": 4,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 2.5,
+          "p50": 2.5,
+          "p95": 2.700000047683716,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.04800000011920929,
+          "p50": 0.04800000011920929,
+          "p95": 0.04950000017881393,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0004999998211860656,
+          "p50": 0.0004999998211860656,
+          "p95": 0.0010000002384185792,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 634711,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 140952,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 18,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 4224,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 115157870,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-12-wall-target-curved-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "319fe997b5489304b177c8eb891e27ca7c17cee3a3a48f045b3e2aa3af62b44e",
+      "roomCount": 3,
+      "provenance": {
+        "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-10-13T19:22:54.814Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "155.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 2,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 5,
+        "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 2.799999952316284,
+          "p50": 2.799999952316284,
+          "p95": 5.600000023841858,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 2.600000023841858,
+          "p50": 2.600000023841858,
+          "p95": 2.800000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.05149999976158142,
+          "p50": 0.05149999976158142,
+          "p95": 0.05300000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.0005000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 691871,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 154569,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 18,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 4352,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 166965224,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-12-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "canonicalLayoutSha256": "de138bcc81954d4f738610dc2ecbed7c968d64523c9daaeaec8e35884427edc6",
+      "roomCount": 3,
+      "provenance": {
+        "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-10-13T19:22:55.241Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "155.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 2,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 5,
+        "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 7.100000023841858,
+          "p50": 7.100000023841858,
+          "p95": 9.300000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 3.5,
+          "p50": 3.5,
+          "p95": 3.800000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.06800000011920929,
+          "p50": 0.06800000011920929,
+          "p95": 0.06949999988079071,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0004999998211860656,
+          "p50": 0.0004999998211860656,
+          "p95": 0.0010000002384185792,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 1374573,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 319026,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 18,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 12,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 6144,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 257542991,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "814ed5370d9dc72e9d7718e3d8dba631a654763cb6abac46331011d41978d9b2",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-10-13T19:22:55.909Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "155.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 2,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 5,
+        "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 7.899999976158142,
+          "p50": 7.899999976158142,
+          "p95": 15.599999964237213,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.10000002384185791,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 8,
+          "p50": 8,
+          "p95": 8.5,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.16400000005960463,
+          "p50": 0.16400000005960463,
+          "p95": 0.1780000001192093,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0010000002384185792,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 2133538,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 478384,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.10000002384185791,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.20000004768371582,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 14080,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 171109206,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-target-curved-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "7d2f8dae33189a64ec9955e5c3bcd40b39105f02d3b5a1273e9c9ae0276314fe",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-10-13T19:22:57.259Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "155.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 2,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 5,
+        "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 8.5,
+          "p50": 8.5,
+          "p95": 12.400000035762787,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0,
+          "p50": 0,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 8.100000023841858,
+          "p50": 8.100000023841858,
+          "p95": 8.5,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.165,
+          "p50": 0.165,
+          "p95": 0.16849999994039536,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0015000000596046448,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 2190698,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 492001,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.10000002384185791,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.10000002384185791,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.19999998807907104,
+          "p50": 0.19999998807907104,
+          "p95": 0.2999999523162842,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 14208,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 157557894,
+          "runtime": "browser"
+        }
+      ]
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "canonicalLayoutSha256": "22efb326d057974476bfed7fca7d1f3d13dbad203af9bbd8054359cc9df3d461",
+      "roomCount": 10,
+      "provenance": {
+        "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+        "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+        "treeDirty": false,
+        "date": "2026-10-13T19:22:58.599Z",
+        "browser": {
+          "name": "Chrome",
+          "version": "155.0.0.0",
+          "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+        },
+        "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+        "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+        "operatingSystem": "15.7.2 (build 24G325)",
+        "nodeVersion": "v26.7.0",
+        "devicePixelRatio": 2,
+        "graphics": {
+          "api": "WebGL2",
+          "vendor": "Google Inc. (Apple)",
+          "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+          "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+          "source": "diagnostic-canvas"
+        },
+        "warmup": 5,
+        "samples": 20,
+        "methodVersion": 5,
+        "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+      },
+      "samples": [
+        {
+          "metric": "layout-compile",
+          "unit": "ms",
+          "value": 24.599999964237213,
+          "p50": 24.599999964237213,
+          "p95": 27.80000001192093,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-build",
+          "unit": "ms",
+          "value": 0.09999996423721313,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104,
+          "runtime": "browser"
+        },
+        {
+          "metric": "wall-mesh-build",
+          "unit": "ms",
+          "value": 12.600000023841858,
+          "p50": 12.600000023841858,
+          "p95": 13.400000035762787,
+          "runtime": "browser"
+        },
+        {
+          "metric": "hit-test",
+          "unit": "ms",
+          "value": 0.23599999994039536,
+          "p50": 0.23599999994039536,
+          "p95": 0.245,
+          "runtime": "browser"
+        },
+        {
+          "metric": "snap-query",
+          "unit": "ms",
+          "value": 0.0009999999403953552,
+          "p50": 0.0009999999403953552,
+          "p95": 0.0015000000596046448,
+          "runtime": "browser"
+        },
+        {
+          "metric": "compiled-memory",
+          "unit": "bytes",
+          "value": 4583235,
+          "runtime": "browser"
+        },
+        {
+          "metric": "cache-key-code-units",
+          "unit": "count",
+          "value": 1068005,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-initial",
+          "unit": "ms",
+          "value": 0.6000000238418579,
+          "p50": 0.6000000238418579,
+          "p95": 0.8999999761581421,
+          "runtime": "browser"
+        },
+        {
+          "metric": "svg-node-count",
+          "unit": "nodes",
+          "value": 60,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-pan-zoom",
+          "unit": "ms",
+          "value": 0.6000000238418579,
+          "p50": 0.6000000238418579,
+          "p95": 0.800000011920929,
+          "runtime": "browser"
+        },
+        {
+          "metric": "plan-render-work-edit",
+          "unit": "ms",
+          "value": 0.699999988079071,
+          "p50": 0.699999988079071,
+          "p95": 1.2000000476837158,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-object-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-material-estimate",
+          "unit": "count",
+          "value": 1,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-draw-call-estimate",
+          "unit": "count",
+          "value": 40,
+          "runtime": "browser"
+        },
+        {
+          "metric": "three-triangle-estimate",
+          "unit": "count",
+          "value": 20480,
+          "runtime": "browser"
+        },
+        {
+          "metric": "memory-heap",
+          "unit": "bytes",
+          "value": 226216842,
+          "runtime": "browser"
+        }
+      ]
+    }
+  ],
+  "interactionFixtures": [
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "semanticClass": 5,
+      "role": "control",
+      "canonicalLayoutSha256": "814ed5370d9dc72e9d7718e3d8dba631a654763cb6abac46331011d41978d9b2",
+      "sessionId": "906d5425-2066-425f-9391-86a55a49c560",
+      "startedAt": "2026-10-13T19:23:05.227Z",
+      "endedAt": "2026-10-13T19:23:18.245Z",
+      "protocol": {
+        "selection": {
+          "target": "Select boundary Wall room-0:wall-0 (room 0, boundary edge 0) in the Plan viewport",
+          "snapGrid": "Not applicable"
+        },
+        "plan-drag-edit": {
+          "target": "Grab Wall room-0:wall-1 (room 0, boundary edge 1) at 25% of its chord and move one 0.25 m grid increment, then release",
+          "snapGrid": "Snap 0.25 m on; grid on"
+        },
+        "bend-knot-edit": {
+          "target": "Bend Wall room-0:wall-0 at knot room-0:wall-0:knot:1 by one 0.25 m grid increment, then release",
+          "snapGrid": "Snap 0.25 m on; grid on"
+        },
+        "wall-authoring": {
+          "target": "Create a partition Wall between [14, 5] and [18, 5] (4 m, in the clear gap between room-0 and room-1)",
+          "snapGrid": "Snap 0.25 m on; grid on"
+        },
+        "plan-pan-zoom": {
+          "target": "Middle-button pan and wheel zoom in the Plan viewport, in the same px/m view as every other hosted fixture",
+          "snapGrid": "Not applicable"
+        },
+        "guided-3d-navigation": {
+          "target": "Play the existing PerspectiveCamera edge p23b-nav-edge from p23b-nav-start to p23b-nav-end",
+          "snapGrid": "Not applicable"
+        }
+      },
+      "notApplicableInteractionPaths": {
+        "bend-knot-edit": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+      },
+      "planView": {
+        "pixelsPerMeter": 19.292586186549904,
+        "center": [
+          10.999999999999996,
+          3.5
+        ],
+        "width": 612,
+        "height": 626,
+        "actions": 157,
+        "stable": true
+      },
+      "interactions": {
+        "selection": {
+          "input": {
+            "accepted": {
+              "count": 20,
+              "p50": 2.800000011920929,
+              "p95": 3.5
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 1.5,
+              "p95": 1.699999988079071
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "unavailable": "This path does not derive Layout geometry."
+          },
+          "plan-apply": {
+            "unavailable": "This path performs no canonical planning or install call."
+          },
+          "adapter": {
+            "unavailable": "This path does not rebuild render geometry."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 40,
+              "p50": 7,
+              "p95": 16.80000001192093
+            },
+            "outcomes": {
+              "accepted": 50
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 40,
+              "p50": 12.800000011920929,
+              "p95": 18.600000023841858
+            },
+            "outcomes": {
+              "accepted": 50
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          }
+        },
+        "plan-drag-edit": {
+          "input": {
+            "accepted": {
+              "count": 40,
+              "p50": 5.199999988079071,
+              "p95": 19
+            },
+            "outcomes": {
+              "accepted": 50
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 33.60000002384186,
+              "p95": 35.5
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "accepted": {
+              "count": 140,
+              "p50": 0,
+              "p95": 33.700000047683716
+            },
+            "outcomes": {
+              "accepted": 175
+            },
+            "observedCount": 175,
+            "warmupExcludedActions": 5
+          },
+          "plan-apply": {
+            "accepted": {
+              "count": 20,
+              "p50": 29.30000001192093,
+              "p95": 31
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 60,
+              "p50": 4,
+              "p95": 19.69999998807907
+            },
+            "outcomes": {
+              "accepted": 75
+            },
+            "observedCount": 75,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 60,
+              "p50": 13.300000011920929,
+              "p95": 22.899999976158142
+            },
+            "outcomes": {
+              "accepted": 75
+            },
+            "observedCount": 75,
+            "warmupExcludedActions": 5
+          }
+        },
+        "bend-knot-edit": {
+          "input": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          },
+          "release": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          },
+          "reactive": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          },
+          "plan-apply": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          },
+          "adapter": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          },
+          "svelte-flush": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          },
+          "browser-frame": {
+            "unavailable": "p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot exist on this fixture and is recorded as not applicable rather than captured or converted."
+          }
+        },
+        "wall-authoring": {
+          "input": {
+            "accepted": {
+              "count": 23,
+              "p50": 0.19999998807907104,
+              "p95": 0.30000001192092896
+            },
+            "outcomes": {
+              "setup": 25,
+              "accepted": 25
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 23,
+              "p50": 32.59999996423721,
+              "p95": 35.60000002384186
+            },
+            "outcomes": {
+              "setup": 25,
+              "accepted": 25
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "accepted": {
+              "count": 23,
+              "p50": 0,
+              "p95": 0.09999996423721313
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "plan-apply": {
+            "unavailable": "No canonical planner call was observed during the captured action."
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 46,
+              "p50": 0.20000004768371582,
+              "p95": 17.899999976158142
+            },
+            "outcomes": {
+              "setup": 50,
+              "accepted": 50
+            },
+            "observedCount": 100,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 46,
+              "p50": 16.30000001192093,
+              "p95": 20
+            },
+            "outcomes": {
+              "setup": 50,
+              "accepted": 50
+            },
+            "observedCount": 100,
+            "warmupExcludedActions": 5
+          }
+        },
+        "plan-pan-zoom": {
+          "input": {
+            "accepted": {
+              "count": 129,
+              "p50": 0.10000002384185791,
+              "p95": 0.20000004768371582
+            },
+            "outcomes": {
+              "accepted": 154
+            },
+            "observedCount": 154,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 0,
+              "p95": 0.10000002384185791
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "unavailable": "This path does not derive Layout geometry."
+          },
+          "plan-apply": {
+            "unavailable": "This path performs no canonical planning or install call."
+          },
+          "adapter": {
+            "unavailable": "This path does not rebuild render geometry."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 149,
+              "p50": 6.599999964237213,
+              "p95": 7.800000011920929
+            },
+            "outcomes": {
+              "accepted": 179
+            },
+            "observedCount": 179,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 149,
+              "p50": 16.399999976158142,
+              "p95": 17
+            },
+            "outcomes": {
+              "accepted": 179
+            },
+            "observedCount": 179,
+            "warmupExcludedActions": 5
+          }
+        },
+        "guided-3d-navigation": {
+          "input": {
+            "unavailable": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+          },
+          "release": {
+            "unavailable": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+          },
+          "reactive": {
+            "unavailable": "No reactive derivation mark was observed during the captured action."
+          },
+          "plan-apply": {
+            "unavailable": "No canonical planner call was observed during the captured action."
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "unavailable": "No sample was captured for this applicable boundary; repeat the fixed action."
+          },
+          "browser-frame": {
+            "unavailable": "No sample was captured for this applicable boundary; repeat the fixed action."
+          }
+        }
+      },
+      "interactionSampleCounts": {
+        "selection": 25,
+        "plan-drag-edit": 50,
+        "bend-knot-edit": 0,
+        "wall-authoring": 50,
+        "plan-pan-zoom": 154,
+        "guided-3d-navigation": 0
+      },
+      "capture": {
+        "warmup": 5,
+        "warmupExcluded": {
+          "selection": 5,
+          "plan-drag-edit": 5,
+          "bend-knot-edit": 0,
+          "wall-authoring": 5,
+          "plan-pan-zoom": 5,
+          "guided-3d-navigation": 0
+        },
+        "completedActions": {
+          "selection": 25,
+          "plan-drag-edit": 25,
+          "bend-knot-edit": 0,
+          "wall-authoring": 50,
+          "plan-pan-zoom": 57,
+          "guided-3d-navigation": 0
+        },
+        "incompleteActions": {},
+        "unclassifiedActions": {
+          "selection": 0,
+          "plan-drag-edit": 0,
+          "bend-knot-edit": 0,
+          "wall-authoring": 0,
+          "plan-pan-zoom": 0,
+          "guided-3d-navigation": 0
+        },
+        "retries": {
+          "selection": 0,
+          "plan-drag-edit": 0,
+          "bend-knot-edit": 0,
+          "wall-authoring": 25,
+          "plan-pan-zoom": 0,
+          "guided-3d-navigation": 0
+        },
+        "outcomes": {
+          "selection": {
+            "accepted": 25
+          },
+          "plan-drag-edit": {
+            "accepted": 25
+          },
+          "bend-knot-edit": {},
+          "wall-authoring": {
+            "setup": 25,
+            "accepted": 25
+          },
+          "plan-pan-zoom": {
+            "accepted": 57
+          },
+          "guided-3d-navigation": {}
+        },
+        "fixtureResets": 50,
+        "droppedBoundaries": 0,
+        "settled": true
+      },
+      "nestedMarks": {
+        "p2311:selection-hit": {
+          "count": 50,
+          "p50": 0.30000001192092896,
+          "p95": 0.40000003576278687
+        },
+        "p2311:plan-render-model": {
+          "count": 558,
+          "p50": 0.10000002384185791,
+          "p95": 1
+        },
+        "p2311:plan-salience": {
+          "count": 509,
+          "p50": 0.5,
+          "p95": 0.699999988079071
+        },
+        "p2311:svg-attributes": {
+          "count": 39188,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:plan-svg-context-ink": {
+          "count": 12660,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:plan-presentation": {
+          "count": 508,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:baseline-restore": {
+          "count": 125,
+          "p50": 0.10000002384185791,
+          "p95": 0.2999999523162842
+        },
+        "p2311:restore-project-clone": {
+          "count": 125,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791
+        },
+        "p2311:restore-reactive-write": {
+          "count": 125,
+          "p50": 0.10000002384185791,
+          "p95": 0.19999998807907104
+        },
+        "p2311:restore-model-project": {
+          "count": 125,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:restore-issues-clone": {
+          "count": 125,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:restore-mesh-install": {
+          "count": 125,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:restore-bookkeeping": {
+          "count": 125,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:pointermove-rigid": {
+          "count": 100,
+          "p50": 0,
+          "p95": 18.600000023841858
+        },
+        "p2311:architecture-snap-resolution": {
+          "count": 50,
+          "p50": 2,
+          "p95": 16.80000001192093
+        },
+        "p2311:snap-wall-index": {
+          "count": 26,
+          "p50": 12.300000011920929,
+          "p95": 15
+        },
+        "p2311:proposal-derive": {
+          "count": 25,
+          "p50": 0.20000004768371582,
+          "p95": 0.30000001192092896
+        },
+        "p2311:curve-sampling": {
+          "count": 4100,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:preflight": {
+          "count": 25,
+          "p50": 1.800000011920929,
+          "p95": 2.100000023841858
+        },
+        "p2311:preflight-topology": {
+          "count": 25,
+          "p50": 1.5,
+          "p95": 1.600000023841858
+        },
+        "p2311:structural-pre": {
+          "count": 25,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582
+        },
+        "p2311:topology-pre": {
+          "count": 25,
+          "p50": 0.2999999523162842,
+          "p95": 0.3999999761581421
+        },
+        "p2311:face-extraction": {
+          "count": 50,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582
+        },
+        "p2311:room-reconciliation": {
+          "count": 50,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791
+        },
+        "p2311:structural-post": {
+          "count": 25,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582
+        },
+        "p2311:topology-post": {
+          "count": 25,
+          "p50": 0.20000004768371582,
+          "p95": 0.30000001192092896
+        },
+        "p2311:opening-set": {
+          "count": 25,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:portal-relations": {
+          "count": 25,
+          "p50": 0,
+          "p95": 0.09999996423721313
+        },
+        "p2311:acceptance-compile": {
+          "count": 25,
+          "p50": 10.799999952316284,
+          "p95": 12
+        },
+        "p2311:room-geometry-compile": {
+          "count": 50,
+          "p50": 5,
+          "p95": 8
+        },
+        "p2311:junction-resolution": {
+          "count": 50,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:preview-compile-reused": {
+          "count": 50,
+          "p50": 0,
+          "p95": 0.09999996423721313
+        },
+        "p2311:mesh-inputs": {
+          "count": 50,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:mesh-prebuild": {
+          "count": 50,
+          "p50": 8,
+          "p95": 11.600000023841858
+        },
+        "p2311:mesh-input-validate": {
+          "count": 50,
+          "p50": 4.900000035762787,
+          "p95": 8.200000047683716
+        },
+        "p2311:mesh-room-meshes": {
+          "count": 50,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:standalone-wall-build": {
+          "count": 125,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:mesh-build": {
+          "count": 125,
+          "p50": 0.30000001192092896,
+          "p95": 0.5
+        },
+        "p2311:preview-install": {
+          "count": 25,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:gesture-commit": {
+          "count": 25,
+          "p50": 1.9000000357627869,
+          "p95": 2.199999988079071
+        },
+        "p2311:commit-capture": {
+          "count": 25,
+          "p50": 0.5999999642372131,
+          "p95": 0.699999988079071
+        },
+        "p2311:commit-matches": {
+          "count": 50,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791
+        },
+        "p2311:commit-replace": {
+          "count": 50,
+          "p50": 0.5,
+          "p95": 0.6000000238418579
+        },
+        "p2311:authoring-release": {
+          "count": 50,
+          "p50": 1.199999988079071,
+          "p95": 35
+        },
+        "p2311:snap-resolution": {
+          "count": 50,
+          "p50": 0.3999999761581421,
+          "p95": 0.5999999642372131
+        },
+        "p2311:wall-chain-plan": {
+          "count": 25,
+          "p50": 11.199999988079071,
+          "p95": 13.900000035762787
+        },
+        "p2311:chain-topology-gate": {
+          "count": 25,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:correspondence": {
+          "count": 25,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582
+        },
+        "p2311:chain-canonical-gates": {
+          "count": 25,
+          "p50": 9.600000023841858,
+          "p95": 12.300000011920929
+        },
+        "p2311:wall-chain-commit-install": {
+          "count": 25,
+          "p50": 17.299999952316284,
+          "p95": 19.30000001192093
+        }
+      }
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "semanticClass": 5,
+      "role": "timing-target",
+      "canonicalLayoutSha256": "22efb326d057974476bfed7fca7d1f3d13dbad203af9bbd8054359cc9df3d461",
+      "sessionId": "49fad8c5-4d7e-4077-bb3c-35536fef3d79",
+      "startedAt": "2026-10-13T19:23:19.245Z",
+      "endedAt": "2026-10-13T19:23:55.279Z",
+      "protocol": {
+        "selection": {
+          "target": "Select boundary Wall room-0:wall-0 (room 0, boundary edge 0) in the Plan viewport",
+          "snapGrid": "Not applicable"
+        },
+        "plan-drag-edit": {
+          "target": "Grab Wall room-0:wall-1 (room 0, boundary edge 1) at 25% of its chord and move one 0.25 m grid increment, then release",
+          "snapGrid": "Snap 0.25 m on; grid on"
+        },
+        "bend-knot-edit": {
+          "target": "Bend Wall room-0:wall-0 at knot room-0:wall-0:knot:1 by one 0.25 m grid increment, then release",
+          "snapGrid": "Snap 0.25 m on; grid on"
+        },
+        "wall-authoring": {
+          "target": "Create a partition Wall between [14, 5] and [18, 5] (4 m, in the clear gap between room-0 and room-1)",
+          "snapGrid": "Snap 0.25 m on; grid on"
+        },
+        "plan-pan-zoom": {
+          "target": "Middle-button pan and wheel zoom in the Plan viewport, in the same px/m view as every other hosted fixture",
+          "snapGrid": "Not applicable"
+        },
+        "guided-3d-navigation": {
+          "target": "Play the existing PerspectiveCamera edge p23b-nav-edge from p23b-nav-start to p23b-nav-end",
+          "snapGrid": "Not applicable"
+        }
+      },
+      "notApplicableInteractionPaths": {},
+      "planView": {
+        "pixelsPerMeter": 19.292586186549904,
+        "center": [
+          10.999999999999996,
+          3.3249999999999957
+        ],
+        "width": 612,
+        "height": 626,
+        "actions": 182,
+        "stable": true
+      },
+      "interactions": {
+        "selection": {
+          "input": {
+            "accepted": {
+              "count": 20,
+              "p50": 13.600000023841858,
+              "p95": 14.899999976158142
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 3.099999964237213,
+              "p95": 3.199999988079071
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "unavailable": "This path does not derive Layout geometry."
+          },
+          "plan-apply": {
+            "unavailable": "This path performs no canonical planning or install call."
+          },
+          "adapter": {
+            "unavailable": "This path does not rebuild render geometry."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 40,
+              "p50": 19.099999964237213,
+              "p95": 51.40000003576279
+            },
+            "outcomes": {
+              "accepted": 50
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 40,
+              "p50": 19.099999964237213,
+              "p95": 53.60000002384186
+            },
+            "outcomes": {
+              "accepted": 50
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          }
+        },
+        "plan-drag-edit": {
+          "input": {
+            "accepted": {
+              "count": 40,
+              "p50": 11.900000035762787,
+              "p95": 188.0999999642372
+            },
+            "outcomes": {
+              "accepted": 50
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 64.30000001192093,
+              "p95": 71.89999997615814
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "accepted": {
+              "count": 140,
+              "p50": 0,
+              "p95": 186.60000002384186
+            },
+            "outcomes": {
+              "accepted": 175
+            },
+            "observedCount": 175,
+            "warmupExcludedActions": 5
+          },
+          "plan-apply": {
+            "accepted": {
+              "count": 20,
+              "p50": 53,
+              "p95": 60
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 60,
+              "p50": 15.199999988079071,
+              "p95": 45.39999997615814
+            },
+            "outcomes": {
+              "accepted": 75
+            },
+            "observedCount": 75,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 60,
+              "p50": 16.80000001192093,
+              "p95": 48.69999998807907
+            },
+            "outcomes": {
+              "accepted": 75
+            },
+            "observedCount": 75,
+            "warmupExcludedActions": 5
+          }
+        },
+        "bend-knot-edit": {
+          "input": {
+            "accepted": {
+              "count": 60,
+              "p50": 11.099999964237213,
+              "p95": 201.19999998807907
+            },
+            "outcomes": {
+              "accepted": 75
+            },
+            "observedCount": 75,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 64.10000002384186,
+              "p95": 70.60000002384186
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "accepted": {
+              "count": 140,
+              "p50": 0.10000002384185791,
+              "p95": 195.80000001192093
+            },
+            "outcomes": {
+              "accepted": 175
+            },
+            "observedCount": 175,
+            "warmupExcludedActions": 5
+          },
+          "plan-apply": {
+            "accepted": {
+              "count": 20,
+              "p50": 52.80000001192093,
+              "p95": 58.19999998807907
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 80,
+              "p50": 16.099999964237213,
+              "p95": 48.90000003576279
+            },
+            "outcomes": {
+              "accepted": 100
+            },
+            "observedCount": 100,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 80,
+              "p50": 27.600000023841858,
+              "p95": 52.5
+            },
+            "outcomes": {
+              "accepted": 100
+            },
+            "observedCount": 100,
+            "warmupExcludedActions": 5
+          }
+        },
+        "wall-authoring": {
+          "input": {
+            "accepted": {
+              "count": 23,
+              "p50": 0.19999998807907104,
+              "p95": 0.19999998807907104
+            },
+            "outcomes": {
+              "setup": 25,
+              "accepted": 25
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 23,
+              "p50": 75.10000002384186,
+              "p95": 80.30000001192093
+            },
+            "outcomes": {
+              "setup": 25,
+              "accepted": 25
+            },
+            "observedCount": 50,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "accepted": {
+              "count": 23,
+              "p50": 0,
+              "p95": 0.10000002384185791
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "plan-apply": {
+            "unavailable": "No canonical planner call was observed during the captured action."
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 46,
+              "p50": 0.10000002384185791,
+              "p95": 48.19999998807907
+            },
+            "outcomes": {
+              "setup": 50,
+              "accepted": 50
+            },
+            "observedCount": 100,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 46,
+              "p50": 13.600000023841858,
+              "p95": 51.30000001192093
+            },
+            "outcomes": {
+              "setup": 50,
+              "accepted": 50
+            },
+            "observedCount": 100,
+            "warmupExcludedActions": 5
+          }
+        },
+        "plan-pan-zoom": {
+          "input": {
+            "accepted": {
+              "count": 129,
+              "p50": 0.09999996423721313,
+              "p95": 0.19999998807907104
+            },
+            "outcomes": {
+              "accepted": 154
+            },
+            "observedCount": 154,
+            "warmupExcludedActions": 5
+          },
+          "release": {
+            "accepted": {
+              "count": 20,
+              "p50": 0,
+              "p95": 0.09999996423721313
+            },
+            "outcomes": {
+              "accepted": 25
+            },
+            "observedCount": 25,
+            "warmupExcludedActions": 5
+          },
+          "reactive": {
+            "unavailable": "This path does not derive Layout geometry."
+          },
+          "plan-apply": {
+            "unavailable": "This path performs no canonical planning or install call."
+          },
+          "adapter": {
+            "unavailable": "This path does not rebuild render geometry."
+          },
+          "svelte-flush": {
+            "accepted": {
+              "count": 149,
+              "p50": 17,
+              "p95": 19.19999998807907
+            },
+            "outcomes": {
+              "accepted": 179
+            },
+            "observedCount": 179,
+            "warmupExcludedActions": 5
+          },
+          "browser-frame": {
+            "accepted": {
+              "count": 149,
+              "p50": 18.299999952316284,
+              "p95": 20.30000001192093
+            },
+            "outcomes": {
+              "accepted": 179
+            },
+            "observedCount": 179,
+            "warmupExcludedActions": 5
+          }
+        },
+        "guided-3d-navigation": {
+          "input": {
+            "unavailable": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+          },
+          "release": {
+            "unavailable": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+          },
+          "reactive": {
+            "unavailable": "No reactive derivation mark was observed during the captured action."
+          },
+          "plan-apply": {
+            "unavailable": "No canonical planner call was observed during the captured action."
+          },
+          "adapter": {
+            "unavailable": "No Three adapter CPU mark was observed during the captured action; GPU work is not inferred."
+          },
+          "svelte-flush": {
+            "unavailable": "No sample was captured for this applicable boundary; repeat the fixed action."
+          },
+          "browser-frame": {
+            "unavailable": "No sample was captured for this applicable boundary; repeat the fixed action."
+          }
+        }
+      },
+      "interactionSampleCounts": {
+        "selection": 25,
+        "plan-drag-edit": 50,
+        "bend-knot-edit": 75,
+        "wall-authoring": 50,
+        "plan-pan-zoom": 154,
+        "guided-3d-navigation": 0
+      },
+      "capture": {
+        "warmup": 5,
+        "warmupExcluded": {
+          "selection": 5,
+          "plan-drag-edit": 5,
+          "bend-knot-edit": 5,
+          "wall-authoring": 5,
+          "plan-pan-zoom": 5,
+          "guided-3d-navigation": 0
+        },
+        "completedActions": {
+          "selection": 25,
+          "plan-drag-edit": 25,
+          "bend-knot-edit": 25,
+          "wall-authoring": 50,
+          "plan-pan-zoom": 57,
+          "guided-3d-navigation": 0
+        },
+        "incompleteActions": {},
+        "unclassifiedActions": {
+          "selection": 0,
+          "plan-drag-edit": 0,
+          "bend-knot-edit": 0,
+          "wall-authoring": 0,
+          "plan-pan-zoom": 0,
+          "guided-3d-navigation": 0
+        },
+        "retries": {
+          "selection": 0,
+          "plan-drag-edit": 0,
+          "bend-knot-edit": 0,
+          "wall-authoring": 25,
+          "plan-pan-zoom": 0,
+          "guided-3d-navigation": 0
+        },
+        "outcomes": {
+          "selection": {
+            "accepted": 25
+          },
+          "plan-drag-edit": {
+            "accepted": 25
+          },
+          "bend-knot-edit": {
+            "accepted": 25
+          },
+          "wall-authoring": {
+            "setup": 25,
+            "accepted": 25
+          },
+          "plan-pan-zoom": {
+            "accepted": 57
+          },
+          "guided-3d-navigation": {}
+        },
+        "fixtureResets": 75,
+        "droppedBoundaries": 0,
+        "settled": true
+      },
+      "nestedMarks": {
+        "p2311:selection-hit": {
+          "count": 75,
+          "p50": 0.10000002384185791,
+          "p95": 0.6000000238418579
+        },
+        "p2311:plan-render-model": {
+          "count": 808,
+          "p50": 0.19999998807907104,
+          "p95": 7.699999988079071
+        },
+        "p2311:plan-salience": {
+          "count": 708,
+          "p50": 0.5,
+          "p95": 0.6000000238418579
+        },
+        "p2311:svg-attributes": {
+          "count": 55358,
+          "p50": 0.10000002384185791,
+          "p95": 0.2999999523162842
+        },
+        "p2311:plan-svg-context-ink": {
+          "count": 18160,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:plan-presentation": {
+          "count": 708,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:restore-project-clone": {
+          "count": 175,
+          "p50": 0.10000002384185791,
+          "p95": 0.19999998807907104
+        },
+        "p2311:restore-reactive-write": {
+          "count": 175,
+          "p50": 0.10000002384185791,
+          "p95": 0.2999999523162842
+        },
+        "p2311:baseline-restore": {
+          "count": 175,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:restore-model-project": {
+          "count": 175,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:restore-issues-clone": {
+          "count": 175,
+          "p50": 0,
+          "p95": 0
+        },
+        "p2311:restore-mesh-install": {
+          "count": 175,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:restore-bookkeeping": {
+          "count": 175,
+          "p50": 0,
+          "p95": 0.09999996423721313
+        },
+        "p2311:pointer-cadence": {
+          "count": 75,
+          "p50": 16.69999998807907,
+          "p95": 220.80000001192093
+        },
+        "p2311:pointermove-bend": {
+          "count": 100,
+          "p50": 0.10000002384185791,
+          "p95": 200.10000002384186
+        },
+        "p2311:svg-flush-latency": {
+          "count": 100,
+          "p50": 0.20000004768371582,
+          "p95": 217
+        },
+        "p2311:next-frame-latency": {
+          "count": 100,
+          "p50": 180.5,
+          "p95": 244.5999999642372
+        },
+        "p2311:architecture-snap-resolution": {
+          "count": 125,
+          "p50": 6.699999988079071,
+          "p95": 191.10000002384186
+        },
+        "p2311:snap-wall-index": {
+          "count": 51,
+          "p50": 176.29999995231628,
+          "p95": 186.20000004768372
+        },
+        "p2311:proposal-derive": {
+          "count": 75,
+          "p50": 0.30000001192092896,
+          "p95": 0.6000000238418579
+        },
+        "p2311:curve-sampling": {
+          "count": 15175,
+          "p50": 0.10000002384185791,
+          "p95": 0.19999998807907104
+        },
+        "p2311:preflight": {
+          "count": 75,
+          "p50": 6.899999976158142,
+          "p95": 9.199999988079071
+        },
+        "p2311:preflight-topology": {
+          "count": 75,
+          "p50": 6.600000023841858,
+          "p95": 8.900000035762787
+        },
+        "p2311:structural-pre": {
+          "count": 50,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:topology-pre": {
+          "count": 50,
+          "p50": 5.099999964237213,
+          "p95": 6.199999988079071
+        },
+        "p2311:face-extraction": {
+          "count": 75,
+          "p50": 4.600000023841858,
+          "p95": 10
+        },
+        "p2311:room-reconciliation": {
+          "count": 75,
+          "p50": 0.09999996423721313,
+          "p95": 0.10000002384185791
+        },
+        "p2311:structural-post": {
+          "count": 50,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:topology-post": {
+          "count": 50,
+          "p50": 5.400000035762787,
+          "p95": 6.800000011920929
+        },
+        "p2311:opening-set": {
+          "count": 50,
+          "p50": 0,
+          "p95": 0.09999996423721313
+        },
+        "p2311:portal-relations": {
+          "count": 50,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:acceptance-compile": {
+          "count": 50,
+          "p50": 13.299999952316284,
+          "p95": 15.199999988079071
+        },
+        "p2311:room-geometry-compile": {
+          "count": 75,
+          "p50": 7.699999988079071,
+          "p95": 11.899999976158142
+        },
+        "p2311:finite-thickness": {
+          "count": 3000,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:junction-resolution": {
+          "count": 75,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:preview-compile-reused": {
+          "count": 75,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:mesh-inputs": {
+          "count": 75,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:mesh-prebuild": {
+          "count": 75,
+          "p50": 11,
+          "p95": 13
+        },
+        "p2311:mesh-input-validate": {
+          "count": 75,
+          "p50": 6.5,
+          "p95": 8.800000011920929
+        },
+        "p2311:mesh-room-meshes": {
+          "count": 75,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:standalone-wall-build": {
+          "count": 125,
+          "p50": 0.09999996423721313,
+          "p95": 0.19999998807907104
+        },
+        "p2311:mesh-build": {
+          "count": 125,
+          "p50": 0.40000003576278687,
+          "p95": 1.600000023841858
+        },
+        "p2311:preview-install": {
+          "count": 50,
+          "p50": 0,
+          "p95": 0.10000002384185791
+        },
+        "p2311:gesture-commit": {
+          "count": 50,
+          "p50": 3.400000035762787,
+          "p95": 4.800000011920929
+        },
+        "p2311:commit-capture": {
+          "count": 50,
+          "p50": 1.199999988079071,
+          "p95": 1.300000011920929
+        },
+        "p2311:commit-matches": {
+          "count": 75,
+          "p50": 0.10000002384185791,
+          "p95": 0.20000004768371582
+        },
+        "p2311:commit-replace": {
+          "count": 75,
+          "p50": 0.8999999761581421,
+          "p95": 2.100000023841858
+        },
+        "p2311:pointermove-rigid": {
+          "count": 100,
+          "p50": 0,
+          "p95": 187.69999998807907
+        },
+        "p2311:authoring-release": {
+          "count": 50,
+          "p50": 5.200000047683716,
+          "p95": 79.60000002384186
+        },
+        "p2311:snap-resolution": {
+          "count": 50,
+          "p50": 0.5,
+          "p95": 0.6000000238418579
+        },
+        "p2311:wall-chain-plan": {
+          "count": 25,
+          "p50": 45.90000003576279,
+          "p95": 50.10000002384186
+        },
+        "p2311:chain-topology-gate": {
+          "count": 25,
+          "p50": 5.099999964237213,
+          "p95": 6.5
+        },
+        "p2311:correspondence": {
+          "count": 25,
+          "p50": 0.19999998807907104,
+          "p95": 0.30000001192092896
+        },
+        "p2311:chain-canonical-gates": {
+          "count": 25,
+          "p50": 25.399999976158142,
+          "p95": 29
+        },
+        "p2311:wall-chain-commit-install": {
+          "count": 25,
+          "p50": 23.19999998807907,
+          "p95": 26.100000023841858
+        }
+      }
+    }
+  ],
+  "deferredInteractionPaths": {
+    "guided-3d-navigation": "Owner decision 2026-09-24: 3D guided-navigation sampling is deferred; the reported slowdown is in the Plan (2D) paths, so this path carries no interaction sample in this baseline."
+  },
+  "markNestingNote": "Existing P23.11 component measures nest inside the P23B path/boundary measures and are listed separately; deferred boundaries start where their synchronous input ended, so browser-frame encloses svelte-flush for the same input. None of these distributions may be summed.",
+  "measurementLimitations": [
+    "Svelte tick records flush completion; it does not establish GPU upload or painted presentation.",
+    "requestAnimationFrame records a browser-frame boundary that starts where the synchronous input ended, so it encloses that input's flush and is never additive with it; presented-frame latency is unavailable.",
+    "WebGL and BufferGeometry marks cover observable CPU work only; GPU upload and driver execution are unavailable.",
+    "plan-apply (the canonical planner/apply call) and adapter (Three geometry adaptation) are separate boundaries and are never summed with each other or with interaction latency.",
+    "Interaction samples are classified by outcome; setup, rejected, suppressed and unclassified actions are recorded as counts but excluded from the accepted distributions.",
+    "Interaction timings are advisory wall-clock samples from one developer machine, one browser session and one DEV server; they are not a budget and they do not establish native-Chrome behaviour."
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "accepted": true,
+  "sourceRevision": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+  "sourceTreeClean": true,
+  "reportSha256": "b352f1fccd410791de63fa6e2fab893d747fd13fa7b1c8159a67b70f6b82fb73",
+  "reportBytes": 73217,
+  "browser": {
+    "commitSha": "d0d3d162d358d8dca2faea522564e1b1b892b76e",
+    "policyCommitSha": "c11938fe0d5c721a896bb92dcb722f2273480feb",
+    "treeDirty": false,
+    "date": "2026-10-13T19:22:54.403Z",
+    "browser": {
+      "name": "Chrome",
+      "version": "155.0.0.0",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+    },
+    "deviceProfile": "MacIntel; 8 logical CPUs; DPR 2",
+    "machine": "arm64 / Apple M2 / 8 logical CPUs / 16 GB RAM",
+    "operatingSystem": "15.7.2 (build 24G325)",
+    "nodeVersion": "v26.7.0",
+    "devicePixelRatio": 2,
+    "graphics": {
+      "api": "WebGL2",
+      "vendor": "Google Inc. (Apple)",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)",
+      "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "source": "diagnostic-canvas"
+    },
+    "warmup": 5,
+    "samples": 20,
+    "methodVersion": 5,
+    "sessionId": "b4ce7407-0557-4f3b-a5e2-8e8373bff144"
+  },
+  "workloadIds": [
+    "p23b-12-wall-straight-v1",
+    "p23b-12-wall-target-curved-v1",
+    "p23b-12-wall-all-curved-v1",
+    "p23b-40-wall-straight-v1",
+    "p23b-40-wall-target-curved-v1",
+    "p23b-40-wall-all-curved-v1"
+  ],
+  "captures": [
+    {
+      "fixtureId": "p23b-40-wall-straight-v1",
+      "sessionId": "906d5425-2066-425f-9391-86a55a49c560",
+      "settled": true,
+      "droppedBoundaries": 0,
+      "warmupExcluded": {
+        "selection": 5,
+        "plan-drag-edit": 5,
+        "bend-knot-edit": 0,
+        "wall-authoring": 5,
+        "plan-pan-zoom": 5,
+        "guided-3d-navigation": 0
+      },
+      "completedActions": {
+        "selection": 25,
+        "plan-drag-edit": 25,
+        "bend-knot-edit": 0,
+        "wall-authoring": 50,
+        "plan-pan-zoom": 57,
+        "guided-3d-navigation": 0
+      },
+      "fixtureResets": 50,
+      "planView": {
+        "pixelsPerMeter": 19.292586186549904,
+        "center": [
+          10.999999999999996,
+          3.5
+        ],
+        "width": 612,
+        "height": 626,
+        "actions": 157,
+        "stable": true
+      }
+    },
+    {
+      "fixtureId": "p23b-40-wall-all-curved-v1",
+      "sessionId": "49fad8c5-4d7e-4077-bb3c-35536fef3d79",
+      "settled": true,
+      "droppedBoundaries": 0,
+      "warmupExcluded": {
+        "selection": 5,
+        "plan-drag-edit": 5,
+        "bend-knot-edit": 5,
+        "wall-authoring": 5,
+        "plan-pan-zoom": 5,
+        "guided-3d-navigation": 0
+      },
+      "completedActions": {
+        "selection": 25,
+        "plan-drag-edit": 25,
+        "bend-knot-edit": 25,
+        "wall-authoring": 50,
+        "plan-pan-zoom": 57,
+        "guided-3d-navigation": 0
+      },
+      "fixtureResets": 75,
+      "planView": {
+        "pixelsPerMeter": 19.292586186549904,
+        "center": [
+          10.999999999999996,
+          3.3249999999999957
+        ],
+        "width": 612,
+        "height": 626,
+        "actions": 182,
+        "stable": true
+      }
+    }
+  ],
+  "negativeCases": {
+    "retiredWorkload": "Error: Unexpected or duplicate P23B workload owner-40-curved-v1",
+    "retiredControl": "Error: Unexpected P23B interaction fixture owner-40-curved-v1",
+    "sharedSession": "Error: P23B interaction captures must use distinct isolated sessions: p23b-40-wall-all-curved-v1"
+  },
+  "historical": {
+    "readable": true,
+    "roundTripUnchanged": true,
+    "workloads": 7,
+    "captures": 3
+  }
+}
