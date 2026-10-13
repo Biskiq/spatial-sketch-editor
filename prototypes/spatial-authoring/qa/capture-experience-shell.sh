@@ -9,11 +9,16 @@
 #
 # It is deliberately NOT part of run-all.sh: evidence is taken on purpose, like capture-baseline.sh.
 #
-# Usage: qa/capture-experience-shell.sh [outdir]      (default: screens/experience-ux-before)
+# `screens/experience-ux-before/` is UX0's genuine pre-overhaul baseline and is never written by a bare
+# run: the before side was taken from the start-head tree, so refreshing it is a deliberate act that names
+# that directory itself (`QA_OUT=…/screens/experience-ux-before bash qa/capture-experience-shell.sh`). A
+# passive run writes its own, current-tree directory instead.
+#
+# Usage: qa/capture-experience-shell.sh [outdir]      (default: screens/experience-shell)
 set -u
 QA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export QA_SHOT=1
-export QA_OUT="${1:-${QA_OUT:-$QA_DIR/../screens/experience-ux-before}}"
+export QA_OUT="${1:-${QA_OUT:-$QA_DIR/../screens/experience-shell}}"
 export QA_QUERY="${QA_QUERY:-motion=instant}"
 source "$QA_DIR/lib.sh"
 

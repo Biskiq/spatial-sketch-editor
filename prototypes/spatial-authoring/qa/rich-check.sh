@@ -130,10 +130,14 @@ qa_ok 'a Stage press while coordination is merely visible shows no Camera anchor
 # Geometry is edited on Stage, through the deliberately armed route writer, with stable references.
 anchor="$(qa_jsv "(()=>{const r=__me.ctx.cameraSource.connections['$route'];return r.anchors[0]?.id||'';})()")"
 count_before="$(undo)"
-# §3.1: the press above is the shell's own click, so a pick under it is an outside selection and puts the
-# Experience reading away. The Path posture is re-entered through the edge's own door — and the same route
-# is chosen in the From list — so the drag below addresses the route this checkpoint named.
-click '#experienceDeck [data-act=exp-guide]'
+# §3.1 (2026-10-12): the press above is the shell's own click, so a pick under it is an outside selection
+# and puts the Experience reading away — which leaves Guide posture, whose band is already open. The ordinary
+# strip's own door is therefore clicked only from the ordinary state, so this step can neither miss nor
+# quietly do nothing. The Path posture is re-entered through the edge's own door — and the same route is
+# chosen in the From list — so the drag below addresses the route this checkpoint named.
+if [ "$(qa_js 'document.querySelector("#experienceDeck")?.classList.contains("ordinary")===true')" = true ]; then
+  click '#experienceDeck .deck-open[data-act=exp-guide]'
+fi
 click "[data-act='exp-seam'][data-from='$first'][data-to='$second']"
 click '#card [data-act=exp-route]'
 qa_frames

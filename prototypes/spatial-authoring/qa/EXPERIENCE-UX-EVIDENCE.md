@@ -686,22 +686,105 @@ test file (`tests/experience-journey.test.mjs`) plus the Experience axis's Journ
 
 ### Recorded WIP at this checkpoint (not claimed as done)
 
+**Superseded in part (2026-10-12).** The items below are kept as history, not as the current state:
+the review follow-up at the end of this file ran the covering axes, retired the C9 strip from every Card
+and retired the chip's `Detail` control. Each bullet says so where it changed; nothing above is deleted,
+because a checkpoint's own record is what the follow-up was asked to correct.
+
 - **The covering QA axes are unrun after the last edits.** `qa/run-all.sh experience` (which owns the
   Journey block) and `experience-shell` (which owns the band's share/heading laws) have not been run at
   this commit; #114 makes those owner-directed per slice, and this checkpoint records them as **unrun**,
-  not green. The Node suite is green (144/144).
+  not green. The Node suite is green (144/144). *Closed 2026-10-12: `qa/run-all.sh` at `QA_JOBS=1`
+  passes all 26 axes, `experience` at 58/58 and `experience-shell` at 50/50 among them — see the
+  follow-up section. The follow-up then added two readings to that same axis, so the final serial sweep
+  below records it at **52/52**.*
 - **The coordination strip still writes holds.** `.coord-hold` keeps its `[data-exp-hold]` input in the
   Journey posture while the Cue Card's Pause writes the same field. §0.8.1 wants the strip to be the
   projection; the change is a control-ownership decision (the historical `qa/rich-check.sh` asserts an
   input inside `.coord-hold`), so it is deferred rather than smuggled into a layout correction.
   *Decided in the [plan][plan] §5.6: the strip leaves every Card, and the Cue Card's Edit cue holds the
-  hold writer; the recipes move per §5.8.*
+  hold writer; the recipes move per §5.8.* *Closed 2026-10-12: the C9 strip is retired from every Card
+  (Stop, edge and Cue); the hold writer is the Cue Card's Edit cue's `[data-exp-hold]`, and
+  `qa/rich-check.sh` reaches it there.*
 - **The Guide chip keeps a `Detail` disclosure.** The boards' chip has no expansion; `Expand` is still a
   live conformance assertion (QA 3), so the chip keeps one quiet `Detail` control until that reading is
   re-pointed. *Decided in the plan §5.4: `Detail` is retired, and the Expand readings are retired or
-  re-pointed per §5.8.*
+  re-pointed per §5.8.* *Closed 2026-10-12: the chip is a shallow row with one disclosure
+  (`data-act=exp-expand-stop`) and no `Detail`; the retired Expand readings were re-pointed per §5.8 in
+  the reconciliation pass this record's last section verifies.*
 - **UX7 is not started**, and **owner visual acceptance remains once, after UX7** — the captures in
   `screens/experience-ux4`, `-ux5` and `-ux6` are agent verification, not acceptance.
+
+---
+
+## UX4–UX6 review follow-up (2026-10-12 · the five implementation-review findings)
+
+**What this is.** The 2026-10-12 implementation review of `6dd4ebce` named five findings against the
+reconciled shell. Each was verified against the code and the accepted [plan][plan] before anything
+changed; the table below is the outcome — two findings corrected as described, one corrected against the
+reviewer's proposed remedy, and the two label/lifecycle findings fixed. The slices stay UX4, UX5 and
+UX6; no new planning cycle was opened and UX7 was not started.
+
+### Findings: confirmed, corrected and rejected
+
+| Finding | Outcome |
+| --- | --- |
+| **P1 · Camera Path and Journey on Cut edges** (`app/experience-draw.js`, `drawSeam`) | **Confirmed.** The guard returned whenever `seam.mode !== 'travel'`, so entering the Path or Journey posture on a Cut edge drew no route, no point handles and no Cue chips — the Camera half was authored but invisible. The drawn half is now chosen by the **posture** (Path or Journey) and only the ordinary edge reading keeps §5.4's mode-gated drawing, which still shows its two resolved ends and its Travel routes and gaps. |
+| **P1 · Path-point insertion geometry** (`app/experience.js`, `nearestSegment`) | **Confirmed.** The old measure was the closest **3-D midpoint** between successive observers; §3.2 specifies the nearest **point on a segment of the evaluated path, in plan (x, z)**, with `at` = the number of authored points whose station progress is below it. The insertion now measures the route's own evaluated samples through `nav.routeGeometry` / `nav.stationProgress` — the same evaluator the Stage drawing and every station reader use, so the measure and the station order cannot disagree. `addAnchor(c, id, position, at)` splices; the shared-route Ask and its one Undo step are unchanged. |
+| **P1 · Removing a point can orphan authored Cues** | **Confirmed as a real consequence; the proposed remedy was rejected.** The review asked to refuse the removal. The accepted §3.2 rule is explicit — *"Remove still deletes by id."* — and the codebase's own precedent for a structural removal (`removeStop`, `removePresentation`) is remove-and-report, with Undo as the remedy; refusing here would also make a point unremovable until its Cue was moved, a one-way door the plan does not authorize. Verified in code instead: nothing refuses a beat whose station its route no longer has (`movementTiming` filters unresolved stations, `journeyClock` projects resolved stations only, and `coordinateTiming`'s "Camera station unresolved" reason has no reader since the C9 strip was retired) — so the reviewer's premise that the visit refuses is not what the tree does either. What changed: the write **names the count**, and the edge Card keeps a repair reading (`[data-edge-orphans]`) that says the events no longer run, so the consequence is stated rather than only visible in source. |
+| **P2 · Outside-selection lifecycle** (`app/experience.js`, `ctx.onSelect`) | **Confirmed in part, corrected.** The hook cleared the reading but left the posture's own task running, left the return the posture had captured in the one navigation slot, and exempted both bookends. Now: the edge's **from-Stop alone** keeps the reading open (the accepted §3.1 owner — `openSeam` selects it); the reading's own task ends, `S.derivedView` is cleared, **Guide posture** is what the pick leaves (`depth='overview'` with its `experience-overview` task, exactly as `selectStop` leaves a procedure), and the return is **discarded** (`nav.discardReturn()`) rather than applied, so an outside selection moves no Camera (§5.5). |
+| **P2 · Cut destination label** (`app/experience-ui.js`, `edgeCard`) | **Confirmed.** `at()` already returns a one-based Stop number, and the Cut sentence printed `at(to) + 1` — one Stop too far. Corrected, and read back in the capture pass below by comparing the printed number with `guide.indexOf(to) + 1`. |
+
+### Verification this follow-up ran
+
+| Check | Result |
+| --- | --- |
+| `node --test tests/*.test.mjs` | **148/148 pass** (146 before; the two new §3.2 cases in `tests/experience-path-points.test.mjs`) |
+| `qa/run-all.sh` at `QA_JOBS=1` | **all 26 axes pass** — `qa: all requested axes passed`, exit 0. Focused totals: Experience **58/58**, Experience shell **52/52** (50 before this follow-up's two added lifecycle readings), conformance **155/155**, C9.7 rich example **36/36**, shared shell and narrow Experience **14/14** |
+| Mutation proof for the insertion change | the two new §3.2 tests were run against a scratch copy carrying `6dd4ebce`'s `experience.js`, `experience-ui.js` and `experience-draw.js`: both **fail** (nearest-midpoint and three-dimensional measures), the file's other two tests pass — the cases discriminate the algorithm they claim to |
+| New focused browser readings | shell axis: the reading's own task ended, the point and armed insertion dropped, the posture's own exit gone, and Guide posture left with its lane. Experience axis: `nav.putBack()` answers **false** after an outside pick — the captured return is disposed, not applied — with the standpoint unchanged. Conformance axis: an unarmed Stage press adds no point **and writes nothing**, the pick leaves a readable Guide posture, a Cut edge keeps its own edge reading, and a Cut edge still opens its Camera half (route, point, standpoint and Camera source all read back unchanged) |
+| Re-pointed recipes (never loosened) | `check '<deck door>'` steps that opened the ordinary strip's own door now run only from the ordinary state (§3.1 leaves Guide posture, whose band is already open): `qa/conformance-check.sh`, `qa/rich-check.sh`; the shell axis's outside-selection expectation moved from `ordinary` to the accepted `overview` with the new task/exit readings beside it |
+
+### Current captures (`screens/experience-ux456/` · 10 states)
+
+Taken on purpose by `qa/capture-experience-ux456.sh`, which writes only its own directory: the dense Guide
+comes from the six-Stop conformance fixture, the Camera Path images are of a **Cut** edge, and the Journey
+images are the loaded example's authored Seam. Each capture carries a reading of the state under the
+camera, and every image was confirmed to be a real full-size render.
+
+| Capture | Size | Reading |
+| --- | --- | --- |
+| [`ux4-1440-guide-lane-dense.png`](../screens/experience-ux456/ux4-1440-guide-lane-dense.png) | 1440×900 | the ordinary Guide strip: six Stop chips, each with its own edge chip, one row |
+| [`ux4-1440-guide-band-dense.png`](../screens/experience-ux456/ux4-1440-guide-band-dense.png) | 1440×900 | the same dense lane opened as the band, one home, six chips |
+| [`ux4-1024-guide-band-dense.png`](../screens/experience-ux456/ux4-1024-guide-band-dense.png) | 1024×768 | the band under its reserved share, chips scrolling inside their own lane, no sideways page scroll |
+| [`ux4-1440-edge-card.png`](../screens/experience-ux456/ux4-1440-edge-card.png) | 1440×900 | the edge at Cut, whose sentence names the one-based Stop the edge really ends at (the P2 fix) |
+| [`ux5-1440-path-cut.png`](../screens/experience-ux456/ux5-1440-path-cut.png) | 1440×900 | the Camera half of a **Cut** edge: drawn route, From list, Camera Path Card, transition still Cut (the P1 fix) |
+| [`ux5-1440-point-inserted.png`](../screens/experience-ux456/ux5-1440-point-inserted.png) | 1440×900 | the point just placed by `+ Path point`: its own inspector, drawn once on the Stage and once in the lane |
+| [`ux5-1024-path.png`](../screens/experience-ux456/ux5-1024-path.png) | 1024×768 | the Path posture at the narrow size, its Card an invoked sheet over the band, no sideways scroll |
+| [`ux6-1440-journey.png`](../screens/experience-ux456/ux6-1440-journey.png) | 1440×900 | the Journey: one marker per authored Cue, a `0:00.0` start, the Journey Card and its station choice |
+| [`ux6-1440-cue-card.png`](../screens/experience-ux456/ux6-1440-cue-card.png) | 1440×900 | one Cue: occurrence, time, pause and actions, mirrored by the Deck marker and the Stage chip |
+| [`ux6-1024-journey.png`](../screens/experience-ux456/ux6-1024-journey.png) | 1024×768 | the same Journey at the narrow size, its Deck above the invoked Cue Card sheet |
+
+`screens/experience-ux-before/` is untouched: `qa/capture-experience-shell.sh` no longer defaults into
+it (a bare run writes `screens/experience-shell/`), so the pre-overhaul baseline can only be rewritten by
+naming it deliberately, as the branch recipe above does.
+
+### Recorded limits of this follow-up
+
+- **The two image-pass laws fail in a concurrent sweep on this machine.** `qa/run-all.sh` at its default
+  `QA_JOBS=3` failed the Experience shell axis's two image-pass readings ("one idle turn drew the picture
+  once" and "a warm selection costs no draw") while every other axis passed; the same axis passes alone
+  and in the serial sweep, and the harness header already records those two as load-sensitive. Reported
+  here as a load artefact of this run, not as green and not as a product failure — the sweep quoted above
+  is the serial one.
+- **Visual acceptance is not claimed.** The captures and the readings above are agent verification. The
+  owner's by-eye comparison of these states against QA boards 4/5/6 stays where §5.5 puts it: once, after
+  UX7.
+- **The removed-point consequence is stated, not prevented.** By the accepted §3.2 rule an author can
+  remove a point a Cue holds; the count is named at the write, the edge Card keeps reporting the events
+  that no longer run, and Undo is the remedy. Refusing the removal was considered and rejected above.
+- **No mutation chain was re-run** (owner-ratified lightweight policy, plan §9). The single mutation above
+  is the focused replacement claim for the one algorithm that changed.
 
 [plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
 [plate]: ../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression

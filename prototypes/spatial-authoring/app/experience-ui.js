@@ -1,7 +1,7 @@
 import { capability, capabilities, profileOptions, isRealized } from './experience-capabilities.js';
 import { gateState, narrationCaption, presentationPlan } from './experience-runtime.js';
 import { resolvedCamera, readingFor } from './navigation.js';
-import { routeGeometry } from './camera-evaluation.js';
+import { routeGeometry, stationProgress } from './camera-evaluation.js';
 import { journeyClock, cueDestinations, cueName } from './experience-coordination.js';
 import { originCoverage, getSeam, resolveNext, stopEntry, entryUse, viewReach, viewUseReach, contributionIssues, captureUses, primaryExplanation, isPrimaryExplanation, stopConditionIssues, activationScope, boundaryScope, narrationDuration, narrationPassages, eligibleViews, orderedViews, supportedSignal, invokableRefusal, gripLabels, choiceTarget, connectionReach } from './experience-model.js';
 import { S, ctx, thing } from './state.js';
@@ -797,8 +797,20 @@ function cueCard(pair){
 // aggregate origin coverage with its one explicit repair, and the one door to the Camera Path posture. The
 // per-origin rows, the Pace writer and the Journey's reading all live in the postures' own homes, so nothing
 // here duplicates them, and the edge is a separate inspection from any Stop.
+// The authored events on one edge whose Camera station the route no longer resolves — read from the same
+// station progress every other reader uses, so the count cannot disagree with the Deck or the visit.
+function danglingEvents(seam){
+ const camera=resolvedCamera(),geometryFor=new Map();
+ return (seam?.beats||[]).filter(beat=>{
+  const route=camera.connections[beat.connectionId];if(!route)return false;
+  if(!geometryFor.has(beat.connectionId))geometryFor.set(beat.connectionId,routeGeometry(camera,beat.connectionId));
+  const geometry=geometryFor.get(beat.connectionId);
+  return !!geometry&&stationProgress(route,geometry.path,beat.stationId)===null;
+ }).length;
+}
 export function edgeCard({from,to}){
  const e=ctx.experience,c=resolvedCamera(),seam=getSeam(e,from,to),rows=originCoverage(e,c,from,to);
+ const dangling=danglingEvents(seam);
  const supported=r=>!r.missing&&(!!r.connectionId||r.viewId===r.targetId);
  const reachable=rows.filter(supported).length,unprepared=rows.filter(r=>!r.connectionId&&!r.missing&&r.viewId!==r.targetId).length,unsupported=rows.filter(r=>r.missing).length;
  const connections=[...new Set(rows.map(r=>r.connectionId).filter(Boolean))];
@@ -811,9 +823,15 @@ export function edgeCard({from,to}){
  return `<div class="c-head"><div class="c-k">Guide edge</div><div class="c-t">${esc(name(from))} → ${esc(name(to))}</div><div class="c-ref">Stop ${at(from)} → Stop ${at(to)} · arrives at ${esc(entryName)}</div></div>`
   +`<div class="exp-seg" role="group" aria-label="Movement">${button('exp-cut','Cut').replace('data-id=',`aria-pressed="${seam.mode==='cut'}" data-id=`)}${button('exp-travel','Travel').replace('data-id=',`aria-pressed="${seam.mode==='travel'}" data-id=`)}</div>`
   +`<p class="exp-fact" data-edge-coverage>Reachable from ${reachable} of ${rows.length} Views</p>`
+  // §3.2/§5.4: a point can be removed while a Cue still holds it — removal stays one ordinary Camera edit
+  // and is never refused — so an edge may keep authored events whose station its route no longer has.
+  // Nothing silently repairs them: they stay in source, they no longer run, and the Cue they belonged to
+  // leaves the Journey with its station (the projection reads authored stations only). The write names the
+  // count once; this line is where the consequence stays visible afterwards, and Undo is the remedy.
+  +(dangling?`<p class="exp-gap" role="status" data-edge-orphans>${dangling} authored event${dangling===1?'':'s'} on this edge ${dangling===1?'sits':'sit'} at a Camera station this route no longer has · ${dangling===1?'it no longer runs':'they no longer run'} in the visit</p>`:'')
   +(stopEntry(e,from).hold?'<p class="c-hint">Departure entry held · there is no originating View to travel from.</p>':'')
   +(seam.mode==='cut'
-   ?`<p class="exp-fact" data-edge-cut>The visit cuts straight to Stop ${at(to)+1}'s entry.</p>`
+   ?`<p class="exp-fact" data-edge-cut>The visit cuts straight to Stop ${at(to)}'s entry.</p>`
    :(unprepared?`<p class="exp-gap" role="status">Travel needs support for the new View — an unresolved origin stays an explicit Travel gap</p><div class="c-acts">${button('exp-prepare','Prepare missing routes')}</div>`:'')
     +(unsupported?'<p class="exp-gap" role="status">An origin or destination entry needs repair before Camera can support it</p>':'')
     +(!unprepared&&!unsupported?'<p class="c-hint">All origins supported · Camera owns the routes.</p>':'')

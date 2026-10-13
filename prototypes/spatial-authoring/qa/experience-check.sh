@@ -110,6 +110,17 @@ card_click '#card [data-act="exp-bring"]'
 qa_ok 'Bring route into view is the posture own framing request, and requests Plan' "$(qa_js '(__me.ctx.stage.cam.el > 1.5 && !!document.querySelector("#index [data-exp-posture-switch]"))')" 'true'
 card_click '#index [data-act="exp-route-return"]'
 qa_ok 'route crumb restores previous standpoint' "$(qa_js '(__me.S.seamPose === JSON.stringify(__me.nav.plainPose()))')" 'true'
+# §3.1/§5.5 (2026-10-12): the return the posture captured is *disposed* by an outside selection, never
+# applied. `putBack()` is the direct probe of that one navigation slot — while the posture still holds it,
+# it answers true — so a discarded return is observable without moving the Camera to find out.
+agent-browser click '#card [data-act="exp-route"]' >/dev/null
+qa_frames
+qa_js 'window.__poseOutside=JSON.stringify(__me.nav.plainPose())' >/dev/null
+qa_js '__me.A.select("machine")' >/dev/null
+qa_frames
+qa_ok 'an outside pick disposes the posture’s return instead of applying it' \
+  "$(qa_jsv 'JSON.stringify([__me.nav.putBack(), JSON.stringify(__me.nav.plainPose())===window.__poseOutside, __me.S.experienceContext.depth, __me.S.task?.kind])')" \
+  '[false,true,"overview","experience-overview"]'
 agent-browser click '[data-act="exp-close"]' >/dev/null
 qa_frames
 agent-browser click '[data-act="exp-guide"]' >/dev/null
