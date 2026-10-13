@@ -231,6 +231,22 @@ World stays calm until creator action requires depth:
 
 **Select → Look or Details → Instrument → Precision.**
 
+### 3D Scene object-authoring design coverage
+
+Conservatory ratifies the shared shell and Experience UX; Paper §0.8.4 governs
+2D spatial authoring and flattened-wall Paper readings. Neither fully ratifies
+the detailed **3D Scene object-authoring interface**: Move/Rotate/Scale tool
+presentation, gizmo visuals, transform-space controls, scaling affordances,
+snapping disclosure, numeric manipulation and advanced object Card/inspector
+depth remain uncovered.
+
+This is a **non-blocking design-coverage gap**. Existing production
+[transform semantics](../components/placement.md) and tested domain adapters
+remain current until their explicit cutover. Validate the detailed interaction
+design directly in production through the appropriate T2 authoring slice with
+T1 Stage integration; no additional prototype or complete 3D UX specification
+is required here.
+
 ### Ordinary World and the Context Index
 
 Ordinary World answers where I am, what surrounds the subject, what is selected

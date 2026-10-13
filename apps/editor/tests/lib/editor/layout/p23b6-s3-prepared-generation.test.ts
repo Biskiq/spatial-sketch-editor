@@ -8,7 +8,7 @@ import {
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 import { g1LineRectangleDocument } from '../../layout/__fixtures__/layout-g1-fixtures';
 import {
 	getPreparedWallMeshes,

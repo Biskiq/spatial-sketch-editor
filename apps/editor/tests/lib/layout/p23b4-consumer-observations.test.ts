@@ -16,7 +16,7 @@ import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
-	P23B_MATRIX_SPECS,
+	P23B_MATRIX_SPECS
 } from '$lib/bench/p23b-fixtures';
 import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
 import { collectFixtureDigests, sha } from './p23b4-observation-collector';

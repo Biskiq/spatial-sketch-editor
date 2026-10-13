@@ -538,7 +538,6 @@ function assertP23BFixtureContracts(): void {
 	for (const spec of P23B_MATRIX_SPECS) verify(spec.id, buildP23BMatrixFixture(spec), 5, spec.role);
 	for (const spec of P23B_CORRECTNESS_SPECS) verify(spec.id, buildP23BCorrectnessFixture(spec), spec.semanticClass, spec.role);
 	if (expectedIds.size !== fixtureLedger.fixtures.filter((entry) => entry.id !== P23B_RETIRED_OWNER_FIXTURE_ID).length) throw new Error('P23B fixture ledger has missing or unexpected active entries');
-
 }
 
 /** Validate imported browser measurements against the immutable fixture ledger. */

@@ -24,7 +24,7 @@ import {
 import {
 	buildStandaloneWallMesh as buildMuseumStandaloneWallMesh
 } from '../../../../../museum/src/lib/layout/wall-mesh-builder';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 import { jsonStringDeepEqual, s1DeepEqual } from '../../bench/p23b6-comparator-strategies';
 
 const WALL_ID = 'room-0:wall-0';

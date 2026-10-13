@@ -21,7 +21,7 @@ import {
 	restoreLayoutPreviewSnapshot,
 	type LayoutPreviewState
 } from '$lib/editor/layout/layout-preview-state.svelte';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
 import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
@@ -142,7 +142,6 @@ async function makeHistoryHarness(id: MatrixFixtureId = RETENTION_FIXTURE): Prom
 	store.setLayoutFormatPolicySource(() => preview);
 	return { store, preview, runtime };
 }
-
 
 function commitWallMove(harness: HistoryHarness, index: number): string {
 	const { store, preview, runtime } = harness;
