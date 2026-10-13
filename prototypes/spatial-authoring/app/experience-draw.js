@@ -161,7 +161,13 @@ function drawSeam(e,c,x){
  // A same-View origin is Camera's own zero-distance evaluation, never a missing edge: only an origin
  // that genuinely needs a connection (or needs repair) is drawn as a Travel gap.
  layout(items).forEach(item=>{marker(item,{end:item.end||'origin'});if(item.row&&!item.row.connectionId&&item.row.viewId!==item.row.targetId&&seam.mode==='travel')ov().chip('gap-'+item.id,item.at.x,item.at.y+26,'! gap · no Camera connection','tape exp-gap',{'data-exp-gap':item.id,tag:'span',pri:99});});
- if(seam.mode!=='travel')return;
+ // §5.4: the edge *reading* keeps its own drawing — the two resolved ends, plus the Travel routes and their
+ // gaps while the edge is Travel — with no Stop pins. §5.5/§5.6: the Path and Journey postures draw the
+ // Camera half whenever they are open, chosen by the **posture** rather than by the visitor's current
+ // transition, so a Cut edge still has a route to read, edit and coordinate: Camera authoring is never
+ // suppressed by a transition the author has not chosen Travel for yet.
+ const posture=x.depth==='coordination'?'coordination':x.depth==='route'?'path':null;
+ if(!posture&&seam.mode!=='travel')return;
  const ids=[...new Set(rows.map(r=>r.connectionId).filter(Boolean))];
  for(const id of ids){
   const route=c.connections[id];if(S.expDrag?.connection===id){const a=route.anchors.find(a=>a.id===S.expDrag.anchor);if(a)a.position=[...S.expDrag.position];}const geometry=routeGeometry(c,id);if(!geometry)continue;
@@ -169,20 +175,20 @@ function drawSeam(e,c,x){
   // §5.5/§5.6: the posture's own route is the drawn path — 2 px in the Path, a quiet 1.5 px at 60 % in the
   // Journey. Every other origin's route stays context: 1 px at 35 %, no points and not hit-eligible. The
   // derived samples are no longer dotted: the grammar says an evaluated sample is not a marked thing.
-  const posture=x.depth==='coordination'?'coordination':'path';
-  const classes=['exp-route-path',selected?(posture==='coordination'?'journey':''):'context'].filter(Boolean).join(' ');
+  const lane=posture||'path';
+  const classes=['exp-route-path',selected?(lane==='coordination'?'journey':''):'context'].filter(Boolean).join(' ');
   ov().path('route-'+id,geometry.samples.map(s=>project(s.observer)),classes,false,{'data-exp-route':id});
   // §5.5: an authored point is a 14 px Camera ring, never a ◆ chip. It is the handle the author places in
   // the Path; in the Journey a point is a station a Cue sits on, so no handle is drawn and a press on the
   // drawing lands on the drawing (QA 2).
-  if(posture==='path')for(const a of route.anchors){
+  if(lane==='path')for(const a of route.anchors){
    const at=project(S.expDrag?.anchor===a.id?S.expDrag.position:a.position);if(at.behind)continue;
    const number=route.anchors.indexOf(a)+1,current=x.point?.anchorId===a.id;
    ov().chip('anchor-'+a.id,at.x,at.y,'','tape exp-anchor '+(current?'selected':''),{'data-exp-anchor':a.id,'data-connection':id,tag:'button',pri:1000,'aria-label':`Path point ${number}`});
   }
   // §5.6: a Cue chip appears only at stations that really hold a Cue, reads `◆ <Cue name>` with no seconds
   // and no hold text, and is the same Cue identity the Deck marker and the Card select.
-  if(posture==='coordination'&&selected){
+  if(lane==='coordination'&&selected){
    const clock=journeyClock(c,seam,id);
    for(const cue of clock?.cues||[]){
     const station=geometry.stations.find(s=>s.id===cue.stationId);if(!station)continue;

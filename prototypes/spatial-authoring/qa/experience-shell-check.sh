@@ -254,20 +254,30 @@ qa_ok 'the Card keeps its identity reachable while the band is open' "$(qa_jsv '
 qa_ok 'the band sits under the reserved share in every posture reached so far' "$(band_under "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$peek")" "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$guide")" "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$edge")" 0.40)" true
 
 echo "-- the one selection owner: an outside selection takes the reading away"
-# §3.1: the Experience never holds two identities. A Stage pick runs `A.select`, and when the chosen identity
-# is not part of the open reading the edge, its point and any armed insertion are put away — without using the
-# return the posture captured, so no Camera moves.
+# §3.1 (re-pointed 2026-10-12, §5.8): the Experience never holds two identities. A Stage pick runs
+# `A.select`, and when the chosen identity is not the reading's own owner the edge, its point and any armed
+# insertion are put away. The reading closes the way `selectStop` leaves a procedure — its own task ends and
+# Guide posture is what the pick leaves — so this reading used to assert `ordinary`, which the accepted rule
+# supersedes: an outside pick leaves `overview`, and the posture's own exit goes with the reading. The return
+# the posture captured is disposed, never applied, so no Camera moves (§5.5).
 pose_before="$(qa_jsv '__me.nav.plainPose()')"
 qa_js '__me.A.select("machine")' >/dev/null
 qa_frames
 qa_ok 'an outside selection shows that subject’s Card and puts the edge reading away, moving no Camera' \
   "$(qa_jsv 'JSON.stringify([__me.S.sel, __me.S.experienceContext.seam, __me.S.experienceContext.depth])') / $(qa_jsv '__me.nav.plainPose()')" \
-  "[\"machine\",null,\"ordinary\"] / $pose_before"
+  "[\"machine\",null,\"overview\"] / $pose_before"
+qa_ok '…with the reading’s own task ended, its point and armed insertion dropped, and its own exit gone' \
+  "$(qa_jsv 'JSON.stringify([__me.S.task?.kind, __me.S.experienceContext.point, __me.S.experienceContext.armed, !!document.querySelector("[data-act=exp-route-return]")])')" \
+  '["experience-overview",null,false,false]'
 qa_ok '…and neither the Stop Card nor the edge reading is left behind' \
   "$(qa_jsv 'JSON.stringify([!!document.querySelector("#card [data-stop-entry]"), !!document.querySelector("#card [data-edge-coverage]"), document.querySelectorAll("[data-home=deck]").length])')" \
   '[false,false,1]'
-tap '#experienceDeck [data-act=exp-guide]'
-qa_frames
+# Guide posture is the band, and the band's head is not the ordinary strip's own door: the strip's door is
+# clicked only from the ordinary state, so the step can neither miss nor quietly do nothing.
+if [ "$(qa_js 'document.querySelector("#experienceDeck")?.classList.contains("ordinary")===true')" = true ]; then
+  tap '#experienceDeck .deck-open[data-act=exp-guide]'
+fi
+qa_ok 'Guide posture is what the outside pick left, with its lane' "$(qa_js '(()=>{const d=document.querySelector("#experienceDeck");return !!d&&!d.classList.contains("ordinary")&&!!d.querySelector(".gd-lane");})()')" true
 
 echo "-- one Preview control, and the visitor surface is the only visible home in Preview"
 # UX1 consolidated every Preview entry into the Head's `Preview ▾` menu: the control exists once, its
@@ -455,6 +465,29 @@ narrow_band="$(band)"
 qa_ok 'the narrow band stays in the reserved share, in one home, heading reachable, nothing scrolling inside it' "$(band_law "$narrow_band")" 'True|True|True|True|True'
 qa_ok 'invoking the Card sheet never closes the band to pass a Card test' "$(qa_jsv 'JSON.stringify([!!window.ux0.deck(), document.querySelector("[data-home=card]").checkVisibility()])')" '[true,true]'
 qa_snap 'experience-shell-1024-guide'
+
+qa_say "-- §3.1 the reading's own owner: its from-Stop keeps it, the destination Stop closes it"
+# The two halves of §3.1's ownership are read here, at the end of the axis, because both selections move the
+# Experience context a later section's own state is read from: the edge's *from*-Stop is the reading's owner,
+# and its *destination* Stop is another identity. `A.select(<from>)` is what a Stage pick or a Card reference
+# runs; selecting the destination Stop through the Deck is the ordinary `selectStop`, whose own rule ends the
+# procedure it was in, so the reading closes and that Stop's own Card follows.
+agent-browser set viewport 1440 900 >/dev/null
+qa_frames
+tap '#index [data-act=exp-guide]'
+# The same two identities the chips carry, unquoted for addressing them: `qa_js` re-encodes a string as JSON.
+edge_from_sel="$(qa_jsv 'document.querySelector("#experienceDeck [data-act=exp-seam]").dataset.from')"
+edge_to_sel="$(qa_jsv 'document.querySelector("#experienceDeck [data-act=exp-seam]").dataset.to')"
+tap "#experienceDeck [data-act=exp-seam][data-from=\"$edge_from_sel\"][data-to=\"$edge_to_sel\"]"
+qa_js "__me.A.select('$edge_from_sel')" >/dev/null
+qa_frames
+qa_ok 'the edge’s own from-Stop keeps the reading and its Card' \
+  "$(qa_jsv 'JSON.stringify([__me.S.sel, __me.S.experienceContext.depth, !!document.querySelector("#card [data-edge-coverage]")])')" \
+  "[\"$edge_from_sel\",\"seam\",true]"
+tap "#experienceDeck [data-act=exp-stop][data-id=\"$edge_to_sel\"]"
+qa_ok 'selecting the destination Stop closes the edge reading and reads that Stop’s own Card' \
+  "$(qa_jsv 'JSON.stringify([__me.S.sel, __me.S.experienceContext.seam, __me.S.experienceContext.depth, !!document.querySelector("#card [data-stop-entry]"), !!document.querySelector("#card [data-edge-coverage]")])')" \
+  "[\"$edge_to_sel\",null,\"overview\",true,false]"
 
 qa_faults_ok 'no command or page faults'
 qa_browser_errors_ok 'no console or page errors'

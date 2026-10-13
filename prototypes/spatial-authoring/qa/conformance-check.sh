@@ -381,11 +381,17 @@ conformance_ok 'Bring route into view is the explicit framing, to Plan, with the
 conformance_ok 'the Path posture is one Camera home with an armed-only point insertion' "$(qa_js '(document.querySelector("#card .c-k").textContent.includes("Camera Path")&&document.querySelector("[data-path-lane]")&&!!document.querySelector("#index [data-path-from]")&&!!document.querySelector("#pathInstrument [data-act=exp-path-point]")&&__me.S.experienceContext.armed===false)')" true
 p="$(qa_jsv '(()=>{const r=document.querySelector("#gl").getBoundingClientRect();return Math.round(r.x+r.width*.53)+","+Math.round(r.y+r.height*.38)})()')"
 qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
-conformance_ok 'an unarmed Stage press adds no path point' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '0'
+count_press="$(undo)"; source_press="$(source_hash)"
+conformance_ok 'an unarmed Stage press adds no path point and writes nothing' "$(qa_js "__me.ctx.cameraSource.connections['$route'].anchors.length") / $(source_hash) / $(undo)" "0 / $source_press / $count_press"
 # §3.1: that press is still the shell's own click, so a pick under it is an outside selection and puts the
-# reading away. The posture is re-entered through the edge's own door, on the same route, before the author
-# arms the insertion — the law above is about the press, never about the posture surviving it.
-click '#experienceDeck [data-act="exp-guide"]'
+# reading away — which is why the route above is read by its own id rather than through the posture's task,
+# which the pick may already have ended. Guide posture is what an outside selection leaves, and the posture
+# is re-entered through the edge's own door, on the same route, before the author arms the insertion: the law
+# above is about the press, never about the posture surviving it.
+if [ "$(qa_js 'document.querySelector("#experienceDeck")?.classList.contains("ordinary")===true')" = true ]; then
+  click '#experienceDeck .deck-open[data-act="exp-guide"]'
+fi
+conformance_ok 'the pick leaves a readable Guide posture, with its lane' "$(qa_js '(()=>{const d=document.querySelector("#experienceDeck");return !!d&&!d.classList.contains("ordinary")&&!!d.querySelector(".gd-lane");})()')" true
 click "[data-act='exp-seam'][data-from='$stop'][data-to='$to']"
 click '#card [data-act="exp-route"]'
 qa_frames
@@ -407,6 +413,32 @@ click '#undoBtn'
 conformance_ok 'Undo restores route source' "$(source_hash)" "$before"
 # Capture route immediately before Coordinate so the QA-4/5 pair proves unchanged spatial route.
 capture qa-4-route
+# §5.5: the Path posture is the edge's Camera half at *either* movement mode, so the default Cut edge is
+# authorable too. The transition changes nothing about the route, its points or the Camera source, and the
+# edge reading itself keeps §5.4's own drawing — its two resolved ends, no route — which is why the posture
+# has to be re-entered to see the Camera half again.
+camera_before="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
+click '#index [data-act="exp-route-return"]'
+qa_frames
+standpoint="$(pose)"
+click '#card [data-act="exp-cut"]'
+qa_frames
+conformance_ok 'a Cut edge keeps the edge reading: its two ends, with no route or point drawn' "$(qa_js '(document.querySelector("#card").textContent.includes("The visit cuts straight to Stop")&&!document.querySelector("[data-exp-route]")&&!document.querySelector("[data-exp-anchor]")&&__me.ctx.experience.seams[__me.S.experienceContext.seam.from+">"+__me.S.experienceContext.seam.to].mode==="cut")')" true
+click '#card [data-act="exp-route"]'
+qa_frames
+click "#index [data-path-from] [data-act='exp-route'][data-id='$route']"
+qa_frames
+conformance_ok 'a Cut edge still opens its Camera half: the route, its point, the standpoint and the Camera source' "$(qa_js "(document.querySelector('#card .c-k').textContent.includes('Camera Path')&&!!document.querySelector('[data-exp-route=\"$route\"]')&&!!document.querySelector('[data-exp-anchor=\"$anchor\"]')&&!!__me.S.experienceContext.seam)") / $(pose) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "true / $standpoint / $camera_before"
+click '#index [data-act="exp-route-return"]'
+click '#card [data-act="exp-travel"]'
+qa_frames
+conformance_ok 'selecting Travel again reuses the authored route and leaves the Camera source untouched' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "$camera_before"
+# Back into the Path posture on the same route, which is where the rest of this axis reads the Camera half.
+click '#card [data-act="exp-route"]'
+qa_frames
+click "#index [data-path-from] [data-act='exp-route'][data-id='$route']"
+qa_frames
+conformance_ok 'the Path posture is open on the authored route again, at Travel' "$(qa_js "(document.querySelector('#card .c-k').textContent.includes('Camera Path')&&!!document.querySelector('[data-exp-anchor=\"$anchor\"]')&&__me.ctx.experience.seams[__me.S.experienceContext.seam.from+'>'+__me.S.experienceContext.seam.to].mode==='travel')")" true
 # §5.4/§5.5: the Path Card carries no cue-timing door any more — the Journey is reached from the edge Card
 # and the Index's Path | Journey switch, and nothing about the standpoint or the Camera source moves.
 conformance_ok 'the Path Card carries no cue-timing door: the Journey is the Index switch' "$(qa_js "(!!document.querySelector('#index [data-exp-posture-switch] [data-act=exp-coordinate]')&&!document.querySelector('#card [data-act=exp-coordinate]'))")" true
