@@ -1,5 +1,11 @@
 # PR #114 — Experience UX implementation: evidence
 
+> **Historical target evidence (2026-10-13):** this record preserves #114's
+> prior UX implementation and actual captures. Its final UX4–UX6 follow-up
+> supersedes earlier WIP bullets. New design work starts at the unratified
+> [V3 package](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md).
+> These measurements/captures are not owner visual acceptance or V3 conformance.
+
 **Role:** the evidence record for [#114][plan], the slice at a time. Each slice appends its own
 section: what changed, the real-browser readings, and the regression proofs that carry its exit gate.
 This record is evidence, not authority — the plan owns the work, [PLATE §0.8.1][plate] owns the

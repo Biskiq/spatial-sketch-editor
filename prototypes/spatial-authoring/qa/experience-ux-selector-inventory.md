@@ -1,5 +1,10 @@
 # Experience UX selector and vocabulary inventory (PR #114 · UX0)
 
+> **Historical coupling inventory:** counts belong to UX0's recorded source,
+> not today's selectors. Reuse as a discovery map; the active unratified work
+> proposal/plan is [V3](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md).
+> No old selector or surface assertion mandates V3 exposure.
+
 **Role:** the UX0 inventory required by the [#114 plan][plan] §5. It records every QA string and
 selector coupled to the vocabulary #114 retires or moves — Peek, Overview, the unordered Set, the Seam,
 beat, Expand/L2, the coordination strip and the Deck's posture tokens — so each slice re-points the

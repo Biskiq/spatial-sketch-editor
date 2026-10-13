@@ -64,9 +64,10 @@ shell composition is now the accepted destination direction
 with [§0.8.1's finalized Experience expression](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 promoted from the [final V2 synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
 alongside the [final World design](../../../prototypes/world-experience-shell-round/README.md)).
-Card/Deck composition and progressive Camera disclosure are fixed destination design;
-exact metrics, the remaining V2 usability experiments and implementation mechanisms
-remain later work. Promotion changes no T3 implementation gate.
+The prior Card/Deck composition and progressive Camera disclosure are the ratified
+baseline. The owner-commissioned [V3 proposal](./design/experience-ux-v3/README.md)
+now actively proposes a scoped replacement for #114, awaiting ratification.
+Promotion or proposal changes no T3 implementation gate.
 
 ## Unified Experience V2 prototype (#113)
 
@@ -80,6 +81,11 @@ The earlier S0–S9 implementation and acceptance remain prior evidence, not C9 
 
 MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. **MP3 and MP4 were owner-accepted on 2026-10-11 for functionality only.** Browser rehearsal, automated tests and Presenter completion stay evidence, never acceptance. Travel and fresh repeated-Stop visits are owner-ratified; cursor/detour-pause policies remain trials. Experience Reset preserves independent World/Camera truth and shared history. Recorded verification (not rerun for closeout): prototype Node 140/140, 24 axes 1073/1073, successor 102/102 rejected, arch 276/276; counts and exact executable provenance live in the C9 evidence record.
 
-**UX lock (#113, docs/design/assets only).** The six Experience QA boards are reconciled into one locked model in [PLATE §0.8.1](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) ([adjudications](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md), with the A1–A7 follow-up round); the earlier V2 synthesis and its retired boards are superseded where they conflict. The prototype still shows the earlier expression. **PR #114** implements it per the [PR #114 plan](./design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md) (with the MP3/MP4 regression recipes in its §9); not started — the owner opens it. The donor remains a runnable regression oracle. The missing P23B fixture is a separate repository-gate blocker.
+**Historical UX lock (#113, docs/design/assets only).** The six Experience QA boards are reconciled into one locked model in [PLATE §0.8.1](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) ([adjudications](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md), with the A1–A7 follow-up round); the earlier V2 synthesis and its retired boards are superseded where they conflict. PR #114 implemented UX1–UX6 plus their latest review corrections against that
+prior direction; UX7 remains unstarted. Its former plan is historical. The sole
+active replacement entry is [Experience UX V3](./design/experience-ux-v3/README.md),
+with [candidate boards](../../../prototypes/experience-ux-v3/README.md) and the
+[superseding implementation plan](./design/experience-ux-v3/implementation-plan.md).
+V3 is proposed for owner ratification, not authorization to implement it. The donor remains a runnable regression oracle. The missing P23B fixture is a separate repository-gate blocker.
 
 No T3 production implementation, phase closure, #114 or Paper work is authorized by #113. Sequence: #113 → #114 Experience UX → #115 Paper PA0–PA12 → F.

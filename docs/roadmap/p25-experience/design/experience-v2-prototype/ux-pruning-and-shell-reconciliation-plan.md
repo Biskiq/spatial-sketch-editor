@@ -1,5 +1,15 @@
 # PR #114 — Experience V2 UX pruning and shell implementation
 
+> **SUPERSEDED WORK ENTRY (2026-10-13).** New #114 work starts at the
+> [V3 proposal](../experience-ux-v3/README.md) and its single
+> [superseding implementation plan](../experience-ux-v3/implementation-plan.md).
+> The owner commissioned replacement design/docs/mockups; V3 semantics await
+> ratification and application implementation is not authorized by that commission.
+> Do not continue UX7 from this body. Everything below is the former plan's
+> preserved historical scope/status, including its earlier “active” and checkpoint
+> wording. Latest UX4–UX6 review corrections are in the existing evidence record;
+> they establish no final owner visual acceptance. This file is not another active plan.
+
 **Status: active plan for PR #114 (open since 2026-10-11) over the design locked in PR #113.** UX0–UX5
 have landed and UX6 is at a recorded checkpoint. UX1–UX3 are implemented, with focused verification
 recorded and the owner provisionally satisfied; like every slice, their visual and integrated functional

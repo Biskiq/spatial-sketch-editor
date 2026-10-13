@@ -1,5 +1,11 @@
 # Experience V2 unified prototype — implementation plan (#113)
 
+> **Historical #113 plan.** #113 was owner-accepted for functionality and
+> closed 2026-10-11; the earlier blocked-closeout/prospective wording below is
+> retained as its original record, not current status. Closed scope/recovery →
+> [C9 stub](./authoring-completeness-plan.md). Current #114 review entry →
+> [V3 proposal/plan](../experience-ux-v3/README.md), awaiting ratification.
+
 **Status:** implementation authorized on 2026-10-03; S0–S9 implemented and self-reviewed; required prototype acceptance passes. Final repository gates/closeout are blocked by a pre-existing missing production fixture outside prototype scope; exact restoration awaits approval. Reconciliation amendment folded 2026-10-03 (report findings F1–F9 as S8/S9 scope plus shared-shell acceptance; Paper deferrals and intentional/non-normative differences preserved; no runtime change by this amendment). This is prototype work only. It satisfies no production
 F/T gate and closes no major phase.
 

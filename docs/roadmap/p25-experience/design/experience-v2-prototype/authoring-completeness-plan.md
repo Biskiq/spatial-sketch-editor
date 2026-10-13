@@ -6,7 +6,9 @@
 - **Delivered:** C9.1–C9.9 implemented and reviewed in the unified `spatial-authoring/`
   prototype; MP1–MP4 owner-accepted for functionality (not final visual UX). Closed with #113.
 - **Contract:** design lock lives in [PLATE §0.8.1](../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-  (with A1–A7 amendments); implementation authority is the [PR #114 plan](./ux-pruning-and-shell-reconciliation-plan.md).
+  (with A1–A7 amendments) as the prior ratified baseline. The sole active #114
+  replacement proposal/plan is [V3](../experience-ux-v3/README.md), awaiting owner
+  ratification; the former UX plan is historical.
 - **Provenance:** [PR #113](https://github.com/Biskiq/spatial-sketch-editor/pull/113), branch
   `prototype-v2`; slice id `p25-experience-v2`.
 - **Evidence:** [C9 evidence](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md)
@@ -26,6 +28,6 @@
   - regressions: `prototypes/spatial-authoring/tests/experience-model.test.mjs`,
     `prototypes/spatial-authoring/tests/experience-c9-review.test.mjs`,
     `prototypes/spatial-authoring/tests/experience-runtime.test.mjs`
-- **Residuals:** PR #114 Experience UX implementation (not started; owner opens it) · PR #115
+- **Residuals:** PR #114 V3 design review (UX1–UX6/review corrections exist; V3 implementation awaits ratification) · PR #115
   Paper PA0–PA12 · D8 mid-Guide Preview + hold consolidation (past #114) · P23B fixture blocker.
 - **Recovery:** `git show 74e8610464ad6c2cee913a3423d867dcc61f2a20:docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md` · tag `closed/p25-experience-v2`
