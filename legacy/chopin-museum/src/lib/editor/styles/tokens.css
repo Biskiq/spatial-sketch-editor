@@ -1,0 +1,986 @@
+/*
+ * P3.2 — canonical design tokens (Design-specs.md §37).
+ *
+ * Single source of truth for every shared visual decision in the editor
+ * chrome. All tokens use the `--editor-` prefix so they never collide with
+ * the host app or the `/museum` visitor. The Scene 3D overlay aliases mirror
+ * `src/lib/editor/styles/scene-palette.ts` (Three.js materials cannot read
+ * CSS variables); a contract test pins the two in sync.
+ *
+ * Section references: DS = docs/reference/design-system/design-specs.md.
+ *
+ * Theme layer — `:root` below is the legacy navy-blue theme and keeps the
+ * FIRST declaration of every token (the scene-palette contract test matches
+ * the first `--editor-<name>: #hex;` declaration). Since P23.14 the canonical
+ * DEFAULT identity is `plate-light` (final-direction §6/§26.5), whose
+ * additive `:root[data-theme='plate-light']` block lives at the END of this
+ * file; navy-blue and the six curated palettes are variants of the same
+ * hierarchy grammar, not redefinitions of component roles.
+ * Additional themes are
+ * additive `:root[data-theme='<id>'] { … }` override blocks at the END of
+ * this file, overriding only theme-aware tokens: chrome surfaces/borders,
+ * the chrome accent family (`--editor-accent*` — the interactive
+ * accent of chrome controls, incl. `--editor-timeline-path/-playhead`),
+ * shadows/status/`color-scheme`, the 3D viewport canvas
+ * (`--editor-bg-viewport`) + the orientation widget. The BASE text
+ * ramp is declared once at `:root` as light-dark() pairs wired to the navy
+ * default and is never overridden per theme; `color-scheme` selects the
+ * member (all shipped themes are `dark`; a future light theme sets `light`
+ * and base text flips to dark ink automatically). The CHROMATIC role inks
+ * (tint/tint-soft/metric/timecode/success — DS §7 below) share the same
+ * mechanism and are the one text exception themes may re-author, as full
+ * light-dark() pairs. INVARIANT in
+ * every theme (spatial meaning stays fixed — never override): axis/gizmo
+ * colors, selection outline/hover/fill/handle, layout box, plan paper +
+ * plan semantic colors, and the timeline lane parameter colors
+ * (fov/look/roll/envelope/free). Theme ids must also appear in
+ * the app.html boot allowlist between the THEME_IDS_SYNC_WITH_THEME_REGISTRY
+ * markers (CI-pinned by tests/lib/editor/theme-registry.test.ts).
+ */
+
+:root {
+	/* Canonical navy-blue theme; see the theme-layer note in the header. */
+	color-scheme: dark;
+
+	/* ── DS §7 — dark shell (slightly blue, never neutral charcoal) ── */
+	--editor-bg-app: #071019;
+	--editor-bg-panel: #0a141f;
+	--editor-bg-panel-raised: #0d1925;
+	--editor-bg-control: #121f2e;
+	--editor-bg-hover: #142230;
+	--editor-bg-selected: #0c3766;
+
+	--editor-border-subtle: #1a2936;
+	--editor-border-normal: #243544;
+	--editor-border-strong: #32485a;
+
+	/* ── DS §7 — text ──
+	   BASE ramp — the navy defaults are THE font-color wiring for every
+	   theme: each token is one light-dark() pair keyed to `color-scheme`
+	   (dark themes — all shipped — resolve the light member; a future light
+	   theme sets `color-scheme: light` and text flips to the dark-ink member
+	   automatically). Muted clears 4.5:1 on every dark surface incl. hover
+	   and selected tints, and — since P23.14 review F1 / ruling D1 — the
+	   light member is darkened so the same holds on the light Chassis
+	   family, because muted is a text ink (Status Rail, resting View Bar
+	   tabs, Inspector section headers, tray group labels), not a hint-only
+	   ink. Measured worst case (Chassis #D9DDE0; app · panel-raised ·
+	   instrument #E8E5DD · hover #EDEAE2 · selected #CFE1FB all higher):
+
+	     primary   #13161D                        13.25:1
+	     secondary #3A4252                         7.39:1
+	     muted     #606B7E → #55606E (was 3.94)     4.68:1
+	     success   #146C34                          4.77:1
+	     warning   #744E0E                          5.41:1
+
+	   (10.6:1 belongs to the §6.1 reference ink #252A2E, not to the base
+	   primary — review F1 caught the comment measuring the wrong pair.)
+	   `tests/lib/editor/app/p23-14-state-language.test.ts` recomputes every
+	   number above from this file, so the table cannot rot silently.
+	   Base tokens must never be overridden by theme
+	   blocks — contrast holds by construction.
+
+	   CHROMATIC role inks — non-monochrome depth layered above the base
+	   ramp (small text that still clears AA on chrome surfaces):
+	     tint / tint-soft  uppercase labels & meta take the theme's color
+	                        temperature (navy = cool slate; brass / violet /
+	                        lichen in the curated palettes);
+	     metric            technical numbers (lengths, speeds, coordinates);
+	     timecode          timeline times ("00:08.375") — amber by default;
+	     success           readable status text ("Valid") kept distinct from
+	                        the --editor-success glyph/border family;
+	     warning           readable caution text ("Manual envelope") kept
+	                        distinct from the --editor-warning glyph/border
+	                        family — a TEXT use of either base token is a bug
+	                        (review F1 / owner ruling D2).
+	   Chromatic tiers ARE theme-aware and may be overridden per theme — but
+	   always as a full light-dark() pair, never a single hex. */
+	--editor-text-primary: light-dark(#13161D, #F1F4F9);
+	--editor-text-secondary: light-dark(#3A4252, #B2BFD0);
+	--editor-text-muted: light-dark(#55606E, #94A3B8);
+	--editor-text-disabled: light-dark(#9BA3AF, #505A69);
+
+	--editor-text-tint: light-dark(#475569, #94A3B8);
+	--editor-text-tint-soft: light-dark(#64748B, #64748B);
+	--editor-text-metric: light-dark(#0284C7, #38BDF8);
+	--editor-text-timecode: light-dark(#D97706, #FBBF24);
+	--editor-text-success: light-dark(#15803D, #4ADE80);
+	--editor-text-warning: light-dark(#744E0E, #E0B667);
+
+	/* ── DS §7 — primary blue: the chrome interactive accent ──
+   navy default below; theme blocks re-derive the hue per palette. Spatial
+   selection keeps its own invariant tokens (--editor-selection-*,
+   --editor-gizmo-*, axes, plan) and stays brand blue in every theme. */
+	--editor-accent: #2f8cff;
+	--editor-accent-hover: #55a1ff;
+	--editor-accent-pressed: #1976df;
+	--editor-accent-soft: rgb(47 140 255 / 16%);
+	--editor-accent-border: rgb(47 140 255 / 62%);
+
+	/* ── DS §7 — semantic colors ── */
+	--editor-success: #31c985;
+	--editor-success-soft: rgb(49 201 133 / 14%);
+	--editor-success-border: rgb(49 201 133 / 55%);
+	--editor-warning: #d9a441;
+	--editor-warning-soft: rgb(217 164 65 / 14%);
+	--editor-warning-border: rgb(217 164 65 / 55%);
+	--editor-danger: #ef626c;
+	--editor-danger-soft: rgb(239 98 108 / 14%);
+	--editor-danger-border: rgb(239 98 108 / 55%);
+
+	/* ── P23.14 §4/§6 — PLATE material role surfaces (chrome; theme-aware) ──
+	   CHASSIS is `--editor-bg-app/-panel` (persistent structure), the recess
+	   step is the Domain Spine trough, INSTRUMENT is the control material,
+	   the domain accents are the two Spine stations' 3 px inboard
+	   edge-light, and ARMED is the armed hue any surface may spend (the Tool
+	   Tray no longer does — owner ratification R2 made its armed state a
+	   darkened surface: `--editor-bg-recess`, no border, no edge). The defaults
+	   below alias every existing dark theme to its current look (recess =
+	   app chassis, instrument = control surface, scene accent = the theme
+	   accent); PLATE Light overrides them with the ratified §6.1 values. */
+	--editor-bg-recess: var(--editor-bg-app);
+	--editor-bg-instrument: var(--editor-bg-control);
+	--editor-domain-scene: var(--editor-accent);
+	--editor-domain-camera: #347d89;
+	--editor-armed: var(--editor-warning);
+
+	/* PLATE Paper baseline — non-Plan Paper surfaces only. Scene Plan and
+	   Camera Plan keep the landed P23.13 `--editor-plan-bg` (#F5F7F8);
+	   unifying the two papers needs explicit owner re-ratification. */
+	--editor-paper-plate: var(--editor-bg-panel-raised);
+
+	/* ── P23.14 §7 — state language: one cue per state, never hue alone ──
+	   The ratified minimum set, and the cue that carries each one. Every
+	   state has a NON-hue member (form, weight, offset, glyph, motion), so a
+	   monochrome screenshot still separates them; selection blue is never
+	   spent on a second meaning (§18).
+
+	     state              hue                        non-hue
+	     hover              bg-hover                   surface step
+	     selected           bg-selected + accent-border  fill + inboard edge
+	     primary            accent fill                solid mass
+	     keyboard focus     --editor-focus-ring        OUTSIDE offset ring
+	     active domain      domain-scene/camera        Spine edge-light
+	     active view        accent                     View Bar underline
+	     active mode        control-active-bg          enclosed trough
+	     armed              —                          darkened surface (recess step)
+	     disabled + reason  text-disabled              not-allowed + title
+	     refusal / invalid  --editor-state-refusal      inline reason at action
+	     warning            warning                    glyph at the readout
+	     destructive        danger                     separated, last entry
+	     preview ghost      --editor-state-ghost       alpha + ghost ink
+	     snap guide         plan-snap                  own ink, own glyph
+	     authored/derived   --editor-state-derived-ink  weight + mono face
+
+	   The ring is deliberately its own token rather than `--editor-accent`:
+	   focus must be readable as focus in a frame where the same control is
+	   also the selected/active one. Offset lives here too, so a denser
+	   surface can pull the ring in without re-authoring each control. */
+	--editor-focus-ring: #7cc4ff;
+	--editor-focus-ring-width: 2px;
+	--editor-focus-ring-offset: 2px;
+
+	/* Preview ghost — geometry that exists only inside an open transaction
+	   (move/rotate/resize draft). Alpha below 1 keeps it non-committal and
+	   distinct from an authored fill at a glance. */
+	--editor-state-ghost: rgb(47 140 255 / 22%);
+	--editor-state-ghost-ink: var(--editor-text-muted);
+
+	/* Authored vs derived: derived readouts (computed areas, inherited
+	   values, projections) take the quieter ink; authored values take
+	   `--editor-text-primary` plus the mono face (§7 two type voices). */
+	--editor-state-derived-ink: var(--editor-text-muted);
+
+	/* Refusal / invalid is the danger family; the STATE name exists so
+	   refusal sites read as refusals, not as generic errors. */
+	--editor-state-refusal: var(--editor-danger);
+	--editor-state-refusal-soft: var(--editor-danger-soft);
+	--editor-state-refusal-border: var(--editor-danger-border);
+
+	/* State aliases — the working states other slices already paint, named
+	   here so §7 consumers share one vocabulary. `--editor-state-armed` keeps the
+	   armed HUE; a surface that wants the tray's ratified treatment (R2) uses
+	   `--editor-bg-recess` instead. */
+	--editor-state-armed: var(--editor-armed);
+	--editor-state-snap: var(--editor-plan-snap);
+	--editor-state-disabled-ink: var(--editor-text-disabled);
+	--editor-state-active-domain: var(--editor-domain-scene);
+
+	/* ── DS §8 — transform axes (spatial meaning only, never decoration) ── */
+	--editor-axis-x: #f05252;
+	--editor-axis-y: #45c878;
+	--editor-axis-z: #3b82f6;
+
+	/* ── DS §8 — Scene 3D overlay aliases ── */
+	--editor-gizmo-x: #f05252;
+	--editor-gizmo-y: #45c878;
+	--editor-gizmo-z: #3b82f6;
+	--editor-gizmo-active: #2f8cff;
+	--editor-gizmo-hover: #55a1ff;
+
+	--editor-selection-outline: #2f8cff;
+	--editor-selection-outline-hover: #55a1ff;
+	--editor-selection-fill: rgb(47 140 255 / 10%);
+	--editor-selection-handle: #edf3f8;
+	--editor-outline-muted: #92908a;
+	/* P3B.2 — passive layout geometry follows the scene-3d-layout-selection.png
+	   white/light treatment: quiet light neutral, blue reserved for selection. */
+	--editor-layout-box: #e7e4dd;
+	--editor-layout-box-hover: #d8d5cc;
+
+	/* ── DS §8/§10 — invariant spatial camera tokens (P21.6 Slice A) ──
+	   Camera nodes/paths/frustums are authored spatial truth, identical in
+	   every theme (2D–3D parity). Never override in theme blocks. Pure
+	   6-digit hex only — the scene-palette contract test cannot parse
+	   rgba(); opacities live in the Three.js material definitions. */
+	--editor-camera-path: #2f8cff;
+	--editor-camera-path-selected: #55a1ff;
+	--editor-camera-node-seq: #2f8cff;
+	--editor-camera-node-seq-active: #1976df;
+	--editor-camera-node-unseq: #10b981;
+	--editor-camera-frustum-line: #2f8cff;
+	--editor-camera-frustum-fill: #2f8cff;
+	--editor-camera-target: #38bdf8;
+	--editor-camera-lookat-ray: #94a3b8;
+	--editor-camera-anchor: #e2e8f0;
+
+	/* ── DS §8 — Scene 3D orientation box ── */
+	--editor-orientation-surface: #0d1925;
+	--editor-orientation-hover: #142230;
+	--editor-orientation-border: #32485a;
+	--editor-orientation-label: #edf3f8;
+	--editor-orientation-size: 88px;
+	--editor-orientation-inset-top: 16px;
+	--editor-orientation-inset-right: 16px;
+	--editor-orientation-label-size: 11px;
+	/* P3B.2 render rework (Designer-brieft-box.md rev 6). */
+	--editor-orientation-radius: 6px;
+	--editor-orientation-face-lit: #eaeef2;
+	--editor-orientation-face-mid: #d8dce0;
+	--editor-orientation-face-shadow: #c2c7cc;
+	--editor-orientation-face-hover: rgba(13, 25, 37, 0.1);
+	--editor-orientation-face-pressed: rgba(0, 0, 0, 0.2);
+	--editor-orientation-edge-solid: #1e2c3a;
+	--editor-orientation-face-label-size: 8.5px;
+
+	/* ── DS §9 + P23.13 §2 — plan surfaces (bright drafting paper on dark shell).
+	   A6 ratifies one cool paper across all seven themes: the warm `#f5f3ee` and
+	   its warm grid greys are replaced together, because paper and grid read as
+	   one surface. Token change only — no shell chrome is affected. ── */
+	--editor-plan-bg: #f5f7f8;
+	--editor-plan-grid-major: #ced6dd;
+	--editor-plan-grid-minor: #e4e9ed;
+	/* P23.13 S4 — the §2 mark palette. Ink/cut mass is one graphite for the
+	   bounding Wall body, its 1 px exterior profile, the Room outline and the
+	   main labels; secondary ink carries dimensions, references, areas, frame
+	   lines and the neutral hover contour. Migrated here with the paper: leaving
+	   the warm `#625f59`/`#d5d1c8`/`#292d31`/`#77766f` behind would have put a
+	   warm mass under cool paper. */
+	--editor-plan-wall: #343c43;
+	--editor-plan-wall-fill: #343c43;
+	--editor-plan-object: #b7b2a8;
+	--editor-plan-label: #343c43;
+	--editor-plan-muted: #596570;
+	/* P23.13 S5 — §2 mark palette: Snap has its own ink so an honoured relation
+	   can never be mistaken for a selection (blue) or for committed geometry. */
+	--editor-plan-snap: #146d68;
+	--editor-plan-measure: #2f8cff;
+	--editor-plan-selection: #2f8cff;
+	--editor-plan-readonly: #92908a;
+
+	/* ── DS §9 — camera edge timing pill (invariant drafting ink) ──
+	   The Plan canvas is paper in every theme (no theme block overrides any
+	   `--editor-plan-*` token), so pill ink never follows the chrome accent
+	   (`--editor-accent` is terracotta in porcelain, violet in plum — a
+	   selected pill filled with it clashes with the blue route and fails
+	   contrast). P21.5 Slice 2.5 contrast fix — measured text ratios:
+	   selected 13.1:1, selected-auto 8.0:1, unselected 14.6:1 (all ≥ 4.5). */
+	--editor-plan-edge-pill-selected-bg: #0c2d6b;
+	--editor-plan-edge-pill-selected-border: #2f8cff;
+	--editor-plan-edge-pill-selected-text: #ffffff;
+	--editor-plan-edge-pill-selected-auto-text: rgb(255 255 255 / 78%);
+	--editor-plan-edge-pill-selected-auto-underline: rgb(255 255 255 / 60%);
+	--editor-plan-edge-pill-unselected-bg: #ffffff;
+	--editor-plan-edge-pill-unselected-border: #cbd5e1;
+	--editor-plan-edge-pill-unselected-text: #1e293b;
+	--editor-plan-edge-pill-auto-underline: #64748b;
+
+	/* ── DS §8 — 3D viewport canvas ──
+   The Three.js scene clear color and calibration grid. The canvas is
+   never pure black or pure white (geometry/highlights vanish into either);
+   the light member is the calibrated warm architectural studio gray
+   (#DDD7CE, ~78% luminance — Rhino/SketchUp-style) that harmonizes with
+   Plan paper #F5F3EE, and the dark member is deep obsidian rather than
+   pitch black. Three.js materials cannot read CSS variables, so
+   theme.svelte.ts resolves these tokens into the reactive `viewportPalette`
+   (navy fallbacks mirrored there). Grid lines are brand brass on dark
+   chrome and translucent graphite on light chrome (~8–20% black ink). */
+	--editor-bg-viewport: light-dark(#ddd7ce, #071019);
+	--editor-viewport-grid-major: light-dark(#b1aca5, #8d753c);
+	--editor-viewport-grid-minor: light-dark(#cbc6be, #37342d);
+
+	/* ── DS §11 — timeline lane colors (inside data viz only) ──
+   path/playhead follow the chrome accent family (theme-aware); the lane
+   parameter colors below are invariant data-viz identity. */
+	--editor-timeline-path: #2f8cff;
+	--editor-timeline-fov: #4f9eff;
+	--editor-timeline-look: #8c7cf3;
+	--editor-timeline-roll: #c9944b;
+	--editor-timeline-envelope: #d9a441;
+	--editor-timeline-free: #31c985;
+	--editor-timeline-playhead: #2f8cff;
+
+	/* ── DS §12/§13 — spacing + radius ── */
+	--editor-space-1: 4px;
+	--editor-space-2: 8px;
+	--editor-space-3: 12px;
+	--editor-space-4: 16px;
+	--editor-space-5: 20px;
+	--editor-space-6: 24px;
+	--editor-radius-sm: 4px;
+	--editor-radius-md: 5px;
+	--editor-radius-lg: 7px;
+
+	/* ── DS §15 — shell dimensions ── */
+	--editor-appbar-height: 56px;
+	--editor-status-height: 32px;
+	--editor-left-width: 300px;
+	--editor-left-min: 240px;
+	--editor-left-max: 420px;
+	--editor-right-width: 320px;
+	--editor-right-min: 280px;
+	--editor-right-max: 420px;
+
+	/* ── P23.14 §5/§8/§10/§11 — PLATE reference shell geometry ──
+	   Domain Spine width, View Bar height and the Paper-attached Tool Tray rail
+	   width. The main shell narrows the side columns to the ratified 268
+	   (Navigator, 240–300 range) / 300 (Inspector) in the `.project-editor`
+	   block below; the frozen relic keeps the values above it. */
+	--editor-spine-width: 56px;
+	--editor-viewbar-height: 34px;
+	/* §11 — the rail exists to hold its labels, so it is the ONE piece of §5
+	   geometry that follows the type knob: at scale 1 it is the ratified 44 px,
+	   and it grows with its type so the labels keep the fit they were measured
+	   for instead of breaking mid-word. */
+	--editor-tray-width: calc(44px * var(--editor-type-scale));
+	/* §23 — the coarse-pointer minimum every chrome control and its band grows
+	   to. One token so the media query in editor-shell.css and any component
+	   that has to size around a touch target agree. */
+	--editor-touch-target-min: 44px;
+
+	/* ── DS §6 — typography ── */
+	--editor-font:
+		'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+		sans-serif;
+	/* P23.13 S6 / §7 — working dimensions are set in a mono face: digits must not
+	   reflow the text box the dimension placer already measured. */
+	--editor-font-mono: SFMono-Regular, Consolas, 'Liberation Mono', monospace;
+	/* ── Owner ratification R3 — one type scale, expressed as ROLES ───────────
+	   Two voices (§7): a humanist sans for UI, a mono for measures, references,
+	   IDs and timecodes.
+
+	   `--editor-type-scale` is the single knob, and it is a PERCENTAGE: 1 means
+	   100 %, 1.15 means 115 %, 0.9 means 90 %. Every size in the editor is a
+	   multiple of it, so ONE number grows or shrinks the whole product with no
+	   per-component edits and no chance of one surface drifting from another.
+
+	   Set it on `:root` (a theme block, or inline on document.documentElement —
+	   the same element that declares the ladder below): a token derived from
+	   another token is a SNAPSHOT taken where it is declared, so overriding the
+	   knob further down the tree cannot re-derive a size that was already
+	   resolved here. Raising it to 1.15 renders the whole shell at 115 %.
+
+	   No literal selector block appears in this note on purpose: contract tests
+	   in this repo locate blocks textually, and a snippet here would shadow the
+	   real one. For the same reason there are no nested comment markers in these
+	   notes — CSS comments do not nest, and an inner terminator would end this
+	   one early, dropping the whole ladder from the cascade.
+
+	   It is unitless because CSS cannot multiply a length by a percentage token
+	   (`calc(12px * 110%)` is invalid), so a factor is the only form a single
+	   knob can take. Read it as a percentage everywhere it is documented.
+
+	   Never write a bare `font-size: 12px` in a shell surface — ask for a role
+	   (`--editor-type-*`) or, failing that, a ladder step (`-2xs`…`-2xl`). The
+	   ladder is where the seven numbers live; nothing else in the shell holds a
+	   pinned type size.
+
+	   Ladder = the ratified §7/Atlas ramp (9/10/11/12/13/15/20 px at scale 1).
+	   The old flat ramp (16/14/13/12.5/11.5) was the pre-P23.14 shell's and was
+	   mostly DEAD — nothing consumed `title`, `panel-title`, `toolbar`,
+	   `tree-row` or `status`, so component-level `rem` values drifted instead;
+	   that drift is exactly what the Atlas comparison caught. */
+	--editor-type-scale: 1;
+
+	/* Step 1 — sizes. Only these seven numbers exist. */
+	--editor-font-size-2xs: calc(9px * var(--editor-type-scale)); /* timeline ticks */
+	--editor-font-size-xs: calc(10px * var(--editor-type-scale)); /* engraved labels, refs, status */
+	--editor-font-size-sm: calc(11px * var(--editor-type-scale)); /* compact readouts */
+	--editor-font-size-md: calc(12px * var(--editor-type-scale)); /* standard rows, labels, controls */
+	--editor-font-size-lg: calc(13px * var(--editor-type-scale)); /* property values */
+	--editor-font-size-xl: calc(15px * var(--editor-type-scale)); /* panel headings */
+	--editor-font-size-2xl: calc(20px * var(--editor-type-scale)); /* project identity ceiling */
+
+	/* Step 2 — roles. A surface asks for one of these, never for a number:
+	   family + size + weight + line-height travel together. */
+	--editor-type-body: 400 var(--editor-font-size-md)/1.4 var(--editor-font);
+	--editor-type-engraved: 600 var(--editor-font-size-xs)/1.15 var(--editor-font);
+	--editor-type-engraved-quiet: 400 var(--editor-font-size-xs)/1.3 var(--editor-font);
+	--editor-type-heading: 600 var(--editor-font-size-xl)/1.2 var(--editor-font);
+	/* The Head's project identity. §7's ladder jumps 13 → 15 px, and the Atlas
+	   paints it at 14 px, so the identity keeps its own step — still scaled by
+	   the same knob, so it can never drift from the ladder. */
+	--editor-type-identity: 600 calc(14px * var(--editor-type-scale))/1.2 var(--editor-font);
+	--editor-type-row: 570 var(--editor-font-size-md)/1.25 var(--editor-font);
+	--editor-type-control: 500 var(--editor-font-size-md)/1 var(--editor-font);
+	--editor-type-control-strong: 650 var(--editor-font-size-md)/1 var(--editor-font);
+	/* Subordinate View Bar tiers, straight from the Atlas: utilities at 10 px,
+	   the MODE pair at 11 px. */
+	--editor-type-utility: 500 var(--editor-font-size-xs)/1 var(--editor-font);
+	--editor-type-mode: 500 var(--editor-font-size-sm)/1 var(--editor-font);
+	--editor-type-status: 400 var(--editor-font-size-xs)/1 var(--editor-font);
+	--editor-type-property: 500 var(--editor-font-size-lg)/1.3 var(--editor-font);
+	--editor-type-mono: 400 var(--editor-font-size-sm)/1.3 var(--editor-font-mono);
+	--editor-type-ref: 400 var(--editor-font-size-xs)/1.3 var(--editor-font-mono);
+	--editor-type-tick: 400 var(--editor-font-size-2xs)/1 var(--editor-font-mono);
+	--editor-type-readout: 600 var(--editor-font-size-md)/1 var(--editor-font-mono);
+	/* Navigator scope header ("Project", "Plan", a room's name when it owns the
+	   list) — one step above a row, still the sans voice. */
+	--editor-type-row-head: 650 var(--editor-font-size-lg)/1.25 var(--editor-font);
+	/* Domain Spine station label: §8 names the domains in their own casing
+	   ("Scene" / "Camera"), so this role is NOT uppercase and carries no
+	   tracking — that is the whole difference from `engraved`. */
+	--editor-type-station: 400 var(--editor-font-size-sm)/1 var(--editor-font);
+	/* Tool Tray tiers (owner ratification R1): the reference's engraved micro-set
+	   at the rail's fitted 7 px / 8 px steps. */
+	--editor-type-tray-group: 600 var(--editor-font-size-tray-group)/1.15
+		var(--editor-font);
+	--editor-type-tray-tool: 600 var(--editor-font-size-tray-tool)/1.15
+		var(--editor-font);
+
+	/* Step 3 — legacy role names, kept as aliases onto the ladder so existing
+	   consumers keep resolving to a real step while surfaces migrate to a role. */
+	--editor-font-size-title: var(--editor-font-size-xl);
+	--editor-font-size-panel-title: var(--editor-font-size-xl);
+	--editor-font-size-toolbar: var(--editor-font-size-md);
+	--editor-font-size-tree-row: var(--editor-font-size-md);
+	--editor-font-size-section: var(--editor-font-size-xs);
+	--editor-font-size-label: var(--editor-font-size-md);
+	--editor-font-size-input: var(--editor-font-size-md);
+	--editor-font-size-metadata: var(--editor-font-size-sm);
+	--editor-font-size-status: var(--editor-font-size-xs);
+	/* The Atlas paints its timeline ticks at 9 px — one step under §7's 10 px
+	   floor, ratified because a ruler tick is a mono measure, not a label. */
+	--editor-font-size-ruler: var(--editor-font-size-2xs);
+	--editor-font-size-ref: var(--editor-font-size-xs);
+
+	/* Step 4 — migration mapping. The pre-P23.14 shell's off-ladder `rem` values
+	   WERE the drift (that is what the Atlas comparison caught), so the sweep
+	   maps them by BAND, not by preference:
+
+	     0.6–0.68rem (9.6–10.9 px)   → -xs  (10)  engraved + micro-meta
+	     0.7–0.78rem (11.2–12.5 px)  → -md  (12)  §12 standard label
+	     0.8–0.85rem (12.8–13.6 px)  → -lg  (13)  property / scope tier
+	     0.9–0.92rem (14.4–14.7 px)  → -xl  (15)  panel heading
+	     1rem (16 px, a glyph)       → --editor-icon-size-sm
+	     9 px (mono measure only)    → -2xs (--editor-type-tick)
+	     10/11/12/12.5/13px          → -xs/-sm/-md/-md/-lg
+
+	   Remaining batch: the Inspector family (EditorInspector + the eight panel
+	   inspectors, whose label/value tiers P21.5 Slice 4 pins at 12 px/12.5 px).
+	   Every other shell surface is on a role or a step. */
+
+	/* ── Owner ratification R3 — control roles ────────────────────────────────
+	   Every chrome BUTTON is one of four roles. Padding, height, radius and type
+	   travel together per role, so the button grammar is retuned here once
+	   instead of in fifty components. `--editor-control-scale` multiplies the
+	   hit area and the padding (not the type); `--editor-type-scale` above does
+	   the type. The two are deliberately independent: a denser button band and a
+	   larger type ramp are different requests, and coupling them would make the
+	   second impossible without the first.
+
+	     role      height        pad-x   type role           used by
+	     lg        30 px         9 px    control            primary actions
+	     md        26 px         9 px    control            the Head, forms
+	     sm        24 px         8 px    utility            View Bar, tabs, icons
+	     xs        20 px         6 px    utility            inline row actions
+
+	   Plus the geometry roles below, for the recurring groups of the shell that
+	   are sized by fit rather than by button semantics — a Navigator row, its
+	   disclosure target, a Spine station, a rail tool. Same idea, same place to
+	   tune: one line here moves every instance in the shell. */
+	--editor-control-scale: 1;
+	--editor-control-lg-height: calc(30px * var(--editor-control-scale));
+	--editor-control-md-height: calc(26px * var(--editor-control-scale));
+	--editor-control-sm-height: calc(24px * var(--editor-control-scale));
+	--editor-control-xs-height: calc(20px * var(--editor-control-scale));
+	--editor-control-lg-pad-x: 9px;
+	--editor-control-md-pad-x: 9px;
+	--editor-control-sm-pad-x: 8px;
+	--editor-control-xs-pad-x: 6px;
+	--editor-control-radius: 3px;
+	/* §11 — Tool Tray engraved micro-tier. §7's approximate scale puts
+	   engraved/group labels at 10 px, and §11 fixes the rail at 44 px; the two
+	   cannot both hold: at 10 px/600 the group names measure 46.6–63.8 px
+	   against the rail's 39 px text box, so every label broke *inside* the word
+	   ("OPENI/NGS", "OBJEC/TS") instead of reading as engraving. The tray
+	   therefore paints the reference's engraved tier — 7 px group / 8 px tool,
+	   the values the PLATE reference PNGs and the Atlas rail use — which is
+	   what §11's "small persistent group labels and compact icon-led tools"
+	   asks for; §7 calls its own hierarchy "approximate". The 10 px tier keeps
+	   every other engraved label in the shell. At these sizes every tool word
+	   fits the rail's text box; only the group word TRANSFORM (44.7 px at
+	   7 px, wider than the rail can ever be) still needs `overflow-wrap`. */
+	--editor-font-size-tray-group: calc(7px * var(--editor-type-scale));
+	--editor-font-size-tray-tool: calc(8px * var(--editor-type-scale));
+	/* The tray's one size exception (owner ratification R1): a group word that is
+	   wider than the rail itself is allowed to step down to this floor rather
+	   than break mid-word. Exactly one word qualifies — TRANSFORM (44.7 px at
+	   7 px, ~38 px here) — and the opt-in lives on that group's markup
+	   (`data-group-compact`), not on the tier. The slack is deliberate: the
+	   platform font fallback moves text metrics by a few percent, so the fix has
+	   to hold when Inter Variable is not the font that renders. */
+	--editor-font-size-tray-group-compact: calc(6px * var(--editor-type-scale));
+
+	/* ── Owner ratification R3 — icon + group-geometry roles ──────────────────
+	   Icons are set WITH their label, so they follow the type knob; hit areas
+	   follow the control knob. A group that is measured rather than semantic
+	   (row, station, rail tool) gets its own role here instead of a number in a
+	   rule, so the shell's recurring geometry has one owner. */
+	--editor-icon-size-sm: calc(16px * var(--editor-type-scale)); /* row chevrons, inline glyphs */
+	--editor-icon-size-lg: calc(24px * var(--editor-type-scale)); /* Spine stations, utilities */
+	--editor-tray-icon-size: calc(17px * var(--editor-type-scale)); /* fitted to the rail */
+
+	--editor-row-height: calc(29px * var(--editor-control-scale)); /* Navigator row (Atlas `.row`) */
+	--editor-disclosure-size: calc(18px * var(--editor-control-scale)); /* row chevron target */
+	--editor-station-height: calc(74px * var(--editor-control-scale)); /* Domain Spine station */
+	--editor-tray-tool-height: calc(42px * var(--editor-control-scale)); /* rail tool */
+
+	/* ── DS §14 — elevation ── */
+	--editor-shadow-toolbar: 0 8px 24px rgb(0 0 0 / 38%);
+	--editor-shadow-popover: 0 4px 12px rgb(0 0 0 / 32%);
+}
+
+/* ── Theme override blocks ────────────────────────────────────────────────
+   Themes are additive `:root[data-theme='<id>']` blocks appended at the end
+   of this file. Only theme-aware tokens may be overridden — chrome
+   surfaces/borders + the chrome accent family (incl. timeline path/
+   playhead) + the 3D viewport canvas (`--editor-bg-viewport`) + the
+   orientation widget (surface/hover/border/label) + `color-scheme`. The
+   BASE text ramp is centralized at `:root` as
+   light-dark() pairs (navy default wiring) and must NOT be overridden — a
+   theme flips `color-scheme` only (dark today; a future light theme sets
+   `light` and text auto-flips to dark ink). The chromatic role inks
+   (--editor-text-tint/tint-soft/metric/timecode/success) MAY be overridden
+   when a palette wants its own label temperature — always as a full
+   light-dark() pair, never a single hex. Never override the invariant
+   spatial palette (axes/gizmo, selection outline/fill/handle, layout box,
+   plan paper + plan semantics, timeline lane parameter colors). Each theme
+   id must also
+   appear in THEMES (theme.svelte.ts)
+   and in the app.html boot allowlist between the
+   THEME_IDS_SYNC_WITH_THEME_REGISTRY markers (CI-pinned).
+   ── */
+
+/* Salon Espresso — Jazz Kissa / Parisian salon: roasted cacao, smoked bronze. */
+:root[data-theme='salon-espresso'] {
+	color-scheme: dark; /* text tokens stay the centralized :root light-dark ramp */
+
+	--editor-bg-app: #0d0a08;
+	--editor-bg-panel: #140f0d;
+	--editor-bg-panel-raised: #1c1512;
+	--editor-bg-control: #221a16;
+	--editor-bg-hover: #291f1a;
+	--editor-bg-selected: #3d2a1e;
+
+	/* 3D viewport canvas: smoked-umber studio dark (never pitch black). */
+	--editor-bg-viewport: #100c08;
+
+	--editor-border-subtle: #241b16;
+	--editor-border-normal: #332720;
+	--editor-border-strong: #47362d;
+
+	--editor-accent: #e0a458;
+	--editor-accent-hover: #eebd7c;
+	--editor-accent-pressed: #c1833a;
+	--editor-accent-soft: rgb(224 164 88 / 16%);
+	--editor-accent-border: rgb(224 164 88 / 62%);
+
+	/* Chromatic role inks (full light-dark pairs): warm parchment labels,
+	   brass metrics, ember timecodes. Base text tokens stay centralized. */
+	--editor-text-tint: light-dark(#4A3B32, #D4C3B3);
+	--editor-text-tint-soft: light-dark(#6E584B, #9E8C7E);
+	--editor-text-metric: light-dark(#B45309, #FBBF24);
+	--editor-text-timecode: light-dark(#C2410C, #FB923C);
+
+	--editor-timeline-path: #e0a458;
+	--editor-timeline-playhead: #e0a458;
+
+	--editor-orientation-surface: #140f0d;
+	--editor-orientation-hover: #1c1512;
+	--editor-orientation-border: #332720;
+	--editor-orientation-label: #f5efeb;
+}
+
+/* Electric Plum — pop-art vernissage / nocturnal biennial: bruised cassis, royal violet. */
+:root[data-theme='electric-plum'] {
+	color-scheme: dark; /* text tokens stay the centralized :root light-dark ramp */
+
+	--editor-bg-app: #0a0612;
+	--editor-bg-panel: #120b1f;
+	--editor-bg-panel-raised: #1a102c;
+	--editor-bg-control: #211538;
+	--editor-bg-hover: #2c1b4a;
+	--editor-bg-selected: #3b1a66;
+
+	/* 3D viewport canvas: violet-black studio dark. */
+	--editor-bg-viewport: #120c16;
+
+	--editor-border-subtle: #221437;
+	--editor-border-normal: #311e4e;
+	--editor-border-strong: #492b73;
+
+	--editor-accent: #c07ef0;
+	--editor-accent-hover: #d6a2f6;
+	--editor-accent-pressed: #9c5cd6;
+	--editor-accent-soft: rgb(192 126 240 / 16%);
+	--editor-accent-border: rgb(192 126 240 / 62%);
+
+	/* Chromatic role inks (full light-dark pairs): lilac/ultraviolet labels,
+	   electric-violet metrics, magenta timecodes. Base text tokens stay
+	   centralized. */
+	--editor-text-tint: light-dark(#4C286D, #C4B5FD);
+	--editor-text-tint-soft: light-dark(#6B3B98, #9B87CA);
+	--editor-text-metric: light-dark(#6D28D9, #A78BFA);
+	--editor-text-timecode: light-dark(#BE185D, #F472B6);
+
+	--editor-timeline-path: #c07ef0;
+	--editor-timeline-playhead: #c07ef0;
+
+	--editor-orientation-surface: #120b1f;
+	--editor-orientation-hover: #1a102c;
+	--editor-orientation-border: #311e4e;
+	--editor-orientation-label: #f3eef8;
+}
+
+/* Acid Moss — brutalist zine studio / botanical pavilion: blackened lichen, industrial olive. */
+:root[data-theme='acid-moss'] {
+	color-scheme: dark; /* text tokens stay the centralized :root light-dark ramp */
+
+	--editor-bg-app: #080d0a;
+	--editor-bg-panel: #0f1712;
+	--editor-bg-panel-raised: #16211a;
+	--editor-bg-control: #1c2b22;
+	--editor-bg-hover: #23352b;
+	--editor-bg-selected: #1e4330;
+
+	/* 3D viewport canvas: lichen-dark studio dark. */
+	--editor-bg-viewport: #0d120c;
+
+	--editor-border-subtle: #1a2920;
+	--editor-border-normal: #263d2f;
+	--editor-border-strong: #385945;
+
+	--editor-accent: #aecb75;
+	--editor-accent-hover: #c2dc92;
+	--editor-accent-pressed: #8fb05c;
+	--editor-accent-soft: rgb(174 203 117 / 16%);
+	--editor-accent-border: rgb(174 203 117 / 62%);
+
+	/* Chromatic role inks (full light-dark pairs): lichen/celadon labels,
+	   mint metrics, citrine timecodes. Base text tokens stay centralized. */
+	--editor-text-tint: light-dark(#2D4A36, #A7C4AF);
+	--editor-text-tint-soft: light-dark(#3F644B, #7C9883);
+	--editor-text-metric: light-dark(#047857, #34D399);
+	--editor-text-timecode: light-dark(#CA8A04, #FACC15);
+
+	--editor-timeline-path: #aecb75;
+	--editor-timeline-playhead: #aecb75;
+
+	--editor-orientation-surface: #0f1712;
+	--editor-orientation-hover: #16211a;
+	--editor-orientation-border: #263d2f;
+	--editor-orientation-label: #eaf2ed;
+}
+
+/* Porcelain Atelier — Bauhaus exhibition / archival art book. The FIRST
+   LIGHT identity: warm French-porcelain chassis (#EDE8DF), alabaster panels,
+   terracotta/persimmon accent, deep petrol-charcoal ink (base text ramp
+   flips automatically via color-scheme: light) with cobalt metrics + warm
+   ochre timecodes. Base text tokens stay centralized; chromatic role inks
+   below are full light-dark() pairs. Semantic status hexes are re-inked for
+   legibility on porcelain (dark green/amber/red instead of dark-scheme
+   pastels); softs/borders keep their translucent treatment. */
+:root[data-theme='porcelain-atelier'] {
+	color-scheme: light;
+
+	--editor-bg-app: #ede8df;
+	--editor-bg-panel: #f6f3ec;
+	--editor-bg-panel-raised: #ffffff;
+	--editor-bg-control: #e4ddd2;
+	--editor-bg-hover: #dbd3c5;
+	--editor-bg-selected: #fbe9e4;
+
+	/* 3D viewport canvas: warm architectural studio gray (~78% luminance) —
+	   never pure white so white walls/plaster keep their silhouette. */
+	--editor-bg-viewport: #ddd7ce;
+
+	--editor-border-subtle: #ddd6cb;
+	--editor-border-normal: #c4bbb0;
+	--editor-border-strong: #9e9487;
+
+	--editor-accent: #d94826;
+	--editor-accent-hover: #ee5835;
+	--editor-accent-pressed: #b83a1d;
+	--editor-accent-soft: rgb(217 72 38 / 12%);
+	--editor-accent-border: rgb(217 72 38 / 65%);
+
+	/* Chromatic role inks (full light-dark pairs): warm sepia labels, deep
+	   blueprint-cobalt metrics, ochre timecodes. */
+	--editor-text-tint: light-dark(#574c43, #f3ebdd);
+	--editor-text-tint-soft: light-dark(#6b6155, #d2c6b8);
+	--editor-text-metric: light-dark(#1d4ed8, #60a5fa);
+	--editor-text-timecode: light-dark(#b45309, #fbbf24);
+
+	--editor-timeline-path: #d94826;
+	--editor-timeline-playhead: #d94826;
+
+	/* Readable status ink on porcelain (light-scheme re-ink). */
+	--editor-success: #15803d;
+	--editor-warning: #b45309;
+	--editor-danger: #b42318;
+	--editor-danger-fg: #b42318;
+
+	--editor-orientation-surface: #f6f3ec;
+	--editor-orientation-hover: #ede8df;
+	--editor-orientation-border: #c4bbb0;
+	--editor-orientation-label: #1a202c;
+}
+
+/* Synth Sunset — Miami vernissage / Risograph duotone. Dark midnight indigo
+   chassis, blackened ultramarine panels, hot electric-coral accent and
+   playhead, ice-cyan metrics, soft periwinkle labels, violet-slate borders.
+   Deliberate warm/cool clash on purpose. */
+:root[data-theme='synth-sunset'] {
+	color-scheme: dark;
+
+	--editor-bg-app: #0b0f19;
+	--editor-bg-panel: #121726;
+	--editor-bg-panel-raised: #1a2033;
+	--editor-bg-control: #1f273d;
+	--editor-bg-hover: #2b3552;
+	--editor-bg-selected: #3b2a35;
+
+	/* 3D viewport canvas: midnight-indigo studio dark (matches chassis). */
+	--editor-bg-viewport: #0b0f19;
+
+	--editor-border-subtle: #1c2337;
+	--editor-border-normal: #293450;
+	--editor-border-strong: #40507a;
+
+	--editor-accent: #ff5a43;
+	--editor-accent-hover: #ff7561;
+	--editor-accent-pressed: #e0432e;
+	--editor-accent-soft: rgb(255 90 67 / 16%);
+	--editor-accent-border: rgb(255 90 67 / 65%);
+
+	/* Chromatic role inks (full light-dark pairs): soft periwinkle labels,
+	   ice-cyan metrics, hot-pink timecodes. */
+	--editor-text-tint: light-dark(#4338ca, #a5b4fc);
+	--editor-text-tint-soft: light-dark(#6d28d9, #7f8fc7);
+	--editor-text-metric: light-dark(#0369a1, #38bdf8);
+	--editor-text-timecode: light-dark(#be185d, #f472b6);
+
+	--editor-timeline-path: #ff5a43;
+	--editor-timeline-playhead: #ff5a43;
+
+	--editor-orientation-surface: #121726;
+	--editor-orientation-hover: #1a2033;
+	--editor-orientation-border: #293450;
+}
+
+/* Velvet Kodachrome — 1970s cultural archive / analog cinema console.
+   Smoked teak-umber chassis, goldenrod-marigold accent, dusty patina-teal
+   borders (the deliberate cold contrast), warm-cream ink, apricot metrics,
+   mint timecodes. */
+:root[data-theme='velvet-kodachrome'] {
+	color-scheme: dark;
+
+	--editor-bg-app: #12110e;
+	--editor-bg-panel: #1a1814;
+	--editor-bg-panel-raised: #24211c;
+	--editor-bg-control: #2a2620;
+	--editor-bg-hover: #38332b;
+	--editor-bg-selected: #3b321f;
+
+	/* 3D viewport canvas: smoked-teak studio dark (matches chassis). */
+	--editor-bg-viewport: #12110e;
+
+	--editor-border-subtle: #1e2725;
+	--editor-border-normal: #283835;
+	--editor-border-strong: #3d5450;
+
+	--editor-accent: #e5a93c;
+	--editor-accent-hover: #f3bf5d;
+	--editor-accent-pressed: #c48d2a;
+	--editor-accent-soft: rgb(229 169 60 / 16%);
+	--editor-accent-border: rgb(229 169 60 / 65%);
+
+	/* Chromatic role inks (full light-dark pairs): muted sage/patina labels,
+	   warm apricot metrics, mint timecodes. */
+	--editor-text-tint: light-dark(#55615d, #99a8a5);
+	--editor-text-tint-soft: light-dark(#3f4a47, #778783);
+	--editor-text-metric: light-dark(#9a3412, #fb923c);
+	--editor-text-timecode: light-dark(#047857, #34d399);
+
+	--editor-timeline-path: #e5a93c;
+	--editor-timeline-playhead: #e5a93c;
+
+	--editor-orientation-surface: #1a1814;
+	--editor-orientation-hover: #24211c;
+	--editor-orientation-border: #283835;
+}
+
+/* PLATE Light — P23.14 §6: the ratified canonical DEFAULT identity
+   (final-direction.md §6, §26.5). A cool engineered Chassis (#D9DDE0) with a
+   recessed Spine trough (#CBD0D4) and warm Instrument controls (#E8E5DD);
+   Scene Plan and Camera Plan keep the landed P23.13 Plan Paper #F5F7F8
+   (this block touches no Plan-paper or Plan-semantic token, so the
+   seven-surround contract still holds), while #F5F2E9 stays the non-Plan
+   PLATE Paper baseline until
+   owner re-ratification unifies paper.
+
+   Ink: the BASE text ramp is the centralized light-dark() mechanism, so this
+   block only flips `color-scheme` and the light members (#13161D primary /
+   #3A4252 secondary / #55606E muted) resolve automatically, with their
+   measured ratios recorded at the ramp itself. The
+   §6.1 baseline ink pair (#252A2E / #697177) is therefore met in hue role
+   and contrast hierarchy through §6.1's permitted luminance adjustment: raw
+   #697177 measures only 3.6:1 on the Chassis and would fail AA for chrome
+   text. Chrome controls take the Selection dark edge #145DA8 as their
+   interactive accent so #2F8CFF stays owned by spatial selection (§18). */
+:root[data-theme='plate-light'] {
+	color-scheme: light;
+
+	/* CHASSIS — persistent structure: square corners, 1 px hairlines, no
+	   decorative shadows (separation is tonal + alignment, §6.2). */
+	--editor-bg-app: #d9dde0;
+	--editor-bg-panel: #d9dde0;
+	--editor-bg-panel-raised: #e2e6e8;
+	--editor-bg-control: #e8e5dd;
+	--editor-bg-hover: #edeae2;
+	--editor-bg-selected: #cfe1fb;
+
+	--editor-border-subtle: #c6cbd0;
+	--editor-border-normal: #b1b8bd;
+	--editor-border-strong: #8d959b;
+
+	/* Material roles (§4): Spine trough + Instrument control surface. */
+	--editor-bg-recess: #cbd0d4;
+	--editor-bg-instrument: #e8e5dd;
+
+	/* Domain accents on the Chassis; never a full-surface fill (§8). Both
+	   clear the 3:1 non-text bar on every Chassis step (review F1 / ruling
+	   D3): scene 3.42:1 chassis · 3.71 instr · 3.89 hover (was #a37a3d,
+	   2.84:1 — under the bar); camera 3.51 · 3.81 · 3.99. */
+	--editor-domain-scene: #946d34;
+	--editor-domain-camera: #347d89;
+	/* Armed cue (ruling D4): 3.67:1 chassis · 3.99 instr · 4.17 hover — clears
+	   the non-text bar it missed at #c58b35 (2.34:1 on Instrument), and keeps
+	   its redundant non-hue cue (3 px inboard edge + label weight). */
+	--editor-armed: #946624;
+
+	/* Instrument accent — the Selection dark edge, so selection blue keeps
+	   one meaning (§18: never hue alone; never overload #2F8CFF). */
+	--editor-accent: #145da8;
+	--editor-accent-hover: #2f75c9;
+	--editor-accent-pressed: #0f4a86;
+	--editor-accent-soft: rgb(20 93 168 / 12%);
+	--editor-accent-border: rgb(20 93 168 / 55%);
+
+	/* Readable status ink on light chassis (§6.1 refusal/invalid #9B3149). */
+	--editor-success: #15803d;
+	--editor-success-soft: rgb(21 128 61 / 12%);
+	--editor-success-border: rgb(21 128 61 / 50%);
+	--editor-warning: #8a5f14;
+	--editor-warning-soft: rgb(197 139 53 / 20%);
+	--editor-warning-border: rgb(138 95 20 / 50%);
+	--editor-danger: #9b3149;
+	--editor-danger-soft: rgb(155 49 73 / 12%);
+	--editor-danger-border: rgb(155 49 73 / 55%);
+	--editor-danger-fg: #7d2740;
+
+	/* Chromatic role inks — full light-dark() pairs (theme contract). */
+	--editor-text-tint: light-dark(#454f57, #d7dbdd);
+	--editor-text-tint-soft: light-dark(#5c666d, #bcc2c6);
+	--editor-text-metric: light-dark(#145da8, #7fb2e8);
+	--editor-text-timecode: light-dark(#8a5f14, #e0b667);
+	/* #34 — the shared success ink #15803D measures 3.7:1 on the #D9DDE0 Chassis
+	   and fails AA at the 11 px status size; #146C34 measures 4.8:1. Only the
+	   light member moves — the glyph/border family (`--editor-success`) keeps its
+	   own hue. */
+	--editor-text-success: light-dark(#146c34, #4ade80);
+
+	/* Camera route/playhead follow the instrument accent; the lane parameter
+	   colors stay invariant data-viz identity. */
+	--editor-timeline-path: #145da8;
+	--editor-timeline-playhead: #145da8;
+
+	/* 3D canvas: the warm architectural studio gray the Plan paper
+	   harmonizes with (explicit so QA can read the resolved value). */
+	--editor-bg-viewport: #ddd7ce;
+	--editor-viewport-grid-major: #b1aca5;
+	--editor-viewport-grid-minor: #cbc6be;
+
+	/* Orientation widget — Instrument material, not a floating card. */
+	--editor-orientation-surface: #e8e5dd;
+	--editor-orientation-hover: #edeae2;
+	--editor-orientation-border: #b1b8bd;
+	--editor-orientation-label: #252a2e;
+
+	/* PLATE Paper baseline (non-Plan surfaces); Plan keeps P23.13 paper. */
+	--editor-paper-plate: #f5f2e9;
+
+	/* §7 keyboard focus: on the Chassis the dark-ink member of the
+	   instrument accent. Independence from selection does not rest on the
+	   hue (selection keeps #2F8CFF for spatial truth) — it rests on the
+	   ring's form: an offset outline painted OUTSIDE the control's box, so
+	   a control that is simultaneously focused and selected shows both
+	   cues. Measured 6.56:1 against the #D9DDE0 Chassis — above the 3:1
+	   non-text bar it has to clear as an outline, and deliberately NOT
+	   claimed as a text contrast (review F1: the previous ≥ 8:1 comment
+	   measured the wrong pair). */
+	--editor-focus-ring: #0f4a86;
+
+	/* Preview ghost on light Paper: the same blue at a light-chassis alpha,
+	   because 22% ink over Paper #F5F2E9 nearly disappears. */
+	--editor-state-ghost: rgb(20 93 168 / 20%);
+
+	/* Chassis elevation: none. Popovers keep a functional contact shadow. */
+	--editor-shadow-toolbar: none;
+	--editor-shadow-popover: 0 4px 12px rgb(20 28 36 / 14%);
+}
+
+/* P21 main shell; the frozen relic retains its existing dimensions.
+   Row bands derive from the theme-aware surface ramp (never hard hexes),
+   so every theme — including PLATE Light — stays consistent by
+   construction.
+   P23.14 narrows the side columns to the ratified §5 composition (Navigator
+   268 / Inspector 300, both resizable within their documented ranges) and
+   swaps the retired 32 px ribbon band for the 34 px View Bar. */
+.project-editor {
+	--editor-project-row-height: 36px;
+	--editor-ribbon-height: 32px;
+	--editor-viewbar-height: 34px;
+	--editor-appbar-height: 36px;
+	--editor-status-height: 24px;
+	--editor-left-width: 268px;
+	--editor-left-min: 240px;
+	--editor-left-max: 300px;
+	--editor-right-width: 300px;
+	--editor-right-min: 280px;
+	--editor-bg-row-1: var(--editor-bg-app);
+	--editor-bg-row-2: var(--editor-bg-panel-raised);
+	--editor-control-active-bg: var(--editor-bg-control);
+	--editor-control-active-fg: var(--editor-accent);
+}

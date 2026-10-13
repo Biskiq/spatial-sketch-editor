@@ -1,0 +1,155 @@
+<script lang="ts">
+	import { materials } from '$lib/content/materials';
+	import {
+		isScenePrimitiveEntity,
+		type ScenePrimitiveDimensions,
+		type ScenePrimitiveEntity
+	} from '$lib/content/scene';
+	import type { MaterialId } from '$lib/types/materials';
+	import EditorNumberField from './fields/EditorNumberField.svelte';
+	import type { EditorStore } from './editor-store.svelte';
+
+	let { store }: { store: EditorStore } = $props();
+
+	const entity = $derived(
+		store.selectedObject && isScenePrimitiveEntity(store.selectedObject)
+			? store.selectedObject
+			: undefined
+	);
+
+	let nameDraft = $state('');
+
+	$effect(() => {
+		nameDraft = entity?.name ?? '';
+	});
+
+	function commitName() {
+		if (!entity) return;
+		const next = nameDraft.trim();
+		if (!next || next === entity.name) {
+			nameDraft = entity.name;
+			return;
+		}
+		store.updatePrimitiveName(entity.id, next);
+	}
+
+	function commitDimension(key: string, value: number) {
+		if (!entity) return;
+		const next = { ...entity.dimensions, [key]: value } as ScenePrimitiveDimensions;
+		store.updatePrimitiveDimensions(entity.id, next);
+	}
+
+	function commitMaterial(event: Event) {
+		if (!entity) return;
+		const materialId = (event.currentTarget as HTMLSelectElement).value as MaterialId;
+		store.updatePrimitiveMaterial(entity.id, materialId);
+	}
+
+	function commitShadow(field: 'castShadow' | 'receiveShadow', checked: boolean) {
+		if (!entity) return;
+		store.updatePrimitiveShadows(entity.id, { [field]: checked });
+	}
+
+	function dimensionFields(target: ScenePrimitiveEntity) {
+		switch (target.primitive) {
+			case 'box':
+				return [
+					['width', target.dimensions.width],
+					['height', target.dimensions.height],
+					['depth', target.dimensions.depth]
+				] as const;
+			case 'plane':
+				return [
+					['width', target.dimensions.width],
+					['height', target.dimensions.height]
+				] as const;
+			case 'cylinder':
+				return [
+					['radius', target.dimensions.radius],
+					['height', target.dimensions.height]
+				] as const;
+			case 'sphere':
+				return [['radius', target.dimensions.radius]] as const;
+		}
+	}
+</script>
+
+{#if entity}
+	<section class="primitive" aria-label="Primitive properties">
+		<h2>Primitive</h2>
+		<label class="name">
+			<span>Name</span>
+			<input
+				bind:value={nameDraft}
+				type="text"
+				aria-label="Primitive name"
+				onblur={commitName}
+				onkeydown={(event) => {
+					if (event.key === 'Enter') {
+						event.preventDefault();
+						commitName();
+						(event.currentTarget as HTMLInputElement).blur();
+					}
+				}}
+			/>
+		</label>
+		<dl>
+			<div><dt>Shape</dt><dd>{entity.primitive}</dd></div>
+			<div><dt>Room</dt><dd>{entity.roomId}</dd></div>
+		</dl>
+		<!--
+			Phase 1a — per-axis scale on primitives now rides the Transform
+			inspector's chain toggle + X/Y/Z fields. `entity.dimensions` stays
+			in the document untouched; it is just no longer exposed as a
+			manual-input band here (avoids the W/H/D + Scale-X/Y/Z duplication).
+			Call `updatePrimitiveDimensions` from code paths that need to
+			override the parametric size.
+		-->
+		<label>
+			<span>Fallback material</span>
+			<select value={entity.materialId} onchange={commitMaterial}>
+				{#each materials as material}
+					<option value={material.id}>{material.label}</option>
+				{/each}
+			</select>
+		</label>
+		<label class="checkbox">
+			<input
+				type="checkbox"
+				checked={entity.castShadow}
+				onchange={(event) => commitShadow('castShadow', event.currentTarget.checked)}
+			/>
+			<span>Cast shadow</span>
+		</label>
+		<label class="checkbox">
+			<input
+				type="checkbox"
+				checked={entity.receiveShadow}
+				onchange={(event) => commitShadow('receiveShadow', event.currentTarget.checked)}
+			/>
+			<span>Receive shadow</span>
+		</label>
+	</section>
+{/if}
+
+<style>
+	.primitive { display: flex; flex-direction: column; gap: 0.55rem; }
+	.primitive h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--editor-text-muted); }
+	.name, .primitive label:not(.checkbox) { display: flex; flex-direction: column; gap: 0.25rem; color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }
+	.name input, .primitive select {
+		min-width: 0;
+		padding: 0.42rem;
+		border: 1px solid var(--editor-border-normal);
+		border-radius: 0.32rem;
+		background: var(--editor-bg-panel-raised);
+		color: var(--editor-text-primary);
+		font: 500 12.5px var(--editor-font);
+	}
+	.name input:focus, .primitive select:focus { outline: 1px solid var(--editor-accent); border-color: var(--editor-accent); }
+	dl { display: grid; gap: 0.35rem; margin: 0; }
+	dl div { display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.4rem; align-items: baseline; }
+	dt { margin: 0; color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }
+	dd { margin: 0; color: var(--editor-text-primary); font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; word-break: break-word; }
+	.checkbox { display: flex; align-items: center; gap: 0.45rem; color: var(--editor-text-secondary); font-size: 12px; font-weight: 400; }
+	.checkbox input { accent-color: var(--editor-accent); }
+</style>

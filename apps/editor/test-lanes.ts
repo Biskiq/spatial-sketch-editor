@@ -66,6 +66,9 @@ export const ARCH_FILES: string[] = [
 	// so a document may still name the deliberately local captures it explains
 	// how to regenerate.
 	'tests/docs/documentation-references.test.ts',
+	// PR #115 frozen-project isolation: no product file imports, aliases or
+	// references `legacy/`; passes unchanged after the folder is deleted.
+	'tests/lib/legacy-isolation.test.ts',
 	// Frozen `/museum/editor` relic isolation (harvest §C.1.4 / T2c). Every one
 	// of its six claims is an unconditional mount/isolation guarantee — the
 	// mount target, the Paris-only gate, the frozen transport, the shared-store

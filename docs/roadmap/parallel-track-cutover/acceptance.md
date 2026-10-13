@@ -1860,4 +1860,68 @@ EVIDENCE-PATHS: end
 
 ## 6. WP1 — standalone frozen project (Checkpoint A)
 
-_Pending; filled in when Checkpoint A is reached._
+### 6.1 What was produced
+
+The frozen project is [`legacy/chopin-museum/`](../../../legacy/chopin-museum/README.md) — one
+self-contained folder outside the root workspaces (`apps/*`, `packages/*`), deletable with
+`rm -rf legacy/chopin-museum`.
+
+| Component | Files | Source |
+| --- | ---: | --- |
+| `src/**` app modules | 277 | byte copies of the frozen import closure (275) plus two test-support `$lib` modules the relocated category B tests import |
+| `src/app.html`, `src/vite-env.d.ts` | 2 | byte copies |
+| `kernel/{layout-core,project-model,camera-core}/src/**` | 69 | byte copies of the kernel snapshot |
+| `static/museum/**`, `static/textures/**` | 14 | byte copies of the editor static assets |
+| `vite/museum-editor-entry-plugin.ts` | 1 | byte copy (keeps the relic route byte-identical) |
+| `tests/**` | 13 | 9 relocated category B tests + their helper closure + `tests/freeze.test.ts` |
+| own configs | 5 | `package.json`, `svelte.config.js`, `vite.config.ts`, `tsconfig.json`, `vitest.config.ts` (+ `.gitignore`, `README.md`) |
+
+- `kit.alias` maps the three `@portfolio/*` kernel specifiers onto the in-folder snapshot,
+  so every frozen **source** file is byte-identical to the baseline.
+- [`FREEZE.json`](../../../legacy/chopin-museum/FREEZE.json) records the baseline SHA, **375**
+  per-file `{baselinePath, frozenPath, sha256}` rows, and **10** new/adapted files with reasons
+  (manifest, configs, `.gitignore`, README, freeze test, lockfile).
+- The category B tests are relocated with their relative layout preserved
+  (`tests/lib/**`), so their `$lib`/`@portfolio`/`../../../../vite` import roots resolve
+  unchanged.
+- **Scope note:** the §7.2 B row also names `museum/visitor-import-boundary` (museum-shell
+  direction). That test checks `apps/museum` and the *editor's* `$lib/museum` shell against
+  editor internals; the frozen project has neither, so only its editor-direction half stays
+  in the product. The frozen project's own guarantees are covered by `relic-smoke`,
+  `paris-activation`, the Chopin content tests and the freeze test.
+
+### 6.2 Checkpoint A verification
+
+All commands run inside `legacy/chopin-museum/`:
+
+| Command | Result |
+| --- | --- |
+| `npm ci` | pass — 187 packages from the pinned lockfile |
+| `npm test` | pass — 10 files, 60 tests (`pretest` runs `svelte-kit sync`) |
+| `npm run check` | pass — `svelte-check` 0 errors, 0 warnings |
+| `npm run build` | pass — adapter-vercel build, museum + editor server entries emitted |
+
+**Browser check** against the project's own `vite preview` (`http://127.0.0.1:4321`):
+
+- `/museum` renders the Chopin museum — HUD, tour list and 3D scene — and guided
+  navigation advances (Entrance → Departure via `ArrowRight`);
+- `/museum/editor` mounts the relic Scene · Camera editor: Scene/Camera tabs (no Layout
+  workspace, which it refuses), the transform toolbar, the Camera timeline with its tour
+  selector and transport, and the read-only Rooms list;
+- no console errors on either route.
+
+**Baseline equivalence** rests on byte-identity — `tests/freeze.test.ts` re-hashes every
+file in `FREEZE.json` and passes — plus the relocated `relic-smoke` (16 tests) and
+`paris-activation` (6 tests) guarantees, rather than on a second live baseline run.
+Interactive placement arm/cancel and mini-player path preview were **not** exercised by
+hand; they are covered by the relocated `relic-smoke` assertions.
+
+### 6.3 Product isolation
+
+- [`apps/editor/tests/lib/legacy-isolation.test.ts`](../../../apps/editor/tests/lib/legacy-isolation.test.ts)
+  (added to `ARCH_FILES`) asserts no product file under `apps/` or `packages/` imports,
+  aliases or quotes a path into `legacy/`, and that the root workspace globs exclude it.
+  It never reads the folder, so it passes unchanged once the folder is deleted.
+- The product is otherwise untouched: the only product changes in this checkpoint are the
+  isolation test and its `test-lanes.ts` entry.
+- **Rollback:** delete the folder.
