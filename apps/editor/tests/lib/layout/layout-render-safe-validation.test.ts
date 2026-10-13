@@ -211,15 +211,10 @@ describe('P23.11 slice 6 — core and the mesh builders agree', () => {
 		expect(built.mesh!.positions.length).toBeGreaterThan(0);
 	});
 
-	it('keeps the editor and museum mesh builders byte-identical', () => {
-		// The two builders are deliberately one file duplicated across the two
-		// apps. The shared predicate is what makes them agree on validity; this
-		// assertion keeps the rest of the builder from drifting apart silently —
-		// which is what makes the editor result the museum result.
-		const editorBuilder = resolve(process.cwd(), 'src/lib/layout/wall-mesh-builder.ts');
-		const museumBuilder = resolve(process.cwd(), '../museum/src/lib/layout/wall-mesh-builder.ts');
-		expect(readFileSync(editorBuilder, 'utf8')).toBe(readFileSync(museumBuilder, 'utf8'));
-	});
+	// PR #115 retired `apps/museum` (§3.5), which held the second copy of the mesh
+	// builder. The "editor and museum builders are byte-identical" assertion had
+	// no subject left once the fork was gone, so it is deleted rather than
+	// re-pointed at a single copy that is trivially identical to itself.
 });
 
 describe('P23.11 slice 6 — dependency direction stays intact', () => {
@@ -248,8 +243,12 @@ describe('P23.11 slice 6 — dependency direction stays intact', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	it('gives the museum no editor dependency', () => {
-		const museumRoot = resolve(process.cwd(), '../museum/src');
+	it('gives the product visitor layer no editor-class dependency', () => {
+		// `apps/museum` was the second visitor app this pinned; #115 retired it
+		// (§3.5), so the same direction claim is now held against the product
+		// visitor and shared-renderer layer, which is what the cold public route
+		// actually mounts.
+		const roots = [resolve(process.cwd(), 'src/lib/visitor'), resolve(process.cwd(), 'src/lib/museum')];
 		const offenders: string[] = [];
 		let inspected = 0;
 		const walk = (directory: string): void => {
@@ -270,7 +269,7 @@ describe('P23.11 slice 6 — dependency direction stays intact', () => {
 				}
 			}
 		};
-		walk(museumRoot);
+		for (const root of roots) walk(root);
 		expect(inspected).toBeGreaterThan(20);
 		expect(offenders).toEqual([]);
 	});

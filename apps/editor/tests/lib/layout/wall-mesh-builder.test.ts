@@ -9,9 +9,9 @@ import {
 	g1ProfileMatrixDocument,
 	g1RectangleRoom
 } from './__fixtures__/layout-g1-fixtures';
-import type { CompiledRoom, CompiledWall } from '$lib/layout/layout-geometry-types';
-import type { CurveSample } from '$lib/layout/layout-geometry-curve';
-import type { LayoutVec2 } from '$lib/layout/layout-types';
+import type { CompiledRoom, CompiledWall } from '@portfolio/layout-core';
+import type { CurveSample } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
 	compileRoom,
 	assertEdgeMultiplicity,

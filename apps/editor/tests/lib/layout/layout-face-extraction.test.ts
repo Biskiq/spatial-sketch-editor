@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import type { LayoutVec2 } from '$lib/layout/layout-types';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
 	extractBoundaryCandidateFaces,
 	faceArea,
 	polygonIntersectionArea,
 	type DerivedCandidateFace
-} from '$lib/layout/layout-face-extraction';
+} from '@portfolio/layout-core';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst
-} from '$lib/layout/layout-wall-first-codec';
+} from '@portfolio/layout-core';
 
 type WallSeed = {
 	id: string;

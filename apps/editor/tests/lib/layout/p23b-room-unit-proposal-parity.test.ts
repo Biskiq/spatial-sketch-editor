@@ -57,7 +57,7 @@ import {
 	type RoomUnitMoveSubgraph
 } from '@portfolio/layout-core';
 
-import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from '$lib/bench/p23b-fixtures';
+import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 
 /** Every differential here compiles 40-Wall documents; the default budget is far too small. */
 const DIFFERENTIAL_TIMEOUT_MS = 300_000;

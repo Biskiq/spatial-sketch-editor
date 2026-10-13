@@ -59,7 +59,7 @@ import {
 	type NodingIdAllocator,
 	type CurveSample
 } from '@portfolio/layout-core';
-import { buildStandaloneWallMesh as buildMuseumStandaloneWallMesh } from '../../../../museum/src/lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh as buildMuseumStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 import { buildStandaloneWallMesh as buildEditorStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
 
 const LINE = { kind: 'line' } as const;
@@ -955,21 +955,10 @@ describe('P23.11 fix 4 — Add Bend Point on a straight Wall', () => {
 		expect(wallOf(baseline, 'wall-a').centerline).toEqual({ kind: 'line' });
 	});
 
-	it('keeps the Inspector Add action visible without an existing bend point', () => {
-		const inspector = readFileSync(
-			resolve(process.cwd(), 'src/lib/editor/EditorInspector.svelte'),
-			'utf8'
-		);
-		// The Add button is NOT inside the `knots.length > 0` gate: a knot-less
-		// cubic chain and a straight Wall both keep a visible Add Bend Point.
-		const gateIndex = inspector.indexOf('{#if selectedWallFirstWallKnots.length > 0}');
-		const addIndex = inspector.indexOf('onclick={addSelectedWallCurveKnot}');
-		expect(gateIndex).toBeGreaterThan(-1);
-		expect(addIndex).toBeGreaterThan(-1);
-		const gateEnd = inspector.indexOf('{/if}', gateIndex);
-		expect(gateEnd).toBeGreaterThan(gateIndex);
-		expect(addIndex).toBeGreaterThan(gateEnd);
-	});
+	// PR #115 removed the editor Inspector (§5.1), so the "Add Bend Point stays
+	// visible without an existing knot" source pin went with it. The kernel half
+	// of the same guarantee — that a knot-less cubic chain still hosts a bend
+	// point — is asserted by the case below against the plan API directly.
 
 	it('uses the same canonical insertion authority as an existing curve', () => {
 		// A knot-less cubic chain (what deleting the last bend point leaves) still

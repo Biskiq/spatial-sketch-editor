@@ -17,18 +17,22 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+	PROTECTED_PROTOTYPE_SENTINEL,
+	REQUIRED_WALKED_DOCUMENTS,
 	REPO_ROOT,
 	anchorsOf,
 	extractReferences,
 	formatFindings,
 	ignoredPaths,
 	markdownFiles,
+	missingWalkedDocuments,
 	normalizeTarget,
 	resolveReference,
 	scanDocumentation,
 	scanHeadings,
 	scanSectionNumbering,
-	slugify
+	slugify,
+	walkedLocalSkills
 } from '../helpers/docs-references';
 
 describe('documentation references', () => {
@@ -38,9 +42,26 @@ describe('documentation references', () => {
 		expect(findings).toEqual([]);
 	});
 
-	it('walks a tree large enough for the gate to mean something', () => {
-		// A silent zero-file walk would make the assertion above vacuous.
-		expect(markdownFiles().length).toBeGreaterThan(100);
+	it('walks the documents the gate exists to protect', () => {
+		// A silent zero-file walk would make the assertion above vacuous, so the
+		// walk is held to named coverage rather than to a file count: the count
+		// measures the size of the tree, not the reach of the gate, and PR #115
+		// narrows the tree by design. The router, AGENTS, both design contracts,
+		// every operations root, `tests/README`, a protected-prototype specimen
+		// and local skills must all be reached.
+		const walked = markdownFiles();
+		expect(missingWalkedDocuments(walked)).toEqual([]);
+		expect(walkedLocalSkills(walked)).toBe(true);
+	});
+
+	it('fails when the walk silently returns nothing', () => {
+		// Sensitivity control: the coverage claim above is only meaningful if an
+		// empty (or truncated) walk fails it. This is the mutation that proves it.
+		expect(missingWalkedDocuments([])).toEqual([
+			...REQUIRED_WALKED_DOCUMENTS,
+			PROTECTED_PROTOTYPE_SENTINEL
+		]);
+		expect(walkedLocalSkills([])).toBe(false);
 	});
 
 	it('covers dot-directory documentation instead of blanket-skipping it', () => {

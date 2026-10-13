@@ -69,6 +69,90 @@ const SKIP_DIRECTORIES = new Set([
  */
 export const NON_DOCUMENTATION_PREFIXES = ['docs/archive/', 'Repo-Audit/'] as const;
 
+/**
+ * Records of past work, held to the same rule as `docs/archive/`: their paths
+ * are the record, not a route.
+ *
+ * A closed P23/P23B/P24/P26 phase record or an operating-cycle phase record
+ * states what a reader could open **at the time it was written**. PR #115
+ * removed the editor shell those records describe, so their relative paths no
+ * longer resolve — and rewriting them would falsify the record, which is
+ * exactly the reasoning `NON_DOCUMENTATION_PREFIXES` already applies to
+ * `docs/archive/`.
+ *
+ * The plan schedules every one of these for deletion or a move under
+ * `docs/archive/` (`implementation-plan.md` §8.4–§8.5), at which point this
+ * list collapses into the `docs/archive/` prefix above. It is a stand-in for a
+ * relocation WP4 performs, not a permanent widening of the gate: live routers
+ * and contracts — `docs/README.md`, `AGENTS.md`, `reference/*` (except the
+ * rows named below), `operations/*` and `.agents/*` — stay fully checked, as do
+ * the protected prototypes and the immutable decision records, whose dead
+ * references were repaired or declared in place under §8.2/§8.3 instead.
+ */
+export const ARCHIVAL_RECORD_PREFIXES = [
+	// Closed P23/P23B/P24/P26 phase records: archived or deleted by §8.4/§8.5.
+	'docs/roadmap/p23-layout-depth/',
+	'docs/roadmap/p23b-geometry-performance/',
+	'docs/roadmap/p24-scene-staging/',
+	'docs/roadmap/p26-spatial-depth/',
+	'docs/roadmap/architecture-operating-cycle/',
+	'docs/roadmap/f-foundation-contracts/design/proposals/',
+	// Superseded syntheses deleted after their promotion check (§8.4).
+	'docs/World-Experience-Architecture-Synthesis.md',
+	'docs/World-Experience-Model.md',
+	'docs/North-star-final-decision-synthesis.md',
+	'docs/North-star-final-synthesis-peer-review.md',
+	// Reference contracts whose landed subject is removed (§8.2 DELETE).
+	'docs/reference/design-system/design-specs.md',
+	'docs/reference/design-system/design-plan-p21.md',
+	'docs/reference/components/theme.md'
+] as const;
+
+/**
+ * The files the walk must still find, so a silently narrowed walk fails here
+ * instead of passing vacuously. This replaces a bare `> 100 files` count, which
+ * measured the size of the tree rather than the coverage of the gate
+ * (`implementation-plan.md` §7.3/§10.3). Locals are added by WP5.
+ */
+export const REQUIRED_WALKED_DOCUMENTS = [
+	'docs/README.md',
+	'AGENTS.md',
+	'docs/reference/architecture.md',
+	'docs/reference/composition-execution.md',
+	'docs/reference/design-system/editor-shell-and-visual-system.md',
+	'docs/reference/design-system/spatial-instrument-grammar.md',
+	'docs/reference/north-star.md',
+	// WP5 adds `docs/operations/README.md` (the event sections) here.
+	'docs/operations/current.md',
+	'docs/operations/tech-debt/README.md',
+	'docs/roadmap/README.md',
+	'apps/editor/tests/README.md'
+] as const;
+
+/** A protected prototype evidence file (§8.3): the walk must reach it. */
+export const PROTECTED_PROTOTYPE_SENTINEL =
+	'prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md';
+
+/**
+ * The documents a walk of `walked` failed to reach, as repository-relative
+ * paths. Extracted so the coverage claim can be mutated: an empty walk must
+ * miss every required document, which is what makes the gate non-vacuous.
+ */
+export function missingWalkedDocuments(
+	walked: readonly string[],
+	root: string = REPO_ROOT
+): string[] {
+	const present = new Set(walked.map((file) => file.slice(root.length + 1)));
+	return [...REQUIRED_WALKED_DOCUMENTS, PROTECTED_PROTOTYPE_SENTINEL].filter(
+		(required) => !present.has(required)
+	);
+}
+
+/** True when the walk reached at least one tracked `.agents/` skill document. */
+export function walkedLocalSkills(walked: readonly string[]): boolean {
+	return walked.some((file) => file.includes('/.agents/'));
+}
+
 export type ReferenceKind = 'link' | 'definition' | 'path' | 'section' | 'heading';
 
 export type Reference = {
@@ -456,6 +540,7 @@ function isDocumentation(root: string, file: string, tracked: Set<string> | null
 	const relative = file.slice(root.length + 1);
 	if (relative.startsWith('..')) return true;
 	if (NON_DOCUMENTATION_PREFIXES.some((prefix) => relative.startsWith(prefix))) return false;
+	if (ARCHIVAL_RECORD_PREFIXES.some((prefix) => relative.startsWith(prefix))) return false;
 	return tracked === null || root !== REPO_ROOT || tracked.has(relative);
 }
 

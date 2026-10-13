@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { createProjectId } from '$lib/editor/project-persistence';
+	import { createProjectId } from '$lib/platform/project-persistence';
 
 	onMount(() => {
 		void goto(`/project/${encodeURIComponent(createProjectId())}/spatial`, { replaceState: true });

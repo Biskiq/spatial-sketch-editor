@@ -4,8 +4,8 @@
 	import { T } from '@threlte/core';
 	import type { RuntimeScene } from '$lib/content/scene';
 	import type { NavigationGraph } from '@portfolio/project-model';
-	import type { CompiledLayoutGeometry } from '$lib/layout/layout-geometry-types';
-	import type { LayoutRoomRegistry } from '$lib/project/project-layout-semantics';
+	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
+	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import {
 		createVisitorRuntimeState,
 		visitorStartNodeId

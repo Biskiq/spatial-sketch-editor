@@ -108,6 +108,14 @@ Class vocabulary and rule semantics come from the plan §5.1 disposition registe
 
 ### 2.1 Per-file source manifest
 
+> **Reading the "New / frozen path" column after §6.4.** The 28 `ISOLATE FOR LEGACY` rows and
+> every other row whose destination reads `legacy/chopin-museum/…` name where WP1 **did**
+> byte-copy the file. Those destinations are now **external to this repository** (§6.4): the
+> column is the provenance record of the freeze, not a live path, and no product file may
+> point at it again. The same applies to the `§3.5 apps/museum superseded by
+> legacy/chopin-museum` rule label. Where a row's destination is a product path, it is a live
+> WP2 target.
+
 | Old path | Class | New / frozen path | Rule | Blob |
 | --- | --- | --- | --- | --- |
 | `apps/editor/assets-source/licenses/chandelier.md` | RETAIN AS FOUNDATION | — | §5.2 asset pipeline/provenance retained | `70806e1aa17c` |
@@ -1860,11 +1868,19 @@ EVIDENCE-PATHS: end
 
 ## 6. WP1 — standalone frozen project (Checkpoint A)
 
+> **Status of this section.** WP1 produced the frozen project inside this repository and
+> verified it at Checkpoint A. The owner then **moved the folder out of the repository**
+> (commit `26ecb97b`, see §6.4). Everything in §6.1–§6.3 is the record of that completed,
+> owner-verified work. It is a **historical record, not a live path**: no `legacy/` folder
+> exists in the tree now, and the commands in §6.2 cannot be re-run from this repository.
+> Section §6.5 states the recovery evidence and the verification limitation that WP2 and
+> every later work package must carry.
+
 ### 6.1 What was produced
 
-The frozen project is [`legacy/chopin-museum/`](../../../legacy/chopin-museum/README.md) — one
-self-contained folder outside the root workspaces (`apps/*`, `packages/*`), deletable with
-`rm -rf legacy/chopin-museum`.
+The frozen project was `legacy/chopin-museum/` — one self-contained folder outside the root
+workspaces (`apps/*`, `packages/*`), deletable with `rm -rf legacy/chopin-museum`. It was
+committed at `66d23520` with **385** tracked files and has since been externalized (§6.4).
 
 | Component | Files | Source |
 | --- | ---: | --- |
@@ -1878,9 +1894,9 @@ self-contained folder outside the root workspaces (`apps/*`, `packages/*`), dele
 
 - `kit.alias` maps the three `@portfolio/*` kernel specifiers onto the in-folder snapshot,
   so every frozen **source** file is byte-identical to the baseline.
-- [`FREEZE.json`](../../../legacy/chopin-museum/FREEZE.json) records the baseline SHA, **375**
-  per-file `{baselinePath, frozenPath, sha256}` rows, and **10** new/adapted files with reasons
-  (manifest, configs, `.gitignore`, README, freeze test, lockfile).
+- `legacy/chopin-museum/FREEZE.json` (recoverable at `66d23520`) recorded the baseline SHA,
+  **375** per-file `{baselinePath, frozenPath, sha256}` rows, and **10** new/adapted files with
+  reasons (manifest, configs, `.gitignore`, README, freeze test, lockfile).
 - The category B tests are relocated with their relative layout preserved
   (`tests/lib/**`), so their `$lib`/`@portfolio`/`../../../../vite` import roots resolve
   unchanged.
@@ -1892,7 +1908,8 @@ self-contained folder outside the root workspaces (`apps/*`, `packages/*`), dele
 
 ### 6.2 Checkpoint A verification
 
-All commands run inside `legacy/chopin-museum/`:
+All commands ran inside `legacy/chopin-museum/` **while the folder was in this repository**
+(at `66d23520`). They passed then; they are not re-run by any later work package.
 
 | Command | Result |
 | --- | --- |
@@ -1924,4 +1941,216 @@ hand; they are covered by the relocated `relic-smoke` assertions.
   It never reads the folder, so it passes unchanged once the folder is deleted.
 - The product is otherwise untouched: the only product changes in this checkpoint are the
   isolation test and its `test-lanes.ts` entry.
-- **Rollback:** delete the folder.
+- **Rollback:** delete the folder — which is exactly what the owner later executed (§6.4).
+
+### 6.4 Externalization (owner decision, executed)
+
+The owner verified Checkpoint A and then removed the frozen project from this repository,
+keeping it as an externally hosted, separately versioned project. The plan records this as
+§3.7.
+
+| Step | Commit | State |
+| --- | --- | --- |
+| WP0 baseline record and manifests | `4a98760b` | product unchanged |
+| WP1 frozen project created and verified (Checkpoint A) | `66d23520` | `legacy/chopin-museum/` present, 385 tracked files |
+| Owner externalizes the frozen project | `26ecb97b` | folder absent; **no product file changed** |
+
+- The removal is a pure deletion of the folder. It touched no product source, script, lane,
+alias, workspace glob or lockfile entry, because the folder was never one — this is the
+independence the frozen project was built for (§3.3, §3.4).
+- **No reintroduction.** Nothing in #115 recreates `legacy/`, restores frozen files, or adds
+  any product dependency on the external project. `apps/museum` stays retired per §5.1; the
+  externalization does not revive it.
+- **Category B tests.** The seven `RELOCATE` rows (plus the split `visitor-import-boundary`)
+  were moved into the folder's own `tests/` at WP1 and left with it. Their product-side
+  originals are deleted in WP2 like any other subject whose home is the frozen project; they
+  are not relocated a second time and no in-repo successor is fabricated. This is the state
+  §7.2 records.
+
+### 6.5 Preservation evidence and verification limitation
+
+**Recovery (preservation is not dropped).**
+
+- Any frozen file, byte-exactly: `git show 66d23520:legacy/chopin-museum/<path>`.
+- The pre-WP1 original of any product file: `git show e90a58224443bdbf44114d7285d55c983b79cc84:<path>`.
+- `FREEZE.json`: `git show 66d23520:legacy/chopin-museum/FREEZE.json` — 375 plain-sha256 rows
+  tying each frozen file to its baseline path and hash.
+- The frozen contract (routes, behaviour, no-forced-modernization rule, deployment guidance)
+  is recorded in §6.1–§6.3 and in the external project's own README at `66d23520`.
+
+**Limitation, stated plainly.** The §6.2 commands (`npm ci`, `npm test`, `npm run check`,
+`npm run build`), the §6.2 browser check, and the frozen-project acceptance steps in the
+plan's §7.4 **cannot be executed from this repository** after `26ecb97b`. They are recorded
+as **owner-verified WP1 evidence**, not as a check WP2 or any later work package ran. No
+work package after this one may claim a frozen-project test passed.
+
+**What remains executable, and required.** The repository-side property the freeze existed to
+buy: no product file imports, aliases or references `legacy/`, and the arch gate that asserts
+it (`tests/lib/legacy-isolation.test.ts`) stays green. That is enforced for every later
+checkpoint.
+
+## 7. WP2 — new-product prune (Checkpoint B)
+
+> **Status.** Executed on the `codex/pr115-architecture-plan` branch against the
+> externalized frozen project (§6.4). Every §7.4 product gate below was run on a tree that
+> does not contain `legacy/`, which is the §3.4-rule-4 deletion proof in its stronger,
+> permanent form.
+
+### 7.1 Change set
+
+| Measure | Count |
+| --- | ---: |
+| Files deleted | **700** |
+| Files renamed/relocated (with the rename tracked) | **28** |
+| Files modified in place | **87** |
+| Test files deleted | **268** |
+| Test files remaining and passing | **106** |
+| Tests remaining and passing | **1516** |
+| `package-lock.json` | **111 deletions, 0 additions** (removal-only, §5.2) |
+
+Deletions by area (largest first):
+
+| Area | Deleted |
+| --- | ---: |
+| `apps/editor/tests/lib/**` (categories C/D) | 280 |
+| `apps/museum/**` (retired, §3.5) | 78 |
+| `apps/editor/src/lib/editor/layout/**` | 52 |
+| `apps/editor/src/lib/layout/**` (31 facades + presentation) | 33 |
+| `apps/editor/src/lib/editor/{camera,store,app,gizmo,context-menu,hierarchy,camera-plan,helpers,hooks,fields}` | 113 |
+| `apps/editor/src/lib/museum/**` (Chopin-specific) | 23 |
+| `apps/editor/src/lib/bench/**` | 17 |
+| `apps/editor/src/lib/content/**` (Chopin project + codec facades) | 10 |
+| `apps/editor/src/lib/editor/styles/**` (tokens, CSS) | 7 |
+| `apps/editor/src/routes/**` (`museum/**`, `dev/perf*`, `preview`, `publish`) | 12 |
+| `packages/{scroll-travel,note-cursor,portfolio-hud,portfolio-content,audio-plink}` | 17 |
+| The editor's `museum-editor-entry-plugin.ts` and `vitest.perf.config.ts` | 2 |
+
+### 7.2 Retained foundation (the §4.1 tree, verified)
+
+- `src/lib/{content,museum,render,layout,types,project,visitor,platform,authoring}` plus
+  `vite/{preview-surface-boundary-plugin,preview-surface-dynamic-scan,public-surface-boundary-plugin}`.
+- `src/lib/layout/` is exactly `wall-mesh-builder.ts` (the facades are gone); the generic
+  renderer, `texture-cache`, `wall-geometry-adapter` and the visitor runtime are intact.
+- `src/lib/authoring/` holds exactly the §4.3 modules: `camera/` (9), `scene/` (6),
+  `layout/` (4), `a11y/roving-focus.ts`.
+- Routes are `/`, `/projects`, `/editor`, `/project/:id/spatial` (foundation-reset notice),
+  `/p/:publicationId` and `dev/{assets,materials}`.
+- `packages/`: `layout-core`, `project-model`, `camera-core`, `tsconfig` only.
+- `apps/api` unchanged.
+
+**`dev/{assets,materials}` retained.** §4.1 makes retention conditional on the WP2 closure
+being a subset of the foundation. Both routes import only retained modules
+(`$lib/content/{assets,materials}`, `$lib/museum/{assets/AssetModel,materials/MaterialPreviewItem}`,
+`$lib/types/*`), and the `/dev/perf*` routes — whose closure was the removed bench tree — are
+deleted. No rework was performed.
+
+### 7.3 §7.4 gates — all green
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Architecture lane | `npm run test:arch` | **pass** — 13 files, 101 tests |
+| Full suite | `npm test` | **pass** — 106 files, 1516 tests, 0 skipped |
+| Type check | `npm run check` | **pass** — 0 errors, 0 warnings |
+| Build | `npm run build` | **pass** — adapter-vercel |
+| Kernel packages | `npm run check:layout-core && check:project-model && check:camera-core` | **pass** — 0 errors each |
+| API check | `npm run check:api` | **pass** — 0 errors |
+| API tests | `npm run test:api` | **pass** — 10/10 and 6/6, **0 skipped**, DB-backed cases ran against a reachable Postgres |
+| Whitespace | `git diff HEAD --check` | **pass** |
+
+The §7.5 zero-skip requirement is satisfied for WP3 in this environment: `publication.test.mjs`
+and `test-auth.test.mjs` ran their real-Postgres cases rather than skipping. WP3 must re-record
+this at Checkpoint C; it is not inherited.
+
+### 7.4 Test disposition — deletions match removed subjects
+
+- **Category A/A′/A″ kept.** Kernel suites call `@portfolio/layout-core` directly. The three
+  A″ fixture generators moved byte-identically (`R100`) from `lib/bench/` to
+  `tests/lib/layout/__fixtures__/`: `p23b-fixtures.ts`, `p2311-bend-fixtures.ts`,
+  `p23b11-connected-case.ts`. Their measurement, observation-count, budget and ratchet
+  assertions were deleted with the harness (`p23b-room-unit-proposal-cost` and
+  `p23b-fixtures-contract` keep only their structural/correctness premises).
+- **Category D extractions landed.** The entangled layout suites and `project-format-*` keep
+  their kernel assertions with identical expectations and drop the editor-wiring half. A bug
+  introduced while re-pointing fixture imports (a literal `$1` placeholder) was found and
+  repaired across every affected file.
+- **Category C deletions.** 268 test files removed with their subjects, plus these cases inside
+  surviving files, each because its only subject is deleted:
+  - `layout-render-safe-validation`: the `apps/museum` byte-identity case and the museum source
+    walk (the fork is retired);
+  - `layout-curve-regressions`: the `EditorInspector.svelte` "Add Bend Point" source pin
+    (its kernel half is asserted by the case that follows it);
+  - `layout-openings`: the `buildPlanRenderModel` "renders one Opening primitive" case;
+  - `layout-presets`: the render-model equality half of the compile-equality case;
+  - `layout-wall-selection`: the highlight/hover/LOD *rendering* describes.
+- **Whole files deleted for the same reason** (their only subject was a deleted module):
+  `p23b-measurement-marks-wiring`, `p23b5-gesture-scope-wiring` (both source contracts on the
+  removed `LayoutPlanViewport.svelte`), `tests/helpers/plan-render-harness.ts`.
+- **No skip, no `todo`, no expected-failure marker was added anywhere.**
+
+### 7.5 Deliberate deviations, with reasons
+
+1. **`plan-control-grammar.ts` (§5.1 REMOVE) — its one retained type moved.** The retained
+   resolver `authoring/layout/plan-hit.ts` takes a `PlanControlAuthority` in its public
+   signature, so deleting the module outright would have broken a §4.3 module. The type moved
+   into `plan-hit.ts` and the presentation half (mark shapes, acquisition radii, tiers) was
+   deleted with it. No new semantics were designed.
+2. **Archived records are exempt from link resolution until WP4 relocates them.** #115 removes
+   the files that closed P23/P23B/P24/P26 phase records describe, so ~110 written paths in
+   those records stopped resolving. Rewriting them would falsify the record, which is the rule
+   `NON_DOCUMENTATION_PREFIXES` already applies to `docs/archive/`. `ARCHIVAL_RECORD_PREFIXES`
+   in `tests/helpers/docs-references.ts` applies that same rule to the trees §8.4/§8.5 deletes
+   or moves under `docs/archive/`; **WP4 removes the entries as it performs those moves**, so
+   no new exclusion survives #115. The alternative — editing ~38 historical records now —
+   would also break §8.3's before/after hash discipline.
+3. **The arbitrary `> 100 Markdown files` walk assertion was replaced by semantic
+   non-vacuity**, exactly as §7.3/§10.3 prescribe. The walk must now reach the router, AGENTS,
+   both design contracts, the operations root, `tests/README`, a protected-prototype specimen
+   and local skills, and an empty-walk mutation must fail. WP5 adds the track roadmaps and
+   the operations root README to the required set when it creates them.
+4. **Dead references were repaired in the documents that retain their subject**:
+   `docs/README.md`, `docs/reference/components/{assets,scene-codec}.md`,
+   `docs/operations/tech-debt/README.md`, `tests/README.md` and this plan; the decision
+   record's dead link became labeled `git show <baseline>:<path>` provenance per §8.2; the
+   protected prototypes' dead paths were declared with `EVIDENCE-PATHS` regions per §8.3.
+5. **Boundary suites were re-pointed rather than gutted where the invariant survives**:
+   `wall-mesh-shell-boundary` now pins `VisitorLayoutShell.svelte` (the Chopin shell's
+   `LayoutWallFailure`/`LayoutPhysicalWall` tokens became this file's
+   `VisitorWallFailure:`/`VisitorPhysicalWall:` names); `camera-core-boundary` pins the
+   product visitor/raster layer instead of the retired `apps/museum` fork and drops the
+   editor-navigation-graph half with its subject; `project-model-boundary` asserts the
+   facades' removal instead of their re-export shape; `layout-geometry-boundary` drops the
+   editor/Chopin consumer rows and keeps the compiler, uniqueness and `$lib/layout` sweeps.
+6. **Heavy lane environment removed with P23B.6.** `test:heavy` no longer sets
+   `--expose-gc P23B6_REQUIRE_GC=1`; the forced-GC H-6 cases left with the bench tree.
+7. **`tests/lib/editor/layout/p23b7-svelte-internal-client.d.ts` relocated** to
+   `tests/lib/layout/svelte-internal-client.d.ts` rather than deleted: its consumer
+   `p23b8-d5-identity-falsifier.test.ts` survives, and deleting it broke `npm run check`.
+
+### 7.6 Frozen-project preservation
+
+- `legacy/` is absent from the tree; nothing in #115 recreated, restored or referenced it
+  (§6.4, §6.5). Every §7.4 gate above ran against a tree without it.
+- The recovery path is unchanged and verified: `git show 66d23520:legacy/chopin-museum/<path>`,
+  the `FREEZE.json` rows, and the baseline `e90a58224443bdbf44114d7285d55c983b79cc84`.
+- **No frozen-project test was run or claimed.** Checkpoint A remains owner-verified WP1
+  evidence with its stated limitation. The only frozen-project property exercised here is the
+  standing repository-side one: `tests/lib/legacy-isolation.test.ts` is green (2 tests) in the
+  arch lane.
+
+### 7.7 Intentional loss (recorded, never a failing test)
+
+Unchanged from §4.4. After WP2 the new product cannot author, edit, view in Plan or 3D, place,
+light, apply materials, direct Camera, preview, publish, import or export a project, or run
+benchmarks. The landed editor shell, its token/theme layer, the Plan presentation model and
+the bench/PERF infrastructure are removed rather than dormant; they remain recoverable at the
+baseline SHA. TD-1 and TD-2 close as *implementation removed*, TD-4/TD-5 retire with the
+benchmark — never "fixed".
+
+### 7.8 WP3 readiness
+
+**Ready.** Checkpoint B is met: the §7.4 gates are green, visitor/public and `legacy/`
+isolation are green, every deleted test is category C with its subject gone or has a recorded
+extraction, every category B file is recorded as relocated-at-WP1 (§6.4), and the external
+frozen project was neither modified nor reintroduced. §7.5's DB requirement is satisfiable in
+this environment (zero skips observed), which is WP3's precondition rather than its result.
+WP3 may be authorized; it has not been started.

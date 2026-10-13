@@ -17,10 +17,10 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS
-} from '$lib/bench/p23b-fixtures';
-import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
+} from './__fixtures__/p23b-fixtures';
+import { p2311Fixture, P2311_FIXTURES } from './__fixtures__/p2311-bend-fixtures';
 import { collectFixtureDigests, sha } from './p23b4-observation-collector';
-import { OBSERVED_REFERENCE, PLANNER_WORK_EXPECTATION, PLANNER_WORK_REDUCED_FIXTURES } from './p23b4-observed-reference';
+import { OBSERVED_REFERENCE } from './p23b4-observed-reference';
 import { buildWildRoomFixture, buildWildSharedFixture } from './p23b4-wild-fixtures';
 
 /**
@@ -38,10 +38,12 @@ import { buildWildRoomFixture, buildWildSharedFixture } from './p23b4-wild-fixtu
  * - faceConsumed: the EXACT arrays the polygon builder consumed per half-edge.
  * - kernelCalls: kernel outputs incl. the compile direct paths that bypass the seam.
  * - plannerVerdict + planner consumed arrays: the REAL acceptance planner's semantic
- *   outcome per fixture (history). Planner CALL MULTIPLICITY is explicitly NOT
- *   history: the real chain shares derivations (M-1), so its wallCalls/kernelCalls
- *   differ from pre-opt on 16/20 fixtures by design — pinned separately in
- *   PLANNER_WORK_EXPECTATION (HEAD-derived work-reduction expectation).
+ *   outcome per fixture (history).
+ *
+ * PR #115 (§7.2 category A″) deleted the observation-count half: planner call
+ * multiplicity (wallCalls/kernelCalls) measured work rather than output, and the
+ * PERF/P23B measurement apparatus went with the editor shell. The output and
+ * verdict equalities below are the assertions this file exists to keep.
  */
 
 function observationFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> {
@@ -95,31 +97,7 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 			expect(live.planner.gateWalls, `${id} planner consumed arrays`).toBe(expected!.planner.gateWalls);
 			expect(live.planner.faceConsumed, `${id} planner face arrays`).toBe(expected!.planner.faceConsumed);
 			expect(live.plannerVerdict, `${id} planner verdict`).toBe(expected!.plannerVerdict);
-			// …while call multiplicity is the intended M-1 work reduction, asserted
-			// separately below (NOT part of the historical equality).
-		}
-	});
-
-	it('pins the intended planner work reduction separately from history', () => {
-		for (const { id, document } of observationFixtures()) {
-			const live = collectFixtureDigests(document);
-			const work = PLANNER_WORK_EXPECTATION[id];
-			expect(work, `missing work expectation for ${id}`).toBeDefined();
-			expect(live.planner.wallCalls, `${id} planner seam multiplicity`).toBe(work!.wallCalls);
-			expect(live.planner.kernelCalls, `${id} planner kernel multiplicity`).toBe(work!.kernelCalls);
-			const reduced = (PLANNER_WORK_REDUCED_FIXTURES as readonly string[]).includes(id);
-			const preOpt = OBSERVED_REFERENCE[id]!.planner;
-			if (reduced) {
-				// Intended reduction: at least one multiplicity digest differs from pre-opt.
-				expect(
-					live.planner.wallCalls !== preOpt.wallCalls || live.planner.kernelCalls !== preOpt.kernelCalls,
-					`${id} reduction visible vs pre-opt`
-				).toBe(true);
-			} else {
-				// Early-reject fixtures do no chain sampling work either way.
-				expect(live.planner.wallCalls, `${id} unreduced seam`).toBe(preOpt.wallCalls);
-				expect(live.planner.kernelCalls, `${id} unreduced kernel`).toBe(preOpt.kernelCalls);
-			}
+			// Call multiplicity is NOT asserted: it measured work, not output (§7.2 A″).
 		}
 	});
 

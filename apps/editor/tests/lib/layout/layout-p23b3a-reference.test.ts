@@ -87,10 +87,9 @@ import {
 	type LayoutWallCurveKnot,
 	type LayoutWallFirstRoom
 } from '@portfolio/layout-core';
-import {
-	createEmptyLayoutPreviewState,
-	importLayoutPreviewJson
-} from '$lib/editor/layout/layout-preview-state.svelte';
+// PR #115 removed the editor preview state. Ingestion is the codec alone now:
+// the assertions below round-trip through `serializeWallFirstLayoutDocument`
+// and the codec's own validator instead of the deleted preview importer.
 
 // ---------------------------------------------------------------------------
 // Case → flip-step register (the reference freeze's own map)
@@ -930,12 +929,9 @@ describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was
 		expect(validateWallFirstLayoutDocument(ISOLATED_ROOM_WITH_CURVE_CROSSING).success).toBe(
 			true
 		);
-		const preview = createEmptyLayoutPreviewState();
+		const serialized = serializeWallFirstLayoutDocument(ISOLATED_ROOM_WITH_CURVE_CROSSING);
 		expect(
-			importLayoutPreviewJson(
-				preview,
-				serializeWallFirstLayoutDocument(ISOLATED_ROOM_WITH_CURVE_CROSSING)
-			)
+			validateWallFirstLayoutDocument(JSON.parse(serialized) as LayoutDocumentWallFirst).success
 		).toBe(true);
 		// Same document, same moment: the topology authority refuses it, and it is the
 		// ONLY authority that does.
@@ -1362,15 +1358,13 @@ describe('P23B.3a S1 — reference verdicts the policy must NOT move (T6–T8, T
 		// left for the two to disagree about — the document the batch admitted is one
 		// the canonical validator accepts.
 		expect(validateWallFirstTopology(admitted.document)).toBeUndefined();
-		const preview = createEmptyLayoutPreviewState();
-		const imported = importLayoutPreviewJson(
-			preview,
-			serializeWallFirstLayoutDocument(admitted.document)
-		);
+		const serialized = serializeWallFirstLayoutDocument(admitted.document);
 		// Ingestion is already permissive because the codec carries no topology rule.
 		// Post-policy it stays permissive for the SAME document (F6), so this is not a
 		// transition: the codec is untouched by S7 and the ingress verdict does not move.
-		expect(imported).toBe(true);
+		expect(
+			validateWallFirstLayoutDocument(JSON.parse(serialized) as LayoutDocumentWallFirst).success
+		).toBe(true);
 	});
 
 	it('keeps the reference fixtures schema-valid so a later failure is a verdict change, not a fixture drift', () => {

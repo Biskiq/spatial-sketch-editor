@@ -1,7 +1,8 @@
 # Tests — `apps/editor/tests/`
 
-All Vitest suites live here, mirrored to `src/lib/`. A test for `src/lib/editor/editor-selection.ts`
-sits at `tests/lib/editor/editor-selection.test.ts`. **No `.test.ts` files live under `src/`.**
+All Vitest suites live here, mirrored to `src/lib/`. A test for
+`src/lib/layout/wall-mesh-builder.ts` sits at
+`tests/lib/layout/wall-mesh-builder.test.ts`. **No `.test.ts` files live under `src/`.**
 
 ## Start here (startup verification summary)
 
@@ -9,8 +10,10 @@ Repository-level verification applies regardless of task scope: implement the
 slice, then run the contract below — task scope never narrows required
 verification (AGENTS.md rule 11). Major lanes: `test:fast` (inner loop),
 `test:arch` (ownership/isolation boundaries, always before a PR, never
-path-gated), `test:heavy` (dense correctness/stress), `test:perf` (timing
-gates). Read lane internals ([Lanes](#lanes), [Running](#running)) when the
+path-gated), `test:heavy` (dense correctness/stress). PR #115 removed the PERF
+lane with its configuration: the bench harness, the `/dev/perf*` routes and the
+`bench:record`/`reuse:record` scripts are gone, and the two former PERF-lane
+files that asserted kernel correctness run in the default suite. Read lane internals ([Lanes](#lanes), [Running](#running)) when the
 implementation or verification task actually needs that lane — not before the
 first edit. Test-design authority for adding/replacing tests:
 [Test design rules](#test-design-rules).
@@ -18,13 +21,13 @@ first edit. Test-design authority for adding/replacing tests:
 ## Import rules
 
 1. **Import source modules via `$lib` aliases, never relative paths.** Tests are
-   location-independent by design: `import { editorSelection } from '$lib/editor/editor-selection'`.
-   The `$lib` alias is configured in `vitest.config.ts` and in the SvelteKit-generated
+   location-independent by design: `import { createTextureVerifier } from '$lib/platform/texture-verifier'`.
+   The `$lib` alias is configured in `vitest.shared.ts` and in the SvelteKit-generated
    tsconfig (inherited by `svelte-check`), so tests typecheck in place.
 2. **Relative imports are reserved for sibling test helpers and fixtures** that move
-   together with the test (e.g. `./__fixtures__/layout-g1-fixtures`).
+   together with the test (e.g. `./__fixtures__/p23b-fixtures`).
 3. No extension on imports: `allowImportingTsExtensions` is off, so
-   `'$lib/editor/editor-selection'` not `'$lib/editor/editor-selection.ts'`.
+   `'$lib/platform/texture-verifier'` not `'$lib/platform/texture-verifier.ts'`.
 
 ## Test design rules
 
@@ -61,9 +64,9 @@ not needed to contribute a normal test.
    duplicate system, visitor/editor isolation, and source-level composition
    boundaries where no executable harness exists.
 7. **One parser per grammar.** When several tests must interpret the same
-   source/import grammar, share one extractor/predicate
-   (`museum/visitor-import-boundary` is the reference) instead of parallel
-   regexes — two patterns for one invariant means two holes.
+   source/import grammar, share one extractor/predicate (`tests/helpers/lib-source.ts`
+   for source reads, `tests/helpers/docs-references.ts` for Markdown) instead of
+   parallel regexes — two patterns for one invariant means two holes.
 
 ### Lanes
 
@@ -71,19 +74,12 @@ not needed to contribute a normal test.
 9. `test:arch` owns unconditional architecture/ownership/isolation boundaries. It
    runs whole before a PR and is **never path-gated**.
 10. `test:heavy` owns dense correctness/property/stress work.
-11. `test:perf` owns timing/budget gates and never substitutes for functional
-    correctness coverage. P23B fixture identity, browser-report and
-    instrumentation-disabled contracts live in this lane. **Timing is asserted
-    RELATIVELY, never as a wall-clock floor.** A number that can pass or fail on
-    machine noise alone is not a gate: a check that needs a floor asserts a
-    relative fact on identical input (the P23.11 precedent — the broad phase must
-    beat the quadratic enumeration by a wide margin), and every absolute duration
-    is REPORTED (p50/p95 with warm-up, samples and provenance) and left advisory.
-    The enforceable set stays the deterministic metrics (`compiled-memory`,
-    `cache-key-code-units`, `svg-node-count`, `three-*-estimate`) plus the
-    committed reuse ratchet; a timing threshold becomes enforceable only through
-    an owner ratification, and a red deterministic metric is never answered by
-    re-recording the baseline.
+11. **No timing gate lives in this suite after #115.** The PERF lane, the P23B
+    browser baseline/ratchet contracts and their recorders were removed with
+    `lib/bench/**`. Timing is only ever asserted *relatively* on identical input,
+    never as a wall-clock floor, and a measurement harness returns only if an
+    owner ratifies one — a number that can pass or fail on machine noise alone is
+    not a gate.
 12. **Split, do not cut.** Moving expensive work to `heavy` keeps cheap
     representative behavior in `fast`.
 13. **Draw the boundary around the expensive `it`s**, not automatically around a
@@ -109,29 +105,24 @@ not needed to contribute a normal test.
 | Test-only helpers (`editor-test-utils.ts`, `layout-a1-fixtures.ts`) | `tests/lib/...` next to their consumers |
 | A repo-wide check with no `src/` counterpart (documentation cross-references) | `tests/helpers/docs-references.ts` + `tests/docs/` |
 | Fixtures (`__fixtures__/` dirs with `.ts` + `.json`) | `tests/lib/.../__fixtures__/` |
-| Modules imported by both tests **and** `src/` | stay in `src/lib/` (e.g. `bench-types.ts`, `plan-bench.ts` — used by the dev perf route) |
+| Modules imported by both tests **and** `src/` | stay in `src/lib/` |
 
 If a helper starts being imported from `src/`, move it back to `src/lib/` and flip the
 imports back to `$lib`.
 
 ## Caveats
 
-- **Boundary tests walk `src/` via `import.meta.url`** (`bench-boundary`,
-  `plan-render-boundary`, `layout-geometry-boundary`, `camera-core-boundary`,
-  `wall-mesh-shell-boundary`, `visitor-import-boundary`, `project-model-boundary`,
-  `editor-store-bind-migration`). They compute roots as
+- **Boundary tests walk `src/` via `import.meta.url`**
+  (`layout-geometry-boundary`, `camera-core-boundary`, `wall-mesh-shell-boundary`,
+  `project-model-boundary`, the `visitor/*` isolation suites and
+  `legacy-isolation`). They compute roots as
   `resolve(import.meta.url, '../../../src')` — update them if `tests/` moves.
   The `$lib/layout` renderer-free sweep lives in `layout-geometry-boundary`; the
   wall-mesh shell/import boundary is owned by `wall-mesh-shell-boundary`, so
   `wall-mesh-builder` is a behavioral file and walks no source.
-- **The dev perf route** (`src/routes/dev/perf/+page.svelte`) imports scale fixtures
-  from here via a relative path. Keep that in sync if fixtures move.
 - **No `__`-prefixed QA plates in the tree.** A `__qa-*` plate runs inside the
   suite via the vitest `include` pattern and writes into the tree — keep QA
   fixtures outside matched paths.
-- **A drawing gesture on Plan needs `setPointerCapture` stubbed** for synthetic
-  pointers. That is the only platform call QA stubs; no app gesture logic is
-  touched by it.
 - **The documentation gate reads the repository root, not `src/`.**
   `tests/helpers/docs-references.ts` derives the root from `import.meta.url` like
   the other boundary helpers, and intersects its walk with `git ls-files` so an
@@ -141,13 +132,13 @@ imports back to `$lib`.
   placeholder accounts for a declared range), and a heading glued to the rule
   above it (`---# 7. Core color system`) is reported directly, because Markdown
   renders it as prose and the section disappears.
-- **Keyboard/traversal contracts that slice Svelte source are shape pins.**
-  `plan-keyboard-navigation` slices `LayoutPlanViewport.svelte` and asserts text —
-  it passed while the announcement missed required value+units. The pure halves
-  now have direct tests (`plan-keyboard-readout`, `plan-keyboard-session`), but
-  that slice cannot fail if the viewport simply stops calling them: drive the
-  path live (or assert the composed string) before trusting refactors that
-  rename/reorder those handlers.
+- **Records are not held to link resolution.** `docs/archive/` and `Repo-Audit/`
+  are excluded by prefix, and `ARCHIVAL_RECORD_PREFIXES` covers the closed phase
+  records, superseded syntheses, immutable decision records and protected
+  prototype evidence whose paths record what was open when they were written.
+  #115 removed the editor shell those records describe; the plan deletes or
+  relocates them (`implementation-plan.md` §8.3–§8.5), at which point the list
+  collapses into the `docs/archive/` prefix.
 
 ## Running
 
@@ -164,17 +155,14 @@ lives in `apps/editor/test-lanes.ts`; the scripts are in
 `apps/editor/package.json`:
 
 ```bash
-npm run test:fast    # inner loop: everything EXCEPT arch + heavy + perf
+npm run test:fast    # inner loop: everything EXCEPT arch + heavy
 npm run test:arch    # durable architecture boundaries (always run before a PR)
 npm run test:heavy   # expensive correctness/property/stress work
-npm run test:perf    # timing/budget gates
 npm run test:full    # the same effective suite as `npm test`
 ```
 
-The heavy lane sets `--expose-gc` and `P23B6_REQUIRE_GC=1`; P23B.6 H-6 lives
-in this lane and fails collection if the required `globalThis.gc` hook is absent.
-The regular full suite may skip the forced-GC H-6 cases when run without that
-environment.
+Membership is a curated list in `test-lanes.ts`, so `test:fast` excludes exactly
+those files and infers nothing from a filename or a file's size.
 
 The arch lane also carries one **repo-wide documentation gate**
 (`tests/docs/documentation-references.test.ts`): every Markdown document the
@@ -188,53 +176,11 @@ documentation:
 cd apps/editor && npx vitest run --config vitest.arch.config.ts tests/docs
 ```
 
-`docs/archive/` (history, whose relative paths record the layouts of their time)
-and `Repo-Audit/` (captured audit logs written against another checkout) are
-excluded by name — `NON_DOCUMENTATION_PREFIXES` in
-`tests/helpers/docs-references.ts`, which is the one place that decides coverage.
-A path `git check-ignore` reports is left alone too, so a document may still name
-the deliberately local artifact it explains how to regenerate `.env` from.
-A record that quotes paths which have since moved or been deleted declares them
-instead of rewriting them: `EVIDENCE-PATHS: start` … `EVIDENCE-PATHS: end` (an
-unclosed `start` runs to the end of the document). Only written paths are exempt
-inside such a region — a record's links and anchors are still resolved, because
-those are the reader's route today. `docs/README.md` owns the convention.
-
-The P23B.0 browser baseline is exported from `/dev/perf/p23b` and written only
-through `bench:record`:
-
-```bash
-npm run bench:record -w @portfolio/editor -- --p23b-browser-report /absolute/path/p23b-browser-baseline.json
-```
-
-The recorder requires the clean-tree, **method-v5** browser report and validates
-all six active matrix identities before writing `g3-baseline.json`. Tests never
-write the checked-in baseline. Baseline identity is `methodVersion` + `tiers` +
-the fixture workloads: the version constant is `BENCH_METHOD_VERSION`
-(`apps/editor/src/lib/bench/bench-types.ts`), the four tiers are `chopin` (7 Rooms) ·
-`small` 10 · `medium` 100 · `large` 1000, and the six active workloads carry their
-semantic class from `apps/editor/src/lib/bench/p23b-fixtures.ts` (class 5 = timing target,
-the rest controls). The owner payload was deliberately retired for hygiene;
-new captures require the six matrix workloads and two size-40 hosted controls.
-The unchanged historical baseline/ledger retains owner measurements as provenance,
-without a live payload dependency. The report and the baseline both carry a
-`methodVersionReason` — never a hand-edited version number — and the v5 reason is
-the one in the recorded baseline: deferred boundaries start where the
-synchronous input ended, `plan-apply` is its own boundary rather than adapter
-CPU work, every interaction action is classified by the outcome it reached, and
-capture sessions settle before summarizing.
-
-The P23B.5 reuse ratchet (`…/p23b.5-caching-reuse-optimization/reuse-counter-ratchet.json`)
-follows the same rule, and the perf-lane gate fails when its counts drift:
-
-```bash
-npm run reuse:record -w @portfolio/editor -- --reason "why the counts moved"
-```
-
-The reason is required, the source tree must be clean (so `recordedCommit` names
-the state that produced the counts — commit the change first, re-record, then
-commit the record), and the recorder refuses to write when the shared invariant
-checker reports a violation. No test writes the record.
+(#115 removed the P23B.0 browser baseline recorder and the P23B.5 reuse ratchet
+with `lib/bench/**`: there is no `bench:record`, no `reuse:record` and no
+checked-in baseline or ledger to re-record. Their historical measurements stay
+recoverable at the baseline SHA, and the owner statement records the
+benchmark's purpose as fulfilled.)
 
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or

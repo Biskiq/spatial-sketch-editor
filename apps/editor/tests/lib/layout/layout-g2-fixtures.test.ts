@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { chopinProject } from '$lib/content/chopin-project';
+import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 import { getCameraMotionOptions, getFlowRoute } from '@portfolio/camera-core';
 import type { Vector3Like } from '@portfolio/camera-core';
 
 function vectorToTuple(point: Vector3Like): [number, number, number] {
 	return 'x' in point ? [point.x, point.y, point.z] : [point[0], point[1], point[2]];
 }
-import { geometryId } from '$lib/layout/layout-geometry-types';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
+import { geometryId } from '@portfolio/layout-core';
+import { compileLayoutGeometry } from '@portfolio/layout-core';
 import {
 	buildG2ReferencePlanModel,
 	compileG2Fixture,
@@ -136,8 +136,11 @@ describe('G2 render-order freeze', () => {
 		}
 	});
 
-	it('keeps document order across rooms for the canonical project', () => {
-		const { geometry } = compileLayoutGeometry(chopinProject.layout);
+	it('keeps document order across rooms', () => {
+		// PR #115 (§7.2 A′): the fixture was the isolated Chopin layout; the claim is
+		// the kernel's document-order rule, so it now runs on a kernel fixture with
+		// multiple rooms and the expectations are unchanged.
+		const { geometry } = compileLayoutGeometry(buildScaleFixture(SCALE_FIXTURE_SEEDS.small));
 		const model = buildG2ReferencePlanModel(geometry);
 		const layers = byLayer(model);
 		expect(layers.get(1)!.map((primitive) => (primitive.hit.kind === 'room' ? primitive.hit.roomId : null))).toEqual(

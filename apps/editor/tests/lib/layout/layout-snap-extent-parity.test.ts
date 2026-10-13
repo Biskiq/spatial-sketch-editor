@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { P2311_FIXTURES, p2311Fixture } from '$lib/bench/p2311-bend-fixtures';
+import { P2311_FIXTURES, p2311Fixture } from './__fixtures__/p2311-bend-fixtures';
 import {
 	compileWallFirstLayoutGeometry,
 	dedupeWallSpans,

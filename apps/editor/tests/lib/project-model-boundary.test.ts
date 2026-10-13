@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -44,18 +44,18 @@ describe('project-model package boundary', () => {
 		}
 	});
 
-	it('leaves the old app paths as re-export-only compatibility facades', () => {
-		const packageFacade = readFileSync(
-			resolve(testDir, '../../src/lib/content/package-format.ts'),
-			'utf8'
-		);
-		const shaFacade = readFileSync(
-			resolve(testDir, '../../src/lib/editor/helpers/package-sha.ts'),
-			'utf8'
-		);
-		expect(packageFacade).toMatch(/export \* from '@portfolio\/project-model'/);
-		expect(shaFacade).toMatch(/export \{ sha256Bytes \} from '@portfolio\/project-model'/);
-		expect(packageFacade).not.toContain('$lib/editor');
-		expect(shaFacade).not.toContain('globalThis.crypto');
+	it('leaves no app-side re-export facade between callers and the package', () => {
+		// PR #115 removed the `$lib/content/package-format.ts` and
+		// `$lib/editor/helpers/package-sha.ts` re-export facades (§5.1: "thin
+		// facades are not domain algorithms; callers import packages directly").
+		// The guarantee they carried — callers reach `@portfolio/project-model`
+		// without an app-local copy of its logic — is now the absence of the
+		// facade, so this asserts the removal rather than a re-export shape.
+		for (const removed of [
+			'../../src/lib/content/package-format.ts',
+			'../../src/lib/editor/helpers/package-sha.ts'
+		]) {
+			expect(existsSync(resolve(testDir, removed)), removed).toBe(false);
+		}
 	});
 });

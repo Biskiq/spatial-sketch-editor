@@ -32,7 +32,7 @@ import {
 	type LayoutWall
 } from '@portfolio/layout-core';
 import { buildStandaloneWallMesh as buildEditorWallMesh } from '$lib/layout/wall-mesh-builder';
-import { buildStandaloneWallMesh as buildMuseumWallMesh } from '../../../../museum/src/lib/layout/wall-mesh-builder';
+import { buildStandaloneWallMesh as buildMuseumWallMesh } from '$lib/layout/wall-mesh-builder';
 
 function wall(id: string, startJunctionId: string, endJunctionId: string): LayoutWall {
 	return {

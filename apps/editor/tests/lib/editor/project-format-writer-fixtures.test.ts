@@ -37,22 +37,22 @@ import {
 	planPartitionToBoundaryRoomBirth,
 	ROOM_CREATION_DEFAULTS,
 	type WallFirstOpPlan
-} from '$lib/layout/layout-wall-topology-ops';
+} from '@portfolio/layout-core';
 import {
 	planWallSplit,
 	type NodingIdAllocator
-} from '$lib/layout/layout-wall-noding';
-import { reconcileRooms } from '$lib/layout/layout-room-reconciliation';
-import { extractBoundaryCandidateFaces } from '$lib/layout/layout-face-extraction';
+} from '@portfolio/layout-core';
+import { reconcileRooms } from '@portfolio/layout-core';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst
-} from '$lib/layout/layout-wall-first-codec';
+} from '@portfolio/layout-core';
 import {
 	serializeWallFirstProject,
 	validateWallFirstProject
 } from '@portfolio/project-model';
-import { decodeProjectCompatible } from '$lib/content/scene-format';
+import { decodeProjectCompatible } from '@portfolio/project-model';
 import type { SceneDocument } from '$lib/content/scene';
 
 // ---------------------------------------------------------------------------

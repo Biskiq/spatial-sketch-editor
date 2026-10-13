@@ -167,11 +167,16 @@ production. No genuine #114 blocker or manual-owed acceptance row remains.
 
 - World journeys / QA: `prototypes/spatial-authoring/app/journeys.js`,
   `prototypes/spatial-authoring/qa/journey-check.sh`.
+
+EVIDENCE-PATHS: start — bench paths as written before #115 removed the PERF lane and `lib/bench/**`
+
 - Active benchmark fixtures / driver: `apps/editor/src/lib/bench/p23b-fixtures.ts`,
   `apps/editor/src/routes/dev/perf/p23b/drive.ts`.
 - Fresh report / historical validation: `apps/editor/src/lib/bench/record-baseline.ts`,
   `apps/editor/src/lib/bench/bench-report.ts`.
 - Regression contract: `apps/editor/tests/lib/bench/p23b-baseline-contract.test.ts`.
+
+EVIDENCE-PATHS: end
 
 **Closeout self-check: PASS.** Acceptance matches the recorded gates and owner's
 manual review; durable design is promoted to its reference owners; recovery/tag

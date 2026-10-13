@@ -11,25 +11,25 @@ import { describe, expect, it } from 'vitest';
 import {
 	canonicalBoundaryCycleKey,
 	extractBoundaryCandidateFaces
-} from '$lib/layout/layout-face-extraction';
+} from '@portfolio/layout-core';
 import {
 	connectedRoomIds,
 	resolveIsolatedRoomGroupSubgraph,
 	resolveIsolatedRoomSubgraph
-} from '$lib/layout/layout-room-isolation';
+} from '@portfolio/layout-core';
 import {
 	planWallFirstRoomMove,
 	planWallFirstRoomRotation,
 	roomBoundaryCycleKey
-} from '$lib/layout/layout-room-move';
-import { validateWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
+} from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
 	type LayoutWallFirstRoom,
 	type LayoutWallOpening
-} from '$lib/layout/layout-wall-first-types';
-import type { LayoutVec2 } from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
 	junctionsShareTopologyComponent,
 	wallsShareTopologyComponent

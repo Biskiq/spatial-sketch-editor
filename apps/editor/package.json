@@ -12,21 +12,15 @@
     "test": "vitest run",
     "test:fast": "vitest run --config vitest.fast.config.ts",
     "test:arch": "vitest run --config vitest.arch.config.ts",
-    "test:heavy": "NODE_OPTIONS=--expose-gc P23B6_REQUIRE_GC=1 vitest run --config vitest.heavy.config.ts",
-    "test:perf": "vitest run --config vitest.perf.config.ts",
-    "test:full": "vitest run --config vitest.config.ts",
-    "bench:record": "vite-node --config vitest.config.ts src/lib/bench/record-baseline.cli.ts --full",
-    "reuse:record": "vite-node --config vitest.config.ts src/lib/bench/p23b5-reuse-ratchet.cli.ts"
+    "test:heavy": "vitest run --config vitest.heavy.config.ts",
+    "test:full": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "@fontsource-variable/inter": "^5.3.0",
     "@portfolio/camera-core": "*",
     "@portfolio/layout-core": "*",
     "@portfolio/project-model": "*",
-    "@portfolio/scroll-travel": "*",
     "@threlte/core": "^8.0.4",
     "@threlte/extras": "^9.0.2",
-    "lucide-svelte": "^1.0.1",
     "three": "^0.175.0"
   },
   "devDependencies": {
@@ -36,7 +30,6 @@
     "@sveltejs/kit": "^2.22.0",
     "@sveltejs/vite-plugin-svelte": "^5.1.0",
     "@types/three": "^0.175.0",
-    "fflate": "^0.8.0",
     "svelte": "^5.34.0",
     "svelte-check": "^4.2.0",
     "typescript": "^5.8.0",

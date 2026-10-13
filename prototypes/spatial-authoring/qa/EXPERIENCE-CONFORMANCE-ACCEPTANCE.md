@@ -361,7 +361,7 @@ final acceptance; C8 logs and final manifest below supersede them.
 | Whitespace | PASS `git diff --check` | [diff-check log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-diff-check.txt) |
 
 Historical import failure: absent owner payload in the P23B roadmap fixture location, imported by
-[p23b-fixtures.ts](../../../apps/editor/src/lib/bench/p23b-fixtures.ts). The file was already
+the P23B baseline fixture module (removed by #115 with the PERF lane and `lib/bench/**`). The file was already
 absent at the C1–C7 head and in the local `origin/main` tree; C8 does not touch its importer or
 production source. All 32 collection failures, the dormant-scan behavioral failure, the
 missing-module check error and build resolution failure converge on that import. The other

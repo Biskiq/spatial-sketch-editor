@@ -1,21 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import {
-	resolveSceneDocument as resolveSceneDocumentWithRooms,
-	type SceneDocument
-} from '$lib/content/scene';
-import { chopinRuntime, sceneDocument } from '$lib/content/chopin-project';
-import { chopinProject } from '$lib/content/chopin-project';
+import type { SceneDocument } from '$lib/content/scene';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import { validateProject } from '$lib/project/project-codec';
 import { createCameraPositionPath } from '@portfolio/camera-core';
 import {
 	parseSceneDocumentJson,
 	serializeSceneDocument,
 	validateSceneDocument
-} from '$lib/content/scene-codec';
+} from '@portfolio/project-model';
 import { cloneFixtureDocument } from './__fixtures__/load-fixture-scene';
 
-const resolveSceneDocument = (input: unknown) =>
-	resolveSceneDocumentWithRooms(input, chopinRuntime.rooms);
+// PR #115 (§3.7): the `resolveSceneDocument(input, chopinRuntime.rooms)` wrapper
+// is gone with the isolated Chopin Room frames. The cases that only validate or
+// serialize a document no longer need it; the one case that did need resolved
+// frame-space positions is recorded below.
 
 function cloneDocument() {
 	return cloneFixtureDocument('tour-minimal');
@@ -32,8 +30,12 @@ function expectIssue(input: unknown, code: string, path?: string) {
 
 describe('scene document codec', () => {
 	it('serializes the checked-in scene canonically without mutating it', () => {
-		const before = JSON.stringify(sceneDocument);
-		const json = serializeSceneDocument(sceneDocument);
+		// PR #115 (§7.2 A′): the input was the isolated Chopin scene; the checked-in
+		// `tour-minimal` fixture is the surviving kernel fixture and every canonical
+		// expectation below is unchanged.
+		const document = cloneDocument();
+		const before = JSON.stringify(document);
+		const json = serializeSceneDocument(document);
 		const parsed = parseSceneDocumentJson(json);
 
 		expect(json).toMatch(
@@ -44,7 +46,7 @@ describe('scene document codec', () => {
 		expect(json.endsWith('\n')).toBe(true);
 		expect(parsed.success).toBe(true);
 		if (parsed.success) expect(parsed.canonicalJson).toBe(json);
-		expect(JSON.stringify(sceneDocument)).toBe(before);
+		expect(JSON.stringify(document)).toBe(before);
 	});
 
 	it('canonicalizes numeric spelling while preserving array order and optional empty arrays', () => {
@@ -513,7 +515,10 @@ describe('scene document codec', () => {
 		const projectResult = validateProject({
 			id: 'project:test',
 			name: 'Test',
-			layout: chopinProject.layout,
+			// PR #115 (§7.2 A′): the isolated Chopin layout is gone. An empty wall-first
+			// layout keeps the project-level room check meaningful and the expectation
+			// below unchanged — 'missing-room' is in no layout.
+			layout: createEmptyWallFirstLayoutDocument(),
 			scene: unknownRoom
 		});
 		expect(projectResult.success).toBe(false);
@@ -525,51 +530,13 @@ describe('scene document codec', () => {
 		}
 	});
 
-	it('rejects view targets coincident with exact forward and reverse edge positions', () => {
-		for (const direction of ['forward', 'reverse'] as const) {
-			const document = cloneDocument();
-			const connection = document.connections[0]!;
-			const runtimeConnection = resolveSceneDocument(document).connections[0]!;
-			const runtimeAnchors = runtimeConnection.positionPath.anchors.map(
-				(anchor) => anchor.position
-			);
-			const path = createCameraPositionPath([
-				runtimeConnection.positionPath.kind === 'rounded-polyline'
-					? {
-							kind: 'rounded-polyline',
-							points: runtimeAnchors,
-							clearance: runtimeConnection.clearance
-						}
-					: { kind: 'auto-bezier', anchors: runtimeAnchors }
-			]);
-			const progress = 0.37;
-			const eye = path.getPointAt(direction === 'forward' ? progress : 1 - progress);
-			connection.viewTracks = {
-				forward: [],
-				reverse: []
-			};
-			connection.viewTracks[direction].push({
-				id: `coincident-${direction}`,
-				progress,
-				cameraTarget: [eye.x, eye.y, eye.z],
-				fov: 54
-			});
-
-			const projectResult = validateProject({
-				id: 'project:test',
-				name: 'Test',
-				layout: chopinProject.layout,
-				scene: document
-			});
-			expect(projectResult.success).toBe(false);
-			if (!projectResult.success) {
-				expect(projectResult.issues).toContainEqual(expect.objectContaining({
-					path: `$.scene.connections[0].viewTracks.${direction}[0].cameraTarget`,
-					code: 'camera_target_too_close'
-				}));
-			}
-		}
-	});
+	// PR #115 (§7.2 A′ / §3.7): "rejects view targets coincident with exact forward
+	// and reverse edge positions" built its coincident target from
+	// `resolveSceneDocument(document)` under the isolated Chopin Room frames and
+	// validated it against `chopinProject.layout`. Both inputs are frozen-product
+	// data now, and re-deriving the target against a different layout would change
+	// what the case asserts, so it moved with the frozen project. The codec half of
+	// the same rule — a non-finite or unknown-room view target — stays above.
 
 	it('rejects stale legacy fields on the current shape', () => {
 		const current = cloneDocument() as unknown as {

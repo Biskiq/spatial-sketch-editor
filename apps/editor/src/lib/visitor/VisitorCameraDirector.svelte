@@ -17,7 +17,7 @@
 	import type { NavigationGraph } from '@portfolio/project-model';
 	import type { VisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import { visitorMainFlowNodeIds } from './visitor-runtime-state.svelte';
-	import type { LayoutBounds3 } from '$lib/layout/layout-geometry-types';
+	import type { LayoutBounds3 } from '@portfolio/layout-core';
 
 	let {
 		graph,

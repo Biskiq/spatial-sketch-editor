@@ -151,11 +151,11 @@ and no P23 slice has had camera placement on its acceptance list.
 
 ### Why the suite is green
 
-- `apps/editor/tests/lib/editor/app/live-rooms.test.ts` — the only test that pins camera
-  placement end-to-end — boots `createEmptyLayoutPreviewState()` (the **legacy** blank
-  document, *not* the canonical boot) and drafts a Room with `commitLayoutDraftRoom`
-  (legacy). It proves the registry seam works for room-first documents and says nothing
-  about the canonical pair.
+- `live-rooms.test.ts` (deleted by #115 with the editor shell) was the only test that
+  pinned camera placement end-to-end. It booted `createEmptyLayoutPreviewState()` (the
+  **legacy** blank document, *not* the canonical boot) and drafted a Room with
+  `commitLayoutDraftRoom` (legacy). It proved the registry seam works for room-first
+  documents and said nothing about the canonical pair.
 - `new-project-boot.test.ts` covers the canonical boot but not placement.
 - Evidence-class warning, same shape as P23.13's residue: these tests pin *individual
   seams* (`registry sync`, `predicate`, `createPendingNavigationNodeAt` in isolation).
@@ -312,7 +312,7 @@ defect is invisible to every existing check. P23.14's shell tests only assert st
 
 - P23.14 QA record finding **F4** — [`…/qa/2026-09-19-P23.14-shell-qa-record.md`](../../roadmap/p23-layout-depth/p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md) (closed-work stub; the full F4 text is behind its `git show` anchor — the defect and its owed tests are reproduced above, not there)
 - Durable shell contract §0.4 (implementation debt, not design) — [`../../reference/design-system/editor-shell-and-visual-system.md`](../../reference/design-system/editor-shell-and-visual-system.md)
-- [`../../../apps/editor/src/lib/editor/EditorInspector.svelte`](../../../apps/editor/src/lib/editor/EditorInspector.svelte) — the covered rows.
+- `EditorInspector.svelte` — the covered rows. Removed by #115 with the editor shell.
 
 ---
 
@@ -397,9 +397,9 @@ regression check rather than a baseline audit:
   under the 2026-09-22 amendment; the earlier re-disposition and the fix are both recorded in the
   [P23 remaining-roadmap reconciliation](../../roadmap/p23-layout-depth/2026-09-14-P23-remaining-roadmap-reconciliation.md)
   §Issue disposition).
-- [`../../../apps/editor/src/lib/editor/fields/EditorNumberField.svelte`](../../../apps/editor/src/lib/editor/fields/EditorNumberField.svelte) ·
-  [`EditorVec3Field.svelte`](../../../apps/editor/src/lib/editor/fields/EditorVec3Field.svelte) —
-  the two components that carried the literals.
+- `EditorNumberField.svelte` · `EditorVec3Field.svelte` — the two components that
+  carried the literals. Both were removed by #115 with the editor shell; the TD-2
+  non-recurrence criterion below is what carries forward.
 - P23.16 verification plan — **A12** was written as the baseline audit of this debt; at execution
   (2026-09-22) the owner promoted it to a required-pass canonical-token regression check, and it
   passes against `be4e23b`.

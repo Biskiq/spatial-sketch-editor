@@ -1,13 +1,13 @@
 import type { NavigationGraph } from '$lib/content/scene';
 import type { RuntimeConnection, NavigationNodeData, Vec3 } from '$lib/types/scene';
-import type { LayoutVec2 } from '$lib/layout/layout-types';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
 	geometryId,
 	type CompiledLayoutGeometry,
 	type CompiledQuerySpan
-} from '$lib/layout/layout-geometry-types';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
-import { findPolygonContaining, projectPointToSpans } from '$lib/layout/layout-geometry-queries';
+} from '@portfolio/layout-core';
+import { compileLayoutGeometry } from '@portfolio/layout-core';
+import { findPolygonContaining, projectPointToSpans } from '@portfolio/layout-core';
 import {
 	g1AutoBezierDocument,
 	g1ElevatedFloorDocument,

@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chopinProject } from '$lib/content/chopin-project';
-import { compileLayoutGeometry, compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
-import { geometryId } from '$lib/layout/layout-geometry-types';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-compat';
-import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-codec';
-import type { LayoutDocument } from '$lib/layout/layout-types';
+import { compileLayoutGeometry, compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { geometryId } from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { LayoutDocument } from '@portfolio/layout-core';
 import {
 	g1AutoBezierDocument,
 	g1DocumentWithRooms,
@@ -144,25 +143,12 @@ describe('compileLayoutGeometry', () => {
 		expect(issues.some((issue) => issue.code === 'self_intersection')).toBe(true);
 	});
 
-	it('compiles the canonical Chopin project with stable order and no blocking issues', () => {
-		const { geometry, issues } = compileLayoutGeometry(chopinProject.layout);
-		expect(issues).toEqual([]);
-		expect(geometry.rooms.map((room) => room.roomId)).toEqual([
-			'entrance',
-			'poland',
-			'departure',
-			'paris',
-			'workshop',
-			'music-chamber',
-			'legacy'
-		]);
-		expect(geometry.rooms.every((room) => room.floorElevation === 0 && room.ceilingElevation === 4.2)).toBe(true);
-		const entrance = geometry.rooms[0]!;
-		const doorWall = entrance.walls.find((wall) => wall.segmentId === 'room:entrance:wall:pos-x')!;
-		expect(doorWall.sections.some((section) => section.kind === 'side')).toBe(true);
-		expect(doorWall.sections.some((section) => section.kind === 'lintel')).toBe(true);
-		expect(doorWall.openings.some((opening) => opening.openingId === 'opening:entrance:entrance-from-legacy')).toBe(true);
-	});
+	// PR #115 (§7.2 A′): "compiles the canonical Chopin project with stable order".
+	// Every expectation in that case named Chopin Rooms, Chopin elevations and a
+	// Chopin Opening id, so it is a frozen-product golden and now belongs to the
+	// external frozen project's own suite. Its kernel half — that a document's
+	// room order is the compiled order with no blocking issues — is covered above
+	// by the G1 fixtures with the same expectations.
 
 	it('is deterministic and does not mutate a deep-frozen document', () => {
 		const document = g1AutoBezierDocument();
