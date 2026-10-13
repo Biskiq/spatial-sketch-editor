@@ -31,7 +31,10 @@
 capability/resource foundations, retaining Scene ownership. Rich authoring UI
 consumes T1's viewport seam; the full T1 phase is not a data prerequisite.
 
-**Status:** proposed — pre-redesign (banner above); re-derived as T2 after F.
+**Status:** retained phase evidence — T2 composition data/authoring planning is
+assigned to [#115's parallel-track cutover](../README.md#next-task-handoff--115).
+Research, accepted capability decisions and technical evidence remain in place;
+#114 creates no track plan or new implementation authorization.
 Existing implementation briefs require re-derivation, not approval. No
 implementation is authorized here.
 

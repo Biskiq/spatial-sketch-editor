@@ -46,13 +46,13 @@ the architectural redesign and production implementation needed for that experie
 ```text
 STATUS: planning — experience target accepted; architecture/sequence are pre-redesign
         evidence to be re-derived as T1 against F (see authority banner)
-CURRENT: 2026-09-24-P26-continuous-spatial-authoring-umbrella.md (pre-redesign evidence
-         until re-derived)
-NEXT: re-derive scope/slices/T1 plan against the owner-ratified F target contract
-      (F.1–F.5 → roadmap/README) and the ratified direction before any production
-      implementation plan; exact F interfaces land as F amendments in shared code
+CURRENT: retained P26 research/authoring-depth evidence; no active P26 implementation plan.
+NEXT: #115 parallel-track planning cutover derives T1 World/spatial work from current
+      production, F and accepted Conservatory/Paper contracts (→ ../README.md).
+      #114 creates no T1 plan; exact F interfaces are ratified with first consumers.
 EXECUTION: P23B closed 2026-09-29 and #103 is merged; the operational baton is F
-           (→ ../../operations/current.md). T1 production planning follows the F interfaces;
+           (→ ../../operations/current.md). #115 plans T1 against ratified F targets;
+           exact interfaces with first consumers gate production implementation;
            no P26 production child is implementation-ready.
 GATE: no production implementation approved; no production child is implementation-ready.
       F and re-derivation precede P26 production implementation authorization;
@@ -66,34 +66,36 @@ This revision is separate from the pre-redesign production plans below.
 **Prototype adoption (#112) accepted 2026-10-02:** [closed plan and recovery](./design/world-authoring-prototype/implementation-plan.md)
 · [current World executable](../../../prototypes/spatial-authoring/README.md)
 · [acceptance/harvest](../../../prototypes/spatial-authoring/qa/ACCEPTANCE.md).
-The shell is adopted in place with A–F preserved. **#113 replacement implementation under conformance review:**
-[active C1–C8 plan](../p25-experience/design/experience-v2-prototype/conformance-plan.md) corrects the shared executable;
-[fresh evidence/specimens](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md) records current proof.
-S0–S9 evidence is historical. Repository gates remain blocked by the missing P23B fixture;
-final external review is pending. F and T1/T2/T3 production gates remain unchanged.
+The shell was adopted in place with A–F preserved. **#113 accepted and closed:**
+[historical C1–C8 plan](../p25-experience/design/experience-v2-prototype/conformance-plan.md)
+and [conformance evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md)
+retain functional proof; C9 acceptance is routed from the P25 entry point.
+S0–S9 is earlier evidence. The missing P23B fixture remains a separate repository
+gate blocker. F and T1/T2/T3 production gates remain unchanged.
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.
 
-**Paper authoring adoption — PR #115, after #114, not started:** [Paper adoption plan](./design/paper-authoring-prototype/implementation-plan.md)
+**Paper authoring depth accepted; prototype adoption inactive:** [historical PA0–PA12 plan](./design/paper-authoring-prototype/implementation-plan.md)
 · [accepted contract, PLATE §0.8.4](../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 · [rationale](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md).
-It adopts the accepted World Paper shell into the same World executable as PA0–PA12 in
-dependency-ordered slices, preserving A–F and the #112 seams. The owner-decided sequence is
-#112 close/merge → #113 Experience V2 + real World ↔ Experience continuity → #114 Experience UX
-implementation → #115 Paper PA0–PA12 → prototype detour closes → F exact-interface amendments → T1/T2/T3/T4; Paper's
-position is decided, not an open call. Prototype evidence only; no F/T1 gate moves.
+PA0–PA12 was never started and is no longer the #115 mandate. Conservatory amends
+shared shell/exposure only; Paper retains tools, drafting/precision, procedures
+and Paper ↔ 3D continuity. V2 is the **World Spatial Interaction Reference** for
+Plan ↔ 3D, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look,
+cancellation/return and A–F QA. Its Experience shell is historical functional evidence.
+**Baton:** #114 accepted unified design → #115 parallel-track planning cutover →
+foundation-gated production implementation. P26's useful research and depth are retained.
 
-**Shell/design authority vs executable state (2026-10-01, PR #111):**
+**Shell/design authority vs executable state (reconciled #114, 2026-10-13):**
 
 ```text
 BEHAVIORAL AUTHORITY:   P26 journeys A–F / spatial-authoring behavior (banner above)
-SHELL DESIGN AUTHORITY: PLATE §0.8–§0.8.4 (promoted shared/World laws,
-                        Experience expression, parked-task return and,
-                        since 2026-10-03, World Paper authoring)
-                        #111's syntheses/QA retain final design records/specimens
+SHELL DESIGN AUTHORITY: PLATE — Conservatory unified shell/Experience destination;
+                        §0.8.4 preserves Paper's accepted World authoring depth.
+                        #111 syntheses/QA retain earlier rationale/specimens.
 EXECUTABLE STATE:       World Authoring Prototype adopts the accepted shell in place
-                        (#112), retaining A–F; #113 implements Experience V2
-                        and both-lens continuity — prototype evidence only
+                        (#112), retaining A–F; #113/#114 Experience V2 and both-lens
+                        continuity stay functional/regression evidence, not accepted UX
 PRODUCTION STATE:       unchanged — planning / re-derived T1; no production child
                         becomes implementation-ready because #111 exists
 ```
@@ -102,13 +104,16 @@ PRODUCTION STATE:       unchanged — planning / re-derived T1; no production ch
 
 - **Phase-wide proposal:** [Continuous Spatial Authoring umbrella](./2026-09-24-P26-continuous-spatial-authoring-umbrella.md) — baseline/source evidence, architecture, subsystem dispositions, rebuild/migration, full scope, proofs, decisions, acceptance and P24 handoff. The re-derived plan is authored after F, not here.
 - **Accepted experience:** [World Authoring Prototype](../../../prototypes/spatial-authoring/README.md) — the current executable adopts the World shell; rationale, QA acceptance, implementer reference and journeys are linked there, and a path-preserving stub remains at the old phase-local [`Final-Design-Prototype/`](./Final-Design-Prototype/README.md). Its implementation shortcuts are not production contracts; journeys A–F remain the experience/QA authority (banner above).
-- **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md). The desired visual-language amendment landed as visual-system sequence step 3 (2026-09-29): PLATE **§0.7** states the accepted demo as the desired visual language, labelled **landed-now / desired-from-demo / still-unbuilt**. Sequence step 4 promotes both finalized designs into PLATE **§0.8–§0.8.3** (2026-10-01, PR #111): shared/World laws, Experience expression and explicit parked-task return. The [final World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [QA package](../../../prototypes/world-experience-shell-round/QA-package/) retain the detailed design record/specimens. The accepted World Paper authoring shell is promoted into PLATE **§0.8.4** (2026-10-03), with the [Paper shell proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) as its rationale. These are normative destination design requirements — no production implementation, restyle or cutover — and P26/T1 production planning still follows the F interfaces.
+- **Shell design authority:** [PLATE](../../reference/design-system/editor-shell-and-visual-system.md) now owns Conservatory's ratified unified destination and reconciled Paper depth. The 2026-09-29 visual amendment and #111 promotion remain prior provenance in the [World synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [QA package](../../../prototypes/world-experience-shell-round/QA-package/). The accepted [Paper proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) retains authoring-depth rationale. No production restyle or cutover occurs here; #115 plans T1 against F, with exact interfaces gating execution.
 - **Readiness state:** [architecture cycle](../../operations/architecture-cycle.md).
-- **Primary execution:** [P23B](../p23b-geometry-performance/README.md), whose SEQUENCE remains authoritative for that phase.
+- **Current work:** [#114 → #115 handoff](../README.md#next-task-handoff--115);
+  [P23B](../p23b-geometry-performance/README.md) is closed, retained history.
 
-## Candidate order — proposed only
+## Candidate order — historical proposal
 
-No child plans or proofs are authorized. Details and dependency gates are in umbrella §6–§9.
+No child plans or proofs are authorized. The old order below is evidence for
+#115's independent T1 planning, not the active execution sequence. Details and
+dependency investigation remain in umbrella §6–§9.
 
 1. Landed-P23B reconciliation and prepared implementation plan.
 2. Early continuous Plan↔3D authoring slice, retaining production Wall drawing.

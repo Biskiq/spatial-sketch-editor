@@ -3,8 +3,9 @@
 > **Historical #113 conformance plan.** C1–C8 and C9 were completed;
 > #113 closed 2026-10-11 with owner functionality acceptance. Earlier prospective
 > implementation/review status below is preserved history. [Closed C9 scope](./authoring-completeness-plan.md)
-> owns recovery. Current #114 design review → [V3](../experience-ux-v3/README.md),
-> not continuation of this plan.
+> owns recovery. Current accepted design →
+> [PLATE](../../../../reference/design-system/editor-shell-and-visual-system.md),
+> promoted from Conservatory; no continuation of this plan or UX3/V3.
 
 **Status: C1–C8 in-scope conformance complete, 2026-10-04; independent external review pending.**
 Current recipes, six-state visual verdicts, frozen-source gates and the external repository blocker →

@@ -1,5 +1,14 @@
 # World Paper authoring — prototype adoption plan
 
+> **INACTIVE / HISTORICAL PLAN (2026-10-13, #114).** PA0–PA12 was never
+> started and is no longer the #115 mandate. The accepted
+> [Paper depth contract](../../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+> remains intact inside Conservatory's reconciled shared shell.
+> [#115](../../../README.md#next-task-handoff--115) replaces sequential P-level
+> capability planning with T1/T2/T3/T4; it does not implement this prototype plan.
+> The original plan body below preserves research, technical seams and provenance;
+> its proposed sequence, “review-ready” and slice instructions are historical.
+
 Status: **planned 2026-10-03, review-ready, not started.** No slice is implemented. The
 owner-decided sequence places this plan as **PR #115, after #113 and #114**: #112 close/merge →
 #113 Experience V2 + real World ↔ Experience continuity → #114 Experience UX implementation →

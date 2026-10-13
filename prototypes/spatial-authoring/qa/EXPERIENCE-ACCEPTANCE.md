@@ -1,5 +1,12 @@
 # Unified Experience V2 acceptance (#113)
 
+**Historical functionality/provenance after #114 (2026-10-13).** The source,
+checks, former plan/board gates and Paper handoff below describe their stated
+revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
+and [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning.
+Useful functional assertions remain evidence, not current shell acceptance.
+
 Prototype evidence only; no production contract cutover or phase closure.
 Execution authority: [accepted plan](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/implementation-plan.md).
 Status (2026-10-03): S0–S9 implemented and self-reviewed. Required prototype proof

@@ -39,7 +39,9 @@ repairable unresolved authored bindings while Preview and publication require
 closure for affected required behavior. This does not require T2's full
 definition/component system or T1's later representation depth.
 
-**Status:** proposed — pre-redesign (banner above); re-derived as T3 after F.
+**Status:** retained phase evidence — T3 data/authoring planning is assigned to
+[#115's parallel-track cutover](../README.md#next-task-handoff--115), against
+the ratified F target and accepted design. Relevant F/interface gates precede execution.
 No P25.x implementation-ready child plans exist; none is authorized here.
 
 ## Pre-redesign artifacts (evidence)
@@ -55,19 +57,18 @@ No P25.x implementation-ready child plans exist; none is authorized here.
 
 Experience is a ratified authored semantic domain; its persisted codec-bounded unit (collection-capable) is settled in F.2 ([`../../reference/composition-execution.md`](../../reference/composition-execution.md) §F.2), and no schema exists yet. `ExperienceDocument` is not a designed format and must not be frozen or implemented ahead of its authorized planning.
 
-**Prototype V2 hypotheses, not T3 defaults:** promoting an interior View to a
-Stop may imply only entry framing or a semantic explanation entry point; a
-detour may suspend a parent Presentation or act as departure/re-entry. Test
-both in the integrated shell before selecting behavior. The World | Experience
-shell composition is now the accepted destination direction
-([PLATE §0.8](../../reference/design-system/editor-shell-and-visual-system.md)
-with [§0.8.1's finalized Experience expression](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-promoted from the [final V2 synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md),
-alongside the [final World design](../../../prototypes/world-experience-shell-round/README.md)).
-The prior Card/Deck composition and progressive Camera disclosure are the ratified
-baseline. The owner-commissioned [V3 proposal](./design/experience-ux-v3/README.md)
-now actively proposes a scoped replacement for #114, awaiting ratification.
-Promotion or proposal changes no T3 implementation gate.
+**Retained V2 hypotheses, not T3 defaults:** promoting an interior View to a
+Stop may imply entry framing or a semantic explanation; detours may suspend a
+Presentation or depart/re-enter. These are retained domain-planning questions,
+not instructions for another V2 implementation round. The [final V2 synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
+and [earlier World design](../../../prototypes/world-experience-shell-round/README.md)
+preserve prior rationale. Current shell/Experience design authority →
+[PLATE](../../reference/design-system/editor-shell-and-visual-system.md).
+**#114 cutover (2026-10-13):** [Conservatory](../../../prototypes/experience-ux-alternative/README.md)
+is the accepted unified UX/Experience direction, promoted into PLATE. The former
+Card/Deck expression and [UX3/V3 proposal](./design/experience-ux-v3/README.md) are
+historical. T3/F retain Presentation/Guide semantics, Camera ownership and useful
+functional evidence; no mock formats or production implementation are authorized.
 
 ## Unified Experience V2 prototype (#113)
 
@@ -81,11 +82,16 @@ The earlier S0–S9 implementation and acceptance remain prior evidence, not C9 
 
 MP1 was owner-accepted 2026-10-04 and MP2 2026-10-05. **MP3 and MP4 were owner-accepted on 2026-10-11 for functionality only.** Browser rehearsal, automated tests and Presenter completion stay evidence, never acceptance. Travel and fresh repeated-Stop visits are owner-ratified; cursor/detour-pause policies remain trials. Experience Reset preserves independent World/Camera truth and shared history. Recorded verification (not rerun for closeout): prototype Node 140/140, 24 axes 1073/1073, successor 102/102 rejected, arch 276/276; counts and exact executable provenance live in the C9 evidence record.
 
-**Historical UX lock (#113, docs/design/assets only).** The six Experience QA boards are reconciled into one locked model in [PLATE §0.8.1](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) ([adjudications](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md), with the A1–A7 follow-up round); the earlier V2 synthesis and its retired boards are superseded where they conflict. PR #114 implemented UX1–UX6 plus their latest review corrections against that
-prior direction; UX7 remains unstarted. Its former plan is historical. The sole
-active replacement entry is [Experience UX V3](./design/experience-ux-v3/README.md),
-with [candidate boards](../../../prototypes/experience-ux-v3/README.md) and the
-[superseding implementation plan](./design/experience-ux-v3/implementation-plan.md).
-V3 is proposed for owner ratification, not authorization to implement it. The donor remains a runnable regression oracle. The missing P23B fixture is a separate repository-gate blocker.
+**Historical UX lock (#113, docs/design/assets only).** The six QA boards and
+[adjudications](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
+record the 2026-10-11 expression. #114's UX1–UX6/review changes remain functional
+and regression evidence; [their diff disposition](../../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition)
+is explicit. UX7, the UX3/V3 standalone plan and PNG acceptance are inactive.
+Current Experience authoring/UX acceptance → [PLATE §0.8.1](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
+and Conservatory's interactive journeys. The donor remains a regression oracle;
+the missing P23B fixture is a separate repository-gate blocker.
 
-No T3 production implementation, phase closure, #114 or Paper work is authorized by #113. Sequence: #113 → #114 Experience UX → #115 Paper PA0–PA12 → F.
+**Baton:** #114 accepted unified design → #115 parallel-track planning cutover →
+foundation-gated production implementation. The former sequential prototype route
+is retired. P24/P25/P26 research and accepted capability decisions are retained;
+#114 authors no T3 plan and closes no major phase.

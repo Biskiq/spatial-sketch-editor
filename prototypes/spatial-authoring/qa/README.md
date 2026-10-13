@@ -1,12 +1,13 @@
-# Unified World and Experience Prototype QA
+# V2 World spatial interaction and historical Experience QA
 
-> **Experience design review (2026-10-13):** [V3](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md)
-> and its [candidate PNG acceptance](../../experience-ux-v3/README.md) replace the
-> old #114 work target, pending owner ratification. Existing axes/captures remain
-> evidence for their tested semantics. Obsolete surface assertions are reviewed
-> in the [new plan](../../../docs/roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md);
-> they are not a reason to retain the old product structure. No full/mutation
-> sweep is imposed by this design package.
+> **#114 ratification (2026-10-13):** [Conservatory](../../experience-ux-alternative/README.md)
+> supplies primary Experience UX scenarios; [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md)
+> owns accepted destination design. V2 World A–F and its Camera/selection/history
+> checks remain usable behavioral evidence. Experience axes/captures test the
+> retained historical executable; obsolete surface/PNG assertions are not current
+> design gates. [Branch-diff disposition](./EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition)
+> records preservation. No new V2/UX7 development or full prototype sweep is required
+> by this documentation reconciliation.
 
 The prototype's acceptance lives beside its executable here, not in a design folder. Each script
 owns its own static server for **this** checkout (an ephemeral port), waits for real readiness, and
@@ -75,7 +76,7 @@ assertion costs no browser round trip. If a run is dragging, cut checks — neve
 tens of minutes. The agent runs the axes: handing the command to the owner is not a substitute for a
 run, and a slow suite is fixed by making it smaller and self-closing rather than by passing it on.
 
-**PR #114 verification policy (owner-ratified 2026-10-12).** For the duration of #114, `qa/run-all.sh all`,
+**PR #114 prototype verification policy (owner-ratified 2026-10-12; historical implementation).** For the duration of #114, `qa/run-all.sh all`,
 `qa/mutation-check.sh` and the historical mutation chains are **owner-directed**, not per-slice gates:
 a slice runs only the axes and Node tests that cover the control it moved, plus a small real-browser
 smoke path, and it records the focused checks it actually ran (plan §9). This document still describes

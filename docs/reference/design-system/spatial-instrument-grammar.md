@@ -1,12 +1,11 @@
 # Museum Editor — spatial-instrument grammar
 
-> **Scoped Experience proposal (2026-10-13):** [V3](../../roadmap/p25-experience/design/experience-ux-v3/README.md)
-> proposes replacing the compressed View constellation/Stop pins and split
-> Path/Journey projections below with actual observer markers and one compact
-> movement/playback task. Its [design specification](../../roadmap/p25-experience/design/experience-ux-v3/design-system.md)
-> is the active candidate for #114 review, not yet ratified. These older scoped
-> rules remain baseline/provenance; truthful geometry, hit/manipulation laws,
-> Camera evaluation and shared/World representation guarantees remain in force.
+> **#114 design reconciliation (2026-10-13):** the
+> [shell contract](./editor-shell-and-visual-system.md) owns the ratified
+> Conservatory direction. Camera markers, direct path editing and playback below
+> consume that shell; UX3/V3 and split Path/Journey surfaces are historical.
+> Truthful geometry, hit/manipulation laws, Camera evaluation and World readings
+> remain intact. Advanced precision is capability depth, not permanent chrome.
 
 **Status: soft-frozen destination reference for Stage-local representation and
 interaction.** Feature designers use this with the
@@ -183,8 +182,9 @@ retains its as-built relationship and honest measured-axis labels.
 The [Camera contract](../components/camera-tour.md) defines View intent, legal
 framing/projection operations, routes and evaluation. The
 [Experience shell](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-defines Present/Capture, invoked recommended framing, Edit Camera and the Outside/Through/Plan homes.
-The requirements below describe their Stage representation.
+defines visual capture and Look through → compose → deliberate Update View/Exit.
+The requirements below describe supported Camera instruments when invoked;
+Outside/Plan precision remains advanced depth rather than a mandatory primary shell.
 
 ### Outside: observer and framing relationship
 
@@ -221,15 +221,13 @@ schematic reading of evaluated framing, not permission to invent a finite projec
 shape, FOV writer or path. The maintained Camera Plan's framing restrictions remain
 current until cutover.
 
-A Presentation's **View constellation** places compact markers semi-spatially around the
-Presentation focus: bearing/side preserved in the current Stage orientation, distance
-compressed, aim shown by the marker's direction. It claims no metric location, sequence
-or connectivity: no numbers, arrows, inter-View lines or thumbnails on Stage. The Default
-carries a restrained ★. Crowding is resolved deterministically (displacement within the
-bearing sector, then a counted stack); the Card's Views list always reaches every View.
-A Guide uses numbered Stop entry pins rather than View constellations; Stop numbers are
-occurrence order, not Camera node order. Co-located pins keep true location plus distinct
-access; no specific fan-out technique is mandated.
+View markers locate the **actual evaluated observer and aim**, with legible
+Camera relationships across Plan and 3D. Screen-sized glyphs and density aids may
+clarify them without implying a false metric position, authored orbit, order or
+connectivity. Presentation thumbnails and an accessible inventory reach every
+View even when markers overlap. Default/entry roles are explicit, not inferred
+from marker arrangement. Guide Stop labels are occurrence context, not Camera
+node order. The old compressed constellation is historical UX evidence.
 
 ## Camera Paths and Journey projections
 
@@ -237,18 +235,19 @@ access; no specific fan-out technique is mandated.
 
 Camera supplies the path (connection), authored interior path points, generated
 endpoints/samples, pace, stations and evaluated timing. Experience supplies the Guide edge's
-choice of Cut/Travel and its station-bound Cues and pauses. The shell decides when the Camera
-Path or Journey posture is disclosed ([PLATE §0.8.1](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)).
+choice of Cut/Travel and its station-bound Cues and pauses. The shell decides when
+path editing, playback and advanced coordination are disclosed in the invoked Guide
+context ([PLATE §0.8.1](./editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)).
 This reference owns their spatial and linked visual grammar.
 
 | Representation | Stable meaning |
 | --- | --- |
 | **Camera Path line** | The geometry the Camera evaluator actually follows; never Guide order or a fabricated connection. Draw curvature only if evaluation curves |
 | **View endpoint** (● with frustum, View name) | A Camera View or generated departure/arrival; never a second authored endpoint |
-| **Path point** (small open ○, unlabeled) | Authored, manipulable interior point; shown and hit-eligible only in Path posture |
-| **Selected path point** (amber ring ◎) | The one active manipulation target, mirrored in the straightened Deck lane |
-| **Cue marker** (amber ◆) | One occurrence-local Experience Cue at its station — the (Guide edge, Camera connection, station) triple; shown in Journey posture, never in Path posture |
-| **Camera rig** | The evaluated Camera during Rehearse; read-only |
+| **Path point** (open ○ example) | Authored, manipulable interior point; hit-eligible only while its editing operation is disclosed |
+| **Selected path point** (gold ring example) | The one active manipulation target, with canonical identity echoed in its contextual Card |
+| **Cue marker** (◆ example) | Occurrence-local Experience coordination at a station, when advanced coordination is disclosed; distinct from a Camera point |
+| **Camera rig** | The evaluated Camera during playback; read-only unless an explicit Camera operation is invoked |
 | **Gap cue** | Missing supported Travel with reason/repair; never drawn as a valid path |
 
 Shape carries the species: ● Camera endpoint, ○ Camera path point, ◆ Experience Cue. Derived
@@ -257,19 +256,20 @@ This replaces the earlier filled-diamond anchor baseline; the operative-versus-d
 Camera-versus-Experience distinctions it protected are unchanged. Exact radii and
 silhouettes are not frozen.
 
-Path posture shows geometry and hides Cues, timing and narration labels; ordinary clicks
-never add points, only the armed `+ Path point` action does. Journey posture shows quiet
-geometry, Cues and the rig, and hides path handles. Its Deck is a time axis whose Cue
-positions come from Camera evaluation plus pauses. The Path posture Deck is a straightened
-topology lane with the same points and selection, and no time. Stations are departure, a
-path point, a named marker or arrival; generated samples cannot become stations. A Cue
-binds to a station within one Guide edge and Camera connection, not to seconds, and survives pace and geometry edits. The Deck lane names the Guide edge occurrence it shows, since one Camera connection may serve several. Mirror
-corresponding selection in Stage and Deck without equating their screen positions. Path
-geometry is edited only on Stage; the Deck never becomes a second path editor.
+Path geometry is edited directly on Stage. Point insertion is deliberate and
+distinguishable from selection; exact gesture/arming is a delivery choice.
+Playback reads the same evaluated geometry with an explicit editing lifecycle.
+The old straightened topology lane and separate Journey Deck are not required
+destination surfaces. Advanced coordination retains station identity: departure,
+an authored path point, named marker or arrival, never a generated sample. A Cue
+binds within its Guide occurrence and Camera support rather than to authored
+seconds. Pace/geometry edits preserve that binding or report an explicit invalid
+reference. Any disclosed time position derives from Camera evaluation plus
+Experience pauses; no shell-owned animation or second path editor is introduced.
 
-Camera infrastructure uses the shell's teal owner role plus line/shape; active selection and
-manipulation add amber locally. Neutral Guide-order connectors never appear on Stage as
-Camera topology. In the Guide Deck, edge chips are per-Stop outgoing resolved continuation
+Camera infrastructure uses the shared green role plus line/shape; active selection
+and manipulation add gold locally. Guide-order context cannot masquerade as
+Camera topology. In the Guide instrument, transitions show resolved continuation
 (see PLATE §0.8.1): a connector between adjacent chips is drawn only when the resolved
 destination is that neighbor.
 
@@ -308,7 +308,11 @@ techniques are optional within the semantic species and distinctions above:
   local refusal, repair and narrow task continuity.
 - [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md)
   and [Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/):
-  Camera Path and Journey species, View constellation, Stop pins and the retained Outside/Through precision specimens (PLATE §0.8.1 indexes them).
+  historical Camera/coordination distinctions and advanced Outside/Through
+  precision specimens; their old shell/constellation layouts are superseded.
+- [Conservatory](../../../prototypes/experience-ux-alternative/README.md): accepted
+  visual Camera authoring, direct Stage paths, contextual visibility and integrated
+  Guide playback, promoted into PLATE; its mock evaluator is not a contract.
 - [Landed visual specifications](./design-specs.md), [Camera graphics/input contract](../components/camera-tour.md)
   and [placement adapters](../components/placement.md): existing exact geometry,
   selection, hit arbitration and cancellation policies in their maintained contexts.

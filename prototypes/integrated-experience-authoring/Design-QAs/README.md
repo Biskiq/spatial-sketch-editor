@@ -2,10 +2,11 @@
 
 All eight PNGs here are unchanged evidence of the 2026-10-11 ratified Experience
 expression and the retained 2026-10-01 Camera precision specimens. They are not
-actual runtime captures. The sole active #114 replacement design proposal is
-[Experience V3](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md);
-its [15 candidate boards and acceptance notes](../../experience-ux-v3/README.md)
-propose replacing this target, pending owner ratification.
+actual runtime captures. #114 accepts [Conservatory](../../experience-ux-alternative/README.md),
+whose interactive states/journeys supply current UX acceptance language through
+[PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+UX3/V3's PNGs and standalone plan are also superseded. Neither set defines current
+acceptance through pixels or old layout equivalence.
 
 The [reconciliation inventory](../../../docs/roadmap/p25-experience/design/experience-ux-v3/reconciliation.md#4-existing-board-assessment)
 assesses every old board. Preserve these images for comparison; do not regenerate

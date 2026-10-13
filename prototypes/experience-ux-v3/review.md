@@ -1,5 +1,15 @@
 # Experience V3 — package self-review
 
+**Status: SUPERSEDED historical UX3/V3 specimens (#114, 2026-10-13).**
+The owner accepts [interactive Conservatory](../experience-ux-alternative/README.md);
+[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md)
+owns current UX acceptance. These 15 PNGs, compositor and original notes are
+preserved provenance, not pixel/layout-equivalence or implementation gates.
+The standalone V3 plan is inactive; no generation or runtime changes are needed.
+
+**Original specimen/review notes follow as history**, including their former
+pending-ratification and acceptance language.
+
 **Proposed design package, 2026-10-13; no owner ratification or runtime acceptance.**
 Source inspection used fetched PR #114 head
 `de41341e82f4a745abe85537c59a217c160c60f3`. No application UI/runtime was changed.

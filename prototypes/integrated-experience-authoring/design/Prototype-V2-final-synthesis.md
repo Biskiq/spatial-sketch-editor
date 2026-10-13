@@ -1,8 +1,10 @@
 # Final V2 design synthesis — integrated Experience authoring
 
 > **Forward route (2026-10-13):** this record and its V2 reconciliation are
-> historical design evidence. New #114 design review starts at the unratified
-> [Experience V3 package](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md).
+> historical design evidence. #114 accepts
+> [Conservatory](../../experience-ux-alternative/README.md), promoted into
+> [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md).
+> UX3/V3 is superseded; no further V2 UX implementation follows this record.
 
 ## 0. Decision
 
