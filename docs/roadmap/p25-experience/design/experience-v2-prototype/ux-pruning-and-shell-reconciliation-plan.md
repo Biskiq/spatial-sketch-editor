@@ -539,9 +539,12 @@ them. `.exp-seg` is a segmented pair:
 Remove the `Owner · … · mode` line, the Pace select (Pace lives on the Camera Path Card), `Edit cue timing`,
 the `Origins from this Stop` disclosure (the Path posture's From list owns per-origin work), the
 `Destination entry` section (now in `.c-ref`), `coordinationDetail()` and `coordinationHtml()`. Offer
-`Edit Camera Path` whenever at least one route exists. `openSeam` stops entering the Journey when the edge
-already has beats, so selecting an edge chip always shows this Card, and it selects the edge's from-Stop
-first (§3.1).
+`Edit Camera Path` at any movement mode whenever Camera has work on this edge — a route to read, **or an
+origin still to connect** (2026-10-12: a fresh edge has no route at all, and the Path posture's *From* list
+is the only per-origin connect door, so a door gated on "at least one route exists" made the first origin
+unauthorable; the posture opens with `params.connection` unset and its Card reads *No Camera route yet*).
+`openSeam` stops entering the Journey when the edge already has beats, so selecting an edge chip always
+shows this Card, and it selects the edge's from-Stop first (§3.1).
 
 ### 5.5 UX5 correction — Camera Path posture (QA 1)
 
@@ -553,6 +556,11 @@ framing goes. The capture stays, because navigation keeps one return slot: witho
 entry, the crumb would restore whatever an older `Bring … into view` left there (reproduced in a
 real-browser probe). The posture owns one return context, captured at entry and used only by its own
 exits:
+
+The posture also reads an edge Camera has no route for yet, because the *From* list is where the first
+origin is connected: with `params.connection` unset the Card reads *No Camera route yet* and names the From
+list, the Index still carries the crumb and the From rows, and choosing a row's Connect selects that route.
+A route that *was* being read and no longer resolves stays the separate *needs repair* reading.
 
 | Moment | Camera | Return context |
 | --- | --- | --- |
@@ -581,6 +589,10 @@ FROM                            data-path-from kept
   Gallery entry     ✓ connected     row = one button, data-path-origin="<viewId>"; Path: exp-route
                                     data-id=<connection>; Journey: exp-journey-origin data-id=<viewId>
   Keyboard detail   ! gap  [Connect]   row is a div; status in refusal ink; xs exp-connect
+  Entry             same View       row is a div, status reading `same View`, and **no Connect**: the
+                                    origin that *is* the destination entry View is reached by Camera's
+                                    own zero-distance evaluation, so `connectOrigin` refuses it and the
+                                    From list never offers it (N1 forbids a fabricated self route)
 ```
 
 The row being edited takes the current-context look. Add the small `exp-journey-origin` action
