@@ -2107,6 +2107,9 @@ this at Checkpoint C; it is not inherited.
    both design contracts, the operations root, `tests/README`, a protected-prototype specimen
    and local skills, and an empty-walk mutation must fail. WP5 adds the track roadmaps and
    the operations root README to the required set when it creates them.
+   §7.3's ARCH addition for `tests/docs/parallel-track-gates.test.ts` is likewise WP5's: WP5
+   creates that file, so WP2 leaves it out of `ARCH_FILES` rather than leaving a dangling
+   entry. The arch lane's 13 entries all resolve today.
 4. **Dead references were repaired in the documents that retain their subject**:
    `docs/README.md`, `docs/reference/components/{assets,scene-codec}.md`,
    `docs/operations/tech-debt/README.md`, `tests/README.md` and this plan; the decision
