@@ -94,7 +94,7 @@ and current captures; the §2 corrections remain the standing obligations.
   They do not prove all six states are reachable through product controls.
 - The old record's missing P23B fixture remains absent. Its reported broad-suite
   failures were not reclassified as V2 failures or re-run during this audit.
-  Final implementation verification must report it separately if still unresolved.
+  The owner has since confirmed deliberate fixture retirement; this is no current restoration task.
 - The planning documentation scan found no new broken references; its two
   findings are existing references to that absent fixture in the old checkpoint
   and acceptance record. Those historical files were not changed to hide them.
@@ -826,9 +826,9 @@ git diff --check
 If donor browser tests are needed for a changed harvest/replacement claim, start
 their server explicitly at strict port 5173; the ordinary donor dev script uses
 3000. Preserve its tests. The new plan does not authorize modifying production
-code to repair the known missing P23B fixture: report any persisting external
-gate blocker and request a concrete scope expansion only when necessary. A
-green prototype cannot turn a red repository gate into merge readiness.
+code. The owner-retired fixture is no restoration task; historical gate results
+remain evidence at their stated revisions. A green prototype cannot substitute
+for required repository verification.
 
 ### Acceptance decision and handoff
 
@@ -848,8 +848,9 @@ Paper's PA0 must reconcile against the resulting shared Stage/selection/Camera/
 history/cancellation contracts. No F/T gate or major phase closes as a result.
 C8's pause was cleared by the owner resumption. In-scope behavioral/visual acceptance and
 final verification are recorded in the new conformance acceptance; the completed checkpoint
-is retired. Independent external review and the missing-fixture repository blocker remain
-before any merge-readiness or formal closeout claim. No major phase closes here.
+is retired. #113 subsequently closed with functionality acceptance. The owner
+fixture is intentionally retired; no restoration/blocker condition carries forward.
+No major phase closes here.
 
 ## 7. Plan self-review
 

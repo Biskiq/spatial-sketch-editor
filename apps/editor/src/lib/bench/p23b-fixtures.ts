@@ -6,7 +6,6 @@ import {
 	type LayoutVec2,
 	type LayoutWallCenterline
 } from '@portfolio/layout-core';
-import owner40Payload from '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json';
 
 export type P23BSemanticClass = 2 | 3 | 4 | 5;
 export type P23BFixtureRole = 'control' | 'timing-target' | 'owner-responsiveness' | 'regression' | 'positive' | 'negative';
@@ -48,8 +47,10 @@ export const P23B_MATRIX_SPECS: readonly P23BMatrixSpec[] = (['12-wall', '40-wal
 	})
 );
 
-export const P23B_OWNER_FIXTURE_ID = 'owner-40-curved-v1';
-export const P23B_OWNER_LAYOUT = owner40Payload as unknown as LayoutDocumentWallFirst;
+/** Active interaction captures use the two size-40 controls; the owner payload was retired. */
+export const P23B_HOSTED_FIXTURE_IDS = ['p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'] as const;
+/** Historical ledger/baseline identity only; never a live fixture or capture requirement. */
+export const P23B_RETIRED_OWNER_FIXTURE_ID = 'owner-40-curved-v1';
 
 export type P23BCorrectnessCaseId =
 	| 'd12-exact-coincidence-v1'

@@ -1,5 +1,11 @@
 # C9 Experience reconciliation — evidence record (C9.1–C9.9)
 
+**Owner fixture retirement (2026-10-13):** the owner deliberately removed the
+payload for repository hygiene. Restoration and the former missing-fixture
+blocker are retired; #114 removes live benchmark consumers. The failure counts
+and raw logs below remain historical observations at their recorded revisions,
+not current blockers or instructions to restore the file.
+
 **Historical functionality/provenance after #114 (2026-10-13).** The source,
 checks, former plan/board gates and Paper handoff below describe their stated
 revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
@@ -919,8 +925,8 @@ whose finding this pass repaired (see above):
 - `npm run build` — unresolved import of the same fixture (`/tmp/c945c-build.log`).
 - `git diff --check` (whitespace) — rc=0.
 
-The missing P23B fixture is the external blocker for the three red gates above and is
-reported separately; it was not restored, hidden or fabricated.
+The three red gates above record the former import failure. The owner has since
+retired that workload; they are not current blocker status.
 
 ### Donor oracle (reported separately from successor parity)
 
@@ -1134,7 +1140,7 @@ of Presenter navigation, no new completion gate, no six-QA visual reconciliation
   (which drives the World, V2 and composition chains), is **102/102**, exit **0** — 3 World shell/lens, 7 V2
   conformance and the 92 above.
 - Unconditional `npm run test:arch` — **276/276**, 24 files, exit **0**; `git diff --check` clean. Root
-  `npm test` / `npm run check` / `npm run build` retain the pre-existing P23B fixture blocker below. The
+  `npm test` / `npm run check` / `npm run build` recorded the historical import failure. The
   donor oracle and the Museum check/build were not re-run: this follow-up changes prototype-local Experience
   code only, and the donor/Museum results recorded above belong to the preceding executable.
 - One harness flake is recorded rather than hidden: the first complete chain run stopped at
@@ -1174,11 +1180,9 @@ belong to `3a009763`.
 
 ## Known limitations
 
-EVIDENCE-PATHS: start — the deleted P23B fixture this record reports as an external
-blocker; identity as recorded at base `abaa7592`
-- The missing fixture `docs/roadmap/p23b-geometry-performance/40-walls.json` is a
-  pre-existing repository-gate blocker, external to C9. It was not restored, hidden or
-  fabricated.
+EVIDENCE-PATHS: start — retired owner-payload provenance recorded at base `abaa7592`
+- The owner payload is deliberately retired for hygiene. Its old import failures
+  above remain historical evidence, not a current restoration/blocker condition.
 EVIDENCE-PATHS: end
 - MP1–MP4 are explicitly owner-accepted; MP3/MP4 (2026-10-11) for functionality only. No visual refinement was implemented; the locked UX (PLATE §0.8.1) is implemented by PR #114.
 - Historical C9.4/C9.5 and C9.6–C9.9 increment counts above retain their own provenance. Use the current follow-up block for final code, tests/mutations and repository-gate status.
@@ -1208,8 +1212,9 @@ historical anchor:               74e86104 · annotated tag closed/p25-experience
 new live → archive prose links:  0
 manual-owed verification rows:   2   MP3/MP4 owner functional acceptance (2026-10-11, recipes in PR #114 plan §9);
                                      owner visual acceptance deferred to PR #114 (its gate)
-remaining deferred items:        4   P23B fixture blocker (repository gate) · #114 implementation ·
-                                     #115 Paper PA0–PA12 · D8 mid-Guide Preview + hold consolidation (past #114)
+historical deferred items:       4   Original four-item carry is preserved in Git at this anchor.
+                                     Fixture restoration/blocker and the UX/Paper detour are retired;
+                                     current handoff is #115 track planning; D8 stays future domain evidence.
 ```
 
 Acceptance provenance (recorded, not rerun for this docs-only closeout): prototype Node

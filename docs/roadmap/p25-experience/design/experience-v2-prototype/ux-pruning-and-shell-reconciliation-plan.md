@@ -32,8 +32,7 @@ accepted and is this plan's job. The executable: [spatial-authoring][prototype].
 
 **Boundary.** Prototype-only. In scope: `prototypes/spatial-authoring/` app, styles, tests
 and QA, plus its evidence and the routing docs that record status. Out of scope: `apps/`,
-`packages/`, persisted production formats, F amendments, Paper, World A–F behavior, and
-restoring the missing P23B fixture (a separately tracked repository-gate blocker). No new
+`packages/`, persisted production formats, F amendments, Paper and World A–F behavior. No new
 navigation/evaluation/selection/history authority. No second renderer or Scene. No new
 persisted Experience entity (Cue is a projection). No authored Camera endpoints.
 

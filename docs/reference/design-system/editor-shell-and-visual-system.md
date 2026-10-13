@@ -28,7 +28,7 @@ plans and acceptance gates.
 | State | Meaning after #114 |
 | --- | --- |
 | **Accepted destination** | Conservatory's unified shell, visual language and Experience authoring principles, promoted below; Paper's accepted World depth in §0.8.4 |
-| **Implemented production** | The landed shell and domain contracts still describe the editor until their explicit cutovers; this PR changes no application code |
+| **Implemented production** | The landed shell and domain contracts still describe the editor until their explicit cutovers; this ratification implements no product UI |
 | **Preserved semantics/architecture** | Domain ownership, Camera evaluation, validity, source history and isolation remain governed by their owners |
 | **Deferred depth/refinements** | Advanced authoring remains reachable in future delivery; optional UX improvements below are not unfinished design gates. #115 plans parallel tracks; it does not implement them |
 

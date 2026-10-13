@@ -88,8 +88,7 @@ record the 2026-10-11 expression. #114's UX1–UX6/review changes remain functio
 and regression evidence; [their diff disposition](../../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition)
 is explicit. UX7, the UX3/V3 standalone plan and PNG acceptance are inactive.
 Current Experience authoring/UX acceptance → [PLATE §0.8.1](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-and Conservatory's interactive journeys. The donor remains a regression oracle;
-the missing P23B fixture is a separate repository-gate blocker.
+and Conservatory's interactive journeys. The donor remains a regression oracle.
 
 **Baton:** #114 accepted unified design → #115 parallel-track planning cutover →
 foundation-gated production implementation. The former sequential prototype route

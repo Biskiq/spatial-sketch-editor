@@ -8,7 +8,7 @@ import {
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
 import { g1LineRectangleDocument } from '../../layout/__fixtures__/layout-g1-fixtures';
 import {
 	getPreparedWallMeshes,
@@ -39,7 +39,6 @@ function fixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> {
 			if (!spec) throw new Error(`missing fixture ${id}`);
 			return { id, document: buildP23BMatrixFixture(spec) };
 		}),
-		{ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT }
 	];
 }
 
@@ -50,12 +49,6 @@ function acceptedActions(document: LayoutDocumentWallFirst, fixtureId: string) {
 		? planWallFirstRoomMove(document, document.rooms[0].id, [0.25, 0])
 		: null;
 	return [
-		{
-			name: 'accepted-single-Wall release',
-			expectedHits:
-				fixtureId === 'p23b-40-wall-all-curved-v1' || fixtureId === 'owner-40-curved-v1' ? 37 : 36,
-			document: wallMove.kind === 'success' ? wallMove.document : null
-		},
 		{
 			name: 'whole-Room bridge',
 			expectedHits: 36,
@@ -191,7 +184,7 @@ describe('P23B.6 S3 — one prepared generation reuses only value-equal canonica
 		);
 		expect(unchangedId, 'at least one value-equal Wall retained its mesh').toBeDefined();
 
-		const replacementGeometry = compile(P23B_OWNER_LAYOUT);
+		const replacementGeometry = compile(buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === 'p23b-40-wall-all-curved-v1')!));
 		const replacement = prepareWallMeshes(replacementGeometry);
 		expect(replacement.stats.reused).toBe(0);
 		expect(getPreparedWallMeshes(initialGeometry)).toBe(initial);

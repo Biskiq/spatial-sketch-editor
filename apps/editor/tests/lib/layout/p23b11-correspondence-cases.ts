@@ -102,7 +102,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 import { buildP23B11ConnectedCase } from '$lib/bench/p23b11-connected-case';
 
@@ -159,10 +158,7 @@ const MATRIX_AUTHORING: readonly [LayoutVec2, LayoutVec2] = [
 	[14, 5],
 	[18, 5]
 ];
-const OWNER_AUTHORING: readonly [LayoutVec2, LayoutVec2] = [
-	[24, 24],
-	[28, 24]
-];
+
 /** Ratified Rect Room gestures (4×2 m), matching the harness's creation class. */
 const MATRIX_RECT: readonly LayoutVec2[] = [
 	[14, 5],
@@ -170,12 +166,7 @@ const MATRIX_RECT: readonly LayoutVec2[] = [
 	[18, 7],
 	[14, 7]
 ];
-const OWNER_RECT: readonly LayoutVec2[] = [
-	[24, 24],
-	[28, 24],
-	[28, 26],
-	[24, 26]
-];
+
 /** Ratified connected-case target: the 4 m sketch inside the grid's own cell (0,0). */
 const CONNECTED_AUTHORING: readonly [LayoutVec2, LayoutVec2] = [
 	[3, 5],
@@ -288,19 +279,6 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 				role: 'boundary'
 			})
 	},
-	{
-		id: 'a-owner-40-clear-gap',
-		covers: 'OR-1(a)',
-		kind: 'planned',
-		baseline: () => P23B_OWNER_LAYOUT,
-		plan: (baseline) =>
-			planWallSegment({
-				baseline,
-				start: OWNER_AUTHORING[0],
-				end: OWNER_AUTHORING[1],
-				role: 'boundary'
-			})
-	},
 
 	// --- (b) Rect Room creation ---------------------------------------------
 	{
@@ -318,14 +296,6 @@ export const P23B11_CORRESPONDENCE_CASES: readonly P23B11CorrespondenceCase[] = 
 		baseline: () => fixtureDocument(CURVED_40),
 		plan: (baseline) =>
 			planWallChain({ baseline, points: MATRIX_RECT, close: true, role: 'boundary' })
-	},
-	{
-		id: 'b-owner-40-rect-room',
-		covers: 'OR-1(b)',
-		kind: 'planned',
-		baseline: () => P23B_OWNER_LAYOUT,
-		plan: (baseline) =>
-			planWallChain({ baseline, points: OWNER_RECT, close: true, role: 'boundary' })
 	},
 
 	// --- (c) a chain that divides a Room ------------------------------------

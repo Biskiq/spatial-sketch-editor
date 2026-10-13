@@ -14,8 +14,8 @@
 - **Evidence:** [C9 evidence](../../../../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md)
   (executable provenance, gate numbers, closeout preservation report). Recorded, not rerun
   for closeout: Node 140/140, 24 axes 1073/1073, successor 102/102 rejected, arch 276/276.
-  Manual-owed rows: MP1–MP4 functional acceptance (owner, 2026-10-04/05/11); visual UX deferred
-  to PR #114 (its gate). Standing limitation: missing P23B fixture blocks root test/check/build.
+  Manual-owed rows: MP1–MP4 functional acceptance (owner, 2026-10-04/05/11); visual UX superseded
+  by owner-accepted Conservatory in PR #114. The deleted owner fixture is intentionally retired.
 - **Entry points** (plain paths; behavior owners, not this stub):
   - implementation: `prototypes/spatial-authoring/app/experience-model.js`,
     `prototypes/spatial-authoring/app/experience.js`,
@@ -28,6 +28,7 @@
   - regressions: `prototypes/spatial-authoring/tests/experience-model.test.mjs`,
     `prototypes/spatial-authoring/tests/experience-c9-review.test.mjs`,
     `prototypes/spatial-authoring/tests/experience-runtime.test.mjs`
-- **Residuals:** PR #114 V3 design review (UX1–UX6/review corrections exist; V3 implementation awaits ratification) · PR #115
-  Paper PA0–PA12 · D8 mid-Guide Preview + hold consolidation (past #114) · P23B fixture blocker.
+- **Residuals after #114 reconciliation:** #115 parallel-track planning cutover ·
+  D8 mid-Guide Preview + hold consolidation as retained future domain questions.
+  UX3/V3, Paper PA0–PA12 and fixture restoration/blocker instructions are retired.
 - **Recovery:** `git show 74e8610464ad6c2cee913a3423d867dcc61f2a20:docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md` · tag `closed/p25-experience-v2`

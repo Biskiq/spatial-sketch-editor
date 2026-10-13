@@ -17,7 +17,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
 import { collectFixtureDigests, sha } from './p23b4-observation-collector';
@@ -48,7 +47,6 @@ import { buildWildRoomFixture, buildWildSharedFixture } from './p23b4-wild-fixtu
 function observationFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> {
 	const entries: Array<{ id: string; document: LayoutDocumentWallFirst }> = [];
 	for (const spec of P23B_MATRIX_SPECS) entries.push({ id: spec.id, document: buildP23BMatrixFixture(spec) });
-	entries.push({ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT });
 	for (const spec of P2311_FIXTURES.filter((candidate) => candidate.openings > 0)) {
 		entries.push({ id: spec.id, document: p2311Fixture(spec) });
 	}

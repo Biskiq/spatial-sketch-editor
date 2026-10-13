@@ -16,13 +16,9 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_FIXTURE_ID,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 
-const OWNER_PATH = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../../../docs/roadmap/p23b-geometry-performance/40-walls.json');
 const LEDGER_PATH = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json');
-const OWNER_RAW_SHA256 = '63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05';
 const ledger = JSON.parse(readFileSync(LEDGER_PATH, 'utf8')) as {
 	identityScope: string;
 	fixtures: Array<{
@@ -62,55 +58,6 @@ function shape(document: ReturnType<typeof buildP23BMatrixFixture>) {
 }
 
 describe('P23B durable fixture contracts', () => {
-	it('commits the exact owner payload and keeps raw and canonical identities distinct', () => {
-		const raw = readFileSync(OWNER_PATH);
-		const rawText = raw.toString('utf8');
-		const canonical = serializeWallFirstLayoutDocument(P23B_OWNER_LAYOUT);
-		const validation = validateWallFirstLayoutDocument(P23B_OWNER_LAYOUT);
-		const topology = validateWallFirstTopology(P23B_OWNER_LAYOUT);
-		const compiled = compileWallFirstLayoutGeometry(P23B_OWNER_LAYOUT);
-		const ownerShape = {
-			rooms: P23B_OWNER_LAYOUT.rooms.length,
-			walls: P23B_OWNER_LAYOUT.walls.length,
-			junctions: P23B_OWNER_LAYOUT.junctions.length,
-			openings: P23B_OWNER_LAYOUT.openings.length,
-			curvedWalls: P23B_OWNER_LAYOUT.walls.filter((wall) => wall.centerline.kind === 'cubic-chain').length,
-			centerlineKinds: P23B_OWNER_LAYOUT.walls.reduce<Record<string, number>>((counts, wall) => {
-				counts[wall.centerline.kind] = (counts[wall.centerline.kind] ?? 0) + 1;
-				return counts;
-			}, {})
-		};
-		const record = {
-			id: P23B_OWNER_FIXTURE_ID,
-			rawBytes: raw.byteLength,
-			// Hash the decoded UTF-8 text; the fixture is UTF-8 JSON and the decode
-			// round-trip is separately pinned by the exact byte length assertion.
-			rawSha256: sha256(rawText),
-			canonicalSha256: sha256(canonical),
-			byteEqualToSource: canonical === rawText,
-			shape: ownerShape,
-			codec: validation.success,
-			topology: topology === undefined ? 'admitted' : topology.code,
-			compileIssues: compiled.issues.map((issue) => issue.code)
-		};
-		const ledgerEntry = ledgerFixture(record.id);
-		expect(record.rawBytes).toBe(61140);
-		expect(record.rawSha256).toBe(OWNER_RAW_SHA256);
-		expect(record.canonicalSha256).toBe(OWNER_RAW_SHA256);
-		expect(record.byteEqualToSource).toBe(true);
-		expect(record.shape).toMatchObject({ rooms: 10, walls: 40, junctions: 40, openings: 0, curvedWalls: 40 });
-		expect(record.codec).toBe(true);
-		expect(record.topology).toBe('admitted');
-		expect(record.compileIssues).toEqual([]);
-		expect(ledgerEntry).toMatchObject({
-			semanticClass: 5,
-			role: 'owner-responsiveness',
-			canonicalLayoutSha256: record.canonicalSha256,
-			rawPayloadSha256: record.rawSha256,
-			documentShape: record.shape,
-			shippedVerdict: { codec: 'accepted', topology: 'admitted', compilerIssues: [] }
-		});
-	});
 
 	it('constructs six stable CLASS 5 matrix cells with exact shape and clean shipped gates', () => {
 		const ids: string[] = [];

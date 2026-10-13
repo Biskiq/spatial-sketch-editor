@@ -24,7 +24,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 import { buildWildRoomFixture, buildWildSharedFixture } from './p23b4-wild-fixtures';
 
@@ -111,7 +110,6 @@ function curve(start: LayoutVec2, end: LayoutVec2, knot: LayoutVec2, knotId: str
 function baseFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> {
 	const entries: Array<{ id: string; document: LayoutDocumentWallFirst }> = [];
 	for (const spec of P23B_MATRIX_SPECS) entries.push({ id: spec.id, document: buildP23BMatrixFixture(spec) });
-	entries.push({ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT });
 	for (const spec of P23B_CORRECTNESS_SPECS) {
 		if (spec.id === 'class4-zero-length-wall-v1') continue;
 		entries.push({ id: spec.id, document: buildP23BCorrectnessFixture(spec) });

@@ -70,8 +70,7 @@ The shell was adopted in place with A–F preserved. **#113 accepted and closed:
 [historical C1–C8 plan](../p25-experience/design/experience-v2-prototype/conformance-plan.md)
 and [conformance evidence](../../../prototypes/spatial-authoring/qa/EXPERIENCE-CONFORMANCE-ACCEPTANCE.md)
 retain functional proof; C9 acceptance is routed from the P25 entry point.
-S0–S9 is earlier evidence. The missing P23B fixture remains a separate repository
-gate blocker. F and T1/T2/T3 production gates remain unchanged.
+S0–S9 is earlier evidence. F and T1/T2/T3 production gates remain unchanged.
 Preservation convention: `closed/world-authoring-prototype` tags the full accepted plan body;
 local-only until explicitly pushed. This adoption is not a P26 final phase gate or phase closure.
 

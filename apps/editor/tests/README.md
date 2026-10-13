@@ -208,13 +208,16 @@ npm run bench:record -w @portfolio/editor -- --p23b-browser-report /absolute/pat
 ```
 
 The recorder requires the clean-tree, **method-v5** browser report and validates
-all seven fixture identities before writing `g3-baseline.json`. Tests never
+all six active matrix identities before writing `g3-baseline.json`. Tests never
 write the checked-in baseline. Baseline identity is `methodVersion` + `tiers` +
 the fixture workloads: the version constant is `BENCH_METHOD_VERSION`
 (`apps/editor/src/lib/bench/bench-types.ts`), the four tiers are `chopin` (7 Rooms) ·
-`small` 10 · `medium` 100 · `large` 1000, and the seven workloads carry their
+`small` 10 · `medium` 100 · `large` 1000, and the six active workloads carry their
 semantic class from `apps/editor/src/lib/bench/p23b-fixtures.ts` (class 5 = timing target,
-the rest controls). The report and the baseline both carry a
+the rest controls). The owner payload was deliberately retired for hygiene;
+new captures require the six matrix workloads and two size-40 hosted controls.
+The unchanged historical baseline/ledger retains owner measurements as provenance,
+without a live payload dependency. The report and the baseline both carry a
 `methodVersionReason` — never a hand-edited version number — and the v5 reason is
 the one in the recorded baseline: deferred boundaries start where the
 synchronous input ended, `plan-apply` is its own boundary rather than adapter

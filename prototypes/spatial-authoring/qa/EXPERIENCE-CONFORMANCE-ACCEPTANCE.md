@@ -1,5 +1,11 @@
 # Experience V2 replacement conformance review
 
+**Owner fixture retirement (2026-10-13):** the owner deliberately removed the
+payload for repository hygiene. Restoration and the former missing-fixture
+blocker are retired; #114 removes live benchmark consumers. The failure counts
+and raw logs below remain historical observations at their recorded revisions,
+not current blockers or instructions to restore the file.
+
 **Historical functionality/provenance after #114 (2026-10-13).** The source,
 checks, former plan/board gates and Paper handoff below describe their stated
 revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
@@ -8,7 +14,7 @@ UX3/V3, UX0–UX7 and PA0–PA12 are inactive; #115 owns parallel-track planning
 Useful functional assertions remain evidence, not current shell acceptance.
 
 **C8 in-scope behavioral and visual acceptance complete, 2026-10-04; independent external review pending.**
-Repository verification remains blocked by the pre-existing missing P23B fixture. This is review-ready
+The original repository failures below are historical. This was review-ready
 prototype evidence, with no merge-readiness, PR closure or major-phase closure claim.
 
 The [C1–C8 replacement contract](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
@@ -354,7 +360,7 @@ final acceptance; C8 logs and final manifest below supersede them.
 | Final documentation successor | BLOCKED exit 1; 21/22 pass, only two unchanged historical references to the absent fixture | [documentation log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-docs.txt) |
 | Whitespace | PASS `git diff --check` | [diff-check log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-diff-check.txt) |
 
-External blocker: absent **40-walls.json** in the P23B roadmap fixture location, imported by
+Historical import failure: absent owner payload in the P23B roadmap fixture location, imported by
 [p23b-fixtures.ts](../../../apps/editor/src/lib/bench/p23b-fixtures.ts). The file was already
 absent at the C1–C7 head and in the local `origin/main` tree; C8 does not touch its importer or
 production source. All 32 collection failures, the dormant-scan behavioral failure, the
@@ -362,8 +368,8 @@ missing-module check error and build resolution failure converge on that import.
 failed test is documentation references to the same missing fixture. The first arch/full runs
 also observed the now-retired active checkpoint reference; final focused docs verification
 supersedes that row and isolates the two unchanged historical references. No in-scope failure
-is being classified as this blocker. Resolution requires restoration of the authoritative
-fixture by separately authorized work; generating a substitute would not establish its identity.
+was classified as that historical import failure. The owner has since retired
+the fixture and its live benchmark consumers; restoration is not required.
 
 
 ## Acceptance and handoff
