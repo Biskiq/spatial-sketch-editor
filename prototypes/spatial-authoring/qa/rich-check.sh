@@ -4,8 +4,9 @@
 #     moment and one authored Travel Seam — immediately reviewable, nothing built first;
 #   * the Wall assembly is the World's own representation subject: Preview unrolls the authored Wall
 #     through its evaluator, and Exit restores the author's reading exactly with source/history frozen;
-#   * the Seam's local strip shows the Camera route, its named station and both Experience rows, with
-#     stable station identity, an editable Experience hold and Camera-owned pace/anchor writers;
+#   * the Journey reads that Seam as time through the one clock: its Cues are named at their stations on
+#     the Deck and the Stage, the Cue Card reads occurrence, pause and actions, and the hold is an
+#     Experience writer while pace and path geometry stay Camera's;
 #   * Preview executes only the traversed route, exactly once, and a rebound invocation is an explicit
 #     local refusal rather than a silent double run.
 set -eu
@@ -68,22 +69,30 @@ checkpoint wall
 # ---- The loaded Seam's local coordination is reviewable without building a timeline.
 click '#experienceDeck [data-act=exp-guide]'
 click "[data-act='exp-seam'][data-from='$first'][data-to='$second']"
-click '[data-act=exp-coordinate]'
-qa_ok 'the strip opens on the loaded route with its named station and both Experience rows' "$(qa_js '(()=>{const t=document.querySelector(".coordination-strip"),s=Object.values(__me.ctx.experience.seams)[0];return !!t&&t.textContent.includes("Power station")&&document.querySelectorAll(".coord-beat").length===s.beats.filter(b=>b.kind==="invoke").length&&!!document.querySelector(".coord-hold")&&document.querySelector("[data-hold-duration]").getBoundingClientRect().width>20;})()')" true
+# UX5/UX6: the edge Card owns the one door to the Camera postures and the Path | Journey switch is the
+# Index's, so the Journey is entered through the route that really reaches this edge.
+click '#card [data-act=exp-route]'
+click '#index [data-exp-posture-switch] [data-act=exp-coordinate]'
 hold="$(qa_jsv 'Object.values(__me.ctx.experience.seams)[0].beats.find(b=>b.kind==="hold").id')"
 station="$(qa_jsv 'Object.values(__me.ctx.experience.seams)[0].beats.find(b=>b.kind==="invoke").stationId')"
-identity="$(qa_js '__me.S.sel')"
-click ".station-tick[data-id='$station']"
-# UX4: the coordination strip (and its station label) now lives on the edge Card, not the Deck.
-qa_ok 'selecting the named station focuses its own counterpart and keeps the canonical Stop selection' "$(qa_js '__me.S.sel') / $(qa_js "(__me.S.task.params.station==='$station'&&!!document.querySelector(\"[data-station-counterpart='$station']\")&&document.querySelector('#card').textContent.includes('Power station'))")" "$identity / true"
-# Focusing the Hold is a distinct event focus: it addresses that Hold own station, not the invocation
-# selected a moment earlier, while the canonical Stop selection is untouched.
 hold_station="$(qa_jsv "Object.values(__me.ctx.experience.seams)[0].beats.find(x=>x.id==='$hold').stationId")"
+qa_ok 'the Journey opens on the loaded route with both Cues named and the station choice ready' "$(qa_js '(()=>{const names=[...document.querySelectorAll(".jd-cue")].map(c=>c.textContent.trim());return names.length===2&&names.some(t=>t.includes("Power station"))&&names.some(t=>t.includes("Point 1"))&&!!document.querySelector("#card [data-exp-station]")&&!!document.querySelector("#card [data-act=exp-beat]");})()')" true
+identity="$(qa_js '__me.S.sel')"
+press ".jd-cue[data-id='$station']"
+# UX6: one Cue is the selection — its Deck marker and its Stage chip mirror it, the Card names the Cue by
+# its own station, and the canonical Stop selection is untouched.
+qa_ok 'selecting the named Cue mirrors on the Deck and the Stage and keeps the canonical Stop selection' "$(qa_js '__me.S.sel') / $(qa_js "(__me.S.task.params.station==='$station'&&!!document.querySelector(\".jd-cue.selected[data-id='$station']\")&&!!document.querySelector(\"[data-exp-station-label='$station'].active\")&&document.querySelector('#card .c-t').textContent.includes('Power station'))")" "$identity / true"
+# The Cue reads its own occurrence, pause and actions; every writer stays behind the `Edit cue` disclosure.
+qa_ok 'the Cue reads its own pause and actions before any writer is opened' "$(qa_js '(()=>{const c=document.querySelector("#card");return !!c.querySelector("[data-cue-at]")&&!!c.querySelector("[data-cue-pause]")&&c.querySelector("[data-cue-actions]").textContent==="1"&&!!c.querySelector("[data-cue-action]")&&!c.querySelector("[data-exp-cue-edit]").open;})()')" true
+# The Hold's writer lives in the `Edit cue` disclosure of the Cue that holds it, so that Cue is selected
+# first. Focusing the field then addresses that Hold's own event — the reading the Deck and the Stage
+# mirror — and the field the author entered keeps the keyboard, because the rerender replaces its markup
+# and the page hands the rebuilt field back.
+press ".jd-cue[data-id='$hold_station']"
+press '#card [data-exp-cue-edit] > summary'
 qa_js "(window.__holdId='$hold',window.__holdStation='$hold_station',window.__identity='$(qa_jsv '__me.S.sel')')" >/dev/null
-qa_js '(()=>{const el=document.querySelector("[data-exp-hold="+JSON.stringify(window.__holdId)+"]");if(!el)return false;el.focus();return true;})()' >/dev/null;qa_frames
-# The focused Hold is the whole coordination reading: its own station replaces the one selected a moment
-# earlier, and the field the author entered keeps the keyboard because the rerender replaces its markup.
-qa_ok 'focusing the Hold moves the coordination focus to that Hold own station and event' "$(qa_js '(()=>{const t=__me.S.task,strip=document.querySelector(".coordination-strip"),frame=document.querySelector("[data-exp-hold="+JSON.stringify(window.__holdId)+"]"),hold=strip&&strip.querySelector(".coord-hold[data-beat="+JSON.stringify(window.__holdId)+"]");return t.params.beat===window.__holdId&&t.params.station===window.__holdStation&&!!hold&&hold.classList.contains("active")&&strip.querySelectorAll(".coord-beat.active").length===0&&strip.querySelector("[data-exp-station]").value===window.__holdStation&&__me.S.sel===window.__identity&&document.activeElement===frame;})()')" true
+qa_js '(()=>{const el=document.querySelector("#card [data-exp-cue-edit] [data-exp-hold="+JSON.stringify(window.__holdId)+"]");if(!el)return false;el.focus();return true;})()' >/dev/null;qa_frames
+qa_ok 'the focused Hold is the event the Deck and the Stage mirror, and it keeps the keyboard' "$(qa_js '(()=>{const t=__me.S.task,station=JSON.stringify(window.__holdStation),el=document.querySelector("#card [data-exp-cue-edit] [data-exp-hold="+JSON.stringify(window.__holdId)+"]");return t.params.beat===window.__holdId&&t.params.station===window.__holdStation&&!!document.querySelector(".jd-cue.selected[data-id="+station+"]")&&!!document.querySelector("[data-exp-station-label="+station+"].active")&&__me.S.sel===window.__identity&&document.activeElement===el;})()')" true
 checkpoint review
 
 # ---- Duration is an Experience writer; pace and geometry stay Camera's.
@@ -92,16 +101,24 @@ hold_seconds="$(qa_js "Object.values(__me.ctx.experience.seams)[0].beats.find(x=
 undo_reject="$(undo)"
 # A rejected value is refused, and correcting it in the same field still commits: the guard must not keep
 # comparing a refreshed attempt against the rejected one's epoch.
-fill "[data-exp-hold='$hold']" '-1'
+fill "#card [data-exp-cue-edit] [data-exp-hold='$hold']" '-1'
 qa_ok 'a rejected Hold value is refused without writing source or history' "$(qa_js "Object.values(__me.ctx.experience.seams)[0].beats.find(x=>x.id==='$hold').seconds") / $(undo)" "$hold_seconds / $undo_reject"
 count_before="$(undo)"
-fill "[data-exp-hold='$hold']" '3'
+fill "#card [data-exp-cue-edit] [data-exp-hold='$hold']" '3'
 qa_ok 'editing the Hold duration is one Experience Undo and never a Camera edit' "$(qa_js "Object.values(__me.ctx.experience.seams)[0].beats.find(x=>x.id==='$hold').seconds") / $(undo) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_jsv '__me.S.undo.at(-1).label')" "3 / $((count_before+1)) / $camera_before / Edit Experience station hold"
 beats_refs="$(qa_js 'JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats)')"
-timing_before="$(qa_js 'document.querySelector(".coord-hold").textContent')"
+# §5.8: Pace is Camera's and now lives only on the Path Card, so it is changed in the Path posture and read
+# back in the Journey, where the Cue's own At is what a pace change moves.
+timing_before="$(qa_js 'document.querySelector("#card [data-cue-at]").textContent')"
 route="$(qa_jsv '__me.S.task.params.connection')"
-choose '[data-exp-pace]' slow
-qa_ok 'Camera pace remains Camera source, with the Experience beats unchanged' "$(qa_js "JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats)") / $(qa_js "(__me.ctx.cameraSource.connections['$route'].speed==='slow'&&document.querySelector('.coord-hold').textContent!==$timing_before)")" "$beats_refs / true"
+click '#index [data-exp-posture-switch] [data-act=exp-route]'
+# The Path Card's own writers sit under the fixed Guide band at non-ordinary depth; centering them in the
+# Card keeps the hit test on the control while the real interaction is still the one exercised.
+qa_scroll_center '#card [data-exp-pace]'
+choose '#card [data-exp-pace]' slow
+click '#index [data-exp-posture-switch] [data-act=exp-coordinate]'
+press ".jd-cue[data-id='$hold_station']"
+qa_ok 'Camera pace remains Camera source, with the Experience beats unchanged' "$(qa_js "JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats)") / $(qa_js "(__me.ctx.cameraSource.connections['$route'].speed==='slow'&&document.querySelector('#card [data-cue-at]').textContent!==$timing_before)")" "$beats_refs / true"
 # Merely seeing coordination is not arming a route writer: the press must land on the drawing itself.
 # Dynamic values are published to a page global first: a double-quoted argument carrying {a,b} is
 # brace-expanded by this shell into several words, which silently compares fragments instead.
@@ -113,7 +130,18 @@ qa_ok 'a Stage press while coordination is merely visible shows no Camera anchor
 # Geometry is edited on Stage, through the deliberately armed route writer, with stable references.
 anchor="$(qa_jsv "(()=>{const r=__me.ctx.cameraSource.connections['$route'];return r.anchors[0]?.id||'';})()")"
 count_before="$(undo)"
-click "[data-act='exp-route'][data-id='$route']"
+# §3.1: the press above is the shell's own click, so a pick under it is an outside selection and puts the
+# Experience reading away. The Path posture is re-entered through the edge's own door — and the same route
+# is chosen in the From list — so the drag below addresses the route this checkpoint named.
+click '#experienceDeck [data-act=exp-guide]'
+click "[data-act='exp-seam'][data-from='$first'][data-to='$second']"
+click '#card [data-act=exp-route]'
+qa_frames
+click "#index [data-path-from] [data-act=exp-route][data-id='$route']"
+# §5.5: entering the Path posture keeps the author's standpoint, so the route is brought into view on
+# request before the Stage is pressed.
+qa_scroll_center '#card [data-act=exp-bring]'
+click '#card [data-act=exp-bring]'
 qa_drag "[data-exp-anchor=\"$anchor\"]" 25 10
 qa_ok 'an accepted Stage anchor drag is one Camera Undo with stable Experience references' "$(undo) / $(qa_js 'JSON.stringify(Object.values(__me.ctx.experience.seams)[0].beats)')" "$((count_before+1)) / $beats_refs"
 click '#undoBtn'
@@ -153,15 +181,25 @@ click '[data-command=next]'
 qa_ok 'the refusal keeps the visitor where they were: no fallback and no partial traversal' "$(qa_js '(__me.S.visitor.runtime.stopId===__me.S.visitor.source.experience.guide[0]&&!__me.S.visitor.runtime.movement)')" true
 click '[data-act=exp-exit-preview]'
 openseam;click '[data-act=exp-travel]'
-click '[data-act=exp-coordinate]'
-qa_ok 'the strip names the rebound Activity and offers its station repair' "$(qa_js '(/triggered elsewhere/.test(document.querySelector(".coordination-strip").textContent)&&!!document.querySelector("[data-act=exp-invoke-beat]"))')" true
-click "[data-act=exp-station-focus][data-id='$station']"
-choose '[data-exp-invoke-use]' "$station_work"
-click '[data-act=exp-invoke-beat]'
+# UX5/UX6: the same door and switch reach the Journey, and the rebound Cue is the one selected to read it.
+click '#card [data-act=exp-route]'
+click '#index [data-exp-posture-switch] [data-act=exp-coordinate]'
+press ".jd-cue[data-id='$station']"
+qa_js '(()=>{const d=document.querySelector("#card [data-exp-cue-edit]");if(d&&!d.open)d.open=true;return true;})()' >/dev/null
+# §5.6: the action line names the Activity and reads its own refusal ink (`· trigger elsewhere`, the Card's
+# wording — `triggered elsewhere` is the visitor runtime's) because the rebound trigger no longer sits on
+# this station; `Invoke here` is the repair, and it lives behind the Cue's own `Edit cue` disclosure.
+qa_ok 'the Cue names the rebound Activity and still offers its station repair' "$(qa_js '(()=>{const line=document.querySelector("#card [data-cue-action]"),d=__me.ctx.experience.definitions[__me.ctx.experience.uses[window.__stationWork].definitionId],n=d?d.name:"";return !!(line&&n&&line.textContent.includes(n)&&!!line.querySelector(".exp-refuse-text")&&/trigger elsewhere/.test(line.textContent)&&!!document.querySelector("#card [data-exp-cue-edit] [data-act=exp-invoke-beat]"));})()')" true
+choose '#card [data-exp-cue-edit] [data-exp-invoke-use]' "$station_work"
+press '#card [data-exp-cue-edit] [data-act=exp-invoke-beat]'
 qa_ok 'Invoke here restores the station binding as the Activity single trigger' "$(qa_js '(()=>{const e=__me.ctx.experience;const u=e.uses[window.__stationWork];const s=Object.values(e.seams)[0];return u.start.kind==="station"&&u.start.stationId===s.beats.find(b=>b.kind==="invoke").stationId&&s.beats.filter(b=>b.kind==="invoke").length===1;})()')" true
 checkpoint repair
 
 # ---- C9.6/J8: removing a Presentation retains the authored labelled choice that targeted it.
+# §5.5/§5.8: the Camera Path and Journey postures replace the Index with their own home, so the Journey is
+# put away first — the crumb hands the standpoint back to the edge, and Done closes the reading — before an
+# ordinary Presentation row is taken from the Index.
+click '[data-act=exp-route-return]';click '[data-act=exp-close]'
 compare_pid="$(qa_jsv 'Object.values(__me.ctx.experience.presentations).find(p=>p.name=="Compare materials").id')"
 click "#index [data-act=exp-open][data-id='$compare_pid']"
 qa_card_remove
@@ -172,16 +210,21 @@ broken="$(qa_jsv '(()=>{const e=__me.ctx.experience;for(const s of Object.values
 owner_stop="${broken%%|*}";broken_choice="${broken#*|}"
 click '#index [data-act=exp-guide]'
 click "#experienceDeck [data-act=exp-stop][data-id='$owner_stop']"
+# UX4: pacing, gate and the authored choices are deliberate depth under the Stop Card's own `Stop detail`.
+qa_js '(()=>{const d=document.querySelector("#card [data-exp-stop-detail]");if(d&&!d.open)d.open=true;return true;})()' >/dev/null
 qa_js "(()=>{window.__ownerStop='$owner_stop';window.__brokenChoice='$broken_choice';return true;})()" >/dev/null
 qa_js '(()=>{window.__brokenTarget=__me.ctx.experience.stops[window.__ownerStop].choices.find(c=>c.id===window.__brokenChoice).targetId;return true;})()' >/dev/null
-qa_ok 'the Stop that authors the broken choice offers its own repair and removal' "$(qa_js '(()=>{return !!document.querySelector("[data-exp-choice-target="+JSON.stringify(window.__brokenChoice)+"]")&&!!document.querySelector("[data-act=exp-choice-remove]");})()')" true
+qa_ok 'the Stop that authors the broken choice offers its own repair and removal' "$(qa_js '(()=>{return !!document.querySelector("#card [data-exp-stop-detail] [data-exp-choice-target="+JSON.stringify(window.__brokenChoice)+"]")&&!!document.querySelector("#card [data-exp-stop-detail] [data-act=exp-choice-remove]");})()')" true
 qa_preview_guide
 qa_ok 'Preview marks the retained unresolved choice unavailable instead of offering it' "$(qa_js '(()=>{const b=[...document.querySelectorAll("[data-command=detour],[data-command=go]")].find(x=>/Compare materials detour/.test(x.textContent));return !!b&&b.disabled&&/repair required/.test(b.textContent);})()')" true
 qa_js 'window.__brokenStop=__me.S.visitor.runtime.stopId' >/dev/null
 qa_ok 'the runtime refuses the unresolved destination without parking the parent visit' "$(qa_js '(()=>{__me.E.visitorCommand("detour",window.__brokenTarget);const r=__me.S.visitor.runtime;return r.stopId===window.__brokenStop&&r.bookmarks.length===0&&/repair/.test(r.refusal||"");})()')" true
 click '[data-act=exp-exit-preview]'
 repair_target="$(qa_jsv "Object.values(__me.ctx.experience.stops).find(s=>s.id!=='$owner_stop').id")"
-choose "[data-exp-choice-target='$broken_choice']" "$repair_target"
+# The Preview round-trip restored the authoring context; an open-again is idempotent, so the writer stays
+# reachable where §5.4 puts it.
+qa_js '(()=>{const d=document.querySelector("#card [data-exp-stop-detail]");if(d&&!d.open)d.open=true;return true;})()' >/dev/null
+choose "#card [data-exp-stop-detail] [data-exp-choice-target='$broken_choice']" "$repair_target"
 qa_ok 'repairing the destination points the authored choice at a resolving Stop' "$(qa_js "(()=>{const c=__me.ctx.experience.stops['$owner_stop'].choices.find(x=>x.id==='$broken_choice');return c.targetId==='$repair_target'&&!!__me.ctx.experience.stops[c.targetId];})()")" true
 count_before="$(undo)"
 press "[data-act=exp-choice-remove]"

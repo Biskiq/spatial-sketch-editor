@@ -48,11 +48,19 @@ click '[data-act=exp-exit-preview]'
 # Deliberate disclosure stays distinct from selection.
 click '#experienceDeck [data-act=exp-guide]'
 click ".stop-card[data-stop='$a'] [data-act=exp-stop]"
-qa_ok 'Overview selection remains L1 until Expand is explicitly invoked' "$(qa_js '(__me.S.experienceContext.depth==="overview"&&!document.querySelector(".stop-card.expanded"))')" true
-click ".stop-card[data-stop='$a'] [data-act=exp-expand-stop]"
-# UX4: the L2 Set is retired. Expand is the explicit disclosure of the Stop's own detail: the Deck chip
-# opens and the Stop Card reads its own Entry. Selecting the Stop (above) stayed L1.
-qa_ok 'explicit Expand reaches the Stop detail and the Deck chip, never a second inspector' "$(qa_js '(__me.S.experienceContext.depth==="occurrence"&&!!document.querySelector(".stop-card.expanded")&&!!document.querySelector("#card [data-stop-entry]"))')" true
+# UX4: Peek/Overview/Expand are retired. One chip selection is the whole decision — the chip is marked and
+# the Card becomes that Stop's Card — and no chip discloses a second inspector. Both laws the retired Expand
+# pair protected are kept as their replacements: selecting a Stop adds no posture, and a Stop chip reads the
+# Stop Card rather than a nested detail.
+qa_ok 'a Stop chip selects the Stop and the Card reads its Stop Card, with no Expand control anywhere' "$(qa_js '(__me.S.experienceContext.depth==="overview"&&__me.S.sel===__me.ctx.experience.guide[0]&&__me.S.experienceContext.stop===null&&!!document.querySelector("#card [data-stop-entry]")&&document.querySelector("#card .c-k").textContent.includes("Stop ")&&!document.querySelector(".gd-stop-card.expanded")&&!document.querySelector("[data-act=exp-expand-stop]"))')" true
+qa_ok 'no chip discloses a Stop detail: no expanded chip and no Expand control in the Deck' "$(qa_js '(!document.querySelector("#experienceDeck .gd-stop-card.expanded")&&!document.querySelector("#experienceDeck [data-act=exp-expand-stop]"))')" true
+# UX4 retirement: there is no Expand step. The chip selection above already read the Stop Card, and the
+# Deck's own lane is the only inventory of Stops.
+click "#experienceDeck [data-act=exp-stop][data-id='$a']"
+qa_ok 'the Stop chip keeps its own identity as the selection after a re-render' "$(qa_js '(__me.S.experienceContext.depth==="overview"&&__me.S.sel===__me.ctx.experience.guide[0]&&!document.querySelector("[data-act=exp-expand-stop]"))')" true
+# UX4: the L2 Set and the explicit Expand step are retired with it. The Deck chip reads the Stop and the
+# Stop Card reads its own Entry, so there is no nested detail to open.
+qa_ok 'the Stop Card is still the only inspector and reads this Stop, still with no Expand control' "$(qa_js '(!!document.querySelector("#card [data-stop-entry]")&&!document.querySelector(".gd-stop-card.expanded")&&!document.querySelector("[data-act=exp-expand-stop]"))')" true
 click '#experienceDeck [data-act=exp-close]'
 qa_ok 'leaving Overview returns to compact Peek without changing Camera source' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js '(__me.S.experienceContext.depth==="ordinary")')" "$camera / true"
 # Loaded richer composition is editable; definitions and relationships are real source controls.

@@ -239,13 +239,16 @@ checkpoint navigation
 
 qa_say "-- the aid stays usable during Preview, read-only and without authoring controls"
 last="$(step 'A.select(__me.ctx.experience.guide[0]);')"
-press '[data-act=exp-expand-stop]'
+# UX4: the chip's `Detail` disclosure is retired, so the Stop is reached by selecting its own chip. The
+# selection is the same one Expand made (`selectStop` selects the Stop and records the Peek), and `.expanded`
+# is never produced by any surface now, which is what the Peek assertion below already expects.
+press '[data-act=exp-stop]'
 qa_preview_guide
 last="$(step '')"
 qa_ok "during the visit the aid is still there, marked as a visit's guidance" "$(field visitor) / $(field hidden) / $(field visiting)" "True / False / True"
 qa_ok "…with every authoring control inside it unmounted" "$(is 'd["authoringHidden"] == [True]') / $(field loadersVisible)" "True / 0"
 qa_okc "…and the instruction saying it is read-only" "$(field instruction)" "Read-only while Preview is active"
-# Expanding a Stop moves the aid onto that moment, and Q2 is a topic about the moment on screen: the
+# Selecting a Stop's chip moves the aid onto that moment, and Q2 is a topic about the moment on screen: the
 # example's own framing came with the loader, so the topic is open there and the tally says so.
 qa_ok "…while its cursor stays readable, and Q2 opens again on the moment the visit is about" "$(field stepText) / $(field q2) / $(field tallyCount)" "1/18 · Q1 · Subject and Presentation / False / 0"
 # The aid's own navigation is not authoring: Back, Next and Skip stay usable while Preview is active.

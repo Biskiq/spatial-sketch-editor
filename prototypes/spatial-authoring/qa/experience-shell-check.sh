@@ -75,6 +75,12 @@ window.ux0 = (() => {
     pose: __me.nav.plainPose()
   });
   const stageRect = () => JSON.stringify(document.querySelector('[data-home=stage]').getBoundingClientRect());
+  // The canonical selection is deliberately not part of this one: opening an edge chip *owns* the selection
+  // by design (§3.1), so a reading that includes it could not tell a write from that law.
+  const writeFingerprint = () => JSON.stringify({
+    source: q.hash() + '|' + S.undo.length + '|' + S.redo.length,
+    pose: __me.nav.plainPose()
+  });
   // The Index as text, not as boxes: every line of text a row paints must be on its own line, inside its
   // own row and inside the column. A row whose label and explanation are two elements is one laid-out
   // thing, but a label that shrinks to nothing while its text still paints does not overlap as *boxes* —
@@ -149,7 +155,7 @@ window.ux0 = (() => {
   };
   // The live camera object the pass must never replace: it swaps its own in and restores the reference.
   const liveCamHeld = () => __me.ctx.stage.cam === window.ux2Cam;
-  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, stageRect, previewOutside, passState, imageReading, liveCamHeld, machineCaps, indexText, indexLineLaw };
+  return { reachable, homes, deck, band, cardIdentityReachable, fingerprint, writeFingerprint, stageRect, previewOutside, passState, imageReading, liveCamHeld, machineCaps, indexText, indexLineLaw };
 })()
 JS
 )" >/dev/null; }
@@ -212,17 +218,56 @@ guide="$(band)"
 qa_snap 'experience-shell-1440-guide'
 qa_ok 'the Guide home is a band in one home, with nothing scrolling inside it and no sideways document scroll' "$(band_law "$guide")" 'True|True|True|True|True'
 qa_ok 'opening the Guide home writes no source, history or Camera intent' "$(qa_jsv 'window.ux0.fingerprint()')" "$before"
-# The edge posture is the deepest the shell has today: it is opened from the Guide overview's own
-# between-Stops control, and the example's edge carries beats, so it opens into coordination inside
-# the same band. UX4 replaces that control with the Guide edge Card and re-points the action below.
+# §5.4: a chip selection is the Stop Card's own reading — the chip is marked, the Card reads Entry, Next and
+# Movement, and no chip discloses a detail. §5.4 also requires the rebuilt Deck to hand the keyboard back to
+# the control the author activated, and the lane to stay traversable from that chip.
+chip_stop="$(qa_js 'document.querySelector("#experienceDeck [data-act=exp-stop]").dataset.id')"
+qa_js 'document.querySelector("#experienceDeck [data-act=exp-stop]").focus()' >/dev/null
+agent-browser press Enter >/dev/null 2>&1
+qa_frames
+qa_ok 'a chip selects its Stop, the Card reads it, and no chip carries a Detail control' \
+  "$(qa_jsv 'JSON.stringify([__me.S.sel, !!document.querySelector("#card [data-stop-entry]"), (document.querySelector("#card .c-k") || {}).textContent || null, document.querySelectorAll("[data-act=exp-expand-stop], .gd-stop-card.expanded").length])')" \
+  "[$chip_stop,true,\"Stop 1\",0]"
+qa_ok 'activating a chip keeps the keyboard on that same chip after the Deck is rebuilt' \
+  "$(qa_jsv 'JSON.stringify([document.activeElement?.dataset?.act ?? null, document.activeElement?.dataset?.id ?? null])')" \
+  "[\"exp-stop\",$chip_stop]"
+agent-browser press Tab >/dev/null 2>&1
+qa_frames
+qa_ok '…and Tab from it reaches its own edge chip' \
+  "$(qa_jsv 'JSON.stringify([document.activeElement?.dataset?.act ?? null, document.activeElement?.dataset?.from ?? null])')" \
+  "[\"exp-seam\",$chip_stop]"
+# The edge posture is the deepest the shell has today: UX4 opens it from the Guide lane's own edge chip and
+# shows the edge Card — an edge that already carries beats no longer drops the author into the Journey from a
+# chip that says nothing about time. §3.1 also makes that chip own the canonical selection.
+edge_from="$(qa_js 'document.querySelector("#experienceDeck [data-act=exp-seam]").dataset.from')"
+edge_before="$(qa_jsv 'window.ux0.writeFingerprint()')"
 tap '#experienceDeck [data-act=exp-seam]'
 edge="$(band)"
 qa_ok 'the edge posture stays in the band, in one home, heading reachable, nothing scrolling inside it' "$(band_law "$edge")" 'True|True|True|True|True'
-qa_ok 'opening the edge posture writes no source, history or Camera intent' "$(qa_jsv 'window.ux0.fingerprint()')" "$before"
+qa_ok 'opening the edge posture writes no source, history or Camera intent' "$(qa_jsv 'window.ux0.writeFingerprint()')" "$edge_before"
+qa_ok 'an edge chip makes its from-Stop the selection, and the edge Card is what shows' \
+  "$(qa_jsv 'JSON.stringify([__me.S.sel, __me.S.experienceContext.seam.from, !!document.querySelector("#card [data-edge-coverage]"), !!document.querySelector("#card [data-stop-entry]")])')" \
+  "[$edge_from,$edge_from,true,false]"
 # Whenever the Card is on screen, its own identity block must be reachable at the same time as the
 # band's heading — the Card is inset for the band, so neither may push the other out of reach.
 qa_ok 'the Card keeps its identity reachable while the band is open' "$(qa_jsv 'JSON.stringify([window.ux0.cardIdentityReachable(), window.ux0.band().headingReachable])')" '[true,true]'
 qa_ok 'the band sits under the reserved share in every posture reached so far' "$(band_under "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$peek")" "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$guide")" "$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["frac"])' "$edge")" 0.40)" true
+
+echo "-- the one selection owner: an outside selection takes the reading away"
+# §3.1: the Experience never holds two identities. A Stage pick runs `A.select`, and when the chosen identity
+# is not part of the open reading the edge, its point and any armed insertion are put away — without using the
+# return the posture captured, so no Camera moves.
+pose_before="$(qa_jsv '__me.nav.plainPose()')"
+qa_js '__me.A.select("machine")' >/dev/null
+qa_frames
+qa_ok 'an outside selection shows that subject’s Card and puts the edge reading away, moving no Camera' \
+  "$(qa_jsv 'JSON.stringify([__me.S.sel, __me.S.experienceContext.seam, __me.S.experienceContext.depth])') / $(qa_jsv '__me.nav.plainPose()')" \
+  "[\"machine\",null,\"ordinary\"] / $pose_before"
+qa_ok '…and neither the Stop Card nor the edge reading is left behind' \
+  "$(qa_jsv 'JSON.stringify([!!document.querySelector("#card [data-stop-entry]"), !!document.querySelector("#card [data-edge-coverage]"), document.querySelectorAll("[data-home=deck]").length])')" \
+  '[false,false,1]'
+tap '#experienceDeck [data-act=exp-guide]'
+qa_frames
 
 echo "-- one Preview control, and the visitor surface is the only visible home in Preview"
 # UX1 consolidated every Preview entry into the Head's `Preview ▾` menu: the control exists once, its

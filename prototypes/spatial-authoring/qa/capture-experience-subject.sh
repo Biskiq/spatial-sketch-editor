@@ -53,7 +53,7 @@ qa_locator_select machine
 # At rest: nothing is operated, the derived reach names what exists, and both doors are there.
 shot 'qa5-1440-subject-card'
 read_ok 'the photographed Card is the machine subject at rest, with both doors and no capability control' \
-  "(() => { const c = document.querySelector('#card'); return __me.S.sel === 'machine' && c.querySelector('.c-k').textContent.includes('World lens') && !!c.querySelector('[data-act=exp-add-behavior]') && !!c.querySelector('[data-act=exp-add-interaction]') && $(at_rest); })()"
+  "(() => { const c = document.querySelector('#card'); return __me.S.sel === 'machine' && c.querySelector('.c-k').textContent.trim() === 'SCENE OBJECT' && !!c.querySelector('[data-act=exp-add-behavior]') && !!c.querySelector('[data-act=exp-add-interaction]') && $(at_rest); })()"
 read_ok 'the photographed order is identity → Present this → Used in Experience → the two doors' \
   "JSON.stringify([...document.querySelectorAll('#card > .c-sec')].map(e=>e.textContent.trim().split(' · ')[0])) === JSON.stringify(['Presentation','Used in Experience','Behavior'])"
 read_ok 'the derived reach is read-only: every row is a reference to its owner, none is a second editor' \
