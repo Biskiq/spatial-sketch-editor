@@ -1,8 +1,10 @@
 # PR #115 — Architecture Reset: Frozen-Lane Isolation, Aggressive Pruning & Parallel-Track Cutover
 
-**Status:** proposed executor plan, revision 3 (revision 2 plus the folded-in peer-review corrections F1–F6), ready for independent re-review. Nothing in this document is executed yet. Execution needs owner authorization against the reviewed plan.
+**Status:** proposed executor plan, revision 4 (revision 3 plus narrow peer-review consistency corrections), ready for independent re-review. Nothing in this document is executed yet. Execution needs owner authorization against the reviewed plan.
 
-**Inspected baseline:** `main` at `e90a58224443bdbf44114d7285d55c983b79cc84`, 2026-10-13. The plan is written on `codex/pr115-architecture-plan` (head `44ccbb78`, which adds only this file). Counts are taken from tracked files and exclude ignored local artifacts. Before execution, recheck the baseline-to-start diff and inspect only the files that changed in between.
+**Inspected baseline:** `main` at `e90a58224443bdbf44114d7285d55c983b79cc84`, 2026-10-13. The plan is written on `codex/pr115-architecture-plan`; its current head must be checked at execution rather than relying on an embedded mutable SHA. Counts are taken from tracked files and exclude ignored local artifacts. Before execution, recheck the baseline-to-start diff and inspect only the files that changed in between.
+
+**What changed in revision 4:** fix provider cardinality for pre-implementation gate states; give Camera-authoring migration its own parseable slice effect instead of mixing tags into `Gate@Version` references; correct the planned AGENTS route facts without weakening isolation; remove an obsolete `/museum` link from the reset notice; refresh planning provenance.
 
 **What changed in revision 3:** sections 8–11 are now self-contained and need no earlier revision. The gate register is version-aware and checked against a trusted base. The cycle window gets an enforced opening hook. A bounded post-prune reassessment (WP3R) is added. The `/p/` visitor and snapshot reader are explicitly retained until T4. WP3 acceptance requires DB-backed API tests that actually run.
 
@@ -170,7 +172,7 @@ Any existing `apps/museum` deployment is the owner's to replace with the frozen 
 
 ### 3.6 Authority rules (owner override, D2)
 
-The owner has overridden the AGENTS rule conflict. The frozen project sits **outside the product**. AGENTS gains one line: "`legacy/` holds frozen, separate projects outside product scope; product code never imports them; product rules, authorities and tests do not apply to them." AGENTS rules 4 and 6 themselves are unchanged. There is no exception text inside them, and no product authority treats the frozen kernel copy as a source.
+The owner-approved D2 boundary stands: the frozen project sits **outside the product**. AGENTS gains one separate scope line: "`legacy/` holds frozen, separate projects outside product scope; product code never imports them; product rules, authorities and tests do not apply to them." **Correct only the obsolete route facts in hard rule 4** when WP6 updates AGENTS: the new product serves editor entry routes `/` and `/editor`, and its `/p/[publicationId]` / public-release visitor chunks are visitor-only. `/museum` and `/museum/editor` are no longer product routes after WP2; they belong to the independently deployed frozen project (§3.4). Preserve rule 4's prohibitions on editor session, selection, history, gizmos, Layout UI and authoring machinery in visitor chunks, and its permission for shared runtime-safe evaluators. Rule 6 and the underlying one-compiler guarantee remain unchanged. Do not embed a special relic exception into either hard rule. This is a factual route correction, not a reversal of the D2 isolation decision.
 
 ## 4. Target minimum viable architecture
 
@@ -182,7 +184,7 @@ apps/editor/src/routes/
   +page.svelte                     public entry (guest start / Google)      RETAIN
   editor/+page.svelte              redirect → /project/:id/spatial           RETAIN
   projects/+page.svelte            owned project hub (cloud list)            RETAIN
-  project/[projectId]/spatial/+page.svelte  ★ foundation-reset notice (no authoring; links to /projects and /museum)
+  project/[projectId]/spatial/+page.svelte  ★ foundation-reset notice (no authoring; links to /projects only; no link to removed /museum route)
   p/[publicationId]/+page.svelte   cold public visitor route                 RETAIN
   museum/**                        REMOVE (the frozen project serves these where the owner deploys it; §3.4)
   dev/assets, dev/materials        RETAIN only if WP2 closure ⊆ foundation; otherwise REMOVE (no rework)
@@ -405,7 +407,7 @@ This section is complete for execution. Earlier revisions are only provenance; G
 
 | Existing file or prefix | Action / reason |
 | --- | --- |
-| `docs/README.md`, `AGENTS.md`, `README.md` | **RETAIN + rewrite routing** (§10). AGENTS gains the one-line `legacy/` scope rule (§3.6), drops the `scroll-travel` clause, gets the new routes and keeps its hard invariants. Rules 4 and 6 are unchanged. |
+| `docs/README.md`, `AGENTS.md`, `README.md` | **RETAIN + rewrite routing** (§10). AGENTS gains the separate `legacy/` scope line (§3.6), drops the `scroll-travel` clause, gets the new routes, and updates rule 4's obsolete route enumeration only. Rule 4's visitor/editor isolation guarantee and rule 6 remain unchanged. |
 | `reference/architecture.md`, `north-star.md`, `composition-execution.md`, both `decisions/*` | **RETAIN.** In `architecture.md`, rewrite "Two isolated lanes" and "Product routes" per §4.2, plus the one plain-text sentence about the separate frozen project (§3.4 rule 3). Decision records stay immutable; their old planning links become labeled provenance (`git show <baseline>:<old-path>`) per §10.3. |
 | `reference/components/shell.md`, `theme.md` | **DELETE.** Their landed subject is removed. The frozen relic's facts belong in the frozen project's own README, and PLATE owns the destination. |
 | `reference/components/placement.md` | **CONSOLIDATE then DELETE.** Kernel-level Scene transform-validation facts go into `scene-content.md`. TD-1 acceptance obligations and the scalar-vs-independent-scale fidelity note go into T2 planning evidence. |
@@ -608,7 +610,7 @@ Numbers are stable identity, not execution order. R115 is a single non-capabilit
 global roadmap — Track register: Track | Status | Roadmap
 global roadmap — Gate register: see §9.4
 track README  — Phase register: Phase | Status | Depends on | Workspace
-phase README  — Slice register: Slice | Status | Consumes | Plan | Acceptance | Authorization
+phase README  — Slice register: Slice | Status | Consumes | Effects | Plan | Acceptance | Authorization
 phase README  — FINAL PHASE GATE: <slice-id> → <exact gate artifact>
 phase README  — PHASE CLOSE: Stage (active | closable | closed); Closed (owner, date, evidence); Final gate; Preservation
 ```
@@ -653,6 +655,7 @@ Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Expor
 - **Exports** is the shared source/export path(s).
 - **Conformance** is the conformance test path(s).
 - **Commit** is the reviewed implementation commit.
+- **Provider slice** is `—` before a provider is assigned. A row may have at most one provider; `implemented` and `accepted` require exactly one registered provider. If a previously implemented/accepted row is later `superseded`, retain its provider and evidence; superseding an unimplemented proposal does not manufacture a provider.
 
 **Versioning:**
 
@@ -662,7 +665,9 @@ Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Expor
 
 **Seed rows:** F1.reference, F2.unit-envelope, F3.channels, F4.intent-acceptance, F5.release-envelope, T1.viewport-projection, T3.camera-experience-cutover and T4.prepared-reader, all `undrafted`, with no version and no provider. No fictitious consumer or version exists initially.
 
-**Slice Consumes column:** a list of exact `Gate@Version` references, for example `F4.intent-acceptance@1`. Track and phase IDs are rejected, so there are no whole-track dependencies.
+**Slice Consumes column:** only exact `Gate@Version` references, for example `F4.intent-acceptance@1`, or `—` when no gate is consumed. Track IDs, phase IDs and semantic tags are invalid in this column, so there are no whole-track dependencies.
+
+**Slice Effects column:** `—` by default; use the exact token `camera-authoring-migration` for a slice that migrates Camera authoring into the new editor. Multiple effects, if ever needed, are comma-separated tokens from the explicitly documented grammar, not free text or gate references. The approved slice plan and reviewer must verify the declared effects are truthful. For `camera-authoring-migration`, the checker requires exact, accepted `T1.viewport-projection@Version` **and** `T3.camera-experience-cutover@Version` entries in Consumes. This is a narrow metadata guard, not a source-code semantic classifier.
 
 **`parallel-track-gates.test.ts` enforces** (with in-memory negative fixtures for each rule and positive controls):
 
@@ -672,12 +677,12 @@ Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Expor
    - each FINAL PHASE GATE names a real child;
    - a phase stage `closed` requires the final child shipped plus an owner Closed block, so child acceptance alone cannot close a phase;
    - a track `shipped` requires its TRACK COMPLETE block;
-   - each gate/version has exactly one provider slice.
+   - each gate/version has **at most one** registered provider slice, with no duplicate provider assignment for that row; `undrafted` may have none, and `ratified` may remain unassigned until a real provider is planned; `implemented` and `accepted` require exactly one existing registered provider, and a superseded row preserves the historical provider if one existed;
 2. **Exact versions:**
    - every Consumes entry names an existing `Gate@Version` row;
    - a bare gate name, or a track or phase ID, fails.
 3. **Readiness evidence:**
-   - `implemented` requires existing Exports and Conformance paths;
+   - `implemented` requires an actual registered Provider slice plus existing Exports and Conformance paths;
    - `accepted` additionally requires an existing Acceptance record and a Commit that is an ancestor of `HEAD`;
    - ratified-only or shared-code-absent gates never count as ready.
 4. **Eligibility:**
@@ -690,12 +695,12 @@ Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Expor
    - if the `main` ref is missing, the test fails with a fetch instruction and does not skip;
    - a provider accepting its own gate does not consume it, so this never blocks providers.
 6. **Ordering exceptions:**
-   - a slice consuming T1.viewport-projection for Camera authoring migration must also consume T3.camera-experience-cutover (tag `camera-authoring` in its Consumes cell);
+   - a slice whose separate Effects cell declares `camera-authoring-migration` must consume exact accepted versions of both T1.viewport-projection and T3.camera-experience-cutover; tags inside Consumes fail its exact `Gate@Version` grammar;
    - independent slices with no shared gate remain eligible in parallel, and a positive control proves concurrent phases in one track and accepted gates whose producing phase is still open.
 
 **Still owned by review, not tooling:**
 
-- that a slice's declared Consumes are truthful;
+- that a slice's declared Consumes and Effects are truthful (the checker cannot infer a missing effect solely from arbitrary source changes);
 - that a new persisted format names its F amendment and owner in the reviewed plan.
 
 ### 9.5 F amendment path
@@ -775,6 +780,8 @@ The hierarchy is ownership, not mandatory preloading. Ordinary slice work never 
   - at R115.S01 completion, it states: "#115 reset accepted; frozen Chopin project separated; T1–T4 phase/slice planning available; capability implementation requires its own approved scope and accepted gates";
   - it lists the track routes, and R115 owner-close as pending if not yet invoked;
   - it does not claim that capability plans exist.
+
+- **`AGENTS.md`:** apply §3.6's route-fact correction in hard rule 4 alongside the separate `legacy/` scope line. Preserve the visitor/editor import-closure restrictions and one-compiler rule; do not keep `/museum/editor` listed as a live product route after WP2.
 
 ### 10.3 Incoming links and historical records
 
@@ -966,7 +973,7 @@ Execution is one reviewed restructuring change set. Each WP ends at a **checkpoi
 **Owner decisions (all resolved for approval):**
 
 - **D1 — resolved:** `apps/museum` is retired and superseded by `legacy/chopin-museum`.
-- **D2 — overridden by the owner:** the frozen project is outside the product, and AGENTS rules 4 and 6 are unchanged (§3.6).
+- **D2 — owner-approved isolation retained:** the frozen project is outside the product. In AGENTS, only rule 4's historical route enumeration is corrected to match the new deployment boundary; its visitor/editor isolation guarantee and rule 6 are unchanged (§3.6).
 - **D3 — accepted.**
 - **D4 — approved:** one checkpoint commit per WP.
 - **Deployment — decided:** owner-handled, with no product deploy change (§3.4).
@@ -986,7 +993,7 @@ Execution is one reviewed restructuring change set. Each WP ends at a **checkpoi
 
 - The planning agent changed only this file. Owner statements are also saved as agent memory outside the repository.
 - No restructuring, deletion or tooling was performed.
-- Revision 2 was committed and pushed on owner instruction. This revision (3, peer-review findings F1–F6) is left uncommitted for owner action.
+- Revisions 2–3 are present on the PR planning branch. Revision 4 is a plan-only consistency amendment; no pruning, production changes, closeout or merge have been executed.
 
 **Independent re-review should test:**
 
@@ -1020,4 +1027,4 @@ Earlier review items (frozen boundary, §5.1 classes, §4.3 criteria, WP3 stop r
 - **For revision 3:**
   - the API test DB-skip behavior (`apps/api/tests/publication.test.mjs` and `test-auth.test.mjs` skip when Postgres is unreachable; `api.test.mjs` uses fakes);
   - the `/p/` dependency of `public-surface-boundary-plugin.ts`.
-- **Checker (revision 3):** the arch-lane documentation reference checker passes 22/22 and `git diff --check` is clean. Proposed target paths are written as plain text so that the checker does not treat them as existing files.
+- **Checker (revision 3):** the arch-lane documentation reference checker passed 22/22 and `git diff --check` was clean. These results describe revision 3, not a new revision 4 test execution. Revision 4 changes this plan only; its new metadata/test cases remain planned acceptance requirements.
