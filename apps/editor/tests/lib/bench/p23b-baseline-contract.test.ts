@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixtureLedger from '../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json';
+import recordedBaseline from '$lib/bench/baselines/g3-baseline.json';
 import { validateP23BBrowserReport } from '$lib/bench/record-baseline';
 import { validateBaseline } from '$lib/bench/bench-report';
 import {
@@ -16,14 +17,14 @@ import {
 	type P23BBrowserRunReport
 } from '$lib/bench/bench-types';
 import { BUDGETS } from '$lib/bench/record-baseline';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_FIXTURE_ID, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_HOSTED_FIXTURE_IDS, P23B_RETIRED_OWNER_FIXTURE_ID } from '$lib/bench/p23b-fixtures';
 import { measureBrowserTier } from '$lib/bench/browser-bench';
 import { measureNodeTier } from '$lib/bench/plan-bench';
 
 const DEFERRAL = 'Owner decision: the guided 3D navigation capture is deferred for this contract test.';
 const BEND_NOT_APPLICABLE =
 	'p23b-40-wall-straight-v1 has no knots: every centerline in the all-straight control fixture is a straight segment, so the bend/knot path cannot be recorded on it.';
-const HOSTED_IDS = [P23B_OWNER_FIXTURE_ID, 'p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'] as const;
+const HOSTED_IDS = P23B_HOSTED_FIXTURE_IDS;
 const WARMUP = 5;
 
 const provenance: P23BBrowserRunReport['browser'] = {
@@ -118,7 +119,7 @@ function captureFor(id: string, index: number): BenchInteractionFixtureCapture {
 
 function workloads(): BenchWorkloadResult[] {
 	return fixtureLedger.fixtures
-		.filter((fixture) => fixture.semanticClass === 5)
+		.filter((fixture) => P23B_MATRIX_SPECS.some((spec) => spec.id === fixture.id))
 		.map((fixture) => ({
 			fixtureId: fixture.id,
 			semanticClass: 5 as const,
@@ -166,8 +167,15 @@ function baselineStub(): BudgetBaseline {
 }
 
 describe('P23B browser baseline contract (method v5)', () => {
-	it('accepts the owner workload plus both size-40 matrix cells with isolated sessions', () => {
+	it('accepts the active matrix workload with both size-40 captures in isolated sessions', () => {
 		expect(() => validateP23BBrowserReport(validReport())).not.toThrow();
+	});
+
+	it('preserves historical owner measurements but rejects that retired identity in a new capture', () => {
+		expect(validateBaseline(recordedBaseline as unknown as BudgetBaseline)).toEqual([]);
+		const report = validReport();
+		report.workloads[0]!.fixtureId = P23B_RETIRED_OWNER_FIXTURE_ID;
+		expect(() => validateP23BBrowserReport(report)).toThrow(/Unexpected or duplicate P23B workload owner-40-curved-v1/);
 	});
 
 	it('requires every hosted fixture to be captured in its own isolated session', () => {
@@ -175,8 +183,8 @@ describe('P23B browser baseline contract (method v5)', () => {
 		report.interactionFixtures[1]!.sessionId = report.interactionFixtures[0]!.sessionId;
 		expect(() => validateP23BBrowserReport(report)).toThrow(/distinct isolated sessions/);
 		const shortened = validReport();
-		shortened.interactionFixtures = shortened.interactionFixtures.slice(0, 2);
-		expect(() => validateP23BBrowserReport(shortened)).toThrow(/exactly 3 hosted fixtures/);
+		shortened.interactionFixtures = shortened.interactionFixtures.slice(0, 1);
+		expect(() => validateP23BBrowserReport(shortened)).toThrow(/exactly 2 hosted fixtures/);
 	});
 
 	it('rejects a capture that did not settle, dropped a boundary, or skipped the warm-up exclusion', () => {
@@ -210,18 +218,18 @@ describe('P23B browser baseline contract (method v5)', () => {
 
 	it('keeps the all-straight control straight: the bend path is not applicable, never converted or sampled', () => {
 		const okay = validReport();
-		expect(okay.interactionFixtures[1]!.notApplicableInteractionPaths['bend-knot-edit']).toContain('no knots');
-		expect(okay.interactionFixtures[1]!.interactionSampleCounts['bend-knot-edit']).toBeUndefined();
+		expect(okay.interactionFixtures[0]!.notApplicableInteractionPaths['bend-knot-edit']).toContain('no knots');
+		expect(okay.interactionFixtures[0]!.interactionSampleCounts['bend-knot-edit']).toBeUndefined();
 		expect(() => validateP23BBrowserReport(okay)).not.toThrow();
 
 		const converted = validReport();
-		converted.interactionFixtures[1]!.interactionSampleCounts['bend-knot-edit'] = 25;
+		converted.interactionFixtures[0]!.interactionSampleCounts['bend-knot-edit'] = 25;
 		expect(() => validateP23BBrowserReport(converted)).toThrow(/must carry no samples for bend-knot-edit/);
 	});
 
 	it('requires the same viewport within 2% across hosted fixtures', () => {
 		const report = validReport();
-		report.interactionFixtures[2]!.planView = { ...report.interactionFixtures[2]!.planView!, pixelsPerMeter: 24 };
+		report.interactionFixtures[1]!.planView = { ...report.interactionFixtures[1]!.planView!, pixelsPerMeter: 24 };
 		expect(() => validateP23BBrowserReport(report)).toThrow(/same px\/m/);
 	});
 
@@ -248,7 +256,7 @@ describe('P23B browser baseline contract (method v5)', () => {
 		const missingFixture = { ...baselineStub() };
 		delete missingFixture.interactionFixtures;
 		expect(validateBaseline(missingFixture)).toContain(
-			'P23B baseline must carry the three hosted interaction fixtures (owner + size-40 straight/all-curved)'
+			'P23B baseline must carry every active hosted interaction fixture'
 		);
 		const noWarmup = structuredClone(baselineStub());
 		noWarmup.interactionFixtures![0]!.capture.warmup = 0;
@@ -275,7 +283,6 @@ describe('P23B browser baseline contract (method v5)', () => {
 		};
 		const fixtures = [
 			...P23B_MATRIX_SPECS.map((spec) => ({ id: spec.id, document: buildP23BMatrixFixture(spec) })),
-			{ id: P23B_OWNER_FIXTURE_ID, document: P23B_OWNER_LAYOUT }
 		];
 		for (const fixture of fixtures) {
 			const node = measureNodeTier(fixture.document, 'small', benchProvenance, { warmup: 1, samples: 2, hitPoints: 10, tolerance: 0.2 });

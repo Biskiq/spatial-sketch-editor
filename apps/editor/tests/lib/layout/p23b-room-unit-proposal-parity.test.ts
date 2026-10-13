@@ -57,7 +57,7 @@ import {
 	type RoomUnitMoveSubgraph
 } from '@portfolio/layout-core';
 
-import { P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT, buildP23BMatrixFixture } from '$lib/bench/p23b-fixtures';
+import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from '$lib/bench/p23b-fixtures';
 
 /** Every differential here compiles 40-Wall documents; the default budget is far too small. */
 const DIFFERENTIAL_TIMEOUT_MS = 300_000;
@@ -81,7 +81,7 @@ type Arm = {
 	baseline: CompiledLayoutGeometry;
 };
 
-/** The committed 40-wall matrix cells plus the committed owner payload. */
+/** The active 40-wall matrix cells. */
 function fixtureArms(): Arm[] {
 	const arms: Arm[] = [];
 	const documents: LayoutDocumentWallFirst[] = [];
@@ -89,11 +89,10 @@ function fixtureArms(): Arm[] {
 		if (spec.size !== '40-wall') continue;
 		documents.push(buildP23BMatrixFixture(spec));
 	}
-	documents.push(P23B_OWNER_LAYOUT);
 	for (let index = 0; index < documents.length; index += 1) {
 		const document = documents[index]!;
 		const label =
-			index < documents.length - 1 ? P23B_MATRIX_SPECS.filter((spec) => spec.size === '40-wall')[index]!.id : 'owner-40-curved-v1';
+			P23B_MATRIX_SPECS.filter((spec) => spec.size === '40-wall')[index]!.id;
 		arms.push({
 			label,
 			document,
@@ -236,7 +235,7 @@ describe('P0.2 — compile equivalence under a rigid Room-unit translation', () 
 			}
 			// The gate must not pass vacuously: every committed arm has to contribute.
 			expect(cases.length, 'translated cases exercised').toBeGreaterThanOrEqual(24);
-			expect(new Set(cases.map((entry) => entry.fixture)).size, 'distinct fixtures').toBe(4);
+			expect(new Set(cases.map((entry) => entry.fixture)).size, 'distinct fixtures').toBe(3);
 		},
 		DIFFERENTIAL_TIMEOUT_MS
 	);

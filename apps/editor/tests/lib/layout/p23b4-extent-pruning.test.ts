@@ -19,7 +19,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 
 /**
@@ -129,7 +128,6 @@ function unprunedCrossing(document: LayoutDocumentWallFirst): WallCurveTopologyC
 function s7Fixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> {
 	const entries: Array<{ id: string; document: LayoutDocumentWallFirst }> = [];
 	for (const spec of P23B_MATRIX_SPECS) entries.push({ id: spec.id, document: buildP23BMatrixFixture(spec) });
-	entries.push({ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT });
 	for (const spec of P23B_CORRECTNESS_SPECS) {
 		if (spec.id === 'class4-zero-length-wall-v1') continue; // zero-length never reaches the sampled gate
 		entries.push({ id: spec.id, document: buildP23BCorrectnessFixture(spec) });

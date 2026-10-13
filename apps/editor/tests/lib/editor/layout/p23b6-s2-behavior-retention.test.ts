@@ -21,7 +21,7 @@ import {
 	restoreLayoutPreviewSnapshot,
 	type LayoutPreviewState
 } from '$lib/editor/layout/layout-preview-state.svelte';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
 import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
 import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
 import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
@@ -40,7 +40,6 @@ import type { LayoutPreviewSceneInputs } from './p23b6-layout-preview-scene-moun
 const PIN_FIXTURES = [
 	'p23b-40-wall-straight-v1',
 	'p23b-40-wall-all-curved-v1',
-	'owner-40-curved-v1'
 ] as const;
 const RETENTION_FIXTURE = 'p23b-12-wall-target-curved-v1';
 const EDIT_WALL = 'room-0:wall-0';
@@ -52,7 +51,6 @@ const EXPECTED_PLAN_LAYER_COUNTS = [
 const PLAN_GOLDENS: Record<(typeof PIN_FIXTURES)[number], string> = {
 	'p23b-40-wall-straight-v1': '8704b4f62d3ec5cd2b846062ffdad05c8f3f7af8c218008a7caeb73b773f0dbf',
 	'p23b-40-wall-all-curved-v1': '2a059ba0df6e595db062ff02c7b9d4253cbf77c00e5ad11deeca501bd69438ce',
-	'owner-40-curved-v1': '29693743e0823420530c18e8879aab6d81b899784c473e58e993754b318edf8d'
 };
 let unmountEvidence: UnmountWitness | null = null;
 
@@ -98,7 +96,6 @@ type UnmountWitness = {
 };
 
 function fixtureDocument(id: MatrixFixtureId) {
-	if (id === 'owner-40-curved-v1') return P23B_OWNER_LAYOUT;
 	const spec = P23B_MATRIX_SPECS.find((entry) => entry.id === id);
 	if (!spec) throw new Error(`unknown P23B.6 fixture ${id}`);
 	return buildP23BMatrixFixture(spec);

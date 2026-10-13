@@ -72,19 +72,51 @@ remains a non-blocking delivery refinement in PLATE, not an invented solution he
 
 **Unchanged World anchors:** `app/journeys.js`, `app/model.js`, `app/draw.js`, `app/tasks.js`, `app/cancel.js`, `qa/baseline.json`, `qa/journey-check.sh`, `qa/interaction-check.sh`, `qa/flow-check.sh`, `qa/policy-check.sh`, `qa/shell-check.sh`, `qa/precision-check.sh`, `qa/browse-check.sh`, `qa/repair-check.sh`, `qa/responsive-check.sh`, `qa/correctness-check.sh`.
 
-### #114 documentation-reconciliation verification (2026-10-13)
+### Initial documentation-reconciliation verification (2026-10-13, `7f62c3a8`)
 
 | Check | Result / limit |
 | --- | --- |
 | Documentation references, links, paths and anchors | **22/22 pass**: `npx vitest run --config vitest.arch.config.ts tests/docs` from `apps/editor` |
 | Required architecture lane | **276/276 pass, 24 files**: root `npm run test:arch` |
 | Preservation checks | Paper's detailed authoring body unchanged; all six UX3/V3 bodies and PA0–PA12 body unchanged beneath inactive notices; the 16 World anchors above unchanged from PR base |
-| Scope / whitespace | Every reconciliation change is Markdown; no production/prototype runtime, tests, scripts or images changed; `git diff --check` passes |
+| Scope / whitespace | The initial design reconciliation changes only Markdown; prototype runtime, tests, scripts and images are unchanged; `git diff --check` passes |
 | Prototype execution | Full suite, focused browser runs and mutation chains **not rerun**: this task changes documentation only, with prior functionality evidence retained below |
-| Other repository gates | Root full test/check/build **not rerun**. The previously reported missing P23B `40-walls.json` remains absent/untracked; separate scope, not an unfinished design gate |
+| Other repository gates | Root full test/check/build were not rerun for the initial documentation commit; the owner subsequently authorized workload retirement and repository verification below |
 
 Design acceptance is the owner's Conservatory decision, not these automated
-checks. No phase close, production implementation, #115 plan or merge occurs here.
+checks. No phase close, product UI implementation, #115 plan or merge occurs here.
+The owner separately expanded #114 to retire the deleted benchmark workload.
+Restoration and the former missing-fixture blocker are retired; historical
+failures below are recorded outcomes, not current blockers.
+
+## Owner-requested benchmark workload retirement (2026-10-13)
+
+The owner confirms the payload was deliberately removed for hygiene and
+explicitly includes dependent benchmark cleanup in #114. Restoration and the
+former blocker are retired. This is maintenance of existing measurement tools;
+no product authoring feature, track slice or prototype implementation is added.
+
+- The deleted-file import, active owner fixture/targets, browser-driver workload,
+  CLI probes and owner-only reference rows/tests are removed. Six generated
+  matrix workloads, nine correctness fixtures, the two size-40 interaction
+  controls and connected-case advisory evidence remain.
+- Fixture-specific exact-byte coverage is retired with its payload; other
+  geometry, projection, sampling, history/retention, preflight/correspondence and
+  budget assertions remain. The independent-generation cache test uses the
+  existing all-curved matrix control rather than restoring or relabelling owner data.
+- The immutable baseline, ledger and raw historical captures/logs remain unchanged.
+  Readers accept recorded owner measurements as history; fresh report validation
+  rejects that retired identity. The new regression checks both sides of this boundary.
+- Current routers, closed stubs and evidence no longer demand restoration or carry
+  a missing-fixture blocker. Prior red results describe their original runs.
+
+Verification for the expanded scope: root `npm test` **5242 pass / 4 skip**,
+**371 files pass / 2 skip**; both apps build; focused baseline/proposal checks
+**17/17**, with fixture-contract and generation checks also passing. Final
+architecture **276/276 (24 files)**, including documentation **22/22**; root
+`npm run check` reports **0 errors / 0 warnings in each app** and `npm run build`
+passes for both apps. `git diff --check` passes. These results are also in the PR.
+No browser captures, prototype sweep, baseline recording or budget rewrite is run.
 
 ## Historical implementation record
 
@@ -246,8 +278,8 @@ composition re-run recorded above), the Node suite is 140/140, the new axis is g
 three regressions it protects, and the before-state captures exist at both review sizes. Anything the
 gate does **not** cover is named in §Recorded facts rather than implied: the one-Head-Preview
 consolidation, the Guide/Camera Path/Journey postures and the visitor-surface audit belong to
-UX1–UX7, and the missing P23B fixture remains a separate repository-gate blocker that no #114 slice
-touches.
+the historical UX1–UX7 work. The owner fixture has since been deliberately retired;
+its old import failure is not a current restoration/blocker condition.
 
 ## UX1 — shared chrome and the one locator (landed)
 

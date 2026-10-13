@@ -24,7 +24,7 @@ import {
 import {
 	buildStandaloneWallMesh as buildMuseumStandaloneWallMesh
 } from '../../../../../museum/src/lib/layout/wall-mesh-builder';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
 import { jsonStringDeepEqual, s1DeepEqual } from '../../bench/p23b6-comparator-strategies';
 
 const WALL_ID = 'room-0:wall-0';
@@ -314,7 +314,6 @@ describe('P23B.6 S3b — canonical builder closure and D-5 refusal matrix', () =
 				if (!spec) throw new Error(`missing S3 fixture ${id}`);
 				return buildP23BMatrixFixture(spec);
 			}),
-			P23B_OWNER_LAYOUT
 		];
 		for (const document of documents) {
 			const compiled = compileWallFirstLayoutGeometry(document);

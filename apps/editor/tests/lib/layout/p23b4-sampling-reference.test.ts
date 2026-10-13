@@ -18,7 +18,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
 
@@ -82,7 +81,6 @@ type FixtureEntry = { id: string; document: LayoutDocumentWallFirst };
 function s1Fixtures(): FixtureEntry[] {
 	const entries: FixtureEntry[] = [];
 	for (const spec of P23B_MATRIX_SPECS) entries.push({ id: spec.id, document: buildP23BMatrixFixture(spec) });
-	entries.push({ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT });
 	for (const spec of P2311_FIXTURES.filter((candidate) => candidate.openings > 0)) {
 		entries.push({ id: spec.id, document: p2311Fixture(spec) });
 	}
@@ -281,18 +279,6 @@ const REFERENCE: Record<string, { seamForward: string; seamReverse: string; topo
 		openingSpans: 'walls=40 checksum=3517e5aa187f7e2be5bce200b4564770e2e478838b6a62841492118b0ee62fb8',
 		faces: 'faces=10 checksum=5941119a2f226a9da4286abf778b9597866659e08e31f21ce8a55c508daa1140 diagnostics=[] dangling=[] cut=[]',
 		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=f9f00f911ca65c4b947e9af522482dfaefaf77d81c1b7bbbebc75202bdf22de9'
-	},
-	'owner-40-curved-v1': {
-		seamForward: 'walls=40 points=1472 checksum=bd510001c3e8008175d46a033ce6346b0a2d6a5c8e7567dd2823601d80bdbba3',
-		seamReverse: 'walls=40 points=1472 checksum=793ec9133af4349f2c8945f6eda0282be5a7a6455b2ecdd93c8b7dfcaea19e4a',
-		topologyCurved: 'walls=40 points=1472 checksum=bd510001c3e8008175d46a033ce6346b0a2d6a5c8e7567dd2823601d80bdbba3',
-		faceForward: 'walls=40 points=1472 checksum=bd510001c3e8008175d46a033ce6346b0a2d6a5c8e7567dd2823601d80bdbba3',
-		faceReverse: 'walls=40 points=1472 checksum=793ec9133af4349f2c8945f6eda0282be5a7a6455b2ecdd93c8b7dfcaea19e4a',
-		compilePhysical: 'walls=40 points=1472 checksum=bd510001c3e8008175d46a033ce6346b0a2d6a5c8e7567dd2823601d80bdbba3',
-		compileValidation: 'refs=40 checksum=66115f0571801178e22156110b86a22d510b01c97576c300ca28416221712c9c',
-		openingSpans: 'walls=40 checksum=dbb18387873a4ce3455868c567273565c5d0e1c2543238939268bd0984fa929e',
-		faces: 'faces=10 checksum=56fb53980df002af32bbd6514470736cf7b7057c83fb95cc654105d917553dde diagnostics=[] dangling=[] cut=[]',
-		verdicts: 'topology=admitted openingIssues=[] compileIssues=[] compiled=6fd383c59599e643d7e5605e2a5f66a26c47025eb80a89ce4ed880480ce4781c'
 	},
 	'bend-10-wall-openings': {
 		seamForward: 'walls=10 points=490 checksum=8206c580f5adf2d3d3066abe1d0f30f928b8770d2402edef86aa47ac5081a9ec',

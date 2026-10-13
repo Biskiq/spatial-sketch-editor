@@ -22,7 +22,7 @@ import {
 	clearSampleSegmentObserverForTest,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
 
 function p50(values: number[]): number {
 	const sorted = [...values].sort((a, b) => a - b);
@@ -60,12 +60,6 @@ const fixtures: Array<{
 		segment: [[14, 5], [18, 5]],
 		rect: [[14, 5], [18, 5], [18, 7], [14, 7]]
 	},
-	{
-		id: 'owner-40-curved-v1',
-		document: P23B_OWNER_LAYOUT,
-		segment: [[24, 24], [28, 24]],
-		rect: [[24, 24], [28, 24], [28, 26], [24, 26]]
-	}
 ];
 
 for (const fixture of fixtures) {

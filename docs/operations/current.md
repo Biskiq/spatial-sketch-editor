@@ -17,7 +17,5 @@ GATE: F.1–F.5 target OWNER-RATIFIED; NO PRODUCTION IMPLEMENTATION AUTHORIZED.
       Normative text → ../reference/composition-execution.md. Each exact interface
       is drafted with its first consumer and ratified as an F amendment; track plans
       cannot mint independent formats or bypass relevant readiness gates.
-BLOCKERS: P23B fixture missing — separate repository-gate blocker (root test/check/build);
-          restoration needs separate scope authorization, not a design-ratification gate.
 CARRY: TD-4 release costs · TD-5 `$state` proxy cost · D5 follow-up probes · M1
        session-conditioning limitation → ./tech-debt/README.md.

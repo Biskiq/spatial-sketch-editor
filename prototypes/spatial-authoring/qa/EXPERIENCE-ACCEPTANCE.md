@@ -1,5 +1,11 @@
 # Unified Experience V2 acceptance (#113)
 
+**Owner fixture retirement (2026-10-13):** the owner deliberately removed the
+payload for repository hygiene. Restoration and the former missing-fixture
+blocker are retired; #114 removes live benchmark consumers. The failure counts
+and raw logs below remain historical observations at their recorded revisions,
+not current blockers or instructions to restore the file.
+
 **Historical functionality/provenance after #114 (2026-10-13).** The source,
 checks, former plan/board gates and Paper handoff below describe their stated
 revision. Current accepted UX → [Conservatory](../../experience-ux-alternative/README.md)
@@ -170,9 +176,9 @@ No Paper rail, Card rewrite, Head-search retirement, topology or creation adopti
 was added. Paper PA0 must reconcile against this unified executable, current
 Camera/selection/history/cancellation seams and both-lens regression axes.
 
-## Repository-wide gate blocker
+## Historical repository gate results
 
-EVIDENCE-PATHS: start — the deleted P23B fixture this S0–S9 record reports as an external blocker; state at the revision described here
+EVIDENCE-PATHS: start — retired owner-payload import evidence; state at the historical S0–S9 revision
 Broader final verification exposes a pre-existing failure outside #113's scope:
 PR #98 commit `49e1b231e4a79aba4a25bb3a7f0bdc151abfa430` deleted
 `docs/roadmap/p23b-geometry-performance/40-walls.json`, still imported by
@@ -186,8 +192,8 @@ PR #98 commit `49e1b231e4a79aba4a25bb3a7f0bdc151abfa430` deleted
 
 The exact original was recovered from Git (61,140 bytes; SHA-256
 `63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05`),
-matching the fixture ledger. Restoration is awaiting owner scope approval under
-AGENTS.md rule 11. No replacement fixture or production refactor was invented.
+matching the fixture ledger. The owner deliberately retired the artifact; no
+restoration is required. These results describe the original verification run.
 Required prototype acceptance passes, but slice-closeout requires these broader
 gate results to pass before reporting merge readiness. Pushes remain unauthorized;
 #113 remains open and unmerged.

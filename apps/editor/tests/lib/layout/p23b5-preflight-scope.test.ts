@@ -55,7 +55,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 import { timeOp } from '$lib/bench/bench-harness';
 import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
@@ -172,7 +171,6 @@ function preflightCases(): Array<{ id: string; document: LayoutDocumentWallFirst
 		{ id: 'p23b-40-wall-straight-v1', document: matrixFixture('p23b-40-wall-straight-v1') },
 		{ id: 'p23b-12-wall-all-curved-v1', document: matrixFixture('p23b-12-wall-all-curved-v1') },
 		{ id: 'p23b-12-wall-target-curved-v1', document: matrixFixture('p23b-12-wall-target-curved-v1') },
-		{ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT },
 		{ id: 'N-2 (admitted)', document: curvatureFixture('N-2') },
 		{ id: 'N-2i (already refused)', document: curvatureFixture('N-2i') },
 		{ id: 'class4-self-intersection-v1', document: curvatureFixture('class4-self-intersection-v1') }

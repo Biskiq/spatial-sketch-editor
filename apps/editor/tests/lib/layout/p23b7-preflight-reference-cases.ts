@@ -30,7 +30,6 @@ import {
 import {
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT,
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture
 } from '$lib/bench/p23b-fixtures';
@@ -187,13 +186,6 @@ export function p23b7PreflightReferenceCases(): P23B7PreflightReferenceCase[] {
 		covers: 'OR-3a',
 		document: matrixFixture('p23b-40-wall-target-curved-v1'),
 		intent: junctionMoveBy(matrixFixture('p23b-40-wall-target-curved-v1'), 'room-0:j0', [0.05, 0]),
-		expected: PENDING
-	});
-	rows.push({
-		id: 'a-owner-40-curved',
-		covers: 'OR-3a',
-		document: P23B_OWNER_LAYOUT,
-		intent: junctionMoveBy(P23B_OWNER_LAYOUT, P23B_OWNER_LAYOUT.junctions[0]!.id, [0.05, 0]),
 		expected: PENDING
 	});
 

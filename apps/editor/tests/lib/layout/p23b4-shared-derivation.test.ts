@@ -19,7 +19,6 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_LAYOUT
 } from '$lib/bench/p23b-fixtures';
 import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
 
@@ -36,7 +35,6 @@ import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
 function s2Fixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> {
 	const entries: Array<{ id: string; document: LayoutDocumentWallFirst }> = [];
 	for (const spec of P23B_MATRIX_SPECS) entries.push({ id: spec.id, document: buildP23BMatrixFixture(spec) });
-	entries.push({ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT });
 	for (const spec of P2311_FIXTURES.filter((candidate) => candidate.openings > 0)) {
 		entries.push({ id: spec.id, document: p2311Fixture(spec) });
 	}
@@ -206,18 +204,13 @@ describe('P23B.4 S6 — chain-wide coverage (one context per release)', () => {
 	it('serves the whole chain from distinct keys only: 280 kernel evals become 120 derivations', () => {
 		// Expected derivations per release (pre doc + post doc carry different
 		// centerline objects, so pre/post never alias — by key-grammar design):
-		// all-curved-40/owner-40: 40 pre-fwd + 40 face-rev + 40 post-fwd = 120.
+		// all-curved-40: 40 pre-fwd + 40 face-rev + 40 post-fwd = 120.
 		// straight-40: topology/faces short-circuit lines; compile derives 40.
 		// bend-3-room-openings: 10 wall spans + compile physical/validation share.
 		const cases: Array<{ id: string; document: LayoutDocumentWallFirst; derivations: number }> = [
 			{
 				id: 'p23b-40-wall-all-curved-v1',
 				document: buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === 'p23b-40-wall-all-curved-v1')!),
-				derivations: 120
-			},
-			{
-				id: 'owner-40-curved-v1',
-				document: P23B_OWNER_LAYOUT,
 				derivations: 120
 			},
 			{

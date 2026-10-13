@@ -18,7 +18,7 @@ import {
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
 import { percentile } from '$lib/bench/bench-harness';
 import {
 	collectPreparedWallMeshInputs,
@@ -154,7 +154,6 @@ const fixtures = [
 		fixtureId,
 		document: buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === fixtureId)!)
 	})),
-	{ fixtureId: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT }
 ];
 
 const report = {

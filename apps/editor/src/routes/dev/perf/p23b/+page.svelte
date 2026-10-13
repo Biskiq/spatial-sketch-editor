@@ -4,8 +4,7 @@
 	import {
 		buildP23BMatrixFixture,
 		P23B_MATRIX_SPECS,
-		P23B_OWNER_FIXTURE_ID,
-		P23B_OWNER_LAYOUT,
+		P23B_HOSTED_FIXTURE_IDS,
 		p23bMatrixFixtureById
 	} from '$lib/bench/p23b-fixtures';
 	import { createEmptyWorldLocalSceneDocument, type SceneDocument } from '$lib/content/scene';
@@ -118,7 +117,6 @@ import {
 	 * recorded per path. It is enforced in code, not asserted in prose.
 	 */
 	const INTERACTION_WARMUP = 5;
-	const OWNER_RAW_SHA256 = '63f15ed8745d08bf5f65ab2c85829d1b9f1df6f36b3a9137147b70d5d09f5e05';
 	const INTERACTION_PATHS: readonly BenchInteractionPath[] = [
 		'selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'
 	];
@@ -156,15 +154,6 @@ import {
 		bendKnotId: 'grid:h-0-0:knot:1',
 		authoringFrom: [3, 5],
 		authoringTo: [7, 5]
-	};
-	const OWNER_TARGETS: HostedTargets = {
-		selectionWallId: 'wall-chain-1',
-		dragWallId: 'wall-chain-1.2',
-		dragGrabFraction: 0.25,
-		bendWallId: 'wall-chain-1',
-		bendKnotId: 'wall-chain-1:knot:1',
-		authoringFrom: [24, 24],
-		authoringTo: [28, 24]
 	};
 	const MATRIX_TARGETS: HostedTargets = {
 		selectionWallId: 'room-0:wall-0',
@@ -208,7 +197,7 @@ import {
 	function hostedFixture(id: string, targets: HostedTargets, geometryNote: string): HostedFixture {
 		const entry = ledgerEntry(id);
 		const spec = p23bMatrixFixtureById(id);
-		const document = id === P23B_OWNER_FIXTURE_ID ? P23B_OWNER_LAYOUT : buildP23BMatrixFixture(spec!);
+		const document = buildP23BMatrixFixture(spec!);
 		return {
 			id,
 			label: id,
@@ -229,13 +218,12 @@ import {
 	}
 
 	/**
-	 * The hosted fixtures: the exact owner workload plus the two size-40 matrix
+	 * The hosted fixtures: the two active size-40 matrix
 	 * cells that isolate curvature at constant size and topology. The other four
 	 * matrix cells stay in the deterministic workload matrix only, so all six
 	 * matrix identities and their hashes are preserved untouched.
 	 */
 	const HOSTED_FIXTURES: readonly HostedFixture[] = [
-		hostedFixture(P23B_OWNER_FIXTURE_ID, OWNER_TARGETS, 'in the clear region outside the owner layout'),
 		hostedFixture('p23b-40-wall-straight-v1', MATRIX_TARGETS, 'in the clear gap between room-0 and room-1'),
 		hostedFixture('p23b-40-wall-all-curved-v1', MATRIX_TARGETS, 'in the clear gap between room-0 and room-1')
 	];
@@ -248,7 +236,7 @@ import {
 	 * where a ledger hash would go. That is sound because its captures are
 	 * action-class sessions, which the harness keeps as containment records only
 	 * — nothing about this fixture can reach `g3-baseline.json`, and the scripted
-	 * baseline capture still runs the three committed fixtures alone.
+	 * baseline capture still runs the two active matrix fixtures alone.
 	 */
 	const CONNECTED_CASE_HOSTED: HostedFixture = {
 		id: P23B11_CONNECTED_CASE_ID,
@@ -262,7 +250,7 @@ import {
 	};
 	const ALL_HOSTED_FIXTURES: readonly HostedFixture[] = [...HOSTED_FIXTURES, CONNECTED_CASE_HOSTED];
 
-	let hostedFixtureId = $state<string>(P23B_OWNER_FIXTURE_ID);
+	let hostedFixtureId = $state<string>(P23B_HOSTED_FIXTURE_IDS[0]);
 	let hostedRevision = $state(0);
 	const hosted = $derived(ALL_HOSTED_FIXTURES.find((fixture) => fixture.id === hostedFixtureId) ?? ALL_HOSTED_FIXTURES[0]!);
 
@@ -382,17 +370,6 @@ import {
 				throw new Error(`${spec.id} did not pass the shipped geometry compiler`);
 			}
 		}
-		const rawOwner = fixtureLedger.fixtures.find((entry) => entry.id === P23B_OWNER_FIXTURE_ID);
-		const ownerCanonical = serializeWallFirstLayoutDocument(P23B_OWNER_LAYOUT);
-		if (!rawOwner || rawOwner.rawPayloadSha256 !== OWNER_RAW_SHA256 || await hashUtf8(ownerCanonical) !== rawOwner.canonicalLayoutSha256) {
-			throw new Error('Owner fixture identity does not match the ratified ledger');
-		}
-		if (!validateWallFirstLayoutDocument(P23B_OWNER_LAYOUT).success || validateWallFirstTopology(P23B_OWNER_LAYOUT) !== undefined || compileWallFirstLayoutGeometry(P23B_OWNER_LAYOUT).issues.length > 0) {
-			throw new Error('Owner fixture did not pass the shipped validators and compiler');
-		}
-		if (P23B_OWNER_LAYOUT.rooms.length !== 10 || P23B_OWNER_LAYOUT.walls.length !== 40 || P23B_OWNER_LAYOUT.walls.some((wall) => wall.centerline.kind !== 'cubic-chain')) {
-			throw new Error('Owner fixture geometry does not match owner-40-curved-v1');
-		}
 		// The hosted interaction fixtures must keep the ledger's identity, and the
 		// all-straight control must stay straight: its centerlines are never converted.
 		for (const fixture of HOSTED_FIXTURES) {
@@ -426,7 +403,6 @@ import {
 					document: buildP23BMatrixFixture(spec),
 					rawPayloadSha256: undefined as string | undefined
 				})),
-				{ id: P23B_OWNER_FIXTURE_ID, role: 'owner-responsiveness' as const, document: P23B_OWNER_LAYOUT, rawPayloadSha256: OWNER_RAW_SHA256 }
 			];
 			const workloads: BenchWorkloadResult[] = [];
 			for (const item of workloadDefs) {
@@ -449,7 +425,7 @@ import {
 			report = {
 				methodVersion: 5,
 				methodVersionReason:
-					'v5 fixes the interaction evidence: deferred boundaries always start where the synchronous input ended (so a frame encloses its own flush instead of pooling two origins), the canonical planner/apply call is its own plan-apply boundary rather than adapter CPU work, every action is classified by the outcome it actually reached (accepted/setup/rejected/suppressed/unclassified) with the reported distribution restricted to warm-up-excluded accepted samples, capture sessions are isolated and settled before summarizing, and the interaction capture runs on the owner workload plus the size-40 straight and all-curved matrix cells in one session. Interaction timings remain advisory.',
+					'v5 fixes the interaction evidence: deferred boundaries always start where the synchronous input ended (so a frame encloses its own flush instead of pooling two origins), the canonical planner/apply call is its own plan-apply boundary rather than adapter CPU work, every action is classified by the outcome it actually reached (accepted/setup/rejected/suppressed/unclassified) with the reported distribution restricted to warm-up-excluded accepted samples, capture sessions are isolated and settled before summarizing, and the interaction capture runs on the size-40 straight and all-curved matrix cells in one session. Interaction timings remain advisory.',
 				createdAt: new Date().toISOString(),
 				warmup: WARMUP,
 				samples: SAMPLES,
@@ -526,7 +502,7 @@ import {
 			return;
 		}
 		issue = '';
-		hostedFixtureId = ALL_HOSTED_FIXTURES.some((fixture) => fixture.id === id) ? id : P23B_OWNER_FIXTURE_ID;
+		hostedFixtureId = ALL_HOSTED_FIXTURES.some((fixture) => fixture.id === id) ? id : P23B_HOSTED_FIXTURE_IDS[0];
 		hostedRevision += 1;
 	}
 
@@ -698,7 +674,7 @@ import {
 	}
 
 	/**
-	 * The scripted baseline capture stays on the three committed fixtures; the
+	 * The scripted baseline capture stays on the two active matrix fixtures; the
 	 * connected case is appended only for the P23B.11 S1/S7 run, whose capture
 	 * sessions are action-class (containment-only) by construction.
 	 */
@@ -708,7 +684,7 @@ import {
 		driveFixtureOf(CONNECTED_CASE_HOSTED)
 	];
 	/**
-	 * Pre-P23B.8 follow-up M1 — the same list: the three committed fixtures in
+	 * Pre-P23B.8 follow-up M1 — the same list: the two active matrix fixtures in
 	 * harness order, then the connected case LAST as advisory evidence. The connected
 	 * case is never recorded (its classes are containment-only action-class
 	 * sessions), so nothing about it can reach a baseline.
@@ -824,7 +800,7 @@ import {
 	}
 
 	/**
-	 * P23B.11 S1/S7 — the focused wall-chain run: the three committed fixtures
+	 * P23B.11 S1/S7 — the focused wall-chain run: the two active matrix fixtures
 	 * plus the generated connected case, two action classes each, on the same S6
 	 * protocol as the P23B.6 attribution run.
 	 */
@@ -1018,7 +994,7 @@ import {
 			});
 		return {
 			protocol:
-				'P23B.11 S1/S7 wall-chain browser profile; action-class sessions on the S6 protocol (settled, zero dropped boundaries), paths wall-authoring and room-creation-commit, fixtures straight-40 · all-curved-40 · owner-40-curved · connected-curved-grid-v1 (advisory); no baseline and no ratchet is read or written',
+				'P23B.11 S1/S7 wall-chain browser profile; action-class sessions on the S6 protocol (settled, zero dropped boundaries), paths wall-authoring and room-creation-commit, fixtures straight-40 · all-curved-40 · connected-curved-grid-v1 (advisory); no baseline and no ratchet is read or written',
 			provenance: {
 				capturedAt: new Date().toISOString(),
 				location: globalThis.location?.href ?? null,
@@ -1120,7 +1096,7 @@ import {
 	): P23BM1Record {
 		return buildP23BM1Record({
 			protocol:
-				'pre-P23B.8 follow-up M1 — one protocol, one runtime: the three committed fixtures in harness order plus the connected case LAST (advisory, never recorded), five action classes each in its own isolated settled session under the `p23b-m1:` prefix, 25 accepted actions per class with the leading five excluded as warm-up, every mutating action restored with the editor\'s own undo, DEV build, Plan only, one harness document.',
+				'pre-P23B.8 follow-up M1 — one protocol, one runtime: the two active matrix fixtures in harness order plus the connected case LAST (advisory, never recorded), five action classes each in its own isolated settled session under the `p23b-m1:` prefix, 25 accepted actions per class with the leading five excluded as warm-up, every mutating action restored with the editor\'s own undo, DEV build, Plan only, one harness document.',
 			provenance: {
 				capturedAt: new Date().toISOString(),
 				mode: 'DEV',
@@ -1383,7 +1359,7 @@ import {
 		<p class="eyebrow">P23B.0 durable</p>
 		<h1>Measurement harness</h1>
 		<p>Workload sampling: {WARMUP} warm-up + {SAMPLES} measured samples per input. Interaction sampling: {INTERACTION_WARMUP} warm-up + measured actions per path, warm-up excluded in code.</p>
-		<button disabled={running} onclick={runMatrix}>{running ? 'Measuring seven fixtures…' : 'Run seven workload baselines'}</button>
+		<button disabled={running} onclick={runMatrix}>{running ? 'Measuring six fixtures…' : 'Run six workload baselines'}</button>
 
 		<h2>Hosted interaction fixture</h2>
 		{#each HOSTED_FIXTURES as fixture (fixture.id)}
@@ -1417,7 +1393,7 @@ import {
 		<button disabled={capturing || driveRunning || running} onclick={runP23B6S1Capture}>Run P23B.6 S1 attribution capture</button>
 		<h2>P23B.11 S1 wall-chain profile</h2>
 		<p class="capture-hint">
-			The focused wall-chain release profile: the three committed fixtures plus the generated connected
+			The focused wall-chain release profile: the two active matrix fixtures plus the generated connected
 			curved grid (advisory), on the same S6 protocol, measuring only wall authoring and Rect Room
 			commit. Its action-class sessions are containment-only and never enter the baseline report.
 			Fixtures: {p23b11S1FixturesLabel()}.
@@ -1428,7 +1404,7 @@ import {
 		{/if}
 		<h2>Pre-P23B.8 M1 (one protocol, this runtime)</h2>
 		<p class="capture-hint">
-			The follow-up's M1 session: the three committed fixtures in harness order plus the connected case
+			The follow-up's M1 session: the two active matrix fixtures in harness order plus the connected case
 			last (advisory, never recorded), five action classes each in its own settled session under the
 			<code>p23b-m1:</code> prefix — rigid Wall drag, bend, whole-Room move, Wall authoring and Rect Room
 			commit. {DRIVE_ACTIONS_PER_PATH} accepted actions per class, leading five excluded as warm-up, every

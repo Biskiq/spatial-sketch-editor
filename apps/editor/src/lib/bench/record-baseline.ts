@@ -13,8 +13,8 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS,
-	P23B_OWNER_FIXTURE_ID,
-	P23B_OWNER_LAYOUT
+	P23B_HOSTED_FIXTURE_IDS,
+	P23B_RETIRED_OWNER_FIXTURE_ID
 } from './p23b-fixtures';
 import { measureNodeTier, makeNodeProvenance, DEFAULT_NODE_OPTIONS, type NodeTierOptions } from './plan-bench';
 import { chopinWallMeshRenderPolicyFactory, measureBrowserTier, type BrowserTierOptions } from './browser-bench';
@@ -365,7 +365,7 @@ export function recordBaseline(options: { full?: boolean; p23bBrowserReport?: P2
  * Interaction evidence gates (method v5). These are the checks that make the
  * earlier interaction baseline inadmissible, so they fail closed:
  *
- * - the capture must cover the owner workload AND the two size-40 matrix cells,
+ * - the capture must cover both active size-40 matrix cells,
  *   each in its own isolated session, in one browser session;
  * - the warm-up exclusion is enforced (a path need not be accepted at all only
  *   when its own reason says it is deferred or not applicable);
@@ -379,14 +379,14 @@ function validateP23BInteractionCapture(report: P23BBrowserRunReport): void {
 	const paths = ['selection', 'plan-drag-edit', 'bend-knot-edit', 'wall-authoring', 'plan-pan-zoom', 'guided-3d-navigation'] as const;
 	const boundaries = ['input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'] as const;
 	const outcomes = ['accepted', 'setup', 'rejected', 'suppressed', 'unclassified'] as const;
-	const required = [P23B_OWNER_FIXTURE_ID, 'p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'];
+	const required = P23B_HOSTED_FIXTURE_IDS;
 	if (report.interactionFixtures.length !== required.length) {
 		throw new Error(`P23B interaction capture must cover exactly ${required.length} hosted fixtures`);
 	}
 	const seenFixtures = new Set<string>();
 	const seenSessions = new Set<string>();
 	for (const capture of report.interactionFixtures) {
-		if (!required.includes(capture.fixtureId)) throw new Error(`Unexpected P23B interaction fixture ${capture.fixtureId}`);
+		if (!required.some((id) => id === capture.fixtureId)) throw new Error(`Unexpected P23B interaction fixture ${capture.fixtureId}`);
 		if (seenFixtures.has(capture.fixtureId)) throw new Error(`Duplicate P23B interaction fixture ${capture.fixtureId}`);
 		seenFixtures.add(capture.fixtureId);
 		const entry = fixtureLedger.fixtures.find((fixture) => fixture.id === capture.fixtureId);
@@ -491,7 +491,7 @@ function sha256(value: string | Buffer): string {
 	return hash.digest('hex');
 }
 
-function p23bDocumentShape(document: typeof P23B_OWNER_LAYOUT) {
+function p23bDocumentShape(document: ReturnType<typeof buildP23BMatrixFixture>) {
 	const centerlineKinds = document.walls.reduce<Record<string, number>>((counts, wall) => {
 		counts[wall.centerline.kind] = (counts[wall.centerline.kind] ?? 0) + 1;
 		return counts;
@@ -511,7 +511,7 @@ function assertP23BFixtureContracts(): void {
 	const expectedIds = new Set<string>();
 	const verify = (
 		id: string,
-		document: typeof P23B_OWNER_LAYOUT,
+		document: ReturnType<typeof buildP23BMatrixFixture>,
 		semanticClass: number,
 		role: string
 	): void => {
@@ -536,21 +536,9 @@ function assertP23BFixtureContracts(): void {
 	};
 
 	for (const spec of P23B_MATRIX_SPECS) verify(spec.id, buildP23BMatrixFixture(spec), 5, spec.role);
-	verify(P23B_OWNER_FIXTURE_ID, P23B_OWNER_LAYOUT, 5, 'owner-responsiveness');
 	for (const spec of P23B_CORRECTNESS_SPECS) verify(spec.id, buildP23BCorrectnessFixture(spec), spec.semanticClass, spec.role);
-	if (expectedIds.size !== fixtureLedger.fixtures.length) throw new Error('P23B fixture ledger has missing or unexpected entries');
+	if (expectedIds.size !== fixtureLedger.fixtures.filter((entry) => entry.id !== P23B_RETIRED_OWNER_FIXTURE_ID).length) throw new Error('P23B fixture ledger has missing or unexpected active entries');
 
-	const owner = fixtureLedger.fixtures.find((fixture) => fixture.id === P23B_OWNER_FIXTURE_ID);
-	if (!owner || owner.source.kind !== 'exact-owner-payload') throw new Error('P23B owner fixture source contract is invalid');
-	const rawOwner = readFileSync(resolve(REPO_ROOT, owner.source.path));
-	const canonicalOwner = Buffer.from(serializeWallFirstLayoutDocument(P23B_OWNER_LAYOUT), 'utf8');
-	if (
-		rawOwner.byteLength !== owner.source.bytes ||
-		sha256(rawOwner) !== owner.rawPayloadSha256 ||
-		rawOwner.toString('hex') !== canonicalOwner.toString('hex')
-	) {
-		throw new Error('P23B owner payload does not match its exact-byte ledger identity');
-	}
 }
 
 /** Validate imported browser measurements against the immutable fixture ledger. */
@@ -591,9 +579,6 @@ export function validateP23BBrowserReport(
 		if (!ledger) throw new Error(`Missing ledger entry for ${spec.id}`);
 		expected.set(spec.id, { role: spec.role, hash: ledger.canonicalLayoutSha256, raw: null });
 	}
-	const owner = fixtureLedger.fixtures.find((item) => item.id === P23B_OWNER_FIXTURE_ID);
-	if (!owner) throw new Error(`Missing ledger entry for ${P23B_OWNER_FIXTURE_ID}`);
-	expected.set(P23B_OWNER_FIXTURE_ID, { role: 'owner-responsiveness', hash: owner.canonicalLayoutSha256, raw: owner.rawPayloadSha256 });
 	if (report.workloads.length !== expected.size) throw new Error(`P23B baseline requires exactly ${expected.size} workloads`);
 	const seen = new Set<string>();
 	for (const workload of report.workloads) {

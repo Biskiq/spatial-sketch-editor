@@ -8,6 +8,7 @@ import {
 	type Budget,
 	type BudgetBaseline
 } from './bench-types';
+import { P23B_HOSTED_FIXTURE_IDS, P23B_MATRIX_SPECS, P23B_RETIRED_OWNER_FIXTURE_ID } from './p23b-fixtures';
 
 export type BudgetCheck = {
 	pass: boolean;
@@ -70,7 +71,15 @@ export function validateBaseline(baseline: BudgetBaseline): string[] {
 		problems.push(`methodVersion ${baseline.methodVersion} != ${BENCH_METHOD_VERSION}`);
 	}
 	if (!baseline.methodVersionReason?.trim()) problems.push('missing method-version reason');
-	if (baseline.workloads?.length !== 7) problems.push('P23B baseline must contain exactly seven timing workloads');
+	// Keep the immutable pre-retirement baseline readable; new captures are
+	// validated against the active matrix by the recorder, never the retired payload.
+	const workloads = baseline.workloads ?? [];
+	const historicalOwner = workloads.some((workload) => workload.fixtureId === P23B_RETIRED_OWNER_FIXTURE_ID);
+	const workloadIds: string[] = P23B_MATRIX_SPECS.map((spec) => spec.id);
+	if (historicalOwner) workloadIds.push(P23B_RETIRED_OWNER_FIXTURE_ID);
+	if (workloads.length !== workloadIds.length || new Set(workloads.map((item) => item.fixtureId)).size !== workloadIds.length || workloadIds.some((id) => !workloads.some((item) => item.fixtureId === id))) {
+		problems.push('P23B baseline must contain every active matrix workload (retired owner evidence is historical only)');
+	}
 	if (!baseline.measurementLimitations?.length) problems.push('P23B baseline is missing measurement limitations');
 	if (!baseline.markNestingNote?.trim()) problems.push('P23B baseline is missing the mark-nesting note');
 	const interactionPaths = [
@@ -78,8 +87,10 @@ export function validateBaseline(baseline: BudgetBaseline): string[] {
 	] as const;
 	const interactionBoundaries = ['input', 'release', 'reactive', 'plan-apply', 'adapter', 'svelte-flush', 'browser-frame'] as const;
 	const interactionFixtures = baseline.interactionFixtures ?? [];
-	if (interactionFixtures.length !== 3) {
-		problems.push('P23B baseline must carry the three hosted interaction fixtures (owner + size-40 straight/all-curved)');
+	const hostedIds: string[] = [...P23B_HOSTED_FIXTURE_IDS];
+	if (historicalOwner) hostedIds.push(P23B_RETIRED_OWNER_FIXTURE_ID);
+	if (interactionFixtures.length !== hostedIds.length || new Set(interactionFixtures.map((item) => item.fixtureId)).size !== hostedIds.length || hostedIds.some((id) => !interactionFixtures.some((item) => item.fixtureId === id))) {
+		problems.push('P23B baseline must carry every active hosted interaction fixture');
 	}
 	for (const path of interactionPaths) {
 		// A path may lack input samples only when the owner deferred it, or when the

@@ -38,7 +38,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, P23B_OWNER_LAYOUT } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
 import { buildP23B11ConnectedCase, P23B11_CONNECTED_CASE_ID } from '$lib/bench/p23b11-connected-case';
 
 /** Marks this slice's S1 step adds; the containment harness nests them. */
@@ -214,7 +214,6 @@ function fixtureEntries(): Array<{ id: string; document: LayoutDocumentWallFirst
 		const spec = P23B_MATRIX_SPECS.find((candidate) => candidate.id === id)!;
 		entries.push({ id, document: buildP23BMatrixFixture(spec) });
 	}
-	entries.push({ id: 'owner-40-curved-v1', document: P23B_OWNER_LAYOUT });
 	entries.push({ id: P23B11_CONNECTED_CASE_ID, document: buildP23B11ConnectedCase() });
 	return entries;
 }

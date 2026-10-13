@@ -92,17 +92,16 @@ export type P23BDriveHooks = {
 /** Accepted actions per path; the ledger excludes the leading five as warm-up. */
 export const DRIVE_ACTIONS_PER_PATH = 25;
 /**
- * P23B.11 S1/S7 fixture order: the three committed fixtures P23B.6 measured,
+ * P23B.11 S1/S7 fixture order: the two active matrix fixtures,
  * plus the generated connected case last (advisory evidence; never recorded).
  */
 export const P23B11_S1_FIXTURE_ORDER = [
 	'p23b-40-wall-straight-v1',
 	'p23b-40-wall-all-curved-v1',
-	'owner-40-curved-v1',
 	'connected-curved-grid-v1'
 ] as const;
 /**
- * Pre-P23B.8 follow-up, M1 §3.2: the same three committed fixtures in harness
+ * Pre-P23B.8 follow-up, M1 §3.2: the same two active matrix fixtures in harness
  * order, then the generated connected case LAST as advisory evidence that is
  * never recorded. Named separately from the P23B.11 order because the two are
  * allowed to diverge deliberately; today they are the same list.
@@ -1302,7 +1301,7 @@ export function createP23BCaptureDriver(hooks: P23BDriveHooks) {
 		progress = { running: true, fixtureId: null, step: 'P23B.6 S1 starting', paths: {} };
 		hooks.progress({ ...progress });
 		try {
-			const order = ['p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1', 'owner-40-curved-v1'];
+			const order = ['p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'];
 			for (const id of order) {
 				const fixture = hooks.fixtures().find((candidate) => candidate.id === id);
 				if (!fixture) throw new Error(`S1 fixture is missing: ${id}`);
