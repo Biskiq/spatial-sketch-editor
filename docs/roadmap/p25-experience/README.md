@@ -90,7 +90,20 @@ is explicit. UX7, the UX3/V3 standalone plan and PNG acceptance are inactive.
 Current Experience authoring/UX acceptance → [PLATE §0.8.1](../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 and Conservatory's interactive journeys. The donor remains a regression oracle.
 
-**Baton:** #114 accepted unified design → #115 parallel-track planning cutover →
+## Unified design ratification and authority cutover (#114)
+
+**Accepted and closed (2026-10-13).** Slice id `p25-unified-design`:
+Conservatory's destination is promoted into PLATE, Paper depth and V2 World
+evidence are preserved, and obsolete prototype plans are inactive. The
+owner-authorized benchmark retirement and final review corrections are verified.
+[Acceptance, V2 disposition and closeout](../../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md)
+retain the browser export, gate numbers, residuals and preservation report.
+Annotated tag `closed/p25-unified-design` is pushed to origin at
+`2d135d6e825772d07a0271fdf836f8e088b34a40`, preserving the full evidence body.
+P1 requires a **merge commit** and the stub's post-merge anchor verification.
+
+**Baton:** #114 accepted/closed unified design → #115 parallel-track planning cutover →
 foundation-gated production implementation. The former sequential prototype route
 is retired. P24/P25/P26 research and accepted capability decisions are retained;
+#115 begins with its [S0 disposition gate](../README.md#next-task-handoff--115).
 #114 authors no T3 plan and closes no major phase.
