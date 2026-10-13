@@ -1,0 +1,83 @@
+/* Visual language tokens — "Conservatory": forest frame, stone working surfaces, gold attention.
+   Each colour family has one job; see ../visual-language.md. */
+:root {
+  /* Forest — identity, frame (Head, Deck), primary commit actions */
+  --forest-950: #0c211a;
+  --forest-900: #11291f;
+  --forest-850: #153126;
+  --forest-800: #1a3a2d;
+  --forest-700: #22503c;
+  --forest-600: #2c6249;
+  /* Leaf — active tool, current context, Travel routes, toggles that are on */
+  --leaf-500: #4f8f6c;
+  --leaf-400: #6fae88;
+  --leaf-300: #a6cdb5;
+  --leaf-200: #cfe4d6;
+  --leaf-100: #e5f0e9;
+  --leaf-50: #f1f7f3;
+  /* Gold — attention: the selected thing, the current moment (playhead), the visitor's eye (Preview) */
+  --gold-600: #a07a1c;
+  --gold-500: #c49a2e;
+  --gold-400: #d4ad45;
+  --gold-300: #e6cb83;
+  --gold-200: #f0dfae;
+  --gold-100: #f8efd6;
+  --gold-ink: #74560c;
+  /* Stone neutrals — slightly green-cooled, never cream */
+  --n-0: #ffffff;
+  --n-25: #fbfbfa;
+  --n-50: #f5f6f4;
+  --n-75: #eff0ed;
+  --n-100: #e8eae6;
+  --n-150: #dfe2dd;
+  --n-200: #d0d4ce;
+  --n-300: #b2b8b0;
+  --n-400: #8f968d;
+  --n-500: #6f766e;
+  --n-600: #555c55;
+  --n-700: #3f4640;
+  --n-800: #2b312c;
+  --n-900: #1b201c;
+  --danger: #b24a33;
+  --danger-tint: #f8e7e2;
+
+  /* Roles */
+  --surface: var(--n-25);
+  --surface-sunk: var(--n-75);
+  --surface-raised: var(--n-0);
+  --line: var(--n-150);
+  --line-strong: var(--n-200);
+  --text: var(--n-900);
+  --text-2: var(--n-600);
+  --text-3: var(--n-500);
+  --plan-bg: #e9ebe6;
+  --stage-3d-bg: #26302b;
+
+  --focus: 0 0 0 2px var(--n-0), 0 0 0 4px var(--forest-600);
+  --sel-ring: 0 0 0 2px var(--gold-400);
+
+  /* Type */
+  --font-ui: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 19px;
+  --fs-xxl: 24px;
+
+  /* Metrics */
+  --head-h: 48px;
+  --index-w: 236px;
+  --rail-w: 52px;
+  --card-w: 324px;
+  --ctl-h: 30px;
+  --ctl-h-lg: 36px;
+  --r-sm: 6px;
+  --r-md: 9px;
+  --r-lg: 14px;
+  --shadow-1: 0 1px 2px rgb(16 33 26 / .08), 0 1px 1px rgb(16 33 26 / .04);
+  --shadow-2: 0 6px 20px rgb(16 33 26 / .12), 0 2px 6px rgb(16 33 26 / .08);
+  --shadow-3: 0 18px 48px rgb(10 24 18 / .22), 0 4px 12px rgb(10 24 18 / .12);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+}
