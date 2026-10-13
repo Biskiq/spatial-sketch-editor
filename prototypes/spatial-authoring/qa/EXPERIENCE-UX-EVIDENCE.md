@@ -118,6 +118,82 @@ architecture **276/276 (24 files)**, including documentation **22/22**; root
 passes for both apps. `git diff --check` passes. These results are also in the PR.
 No browser captures, prototype sweep, baseline recording or budget rewrite is run.
 
+## Final review and acceptance evidence (2026-10-13)
+
+**Implementation accepted.** The owner accepted the ratification, Paper
+reconciliation, V2 preservation and inactive-plan disposition, then manually
+reviewed the final work and directed closeout/push with existing full-suite
+evidence reused. The remaining corrections declare PLATE's non-blocking 3D
+Scene interface coverage gap, add #115's S0 disposition/prune-first gate, and
+remove benchmark import/formatting artifacts and a stale owner-fixture hint.
+No product UI, prototype development or track assessment/plan was added.
+
+**Whole-PR re-review:** base `48447fb4d26c4285d956d0b09c84587a93db99a8`
+to correction/capture revision `d0d3d162d358d8dca2faea522564e1b1b892b76e`;
+196 changed files assessed by scope and preservation, with no material findings.
+PLATE has one accepted shell/Experience destination, separated from implemented
+production. Paper's detailed authoring body and all 16 protected World anchors
+above are unchanged. The 97-file V2 diff remains explicitly historical; all
+prototype runtime, scripts, tests, styles and images are unchanged since the
+accepted artifact. Superseded plans stay inactive. Active benchmark validation
+remains strict; the frozen baseline/ledger and historical captures are unchanged.
+#115 retains one S0-first parallel-track planning mandate with UI replacement,
+demonstrated compatibility obligations, removal acceptance and F interface gates.
+
+### Focused P23B browser verification
+
+The existing `/dev/perf/p23b` **Run six workload baselines → Run scripted
+capture → Download baseline JSON** flow completed in a fresh in-app Chromium
+document at a 1440 × 1000 viewport, DPR 2 (reported Chrome 155.0.0.0, Apple M2,
+ANGLE Metal; graphics provenance is a diagnostic WebGL2 canvas). Source was
+clean at `d0d3d162d358d8dca2faea522564e1b1b892b76e`.
+
+| Hosted control | Capture session | Result |
+| --- | --- | --- |
+| Size-40 straight | `906d5425-2066-425f-9391-86a55a49c560` | Settled; zero dropped boundaries; five accepted warm-up actions excluded per applicable path; bend correctly not applicable |
+| Size-40 all-curved | `49fad8c5-4d7e-4077-bb3c-35536fef3d79` | Settled; zero dropped boundaries; five accepted warm-up actions excluded, including bend |
+
+Both observed Plan views are stable at **19.292586186549904 px/m**, with a
+612 × 626 canvas. The prescribed driver obtained 25 accepted selection/drag/
+authoring actions per control and 25 bend actions on the curved control; its
+pan/zoom round trips restored each view within 0.0000 px. Setup/retry/reset
+counts remain in the raw report; they are not substituted for accepted samples.
+
+The unmodified [fresh export](../../../docs/archive/roadmap/p25-experience/p25-unified-design/p23b-browser-report.json)
+is **73,217 bytes**, SHA-256
+`b352f1fccd410791de63fa6e2fab893d747fd13fa7b1c8159a67b70f6b82fb73`.
+[Validation results](../../../docs/archive/roadmap/p25-experience/p25-unified-design/p23b-validation-result.json)
+record direct calls to `validateP23BBrowserReport(report, { requireCleanHead: true })`:
+the six workloads/two controls pass; relabelling a workload or control as
+`owner-40-curved-v1` and sharing capture sessions each fail. `validateBaseline`
+and `serializeBaseline` read/round-trip the unchanged historical seven-workload/
+three-control baseline. No recorder, baseline, ledger or historical-capture
+write occurred.
+
+**Limits:** the CLI initially lost its browser document; a narrow in-app attempt
+failed the target-fit guard and produced only one control, so neither counts as
+passed evidence. The complete fresh run above is the accepted browser record.
+Its DEV timing samples are advisory; this verifies capture/export/validation,
+not a performance improvement, native-browser timing guarantee, GPU presentation
+or the separate M1/CDP profile. Guided 3D capture retains its existing owner deferral.
+
+### Automated gates and preservation
+
+| Evidence | Result |
+| --- | --- |
+| Final correction architecture lane, root `npm run test:arch` | **276/276**, 24 files; includes documentation-reference gate **22/22** |
+| Focused baseline, fixture, measurement and driver-gesture tests | **22/22**, four files |
+| Final correction root `npm run check` | Both apps: **0 errors / 0 warnings** |
+| Final correction root `npm run build` | Both apps pass; existing chunk-size advisories |
+| Reused root full-suite evidence, `7eb810b457881c17d254748311fb9cddf8c223e5` | **5242 pass / 4 skip**, **371 files pass / 2 skip**; owner explicitly directed no further full-suite run |
+| Scope/preservation/whitespace | Paper body, World anchors, prototype implementation and frozen measurement records preserved; `git diff --check` passes |
+
+The corrections alter documentation, benchmark presentation text, import
+formatting and an equivalent matrix-map wrapper; domain algorithms and capture
+semantics are unchanged, so prior full-suite evidence remains applicable.
+Closeout introduces only documentation/preservation artifacts and uses its
+self-check, without a new design review or full-suite run. No major phase closes.
+
 ## Historical implementation record
 
 The remaining body is preserved from the earlier UX0–UX6 work. Its numbers are
