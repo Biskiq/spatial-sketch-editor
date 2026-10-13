@@ -66,10 +66,10 @@
 	} from './drive';
 	import { p23bM1FrameTiming, p23bM1LongFramesFor } from '$lib/bench/p23b-m1-frame-timing';
 	import { p23bM1ActionArms } from '$lib/editor/layout/p23b-m1-room-drag-arm';
-import {
-	p23bM1ActionLabelArmRecordsFor,
-	p23bM1GridBuildKeys
-} from '$lib/editor/layout/p23b-m1-room-label-arm';
+	import {
+		p23bM1ActionLabelArmRecordsFor,
+		p23bM1GridBuildKeys
+	} from '$lib/editor/layout/p23b-m1-room-label-arm';
 	import {
 		buildP23BM1Record,
 		m1ClassLedger,
@@ -396,14 +396,12 @@ import {
 			const base = browserProvenance();
 			const nodeOptions = { ...DEFAULT_NODE_OPTIONS, warmup: WARMUP, samples: SAMPLES, hitPoints: 200 };
 			const browserOptions: BrowserTierOptions = { warmup: WARMUP, samples: SAMPLES };
-			const workloadDefs = [
-				...P23B_MATRIX_SPECS.map((spec) => ({
-					id: spec.id,
-					role: spec.role,
-					document: buildP23BMatrixFixture(spec),
-					rawPayloadSha256: undefined as string | undefined
-				})),
-			];
+			const workloadDefs = P23B_MATRIX_SPECS.map((spec) => ({
+				id: spec.id,
+				role: spec.role,
+				document: buildP23BMatrixFixture(spec),
+				rawPayloadSha256: undefined as string | undefined
+			}));
 			const workloads: BenchWorkloadResult[] = [];
 			for (const item of workloadDefs) {
 				const canonical = serializeWallFirstLayoutDocument(item.document);
@@ -1386,7 +1384,7 @@ import {
 		<button disabled={capturing || driveRunning || running} onclick={runScriptedCapture}>Run scripted capture</button>
 		<h2>P23B.6 S1 targeted attribution</h2>
 		<p class="capture-hint">
-			One DEV-only Plan capture on the straight, all-curved and owner fixtures. Rigid Wall drag, bend,
+			One DEV-only Plan capture on the straight and all-curved fixtures. Rigid Wall drag, bend,
 			whole-Room move, Wall authoring, Rect Room commit, persistent pan/zoom and idle-frame intervals
 			are stored in separate measurement sessions. Each editing action is restored with editor Undo.
 		</p>

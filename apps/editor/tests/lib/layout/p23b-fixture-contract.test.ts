@@ -15,7 +15,7 @@ import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
-	P23B_MATRIX_SPECS,
+	P23B_MATRIX_SPECS
 } from '$lib/bench/p23b-fixtures';
 
 const LEDGER_PATH = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../../../../docs/roadmap/p23b-geometry-performance/p23b.0-measurement-foundation/fixture-ledger.json');

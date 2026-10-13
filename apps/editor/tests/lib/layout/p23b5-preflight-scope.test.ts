@@ -54,7 +54,7 @@ import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
-	P23B_MATRIX_SPECS,
+	P23B_MATRIX_SPECS
 } from '$lib/bench/p23b-fixtures';
 import { timeOp } from '$lib/bench/bench-harness';
 import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';

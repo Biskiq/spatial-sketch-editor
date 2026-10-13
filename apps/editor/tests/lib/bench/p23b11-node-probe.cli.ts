@@ -38,7 +38,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 import { buildP23B11ConnectedCase, P23B11_CONNECTED_CASE_ID } from '$lib/bench/p23b11-connected-case';
 
 /** Marks this slice's S1 step adds; the containment harness nests them. */

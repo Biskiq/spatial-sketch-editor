@@ -26,7 +26,7 @@ import {
 	type CompiledLayoutGeometry,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 import { timeOp } from '$lib/bench/bench-harness';
 import { s1DeepEqual } from './p23b6-comparator-strategies';
 import { withPlanAttentionSceneInk } from '$lib/editor/layout/plan-attention';

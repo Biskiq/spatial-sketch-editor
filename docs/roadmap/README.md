@@ -102,6 +102,23 @@ are stable. Ratification authorizes no implementation by itself.
 **One task: replace sequential P-level capability planning with the parallel
 T-track execution system.** This is a handoff, not a set of track plans in #114.
 
+**S0 architectural disposition gate — before detailed track plans.** Inspect
+actual production code and classify significant subsystems as `RETAIN`,
+`REFACTOR`, `REPLACE` or `RETIRE`. Treat the current UI presentation layer,
+shell, tokens, toolbar and spatial helper visuals as **REPLACE by default**;
+retain sound Layout, Scene, Camera, geometry, rendering and infrastructure
+implementations where evidence supports them. Reassess rebuild versus
+incremental extension rather than automatically preserving historical structure.
+S0 produces an evidence-based architectural recommendation for owner review
+before expensive detailed planning commitments.
+
+Apply the existing [pre-Source-Baseline policy](../reference/north-star.md#release-and-source-baselines)
+as a **prune-first and single-cutover default**: avoid unsupported migrations,
+legacy readers, duplicate writable models and permanent compatibility facades.
+Preserve explicitly protected trial data, durable releases, supported external
+formats and architectural invariants; each compatibility exception needs a
+demonstrated obligation.
+
 1. Retire P24 → P25 → P26 as an active sequential implementation order, retaining
    their research, architecture investigation, accepted capability decisions and
    authoring-depth specifications as historical/technical references.
@@ -109,8 +126,10 @@ T-track execution system.** This is a handoff, not a set of track plans in #114.
    each from inspected current production code, accepted contracts, prior evidence
    and Conservatory/Paper's destination; do not infer behavior from prototypes.
 3. Give each track dependencies, readiness gates, reviewable slices, focused
-   verification, acceptance criteria and closeout procedure, so it is independently
-   reviewable/executable once its relevant gates pass.
+   verification, acceptance criteria, review and closeout procedure, so it is
+   independently reviewable/executable once its relevant gates pass. Each plan
+   identifies displaced code, its removal slice, verification and retirement
+   acceptance criteria.
 4. Identify cross-track interfaces and first-consumer dependencies without an
    artificial waterfall; the constraints above remain interface/correctness gates.
 5. Preserve F.1–F.5 and exact-interface ratification with first consumers. Planning

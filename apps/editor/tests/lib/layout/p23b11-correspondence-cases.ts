@@ -101,7 +101,7 @@ import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
-	P23B_MATRIX_SPECS,
+	P23B_MATRIX_SPECS
 } from '$lib/bench/p23b-fixtures';
 import { buildP23B11ConnectedCase } from '$lib/bench/p23b11-connected-case';
 

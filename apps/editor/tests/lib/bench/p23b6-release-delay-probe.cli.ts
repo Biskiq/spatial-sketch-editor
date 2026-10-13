@@ -22,7 +22,7 @@ import {
 	clearSampleSegmentObserverForTest,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS, } from '$lib/bench/p23b-fixtures';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
 
 function p50(values: number[]): number {
 	const sorted = [...values].sort((a, b) => a - b);
