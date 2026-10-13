@@ -131,6 +131,9 @@ export function select(id) {
   const sd = st();
   if (S.sel && sd.items.has(S.sel)) sd.d(S.sel).hl = null;
   S.sel = id;
+  // §3.1: one selection owner. The Experience registers here — after the identity is set, so the hook can
+  // read which identity was chosen — and puts its own reading away when the new one is not part of it.
+  ctx.onSelect?.(id);
   if (id && sd.items.has(id)) sd.d(id).hl = 'sel';
   S.popover = null;
   if (S.beacon && S.beacon !== id) S.beacon = null;

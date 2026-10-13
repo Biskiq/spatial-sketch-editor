@@ -1,4 +1,4 @@
-import { worldInterpolate, realization } from './camera-evaluation.js';
+import { worldInterpolate, realization, connectionPath, eye } from './camera-evaluation.js';
 import { conformanceFixture } from './conformance-fixture.js';
 import { createSceneCapabilities, capability, capabilities, setSceneValue, replaceProfile, isRealized } from './experience-capabilities.js';
 import { buildCapabilitySubjects, realizeCapabilities, captureRepresentation, restoreRepresentation } from './experience-scene.js';
@@ -17,6 +17,18 @@ export function initExperience() {
   // UX5 adds two session readings to the one context: the armed `+ Path point` insertion and the selected
   // path point. Neither is source, selection or history — the Camera route itself stays the authored truth.
   S.experienceContext = { presentation: null, depth: 'ordinary', stop: null, seam: null, armed: false, point: null };
+  // §3.1: the one selection owner. An outside selection — a Stage pick, the locator, another identity — puts
+  // the Experience reading away: the edge, its point and any armed insertion are dropped, the return the
+  // posture captured is deliberately NOT used (so no Camera moves), and the Stop Card keeps the Guide posture
+  // when the new identity is a Guide Stop.
+  ctx.onSelect = (id) => {
+   const x = S.experienceContext;
+   if (!x.seam && !x.point && !x.armed) return;
+   if (id && x.seam && (id === x.seam.from || id === x.seam.to)) return;
+   S.rehearse = null;
+   x.seam = null; x.point = null; x.armed = false;
+   if (!ctx.experience.stops[id] && ['seam', 'route', 'coordination'].includes(x.depth)) x.depth = 'ordinary';
+  };
 }
 export const resolveExperience = (id) => subject(ctx.experience, ctx.cameraSource, id);
 export function command(label, edit) {
@@ -339,7 +351,6 @@ export function handleExperienceAction(el) {
   if (action === 'exp-add-guide') addToGuide(el.dataset.id||undefined);
   if (action === 'exp-guide') guideOverview();
   if (action === 'exp-stop') selectStop(el.dataset.id);
-  if (action === 'exp-expand-stop') expandStop(el.dataset.id);
   if (action === 'exp-preview-guide') previewGuide();
   if (action === 'exp-preview-experience') previewExperience();
   if (action === 'exp-view-order') suggestViews(el.dataset.id,el.dataset.clear==='true');
@@ -353,6 +364,10 @@ export function handleExperienceAction(el) {
   if (action === 'exp-connect') connectOrigin(el.dataset.id);
   if (action === 'exp-route') editRoute(el.dataset.id);
   if (action === 'exp-route-return') returnRouteReading();
+  // §5.5/§5.6: the Journey's origin is chosen in the Index's From list, and looking through a Cue is one
+  // reading of the same clock rather than a second Camera operation.
+  if (action === 'exp-journey-origin') setJourneyOrigin(el.dataset.id);
+  if (action === 'exp-cue-look') cueLook();
   // UX5: a path point is authored by arming `+ Path point` and then clicking the Stage. Arming writes
   // nothing; an ordinary click in the Path posture selects what it hits (or clears the point reading) and
   // never adds a point, so the one creation path is the one the author asked for.
@@ -563,20 +578,47 @@ export function suggestViews(pid,clear=false){return command(clear?'Free View ch
 export function moveSuggestedView(uid,delta){return command('Reorder suggested Views',e=>{const p=e.presentations[e.uses[uid]?.presentationId],ids=p?.viewOrder;if(!ids)return;const at=ids.indexOf(uid),to=at+delta;if(at>=0&&to>=0&&to<ids.length)[ids[at],ids[to]]=[ids[to],ids[at]];});}
 export function addToGuide(pid=S.experienceContext.presentation) {const id=command('Add Presentation to Guide',e=>addStop(e,pid));if(id)reviewAuthored('guide');return id;}
 export function guideOverview() {cancelProposal('invoke');S.experienceContext.depth='overview';S.experienceContext.stop=null;T.begin({kind:'experience-overview',subject:S.sel,params:{}});ctx.ui();}
-export function expandStop(id) {
-  // A Peek is awareness, not work: the review aid records that it happened, never that it wrote anything.
-  review({ peeks: (S.expReview.peeks || 0) + 1 });
- const stop=ctx.experience.stops[id];if(!stop)return false;
- cancelProposal('invoke');A.select(id);S.experienceContext={...S.experienceContext,depth:'occurrence',stop:id,presentation:stop.presentationId,seam:null,armed:false,point:null};
- T.begin({kind:'experience-occurrence',subject:id,target:{id},params:{stop:id}});ctx.ui();return true;
-}
 export function closeExperienceWork() {cancelProposal('task-end');S.derivedView=null;T.end();S.experienceContext.depth='ordinary';S.experienceContext.stop=null;S.experienceContext.seam=null;ctx.ui();}
+// §5.7: Escape unwinds one level at a time. Drafts and Asks are still cancelled first by the shell's own
+// policy; this ladder walks the readings the Experience is holding, from the innermost outward. Every
+// level puts a reading away — nothing is authored, moved or selected differently by unwinding — and the
+// one visible exit is the Index crumb (Path/Journey) or `Done` (Guide posture).
+// Precision keeps its own Esc and is deliberately not part of this ladder.
+export function unwindExperience(){
+ const x=S.experienceContext;
+ // 1. An armed insertion disarms; the same control that armed it.
+ if(x.armed){x.armed=false;A.setStatus('Point placement cancelled','tool');ctx.ui();return 'armed';}
+ // 2. A selected path point clears, so the Card returns to the Camera Path reading.
+ if(x.point){x.point=null;ctx.ui();return 'point';}
+ // 3. A selected Cue clears: the station parameter returns to the first free station. An add row that was
+ //    already reading a free station is left alone — that is not a Cue being selected.
+ if(x.depth==='coordination'&&x.seam&&S.task?.params){
+  const clock=cueClock();
+  if(clock&&(clock.cues.some(c=>c.stationId===S.task.params.station)||S.task.params.beat)){
+   S.task.params.station=firstFreeStation();delete S.task.params.beat;ctx.ui();return 'cue';
+  }
+ }
+ // 4. Path or Journey returns to the edge Card through the posture's own return.
+ if(['route','coordination'].includes(x.depth)&&x.seam){returnRouteReading();return 'posture';}
+ // 5. An edge returns to Guide posture. Its from-Stop is already the selection, so the Stop Card shows.
+ if(x.depth==='seam'&&x.seam){
+  S.experienceContext.seam=null;S.experienceContext.stop=null;S.experienceContext.depth='overview';S.experienceContext.point=null;S.experienceContext.armed=false;
+  T.begin({kind:'experience-overview',subject:S.sel,params:{}});ctx.ui();return 'edge';
+ }
+ // 6. Guide posture returns to rest.
+ closeExperienceWork();return 'rest';
+}
 export function moveOccurrence(id,delta) {return command('Reorder Guide Stop',e=>moveStop(e,id,delta));}
 
 export function openSeam(a,b) {
  if(resolveNext(ctx.experience,a).id!==b)return false;
- cancelProposal('invoke');S.experienceContext.depth='seam';S.experienceContext.seam={from:a,to:b};S.experienceContext.stop=null;
- T.begin({kind:'experience-seam',subject:S.sel,target:{id:b},params:{from:a,to:b,originUse:null,connection:null}});if(ctx.experience.seams[`${a}>${b}`]?.beats.length)coordinate();ctx.ui();return true;
+ cancelProposal('invoke');
+ // §3.1: the edge's from-Stop owns the selection, so a Stop or edge is never ambiguously the Card's
+ // identity. §5.4: an edge chip always shows the edge Card — an edge that already holds beats no longer
+ // drops the author into the Journey from a chip that says nothing about time.
+ A.select(a);
+ S.experienceContext.depth='seam';S.experienceContext.seam={from:a,to:b};S.experienceContext.stop=null;
+ T.begin({kind:'experience-seam',subject:S.sel,target:{id:b},params:{from:a,to:b,originUse:null,connection:null}});ctx.ui();return true;
 }
 // N1 — choosing Travel is one explicit aggregate transaction: it prepares exactly the missing direct
 // Camera support for every legitimate origin of this Seam and selects Travel. Camera creates and owns
@@ -609,24 +651,47 @@ function supportReport(report){
  if(report.gaps.length)parts.push(`${report.gaps.length} origin${report.gaps.length===1?'':'s'} need repair`);
  return `${parts.length?parts.join(' · '):'All origins already supported'} · Camera owns route geometry`;
 }
+// The *From* row's own door. One origin is already reached without a route — the origin that *is* the
+// destination entry's View, which Camera evaluates as zero distance — so it is never offered a Connect,
+// and this refuses one if a caller asks anyway: a connection from a View to itself is exactly the
+// fabricated edge N1 forbids.
 export function connectOrigin(uid) {
  const {from,to}=S.experienceContext.seam;
  const row=originCoverage(ctx.experience,ctx.cameraSource,from,to).find(r=>r.useId===uid);
  if(!row||row.missing){A.setStatus('Route needs a resolving origin and destination entry View','refuse');return false;}
+ if(row.viewId===row.targetId){A.setStatus('This origin is the destination entry itself · Camera reaches it without a route','refuse');return false;}
  const id=command('Connect Camera Views',(e,c)=>addConnection(c,row.viewId,row.targetId));
  S.task.params.originUse=uid;S.task.params.connection=id;ctx.ui();return id;
 }
-export async function editRoute(id) {
- const route=ctx.cameraSource.connections[id];if(!route)return false;
+// §5.5: entering the Path posture keeps the author's standpoint — opening it moves no Camera, and neither
+// does switching Path ↔ Journey or picking another From row. One return context is captured at entry and
+// used only by the posture's own exits, so a Journey → Path switch does not capture over the entry slot.
+// Bringing the route into view is the author's own request, made from the posture's own control.
+export function editRoute(id) {
+ // §5.5: the posture is the edge's Camera half and the *From* list is its only per-origin connect door, so
+ // it opens on an edge Camera has no route for yet as well: with no route there is nothing selected and the
+ // Index's own From rows are the work. Only a route id that was really given and no longer resolves leaves
+ // the posture where it is, because then the reading itself is gone.
+ const route=id?ctx.cameraSource.connections[id]:null;if(id&&!route)return false;
  cancelProposal('invoke');
- const epoch=nav.travelEpoch();
- nav.beginReturn('Return to Seam reading');
+ const x=S.experienceContext;
+ if(!['route','coordination'].includes(x.depth))nav.beginReturn('Return to Guide edge');
  // Entering the Path posture disarms insertion and clears any previously selected point: the reading
  // belongs to the route being opened, never to the one that was left.
- S.experienceContext.depth='route';S.experienceContext.armed=false;S.experienceContext.point=null;S.task.params.connection=id;
- await bringIntoView();if(epoch!==nav.travelEpoch())return false;review({routeWrite:{...S.expReview.routeWrite,edited:true}});ctx.ui();return true;
+ x.depth='route';x.armed=false;x.point=null;S.task.params.connection=route?route.id:null;
+ review({routeWrite:{...S.expReview.routeWrite,edited:true}});ctx.ui();return true;
 }
-export function returnRouteReading(){nav.putBack();S.experienceContext.depth='seam';S.experienceContext.armed=false;S.experienceContext.point=null;review({routeWrite:{...S.expReview.routeWrite,returned:true}});ctx.ui();}
+// §5.7 level 4: the posture's own exit. The Camera goes back to the standpoint the posture was entered
+// from, the rehearsal is dropped with the clock it measured, and the task reads as the Guide edge again so
+// the crumb lands on the edge Card.
+export function returnRouteReading(){
+ nav.putBack();
+ S.rehearse=null;
+ const x=S.experienceContext;x.depth='seam';x.armed=false;x.point=null;
+ // Leaving the posture also forgets its Journey entry, so entering the Journey again selects no Cue.
+ if(S.task){S.task.kind='experience-seam';S.task.params.chooseRoute=false;delete S.task.params.beat;delete S.task.params.journeyVisited;}
+ review({routeWrite:{...S.expReview.routeWrite,returned:true}});ctx.ui();
+}
 function routeProposal(id,patch,label){
  const route=ctx.cameraSource.connections[id];if(!route)return false;
  // A proposal is only ever made by the writer the context currently holds: a stale route selection
@@ -644,15 +709,30 @@ export function routePoint(p){
  // posture the shell happens to be in, so the insertion cannot be performed by accident.
  if(!x.armed)return false;
  const position=[p.x,1.5,p.z];
- const result=routeProposal(id,{addAnchor:position},'Add Camera path point');
+ const result=routeProposal(id,{addAnchor:{position,index:nearestSegment(id,position)}},'Add Camera path point');
  if(result!==false)x.armed=false;
  return result;
+}
+// §3.2: the armed press inserts into the *nearest segment of the drawn path*, never at the end, so a point
+// dropped beside Point 1 lands before it and the evaluated observers run in the order the author drew. The
+// path's own evaluation is the measure — no second geometry is introduced to decide this.
+function nearestSegment(connectionId,position){
+ const c=ctx.cameraSource,route=c.connections[connectionId],from=c.views[route?.from],to=c.views[route?.to];
+ if(!route||!from||!to)return null;
+ const observer=connectionPath(route,from.pose,to.pose).map(eye);
+ let best=0,bestDistance=Infinity;
+ for(let i=0;i<observer.length-1;i++){
+  const mid=observer[i].map((n,j)=>(n+observer[i+1][j])/2);
+  const d=Math.hypot(...mid.map((n,j)=>n-position[j]));
+  if(d<bestDistance){bestDistance=d;best=i;}
+ }
+ return best;
 }
 // Arming is a session reading with no writer behind it: nothing is authored until a point is placed, and
 // the same control disarms, so the author can never be left holding an armed insertion they cannot see.
 export function armPathPoint(){
  const x=S.experienceContext;
- if(S.visitor||x.depth!=='route'||S.task?.kind!=='experience-seam')return false;
+ if(S.visitor||x.depth!=='route'||![ 'experience-seam','experience-coordination'].includes(S.task?.kind))return false;
  x.armed=!x.armed;
  if(x.armed){x.point=null;A.setStatus('Armed · click the Stage to place a Camera path point · Esc cancels','tool');}
  ctx.ui();return x.armed;
@@ -783,7 +863,15 @@ export function coordinate(){
  if(!S.task.params.connection){const used=[...new Set(seam.beats.map(b=>b.connectionId).filter(id=>ids.includes(id)))];if(used.length===1)S.task.params.connection=used[0];else if(ids.length===1)S.task.params.connection=ids[0];else {x.depth='coordination';S.task.kind='experience-coordination';S.task.params.chooseRoute=true;ctx.ui();return true;}}
  if(!S.task.params.connection){A.setStatus('Connect a Camera route before coordinating','refuse');return false;}
  x.depth='coordination';S.task.kind='experience-coordination';S.task.params.chooseRoute=false;
- const route=ctx.cameraSource.connections[S.task.params.connection];if(!nav.stations(route).some(s=>s.id===S.task.params.station))S.task.params.station='departure';
+ const route=ctx.cameraSource.connections[S.task.params.connection];if(!route)return false;
+ // §5.6: entering the Journey selects no Cue — the station returns to the first free station. A Journey the
+ // author has already visited (a Path → Journey switch) keeps the selection it had, because §5.5 requires a
+ // posture change to change neither the selection nor the Camera.
+ const clock=cueClock();
+ if(S.task.params.journeyVisited!==true||!clock||!clock.geometry.stations.some(s=>s.id===S.task.params.station)){
+  S.task.params.station=firstFreeStation();delete S.task.params.beat;
+ }
+ S.task.params.journeyVisited=true;
   // Entering or refreshing the Journey starts it at zero: a playhead measured against the route the author
   // just left would be a reading of nothing.
   S.rehearse=null;ctx.ui();return true;
@@ -809,6 +897,26 @@ export const rehearsalReading = () => {
  const t=r?Math.max(0,Math.min(clock.duration,r.t)):0;
  return {clock,t,playing:!!r?.playing,pose:clock.poseAt(t)};
 };
+// §5.6: entering the Journey selects no Cue, so the add row is ready without claiming an existing Cue's
+// identity. The station parameter is the first station no Cue holds; with every station holding one there
+// is no free station to add to, and the Card says so rather than offering a writer that would refuse.
+function firstFreeStation(){
+ const clock=cueClock();if(!clock)return null;
+ const taken=new Set(clock.cues.map(k=>k.stationId));
+ return clock.geometry.stations.find(s=>!taken.has(s.id))?.id??null;
+}
+// §5.6: `Look through` at a Cue is one reading of the same clock, not a second Camera operation. The
+// playhead moves to that Cue's own At and the pose is evaluated from it; no source, authored Camera or
+// invocation is touched.
+export function cueLook(){
+ const x=S.experienceContext,clock=cueClock();
+ if(x.depth!=='coordination'||!clock)return false;
+ const cue=clock.cues.find(k=>k.stationId===S.task?.params?.station);
+ if(!cue){A.setStatus('Select a Cue to look through it','refuse');ctx.ui();return false;}
+ if(cue.at===null){A.setStatus('This Cue has no resolvable time to look through','refuse');ctx.ui();return false;}
+ if(!rehearsalAt(cue.at))return false;
+ return rehearsalLook();
+}
 export function selectCue(stationId) {
  const x=S.experienceContext;if(x.depth!=='coordination'||!S.task)return false;
  const clock=cueClock();if(!clock||!clock.cues.some(k=>k.stationId===stationId))return false;
@@ -870,7 +978,9 @@ export function rehearseTurn(dt) {
  const total=Math.max(.001,clock.duration),pct=`${Math.max(1.5,Math.min(98.5,(r.t/total)*100))}%`;
  document.querySelectorAll('[data-exp-playhead]').forEach(el=>{el.style.left=pct;});
  const read=document.querySelector('[data-exp-rehearse-time]');
- if(read)read.textContent=`${Math.floor(r.t/60)}:${String(Math.floor(r.t%60)).padStart(2,'0')}.${Math.floor((r.t%1)*10)} / ${Math.floor(clock.duration/60)}:${String(Math.floor(clock.duration%60)).padStart(2,'0')}`;
+ // The same m:ss.d reading the Deck and the Card render, so a running rehearsal never changes format.
+ const clockText=v=>`${Math.floor(v/60)}:${String(Math.floor(v%60)).padStart(2,'0')}.${Math.floor((v%1)*10)}`;
+ if(read)read.textContent=`${clockText(r.t)} / ${clockText(clock.duration)}`;
  return true;
 }
 onCancel(()=>{S.rehearse=null;},6,'Experience rehearsal');
@@ -878,7 +988,7 @@ export function routePace(speed){const id=S.task?.params.connection;if(!id||!['s
 export function acceptRoutePace(){
  const ask=S.expRouteAsk;if(!ask)return false;const affected=connectionReach(ctx.experience,ctx.cameraSource,ask.id);
  if(JSON.stringify(affected)!==JSON.stringify(ask.affected)){ask.affected=affected;ctx.ui();return false;}
- command(ask.label,(e,c)=>{const route=c.connections[ask.id];if(!route)throw Error('Route removed');if(ask.patch.speed)route.speed=ask.patch.speed;if(ask.patch.addAnchor)addAnchor(c,ask.id,ask.patch.addAnchor);if(ask.patch.removeAnchor)removeAnchor(c,ask.id,ask.patch.removeAnchor);if(ask.patch.anchor){const a=route.anchors.find(a=>a.id===ask.patch.anchor);if(!a)throw Error('Anchor removed');a.position=[...ask.patch.position];}});S.expRouteAsk=null;ctx.ui();return true;
+ command(ask.label,(e,c)=>{const route=c.connections[ask.id];if(!route)throw Error('Route removed');if(ask.patch.speed)route.speed=ask.patch.speed;if(ask.patch.addAnchor){const add=ask.patch.addAnchor;addAnchor(c,ask.id,add.position??add,add.index??null);}if(ask.patch.removeAnchor)removeAnchor(c,ask.id,ask.patch.removeAnchor);if(ask.patch.anchor){const a=route.anchors.find(a=>a.id===ask.patch.anchor);if(!a)throw Error('Anchor removed');a.position=[...ask.patch.position];}});S.expRouteAsk=null;ctx.ui();return true;
 }
 onCancel(()=>{S.expRouteAsk=null;},12,'Camera route pace proposal');
 

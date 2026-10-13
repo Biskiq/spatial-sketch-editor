@@ -1040,7 +1040,9 @@ window.addEventListener('keydown', (e) => {
       if (held) cancelProposal('esc');
       if (e.shiftKey) { closeSheets(false); if (S.session) A.closeAll(); requestUI(); break; }
       if (held) { requestUI(); break; }
-      if(S.lens==='experience'&&S.task?.kind.startsWith('experience-')){E.closeExperienceWork();requestUI();break;}
+      // §5.7: Esc unwinds one level at a time, from the innermost reading outward. Drafts and Asks were
+      // already cancelled above by the one policy, so this never arms, writes or runs anything.
+      if(S.lens==='experience'&&S.task?.kind.startsWith('experience-')){E.unwindExperience();requestUI();break;}
       if (!$('#help').hidden) $('#help').hidden = true;
       else if (S.beacon) { S.beacon = null; requestUI(); }
       // A sheet is the surface in front: Esc closes it before anything about the reading changes, and

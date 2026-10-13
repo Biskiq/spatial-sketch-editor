@@ -97,9 +97,15 @@ export function addConnection(c,from,to) {
  const old=Object.values(c.connections).find(k=>k.from===from&&k.to===to);if(old)return old.id;
  const id=fresh(c,'connection');c.connections[id]={id,from,to,anchors:[],markers:[],speed:'auto'};return id;
 }
-export function addAnchor(c,id,position) {
+// §3.2: a point is inserted into the segment the author placed it in, so the path order follows the
+// drawing rather than the order points happened to be authored in. `at` is optional: the end remains the
+// default for a caller that has nothing to place between.
+export function addAnchor(c,id,position,at=null) {
  const route=c.connections[id];if(!route)throw Error('Connection removed');
- const aid=fresh(c,'anchor');route.anchors.push({id:aid,name:`Anchor ${route.anchors.length+1}`,position:[...position]});return aid;
+ const aid=fresh(c,'anchor');
+ const anchor={id:aid,name:`Anchor ${route.anchors.length+1}`,position:[...position]};
+ route.anchors.splice(at===null?route.anchors.length:Math.max(0,Math.min(route.anchors.length,at)),0,anchor);
+ return aid;
 }
 // Removing one authored path point is a Camera geometry edit like adding or moving one: the route, its
 // other points and every Experience reference to them are untouched, so a removed point leaves no
