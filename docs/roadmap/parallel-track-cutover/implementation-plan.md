@@ -1,10 +1,12 @@
 # PR #115 — Architecture Reset: Frozen-Lane Isolation, Aggressive Pruning & Parallel-Track Cutover
 
-**Status:** proposed executor plan, revision 2 (production pruning in scope), ready for independent review. Nothing in this document is executed yet. Execution needs owner authorization against the reviewed plan.
+**Status:** proposed executor plan, revision 3 (revision 2 plus the folded-in peer-review corrections F1–F6), ready for independent re-review. Nothing in this document is executed yet. Execution needs owner authorization against the reviewed plan.
 
 **Inspected baseline:** `main` at `e90a58224443bdbf44114d7285d55c983b79cc84`, 2026-10-13. The plan is written on `codex/pr115-architecture-plan` (head `44ccbb78`, which adds only this file). Counts are taken from tracked files and exclude ignored local artifacts. Before execution, recheck the baseline-to-start diff and inspect only the files that changed in between.
 
-**What changed from revision 1:** revision 1 forbade any production-code deletion in #115. The owner has lifted that restriction. #115 now prunes production code, presentation, supporting abstractions and tests aggressively, so that T1–T4 begin from the smallest sound foundation. Two owner statements made on 2026-10-13 are binding inputs to this revision:
+**What changed in revision 3:** sections 8–11 are now self-contained and need no earlier revision. The gate register is version-aware and checked against a trusted base. The cycle window gets an enforced opening hook. A bounded post-prune reassessment (WP3R) is added. The `/p/` visitor and snapshot reader are explicitly retained until T4. WP3 acceptance requires DB-backed API tests that actually run.
+
+**What changed in revision 2:** revision 1 forbade any production-code deletion in #115. The owner has lifted that restriction. #115 now prunes production code, presentation, supporting abstractions and tests aggressively, so that T1–T4 begin from the smallest sound foundation. Three owner statements made on 2026-10-13 are binding inputs:
 
 1. **No data obligations.** The only public release is the checked-in Chopin museum. The project uses fast-moving development with no versioning or compatibility support. Saved development projects and historical formats create no reader obligation.
 2. **The P23B benchmark is finished.** It was built to stress-test and optimize algorithms that already pass in the kernel code. Its harness, perf routes and measurement apparatus go away together with their seams. Only kernel correctness checks survive.
@@ -47,7 +49,7 @@ Prototypes supply interaction evidence only. They never supply production format
    - project persistence, which the entry/hub routes still use.
 4. **Retire legacy-generation *acceptance* in the new product.** After the freeze, nothing in the new product consumes legacy-format payloads, and the owner has stated there are no data obligations. Project-level readers, the API and the cold-release reader therefore become strict wall-first/world-local. The separable compat/migration/conversion modules are deleted. The deep legacy Layout types/codec are entangled with 37 wall-first modules, so separating them is tied to T1's first Layout schema cutover (§6).
 5. **Delete tests with their subjects.** Extract the semantic assertions that guard retained kernels. Every retained gate passes. Nothing is skipped or marked expected-to-fail.
-6. **Keep and adapt revision 1's documentation and execution-system work.** Change it to match the reduced tree, and simplify the gate machinery so it is proportionate (§9).
+6. **Prune the documentation and rebuild the execution system to match the reduced tree** (§8–§11), with gate machinery that is proportionate but version-aware (§9.4).
 
 A full rewrite of the kernels is unjustified: canonical topology, curve/Junction geometry, shared Camera evaluation, visitor isolation and resource handling are sound and heavily tested. Keeping the old shell is also unjustified. It embeds a superseded information model, and the frozen relic is its only remaining reason to exist, which the freeze removes.
 
@@ -55,7 +57,7 @@ A full rewrite of the kernels is unjustified: canonical topology, curve/Junction
 
 ## 2. Verified current state
 
-### 2.1 Facts inspected at the baseline (carried from revision 1, still valid)
+### 2.1 Facts inspected at the baseline
 
 - ProjectDocument is `{ id, name, layout, scene }`. There is no Experience unit and no F envelope. Wall-first Layout format is 5. World-local Scene is `formatVersion: 1`. The legacy room-local Scene and floors/rooms Layout shapes are still decoded.
 - Scene stores Camera nodes, connectivity, paths and view tracks. Editorial order (`nextNodeId`, `previousNodeId`, `holdSeconds`, `detourOfNodeId`, `lockInteraction`) is still mixed into Camera data.
@@ -65,7 +67,7 @@ A full rewrite of the kernels is unjustified: canonical topology, curve/Junction
 - TD-1: canonical floor-supported placement is broken (empty Room-frame registry, room-local node writes). This is confirmed from source.
 - Static model cold validation uses the shipped-static identity, while `AssetModel` rendering reads the mutable catalogue `productionFile`. This resource-source seam is a T2/T4 obligation.
 
-### 2.2 New source evidence for revision 2
+### 2.2 Source evidence for production pruning
 
 I computed import closures over tracked sources (static, type, dynamic and CSS imports; `$lib`, `@portfolio/*` and `virtual:museum-editor-entry` resolved). WP0 reproduces this as a committed helper (§12).
 
@@ -210,7 +212,7 @@ Directory names (`lib/museum` for the generic renderer) are kept to avoid churn 
 | `/`, `/projects`, `/editor` | Functional: guest/Google entry, project list and redirect. |
 | `/project/:id/spatial` | Static notice: authoring is unavailable during the foundation reset. No project load and no session. |
 | `/project/:id/preview`, `/project/:id/publish` | **Removed** (404). |
-| `/p/:publicationId` | Functional cold reader for wall-first/world-local releases. There are currently none (owner statement). |
+| `/p/:publicationId` | Functional strict cold reader for wall-first/world-local releases. There are currently none (owner statement). It is kept because it is the only end-to-end consumer that keeps the public-surface boundary plugin, visitor isolation tests and API publication tests meaningful (§5.1). |
 | API Save/Load/assets/publication | Functional. Legacy-generation documents are now rejected with a validation error. |
 | `/dev/perf*`, `bench:record`, `reuse:record`, `test:perf` | **Removed.** |
 
@@ -260,7 +262,8 @@ EVIDENCE-PATHS: start — baseline implementation paths at e90a58224443bdbf44114
 | `lib/layout/wall-mesh-builder.ts`, `render/wall-geometry-adapter.ts`, generic `lib/museum` renderer, `texture-cache`, material remap | **RETAIN AS FOUNDATION** | Renderer and resource-lifetime mechanisms shared with the visitor. Attributed geometry, cloned material ownership and release-scoped caches are preserved. The static-model source seam stays a T2/T4 obligation. |
 | Chopin-specific `lib/museum` (rooms/*, `LegacyRoom`, `ParisSalon`, `CentralChamber`, `LayoutMuseumShell`, `MuseumScene`/`Entities`/`Canvas`, `RoomFrame`, `CameraDirector`, `NavigationNode`, `paris-activation`, `placement-registry`, `EditorPlacementRoot`, `ui/MuseumHUD`), `content/chopin-*`, `rooms*.ts`, `state/runtime-state` | **ISOLATE FOR LEGACY**, then remove the originals | Only frozen consumers remain once the new editor is removed. |
 | Orphans (§2.2), including `surfaces/{Floor,Wall,Ceiling}.svelte` | **REMOVE IN #115** | Unreachable from any route or API. AGENTS rule 6's "prefer Floor/Wall/Ceiling planes" is rendering guidance and does not depend on these unused files. |
-| `lib/visitor/*`, vite boundary plugins | **RETAIN AS FOUNDATION**; **REFACTOR LATER at T4** prepared-reader cutover | Cold reader made strict in WP3. Isolation enforcement is preserved. The P22 authored-snapshot reader is still replaced by T4's prepared reader. The concrete dependency is F5.release-envelope plus T4.prepared-reader; until then, the strict snapshot reader is the only delivery path. |
+| Visitor runtime (`lib/visitor/*` guided runtime, cold-runtime shell, isolation), vite boundary plugins, `routes/p/[publicationId]` | **RETAIN AS FOUNDATION** | The visitor-isolation guarantee (AGENTS rule 4) needs a real visitor entry. `public-surface-boundary-plugin.ts` requires the `/p/[publicationId]` root in the module graph, so deleting the route would void the plugin, the visitor isolation tests and the API publication end-to-end tests rather than prune dead code. |
+| P22 authored-snapshot reader (the snapshot → runtime path inside the cold runtime) and the API publication snapshot format | **RETIRE AT T4** prepared-reader cutover | Made strict in WP3. The concrete dependency is F5.release-envelope plus T4.prepared-reader, which replaces the reader atomically. Deleting it in #115 gains no capability and removes the only delivery path until then. |
 | `project-persistence.ts` and its asset helpers | **RETAIN AS FOUNDATION** (relocate to `lib/platform/`) | The entry and hub routes consume it. **REFACTOR LATER at T3**, which adds expected-revision acceptance (F.4). |
 | `publication-client.ts`, `publication-presentation.ts`, `import/package-importer`, `export/package-exporter`, `project-asset-upload/load`, `register-verified-project-asset` | **REMOVE IN #115** | No consumer remains. The server API, `project-model` package-format codec and server tests are retained. T4 rebuilds publication UI against the prepared reader. T2 rebuilds ingest and resource staging. |
 | `lib/bench/**`, `/dev/perf*`, `bench:record`/`reuse:record` scripts, PERF lane, P23B measurement/attribution/budget/ratchet/containment tests and fixture ledger/ratchet JSONs | **REMOVE IN #115** | Owner statement: the purpose is fulfilled. Kernel correctness tests that used bench fixtures survive with relocated fixtures (§7). TD-4 and TD-5 retire with their implementation (§8.6). |
@@ -303,6 +306,7 @@ WP0 expands §5.1 into a **per-file source manifest** in `acceptance.md`, with c
    - `resolveSceneDocument` loses the Room-registry parameter wherever it exists only for room-local resolution.
 2. `layout-core`: delete `layout-compat`, `layout-migration` and `layout-migration-math` and their index exports.
 3. Callers: visitor cold runtime, API Save/Load/publication, and retained `authoring/scene/plan-scene-footprint` (drop its legacy room-frame branch).
+   - Add a DB-free case to `apps/api/tests/api.test.mjs` (fakes, like its existing project body validation cases): a legacy-generation project body is rejected on Save with the named `unsupported_generation` issue, and the matching kernel test asserts the same in `project-model`.
 4. **Stop rule:** if removing an item requires designing new semantics rather than deleting a branch or parameter, stop that item. Record it in `acceptance.md` as a §5.1 "RETIRE AT T1/T2" row with the exact blocker. Do not invent a replacement.
 5. Tests follow §7.2 category D.
 
@@ -354,7 +358,7 @@ npm test
 npm run check
 npm run build
 npm run check:layout-core && npm run check:project-model && npm run check:camera-core
-npm run check:api && npm run test:api        # project-model reader behavior changed; test:api needs its DB prerequisite, otherwise record the exact unavailable step
+npm run check:api && npm run test:api        # project-model reader behavior changed; DB-backed and zero skips required (§7.5)
 git diff --check
 ```
 
@@ -371,299 +375,649 @@ Also load `/`, `/projects` and `/project/x/spatial`: no console errors, and the 
 - A failure in A, A′, A″, B, the build, the type check or the frozen-project acceptance steps is an **unanticipated regression** and blocks acceptance.
 - A missing capability listed in §4.4 is **intentional**. It is never represented by a failing or skipped test.
 
-## 8. Documentation pruning manifest (revision 1 §4, adjusted to the reduced tree)
+### 7.5 API execution requirement
 
-### 8.1 Applying the manifest safely (unchanged rules)
+`apps/api/tests/publication.test.mjs` and `test-auth.test.mjs` call `t.skip(...)` when Postgres is unreachable, so `test:api` can look green while the publication and auth paths never ran. WP3 changes those readers, so:
 
-This is an ordered, baseline-specific manifest. Exact-file and protected-family rules override prefix defaults. "DELETE remainder" includes directory READMEs, stubs and prompts, and leaves no empty husk. It applies only to tracked baseline files. WP0 expands it into a per-file manifest (old path, action, new path, blob hash, owner, rationale) in `acceptance.md`. Every baseline docs file gets exactly one action, and unmatched or overlapping rules fail. DELETE relies on the immutable baseline commit for recovery. Moved bundles keep their internal layout and byte-identical assets.
+- WP3 (Checkpoint C) and final acceptance need `check:api` and `test:api` run with a reachable Postgres (`DATABASE_URL`), with the TAP summary showing **zero skipped tests**. The run's skip count and the DB target type (local or CI) are recorded in `acceptance.md`.
+- The DB-free `api.test.mjs` legacy-rejection case (§6) runs in every environment.
+- If Postgres is unavailable, WP3 is **blocked**, not accepted. `acceptance.md` lists the DB-backed tests that did not run as "unexecuted", separately from the passing ones. Proceeding without them needs an explicit owner ruling recorded there.
 
-Revision 1's totals (378 delete/consolidate, 109 archive/move, 65 protected moves, 29 retain = 581) **are superseded**. The changed P23B rows, the deleted component contracts and the moved test inputs change them. WP0 recomputes and records the new totals. They are reproducibility checks, not quotas.
+## 8. Documentation pruning manifest
 
-The user-directed aggressive pruning overrides the old "compact every closed prose file into a stub" default for this batch. Protected prototype plans and QA remain exempt. Existing recovery anchors are preserved and the full-body recovery commands are verified.
+This section is complete for execution. Earlier revisions are only provenance; Git holds them.
+
+### 8.1 Applying the manifest safely
+
+- **Ordering:** this is an ordered, baseline-specific manifest. Exact-file and protected-family rules override prefix defaults, and later rows never re-classify a file that an earlier exact row already classified.
+- **Scope:** it applies only to tracked baseline files. Untracked work, ignored local artifacts and files added after the baseline get a small delta disposition recorded in WP0.
+- **DELETE remainder** covers directory READMEs, redirect stubs, research prompts and redundant status text, and leaves no empty directory.
+- **Expansion (WP0):** expand the rules into a per-file manifest in `acceptance.md` with old path, action, new path, baseline blob hash, owner of any consolidated content and rationale. Every baseline docs file gets exactly one action; unmatched or overlapping rules fail the expansion.
+- **Recovery:** DELETE relies on the immutable baseline commit (`git show <baseline>:<path>`). No replacement stubs are created.
+- **Moves:** a moved bundle keeps its internal relative layout, byte-identical non-text assets and working render/serve dependencies.
+- **Totals:** WP0 computes and records the action totals. Earlier revisions' totals are void. Totals are reproducibility checks, not quotas.
+- **Compaction:** aggressive pruning replaces the old "compact every closed prose file into a stub" default for this batch only. Future slices use slice-closeout's proportional preservation.
+- **Protected material:** protected prototype plans and QA are exempt from deletion and compaction. Existing recovery anchors are preserved when a closed plan moves, and the exact full-body recovery command is re-verified.
+- **Consolidation is semantic extraction, not re-ratification.** Inspect source only for a claim that is missing, ambiguous or contradicted.
+- **Preservation invariant:** an unresolved obligation cannot disappear with its document. The expanded manifest records its surviving owner or anchor. A newly found concrete obligation gets a narrow manifest amendment, not a broad reconciliation.
 
 ### 8.2 Live authorities and reference contracts
 
 | Existing file or prefix | Action / reason |
 | --- | --- |
-| `docs/README.md`, `AGENTS.md`, `README.md` | **RETAIN + rewrite routing** (§10). AGENTS gains the one-line `legacy/` scope rule (§3.6), drops the `scroll-travel` clause and gets the new routes. Rules 4 and 6 are unchanged. |
-| `reference/architecture.md`, `north-star.md`, `composition-execution.md`, both `decisions/*` | **RETAIN.** In `architecture.md`, rewrite the "Two isolated lanes" and "Product routes" sections: product routes per §4.2, and the one plain-text sentence about the separate frozen project (§3.4 rule 3). Decisions stay immutable. |
+| `docs/README.md`, `AGENTS.md`, `README.md` | **RETAIN + rewrite routing** (§10). AGENTS gains the one-line `legacy/` scope rule (§3.6), drops the `scroll-travel` clause, gets the new routes and keeps its hard invariants. Rules 4 and 6 are unchanged. |
+| `reference/architecture.md`, `north-star.md`, `composition-execution.md`, both `decisions/*` | **RETAIN.** In `architecture.md`, rewrite "Two isolated lanes" and "Product routes" per §4.2, plus the one plain-text sentence about the separate frozen project (§3.4 rule 3). Decision records stay immutable; their old planning links become labeled provenance (`git show <baseline>:<old-path>`) per §10.3. |
 | `reference/components/shell.md`, `theme.md` | **DELETE.** Their landed subject is removed. The frozen relic's facts belong in the frozen project's own README, and PLATE owns the destination. |
 | `reference/components/placement.md` | **CONSOLIDATE then DELETE.** Kernel-level Scene transform-validation facts go into `scene-content.md`. TD-1 acceptance obligations and the scalar-vs-independent-scale fidelity note go into T2 planning evidence. |
-| `reference/components/camera-tour.md` | **RETAIN + rewrite** to describe the `camera-core` kernel, the graph-vs-order distinction (until T3), generated-vs-authored anchors and the visitor guided runtime. Remove editor timeline/Camera Plan/authoring descriptions. |
-| `reference/components/persistence.md`, `scene-codec.md`, `scene-content.md`, `assets.md` | **RETAIN + update:** strict generation, removed facades, history section removed (the history implementation is deleted; F.4 is the destination), and the `apps/museum` path references replaced by actual paths. |
-| ★ `legacy/chopin-museum/README.md` | **NEW, inside the frozen folder.** The §3.3 contract, `FREEZE.json` semantics, change policy, routes, dependencies, commands and deployment. It references only files inside its folder, and no product doc links to it (§3.4). |
-| `reference/design-system/editor-shell-and-visual-system.md`, `spatial-instrument-grammar.md` | **RETAIN.** Repair evidence links only. |
-| `reference/design-system/editor-shell-atlas/**`, `editor-shell-ratifications.md` | **ARCHIVE/MOVE** to `docs/archive/technical/editor-shell/` as landed-shell evidence (revision 1 rule). |
-| `design-shell-specs.md`, `shell-scene-workspaces.md`, `shell-camera-workspaces.md`, `camera-flow-specs.md`, `camera-layout-design.md`, and every other baseline file under `reference/design-system/` | **DELETE.** Their implementation is removed, so there is nothing to consolidate into `shell.md`. Current Camera kernel facts (graph vs order, timing/framing guards, X/Z projection boundary) are checked against the rewritten `camera-tour.md` and folded in only if missing. |
-| `docs/North-star-final-*`, `World-Experience-*` (4 files), `README.original.md` | **DELETE** after the promotion-coverage check (revision 1 rule). |
-| `apps/editor/src/lib/editor/README.md`, `DEBUGGING.md` | **DELETE** with the directory. The `src/lib/authoring/README.md` (★, short) states the §4.3 retention criteria. |
+| `reference/components/camera-tour.md` | **RETAIN + rewrite** to describe the `camera-core` kernel, the graph-vs-order distinction (until T3), generated-vs-authored anchors and the visitor guided runtime. Remove editor timeline, Camera Plan and authoring descriptions. |
+| `reference/components/persistence.md` | **RETAIN + update:** strict generation, removed facades, history section removed (F.4 is the destination). Scope the statement that `chopin-project.json` is "the sole production project source" to the frozen project, and note that product cloud/guest projects are independent. |
+| `reference/components/scene-codec.md`, `scene-content.md`, `assets.md` | **RETAIN + update:** strict generation, removed facades, actual paths instead of `apps/museum`. `assets.md` first absorbs any missing normalization/rights/provenance checklist facts from archive `ASSET_WORKFLOW.md`. |
+| ★ `legacy/chopin-museum/README.md` | **NEW, inside the frozen folder.** The §3.3 contract, `FREEZE.json` semantics, change policy, routes, dependencies, commands and deployment guidance. It references only files inside its folder, and no product doc links to it (§3.4). |
+| `reference/design-system/editor-shell-and-visual-system.md`, `spatial-instrument-grammar.md` | **RETAIN.** Repair evidence links only. Do not reopen acceptance. |
+| `reference/design-system/editor-shell-atlas/**` | **ARCHIVE/MOVE the whole bundle** to `docs/archive/technical/editor-shell/atlas/`, keeping working HTML assets. It is landed role/state specimens, not a fallback design spec. |
+| `reference/design-system/editor-shell-ratifications.md` | **ARCHIVE/MOVE** to target docs/archive/technical/editor-shell/ratifications.md, after checking that its R1–R4 role/state and one-writer outcomes are represented in PLATE. |
+| `design-shell-specs.md`, `shell-scene-workspaces.md`, `shell-camera-workspaces.md`, `camera-flow-specs.md`, `camera-layout-design.md`, and every other baseline file under `reference/design-system/` | **DELETE.** Their implementation is removed. Current Camera kernel facts (graph vs order, timing/framing guards, X/Z projection boundary) are checked against the rewritten `camera-tour.md` and folded in only if missing. If the retained atlas needs an external asset, move that exact asset into the atlas bundle instead. |
+| `docs/North-star-final-decision-synthesis.md`, `North-star-final-synthesis-peer-review.md`, `World-Experience-Architecture-Synthesis.md`, `World-Experience-Model.md` | **DELETE after a promotion-coverage check:** every conclusion must already be in the ratified amendment, F, North Star or `architecture.md`. Any unpromoted owner obligation moves to its owning contract or track evidence first; proposals are not promoted. |
+| `README.original.md` | **DELETE**, and repair incoming routes. |
+| `apps/editor/src/lib/editor/README.md`, `DEBUGGING.md` | **DELETE** with the directory. The new short `src/lib/authoring/README.md` (★) states the §4.3 retention criteria. |
 
-### 8.3 Protected prototype family: exact moves (unchanged from revision 1 §4.3)
+### 8.3 Protected prototype family: exact moves
 
-All prototypes are retained. Their READMEs identify accepted, superseded or unratified roles with PLATE/F links. The following move into their prototype evidence homes, with only links, recovery-path interpretation, historical banners and relocatable QA script locators changing (hashes recorded before and after):
+All prototypes are retained as functional and design evidence:
 
-- `p26-spatial-depth/design/visual-system-refinement/**` → `prototypes/spatial-authoring/design/visual-system-refinement/`
-- `p26…/world-authoring-prototype/implementation-plan.md` → target prototypes/spatial-authoring/plans/world-authoring-prototype.md
-- `p26…/paper-authoring-prototype/implementation-plan.md` → target prototypes/paper-authoring-commission/plans/inactive-adoption-plan.md (banner: inactive, unimplemented)
-- `p25-experience/design/experience-v2-prototype/{implementation-plan,conformance-plan,authoring-completeness-plan}.md` → `prototypes/spatial-authoring/plans/experience-v2-prototype/`
-- `…/ux-pruning-and-shell-reconciliation-plan.md` → target prototypes/spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md
-- `p25-experience/design/experience-ux-v3/**` → `prototypes/experience-ux-v3/design/`
-- `operations/checkpoints/experience-v2-conformance-evidence/**` → `prototypes/spatial-authoring/qa/verification-records/experience-v2-conformance/`
-- `archive/roadmap/p25-experience/p25-unified-design/{p23b-browser-report,p23b-validation-result}.json`: **RETAIN byte-identically in place.** They are accepted UX comparator evidence.
+- Conservatory, Paper and World are accepted references.
+- Donor/Integrated Experience, the World shell round and UX3/V3 are the comparison chain used by #111–#114.
+- Object Composition is unique assembly/reach/repair research.
 
-Moved QA launchers keep working-directory correctness, verified with a non-browser dry run. Prototype behavior is untouched, and production pruning cannot reach it (§2.2).
+Each prototype README identifies its accepted, superseded or unratified role and links to PLATE and F. No prototype becomes a workspace or production dependency.
 
-### 8.4 Retired P24/P25/P26 planning and unique evidence (unchanged from revision 1 §4.4)
+The design and QA files below still sit under P-level roadmap folders and move into prototype evidence homes:
 
-The revision 1 rows stand:
+- `docs/roadmap/p26-spatial-depth/design/visual-system-refinement/**` moves whole to `prototypes/spatial-authoring/design/visual-system-refinement/`. That includes the specification plan, paper-surface brief, QA scripts, acceptance, contrast evidence and transition capture assets.
+- `docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md` → target prototypes/spatial-authoring/plans/world-authoring-prototype.md. Keep the accepted plan, its recovery route and the #112 acceptance routes.
+- `docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md` → target prototypes/paper-authoring-commission/plans/inactive-adoption-plan.md. Keep PA0–PA12 and the keymap evidence, under a banner: "inactive, unimplemented; no current authorization".
+- `docs/roadmap/p25-experience/design/experience-v2-prototype/{implementation-plan,conformance-plan,authoring-completeness-plan}.md` move, keeping their filenames, to `prototypes/spatial-authoring/plans/experience-v2-prototype/`. Keep the #113 S0–S9/C1–C9 recovery anchors and the MP1–MP4 acceptance boundary.
+- `docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md` → target prototypes/spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md. Keep the #114 closed plan, its full-body recovery and its acceptance scope.
+- `docs/roadmap/p25-experience/design/experience-ux-v3/**` moves whole (six files) to `prototypes/experience-ux-v3/design/`, labeled inactive. A matching generated PNG is not acceptance.
+- `docs/operations/checkpoints/experience-v2-conformance-evidence/**` moves whole to `prototypes/spatial-authoring/qa/verification-records/experience-v2-conformance/`, including the failed-run logs that qualify acceptance.
+- `docs/archive/roadmap/p25-experience/p25-unified-design/{p23b-browser-report,p23b-validation-result}.json` stay **byte-identical in place** as accepted UX comparator evidence. They are the only files left in that old tree.
 
-- P24 focused research → `archive/technical/composition/`;
-- P24 reconciliation → T2 planning evidence, then delete;
-- P25 compact research → `archive/technical/experience/` plus T3 extraction;
-- other P25 research → delete;
-- P26 broad compact and harvests → `archive/technical/spatial/`;
-- P26 umbrella → T1 evidence plus archive;
-- P26 synthesis → T1 evidence, then delete;
-- the rest of P24/25/26 → delete;
-- the two backlog proposals → a global unscheduled paragraph;
-- the commission proposal and `model-assessment.md` → delete.
+In protected text, only these may change: links, how recovery paths are interpreted, historical-role banners and the locators of relocatable QA scripts. Hashes are recorded before and after, and every text change needs a reviewed mechanical reason.
 
-The required T1/T2/T3/T4 evidence contents are those of revision 1 §4.4, with these additions:
+Moved QA launchers keep their working-directory and filename assumptions, verified by a non-browser dry run. No prototype suites are rerun and no captures are rewritten. Production pruning cannot reach prototypes, because they import no production code (§2.2). No old P25/P26 stub tree remains.
 
-- **T1:** the §7.2 successor obligations (mesh parity, M1/M5 re-arming, Plan representation invariant), the TD-5 `$state`-proxy lesson (do not wrap compiled geometry in deep reactive proxies), the retained `lib/authoring/{layout,a11y}` routes, and the legacy Layout types/codec retirement row (§5.1).
-- **T2:** TD-1's acceptance obligations (canonical Room-free placement; no camera, primitive, light or asset blocked), the retained `lib/authoring/scene` routes, and ingest/resource staging rebuild (upload/load stores removed).
-- **T3:** history and acceptance invariants from deleted tests (one logical result, no-op, rollback, cap), expected-revision Save, Camera authoring math placement (`lib/authoring/camera`), and the order-field/visitor-order retirement row.
-- **T4:** the strict snapshot reader is the current path, and publication UI and import/export are removed. There is still no separate T4 evidence file.
+### 8.4 Retired P24/P25/P26 planning and unique evidence
+
+| Baseline source / rule | Action and destination |
+| --- | --- |
+| P24 `research/deep-research-P24-3D-editing-compact.md`, `deep-research-assets-compact.md`, `deep-research-exact-asset-compact.md`, `Pascal-editor-harvest.md`, `three-r175-r186-museum-harvest.md`, `museum-editor-phase2-acquisition-manifest.json` | **ARCHIVE/MOVE** these six files, keeping their relative layout, to `docs/archive/technical/composition/`. No version or support claim is inferred from them. **DELETE** `Pascal-editor-harvest-brief.md`. |
+| P24 R3/R4/R5–R7/R8/R9 reconciliation files, umbrella, P24A annex, reconciliation sequence, minimum child briefs, P24 README | **CONSOLIDATE** the surviving obligations into T2 planning evidence, then **DELETE**. The frozen minimum, corpus quotas, static-only scope and phase dependencies are retired. |
+| P25 `research/P25-research-compact.md` | **ARCHIVE/MOVE** to `docs/archive/technical/experience/` with its provenance and old-model caveat. Extract current accessibility and repeated-occurrence findings to T3 evidence. |
+| P25 `deep-research-P25.md`, `deep-research-report-P25-full.md`, `prompt-phase-5.md`, umbrella, README | **DELETE** after consolidation and after the §8.3 moves. |
+| P26 `research/broad/deep-research-P26-phase-1-compact.md` and both `research/harvests/*` | **ARCHIVE/MOVE**, keeping the broad/harvests layout, to `docs/archive/technical/spatial/`. They contain unique spatial findings and the FreeCAD/Bonsai source inspection. **DELETE** the broad full report. |
+| P26 continuous-spatial-authoring umbrella | **CONSOLIDATE** its obligations and open choices into T1 evidence, then **ARCHIVE/MOVE** it to target docs/archive/technical/spatial/continuous-spatial-authoring-umbrella.md. Its D1–D8 and ceiling/periodic proofs are valuable; its order and architecture proposals are not current plans. |
+| P26 `research/synthesis/p26-architectural-spatial-depth-synthesis.md` | **CONSOLIDATE** its independent domain findings into T1 evidence, then **DELETE**. |
+| All other P24/P25/P26 files, including phase READMEs, the designer brief and the Final-Design-Prototype redirect | **DELETE** after the protected moves and consolidation. No P-level route or stub remains. |
+| `docs/roadmap/backlog/2026-08-27-P13-stop-at-node-playback.md`, `2026-08-21-branch-rejoin-experiment.md` | **CONSOLIDATE** into a short unscheduled-proposals paragraph in the global roadmap, then **DELETE**. T3 may assess pause-at-next-occurrence; branch rejoin stays unscheduled. |
+| `docs/roadmap/f-foundation-contracts/design/proposals/2026-09-27-biskiq-durable-design-commissions.md` | **DELETE** after checking its scenarios against protected prototypes and the North Star. It is a non-authoritative proposal. |
+| `docs/roadmap/model-assessment.md` | **DELETE**, and remove the global META/MODEL routes. |
+
+**Planning-evidence contents.** Each file is written as evidence and obligations, not as an implementation plan.
+
+- **T1 (`t1-spatial-world/planning-evidence.md`):**
+  - World A–F/Conservatory/Paper division of evidence;
+  - circular enclosure needs a single self-connected, continuously curved Wall;
+  - head-fixed arch rise and independent overhead-region intent, without asserting an encoding;
+  - typed cut/projected/hidden representation streams with source correspondence;
+  - hosted Opening identity;
+  - source identity through Section/peel;
+  - finite depth affects geometry and membership;
+  - nested Look/return kept separate from document Undo;
+  - focused mechanisms carried forward: D2 datum/closure/coverage, D3 fit/gap, D5 seam/ambiguous inverse/refusal, D6 invalidated return/undo suffix;
+  - D1 superseded by the seam gate, D4 under prune-first, D7 under PLATE, D8 already accepted;
+  - the later Wall-role ruling and its two open decisions;
+  - slab/ceiling ownership kept open where F names an open mechanism;
+  - the §7.2 successor obligations: mesh parity, M1/M5 re-arming, and the Plan-representation invariant;
+  - TD-2 non-recurrence;
+  - TD-5's lesson: do not deep-proxy compiled geometry;
+  - routes to `lib/authoring/{layout,a11y}`;
+  - the legacy Layout types/codec retirement row (§5.1).
+- **T2 (`t2-composition/planning-evidence.md`):**
+  - one semantic Scene placement with view-specific projection;
+  - derived footprint, X/Z/yaw input and support-owned Y;
+  - transient support consultation is not host attachment;
+  - view-independent selection and explicit ineligibility;
+  - gestures cancel at real transitions;
+  - a preview candidate equals its commit;
+  - one acceptance/history result;
+  - mutations follow entity authority;
+  - TD-1's acceptance tests, verbatim;
+  - atomic group/duplicate validation;
+  - positive/uniform vs independent scale;
+  - material/light semantic gaps;
+  - static-model source drift;
+  - truthful ingest/provenance/resource locking;
+  - single-model import belongs in the first trial loop;
+  - no renderer/library upgrade is implied;
+  - ingest/resource staging must be rebuilt;
+  - routes to `lib/authoring/scene`.
+- **T3 (`t3-experience/planning-evidence.md`):**
+  - repeated Stop/Presentation/visit distinction;
+  - collection-capable Experience with no "Destination" duplicate;
+  - Camera geometry and timing stay intrinsic, while order, holds, continuation and Gates move to Experience in one simultaneous Camera/F.4 cutover;
+  - DOM companion navigation, keyboard and focus return, captions/transcripts, media activation constraints, a reduced-motion endpoint and Preview/public parity;
+  - history/acceptance invariants from deleted tests (one logical result, no-op, rollback, cap);
+  - expected-revision Save;
+  - placement of the Camera authoring math (`lib/authoring/camera`);
+  - the order-field retirement row.
+- **T4:** no separate evidence file. The T4 README states:
+  - the strict snapshot reader is the current delivery path (§5.1);
+  - the prepared-reader obligation;
+  - verifiable provenance and closed resources;
+  - per-Experience pointers;
+  - the covered-data ledger is empty by owner statement;
+  - publication UI and import/export are removed.
 
 ### 8.5 Closed P23/P23B, operations and archive
 
 | Baseline prefix / exception | Action |
 | --- | --- |
-| P23 rows | Unchanged from revision 1: archive the README, the four foundation plans, the P23.14 QA record and p23.15/p23.16 closure bundles to `archive/technical/p23/`, and delete the remainder. |
-| P23B `fixture-ledger.json`, `reuse-counter-ratchet.json` | **DELETE** (revision 1 protected them only as test inputs; their tests are removed per the owner statement). WP2 must prove no retained test or recorder imports them. |
-| P23B README, curved-crossing owner decision (`p23b.3…/2026-09-22-P23B.3-curved-crossing-owner-decision.md`), `p23b.9` correctness/performance gate record and `p23b.10` phase closeout | **ARCHIVE/MOVE** to `archive/technical/p23b/`. Phase closure provenance and the algorithm decision are retained. Measurement bundles are not. |
-| All other P23B files (measurement reports, budget policy, p23b.6/.8/.11 bundles, pre-p23b.8 follow-up, Rust/WASM decision) | **DELETE.** The benchmark's purpose is fulfilled (owner statement). Git holds the history. Before deletion, pull any unreconciled *correctness* debt into tech-debt; no perf debt. |
+| `docs/roadmap/p23-layout-depth/` README; `2026-09-09-P23.0-wall-first-foundation-migration.md`; `2026-09-09-P23.8-wall-topology-room-regions.md`; `2026-09-14-P23.11-canonical-curved-walls-and-render-safe-validation.md`; `2026-09-17-P23-junction-dissolve-wall-join.md` | **ARCHIVE/MOVE**, keeping relative paths, to `docs/archive/technical/p23/`. They hold closure provenance, format cutover, Room lineage, curve validation and dissolve invariants. |
+| P23 `p23.14-shell-visual-system/qa/2026-09-19-P23.14-shell-qa-record.md`; `p23.15-junction-correct-wall-first-3d/**`; `p23.16-whole-product-integration-closeout/**`; `2026-09-08-P23.16-final-whole-product-integration-closeout.md` | **ARCHIVE/MOVE**, keeping relative layout, to `docs/archive/technical/p23/`. They hold final gates, watertight research and TD-2's origin. |
+| All other `p23-layout-depth/**` | **DELETE.** |
+| P23B `fixture-ledger.json`, `reuse-counter-ratchet.json` | **DELETE.** Their only consumers are bench tests, which are removed under the owner statement. WP2 proves no retained test or recorder imports them. |
+| P23B README; `p23b.3…/2026-09-22-P23B.3-curved-crossing-owner-decision.md`; `p23b.9` correctness/performance gate record; `p23b.10` phase closeout | **ARCHIVE/MOVE** to `docs/archive/technical/p23b/`, keeping the closure provenance and the algorithm decision. |
+| All other P23B files | **DELETE.** The benchmark's purpose is fulfilled. Any unreconciled *correctness* debt moves into tech-debt first; perf debt does not. |
 | `operations/current.md`, `checkpoints/README.md` | **RETAIN + rewrite** (§10). |
 | `operations/tech-debt/README.md` | **RETAIN + update** (§8.6). |
-| `operations/test-suite-harvest-2026-09-19.{md,csv}` | **DELETE.** Their measured lane evidence describes a test tree that #115 restructures. Current doctrine lives in `tests/README`. (Revision 1 archived them; with ≈220 subject tests removed, the harvest no longer describes anything recoverable that Git does not already hold.) |
-| `operations/architecture-cycle.md`; `roadmap/architecture-operating-cycle-plan.md`; `architecture-operating-cycle/phase-0/**`, `phase-1/**`; `architecture-operating-cycle-workflow-harvest.md` | As in revision 1: consolidate into `architecture-cycle.md`, archive the original plan and the Phase 0/1 bundle to `archive/technical/architecture-cycle/`, and delete the harvest. |
-| Baseline `docs/archive/**` | Revision 1 rule: delete by default except `archive/README.md` (rewrite), the two p25 comparator JSONs and the P23-H3/H5 harvests. `ASSET_WORKFLOW.md` facts fold into `assets.md` first. |
-
-**Preservation invariant:** an unresolved obligation cannot disappear with its document. The expanded manifest records its surviving owner. A newly found concrete obligation gets a narrow manifest amendment, not a broad reconciliation.
+| `operations/test-suite-harvest-2026-09-19.{md,csv}` | **DELETE.** It describes a test tree that #115 restructures; current doctrine lives in `tests/README`. |
+| `operations/architecture-cycle.md` | **CONSOLIDATE** the live state and the operative protocol here (§11). |
+| `roadmap/architecture-operating-cycle-plan.md` | **CONSOLIDATE** its operative rules into `architecture-cycle.md`, then **ARCHIVE/MOVE** to target docs/archive/technical/architecture-cycle/operating-cycle-plan.md. |
+| `roadmap/architecture-operating-cycle/phase-0/**`, `phase-1/**` | **ARCHIVE/MOVE** the whole nine-file bundle to `docs/archive/technical/architecture-cycle/`, keeping the phase-0/phase-1 layout. Frozen reviews are not rewritten. |
+| `roadmap/architecture-operating-cycle-workflow-harvest.md` | **DELETE** after consolidation. |
+| Baseline `docs/archive/**` | **DELETE by default**, with three exceptions: `archive/README.md` is rewritten as a small opt-in map plus Git recovery rules; the two p25 comparator JSONs (§8.3) are kept; and `roadmap/p23/foundation-research/P23-H3-robust-geometry.md` and `P23-H5-room-identity-migration.md` are kept in place. This default covers only the baseline archive, never newly moved technical evidence. |
 
 ### 8.6 Tech-debt dispositions caused by code removal
 
-- **TD-1:** close as **implementation removed**, not fixed. The defective placement/Camera Plan wiring is deleted, and the Room-registry dependency leaves the new-product reader path in WP3. Its "then add" acceptance tests transfer verbatim to T2 planning evidence.
+- **TD-1:** close as **implementation removed**, not fixed. The defective placement/Camera Plan wiring is deleted, and the Room-registry dependency leaves the product reader path in WP3. Its "then add" acceptance tests transfer verbatim to T2 evidence.
 - **TD-2:** close as implementation removed. The non-recurrence criterion goes to T1 evidence.
-- **TD-3:** already fixed. Compact to one line plus its anchor.
-- **TD-4 and TD-5:** close as retired with the benchmark (owner statement). TD-5's lesson goes to T1 evidence.
+- **TD-3:** already fixed. Compact it to one line plus its anchor.
+- **TD-4 and TD-5:** close as retired with the benchmark. TD-5's lesson goes to T1 evidence.
 
-Do not record any of these as "fixed".
+None of these is ever recorded as "fixed".
 
-## 9. Track → Phase → Slice system and gates (proportionality revision)
+## 9. Track → Phase → Slice system and gates
 
-### 9.1 Retained from revision 1
+### 9.1 Target structure created by WP5
 
-Retained unchanged:
+Paths are targets. #115 adds no other planning hierarchy.
 
-- the four tracks T1 Spatial/World, T2 Composition, T3 Experience and T4 Release;
-- the Track → Phase → Slice hierarchy with qualified IDs (`T1.P01.S01`) and concurrent phases;
-- exact slice-level prerequisites (never "T1 complete");
-- F first-consumer interface amendments in `composition-execution.md`;
-- the four distinct completion events: slice acceptance → routine closeout, owner-invoked phase closure, bounded track completion and product integration acceptance;
-- convergence and bounded replanning through event-only `operations/README.md` sections;
-- the one-owner-per-concern table (revision 1 §3.1);
-- R115 as a single repository phase with sole child and final gate `R115.S01`, outside T1–T4.
+```text
+docs/roadmap/
+  README.md                               track register + gate register (§9.4) + accepted basis + unscheduled backlog
+  parallel-track-cutover/README.md        R115 repository phase; sole child and final gate R115.S01
+  parallel-track-cutover/implementation-plan.md   this plan
+  parallel-track-cutover/acceptance.md    #115 manifests, evidence, closeout
+  f-foundation-contracts/README.md         F amendment routing; links to the gate register; no second F spec
+  t1-spatial-world/{README.md, planning-evidence.md}
+  t2-composition/{README.md, planning-evidence.md}
+  t3-experience/{README.md, planning-evidence.md}
+  t4-release/README.md
+  <track>/<phase-id>-<capability>/README.md, implementation-plan.md,
+        <slice-id>-<purpose>/{implementation-plan.md, acceptance.md}   (created later by authorized planning)
+docs/operations/
+  README.md                               event-only: track-completion, product-integration-acceptance, bounded-replanning
+  current.md                              one global baton; may list several active units
+  t1-spatial-world/README.md … t4-release/README.md   operational runbooks (no copied status)
+  architecture-cycle.md                   sole cycle state + protocol (§11)
+  tech-debt/README.md, checkpoints/README.md
+apps/editor/tests/helpers/markdown-tables.ts
+apps/editor/tests/docs/parallel-track-gates.test.ts
+.agents/skills/slice-closeout/references/preservation.md
+```
 
-The target structure is as in revision 1 §3, except that `execution-gates.json` and the CLI files are removed (§9.2).
+IDs are qualified:
 
-### 9.2 What changes: the smallest enforceable gate system
+- tracks: `T1`;
+- phases: `T1.P01`;
+- slices: `T1.P01.S01`;
+- directory slugs: `t1.p01-<capability>/t1.p01.s01-<purpose>/`.
 
-Revision 1 proposed `execution-gates.json` (gates plus slice declarations with effects/writeScope), a status-table parser, an 11-event CLI with trusted-base diff scoping, coarse source-zone triggers and a lifecycle transition evaluator. That machinery is **disproportionate**. Its own text admits that false effect declarations evade it, so review remains the real guard, and its scope zones targeted directories that #115 now deletes. The replacement:
+Numbers are stable identity, not execution order. R115 is a single non-capability repository phase registered directly in the global roadmap, not a fifth track. WP0–WP7 are the ordered packages of its sole child, R115.S01.
 
-1. **One gate table** in `docs/roadmap/README.md`, `## Gate register`, with columns Gate | Kind | Owner | Contract anchor | State | Provider slice | Acceptance evidence | Commit. The states are `undrafted | ratified | implemented | accepted | superseded`. It is seeded with F1.reference, F2.unit-envelope, F3.channels, F4.intent-acceptance, F5.release-envelope, T1.viewport-projection, T3.camera-experience-cutover and T4.prepared-reader, all `undrafted`.
-2. **Phase README slice table** with columns Slice | Status | Consumes | Plan | Acceptance | Authorization. Lifecycle stays README-owned. There is no JSON and no duplicated status.
-3. **One arch-lane test,** `tests/docs/parallel-track-gates.test.ts`, with one small helper, `tests/helpers/markdown-tables.ts`, also used for the cycle table (§11). It enforces:
-   - all IDs and routes resolve, each slice has one parent phase and each phase one track (R115 excepted);
-   - no consumed gate is unknown;
-   - a slice in `in-progress | accepted | shipped` has an Authorization link and a Plan, and every gate it Consumes is `accepted`;
-   - `accepted` requires an existing acceptance record and a commit that is an ancestor of `HEAD` (via `git merge-base --is-ancestor`), so a prerequisite cannot be satisfied with a placeholder or a future SHA;
-   - `implemented` requires an existing export path;
-   - a phase `closed` stage requires its FINAL PHASE GATE child to be shipped plus an owner-closure block;
-   - track complete requires its TRACK COMPLETE owner block;
-   - a slice with a `camera-authoring` tag in Consumes must also consume T3.camera-experience-cutover.
+### 9.2 One writable owner per concern
 
-   Negative fixtures are in-memory tables.
-4. **Ordinary review guards** what tooling cannot: truthful consumes declarations, and a consumer not marking its own provider accepted in an unreviewed diff (revision 1 §5.2 rule, kept as review policy).
+| Concern | Sole owner | What others may do |
+| --- | --- | --- |
+| Product destination and design requirements | Concern-specific reference contracts and ratified decisions | Link to them. Prototypes state their own acceptance boundary. |
+| F semantics and exact interfaces | `composition-execution.md` plus explicit ratified amendments | The gate register records implementation and evidence identity only. |
+| Track lifecycle, gate register, product-gate registration, future work | `roadmap/README.md` | Track READMEs do not copy their own status. |
+| Track objectives, phase register and dependencies | Track roadmap README | Phase READMEs route to it and do not mirror its enum. |
+| Phase scope, slice register, FINAL PHASE GATE, PHASE CLOSE | Phase README | Slice plans and evidence route here. |
+| Current assignments | `operations/current.md` | Track runbooks link the baton and never name NEXT. |
+| Operational procedure | Track runbook | No competing plan or debt ledger. |
+| Slice scope and criteria | Slice implementation plan | Review rewrites the owning sections; there is no review diary. |
+| Recorded outcomes | Slice `acceptance.md` | Others point to the exact record and do not copy test counts. |
+| Deferred defects, cycle state, interruptions | `tech-debt/`, `architecture-cycle.md`, `checkpoints/` | Others route to them. |
 
-This is less than a third of revision 1's tooling and keeps every dependency-safety property that is mechanically checkable.
+### 9.3 Status grammar and completion events
 
-### 9.3 Track README minimum contents
+**Canonical tables** (owned rows, never generated mirrors), parsed by `markdown-tables.ts`:
 
-As in revision 1 §3.2, plus a **"Starting foundation"** section. It lists the post-#115 retained modules and gates the track builds on, its deferred-retirement rows from §5.1 with exact conditions, and the capability losses (§4.4) it owns rebuilding:
+```text
+global roadmap — Track register: Track | Status | Roadmap
+global roadmap — Gate register: see §9.4
+track README  — Phase register: Phase | Status | Depends on | Workspace
+phase README  — Slice register: Slice | Status | Consumes | Plan | Acceptance | Authorization
+phase README  — FINAL PHASE GATE: <slice-id> → <exact gate artifact>
+phase README  — PHASE CLOSE: Stage (active | closable | closed); Closed (owner, date, evidence); Final gate; Preservation
+```
 
-- **T1:** shell/Stage/viewport/Plan/3D, Layout authoring;
-- **T2:** placement, materials/lights, ingest/resources;
-- **T3:** Camera/Experience authoring, preview, history/acceptance;
-- **T4:** publish UI, prepared reader.
+**Status vocabularies:**
 
-Initial phase registers are empty.
+- Track and phase rows use `proposed | planning | approved | in-progress | shipped | archived`. A shipped track also needs a TRACK COMPLETE owner/evidence block on its global row.
+- Slice rows add `accepted`, meaning review and acceptance are recorded but closeout is still owed, before `shipped`, meaning routine closeout is complete.
+- A status row never fabricates a merge.
+
+**Completion events.** Each is distinct, and none implies a broader one.
+
+| Event | Entry and authority | Consequence; what it does not imply |
+| --- | --- | --- |
+| Slice acceptance → routine closeout | A recorded independent review/acceptance, then slice-closeout | The phase child row, durable promotion, real gate readiness and the baton are updated. The final child sets the phase `closable`. No second review, and no phase or track close. |
+| Phase closure | Explicit owner invocation, then phase-closeout | The final gate, integration and residuals are verified, and PHASE CLOSE plus the track's phase row are written. No track, product or cycle closure follows. |
+| Track completion | Explicit owner request against the approved bounded objectives | Objective evidence, required phase closures and residual transfers are verified, and TRACK COMPLETE is written. Domain code, contracts, gates and regressions are kept. |
+| Product integration acceptance | An approved integration plan plus its recorded acceptance | Only that gate and version are accepted. Contributing phases and tracks are not closed, and no Baseline is declared. |
+
+The routine slice sequence is implementation → review → acceptance → closeout → merge, using recorded acceptance without re-running gates just to close. A substantive change introduced at closeout reopens only the affected review.
+
+**Convergence and replanning:**
+
+- A concrete, owner-authorized product goal writes one integration plan under `docs/roadmap/integration/<gate-id>/` only when needed. If a phase's integrated gate already supplies the proof, that gate is routed instead.
+- Replanning happens only on a new product goal, an approved completion handoff or an orphaned obligation. The owner authorizes changed objectives, new tracks or transferred obligations.
+- Accepted gate identities stay stable.
+- These procedures live only in the event sections of `operations/README.md`.
+
+### 9.4 Exact-interface gates: the smallest enforceable system
+
+**Rationale for the simplification.** An earlier draft proposed a JSON register with slice effects and writeScope, an 11-event CLI, trusted-base diff zones and a transition evaluator. Its own text conceded that false effect declarations evade it, and its source zones targeted directories #115 deletes. The checks that matter are relationships between declared interface versions, accepted evidence and slice status, and Markdown tables plus one test enforce those.
+
+**Gate register** (`docs/roadmap/README.md`, `## Gate register`): one row per **gate and major version**.
+
+```text
+Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit
+```
+
+**Columns and states:**
+
+- **State** is `undrafted | ratified | implemented | accepted | superseded`.
+- **Exports** is the shared source/export path(s).
+- **Conformance** is the conformance test path(s).
+- **Commit** is the reviewed implementation commit.
+
+**Versioning:**
+
+- Version is `—` while a gate is undrafted; the first ratified amendment assigns `1`.
+- A compatible, optional extension keeps the version and records its amendment anchor.
+- An **incompatible amendment adds a new row** (`version + 1`) and marks the old row `superseded`.
+
+**Seed rows:** F1.reference, F2.unit-envelope, F3.channels, F4.intent-acceptance, F5.release-envelope, T1.viewport-projection, T3.camera-experience-cutover and T4.prepared-reader, all `undrafted`, with no version and no provider. No fictitious consumer or version exists initially.
+
+**Slice Consumes column:** a list of exact `Gate@Version` references, for example `F4.intent-acceptance@1`. Track and phase IDs are rejected, so there are no whole-track dependencies.
+
+**`parallel-track-gates.test.ts` enforces** (with in-memory negative fixtures for each rule and positive controls):
+
+1. **Structure:**
+   - IDs and routes resolve;
+   - each slice has exactly one parent phase and each phase one track (R115 excepted);
+   - each FINAL PHASE GATE names a real child;
+   - a phase stage `closed` requires the final child shipped plus an owner Closed block, so child acceptance alone cannot close a phase;
+   - a track `shipped` requires its TRACK COMPLETE block;
+   - each gate/version has exactly one provider slice.
+2. **Exact versions:**
+   - every Consumes entry names an existing `Gate@Version` row;
+   - a bare gate name, or a track or phase ID, fails.
+3. **Readiness evidence:**
+   - `implemented` requires existing Exports and Conformance paths;
+   - `accepted` additionally requires an existing Acceptance record and a Commit that is an ancestor of `HEAD`;
+   - ratified-only or shared-code-absent gates never count as ready.
+4. **Eligibility:**
+   - a slice in `in-progress` or `accepted` must consume only `accepted` rows;
+   - a consumer of a `superseded` row is ineligible until it re-declares the new version, so an incompatible amendment cannot leave stale consumers eligible;
+   - `shipped` slices keep their historical version.
+5. **No self-satisfaction:**
+   - for each slice in `in-progress` or `accepted`, every consumed `Gate@Version` must already be `accepted` in the register **as it exists at the trusted base**, read at `git merge-base HEAD main`;
+   - so a consumer cannot satisfy its prerequisite by editing the register in its own diff;
+   - if the `main` ref is missing, the test fails with a fetch instruction and does not skip;
+   - a provider accepting its own gate does not consume it, so this never blocks providers.
+6. **Ordering exceptions:**
+   - a slice consuming T1.viewport-projection for Camera authoring migration must also consume T3.camera-experience-cutover (tag `camera-authoring` in its Consumes cell);
+   - independent slices with no shared gate remain eligible in parallel, and a positive control proves concurrent phases in one track and accepted gates whose producing phase is still open.
+
+**Still owned by review, not tooling:**
+
+- that a slice's declared Consumes are truthful;
+- that a new persisted format names its F amendment and owner in the reviewed plan.
+
+### 9.5 F amendment path
+
+1. The first consumer drafts the smallest real interface in its own slice plan: inputs and outputs, identity, version, units, failure cases, capability negotiation and fixtures. Additional consumers join the same gate rather than minting a competing one.
+2. The owner ratifies an amendment in `composition-execution.md` with a stable anchor, version, extension semantics, consumer list and conformance requirements. The gate row becomes `ratified`, which is not readiness.
+3. A bounded provider slice, in an owning track phase, implements it in shared code with real exports and fixtures. The row becomes `implemented`, then `accepted` with evidence.
+4. For F.2 and F.4, the shared interface gate is distinct from the T3 behavioral cutover gate. Camera extraction, Experience order and the first compound acceptance remain one T3 cutover.
+5. A shared implementation lives in an existing package where ownership fits. A new package needs real import or lifetime evidence.
+
+### 9.6 Track README minimum contents
+
+**Roadmap README:**
+
+- bounded objectives and completion evidence expectations;
+- concern ownership and exclusions;
+- current vs destination contracts;
+- evidence roles;
+- the phase register (initially empty);
+- relevant gate IDs;
+- a runbook link;
+- a **Starting foundation** section: the retained modules and gates the track builds on, its §5.1 deferred-retirement rows with exact conditions, and the §4.4 capability losses it owns rebuilding:
+  - **T1:** shell/Stage/viewport/Plan/3D and Layout authoring;
+  - **T2:** placement, materials/lights, ingest and resources;
+  - **T3:** Camera/Experience authoring, preview, history and acceptance;
+  - **T4:** publish UI and the prepared reader.
+
+Track objectives never become permanent domain ownership.
+
+**Operational runbook:**
+
+- the baton and status-owner links (global → track phase row → phase child row), with no copied status;
+- execution eligibility (§9.4);
+- the **implementation-start step** (§11);
+- relevant test families;
+- conditional review, closeout and event routes;
+- scoped debt and interruption handling.
 
 ## 10. Routing, reference and workflow updates
 
-These keep revision 1 §6, with the following adjustments:
+### 10.1 Fresh-agent routing
 
-- **Route template:**
-  ```text
-  START → ASSIGNED WORK (current.md → phase README → slice plan)
-        → UNASSIGNED PLANNING (roadmap → track README)
-        → F gap (slice plan → F amendment / gate row)
-        → VERIFY (slice acceptance + tests/README)
-        → event routes
-        → STOP
-  ```
-  The CLI step is removed, and gate checks run inside the arch lane.
-- **`docs/README.md` code-routing table:** remove the shell/theme/workspace rows. Add no legacy route (the frozen project is outside product routing, §3.4), and add a retained-authoring row (`src/lib/authoring/README.md`). Correct the Camera code route to `packages/camera-core` and `lib/visitor`.
-- **Global roadmap:** a compact accepted-basis paragraph, the track register, the gate register, P23/P23B closure recorded once, and an unscheduled backlog paragraph. There is no P24/25/26 route.
-- **`current.md`:** during execution it routes #115 WPs. At R115.S01 completion it states: "#115 reset accepted; frozen Chopin project separated; T1–T4 phase/slice planning available; capability implementation requires its own approved scope/gates", plus R115 owner close pending if not invoked.
-- **Skills (focused edits as in revision 1 §6.3):**
-  - `slice-closeout` resolves the exact phase README, keeps the final-gate guard and checks the cycle window table with one line (§11).
-  - `phase-closeout` gets nested-phase examples and loses its ambient cycle transition table and next-P pipeline.
-  - The shared `preservation.md` reference loads only at compaction.
-  - `work-checkpoint` carries track/phase/slice identity.
-  - The slice-closeout statement that "no docs checker exists" is corrected.
-  - No new skills.
-- **`tests/README.md`:** remove the bench/recorder/perf-lane sections and harvest provenance. Add the `legacy/` isolation test, the gates test and the §7.1 deletion-with-subject rule.
-- **Incoming-link repair** covers all retained Markdown, HTML, JSON manifests and QA launchers (revision 1 §6.2 rules). Historical records keep their content, use the EVIDENCE-PATHS convention for removed source paths and never contain live links to deleted files.
+```text
+START: docs/README.md
+ASSIGNED WORK: operations/current.md → exact phase README → exact slice plan
+UNASSIGNED PLANNING: roadmap/README.md → requested track README → phase plan (when registered)
+F-INTERFACE GAP: slice plan → F amendment / gate register row
+START IMPLEMENTATION: track runbook start step (eligibility + one-line cycle check, §11)
+VERIFY: slice acceptance rows + apps/editor/tests/README.md (the gates test runs in the arch lane)
+SLICE CLOSE: slice-closeout (final-gate guard; cycle-window check only)
+PHASE CLOSE: explicit owner invocation → phase-closeout
+TRACK / PROGRAM / REPLAN: explicit event → exact operations/README.md section
+STOP: no more reading unless a concrete contradiction or missing fact requires it
+```
+
+The hierarchy is ownership, not mandatory preloading. Ordinary slice work never loads the program runbook, phase-close procedure, the whole F contract, archived diagnosis or `architecture-cycle.md`.
+
+### 10.2 Router and baton rewrites
+
+- **`docs/README.md`:**
+  - remove the shell/theme/workspace, model-assessment and P-level rows;
+  - add no legacy route (§3.4);
+  - add a retained-authoring row (`src/lib/authoring/README.md`);
+  - point Camera code to `packages/camera-core` and `lib/visitor`.
+- **`roadmap/README.md`:**
+  - a compact accepted-basis paragraph linking PLATE and prototypes;
+  - the track and gate registers;
+  - P23/P23B closure recorded once;
+  - the unscheduled backlog paragraph;
+  - no #104–#114 chronology, no P24/25/26 route and no "editing UI after all data tracks" pipeline.
+- **F README:**
+  - registration and amendment routing linking the gate register;
+  - remove stale "before P24/P25/P26" and "no child planning" text;
+  - no second F specification table.
+- **`current.md`:**
+  - during execution, it routes the #115 WPs;
+  - at R115.S01 completion, it states: "#115 reset accepted; frozen Chopin project separated; T1–T4 phase/slice planning available; capability implementation requires its own approved scope and accepted gates";
+  - it lists the track routes, and R115 owner-close as pending if not yet invoked;
+  - it does not claim that capability plans exist.
+
+### 10.3 Incoming links and historical records
+
+**Live routes.** Repair incoming routes in every retained tracked Markdown, HTML, JSON manifest and QA launcher, not only the global routers. Important callers include:
+
+- the Conservatory README;
+- the Paper proposal;
+- spatial-authoring `IMPLEMENTER-REFERENCE` and the QA READMEs/conformance manifest;
+- Integrated Experience reconciliation and Design-QAs;
+- the PLATE evidence table.
+
+**Historical records:**
+
+- Ratified decision records stay immutable. Their old planning links become labeled provenance pointing to a retained archive record or `git show <baseline>:<old-path>`.
+- A historical record may name a removed source or test path inside an EVIDENCE-PATHS block. That convention exempts written locators only, never real Markdown links or images.
+- Frozen Phase 0 reviews and acceptance measurement bodies are never rewritten. Escaped historical links are recorded in the move manifest.
+
+**Archive router:** a small opt-in map plus Git recovery rules, not a stub collection.
+
+### 10.4 Skills and test doctrine (focused edits; no new skills)
+
+- **`slice-closeout/SKILL.md`:**
+  - resolve the exact phase README and child, reading the track only if needed;
+  - keep recorded-acceptance use, checkpoint retirement, durable promotion, acceptance/preservation records, the child status update, the baton update and link repair;
+  - add one cycle line (§11);
+  - keep the final-gate branch: finish the child, set the phase `closable`, preserve the final-gate artifact, report owner closure pending and stop;
+  - no track or program procedure;
+  - correct the "no docs checker exists" statement (one exists: `tests/docs/documentation-references.test.ts` in the arch lane).
+- **`phase-closeout/SKILL.md`:**
+  - entry examples for nested phases such as `T1.P01`, keeping the owner-only guard;
+  - verify the final gate, integration, residuals and owner ruling;
+  - write PHASE CLOSE and the track phase row (R115 writes the global row instead);
+  - reconcile the baton without assuming a next phase;
+  - remove the mandatory cycle transition table, META read and next-P pipeline;
+  - keep idempotent resume.
+- **Shared reference target .agents/skills/slice-closeout/references/preservation.md:**
+  - move slice-closeout's closed-work, research-disposition, anchor/tag/merge safety, archive mechanics and preservation-report sections here;
+  - both skills link it only at their compaction step;
+  - if no valid committed recovery anchor exists, retain the full body rather than fabricate one;
+  - the sequence is review → acceptance → routine closeout → merge, with anchor verification after merge.
+- **`work-checkpoint`:** carry track/phase/slice identity and the resume route. Lifecycle stays in READMEs and prerequisites in the gate register.
+- **`consult-browser-reviewer`:** manual-only entry with a minimal packet. Gate and cycle changes never invoke it.
+- **`tests/README.md`:**
+  - remove the bench, recorder, perf-lane and harvest-provenance sections;
+  - add the `legacy/` isolation test, the gates test and the §7.1 deletion-with-subject rule;
+  - keep the arch-lane, whole-suite and successor doctrine.
 
 ## 11. Architecture operating-cycle migration (simplified)
 
-This preserves:
+**Preserved:**
 
-- the completed Phase 0 investigation, frozen reviews, adjudication, the installed Phase 1 plan and the original method (archived bundle);
-- `PHASE_1` state, with readiness `awaiting-bounded-slice-window-plan`;
-- the bounded window rules: one to three exposure-bearing slices named by the first relevant T1 phase plan, a declared terminal, closure when the terminal plus remaining declared exposures are accepted or discharged, Phase 3 owner verdict per mechanism, and STEADY with no routine diagnosis.
+- the completed Phase 0 investigation, frozen reviews, adjudication, the installed Phase 1 plan and the original method (archived per §8.5);
+- the stage vocabulary (WAITING … STEADY);
+- the current stage `PHASE_1`, with readiness `awaiting-bounded-slice-window-plan` and a *selected*, unopened T-track spatial-foundation window.
 
-**Simplification.** The JSON fence, transition evaluator, CLI action codes and dedicated lifecycle test are replaced by the following:
+**Bounded window rules:**
 
-- **One state table** in `architecture-cycle.md`: Stage | Readiness | Window | Exposure slices (≤3) | Terminal | Opened by | Closed by. It is validated by `parallel-track-gates.test.ts` with these rules:
+- The first relevant T1 phase plan names one to three exposure-bearing slices that capability work already justifies, plus an expected opener and a terminal. The bound is 3; changing it requires an owner amendment.
+- **Opening:**
+  - The window opens when any listed exposure slice starts authorized implementation. It does not wait for the nominal opener.
+  - The opening slice is the one that moves the cycle from `PHASE_1` to `PHASE_2_VALIDATING`.
+- **Closing:**
+  - Closure requires the terminal accepted and every other listed exposure accepted or explicitly discharged.
+  - Closure moves the cycle to `PHASE_3_EVALUATE`, where the owner gives a per-mechanism keep/simplify/delete/not-exposed verdict.
+  - After that verdict the cycle reaches `STEADY`, which triggers no routine diagnosis.
+- Diagnosis happens only on a demonstrated failure plus owner authorization.
+- A pending verdict blocks nothing except its own handoff.
+
+**Simplification.** The JSON fence, transition evaluator and CLI action codes are replaced by:
+
+- **State table** in `architecture-cycle.md`: Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by.
+- **Mechanism table:** M1–M7 with status (installed or dormant) and proof routes.
+- **Short action headings,** each only a few lines: `configure-window`, `open-window`, `record-exposure`, `close-window`, `owner-verdict`, `diagnosis-request`.
+- **Three one-line hooks.** These are the only entry points, and unrelated work never loads the cycle document:
+  1. **Phase planning:** the first relevant T1 phase plan follows `configure-window`.
+  2. **Implementation start** (track runbook start step): "If your slice ID is listed under Exposure slices and Opened by is empty, follow `open-window` before capability work."
+  3. **Slice closeout:** "If your slice is listed under Exposure slices, follow `record-exposure`, then `close-window` if the closure predicate is now true."
+- **Validation:** `parallel-track-gates.test.ts` uses the same helper, with in-memory negative fixtures and positive controls:
   - ≤3 exposures;
-  - `ready`/open requires slice IDs that exist in a phase README;
-  - `PHASE_2_VALIDATING` requires Opened by;
-  - `PHASE_3_EVALUATE` requires Closed by plus every declared exposure accepted or discharged;
-  - `STEADY` requires an owner-verdict row for each mechanism.
+  - readiness `ready` requires listed slice IDs that exist in a phase README, a terminal and a plan anchor;
+  - **if any listed exposure slice has status `in-progress`, `accepted` or `shipped` while Opened by is empty or the stage is still `PHASE_1`, the test fails.** A missed opening is caught in that slice's own change, and the same rule enforces F3;
+  - an `accepted` or `shipped` listed slice without an exposure row fails;
+  - a satisfied closure predicate with a stale stage fails;
+  - premature closure while a listed exposure is pending fails;
+  - `STEADY` without a verdict row for every mechanism fails;
+  - **positive controls:**
+    - a non-listed slice starting causes no cycle requirement;
+    - a listed slice other than the nominal opener may open the window;
+    - unrelated T3 data and T4 envelope slices remain eligible.
 
-  Negative fixtures are in-memory.
-- **One mechanism table:** M1–M7 with status and proof routes.
-- **Short action headings** (`configure-window`, `open-window`, `record-exposure`, `close-window`, `owner-verdict`, `diagnosis-request`), each a few lines. Agents reach them through one-line hooks:
-  - the first T1 phase planner → configure-window;
-  - `slice-closeout` → "if this slice is listed in the window table, follow record-exposure / close-window";
-  - explicit owner request → owner-verdict / diagnosis-request.
-
-  Unrelated work never loads the cycle document.
-
-**Mechanism adaptation where the monitored implementations disappear:**
+**Mechanism adaptation where monitored implementations disappear:**
 
 | Mechanism | After #115 |
 | --- | --- |
-| M1 Layout semantic mutation | **Dormant.** `layout-mutation-runner` and its call-site test are removed. Core planner tests remain. Re-armed by the first T1 slice that introduces Layout mutation wiring, which must then supply the call-site proof. |
-| M2 Wall/Floor vertical authority | Core proofs remain (`layout-wall-height`, `layout-wall-birth-height`). The editor half (`layout-height-edit-history`) is dormant. |
-| M3 persisted canonical curves | Unchanged. Core-only proofs remain. |
-| M4 Junction commit-time identity | Core proofs remain (`layout-junction-identity`, `layout-wall-chain`, `layout-room-reconciliation`). The editor half (`layout-wall-chain-commit`) is dormant. |
-| M5 project replacement / Navigator guard | **Dormant.** Hierarchy and replacement wiring are removed. Re-armed by the first T1/T3 slice introducing project/session replacement. |
-| M6 lifecycle transition, M7 encountered routing | Satisfied by the state table, the closeout hook and the gates test. |
+| M1 Layout semantic mutation | **Dormant.** The editor mutation runner and its call-site test are removed; core planner tests remain. Re-armed by the first T1 slice that introduces Layout mutation wiring, which supplies the call-site proof. |
+| M2 Wall/Floor vertical authority | Core proofs remain (`layout-wall-height`, `layout-wall-birth-height`). The editor half is dormant. |
+| M3 Persisted canonical curves | Unchanged. Core proofs remain (`layout-curve-schema`, `-read-path`, `-planners`). |
+| M4 Junction commit-time identity | Core proofs remain (`layout-junction-identity`, `layout-wall-chain`, `layout-room-reconciliation`). The editor half is dormant. |
+| M5 Project replacement / Navigator guard | **Dormant.** Hierarchy and replacement wiring are removed. Re-armed by the first T1 or T3 slice introducing project/session replacement. |
+| M6 Lifecycle transition, M7 encountered routing | Satisfied by the state table, the three hooks and the gates test. |
 
-The window's eligible slices must include at least one slice that re-arms a dormant mechanism. Otherwise the owner verdict for those mechanisms is "not exposed" (an honest permitted verdict, never PASS). Phase 3 outcomes are future evidence, not a #115 acceptance condition.
+The first T1 window should include at least one slice that re-arms a dormant mechanism. Otherwise the owner's verdict for those mechanisms is "not exposed" (honest, never PASS). Phase 3 outcomes are future evidence, not a #115 acceptance condition.
 
 ## 12. Executor work packages and checkpoints
 
-Execution happens in one reviewed restructuring change set. Each WP ends at a **checkpoint**: its listed verification passes and it is recorded in `acceptance.md`. If the owner authorizes checkpoint commits on the #115 branch (decision D4), each checkpoint is one commit, so review and rollback happen per WP. No split merge may leave routes or routers targeting nonexistent paths.
+Execution is one reviewed restructuring change set. Each WP ends at a **checkpoint**: its verification passes and is recorded in `acceptance.md`, and D4 makes each checkpoint one commit on the #115 branch. No checkpoint may leave routes or routers targeting nonexistent paths.
 
 | WP | Depends on | Operations | Checkpoint acceptance |
 | --- | --- | --- | --- |
-| **WP0 — baseline and manifests** | Owner authorization | Record the start SHA; confirm baseline ancestry and inspect intervening deltas. Commit `tests/helpers/import-closure.ts` (the §2.2 resolver; reused by the freeze test). Expand the per-file **source manifest** (§5.2), **test manifest** (§7.2, one category per test file with a reason), **docs manifest** (§8) and protected hashes into `acceptance.md`. | Every tracked file in scope is classified exactly once. Closure counts are reproduced. The new docs totals are recorded. |
-| **WP1 — standalone frozen project** | WP0 | Create `legacy/chopin-museum/` per §3.2: byte copies, `FREEZE.json`, its own config, `kit.alias` kernel mapping, pinned `package.json` and lockfile, static assets and the category B tests plus a freeze test. Add the product-side `legacy/` isolation test. | **Checkpoint A:** the frozen project's `npm ci && npm test && npm run check && npm run build` pass, and the browser check against its own preview (§7.4) matches the baseline. **The product is untouched**: its routes still serve `/museum`, so the copy is proven before any deletion. Rollback: delete the folder. |
-| **WP2 — new-product prune** | Checkpoint A | Relocate the §4.3 retained modules and their tests. Delete the §5.1 REMOVE rows (editor layer, styles/theme, facades, Plan presentation, bench/perf, orphans, five packages, removed routes). Add the `/project/:id/spatial` notice. Remove the editor's `/museum` routes (no redirect, §3.4). Remove `apps/museum`. Apply the §5.2 manifest/script/lane changes and regenerate the lockfile by removal only. Apply category C deletions and category A/A′/A″/D re-points and extractions. | **Checkpoint B:** all §7.4 automated gates are green. The frozen project's tests still pass and `FREEZE.json` is unchanged. The visitor/public and `legacy/` isolation tests are green. Every deleted test is either categorized C with its subject gone, or has a recorded extraction. |
-| **WP3 — legacy acceptance retirement** | Checkpoint B | Apply §6 with its stop rule, including the API and visitor callers. | **Checkpoint C:** gates are green, including `test:api` or its recorded prerequisite gap. Legacy payloads reject with the named issue (new kernel tests). Stop-rule items are recorded as §5.1 rows. |
-| **WP4 — documentation consolidation and pruning** | WP0 (can run in parallel with WP1–3; finalized after Checkpoint C) | Write the T1–T3 planning evidence and the frozen project README. Rewrite or delete the reference contracts (§8.2). Apply the protected moves, archival and deletion (§8.3–8.5) and the tech-debt dispositions (§8.6). | Docs walk green. Protected hashes match. Full-body recovery is verified. The old P24/25/26 trees are absent. |
-| **WP5 — hierarchy, gates and cycle** | WP4 roots | Track READMEs and runbooks (with Starting foundation), the R115 phase README, the operations event sections, the roadmap track and gate registers, the markdown-table helper and gates test, the cycle tables and action headings, and the skill edits. | The gates test passes with negative controls. Ordinary slice routes load no phase/track/program/cycle procedure (route fixtures). |
-| **WP6 — cross-reference and full verification** | WP1–5 | Repair links and anchors, update `tests/README`, routers and AGENTS, and run §7.4. Replace the ">100 Markdown files" assertion with semantic non-vacuity checks (revision 1 §9.1 rule). | All gates are green. There are no checker exclusions. The diff is inspected, and nothing outside the manifests changed. |
-| **WP7 — acceptance, closeout and handoff** | WP6 + independent implementation review | Finalize `acceptance.md` (manifests, totals, frozen-project evidence, deletion proof (§3.4 rule 4), capability loss, residuals). Close out `R115.S01` with slice-closeout, then mark R115 closable. Update `current.md` to the handoff text. | No routine second review. No automatic R115/track/cycle closure. |
+| **WP0 — baseline and manifests** | Owner authorization | Record the start SHA, confirm baseline ancestry and inspect intervening deltas. Commit `tests/helpers/import-closure.ts`, the §2.2 resolver, which is reused by the isolation test and WP3R. Expand the per-file **source manifest** (§5.2), **test manifest** (§7.2, one category and reason per test file), **docs manifest** (§8) and protected hashes into `acceptance.md`. | Every in-scope tracked file is classified exactly once. Closure counts are reproduced. Docs totals are recorded. |
+| **WP1 — standalone frozen project** | WP0 | Create `legacy/chopin-museum/` per §3.2: byte copies, `FREEZE.json`, its own config, `kit.alias` kernel mapping, pinned `package.json`/lockfile, `.gitignore`, static assets, category B tests and a freeze test. Add the product-side `legacy/` isolation test. | **Checkpoint A:** inside the folder, `npm ci && npm test && npm run check && npm run build` pass, and the browser check against its own preview matches the baseline. **The product is untouched.** Rollback: delete the folder. |
+| **WP2 — new-product prune** | Checkpoint A | Relocate the §4.3 modules and their tests. Delete the §5.1 REMOVE rows, the editor's `/museum` routes (no redirect, §3.4) and `apps/museum`. Add the `/project/:id/spatial` notice. Apply the §5.2 manifest, script and lane changes, and regenerate the lockfile by removal only. Apply category C deletions and the A/A′/A″/D re-points and extractions. Fix mechanical breakage (imports, types, dead references) here, not later. | **Checkpoint B:** the §7.4 product gates are green. The frozen project's tests pass and `FREEZE.json` is unchanged. The visitor/public and `legacy/` isolation tests are green. Every deleted test is category C with its subject gone or has a recorded extraction. |
+| **WP3 — legacy acceptance retirement** | Checkpoint B | Apply §6 with its stop rule, including the API and visitor callers. | **Checkpoint C:** the §7.4 gates are green **including the §7.5 API requirement** (DB-backed tests executed, zero skips). Legacy payloads reject with the named issue (new kernel and API tests). Stop-rule items are recorded as §5.1 rows. |
+| **WP3R — post-prune reassessment** | Checkpoint C | Re-run the closure helper on the **surviving** tree and inspect four classes, using evidence only: (a) **orphaned abstractions**, meaning modules, exports or types with no route/API/runtime consumer that are not §4.3-listed (listed modules are kept by criteria, not by consumer count); (b) **unnecessary coupling**, such as product modules importing across the renderer/visitor/authoring/platform boundaries without need, or a remaining facade; (c) **misleading ownership**, meaning a module whose location or name implies a domain owner it does not have (for example whether `lib/museum` still misleads, or whether Camera authoring math belongs in `camera-core`); (d) **residual legacy dependencies**, meaning legacy types/codec reachable from a product reader, test fixtures on legacy shapes, or leftover legacy names. Classify each finding as **retain** (with reason), **consolidate in #115** (only a behavior-preserving move, merge, deletion or rename with the gates green afterwards and no semantic or format change), or **defer** to a named T-track row with its concrete dependency. Apply only the "consolidate" items. | **Checkpoint D:** the findings table in `acceptance.md` has a class and reason per finding. Consolidations are applied with the §7.4 gates green and the frozen project untouched. If there are no findings, the table says "surviving foundation coherent; no consolidation" and WP4 proceeds. Substantial redesign or new capability is out of scope; it becomes a deferred row. An escalation goes to the owner only if a finding would change a §5.1 decision. |
+| **WP4 — documentation consolidation and pruning** | WP0; finalized after Checkpoint D | Write the T1–T3 planning evidence and the frozen project README. Rewrite or delete the reference contracts (§8.2) to describe the post-WP3R tree. Apply §8.3–8.6. | Docs walk green. Protected hashes match. Full-body recovery is verified. Old P24/25/26 trees are absent. |
+| **WP5 — hierarchy, gates and cycle** | WP4 roots | Create the §9.1 structure, track READMEs and runbooks (Starting foundation and start step), the R115 phase README, the `operations/README.md` event sections, the track and gate registers, the markdown-table helper and gates test (§9.4, §11), the cycle tables, action headings and hooks, and the §10.4 skill edits. | The gates test passes, including every §9.4 and §11 negative and positive control. Route fixtures show ordinary slice routes load no phase, track, program or cycle procedure. |
+| **WP6 — cross-reference and full verification** | WP1–5 | Repair links and anchors (§10.3), update `tests/README`, routers and AGENTS, and run §7.4. In `documentation-references.test.ts`, replace the arbitrary ">100 Markdown files" assertion with semantic non-vacuity: the walk must find the router, AGENTS, both design contracts, every track roadmap and operations root, `tests/README`, local skills and a protected-prototype sentinel, and an empty-walk mutation must fail. Do not just lower or remove the threshold. | All gates are green. There are no new checker exclusions. The diff is inspected and nothing outside the manifests changed. |
+| **WP7 — acceptance, closeout and handoff** | WP6 + independent implementation review | Finalize `acceptance.md`: manifests, totals, frozen-project evidence, the WP3R table, API execution evidence, the deletion proof (§3.4 rule 4), capability loss and residuals. Close out R115.S01 with slice-closeout and mark R115 closable. Update `current.md`. | No routine second review. No automatic R115, track or cycle closure. |
 
 **Recovery and rollback:**
 
-- The baseline SHA (recorded in WP0) is the full-recovery point for any deleted file: `git show <baseline>:<path>`.
-- Each checkpoint is independently revertible in reverse order. Because WP1 leaves the originals intact, a failed WP2 never threatens the frozen products.
-- If Checkpoint A cannot be reached (the standalone copy does not reproduce baseline behavior), **stop the reset**. Report the precise incompatibility instead of deleting shared code. Before WP2, rollback is just deleting the folder.
+- The baseline SHA is the full-recovery point for any file: `git show <baseline>:<path>`.
+- Checkpoint commits are revertible in reverse order.
+- WP1 leaves the product intact, so a failed WP2 never threatens the frozen products.
+- If Checkpoint A cannot be reached, **stop the reset** and report the incompatibility.
 - No force-push or history rewrite.
 
 ## 13. Final acceptance criteria
 
-- **Frozen project:** `legacy/chopin-museum/` builds, tests and runs on its own (`npm ci && npm test && npm run check && npm run build` inside the folder, plus the browser check against its own preview). `/museum` and `/museum/editor` are functionally preserved from a hash-frozen copy. No product file references `legacy/`. `apps/museum` is removed. The deletion proof (§3.4 rule 4) shows every product gate is green with the folder removed. Hosting is owner-handled.
-- **Foundation:** only the §4.1 tree remains. Every deletion is in the source manifest. The retained modules meet the §4.3 criteria. Kernels, renderer, visitor, API and persistence are verifiable. Strict-generation readers are installed, or blockers are recorded per the stop rule.
-- **Tests:** the §7.4 gates are green, with no skips or expected failures. Categories A, A′, A″ and D preserve the kernel assertions with identical expectations. Category C deletions match removed subjects. Successor obligations are recorded in track evidence.
-- **Docs:** the manifest is complete. Accepted designs, prototypes, protected evidence and decisions are retained and correctly routed. Component contracts describe the reduced current truth. There are no duplicate authorities and no live links to deleted files.
-- **Execution system:** four tracks with Starting-foundation sections, the gate register and tests, simplified cycle state, focused skills, and no new skills.
-- **Honesty:** the capability-loss list matches reality, TD dispositions say "removed" or "retired" and never "fixed", and no destination is presented as shipped.
+- **Frozen project:**
+  - `legacy/chopin-museum/` builds, tests and runs on its own, and `/museum` and `/museum/editor` are functionally preserved from a hash-frozen copy;
+  - no product file references `legacy/`, and `apps/museum` is removed;
+  - the deletion proof shows every product gate is green with the folder removed;
+  - hosting is owner-handled.
+- **Foundation:**
+  - only the §4.1 tree remains, as adjusted by recorded WP3R consolidations;
+  - every deletion is in the source manifest, and retained modules meet §4.3;
+  - kernels, renderer, visitor, API and persistence are verifiable;
+  - strict readers are installed, or blockers are recorded by the stop rule;
+  - the WP3R table is complete.
+- **Tests:**
+  - the §7.4 gates are green with no skips or expected failures, and the §7.5 API requirement is met;
+  - categories A, A′, A″ and D preserve the kernel assertions with identical expectations, and category C deletions match their removed subjects;
+  - successor obligations are recorded in track evidence.
+- **Docs:**
+  - the manifest is complete;
+  - accepted designs, prototypes, protected evidence and decisions are retained and routed;
+  - contracts describe the reduced current truth;
+  - there are no duplicate authorities and no live links to deleted files.
+- **Execution system:**
+  - four tracks with Starting-foundation sections;
+  - a version-aware gate register enforced by the gates test, including base-revision self-satisfaction checks;
+  - the cycle state table with an enforced opening rule;
+  - focused skills, and no new skills.
+- **Honesty:**
+  - the capability-loss list matches reality;
+  - TD dispositions say "removed" or "retired", never "fixed";
+  - unexecuted coverage is never reported as passing;
+  - no destination is presented as shipped.
 
 ## 14. Exclusions, risks and owner decisions
 
-**Excluded:**
+**Excluded from #115:**
 
-- capability implementation;
-- F interface encodings;
-- Layout schema redesign (the legacy types/codec split is T1);
+- capability implementation and F interface encodings;
+- Layout schema redesign (the legacy types/codec split belongs to T1);
 - Scene or Camera unit extraction;
 - prepared-release implementation;
-- renaming retained directories;
+- semantic redesign found by WP3R (deferred instead);
 - dependency upgrades;
-- any deployment change (frozen-project hosting is owner-handled outside #115);
+- any deployment change (frozen-project hosting is owner-handled);
 - Baseline declaration;
-- commits, push or merge without separate authorization.
+- push or merge without separate authorization. D4 covers only the per-WP checkpoint commits.
 
 | Risk | Treatment |
 | --- | --- |
-| Frozen copy behaves differently from production (missed dynamic import, CSS order, static path, `app.html` coupling) | Closure helper covers dynamic and CSS imports. Checkpoint A comes before any deletion. Browser smoke compared with the baseline. Stop rule. |
-| Frozen project rots over time (Node or Vercel runtime changes) | It has its own pinned lockfile, so product upgrades cannot reach it. Its README documents the commands. A runtime break is fixed as a preservation fix, or the owner deletes the folder. |
-| Production `/museum` is no longer served by the product after merge | An owner-accepted consequence; the owner deploys the frozen project separately (§3.4). It is recorded in `acceptance.md` and the PR description so it is not a surprise. |
-| A hidden product → legacy coupling (shared static, docs link, root script) | §3.4 independence rules, the `legacy/` isolation test, and the deletion proof run at acceptance. |
-| A deleted test was the only guard of a retained kernel invariant | Per-file test manifest with categories. A′/A″/D extraction with identical expectations. Kernel coverage in WP0 is checked against the retained modules' exports. |
-| A retained module silently depended on deleted code | The §4.3 criteria are verified by the closure helper. Type check and build gate Checkpoint B. |
-| Strict readers break something unexpected (API, publication) | WP3 is isolated after Checkpoint B, runs `test:api` and has a stop rule. Owner policy: dev data loss is accepted. |
-| Mass deletion becomes unreviewable | Manifests, per-WP checkpoints, class-based rules and a diff restricted to the manifests. |
-| Gate simplification loses ordering safety | Ancestor-commit acceptance evidence, consumes-must-be-accepted, and review policy for truthful declarations. Revision 1's extra checks protected mostly unverifiable claims. |
+| The frozen copy behaves differently from production (missed dynamic import, CSS order, static path, `app.html` coupling) | The closure helper covers dynamic and CSS imports. Checkpoint A comes before any deletion. A browser check against the baseline. The stop rule. |
+| The frozen project rots over time | It has its own pinned lockfile. Breaks are fixed as preservation fixes, or the owner deletes the folder. |
+| The product no longer serves `/museum` after merge | An owner-accepted consequence (§3.4), recorded in `acceptance.md` and in the PR description. |
+| A hidden product → legacy coupling | §3.4 rules, the isolation test and the deletion proof. |
+| A deleted test was the only guard of a retained invariant | Per-file test manifest. A′/A″/D extraction with identical expectations. WP3R class (a)/(d) review. |
+| A retained module silently depended on deleted code | Closure-helper verification of §4.3. Type check and build at Checkpoint B. |
+| Strict readers break the API or publication unexpectedly | WP3 isolated after Checkpoint B. §7.5 DB-backed execution. The stop rule. |
+| DB-backed API tests silently skip and look green | §7.5 requires an explicit zero-skip result; otherwise WP3 is blocked. |
+| Stale consumers or self-satisfied prerequisites | §9.4 version rows, supersession and base-revision checks. |
+| The cycle window opens late or never | §11 opening hook plus the test rule tied to listed-slice status. |
+| Mass deletion becomes unreviewable | Manifests, per-WP checkpoint commits and class-based rules. |
 
-**Owner decisions:**
+**Owner decisions (all resolved for approval):**
 
-- **D1 — resolved** by the §3 design: `apps/museum` is retired and superseded by `legacy/chopin-museum`.
-- **D2 — overridden by the owner:** the frozen project is outside the product, and AGENTS rules 4/6 are unchanged (§3.6).
-- **D3 — accepted** (owner: does not matter).
-- **D4 — approved:** one checkpoint commit per WP on the #115 branch during execution. This plan's own revision is not committed under D4.
-- **Deployment — decided:** the owner handles frozen-project hosting directly, later. #115 adds no redirect or deploy configuration, and the folder must be deletable without affecting the product (§3.4).
+- **D1 — resolved:** `apps/museum` is retired and superseded by `legacy/chopin-museum`.
+- **D2 — overridden by the owner:** the frozen project is outside the product, and AGENTS rules 4 and 6 are unchanged (§3.6).
+- **D3 — accepted.**
+- **D4 — approved:** one checkpoint commit per WP.
+- **Deployment — decided:** owner-handled, with no product deploy change (§3.4).
 
-Later owner boundaries are unchanged from revision 1: exact F amendments, first T1 window configuration approval, Phase 3 verdicts, phase closures, track completion, product integration and Baselines.
+**Future owner boundaries:**
+
+- exact F amendment ratification;
+- approval of the first T1 window configuration;
+- Phase 3 verdicts;
+- phase closures, track completion and product integration;
+- Baselines;
+- providing a Postgres environment for §7.5, or explicitly ruling on its absence (§7.5).
 
 ## 15. Planning stopping boundary and handoff
 
-The planning agent changed **only this file**. Two owner statements were also saved as agent memory outside the repository. No restructuring, deletion, tooling, commit or push was performed.
+**Planning boundary:**
 
-**Independent review should test:**
+- The planning agent changed only this file. Owner statements are also saved as agent memory outside the repository.
+- No restructuring, deletion or tooling was performed.
+- Revision 2 was committed and pushed on owner instruction. This revision (3, peer-review findings F1–F6) is left uncommitted for owner action.
 
-- the standalone frozen-project boundary, zero-rewrite copy, deployment options and Checkpoint A ordering;
-- the §5.1 classes against the cited closure evidence;
-- the §4.3 retention criteria;
-- the WP3 stop rule;
-- the test matrix (especially A′/A″/D extraction);
-- the gate simplification against revision 1;
-- the dormant-mechanism adaptation;
-- the docs manifest changes from revision 1.
+**Independent re-review should test:**
 
-Review does not need to repeat architecture discovery.
+- self-containment (§8–§11 need no earlier revision);
+- the §9.4 version and base-revision rules;
+- the §11 opening rule;
+- WP3R's bounds;
+- the §5.1 visitor/publication split;
+- the §7.5 API requirement.
 
-**T-track handoff after #115:** each track plans its first phase from its README's Starting foundation, deferred-retirement rows and capability-loss ownership. The gate register is all `undrafted`. The first T1 phase plan also configures the cycle window. No track waits for another track's completion. Exact slice and interface gates govern ordering.
+Earlier review items (frozen boundary, §5.1 classes, §4.3 criteria, WP3 stop rule, test matrix, dormant mechanisms) stand. Review does not need to repeat architecture discovery.
+
+**T-track handoff after #115:**
+
+- Each track plans its first phase from its README's Starting foundation, deferred-retirement rows and capability-loss ownership.
+- The gate register is all `undrafted`.
+- The first T1 phase plan configures the cycle window.
+- No track waits for another track's completion; exact `Gate@Version` prerequisites govern ordering.
 
 **Planning validation performed:**
 
-- Source inspection at the baseline: import closures for all eight entry groups, the frozen/shared split, deployment config, the `apps/museum` diff, package consumers, orphans, facades, legacy-module dependents, prototype import independence, test import classes and lanes. The commands are reproduced by WP0's helper.
-- The documentation reference checker (`vitest.arch.config.ts tests/docs`) passes with this revision: 22/22 tests, 2026-10-13. Proposed target paths are written as plain text, not as links. `git diff --check` is clean.
-- No other tests were run for this revision. Revision 1's `test:arch` result (24 files / 276 tests, 2026-10-13) describes the unchanged baseline.
+- **Source inspection at the baseline:**
+  - import closures for all eight entry groups;
+  - the frozen/shared split;
+  - deployment configuration;
+  - the `apps/museum` diff;
+  - package consumers, orphans and facades;
+  - legacy-module dependents;
+  - prototype import independence;
+  - test import classes and lanes.
+- **For revision 3:**
+  - the API test DB-skip behavior (`apps/api/tests/publication.test.mjs` and `test-auth.test.mjs` skip when Postgres is unreachable; `api.test.mjs` uses fakes);
+  - the `/p/` dependency of `public-surface-boundary-plugin.ts`.
+- **Checker (revision 3):** the arch-lane documentation reference checker passes 22/22 and `git diff --check` is clean. Proposed target paths are written as plain text so that the checker does not treat them as existing files.
