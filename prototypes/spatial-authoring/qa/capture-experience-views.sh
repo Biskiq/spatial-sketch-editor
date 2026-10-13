@@ -97,7 +97,7 @@ tap "#card [data-exp-views] [data-exp-view-use='$VIEW_USE']"
 wait_preview "$VIEW_USE"
 shot 'qa3-1440-view-preview'
 read_ok 'the photographed Card is that View, with its own operations and the rendered picture' \
-  "(() => { const c = document.querySelector('#card'); return __me.S.sel === $(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$VIEW_USE") && c.querySelector('.c-k').textContent.includes('View · Experience') && !!c.querySelector('[data-exp-ops]') && !!c.querySelector('[data-exp-preview] [data-exp-preview-image]'); })()"
+  "(() => { const c = document.querySelector('#card'); return __me.S.sel === $(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$VIEW_USE") && c.querySelector('.c-k').textContent.trim() === 'View' && !!c.querySelector('[data-exp-ops]') && !!c.querySelector('[data-exp-preview] [data-exp-preview-image]'); })()"
 qa_ok 'selecting a View in the list leaves the standpoint exactly where it was' "$(qa_js '__me.nav.plainPose()')" "$pose_before"
 
 # The one Advanced authoring home: narration, behaviors and offers, View switching and the derived
