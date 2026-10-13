@@ -18,14 +18,19 @@
  *   COMPLETE `SampledSegment` (segmentId, length, every sample field), so
  *   "full-result equality" includes `length`.
  * - Replacement is separated from snapshot restore: restore/undo/redo issue zero
- *   sampling requests (P7), while replacement decodes and re-derives (P9) and
- *   therefore mints fresh centerline objects.
+ *   sampling requests, while replacement decodes and re-derives and therefore
+ *   mints fresh centerline objects. **PR #115 removed those two probes (P7 and
+ *   P9) with their subject:** both drove the editor's removed
+ *   `layout-preview-state` capture/restore/replace host, so they tested editor
+ *   wiring rather than the sampling grammar. The claim they made is recorded
+ *   here and in the P23B.5 plan §0 rather than re-asserted against a host that
+ *   no longer exists.
  *
  * Probes:
  *   P1 source → parsed → compiled identities      P6 mutation hazard
- *   P2 release identity refresh + rejection       P7 restore/undo/redo (N/A)
- *   P3 preflight cross-call reference equality    P8 straight control
- *   P4 prospective gesture-scoped owner (sim)     P9 replacement (re-decode)
+ *   P2 release identity refresh + rejection       P8 straight control
+ *   P3 preflight cross-call reference equality
+ *   P4 prospective gesture-scoped owner (sim)
  *   P5 metadata identity (hazard → closed by S1)
  *
  * P5 originally recorded the segmentId HAZARD this S0 measured. P23B.5 S1 then
@@ -56,13 +61,7 @@ import {
 	type SampledSegment,
 	type WallCenterlineTraversal
 } from '@portfolio/layout-core';
-import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '$lib/bench/p23b-fixtures';
-import {
-	captureLayoutPreviewSnapshot,
-	createEmptyWallFirstLayoutPreviewState,
-	importLayoutPreviewJson,
-	restoreLayoutPreviewSnapshot
-} from '$lib/editor/layout/layout-preview-state.svelte';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from './__fixtures__/p23b-fixtures';
 
 function matrixFixture(id: string): LayoutDocumentWallFirst {
 	return buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === id)!);
@@ -371,42 +370,9 @@ describe('P23B.5 S0 — equality, mutation and metadata hazards', () => {
 	});
 });
 
-describe('P23B.5 S0 — restore and replacement are different paths', () => {
-	it('P7 restore / undo / redo reinstates an existing snapshot: same geometry object, zero sampling requests (N/A)', () => {
-		const state = createEmptyWallFirstLayoutPreviewState();
-		expect(importLayoutPreviewJson(state, serializeWallFirstLayoutDocument(curvedForty()))).toBe(true);
-		const snapshot = captureLayoutPreviewSnapshot(state);
-		const calls = record(() => restoreLayoutPreviewSnapshot(state, snapshot));
-		// Undo/redo and cancel route through this exact capture/replace host pair, so
-		// the count applies to them too. No document is re-parsed → no sampling.
-		expect(calls, 'restore issues no sampling requests (N/A, not a 0% hit rate)').toEqual([]);
-		expect(state.geometry, 'restore reinstates the snapshot geometry object').toBe(snapshot.geometry);
-		expect(record(() => restoreLayoutPreviewSnapshot(state, snapshot))).toEqual([]);
-	});
-
-	it('P9 replacement is NOT the restore path: it decodes and re-derives, minting fresh centerlines', () => {
-		const state = createEmptyWallFirstLayoutPreviewState();
-		const json = serializeWallFirstLayoutDocument(curvedForty());
-		const first = record(() => importLayoutPreviewJson(state, json));
-		const second = record(() => importLayoutPreviewJson(state, json));
-		expect(first.length, 'replacement decodes + derives → it samples').toBeGreaterThan(0);
-		expect(second.length, 'a second replacement samples again').toBeGreaterThan(0);
-
-		const refsByWallId = new Map<string, LayoutWallCenterline>();
-		for (const call of first) refsByWallId.set(call.wallId, call.centerline);
-		let compared = 0;
-		for (const call of second) {
-			const prior = refsByWallId.get(call.wallId);
-			if (!prior) continue;
-			// Same content, fresh object per decode: an identity-keyed store cannot
-			// carry a hit across a replacement.
-			expect(call.centerline, `${call.wallId} fresh identity after re-decode`).not.toBe(prior);
-			compared += 1;
-		}
-		expect(compared, 'walls compared across the two replacements').toBeGreaterThan(0);
-		console.log(`S0 P9 replacement requests first=${first.length} second=${second.length} compared=${compared}`);
-	});
-});
+// P7 (restore/undo/redo issues zero sampling requests) and P9 (replacement
+// re-decodes and mints fresh centerlines) were removed with the editor's
+// `layout-preview-state` host in PR #115; see the file header.
 
 describe('P23B.5 S0 — controls', () => {
 	it('P8 the prospective preflight opportunity is curvature-scaled, not cardinality-scaled', () => {

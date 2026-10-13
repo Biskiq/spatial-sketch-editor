@@ -1,41 +1,21 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractBoundaryCandidateFaces } from '$lib/layout/layout-face-extraction';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
 import {
 	LAYOUT_DUPLICATE_MAX_COPIES,
 	isSupportedDuplicateLayoutObject,
 	planDuplicateIsolatedRoom,
 	planRepeatLayoutObject,
 	planRepeatWallOpening
-} from '$lib/layout/layout-duplicate';
-import { validateWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
-import { validateWallFirstTopology } from '$lib/layout/layout-wall-first-precision';
-import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
+} from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { validateWallFirstTopology } from '@portfolio/layout-core';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
 	type LayoutWallFirstRoom
-} from '$lib/layout/layout-wall-first-types';
-import type { LayoutVec2 } from '$lib/layout/layout-types';
-import {
-	captureLayoutPreviewSnapshot,
-	createEmptyLayoutPreviewState,
-	duplicateWallFirstRoom,
-	importLayoutPreviewJson,
-	layoutPreviewDocument,
-	repeatWallFirstObject,
-	restoreLayoutPreviewSnapshot
-} from '$lib/editor/layout/layout-preview-state.svelte';
-import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
-import {
-	createLayoutInteractionState,
-	selectLayoutObject,
-	selectLayoutWallOpening
-} from '$lib/editor/layout/layout-interaction';
-import { createEditorStore } from '$lib/editor/editor-store.svelte';
-import { createEmptySceneDocument } from '$lib/content/scene';
-import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
-import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
+} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 
 type WallSeed = {
 	id: string;
@@ -623,141 +603,5 @@ describe('P23.4 isolated Room duplicate', () => {
 	it('rejects unknown rooms and non-finite deltas', () => {
 		expect(rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-none', delta: [1, 0] }))).toMatchObject({ code: 'unknown_room' });
 		expect(rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [Number.NaN, 0] }))).toMatchObject({ code: 'invalid_value' });
-	});
-});
-
-// ---------------------------------------------------------------------------
-// Editor surface + history (P23.4 one command → one Layout history result)
-// ---------------------------------------------------------------------------
-
-function duplicateStore(seed: LayoutDocumentWallFirst = ISOLATED) {
-	const store = createEditorStore({
-		document: createEmptySceneDocument(),
-		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
-	});
-	const preview = createEmptyLayoutPreviewState();
-	if (!importLayoutPreviewJson(preview, serializeWallFirstLayoutDocument(seed))) {
-		throw new Error('wall-first import failed');
-	}
-	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(preview),
-		replace: (snapshot) =>
-			restoreLayoutPreviewSnapshot(
-				preview,
-				snapshot as ReturnType<typeof captureLayoutPreviewSnapshot>
-			),
-		matches: (a, b) =>
-			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
-			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
-	});
-	store.setLayoutFormatPolicySource(() => preview);
-	return { store, preview };
-}
-
-function wallFirstLive(preview: ReturnType<typeof createEmptyLayoutPreviewState>): LayoutDocumentWallFirst {
-	const document = layoutPreviewDocument(preview);
-	if (!('formatVersion' in document)) throw new Error('expected wall-first document');
-	return document;
-}
-
-function mutate(context: ReturnType<typeof duplicateStore>, run: () => { success: boolean }) {
-	const outcome = runLayoutMutation(
-		layoutMutationRunnerFor(context.store, context.preview),
-		run,
-		(result) => result.success
-	);
-	return outcome;
-}
-
-describe('P23.4 editor surface + history', () => {
-	it('commits an object repeat as one history entry and Undo/Redo restores exact IDs', () => {
-		const context = duplicateStore();
-		const { store, preview } = context;
-		const outcome = mutate(context, () =>
-			repeatWallFirstObject(preview, { objectId: 'obj-1', count: 2, delta: [1, 0] })
-		);
-		expect(outcome.kind).toBe('committed');
-		let live = wallFirstLive(preview);
-		expect(live.objects.map((object) => object.id)).toEqual(['obj-1', 'obj-free', 'obj-1-copy', 'obj-1-copy.2']);
-
-		expect(store.undo()).toBe(true);
-		live = wallFirstLive(preview);
-		expect(live.objects.map((object) => object.id)).toEqual(['obj-1', 'obj-free']);
-
-		// Redo never reallocates: the exact same allocated IDs return.
-		expect(store.redo()).toBe(true);
-		live = wallFirstLive(preview);
-		expect(live.objects.map((object) => object.id)).toEqual(['obj-1', 'obj-free', 'obj-1-copy', 'obj-1-copy.2']);
-	});
-
-	it('commits an isolated Room duplicate and Undo restores the exact prior document', () => {
-		const context = duplicateStore();
-		const { store, preview } = context;
-		const outcome = mutate(context, () =>
-			duplicateWallFirstRoom(preview, { roomId: 'room-1', delta: [10, 0] })
-		);
-		expect(outcome.kind).toBe('committed');
-		let live = wallFirstLive(preview);
-		expect(live.rooms.map((room) => room.id)).toEqual(['room-1', 'room-1-copy']);
-		// 4 boundary junctions + 2 partition-wall junctions, doubled.
-		expect(live.junctions).toHaveLength(10);
-		// 4 boundary walls + 1 roomless partition wall → 5 + 4 cloned = 9.
-		expect(live.walls).toHaveLength(9);
-		expect(live.objects.map((object) => object.id)).toEqual(['obj-1', 'obj-free', 'obj-1-copy']);
-
-		expect(store.undo()).toBe(true);
-		live = wallFirstLive(preview);
-		expect(live.rooms.map((room) => room.id)).toEqual(['room-1']);
-		expect(live.junctions).toHaveLength(6);
-		expect(live.walls).toHaveLength(5);
-		expect(live.objects.map((object) => object.id)).toEqual(['obj-1', 'obj-free']);
-		expect(store.redo()).toBe(true);
-		expect(wallFirstLive(preview).rooms.map((room) => room.id)).toEqual(['room-1', 'room-1-copy']);
-	});
-
-	it('a rejected duplicate writes no history and leaves the document untouched', () => {
-		const context = duplicateStore(TWO_ROOM);
-		const { store, preview } = context;
-		const before = JSON.stringify(wallFirstLive(preview));
-		const outcome = mutate(context, () =>
-			// room-left shares wall-e with room-right → rejected.
-			duplicateWallFirstRoom(preview, { roomId: 'room-left', delta: [10, 0] })
-		);
-		expect(outcome.kind).toBe('cancelled');
-		expect(JSON.stringify(wallFirstLive(preview))).toBe(before);
-		expect(store.canUndo).toBe(false);
-	});
-
-	it('the Scene document stays byte-equivalent through duplicate operations', () => {
-		const context = duplicateStore();
-		const { preview } = context;
-		const sceneBefore = JSON.stringify(preview.project.scene);
-		expect(mutate(context, () =>
-			duplicateWallFirstRoom(preview, { roomId: 'room-1', delta: [10, 0] })
-		).kind).toBe('committed');
-		expect(mutate(context, () =>
-			repeatWallFirstObject(preview, { objectId: 'obj-1', count: 3, delta: [2, 0] })
-		).kind).toBe('committed');
-		expect(JSON.stringify(preview.project.scene)).toBe(sceneBefore);
-	});
-
-	it('opening duplicate selects the first new copy through the canonical wallOpening authority', () => {
-		const seeded = withDoor(TWO_ROOM);
-		const plan = success(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 1, spacing: 1.5 }));
-		const firstCopyId = plan.createdOpeningIds[0]!;
-		const copy = plan.document.openings.find((opening) => opening.id === firstCopyId)!;
-		// Host wall is unchanged, so the Inspector selects (wallId, copyId).
-		expect(copy.wallId).toBe('wall-e');
-		const interaction = createLayoutInteractionState();
-		selectLayoutWallOpening(interaction, copy.wallId, firstCopyId);
-		expect(interaction.selection).toEqual({ kind: 'wallOpening', wallId: 'wall-e', openingId: firstCopyId });
-	});
-
-	it('object duplicate selects the first new copy through the object authority', () => {
-		const plan = success(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 1, delta: [1, 0] }));
-		const firstCopyId = plan.createdObjectIds[0]!;
-		const interaction = createLayoutInteractionState();
-		selectLayoutObject(interaction, firstCopyId);
-		expect(interaction.selection).toEqual({ kind: 'object', objectId: firstCopyId });
 	});
 });

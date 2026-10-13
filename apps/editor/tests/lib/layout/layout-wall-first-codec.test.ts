@@ -5,20 +5,20 @@ import {
 	serializeLayoutDocument,
 	validateLayoutDocument,
 	type LayoutDocument
-} from '$lib/layout/layout-codec';
+} from '@portfolio/layout-core';
 import {
 	createEmptyWallFirstLayoutDocument,
 	parseWallFirstLayoutDocumentJson,
 	serializeWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument
-} from '$lib/layout/layout-wall-first-codec';
+} from '@portfolio/layout-core';
 import {
 	decodeLayoutJsonCompatible,
 	decodeLayoutValueCompatible,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION
-} from '$lib/layout/layout-compat';
-import type { LayoutDocumentWallFirst } from '$lib/layout/layout-wall-first-codec';
-import type { LayoutRoom } from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
+import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
+import type { LayoutRoom } from '@portfolio/layout-core';
 
 function legacyDocument(): LayoutDocument {
 	const document = createEmptyLayoutDocument();

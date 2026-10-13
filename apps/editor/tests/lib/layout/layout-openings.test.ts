@@ -1,54 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractBoundaryCandidateFaces } from '$lib/layout/layout-face-extraction';
-import { compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
-import { validateWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
-import { planExactWallLength, planWallSubdivision } from '$lib/layout/layout-wall-first-precision';
-import { planWallSplit } from '$lib/layout/layout-wall-noding';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { planExactWallLength, planWallSubdivision } from '@portfolio/layout-core';
+import { planWallSplit } from '@portfolio/layout-core';
 import {
 	validateWallFirstPortalRelations,
 	wallFirstAdjacentRooms
-} from '$lib/layout/layout-portals';
-import { buildPlanRenderModel, type PlanPolylinePrimitive } from '$lib/layout/plan-render-model';
-import {
-	beginLayoutWallOpeningDrag,
-	cancelLayoutWallOpeningDrag,
-	computeLayoutWallOpeningDragCandidate,
-	createLayoutInteractionState,
-	reconcileLayoutSelection,
-	selectLayoutWallOpening,
-	selectedLayoutWallOpening,
-	updateLayoutWallOpeningDrag
-} from '$lib/editor/layout/layout-interaction';
-import {
-	captureLayoutPreviewSnapshot,
-	createWallFirstOpening,
-	createEmptyLayoutPreviewState,
-	deleteWallFirstOpening,
-	importLayoutPreviewJson,
-	layoutPreviewDocument,
-	layoutPreviewSnapshotMatchesLive,
-	moveWallFirstOpening,
-	restoreLayoutPreviewSnapshot,
-	updateWallFirstOpening
-} from '$lib/editor/layout/layout-preview-state.svelte';
-import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
-import { createEditorStore } from '$lib/editor/editor-store.svelte';
-import { createEmptySceneDocument } from '$lib/content/scene';
-import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
-import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
+} from '@portfolio/layout-core';
 import {
 	resolveOpeningDragEdgeSnap,
 	resolveOpeningDragRawValidity,
 	resolveOpeningDragSnap,
 	resolveOpeningDragSnapUseMode
 } from '@portfolio/layout-core';
-import { serializeWallFirstLayoutDocument } from '$lib/layout/layout-wall-first-codec';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst,
 	type LayoutWallFirstRoom
-} from '$lib/layout/layout-wall-first-types';
+} from '@portfolio/layout-core';
 import {
 	nextWallFirstOpeningId,
 	planCenterWallFirstOpening,
@@ -62,8 +33,8 @@ import {
 	wallFirstOpeningClearances,
 	wallFirstOpeningMetrics,
 	wallFirstWallLength
-} from '$lib/layout/layout-wall-openings';
-import type { LayoutVec2 } from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 
 type WallSeed = {
 	id: string;
@@ -626,115 +597,14 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 	});
 });
 
-describe('P23.3 drag session state (body + width handles)', () => {
-	it('moves the body on the raw candidate and rejects an out-of-fit raw candidate', () => {
-		const drag = { mode: 'body' as const, baselineOffset: 1, baselineWidth: 0.9, wallLength: 4 };
-		expect(
-			computeLayoutWallOpeningDragCandidate(drag, { rawPointerOffset: 2, snapOffset: null })
-		).toEqual({ offset: 1.55, width: 0.9, snapped: false, valid: true });
-		const past = computeLayoutWallOpeningDragCandidate(drag, {
-			rawPointerOffset: 5.05,
-			snapOffset: null
-		});
-		expect(past.valid).toBe(false);
-		expect(past.offset).toBeCloseTo(4.6, 9);
-		const snapped = computeLayoutWallOpeningDragCandidate(drag, {
-			rawPointerOffset: 5.05,
-			snapOffset: 3.1
-		});
-		expect(snapped).toEqual({ offset: 3.1, width: 0.9, snapped: true, valid: true });
-	});
-
-	it('resizes width handles with the opposite edge fixed', () => {
-		const drag = { mode: 'end-edge' as const, baselineOffset: 1, baselineWidth: 0.9, wallLength: 4 };
-		expect(
-			computeLayoutWallOpeningDragCandidate(drag, { rawPointerOffset: 3, snapOffset: null })
-		).toEqual({ offset: 1, width: 2, snapped: false, valid: true });
-		expect(
-			computeLayoutWallOpeningDragCandidate(drag, { rawPointerOffset: 4.5, snapOffset: null }).valid
-		).toBe(false);
-		const startEdge = {
-			mode: 'start-edge' as const,
-			baselineOffset: 1,
-			baselineWidth: 0.9,
-			wallLength: 4
-		};
-		// Right edge (1.9) stays fixed; the left edge follows the pointer.
-		expect(
-			computeLayoutWallOpeningDragCandidate(startEdge, { rawPointerOffset: 0.5, snapOffset: null })
-		).toEqual({ offset: 0.5, width: 1.4, snapped: false, valid: true });
-		expect(
-			computeLayoutWallOpeningDragCandidate(startEdge, { rawPointerOffset: 2.2, snapOffset: null })
-				.valid
-		).toBe(false);
-	});
-
-	it('begins, updates and cancels a session without touching the document', () => {
-		const interaction = createLayoutInteractionState();
-		selectLayoutWallOpening(interaction, 'wall-e', 'opening:door:1');
-		expect(selectedLayoutWallOpening(interaction)).toEqual({
-			wallId: 'wall-e',
-			openingId: 'opening:door:1'
-		});
-		beginLayoutWallOpeningDrag(interaction, {
-			mode: 'body',
-			wallId: 'wall-e',
-			openingId: 'opening:door:1',
-			offset: 1,
-			width: 0.9,
-			wallLength: 4
-		});
-		const candidate = updateLayoutWallOpeningDrag(interaction, {
-			rawPointerOffset: 5.05,
-			snapOffset: null,
-			wallLength: 4
-		});
-		expect(candidate?.valid).toBe(false);
-		expect(interaction.wallOpeningDrag?.candidateOffset).toBeCloseTo(4.6, 9);
-		cancelLayoutWallOpeningDrag(interaction);
-		expect(interaction.wallOpeningDrag).toBeNull();
-		// Selection survives the cancel and reconciles against the document.
-		const document = withDoor();
-		expect(reconcileLayoutSelection(interaction.selection, document as never)).toEqual({
-			kind: 'wallOpening',
-			wallId: 'wall-e',
-			openingId: 'opening:door:1'
-		});
-		expect(
-			reconcileLayoutSelection(
-				{ kind: 'wallOpening', wallId: 'wall-e', openingId: 'opening:gone' },
-				document as never
-			)
-		).toEqual({ kind: 'none' });
-	});
-});
-
 // ---------------------------------------------------------------------------
 // P23.3 gate 6 — one shared Wall → one authored Opening → one compiler cut,
 // with no per-Room duplicates and roomless-Wall coverage.
+//
+// The `buildPlanRenderModel` half of this gate (one Opening *primitive*, one
+// Wall stroke) went with the old Plan presentation model, which §5.1 removes.
+// The compiler claims below are unchanged.
 // ---------------------------------------------------------------------------
-
-function canonicalOpeningPrimitives(
-	model: ReturnType<typeof buildPlanRenderModel>
-): PlanPolylinePrimitive[] {
-	return model.layers
-		.flatMap((layer) => layer.primitives)
-		.filter(
-			(primitive): primitive is PlanPolylinePrimitive =>
-				primitive.kind === 'polyline' && primitive.hit?.kind === 'wallOpening'
-		);
-}
-
-function wallPolylinePrimitives(
-	model: ReturnType<typeof buildPlanRenderModel>
-): PlanPolylinePrimitive[] {
-	return model.layers
-		.flatMap((layer) => layer.primitives)
-		.filter(
-			(primitive): primitive is PlanPolylinePrimitive =>
-				primitive.kind === 'polyline' && primitive.architecture?.kind === 'wall'
-		);
-}
 
 describe('P23.3 shared physical Wall single cut / no duplicates / roomless coverage', () => {
 	it('hosts one authored Opening on a two-Room boundary Wall as one compiler cut with no fake roomId', () => {
@@ -759,153 +629,5 @@ describe('P23.3 shared physical Wall single cut / no duplicates / roomless cover
 		expect(openingSpans[0]!.roomId).toBeUndefined();
 		// A roomless Wall still compiles/renders (never dropped for lacking a Room).
 		expect(geometry.walls.filter((wall) => wall.wallId === 'wall-rl')).toHaveLength(1);
-	});
-
-	it('renders the authored Opening exactly once through the canonical physical path', () => {
-		const document = withDoor();
-		const model = buildPlanRenderModel(compiledWallFirst(document).geometry);
-		const openingPrimitives = canonicalOpeningPrimitives(model);
-		expect(openingPrimitives).toHaveLength(1);
-		expect(openingPrimitives[0]!.hit).toEqual({
-			kind: 'wallOpening',
-			wallId: 'wall-e',
-			openingId: 'opening:door:1'
-		});
-		// The hosting Wall stroke is not duplicated either.
-		expect(wallPolylinePrimitives(model).length).toBeGreaterThanOrEqual(1);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// P23.3 gate 8 — Undo/Redo restores exact canonical host/offset/portal state
-// through the one Layout history stack.
-// ---------------------------------------------------------------------------
-
-function openingStore(seed: LayoutDocumentWallFirst = BASE) {
-	const store = createEditorStore({
-		document: createEmptySceneDocument(),
-		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
-	});
-	const preview = createEmptyLayoutPreviewState();
-	if (!importLayoutPreviewJson(preview, serializeWallFirstLayoutDocument(seed))) {
-		throw new Error('wall-first import failed');
-	}
-	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(preview),
-		replace: (snapshot) =>
-			restoreLayoutPreviewSnapshot(
-				preview,
-				snapshot as ReturnType<typeof captureLayoutPreviewSnapshot>
-			),
-		matches: (a, b) =>
-			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
-			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
-	});
-	store.setLayoutFormatPolicySource(() => preview);
-	return { store, preview };
-}
-
-function wallFirstLive(preview: ReturnType<typeof createEmptyLayoutPreviewState>): LayoutDocumentWallFirst {
-	const document = layoutPreviewDocument(preview);
-	if (!('formatVersion' in document)) throw new Error('expected wall-first document');
-	return document;
-}
-
-function openingOf(document: LayoutDocumentWallFirst, openingId: string) {
-	return document.openings.find((opening) => opening.id === openingId)!;
-}
-
-function mutate(context: ReturnType<typeof openingStore>, run: () => { success: boolean }) {
-	const outcome = runLayoutMutation(
-		layoutMutationRunnerFor(context.store, context.preview),
-		run,
-		(result) => result.success
-	);
-	if (outcome.kind !== 'committed') {
-		throw new Error(`expected commit, got ${JSON.stringify(outcome)}`);
-	}
-}
-
-describe('P23.3 Undo/Redo restores exact canonical Opening state', () => {
-	it('round-trips create → edit → move → delete as separate history entries', () => {
-		const context = openingStore();
-		const { store, preview } = context;
-		mutate(context, () =>
-			createWallFirstOpening(preview, {
-				wallId: 'wall-e',
-				kind: 'door',
-				offset: 1,
-				width: 0.9,
-				height: 2.1,
-				sillHeight: 0
-			})
-		);
-		expect(wallFirstLive(preview).openings).toHaveLength(1);
-		mutate(context, () => updateWallFirstOpening(preview, 'opening:door:1', { width: 1.1 }));
-		mutate(context, () => moveWallFirstOpening(preview, 'opening:door:1', 2.5));
-		let live = wallFirstLive(preview);
-		expect(openingOf(live, 'opening:door:1')).toMatchObject({
-			wallId: 'wall-e',
-			offset: 2.5,
-			width: 1.1
-		});
-
-		// Undo the move: exact prior offset/width, same host + identity.
-		expect(store.undo()).toBe(true);
-		live = wallFirstLive(preview);
-		expect(openingOf(live, 'opening:door:1')).toMatchObject({ wallId: 'wall-e', offset: 1, width: 1.1 });
-		// Undo the edit: original width.
-		expect(store.undo()).toBe(true);
-		live = wallFirstLive(preview);
-		expect(openingOf(live, 'opening:door:1')).toMatchObject({ wallId: 'wall-e', offset: 1, width: 0.9 });
-		// Undo the create: no Opening at all.
-		expect(store.undo()).toBe(true);
-		expect(wallFirstLive(preview).openings).toHaveLength(0);
-		expect(store.canUndo).toBe(false);
-
-		// Redo rebuilds the exact same document, never a fresh ID.
-		expect(store.redo()).toBe(true);
-		expect(store.redo()).toBe(true);
-		expect(store.redo()).toBe(true);
-		live = wallFirstLive(preview);
-		expect(openingOf(live, 'opening:door:1')).toMatchObject({
-			wallId: 'wall-e',
-			offset: 2.5,
-			width: 1.1
-		});
-	});
-
-	it('round-trips an explicit door→window portal clear', () => {
-		const seeded = success(
-			planCreateWallFirstOpening(BASE, {
-				wallId: 'wall-e',
-				kind: 'door',
-				offset: 1,
-				connectsRoomIds: ['room-left', 'room-right']
-			})
-		);
-		const context = openingStore(seeded.document);
-		const { store, preview } = context;
-		expect(openingOf(wallFirstLive(preview), 'opening:door:1').connectsRoomIds).toEqual([
-			'room-left',
-			'room-right'
-		]);
-		mutate(context, () =>
-			updateWallFirstOpening(preview, 'opening:door:1', {
-				kind: 'window',
-				connectsRoomIds: null
-			})
-		);
-		expect(openingOf(wallFirstLive(preview), 'opening:door:1')).toMatchObject({ kind: 'window' });
-		expect(openingOf(wallFirstLive(preview), 'opening:door:1').connectsRoomIds).toBeUndefined();
-
-		expect(store.undo()).toBe(true);
-		const restored = openingOf(wallFirstLive(preview), 'opening:door:1');
-		expect(restored.kind).toBe('door');
-		expect(restored.connectsRoomIds).toEqual(['room-left', 'room-right']);
-		expect(store.redo()).toBe(true);
-		const reapplied = openingOf(wallFirstLive(preview), 'opening:door:1');
-		expect(reapplied.kind).toBe('window');
-		expect(reapplied.connectsRoomIds).toBeUndefined();
 	});
 });

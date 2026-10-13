@@ -6,7 +6,7 @@ import type {
 	LayoutOpening,
 	LayoutRoom,
 	LayoutVec2
-} from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
 
 /**
  * Deterministic generated layout fixtures for the G3 performance harness.

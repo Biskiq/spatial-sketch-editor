@@ -19,8 +19,8 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS
-} from '$lib/bench/p23b-fixtures';
-import { p2311Fixture, P2311_FIXTURES } from '$lib/bench/p2311-bend-fixtures';
+} from './__fixtures__/p23b-fixtures';
+import { p2311Fixture, P2311_FIXTURES } from './__fixtures__/p2311-bend-fixtures';
 
 /**
  * P23B.4 S2 — thread the derivation through face extraction (OR-1/OR-2 for this consumer).

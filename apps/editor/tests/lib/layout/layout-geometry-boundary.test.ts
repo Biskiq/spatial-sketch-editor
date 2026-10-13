@@ -16,19 +16,24 @@ const COMPILER_FILES = readdirSync(layoutDir)
 	.filter((name) => name.startsWith('layout-geometry') && name.endsWith('.ts') && !name.endsWith('.test.ts'))
 	.map((name) => resolve(layoutDir, name));
 
-const CONSUMER_FILES = [
-	'lib/museum/layout/LayoutMuseumShell.svelte',
-	'lib/editor/layout/LayoutPreviewScene.svelte',
-	'lib/editor/layout/LayoutPlanViewport.svelte',
-	'lib/content/chopin-project.ts'
-].map((relative) => resolve(srcRoot, relative));
+/**
+ * The renderer-side consumers of the shared compiled-geometry contract.
+ *
+ * PR #115 removed the editor Plan viewport, the editor 3D Layout scene and the
+ * Chopin `LayoutMuseumShell`, so the visitor 3D shell is the surviving
+ * consumer. The invariant is unchanged: a consumer renders compiled geometry
+ * and never re-samples it.
+ */
+const CONSUMER_FILES = ['lib/visitor/VisitorLayoutShell.svelte'].map((relative) =>
+	resolve(srcRoot, relative)
+);
 
 const IMPORT_SPECIFIER = /from\s+['"]([^'"]+)['"]|import\(?\s*['"]([^'"]+)['"]/g;
 
 /**
  * Renderer, editor and browser-global coupling in one predicate — the
- * `$lib/layout` modules are the renderer-free geometry layer the Plan, the
- * editor 3D scene and the visitor 3D shell all consume.
+ * `$lib/layout` modules are the renderer-free geometry layer the visitor 3D
+ * shell consumes.
  */
 const RENDERER_OR_BROWSER_COUPLING =
 	/from\s+['"](three|svelte|@threlte|\$app)['"]|\$lib\/(editor|museum)|\bdocument\.|\bwindow\./;
@@ -98,14 +103,15 @@ describe('G1 geometry boundary', () => {
 	});
 
 	it('keeps every $lib/layout module free of renderer, editor, and browser coupling', () => {
-		// T4: absorbed the single-module pin that used to live in
-		// `wall-mesh-builder.test.ts` (`keeps the builder free of Svelte, DOM, and
-		// Three imports`) and widened it to the whole layer. `$lib/layout` is the
-		// renderer-free geometry layer shared by Plan, the editor 3D scene and the
-		// visitor 3D shell, so a renderer, editor or browser-global import here is
-		// a layering inversion whichever module introduces it.
+		// T4 absorbed the single-module pin that used to live in
+		// `wall-mesh-builder.test.ts` and widened it to the whole layer. PR #115
+		// (§5.1) then removed the 31 `$lib/layout/*` re-export facades, so the
+		// layer is now the builder alone — the same exact list §4.1 specifies.
+		// The coupling invariant still applies to whatever the layer contains.
 		const layoutFiles = ALL_SOURCE_FILES.filter((file) => file.startsWith(`${libRoot}/layout/`));
-		expect(layoutFiles.length).toBeGreaterThan(25);
+		expect(layoutFiles.map((file) => file.slice(libRoot.length + 1))).toEqual([
+			'layout/wall-mesh-builder.ts'
+		]);
 		for (const file of layoutFiles) {
 			expect(sourceOf(file), file.slice(libRoot.length + 1)).not.toMatch(
 				RENDERER_OR_BROWSER_COUPLING
@@ -135,21 +141,15 @@ describe('G1 geometry boundary', () => {
 		}
 	});
 
-	it('routes Plan, editor 3D, and visitor 3D through the shared compiler contract', () => {
-		expect(sourceOf(resolve(srcRoot, 'lib/content/chopin-project.ts'))).toContain('compileLayoutGeometry');
-		expect(sourceOf(resolve(srcRoot, 'lib/museum/layout/LayoutMuseumShell.svelte'))).toContain('CompiledLayoutGeometry');
-		// G4: the editor 3D scene consumes prebuilt wall meshes, not per-span chord boxes.
-		const editorSceneSource = sourceOf(resolve(srcRoot, 'lib/editor/layout/LayoutPreviewScene.svelte'));
-		expect(editorSceneSource).toContain('wallMeshesByRoom');
-		expect(editorSceneSource).toContain('toWallBufferGeometry');
-		expect(editorSceneSource).not.toContain('solidSpans');
-		const planSource = sourceOf(resolve(srcRoot, 'lib/editor/layout/LayoutPlanViewport.svelte'));
-		expect(planSource).toContain('resolvePlanHit');
-		expect(planSource).toContain('model.queries');
-		expect(planSource).not.toContain('$lib/layout/layout-geometry-curve');
-		const planHitSource = sourceOf(resolve(srcRoot, 'lib/editor/layout/plan-hit.ts'));
-		expect(planHitSource).toContain('$lib/layout/layout-geometry-queries');
+	it('keeps the retained Plan hit resolver on the shared compiled-query contract', () => {
+		// `plan-hit` moved to `lib/authoring/layout/plan-hit.ts` (§4.3 RETAIN).
+		// Its callers no longer reach it through a `$lib/layout` facade, so the
+		// claim is now about the resolver's own imports: it resolves against
+		// compiled query records and never re-derives geometry from the document.
+		const planHitSource = sourceOf(resolve(srcRoot, 'lib/authoring/layout/plan-hit.ts'));
 		expect(planHitSource).toContain('projectPointToSpans');
+		expect(planHitSource).toContain('CompiledLayoutQueryGeometry');
+		expect(planHitSource).not.toContain('sampleSegment(');
 	});
 
 	it('keeps duplicate topology at the canonical gate and codec ingestion structural (P23B.3a S8)', () => {

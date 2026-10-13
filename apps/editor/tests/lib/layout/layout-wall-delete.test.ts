@@ -18,53 +18,29 @@
  * - ambiguous/unsupported input rejects atomically (zero history);
  * - document-level object associations remap through reconciliation.
  *
- * Editor integration (`deleteWallFirstWall` through the guarded history
- * runner): one delete = exactly one history entry, exact Undo/Redo of Wall/
- * Junction/Opening/Room IDs, rejections write zero entries, and the callers'
- * fixed post-delete policy clears the canonical Wall selection to `none`
- * (pinned by source contract across the viewport/Inspector/hierarchy callers).
+ * PR #115 (§7.2 category D extraction) removed the editor shell, so this file
+ * calls the `layout-core` planner directly. The editor half — one delete as one
+ * history entry with exact Undo/Redo identity, the adapter's legacy-document
+ * gate, the plan context-menu builder and the viewport/Inspector/hierarchy
+ * caller source contracts — tested removed behaviour and is gone with its
+ * subject; the history semantics it proved are recorded as a T3 F.4 acceptance
+ * obligation.
  */
-import { describe, expect, it, vi } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
 
-import { extractBoundaryCandidateFaces } from '$lib/layout/layout-face-extraction';
-import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
-import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
-import { createEditorStore } from '$lib/editor/editor-store.svelte';
-import { createEmptySceneDocument } from '$lib/content/scene';
-import {
-	serializeWallFirstLayoutDocument,
-	validateWallFirstLayoutDocument
-} from '$lib/layout/layout-wall-first-codec';
-import { compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
+import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import type {
 	LayoutDocumentWallFirst,
 	LayoutWallFirstRoom
-} from '$lib/layout/layout-wall-first-types';
-import type { LayoutVec2 } from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
 	planDeleteWall,
 	planWallRoleChange,
 	type WallFirstOpPlan
 } from '@portfolio/layout-core';
-import {
-	captureLayoutPreviewSnapshot,
-	createEmptyLayoutPreviewState,
-	deleteWallFirstWall,
-	importLayoutPreviewJson,
-	layoutPreviewDocument,
-	restoreLayoutPreviewSnapshot
-} from '$lib/editor/layout/layout-preview-state.svelte';
-import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
-import {
-	createLayoutInteractionState,
-	selectLayoutPhysicalWall,
-	setPlanViewMode
-} from '$lib/editor/layout/layout-interaction';
-import { isUnifiedTreeRowInteractive, type UnifiedTreeRow } from '$lib/editor/unified-project-tree-model';
-import { buildPlanLayoutContextMenuItems } from '$lib/editor/context-menu/plan-menu-items';
 
 type WallSeed = {
 	id: string;
@@ -156,36 +132,6 @@ function success(plan: WallFirstOpPlan): Extract<WallFirstOpPlan, { kind: 'succe
 function rejection(plan: WallFirstOpPlan) {
 	if (plan.kind !== 'rejected') throw new Error('expected rejection');
 	return plan.rejection;
-}
-
-function wallFirstDocument(
-	layoutPreview: ReturnType<typeof createEmptyLayoutPreviewState>
-): LayoutDocumentWallFirst {
-	const document = layoutPreviewDocument(layoutPreview);
-	if (!('formatVersion' in document)) throw new Error('expected wall-first document');
-	return document;
-}
-
-function makeStore(seed: LayoutDocumentWallFirst = BASE) {
-	const store = createEditorStore({
-		document: createEmptySceneDocument(),
-		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
-	});
-	const layoutPreview = createEmptyLayoutPreviewState();
-	if (!importLayoutPreviewJson(layoutPreview, serializeWallFirstLayoutDocument(seed))) {
-		throw new Error('wall-first import failed');
-	}
-	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(layoutPreview),
-		replace: (snapshot) => restoreLayoutPreviewSnapshot(layoutPreview, snapshot as never),
-		matches: (a, b) =>
-			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
-			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
-	});
-	// Mirrors EditorApp: the format-dispatch guard must see the live preview or
-	// the stage-6 cross-format invariant refuses every wall-first commit.
-	store.setLayoutFormatPolicySource(() => layoutPreview);
-	return { store, layoutPreview };
 }
 
 describe('P23.6c planDeleteWall — planner contract', () => {
@@ -448,244 +394,6 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 		// closed face, so the role change is a canonical success with no Room
 		// change — while the delete of the same wall also succeeds cleanly.
 		const flipped = planWallRoleChange(BASE, 'wall-rl', 'boundary');
-		expect(flipped.kind).toBe('success');
-		expect(success(planDeleteWall(BASE, 'wall-rl')).kind).toBe('success');
-	});
-});
-
-describe('P23.6c deleteWallFirstWall — editor history integration', () => {
-	it('commits exactly one history entry and Undo/Redo restore exact IDs', () => {
-		const seeded: LayoutDocumentWallFirst = {
-			...BASE,
-			openings: [
-				{
-					id: 'opening:door:1',
-					wallId: 'wall-e',
-					kind: 'door',
-					offset: 1,
-					width: 0.9,
-					height: 2.1,
-					sillHeight: 0,
-					profile: 'rectangular'
-				}
-			]
-		};
-		const context = makeStore(seeded);
-		const { store, layoutPreview } = context;
-		expect(store.canUndo).toBe(false);
-
-		const outcome = runLayoutMutation(
-			layoutMutationRunnerFor(store, layoutPreview),
-			() => deleteWallFirstWall(layoutPreview, 'wall-e'),
-			(result) => result.success
-		);
-		if (outcome.kind !== 'committed') throw new Error(`expected commit: ${JSON.stringify(outcome)}`);
-		expect(store.canUndo).toBe(true);
-		const after = wallFirstDocument(layoutPreview);
-		expect(after.walls.map((wall) => wall.id)).toEqual([
-			'wall-a1',
-			'wall-a2',
-			'wall-b',
-			'wall-c1',
-			'wall-c2',
-			'wall-d',
-			'wall-rl'
-		]);
-		expect(after.openings).toEqual([]);
-		expect(after.rooms).toHaveLength(1);
-
-		expect(store.undo()).toBe(true);
-		const restored = wallFirstDocument(layoutPreview);
-		// Exact snapshot identity: every Wall/Junction/Opening/Room ID returns.
-		expect(restored.walls.map((wall) => wall.id)).toEqual([
-			'wall-a1',
-			'wall-a2',
-			'wall-b',
-			'wall-c1',
-			'wall-c2',
-			'wall-d',
-			'wall-e',
-			'wall-rl'
-		]);
-		expect(restored.openings.map((opening) => opening.id)).toEqual(['opening:door:1']);
-		expect(restored.rooms.map((room) => room.id)).toEqual(['room-left', 'room-right']);
-		expect(store.canUndo).toBe(false);
-
-		expect(store.redo()).toBe(true);
-		const redone = wallFirstDocument(layoutPreview);
-		expect(redone.walls.map((wall) => wall.id)).not.toContain('wall-e');
-		expect(redone.rooms).toHaveLength(1);
-	});
-
-	it('writes zero history entries when the planner rejects', () => {
-		const context = makeStore();
-		const { store, layoutPreview } = context;
-		const outcome = runLayoutMutation(
-			layoutMutationRunnerFor(store, layoutPreview),
-			() => deleteWallFirstWall(layoutPreview, 'wall-missing'),
-			(result) => result.success
-		);
-		expect(outcome.kind).toBe('cancelled');
-		expect(store.canUndo).toBe(false);
-		expect(wallFirstDocument(layoutPreview).walls).toHaveLength(8);
-	});
-
-	it('refuses the wall-first delete path on a legacy document', () => {
-		const store = createEditorStore({
-			document: createEmptySceneDocument(),
-			rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
-		});
-		const layoutPreview = createEmptyLayoutPreviewState();
-		// `createEmptyLayoutPreviewState()` boots the legacy compatibility
-		// fixture; the wall-first adapter must refuse it rather than guess.
-		const result = deleteWallFirstWall(layoutPreview, 'wall-e');
-		expect(result.success).toBe(false);
-		expect(store.canUndo).toBe(false);
-	});
-
-	it('the plan context menu exposes exactly the canonical Wall delete', () => {
-		const deleteWall = vi.fn();
-		const items = buildPlanLayoutContextMenuItems({
-			target: { kind: 'wall', wallId: 'wall-e' },
-			mutationBlockedReason: null,
-			actions: {
-				deleteOpening: vi.fn(),
-				deleteObject: vi.fn(),
-				deleteWall
-			}
-		});
-		expect(items.map((item) => item.id)).toEqual(['delete-wall']);
-		items[0]!.run();
-		expect(deleteWall).toHaveBeenCalledWith('wall-e');
-	});
-
-	it('the plan context menu omits the Wall item when no deleteWall action exists', () => {
-		const items = buildPlanLayoutContextMenuItems({
-			target: { kind: 'wall', wallId: 'wall-e' },
-			mutationBlockedReason: null,
-			actions: {
-				deleteOpening: vi.fn(),
-				deleteObject: vi.fn()
-			}
-		});
-		expect(items).toEqual([]);
-	});
-});
-
-describe('P23.6c caller wiring — one planner, fixed post-delete selection', () => {
-	const LIB_DIR = fileURLToPath(new URL('../../../src/lib', import.meta.url));
-
-	function readSource(relativePath: string): string {
-		return fs.readFileSync(path.join(LIB_DIR, relativePath), 'utf8');
-	}
-
-	it('Delete/Backspace dispatches the canonical physicalWall selection to the shared handler', () => {
-		const source = readSource('editor/layout/LayoutPlanViewport.svelte');
-		expect(source).toContain("interaction.selection.kind === 'physicalWall'");
-		expect(source).toContain('onWallDelete?.(interaction.selection.wallId)');
-	});
-
-	it('viewport callers route the shared adapter and clear the selection to none', () => {
-		for (const relativePath of [
-			'editor/EditorViewport.svelte',
-			'editor/app/PlanWorkspace.svelte'
-		]) {
-			const source = readSource(relativePath);
-			expect(source).toContain('deleteWallFirstWall(layoutPreview, wallId)');
-			expect(source).toContain("layoutInteraction.selection = { kind: 'none' }");
-		}
-	});
-
-	it('the Inspector Delete button calls the same adapter through the guarded runner', () => {
-		const source = readSource('editor/EditorInspector.svelte');
-		expect(source).toContain('deleteWallFirstWall(layoutPreview, wall.id)');
-		expect(source).toContain('deleteSelectedWallFirstWall');
-		expect(source).toContain('>Delete wall</button>');
-	});
-
-	it('the hierarchy wall row exposes the context-menu delete through the same builder', () => {
-		const source = readSource('editor/UnifiedProjectTree.svelte');
-		expect(source).toContain('deleteWallFirstWall(layoutPreview, wallId)');
-		expect(source).toContain("target: { kind: 'wall', wallId }");
-	});
-
-	it('an inert physicalWall row never opens its context menu — the menu obeys the same row-authority gate as activation (review regression)', () => {
-		const source = readSource('editor/UnifiedProjectTree.svelte');
-		// The handler builds its row and consults the SAME predicate the
-		// left-click activation binding uses.
-		const handlerStart = source.indexOf('function onWallRowContextMenu');
-		expect(handlerStart).toBeGreaterThan(-1);
-		const openCall = source.indexOf('openTreeContextMenu(', handlerStart);
-		const handlerBody = source.slice(handlerStart, openCall);
-		expect(handlerBody).toContain("{ kind: 'physicalWall', wallId }");
-		expect(handlerBody).toContain('roomRowInteractive(row)');
-		// Gate BEFORE the menu: an authority-refused row returns before any
-		// menu can be built, so an inert row can never expose — let alone
-		// execute — the canonical Delete command.
-		expect(handlerBody).toContain('if (!roomRowInteractive(row)) return;');
-		// Activation keeps its own gate (unchanged contract): a row binds
-		// selection only when the row is interactive. P23.6e moved canonical Wall
-		// activation to the page Navigator, which consults the same authority
-		// predicate before it reaches the canonical writer.
-		// (The binding also forwards the originating event so Scene modifier-click
-		// semantics survive; the interactivity gate is what this asserts.)
-		expect(readSource('editor/hierarchy/HierarchyRow.svelte')).toContain(
-			'onclick={interactive ? (event) => onSelect(row, event) : undefined}'
-		);
-		const navigator = readSource('editor/hierarchy/HierarchyNavigator.svelte');
-		expect(navigator).toContain('isUnifiedTreeRowInteractive(');
-		expect(navigator).toContain('selectLayoutPhysicalWall(layoutInteraction, entity.wallId)');
-		// The legacy accordion keeps only the canonical Wall context-menu route.
-		expect(source).toContain('function selectPhysicalWall(wallId: string)');
-	});
-
-	it('Camera domain exposes no Wall context menu at all — CameraSidebar wires no delete authority (review regression)', () => {
-		// The Camera domain renders the Environment projection from the same
-		// tree model, but it never mounts the context-menu surface: no
-		// oncontextmenu, no menu builder, no deleteWall adapter.
-		const cameraSidebar = readSource('editor/app/CameraSidebar.svelte');
-		expect(cameraSidebar).not.toContain('oncontextmenu');
-		expect(cameraSidebar).not.toContain('buildPlanLayoutContextMenuItems');
-		expect(cameraSidebar).not.toContain('deleteWall');
-		expect(cameraSidebar).not.toContain('deleteWallFirstWall');
-	});
-
-	it('physicalWall row authority: Camera domain and Plan Arrange are inert, Scene layout/3D are authoritative (review regression)', () => {
-		const row: UnifiedTreeRow = { kind: 'physicalWall', wallId: 'wall-e' };
-		// Inert: no activation, and through the gated handler no context menu.
-		expect(isUnifiedTreeRowInteractive(row, 'camera', 'plan')).toBe(false);
-		expect(isUnifiedTreeRowInteractive(row, 'camera', '3d')).toBe(false);
-		expect(isUnifiedTreeRowInteractive(row, 'scene', 'plan', 'staging')).toBe(false);
-		// Authority: the only surfaces whose context menu may offer Delete.
-		expect(isUnifiedTreeRowInteractive(row, 'scene', 'plan', 'layout')).toBe(true);
-		expect(isUnifiedTreeRowInteractive(row, 'scene', '3d')).toBe(true);
-	});
-
-	it('a remembered physicalWall selection survives the switch to Arrange and Delete cannot reach it from there (review regression)', () => {
-		// Premise (real behavior): `setPlanViewMode` deliberately keeps the
-		// committed Layout selection as memory when switching to Arrange —
-		// so the Wall selection is still present in an authority-inert mode.
-		const layoutInteraction = createLayoutInteractionState();
-		selectLayoutPhysicalWall(layoutInteraction, 'wall-e');
-		setPlanViewMode(layoutInteraction, 'staging');
-		expect(layoutInteraction.selection).toEqual({ kind: 'physicalWall', wallId: 'wall-e' });
-		// Authority: the viewport's Wall Delete branch requires Layout mode.
-		// Without the gate, the Arrange owner-delete branch (Scene delete
-		// needs an active Scene target; the Layout-object branch needs an
-		// active Layout object) falls through into the remembered-Wall
-		// selection and deletes a canonical Wall from Arrange.
-		const source = readSource('editor/layout/LayoutPlanViewport.svelte');
-		const dispatch = source.indexOf('onWallDelete?.(interaction.selection.wallId)');
-		expect(dispatch).toBeGreaterThan(-1);
-		const condition = source.slice(source.lastIndexOf('if (', dispatch), dispatch);
-		expect(condition).toContain("interaction.selection.kind === 'physicalWall'");
-		expect(condition).toContain("interaction.planViewMode === 'layout'");
-		// The Arrange Scene-delete branch above keeps its active-owner
-		// requirement (unchanged contract).
-		const keyDownStart = source.indexOf('function onKeyDown');
-		expect(keyDownStart).toBeGreaterThan(-1);
-		const sceneDispatch = source.indexOf('onSceneDelete?.();', keyDownStart);
-		expect(sceneDispatch).toBeGreaterThan(-1);
-		expect(source.slice(keyDownStart, sceneDispatch)).toContain('arrangeActiveScene !== null');
+		expect(flipped.kind).toBe('success');		expect(success(planDeleteWall(BASE, 'wall-rl')).kind).toBe('success');
 	});
 });

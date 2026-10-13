@@ -19,7 +19,7 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS
-} from '$lib/bench/p23b-fixtures';
+} from './__fixtures__/p23b-fixtures';
 
 /**
  * P23B.4 S7 — M-2a extent pruning (OR-3/OR-9 in the same commit).

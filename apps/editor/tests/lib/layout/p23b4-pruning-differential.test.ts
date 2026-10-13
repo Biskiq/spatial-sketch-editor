@@ -24,7 +24,7 @@ import {
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS
-} from '$lib/bench/p23b-fixtures';
+} from './__fixtures__/p23b-fixtures';
 import { buildWildRoomFixture, buildWildSharedFixture } from './p23b4-wild-fixtures';
 
 /**

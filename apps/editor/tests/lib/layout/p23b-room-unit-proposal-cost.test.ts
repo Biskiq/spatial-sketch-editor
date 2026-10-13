@@ -1,62 +1,40 @@
 /**
- * P23B pre-P23B.8 follow-up — the whole-Room drag slice's **P0.4 cost gate**.
+ * P23B pre-P23B.8 follow-up — the whole-Room drag slice's committed-fixture
+ * premise, after PR #115 removed the PERF lane.
  *
- * The gesture change removes a per-pointermove planner call, a whole-document
- * compile and a whole-generation mesh preparation, and adds one unit-sized
- * overlay proposal. The change is only worth making if the added side is an order
- * of magnitude cheaper than the removed side — that ratio, not an absolute
- * millisecond budget, is the assertion here (absolute timings are machine- and
- * session-conditioned; see the M1 records).
+ * This file was the P0.4 **cost gate**: it timed the added per-pointermove
+ * overlay proposal against the per-move work the gesture removes (a planner
+ * call, a whole-document compile and a mesh preparation) and required a 5×
+ * margin. §5.1 of the #115 plan removes the bench/P23B measurement apparatus
+ * and §7.3 removes the PERF lane, so the timing arms, the median/`timeOp`
+ * machinery and the margin assertion are gone from the product suite; the
+ * measured numbers remain in the P23B plan evidence (`lib/bench` is recoverable
+ * at the baseline SHA).
  *
- * `removed` mirrors what `previewWallFirstRoomMove` actually does per move:
- * `planWallFirstRoomMove` (whose own gates compile the candidate) followed by the
- * install's compile and `prepareWallMeshes` of the accepted generation.
- *
- * Reported raw (one `console.log` line per arm) so a record can quote the
- * measurement; asserted at a 5× margin so the gate fails only when the premise
- * genuinely breaks.
+ * What is kept is the structural premise the gate ran on, unchanged: on the
+ * committed **all-curved 40-Wall** matrix cell the gesture is admissible at all
+ * — the isolated Room-unit subgraph resolves and `planWallFirstRoomMove` accepts
+ * each gated delta — for at least two Room groups. That is a correctness claim
+ * about the committed fixture and the planners, not a timing claim.
  */
 import { describe, expect, it } from 'vitest';
 
 import {
-	compileWallFirstLayoutGeometry,
 	planWallFirstRoomMove,
-	proposeWallFirstRoomUnitGeometry,
 	resolveIsolatedRoomGroupSubgraph,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 
-import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from '$lib/bench/p23b-fixtures';
-import { prepareWallMeshes } from '$lib/editor/layout/prepared-wall-meshes';
+import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 
-const COST_TIMEOUT_MS = 180_000;
-const REPS = 15;
-const WARMUPS = 3;
-const REQUIRED_MARGIN = 5;
+const DIFFERENTIAL_TIMEOUT_MS = 300_000;
 
 const DELTAS: readonly LayoutVec2[] = [
 	[1.5, 2.25],
 	[-2.5, -1.75],
 	[0.75, -3.25]
 ];
-
-function median(values: number[]): number {
-	const sorted = [...values].sort((a, b) => a - b);
-	const middle = Math.floor(sorted.length / 2);
-	return sorted.length % 2 === 0 ? (sorted[middle - 1]! + sorted[middle]!) / 2 : sorted[middle]!;
-}
-
-function measure(run: () => void): number {
-	for (let index = 0; index < WARMUPS; index += 1) run();
-	const samples: number[] = [];
-	for (let index = 0; index < REPS; index += 1) {
-		const start = performance.now();
-		run();
-		samples.push(performance.now() - start);
-	}
-	return median(samples);
-}
 
 function allCurvedFixture(): LayoutDocumentWallFirst {
 	const spec = P23B_MATRIX_SPECS.find(
@@ -66,49 +44,32 @@ function allCurvedFixture(): LayoutDocumentWallFirst {
 	return buildP23BMatrixFixture(spec);
 }
 
-describe('P0.4 — the added per-move work is an order of magnitude below what it removes', () => {
+describe('P0.4 — the committed gesture premise: the all-curved 40-Wall cell is draggable', () => {
 	it(
-		'proposal ≪ planner + compile + prepare on the committed all-curved 40-Wall fixture',
+		'resolves the isolated Room-unit subgraph and accepts each gated delta for at least two Rooms',
 		() => {
 			const document = allCurvedFixture();
-			let checked = 0;
-			for (const room of document.rooms.slice(0, 3)) {
+			let accepted = 0;
+			for (const room of document.rooms) {
 				const isolation = resolveIsolatedRoomGroupSubgraph(document, room.id);
 				if (isolation.kind !== 'success') continue;
-				const { subgraph } = isolation;
-				const delta = DELTAS[checked % DELTAS.length]!;
+				// A resolved subgraph must name the Walls it would move.
+				expect(
+					isolation.subgraph.wallIds.length,
+					`${room.id}: an isolated group names its Walls`
+				).toBeGreaterThan(0);
 
-				const added = measure(() => {
-					proposeWallFirstRoomUnitGeometry(document, subgraph, delta);
-				});
-
+				const delta = DELTAS[accepted % DELTAS.length]!;
 				const plan = planWallFirstRoomMove(document, room.id, delta);
 				if (plan.kind !== 'success') continue;
-				// The accepted generation, compiled exactly as the install path does.
-				const acceptedGeometry = compileWallFirstLayoutGeometry(plan.document).geometry;
-				const removed = measure(() => {
-					const candidate = planWallFirstRoomMove(document, room.id, delta);
-					if (candidate.kind !== 'success') throw new Error('planner refused a gated delta');
-					compileWallFirstLayoutGeometry(candidate.document);
-					prepareWallMeshes(acceptedGeometry);
-				});
-
-				const margin = removed / Math.max(added, 1e-6);
-				// eslint-disable-next-line no-console
-				console.log(
-					`P0.4 ${room.id} Δ${delta[0]},${delta[1]}: added ${added.toFixed(3)} ms · ` +
-						`removed ${removed.toFixed(3)} ms · margin ${margin.toFixed(1)}× ` +
-						`(${subgraph.wallIds.length} Walls moved)`
-				);
-				expect(added, `${room.id}: the proposal must produce geometry`).toBeGreaterThan(0);
 				expect(
-					margin,
-					`${room.id}: added side must stay ${REQUIRED_MARGIN}× below the removed side`
-				).toBeGreaterThanOrEqual(REQUIRED_MARGIN);
-				checked += 1;
+					plan.document.rooms.map((entry) => entry.id),
+					`${room.id}: the moved document keeps its Rooms`
+				).toContain(room.id);
+				accepted += 1;
 			}
-			expect(checked, 'cost arms exercised').toBeGreaterThanOrEqual(2);
+			expect(accepted, 'gated Room-unit deltas accepted on the committed cell').toBeGreaterThanOrEqual(2);
 		},
-		COST_TIMEOUT_MS
+		DIFFERENTIAL_TIMEOUT_MS
 	);
 });

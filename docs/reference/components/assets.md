@@ -79,8 +79,8 @@ projects/releases never share cache entries. P22 does not broaden P20 ingest
 
 The catalogue rows below describe the built-in asset model; the current project
 registry is separate and is served through the authenticated API (see
-[`editor/project-persistence.ts`](../../../apps/editor/src/lib/editor/project-persistence.ts)
-and `EditorAssetLibrary.svelte`). It is a project-scoped implementation, not the
+[`platform/project-persistence.ts`](../../../apps/editor/src/lib/platform/project-persistence.ts)).
+It is a project-scoped implementation, not the
 destination resource system: its storage unit and revision/lock model are governed
 by F.2/F.1 under the contract's interface-ownership rule (see
 [`../composition-execution.md`](../composition-execution.md); decision context

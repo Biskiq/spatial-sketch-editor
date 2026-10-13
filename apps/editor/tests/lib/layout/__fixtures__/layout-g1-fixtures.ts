@@ -5,7 +5,7 @@ import type {
 	LayoutOpening,
 	LayoutRoom,
 	LayoutVec2
-} from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
 
 export function g1DocumentWithRooms(rooms: LayoutRoom[], objects: LayoutObject[] = []): LayoutDocument {
 	return {

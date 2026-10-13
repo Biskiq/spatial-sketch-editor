@@ -1,4 +1,4 @@
-import type { LayoutVec2 } from './layout-types';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 import type {
 	CompiledEndpointBand,
 	CompiledJunctionBand,
@@ -10,9 +10,9 @@ import type {
 	CompiledWallSection,
 	LayoutBounds3,
 	LayoutGeometryIssue
-} from './layout-geometry-types';
-import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from './layout-geometry-openings';
-import { type CurveSample } from './layout-geometry-curve';
+} from '@portfolio/layout-core';
+import { archProfileTopAt, LAYOUT_GEOMETRY_EPSILON } from '@portfolio/layout-core';
+import { type CurveSample } from '@portfolio/layout-core';
 import {
 	p2311Measure,
 	resolveSharedCornerSide,

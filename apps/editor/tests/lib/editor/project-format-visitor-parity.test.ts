@@ -1,56 +1,52 @@
 /**
  * P23.0 F0 stage 4 — visitor parity + cold-load byte-identity proofs.
  *
- * F0 checklist items closed here:
+ * F0 checklist items still closed here:
  *
- * - "new wall-first Project compiles identically for editor Preview and
- *   visitor": both bundle composers (`composeDetachedPreviewBundle` for
- *   Preview, `composeColdReleaseBundle` for the visitor) now open through the
- *   one shared `prepareCompatibleRuntime` adapter, which decodes compatibly
- *   and compiles through the single shared core (`compileLayoutGeometrySource`
- *   under both the legacy and wall-first entries). The parity tests feed one
- *   wall-first payload through both composers and pin identical geometry and
- *   runtime scenes.
+ * - "new wall-first Project compiles identically for the visitor": the one
+ *   remaining bundle composer (`composeColdReleaseBundle`) opens through the
+ *   shared `prepareCompatibleRuntime` adapter, which decodes compatibly and
+ *   compiles through the single shared core (`compileLayoutGeometrySource`
+ *   under both the legacy and wall-first entries). The parity tests pin the
+ *   composer's geometry and runtime scene against the shared core's output.
  * - "old active published Project cold-loads without rewriting stored
  *   bytes": canonical legacy bytes decode + prepare with the input left
  *   deep-equal to its snapshot, and re-serialization is byte-identical —
- *   at the adapter level for the checked-in legacy project and at both
- *   composer levels for a realistic legacy document.
+ *   at the adapter level and at the visitor-composer level for a realistic
+ *   legacy document.
  *
- * Legacy behavior is unchanged by construction: both composers keep the
- * legacy render-model preflight (`derivePreviewBundle`, whose wall-mesh build
- * fails closed) for `legacy-compatible` inputs, and the adapter's legacy
- * branch runs the same strict decoders plus the same scene↔room reference
- * gate `validateProject` enforced.
+ * Legacy behavior is unchanged by construction: the adapter's legacy branch
+ * runs the same strict decoders plus the same scene↔room reference gate
+ * `validateProject` enforced.
+ *
+ * PR #115 (§7.2 category D extraction) removed the editor shell, so the
+ * Preview-side composer (`composeDetachedPreviewBundle`,
+ * `computeVisitorPreviewBlocker`, `derivePreviewBundle`) is gone with its
+ * subject: preview and publication bundling were editor shell behaviour, and
+ * §4.4 records the capability loss. The surviving assertions are the ones
+ * about the retained visitor cold-release path, the shared
+ * `prepareCompatibleRuntime` adapter and the project-model writer, with their
+ * expectations unchanged. The "checked-in legacy project" byte-identity case
+ * asserted the shipped Chopin project, which §3.7 externalized, so it belongs
+ * to the frozen project's own suite rather than here.
  */
 import { describe, expect, it } from 'vitest';
 
-import { prepareCompatibleRuntime } from '$lib/project/compat-runtime';
+import { prepareCompatibleRuntime } from '@portfolio/project-model';
 import {
 	compileLayoutGeometry,
 	compileWallFirstLayoutGeometry
-} from '$lib/layout/layout-geometry';
-import { derivePreviewBundle } from '$lib/editor/layout/layout-preview-state.svelte';
-import {
-	composeDetachedPreviewBundle,
-	computeVisitorPreviewBlocker
-} from '$lib/editor/preview/preview-coordinator';
+} from '@portfolio/layout-core';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
-import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
-import { planFirstEnclosureCreation } from '$lib/layout/layout-wall-topology-ops';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-wall-first-codec';
-import { chopinProject } from '$lib/content/chopin-project';
+import { createLayoutRoomRegistry } from '@portfolio/project-model';
+import { planFirstEnclosureCreation } from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import { serializeProject } from '$lib/project/project-codec';
-import type { LayoutDocument } from '$lib/layout/layout-types';
+import type { LayoutDocument } from '@portfolio/layout-core';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
-
-const stubTextureStore = {
-	has: () => false,
-	getEntry: () => null
-};
 
 function coldManifest() {
 	return { releaseId: 'project:stage4@v1', bytesByUri: new Map() };
@@ -181,16 +177,9 @@ function wallFirstPayload() {
 // 1. Compile parity — one wall-first Project, both consumers
 // ---------------------------------------------------------------------------
 
-describe('P23.0 stage 4 — Preview/visitor compile parity for wall-first', () => {
-	it('one wall-first payload compiles identically through the Preview and visitor composers', () => {
+describe('P23.0 stage 4 — visitor compile parity for wall-first', () => {
+	it('the visitor composer compiles the wall-first payload through the one shared core', () => {
 		const payload = wallFirstPayload();
-		const preview = composeDetachedPreviewBundle({
-			scene: payload.scene as never,
-			layout: payload.layout as never,
-			projectId: payload.id,
-			projectName: payload.name,
-			textureStore: stubTextureStore
-		});
 		const visitor = composeColdReleaseBundle({
 			projectId: payload.id,
 			projectName: payload.name,
@@ -199,12 +188,9 @@ describe('P23.0 stage 4 — Preview/visitor compile parity for wall-first', () =
 			manifest: coldManifest()
 		});
 		try {
-			expect(visitor.geometry).toEqual(preview.geometry);
-			expect(visitor.scene).toEqual(preview.scene);
 			expect(visitor.geometry.rooms).toHaveLength(1);
 			expect(visitor.graph.navigationNodes).toHaveLength(1);
 		} finally {
-			preview.textures.dispose();
 			visitor.dispose();
 		}
 	});
@@ -223,7 +209,7 @@ describe('P23.0 stage 4 — Preview/visitor compile parity for wall-first', () =
 		throw new Error(`expected ready: ${JSON.stringify(prepared.issues)}`);
 	});
 
-	it('legacy geometry is unchanged: adapter equals the direct legacy compile and the render-model bundle', () => {
+	it('legacy geometry is unchanged: the adapter equals the direct legacy compile', () => {
 		const payload = legacyProject({
 			id: 'project-legacy-parity',
 			name: 'Legacy Parity',
@@ -236,32 +222,9 @@ describe('P23.0 stage 4 — Preview/visitor compile parity for wall-first', () =
 		// migrated layout through the same shared core.
 		const direct = compileWallFirstLayoutGeometry(prepared.project.layout as never);
 		expect(prepared.geometry).toEqual(direct.geometry);
-		// And the legacy render-model entry still compiles the source layout.
+		// And the legacy compile entry still compiles the source layout.
 		const legacyDirect = compileLayoutGeometry(payload.layout as never);
 		expect(legacyDirect.geometry.rooms).toHaveLength(1);
-		const bundle = derivePreviewBundle(payload.id, payload.name, payload.layout, payload.scene as never);
-		expect(bundle.geometry).toEqual(legacyDirect.geometry);
-	});
-
-	it('the Preview entry gate passes a wall-first payload with no retained bytes', () => {
-		const payload = wallFirstPayload();
-		const reason = computeVisitorPreviewBlocker({
-			scene: payload.scene as never,
-			layout: payload.layout as never,
-			projectId: payload.id,
-			projectName: payload.name,
-			conditions: {
-				interactionActive: false,
-				documentTransactionActive: false,
-				projectMutationInFlight: false,
-				projectAssetMutationInFlight: false,
-				pendingPlacementActive: false,
-				bootstrapBusy: false,
-				pendingSaveHandoff: false
-			},
-			textureStore: stubTextureStore
-		});
-		expect(reason).toBeNull();
 	});
 });
 
@@ -369,19 +332,6 @@ describe('P23.0 stage 4 — preparation routing and Room-frame discipline', () =
 // ---------------------------------------------------------------------------
 
 describe('P23.0 stage 4 — cold-load byte-identity (no stored-byte rewrites)', () => {
-	it('the checked-in legacy project prepares without mutating its stored bytes', () => {
-		const canonicalBytes = serializeProject(chopinProject);
-		const parsed: unknown = JSON.parse(canonicalBytes);
-		const snapshot = structuredClone(parsed);
-		const prepared = prepareCompatibleRuntime(parsed);
-		if (prepared.kind === 'rejected') throw new Error('expected ready');
-		expect(prepared.decodeKind).toBe('legacy-compatible');
-		// The load rewrote nothing: input deep-equals its pre-load snapshot…
-		expect(parsed).toEqual(snapshot);
-		// …and re-serialization is byte-identical to the stored bytes.
-		expect(serializeProject(parsed)).toBe(canonicalBytes);
-	});
-
 	it('the visitor composer leaves a realistic legacy payload untouched', () => {
 		const payload = legacyProject({
 			id: 'project-cold-bytes',
@@ -404,33 +354,10 @@ describe('P23.0 stage 4 — cold-load byte-identity (no stored-byte rewrites)', 
 			bundle.dispose();
 		}
 	});
-
-	it('the Preview composer leaves a realistic legacy payload untouched', () => {
-		const payload = legacyProject({
-			id: 'project-preview-bytes',
-			name: 'Preview Bytes',
-			rooms: [legacyRoom({ id: 'room-a', name: 'A' })],
-			nodes: [{ id: 'node-1', roomId: 'room-a', position: [1, 2, 3] }]
-		});
-		const snapshot = structuredClone(payload);
-		const bundle = composeDetachedPreviewBundle({
-			scene: payload.scene as never,
-			layout: payload.layout as never,
-			projectId: payload.id,
-			projectName: payload.name,
-			textureStore: stubTextureStore
-		});
-		try {
-			expect(bundle.geometry.rooms).toHaveLength(1);
-			expect(payload).toEqual(snapshot);
-		} finally {
-			bundle.textures.dispose();
-		}
-	});
 });
 
 // ---------------------------------------------------------------------------
-// 4. F0 review — legacy composer-vs-composer parity + true-compat identity
+// 4. F0 review — legacy load identity on a true compat shape
 // ---------------------------------------------------------------------------
 
 describe('P23.0 stage 4 — legacy composer parity on a true compat shape (F0 review)', () => {
@@ -444,34 +371,6 @@ describe('P23.0 stage 4 — legacy composer parity on a true compat shape (F0 re
 			nodes: [{ id: 'node-1', roomId: 'room-a', position: [1, 2, 3] }]
 		});
 	}
-
-	it('both composers agree on a true legacy-compatible payload', () => {
-		const payload = compatPayload();
-		const preview = composeDetachedPreviewBundle({
-			scene: payload.scene as never,
-			layout: payload.layout as never,
-			projectId: payload.id,
-			projectName: payload.name,
-			textureStore: stubTextureStore
-		});
-		const visitor = composeColdReleaseBundle({
-			projectId: payload.id,
-			projectName: payload.name,
-			layout: payload.layout,
-			scene: payload.scene,
-			manifest: coldManifest()
-		});
-		try {
-			// Preview returns the render-model geometry, the visitor the
-			// adapter geometry — both compile the same decoded legacy layout
-			// through the shared core, so they must agree.
-			expect(visitor.geometry).toEqual(preview.geometry);
-			expect(visitor.scene).toEqual(preview.scene);
-		} finally {
-			preview.textures.dispose();
-			visitor.dispose();
-		}
-	});
 
 	it('a true legacy-compatible payload serializes identically across the load', () => {
 		const payload = compatPayload();

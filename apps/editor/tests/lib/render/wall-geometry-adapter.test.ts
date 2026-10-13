@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MeshBasicMaterial, type Material } from 'three';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
+import { compileLayoutGeometry } from '@portfolio/layout-core';
 import { buildRoomWallMesh, type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 import {
 	buildWallHighlightMesh,

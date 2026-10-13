@@ -1,6 +1,19 @@
+/**
+ * P23.5 small architectural preset set — kernel output assertions.
+ *
+ * PR #115 (§7.2 category D extraction) removed the editor shell, so this file
+ * calls the `layout-core` preset planners directly instead of driving them
+ * through the deleted preview-state adapter and its history runner. Every
+ * document expectation below is the one the editor integration asserted
+ * verbatim. The removed editor-wiring half tested the preset draft interaction
+ * state, the preview-state commit path and one-click-is-one-history-entry
+ * semantics; those subjects are gone (the history semantics are recorded as a
+ * T3 F.4 acceptance obligation), as is the editor tool vocabulary that mapped
+ * `preset-*` tools to preset ids.
+ */
 import { describe, expect, it } from 'vitest';
 
-import { compileWallFirstLayoutGeometry } from '$lib/layout/layout-geometry';
+import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import {
 	LAYOUT_ARCHITECTURAL_PRESETS,
 	layoutArchitecturalPreset,
@@ -14,32 +27,9 @@ import {
 import {
 	parseWallFirstLayoutDocumentJson,
 	serializeWallFirstLayoutDocument
-} from '$lib/layout/layout-wall-first-codec';
-import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '$lib/layout/layout-wall-first-types';
-import { buildPlanRenderModel } from '$lib/layout/plan-render-model';
-import {
-	beginLayoutPresetDraft,
-	cancelLayoutPresetDraft,
-	createLayoutInteractionState,
-	hasLayoutTransientInteraction,
-	isLayoutPresetTool,
-	setLayoutDraftTool
-} from '$lib/editor/layout/layout-interaction';
-import { presetIdForTool } from '$lib/editor/layout/plan-overlays';
-import {
-	captureLayoutPreviewSnapshot,
-	commitLayoutObjectPreset,
-	createEmptyWallFirstLayoutPreviewState,
-	layoutPreviewDocument,
-	restoreLayoutPreviewSnapshot,
-	type LayoutPreviewState
-} from '$lib/editor/layout/layout-preview-state.svelte';
-import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
-import { createEditorStore } from '$lib/editor/editor-store.svelte';
-import { createEmptySceneDocument } from '$lib/content/scene';
-import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
-import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
-import type { LayoutObject, LayoutVec2 } from '$lib/layout/layout-types';
+} from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import type { LayoutVec2 } from '@portfolio/layout-core';
 
 function emptyDocument(elevation = 0): LayoutDocumentWallFirst {
 	return {
@@ -84,15 +74,6 @@ describe('P23.5 small architectural preset set', () => {
 		expect(layoutArchitecturalPreset('partition')).toBeUndefined();
 		expect(layoutArchitecturalPreset('wall')).toBeUndefined();
 		expect(layoutArchitecturalPreset('nope')).toBeUndefined();
-	});
-
-	it('maps each preset tool to its preset id', () => {
-		expect(presetIdForTool('preset-column')).toBe('column');
-		expect(presetIdForTool('preset-platform')).toBe('platform');
-		expect(presetIdForTool('preset-plinth')).toBe('plinth');
-		expect(isLayoutPresetTool('preset-column')).toBe(true);
-		expect(isLayoutPresetTool('box')).toBe(false);
-		expect(isLayoutPresetTool('door')).toBe(false);
 	});
 
 	it('commits a Column as one ordinary document-level cylinder object', () => {
@@ -175,7 +156,7 @@ describe('P23.5 small architectural preset set', () => {
 		expect(deleted.document.objects).toHaveLength(0);
 	});
 
-	it('compiles and renders exactly like an equivalent manually created primitive', () => {
+	it('compiles exactly like an equivalent manually created primitive', () => {
 		const presetDocument = committedObject('column', [5, 6]);
 		const manualDocument: LayoutDocumentWallFirst = {
 			...emptyDocument(),
@@ -193,9 +174,6 @@ describe('P23.5 small architectural preset set', () => {
 		const manualCompiled = compileWallFirstLayoutGeometry(manualDocument);
 		expect(presetCompiled.issues).toEqual([]);
 		expect(presetCompiled.geometry.objects).toEqual(manualCompiled.geometry.objects);
-		expect(buildPlanRenderModel(presetCompiled.geometry)).toEqual(
-			buildPlanRenderModel(manualCompiled.geometry)
-		);
 	});
 
 	it('round-trips through Save with no preset-only durable metadata', () => {
@@ -205,127 +183,5 @@ describe('P23.5 small architectural preset set', () => {
 		expect(parsed.document.objects).toHaveLength(1);
 		expect(parsed.document.objects[0]).toMatchObject({ kind: 'box', dimensions: [0.8, 1, 0.8] });
 		expect(JSON.stringify(parsed.document)).not.toContain('preset');
-	});
-
-	it('treats the preset draft as hover-only: it never blocks other mutations', () => {
-		const interaction = createLayoutInteractionState();
-		beginLayoutPresetDraft(interaction, 'preset-column', [1, 2]);
-		expect(interaction.presetDraft).toMatchObject({ tool: 'preset-column', point: [1, 2], valid: true });
-		expect(hasLayoutTransientInteraction(interaction)).toBe(false);
-		beginLayoutPresetDraft(interaction, 'preset-plinth', [NaN, 0]);
-		expect(interaction.presetDraft?.valid).toBe(false);
-		cancelLayoutPresetDraft(interaction);
-		expect(interaction.presetDraft).toBeNull();
-	});
-
-	it('commits presets through the preview state as ordinary objects', () => {
-		const preview = createEmptyWallFirstLayoutPreviewState();
-		const result = commitLayoutObjectPreset(preview, 'plinth', [1, 2]);
-		if (!result.success) throw new Error(`preview commit rejected: ${result.message}`);
-		const layout = preview.project.layout;
-		if (!('formatVersion' in layout)) throw new Error('expected a wall-first layout');
-		expect(layout.objects).toHaveLength(1);
-		expect(layout.objects[0]).toMatchObject({ id: result.objectId, kind: 'box' });
-		expect(layout.objects[0]).not.toHaveProperty('roomId');
-		expect(preview.lastMutationMessage).toBeNull();
-	});
-
-	it('leaves the preview untouched when a preset commit rejects', () => {
-		const preview = createEmptyWallFirstLayoutPreviewState();
-		const result = commitLayoutObjectPreset(preview, 'column', [NaN, 0]);
-		expect(result.success).toBe(false);
-		const layout = preview.project.layout;
-		if (!('formatVersion' in layout)) throw new Error('expected a wall-first layout');
-		expect(layout.objects).toHaveLength(0);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// P23.5 history acceptance — one click is one Layout history entry through
-// the same transaction path the viewport drives (begin → commit → commit,
-// reject → cancel). Undo/Redo preserve exact object identity.
-// ---------------------------------------------------------------------------
-
-function presetStore() {
-	const store = createEditorStore({
-		document: createEmptySceneDocument(),
-		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
-	});
-	const preview = createEmptyWallFirstLayoutPreviewState();
-	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(preview),
-		replace: (snapshot) =>
-			restoreLayoutPreviewSnapshot(
-				preview,
-				snapshot as ReturnType<typeof captureLayoutPreviewSnapshot>
-			),
-		matches: (a, b) =>
-			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
-			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
-	});
-	store.setLayoutFormatPolicySource(() => preview);
-	return { store, preview };
-}
-
-function liveObjects(preview: LayoutPreviewState): LayoutObject[] {
-	const layout = layoutPreviewDocument(preview);
-	if (!('formatVersion' in layout)) throw new Error('expected a wall-first layout');
-	return (layout as LayoutDocumentWallFirst).objects;
-}
-
-describe('P23.5 preset placement history', () => {
-	it('commits one click as exactly one history entry with exact Undo/Redo identity', () => {
-		const { store, preview } = presetStore();
-		const outcome = runLayoutMutation(
-			layoutMutationRunnerFor(store, preview),
-			() => commitLayoutObjectPreset(preview, 'plinth', [1, 2]),
-			(result) => result.success
-		);
-		expect(outcome.kind).toBe('committed');
-		if (outcome.kind !== 'committed' || !outcome.result.success) {
-			throw new Error(`expected a committed preset, got ${JSON.stringify(outcome)}`);
-		}
-		const objectId = outcome.result.objectId;
-		expect(objectId).toBe('layout-object-1');
-		expect(liveObjects(preview)).toHaveLength(1);
-
-		// Undo removes the exact object and exhausts the single entry.
-		expect(store.canUndo).toBe(true);
-		expect(store.undo()).toBe(true);
-		expect(liveObjects(preview)).toHaveLength(0);
-		expect(store.canUndo).toBe(false);
-
-		// Redo restores the same ID — never a fresh allocation.
-		expect(store.redo()).toBe(true);
-		const restored = liveObjects(preview);
-		expect(restored).toHaveLength(1);
-		expect(restored[0]!.id).toBe(objectId);
-		expect(restored[0]).toMatchObject({ kind: 'box', dimensions: [0.8, 1, 0.8] });
-	});
-
-	it('writes zero history entries when a preset click rejects', () => {
-		const { store, preview } = presetStore();
-		const outcome = runLayoutMutation(
-			layoutMutationRunnerFor(store, preview),
-			() => commitLayoutObjectPreset(preview, 'column', [NaN, 0]),
-			(result) => result.success
-		);
-		expect(outcome.kind).toBe('cancelled');
-		expect(liveObjects(preview)).toHaveLength(0);
-		expect(store.canUndo).toBe(false);
-	});
-
-	it('writes zero history entries when Escape cancels before placement', () => {
-		const { store, preview } = presetStore();
-		const interaction = createLayoutInteractionState();
-		setLayoutDraftTool(interaction, 'preset-column');
-		beginLayoutPresetDraft(interaction, 'preset-column', [3, 4]);
-		// Escape: clear the hover footprint and disarm — no transaction ever
-		// opened, so there is nothing to commit or cancel.
-		cancelLayoutPresetDraft(interaction);
-		setLayoutDraftTool(interaction, 'select');
-		expect(interaction.presetDraft).toBeNull();
-		expect(liveObjects(preview)).toHaveLength(0);
-		expect(store.canUndo).toBe(false);
 	});
 });

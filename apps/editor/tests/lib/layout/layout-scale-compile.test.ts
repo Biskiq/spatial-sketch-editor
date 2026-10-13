@@ -9,8 +9,8 @@
  * knob. `describe` title retained so the full test names are unchanged.
  */
 import { describe, expect, it } from 'vitest';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
-import { validateLayoutDocument } from '$lib/layout/layout-codec';
+import { compileLayoutGeometry } from '@portfolio/layout-core';
+import { validateLayoutDocument } from '@portfolio/layout-core';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
 
 describe('layout-scale-fixtures', () => {

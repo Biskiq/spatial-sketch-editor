@@ -1,5 +1,5 @@
 /**
- * P23B.5 S2–S5 — the bounded gesture-scoped sample owner for the transient preflight.
+ * P23B.5 S2–S3 — the bounded gesture-scoped sample owner for the transient preflight.
  *
  * The owner is `createWallSamplingDerivation()`, held by the Plan viewport for
  * exactly one direct-architecture gesture and threaded into
@@ -7,7 +7,7 @@
  * TIMES an identical artefact is derived; it never changes which artefact the
  * canonical gate sees, and it never touches release, validation or history.
  *
- * Oracles exercised here:
+ * Oracles kept here:
  *
  * - S2 OR-1  verdict and artefact equivalence: scoped == per-call, on the
  *            committed fixtures, both admitted and refused.
@@ -18,21 +18,28 @@
  *            counters; a scope cannot inherit entries; every sampled input is
  *            still byte-identical after a full drag (the mutation bind the S0
  *            P6 hazard requires), and a refused preflight leaves the frozen
- *            baseline untouched. * - S4       the real transient path: a three-pointermove gesture derives each
- *            untouched Wall once and reuses the rest, and the request count the
- *            scope serves is unchanged — only its miss/hit split moves.
+ *            baseline untouched.
+ * - S5 (control) a straight-only fixture short-circuits the gate and issues zero
+ *            sampling requests, so the scope holds nothing to reuse.
+ *
+ * REMOVED BY PR #115 (§7.2 categories C/D — editor wiring and measurement):
+ *
+ * - **S4, "the scope on the real transient preflight path"**, drove
+ *   `transientArchitectureEdit` / `architectureEditProposalIntent` from the
+ *   removed `lib/editor` shell, so it tested the deleted editor wiring. Its
+ *   request-count reconciliation was an observation-count assertion besides.
+ *   The obligation it carried — the scope changes how often an artefact is
+ *   derived and nothing else — is what the kept S2 OR-1/OR-5 equivalence proves.
+ * - **S5 direct measurement** (`timeOp` over a six-move drag, and the
+ *   derivation/attribution reconciliation) was PERF-lane measurement; §5.1
+ *   removes the bench apparatus and §7.3 the PERF lane. The only part of S5
+ *   that stated a kernel invariant rather than a count is the straight control,
+ *   which is kept below.
  *
  * The test-only observer fires inside `wallCenterlineSamples`, so an observation
  * is a FRESH derive: a hit is invisible to it by construction. Every count below
  * therefore reconciles (proposal calls + preflight misses) against the scope's own
  * `derivations`/`hits`, never against the observer alone.
- * - S5       direct measurement: per-stage requests, derivations (misses /
- *            refusals), hits, failed derives and cached-`undefined`, reconciled
- *            without double counting, with advisory scope overhead.
- *
- * On this grammar, `derivations === misses === refusals` (a refusal IS an absent
- * key: ineligible input), and a cached `undefined` is NOT useful geometry reuse —
- * so both are counted separately rather than folded into `hits`.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -40,32 +47,20 @@ import {
 	clearWallSamplingObserverForTest,
 	createWallSamplingDerivation,
 	preflightWallFirstArchitectureCandidate,
-	proposeWallFirstArchitectureGeometry,
 	serializeWallFirstLayoutDocument,
 	setWallSamplingObserverForTest,
 	wallCenterlineSamples,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type SampledSegment,
-	type WallFirstArchitectureProposalIntent,
-	type WallSamplingDerivation
+	type WallFirstArchitectureProposalIntent
 } from '@portfolio/layout-core';
 import {
 	buildP23BCorrectnessFixture,
 	buildP23BMatrixFixture,
 	P23B_CORRECTNESS_SPECS,
 	P23B_MATRIX_SPECS
-} from '$lib/bench/p23b-fixtures';
-import { timeOp } from '$lib/bench/bench-harness';
-import type { LayoutArchitectureEditGesture } from '$lib/editor/layout/layout-interaction';
-import {
-	architectureEditProposalIntent,
-	transientArchitectureEdit,
-	type LayoutTransientArchitectureEdit
-} from '$lib/editor/layout/layout-transient-edit';
-
-const WARMUP = 3;
-const SAMPLES = 9;
+} from './__fixtures__/p23b-fixtures';
 
 function matrixFixture(id: string): LayoutDocumentWallFirst {
 	return buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.id === id)!);
@@ -175,30 +170,6 @@ function preflightCases(): Array<{ id: string; document: LayoutDocumentWallFirst
 		{ id: 'N-2i (already refused)', document: curvatureFixture('N-2i') },
 		{ id: 'class4-self-intersection-v1', document: curvatureFixture('class4-self-intersection-v1') }
 	];
-}
-
-/** The narrowed junction-move member: the one direct gesture these proofs drive. */
-type JunctionMoveGesture = Extract<LayoutArchitectureEditGesture, { kind: 'junction-move' }>;
-
-/** One junction gesture, as the viewport builds it, minus the viewport. */
-function junctionGesture(doc: LayoutDocumentWallFirst): JunctionMoveGesture {
-	const junctionId = doc.junctions[0]!.id;
-	const point = junctionPoint(doc, junctionId);
-	return {
-		kind: 'junction-move',
-		pointerId: 1,
-		junctionId,
-		startPointer: [point[0], point[1]] as LayoutVec2,
-		baselinePoint: [point[0], point[1]] as LayoutVec2,
-		junctionExcludePoints: doc.junctions.map(
-			(junction) => [junction.point[0], junction.point[1]] as LayoutVec2
-		),
-		affectedWallIds: doc.walls
-			.filter((wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId)
-			.map((wall) => wall.id),
-		candidatePoint: [point[0], point[1]] as LayoutVec2,
-		valid: false
-	};
 }
 
 describe('P23B.5 S2 — shared-preflight equivalence and refusal', () => {
@@ -373,149 +344,8 @@ describe('P23B.5 S3 — bounded lifetime, reset and immutability', () => {
 	});
 });
 
-describe('P23B.5 S4 — the scope on the real transient preflight path', () => {
-	/** One pointermove's observed fresh derives, as the real transient path makes them. */
-	function moveGesture(
-		doc: LayoutDocumentWallFirst,
-		moves: readonly number[],
-		sampling?: WallSamplingDerivation
-	): Array<{
-		calls: RecordedCall[];
-		intent: WallFirstArchitectureProposalIntent;
-		attempt: LayoutTransientArchitectureEdit | null;
-	}> {
-		const gesture = junctionGesture(doc);
-		const start = [...gesture.baselinePoint] as LayoutVec2;
-		return moves.map((dx) => {
-			gesture.candidatePoint = [start[0] + dx, start[1]];
-			const intent = architectureEditProposalIntent(gesture);
-			let attempt: LayoutTransientArchitectureEdit | null = null;
-			const calls = record(() => {
-				attempt = transientArchitectureEdit({ gesture, baseline: doc, moved: true, sampling });
-			});
-			return { calls, intent, attempt };
-		});
-	}
-
-	it('a three-pointermove gesture derives each untouched Wall once and reuses the rest', () => {
-		const doc = matrixFixture('p23b-40-wall-all-curved-v1');
-		const moves = [0.05, 0.1, 0.15];
-		const junctionId = doc.junctions[0]!.id;
-		const incident = new Set(
-			doc.walls
-				.filter((wall) => wall.startJunctionId === junctionId || wall.endJunctionId === junctionId)
-				.map((wall) => wall.id)
-		);
-		expect(incident.size, 'the moved Junction has incident Walls').toBeGreaterThan(0);
-
-		const scope = createWallSamplingDerivation();
-		const scoped = moveGesture(doc, moves, scope);
-		// The proposal stage is deliberately unscoped, so the real proposal call for
-		// the same intents gives the per-move share the scope never sees, and the
-		// same three moves with NO scope give the preflight request-count reference.
-		const unscoped = moveGesture(doc, moves);
-		const proposal = scoped.map(
-			({ intent }) => record(() => proposeWallFirstArchitectureGeometry(doc, intent)).length
-		);
-		const observed = (run: Array<{ calls: RecordedCall[] }>) =>
-			run.reduce((total, move) => total + move.calls.length, 0);
-		const preflightCalls = (run: Array<{ calls: RecordedCall[] }>) =>
-			observed(run) - proposal.reduce((total, count) => total + count, 0);
-
-		// Nothing is reused before anything is stored: the first pointermove of a
-		// fresh scope derives exactly what the unscoped path derives.
-		expect(observed([scoped[0]!]), 'a fresh scope suppresses nothing').toBe(observed([unscoped[0]!]));
-		// After that only the moved Walls re-derive, and the request count the scope
-		// serves is unchanged — 44 misses + 76 hits = the same 120 preflight requests
-		// the unscoped path makes. The observer sees fresh derives only, so the
-		// scope's own counters are what reconcile hits against those requests.
-		expect(new Set(scoped[1]!.calls.map((call) => call.wallId))).toEqual(incident);
-		expect(new Set(scoped[2]!.calls.map((call) => call.wallId))).toEqual(incident);
-		expect(preflightCalls(scoped), 'the preflight misses are the scope derivations').toBe(
-			scope.stats.derivations
-		);
-		expect(
-			scope.stats.derivations + scope.stats.hits,
-			'the scope serves every preflight request, hit or miss'
-		).toBe(preflightCalls(unscoped));
-		expect(scope.stats.hits, 'the gesture reuses').toBeGreaterThan(0);
-		expect(
-			preflightCalls(unscoped) - preflightCalls(scoped),
-			'every suppressed derive is exactly one counted hit'
-		).toBe(scope.stats.hits);
-		// The real path's status and its rendered attempt are unchanged by the
-		// scope: reuse changes how often an artefact is derived, nothing else.
-		expect(scoped.map((move) => move.attempt)).toEqual(unscoped.map((move) => move.attempt));
-	});
-});
-
-describe('P23B.5 S5 — direct measurement', () => {
-	it('attributes every derivation to a cold miss or a changed-input refusal, then reconciles the requests', () => {
-		const doc = matrixFixture('p23b-40-wall-all-curved-v1');
-		const moves = [0.05, 0.1, 0.15];
-		const firstIntent = junctionMoveIntent(doc, moves[0]!);
-
-		// Stage 1 — the proposal. Unscoped by design: each intent builds a NEW
-		// centreline, so its inputs never repeat and the scope would not hit.
-		const proposalRequests = record(() => proposeWallFirstArchitectureGeometry(doc, firstIntent)).length;
-
-		// Stage 2 — the scoped preflight over the drag.
-		const scope = createWallSamplingDerivation();
-		const preflight = moves.map((dx) =>
-			record(() => preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope))
-		);
-		const observedMisses = preflight.reduce((total, calls) => total + calls.length, 0);
-
-		// The unscoped reference fixes each pointermove's total sampling-call count
-		// (the gate samples one forward derivation per curved Wall), so hits can be
-		// reconciled against the true total rather than a second observer.
-		const unscopedPerMove = record(() =>
-			preflightWallFirstArchitectureCandidate(doc, firstIntent)
-		).length;
-		const totalCalls = unscopedPerMove * moves.length;
-
-		// Attribution from the OBSERVED inputs alone — a second opinion on the
-		// scope's own split, so a wrong counter cannot agree with itself. A Wall's
-		// first observed request is a cold miss; a later one whose traced inputs
-		// (centerline object, traversal or resolved endpoints) differ is a refusal.
-		const lastObserved = new Map<string, string>();
-		const attribution = { coldMisses: 0, refusals: 0 };
-		for (const calls of preflight) {
-			for (const call of calls) {
-				const traced = `${call.traversal}|${call.bucket}|${call.digest}`;
-				const previous = lastObserved.get(call.wallId);
-				if (previous === undefined) attribution.coldMisses += 1;
-				else if (previous !== traced) attribution.refusals += 1;
-				lastObserved.set(call.wallId, traced);
-			}
-		}
-
-		expect(scope.stats.derivations, 'observed misses are the derivations').toBe(observedMisses);
-		expect(scope.stats.coldMisses, 'cold misses match the observed first requests').toBe(
-			attribution.coldMisses
-		);
-		expect(scope.stats.refusals, 'refusals match the observed changed inputs').toBe(
-			attribution.refusals
-		);
-		expect(
-			scope.stats.coldMisses + scope.stats.refusals,
-			'derivations are exactly cold misses plus refusals'
-		).toBe(scope.stats.derivations);
-		expect(scope.stats.derivations + scope.stats.hits, 'requests reconcile').toBe(totalCalls);
-		expect(scope.stats.entries, 'entries are distinct keys, not requests').toBe(scope.stats.derivations);
-		expect(scope.stats.failedDerivations, 'no failed derive on a valid fixture').toBe(0);
-		expect(scope.stats.cachedUndefined, 'no cached undefined served').toBe(0);
-		// The scale of the committed fixture, stated so a change in either the
-		// fixture or the gate is visible rather than absorbed.
-		expect(attribution.coldMisses, 'every sampled Wall is derived once on move 1').toBe(40);
-		expect(attribution.refusals, 'the moved Junction re-derives its two incident Walls per move')
-			.toBe(4);
-		console.log(
-			`S5 curved-40 drag: proposalRequests=${proposalRequests} preflightCalls=${totalCalls} derivations=${scope.stats.derivations} (coldMisses=${scope.stats.coldMisses} + refusals=${scope.stats.refusals}) hits=${scope.stats.hits} entries=${scope.stats.entries} failedDerives=${scope.stats.failedDerivations} cachedUndefined=${scope.stats.cachedUndefined}`
-		);
-	});
-
-	it('records the straight control (no sampled Walls) and the scope overhead (advisory)', { timeout: 120000 }, () => {
+describe('P23B.5 S5 — the straight control', () => {
+	it('a straight-only fixture short-circuits the gate: zero sampling requests, nothing to reuse', () => {
 		const straight = matrixFixture('p23b-40-wall-straight-v1');
 		const straightScope = createWallSamplingDerivation();
 		const straightCalls = record(() =>
@@ -524,22 +354,5 @@ describe('P23B.5 S5 — direct measurement', () => {
 		// The straight control has nothing to reuse: a line short-circuits the gate.
 		expect(straightCalls, 'no sampling on straight-only fixtures').toBe(0);
 		expect(straightScope.stats.derivations + straightScope.stats.hits).toBe(0);
-
-		const doc = matrixFixture('p23b-40-wall-all-curved-v1');
-		const moves = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3];
-		const run = (scope: WallSamplingDerivation | undefined) => {
-			for (const dx of moves) {
-				preflightWallFirstArchitectureCandidate(doc, junctionMoveIntent(doc, dx), scope);
-			}
-		};
-		run(undefined);
-		run(createWallSamplingDerivation());
-		const unscoped = timeOp(() => run(undefined), { warmup: WARMUP, samples: SAMPLES });
-		const scoped = timeOp(() => run(createWallSamplingDerivation()), { warmup: WARMUP, samples: SAMPLES });
-		console.log(
-			`S5 preflight 6-move drag (curved-40, advisory): unscoped p50=${unscoped.p50.toFixed(2)} p95=${unscoped.p95.toFixed(2)} ms · scoped p50=${scoped.p50.toFixed(2)} p95=${scoped.p95.toFixed(2)} ms`
-		);
-		// Advisory only: no threshold is asserted (P23B.0 governs timing gates).
-		expect(scoped.p50).toBeGreaterThan(0);
 	});
 });

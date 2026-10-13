@@ -34,7 +34,7 @@ packages/project-model/src/scene-codec/
 
 ## Boundary rule
 
-- **Only `index.ts` is public.** Package consumers import from `@portfolio/project-model`; the editor facade at `apps/editor/src/lib/content/scene-codec/` configures the same barrel for catalogue validation. The visitor has no codec facade: `apps/museum/src/lib/content/scene.ts` calls the package directly through its catalogue-policy seam. No consumer imports the siblings.
+- **Only `index.ts` is public.** Package consumers import from `@portfolio/project-model`. The app seam is `apps/editor/src/lib/content/scene.ts`, which re-exports the barrel and configures it for catalogue validation; after #115 the editor shell and the separate `apps/museum` fork are gone, so the visitor consumes that same seam. No consumer imports the siblings.
 - The boundary is **convention, not enforced by the module system.** The `@internal` JSDoc tags are the contract: they forbid sibling imports. The app facade is a thin adapter, not a second codec; restructuring the five files is safe as long as the package `index.ts` surface is unchanged.
 - Public surface (frozen): `SceneDocumentIssue`, `SceneDocumentValidationResult`, `SceneDocumentValidationError`, `cameraSceneConnectionTimingFailureReason`, `validateSceneDocument`, `parseSceneDocumentJson`, `serializeSceneDocument`.
 

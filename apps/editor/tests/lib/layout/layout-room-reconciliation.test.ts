@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import type { LayoutVec2 } from '$lib/layout/layout-types';
-import { extractBoundaryCandidateFaces } from '$lib/layout/layout-face-extraction';
+import type { LayoutVec2 } from '@portfolio/layout-core';
+import { extractBoundaryCandidateFaces } from '@portfolio/layout-core';
 import {
 	reconcileRooms,
 	ROOM_CREATION_DEFAULTS,
 	type ComponentLineage,
 	type RoomIdAllocator
-} from '$lib/layout/layout-room-reconciliation';
+} from '@portfolio/layout-core';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutDocumentWallFirst
-} from '$lib/layout/layout-wall-first-codec';
+} from '@portfolio/layout-core';
 
 type WallSeed = {
 	id: string;

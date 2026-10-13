@@ -3,8 +3,6 @@ import {
   createNavigationGraph,
   type RuntimeScene
 } from '$lib/content/scene';
-import { navigationGraph, scene } from '$lib/content/chopin-project';
-import { loadFixtureScene } from '../../content/__fixtures__/load-fixture-scene';
 import type {
   RuntimeConnection,
   NavigationNodeData,
@@ -23,7 +21,14 @@ import {
   getFlowRoute
 } from '@portfolio/camera-core';
 
-const { graph: fixtureGraph } = loadFixtureScene();
+// PR #115 (§7.2 A′ / §3.7): the fixture-graph cases in this file drove
+// `loadFixtureScene()`'s legacy room-local resolution through Chopin Room
+// frames, which are isolated for the external frozen project. Their expectations
+// are frame-transformed absolute positions (for example the multi-hop goldens)
+// or Chopin-runtime identities, so they could not be re-pointed at a kernel
+// fixture without changing what they assert: they are frozen-product cases and
+// moved with the frozen project. Every camera-core case below builds its own
+// nodes/connections, so it is frame-independent and stays.
 
 const nodes: NavigationNodeData[] = [
   {
@@ -112,90 +117,10 @@ const customScene: RuntimeScene = {
 };
 const customGraph = createNavigationGraph(customScene);
 
-/** Fixture tour edge midpoints — regenerate via loadFixtureScene + sampleCameraMotion(0.5). */
-const FIXTURE_EDGE_MIDPOINTS: Array<{
-  id: string;
-  duration: number;
-  position: Vec3;
-  forwardTarget: Vec3;
-  reverseTarget: Vec3;
-}> = [
-  {
-    id: 'tour-a-b',
-    duration: 4.1711491619918535,
-    position: [-9.501975209857097, 1.65, 9.997893109485766],
-    forwardTarget: [-6.999999999999998, 1.25, 7.500000000000002],
-    reverseTarget: [-7.0000000000000036, 1.25, 7.4999999999999964]
-  },
-  {
-    id: 'tour-b-paris',
-    duration: 2.7666819277203705,
-    position: [-14.25351582135361, 1.65, -7.7241269842340365],
-    forwardTarget: [-12.554836792373221, 1.25, -6.073202467405213],
-    reverseTarget: [-12.55483679237322, 1.25, -6.073202467405215]
-  },
-  {
-    id: 'tour-paris-d',
-    duration: 3.987604149935301,
-    position: [0, 1.65, -16.41438026075828],
-    forwardTarget: [-1.4694029336477836, 1.25, -11.384266483748316],
-    reverseTarget: [-1.4694029336477339, 1.25, -11.384266483748313]
-  },
-  {
-    id: 'tour-d-a',
-    duration: 4.8,
-    position: [5.327234105432248, 1.65, 4.584761510378474],
-    forwardTarget: [4.085433858725455, 1.25, 2.18893598365692],
-    reverseTarget: [4.085433858725469, 1.25, 2.1889359836568776]
-  }
-];
-
-const FIXTURE_MULTI_HOP = [
-  {
-    from: 'tour-a',
-    to: 'tour-paris',
-    duration: 4.8,
-    samples: [
-      {
-        progress: 0.25,
-        position: [-3.7014311754302955, 1.65, 16.185140079541018] as Vec3,
-        target: [-2.9877394836913584, 1.2939373453484024, 12.363759279095861] as Vec3
-      },
-      {
-        progress: 0.5,
-        position: [-15.352793102120025, 1.65, 3.7570206910719737] as Vec3,
-        target: [-14.43134543066014, 1.4622256680979433, 2.2664599141234074] as Vec3
-      },
-      {
-        progress: 0.75,
-        position: [-13.72034928028996, 1.65, -11.812509661449276] as Vec3,
-        target: [-13.799658516831052, 1.5, -11.20435726656925] as Vec3
-      }
-    ]
-  },
-  {
-    from: 'tour-paris',
-    to: 'tour-a',
-    duration: 4.8,
-    samples: [
-      {
-        progress: 0.25,
-        position: [-13.720349280289964, 1.65, -11.81250966144925] as Vec3,
-        target: [-12.966418396196588, 1.3288048352737265, -8.31762317458757] as Vec3
-      },
-      {
-        progress: 0.5,
-        position: [-15.352793102120007, 1.65, 3.7570206910719923] as Vec3,
-        target: [-13.506540224841634, 1.5, 5.726357093502257] as Vec3
-      },
-      {
-        progress: 0.75,
-        position: [-3.7014311754302955, 1.65, 16.185140079541018] as Vec3,
-        target: [-2.3574990998526513, 1.5, 17.61866762682384] as Vec3
-      }
-    ]
-  }
-] as const;
+// `FIXTURE_EDGE_MIDPOINTS` and `FIXTURE_MULTI_HOP` held frame-transformed
+// absolute-position goldens for the Chopin fixture graph. They moved with the
+// frozen project (§7.2 A′); re-deriving them against a different fixture would
+// change what they assert, which the plan forbids.
 
 function sampleRoute(route: ReturnType<typeof getCameraRoute>, progress: number) {
   const motion = createCameraMotion(route);
@@ -237,21 +162,6 @@ function expectedRouteEdge(
 }
 
 describe('getCameraRoute', () => {
-  it.each(FIXTURE_MULTI_HOP)(
-    'preserves fixture multi-hop motion from $from to $to',
-    ({ from, to, duration, samples }) => {
-      const route = getCameraRoute(from, to, fixtureGraph);
-      const motion = createCameraMotion(route);
-      expect(motion.durationSeconds).toBeCloseTo(duration, 12);
-
-      for (const expected of samples) {
-        const actual = sampleRoute(route, expected.progress);
-        expectTupleClose(actual.position, expected.position);
-        expectTupleClose(actual.target, expected.target);
-      }
-    }
-  );
-
   it('coalesces a forward multi-edge legacy run with Phase 6 duplicate policy', () => {
     expect(getCameraRoute('a', 'c', customGraph)).toEqual({
       positionParts: [
@@ -319,26 +229,6 @@ describe('getCameraRoute', () => {
     expect(reverseSpans[0].length).toBeCloseTo(forwardSpans[1].length, 12);
     expect(reverseSpans[1].length).toBeCloseTo(forwardSpans[0].length, 12);
     expect(reverseSpans[1].endDistance).toBe(reverse.positionPath.getLength());
-  });
-
-  it('retains contiguous exact distance spans on a representative multi-hop route', () => {
-    const route = getCameraRoute('tour-a', 'tour-paris', fixtureGraph);
-    const motion = createCameraMotion(route);
-
-    expect(route.edges.map((edge) => edge.connectionId)).toEqual([
-      'tour-a-b',
-      'tour-b-paris'
-    ]);
-    expect(motion.positionEdgeSpans).toHaveLength(route.edges.length);
-    expect(motion.positionEdgeSpans[0].startDistance).toBe(0);
-    for (let index = 1; index < motion.positionEdgeSpans.length; index += 1) {
-      expect(motion.positionEdgeSpans[index].startDistance).toBe(
-        motion.positionEdgeSpans[index - 1].endDistance
-      );
-    }
-    expect(motion.positionEdgeSpans.at(-1)?.endDistance).toBe(
-      motion.positionPath.getLength()
-    );
   });
 
   it('reverses legacy edge points during reverse traversal', () => {
@@ -638,36 +528,9 @@ describe('getCameraRoute', () => {
     );
   });
 
-  it('keeps checked-in scene graph explicit at the call site (identity smoke)', () => {
-    const start = navigationGraph.navigationNodes[0]!;
-    const neighbor = start.connectedNodeIds[0];
-    if (!neighbor) {
-      expect(navigationGraph.connections.length).toBeGreaterThan(0);
-      return;
-    }
-    expect(getCameraRoute(start.id, neighbor, navigationGraph)).toEqual(
-      getCameraRoute(start.id, neighbor, navigationGraph)
-    );
-    expect(navigationGraph.navigationNodes).toBe(scene.navigationNodes);
-  });
 });
 
 describe('getCameraConnectionRoute', () => {
-  it.each(FIXTURE_EDGE_MIDPOINTS)(
-    'preserves fixture motion for $id in both directions',
-    ({ id, duration, position, forwardTarget, reverseTarget }) => {
-      const forward = sampleRoute(getCameraConnectionRoute(id, 'forward', fixtureGraph), 0.5);
-      const reverse = sampleRoute(getCameraConnectionRoute(id, 'reverse', fixtureGraph), 0.5);
-
-      expect(forward.motion.durationSeconds).toBeCloseTo(duration, 12);
-      expect(reverse.motion.durationSeconds).toBeCloseTo(duration, 12);
-      expectTupleClose(forward.position, position);
-      expectTupleClose(reverse.position, position);
-      expectTupleClose(forward.target, forwardTarget);
-      expectTupleClose(reverse.target, reverseTarget);
-    }
-  );
-
   it('resolves exact selected edge instead of using BFS and supports both directions', () => {
     const parallelConnections: RuntimeConnection[] = [
       {
@@ -908,85 +771,11 @@ describe('getCameraConnectionRoute', () => {
 });
 
 describe('getFlowRoute', () => {
-  it('resolves the open chain by default and appends the derived loop with loop: true', () => {
-    const once = getFlowRoute('tour-a', fixtureGraph);
-    expect(once.nodeIds).toEqual(['tour-a', 'tour-b', 'tour-paris', 'tour-d']);
-    expect(once.edges.map((edge) => edge.connectionId)).toEqual([
-      'tour-a-b',
-      'tour-b-paris',
-      'tour-paris-d'
-    ]);
-
-    const route = getFlowRoute('tour-a', fixtureGraph, { loop: true });
-    expect(route.nodeIds).toEqual([
-      'tour-a',
-      'tour-b',
-      'tour-paris',
-      'tour-d',
-      'tour-a'
-    ]);
-    expect(route.edges.map((edge) => edge.connectionId)).toEqual([
-      'tour-a-b',
-      'tour-b-paris',
-      'tour-paris-d',
-      'tour-d-a'
-    ]);
-    expect(route.edges.map((edge) => edge.direction)).toEqual(
-      Array.from({ length: 4 }, () => 'forward')
-    );
-    expect(createCameraMotion(route).positionEdgeSpans).toHaveLength(4);
-    const finalSample = sampleRoute(route, 1);
-    expectTupleClose(
-      finalSample.position,
-      fixtureGraph.nodeById.get('tour-a')!.position
-    );
-    expectTupleClose(
-      finalSample.target,
-      fixtureGraph.nodeById.get('tour-a')!.cameraTarget
-    );
-    expect(getFlowLoopConnectionId('tour-a', fixtureGraph)).toBe('tour-d-a');
-  });
-
-  it('retains reverse traversal when a flow connection is authored backwards', () => {
-    const reversedConnection = fixtureGraph.connections[0]!;
-    const graph = createNavigationGraph({
-      entities: [],
-      objects: [],
-      navigationNodes: [...fixtureGraph.navigationNodes],
-      connections: [
-        {
-          ...reversedConnection,
-          fromNodeId: reversedConnection.toNodeId,
-          toNodeId: reversedConnection.fromNodeId,
-          positionPath: {
-            ...reversedConnection.positionPath,
-            anchors: [...reversedConnection.positionPath.anchors].reverse()
-          }
-        },
-        ...fixtureGraph.connections.slice(1)
-      ]
-    });
-
-    const route = getFlowRoute('tour-a', graph, { loop: true });
-    expect(route.edges[0]).toMatchObject({
-      connectionId: 'tour-a-b',
-      direction: 'reverse',
-      fromNodeId: 'tour-a',
-      toNodeId: 'tour-b'
-    });
-    expect(route.edges.slice(1).map((edge) => edge.direction)).toEqual(
-      Array.from({ length: 3 }, () => 'forward')
-    );
-  });
-
-  it('rotates the same legacy cycle from another start', () => {
-    const route = getFlowRoute('tour-paris', fixtureGraph, { loop: true });
-
-    expect(route.nodeIds[0]).toBe('tour-paris');
-    expect(route.nodeIds.at(-1)).toBe('tour-paris');
-    expect(route.edges).toHaveLength(4);
-    expect(new Set(route.edges.map((edge) => edge.connectionId)).size).toBe(4);
-  });
+  // The four `fixtureGraph` flow cases (open chain + derived loop, reversed
+  // flow connection, rotated legacy cycle, broken reciprocal links) were driven
+  // by the Chopin fixture graph's room-local resolution and moved with the
+  // frozen project (§7.2 A′). Every case below builds its own graph and keeps the
+  // same `getFlowRoute`/`getFlowLoopConnectionId` guarantees.
 
   it('S10.2 — a two-node pair never loops (distinct-connection test)', () => {
 	    // Legacy closed 2-cycle: both nodes point at each other, sharing one
@@ -1069,32 +858,63 @@ describe('getFlowRoute', () => {
   });
 
   it('rejects broken reciprocal links and missing direct flow edges', () => {
-    const navigationNodes = fixtureGraph.navigationNodes.map((node) => ({
+    // PR #115 (§7.2 A′): rebuilt on this file's own graph so the guarantee stays
+    // in the kernel suite without the isolated Chopin fixture. The expectations
+    // ('not reciprocal'; 'missing a connection from a to b') are unchanged.
+    const flowNodes: NavigationNodeData[] = nodes.slice(0, 3).map((node, index) => ({
       ...node,
-      position: [...node.position] as Vec3,
-      cameraTarget: [...node.cameraTarget] as Vec3,
-      connectedNodeIds: [...node.connectedNodeIds]
+      connectedNodeIds:
+        index === 0
+          ? ['b', 'c']
+          : index === 1
+            ? ['a', 'c']
+            : ['b', 'a'],
+      ...(index === 0 ? { nextNodeId: 'b' } : {}),
+      ...(index === 1 ? { previousNodeId: 'a', nextNodeId: 'c' } : {}),
+      ...(index === 2 ? { previousNodeId: 'b' } : {})
     }));
-    const tourB = navigationNodes.find((node) => node.id === 'tour-b')!;
-    tourB.previousNodeId = 'tour-d';
-    const brokenReciprocal = {
-      navigationNodes,
-      connections: fixtureGraph.connections,
-      nodeById: new Map(navigationNodes.map((node) => [node.id, node]))
-    };
-    expect(() => getFlowRoute('tour-a', brokenReciprocal)).toThrow(
-      /not reciprocal/
+    const baseConnections: RuntimeConnection[] = [
+      connections[0]!,
+      connections[1]!,
+      {
+        id: 'c-a',
+        fromNodeId: 'c',
+        toNodeId: 'a',
+        clearance: 0.4,
+        positionPath: {
+          kind: 'rounded-polyline',
+          anchors: runtimeAnchors('c-a', [
+            [4, 1, 2],
+            [2, 1, 1],
+            [0, 1, 0]
+          ])
+        }
+      }
+    ];
+    const graph = createNavigationGraph({
+      entities: [],
+      objects: [],
+      navigationNodes: flowNodes,
+      connections: baseConnections
+    });
+
+    const brokenReciprocalNodes: NavigationNodeData[] = flowNodes.map((node) =>
+      node.id === 'b' ? { ...node, previousNodeId: 'c' } : node
     );
+    const brokenReciprocal = {
+      navigationNodes: brokenReciprocalNodes,
+      connections: graph.connections,
+      nodeById: new Map(brokenReciprocalNodes.map((node) => [node.id, node]))
+    };
+    expect(() => getFlowRoute('a', brokenReciprocal)).toThrow(/not reciprocal/);
 
     const missingEdge = {
-      navigationNodes: fixtureGraph.navigationNodes,
-      connections: fixtureGraph.connections.filter(
-        (connection) => connection.id !== 'tour-a-b'
-      ),
-      nodeById: fixtureGraph.nodeById
+      navigationNodes: graph.navigationNodes,
+      connections: graph.connections.filter((connection) => connection.id !== 'a-b'),
+      nodeById: graph.nodeById
     };
-    expect(() => getFlowRoute('tour-a', missingEdge)).toThrow(
-      'missing a connection from tour-a to tour-b'
+    expect(() => getFlowRoute('a', missingEdge)).toThrow(
+      'missing a connection from a to b'
     );
   });
 

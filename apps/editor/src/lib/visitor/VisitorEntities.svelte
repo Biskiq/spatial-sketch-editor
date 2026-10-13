@@ -15,7 +15,7 @@
 	} from '$lib/content/scene';
 	import { resolveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
-	import type { LayoutRoomRegistry } from '$lib/project/project-layout-semantics';
+	import type { LayoutRoomRegistry } from '@portfolio/project-model';
 	import AssetModel from '$lib/museum/assets/AssetModel.svelte';
 	import EntityLight from '$lib/museum/entities/EntityLight.svelte';
 	import EntityPrimitive from '$lib/museum/entities/EntityPrimitive.svelte';

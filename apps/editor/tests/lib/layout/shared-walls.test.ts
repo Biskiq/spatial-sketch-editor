@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { chopinProject } from '$lib/content/chopin-project';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { sampleSegment } from '$lib/layout/layout-geometry-curve';
-import type { DraftSegment, LayoutDocument, LayoutVec2 } from '$lib/layout/layout-types';
+import { sampleSegment } from '@portfolio/layout-core';
+import type { DraftSegment, LayoutDocument, LayoutVec2 } from '@portfolio/layout-core';
 
 /**
  * Deterministic guard for the G4 "no coincident cross-room walls" claim in
@@ -211,10 +210,11 @@ describe('shared walls guard', () => {
 		expect(coincidentSegments(bulging, identical)).toBe(true);
 	});
 
-	it('finds no coincident cross-room walls in the Chopin layout', () => {
-		const pairs = coincidentPairs(wallSegments(chopinProject.layout));
-		expect(pairs.map(describePair)).toEqual([]);
-	});
+	// PR #115 (§7.2 A′): "finds no coincident cross-room walls in the Chopin
+	// layout" was a golden over the isolated Chopin layout document, so it moved
+	// to the external frozen project's suite. The kernel claim it made — no
+	// coincident cross-room walls — is asserted below on the three kernel scale
+	// fixtures with identical expectations.
 
 	it.each([
 		['small', SCALE_FIXTURE_SEEDS.small],

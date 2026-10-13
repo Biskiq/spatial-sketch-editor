@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
 	import { Shape, type BufferGeometry, type Material } from 'three';
-	import type { LayoutVec2 } from '$lib/layout/layout-types';
-	import { legJoinsByWall, type CompiledLayoutGeometry, type LayoutBounds3 } from '$lib/layout/layout-geometry-types';
+	import type { LayoutVec2 } from '@portfolio/layout-core';
+	import { legJoinsByWall, type CompiledLayoutGeometry, type LayoutBounds3 } from '@portfolio/layout-core';
 	import type { VisitorRoomPresentation } from './room-presentation';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import { buildRoomWallMesh, buildStandaloneWallMesh } from '$lib/layout/wall-mesh-builder';
-	import { sphereRenderScale } from '$lib/layout/layout-geometry-objects';
+	import { sphereRenderScale } from '@portfolio/layout-core';
 	import { toWallBufferGeometry } from '$lib/render/wall-geometry-adapter';
 	import { createVisitorWallMaterialFactory } from '$lib/museum/layout/wall-material-factory';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';

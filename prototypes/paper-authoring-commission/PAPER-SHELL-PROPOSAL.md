@@ -86,12 +86,19 @@ authorities, Rooms derived from architecture, one Camera authority); the
 [acceptance](../spatial-authoring/qa/ACCEPTANCE.md)); the
 [World shell synthesis](../world-experience-shell-round/design/design-synthesis.md), including its
 Browse and Search contract (§4) and the accepted
-[dense search board](../world-experience-shell-round/QA-package/02-world-dense-search-recovery.png); the production
-Plan in `apps/editor/src/lib/editor/layout/LayoutDraftToolbar.svelte`,
+[dense search board](../world-experience-shell-round/QA-package/02-world-dense-search-recovery.png).
+
+EVIDENCE-PATHS: start — the production Plan paths this proposal was written against, as they were before #115 removed the editor shell
+
+the production Plan in `apps/editor/src/lib/editor/layout/LayoutDraftToolbar.svelte`,
 `apps/editor/src/lib/editor/layout/plan-numeric-entry.ts` (S7 entry),
 `apps/editor/src/lib/editor/EditorInspector.svelte` and the selection facade
-`apps/editor/src/lib/editor/app/active-editor-selection.svelte.ts`; and the wall-first model and
-planners in `packages/layout-core/src/layout-wall-first-types.ts`.
+`apps/editor/src/lib/editor/app/active-editor-selection.svelte.ts`.
+
+EVIDENCE-PATHS: end
+
+The wall-first model and planners it builds on are in
+`packages/layout-core/src/layout-wall-first-types.ts`.
 
 **Peer and packet evidence.** Two PDF peer proposals and an untracked React proposal
 (*museum-editor-2d-authoring*) are audited in §18, not averaged. The

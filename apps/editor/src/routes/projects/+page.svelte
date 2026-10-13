@@ -9,7 +9,7 @@
 		ProjectPersistenceError,
 		type ProjectSession,
 		type ProjectSummary
-	} from '$lib/editor/project-persistence';
+	} from '$lib/platform/project-persistence';
 
 	const apiOrigin = env.PUBLIC_API_ORIGIN;
 	const auth = apiOrigin ? createProjectAuth(apiOrigin) : null;

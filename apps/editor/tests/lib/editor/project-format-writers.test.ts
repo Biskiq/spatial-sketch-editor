@@ -11,9 +11,10 @@
  * 3. canonical wall-first Project Save (wall-first Layout + world-local
  *    Scene) plus the portable package manifest versioning.
  *
- * The F0 gate boundary stays pinned: the editor layout mutation policy for
- * wall-first documents remains `disabled` — writers exist, writes stay off
- * until the full acceptance checklist passes.
+ * PR #115 (§7.2 category D extraction) removed the editor shell, so the
+ * F0 stage-6 describe — it asserted the editor's `LAYOUT_MUTATION_POLICY`
+ * store constant — is gone with its subject; the policy constant existed to
+ * gate the editor's writes, and there is no editor to gate.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -23,12 +24,12 @@ import {
 	planPartitionToBoundaryRoomBirth,
 	ROOM_CREATION_DEFAULTS,
 	type WallFirstOpPlan
-} from '$lib/layout/layout-wall-topology-ops';
+} from '@portfolio/layout-core';
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	validateWallFirstLayoutDocument
-} from '$lib/layout/layout-wall-first-codec';
-import { decodeProjectCompatible } from '$lib/content/scene-format';
+} from '@portfolio/layout-core';
+import { decodeProjectCompatible } from '@portfolio/project-model';
 import {
 	PACKAGE_MANIFEST_FORMAT_VERSION,
 	buildPackageManifest,
@@ -36,8 +37,6 @@ import {
 	validateWallFirstProject,
 	WallFirstProjectValidationError
 } from '@portfolio/project-model';
-import { LAYOUT_MUTATION_POLICY, LAYOUT_MUTATION_REASONS } from '$lib/editor/store/document-format-policy.svelte';
-import { chopinProject } from '$lib/content/chopin-project';
 import type { SceneDocument } from '$lib/content/scene';
 
 // ---------------------------------------------------------------------------
@@ -368,6 +367,50 @@ function wallFirstProjectPayload() {
 	};
 }
 
+/**
+ * A minimal legacy (Room-owned) project in the shape the pre-wall-first
+ * generation wrote: a `floors[].rooms[]` layout with no `formatVersion` and a
+ * room-local Scene. PR #115 externalized the shipped Chopin project, so this
+ * stands in for it. The assertions below are about how the Save gate classifies
+ * a legacy payload, which does not depend on *which* legacy project is supplied.
+ */
+function legacyLayoutDocument() {
+	const [minX, minZ] = [0, 0];
+	const [maxX, maxZ] = [6, 4];
+	return {
+		units: 'meters' as const,
+		floors: [
+			{
+				id: 'floor-1',
+				name: 'Floor 1',
+				elevation: 0,
+				height: 3,
+				rooms: [
+					{
+						id: 'room-a',
+						name: 'A',
+						frame: { origin: [0, 0] as [number, number], yaw: 0 },
+						wallThickness: 0.2,
+						floorThickness: 0.1,
+						ceilingThickness: 0.1,
+						boundary: {
+							closed: true,
+							segments: [
+								{ id: 'room-a-s', kind: 'line' as const, start: [minX, minZ] as [number, number], end: [maxX, minZ] as [number, number] },
+								{ id: 'room-a-e', kind: 'line' as const, start: [maxX, minZ] as [number, number], end: [maxX, maxZ] as [number, number] },
+								{ id: 'room-a-n', kind: 'line' as const, start: [maxX, maxZ] as [number, number], end: [minX, maxZ] as [number, number] },
+								{ id: 'room-a-w', kind: 'line' as const, start: [minX, maxZ] as [number, number], end: [minX, minZ] as [number, number] }
+							]
+						},
+						openings: []
+					}
+				]
+			}
+		],
+		objects: []
+	};
+}
+
 describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 	it('validates and serializes the canonical wall-first payload', () => {
 		const result = validateWallFirstProject(wallFirstProjectPayload());
@@ -392,7 +435,7 @@ describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 	});
 
 	it('rejects a legacy (Room-owned) layout by name — never silently migrated on Save', () => {
-		const payload = { ...wallFirstProjectPayload(), layout: chopinProject.layout };
+		const payload = { ...wallFirstProjectPayload(), layout: legacyLayoutDocument() };
 		const result = validateWallFirstProject(payload);
 		expect(result.success).toBe(false);
 		if (result.success) return;
@@ -536,31 +579,19 @@ describe('P23.0 stage 2 — package manifest format versioning', () => {
 // ---------------------------------------------------------------------------
 
 describe('P23.0 stage 2 — legacy compatibility round-trips', () => {
-	it('the shipped legacy project still decodes as legacy-compatible', () => {
-		const decoded = decodeProjectCompatible(chopinProject);
-		expect(decoded.kind).toBe('legacy-compatible');
-		if (decoded.kind !== 'legacy-compatible') return;
-		expect(decoded.sceneSpace).toBe('legacy-room-local');
-	});
-
 	it('a legacy layout cannot be saved through the wall-first writer', () => {
 		const result = validateWallFirstProject({
 			id: 'project-legacy',
 			name: 'Legacy',
-			layout: chopinProject.layout,
-			scene: chopinProject.scene
+			layout: legacyLayoutDocument(),
+			scene: {
+				textures: [],
+				materials: [],
+				entities: [],
+				navigationNodes: [],
+				connections: []
+			}
 		});
 		expect(result.success).toBe(false);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// 6. F0 stage-6 flip — writes enabled (owner go-ahead 2026-09-10)
-// ---------------------------------------------------------------------------
-
-describe('P23.0 stage 6 — writer-enable flip', () => {
-	it('wall-first layout mutation is adapted after the stage-6 flip', () => {
-		expect(LAYOUT_MUTATION_POLICY['wall-first']).toBe('adapted');
-		expect(LAYOUT_MUTATION_REASONS['wall-first']).toBeNull();
 	});
 });

@@ -13,7 +13,12 @@ import {
 
 const appSrc = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
 const packageSrc = resolve(appSrc, '../../../packages/camera-core/src');
-const museumSrc = resolve(appSrc, '../../museum/src/lib/museum');
+/**
+ * The product's visitor-facing layer after PR #115: the cold visitor runtime and
+ * the shared renderer it mounts. The separate `apps/museum` fork this used to
+ * walk was retired with the frozen project (§3.5).
+ */
+const visitorSrcRoots = [resolve(appSrc, 'lib/visitor'), resolve(appSrc, 'lib/museum')];
 
 function sourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -36,17 +41,21 @@ function sourceFiles(root: string): string[] {
  * T3b — one navigation system.
  *
  * The motion side was already pinned (headless package, TransformControls-free).
- * What no test owned was the *evaluator* half: that the route/flow evaluation is
- * defined exactly once, under `packages/camera-core`, and that the editor's
- * navigation-graph module is the single owner of flow/ordering semantics. A
- * second copy of either (the classic "re-derived adjacency" drift) fails here.
+ * What no test owned was the *evaluator* half: that route/flow evaluation is
+ * defined exactly once, under `packages/camera-core`. A second copy (the classic
+ * "re-derived adjacency" drift) fails here.
+ *
+ * PR #115 removed the editor half of this ownership check: the second half
+ * asserted that `lib/editor/editor-navigation-graph.ts` was the single owner of
+ * flow/ordering semantics, and that module is gone with the editor shell (§5.1).
+ * Editorial order is now a T3 obligation (`t3-experience` planning evidence), so
+ * there is no in-repo owner left to pin — the kernel half below is unchanged.
  */
-describe('one navigation system — single graph + route evaluator', () => {
-  const editorLibSrc = resolve(appSrc, 'lib/editor');
+describe('one navigation system — single route evaluator', () => {
   const repoRoot = resolve(appSrc, '../../..');
 
-  function exportingOwners(symbol: string): string[] {
-    return [...sourceFiles(packageSrc), ...sourceFiles(editorLibSrc)]
+  function packageExportingOwners(symbol: string): string[] {
+    return sourceFiles(packageSrc)
       .filter((file) =>
         new RegExp(`export\\s+(?:async\\s+)?function\\s+${symbol}\\b`).test(readFileSync(file, 'utf8'))
       )
@@ -61,20 +70,8 @@ describe('one navigation system — single graph + route evaluator', () => {
       'getFlowRoute',
       'getFlowLoopConnectionId'
     ]) {
-      expect(exportingOwners(symbol), symbol).toEqual(['packages/camera-core/src/camera-route.ts']);
-    }
-  });
-
-  it('keeps the editor navigation graph the single owner of flow semantics', () => {
-    for (const symbol of [
-      'currentMainFlowNodeIds',
-      'flowLoopConnectionId',
-      'flowDetourGroups',
-      'flowRetainedConnectionIds',
-      'validateCurrentGuidedTourOrder'
-    ]) {
-      expect(exportingOwners(symbol), symbol).toEqual([
-        'apps/editor/src/lib/editor/editor-navigation-graph.ts'
+      expect(packageExportingOwners(symbol), symbol).toEqual([
+        'packages/camera-core/src/camera-route.ts'
       ]);
     }
   });
@@ -119,13 +116,14 @@ describe('camera-core package boundary', () => {
     }
   });
 
-  it('keeps the visitor museum source free of editor imports', () => {
-    for (const file of sourceFiles(museumSrc)) {
-      const source = readFileSync(file, 'utf8');
-      expect(file).not.toMatch(/\/editor\//);
-      expect(source, file).not.toMatch(
-        /(?:from|import\()\s*['"][^'"]*(?:\$lib\/editor|(?:\.\.?\/)\.?editor\/)/
-      );
+  it('keeps the visitor and shared renderer source free of editor imports', () => {
+    for (const root of visitorSrcRoots) {
+      for (const file of sourceFiles(root)) {
+        const source = readFileSync(file, 'utf8');
+        expect(source, file).not.toMatch(
+          /(?:from|import\()\s*['"][^'"]*(?:\$lib\/editor|(?:\.\.?\/)\.?editor\/)/
+        );
+      }
     }
   });
 });

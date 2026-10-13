@@ -1,22 +1,25 @@
 /**
- * P23.11 Slice 8 — cross-layer closeout.
+ * P23.11 Slice 8 — cross-layer closeout (kernel-level).
  *
- * The per-slice suites pin their own slice. This file pins the seams *between*
- * slices, which is where a representation change of this size can still leak:
+ * The per-slice suites pin their own slice. This file pinned the seams
+ * *between* slices. PR #115 (§7.2 category D extraction) removed the editor
+ * shell, so the surviving half is the one that was always about the kernel:
  *
- * - **Save/Load** — the exact chain survives the real codec and the real import
- *   path, so a saved project is not a lossy version of the editor's document;
- * - **one compiled sample set** — Plan, the editor's 3D preview and the museum
- *   read the same compiled samples, and the museum's layout modules are the
- *   shared facades rather than a second implementation;
- * - **curved split end-to-end** — inside a Room, with Openings, through the app
- *   adapter and the one history authority: exact geometry, preserved identity,
- *   exact Undo;
- * - **legacy stays legacy** — a Room-owned document never enters the wall-first
- *   path, so the canonical chain is not silently applied to the old model.
+ * - **Save/Load** — the exact chain survives the real codec, so a saved
+ *   project is not a lossy version of the canonical document;
+ * - **one compiled sample set** — the compiled geometry really is curved and
+ *   carries no per-Room duplicate to disagree with;
+ * - **curved split** — with Openings, through the real planner: exact
+ *   geometry, preserved identity, rebased Openings.
+ *
+ * The removed half drove the same planners through the deleted preview-state
+ * adapter, the editor store's history entry and the museum facade copy: one
+ * Undo entry, `store.canUndo/undo/redo`, "no Layout curve operation touches
+ * Scene state", the `buildLayoutPreviewModel` preview projection and the
+ * `src/lib/layout/*` ↔ `apps/museum` facade byte-identity walk. Those tested
+ * removed behaviour. Arithmetic and expectations for every surviving assertion
+ * are unchanged.
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -24,6 +27,7 @@ import {
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
 	parseWallFirstLayoutDocumentJson,
+	planWallSplit,
 	sampleSegment,
 	serializeWallFirstLayoutDocument,
 	wallCubicChain,
@@ -34,29 +38,10 @@ import {
 	type LayoutWall,
 	type LayoutWallCenterline,
 	type LayoutWallCurveKnot,
-	type LayoutWallCubicSpan
+	type LayoutWallCubicSpan,
+	type NodingIdAllocator,
+	type NodingPlan
 } from '@portfolio/layout-core';
-
-import { buildLayoutPreviewModel } from '$lib/editor/layout/layout-mesh-factory';
-// P23.12 — an installed document is normalized with its reference ledger, so
-// "reimports to the same document" is a content claim (see the helper).
-import { documentContentJson } from './__fixtures__/layout-identity-content';
-import { createEmptySceneDocument } from '$lib/content/scene';
-import { createEditorStore } from '$lib/editor/editor-store.svelte';
-import { createEmptyLayoutDocument } from '$lib/layout/layout-codec';
-import { createLayoutRoomRegistry } from '$lib/project/project-layout-semantics';
-import {
-	captureLayoutPreviewSnapshot,
-	createEmptyLayoutPreviewState,
-	importLayoutPreviewJson,
-	layoutPreviewDocument,
-	restoreLayoutPreviewSnapshot,
-	subdivideWallFirstWall,
-	updateWallFirstWallBend,
-	updateWallFirstWallMove,
-	type LayoutPreviewState
-} from '$lib/editor/layout/layout-preview-state.svelte';
-import { layoutMutationRunnerFor, runLayoutMutation } from '$lib/editor/layout/layout-mutation-runner';
 
 // ---------------------------------------------------------------------------
 // fixtures
@@ -130,30 +115,33 @@ function curvedRoomDocument(
 	return document;
 }
 
-function makeStore(seed: LayoutDocumentWallFirst) {
-	const store = createEditorStore({
-		document: createEmptySceneDocument(),
-		rooms: createLayoutRoomRegistry(createEmptyLayoutDocument())
-	});
-	const layoutPreview = createEmptyLayoutPreviewState();
-	if (!importLayoutPreviewJson(layoutPreview, serializeWallFirstLayoutDocument(seed))) {
-		throw new Error('wall-first import failed');
-	}
-	store.registerLayoutHistory({
-		capture: () => captureLayoutPreviewSnapshot(layoutPreview),
-		replace: (snapshot) => restoreLayoutPreviewSnapshot(layoutPreview, snapshot as never),
-		matches: (a, b) =>
-			JSON.stringify((a as { project: { layout: unknown } }).project.layout) ===
-			JSON.stringify((b as { project: { layout: unknown } }).project.layout)
-	});
-	store.setLayoutFormatPolicySource(() => layoutPreview);
-	return { store, layoutPreview };
+/** Deterministic allocator, matching the planner-level suites. */
+function allocator(): NodingIdAllocator {
+	return {
+		nextWallId(base, seed) {
+			let candidate = `${seed}-1`;
+			let counter = 1;
+			while (base.walls.some((wall) => wall.id === candidate)) {
+				counter += 1;
+				candidate = `${seed}-${counter}`;
+			}
+			return candidate;
+		},
+		nextJunctionId(base, seed) {
+			let candidate = `j-${seed}-1`;
+			let counter = 1;
+			while (base.junctions.some((junction) => junction.id === candidate)) {
+				counter += 1;
+				candidate = `j-${seed}-${counter}`;
+			}
+			return candidate;
+		}
+	};
 }
 
-function wallFirstDocument(state: LayoutPreviewState): LayoutDocumentWallFirst {
-	const document = layoutPreviewDocument(state);
-	if (!('formatVersion' in document)) throw new Error('expected a wall-first document');
-	return document;
+function expectSuccess(plan: NodingPlan): Extract<NodingPlan, { kind: 'success' }> {
+	if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
+	return plan;
 }
 
 function wallOf(document: LayoutDocumentWallFirst, wallId: string): LayoutWall {
@@ -248,14 +236,6 @@ describe('P23.11 slice 8 — Save/Load preserves the chain exactly', () => {
 				geometry.rooms.map((room) => room.walls.map((wall) => ({ id: wall.segmentId, samples: wall.samples })))
 			);
 		expect(samples(recompiled)).toBe(samples(compiled));
-
-		// And through the app's own import path: the preview state the editor
-		// actually edits from.
-		const layoutPreview = createEmptyLayoutPreviewState();
-		expect(importLayoutPreviewJson(layoutPreview, serializeWallFirstLayoutDocument(document))).toBe(true);
-		expect(documentContentJson(layoutPreviewDocument(layoutPreview))).toBe(
-			documentContentJson(document)
-		);
 	});
 });
 
@@ -263,25 +243,10 @@ describe('P23.11 slice 8 — Save/Load preserves the chain exactly', () => {
 // one compiled sample set
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 8 — Plan, 3D preview and museum share one sample set', () => {
-	it('gives the editor preview exactly the canonical compiled samples', () => {
+describe('P23.11 slice 8 — the compiled sample set is the canonical one', () => {
+	it('compiles the curved Wall as one flat record whose samples really are the chain', () => {
 		const document = curvedRoomDocument();
 		const compiled = compileWallFirstLayoutGeometry(document).geometry;
-		const preview = buildLayoutPreviewModel(document);
-
-		// The preview projects the canonical geometry rather than compiling a
-		// second time: same physical Wall records, same query geometry (which is
-		// what Plan hit-testing reads), same Room set.
-		expect(preview.geometry.walls).toEqual(compiled.walls);
-		expect(preview.model.queries).toEqual(compiled.queries);
-		expect(preview.model.rooms.map((room) => room.roomId)).toEqual(
-			compiled.rooms.map((room) => room.roomId)
-		);
-		for (const [index, compiledRoom] of compiled.rooms.entries()) {
-			const previewRoom = preview.model.rooms[index]!;
-			expect(previewRoom.floorPolygon).toEqual(compiledRoom.floorPolygon);
-			expect(previewRoom.walls).toEqual(compiledRoom.walls);
-		}
 
 		// One flat record per physical Wall — and the curved one really is
 		// curved, so a chord-length report would show up as an exactly-12 m
@@ -294,54 +259,24 @@ describe('P23.11 slice 8 — Plan, 3D preview and museum share one sample set', 
 		// matches the chain samples the split and bend planners operate on.
 		expect(curved.samples.map((sample) => sample.distance).at(-1)!).toBeCloseTo(curved.length, 6);
 	});
-
-	it('keeps the museum on the shared layout modules, not a second implementation', () => {
-		const facades = [
-			'layout-geometry.ts',
-			'layout-geometry-curve.ts',
-			'layout-geometry-openings.ts',
-			'layout-geometry-types.ts',
-			'layout-geometry-validation.ts',
-			'layout-types.ts',
-			'wall-mesh-builder.ts'
-		];
-		for (const facade of facades) {
-			const editor = readFileSync(resolve(process.cwd(), `src/lib/layout/${facade}`), 'utf8');
-			const museum = readFileSync(resolve(process.cwd(), `../museum/src/lib/layout/${facade}`), 'utf8');
-			expect(museum).toBe(editor);
-			// Compatibility facades: the museum re-exports the canonical package
-			// rather than carrying its own curve kernel.
-			expect(editor).toContain("@portfolio/layout-core");
-			expect(editor).not.toMatch(/function\s+sampleCubic|function\s+compileAutoBezier/);
-		}
-	});
 });
 
 // ---------------------------------------------------------------------------
-// curved split end-to-end
+// curved split
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 8 — exact curved split through the app', () => {
-	it('splits inside a Room in one history entry, preserving identity', () => {
+describe('P23.11 slice 8 — exact curved split through the planner', () => {
+	it('splits inside a Room, preserving identity and rebasing the Openings', () => {
 		const seed = curvedRoomDocument([
 			{ id: 'near', offset: 1, width: 1 },
 			{ id: 'far', offset: 8, width: 1.5 }
 		]);
-		const { store, layoutPreview } = makeStore(seed);
-		const before = JSON.stringify(layoutPreviewDocument(layoutPreview));
 		const baselineSamples = samplePointsOf(seed, 'wall-a');
 		const baselineLength = wallLengthOf(seed, 'wall-a');
 		const chainLength = wallCurveChainLength(chainViewOf(seed, 'wall-a'));
-		const sceneBefore = JSON.stringify(store.document);
 
-		const outcome = runLayoutMutation(
-			layoutMutationRunnerFor(store, layoutPreview),
-			() => subdivideWallFirstWall(layoutPreview, 'wall-a', baselineLength * 0.45),
-			(result) => result.success
-		);
-		if (outcome.kind !== 'committed') throw new Error(`expected one commit: ${JSON.stringify(outcome)}`);
-
-		const next = wallFirstDocument(layoutPreview);
+		const plan = expectSuccess(planWallSplit(seed, 'wall-a', baselineLength * 0.45, allocator()));
+		const next = plan.document;
 		const first = wallOf(next, 'wall-a');
 		// The retained ID keeps the start fragment; the created Wall carries the
 		// rest, and the two share exactly one new Junction.
@@ -391,42 +326,13 @@ describe('P23.11 slice 8 — exact curved split through the app', () => {
 		expect(far.wallId).toBe(second.id);
 		expect(far.offset).toBeCloseTo(8 - baselineLength * 0.45, 3);
 		expect(far.width).toBe(1.5);
-
-		// One accepted operation is one Undo entry, restoring the exact baseline.
-		expect(store.canUndo).toBe(true);
-		expect(store.undo()).toBe(true);
-		expect(JSON.stringify(layoutPreviewDocument(layoutPreview))).toBe(before);
-		expect(store.redo()).toBe(true);
-		expect(JSON.stringify(layoutPreviewDocument(layoutPreview))).toBe(JSON.stringify(next));
-
-		// No Layout curve operation touches Scene state.
-		expect(JSON.stringify(store.document)).toBe(sceneBefore);
 	});
 
-	it('rejects a split through an Opening interior without writing history', () => {
+	it('rejects a split through an Opening interior', () => {
 		const seed = curvedRoomDocument([{ id: 'door', offset: 5, width: 2 }]);
-		const { store, layoutPreview } = makeStore(seed);
-		const before = JSON.stringify(layoutPreviewDocument(layoutPreview));
-		const outcome = runLayoutMutation(
-			layoutMutationRunnerFor(store, layoutPreview),
-			() => subdivideWallFirstWall(layoutPreview, 'wall-a', 6),
-			(result) => result.success
-		);
-		expect(outcome.kind).toBe('cancelled');
-		expect(store.canUndo).toBe(false);
-		expect(JSON.stringify(layoutPreviewDocument(layoutPreview))).toBe(before);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// legacy boundary
-// ---------------------------------------------------------------------------
-
-describe('P23.11 slice 8 — the legacy model stays out of the wall-first path', () => {
-	it('refuses the chain planners on a Room-owned document', () => {
-		const layoutPreview = createEmptyLayoutPreviewState();
-		expect(updateWallFirstWallBend(layoutPreview, 'w1', { distance: 1, point: [1, 1] }).success).toBe(false);
-		expect(updateWallFirstWallMove(layoutPreview, 'w1', [1, 0]).success).toBe(false);
-		expect(subdivideWallFirstWall(layoutPreview, 'w1', 1).success).toBe(false);
+		const plan = planWallSplit(seed, 'wall-a', 6, allocator());
+		// The runner used to report this as a cancelled transaction; at the
+		// planner level the same expectation is a rejection.
+		expect(plan.kind).toBe('rejected');
 	});
 });

@@ -19,7 +19,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { compileWallFirstLayoutGeometry, wallSnapIndex } from '@portfolio/layout-core';
-import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from '$lib/bench/p23b-fixtures';
+import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-fixtures';
 
 type ProbeGlobal = {
 	__P2311_PERF__?: boolean;

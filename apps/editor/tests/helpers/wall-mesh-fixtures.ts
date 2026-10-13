@@ -5,7 +5,7 @@
  * document builders instead of duplicating them across lanes.
  */
 import { expect } from 'vitest';
-import { compileLayoutGeometry } from '$lib/layout/layout-geometry';
+import { compileLayoutGeometry } from '@portfolio/layout-core';
 import { type IndexedWallMesh } from '$lib/layout/wall-mesh-builder';
 import {
 	g1DocumentWithRooms,
@@ -13,7 +13,7 @@ import {
 	g1LineSegments,
 	g1RectangleRoom
 } from '../lib/layout/__fixtures__/layout-g1-fixtures';
-import type { CompiledRoom } from '$lib/layout/layout-geometry-types';
+import type { CompiledRoom } from '@portfolio/layout-core';
 
 export function compileRoom(document: ReturnType<typeof g1LineRectangleDocument>): CompiledRoom {
 	const geometry = compileLayoutGeometry(document).geometry;
