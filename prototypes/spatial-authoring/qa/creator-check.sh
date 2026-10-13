@@ -107,7 +107,10 @@ qa_ok 'Undo first load restores independent World/Camera and prior Experience ex
 # UX3: the subject Card no longer shows any capability control at rest, so what this reading holds is that
 # the valid World selection still resolves to that subject's own Card — with its own doors, and nothing
 # operated until one of them is used.
-qa_ok 'Undo invalidates replaced working context without losing the valid World selection' "$(qa_js '(__me.S.experienceContext.presentation===null&&__me.S.experienceContext.depth==="ordinary"&&__me.S.sel==="machine"&&document.querySelector("#card .c-k").textContent.includes("World lens")&&!!document.querySelector("#card [data-act=exp-add-behavior]")&&!document.querySelector("#card [data-exp-audition]"))')" true
+# §5.3/UX3: the subject Card's kicker is the subject's own kind (`SCENE OBJECT` unless the provider names
+# one), so the reading that the valid selection still lands on that subject's own Card is its own kind and
+# name — the identity an Experience record or the Experience empty never carries.
+qa_ok 'Undo invalidates replaced working context without losing the valid World selection' "$(qa_js '(()=>{const s=__me.ctx.sceneSource.subjects["machine"],kicker=(s.kindLabel||s.kindName||"SCENE OBJECT").toUpperCase(),head=document.querySelector("#card .c-head");return !!(__me.S.experienceContext.presentation===null&&__me.S.experienceContext.depth==="ordinary"&&__me.S.sel==="machine"&&!!head&&head.textContent.includes(kicker)&&head.textContent.includes(s.name)&&!!document.querySelector("#card [data-act=exp-add-behavior]")&&!document.querySelector("#card [data-exp-audition]"));})()')" true
 # Compact viewport: ordinary controls remain reachable through accepted sheets, no advanced depth.
 agent-browser set viewport 1024 768 >/dev/null;qa_frames
 click '[data-act="sheet-index"]'

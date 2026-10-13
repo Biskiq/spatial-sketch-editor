@@ -90,7 +90,11 @@ BLOB='(() => {
     viewHash: v ? JSON.stringify(ctx.cameraSource.views[v.id].pose) : null,
     standing: JSON.stringify(__me.nav.plainPose()),
     cardTitle: text("#card .c-t"),
-    cardVerbs: (() => { const b = t("#card > .c-acts"); return b ? [...b.querySelectorAll("[data-act]")].map((x) => x.dataset.act).join(" ") : null; })(),
+    // §5.3/UX2: the View Card ops row also carries the View own operations (Set as Default, Rename, Remove
+    // from Presentation), so the row is read for the two Camera-affecting doors this law names — the precise
+    // Camera and Look through — in the order the row really carries them. Nothing the law does not name is
+    // demanded, and a doubled door still fails, because matches are never deduplicated.
+    cardVerbs: (() => { const b = t("#card > .c-acts"); return b ? [...b.querySelectorAll("[data-act]")].map((x) => x.dataset.act).filter((a) => a === "exp-look" || a === "exp-precise").join(" ") : null; })(),
     focusedGrip: (() => { const e = document.activeElement; return e && e.dataset ? (e.dataset.grip || null) : null; })(),
     gripHits: all("#ovHtml [data-grip]").map((e) => { const r = e.getBoundingClientRect(); return [e.dataset.grip, document.elementFromPoint(Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)) === e]; }),
     preciseEntry: !!t("#card [data-act=exp-precise]"),
@@ -196,9 +200,11 @@ press '#experienceDeck [data-act=exp-guide]'
 last="$(step 'A.select("use-16");')"
 UNDO_0="$(field undo)"
 STANDING="$(field standing)"
-# UX2: the View Card's own verbs are the precise Camera and Look through; Bring into view is the
-# locator's navigation verb, asserted where the locator lives.
-qa_ok "the Camera Card names the View use and offers the precise Camera while no Camera work is active" "$(field cardTitle) / $(field preciseEntry) / $(field cardVerbs)" "Machine overview / True / exp-precise exp-look"
+# UX2/§5.3: the two Camera-affecting verbs of the View Card are the precise Camera and Look through, and
+# they are asserted in the ops row the Card really renders (Set as Default, Rename and Remove are the
+# View's own operations, asserted where each of them lives); Bring into view is the locator's navigation
+# verb, asserted where the locator lives.
+qa_ok "the Camera Card names the View use and offers the precise Camera while no Camera work is active" "$(field cardTitle) / $(field preciseEntry) / $(field cardVerbs)" "Machine overview / True / exp-look exp-precise"
 qa_ok "the full property list is one Card disclosure, named for what each property does" "$(field propSummary) / $(field propLabels)" "Precise Camera · properties / Frame height, Aim horizontally, Aim vertically, Target X, Target height, Target Z"
 qa_okc "…and says where the value will be live" "$(field propHint)" "one value is live at a time on its Stage tape"
 qa_ok "the ordinary Movement writer is deliberate depth in the Card, not an exposed field" "$(field movement) / $(field movementExposed)" "Camera request preference · Movement / in detail"

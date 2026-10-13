@@ -61,6 +61,8 @@ BLOB='(() => {
     indexTitle: txt("#index .ix-title"),
     indexRows: document.querySelectorAll("#index .ix-row").length,
     cardKick: txt("#card .c-k"), cardTitle: txt("#card .c-t"),
+    // The Experience Presentation Card own door: a World subject Card renders no such writer.
+    cardExp: !!t("#card [data-act=exp-capture]"),
     resumeBtn: !!t("#card [data-act=\"resume\"]"),
     parkedSel: t("#card [data-act=\"sel\"]") ? t("#card [data-act=\"sel\"]").dataset.id : null,
     parkedNote: t("#card .relation.parked") ? t("#card .relation.parked").textContent : null,
@@ -170,7 +172,9 @@ qa_say "-- the identities the Experience offers: its own Presentation, and the S
 tap '#index [data-act="exp-open"][data-id="pres-highlights"]'
 last="$(step '')"
 qa_ok "opening a Presentation makes it the canonical identity" "$(field sel) / $(field cardTitle)" "pres-highlights / Saltmarsh Highlights"
-qa_ok "…and its Card is the Experience's own, not the World's" "$(field cardKick)" "Presentation · Experience"
+# §5.3 anatomy: `.c-k` is the kind with no owner suffix, so the Card is read as the Experience's own by its
+# kind AND by the Experience Presentation's own home on it — a World subject's Card renders neither.
+qa_ok "…and its Card is the Experience's own, not the World's" "$(field cardKick) / $(field cardExp)" "Presentation / True"
 qa_ok "…without opening a reading or moving the Camera" "$(field reading) / $(field eye)" "none / $E0"
 tap '#card [data-act="pres-ref"][data-id="gwin"]'
 last="$(step '')"

@@ -53,9 +53,12 @@ pid_now="$(qa_jsv '__me.S.experienceContext.presentation')"
 before="$(source_hash)"; count="$(undo)"
 # QA 5: the subject's own Card reads identity → Present this → Used in Experience → the two doors, and no
 # capability control is on screen at rest. The derivation is read-only, so it is present with nothing yet.
+# The order is read from the Card's own children: identity is its `.c-head`, `Present this` is its own
+# `.c-acts` row, and the two `.c-sec` sections follow. The retired `Presentation` section — a second editor
+# of what the door already does — is gone, so the law is the order of what the Card really reads.
 conformance_ok 'a Scene subject Card is ordered identity → Present this → Used in Experience → the two doors' \
-  "$(qa_jsv 'JSON.stringify([...document.querySelectorAll("#card > .c-sec")].map(e=>e.textContent.trim().split(" · ")[0]))')" \
-  '["Presentation","Used in Experience","Behavior"]'
+  "$(qa_jsv 'JSON.stringify((()=>{const at=e=>e.classList.contains("c-head")?"identity":e.querySelector("[data-act=exp-create-this]")?"Present this":e.classList.contains("c-sec")?e.textContent.trim().split(" · ")[0]:null;return [...document.querySelector("#card").children].map(at).filter(Boolean);})())')" \
+  '["identity","Present this","Used in Experience","Behavior"]'
 conformance_ok 'no capability control is at rest on a Scene subject Card' "$(qa_js '(!document.querySelector("#card [data-exp-audition]")&&!document.querySelector("#card [data-act=exp-use]")&&!document.querySelector("#card [data-act=exp-use-scope]")&&!document.querySelector("#card [data-act=exp-audition]")&&!!document.querySelector("#card [data-act=exp-add-behavior]")&&!!document.querySelector("#card [data-act=exp-add-interaction]"))')" true
 # The door itself: opening it is a session choice that operates nothing, and what it offers is exactly what
 # the provider declares — the machine declares casing and rotor plus the two local effects every subject has.
@@ -108,19 +111,22 @@ click '#card [data-act="exp-advanced"]'
 conformance_ok 'Advanced authoring lists the captured Activity by what it operates, where and how it starts' "$(qa_js '(()=>{const t=document.querySelector("#card [data-exp-advanced-home]").textContent;return t.includes("Open casing")&&t.includes("Machine")&&t.includes("in Why the drive matters")&&t.includes("Starts on Presentation entry");})()')" true
 # Open the Activity through its real, scroll-reachable contribution row.
 click '#card [data-exp-advanced-home] .contribution [data-act="pres-ref"]'
-conformance_ok 'the captured Activity reads as an honest identity, never a schema term' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("Activity · Experience")+"|"+(document.querySelector("#card").textContent.includes("Operates Machine · Open casing"))')" '"true|true"'
+conformance_ok 'the captured Activity reads as an honest identity, never a schema term' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("Activity")+"|"+(document.querySelector("#card").textContent.includes("Operates Machine · Open casing"))')" '"true|true"'
 click "#index [data-act=\"exp-open\"][data-id=\"$pid\"]"
 # UX2: the accepted no-View Presentation is reached the way an author reaches it — Remove from
 # Presentation unlinks the use — and the unlink is proven here rather than assumed: one history step, the
 # Default left unset with no replacement picked, and the Camera framing kept as Camera truth for every
 # other use. Nothing is destroyed to prove a View is optional.
 click '#card [data-exp-views] [data-exp-view-use]'
-conformance_ok 'selecting a View opens the View’s own Card, never the Presentation’s' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("View · Experience")&&__me.S.sel!==__me.S.experienceContext.presentation')" true
+conformance_ok 'selecting a View opens the View’s own Card, never the Presentation’s' "$(qa_js 'document.querySelector("#card .c-k").textContent.includes("View")&&__me.S.sel!==__me.S.experienceContext.presentation')" true
 before="$(source_hash)"; count="$(undo)"; camera_views="$(qa_js 'Object.keys(__me.ctx.cameraSource.views).length')"
 # §3.10: the bounded unlink states what it will leave behind before it happens, and says what it left
-# behind once it has. Both are read from the product's own words on the Card and in the status rail.
+# behind once it has. Both are read from the product's own words on the Card and in the status rail: while
+# the door is still there the Card's line names the one use it unlinks, the Camera framing it keeps for
+# every other use and the Stop entry it leaves repairable, and the status rail then names the Default's
+# fate once the unlink has happened (asserted next).
 conformance_ok 'the removal states what it leaves behind before it happens' \
-  "$(qa_js '(()=>{const t=document.querySelector("#card [data-view-consequences]")?.textContent||"";return t.includes("Camera framing is kept")&&t.includes("no replacement Default is chosen");})()')" true
+  "$(qa_js '(()=>{const t=document.querySelector("#card [data-view-consequences]")?.textContent||"";return t.includes("unlinks this use only")&&t.includes("Camera framing is kept")&&t.includes("no replacement Default is chosen")&&t.includes("repairable missing entry")&&!!document.querySelector("#card [data-act=exp-remove-view]");})()')" true
 click '#card [data-act="exp-remove-view"]'
 conformance_ok '…and the status names what the unlink left: the Default unset, the Camera framing kept' \
   "$(qa_js '(/Camera framing kept/.test(__me.S.status.text)&&/the Default is now unset/.test(__me.S.status.text))')" true
@@ -275,11 +281,11 @@ done
 conformance_ok 'occurrence selection/disclosure preserves realized Camera and Camera source' "$(pose) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "$standpoint / $camera"
 capture qa-2-selected
 stop="$(qa_jsv '__me.ctx.experience.guide[3]')"
-click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
-# UX4: Expand opens the Stop's own detail in the one Deck home and reads its Stop Card; the retired L2
-# Set is gone, and the Deck chip never carries an editor inside it.
-conformance_ok 'QA-3 Expand opens the Stop detail in the Deck and its Stop Card, with no editor in the chip' "$(qa_js "(document.querySelectorAll('.gd-stop-card.expanded').length===1&&document.querySelectorAll('[data-exp-view]').length===3&&!document.querySelector('.set-node')&&!document.querySelector('.stop-card.expanded input')&&document.querySelector('.stop-card.expanded').scrollHeight===document.querySelector('.stop-card.expanded').clientHeight&&!!document.querySelector('#card [data-stop-entry]'))")" true
-conformance_ok 'QA-3 all six occurrence cards stay readable and reachable at L2' "$(qa_js "[...document.querySelectorAll('.stop-card [data-act=exp-stop]')].every(e=>($visible)(e)&&($hit)(e))")" true
+# §5.4/§5.8: Expand and Peek are retired — the chip carries no detail control of its own, and selecting a
+# chip is L1: the chip is marked, the Card reads Entry/Next, and no detail opens.
+click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
+conformance_ok 'selecting a chip reads its Stop Card, with no Expand left in the Deck' "$(qa_js "(!!document.querySelector('#card [data-stop-entry]')&&!document.querySelector('.gd-stop-card.expanded')&&!document.querySelector('[data-act=exp-expand-stop]')&&!document.querySelector('.set-node')&&!document.querySelector('.gd-stop-card input'))")" true
+conformance_ok 'all six occurrence chips stay readable and reachable at 1440×900' "$(qa_js "[...document.querySelectorAll('.stop-card [data-act=exp-stop]')].every(e=>($visible)(e)&&($hit)(e))")" true
 capture qa-3-occurrence
 # Both Set projections select the same canonical use without navigating or mutating Camera.
 uid="$(qa_jsv '__me.ctx.experience.presentations[__me.S.experienceContext.presentation].uses[1]')"
@@ -289,7 +295,11 @@ standpoint="$(pose)";before="$(source_hash)"
 click '#card [data-act="exp-open"]'
 click "#card [data-exp-views] [data-exp-view-use='$uid']"
 conformance_ok 'the Presentation Views list selects the canonical View use without navigation/source edit' "$(qa_js '__me.S.sel') / $(pose) / $(source_hash)" "\"$uid\" / $standpoint / $before"
-click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
+click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
+# §5.3: the Stage draws a Presentation's View constellation while one of its Stops is the selection in
+# ordinary depth, so the Guide band is left first — neither the selection nor the Camera moves.
+qa_js '(() => { const b = document.querySelector("#experienceDeck [data-act=exp-close]"); if (b) b.click(); return true; })()' >/dev/null
+qa_frames
 click "[data-exp-view][data-id='$uid']"
 conformance_ok 'spatial Set selects the same canonical use' "$(qa_js '__me.S.sel') / $(pose)" "\"$uid\" / $standpoint"
 count="$(undo)"
@@ -314,8 +324,12 @@ conformance_ok 'accepting it leaves Guide order, Camera routes and every Stop en
 conformance_ok '…and the one ★ Default is the View that asked for it, in one history step' "$(only_default "$role_after") / $(undo)" "[\"$uid\"] / $((count+1))"
 click '#undoBtn'
 conformance_ok 'Undo restores the former Default and the same untouched Guide, routes and Stop entries' "$(only_default "$(qa_jsv "$role_state")") / $(strip_defaults "$(qa_jsv "$role_state")")" "$(only_default "$role_before") / $(strip_defaults "$role_before")"
-click ".stop-card[data-stop='$stop'] [data-act='exp-expand-stop']"
-click '#card > .exp-more > summary'
+click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
+# §5.4: the Stop Card's own shared-Meaning editor is retired — Meaning is edited from its Presentation. The
+# recipe reaches the same shared summary through the Presentation's own door on the Stop Card, opens its
+# Advanced authoring home, and returns to the Stop for the occurrence-local entry further down.
+click '#card [data-stop-reach] [data-act="exp-open"]'
+qa_card_advanced
 before="$(source_hash)"; count="$(undo)"
 fill '[data-exp-field="meaning"]' 'Shared meaning proposed through the product.'
 conformance_ok 'shared Meaning asks before source/history changes' "$(qa_js '(!!__me.S.expSourceAsk&&document.querySelector(".ask-rule").textContent.includes("Stop 6"))') / $(source_hash) / $(undo)" "true / $before / $count"
@@ -326,6 +340,8 @@ conformance_ok 'Cancel writes zero history' "$(source_hash) / $(undo)" "$before 
 fill '[data-exp-field="meaning"]' 'Power travels through the protected rotor.'
 click '[data-act="exp-source-accept"]'
 conformance_ok 'accepted shared edit is one history step' "$(undo)" "$((count+1))"
+# Back on the Stop itself: the entry below is occurrence-local, not the Presentation's.
+click ".stop-card[data-stop='$stop'] [data-act='exp-stop']"
 # Entry belongs to this occurrence; selecting another shared View changes no Camera source.
 local_entry="$(qa_jsv '__me.ctx.experience.presentations[__me.S.experienceContext.presentation].uses[1]')"
 camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
@@ -333,8 +349,10 @@ agent-browser select '[data-exp-entry]' "$local_entry" >/dev/null;qa_frames
 conformance_ok 'local Stop entry leaves the shared Set and Camera source intact' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js "(__me.ctx.experience.stops['$stop'].entry.useId==='$local_entry'&&__me.ctx.experience.stops[__me.ctx.experience.guide[5]].entry.kind==='presentation')")" "$camera / true"
 click '#undoBtn'
 # QA-4: open adjacent Seam while 3D, then explicitly author Travel and useful Plan.
-click '#card .stop-details summary'
-click '#card > .exp-more > summary'
+# §5.4: the Stop Card carries exactly one disclosure — its own occurrence detail, reached through
+# `.stop-details`, whose direct `<details>` child is `[data-exp-stop-detail]`. The retired Card menu (and
+# the shared-Meaning section behind it) is gone, so the recipe opens the detail it still has.
+click '#card [data-exp-stop-detail] > summary'
 click '[data-act="3d"]'
 standpoint="$(pose)"
 to="$(qa_jsv '__me.ctx.experience.guide[4]')"
@@ -351,14 +369,29 @@ conformance_ok 'explicit Travel supports every legitimate origin in one authored
 conformance_ok 'Travel leaves no origin as a gap and offers no per-origin surgery' "$(qa_js "(!document.querySelector('[data-exp-gap]')&&!document.querySelector('[data-act=exp-prepare]'))")" 'true'
 conformance_ok 'Travel reports prepared versus reused support with the Camera owner' "$(qa_js "(/Prepared [0-9]+ Camera route/.test(__me.S.status.text)&&/Camera owns route geometry/.test(__me.S.status.text))")" 'true'
 conformance_ok 'one Travel preparation is one aggregate Undo step' "$(qa_js "__me.S.undo.at(-1).label==='Prepare Camera routes and select Travel'")" 'true'
+standpoint="$(pose)"
 click "[data-act='exp-route'][data-id='$route']"
-# UX5: the Path posture is the one route-editing home, and `+ Path point` is the only creation path. A
-# plain Stage press adds nothing, so the press below can only be a point because it was asked for.
-conformance_ok 'the Path posture is one Camera home with an armed-only point insertion' "$(qa_js '(document.querySelector("#card .c-k").textContent.includes("Camera Path")&&document.querySelector("[data-path-lane]")&&!!document.querySelector("#card [data-path-from]")&&!!document.querySelector("#card [data-act=exp-path-point]")&&__me.S.experienceContext.armed===false)')" true
+# §5.5: opening the Path posture keeps the author's standpoint — only the framing goes, and it goes with the
+# author's own `Bring route into view`. The Index home holds the crumb, the switch and the From list, and
+# `+ Path point` is a Stage instrument: the only creation path, so a plain Stage press still adds nothing.
+conformance_ok 'entering the Path posture keeps the authoring standpoint' "$(pose)" "$standpoint"
+click '#card [data-act=exp-bring]'
+qa_frames
+conformance_ok 'Bring route into view is the explicit framing, to Plan, with the crumb back to the edge' "$(qa_js '(__me.nav.plainPose().flat>.97&&!!document.querySelector("#index [data-act=exp-route-return]"))')" true
+conformance_ok 'the Path posture is one Camera home with an armed-only point insertion' "$(qa_js '(document.querySelector("#card .c-k").textContent.includes("Camera Path")&&document.querySelector("[data-path-lane]")&&!!document.querySelector("#index [data-path-from]")&&!!document.querySelector("#pathInstrument [data-act=exp-path-point]")&&__me.S.experienceContext.armed===false)')" true
 p="$(qa_jsv '(()=>{const r=document.querySelector("#gl").getBoundingClientRect();return Math.round(r.x+r.width*.53)+","+Math.round(r.y+r.height*.38)})()')"
 qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
 conformance_ok 'an unarmed Stage press adds no path point' "$(qa_js '__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors.length')" '0'
-click '[data-act="exp-path-point"]'
+# §3.1: that press is still the shell's own click, so a pick under it is an outside selection and puts the
+# reading away. The posture is re-entered through the edge's own door, on the same route, before the author
+# arms the insertion — the law above is about the press, never about the posture surviving it.
+click '#experienceDeck [data-act="exp-guide"]'
+click "[data-act='exp-seam'][data-from='$stop'][data-to='$to']"
+click '#card [data-act="exp-route"]'
+qa_frames
+click "#index [data-path-from] [data-act='exp-route'][data-id='$route']"
+qa_frames
+click '#pathInstrument [data-act="exp-path-point"]'
 qa_frames
 # Add a real observer anchor with pointer, away from panels and endpoint controls.
 qa_move "${p%,*}" "${p#*,}"; qa_down; qa_up; qa_frames
@@ -374,51 +407,75 @@ click '#undoBtn'
 conformance_ok 'Undo restores route source' "$(source_hash)" "$before"
 # Capture route immediately before Coordinate so the QA-4/5 pair proves unchanged spatial route.
 capture qa-4-route
-# UX5: the Path posture is the Camera half of one edge, so the edge's cue timing is a door on the Path
-# Card and opens without putting the Path away. Nothing about the standpoint or the Camera source moves.
-conformance_ok 'the Path Card keeps the same edge cue-timing door' "$(qa_js "(!!document.querySelector('#card [data-act=exp-coordinate]')&&__me.S.experienceContext.depth==='route')")" true
+# §5.4/§5.5: the Path Card carries no cue-timing door any more — the Journey is reached from the edge Card
+# and the Index's Path | Journey switch, and nothing about the standpoint or the Camera source moves.
+conformance_ok 'the Path Card carries no cue-timing door: the Journey is the Index switch' "$(qa_js "(!!document.querySelector('#index [data-exp-posture-switch] [data-act=exp-coordinate]')&&!document.querySelector('#card [data-act=exp-coordinate]'))")" true
 standpoint="$(pose)"; before="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
-click '[data-act="exp-coordinate"]'
-agent-browser select '[data-exp-station]' "$anchor" >/dev/null;qa_frames
-click '[data-act="exp-beat"]'
+click '#index [data-exp-posture-switch] [data-act="exp-coordinate"]'
+qa_frames
+# §5.6: the station choice is the Journey Card's own select and `+ Cue` is what selects the new Cue; the
+# Hold/Invoke writers live behind `Edit cue`, which is closed by default (§5.2.7).
+agent-browser select '#card [data-exp-station]' "$anchor" >/dev/null;qa_frames
+click '#card [data-act="exp-beat"]'
+conformance_ok 'Edit cue is closed at rest and holds the writers once opened' "$(qa_js '(document.querySelector("#card [data-exp-cue-edit]").open===false)')" true
+click '#card [data-exp-cue-edit] > summary'
+qa_frames
 contribution="$(qa_jsv 'Object.values(__me.ctx.experience.uses).find(u=>u.definitionId)?.id')"
-agent-browser select '[data-exp-invoke-use]' "$contribution" >/dev/null;qa_frames
-click '[data-act="exp-invoke-beat"]'
-picker="$(qa_js "(()=>{const e=__me.ctx.experience,opts=[...document.querySelectorAll('[data-exp-invoke-use] option')].map(o=>o.value).filter(Boolean);return opts.includes('$contribution')&&!opts.includes('$offer')&&opts.every(id=>e.uses[id]&&!e.uses[id].viewId&&e.uses[id].kind!=='interaction');})()")"
+agent-browser select '#card [data-exp-invoke-use]' "$contribution" >/dev/null;qa_frames
+click '#card [data-act="exp-invoke-beat"]'
+picker="$(qa_js "(()=>{const e=__me.ctx.experience,opts=[...document.querySelectorAll('#card [data-exp-invoke-use] option')].map(o=>o.value).filter(Boolean);return opts.includes('$contribution')&&!opts.includes('$offer')&&opts.every(id=>e.uses[id]&&!e.uses[id].viewId&&e.uses[id].kind!=='interaction');})()")"
 conformance_ok 'the station picker offers automatic work only: the visitor offer is never traversal work' "$picker" true
 binding="$(qa_js "(()=>{const e=__me.ctx.experience,x=__me.S.experienceContext,u=e.uses['$contribution'],seam=e.seams[x.seam.from+'>'+x.seam.to];return u.start.kind==='station'&&u.start.stationId==='$anchor'&&u.start.connectionId===__me.S.task.params.connection&&u.start.presentationId===e.stops[x.seam.to].presentationId&&seam.beats.filter(b=>b.kind==='invoke'&&b.useId==='$contribution').length===1;})()")"
 conformance_ok 'invoking moves that Activity trigger to the station instead of adding a second trigger' "$binding" true
 identity="$(qa_js '__me.S.sel')"
-click ".station-tick[data-id='$anchor']"
-conformance_ok 'station focus highlights both projections without replacing canonical selection' "$(qa_js '__me.S.sel') / $(qa_js "(document.querySelector('.station-tick.active').dataset.id==='$anchor'&&document.querySelector('.exp-station.active').dataset.expStationLabel==='$anchor')")" "$identity / true"
+# §5.6: the Stage's Cue chip selects the same Cue its Deck marker shows, without replacing the canonical
+# selection; the Card then reads that one Cue.
+click "[data-exp-station-label='$anchor']"
+conformance_ok 'the Stage Cue chip selects the Cue its Deck marker shows, without replacing canonical selection' "$(qa_js '__me.S.sel') / $(qa_js "(document.querySelector('.jd-cue.selected').dataset.id==='$anchor'&&document.querySelector('.exp-station.active').dataset.expStationLabel==='$anchor')")" "$identity / true"
 conformance_ok 'QA-5 keeps exact QA-4 Camera source and realized standpoint' "$(pose) / $(qa_js 'JSON.stringify(__me.ctx.cameraSource)')" "$standpoint / $before"
-conformance_ok 'QA-5 station projections mirror, with local beat/hold lanes' "$(qa_js '(()=>{const spatial=[...document.querySelectorAll("[data-exp-station-label]")],temporal=[...document.querySelectorAll("[data-station-counterpart]")];return temporal.length>=3&&temporal.every(t=>spatial.some(s=>s.dataset.expStationLabel===t.dataset.stationCounterpart))&&!!document.querySelector(".coord-beat")&&!!document.querySelector(".coord-hold")&&document.querySelector("[data-hold-duration]").getBoundingClientRect().width>20;})()')" true
+conformance_ok 'QA-5 the Deck time axis and the Cue Card read the same Cue, with its own pause and actions' "$(qa_js '(()=>{const markers=[...document.querySelectorAll(".jd-cue")],spatial=[...document.querySelectorAll("[data-exp-station-label]")];return markers.length>=1&&markers.every(m=>spatial.some(s=>s.dataset.expStationLabel===m.dataset.id))&&!!document.querySelector(".jd-track")&&!!document.querySelector("[data-exp-playhead]")&&!!document.querySelector("#card [data-cue-at]")&&!!document.querySelector("#card [data-cue-pause]")&&!!document.querySelector("#card [data-cue-actions]");})()')" true
 conformance_ok 'coordination preserves every supported origin identity and the destination' "$(qa_js "([...document.querySelectorAll('[data-endpoint]')].every(e=>($visible)(e)&&($hit)(e))&&!document.querySelector('[data-exp-gap]'))")" true
-# UX4: the Seam triptych is retired. Coordination lives on the edge Card, inside the one Card home, and
-# the Stop Card's own local binding detail is a separate inspection reached from that Stop.
-conformance_ok 'Coordination lives on the edge Card, inside the one Card home, with local binding/reach' "$(qa_js '(()=>{const card=document.querySelector("#card"),strip=document.querySelector("#card .coordination-strip"),deck=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return !!card&&!!strip&&card.contains(strip)&&strip.getBoundingClientRect().right<=card.getBoundingClientRect().right&&deck.left<stage.left&&deck.right>stage.right&&!!document.querySelector("#card [data-coordination-detail]")&&document.querySelector("#card [data-coordination-detail]").textContent.includes("Reach · this transition ×1");})()')" true
-conformance_ok 'the Stop Card declares the station binding instead of a second trigger' "$(qa_js 'document.querySelector("#card [data-coordination-detail]").textContent.includes("trigger moves here")')" true
+# §5.6: the C9 strip is retired from every Card. The Journey Card is the one home for a Cue, the Deck's ◆
+# markers and the Stage's Cue chips are the projection, and an Activity whose trigger lives elsewhere says
+# so on the Card rather than in a second dashboard.
+conformance_ok 'the C9 strip is retired: the Journey Card is the one Cue home, inside one Card and one Deck' "$(qa_js '(()=>{const card=document.querySelector("#card"),deck=document.querySelector("#experienceDeck").getBoundingClientRect(),stage=document.querySelector("#stage").getBoundingClientRect();return !!card&&!document.querySelector(".coordination-strip")&&!document.querySelector(".station-projection")&&!document.querySelector(".coord-hold")&&!document.querySelector("[data-coordination-detail]")&&!!document.querySelector("#card [data-cue-at]")&&deck.left<stage.left&&deck.right>stage.right&&document.querySelector("#experienceDeck").dataset.deckPosture==="coordination";})()')" true
+conformance_ok 'the Cue Card reads its own action line instead of a second trigger' "$(qa_js 'document.querySelector("#card [data-cue-action]").textContent.includes("Open casing")')" true
 capture qa-5-coordination
 checkpoint coordination
-# Reopen has both projections and resolves the route owning saved beats.
-click '[data-act="exp-close"]'
-click '#experienceDeck [data-act="exp-guide"]'
+# §5.4: an edge always shows the edge Card, so a saved Cue is re-read through its own posture: reopen the
+# edge, then `Edit Camera Path` → `Journey`.
+click '#index [data-act="exp-route-return"]'
+click "#experienceDeck [data-act='exp-stop'][data-id='$stop']"
 click "[data-act='exp-seam'][data-from='$stop'][data-to='$to']"
-conformance_ok 'saved coordination reopens route and both station projections' "$(qa_js '(!!document.querySelector(".station-projection")&&document.querySelectorAll("[data-exp-station-label]").length>=3&&!!__me.S.task.params.connection)')" true
-# Camera pace and anchor geometry change derived timing without rebinding Experience stations.
+conformance_ok 'reopening an edge shows the edge Card, not the Journey' "$(qa_js '(document.querySelector("#card .c-k").textContent.includes("Guide edge")&&!!document.querySelector("#card [data-act=exp-route]"))')" true
+click '#card [data-act="exp-route"]'
+click '#index [data-exp-posture-switch] [data-act="exp-coordinate"]'
+qa_frames
+conformance_ok 'the saved Cues reopen on the Deck and the Stage' "$(qa_js '(document.querySelectorAll(".jd-cue").length>=1&&document.querySelectorAll("[data-exp-station-label]").length>=1&&!!__me.S.task.params.connection)')" true
+# Camera pace and anchor geometry change derived timing without rebinding Experience stations. The one Pace
+# writer lives on the Camera Path Card, so the recipe changes it there and switches back (§5.8).
 refs="$(qa_js 'JSON.stringify(__me.ctx.experience.seams[`${__me.S.experienceContext.seam.from}>${__me.S.experienceContext.seam.to}`].beats)')"
-timing="$(qa_js 'document.querySelector(".coord-hold").textContent')"
-agent-browser select '[data-exp-pace]' slow >/dev/null;qa_frames
-conformance_ok 'Camera pace updates displayed timing and retains beat/hold refs' "$(qa_js 'JSON.stringify(__me.ctx.experience.seams[`${__me.S.experienceContext.seam.from}>${__me.S.experienceContext.seam.to}`].beats)') / $(qa_js "(document.querySelector('.coord-hold').textContent!==$timing)")" "$refs / true"
+# Both readings are of the same Cue: selecting it is what puts its At on the Card.
+click "[data-exp-station-label='$anchor']"
+timing="$(qa_js 'document.querySelector("#card [data-cue-at]").textContent')"
+click '#index [data-exp-posture-switch] [data-act="exp-route"]'
+qa_frames
+agent-browser select '#card [data-exp-pace]' slow >/dev/null;qa_frames
+# A keyboard anchor edit is Camera route work like a drag: the same one proposal, and every authored beat
+# keeps its identity across it because stations bind to anchors by id.
 agent-browser click "[data-exp-anchor='$anchor']" >/dev/null;qa_key_dispatch ArrowRight
 conformance_ok 'keyboard anchor edit preserves stable beat/hold references' "$(qa_js 'JSON.stringify(__me.ctx.experience.seams[`${__me.S.experienceContext.seam.from}>${__me.S.experienceContext.seam.to}`].beats)')" "$refs"
+click '#index [data-exp-posture-switch] [data-act="exp-coordinate"]'
+qa_frames
+click "[data-exp-station-label='$anchor']"
+conformance_ok 'Camera pace updates displayed timing and retains beat/hold refs' "$(qa_js 'JSON.stringify(__me.ctx.experience.seams[`${__me.S.experienceContext.seam.from}>${__me.S.experienceContext.seam.to}`].beats)') / $(qa_js "(document.querySelector('#card [data-cue-at]').textContent!==$timing)")" "$refs / true"
 # New route invocation after cross-lens navigation has a fresh return and no remembered pose.
 click '#lens [data-lens="world"]'
 click '.stage-tools [data-act="3d"]'
 standpoint="$(pose)"
 click '#lens [data-lens="experience"]'
 click '#card [data-act="exp-resume"]'
-conformance_ok 'coordination Resume keeps NOW and restores both projections neutrally' "$(pose) / $(qa_js '(!!document.querySelector(".station-projection")&&__me.S.experienceContext.depth==="coordination")')" "$standpoint / true"
+conformance_ok 'coordination Resume keeps NOW and restores both projections neutrally' "$(pose) / $(qa_js '(document.querySelector(".jd-cue")!==null&&__me.S.experienceContext.depth==="coordination")')" "$standpoint / true"
 click "[data-act='exp-route'][data-id='$route']"
 click '[data-act="exp-route-return"]'
 conformance_ok 'resumed route return uses the current invocation standpoint' "$(pose)" "$standpoint"
@@ -428,26 +485,33 @@ conformance_ok 'the prepared support survives the resumed route work unrepaired'
 camera="$(qa_js 'JSON.stringify(__me.ctx.cameraSource)')"
 click '[data-act="exp-cut"]'
 conformance_ok 'Cut preserves Camera source, paints no real route or anchor' "$(qa_js 'JSON.stringify(__me.ctx.cameraSource)') / $(qa_js '(!document.querySelector("[data-exp-route]")&&!document.querySelector("[data-exp-anchor]"))')" "$camera / true"
-# Reusing that destination after Stop 6 makes the same Camera route reach two Seams.
-click '[data-act="exp-close"]'
+# Reusing that destination after Stop 6 makes the same Camera route reach two Seams. The edge Card carries
+# no Close; Guide posture's own `Done` on the Deck is the way back out (§5.7).
+click '#experienceDeck [data-act="exp-close"]'
 click '#index [data-act="exp-open"][data-id="presentation-11"]'
 click '#card [data-act="exp-add-guide"]'
 click '#experienceDeck [data-act="exp-guide"]'
 six="$(qa_jsv '__me.ctx.experience.guide[5]')";seven="$(qa_jsv '__me.ctx.experience.guide[6]')"
 click "[data-act='exp-seam'][data-from='$six'][data-to='$seven']"
 click '[data-act="exp-travel"]'
-click '[data-act="exp-coordinate"]'
-conformance_ok 'multiple supported routes require an explicit coordination choice' "$(qa_js '(__me.S.task.params.chooseRoute===true&&!document.querySelector(".station-projection"))')" true
-click "[data-act='exp-route-choice'][data-id='$route']"
+# §5.5: the From list is the explicit origin choice, so a two-route edge asks no second question. The Path
+# posture is where the origin is chosen and where the one Pace writer lives.
+click '#card [data-act="exp-route"]'
+qa_frames
+conformance_ok 'the From list is the explicit choice among the origins that reach this edge' "$(qa_js "(document.querySelectorAll('#index [data-path-from] [data-path-origin]').length>=2&&!!document.querySelector('#index [data-path-from] [aria-current=true]'))")" true
+click "#index [data-path-from] [data-id='$route']"
+qa_frames
 before="$(source_hash)";count="$(undo)"
-agent-browser select '[data-exp-pace]' fast >/dev/null;qa_frames
+agent-browser select '#card [data-exp-pace]' fast >/dev/null;qa_frames
 conformance_ok 'shared route pace asks with two Seams before writing source/history' "$(qa_js '(!!__me.S.expRouteAsk&&__me.S.expRouteAsk.affected.length===2)') / $(source_hash) / $(undo)" "true / $before / $count"
 click '[data-act="exp-route-cancel"]'
 conformance_ok 'shared route Cancel leaves source/history untouched' "$(source_hash) / $(undo)" "$before / $count"
-agent-browser select '[data-exp-pace]' fast >/dev/null;qa_frames
+agent-browser select '#card [data-exp-pace]' fast >/dev/null;qa_frames
 click '[data-act="exp-route-scope"]'
 conformance_ok 'accepting shared route pace writes one aggregate history step' "$(undo)" "$((count+1))"
-click "[data-act='exp-route'][data-id='$route']"
+# Still the Path posture: the From row re-states which route is being edited, so a shared gesture reaches
+# the same route a second time without a second door.
+click "#index [data-path-from] [data-id='$route']"
 before="$(source_hash)";count="$(undo)"
 qa_drag "[data-exp-anchor=\"$anchor\"]" 20 12
 conformance_ok 'shared observer-anchor gesture remains a proposal until scope acceptance' "$(qa_js '(!!__me.S.expRouteAsk)') / $(source_hash) / $(undo)" "true / $before / $count"
@@ -456,9 +520,15 @@ conformance_ok 'canceling shared anchor proposal writes zero history' "$(source_
 # MP2: selecting an unrelated Stop ends the route writer; a later Stage press cannot add an anchor.
 route_id="$(qa_jsv '__me.S.task.params.connection')"
 anchors_before="$(qa_js 'JSON.stringify(__me.ctx.cameraSource.connections[__me.S.task.params.connection].anchors)')"
-standpoint="$(pose)"
 unrelated="$(qa_jsv '__me.ctx.experience.guide.find(id=>id!==__me.S.experienceContext.seam.from&&id!==__me.S.experienceContext.seam.to)')"
-click "[data-act='exp-stop'][data-id='$unrelated']"
+# §5.5: while the Path posture is open the Deck speaks the route's own topology, not the Guide's Stop chips,
+# so the author leaves by the posture's own crumb — the edge Card — and only then selects the unrelated
+# Stop. The crumb's return is the law proved above; what this block adds is that selecting a Stop is what
+# ends the route writer, and that the selection itself moves no Camera.
+click '#index [data-act="exp-route-return"]'
+qa_frames
+standpoint="$(pose)"
+click "#experienceDeck [data-act='exp-stop'][data-id='$unrelated']"
 conformance_ok 'selecting an unrelated Stop ends the route writer without moving Camera' "$(qa_js '(__me.S.experienceContext.depth!=="route"&&__me.S.experienceContext.seam===null&&__me.S.task?.kind==="experience-overview")') / $(pose)" "true / $standpoint"
 stage_point="$(qa_jsv '(()=>{const r=document.querySelector("#stage canvas").getBoundingClientRect();return Math.round(r.x+r.width/2)+","+Math.round(r.y+r.height/2);})()')"
 qa_move "${stage_point%,*}" "${stage_point#*,}";qa_down;qa_up
