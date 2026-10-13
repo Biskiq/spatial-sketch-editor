@@ -61,6 +61,27 @@ export const objects = [
 ];
 
 export const objectById = Object.fromEntries(objects.map((o) => [o.id, o]));
+export const roomById = Object.fromEntries(rooms.filter((r) => r.name).map((r) => [r.id, r]));
+export const roomOf = (o) => (o.x < 12 ? 'rotunda' : o.x < 26 ? 'salon' : 'gallery');
+export const WING = 'Salon Chopin wing · Level 0';
+
+// Named bounds and openings for the World Context Index (representative, read-only here).
+export const bounds = [
+  { id: 'w_oct', kind: 'wall', room: 'rotunda', name: 'Octagon wall', segs: octWalls() },
+  { id: 'o_rot_w', kind: 'opening', room: 'rotunda', name: 'West arch', segs: [[oct[3][0], 8.6, oct[3][0], 11.4]], width: 2.8 },
+  { id: 'o_rot_e', kind: 'opening', room: 'rotunda', name: 'Passage to the salon', segs: [[ex, 8.6, ex, 11.4]], width: 2.8 },
+  { id: 'w_sal_n', kind: 'wall', room: 'salon', name: 'North wall', segs: [[14, 2, 26, 2]] },
+  { id: 'w_sal_s', kind: 'wall', room: 'salon', name: 'South wall', segs: [[14, 18, 26, 18]] },
+  { id: 'w_sal_w', kind: 'wall', room: 'salon', name: 'Rotunda side', segs: [[14, 2, 14, 8.6], [14, 11.4, 14, 18]] },
+  { id: 'w_sal_e', kind: 'wall', room: 'salon', name: 'Gallery side', segs: [[26, 2, 26, 8.6], [26, 11.4, 26, 18]], shared: 'gallery' },
+  { id: 'o_sal_w', kind: 'opening', room: 'salon', name: 'Passage from the Rotunda', segs: [[14, 8.6, 14, 11.4]], width: 2.8 },
+  { id: 'o_sal_e', kind: 'opening', room: 'salon', name: 'Gallery doorway', segs: [[26, 8.6, 26, 11.4]], width: 2.8, shared: 'gallery' },
+  { id: 'w_gal_n', kind: 'wall', room: 'gallery', name: 'Picture wall', segs: [[26, 5, 38, 5]] },
+  { id: 'w_gal_s', kind: 'wall', room: 'gallery', name: 'South wall', segs: [[26, 15, 38, 15]] },
+  { id: 'w_gal_e', kind: 'wall', room: 'gallery', name: 'End wall', segs: [[38, 5, 38, 15]] },
+];
+export const boundById = Object.fromEntries(bounds.map((b) => [b.id, b]));
+export const boundsOf = (roomId) => bounds.filter((b) => b.room === roomId || b.shared === roomId);
 
 // ——— helpers ———
 export function aim(pos, target) {
@@ -139,4 +160,80 @@ function segInt(x1, y1, x2, y2, x3, y3, x4, y4) {
   const t = ((x3 - x1) * (y4 - y3) - (y3 - y1) * (x4 - x3)) / d;
   const u = ((x3 - x1) * (y2 - y1) - (y3 - y1) * (x2 - x1)) / d;
   return t > 0.001 && t < 0.999 && u > 0 && u < 1;
+}
+
+// ——— stress scenarios (prototype review only) ———
+// Deterministic generators that add many Views, Stops or Presentations to the Salon seed,
+// so the Index, Cards and Guide can be judged at 15–30 Stops, 20–50 Views and ~40 Presentations.
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const ROOM_BOX = { rotunda: [3.2, 6.4, 10.8, 13.6], salon: [14.8, 2.8, 25.2, 17.2], gallery: [26.8, 5.8, 37.2, 14.2] };
+const ANGLES = ['Low angle', 'From the door', 'Over the shoulder', 'Side light', 'Close detail', 'Wide context', 'Corner', 'Eye to eye', 'Raking light', 'Reflection', 'Profile', 'From behind', 'Through the arch', 'High corner', 'Seated view', 'Hands', 'Texture', 'Silhouette'];
+function aroundObject(r, o, i) {
+  const box = ROOM_BOX[roomOf(o)];
+  for (let k = 0; k < 40; k++) {
+    const a = r() * Math.PI * 2, d = 1.8 + r() * 3.4;
+    let x = o.x + Math.cos(a) * d, z = o.z + Math.sin(a) * d;
+    if (o.kind === 'painting') { x = o.x + (r() - 0.5) * 4; z = o.z + 1.6 + r() * 4.5; }
+    if (x > box[0] && x < box[2] && z > box[1] && z < box[3]) {
+      const y = [1.15, 1.6, 1.6, 2.5][Math.floor(r() * 4)];
+      const ty = o.kind === 'painting' ? o.y : Math.min(1.2, o.h * 0.6);
+      return { pos: [x, y, z], target: [o.x, ty, o.z], lens: ['wide', 'normal', 'normal', 'close'][(i + Math.floor(r() * 4)) % 4] };
+    }
+  }
+  return { pos: [o.x + 2, 1.6, o.z + 2], target: [o.x, 1, o.z], lens: 'normal' };
+}
+export function seedStress(kind) {
+  const d = seedPopulated(); const r = rng(kind.length * 7919 + 17);
+  const addViews = (pres, o, n, prefix = '') => {
+    for (let i = 0; i < n; i++) {
+      const p = aroundObject(r, o, i); const id = `${pres.id}_g${i}`;
+      d.views[id] = view(id, pres.id, `${prefix}${ANGLES[i % ANGLES.length]}${i >= ANGLES.length ? ' ' + (Math.floor(i / ANGLES.length) + 1) : ''}`, p.pos, p.target, p.lens);
+      pres.viewIds.push(id);
+    }
+  };
+  if (kind === 'views20' || kind === 'views50') {
+    const pres = d.presentations.find((p) => p.id === 'p_piano');
+    addViews(pres, objectById.piano, kind === 'views20' ? 16 : 46);
+    d.guide.stops[1].seq.push({ viewId: pres.viewIds[6], hold: 3 }, { viewId: pres.viewIds[9], hold: 3 });
+  }
+  if (kind === 'stops15' || kind === 'stops30' || kind === 'pres40') {
+    // More Presentations, one per remaining object, each with a few Views.
+    for (const o of objects) {
+      if (d.presentations.some((p) => p.subject === o.id) || o.id === 'muse') continue;
+      const pres = { id: `p_${o.id}`, name: o.name, subject: o.id, viewIds: [], defaultViewId: null, explore: true };
+      d.presentations.push(pres); addViews(pres, o, 2 + Math.floor(r() * 3)); pres.defaultViewId = pres.viewIds[0];
+    }
+  }
+  if (kind === 'pres40') {
+    const themes = ['Morning light', 'Evening light', 'Restoration', 'Provenance', 'For children', 'Accessible route', 'Music room', 'Letters', 'Sketches', 'The 1838 winter', 'Hidden details', 'Materials', 'Craft', 'Sound', 'Composer’s hands', 'Pupils', 'Salons of Paris', 'Mallorca', 'Nohant summers', 'Last concerts', 'Portrait studies', 'Frames', 'Floor and ceiling', 'Doorways', 'Benches', 'The long view', 'Light study', 'Scale', 'Close looking', 'Curator’s pick', 'Before and after'];
+    let k = 0;
+    while (d.presentations.length < 40) {
+      const o = objects[k % objects.length]; const id = `p_t${k}`;
+      const pres = { id, name: themes[k % themes.length], subject: k % 3 ? o.id : null, viewIds: [], defaultViewId: null, explore: k % 5 !== 3 };
+      d.presentations.push(pres); addViews(pres, o, 1 + Math.floor(r() * 4)); pres.defaultViewId = pres.viewIds[0]; k++;
+    }
+  }
+  if (kind === 'stops15' || kind === 'stops30') {
+    const n = kind === 'stops15' ? 15 : 30; const pres = d.presentations;
+    const base = d.guide.stops.slice(0, 4); d.guide.stops = [...base];
+    let i = 0;
+    while (d.guide.stops.length < n) {
+      const p = pres[(i * 3 + 4) % pres.length]; i++;
+      const pick = p.viewIds.filter((_, j) => j === 0 || r() > 0.55).slice(0, 3);
+      d.guide.stops.push({ id: `s_x${i}`, presId: p.id, seq: pick.map((v) => ({ viewId: v, hold: 3 + Math.floor(r() * 3) })), out: r() > 0.35 ? { mode: 'travel', duration: 5 + Math.floor(r() * 5) } : { mode: 'cut', duration: 6 } });
+    }
+    // Travels between rooms are routed through the doorways, as a creator would shape them.
+    const RI = { rotunda: 0, salon: 1, gallery: 2 }, DOORS = [[[11.6, 10], [14.6, 10]], [[25.4, 10], [26.6, 10]]];
+    const ri = (v) => (v.pos[0] < 12.2 ? 0 : v.pos[0] < 26 ? 1 : 2);
+    d.guide.stops.forEach((st, k) => {
+      const nx = d.guide.stops[k + 1]; if (!nx || st.out.mode !== 'travel') return;
+      const a = d.views[st.seq[st.seq.length - 1].viewId], b = d.views[nx.seq[0].viewId], key = `${a.id}>${b.id}`;
+      if (d.paths[key]) return;
+      const ia = ri(a), ib = ri(b); if (ia === ib) return;
+      const pts = []; if (ia < ib) for (let q = ia; q < ib; q++) pts.push(...DOORS[q]); else for (let q = ia - 1; q >= ib; q--) pts.push(...[...DOORS[q]].reverse());
+      d.paths[key] = { points: pts.map(([x, z]) => [x, z + (r() - 0.5) * 1.2]) };
+    });
+    d.guide.name = `Salon tour — long edit`;
+  }
+  return d;
 }

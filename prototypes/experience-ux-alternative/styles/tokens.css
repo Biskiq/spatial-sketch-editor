@@ -1,4 +1,5 @@
-/* Visual language tokens — "Conservatory": forest frame, stone working surfaces, gold attention.
+/* Visual language tokens — "Conservatory": forest frame, white/stone working surfaces, gold attention.
+   Shared by both domains (World and Experience); see ../visual-language.md.
    Each colour family has one job; see ../visual-language.md. */
 :root {
   /* Forest — identity, frame (Head, Deck), primary commit actions */
@@ -42,14 +43,15 @@
   --danger-tint: #f8e7e2;
 
   /* Roles */
-  --surface: var(--n-25);
+  --surface: var(--n-0);          /* Card, menus, controls */
+  --surface-work: var(--n-50);    /* Index, quiet working neutral */
   --surface-sunk: var(--n-75);
   --surface-raised: var(--n-0);
   --line: var(--n-150);
   --line-strong: var(--n-200);
   --text: var(--n-900);
   --text-2: var(--n-600);
-  --text-3: var(--n-500);
+  --text-3: #626a62;               /* ≥ 4.5:1 on white and on --surface-work */
   --plan-bg: #e9ebe6;
   --stage-3d-bg: #26302b;
 
@@ -67,9 +69,10 @@
   --fs-xxl: 24px;
 
   /* Metrics */
-  --head-h: 48px;
-  --index-w: 236px;
-  --rail-w: 52px;
+  --head-h: 52px;
+  --index-w: 248px;
+  --rail-w: 56px;
+  --inset: 12px;                   /* Stage furniture inset */
   --card-w: 324px;
   --ctl-h: 30px;
   --ctl-h-lg: 36px;
