@@ -109,7 +109,6 @@ const READINESS = [
 ];
 const MECHANISM_STATUSES = ['installed', 'dormant'];
 const VERIFICATION_TIERS = ['iteration', 'affected-subsystem', 'architecture-integration', 'exhaustive'];
-const PENDING_SLICE_STATUSES = ['proposed', 'planning', 'approved', 'in-progress'];
 const SETTLED_SLICE_STATUSES = ['accepted', 'shipped'];
 const GATE_REFERENCE = /^[A-Za-z][A-Za-z0-9._-]*@\d+$/;
 /** Qualified ids (§9.1): `T1.P01.S01`, `R115.S01`. */
@@ -118,6 +117,25 @@ const PHASE_ID = /^(?:[A-Z]\d+\.P\d+|R\d+)$/;
 const CAMERA_EFFECT = 'camera-authoring-migration';
 /** The exposure window's bound. Changing it requires an owner amendment (§11). */
 const EXPOSURE_BOUND = 3;
+/** The §9.4 seed rows: gate identity is contractual, so the register keeps every one of them. */
+const SEEDED_GATES = [
+	'F1.reference',
+	'F2.unit-envelope',
+	'F3.channels',
+	'F4.intent-acceptance',
+	'F5.release-envelope',
+	'T1.viewport-projection',
+	'T3.camera-experience-cutover',
+	'T4.prepared-reader'
+];
+/** Every registered track and repository phase (§9.1). */
+const SEEDED_TRACKS = ['T1', 'T2', 'T3', 'T4', 'R115'];
+/** The §11 mechanism register's fixed identities. */
+const SEEDED_MECHANISMS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'];
+/** A listed exposure row starts with its slice id; `id …` may add the `discharged` marker. */
+const EXPOSURE_ROW = /^((?:[A-Z]\d+\.P\d+|R\d+)\.S\d+)/;
+/** A `TRACK COMPLETE` entry naming its track: `TRACK COMPLETE T1 — owner · date · evidence`. */
+const TRACK_COMPLETE_ENTRY = /^[ \t]*(?:[-*][ \t]+)?\*{0,2}TRACK COMPLETE\*{0,2}[ \t]*:?[ \t]+([A-Z]\d+)\b(.*)$/i;
 
 // ---------------------------------------------------------------- model
 
@@ -150,6 +168,9 @@ export type SliceRow = {
 	integrationRoute: string;
 };
 
+/** One cycle exposure row: the listed slice, and whether the row records a discharge. */
+export type ExposureRow = { id: string; discharged: boolean };
+
 export type PhaseModel = {
 	id: string;
 	file: string;
@@ -166,7 +187,10 @@ export type TrackRow = {
 	roadmap: string;
 	/** Phase ids its phase register lists. */
 	phaseIds: string[];
+	/** True only for a present, complete `TRACK COMPLETE` record (§9.3). */
 	trackComplete: boolean;
+	/** Missing parts of a present record (owner, date, evidence); empty when absent or complete. */
+	completionGaps: string[];
 };
 
 export type CycleModel = {
@@ -344,6 +368,36 @@ export function gateProblems(model: StructureModel): string[] {
 	return problems;
 }
 
+/**
+ * The seeded structure's non-vacuity, stated as an invariant rather than as the state of the day:
+ * every seeded gate identity, track and mechanism is registered as such, and R115 keeps its
+ * registered child. Status, version, provider assignment and phase population stay free, so the
+ * first legitimate T-track phase or ratified gate arrives without failing the lane (§9.4).
+ */
+export function seedProblems(model: StructureModel): string[] {
+	const problems: string[] = [];
+	for (const gate of SEEDED_GATES) {
+		if (!model.gates.some((row) => row.gate === gate)) {
+			problems.push(`gate register: the seeded gate ${gate} is missing`);
+		}
+	}
+	for (const track of SEEDED_TRACKS) {
+		if (model.tracks.filter((row) => row.id === track).length !== 1) {
+			problems.push(`track register: ${track} is not registered exactly once`);
+		}
+	}
+	for (const mechanism of SEEDED_MECHANISMS) {
+		if (model.cycle.mechanisms.filter((row) => row.id === mechanism).length !== 1) {
+			problems.push(`cycle: mechanism ${mechanism} is not registered exactly once`);
+		}
+	}
+	if (!STAGES.includes(model.cycle.stage)) problems.push(`cycle: stage "${model.cycle.stage}" is not part of the stage vocabulary`);
+	if (!model.phases.some((phase) => phase.id === 'R115' && phase.slices.some((slice) => slice.id === 'R115.S01'))) {
+		problems.push('R115: the repository phase register lost its R115.S01 child');
+	}
+	return problems;
+}
+
 /** Phase/track rules: parents, final gates, verification tiers, closure blocks. */
 export function phaseProblems(model: StructureModel): string[] {
 	const problems: string[] = [];
@@ -420,6 +474,11 @@ export function phaseProblems(model: StructureModel): string[] {
 		if (track.status === 'shipped' && !track.trackComplete) {
 			problems.push(`track register: ${track.id} is shipped without a TRACK COMPLETE owner/evidence block`);
 		}
+		if (track.completionGaps.length > 0) {
+			problems.push(
+				`track register: ${track.id} TRACK COMPLETE is missing ${track.completionGaps.join(', ')} (owner · date · evidence)`
+			);
+		}
 		for (const phaseId of track.phaseIds) {
 			if (!phaseId.startsWith(`${track.id}.`)) {
 				problems.push(`${track.roadmap}: phase ${phaseId} is registered under track ${track.id}`);
@@ -457,17 +516,36 @@ export function cycleProblems(model: StructureModel): string[] {
 	if (cycle.exposures.length > EXPOSURE_BOUND) {
 		problems.push(`cycle: ${cycle.exposures.length} exposure slices exceed the bound of ${EXPOSURE_BOUND}`);
 	}
-	if (cycle.readiness === 'ready') {
-		if (!configured) problems.push('cycle: readiness "ready" requires at least one listed exposure slice');
-		if (isSentinel(cycle.terminal)) problems.push('cycle: readiness "ready" requires a terminal');
+	if (cycle.readiness === 'ready' && !configured) {
+		problems.push('cycle: readiness "ready" requires at least one listed exposure slice');
+	}
+	if (configured) {
+		// The window is a closed set: the terminal and the expected opener are listed exposures, so
+		// a window cannot look configured or closable around a slice outside its own list.
+		if (isSentinel(cycle.terminal)) problems.push('cycle: a configured window requires a terminal');
+		else if (!cycle.exposures.includes(cycle.terminal)) {
+			problems.push(`cycle: the terminal "${cycle.terminal}" is not one of the listed exposure slices`);
+		}
+		if (isSentinel(cycle.opener)) problems.push('cycle: a configured window requires an expected opener');
+		else if (!cycle.exposures.includes(cycle.opener)) {
+			problems.push(`cycle: the expected opener "${cycle.opener}" is not one of the listed exposure slices`);
+		}
 		for (const id of cycle.exposures) {
 			if (!statusOf.has(id)) problems.push(`cycle: listed exposure "${id}" is not a slice in any phase README`);
 		}
 	}
 
-	const exposureRecord = new Set(tokens(cycle.exposureRows.replace(/\([^)]*\)/g, '')));
-	const resolved = (id: string): boolean =>
-		SETTLED_SLICE_STATUSES.includes(statusOf.get(id) ?? '') || exposureRecord.has(id);
+	// Exposure rows: one row per listed exposure, carrying the `discharged` marker when a
+	// nonterminal exposure closes without acceptance (§11). The terminal is never discharged —
+	// closure still requires it accepted.
+	const exposureRows = exposureRowsOf(cycle.exposureRows);
+	const recorded = new Set(exposureRows.map((row) => row.id));
+	const discharged = new Set(exposureRows.filter((row) => row.discharged).map((row) => row.id));
+	const settled = (id: string): boolean => SETTLED_SLICE_STATUSES.includes(statusOf.get(id) ?? '');
+	const resolved = (id: string): boolean => settled(id) || (id !== cycle.terminal && discharged.has(id));
+	if (discharged.has(cycle.terminal)) {
+		problems.push(`cycle: the terminal "${cycle.terminal}" cannot be discharged — closure requires it accepted`);
+	}
 
 	if (configured) {
 		const started = cycle.exposures.filter(
@@ -479,7 +557,7 @@ export function cycleProblems(model: StructureModel): string[] {
 			);
 		}
 		for (const id of cycle.exposures) {
-			if (SETTLED_SLICE_STATUSES.includes(statusOf.get(id) ?? '') && !exposureRecord.has(id)) {
+			if (settled(id) && !recorded.has(id)) {
 				problems.push(`cycle: exposure "${id}" is ${statusOf.get(id)} with no exposure row`);
 			}
 		}
@@ -490,9 +568,12 @@ export function cycleProblems(model: StructureModel): string[] {
 		}
 		if (
 			(cycle.stage === 'PHASE_3_EVALUATE' || cycle.stage === 'STEADY' || !isSentinel(cycle.closedBy)) &&
-			cycle.exposures.some((id) => PENDING_SLICE_STATUSES.includes(statusOf.get(id) ?? ''))
+			cycle.exposures.some((id) => !resolved(id))
 		) {
-			problems.push('cycle: the window is closed or closing while a listed exposure is still pending');
+			const pending = cycle.exposures.filter((id) => !resolved(id));
+			problems.push(
+				`cycle: the window is closed or closing while a listed exposure is still pending — ${pending.join(', ')} (no discharge row)`
+			);
 		}
 	}
 
@@ -594,6 +675,53 @@ export function skillProblems(skills: { closeout: string; phase: string }): stri
 
 // ---------------------------------------------------------------- real-tree model
 
+/**
+ * The cycle's `Exposure rows` cell: one entry per listed exposure, with `discharged` marking an
+ * explicit discharge (§11 closure). Other text in an entry is a human reason, never a status.
+ */
+export function exposureRowsOf(cell: string): ExposureRow[] {
+	const rows: ExposureRow[] = [];
+	for (const entry of cell.split(/[,;]/)) {
+		if (isSentinel(entry)) continue;
+		const text = stripDecoration(entry);
+		const id = EXPOSURE_ROW.exec(text)?.[1];
+		if (id === undefined) continue;
+		rows.push({ id, discharged: /\bdischarged\b/i.test(text) });
+	}
+	return rows;
+}
+
+/** The track register's section: from its heading to the next second-level heading. */
+function trackRegisterSection(source: string): string {
+	const lines = source.split('\n');
+	const start = lines.findIndex((line) => /^##[ \t]+Track register[ \t]*$/.test(line));
+	if (start === -1) return '';
+	const end = lines.findIndex((line, index) => index > start && /^##[ \t]/.test(line));
+	return lines.slice(start, end === -1 ? lines.length : end).join('\n');
+}
+
+/**
+ * A track's `TRACK COMPLETE` record (§9.3): an entry inside the global track register that names
+ * the track and carries owner, date and evidence. A mention elsewhere in the file is prose, not a
+ * completion record, so a stray sentence never marks a track shipped. `null` when absent.
+ */
+export function trackCompletion(
+	source: string,
+	trackId: string
+): { owner: string; date: string; evidence: string } | null {
+	for (const line of trackRegisterSection(source).split('\n')) {
+		const entry = TRACK_COMPLETE_ENTRY.exec(line);
+		if (entry === null || entry[1] !== trackId) continue;
+		const rest = stripDecoration(entry[2] ?? '');
+		return {
+			owner: /owner:?[ \t]*([^·|;]+)/i.exec(rest)?.[1]?.trim() ?? '',
+			date: /\bdate:?[ \t]*(\d{4}-\d{2}-\d{2})/i.exec(rest)?.[1]?.trim() ?? '',
+			evidence: /evidence:?[ \t]*(.+)$/i.exec(rest)?.[1]?.trim() ?? ''
+		};
+	}
+	return null;
+}
+
 function repoPath(fromFile: string, target: string): string {
 	const withoutFragment = target.split('#')[0]!.trim();
 	return relative(REPO_ROOT, resolve(REPO_ROOT, dirname(fromFile), withoutFragment)).split(sep).join('/');
@@ -665,15 +793,16 @@ export function readStructure(): StructureModel {
 		if (Object.values(row).every((cell) => isSentinel(cell))) continue;
 		const target = linkTarget(row['Roadmap'] ?? '');
 		const id = stripDecoration(row['Track'] ?? '');
-		const complete = roadmapSource
-			.split('\n')
-			.some((line) => line.includes('TRACK COMPLETE') && line.includes(id));
+		const record = trackCompletion(roadmapSource, id);
+		const completionGaps =
+			record === null ? [] : (['owner', 'date', 'evidence'] as const).filter((part) => record[part] === '');
 		tracks.push({
 			id,
 			status: stripDecoration(row['Status'] ?? ''),
 			roadmap: target === null ? '' : repoPath(ROADMAP, target),
 			phaseIds: [],
-			trackComplete: complete
+			trackComplete: record !== null && completionGaps.length === 0,
+			completionGaps: [...completionGaps]
 		});
 	}
 	for (const track of tracks) {
@@ -838,22 +967,24 @@ export function fixture(overrides: Partial<StructureModel> = {}): StructureModel
 	return {
 		gates: [gate, undrafted],
 		trustedBase: [{ ...gate }],
-		tracks: [
-			{
-				id: 'T1',
-				status: 'planning',
-				roadmap: 'docs/roadmap/t1-spatial-world/README.md',
-				phaseIds: ['T1.P01'],
-				trackComplete: false
-			},
-			{
-				id: 'T3',
-				status: 'planning',
-				roadmap: 'docs/roadmap/t3-experience/README.md',
-				phaseIds: [],
-				trackComplete: false
-			}
-		],
+			tracks: [
+				{
+					id: 'T1',
+					status: 'planning',
+					roadmap: 'docs/roadmap/t1-spatial-world/README.md',
+					phaseIds: ['T1.P01'],
+					trackComplete: false,
+					completionGaps: []
+				},
+				{
+					id: 'T3',
+					status: 'planning',
+					roadmap: 'docs/roadmap/t3-experience/README.md',
+					phaseIds: [],
+					trackComplete: false,
+					completionGaps: []
+				}
+			],
 		phases: [phase],
 		cycle: {
 			stage: 'PHASE_1',
@@ -940,11 +1071,12 @@ describe('execution structure is registered, exact and eligible', () => {
 			const file = `docs/roadmap/${track}/README.md`;
 			expect(schemaProblems(readFile(file), 'Phase register', file, PHASE_COLUMNS)).toEqual([]);
 		}
-		expect(model.tracks.map((track) => track.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'R115']);
-		expect(model.gates).toHaveLength(8);
-		expect(model.gates.every((row) => row.state === 'undrafted' && isSentinel(row.version))).toBe(true);
-		expect(model.phases.flatMap((phase) => phase.slices).map((slice) => slice.id)).toEqual(['R115.S01']);
-		expect(model.cycle.mechanisms.map((mechanism) => mechanism.id)).toEqual(['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']);
+		// Non-vacuity without freezing the initial state: the seeded identities are contractual and
+		// are checked as an invariant, while status, version, provider and phase population stay
+		// free (§9.4). An assertion that the register is all-`undrafted`, or that `R115.S01` is the
+		// only slice, would fail the first legitimate T1 phase or ratified gate — the lane exists to
+		// enable those, not to prohibit them.
+		expect(seedProblems(model)).toEqual([]);
 		expect(model.trustedBase).not.toBeNull();
 	});
 
@@ -952,6 +1084,45 @@ describe('execution structure is registered, exact and eligible', () => {
 		expect(gateProblems(model)).toEqual([]);
 		expect(phaseProblems(model)).toEqual([]);
 		expect(cycleProblems(model)).toEqual([]);
+	});
+
+	it('keeps the lane green when a ratified gate, a track phase and an open window arrive', () => {
+		// The defect class this replaces: a checkpoint asserting "all undrafted" and "only R115.S01"
+		// reds the lane exactly when the execution system starts being used. This control advances
+		// the real structure — a ratified first version, a registered T1 phase, an accepted second
+		// R115 child and an open window — and the invariant must hold.
+		const real = readStructure();
+		const frontier: StructureModel = {
+			...real,
+			gates: [{ ...real.gates[0]!, version: '1', state: 'ratified' }, ...real.gates.slice(1)],
+			tracks: real.tracks.map((track) =>
+				track.id === 'T1' ? { ...track, phaseIds: [...track.phaseIds, 'T1.P01'] } : track
+			),
+			phases: real.phases.map((phase) =>
+				phase.id === 'R115'
+					? { ...phase, slices: [...phase.slices, { ...phase.slices[0]!, id: 'R115.S02', status: 'accepted' }] }
+					: phase
+			),
+			cycle: {
+				...real.cycle,
+				stage: 'PHASE_2_VALIDATING',
+				readiness: 'open',
+				exposures: ['R115.S01'],
+				opener: 'R115.S01',
+				terminal: 'R115.S01',
+				openedBy: 'R115.S01'
+			}
+		};
+		// The control is a real advance, not a renaming of the initial state.
+		expect(frontier.gates.some((row) => row.state !== 'undrafted')).toBe(true);
+		expect(frontier.phases.flatMap((phase) => phase.slices).length).toBeGreaterThan(1);
+		expect(seedProblems(frontier)).toEqual([]);
+		expect(
+			seedProblems({ ...frontier, gates: frontier.gates.filter((row) => row.gate !== 'F1.reference') }).join('\n')
+		).toContain('the seeded gate F1.reference is missing');
+		expect(
+			seedProblems({ ...frontier, tracks: frontier.tracks.filter((row) => row.id !== 'T3') }).join('\n')
+		).toContain('track register: T3 is not registered exactly once');
 	});
 
 	it('refuses a consumed version that is not registered, accepted and accepted at the trusted base', () => {
@@ -1114,6 +1285,33 @@ describe('execution structure is registered, exact and eligible', () => {
 		);
 	});
 
+	it('recognizes a TRACK COMPLETE record only on the track register with owner, date and evidence', () => {
+		const source = readFile(ROADMAP);
+		const entry = 'TRACK COMPLETE T1 — owner: owner-role · date: 2026-10-14 · evidence: ./t1-spatial-world/README.md';
+		// No track is complete today, and the register must say so honestly.
+		expect(trackCompletion(source, 'T1')).toBeNull();
+		// A prose mention elsewhere in the file, even naming the track, is not a completion record.
+		expect(trackCompletion(`${source}\n${entry}\n`, 'T1')).toBeNull();
+		expect(trackCompletion(source.replace('- **R115 is a repository phase', `${entry}\n- **R115 is a repository phase`), 'T1')).toEqual({
+			owner: 'owner-role',
+			date: '2026-10-14',
+			evidence: './t1-spatial-world/README.md'
+		});
+		// An incomplete record reports the parts it lacks, and marks no track complete.
+		expect(
+			trackCompletion(
+				source.replace('- **R115 is a repository phase', 'TRACK COMPLETE T1 — owner: owner-role\n- **R115 is a repository phase'),
+				'T1'
+			)
+		).toEqual({ owner: 'owner-role', date: '', evidence: '' });
+		expect(
+			phaseProblems(fixture({ tracks: [{ ...fixture().tracks[0]!, completionGaps: ['date', 'evidence'] }] })).join('\n')
+		).toContain('TRACK COMPLETE is missing date, evidence');
+		expect(
+			phaseProblems(fixture({ tracks: [{ ...fixture().tracks[0]!, status: 'shipped', trackComplete: true }] })).join('\n')
+		).not.toContain('TRACK COMPLETE');
+	});
+
 	it('refuses a narrowed slice plan without an integration route and a non-exhaustive final gate', () => {
 		expect(phaseProblems(withSecondSlice({ verification: 'affected-subsystem' })).join('\n')).toContain(
 			'must declare its replacement integration route'
@@ -1133,9 +1331,12 @@ describe('execution structure is registered, exact and eligible', () => {
 describe('the architecture cycle opening rule', () => {
 	const model = readStructure();
 
-	it('reports nothing for the configured window as written', () => {
-		expect(model.cycle.stage).toBe('PHASE_1');
-		expect(model.cycle.exposures).toEqual([]);
+	it('reports nothing for the window as written, configured or not', () => {
+		// The state row and mechanism register parsed, whatever the current stage: an unconfigured
+		// window is as valid here as the configured one the first T1 phase plan installs.
+		expect(STAGES).toContain(model.cycle.stage);
+		expect(model.cycle.readiness).not.toBe('');
+		expect(model.cycle.mechanisms.length).toBeGreaterThanOrEqual(SEEDED_MECHANISMS.length);
 		expect(cycleProblems(model)).toEqual([]);
 	});
 
@@ -1159,6 +1360,39 @@ describe('the architecture cycle opening rule', () => {
 		expect(cycleProblems({ ...withExposures('in-progress', 'in-progress'), cycle: configuredCycle({ stage: 'PHASE_3_EVALUATE' }) }).join('\n')).toContain(
 			'while a listed exposure is still pending'
 		);
+	});
+
+	it('requires the terminal and the expected opener to be listed exposure slices', () => {
+		expect(cycleProblems(fixture({ cycle: configuredCycle({ terminal: 'T1.P01.S09' }) })).join('\n')).toContain(
+			'the terminal "T1.P01.S09" is not one of the listed exposure slices'
+		);
+		expect(cycleProblems(fixture({ cycle: configuredCycle({ opener: 'T1.P01.S09' }) })).join('\n')).toContain(
+			'the expected opener "T1.P01.S09" is not one of the listed exposure slices'
+		);
+		expect(cycleProblems(fixture({ cycle: configuredCycle({ terminal: '—' }) })).join('\n')).toContain(
+			'a configured window requires a terminal'
+		);
+		expect(cycleProblems(fixture({ cycle: configuredCycle({ opener: '—' }) })).join('\n')).toContain(
+			'a configured window requires an expected opener'
+		);
+	});
+
+	it('closes on a discharged nonterminal exposure, and never on a discharged terminal', () => {
+		const window = withExposures('approved', 'accepted');
+		const closed = configuredCycle({
+			stage: 'PHASE_3_EVALUATE',
+			exposureRows: 'T1.P01.S02, T1.P01.S01 discharged — absorbed by the T1.P02 window'
+		});
+		// A recorded discharge carries closure even though that nonterminal slice stays `approved`.
+		expect(cycleProblems({ ...window, cycle: closed })).toEqual([]);
+		// Without its discharge row the same window is a premature close.
+		expect(
+			cycleProblems({ ...window, cycle: { ...closed, exposureRows: 'T1.P01.S02' } }).join('\n')
+		).toContain('while a listed exposure is still pending');
+		// The terminal cannot be discharged: closure still requires it accepted.
+		expect(
+			cycleProblems({ ...window, cycle: { ...closed, exposureRows: 'T1.P01.S01 discharged, T1.P01.S02 discharged' } }).join('\n')
+		).toContain('cannot be discharged');
 	});
 
 	it('refuses an over-full window, an unregistered listing, a bad status and STEADY without verdicts', () => {
@@ -1190,7 +1424,7 @@ describe('the architecture cycle opening rule', () => {
 		const otherTrack = fixture({
 			tracks: [
 				...fixture().tracks,
-				{ id: 'T4', status: 'planning', roadmap: 'docs/roadmap/t4-release/README.md', phaseIds: ['T4.P01'], trackComplete: false }
+				{ id: 'T4', status: 'planning', roadmap: 'docs/roadmap/t4-release/README.md', phaseIds: ['T4.P01'], trackComplete: false, completionGaps: [] }
 			],
 			phases: [
 				...fixture().phases,

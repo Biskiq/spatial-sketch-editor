@@ -837,7 +837,9 @@ Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Expor
    - each FINAL PHASE GATE names a real child;
    - after the WP5 verification-policy cutover (§7.7), a slice plan claiming narrower acceptance resolves its replacement integration route, and each FINAL PHASE GATE plan declares exhaustive verification; negative controls reject a missing route or narrowed final gate;
    - a phase stage `closed` requires the final child shipped plus an owner Closed block, so child acceptance alone cannot close a phase;
-   - a track `shipped` requires its TRACK COMPLETE block;
+   - a track `shipped` requires its TRACK COMPLETE block — a `TRACK COMPLETE <track>` entry in the
+     track register carrying owner, date and evidence; a bare mention elsewhere in the file is not a
+     record and never marks a track shipped;
    - each gate/version has **at most one** registered provider slice, with no duplicate provider assignment for that row; `undrafted` may have none, and `ratified` may remain unassigned until a real provider is planned; `implemented` and `accepted` require exactly one existing registered provider, and a superseded row preserves the historical provider if one existed;
 2. **Exact versions:**
    - every Consumes entry names an existing `Gate@Version` row;
@@ -1017,7 +1019,7 @@ The hierarchy is ownership, not mandatory preloading. Ordinary slice work never 
 
 **Simplification.** The JSON fence, transition evaluator and CLI action codes are replaced by:
 
-- **State table** in `architecture-cycle.md`: Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by.
+- **State table** in `architecture-cycle.md`: Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by. `Exposure rows` carries one row per listed exposure, marked `discharged` when a nonterminal exposure closes without acceptance; the terminal is never discharged.
 - **Mechanism table:** M1–M7 with status (installed or dormant) and proof routes.
 - **Short action headings,** each only a few lines: `configure-window`, `open-window`, `record-exposure`, `close-window`, `owner-verdict`, `diagnosis-request`.
 - **Three one-line hooks.** These are the only entry points, and unrelated work never loads the cycle document:
@@ -1026,11 +1028,11 @@ The hierarchy is ownership, not mandatory preloading. Ordinary slice work never 
   3. **Slice closeout:** "If your slice is listed under Exposure slices, follow `record-exposure`, then `close-window` if the closure predicate is now true."
 - **Validation:** `parallel-track-gates.test.ts` uses the same helper, with in-memory negative fixtures and positive controls:
   - ≤3 exposures;
-  - readiness `ready` requires listed slice IDs that exist in a phase README, a terminal and a plan anchor;
+  - readiness `ready` requires listed slice IDs that exist in a phase README, a terminal and a plan anchor, and a configured window's terminal and expected opener are both listed exposure slices;
   - **if any listed exposure slice has status `in-progress`, `accepted` or `shipped` while Opened by is empty or the stage is still `PHASE_1`, the test fails.** A missed opening is caught in that slice's own change, and the same rule enforces F3;
   - an `accepted` or `shipped` listed slice without an exposure row fails;
   - a satisfied closure predicate with a stale stage fails;
-  - premature closure while a listed exposure is pending fails;
+  - premature closure while a listed exposure is neither accepted nor discharged by its exposure row fails (a discharge recorded for the terminal is itself a defect);
   - `STEADY` without a verdict row for every mechanism fails;
   - **positive controls:**
     - a non-listed slice starting causes no cycle requirement;

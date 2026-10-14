@@ -3466,3 +3466,52 @@ for the check was stopped afterwards.
   here; the executable repository-side property (no product file references `legacy/`) stays green
   in the arch lane.
 - Postgres-backed API tests ran against a **local** database (14.19, port 5432), not CI.
+
+## 19. WP5 review corrections (F1–F4) — executed, re-review owed
+
+The independent WP5 review withheld Checkpoint WP5 acceptance pending four findings. All four were
+accepted as correct and are corrected here, inside WP5: no new workflow framework, registry,
+generic validation layer, capability work or CI machinery was added, and the owner-ratified
+hybrid-preservation policy is unchanged.
+
+### 19.1 Corrections
+
+| Finding | Correction | Artifact |
+| --- | --- | --- |
+| **F1** — the gate test froze the initial repository state (`toHaveLength(8)`, every row `undrafted`, `['R115.S01']`), so the first legitimate T1 phase or ratified gate would red the architecture lane | Those snapshot assertions are replaced by `seedProblems()`, an invariant: the eight seeded gate identities are present, `T1`–`T4` and `R115` are registered exactly once, `M1`–`M7` are registered exactly once, and R115 keeps its `R115.S01` child. State, version, provider assignment and phase population stay free. The cycle's real-tree test likewise no longer freezes `PHASE_1`/an empty exposure list. A new control advances the real model (a ratified first version, a registered `T1.P01`, an accepted second R115 child, an open window) and must stay green, so a future re-freeze fails here | [`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/parallel-track-gates.test.ts) (`seedProblems`, the frontier control) |
+| **F2** — the cycle guard accepted a terminal outside the window and an opener that is not a listed slice, and had no tested discharge-to-closure path | A configured window now requires its terminal **and** expected opener to be listed exposure slices (sentinel or unlisted fails). Discharge is an explicit marker in the exposure row (`T1.P01.S02 discharged — reason`); closure is the terminal accepted **plus** every other listed exposure accepted or discharged, an unresolved exposure still fails a close, and the terminal can never be discharged | [`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/parallel-track-gates.test.ts) (`exposureRowsOf`, the membership and discharge cases); contract text in [`../../operations/architecture-cycle.md`](../../operations/architecture-cycle.md) and `implementation-plan.md` §11 |
+| **F3** — `TRACK COMPLETE` was recognized from any line containing the phrase plus the track id, so a stray prose mention could mark a track shipped | `trackCompletion()` requires a `TRACK COMPLETE <track>` entry **inside the track register section** carrying owner, date and evidence; an entry elsewhere in the file is prose, and an incomplete entry reports its missing parts | [`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/parallel-track-gates.test.ts) (`trackCompletion`, positive/negative source fixtures); `implementation-plan.md` §9.4 names the record shape |
+| **F4** — `AGENTS.md` stated that root `build` / `check` cover both apps | Corrected to the repository fact: root `dev` / `test` / `build` / `check` target the editor app only, and the API has its own `dev:api` / `build:api` / `check:api` / `test:api` scripts | [`AGENTS.md`](../../../AGENTS.md) (Repo facts) |
+
+The cycle contract and `implementation-plan.md` §11 were edited only where the written rule had to
+match the corrected checker (membership, the exposure-row discharge grammar, premature close,
+and the `TRACK COMPLETE` record shape).
+
+### 19.2 Verification (tested revision: this checkpoint's committed tree)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane, including the corrected execution-structure gate | `npm run test:arch` | **pass** — 15 files, 127 tests, 0 failures |
+| Execution-structure gate alone | `npx vitest run --config vitest.arch.config.ts tests/docs/parallel-track-gates.test.ts` | **pass** — 20 tests: the durable seed invariant and its frontier control, the register/phase/route/skill rules, the membership and discharge cases, and the `TRACK COMPLETE` parser fixtures |
+| Complete suite, including the heavy lane | `npm test` | **pass** — 116 files, 1521 tests, 0 failures, 0 skipped |
+| Editor, kernel and API type checks | `npm run check` · `npm run check:layout-core` · `npm run check:project-model` · `npm run check:camera-core` · `npm run check:api` | **pass** (each exit 0) |
+| Production build | `npm run build` | **pass** |
+| API DB-backed contracts (§7.5, zero skips) | `set -a; . .env; set +a; npm run test:api` | **pass** — 7 files, 39 tests, 0 failures, **0 skipped**, local Postgres 14.19 at `127.0.0.1:5432` |
+| Whitespace over the pending correction set | `git diff --check e8168a479a88e726c84a9e13f476910aec086205` | **clean** |
+| F1 arrival probe (a real T1 phase, not a fixture) | throwaway `git worktree` at this revision with a ratified `F4.intent-acceptance@1` row, a registered `T1.P01` phase whose `T1.P01.S01` is `in-progress`, a plan declaring `VERIFICATION: exhaustive` and real plan/acceptance artifacts | **pass with the correction, fail without it** — corrected gate file 20/20 and the whole probe arch lane 15 files/127 tests pass; the pre-correction gate file fails 1/16 at the same revision (`expected false to be true`, the all-`undrafted` assertion) |
+| Browser checks, retained product routes | the editor dev server on `http://localhost:5173` with the API on `8787` | **pass** — `/` entry, `/projects` signed-out hub, `/project/x/spatial` foundation-reset notice and `/p/x` unavailable page all render; console shows only Vite debug lines and no request failed. No product file changed in this correction set |
+
+The throwaway worktree used for the F1 arrival probe was removed afterwards; the shared checkout
+carries
+only the four corrected artifacts.
+
+### 19.3 Supersedes and limitations
+
+- §18.3's gate-file row and §18.4's first residual bullet describe the pre-correction revision
+  `e813e745`: its counts (16 gate tests, 123/1517 lane and suite tests) and its "the gate register is
+  entirely `undrafted`" framing are historical. The sealed-state assertion is gone.
+- **The first real T1 phase still arrives in a later WP.** The arrival is proven by the worktree
+  probe and the frontier control, not by a real register row, so the readiness, provider and
+  trusted-base rules remain proven by fixtures only — the same limitation §18.4 records.
+- Independent re-review of these corrections is owed, and WP6 (cross-reference reconciliation and
+  the §7.4 run) and WP7 (acceptance, closeout, handoff) remain unstarted.

@@ -69,9 +69,11 @@ PR #115 acceptance condition.
   — it does not wait for the nominal opener. The opening slice is the one that moves the cycle from
   `PHASE_1` to `PHASE_2_VALIDATING`.
 - **Closing.** Closure requires the terminal accepted **and** every other listed exposure accepted
-  or explicitly discharged. Closure moves the cycle to `PHASE_3_EVALUATE`, where the owner gives a
-  per-mechanism keep / simplify / delete / not-exposed verdict. After that verdict the cycle reaches
-  `STEADY`, which triggers no routine diagnosis.
+  or explicitly discharged. An **explicit discharge** is that slice's exposure row carrying the
+  word `discharged` — the owner's or reviewer's record that a nonterminal exposure closes without
+  acceptance. The terminal is never discharged. Closure moves the cycle to `PHASE_3_EVALUATE`,
+  where the owner gives a per-mechanism keep / simplify / delete / not-exposed verdict. After that
+  verdict the cycle reaches `STEADY`, which triggers no routine diagnosis.
 - **Diagnosis** happens only on a demonstrated failure plus owner authorization. A pending verdict
   blocks nothing except its own handoff.
 
@@ -79,18 +81,22 @@ PR #115 acceptance condition.
 
 **`configure-window`** — the first relevant T1 phase plan lists ≤3 exposure slices with an expected
 opener and a terminal, sets readiness to `ready` when those slice IDs exist in the phase README with
-a plan anchor, and records the window as `selected, not open`.
+a plan anchor **and both the expected opener and the terminal are among the listed slices**, and
+records the window as `selected, not open`.
 
 **`open-window`** — when a listed slice starts authorized implementation, set `Opened by` to that
 slice, set readiness to `open` and move `PHASE_1 → PHASE_2_VALIDATING`. Any listed slice may open
 the window; the opener need not be the nominal one.
 
 **`record-exposure`** — when a listed slice is accepted or shipped, add its exposure row. A listed
-slice reaching `accepted`/`shipped` with no exposure row is a defect.
+slice reaching `accepted`/`shipped` with no exposure row is a defect. An exposure row is the slice id,
+optionally followed by `discharged` and a short reason (`T1.P01.S02 discharged — absorbed by the
+T1.P02 window`); the marker is the explicit record §11 requires, and it is never written for the
+terminal.
 
 **`close-window`** — when the terminal is accepted and every other listed exposure is accepted or
-explicitly discharged, mark the window closed, set readiness to `owner-verdict-owed` and move
-`PHASE_2_VALIDATING → PHASE_3_EVALUATE`.
+explicitly discharged (its exposure row marked `discharged`), mark the window closed, set readiness
+to `owner-verdict-owed` and move `PHASE_2_VALIDATING → PHASE_3_EVALUATE`.
 
 **`owner-verdict`** — the owner records keep / simplify / delete / not-exposed per mechanism, then
 the cycle moves to `STEADY` with readiness `steady`. A missing verdict row for a mechanism blocks
@@ -116,13 +122,15 @@ Unrelated work never loads this document. Three one-line hooks are the whole int
 helper as the gate register, and fails on:
 
 - more than three exposures;
-- readiness `ready` without listed slice IDs that exist in a phase README, a terminal and a plan
-  anchor;
+- readiness `ready` without listed slice IDs that exist in a phase README, a terminal, an expected
+  opener and a plan anchor — and a configured window whose terminal or expected opener is not one of
+  its listed exposure slices;
 - **any listed exposure slice at `in-progress`, `accepted` or `shipped` while `Opened by` is empty
   or the stage is still `PHASE_1`** — a missed opening is caught in that slice's own change;
 - an `accepted`/`shipped` listed slice with no exposure row;
 - a satisfied closure predicate with a stale stage;
-- premature closure while a listed exposure is pending;
+- premature closure while a listed exposure is neither accepted nor discharged by its exposure row
+  (a discharge recorded for the terminal is itself a defect);
 - `STEADY` without a verdict row for every mechanism.
 
 Positive controls: a **non-listed** slice starting causes no cycle requirement; a **listed** slice
