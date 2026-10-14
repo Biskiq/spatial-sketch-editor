@@ -19,7 +19,7 @@ closeout are [`acceptance.md`](./acceptance.md).
 
 | Slice | Status | Consumes | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- |
-| R115.S01 | in-progress | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7, WP6 re-review owed |
+| R115.S01 | shipped | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7; closed 2026-10-14 by slice-closeout (acceptance.md §23) |
 
 - **Consumes** is empty: the reset consumes no gate version. Every gate in the
   [gate register](../README.md#gate-register) is still `undrafted`, correctly.
@@ -29,14 +29,16 @@ closeout are [`acceptance.md`](./acceptance.md).
 FINAL PHASE GATE: R115.S01 → ./acceptance.md
 
 PHASE CLOSE
-Stage:        active
+Stage:        closable
 Closed:       — (owner invocation pending)
 Final gate:   R115.S01 → ./acceptance.md
 Preservation: written on closure by the phase-close procedure; the final-gate artifact is the
-              accepted record above
+              accepted record above. Closed-work recovery anchors use the `closed/<slice-id>`
+              tag convention: R115.S01 → `closed/r115.s01` (anchor `3b30b408`, full bodies
+              retained live by the final-gate exception).
 ```
 
-`slice-closeout` closes `R115.S01`; closing the final child makes this phase `closable` and
-stops. Closing R115 itself is a separate, owner-invoked `phase-closeout` step, and it writes
-this file plus the track-register row — R115 has no track whose phase row it would write
+`slice-closeout` closed `R115.S01` on 2026-10-14; closing the final child made this phase
+`closable` and stopped. Closing R115 itself is a separate, owner-invoked `phase-closeout` step, and
+it writes this file plus the track-register row — R115 has no track whose phase row it would write
 instead.

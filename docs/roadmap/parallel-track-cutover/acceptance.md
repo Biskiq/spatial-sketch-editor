@@ -4,6 +4,11 @@
 The plan of record is [`implementation-plan.md`](./implementation-plan.md) (revision 4).
 Nothing here is a product contract; landed truth lives under `docs/reference/`.
 
+**Final status.** `R115.S01` is **accepted and closed** (shipped 2026-10-14); R115 is `closable`
+and `in-progress`, awaiting the owner's phase-close decision. §23 records the final acceptance
+verdict against the plan's §13, the complete §7.4 verification and the closed-work preservation
+report. §1–§22 are the per-checkpoint execution records at the revisions they were written at.
+
 ## 1. WP0 — baseline
 
 - **Execution start SHA:** `0cc40b670ce7e57a03cda2c8312555544b29a328`
@@ -3732,3 +3737,139 @@ gate without restarting the product suites.
 - The three surfaces now state current status, but no automated check asserts baton/README/plan
   wording, so this consistency stays review-owned — the same class as the review-owned items
   §18.1 records.
+
+## 23. WP7 — final acceptance, slice closeout and handoff (`R115.S01` accepted and closed)
+
+> **Status.** WP7 executed on `codex/pr115-architecture-plan` from the accepted WP6 head
+> `3b30b408`. It reconciled this record against the plan's §13 final acceptance criteria, ran the
+> complete §7.4 contract on the integrated tree, closed `R115.S01` with `slice-closeout`, and left
+> R115 `closable` and `in-progress`. No implementation code, persisted format, architecture
+> contract, manifest, protected evidence or preservation policy changed. No T-track phase was
+> created, no Baseline declared, no F version ratified, no capability implementation started, and
+> PR #115 was neither merged nor deployed.
+
+### 23.1 Final acceptance against the plan's §13
+
+Each criterion is checked against the tree and its recorded evidence — not inferred from the work
+package labels. The reconciliation surfaced no unmet criterion and no contradiction requiring a
+scope change; the only stale live-status claims found were the three `F1` surfaces, already
+corrected in §22.
+
+| §13 criterion | Verdict | Evidence |
+| --- | --- | --- |
+| **Frozen project** — hash-frozen copy verified at Checkpoint A; `/museum` and `/museum/editor` functionally preserved there; recorded as owner evidence with its limitation | **met** | §6.1–§6.3, §6.5 (owner-verified WP1 evidence, not re-run, §3.7) |
+| Frozen project — folder absent from this repository, `apps/museum` removed, nothing reintroduces it, no product file references `legacy/` | **met** | `legacy/` and `apps/museum` absent from the tree; `tests/lib/legacy-isolation.test.ts` green (§23.2); §6.4, §7.6 |
+| Frozen project — every product gate green on a tree that never contained the folder (the superseding deletion proof); version control and hosting owner-handled | **met** | §7.3, §11, §13.8, §14.3, §18.3, §20.2, §21.5, §23.2 |
+| **Foundation** — only the §4.1 tree remains, as adjusted by recorded WP3R consolidations; every deletion is in the source manifest; retained modules meet §4.3 | **met** | §2.1, §7.1–§7.2, §10 (a1–a5 applied), §4.1 (post-WP3R tree) |
+| Foundation — kernels, renderer, visitor, API and persistence verifiable | **met** | §23.2 (kernel type checks, build, editor suite, API contracts) |
+| Foundation — current-format-only readers and writers installed with no legacy detection path, or blockers recorded by the stop rule | **met** | §9.1 verified-absence grep, §9.2, §9.5 |
+| Foundation — the WP3R table is complete | **met** | §10 (class and disposition per finding) |
+| **Tests** — §7.4 gates green with no skips or expected failures; §7.5 API requirement met | **met** | §23.2 (0 skipped); the per-checkpoint rows |
+| Tests — categories A, A′, A″ and D preserve kernel assertions with identical expectations; category C deletions match removed subjects | **met** | §3.1, §7.4, §9.4, §13.1–§13.3 |
+| Tests — §6 current-format evidence exists (valid Layout/Scene validation, canonical serialization and round-trip, ordinary failure for malformed/incomplete input, API Save/Load/publication on valid documents) | **met** | §9.2 |
+| Tests — successor obligations recorded in track evidence | **met** | §13.4; T1–T3 planning evidence |
+| **Docs** — manifest complete; accepted designs, prototypes, protected evidence and decisions retained and routed | **met** | §4, §5, §15.1–§15.3 |
+| Docs — contracts describe the reduced current truth; no duplicate authorities and no live links to deleted files | **met** | §16, §21; documentation gate green (§23.2) |
+| **Execution system** — four tracks with Starting-foundation sections | **met** | `docs/roadmap/t{1,2,3,4}-*/README.md` |
+| Execution system — a version-aware gate register enforced by the gates test, including base-revision self-satisfaction checks | **met** | the global gate register (all rows `undrafted`); §18.1, §19.1, §20.1 |
+| Execution system — the cycle state table with an enforced opening rule | **met** | `docs/operations/architecture-cycle.md`; §18.1, §20.1 |
+| Execution system — focused skills and no new skills | **met** | §18.1; `.agents/skills/` unchanged by this close |
+| **Honesty** — capability-loss list matches reality | **met** | §4.4, §7.7 |
+| Honesty — TD dispositions say "removed"/"retired", never "fixed" | **met** | `docs/operations/tech-debt/README.md` (TD-1/TD-2 removed, TD-3 fixed at `be4e23b`, TD-4/TD-5 retired) |
+| Honesty — unexecuted coverage never reported as passing; no destination presented as shipped | **met** | §6.5, §7.6, §18.4, §19.3, §20.3, §21.6, §22.3, §23.5 |
+
+**Verdict: §13 is satisfied.** No criterion is met by a focused run, a skipped check or an
+unexecuted claim. Every remaining obligation has a named owner (§23.4), and no unresolved
+implementation-acceptance failure remains.
+
+### 23.2 Verification (§7.4, executed on this revision)
+
+Every command ran on the integrated tree immediately before the closeout commit; exit statuses were
+read directly, not inferred from piped output.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane — documentation cross-reference gate, execution-structure gate, isolation | `npm run test:arch` | **pass** — 15 files, 131 tests, 0 failures (exit 0) |
+| Complete editor suite (fast + heavy + arch) | `npm test` | **pass** — 116 files, 1525 tests, 0 failures, 0 skipped (exit 0) |
+| Editor type check | `npm run check` | **pass** — 0 errors, 0 warnings (exit 0) |
+| Production build | `npm run build` | **pass** — `@sveltejs/adapter-vercel` (exit 0) |
+| Kernel package checks | `npm run check:layout-core && npm run check:project-model && npm run check:camera-core` | **pass** (exit 0) |
+| API type check | `npm run check:api` | **pass** (exit 0) |
+| API DB-backed contracts (§7.5, zero skips) | `set -a; . .env; set +a; npm run test:api` | **pass** — 7 suites: 5 + 6 + 3 + 8 + 1 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, local PostgreSQL 14.19 at `127.0.0.1:5432`, database `biskiq` (exit 0) |
+| Whitespace over the #115 committed range | `git diff --check e90a58224443bdbf44114d7285d55c983b79cc84 HEAD` | **clean** (exit 0) |
+| Browser checks, retained product routes | editor dev server on `http://localhost:5173` with the API on `8787` | **pass** — `/` (public entry), `/projects` (signed-out hub), `/project/x/spatial` (foundation-reset notice) and `/p/x` (unavailable page) each render their expected surface; the console shows only Vite debug lines and the network log holds no failed request |
+
+The editor dev server on `5173` was reused, not restarted; the API dev server started for the
+browser check was stopped afterwards. This is the complete §7.4 contract and not a focused run: the
+implementation boundary is identical to the accepted WP6 revision, so the product, kernel and API
+results match §21.5, and they were re-executed here rather than inherited.
+
+### 23.3 Slice closeout (`R115.S01`)
+
+- **`R115.S01` is `shipped`** in the phase README's slice register; the `FINAL PHASE GATE` row is
+  unchanged (`R115.S01 → ./acceptance.md`).
+- **R115 is `closable`, not closed.** The phase README's `PHASE CLOSE` block moved
+  `Stage: active → closable`, with `Closed:` still an owner-invocation sentinel; R115 stays
+  `in-progress` in the global track register. Closing R115 is the separate, owner-invoked
+  `phase-closeout` step.
+- **This record stays live** as the final-gate artifact while it is phase-close evidence (the
+  final-gate exception).
+- **The baton** (`docs/operations/current.md`) is rewritten to a post-slice snapshot whose `NEXT`
+  is the owner's R115 phase-close decision, not another work package.
+- **No durable conclusion required promotion and no checkpoint was active:** landed truth already
+  sits under `docs/reference/`, residual obligations already sit with their track, F-contract or
+  debt owners (§23.4), and `operations/checkpoints/` had no entry.
+
+### 23.4 Closed-work preservation report
+
+```text
+CLOSEOUT PRESERVATION — R115.S01 (2026-10-14)
+prose compacted:                0   (see "why nothing was compacted" below)
+reference promotions:           0   (landed truth already promoted; nothing moved)
+renderable evidence archived:   0 files
+evidence stubs / manifests:     0
+transient artifacts removed:    0   (no checkpoint, husk or __qa-* plate existed)
+historical anchor:              3b30b408 · tag closed/r115.s01 (pushed to origin)
+new live → archive prose links: 0
+manual-owed verification rows:  1   (the frozen-project §6.2/§7.4 steps — owner-verified WP1 evidence)
+remaining deferred items:       6   (named owners below)
+permanent stubs added:          0
+```
+
+**Why nothing was compacted.** `R115.S01`'s only prose artifacts are its registered plan
+(`implementation-plan.md`) and this acceptance record. The final-gate exception keeps this record
+live while it is phase-close evidence, and the plan is still the phase's **live registered plan**:
+the phase README's `Plan` cell routes to it and the execution-structure gate reads its
+`VERIFICATION: exhaustive` declaration to prove the final gate's plan is exhaustive. Compacting
+either would break an accepted contract and remove the artifact the owner's phase-close decision
+needs, so both are **retained full-body** — no recovery stub, anchor line or archive copy was
+created, and no recovery hash was fabricated. `git show 3b30b408:<path>` recovers either full body
+at the accepted revision; the tag below keeps that revision reachable.
+
+**Required merge method (P1).** The accepted revision `3b30b408` and this closeout commit must land
+as a **merge commit** — no squash and no rebase — so the anchor/tag target stays an ancestor of the
+merge and the recorded recovery paths resolve. Post-merge anchor verification
+(`git merge-base --is-ancestor 3b30b408 main`; `git show 3b30b408:docs/roadmap/parallel-track-cutover/implementation-plan.md`)
+**remains pending the owner's merge** and is not claimed here. PR #115 is not merged; no deployment
+changed.
+
+**Residual owners (unchanged by this close).** Deferred production dispositions — b1 → T2 (the
+Scene unit), b2 → T3 (the Save path), d1 → T2/T3, d2 → T1, c1 → `project-model`, c2/a7 → retained
+as found (§10). Capability losses and their replacement ownership → §4.4 and the T1–T3 planning
+evidence. TD-1/TD-2 non-recurrence criteria → T2/T1 planning evidence; TD-4/TD-5 stay
+unresolved-by-design → `docs/operations/tech-debt/README.md`. The stale `virtual:museum-editor-entry`
+declaration in `apps/editor/src/vite-env.d.ts` stays production residue reported-not-edited
+(§13.10, §14.4). CI enforcement of the arch lane remains the owner-visible deferral (§17.7, §18.4).
+The permanent-stub cost of the owner-ratified 2026-09-22 hybrid policy stays a bounded owner
+decision (§18.4).
+
+### 23.5 Limitations
+
+- The frozen-project Checkpoint A steps remain **owner-verified WP1 evidence** and cannot be
+  re-executed from this repository (§6.5); only the repository-side isolation property was verified.
+- The API DB-backed run used a **local** PostgreSQL 14.19 instance at `127.0.0.1:5432`, not CI.
+- **Post-merge anchor verification is pending** the owner's merge (§23.4).
+- No automated check asserts baton/README/plan status wording, so that consistency stays
+  review-owned (§22.3).
+- R115's phase closure, PR #115's merge, any T-track planning and any Baseline remain owner
+  decisions beyond this close. `R115.S01` being closed is not a phase, track or product closure.

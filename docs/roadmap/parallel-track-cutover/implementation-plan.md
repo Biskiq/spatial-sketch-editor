@@ -1,6 +1,6 @@
 # PR #115 — Architecture Reset: Frozen-Lane Isolation, Aggressive Pruning & Parallel-Track Cutover
 
-**Status:** architecture-reset implementation plan with the bounded post-WP3R test-system amendment (§7.6–§7.7). WP0–WP5 are accepted; WP6 (cross-reference and full verification) is executed with its evidence recorded and independent review owed; WP7 (acceptance, closeout and handoff) remains unstarted. Recorded outcomes remain owned by `acceptance.md`.
+**Status:** architecture-reset implementation plan with the bounded post-WP3R test-system amendment (§7.6–§7.7). WP0–WP6 are accepted; WP7 (acceptance, closeout and handoff) is executed and the plan's sole child `R115.S01` is closed (`shipped`), making R115 `closable` and awaiting the owner's phase-close decision. Recorded outcomes remain owned by `acceptance.md`.
 
 **Inspected baseline:** `main` at `e90a58224443bdbf44114d7285d55c983b79cc84`, 2026-10-13. The plan is written on `codex/pr115-architecture-plan`; its current head must be checked at execution rather than relying on an embedded mutable SHA. Counts are taken from tracked files and exclude ignored local artifacts. Before execution, recheck the baseline-to-start diff and inspect only the files that changed in between.
 
