@@ -115,6 +115,12 @@ const GATE_REFERENCE = /^[A-Za-z][A-Za-z0-9._-]*@\d+$/;
 const SLICE_ID = /^(?:[A-Z]\d+\.P\d+|R\d+)\.S\d+$/;
 const PHASE_ID = /^(?:[A-Z]\d+\.P\d+|R\d+)$/;
 const CAMERA_EFFECT = 'camera-authoring-migration';
+/**
+ * A repository phase registered directly in the global register (`R115`), not a track. It has no
+ * parent track, so it writes no `TRACK COMPLETE` record: its closure is `PHASE CLOSE` plus its own
+ * `shipped` row (phase-closeout step 5).
+ */
+const REPOSITORY_PHASE = /^R\d+$/;
 /** The exposure window's bound. Changing it requires an owner amendment (§11). */
 const EXPOSURE_BOUND = 3;
 /** The §9.4 seed rows: gate identity is contractual, so the register keeps every one of them. */
@@ -132,8 +138,12 @@ const SEEDED_GATES = [
 const SEEDED_TRACKS = ['T1', 'T2', 'T3', 'T4', 'R115'];
 /** The §11 mechanism register's fixed identities. */
 const SEEDED_MECHANISMS = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'];
-/** A listed exposure row starts with its slice id; `id …` may add the `discharged` marker. */
-const EXPOSURE_ROW = /^((?:[A-Z]\d+\.P\d+|R\d+)\.S\d+)/;
+/**
+ * A listed exposure row: its slice id, then optionally the `discharged` marker and a reason. The
+ * marker is anchored to that position, so negated prose (`… not discharged — awaiting review`) is
+ * never read as a discharge.
+ */
+const EXPOSURE_ROW = /^((?:[A-Z]\d+\.P\d+|R\d+)\.S\d+)(?:[ \t]+(.*))?$/;
 /** A `TRACK COMPLETE` entry naming its track: `TRACK COMPLETE T1 — owner · date · evidence`. */
 const TRACK_COMPLETE_ENTRY = /^[ \t]*(?:[-*][ \t]+)?\*{0,2}TRACK COMPLETE\*{0,2}[ \t]*:?[ \t]+([A-Z]\d+)\b(.*)$/i;
 
@@ -471,7 +481,10 @@ export function phaseProblems(model: StructureModel): string[] {
 			problems.push(`track register: ${track.id} status "${track.status}" is not one of ${TRACK_STATUSES.join(' | ')}`);
 		}
 		if (!model.exists(track.roadmap)) problems.push(`track register: ${track.id} roadmap "${track.roadmap}" does not exist`);
-		if (track.status === 'shipped' && !track.trackComplete) {
+		// A repository phase is not a track: phase-closeout moves its own register row to `shipped`
+		// without invoking the separate track-completion event, so the record is not required there.
+		// Every `PHASE CLOSE` rule still applies to it through its phase README.
+		if (track.status === 'shipped' && !track.trackComplete && !REPOSITORY_PHASE.test(track.id)) {
 			problems.push(`track register: ${track.id} is shipped without a TRACK COMPLETE owner/evidence block`);
 		}
 		if (track.completionGaps.length > 0) {
@@ -516,8 +529,10 @@ export function cycleProblems(model: StructureModel): string[] {
 	if (cycle.exposures.length > EXPOSURE_BOUND) {
 		problems.push(`cycle: ${cycle.exposures.length} exposure slices exceed the bound of ${EXPOSURE_BOUND}`);
 	}
-	if (cycle.readiness === 'ready' && !configured) {
-		problems.push('cycle: readiness "ready" requires at least one listed exposure slice');
+	// A ready or open window is a configured window: the document calls an open window with an empty
+	// exposure list a defect, not an unconfigured window waiting for its plan.
+	if (!configured && (cycle.readiness === 'ready' || cycle.readiness === 'open')) {
+		problems.push(`cycle: readiness "${cycle.readiness}" requires at least one listed exposure slice`);
 	}
 	if (configured) {
 		// The window is a closed set: the terminal and the expected opener are listed exposures, so
@@ -533,6 +548,10 @@ export function cycleProblems(model: StructureModel): string[] {
 		for (const id of cycle.exposures) {
 			if (!statusOf.has(id)) problems.push(`cycle: listed exposure "${id}" is not a slice in any phase README`);
 		}
+	}
+	// The opening slice is one of the listed exposures (`open-window`: any listed slice may open).
+	if (!isSentinel(cycle.openedBy) && !cycle.exposures.includes(cycle.openedBy)) {
+		problems.push(`cycle: "Opened by" names "${cycle.openedBy}", which is not one of the listed exposure slices`);
 	}
 
 	// Exposure rows: one row per listed exposure, carrying the `discharged` marker when a
@@ -683,10 +702,9 @@ export function exposureRowsOf(cell: string): ExposureRow[] {
 	const rows: ExposureRow[] = [];
 	for (const entry of cell.split(/[,;]/)) {
 		if (isSentinel(entry)) continue;
-		const text = stripDecoration(entry);
-		const id = EXPOSURE_ROW.exec(text)?.[1];
-		if (id === undefined) continue;
-		rows.push({ id, discharged: /\bdischarged\b/i.test(text) });
+		const match = EXPOSURE_ROW.exec(stripDecoration(entry));
+		if (match === null) continue;
+		rows.push({ id: match[1]!, discharged: /^discharged\b/i.test((match[2] ?? '').trim()) });
 	}
 	return rows;
 }
@@ -1285,6 +1303,49 @@ describe('execution structure is registered, exact and eligible', () => {
 		);
 	});
 
+	it('lets a repository phase close shipped, while a shipped track still needs TRACK COMPLETE', () => {
+		// R115 is a repository phase: phase-closeout writes `shipped` on its own register row and
+		// never invokes the track-completion event, so no completion record is owed there. Every
+		// `PHASE CLOSE` rule still applies to it through its phase README.
+		const closedRepositoryPhase = fixture({
+			tracks: [
+				...fixture().tracks,
+				{
+					id: 'R115',
+					status: 'shipped',
+					roadmap: 'docs/roadmap/parallel-track-cutover/README.md',
+					phaseIds: [],
+					trackComplete: false,
+					completionGaps: []
+				}
+			],
+			phases: [
+				fixture().phases[0]!,
+				{
+					id: 'R115',
+					file: 'docs/roadmap/parallel-track-cutover/README.md',
+					finalGateSlice: 'R115.S01',
+					finalGateArtifact: './acceptance.md',
+					stage: 'closed',
+					closed: 'owner 2026-10-14 — acceptance.md',
+					slices: [
+						{ ...fixture().phases[0]!.slices[0]!, id: 'R115.S01', status: 'shipped', consumes: '—' }
+					]
+				}
+			]
+		});
+		expect(phaseProblems(closedRepositoryPhase)).toEqual([]);
+		// The same state on a T-track still fails: a track closes only through track completion.
+		expect(
+			phaseProblems(
+				fixture({
+					tracks: [{ ...fixture().tracks[0]!, status: 'shipped' }],
+					phases: [{ ...fixture().phases[0]!, stage: 'closed', closed: 'owner 2026-10-14' }]
+				})
+			).join('\n')
+		).toContain('is shipped without a TRACK COMPLETE');
+	});
+
 	it('recognizes a TRACK COMPLETE record only on the track register with owner, date and evidence', () => {
 		const source = readFile(ROADMAP);
 		const entry = 'TRACK COMPLETE T1 — owner: owner-role · date: 2026-10-14 · evidence: ./t1-spatial-world/README.md';
@@ -1393,6 +1454,31 @@ describe('the architecture cycle opening rule', () => {
 		expect(
 			cycleProblems({ ...window, cycle: { ...closed, exposureRows: 'T1.P01.S01 discharged, T1.P01.S02 discharged' } }).join('\n')
 		).toContain('cannot be discharged');
+		// Negated prose is not a discharge: the marker must sit immediately after the slice id.
+		expect(
+			cycleProblems({ ...window, cycle: { ...closed, exposureRows: 'T1.P01.S02, T1.P01.S01 not discharged — awaiting owner review' } }).join('\n')
+		).toContain('while a listed exposure is still pending');
+		expect(exposureRowsOf('T1.P01.S01 not discharged — awaiting owner review')).toEqual([
+			{ id: 'T1.P01.S01', discharged: false }
+		]);
+		expect(exposureRowsOf('T1.P01.S02 discharged — absorbed by the T1.P02 window')).toEqual([
+			{ id: 'T1.P01.S02', discharged: true }
+		]);
+	});
+
+	it('requires a configured window once it is ready or open, and a listed opening slice', () => {
+		const empty = { ...configuredCycle(), exposures: [], terminal: '—', opener: '—', openedBy: '—' };
+		expect(cycleProblems(fixture({ cycle: { ...empty, readiness: 'ready' } })).join('\n')).toContain(
+			'readiness "ready" requires at least one listed exposure slice'
+		);
+		expect(
+			cycleProblems(fixture({ cycle: { ...empty, readiness: 'open', stage: 'PHASE_2_VALIDATING' } })).join('\n')
+		).toContain('readiness "open" requires at least one listed exposure slice');
+		// An opening slice is one of the listed exposures: a window cannot open around a slice it
+		// does not list.
+		expect(cycleProblems(fixture({ cycle: configuredCycle({ openedBy: 'T1.P01.S09' }) })).join('\n')).toContain(
+			'"Opened by" names "T1.P01.S09", which is not one of the listed exposure slices'
+		);
 	});
 
 	it('refuses an over-full window, an unregistered listing, a bad status and STEADY without verdicts', () => {

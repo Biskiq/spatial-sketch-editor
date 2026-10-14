@@ -3515,3 +3515,48 @@ only the four corrected artifacts.
   trusted-base rules remain proven by fixtures only — the same limitation §18.4 records.
 - Independent re-review of these corrections is owed, and WP6 (cross-reference reconciliation and
   the §7.4 run) and WP7 (acceptance, closeout, handoff) remain unstarted.
+
+## 20. WP5 correction re-review (F5–F7) — executed, re-review owed
+
+The correction re-review confirmed F1–F4 resolved and withheld acceptance on three further findings
+in the same checker. All three are corrected here, confined to the execution gate; no product
+architecture, roadmap hierarchy, skill, preservation policy or verification doctrine changed.
+
+### 20.1 Corrections
+
+| Finding | Correction | Artifact |
+| --- | --- | --- |
+| **F5** — the `shipped`-requires-`TRACK COMPLETE` rule applied to every global register row, so a legitimate R115 closure (a repository phase, moved to `shipped` by `phase-closeout` with no completion event) would have reddened the gate and blocked PR #115's own closeout | Repository phases (`R…`) are exempt from the track-completion requirement; R115 keeps every `PHASE CLOSE` rule through its phase README (final gate names a real child, an exhaustive final child, owner `Closed` block, resolvable final-gate artifact). The positive control closes R115 `shipped` and reports **no** problem; the negative control keeps a `shipped` T-track failing | `parallel-track-gates.test.ts` (`lets a repository phase close shipped…`, `REPOSITORY_PHASE`); [`../../roadmap/README.md`](../../roadmap/README.md) track register; `implementation-plan.md` §9.4 |
+| **F6** — the discharge marker was detected anywhere in an exposure row, so `T1.P01.S01 not discharged — awaiting owner review` counted as a discharge and could satisfy the closure predicate while the slice stayed unaccepted | The marker is anchored to the documented position: an exposure row is the slice id, then optionally `discharged` and a reason. Negated prose is not a discharge. The unit assertion pins both directions (`… not discharged …` → false, `… discharged — reason` → true) | `exposureRowsOf` and the discharge test; [`../../operations/architecture-cycle.md`](../../operations/architecture-cycle.md) `record-exposure`; `implementation-plan.md` §11 |
+| **F7** — an open window with no listed exposure slice was accepted, and a recorded `Opened by` did not have to be one of the listings | Readiness `ready` **and** `open` require at least one listed exposure slice, and a non-empty `Opened by` must be one of the listed exposures | the cycle test `requires a configured window once it is ready or open, and a listed opening slice`; `architecture-cycle.md` validation list; `implementation-plan.md` §11 |
+
+The three written contracts (the global track register, the cycle document and
+`implementation-plan.md` §9.4/§11) were edited only where the rule had to match the corrected
+checker.
+
+### 20.2 Verification (tested revision: this checkpoint's committed tree)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane | `npm run test:arch` | **pass** — 15 files, 129 tests, 0 failures |
+| Execution-structure gate alone | `npx vitest run --config vitest.arch.config.ts tests/docs/parallel-track-gates.test.ts` | **pass** — 22 tests |
+| Complete suite, including the heavy lane | `npm test` | **pass** — 116 files, 1523 tests, 0 failures, 0 skipped |
+| Editor, kernel and API type checks | `npm run check` · `npm run check:layout-core` · `npm run check:project-model` · `npm run check:camera-core` · `npm run check:api` | **pass** (each exit 0) |
+| Production build | `npm run build` | **pass** |
+| API DB-backed contracts (§7.5, zero skips) | `set -a; . .env; set +a; npm run test:api` | **pass** — 7 files, 39 tests, 0 failures, **0 skipped**, local Postgres 14.19 at `127.0.0.1:5432` |
+| Whitespace over the pending correction set | `git diff --check e8168a479a88e726c84a9e13f476910aec086205` | **clean** |
+| F5/F6/F7 controls fail without their fix (mutation check) | each fix reverted in place, the focused gate file re-run, then the file restored and re-verified byte-identical | **confirmed** — dropping the repository-phase exemption fails the R115 case; restoring the unanchored discharge regex fails the discharge case; restricting the configured-window rule to `ready` fails the open-window case. Restored file: 22/22 pass |
+| Browser checks, retained product routes | the editor dev server on `http://localhost:5173` with the API on `8787` | **pass** — `/`, `/projects`, `/project/x/spatial` and `/p/x` all return 200 and render their expected surface (entry, signed-out hub, foundation-reset notice, unavailable page); console shows only Vite debug lines. No product file changed in this correction set |
+
+The API dev server started for the browser check was stopped afterwards; the pre-existing editor dev
+server on `5173` was reused, not restarted.
+
+### 20.3 Limitations
+
+- **F5 is proven on a fixture model**, not by an actual R115 closure (that close is WP7's). The
+  fixture mirrors exactly what `phase-closeout` step 5 writes: `Stage: closed` with an owner `Closed`
+  block, a `shipped` final child and a `shipped` register row with no completion record.
+- The first **real** T1 arrival and the first **real** gate consumption remain future evidence, as
+  §18.4 and §19.3 record; the readiness, provider and trusted-base rules are still proven by fixtures
+  (plus, for the arrival, the F1 worktree probe).
+- Independent re-review of these three corrections is owed, and WP6/WP7 remain unstarted.
