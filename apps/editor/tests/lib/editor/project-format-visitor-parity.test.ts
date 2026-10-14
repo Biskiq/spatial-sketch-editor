@@ -20,7 +20,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { prepareRuntime } from '@portfolio/project-model';
+import { prepareRuntime, validateProject } from '@portfolio/project-model';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
 import { planFirstEnclosureCreation } from '@portfolio/layout-core';
@@ -130,6 +130,19 @@ describe('P23.0 stage 4 — current-format preparation discipline', () => {
 		if (prepared.kind === 'rejected') throw new Error('expected ready');
 		expect(prepared.runtimeScene.navigationNodes).toEqual(payload.scene.navigationNodes);
 		expect(prepared.rooms.entries).toEqual([]);
+	});
+
+	it('rejects an unknown root key through the canonical validator, before any state is installed', () => {
+		// One acceptance authority: runtime preparation must not be laxer than the
+		// persisted-document reader, or a stored record could load here and fail
+		// (or vice versa) depending on which entry point opened it.
+		const withExtraKey = { ...wallFirstPayload(), extra: true };
+		const viaRuntime = prepareRuntime(withExtraKey);
+		expect(viaRuntime).toMatchObject({ kind: 'rejected', reason: 'invalid-project' });
+		if (viaRuntime.kind !== 'rejected') return;
+		expect(viaRuntime.issues.some((issue) => issue.code === 'unknown_key')).toBe(true);
+		const viaReader = validateProject(withExtraKey);
+		expect(viaReader.success).toBe(false);
 	});
 
 	it('rejects anything that is not the current document pair, before any state is installed', () => {
