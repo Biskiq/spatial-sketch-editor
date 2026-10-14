@@ -1466,6 +1466,22 @@ describe('the architecture cycle opening rule', () => {
 		]);
 	});
 
+	it('keeps the documented discharge examples aligned with the cycle checker', () => {
+		// Read the owning document's actual examples, not parallel literals in this test. A
+		// changed example must remain executable by the same parser used for cycle closure.
+		const cycleContract = readFile(CYCLE);
+		const acceptedExample =
+			/`((?:T\d+\.P\d+|R\d+)\.S\d+ discharged[^`]+)`/.exec(cycleContract)?.[1];
+		const negatedExample = /`… (not discharged[^`]+)`/.exec(cycleContract)?.[1];
+		expect(acceptedExample).toBeDefined();
+		expect(negatedExample).toBeDefined();
+		const documentedId = acceptedExample!.split(' ')[0]!;
+		expect(exposureRowsOf(acceptedExample!)).toEqual([{ id: documentedId, discharged: true }]);
+		expect(exposureRowsOf(`T1.P01.S01 ${negatedExample!}`)).toEqual([
+			{ id: 'T1.P01.S01', discharged: false }
+		]);
+	});
+
 	it('requires a configured window once it is ready or open, and a listed opening slice', () => {
 		const empty = { ...configuredCycle(), exposures: [], terminal: '—', opener: '—', openedBy: '—' };
 		expect(cycleProblems(fixture({ cycle: { ...empty, readiness: 'ready' } })).join('\n')).toContain(
