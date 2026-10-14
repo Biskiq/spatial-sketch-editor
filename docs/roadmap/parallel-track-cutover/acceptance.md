@@ -396,7 +396,7 @@ Class vocabulary and rule semantics come from the plan §5.1 disposition registe
 | `apps/editor/src/lib/editor/placement-ghost.ts` | REMOVE IN #115 | `legacy/chopin-museum/src/lib/editor/placement-ghost.ts` | §5.1 lib/editor shell removed; frozen copy only | `37ef6c83f41b` |
 | `apps/editor/src/lib/editor/preview/preview-coordinator.ts` | REMOVE IN #115 | — | §5.1 lib/editor shell removed; frozen copy only | `bde902176221` |
 | `apps/editor/src/lib/editor/project-asset-load.ts` | REMOVE IN #115 | — | §5.1 lib/editor shell removed; frozen copy only | `0edf938233d8` |
-| `apps/editor/src/lib/editor/project-asset-request-scope.ts` | RETAIN AS FOUNDATION (relocate) | `lib/platform/project-asset-request-scope.ts` | §4.1 platform relocation | `9c0e949d02da` |
+| `apps/editor/src/lib/editor/project-asset-request-scope.ts` | RETAIN AS FOUNDATION (relocate) → **REMOVE (WP3R §10)** | `lib/platform/project-asset-request-scope.ts` deleted | §10 class (a): the relocation happened, but its only consumer (the WP2-removed session owner) is gone, so the relocated file has zero consumers | `9c0e949d02da` |
 | `apps/editor/src/lib/editor/project-asset-upload.ts` | REMOVE IN #115 | — | §5.1 lib/editor shell removed; frozen copy only | `62c6c7a7e693` |
 | `apps/editor/src/lib/editor/project-persistence.ts` | RETAIN AS FOUNDATION (relocate) | `lib/platform/project-persistence.ts` | §4.1 platform relocation | `7546054088dc` |
 | `apps/editor/src/lib/editor/publication-client.ts` | REMOVE IN #115 | — | §5.1 lib/editor shell removed; frozen copy only | `807d13439738` |
@@ -510,7 +510,7 @@ Class vocabulary and rule semantics come from the plan §5.1 disposition registe
 | `apps/editor/src/lib/project/compat-runtime.ts` | REMOVE IN #115 | — | §5.1 facade / compat-runtime | `694a6ad9826d` |
 | `apps/editor/src/lib/project/project-codec.ts` | RETAIN AS FOUNDATION | `legacy/chopin-museum/src/lib/project/project-codec.ts` | §4.1 catalogue-configured strict codec | `4d5b24ed9eb0` |
 | `apps/editor/src/lib/project/project-layout-semantics.ts` | REMOVE IN #115 | `legacy/chopin-museum/src/lib/project/project-layout-semantics.ts` | §5.1 facade / compat-runtime | `8a59abf05dc6` |
-| `apps/editor/src/lib/project/project-types.ts` | RETAIN AS FOUNDATION | `legacy/chopin-museum/src/lib/project/project-types.ts` | §4.1 catalogue-configured strict codec | `fd67f38cd8b7` |
+| `apps/editor/src/lib/project/project-types.ts` | RETAIN AS FOUNDATION → **REMOVE (WP3R §10)** | — | §10 class (a): type-only re-export with zero consumers | `fd67f38cd8b7` |
 | `apps/editor/src/lib/render/wall-geometry-adapter.ts` | RETAIN AS FOUNDATION | `legacy/chopin-museum/src/lib/render/wall-geometry-adapter.ts` | §4.1 wall-geometry-adapter | `631aa511679a` |
 | `apps/editor/src/lib/state/runtime-state.svelte.ts` | REMOVE IN #115 | `legacy/chopin-museum/src/lib/state/runtime-state.svelte.ts` | §5.1 unmatched rule → remove | `8842bbb680f5` |
 | `apps/editor/src/lib/types/assets.ts` | RETAIN AS FOUNDATION | `legacy/chopin-museum/src/lib/types/assets.ts` | §4.1 shared resource types | `e5f26f27ce64` |
@@ -2434,11 +2434,9 @@ T1's authored-schema redesign and the T2/T3 Scene/Camera unit extraction were no
 
 **Residual findings, not actioned here:**
 
-1. `apps/editor/src/lib/project/project-types.ts` is a type-only re-export of the canonical
-   project-model types with **zero consumers** in the worktree. The WP0 per-file manifest
-   retains it (`RETAIN AS FOUNDATION`, §2.1), so removing it is a manifest decision for WP3R's
-   orphaned-abstraction class, not a WP3 edit. Its header comment still calls it a
-   "compatibility facade".
+1. **Resolved at Checkpoint D (§10).** The consumer-less `project/project-types.ts` type-only
+   re-export facade — its header still called it a "compatibility facade" — is deleted under
+   §10 class (a), and its manifest row is updated there.
 2. `packages/project-model/src/runtime.ts` is new in WP3; WP3R should confirm its name and
    ownership alongside the other post-prune abstractions.
 3. `parseWallFirstLayoutDocumentJson`'s malformed-JSON branch lost its only direct assertion
@@ -2482,3 +2480,85 @@ deleted for it or replaced).
 **Scope guard.** These corrections are evidence- and validation-authority fixes. They do not
 reopen WP3's settled scope, and the surviving-architecture and test-organisation items remain
 assigned to WP3R and WP3T.
+
+## 10. WP3R — post-prune reassessment (Checkpoint D)
+
+> **Status.** WP3R executed on `codex/pr115-architecture-plan` from the accepted Checkpoint C
+> head (`6fe424c8`). The consolidations below are applied. Checkpoint D is **acceptance-ready,
+> pending independent acceptance**. WP3T, WP4 and closeout have not begun.
+
+**Method.** The committed import-closure resolver (§12 WP0,
+[import-closure.ts](../../../apps/editor/tests/helpers/import-closure.ts)) was re-run over the
+surviving tree — editor `src` + routes + `vite/`, API `src`, with the test population measured as
+a *separate* importer set — so that "no consumer at all" is distinguished from "test-only
+consumer". Every candidate was then confirmed by hand. The helper still measures the surviving
+tree accurately; its two stale constants (`MUSEUM_APP_SRC`, the `virtual:museum-editor-entry`
+branch) are unreferenced residue and are recorded for WP3T below.
+
+**Classes.** (a) orphaned abstraction; (b) unnecessary coupling / redundant facade;
+(c) misleading ownership; (d) residual legacy dependency. **Dispositions:** retain · consolidate
+· defer.
+
+| # | Finding | Class | Disposition |
+| --- | --- | --- | --- |
+| a1 | `lib/project/project-types.ts` — type-only re-export, **0 importers** | (a) | **Consolidate: deleted.** Manifest row updated (§2.1). |
+| a2 | `lib/platform/project-asset-request-scope.ts` — **0 importers**; its only consumer (the project session owner) was removed at WP2 | (a) | **Consolidate: deleted.** The WP2 relocation was correct at the time; the subject has since gone. Manifest row updated. |
+| a3 | `lib/platform/texture-verifier.ts` — **0 importers**; its test was deleted at WP2 (§7.2 category C) | (a) | **Consolidate: deleted.** See the manifest contradiction below. |
+| a4 | `lib/content/scene.ts` `placementToModelEntity` — **0 consumers**, and it constructed a `roomId` the current Scene format forbids | (a)+(d) | **Consolidate: deleted.** |
+| a5 | `lib/content/scene.ts` `export { getNode }` — **0 consumers** (callers import `getNode` from `@portfolio/camera-core`) | (a)+(b) | **Consolidate: deleted** (with its now-unused import). |
+| b1 | `lib/content/scene.ts` `resolveSceneDocument` — **test-only** consumer; it binds the catalogue options that `prepareRuntime` also accepts | (b) | **Retain, defer to WP3T.** Its only consumers are tests, and the seam is the app's catalogue binding; repointing those tests is test work. |
+| b2 | `validateWallFirstProject` / `serializeWallFirstProject` (`packages/project-model/src/wall-first-project.ts`) — **test-only**; a second project-root gate that omits the camera-pose rule `validateProject` runs, and adds portal-adjacency Save checks plus per-document canonical JSON | (b) | **Retain, defer to WP3T.** `validateProject` is the product's one acceptance authority. Unifying the two would either tighten the accepted set (add the camera-pose rejection) — which WP3R may not do — or drop the Save-only portal diagnostics; repointing its writer-gate assertions to the canonical `serializeProject` is test work. Recorded for the Save-path owner. |
+| a6 | `lib/authoring/**` — 19 files, 17 with **0 importers** and 2 test-only (`layout-exact-input`, `plan-hit`) | (a)-exempt | **Retain.** These are the §4.3 retained pure semantics, kept by criteria, not by consumer count (§12 WP3R). |
+| c1 | `packages/project-model/src/runtime.ts` name/ownership | (c) | **Retain.** It is the single project-level runtime seam, owned by the package that owns the Project document and consumed by the visitor cold runtime; it opens through the canonical validator and the one geometry compiler. |
+| d1 | `LayoutRoomRegistry` + `createEmptyLayoutRoomRegistry` + the `pointInFrame`/`localPointInFrame` identity branches; consumers `visitor-cold-runtime.ts`, `VisitorEntities.svelte`, `VisitorPreviewSurface.svelte`, `lib/authoring/camera/editor-camera-view.ts`, `lib/authoring/camera/editor-camera-path.ts` | (d) | **Retain, defer to T2/T3.** The *type* is consumed by retained modules; removing the Room-frame concept is the Scene-unit (T2) and Camera-unit (T3) extraction. Room-keyed lookups already fail closed. |
+| d2 | Legacy `layout-codec` / `layout-migration` / `layout-compat` reachable from a product reader | (d) | **Retain, defer to T1.** Re-confirmed: the legacy codec is imported only by wall-first internals and tests (9 modules, for `LayoutDocumentIssue`/`LayoutDocumentValidationError`); no project/API/runtime reader reaches it. This is the §5.1 "RETIRE AT T1" row. |
+| c2 | Historical `museum`/`editor` naming (`lib/museum/`, `tests/lib/editor/`, `MUSEUM_SCENE_VALIDATION_OPTIONS`) | (c) | **Retain, defer.** §4.1 states the directory names are kept to avoid test-path churn and that renaming them is cosmetic and not part of #115. |
+| a7 | `apps/api/src/index.ts` — barrel with a dead `void main()` guard (`start.ts` is the entry) | (a) | **Retain.** It is the package's conventional entry/barrel beside `start.ts`; §5.1 keeps `apps/api` as foundation with no platform rewrite, so its removal is a convention decision, not a prune. |
+| t1 | `tests/helpers/import-closure.ts` stale constants (`MUSEUM_APP_SRC`, the `virtual:museum-editor-entry` branch) | test residue | **Defer to WP3T** (test helper ownership). |
+| t2 | `apps/editor/tests/README.md` — its alias-import exemplar named the module removed by a3 | docs repair | **Consolidate: repaired** to a surviving module, forced by a3; not a test-doctrine change. |
+
+**Consolidations applied (behavior-preserving):** a1–a5 and the t2 reference repair. Each removes
+only code with no consumer; no schema, format, Coordinate, Camera, visitor-runtime or renderer
+behavior changes, and accepted-document semantics are untouched.
+
+**Manifest contradiction resolved by evidence.** The plan contradicts itself on
+`texture-verifier`: §4.1 lists a relocated `platform/` copy, while the §5.2 per-file manifest —
+the execution authority — classifies the single baseline file (`lib/editor/texture-verifier.ts`)
+as **REMOVE IN #115** with the frozen copy as its home. WP2 followed §4.1 and created the
+`platform/` copy, but the file has zero consumers and its test was deleted as category C, so WP3R
+removes it and treats §5.2 as authoritative here.
+
+**Manifest updates (§2.1):** the two rows whose prior `RETAIN AS FOUNDATION` classification is
+superseded by a1/a2 now read `REMOVE (WP3R §10)` with the reason. No other row changes.
+
+**Test debt recorded for WP3T** (not actioned here): b1 (repoint the `resolveSceneDocument` tests),
+b2 (repoint the writer-gate assertions to `serializeProject`), t1 (helper residue).
+
+**Checkpoint D verification (§7.4).** Every gate was re-run after the consolidations; see §11.
+
+## 11. Checkpoint D verification
+
+The consolidations are source deletions and one dead-export trim, so the full §7.4 contract was
+re-run rather than inherited.
+
+**Verified revision:** the WP3R consolidation commit on `codex/pr115-architecture-plan`, over base
+`6fe424c8` (the accepted Checkpoint C head). The commit SHA and the committed-change range are
+recorded in the follow-up docs commit that names them.
+
+| Command | Result |
+| --- | --- |
+| `npm run test:arch` | 13 files / 102 tests passed |
+| `npm test` | 106 files / 1,502 tests passed (fast + heavy + arch) |
+| `npm run check` | `svelte-check`: 0 errors, 0 warnings |
+| `npm run build` | built (`@sveltejs/adapter-vercel`) |
+| `npm run check:layout-core`, `check:project-model`, `check:camera-core` | `tsc --noEmit` clean |
+| `npm run check:api` | `tsc --noEmit` clean |
+| `npm run test:api` | build + 3 files: 23 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` |
+| `git diff --check 6fe424c8` | clean — the pending consolidations against the Checkpoint C head |
+| Browser check (`vite` dev server on 5173 and the API dev server on 8787) | `/`, `/projects`, `/project/x/spatial`, `/p/x`: all 200, expected content, **zero console errors** |
+
+The editor suite total is unchanged from Checkpoint C (106 files / 1,502 tests): the
+consolidations removed only code with no consumer, so no test lost its subject and none was added.
+The frozen-project checks remain owner-verified WP1 evidence and were not re-run here (§3.7); the
+repository-side `legacy/` isolation gate is green in `test:arch`. The browser check needs the API
+dev server for the `/projects` hub, which requests `/auth/me`.
