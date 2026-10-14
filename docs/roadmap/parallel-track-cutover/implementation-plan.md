@@ -215,14 +215,21 @@ apps/editor/src/lib/
   render/       wall-geometry-adapter.ts
   layout/       wall-mesh-builder.ts (the only non-facade layout module kept)
   types/        assets.ts, materials.ts, scene.ts
-  project/      project-codec.ts (catalogue-configured strict codec), project-types.ts
+  project/      project-codec.ts (catalogue-configured strict codec)
   visitor/      all ten files (cold runtime made strict in WP3)
-  platform/   ⇢ project-persistence.ts, mime-sniff.ts, project-asset-request-scope.ts, texture-verifier.ts
+  platform/   ⇢ project-persistence.ts, mime-sniff.ts
   authoring/  ⇢ named pure semantics (§4.3)
 apps/editor/vite/  preview-surface-boundary-plugin, preview-surface-dynamic-scan, public-surface-boundary-plugin
 packages/  layout-core, project-model, camera-core, tsconfig
 apps/api/  unchanged except effects of the strict project-model readers
 ```
+
+**WP3R reconciliation (Checkpoint D).** This tree is the post-#115 target *after* WP3R. Three
+files it listed as part of the WP2 foundation were deleted at Checkpoint D as consumer-less —
+`lib/project/project-types.ts`, `lib/platform/project-asset-request-scope.ts` and
+`lib/platform/texture-verifier.ts` (`acceptance.md` §10, a1–a3) — and are not part of it. Where
+this section and the §5.2 per-file manifest disagree (only the `texture-verifier` relocation),
+§5.2 is authoritative. Nothing else in the tree changed.
 
 Directory names (`lib/museum` for the generic renderer) are kept to avoid churn in test paths. Renaming them is cosmetic and is not part of #115.
 
@@ -472,6 +479,8 @@ Product routes that remain in-repo are still browser-checked: load `/`, `/projec
 
 **Boundary.** Investigation may precede Checkpoint D; substantial test deletion, splitting, fixture consolidation and lane changes begin only after WP3R's production reassessment is accepted. WP3 still owns §6's current-format migration and deletion of its retired compatibility tests. WP3R still owns production dispositions, including any observer seam or module removal. WP3T changes tests, test helpers/data, runner scripts/configuration and `apps/editor/tests/README.md`; it neither redesigns production nor retires retained Layout internals ahead of T1. Reconfirm candidates against the stable tree rather than treating this investigation as a deletion manifest.
 
+**What WP3T does not own: production seams need a named owner.** WP3T owns *test reassessment only*. Where WP3R retained a production seam that only tests consume — `lib/content/scene.ts` `resolveSceneDocument`, and `validateWallFirstProject`/`serializeWallFirstProject` — WP3T may repoint or re-target the tests that cover it, but retiring, merging, relocating or otherwise restructuring that production code is not WP3T's, and it must not be read into the WP3T row of §12. Each retained seam is deferred to the track that owns its subject, named at the point of retention in `acceptance.md` §10, so it is never left ownerless between WP3R's closure and its track: the Scene unit (T2) and the Save path (T3). A WP3T finding that is a production disposition rather than a test is returned to WP3R's owner or recorded against the named track, never applied here. WP3T must also preserve or prove a same-defect successor for every guarantee it would otherwise lose when it repoints a test.
+
 **Evidence and priority.** The inspected branch at `c63887ca` plus the in-progress WP3 worktree has 106 editor test files (74 under Layout), 13 arch, 6 heavy and 87 fast, plus three API files outside Vitest. The seven-file Camera/curve/topology probe passed 203 tests. A fast probe took 16.63 s, with 85 files passing, one Scene-codec collection failure and one writer assertion failure during WP3; it is cost evidence, not accepted foundation evidence. Times below are local observations, not budgets or a stable post-WP3R baseline.
 
 | Priority / problem | Evidence and bounded disposition |
@@ -492,7 +501,7 @@ Product routes that remain in-repo are still browser-checked: load `/`, `/projec
 **WP3T acceptance (Checkpoint D-T).**
 
 1. Start from accepted Checkpoint D and record a short change-only disposition in `acceptance.md`: each deletion's vanished subject or equivalent execution conditions; each replacement's same-defect proof and selective mutation evidence under the existing successor rule. No permanent test inventory, deletion quota or new audit process.
-2. Apply the evidenced contract splits, fixture ownership/ledger repair, durable naming and redundant-call/scaffolding cleanup. Retain distinct failures, call-site wiring, semantic regressions, fixed oracles and the full dense inputs. Pure moves preserve expectations; any assertion rewrite has a recorded semantic reason. Production changes are returned to WP3R's owner or deferred by §5.1.
+2. Apply the evidenced contract splits, fixture ownership/ledger repair, durable naming and redundant-call/scaffolding cleanup. Retain distinct failures, call-site wiring, semantic regressions, fixed oracles and the full dense inputs. Pure moves preserve expectations; any assertion rewrite has a recorded semantic reason. Production changes are returned to WP3R's owner, or deferred to the named track owner in §5.1 / `acceptance.md` §10; WP3T never applies them.
 3. Establish fast/heavy membership from the stable tree's file/test/**setup** costs; cheap representatives run without dense setup. Add a small arch configuration test proving existing/unique curated entries, disjoint effective lane sets and their union equal to the full include population; a missing-entry and overlap control fail. Move surviving architecture assertions into unconditional arch ownership without widening exclusions. Keep `npm test` complete.
 4. Document and exercise the focused commands and integration policy (§7.7) on installed Vitest 3.2.7 and the existing API setup; verify file/name filters actually select cases. Acceptance commands build the API once, execute all its contracts and fail on missing required DB/tool setup or skipped tests. Keep normal DB-free iteration separate. The existing `normalize-asset` conditional tool skip is not full verification; its required run must execute and clean its temporary directories.
 5. Publish compact doctrine in the existing test README: one coherent behavioral contract per suite; a new test must name a material failure existing checks miss; reuse/extend before adding; representative equivalence classes except justified numerical density; assert contract-required output/identity/order, not incidental decomposition; narrow fixtures with visible scenario facts and reliable cleanup; deleted subjects versus proven successors; focused feedback versus integration acceptance. Preserve architecture, mutation, call-site and lane-union rules. No copied manual in AGENTS or new skill.

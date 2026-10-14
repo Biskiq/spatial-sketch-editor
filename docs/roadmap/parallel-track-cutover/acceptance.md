@@ -2484,8 +2484,10 @@ assigned to WP3R and WP3T.
 ## 10. WP3R — post-prune reassessment (Checkpoint D)
 
 > **Status.** WP3R executed on `codex/pr115-architecture-plan` from the accepted Checkpoint C
-> head (`6fe424c8`). The consolidations below are applied. Checkpoint D is **acceptance-ready,
-> pending independent acceptance**. WP3T, WP4 and closeout have not begun.
+> head (`6fe424c8`). The consolidations below are applied, and the independent review accepted
+> them while raising three documentation/disposition findings (F1–F3), all corrected in §12.
+> Checkpoint D is **acceptance-ready, pending re-review of those corrections**. WP3T, WP4 and
+> closeout have not begun.
 
 **Method.** The committed import-closure resolver (§12 WP0,
 [import-closure.ts](../../../apps/editor/tests/helpers/import-closure.ts)) was re-run over the
@@ -2506,8 +2508,8 @@ branch) are unreferenced residue and are recorded for WP3T below.
 | a3 | `lib/platform/texture-verifier.ts` — **0 importers**; its test was deleted at WP2 (§7.2 category C) | (a) | **Consolidate: deleted.** See the manifest contradiction below. |
 | a4 | `lib/content/scene.ts` `placementToModelEntity` — **0 consumers**, and it constructed a `roomId` the current Scene format forbids | (a)+(d) | **Consolidate: deleted.** |
 | a5 | `lib/content/scene.ts` `export { getNode }` — **0 consumers** (callers import `getNode` from `@portfolio/camera-core`) | (a)+(b) | **Consolidate: deleted** (with its now-unused import). |
-| b1 | `lib/content/scene.ts` `resolveSceneDocument` — **test-only** consumer; it binds the catalogue options that `prepareRuntime` also accepts | (b) | **Retain, defer to WP3T.** Its only consumers are tests, and the seam is the app's catalogue binding; repointing those tests is test work. |
-| b2 | `validateWallFirstProject` / `serializeWallFirstProject` (`packages/project-model/src/wall-first-project.ts`) — **test-only**; a second project-root gate that omits the camera-pose rule `validateProject` runs, and adds portal-adjacency Save checks plus per-document canonical JSON | (b) | **Retain, defer to WP3T.** `validateProject` is the product's one acceptance authority. Unifying the two would either tighten the accepted set (add the camera-pose rejection) — which WP3R may not do — or drop the Save-only portal diagnostics; repointing its writer-gate assertions to the canonical `serializeProject` is test work. Recorded for the Save-path owner. |
+| b1 | `lib/content/scene.ts` `resolveSceneDocument` — **test-only** consumer; it binds the catalogue options that `prepareRuntime` also accepts | (b) | **Retain; test reassessment at WP3T, production disposition owned by T2.** Its only consumers are tests, and the seam is the app's catalogue binding, so repointing those tests is test work. Whether the app-side binding is folded into `prepareRuntime` or retired with the Scene unit is a production decision for T2 (Composition data and authoring — the Scene unit, §8.4), not for WP3T (§7.6, as corrected by F3). |
+| b2 | `validateWallFirstProject` / `serializeWallFirstProject` (`packages/project-model/src/wall-first-project.ts`) — **test-only**; a second project-root gate that omits the camera-pose rule `validateProject` runs, and adds portal-adjacency Save checks plus per-document canonical JSON | (b) | **Retain; test reassessment at WP3T, production disposition owned by T3** (whose planning evidence claims the `expected-revision Save` path, §8.4). `validateProject` is the product's one acceptance authority. Unifying the two would either tighten the accepted set (add the camera-pose rejection) — which WP3R may not do — or drop the Save-only portal diagnostics, so production-level consolidation stays with T3 under §7.6, as corrected by F3. WP3T's part is test-side only: before repointing any writer-gate assertion to the canonical `serializeProject`, it must preserve or prove same-defect successors for the portal-adjacency Save checks and for the separate per-document canonical JSON outputs, and must not silently discard those guarantees. |
 | a6 | `lib/authoring/**` — 19 files, 17 with **0 importers** and 2 test-only (`layout-exact-input`, `plan-hit`) | (a)-exempt | **Retain.** These are the §4.3 retained pure semantics, kept by criteria, not by consumer count (§12 WP3R). |
 | c1 | `packages/project-model/src/runtime.ts` name/ownership | (c) | **Retain.** It is the single project-level runtime seam, owned by the package that owns the Project document and consumed by the visitor cold runtime; it opens through the canonical validator and the one geometry compiler. |
 | d1 | `LayoutRoomRegistry` + `createEmptyLayoutRoomRegistry` + the `pointInFrame`/`localPointInFrame` identity branches; consumers `visitor-cold-runtime.ts`, `VisitorEntities.svelte`, `VisitorPreviewSurface.svelte`, `lib/authoring/camera/editor-camera-view.ts`, `lib/authoring/camera/editor-camera-path.ts` | (d) | **Retain, defer to T2/T3.** The *type* is consumed by retained modules; removing the Room-frame concept is the Scene-unit (T2) and Camera-unit (T3) extraction. Room-keyed lookups already fail closed. |
@@ -2515,7 +2517,7 @@ branch) are unreferenced residue and are recorded for WP3T below.
 | c2 | Historical `museum`/`editor` naming (`lib/museum/`, `tests/lib/editor/`, `MUSEUM_SCENE_VALIDATION_OPTIONS`) | (c) | **Retain, defer.** §4.1 states the directory names are kept to avoid test-path churn and that renaming them is cosmetic and not part of #115. |
 | a7 | `apps/api/src/index.ts` — barrel with a dead `void main()` guard (`start.ts` is the entry) | (a) | **Retain.** It is the package's conventional entry/barrel beside `start.ts`; §5.1 keeps `apps/api` as foundation with no platform rewrite, so its removal is a convention decision, not a prune. |
 | t1 | `tests/helpers/import-closure.ts` stale constants (`MUSEUM_APP_SRC`, the `virtual:museum-editor-entry` branch) | test residue | **Defer to WP3T** (test helper ownership). |
-| t2 | `apps/editor/tests/README.md` — its alias-import exemplar named the module removed by a3 | docs repair | **Consolidate: repaired** to a surviving module, forced by a3; not a test-doctrine change. |
+| t2 | `apps/editor/tests/README.md` — its alias-import exemplar named the module removed by a3 | docs repair | **Consolidate: repaired**, forced by a3; not a test-doctrine change. The WP3R repair named `$lib/platform/project-persistence`, which imports `validateProject` without re-exporting it; F1 corrects the exemplar to `$lib/project/project-codec`, the module that actually exports it. |
 
 **Consolidations applied (behavior-preserving):** a1–a5 and the t2 reference repair. Each removes
 only code with no consumer; no schema, format, Coordinate, Camera, visitor-runtime or renderer
@@ -2531,8 +2533,13 @@ removes it and treats §5.2 as authoritative here.
 **Manifest updates (§2.1):** the two rows whose prior `RETAIN AS FOUNDATION` classification is
 superseded by a1/a2 now read `REMOVE (WP3R §10)` with the reason. No other row changes.
 
-**Test debt recorded for WP3T** (not actioned here): b1 (repoint the `resolveSceneDocument` tests),
-b2 (repoint the writer-gate assertions to `serializeProject`), t1 (helper residue).
+**Recorded for WP3T** (not actioned here): b1 (repoint the `resolveSceneDocument` tests), b2 (prove
+same-defect successors for the Save-only portal-adjacency and per-document canonical-JSON
+guarantees, then repoint the writer-gate assertions to `serializeProject`), t1 (helper residue).
+**Production dispositions stay with their named owners** — b1 → T2, b2 → T3, c1 → the
+`project-model` package that owns the Project document, d1 → T2/T3, d2 → T1, c2/a7 → retained as
+found — because §7.6, as corrected by F3, gives WP3T test reassessment only: a WP3T finding that is
+not a test is returned to the owner rather than applied.
 
 **Checkpoint D verification (§7.4).** Every gate was re-run after the consolidations; see §11.
 
@@ -2562,3 +2569,36 @@ consolidations removed only code with no consumer, so no test lost its subject a
 The frozen-project checks remain owner-verified WP1 evidence and were not re-run here (§3.7); the
 repository-side `legacy/` isolation gate is green in `test:arch`. The browser check needs the API
 dev server for the `/projects` hub, which requests `/auth/me`.
+
+## 12. Checkpoint D independent review (F1–F3) and corrections
+
+An independent review of `bbd7cdec` accepted the WP3R production consolidations — no further
+production refactor is justified — and raised three documentation/disposition findings. All three
+are corrected in place by the docs-only correction commit on `codex/pr115-architecture-plan` that
+carries this section. No production, test, schema or format code changed, so the §7.4 product,
+kernel and API gates are not re-run; §7.7's docs/planning-only rule applies instead.
+
+| # | Finding | Disposition |
+| --- | --- | --- |
+| **F1** | `apps/editor/tests/README.md`'s alias exemplar imported `validateProject` from `$lib/platform/project-persistence`, which imports it without re-exporting it — the file exists, so the documentation gate could not see the wrong symbol | **Upheld — corrected.** The exemplar now names `$lib/project/project-codec`, the module that actually exports `validateProject`, and rule 3's no-extension example follows it. The t2 row and this section record that the WP3R repair named a real module that does not export the symbol it exemplified. |
+| **F2** | §4.1's TARGET TREE still listed `project-types.ts`, `project-asset-request-scope.ts` and `texture-verifier.ts`, all deleted by WP3R, leaving live instructions for WP4–WP7 that contradict the accepted disposition | **Upheld — corrected.** `implementation-plan.md` §4.1 now states the post-WP3R tree and records the three a1–a3 deletions, naming the §5.2 per-file manifest as authoritative where §4.1 and it disagree. |
+| **F3** | b1/b2 deferred test-only *production* seams to WP3T, which §7.6 forbids from production restructuring — leaving both seams ownerless between WP3R's closure and their track | **Upheld — corrected.** §7.6's boundary now states that WP3T owns test reassessment only: it may repoint or re-target tests, never retire, merge, relocate or restructure production code, and a production disposition is returned to the owner. b1's seam is assigned to T2 (the Scene unit) and b2's to T3 (the Save path), following §5.1's own `RETIRE AT <track>` convention and §8.4's track evidence lists; only their test work stays with WP3T. |
+
+The review's specific F3 concern is carried in the b2 row: `validateWallFirstProject` adds
+portal-adjacency Save checks and produces separate canonical JSON outputs, so repointing its tests
+to `serializeProject` must preserve or prove a same-defect successor for each guarantee rather than
+silently discarding it.
+
+**Verified for this correction (docs-scoped).** Docs-only, so the §7.4 product/API gates and §7.5
+DB execution do not apply and were not fabricated; the documentation gate and committed-range
+whitespace are the applicable checks.
+
+| Command | Result |
+| --- | --- |
+| `npx vitest run --config vitest.arch.config.ts tests/docs` — the documentation gate, run alone as `apps/editor/tests/README.md` prescribes, on the corrected tree | pass — 1 file / 24 tests |
+| `npm run test:arch` — the whole arch lane, which includes the documentation gate; §7.7 gives docs/planning-only changes the docs/arch gates | pass — 13 files / 102 tests |
+| `git diff --check bbd7cdec..<correction>` (committed range); `git show --check <correction>` (single commit) | recorded with the correction revision below |
+
+**Correction revision.** The docs-only correction commit sits on `codex/pr115-architecture-plan`
+immediately on top of the reviewed `bbd7cdec`; its SHA and the committed-range whitespace results
+are recorded by the revision-record commit that follows it, as at Checkpoints C and D.

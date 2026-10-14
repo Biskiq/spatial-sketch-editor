@@ -21,13 +21,13 @@ first edit. Test-design authority for adding/replacing tests:
 ## Import rules
 
 1. **Import source modules via `$lib` aliases, never relative paths.** Tests are
-   location-independent by design: `import { validateProject } from '$lib/platform/project-persistence'`.
+   location-independent by design: `import { validateProject } from '$lib/project/project-codec'`.
    The `$lib` alias is configured in `vitest.shared.ts` and in the SvelteKit-generated
    tsconfig (inherited by `svelte-check`), so tests typecheck in place.
 2. **Relative imports are reserved for sibling test helpers and fixtures** that move
    together with the test (e.g. `./__fixtures__/p23b-fixtures`).
 3. No extension on imports: `allowImportingTsExtensions` is off, so
-   `'$lib/platform/project-persistence'` not `'$lib/platform/project-persistence.ts'`.
+   `'$lib/project/project-codec'` not `'$lib/project/project-codec.ts'`.
 
 ## Test design rules
 
