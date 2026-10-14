@@ -43,7 +43,5 @@ CARRY: Capability evidence and obligations → ../roadmap/t1-spatial-world/plann
        ../reference/design-system/editor-shell-and-visual-system.md.
        TD dispositions (TD-1/TD-2 removed, TD-3 fixed, TD-4/TD-5 retired with the
        benchmark) → ./tech-debt/README.md.
-       Recovery: PR #115 landed on `main` rebased, so R115.S01's pre-merge anchor `3b30b408` is not
-       an ancestor of `main`; the pushed tag `closed/r115.s01` and `origin`'s `refs/pull/115/head`
-       still resolve it. Recorded, with the phase-close preservation report, in the acceptance stub
-       above.
+       Recovery for the compacted #115 records — including the R115.S01 anchor degradation — → the
+       acceptance stub above; its `Recovery` section owns the routes.

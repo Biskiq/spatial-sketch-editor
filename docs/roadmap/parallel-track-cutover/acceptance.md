@@ -30,9 +30,8 @@ implementation-acceptance failure.
 
 The reset's accepted scope is the plan (`./implementation-plan.md`, revision 4): the retained
 foundation tree of its §4.1/§4.3, the documented intentional capability loss of §4.4, and the
-execution-structure rules of §9. Durable product truth stayed where it already lived under
-`docs/reference/**`; that is what the close promotes nothing out of and what this record never
-owned.
+execution-structure rules of §9. Durable product truth stayed where it already lived under `docs/reference/**`; this record never
+owned it, and the close promotes nothing out of it.
 
 ## Provenance
 
@@ -109,7 +108,7 @@ retained, not compacted            ./implementation-plan.md stays live: the exec
 ## Recovery
 
 ```text
-full accepted body (3875 lines: §1 closure counts, §2–§5 the source/test/docs manifests and
+full accepted body (3876 lines: §1 closure counts, §2–§5 the source/test/docs manifests and
 protected hashes, §6–§22 the per-checkpoint records and their review corrections, §23 the final
 acceptance, the slice closeout, the R115.S01 preservation report and its limitations):
 
@@ -129,10 +128,12 @@ the PR ref:
 anchor 6bd15aa2 · tag `closed/r115` (created by the phase close; local only — not pushed by it,
 and not required to resolve, because the anchor is an ancestor of `main`)
 
-REQUIRED MERGE METHOD — P1: this closeout lands as a merge commit (no squash, no rebase), so the
-recorded anchors stay ancestors of `main` and the recovery reads above resolve. Post-merge
-verification is `git merge-base --is-ancestor 6bd15aa2 main` plus a `git show 6bd15aa2:<path>`
-recovery read; it is owed by the owner's merge and is not claimed here.
+REQUIRED MERGE METHOD — P1: PR #116 lands as a merge commit (no squash, no rebase). The phase
+anchor 6bd15aa2 is already an ancestor of `main` and stays one under any method; what the merge
+commit additionally preserves is the closeout commits' own revisions, which a rebase or a squash
+would rewrite into new SHAs. Post-merge verification is `git merge-base --is-ancestor 6bd15aa2 main`
+plus a `git show 6bd15aa2:<path>` recovery read; it is owed by the owner's merge and is not claimed
+here.
 ```
 
 ## Closed-work preservation report
@@ -141,14 +142,21 @@ recovery read; it is owed by the owner's merge and is not claimed here.
 CLOSEOUT PRESERVATION — R115 (phase close, 2026-10-14)
 prose compacted:                1   acceptance.md, the declared gate artifact — this stub, at its own path
 reference promotions:           0   durable truth already sat with its owners under docs/reference/**
-renderable evidence archived:   0   the protected prototypes were conserved in place by plan §8.3
+renderable evidence archived:   0 files   the protected prototypes were conserved in place by plan §8.3
 evidence stubs / manifests:     0
 transient artifacts removed:    0
-historical anchor:              6bd15aa2 · tag closed/r115 (local only — not pushed by the close)
+historical anchors:             6bd15aa2 — the phase anchor, tagged `closed/r115` (local only — not
+                                pushed by the close); it is an ancestor of `main`, so no tag is needed
+                                to resolve it · 3b30b408 — the R115.S01 anchor, tagged separately
+                                `closed/r115.s01` (pushed to origin), which is the "another tag" the
+                                anchor rule requires when an anchor is not an ancestor of the phase
+                                tag's target (annotation above)
 new live → archive prose links: 0
 manual-owed verification rows:  1   the frozen-project Checkpoint A steps (owner-verified WP1 evidence)
-remaining deferred items:       named with owners in Residuals above
+remaining deferred items:       6 rows, named with owners in Residuals above
 permanent stubs added:          1   (the owner-ratified 2026-09-22 hybrid policy's accepted cost)
+drift report:                   phase README PHASE CLOSE closed ✓ · track register row shipped ✓ ·
+                                baton: owner planning decision ✓ · integration: recorded ✓
 ```
 
 **Why the plan was not compacted with the gate artifact.** `./implementation-plan.md` is still read

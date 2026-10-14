@@ -67,7 +67,8 @@ owns lifecycle only and never copies their content.
   recorded, implementation is not authorized.
 - **A `shipped` track needs a `TRACK COMPLETE` block** (owner, date, evidence) on its row here.
   Its phases are closed, its objectives are met against their bounded evidence, and residuals
-  have named owners. No track is `shipped` today.
+  have named owners. No **track** is `shipped` today: the single `shipped` row above is the
+  repository phase R115, which closes through its own `PHASE CLOSE` block.
 - **A repository phase (`R…`) is not a track.** `phase-closeout` moves its own row here to
   `shipped` without a `TRACK COMPLETE` record, because there is no track whose completion event it
   would record; its `PHASE CLOSE` block and final-gate acceptance carry the evidence.

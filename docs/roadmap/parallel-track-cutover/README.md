@@ -12,8 +12,9 @@ NOT: capability implementation · an F interface encoding · a Baseline declarat
 ```
 
 The phase owns its child's status, order and dependencies. Its plan is
-[`implementation-plan.md`](./implementation-plan.md); its recorded manifests, evidence and
-closeout are the closed-work stub at [`acceptance.md`](./acceptance.md).
+[`implementation-plan.md`](./implementation-plan.md); its recorded manifests, evidence and closeout
+are pointed at by the closed-work stub at [`acceptance.md`](./acceptance.md) and recoverable at that
+stub's anchor.
 
 ## Slice register
 
@@ -30,7 +31,8 @@ FINAL PHASE GATE: R115.S01 → ./acceptance.md
 
 PHASE CLOSE
 Stage:        closed
-Closed:       2026-10-14 — owner ratification recorded below; PR #115 landed on `main` at 6bd15aa2
+Closed:       2026-10-14 — owner ratification recorded in PR #116; PR #115 landed on `main` at
+              6bd15aa2
 Final gate:   R115.S01 → ./acceptance.md — accepted 2026-10-14 (the artifact is now the
               closed-work stub; the accepted body is recoverable — see Preservation)
 Integration:  PR #115's complete §7.4 contract, run on the integrated tree at the accepted WP7
@@ -49,7 +51,8 @@ Preservation: `acceptance.md` — the declared gate artifact — was compacted b
               remains this phase's registered plan. No other artifact moved.
 
 Owner ratification: closed by owner ruling 2026-10-14 (owner-invoked R115 phase-closeout after
-              PR #115 merged into `main`; the closure is recorded by this closeout commit)
+              PR #115 merged into `main`; the closure is recorded by PR #116, branch
+              `chore/pr-115-closeout` → `main`)
 ```
 
 `slice-closeout` closed `R115.S01` on 2026-10-14 and made this phase `closable`. The owner then
