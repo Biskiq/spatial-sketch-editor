@@ -168,13 +168,16 @@ imports back to `$lib`.
   placeholder accounts for a declared range), and a heading glued to the rule
   above it (`---# 7. Core color system`) is reported directly, because Markdown
   renders it as prose and the section disappears.
-- **Records are not held to link resolution.** `docs/archive/` and `Repo-Audit/`
-  are excluded by prefix, and `ARCHIVAL_RECORD_PREFIXES` covers the closed phase
-  records, superseded syntheses, immutable decision records and protected
-  prototype evidence whose paths record what was open when they were written.
-  #115 removed the editor shell those records describe; the plan deletes or
-  relocates them (`implementation-plan.md` §8.3–§8.5), at which point the list
-  collapses into the `docs/archive/` prefix.
+- **Records are not held to link resolution.** Two permanent prefixes are excluded:
+  `docs/archive/` (history by contract) and `Repo-Audit/` (an audit log written
+  against another checkout). That is the whole exclusion list, and the gate
+  asserts it as an exact set, so a new exclusion has to be added deliberately
+  rather than appearing as a blind spot. A *historical locator* inside a kept
+  record is declared instead, with a written path in an `EVIDENCE-PATHS` region
+  (`docs/README.md` → "Historical paths in a record"); the record's links,
+  definitions and `#anchors` are still resolved, because those are the reader's
+  route today. WP4 removed the temporary `ARCHIVAL_RECORD_PREFIXES` list and its
+  guard machinery once the closed records it covered were archived or deleted.
 
 ## Running
 
@@ -260,6 +263,7 @@ concrete for this tree; it adds no workflow, runner or CI job.
 | Production code a heavy correctness invariant exercises | The relevant heavy contract during verification, alongside the affected fast contract |
 | Shared test setup (`tests/helpers/**`, `tests/docs/**`), `test-lanes.ts`, `vitest.shared.ts` or a `vitest.*.config.ts` | Every lane the change reaches **and** the full suite at acceptance (`npm test`) |
 | Production code (ordinary) | The affected contract, then the §7.7 escalation for its subsystem, call sites and package type checks |
+| `apps/api` code, its tests or fixtures | `npm run check:api` and the DB-backed `npm run test:api` with **zero skips** (a reachable `DATABASE_URL`; the run's DB target is recorded at a checkpoint). Root `check`, `build` and `test` cover the editor only and never sub for an API run |
 
 Every #115 checkpoint and every future implementation-PR merge gate keeps the
 declared complete verification contract — the §7.4 contract **including
@@ -360,7 +364,7 @@ ids). Ownership and permission checks apply unchanged.
   session, secret/identity rejection, structural absence without the option,
   cross-ownership on real Postgres).
 - Enable locally with `E2E_TEST_AUTH_SECRET` in `.env` (ignored, local-only;
-  see `.env.example`). NEVER set it on production — without it the route does
+  see [`.env.example`](../../../.env.example)). NEVER set it on production — without it the route does
   not exist (404).
 - Non-browser POSTs need the `Origin` header matching the API's editor origin;
   pass `origin` to `loginAs`.

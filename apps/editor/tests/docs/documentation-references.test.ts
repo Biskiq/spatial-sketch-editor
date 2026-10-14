@@ -48,8 +48,9 @@ describe('documentation references', () => {
 		// walk is held to named coverage rather than to a file count: the count
 		// measures the size of the tree, not the reach of the gate, and PR #115
 		// narrows the tree by design. The router, AGENTS, both design contracts,
-		// every operations root, `tests/README`, a protected-prototype specimen
-		// and local skills must all be reached.
+		// the global roadmap, every track roadmap, the R115 phase README, the
+		// operations root and the baton, `tests/README`, a protected-prototype
+		// specimen and local skills must all be reached.
 		const walked = markdownFiles();
 		expect(missingWalkedDocuments(walked)).toEqual([]);
 		expect(walkedLocalSkills(walked)).toBe(true);
@@ -71,6 +72,19 @@ describe('documentation references', () => {
 			PROTECTED_PROTOTYPE_SENTINEL
 		]);
 		expect(walkedLocalSkills([])).toBe(false);
+	});
+
+	it('fails when the walk is narrowed to a subset of the tree', () => {
+		// The other half of the same control: an exclusion, a relocated root or a
+		// walk that stops early leaves a *partially* populated set, which is the
+		// shape a narrowed walk actually takes. One reached document is not
+		// coverage, so the named set still has to fail.
+		const narrowed = [resolve(REPO_ROOT, 'docs/README.md')];
+		const missing = missingWalkedDocuments(narrowed);
+		expect(missing).toContain('AGENTS.md');
+		expect(missing).toContain('docs/roadmap/t1-spatial-world/README.md');
+		expect(missing).toContain('apps/editor/tests/README.md');
+		expect(walkedLocalSkills(narrowed)).toBe(false);
 	});
 
 	it('covers dot-directory documentation instead of blanket-skipping it', () => {
