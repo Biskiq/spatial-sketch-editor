@@ -3249,7 +3249,8 @@ improves ownership, testability or change isolation without adding indirection.
 - **AGENTS hard rules** 1 (one Camera authority), 2 (distinct authorities) and 6 (no second
   authority).
 
-These are sufficient to enforce the caller-migration principle and to control *live prose*; the one
+These are sufficient to **support** enforcement of the caller-migration principle — whose decision
+point is implementation review, not a checker — and to control *live prose*; the one
 cost they do not remove — a permanent stub per closed prose artifact under the owner-ratified
 hybrid-preservation policy — is an owner decision (§17.2, §17.7), not a coverage gap. The
 recommendation set is therefore one idea with one closeout echo — not a new layer.
@@ -3355,3 +3356,113 @@ Corrections are documentation-only; the same documentation and architecture gate
 | --- | --- | --- |
 | Architecture lane, including the documentation cross-reference gate | `npm run test:arch` | **pass** — 14 files, 107 tests, 0 failures |
 | Whitespace over the correction range | `git diff --check 4169da84` | **clean** |
+
+## 18. WP5 — execution structure: hierarchy, gates and cycle (executed — acceptance-ready, review owed)
+
+WP5 created the Track → Phase → Slice execution structure, the exact-interface gate system, the
+architecture operating cycle's live form and the routing/skill updates (`implementation-plan.md`
+§§9–11, §10.4, §7.7), and it implemented the two adopted maintainability findings (A1, A2) and the
+planned §10.4 preservation consolidation. No production code, persisted format, contract semantic or
+PLATE rule changed: the change set is documentation, one new test helper, one new arch test and the
+skills.
+
+### 18.1 Delivered
+
+| Deliverable | Artifact |
+| --- | --- |
+| Global authority: track register, gate register, lifecycle/completion events, closure record, backlog | [`../../roadmap/README.md`](../../roadmap/README.md) |
+| R115 repository phase: slice register, `FINAL PHASE GATE`, `PHASE CLOSE` | [`./README.md`](./README.md) |
+| Track roadmaps with bounded objectives, concern ownership, current-vs-destination contracts, evidence roles, empty phase registers, gate IDs, runbook links and **Starting foundation** (retained modules and gates, §5.1 deferred-retirement rows with exact conditions, §4.4 losses, §7.2 successor obligations) | [`t1-spatial-world/README.md`](../../roadmap/t1-spatial-world/README.md) · [`t2-composition/README.md`](../../roadmap/t2-composition/README.md) · [`t3-experience/README.md`](../../roadmap/t3-experience/README.md) · [`t4-release/README.md`](../../roadmap/t4-release/README.md) |
+| Event procedures (track completion · product integration acceptance · bounded replanning) | [`../../operations/README.md`](../../operations/README.md) |
+| Operational runbooks: baton/status routes, execution eligibility, the implementation-start step, test families, review/closeout/event routes, scoped debt and interruption handling, and the A1 working agreement | [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md) · [`t2-composition/README.md`](../../operations/t2-composition/README.md) · [`t3-experience/README.md`](../../operations/t3-experience/README.md) · [`t4-release/README.md`](../../operations/t4-release/README.md) |
+| Architecture cycle: state table, mechanism register with statuses and verdicts, six short action headings, three one-line hooks, validation rules and routes | [`../../operations/architecture-cycle.md`](../../operations/architecture-cycle.md) |
+| F amendment routing and the gate-register link (no second F specification) | [`../../roadmap/f-foundation-contracts/README.md`](../../roadmap/f-foundation-contracts/README.md) |
+| Shared Markdown table parser (one grammar for the registers and the cycle) | [`../../../apps/editor/tests/helpers/markdown-tables.ts`](../../../apps/editor/tests/helpers/markdown-tables.ts) |
+| The execution-structure gate: §9.4 structure/version/readiness/eligibility/self-satisfaction/ordering rules, §11 cycle rules, route fixtures and skill preflights | [`../../../apps/editor/tests/docs/parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/parallel-track-gates.test.ts) |
+| A1 — extraction discipline | [`../../reference/architecture.md`](../../reference/architecture.md) §Ownership |
+| A2 — the closeout echo | `slice-closeout` self-check (`shims`) and every track runbook's working agreements |
+| §10.4 preservation consolidation | [`../../../.agents/skills/slice-closeout/references/preservation.md`](../../../.agents/skills/slice-closeout/references/preservation.md), linked by both closeout skills at their compaction step |
+| Skill edits | `slice-closeout` (phase README resolution, evidence tier and integration-route preflight, cycle hook, docs-checker correction, no production edit), `phase-closeout` (nested phases, integration preflight, track phase row, no cycle transition), `work-checkpoint` (identity, resume route, verification record), `consult-browser-reviewer` (manual-only, minimal packet) |
+| Router and AGENTS reconciliation | [`../../README.md`](../../README.md) fresh-agent routing block and authority rows · [`../../../AGENTS.md`](../../../AGENTS.md) rule 10 and the boot contract · [`../../operations/current.md`](../../operations/current.md) baton |
+| Lane and gate registration | `apps/editor/test-lanes.ts` (the gates test joins `ARCH_FILES`) · `tests/helpers/docs-references.ts` (the operations root joins the required walked documents) · `apps/editor/tests/README.md` (the gates test and the slice-verification tiers) |
+
+What the gate system enforces, and what stays with review:
+
+- **Enforced** — register schemas; qualified ids and one parent per slice and phase; a `FINAL PHASE
+  GATE` that names a real child and whose plan declares exhaustive verification; a narrowed slice
+  plan that resolves its integration route; `closed` requiring a shipped final child and an owner
+  `Closed` block; `shipped` requiring a `TRACK COMPLETE` block; exact `Gate@Version` consumption;
+  one row per gate/version and one provider; existing exports/conformance/acceptance and a commit
+  that is an ancestor of `HEAD`; accepted-only, current-version eligibility for `in-progress`/
+  `accepted` slices; the **trusted-base** check that refuses a consumer whose prerequisite it
+  accepted in its own diff; the `camera-authoring-migration` dependency on accepted
+  `T1.viewport-projection` and `T3.camera-experience-cutover`; the ≤3 exposure bound, the opening
+  rule, exposure rows, the closure predicate, premature closure and `STEADY` verdicts; the route
+  fixtures; the two skills' evidence preflights.
+- **Review-owned** — that a slice's declared `Consumes` and `Effects` are truthful, and that a new
+  persisted format names its F amendment and owner in the reviewed plan.
+
+### 18.2 Deviations and justified judgments
+
+| # | Decision | Reason |
+| --- | --- | --- |
+| d1 | WP5 reconciled `AGENTS.md`, `docs/README.md`, `current.md` and the F README, although §12 assigns router/AGENTS reconciliation to WP6. | The hierarchy WP5 creates is unreachable unless the routers route to it, and the fresh-agent routing block is a WP5 deliverable (§10.1). WP6 still owes the §10.3 incoming-link sweep, the `tests/README` route reconciliation and the semantic non-vacuity expansion of the documentation walk (every track roadmap). |
+| d2 | `implementation-plan.md` §12 gained a machine-readable `VERIFICATION: exhaustive` declaration for `R115.S01`. | The gates test must read a slice's verification tier and integration route (§7.7), and R115.S01's plan is this plan. The addition is a declaration of the already-accepted contract (the complete §7.4 contract at every checkpoint); it changes no scope, criterion or decision. |
+| d3 | The cycle's `current.md` META-pointer mirror and the `phase-closeout` transition table were **removed**, not migrated: the owner-action state is now the state table's `Readiness` cell, and `close-window` is invoked by the `slice-closeout` hook. | §10.4 requires removing the mandatory cycle transition table and the META read, and §11 lists only the state/mechanism tables, the action headings and the three hooks. No cycle invariant depended on the mirror, and a second writer of cycle state was the larger risk. |
+| d4 | `tests/README.md`'s stale sentence ("a permanent benchmark workflow belongs to WP5") was corrected to state that no benchmark workflow exists. | The sentence contradicted the accepted §17 rejections and §14's exclusions, and this WP touched the file to publish the slice-verification tiers. No benchmark, registry or schedule was added. |
+| d5 | The F README keeps its five-contract registration table and gains amendment routing. | The table is already labelled the phase-registration summary, and §9.2 keeps F semantics with `composition-execution.md`; the edit adds the routing and the gate-register link instead of duplicating the contract. |
+| d6 | Track statuses are `planning`; no track is `shipped` and no `TRACK COMPLETE` block exists. | The register needs an honest value: roadmap and evidence exist, no phase is registered and no implementation is authorized. |
+| d7 | Mechanism status is the **first word** of the cell (`dormant (editor half)`, `installed`); M1/M2/M4/M5 are dormant, M3/M6/M7 installed. | Keeps the binary status the checker reads while stating the truth about the core proofs that remain (M2/M4) and the editor halves that are gone. |
+| d8 | `docs/operations/README.md` was added to the documentation gate's required walked documents. | The helper carried a WP5 marker for exactly this entry, and the events file is now a router authority no silent walk may drop. |
+| d9 | R115 has a phase README but no runbook. | §9.6 requires a runbook of a **track**; R115 is a repository phase registered directly in the global roadmap, and its baton is `current.md`. |
+| d10 | §17.4's "sufficient to enforce the caller-migration principle" was corrected to "sufficient to **support** enforcement … whose decision point is implementation review". | The mission sanctions this minor correction if the section is touched; the accepted record should not overstate what a checker can do. §17's evidence and history are otherwise preserved as written. |
+
+### 18.3 Verification (tested revision: this checkpoint's committed tree)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane, including the documentation cross-reference gate **and the new execution-structure gate** | `npm run test:arch` | **pass** — 15 files, 123 tests, 0 failures |
+| Execution-structure gate alone | `npx vitest run --config vitest.arch.config.ts tests/docs/parallel-track-gates.test.ts` | **pass** — 16 tests: 6 real-tree assertions and 10 negative-fixture/positive-control cases |
+| Complete suite, including the heavy lane | `npm test` | **pass** — 116 files, 1517 tests, 0 failures |
+| Editor type check | `npm run check` | **pass** — 0 errors, 0 warnings |
+| Production build | `npm run build` | **pass** |
+| Kernel package checks | `npm run check:layout-core && npm run check:project-model && npm run check:camera-core` | **pass** |
+| API type check | `npm run check:api` | **pass** |
+| API DB-backed contracts (§7.5, zero skips) | `set -a; . .env; set +a; npm run test:api` | **pass** — 7 files, 39 tests, 0 failures, **0 skipped**, local Postgres 14.19 at `127.0.0.1:5432` |
+| Whitespace over the pending change set (base = the accepted WP5-entry harvest) | `git diff --check e8168a479a88e726c84a9e13f476910aec086205` | **clean** |
+| §9.4 positive/negative controls | the gates test's fixture cases | **pass** — every rule listed in §18.1 has a failing fixture; the parallel/concurrent-provider, own-gate-provider, non-listed-slice, non-nominal-opener and unrelated-track cases stay eligible |
+| §11 opening-rule controls | the gates test's cycle cases | **pass** — missed opening, stale stage, missing exposure row, over-full window, unregistered listing, premature close, bad stage/readiness/status and `STEADY`-without-verdicts all fail; the unconfigured window reports nothing |
+| Route fixtures | `routeProblems` (real routing block + two mutations) | **pass** — all ten routes present, a route into the cycle/event/phase-close procedure fails, a missing route fails |
+| Skill evidence preflights | `skillProblems` (both skills + three mutations) | **pass** — required preflight text present; the retired verification trio and `CYCLE TARGET` fail |
+| Browser checks, retained product routes | dev server `http://localhost:5173` (editor origin matching `EDITOR_ORIGIN`), API listening on `8787` | **pass** — `/` entry renders; `/projects` renders the signed-out hub with no alert; `/project/x/spatial` renders the foundation-reset notice; `/p/x` renders the unavailable page; no console errors after load |
+
+The browser run's first loads used `http://127.0.0.1:5173` **before** the API was started, which
+produced a connection-refused error and then a CORS error (the API allows `EDITOR_ORIGIN`,
+`http://localhost:5173`). Both are artifacts of the check harness, not of the tree: at the matching
+origin with the API listening, the four routes load with a clean console. The API dev server started
+for the check was stopped afterwards.
+
+### 18.4 Residual risks and limitations
+
+- **Independent review is owed** for this checkpoint, and WP6 (cross-reference reconciliation and
+  the §7.4 run) and WP7 (acceptance, closeout, handoff) are not started. R115 remains `in-progress`
+  and its owner-close stays pending.
+- **The gate register is entirely `undrafted`.** The readiness, provider, exports/conformance/
+  acceptance and trusted-base rules are proven by fixtures, not yet by a real ready row; they begin
+  to bind with the first provider slice. The trusted base is `main` at the #115 baseline
+  (`e90a5822`), where no gate register exists, so the anti-self-satisfaction check currently
+  resolves an empty accepted set — the correct answer for this tree.
+- **The permanent-stub cost is surfaced, not decided.** [`references/preservation.md`](../../../.agents/skills/slice-closeout/references/preservation.md)
+  states the owner-ratified 2026-09-22 hybrid policy's per-artifact cost and records it in the
+  preservation report; reducing it stays a bounded owner decision, and WP5 changed no policy.
+- **CI enforcement of the arch lane remains deferred** (the §17.7 owner-visible residual). WP5
+  installs no workflow, and `test:heavy`/`test:arch` still run because a reviewed gate says so.
+- **No benchmark workflow, maintainability inventory, health score, LOC policy or audit exists** —
+  consistent with §17.6, and the corrected `tests/README` sentence now says so.
+- **The slice-verification cutover is enabled, not exercised.** No T-track slice exists yet, so the
+  integration-route and exhaustive-final-gate rules are proven on fixtures only; the first T1 plan
+  (which also follows `configure-window`) is where they first apply to real rows.
+- **The frozen-project acceptance steps remain owner-verified WP1 evidence** and were not re-run
+  here; the executable repository-side property (no product file references `legacy/`) stays green
+  in the arch lane.
+- Postgres-backed API tests ran against a **local** database (14.19, port 5432), not CI.

@@ -223,6 +223,19 @@ checked-in baseline or ledger to re-record. Their historical measurements stay
 recoverable at the baseline SHA, and the owner statement records the
 benchmark's purpose as fulfilled.)
 
+The lane also carries the **execution-structure gate**
+(`tests/docs/parallel-track-gates.test.ts`): the track and gate registers, the
+phase slice register, the router's fresh-agent routes and the architecture
+cycle's state/mechanism tables. It enforces the gate-version rules (exact
+`Gate@Version` references, one provider per version, accepted-only
+prerequisites, the trusted-base check that stops a consumer satisfying its own
+prerequisite in its own diff), the final-gate and verification-tier rules, the
+exposure-window opening rule and the two closeout skills' evidence preflight —
+with an in-memory negative fixture for every rule and positive controls for the
+cases that must stay eligible. Its subject is the execution structure itself,
+which no build, lane report or type check can see, so only an unconditional lane
+can hold it.
+
 `npm test` still runs the complete suite and is never narrowed. The arch lane
 is never path-gated: a Plan or store change can break a camera drawer or
 visitor boundary through shared code. Membership is executable fact in
@@ -254,6 +267,25 @@ declared complete verification contract — the §7.4 contract **including
 not a demand to run every heavy suite after every edit: focused runs are
 iteration feedback and never stand in for acceptance evidence (rule 25).
 
+### Slice verification tiers (the PR #115 WP5 cutover)
+
+A reviewed slice plan declares its own tier, and the tier decides what closeout
+must see:
+
+```text
+VERIFICATION: iteration | affected-subsystem | architecture-integration | exhaustive
+INTEGRATION ROUTE: <the phase's declared gate or integration plan>   (when not exhaustive)
+```
+
+A narrowed tier must resolve its replacement **integration route** — normally its
+phase's declared `FINAL PHASE GATE`, whose plan must itself declare exhaustive
+verification — and the phase cannot become `closable` until that integrated result
+is recorded. A one-slice implementation PR still needs the full gate before merge.
+PR #115 checkpoints are always `exhaustive`: this cutover narrows focused iteration
+and docs/planning slices, never a checkpoint. The gates test fails a missing
+integration route or a narrowed final gate, and `slice-closeout` refuses a close
+whose required evidence is missing.
+
 No tracked CI workflow enforces any of this today — there is no
 `.github/workflows` in the repository, and the older lane comments' "in CI"
 promise was never installed. The reviewed plan and the acceptance record are the
@@ -274,9 +306,10 @@ behavior changes, when a slowdown is investigated, or when an approved plan
 requires measurement — against comparable workloads, revisions and environments.
 A passing correctness suite is not evidence that runtime performance is
 unchanged. #115 deliberately retired the P23B PERF harness, the browser baseline
-recorder, the reuse ratchet and every wall-clock threshold (rule 11); a permanent
-benchmark workflow belongs to WP5, so a test change introduces no new benchmark
-registry, scheduled job or CI gate.
+recorder, the reuse ratchet and every wall-clock threshold (rule 11), and its WP5
+installed the execution structure rather than a benchmark: **no** permanent
+benchmark workflow, registry, scheduled job or CI gate exists, and adding one
+needs separate owner authorization — so a test change introduces none.
 
 ## Focused verification
 

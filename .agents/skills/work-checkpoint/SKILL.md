@@ -40,6 +40,8 @@ COMPLETE:
 ```text
 # <task> — checkpoint
 
+IDENTITY: <track> · <phase> · <slice>        # e.g. T1 · T1.P01 · T1.P01.S03
+RESUME ROUTE: <phase README → exact plan/artifact this checkpoint continues>
 TYPE:
 STATUS: paused
 GOAL:
@@ -66,6 +68,11 @@ DO NOT REPEAT:
 CURRENT:
 - present reasoning frontier / partial implementation state
 
+VERIFICATION:
+- tier that actually ran (iteration | affected-subsystem | architecture-integration | exhaustive)
+- tested revision (commit or tree) and the working-diff identity at that time
+- the integration gate this work still owes, if any
+
 NEXT:
 1. exact next action
 2. exact next action
@@ -85,6 +92,11 @@ CURRENT = current frontier, not narrative history
 NEXT = 1–3 exact continuation actions
 NEXT may not silently broaden beyond GOAL / CONSTRAINTS
 ```
+
+A focused green run is never inherited as acceptance: a checkpoint that recorded only a focused run
+says so, and the required acceptance run stays owed. **Lifecycle stays in the READMEs** (track and
+phase registers) and **prerequisites in the gate register** (`docs/roadmap/README.md`) — a checkpoint
+mirrors neither; it carries identity, the resume route and the verification record only.
 
 No chain-of-thought prose. Conclusions, evidence, decisions, next actions only.
 

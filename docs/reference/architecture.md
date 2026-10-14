@@ -270,6 +270,21 @@ Generated geometry, Three objects, renderer handles, selection, and history
 are never serialized as authored truth; immutable release derivatives are the
 explicit exception above.
 
+**Extraction discipline (adopted by PR #115's maintainability harvest, A1).**
+Extract responsibilities with their callers and ownership boundaries. A forwarding
+surface is justified only when it serves an intentional, owned interface or a bounded
+migration. Temporary compatibility shims require an explicit retirement condition and
+cannot be treated as completed extraction merely because implementation moved behind
+them. Maintain one authoritative owner per mutable state fact.
+
+This distinguishes a legitimate public interface, controlled adapter or composition
+boundary from an **unowned compatibility surface retained indefinitely** after an
+extraction. The decision point is implementation review; slice closeout only confirms that
+the accepted evidence contains no unowned remaining shim, and it introduces no production
+edit. The rule targets coupling and ownership, not module size — a large single-
+responsibility module is not evidence of a defect, and no line-count or module-count
+threshold is applied anywhere in this repository.
+
 **Layout semantic mutation.** Canonical Layout semantic mutation is planned
 in `@portfolio/layout-core`. Each authoring operation owns its own pure
 planning function, and the operation's semantics decide what that function

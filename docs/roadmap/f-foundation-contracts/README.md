@@ -61,6 +61,34 @@ drafted by their first consumer, then ratified as explicit amendments to the
 contract, implemented in shared code, and registered with the implementation
 gates; no track mints its own. Byte encodings and containers stay deferred.
 
+## Amendment routing
+
+An exact interface moves through four states, and its identity is recorded in the
+[gate register](../README.md#gate-register) — one row per gate and major version. This README
+registers and routes; the F semantics themselves stay owned by
+[`../../reference/composition-execution.md`](../../reference/composition-execution.md).
+
+```text
+drafted      the first consumer drafts the smallest real interface in its own slice plan: inputs
+             and outputs, identity, version, units, failure cases, capability negotiation, fixtures
+ratified     the owner ratifies an amendment in ../../reference/composition-execution.md with a
+             stable anchor, version, extension semantics, consumer list and conformance
+             requirements → the gate row becomes `ratified` (which is not readiness)
+implemented  a bounded provider slice, in an owning track phase, implements it in shared code with
+             real exports, conformance tests and fixtures → `implemented`
+accepted     the review and acceptance evidence is recorded → `accepted`
+```
+
+- **Additional consumers join the same gate** rather than minting a competing one.
+- An **incompatible** amendment adds a `version + 1` row and marks the old row `superseded`,
+  retaining that row's provider and evidence. A compatible, optional extension keeps the version.
+- For F.2 and F.4, the shared **interface** gate is distinct from the T3 behavioural cutover gate:
+  Camera extraction, Experience order and the first compound acceptance remain one T3 cutover.
+- A shared implementation lives in an existing package where ownership fits; a **new package needs
+  real import or lifetime evidence.**
+- The register records implementation and evidence identity only. It never encodes F semantics, and
+  a ratified shape without shared code and an accepted provider is **not** readiness.
+
 ## Explicitly open — not decided by this registration
 
 Concrete encodings/containers, kernel substrate/implementation, storage of

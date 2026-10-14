@@ -1054,6 +1054,15 @@ The first T1 window should include at least one slice that re-arms a dormant mec
 
 Execution is one reviewed restructuring change set. Each WP ends at a **checkpoint**: its verification passes and is recorded in `acceptance.md`, and D4 makes each checkpoint one commit on the #115 branch. No checkpoint may leave routes or routers targeting nonexistent paths.
 
+**Slice verification declaration.** The slice owns its verification tier and declares it where the
+plan can read it (`apps/editor/tests/docs/parallel-track-gates.test.ts`); a slice that narrows
+acceptance must also declare the integration route that carries the deferred proof.
+
+```text
+VERIFICATION: exhaustive
+CONTRACT: the complete §7.4 contract at every #115 checkpoint and at final acceptance
+```
+
 | WP | Depends on | Operations | Checkpoint acceptance |
 | --- | --- | --- | --- |
 | **WP0 — baseline and manifests** | Owner authorization | Record the start SHA, confirm baseline ancestry and inspect intervening deltas. Commit `tests/helpers/import-closure.ts`, the §2.2 resolver, which is reused by the isolation test and WP3R. Expand the per-file **source manifest** (§5.2), **test manifest** (§7.2, one category and reason per test file), **docs manifest** (§8) and protected hashes into `acceptance.md`. | Every in-scope tracked file is classified exactly once. Closure counts are reproduced. Docs totals are recorded. |
