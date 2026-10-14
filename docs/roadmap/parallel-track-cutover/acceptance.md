@@ -3689,3 +3689,46 @@ server on `5173` was reused, not restarted.
   **owner-verified external evidence** and was not rerun here (§7.4); only the repository-side
   isolation property was verified.
 - Independent review of the completed WP6 checkpoint is owed, and WP7 remains unstarted.
+
+## 22. WP6 review correction (F1) — executed, re-review owed
+
+The independent WP6 review confirmed the checkpoint substantively correct and withheld acceptance
+on one documentation-consistency finding (**F1**): three live status surfaces still described
+execution progress that the executed work packages had superseded. All three are corrected here,
+and nothing else changed — no production code, persisted format, architecture contract, prototype
+evidence, test, checker, registry, workflow or audit was added or altered.
+
+### 22.1 Corrections
+
+| # | Stale statement | Correction | Artifact |
+| --- | --- | --- | --- |
+| **F1a** | The baton recorded WP5 as executed with review owed, set WP6 as the next unit, and its `BATON` summary read `WP0–WP5 executed; WP6–WP7 remaining`. | The baton now records WP0–WP5 accepted and WP6 executed with independent review owed, and routes the next execution unit to WP7 after WP6 acceptance. R115's `in-progress` status, the capability-implementation restriction and the owner-only phase-close boundary are unchanged. | [`../../operations/current.md`](../../operations/current.md) |
+| **F1b** | The `R115.S01` slice-register `Authorization` cell still carried the stale qualifier `WP5 review owed`. | The qualifier is corrected to the owed WP6 re-review. The original owner authorization (2026-10-13, execution authorized through WP7), the child's `in-progress` status, the `FINAL PHASE GATE` and the `PHASE CLOSE` block are unchanged. `R115.S01` is not marked `shipped` and R115 is not closed. | [`./README.md`](./README.md) |
+| **F1c** | The plan's opening Status paragraph presented WP2 accepted with WP3 in progress and WP3T unimplemented. | The live status now records WP0–WP5 accepted, WP6 executed with independent review owed and WP7 unstarted; the stale "this amendment is investigation/planning only: WP3T is not implemented" clause is dropped because WP3T is implemented. The approved plan body, the revision notes, the owner-decision provenance and every WP7 obligation are unchanged. | [`./implementation-plan.md`](./implementation-plan.md) |
+
+The three edits are status reconciliation only: no plan scope, acceptance criterion, gate row,
+slice-register semantic or WP7 obligation changed, and ownership is not duplicated between the
+baton, the phase README and the plan. §21 and the earlier WP records keep describing the revisions
+they were written at, so their "review owed" headings remain as history.
+
+### 22.2 Verification (tested revision: this correction's committed tree)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane — documentation cross-reference gate and execution-structure gate | `npm run test:arch` | **pass** — 15 files, 131 tests, 0 failures |
+| Whitespace over the correction set (base = the last independently reviewed HEAD) | `git diff --check f0a6138ccdd17e8c354b7e40aed7403d208f5e98` | **clean** |
+
+**Reused evidence, not re-executed (§7.7).** This correction touches only the three status
+surfaces above and this record — no `apps/*/src`, `packages/*/src`, config, test, checker or
+persisted-format file — so the implementation boundary §21.5 verified is unchanged and its product,
+kernel, build, API/PostgreSQL and browser results still describe the reviewed tree. Those suites
+were not rerun and are not claimed as freshly executed; docs/status edits rerun the documentation
+gate without restarting the product suites.
+
+### 22.3 Limitations
+
+- Independent re-review of this correction is owed; WP7 remains unstarted and R115's owner-close
+  stays pending.
+- The three surfaces now state current status, but no automated check asserts baton/README/plan
+  wording, so this consistency stays review-owned — the same class as the review-owned items
+  §18.1 records.

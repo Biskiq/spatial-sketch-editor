@@ -19,7 +19,7 @@ closeout are [`acceptance.md`](./acceptance.md).
 
 | Slice | Status | Consumes | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- |
-| R115.S01 | in-progress | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7, WP5 review owed |
+| R115.S01 | in-progress | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7, WP6 re-review owed |
 
 - **Consumes** is empty: the reset consumes no gate version. Every gate in the
   [gate register](../README.md#gate-register) is still `undrafted`, correctly.
