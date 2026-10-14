@@ -97,15 +97,31 @@ const real: LaneConfig = {
 describe('lane configuration is provable from the tree', () => {
 	it('collects the full suite from the documented include pattern', () => {
 		expect(ALL_TESTS_INCLUDE).toEqual([INCLUDE_PATTERN]);
-		// A walk that matched nothing would make every check below vacuous.
-		expect(population.length).toBeGreaterThan(100);
+		// A walk that matched nothing would make every membership check below
+		// vacuous. The guarantee is coverage, not size: the walk must reach every
+		// curated entry and at least one fast-lane file, so a legitimately pruned
+		// (or grown) tree is judged on what it contains rather than on a test
+		// count that pruning would break.
+		expect(population.length).toBeGreaterThan(0);
+		for (const file of NON_FAST_FILES) expect(population).toContain(file);
+		expect(population.some((file) => !NON_FAST_FILES.includes(file))).toBe(true);
 		expect(population).toContain('tests/config/lane-membership.test.ts');
 	});
 
 	it('has unique, existing, disjoint lanes whose union is the curated set', () => {
 		expect(laneProblems(real)).toEqual([]);
-		expect(ARCH_FILES.length).toBeGreaterThanOrEqual(13);
-		expect(HEAVY_FILES.length).toBeGreaterThanOrEqual(6);
+		// Non-vacuity without a count: an empty lane would satisfy the union
+		// identity for the wrong reason, so each curated lane must own at least
+		// one entry. `laneProblems` above already proves every entry is a real
+		// collected file (the membership guarantee).
+		expect(ARCH_FILES.length).toBeGreaterThan(0);
+		expect(HEAVY_FILES.length).toBeGreaterThan(0);
+		// Exclusions are correct: `test:fast` excludes exactly the curated set, so
+		// the three lanes partition the complete population — every collected
+		// file runs in exactly one of fast, arch or heavy.
+		const fast = population.filter((file) => !NON_FAST_FILES.includes(file));
+		expect(fast.length).toBeGreaterThan(0);
+		expect([...ARCH_FILES, ...HEAVY_FILES, ...fast].sort()).toEqual([...population].sort());
 	});
 
 	it('fails a missing or renamed entry, an overlap, a duplicate, and a dropped file', () => {

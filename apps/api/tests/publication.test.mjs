@@ -7,6 +7,8 @@ import test, { after, before } from 'node:test';
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
 
+import { projectDocument } from './test-support.mjs';
+
 const SESSION_KEY = Buffer.alloc(32, 11);
 const SESSION_COOKIE = 'museum-editor-session';
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
@@ -36,38 +38,6 @@ async function sessionCookie(app, userId) {
 	await app.ready();
 	const value = app.encodeSecureSession(app.createSecureSession({ userId }));
 	return `${SESSION_COOKIE}=${encodeURIComponent(value)}`;
-}
-
-/**
- * PR #115 (WP3): publication accepts the current document format only — a
- * wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
- * world-local Scene (`formatVersion: 1`). The canonical empty project, with the
- * caller's textures staged in the Scene.
- */
-function projectDocument(id, name, textures = []) {
-	return {
-		id,
-		name,
-		layout: {
-			units: 'meters',
-			formatVersion: 5,
-			floor: { id: 'floor', name: 'Floor', elevation: 0 },
-			junctions: [],
-			walls: [],
-			rooms: [],
-			openings: [],
-			objects: [],
-			identity: { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} }
-		},
-		scene: {
-			formatVersion: 1,
-			textures,
-			materials: [],
-			entities: [],
-			navigationNodes: [],
-			connections: []
-		}
-	};
 }
 
 let pool;
@@ -160,7 +130,7 @@ test('never-published status is normal and allocates nothing', async (t) => {
 	if (!HAS_DB) return t.skip('Postgres unreachable');
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
-	await saveDoc(projectId, owner, projectDocument(projectId, 'Never published'));
+	await saveDoc(projectId, owner, projectDocument('Never published', { id: projectId }));
 	try {
 		const first = await app.inject({ method: 'GET', url: `/projects/${projectId}/publication`, headers: { cookie: owner } });
 		assert.equal(first.statusCode, 200);
@@ -184,9 +154,9 @@ test('full loop: publish, snapshot freeze, update, unpublish, republish', async 
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Loop draft'));
+		await saveDoc(projectId, owner, projectDocument('Loop draft', { id: projectId }));
 		const tex = await uploadTexture(projectId, owner);
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Loop v1', [{ id: 'tex-1', name: 'Pinned', uri: `/project-assets/${tex}` }]));
+		await saveDoc(projectId, owner, projectDocument('Loop v1', { id: projectId, textures: [{ id: 'tex-1', name: 'Pinned', uri: `/project-assets/${tex}` }] }));
 
 		const published = await app.inject({
 			method: 'PUT',
@@ -219,7 +189,7 @@ test('full loop: publish, snapshot freeze, update, unpublish, republish', async 
 		assert.equal(bytes.headers['x-content-type-options'], 'nosniff');
 		assert.deepEqual(bytes.rawPayload, PNG_BYTES);
 
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Loop v2', [{ id: 'tex-1', name: 'Pinned', uri: `/project-assets/${tex}` }]));
+		await saveDoc(projectId, owner, projectDocument('Loop v2', { id: projectId, textures: [{ id: 'tex-1', name: 'Pinned', uri: `/project-assets/${tex}` }] }));
 		const frozen = await app.inject({ method: 'GET', url: `/publications/${publicId}` });
 		assert.equal(frozen.json().name, 'Loop v1');
 		const stale = await app.inject({ method: 'GET', url: `/projects/${projectId}/publication`, headers: { cookie: owner } });
@@ -272,7 +242,7 @@ test('ABA rejects stale writers; refetch-then-retry succeeds', async (t) => {
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'ABA'));
+		await saveDoc(projectId, owner, projectDocument('ABA', { id: projectId }));
 		const first = await app.inject({
 			method: 'PUT',
 			url: `/projects/${projectId}/publication`,
@@ -317,7 +287,7 @@ test('idempotent no-ops never bump the revision', async (t) => {
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Noop'));
+		await saveDoc(projectId, owner, projectDocument('Noop', { id: projectId }));
 		const put = (body) =>
 			app.inject({
 				method: 'PUT',
@@ -361,7 +331,7 @@ test('request shape and version validation is bounded', async (t) => {
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Shapes'));
+		await saveDoc(projectId, owner, projectDocument('Shapes', { id: projectId }));
 		const put = (payload) =>
 			app.inject({
 				method: 'PUT',
@@ -395,9 +365,9 @@ test('failed update leaves the old release active', async (t) => {
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Good draft'));
+		await saveDoc(projectId, owner, projectDocument('Good draft', { id: projectId }));
 		const tex = await uploadTexture(projectId, owner);
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Good', [{ id: 'tex-1', name: 'Pinned', uri: `/project-assets/${tex}` }]));
+		await saveDoc(projectId, owner, projectDocument('Good', { id: projectId, textures: [{ id: 'tex-1', name: 'Pinned', uri: `/project-assets/${tex}` }] }));
 		const published = await app.inject({
 			method: 'PUT',
 			url: `/projects/${projectId}/publication`,
@@ -409,7 +379,7 @@ test('failed update leaves the old release active', async (t) => {
 		await saveDoc(
 			projectId,
 			owner,
-			projectDocument(projectId, 'Broken', [{ id: 'tex-9', name: 'Ghost', uri: `/project-assets/${randomUUID()}` }])
+			projectDocument('Broken', { id: projectId, textures: [{ id: 'tex-9', name: 'Ghost', uri: `/project-assets/${randomUUID()}` }] })
 		);
 		const failed = await app.inject({
 			method: 'PUT',
@@ -435,7 +405,7 @@ test('pending assets and missing R2 bytes fail closed', async (t) => {
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Pending seed'));
+		await saveDoc(projectId, owner, projectDocument('Pending seed', { id: projectId }));
 		const registered = await app.inject({
 			method: 'POST',
 			url: `/projects/${projectId}/assets`,
@@ -443,8 +413,8 @@ test('pending assets and missing R2 bytes fail closed', async (t) => {
 			payload: { name: 'pending.png' }
 		});
 		const pendingId = registered.json().id;
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Pending draft'));
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Pending', [{ id: 't1', name: 'P', uri: `/project-assets/${pendingId}` }]));
+		await saveDoc(projectId, owner, projectDocument('Pending draft', { id: projectId }));
+		await saveDoc(projectId, owner, projectDocument('Pending', { id: projectId, textures: [{ id: 't1', name: 'P', uri: `/project-assets/${pendingId}` }] }));
 		const pending = await app.inject({
 			method: 'PUT',
 			url: `/projects/${projectId}/publication`,
@@ -454,7 +424,7 @@ test('pending assets and missing R2 bytes fail closed', async (t) => {
 		assert.equal(pending.statusCode, 400);
 
 		const tex = await uploadTexture(projectId, owner, 'vanishing.png');
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Vanishing', [{ id: 't1', name: 'V', uri: `/project-assets/${tex}` }]));
+		await saveDoc(projectId, owner, projectDocument('Vanishing', { id: projectId, textures: [{ id: 't1', name: 'V', uri: `/project-assets/${tex}` }] }));
 		const row = await pool.query('SELECT object_key FROM assets WHERE id = $1::uuid', [tex]);
 		store.objects.delete(row.rows[0].object_key);
 		const missing = await app.inject({
@@ -466,7 +436,7 @@ test('pending assets and missing R2 bytes fail closed', async (t) => {
 		assert.equal(missing.statusCode, 400);
 
 		const corruptTex = await uploadTexture(projectId, owner, 'corrupt.png');
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Corrupt', [{ id: 't1', name: 'C', uri: `/project-assets/${corruptTex}` }]));
+		await saveDoc(projectId, owner, projectDocument('Corrupt', { id: projectId, textures: [{ id: 't1', name: 'C', uri: `/project-assets/${corruptTex}` }] }));
 		const corruptRow = await pool.query('SELECT object_key FROM assets WHERE id = $1::uuid', [corruptTex]);
 		const stored = store.objects.get(corruptRow.rows[0].object_key);
 		stored[0] = stored[0] ^ 0xff;
@@ -480,7 +450,7 @@ test('pending assets and missing R2 bytes fail closed', async (t) => {
 		assert.match(corrupt.json().error.message, /hash mismatch/);
 
 		const sizeTex = await uploadTexture(projectId, owner, 'wrong-size.png');
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Wrong size', [{ id: 't1', name: 'W', uri: `/project-assets/${sizeTex}` }]));
+		await saveDoc(projectId, owner, projectDocument('Wrong size', { id: projectId, textures: [{ id: 't1', name: 'W', uri: `/project-assets/${sizeTex}` }] }));
 		await pool.query('UPDATE assets SET byte_size = byte_size + 1 WHERE id = $1::uuid', [sizeTex]);
 		const wrongSize = await app.inject({
 			method: 'PUT',
@@ -501,7 +471,7 @@ test('owner, stranger, and guest matrix', async (t) => {
 	const stranger = await sessionCookie(app, 'google:p22-stranger-9');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Matrix'));
+		await saveDoc(projectId, owner, projectDocument('Matrix', { id: projectId }));
 		const status = await app.inject({ method: 'GET', url: `/projects/${projectId}/publication`, headers: { cookie: stranger } });
 		assert.equal(status.statusCode, 404);
 		const put = await app.inject({
@@ -552,8 +522,8 @@ test('concurrent publishers cannot silently overwrite', async (t) => {
 	const owner = await sessionCookie(app, 'google:p22-owner-1');
 	const projectId = track(nextProjectId());
 	try {
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Race'));
-		await saveDoc(projectId, owner, projectDocument(projectId, 'Race'));
+		await saveDoc(projectId, owner, projectDocument('Race', { id: projectId }));
+		await saveDoc(projectId, owner, projectDocument('Race', { id: projectId }));
 		const put = (version) =>
 			app.inject({
 				method: 'PUT',

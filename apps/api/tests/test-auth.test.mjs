@@ -6,6 +6,8 @@ import { createApp } from '../dist/app.js';
 import { ConfigError, readConfig } from '../dist/config.js';
 import { runMigrations } from '../dist/migrate.js';
 
+import { projectDocument } from './test-support.mjs';
+
 const SESSION_KEY = Buffer.alloc(32, 13);
 const SESSION_COOKIE = 'museum-editor-session';
 const TEST_SECRET = 'e2e-test-secret-with-enough-length';
@@ -24,37 +26,6 @@ function cookieFrom(response) {
 
 function testAuthApp(pool = stubPool()) {
 	return createApp({ pool, sessionKey: SESSION_KEY, testAuth: { secret: TEST_SECRET }, logger: false });
-}
-
-/**
- * PR #115 (WP3): the protected routes accept the current document format only —
- * a wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
- * world-local Scene (`formatVersion: 1`). The canonical empty project.
- */
-function projectDocument(id, name) {
-	return {
-		id,
-		name,
-		layout: {
-			units: 'meters',
-			formatVersion: 5,
-			floor: { id: 'floor', name: 'Floor', elevation: 0 },
-			junctions: [],
-			walls: [],
-			rooms: [],
-			openings: [],
-			objects: [],
-			identity: { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} }
-		},
-		scene: {
-			formatVersion: 1,
-			textures: [],
-			materials: [],
-			entities: [],
-			navigationNodes: [],
-			connections: []
-		}
-	};
 }
 
 test('enabled seam mints the canonical session and protected routes work', async (t) => {
@@ -257,7 +228,7 @@ test('seam user B cannot reach seam user A projects (real Postgres)', async (t) 
 			method: 'PUT',
 			url: `/projects/${projectId}`,
 			headers: { cookie: cookieA, 'content-type': 'application/json' },
-			payload: { document: projectDocument(projectId, 'A project') }
+			payload: { document: projectDocument('A project', { id: projectId }) }
 		});
 		assert.equal(saved.statusCode, 200);
 
@@ -272,7 +243,7 @@ test('seam user B cannot reach seam user A projects (real Postgres)', async (t) 
 			method: 'PUT',
 			url: `/projects/${projectId}`,
 			headers: { cookie: cookieB, 'content-type': 'application/json' },
-			payload: { document: projectDocument(projectId, 'B takeover') }
+			payload: { document: projectDocument('B takeover', { id: projectId }) }
 		});
 		assert.equal(foreignWrite.statusCode, 404);
 

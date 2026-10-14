@@ -8,14 +8,12 @@ import {
 } from '@portfolio/layout-core';
 
 export type P23BSemanticClass = 2 | 3 | 4 | 5;
-export type P23BFixtureRole = 'control' | 'timing-target' | 'owner-responsiveness' | 'regression' | 'positive' | 'negative';
 export type P23BMatrixSize = '12-wall' | '40-wall';
 export type P23BCurvature = 'straight' | 'target-curved' | 'all-curved';
 
 export type P23BMatrixSpec = {
 	id: string;
 	semanticClass: 5;
-	role: 'control' | 'timing-target';
 	size: P23BMatrixSize;
 	curvature: P23BCurvature;
 	rooms: 3 | 10;
@@ -35,9 +33,6 @@ export const P23B_MATRIX_SPECS: readonly P23BMatrixSpec[] = (['12-wall', '40-wal
 		return {
 			id: `p23b-${size}-${curvature}-v1`,
 			semanticClass: 5,
-			// The two all-curved cells are the bounded timing targets. Straight and
-			// single-curved cells are controls that isolate size from curvature.
-			role: curvature === 'all-curved' ? 'timing-target' : 'control',
 			size,
 			curvature,
 			rooms: counts.rooms,
@@ -47,8 +42,6 @@ export const P23B_MATRIX_SPECS: readonly P23BMatrixSpec[] = (['12-wall', '40-wal
 	})
 );
 
-/** Active interaction captures use the two size-40 controls; the owner payload was retired. */
-export const P23B_HOSTED_FIXTURE_IDS = ['p23b-40-wall-straight-v1', 'p23b-40-wall-all-curved-v1'] as const;
 /** Historical ledger/baseline identity only; never a live fixture or capture requirement. */
 export const P23B_RETIRED_OWNER_FIXTURE_ID = 'owner-40-curved-v1';
 

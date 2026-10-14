@@ -27,10 +27,16 @@ export function stubPool({ query = async () => undefined, end = async () => unde
  * wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
  * world-local Scene (`formatVersion: 1`). This is the canonical empty project,
  * so a saved-then-loaded document deep-equals the fixture it was built from.
+ *
+ * Every API contract file that constructs a project document builds it here, so
+ * there is exactly one place that pins the current format. The common case is a
+ * stable id (`project:test`) and no textures; a contract that needs its own id
+ * or staged textures passes them in the second argument, so the scenario input
+ * stays visible at the call site rather than implied by a second builder.
  */
-export function projectDocument(name = 'Cloud project') {
+export function projectDocument(name = 'Cloud project', { id = 'project:test', textures = [] } = {}) {
 	return {
-		id: 'project:test',
+		id,
 		name,
 		layout: {
 			units: 'meters',
@@ -45,7 +51,7 @@ export function projectDocument(name = 'Cloud project') {
 		},
 		scene: {
 			formatVersion: 1,
-			textures: [],
+			textures,
 			materials: [],
 			entities: [],
 			navigationNodes: [],

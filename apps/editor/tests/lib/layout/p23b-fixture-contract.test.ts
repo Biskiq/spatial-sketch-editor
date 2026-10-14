@@ -84,8 +84,6 @@ describe('P23B durable fixture contracts', () => {
 		);
 		expect(ids).toHaveLength(6);
 		expect(new Set(ids).size).toBe(6);
-		expect(P23B_MATRIX_SPECS.filter((spec) => spec.role === 'control')).toHaveLength(4);
-		expect(P23B_MATRIX_SPECS.filter((spec) => spec.role === 'timing-target')).toHaveLength(2);
 	});
 
 	it('pins the CLASS 2/3/4 verdicts to the shipped codec, topology gate and compiler', () => {
