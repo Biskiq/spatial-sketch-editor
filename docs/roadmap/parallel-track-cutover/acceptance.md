@@ -2541,9 +2541,9 @@ b2 (repoint the writer-gate assertions to `serializeProject`), t1 (helper residu
 The consolidations are source deletions and one dead-export trim, so the full §7.4 contract was
 re-run rather than inherited.
 
-**Verified revision:** the WP3R consolidation commit on `codex/pr115-architecture-plan`, over base
-`6fe424c8` (the accepted Checkpoint C head). The commit SHA and the committed-change range are
-recorded in the follow-up docs commit that names them.
+**Verified revision:** `6b7fcb7c` (the WP3R consolidation commit) on
+`codex/pr115-architecture-plan`, over base `6fe424c8` (the accepted Checkpoint C head);
+committed-change range `6fe424c8..6b7fcb7c` (6 files, `+96 / −215`).
 
 | Command | Result |
 | --- | --- |
@@ -2554,7 +2554,7 @@ recorded in the follow-up docs commit that names them.
 | `npm run check:layout-core`, `check:project-model`, `check:camera-core` | `tsc --noEmit` clean |
 | `npm run check:api` | `tsc --noEmit` clean |
 | `npm run test:api` | build + 3 files: 23 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` |
-| `git diff --check 6fe424c8` | clean — the pending consolidations against the Checkpoint C head |
+| `git diff --check 6fe424c8 6b7fcb7c` (committed range); `git show --check 6b7fcb7c` (single commit) | clean (both) — committed-change whitespace |
 | Browser check (`vite` dev server on 5173 and the API dev server on 8787) | `/`, `/projects`, `/project/x/spatial`, `/p/x`: all 200, expected content, **zero console errors** |
 
 The editor suite total is unchanged from Checkpoint C (106 files / 1,502 tests): the
