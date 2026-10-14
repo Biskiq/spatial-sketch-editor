@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -94,7 +94,12 @@ export const ARCHIVAL_RECORD_PREFIXES = [
 	'docs/roadmap/p23-layout-depth/',
 	'docs/roadmap/p23b-geometry-performance/',
 	'docs/roadmap/p24-scene-staging/',
-	'docs/roadmap/p26-spatial-depth/',
+	// P26 is deliberately NOT listed as a whole folder: its `design/**` files move
+	// into `prototypes/` (§8.3), which stays inside the walk, so a blanket prefix
+	// would silently exempt protected evidence. Only the archive/deleted parts are
+	// named here.
+	'docs/roadmap/p26-spatial-depth/research/',
+	'docs/roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md',
 	'docs/roadmap/architecture-operating-cycle/',
 	'docs/roadmap/f-foundation-contracts/design/proposals/',
 	// Superseded syntheses deleted after their promotion check (§8.4).
@@ -151,6 +156,33 @@ export function missingWalkedDocuments(
 /** True when the walk reached at least one tracked `.agents/` skill document. */
 export function walkedLocalSkills(walked: readonly string[]): boolean {
 	return walked.some((file) => file.includes('/.agents/'));
+}
+
+/**
+ * Consistency control for `ARCHIVAL_RECORD_PREFIXES`, which is a temporary WP2
+ * measure until WP4 performs the §8.4/§8.5 relocation.
+ *
+ * Two ways that list can quietly cost the gate coverage, both reported here
+ * rather than trusted to review:
+ *
+ * - **a prefix covering a document the gate must walk** — an exemption that
+ *   swallows the router, a design contract or protected prototype evidence is a
+ *   coverage hole, not a historical record;
+ * - **a prefix naming a path that no longer exists** — a stale entry silently
+ *   widens the blind spot as the tree moves.
+ */
+export function archivalExclusionProblems(root: string = REPO_ROOT): string[] {
+	const required = [...REQUIRED_WALKED_DOCUMENTS, PROTECTED_PROTOTYPE_SENTINEL];
+	const problems: string[] = [];
+	for (const prefix of ARCHIVAL_RECORD_PREFIXES) {
+		if (required.some((document) => document.startsWith(prefix))) {
+			problems.push(`${prefix} — exempts a document the gate must walk`);
+		}
+		if (!existsSync(resolve(root, prefix))) {
+			problems.push(`${prefix} — no such path (stale exclusion)`);
+		}
+	}
+	return problems;
 }
 
 export type ReferenceKind = 'link' | 'definition' | 'path' | 'section' | 'heading';

@@ -21,6 +21,7 @@ import {
 	REQUIRED_WALKED_DOCUMENTS,
 	REPO_ROOT,
 	anchorsOf,
+	archivalExclusionProblems,
 	extractReferences,
 	formatFindings,
 	ignoredPaths,
@@ -52,6 +53,14 @@ describe('documentation references', () => {
 		const walked = markdownFiles();
 		expect(missingWalkedDocuments(walked)).toEqual([]);
 		expect(walkedLocalSkills(walked)).toBe(true);
+	});
+
+	it('keeps the temporary archival exclusions off required documents', () => {
+		// `ARCHIVAL_RECORD_PREFIXES` is a WP2 stand-in until WP4 relocates the
+		// closed records under `docs/archive/` (implementation-plan.md §8.4–§8.5).
+		// It may exempt historical records; it may never exempt a document the walk
+		// is required to reach, and it may not name a path that no longer exists.
+		expect(archivalExclusionProblems()).toEqual([]);
 	});
 
 	it('fails when the walk silently returns nothing', () => {
