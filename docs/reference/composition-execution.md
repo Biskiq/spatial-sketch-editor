@@ -214,9 +214,9 @@ domain-owned composition operators.
   surface, not the default authoring UI.
 
 **Current behavior:** no general channel system is landed. Current mechanisms
-are domain-internal (scene transforms/materials, Camera motion evaluation,
-editor-side layout representation); they are replaceable mechanisms under these
-shapes.
+are domain-internal (scene transforms/materials, Camera motion evaluation); the
+former editor-side layout representation was removed by #115 and is a T1 rebuild.
+They are replaceable mechanisms under these shapes.
 
 **Extension point:** channel families and operators, each declaring semantics,
 validation, conflict/arbitration rules and conformance.
@@ -268,11 +268,11 @@ This contract fixes the acceptance boundary, not the history mechanism. Event
 sourcing, CRDTs, branch merge and selective actor undo remain separate
 decisions.
 
-**Current behavior:** history is one chronological undo stack with per-domain
-Layout/Scene snapshot entries; there is no cross-domain atomic acceptance and
-no expected-revision precondition. The current Layout mutation-planning layering
-stays as documented in [`architecture.md`](./architecture.md) §Layout semantic
-mutation.
+**Current behavior:** the editor's chronological undo stack (per-domain
+Layout/Scene snapshot entries) was removed by #115 with the editor shell, so the
+product has no history today; there is no cross-domain atomic acceptance and no
+expected-revision precondition. The Layout mutation-planning layering stays as
+documented in [`architecture.md`](./architecture.md) §Layout semantic mutation.
 
 **Extension point:** intent kinds and their domain planners; stale-revision
 rejection behavior for local and cloud writers.

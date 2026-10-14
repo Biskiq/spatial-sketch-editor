@@ -110,8 +110,8 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 | **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | Camera data inside `project.scene`; `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
 | **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | None — destination; `ExperienceDocument` is not designed. F.2 settles its codec-bounded unit (collection-capable) |
 | **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | P20 project-scoped texture registry + catalogue; no general resource system |
-| **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectDocument` + versioned cloud saves; chronological Layout/Scene history, no compound acceptance, no expected-revision precondition |
-| **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | Editor-local playback/preview state; never written back to authored definitions |
+| **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectDocument` + versioned cloud saves; the editor's chronological Layout/Scene history was removed by #115, so there is no product history today, no compound acceptance and no expected-revision precondition |
+| **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | The editor-local playback/preview state was removed by #115 with the editor shell; the surviving execution surface is the visitor cold runtime's session state, never written back to authored definitions |
 | **Audience/collaboration** | Comments, approvals, saved visitor configurations, shared-session snapshots, outcome analytics — outside authored source, anchored by public semantic address + release context | None; P22 release/publication rows are delivery state, not audience records |
 
 Residual ownership: world presentation defaults to Scene; visitor-facing meaning,
@@ -126,9 +126,9 @@ an existing document merely because it has storage space. See
 not a new domain split. World exposes Layout/Scene source truth and Camera
 inspection; it is not a `WorldDocument`. Experience composes meaning over
 domain-qualified subjects and may expose Camera authoring through canonical
-Camera operations. The current `Scene | Camera` shell remains current until a
-separate design and implementation cutover. One selection facade, coherent
-history and F.4 project acceptance must serve both lenses.
+Camera operations. The landed `Scene | Camera` shell was removed by #115, so the
+lenses are destination framing over a foundation being rebuilt. One selection
+facade, coherent history and F.4 project acceptance must serve both lenses.
 
 **Capability and execution boundary (destination).** A subject's domain
 declares intrinsic capabilities; typed resources may define reusable
@@ -275,10 +275,12 @@ in `@portfolio/layout-core`. Each authoring operation owns its own pure
 planning function, and the operation's semantics decide what that function
 accepts and returns: a topology-changing chain plans a replacement
 `LayoutDocumentWallFirst` (with created/split lineage and retired Room IDs),
-while an alignment or measurement operation plans a value for the editor to
-apply. This is a layering boundary, not a protocol — a shared result type,
-base class or command framework is neither required nor implied. The editor owns
-interaction, transient preview, selection and the single history transaction.
+while an alignment or measurement operation plans a value for the authoring
+surface to apply. This is a layering boundary, not a protocol — a shared result
+type, base class or command framework is neither required nor implied. The
+editor that owned interaction, transient preview, selection and the single
+history transaction was removed by #115; a rebuilt authoring surface owns
+interaction, transient preview and selection, and F.4 owns the accepted result.
 Scene edits are outside this rule. F.4's compound acceptance generalizes the
 acceptance boundary across domains at the Experience cutover; it does not
 retrofit this layering rule.

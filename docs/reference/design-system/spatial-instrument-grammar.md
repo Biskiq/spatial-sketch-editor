@@ -28,8 +28,8 @@ These responsibilities compose; neither shell nor instrument grammar outranks a
 domain about what an operation means. This is not a universal gizmo schema,
 renderer/API prescription, new operation registry or navigation authority.
 Layout, Scene, Camera and Experience may require different instruments.
-The maintained editor's domain-specific graphics and input policies remain current
-until their explicit cutovers.
+The editor's domain-specific graphics and input policies were removed with the editor
+shell in #115; related T-track slices re-establish their own conformant policies here.
 
 ## Spatial truth and affordance admission
 
@@ -153,8 +153,8 @@ common requirements are:
 - Orientation utilities, spatial grips and shell controls remain distinguishable
   and cannot steal one another's gestures.
 
-Do not impose one cross-domain node/anchor/object priority. The maintained Camera
-and placement contracts already have different hit policies; a feature preserves
+Do not impose one cross-domain node/anchor/object priority. The Camera and
+Scene-content contracts take different hit policies; a feature preserves
 or deliberately designs its applicable policy within these requirements.
 
 ## Density and correspondence between readings
@@ -218,8 +218,8 @@ explicit return distinguish Through from visitor Preview.
 
 Plan locates Views and Camera support at map scale. Directional View markers are a
 schematic reading of evaluated framing, not permission to invent a finite projection
-shape, FOV writer or path. The maintained Camera Plan's framing restrictions remain
-current until cutover.
+shape, FOV writer or path. The removed Camera Plan's framing restrictions are
+historical implementation evidence, not a current constraint.
 
 View markers locate the **actual evaluated observer and aim**, with legible
 Camera relationships across Plan and 3D. Screen-sized glyphs and density aids may
@@ -315,9 +315,9 @@ techniques are optional within the semantic species and distinctions above:
   Guide playback, promoted into PLATE; its mock evaluator is not a contract.
 - Landed visual specifications (removed with the editor shell in #115), the
   [Camera graphics/input contract](../components/camera-tour.md) and the
-  [Scene transform adapters](../components/scene-content.md): existing exact
-  geometry, selection, hit arbitration and cancellation policies in their
-  maintained contexts.
+  [Scene transform adapters](../components/scene-content.md): exact geometry,
+  selection, hit arbitration and cancellation policies belong to their domain
+  contracts, not to this grammar.
 
 No universal orbit, gizmo, hit priority, all-values rig or new domain constraint is
 introduced. Exact instrument geometry and domain-specific alternatives remain
