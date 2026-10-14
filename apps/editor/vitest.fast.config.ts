@@ -1,4 +1,4 @@
-// Inner-loop lane: the full suite minus the arch/heavy/perf lanes.
+// Inner-loop lane: the full suite minus the arch and heavy lanes.
 //
 // Excludes EXACTLY the files listed in `test-lanes.ts`; it never infers new
 // exclusions from filenames or file size. `npm test` still runs everything.

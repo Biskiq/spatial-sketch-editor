@@ -64,9 +64,17 @@ not needed to contribute a normal test.
    duplicate system, visitor/editor isolation, and source-level composition
    boundaries where no executable harness exists.
 7. **One parser per grammar.** When several tests must interpret the same
-   source/import grammar, share one extractor/predicate (`tests/helpers/lib-source.ts`
-   for source reads, `tests/helpers/docs-references.ts` for Markdown) instead of
-   parallel regexes — two patterns for one invariant means two holes.
+   source/import grammar, share one extractor/predicate instead of parallel
+   regexes — two patterns for one invariant means two holes. The shared readers
+   are `tests/helpers/import-closure.ts` for source and import specifiers
+   (`parseModuleSpecifiers`, `stripComments`, `resolveSpecifier`) and
+   `tests/helpers/docs-references.ts` for Markdown. A boundary suite may keep a
+   local walk when its **root, allowed-import set or defect** differs from those
+   readers — that is a different invariant, not a second pattern for this one —
+   but it should say so where the walk is written. WP3T retired
+   `tests/helpers/lib-source.ts`: no file imported it, and its visitor root named
+   the deleted `apps/museum`; the two arch owners that absorbed its candidates
+   already carry better-suited readers.
 
 ### Lanes
 
@@ -220,6 +228,53 @@ visitor boundary through shared code. Membership is executable fact in
 [Test design rules](#test-design-rules) above. See
 `docs/operations/test-suite-harvest-2026-09-19.md` §F for the original lane
 model and §R for the final measurements.
+
+## What a change requires
+
+Verification is triggered by **what changed**, not only by production-code
+edits. A test edit is a change like any other and lands through the same
+contract its subject does. This is the §7.7 ladder
+(`docs/roadmap/parallel-track-cutover/implementation-plan.md` §7.7) made
+concrete for this tree; it adds no workflow, runner or CI job.
+
+| Changed | Required before the change is judged green |
+| --- | --- |
+| A `fast` test, its fixtures or its local helper | The **complete affected contract** — the whole file, not a `-t` case: `npx vitest run <file>` |
+| A `heavy` test or its fixtures | The affected heavy contract **including its exhaustive cases**; no `-t` narrowing, and `npm run test:heavy` when the lane is the contract |
+| An `arch` boundary test | The **whole arch lane** at the applicable review gate: `npm run test:arch` |
+| Production code a heavy correctness invariant exercises | The relevant heavy contract during verification, alongside the affected fast contract |
+| Shared test setup (`tests/helpers/**`, `tests/docs/**`), `test-lanes.ts`, `vitest.shared.ts` or a `vitest.*.config.ts` | Every lane the change reaches **and** the full suite at acceptance (`npm test`) |
+| Production code (ordinary) | The affected contract, then the §7.7 escalation for its subsystem, call sites and package type checks |
+
+Every #115 checkpoint and every future implementation-PR merge gate keeps the
+declared complete verification contract — the §7.4 contract **including
+`test:heavy`** — however small the change looks. This is a change-impact policy,
+not a demand to run every heavy suite after every edit: focused runs are
+iteration feedback and never stand in for acceptance evidence (rule 25).
+
+No tracked CI workflow enforces any of this today — there is no
+`.github/workflows` in the repository, and the older lane comments' "in CI"
+promise was never installed. The reviewed plan and the acceptance record are the
+enforcement mechanism until a CI integration is separately authorized. Do not
+describe an automatic trigger as existing unless one is verified in the tree.
+
+### Correctness tests vs performance benchmarks
+
+`test:heavy` carries expensive **correctness** work: dense numerical and
+geometric sweeps, whole-table differentials and deterministic operation counts.
+They stay in `test:heavy` and must pass like any other test. A deterministic
+operation-count assertion is a correctness oracle, not a timing measurement, and
+slow-but-exact coverage is not a reason to weaken it (rules 12–14).
+
+Actual latency, frame-time, memory, allocation and throughput benchmarks are a
+different thing, and they are **on demand**: run them when performance-sensitive
+behavior changes, when a slowdown is investigated, or when an approved plan
+requires measurement — against comparable workloads, revisions and environments.
+A passing correctness suite is not evidence that runtime performance is
+unchanged. #115 deliberately retired the P23B PERF harness, the browser baseline
+recorder, the reuse ratchet and every wall-clock threshold (rule 11); a permanent
+benchmark workflow belongs to WP5, so a test change introduces no new benchmark
+registry, scheduled job or CI gate.
 
 ## Focused verification
 

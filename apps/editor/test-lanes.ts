@@ -4,7 +4,7 @@
  * Lanes are selected by configuration, never by moving files: the mirrored
  * `tests/lib/**` tree and every `import.meta.url` boundary root stay put.
  *
- *   npm test            → the full suite (unchanged default, CI + pre-PR gate)
+ *   npm test            → the full suite (durable default; the acceptance gate)
  *   npm run test:fast   → inner loop: everything EXCEPT arch + heavy
  *   npm run test:arch   → durable architecture boundaries (always run pre-PR)
  *   npm run test:heavy  → expensive correctness/property/stress work
@@ -14,7 +14,10 @@
  * excludes exactly these files and nothing else.
  *
  * Architecture membership is a curated list of durable boundaries. The arch
- * lane is NEVER path-gated: it runs whole pre-PR and in CI on every change.
+ * lane is NEVER path-gated: it runs whole before every PR and at every
+ * acceptance gate. No tracked CI workflow enforces that today — see
+ * `tests/README.md` ("What a change requires"); the reviewed plan and the
+ * acceptance record are the mechanism.
  *
  * PR #115 removed the PERF lane with its configuration (`lib/bench/**`, the
  * `/dev/perf*` routes and the `bench:record`/`reuse:record` scripts). The two
@@ -66,8 +69,9 @@ export const ARCH_FILES: string[] = [
  * Membership requires a whole file whose tests are uniformly expensive.
  */
 export const HEAVY_FILES: string[] = [
-	// Subprocess harness (~29% of the suite's per-file time): shells out to
-	// sh/shasum/gltf-transform per run. All six tests spawn the job.
+	// Subprocess harness: shells out to sh/shasum/gltf-transform once per test,
+	// so the file's cost is external process startup rather than in-process work.
+	// All six tests spawn the job.
 	'tests/lib/content/normalize-asset.test.ts',
 	// P1.4 dense whole-transition acceptance matrices: a >=1001-value edge-local
 	// progress grid per fixture (~5.0s).
