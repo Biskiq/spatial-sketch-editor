@@ -1050,7 +1050,7 @@ Scope: tracked files under `apps/editor/tests` — **408 files**, of which **373
 | `tests/lib/layout/layout-curve-integration.test.ts` | D | EXTRACT | kernel output assertions extracted; editor-wiring assertions deleted |
 | `tests/lib/layout/layout-curve-planners.test.ts` | A | KEEP | layout-core kernel invariant |
 | `tests/lib/layout/layout-curve-read-path.test.ts` | A | KEEP | layout-core kernel invariant |
-| `tests/lib/layout/layout-curve-regressions.test.ts` | A | KEEP | layout-core kernel invariant |
+| `tests/lib/layout/layout-curve-regressions.test.ts` → split at WP3T (§13) into `layout-curve-editing`, `-distance-and-crossing`, `-proposals`, `-clearance` | A | KEEP | layout-core kernel invariant |
 | `tests/lib/layout/layout-curve-schema.test.ts` | A | KEEP | layout-core kernel invariant |
 | `tests/lib/layout/layout-curve-split-primitives.test.ts` | A | KEEP | layout-core kernel invariant |
 | `tests/lib/layout/layout-curved-rooms.test.ts` | A | KEEP | layout-core kernel invariant |
@@ -1109,7 +1109,7 @@ Scope: tracked files under `apps/editor/tests` — **408 files**, of which **373
 | `tests/lib/layout/p23b11-correspondence-cases.ts` | SUPPORT | KEEP+MOVE | test helper/fixture/harness (not a test file) |
 | `tests/lib/layout/p23b11-correspondence-reference.test.ts` | A″ | KEEP+EXTRACT-FIXTURES | output-equivalence/identity assertions kept; measurement/budget assertions deleted |
 | `tests/lib/layout/p23b11-correspondence-reference.ts` | SUPPORT | KEEP+MOVE | test helper/fixture/harness (not a test file) |
-| `tests/lib/layout/p23b11-correspondence-shortcircuits.test.ts` | A″ | KEEP+EXTRACT-FIXTURES | output-equivalence/identity assertions kept; measurement/budget assertions deleted |
+| `tests/lib/layout/p23b11-correspondence-shortcircuits.test.ts` → split at WP3T (§13) into `correspondence-prune-neutrality` (fast) and `correspondence-reference-differential` (heavy) | A″ | KEEP+EXTRACT-FIXTURES | output-equivalence/identity assertions kept; measurement/budget assertions deleted |
 | `tests/lib/layout/p23b4-consumer-observations.test.ts` | A″ | KEEP+EXTRACT-FIXTURES | output-equivalence/identity assertions kept; measurement/budget assertions deleted |
 | `tests/lib/layout/p23b4-extent-pruning.test.ts` | A″ | KEEP+EXTRACT-FIXTURES | output-equivalence/identity assertions kept; measurement/budget assertions deleted |
 | `tests/lib/layout/p23b4-measurements.test.ts` | A″ | KEEP+EXTRACT-FIXTURES | output-equivalence/identity assertions kept; measurement/budget assertions deleted |
@@ -2271,13 +2271,13 @@ possible.
 
 ### 8.4 The API fixtures WP3 must migrate
 
-Each API test file builds a local `projectDocument()` whose `layout` is the versionless legacy
+Each API test file built a local `projectDocument()` whose `layout` is the versionless legacy
 shape (`{ units, floors, objects }`, no `formatVersion`) and whose Scene carries no
 `formatVersion`. All three are inside the tests that §7.5 requires to run DB-backed.
 
 | File | Fixture | Call sites |
 | --- | --- | --- |
-| `apps/api/tests/api.test.mjs` | `function projectDocument(name = 'Cloud project')` (line 27) | 8 |
+| `apps/api/tests/test-support.mjs` — the one shared builder for the five contract files WP3T split out of `api.test.mjs` (§13) | `function projectDocument(name = 'Cloud project')` (was `api.test.mjs` line 27) | 8 |
 | `apps/api/tests/publication.test.mjs` | `function projectDocument(id, name, textures = [])` (line 41) | 19 |
 | `apps/api/tests/test-auth.test.mjs` | `function projectDocument(id, name)` (line 29) | 2 |
 
@@ -2604,3 +2604,171 @@ findings F1-F3`) on `codex/pr115-architecture-plan`, immediately on top of the r
 `bbd7cdec`; committed-change range `bbd7cdec..04c2fa14` (3 files, `+61 / −12`). The correction is
 the only content change in the range; this record is added by the revision-record commit that
 follows it, as at Checkpoints C and D. No force-push and no merge.
+
+## 13. WP3T — surviving test system (Checkpoint D-T)
+
+> **Status.** WP3T executed on `codex/pr115-architecture-plan` from the accepted Checkpoint D head
+> (`d99ad1dc`). Every §7.6 priority has a disposition in §13.1; the complete §7.4 contract and the
+> §7.5 zero-skip DB run are recorded in §13.8. Checkpoint D-T is **acceptance-ready, pending
+> independent acceptance**. WP4, WP5 and closeout have not begun.
+
+**Boundary held.** Only tests, test fixtures/helpers, runner configuration (`test-lanes.ts`,
+`apps/api/package.json`) and `apps/editor/tests/README.md` changed. No production source, schema,
+format, contract or accepted-document semantics changed, so no §5.1 or §10 disposition was
+re-opened. §13.4 records the test-side evidence WP3T owed for §10's b2 seam.
+
+### 13.1 Dispositions, priority by priority
+
+| §7.6 | Priority | Disposition |
+| --- | --- | --- |
+| 1 | expensive fast setup/matrices | **Applied.** The correspondence suite split: the whole-table differential (OR-1 reference, OR-2 exhaustive neutrality, OR-6 count oracle) is now `correspondence-reference-differential` (heavy, 11 tests), and the self-contained adversarial rows are `correspondence-prune-neutrality` (fast, 16 tests, **no file-wide setup**, 19 ms). `p23b11-conditional-gate` (30 whole-table rows) moved bodily to heavy: unlike the correspondence file it has no cheap subset — every row has the same cost shape — so splitting it would have been arbitrary. Refinement: the plan's 15.3 s figure for the correspondence file measures 6.2 s on today's tree, so the split's extent was fixed by measurement rather than by the plan's number. |
+| 2 | contract location | **Applied.** `camera-motion.test.ts` (2,128 lines / 62 tests) became five durable Camera suites (motion core, position path, framing envelope, guard status, timing); `layout-curve-regressions.test.ts` (1,272 lines / 39 tests) became four (editing, distance-and-crossing, proposals, clearance). Pure moves — every expectation preserved. The retained `camera-motion.test.ts` keeps its name and its `'live target and FOV'` case, so §7.7's cited command is still literally valid. |
+| 3 | completed scaffolding, duplicate execution | **Applied.** `layout-p23b3a-reference.test.ts`: the `REFERENCE_ROWS` register and its three tests retired (24 → 21, §13.3). Curve clearance: both the editor and museum alias imported the same `$lib/layout/wall-mesh-builder` and ran it twice per fixture — one compiler-to-mesh proof kept, 4 duplicate assertions removed, that describe's test count unchanged. |
+| 4 | fixture ownership | **Applied.** `p23b-fixture-contract.test.ts` no longer reads the P23B roadmap ledger; the 15 constructible fixtures' canonical digests, shapes and verdicts are test-owned data (§13.9). The three API files' hand-built project fixture is now one shared builder in `apps/api/tests/test-support.mjs`. |
+| 5 | mixed ownership, repeated work | **Applied.** `api.test.mjs` (1,213 lines) split into five responsibility files over one transparent helper, with `apps/api/package.json` building once and running every contract. `p23b4-measurements.test.ts` now compares every output of a fixture in ONE named case per fixture: 6 chain runs instead of 18, with all six comparisons kept. |
+| 6 | boundary routing, helper residue | **Applied, one recommendation rejected on evidence.** The unique-flattener / one-centerline-seam claim moved out of `layout-curve-read-path` into `layout-geometry-boundary` (arch), and the visitor→editor-machinery sweep moved into `visitor-identity-isolation` (arch). The layout-core→renderer sweep was **deleted, not moved**: `layout-geometry-boundary` already asserts that defect with a stronger root and a per-file external allowlist (§13.3). `helpers/lib-source.ts` was retired — zero consumers, and its visitor root named the deleted `apps/museum` — and `helpers/import-closure.ts`'s two stale WP3R constants (`MUSEUM_APP_SRC`, the `virtual:museum-editor-entry` branch and its target) were removed. |
+| — | organization | **Applied.** The three `project-format-*` suites moved from `tests/lib/editor/` to `tests/lib/project-model/`, retiring the last historical shell directory in the test tree; the move is path-independent because they import through `$lib`/package specifiers only. |
+| — | doctrine + focused ladder | **Applied.** `apps/editor/tests/README.md` gained rules 18–25 and a `Focused verification` section; every command printed there was exercised on this tree (§13.5). |
+
+### 13.2 File changes
+
+| Before | After | Tests |
+| --- | --- | --- |
+| `p23b11-correspondence-shortcircuits.test.ts` | `correspondence-prune-neutrality.test.ts` (fast) + `correspondence-reference-differential.test.ts` (heavy) | 27 → 27 |
+| `layout-curve-regressions.test.ts` | `layout-curve-editing` (11) + `layout-curve-distance-and-crossing` (14) + `layout-curve-proposals` (8) + `layout-curve-clearance` (6) | 39 → 39 |
+| `camera-motion.test.ts` | `camera-motion` (32) + `camera-position-path` (11) + `camera-framing-envelope` (9) + `camera-framing-guard-status` (4) + `camera-motion-timing` (6) | 62 → 62 |
+| `api.test.mjs` | `health-config-shutdown` (5) + `auth-session-origin` (6) + `projects` (3) + `assets` (8) + `migration` (1), over `test-support.mjs` | 23 → 23 |
+| `tests/lib/editor/project-format-{writers,writer-fixtures,visitor-parity}` | `tests/lib/project-model/…` (unchanged names) | 24 + 21 + 6 → same |
+| `p23b-fixture-contract.test.ts` | same file, ledger-free expectations in `__fixtures__/p23b-verdicts.ts` | 2 → 2 |
+| `p23b4-measurements.test.ts` | same file, one named case per fixture | 4 → 4 |
+| `layout-p23b3a-reference.test.ts` | same file, register retired | 24 → 21 |
+| `layout-curve-read-path.test.ts` | one source-level claim moved to `layout-geometry-boundary` | 14 → 13 |
+| `layout-render-safe-validation.test.ts` | visitor sweep moved to `visitor-identity-isolation`; layout-core sweep deleted as a duplicate | 11 → 9 |
+| `p23b11-conditional-gate.test.ts` | same file, lane fast → heavy | 30 → 30 |
+| — | `tests/config/lane-membership.test.ts` (new, arch) | +3 |
+| `helpers/lib-source.ts` | deleted (unused helper residue) | — |
+
+### 13.3 Retirements, and why none loses coverage
+
+- **`layout-p23b3a-reference` register and its three tests.** They asserted the map's own shape
+  (18 ids, `pins` length, non-empty `owner`, the `flipStep`/`post` relation), which sibling suite
+  owns T9/T10/T11, and that no row still carried a pre-policy verdict via `landedAt`/`flipStep`
+  strings. Nothing in production reads that table, and every flip it tracked had landed, so no
+  product behaviour can regress. The S7/S6/S4 identity, intentional-attachment, atomicity,
+  codec/topology-separation and ordered-diagnostic cases are retained unchanged, as are the S1
+  reference verdicts (T6–T8, T12, T13, R-a…R-d).
+- **The layout-core→renderer/app sweep.** Deleted as a duplicate under the successor rule: the
+  surviving G1 test in `layout-geometry-boundary` detects the same defect — a renderer, editor or
+  browser import entering `layout-core` — reads the whole package rather than one flat directory,
+  allows exactly the approved external (`robust-predicates`, in its one adapter) and runs in the
+  unconditional arch lane. The deleted copy additionally resolved its root through
+  `process.cwd()`, so it could pass vacuously from another working directory.
+- **The curve-clearance duplicate mesh invocation.** Both aliases imported the same module, so the
+  second call could not fail while the first passed; one proof per fixture remains, and the
+  surviving assertion still fails if the core accepts geometry the mesh path refuses.
+- **`helpers/lib-source.ts`.** No file in the tree imported it, and its `VISITOR_ROUTES_DIR`
+  pointed at `apps/museum/src/routes`, deleted at WP2. The two arch owners that absorbed its
+  candidates already carry better-suited readers (a package-scoped walk with an import extractor,
+  and a recursive root-relative collector), so reusing it would have added an indirection rather
+  than removed a duplicate. No new parser framework was introduced.
+- **`import-closure.ts` constants (WP3R t1).** `MUSEUM_APP_SRC` and the
+  `virtual:museum-editor-entry` alias both resolved to paths WP2 deleted; the resolver branch could
+  only ever return a missing file. Both removed; only `legacy-isolation.test.ts` imports this
+  module, and only `parseModuleSpecifiers`/`stripComments`.
+
+### 13.4 The Save-only seam (§10 b2): test-side evidence, no production change
+
+WP3T did **not** repoint any writer-gate assertion to `serializeProject`, so no successor proof was
+owed and none was fabricated: the portal-adjacency Save checks and the separate per-document
+canonical JSON outputs remain covered by their existing suites, which WP3T preserved verbatim —
+`tests/lib/project-model/project-format-writers.test.ts` (24 tests), `project-format-writer-fixtures`
+(21) and `project-format-visitor-parity` (6), all green in §13.8. `validateWallFirstProject`,
+`serializeWallFirstProject` and their package were not modified; the production disposition stays
+with T3. The same applies to §10's b1 seam: `lib/content/scene.ts` `resolveSceneDocument` and its
+tests (`tests/lib/content/scene.test.ts`) were untouched, so that disposition stays with T2.
+
+### 13.5 Focused ladder, exercised on this tree
+
+Vitest 3.2.7; run from `apps/editor`. Each was executed during WP3T, not copied from the plan:
+
+| Command | Observed |
+| --- | --- |
+| `npx vitest list … camera-motion.test.ts -t 'live target and FOV'` | lists exactly `createCameraMotion > uses live target and FOV as the generated departure view` |
+| `npx vitest run … camera-motion.test.ts -t 'live target and FOV'` | 1 passed, 31 skipped — `-t` still collects and runs the file's hooks, as documented |
+| `npx vitest related --run src/lib/layout/wall-mesh-builder.ts` | selects the builder plus its 20+ importers (junction, clearance, adapter suites) |
+| `npx vitest run --changed HEAD` | runs the whole changed population in one pass |
+| `cd apps/api && npm run build && npx vite-node tests/projects.test.mjs` | builds once, then runs that one contract file (3 tests) |
+
+### 13.6 The lane proof (criterion 3)
+
+`tests/config/lane-membership.test.ts` (arch, 3 tests) reads the tree, then asserts the curated
+lanes exist, are unique, are disjoint and union to exactly the curated non-fast set; the include
+pattern itself is asserted, so a silent change to `ALL_TESTS_INCLUDE` fails here. Four controls
+fail a missing/renamed entry, an overlap, a duplicate and a file that would run in no lane
+(§13.2's own file list is what makes the control non-vacuous).
+
+### 13.7 Cost
+
+Local observations on one machine, with the same commands before and after; not budgets, and not a
+stable baseline.
+
+| Command | Before (Checkpoint D) | After |
+| --- | --- | --- |
+| `npm test` | 106 files / 1,502 tests / 24.89 s | 115 files / 1,501 tests / 19.43 s |
+| `test:fast` | 87 files / 1,323 tests / 13.76 s | 93 files / 1,276 tests / 8.79 s |
+| `test:heavy` | 6 files / 77 tests / 11.43 s | 8 files / 118 tests / 12.98 s |
+| `test:arch` | 13 files / 102 tests / 1.92 s | 14 files / 107 tests / 2.28 s |
+
+Focused, per file: correspondence 6,229 ms → 19 ms (fast) + 5,634 ms (heavy, focused);
+`p23b4-measurements` 632 → 306 ms; `p23b-fixture-contract` 252 → 150 ms;
+`layout-p23b3a-reference` 75 → 107 ms (21 tests); `camera-motion` 57 → 22 ms (32 tests, four more
+files alongside). Two regressions are reported rather than hidden: the heavy lane is slower by
+1.55 s because it now carries two whole-table proofs that previously ran in fast, and the
+correspondence differential measures 11.0 s inside the full run against 5.6 s focused — the cost did
+not disappear, it moved to the lane that exists for it. The editor suite total falls by one test
+(1,502 → 1,501): −3 the p23b3a register, −2 the deleted layout-core duplicate sweep, −1 the moved
+flattener claim, +5 the new arch proofs (3 lane, 1 flattener, 1 visitor).
+
+### 13.8 Checkpoint D-T verification (§7.4, re-run on this revision)
+
+| Gate | Result |
+| --- | --- |
+| `npm run test:arch` | 14 files / 107 tests passed |
+| `npm test` | 115 files / 1,501 tests passed (fast + heavy + arch) |
+| `npm run check` | `svelte-check`: 0 errors, 0 warnings |
+| `npm run build` | built (`@sveltejs/adapter-vercel`) |
+| `npm run check:layout-core`, `check:project-model`, `check:camera-core` | `tsc --noEmit` clean |
+| `npm run check:api` | `tsc --noEmit` clean |
+| `npm run test:api` | build + 7 files: 5 + 6 + 3 + 8 + 1 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` |
+| Documentation gate (`tests/docs`, run alone) | 1 file / 24 tests passed |
+| Browser check (`vite` on 5173, API on 8787) | `/`, `/projects`, `/project/x/spatial`, `/p/x`: 200, expected content (foundation-reset notice, unavailable-link notice), **zero console errors** |
+| Committed-range whitespace | recorded with the revision below |
+
+### 13.9 WP4 precondition: the P23B ledger has no test consumer
+
+`grep -rn "fixture-ledger\|reuse-counter-ratchet" apps/editor/tests apps/api/tests` finds nothing.
+The test-owned replacement keeps each constructible fixture's canonical sha256, document shape,
+verdict and ordered compiler issues, and pins them two ways: against the builder spec ids (so a
+missing or extra expectation fails) and by the digest values themselves. **One ledger row is not
+reproducible:** `owner-40-curved-v1` (the retired owner payload) has no builder in
+`__fixtures__/p23b-fixtures.ts`, which is why the old test asserted the ledger's length separately
+from its 6 + 9 loops. That length assertion was ledger-shape machinery; the retired id is recorded
+as a named constant instead of fabricating a 16th fixture. WP4 may delete `fixture-ledger.json` and
+`reuse-counter-ratchet.json` without a retained test dependency.
+
+### 13.10 Reported to owners, not implemented
+
+- **`apps/editor/src/vite-env.d.ts`** still declares `virtual:museum-editor-entry` although WP2
+  removed the plugin and `lib/editor/**`. That is production residue in a declaration file, outside
+  WP3T's boundary: reported, not edited.
+- **Surviving `apps/museum` mentions in tests** (`layout-curve-integration`,
+  `museum/camera-core-boundary`, `museum/layout/wall-mesh-shell-boundary`, plus the comment in
+  `layout-render-safe-validation`) are absence assertions or provenance notes about the retired
+  fork, and each was left as written.
+- **`p23b11-correspondence-reference.test.ts`** (35 tests, ~2 s) was deliberately kept in fast:
+  its cost is one module-scope table derivation supporting cheap deterministic assertions, not a
+  dense per-test matrix, and moving it would take the frozen reference's own cheap checks out of
+  the inner loop.
+- **Residual, not actioned:** the 44-case table's derivation is still a single costly pass
+  (~5.6 s); making it incremental would change how the frozen reference is produced, which is
+  test-design work for a future owner rather than a WP3T edit.

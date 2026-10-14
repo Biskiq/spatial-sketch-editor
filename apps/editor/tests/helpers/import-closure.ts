@@ -7,7 +7,6 @@
  *
  *   `$lib/…`                     → `apps/editor/src/lib/…`
  *   `@portfolio/<pkg>`           → `packages/<pkg>/src/index.ts`
- *   `virtual:museum-editor-entry` → `apps/editor/src/lib/editor/MuseumEditorApp.svelte`
  *
  * Bare package specifiers (`three`, `svelte`, `@threlte/…`, `$app/…`, …) are
  * externals and never enter the closure, which is what makes the closure a
@@ -17,6 +16,15 @@
  * the product-side `legacy/` isolation test, and WP3R's post-prune
  * reassessment. One implementation, so a count recorded at the baseline and a
  * count taken after pruning are the same measurement.
+ *
+ * WP3T retired the two stale constants WP3R's t1 finding named: `MUSEUM_APP_SRC`
+ * (its `apps/museum/src` root was deleted at WP2, §3.5) and the
+ * `virtual:museum-editor-entry` alias with its `MuseumEditorApp.svelte` target
+ * (the plugin and `lib/editor/**` went with the WP2 prune). A resolver branch
+ * that can only ever return a missing path is not a guarantee, so it is gone
+ * rather than repointed. No surviving consumer referenced either name (only
+ * `legacy-isolation.test.ts` imports from this module, and only
+ * `parseModuleSpecifiers`/`stripComments`).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,18 +38,10 @@ export const EDITOR_ROOT = path.join(REPO_ROOT, 'apps/editor');
 export const EDITOR_SRC = path.join(EDITOR_ROOT, 'src');
 /** `apps/editor/src/lib` — the editor's `$lib`. */
 export const EDITOR_LIB = path.join(EDITOR_SRC, 'lib');
-/** `apps/museum/src` — the standalone visitor app. */
-export const MUSEUM_APP_SRC = path.join(REPO_ROOT, 'apps/museum/src');
 /** `packages` — the workspace kernel packages. */
 export const PACKAGES_ROOT = path.join(REPO_ROOT, 'packages');
 /** `apps/editor/tests` — the test population, measured by the test manifest. */
 export const EDITOR_TESTS_ROOT = path.join(EDITOR_ROOT, 'tests');
-
-/** The editor's virtual relic entry, mirroring `vite/museum-editor-entry-plugin.ts`. */
-export const VIRTUAL_MUSEUM_EDITOR_ENTRY = path.join(
-	EDITOR_LIB,
-	'editor/MuseumEditorApp.svelte'
-);
 
 /** Resolution order for extension-less relative and alias specifiers. */
 const EXTENSIONS = ['.ts', '.svelte', '.js', '.mjs', '.css', '.json', '.tsx'];
@@ -103,7 +103,6 @@ export function resolveSpecifier(
 	const libRoot = roots.libRoot ?? EDITOR_LIB;
 	const packagesRoot = roots.packagesRoot ?? PACKAGES_ROOT;
 	const target = stripQuery(specifier);
-	if (target === 'virtual:museum-editor-entry') return VIRTUAL_MUSEUM_EDITOR_ENTRY;
 	if (target === '$lib') return resolveFile(libRoot);
 	if (target.startsWith('$lib/')) {
 		return resolveFile(path.join(libRoot, target.slice('$lib/'.length)));

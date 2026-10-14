@@ -102,6 +102,25 @@ describe('G1 geometry boundary', () => {
 		expect(packageFilesDefining('export function buildArchProfile')).toEqual(['layout-geometry-openings.ts']);
 	});
 
+	it('keeps one adaptive flattening core and one Wall-centerline read seam (P23.11 slice 2)', () => {
+		// Moved here from `layout-curve-read-path.test.ts` at WP3T (§7.6 area 6):
+		// it is a source-level ownership claim, so the unconditional arch lane owns
+		// it instead of leaving it beside the behavioral read-path cases in fast.
+		// The `export function sampleSegment` half of the original claim stays in
+		// the kernel test above, which already asserts the stronger per-file
+		// version of it; re-asserting a call-site count here would be a second
+		// pattern for one invariant.
+		expect(packageFilesDefining('function adaptiveParameters(')).toEqual([
+			'layout-geometry-curve.ts'
+		]);
+		const compilerSource = sourceOf(resolve(layoutDir, 'layout-geometry.ts'));
+		// The compiler reads Wall centerline geometry through the one adapter and
+		// never compiles a curve itself: a second sampler here is the defect.
+		expect(compilerSource).toContain('wallCenterlineSegment(');
+		expect(compilerSource).not.toContain('compileAutoBezierAnchors');
+		expect(compilerSource).not.toContain('spansToCubics');
+	});
+
 	it('keeps every $lib/layout module free of renderer, editor, and browser coupling', () => {
 		// T4 absorbed the single-module pin that used to live in
 		// `wall-mesh-builder.test.ts` and widened it to the whole layer. PR #115

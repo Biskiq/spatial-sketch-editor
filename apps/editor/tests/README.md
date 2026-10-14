@@ -97,6 +97,32 @@ not needed to contribute a normal test.
 17. **A rename does not fix mixed ownership.** If a file genuinely bundles
     unrelated subjects, do not hide that behind an inaccurate umbrella name.
 
+### Adding or restructuring a test
+
+18. **One coherent behavioral contract per suite.** Name the contract the suite
+    owns; when a second, unrelated contract grows inside it, split on that
+    behavioral seam. Never split on line count or file size.
+19. **A new test names the material failure it catches.** If an existing check
+    already fails on that defect, extend it instead of adding a parallel one.
+20. **Reuse before adding.** Extend the suite that owns the guarantee and prefer
+    the existing fixtures, readers and helpers. A duplicated helper smaller than
+    its abstraction cost is fine; an opaque universal fixture builder is not.
+21. **Representative equivalence classes — except where density is the proof.**
+    Dense numerical and geometric sweeps stay dense: the density *is* the
+    evidence of continuity and conservative sampling. Elsewhere one
+    representative per equivalence class beats a near-duplicate matrix.
+22. **Assert the contract, not the decomposition.** Pin required output, identity,
+    ordering and diagnostics rather than incidental internal structure a
+    refactor may legitimately change.
+23. **Fixtures stay narrow, visible and self-owned.** Scenario inputs are readable
+    at the call site, cleanup is reliable, and the expectations a test pins
+    (identity digests, verdicts) live with the test — never in a roadmap,
+    measurement or ledger document.
+24. **Deleted subject vs proven successor.** Both are legitimate; a deletion
+    quota is not. Rules 1–4 decide which one a change is.
+25. **Focused feedback is not acceptance.** The focused ladder below is for
+    iteration; the §7.4 contract at a checkpoint is the acceptance evidence.
+
 ## What lives here vs in `src/`
 
 | Thing | Where |
@@ -162,7 +188,12 @@ npm run test:full    # the same effective suite as `npm test`
 ```
 
 Membership is a curated list in `test-lanes.ts`, so `test:fast` excludes exactly
-those files and infers nothing from a filename or a file's size.
+those files and infers nothing from a filename or a file's size. That list is
+itself proved rather than trusted: `tests/config/lane-membership.test.ts` reads
+the tree, asserts every curated entry exists and is unique, that arch and heavy
+are disjoint, and that their union is exactly the curated set — with
+missing-entry, overlap, duplicate and dropped-file controls, so a renamed suite
+or a file that runs in no lane fails instead of reporting green.
 
 The arch lane also carries one **repo-wide documentation gate**
 (`tests/docs/documentation-references.test.ts`): every Markdown document the
@@ -189,6 +220,37 @@ visitor boundary through shared code. Membership is executable fact in
 [Test design rules](#test-design-rules) above. See
 `docs/operations/test-suite-harvest-2026-09-19.md` §F for the original lane
 model and §R for the final measurements.
+
+## Focused verification
+
+Installed Vitest is 3.2.7. These commands are run from `apps/editor` unless
+stated, and each one below has been exercised on this tree. A focused run is
+feedback, not acceptance (rule 25).
+
+```sh
+npx vitest run tests/lib/layout/layout-curve-editing.test.ts      # one contract
+npx vitest run tests/lib/museum/navigation/camera-motion.test.ts -t 'live target and FOV'
+npx vitest list tests/lib/museum/navigation/camera-motion.test.ts -t 'live target and FOV'
+npx vitest related --run src/lib/layout/wall-mesh-builder.ts       # importers of a source file
+npx vitest run --changed HEAD                                      # what the branch touched
+```
+
+A file filter is a path substring and `-t` matches the full test name as a
+regex, so both still collect, transform and run that file's shared hooks: a
+cheap file is not the same as a cheap case, and `-t` cannot avoid a file-wide
+`beforeAll`. Check a selection is non-empty without `--passWithNoTests`.
+
+API contracts sit outside Vitest, so run the one you changed after a single
+build:
+
+```sh
+cd apps/api && npm run build && npx vite-node tests/projects.test.mjs
+```
+
+Escalate by risk, not by habit. Documentation- and planning-only changes use the
+documentation and arch gates rather than fabricating product runs; a checkpoint
+uses the complete §7.4 contract, including the DB-backed API files with zero
+skips.
 
 ## Agent E2E (`tests/e2e/`)
 

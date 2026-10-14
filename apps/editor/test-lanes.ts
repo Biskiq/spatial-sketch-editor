@@ -51,7 +51,13 @@ export const ARCH_FILES: string[] = [
 	// PR #115 frozen-project isolation: no product file imports, aliases or
 	// references `legacy/`. The frozen project was externalized (§3.7), so this
 	// is now the standing repository-side proof that nothing reintroduced it.
-	'tests/lib/legacy-isolation.test.ts'
+	'tests/lib/legacy-isolation.test.ts',
+	// The lane-membership proof itself (WP3T §7.6 area 6): unique, existing,
+	// disjoint lanes whose union is the curated set, with a missing-entry,
+	// overlap, duplicate and dropped-file control. It polices the runner
+	// configuration rather than any product code, and no lane report can reveal a
+	// file that runs in no lane, so only the unconditional lane can own it.
+	'tests/config/lane-membership.test.ts'
 ];
 
 /**
@@ -76,7 +82,22 @@ export const HEAVY_FILES: string[] = [
 	// Whole-Room drag slice — the preview-parity differential: it compiles every
 	// committed 40-Wall fixture (translated and rotated) to diff the compile
 	// against the rigid image of the baseline (~4s).
-	'tests/lib/layout/p23b-room-unit-proposal-parity.test.ts'
+	'tests/lib/layout/p23b-room-unit-proposal-parity.test.ts',
+	// WP3T §7.6 area 1: the whole-table correspondence differential. Its file-wide
+	// `beforeAll` runs the entire 44-case matrix twice (short-circuit and
+	// exhaustive) to re-derive the frozen reference, the filter-neutrality table
+	// and the count oracle — 5.6s for 11 assertions, which made every focused run
+	// of that file pay the same 5.6s. The cheap adversarial rows it was split from
+	// stay in `correspondence-prune-neutrality.test.ts` (fast) with no file-wide
+	// setup, and they carry the same defect detection per row.
+	'tests/lib/layout/correspondence-reference-differential.test.ts',
+	// WP3T §7.6 area 1, the other file the plan named: 30 whole-table rows over
+	// the identity condition and the extent scope, each re-deriving a complete
+	// case (measured 5.75s in the full run, 2.29s focused). Unlike the
+	// correspondence differential there is no cheap subset to retain — every row
+	// has the same cost shape — so the whole file moves rather than splitting
+	// into an arbitrary "representative" fast half.
+	'tests/lib/layout/p23b11-conditional-gate.test.ts'
 ];
 
 /** Everything the fast lane excludes (`test:fast` = full − these). */
