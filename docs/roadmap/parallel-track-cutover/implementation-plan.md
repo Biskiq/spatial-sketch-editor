@@ -382,9 +382,11 @@ remove every new-product consumer of legacy payloads.
      - ordinary validation failure for malformed or incomplete current-format input;
      - API Save/Load/publication exercised with valid current-format documents;
      - preserved geometry, identity, resource and visitor-isolation invariants.
-   - **The API fixtures migrate.** `apps/api/tests/api.test.mjs`, `publication.test.mjs` and
+   - **The API fixtures migrate.** `apps/api/tests/publication.test.mjs` and
      `test-auth.test.mjs` each build a local `projectDocument()` whose `layout` is the versionless
-     legacy shape (`{ units, floors, objects }`) and whose Scene carries no `formatVersion`. WP3
+     legacy shape (`{ units, floors, objects }`) and whose Scene carries no `formatVersion`; the
+     third file, `api.test.mjs`, did the same until WP3T (§7.6 area 4) split it into five contract
+     files with one shared builder in `apps/api/tests/test-support.mjs`. WP3
      traces every such fixture and replaces it with a valid current-format document **while
      preserving each test's original behavioural expectation**. Validation is never relaxed to keep
      an obsolete fixture passing; if a fixture's expectation depended on the legacy shape, that is a

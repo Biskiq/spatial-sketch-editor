@@ -1,6 +1,7 @@
 /**
- * P23B.3a S1 — PRE-POLICY REFERENCE FREEZE (the dependency map's
- * REFERENCE-FIRST ORACLE RULE). S4 and S5 have since FLIPPED rows.
+ * P23B.3a — the shipped verdicts for the placement-topology policy cases
+ * (T1–T13, R-a…R-d). The S1 pre-policy freeze this file began as is fully
+ * retired: S4, S5, S6 and S7 have all landed.
  *
  * This file pins the verdicts the SHIPPED gates produce for the decision
  * record §6 acceptance cases (T1–T13) and the RT-1 regression cases (R-a…R-d).
@@ -11,7 +12,7 @@
  *
  * S4 (the component-scoped SUBJECT for `validateWallFirstTopology` and the
  * sampled crossing authority) has LANDED, so this file now holds three kinds of
- * row, and the register below names each one:
+ * row; the list below names each one:
  *
  * ```text
  * ASSERTED HERE, NEVER FLIPS        T6 · T7 · T9–T13 · R-b · R-d — plus T8's PERMANENT
@@ -21,8 +22,8 @@
  * FLIPPED AT S4                     T2 · T4 · T5 · R-a · R-c — their S1 pre-policy
  *                                   expectations are RETIRED and their successors
  *                                   (F2 · F4 · F5) are asserted in the S4 suite below.
- *                                   The retired verdicts survive here as RECORDED
- *                                   history (`pins`), never as active assertions.
+ *                                   The pre-policy verdicts are not asserted here (the
+ *                                   register that kept them as `pins` is retired);
  * FLIPPED AT S5                     T8's chain-authoring observation — the chain gate
  *                                   was the last document-subject gate, so S5 admits the
  *                                   INDEPENDENT crossing and asserts that the authored
@@ -32,13 +33,13 @@
  *                                   placement, so its successor F3 (distinct Junction
  *                                   ids, no connectivity, no Wall fragmentation) is
  *                                   asserted in the S6 suite below and the S1 adoption
- *                                   verdict survives here as recorded history.
+ *                                   verdict is retired with the register, not asserted here.
  * FLIPPED AT S7                     T1 — the duplicate path's own chord-exact batch
  *                                   gate is replaced by the canonical authority, so a
  *                                   Room duplicated onto an overlapping position is
  *                                   permitted placement; its successor F1 is asserted in
- *                                   the S7 suite below and the S1 refusal survives here
- *                                   as recorded history. NO ROW ASSERTS A PRE-POLICY
+ *                                   the S7 suite below; the S1 refusal is retired with the
+ *                                   register, not asserted here. NO ROW ASSERTS A PRE-POLICY
  *                                   VERDICT ANY MORE: every flip step has landed.
  * ```
  *
@@ -58,10 +59,21 @@
  * later verdict (F6's scope).
  *
  * Nothing in this file is a target: it is a record of what the shipped
- * implementation does, and it changes exactly where a row names a flipping step.
+ * implementation does.
  *
- * Rows owned by an EXISTING suite are recorded in the table rather than
- * duplicated here (T9 round-trip, T10 undo/redo, T11 Plan/3D/visitor parity).
+ * T9 (round-trip), T10 (undo/redo) and T11 (Plan/3D/visitor parity) are pinned
+ * by their own suites rather than duplicated here.
+ *
+ * PR #115 (WP3T) retired the S1 → flip-step register: the `REFERENCE_ROWS` table
+ * and its three register tests asserted the map's own bookkeeping (each
+ * decision-record case covered exactly once, the step that flips it named, each
+ * retired row's `pins` string, which sibling suite owns the rest) rather than any
+ * production behaviour. Every flip the map named had landed, so it had no case
+ * left to govern; the pre-policy expectations it kept as recorded history survive
+ * in Git history and in the P23B.3a decision record, not as assertions here. The
+ * verdicts themselves — identity, intentional attachment, atomicity,
+ * codec/topology separation and ordered diagnostics — remain asserted below,
+ * unchanged.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -90,179 +102,6 @@ import {
 // PR #115 removed the editor preview state. Ingestion is the codec alone now:
 // the assertions below round-trip through `serializeWallFirstLayoutDocument`
 // and the codec's own validator instead of the deleted preview importer.
-
-// ---------------------------------------------------------------------------
-// Case → flip-step register (the reference freeze's own map)
-// ---------------------------------------------------------------------------
-
-type ReferenceRow = {
-	id: string;
-	/** The pre-policy behaviour this case pinned at S1. */
-	pins: string;
-	/**
-	 * The P23B.3a step that owns the successor, or `never` when the case is a
-	 * permanent regression case. S5 appears here for the chain path's own
-	 * subject, which S4 deliberately left alone.
-	 */
-	flipStep: 'never' | 'S4' | 'S5' | 'S6' | 'S7';
-	/**
-	 * The step at which the successor was ACTUALLY asserted, once it has landed.
-	 * Its presence means the S1 expectation is retired: it is kept in `pins` as
-	 * recorded history and is no longer asserted anywhere (AM-1).
-	 */
-	landedAt?: 'S4' | 'S5' | 'S6' | 'S7';
-	/** The post-policy counterpart, when the case flips. */
-	post?: string;
-	/** `this file` asserts it executably; an existing suite owns the rest. */
-	owner: string;
-};
-
-const REFERENCE_ROWS: readonly ReferenceRow[] = [
-	{
-		id: 'T1',
-		// RETIRED AT S7 — kept as the historical half of the differential.
-		pins: 'duplicating a Room onto its own position was REFUSED by the duplicate path\u2019s own chord-exact batch gate',
-		flipStep: 'S7',
-		landedAt: 'S7',
-		post: 'F1',
-		owner: 'this file'
-	},
-	{
-		id: 'T2',
-		// RETIRED AT S4 — kept as the historical half of the differential.
-		pins: 'a Room moved through an independent Room was REFUSED by the document-global gate, atomically',
-		flipStep: 'S4',
-		landedAt: 'S4',
-		post: 'F2',
-		owner: 'this file'
-	},
-	{
-		id: 'T3',
-		// RETIRED AT S6 — kept as the historical half of the differential.
-		pins: 'two INDEPENDENT Walls with identical endpoint coordinates shared ONE Junction id — the implicit join the policy REFUSED',
-		flipStep: 'S6',
-		landedAt: 'S6',
-		post: 'F3',
-		owner: 'this file'
-	},
-	{
-		id: 'T4',
-		// RETIRED AT S4 — kept as the historical half of the differential.
-		pins: 'two independent curved Walls that cross were REFUSED by the sampled crossing authority',
-		flipStep: 'S4',
-		landedAt: 'S4',
-		post: 'F4',
-		owner: 'this file'
-	},
-	{
-		id: 'T5',
-		// RETIRED AT S4 — kept as the historical half of the differential.
-		pins: 'collinear overlap between two independent groups was REFUSED',
-		flipStep: 'S4',
-		landedAt: 'S4',
-		post: 'F5',
-		owner: 'this file'
-	},
-	{
-		id: 'T6',
-		pins: 'two Rooms with a DELIBERATE shared Wall are ACCEPTED as one rigid group',
-		flipStep: 'never',
-		owner: 'this file'
-	},
-	{
-		id: 'T7',
-		pins: 'an intrinsic failure INSIDE one connected group stays REFUSED',
-		flipStep: 'never',
-		owner: 'this file'
-	},
-	{
-		id: 'T8',
-		// TWO verdicts travel in this case, and only one of them moved. The atomic
-		// refusal of a SAME-COMPONENT collinear overlap is permanent and is asserted in
-		// the same test below. What flipped at S5 is the chain path's refusal of an
-		// INDEPENDENT crossing: the chain gate (`validateChainTopology`, its sampled call
-		// included) was the LAST document-subject gate, and S5 scoped it, so the crossing
-		// is now admitted and nothing is joined (F8's scoped negative half).
-		pins: 'a genuinely invalid operation is REFUSED ATOMICALLY inside one connected group (permanent), while the chain path REFUSED an INDEPENDENT crossing (RETIRED at S5 — the chain gate takes the component subject now, so the crossing is admitted and the authored Wall joins nothing)',
-		flipStep: 'S5',
-		landedAt: 'S5',
-		post: 'F8 (scoped negative half — AM-3; the deliberate-join half is a contract with no test)',
-		owner: 'this file'
-	},
-	{
-		id: 'T9',
-		pins: 'save/import round-trip preserves identity and relationships exactly',
-		flipStep: 'never',
-		owner: 'existing suite: layout-codec / layout-wall-first-codec round-trip tests'
-	},
-	{
-		id: 'T10',
-		pins: 'undo/redo reproduces the exact placement with no stale artefact',
-		flipStep: 'never',
-		owner: 'existing suite: editor history / preview-snapshot tests'
-	},
-	{
-		id: 'T11',
-		pins: 'Plan, 3D and visitor consume equivalent canonical geometry',
-		flipStep: 'never',
-		owner: 'existing suite: layout-geometry-parity / visitor boundary tests'
-	},
-	{
-		id: 'T12',
-		// The CONTRACT does not flip: report order follows authored order, before and
-		// after the policy. RE-BASED AT S4: the independent crossing S1 used to
-		// demonstrate ordering is permitted now, so the ordering half is asserted on
-		// a SAME-COMPONENT failure instead, beside the "permitted crossings report
-		// nothing, repeatedly" half.
-		pins: 'repeated validation over the SAME ordered input returns the same verdict and diagnostic order (order-PRESERVING)',
-		flipStep: 'never',
-		owner: 'this file'
-	},
-	{
-		id: 'T13',
-		pins: 'intentionally EXTENDING an already connected group still ADOPTS one of ITS OWN Junction ids',
-		flipStep: 'never',
-		owner: 'this file'
-	},
-	{
-		id: 'R-a',
-		// TWO verdicts travel in this case, and only one of them moved. ADMISSION by
-		// the chord-exact batch gate is permanent and never flips. What flipped at S4
-		// is the CANONICAL gate's rejection of the document the batch gate just
-		// admitted — an independent-group crossing, which S4 stops rejecting. The
-		// agreement is therefore NOT an S7 transition, and S7's remaining job is
-		// batch↔validator PARITY rather than an ingress change.
-		pins: 'the chord-exact batch gate ADMITS a duplicated Room whose endpoint CHORDS stay disjoint while its curve crosses (permanent), while the canonical gate REJECTED the document it admitted (RETIRED at S4 — the two gates now agree)',
-		flipStep: 'S4',
-		landedAt: 'S4',
-		post: 'F4',
-		owner: 'this file'
-	},
-	{
-		id: 'R-b',
-		pins: 'a refused duplicate leaves the source document byte-identical — pinned permanently on a SAME-COMPONENT refusal (the batch now runs the canonical gate, so a document already violating it inside one component is REFUSED); the INDEPENDENT-overlap refusal was pre-policy and its S7 flip is an ADMISSION that keeps the source byte-identical too',
-		flipStep: 'never',
-		owner: 'this file'
-	},
-	{
-		id: 'R-c',
-		// RETIRED AT S4 — kept as the historical half of the differential.
-		pins: 'an UNRELATED edit was REFUSED by a PRE-EXISTING crossing it did not cause, naming the crossing Walls',
-		flipStep: 'S4',
-		landedAt: 'S4',
-		post: 'F2',
-		owner: 'this file'
-	},
-	{
-		id: 'R-d',
-		// The ingress verdict does NOT flip: the codec admits such a document today and
-		// must keep admitting it (F6). S7 owns proving batch/validator/import PARITY and
-		// continued correct import behaviour, not an admission transition.
-		pins: 'the import path ADMITS a document carrying an independent-group crossing today AND keeps admitting it post-policy (no flip; S7 owns parity, not ingress)',
-		flipStep: 'never',
-		owner: 'this file'
-	}
-];
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -639,67 +478,6 @@ function success<T extends { kind: string }>(plan: T): T & { kind: 'success' } {
 }
 
 // ---------------------------------------------------------------------------
-
-describe('P23B.3a S1 — the reference register', () => {
-	it('covers every decision-record case exactly once, with the step that flips it named', () => {
-		const expected = [
-			...Array.from({ length: 13 }, (_, index) => `T${index + 1}`),
-			'R-a',
-			'R-b',
-			'R-c',
-			'R-d'
-		];
-		expect(REFERENCE_ROWS.map((row) => row.id)).toEqual(expected);
-		for (const row of REFERENCE_ROWS) {
-			expect(row.pins.length).toBeGreaterThan(20);
-			expect(row.owner.length).toBeGreaterThan(0);
-			if (row.flipStep === 'never') {
-				expect(row.post).toBeUndefined();
-			} else {
-				// A flipping case names its successor; the successor is asserted in the
-				// step named here, and this reference expectation is retired there.
-				expect(row.post).toBeDefined();
-				expect(['S4', 'S5', 'S6', 'S7']).toContain(row.flipStep);
-			}
-		}
-	});
-
-	it('delegates only the cases an existing suite already pins', () => {
-		const delegated = REFERENCE_ROWS.filter((row) => row.owner.startsWith('existing suite')).map(
-			(row) => row.id
-		);
-		expect(delegated).toEqual(['T9', 'T10', 'T11']);
-	});
-
-	it('retires a flipped row only at the step that owns it, and keeps its S1 verdict as history', () => {
-		// AM-1: once a successor has landed the S1 expectation is REMOVED as an
-		// assertion — never left asserting a verdict the shipped code no longer
-		// produces, and never required green beside its successor. The S1 verdict
-		// itself stays in `pins` as the historical half of the differential.
-		const landed = REFERENCE_ROWS.filter((row) => row.landedAt !== undefined);
-		expect(landed.map((row) => row.id)).toEqual(['T1', 'T2', 'T3', 'T4', 'T5', 'T8', 'R-a', 'R-c']);
-		for (const row of landed) {
-			// The step that RETIRED the S1 expectation is the step the row names, so a
-			// later step can never quietly inherit an earlier step's flip.
-			expect(row.landedAt).toBe(row.flipStep);
-			expect(row.post).toBeDefined();
-			// The retired verdict is still described, not deleted: the words the S1
-			// freeze used for the pre-policy behaviour survive in `pins`.
-			expect(row.pins).toMatch(/REFUSED|REJECTED/);
-		}
-		// S7 landed the LAST flip, so no row asserts a pre-policy verdict any more: the
-		// file holds permanent rows and retired history only. The empty set is asserted
-		// rather than deleted so a future row cannot quietly reintroduce a pre-policy
-		// expectation beside its successor (AM-1).
-		const stillPrePolicy = REFERENCE_ROWS.filter(
-			(row) => row.landedAt === undefined && row.flipStep !== 'never'
-		).map((row) => row.id);
-		expect(stillPrePolicy).toEqual([]);
-		expect(REFERENCE_ROWS.filter((row) => row.flipStep === 'S7').map((row) => row.id)).toEqual([
-			'T1'
-		]);
-	});
-});
 
 describe('P23B.3a S7 — the FLIPPED verdict (F1), asserted where the S1 row was retired', () => {
 	it('T1 → F1 — duplicating a Room onto its OWN position commits: SEPARATE ids, no connectivity, both groups independently editable', () => {

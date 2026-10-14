@@ -9,6 +9,11 @@
  * - a released document carrying inert `identity`/`name` metadata still
  *   validates on the visitor path;
  * - a released document without the blocks still validates.
+ *
+ * WP3T (§7.6 area 6) added the second describe: the same isolation boundary read
+ * at the machinery level (no visitor or shared-renderer module imports editor
+ * code at all), moved here from `layout-render-safe-validation.test.ts` so the
+ * unconditional arch lane owns it.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -115,5 +120,38 @@ describe('P23.12 C11 — visitor isolation from display identity', () => {
 	it('a released document without the blocks still validates', () => {
 		const validated = validateWallFirstLayoutDocument(squareDocument(false));
 		expect(validated.success).toBe(true);
+	});
+});
+
+/**
+ * WP3T §7.6 area 6 moved `the product visitor layer has no editor-class
+ * dependency` here from `layout-render-safe-validation.test.ts`: the claim is a
+ * visitor-isolation boundary, so the arch lane owns it, and this file already
+ * holds the reader. The two roots are what the cold public route mounts.
+ */
+describe('visitor isolation from editor machinery', () => {
+	it('gives the product visitor and shared-renderer layer no editor-class dependency', () => {
+		const SRC = resolve(dirname(fileURLToPath(import.meta.url)), '../../../src');
+		const offenders: string[] = [];
+		let inspected = 0;
+		// `apps/museum` was the second visitor app this pinned; #115 retired it
+		// (§3.5), so the claim is held against the product visitor and
+		// shared-renderer layer.
+		for (const root of ['visitor', 'museum']) {
+			const directory = join(SRC, 'lib', root);
+			for (const file of collectFiles(directory, '.ts').concat(collectFiles(directory, '.svelte'))) {
+				inspected += 1;
+				const text = readFileSync(file, 'utf8');
+				for (const match of text.matchAll(/from\s+'([^']+)'/g)) {
+					const specifier = match[1]!;
+					if (specifier.includes('apps/editor') || specifier.startsWith('$lib/editor')) {
+						offenders.push(`${file.slice(SRC.length + 1)} → ${specifier}`);
+					}
+				}
+			}
+		}
+		// Guard against a vacuous pass: the sweep must actually have read sources.
+		expect(inspected).toBeGreaterThan(20);
+		expect(offenders).toEqual([]);
 	});
 });

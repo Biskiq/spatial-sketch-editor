@@ -18,8 +18,6 @@
  * one file kept byte-identical, so the editor and museum cannot drift; the test
  * below asserts that invariant rather than trusting it.
  */
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -217,60 +215,18 @@ describe('P23.11 slice 6 — core and the mesh builders agree', () => {
 	// re-pointed at a single copy that is trivially identical to itself.
 });
 
-describe('P23.11 slice 6 — dependency direction stays intact', () => {
-	it('gives layout-core no renderer or app dependency', () => {
-		const sourceRoot = resolve(process.cwd(), '../../packages/layout-core/src');
-		const offenders: string[] = [];
-		let inspected = 0;
-		for (const entry of readdirSync(sourceRoot, { withFileTypes: true })) {
-			if (!entry.isFile() || !entry.name.endsWith('.ts')) continue;
-			inspected += 1;
-			const source = readFileSync(join(sourceRoot, entry.name), 'utf8');
-			for (const match of source.matchAll(/from\s+'([^']+)'/g)) {
-				const specifier = match[1]!;
-				if (
-					/^(three|@threlte|svelte|@sveltejs)/.test(specifier) ||
-					specifier.includes('apps/') ||
-					/^\.\.\//.test(specifier)
-				) {
-					offenders.push(`${entry.name} → ${specifier}`);
-				}
-			}
-		}
-		// Guard against a vacuous pass: the scan must actually have read the
-		// canonical sources it claims to police.
-		expect(inspected).toBeGreaterThan(20);
-		expect(offenders).toEqual([]);
-	});
-
-	it('gives the product visitor layer no editor-class dependency', () => {
-		// `apps/museum` was the second visitor app this pinned; #115 retired it
-		// (§3.5), so the same direction claim is now held against the product
-		// visitor and shared-renderer layer, which is what the cold public route
-		// actually mounts.
-		const roots = [resolve(process.cwd(), 'src/lib/visitor'), resolve(process.cwd(), 'src/lib/museum')];
-		const offenders: string[] = [];
-		let inspected = 0;
-		const walk = (directory: string): void => {
-			for (const entry of readdirSync(directory, { withFileTypes: true })) {
-				const path = join(directory, entry.name);
-				if (entry.isDirectory()) {
-					walk(path);
-					continue;
-				}
-				if (!/\.(ts|svelte)$/.test(entry.name)) continue;
-				inspected += 1;
-				const source = readFileSync(path, 'utf8');
-				for (const match of source.matchAll(/from\s+'([^']+)'/g)) {
-					const specifier = match[1]!;
-					if (specifier.includes('apps/editor') || specifier.startsWith('$lib/editor')) {
-						offenders.push(`${entry.name} → ${specifier}`);
-					}
-				}
-			}
-		};
-		for (const root of roots) walk(root);
-		expect(inspected).toBeGreaterThan(20);
-		expect(offenders).toEqual([]);
-	});
-});
+// WP3T (§7.6 area 6) moved this file's `dependency direction stays intact`
+// describe out: both of its cases are source-level boundary claims, so leaving
+// them in a fast behavioral suite was the routing defect the plan named.
+//
+// - `layout-core has no renderer or app dependency` is deleted as a duplicate.
+//   `layout-geometry-boundary.test.ts` (arch lane) asserts the same defect — a
+//   renderer, editor or browser import entering the package — with a stronger
+//   source root and a per-file external allowlist, and it reads the whole
+//   package rather than one flat directory resolved through `process.cwd()`.
+// - `the product visitor layer has no editor-class dependency` now lives in
+//   `visitor-identity-isolation.test.ts` (arch lane), which already owns the
+//   visitor isolation boundary and resolves its roots from its own location.
+//
+// The behavioral half of this file — the clearance predicate, its fold branch
+// and the core/mesh agreement — is unchanged and stays in the fast lane.

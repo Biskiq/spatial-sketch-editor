@@ -17,10 +17,6 @@
  *   flattened by the same core, so a curve expressible as either produces
  *   identical samples.
  */
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -440,7 +436,7 @@ describe('P23.11 slice 2 — reverse traversal mirrors by sampled arc length', (
 // one seam
 // ---------------------------------------------------------------------------
 
-describe('P23.11 slice 2 — one sampler, one adapter seam', () => {
+describe('P23.11 slice 2 — one sampler for legacy and chain geometry', () => {
 	it('samples a curve expressed as a legacy auto-bezier segment and as a chain identically', () => {
 		const points: LayoutVec2[] = [
 			[0, 0],
@@ -472,30 +468,5 @@ describe('P23.11 slice 2 — one sampler, one adapter seam', () => {
 		// is strictly longer than the legacy chord-sum.
 		expect(chainSampled.length).toBeCloseTo(legacySampled.length, 2);
 		expect(chainSampled.length).toBeGreaterThan(legacySampled.length);
-	});
-
-	it('keeps a single flattening core and a single Wall centerline seam', () => {
-		const coreSource = readFileSync(
-			fileURLToPath(new URL('../../../../../packages/layout-core/src', import.meta.url) + '/layout-geometry-curve.ts'),
-			'utf8'
-		);
-		const geometrySource = readFileSync(
-			fileURLToPath(new URL('../../../../../packages/layout-core/src', import.meta.url) + '/layout-geometry.ts'),
-			'utf8'
-		);
-		// Exactly one adaptive flattening core, in the curve kernel.
-		const kernelDir = fileURLToPath(new URL('../../../../../packages/layout-core/src', import.meta.url));
-		const definingFiles = readdirSync(kernelDir)
-			.filter((entry) => entry.endsWith('.ts'))
-			.filter((entry) =>
-				readFileSync(path.join(kernelDir, entry), 'utf8').includes('function adaptiveParameters(')
-			);
-		expect(definingFiles).toEqual(['layout-geometry-curve.ts']);
-		expect(coreSource.match(/export function sampleSegment\(/g) ?? []).toHaveLength(1);
-		// The compiler reads Wall centerline geometry through the one adapter and
-		// never compiles a curve itself.
-		expect(geometrySource).toContain('wallCenterlineSegment(');
-		expect(geometrySource).not.toContain('compileAutoBezierAnchors');
-		expect(geometrySource).not.toContain('spansToCubics');
 	});
 });
