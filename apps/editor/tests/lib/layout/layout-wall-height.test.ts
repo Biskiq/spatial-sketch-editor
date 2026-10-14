@@ -32,9 +32,7 @@ import { describe, expect, it } from 'vitest';
 import * as layoutCore from '@portfolio/layout-core';
 import {
 	compileWallFirstLayoutGeometry,
-	decodeLayoutValueCompatible,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	migrateLegacyLayoutDocument,
 	planDuplicateIsolatedRoom,
 	planExactWallHeight,
 	planWallChain,
@@ -45,7 +43,6 @@ import {
 	validateWallFirstWallHeights,
 	wallFirstCanonicalFormatVersionIssue,
 	WALL_AUTHORING_DEFAULT_HEIGHT,
-	type LayoutDocument,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -279,15 +276,22 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		// `Room ceiling = floor.height` while Wall-derived semantics mean
 		// `max(boundary Wall heights)`, so advancing a stored payload without
 		// rewriting it would silently change what that document *says*.
+		//
+		// PR #115 (WP3): the generation-identification boundary that used to carry
+		// this proof is deleted with the legacy chain, so the same guarantee is
+		// asserted against the one retained current-format gate: `4` is refused by
+		// name, and validation is still a pure read.
 		const historical = asV4Payload(rectangleDocument({ wallHeight: 3 }), 2.5);
 		const before = JSON.stringify(historical);
-		const decoded = decodeLayoutValueCompatible(historical);
-		expect(decoded.kind).toBe('unrecognized');
-		if (decoded.kind !== 'unrecognized') return;
-		expect(decoded.reason).toBe('unsupported-format-version');
-		expect(decoded.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
-		expect(decoded.issues.map((issue) => issue.path)).toContain('$.formatVersion');
-		// Decoding is a pure read: a rejected payload is never rewritten in place.
+		const result = validateWallFirstLayoutDocument(historical);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
+		expect(result.issues.map((issue) => issue.path)).toContain('$.formatVersion');
+		expect(wallFirstCanonicalFormatVersionIssue(historical)?.code).toBe(
+			'unsupported_format_version'
+		);
+		// Validation is a pure read: a rejected payload is never rewritten in place.
 		expect(JSON.stringify(historical)).toBe(before);
 	});
 
@@ -303,10 +307,11 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		// its declared version, so the diagnosis must be the version — not a pile of
 		// structural complaints about fields that are correct for `5`.
 		const payload = { ...rectangleDocument(), formatVersion: 4 };
-		const decoded = decodeLayoutValueCompatible(payload);
-		expect(decoded.kind).toBe('unrecognized');
-		if (decoded.kind !== 'unrecognized') return;
-		expect(decoded.issues.every((issue) => issue.code === 'unsupported_format_version')).toBe(true);
+		const result = validateWallFirstLayoutDocument(payload);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(result.issues.every((issue) => issue.code === 'unsupported_format_version')).toBe(true);
+		expect(result.issues.map((issue) => issue.path)).toEqual(['$.formatVersion']);
 	});
 
 	it('keeps floor.height out of the canonical schema', () => {
@@ -352,13 +357,14 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 	});
 
 	it('still rejects an unknown format version by name', () => {
-		const unknown = decodeLayoutValueCompatible({
+		const unknown = validateWallFirstLayoutDocument({
 			...rectangleDocument(),
 			formatVersion: 9
 		});
-		expect(unknown.kind).toBe('unrecognized');
-		if (unknown.kind !== 'unrecognized') return;
-		expect(unknown.reason).toBe('unsupported-format-version');
+		expect(unknown.success).toBe(false);
+		if (unknown.success) return;
+		expect(unknown.issues.map((issue) => issue.code)).toContain('unsupported_format_version');
+		expect(unknown.issues.map((issue) => issue.path)).toContain('$.formatVersion');
 	});
 });
 
@@ -667,58 +673,6 @@ describe('P23.6H topology purity — height is not topology', () => {
 		expect(plan.document.walls.map((wall) => [wall.startJunctionId, wall.endJunctionId])).toEqual(
 			document.walls.map((wall) => [wall.startJunctionId, wall.endJunctionId])
 		);
-	});
-});
-
-describe('P23.6I legacy migration', () => {
-	it('seeds migrated Walls from the legacy storey height and drops it from the canonical Floor', () => {
-		const legacy: LayoutDocument = {
-			units: 'meters',
-			floors: [
-				{
-					id: 'floor-1',
-					name: 'Floor 1',
-					elevation: 0,
-					height: 3.2,
-					rooms: [
-						{
-							id: 'room-a',
-							name: 'Room A',
-							wallThickness: 0.2,
-							floorThickness: 0.1,
-							ceilingThickness: 0.1,
-							frame: { origin: [0, 0], yaw: 0 },
-							boundary: {
-								closed: true,
-								segments: [
-									{ id: 's1', kind: 'line', start: [0, 0], end: [4, 0] },
-									{ id: 's2', kind: 'line', start: [4, 0], end: [4, 3] },
-									{ id: 's3', kind: 'line', start: [4, 3], end: [0, 3] },
-									{ id: 's4', kind: 'line', start: [0, 3], end: [0, 0] }
-								]
-							},
-							openings: []
-						}
-					]
-				}
-			],
-			objects: []
-		};
-		const migration = migrateLegacyLayoutDocument(legacy);
-		if (migration.kind !== 'success') throw new Error(`expected migration: ${JSON.stringify(migration)}`);
-		expect(migration.document.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(migration.document.walls.length).toBeGreaterThan(0);
-		for (const wall of migration.document.walls) {
-			expect(wall.height).toBe(3.2);
-		}
-		// The legacy storey value completed its one conversion job: it seeded the
-		// Wall heights above and does not survive as canonical Floor truth.
-		expect(migration.document.floor).toEqual({
-			id: 'floor-1',
-			name: 'Floor 1',
-			elevation: 0
-		});
-		expect('height' in migration.document.floor).toBe(false);
 	});
 });
 

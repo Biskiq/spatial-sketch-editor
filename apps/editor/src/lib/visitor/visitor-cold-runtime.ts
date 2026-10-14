@@ -19,7 +19,7 @@
  */
 import {
 	hasBlockingLayoutIssues,
-	prepareCompatibleRuntime,
+	prepareRuntime,
 	type CompiledLayoutGeometry,
 	type LayoutRoomRegistry,
 	type NavigationGraph,
@@ -199,7 +199,7 @@ export function composeColdReleaseBundle(input: {
 	if (!projectId) throw new Error('Project is not ready for release');
 	if (!manifest.releaseId.trim()) throw new Error('Release requires a releaseId');
 
-	const validated = prepareCompatibleRuntime(
+	const validated = prepareRuntime(
 		{ id: projectId, name, layout, scene },
 		COLD_SCENE_OPTIONS as never
 	);

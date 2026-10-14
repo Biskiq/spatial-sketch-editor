@@ -2,7 +2,6 @@ import { getAssetById, normalizeAssetFootprintOutline, validateAssetFootprint } 
 import type { SceneDocument, SceneEntity, ScenePrimitiveEntity } from '$lib/content/scene';
 import type { Asset } from '$lib/types/assets';
 import type { Vec3 } from '$lib/types/scene';
-import type { LayoutRoomRegistry } from '@portfolio/project-model';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import { geometryId } from '@portfolio/layout-core';
 
@@ -11,11 +10,6 @@ const CIRCLE_STEPS = 32;
 export type PlanSceneFootprint = {
 	key: string;
 	entityId: string;
-	/**
-	 * Legacy room frame gate (P23.0b). Absent means the footprint points are
-	 * already project/world space (world-local document).
-	 */
-	roomId?: string;
 	kind: 'model' | 'primitive';
 	primitive?: ScenePrimitiveEntity['primitive'];
 	points: LayoutVec2[];
@@ -47,12 +41,13 @@ export type PlanSceneFootprintOptions = {
  * Build passive Scene footprints from live editor Scene data.
  *
  * Point order is canonical local footprint → effective scale → entity yaw →
- * entity local translation → live room frame. Y is deliberately discarded
- * after room resolution; default asset scale/orientation never re-enters.
+ * entity translation. PR #115 (WP3): the entity's transform *is* project/world
+ * space (the current format guarantees it), so there is no Room frame in this
+ * path at all and an entity's footprint is never conditional on a room it names.
+ * Y is deliberately discarded; default asset scale/orientation never re-enters.
  */
 export function buildPlanSceneFootprintProjection(
 	document: SceneDocument,
-	rooms: LayoutRoomRegistry,
 	options: PlanSceneFootprintOptions = {}
 ): PlanSceneProjection {
 	const assetById = options.assetById ?? getAssetById;
@@ -61,16 +56,15 @@ export function buildPlanSceneFootprintProjection(
 	for (const entity of document.entities) {
 		if (entity.kind === 'light') continue;
 		const localOutline = footprintForEntity(entity, assetById);
-		if (!localOutline || (entity.roomId !== undefined && !rooms.has(entity.roomId))) continue;
+		if (!localOutline) continue;
 		const scale = resolveScale(entity, options.getEffectiveScale?.(entity));
 		if (!scale) continue;
-		const points = projectFootprint(entity, localOutline, scale, rooms);
+		const points = projectFootprint(entity, localOutline, scale);
 		if (!points) continue;
 		const presentation = options.presentationForEntity?.(entity.id);
 		footprints.push({
 			key: geometryId(['plan', 'scene-footprint', entity.id]),
 			entityId: entity.id,
-			roomId: entity.roomId,
 			kind: entity.kind,
 			...(entity.kind === 'primitive' ? { primitive: entity.primitive } : {}),
 			points,
@@ -151,8 +145,7 @@ function resolveScale(
 function projectFootprint(
 	entity: SceneEntity,
 	outline: readonly [number, number][],
-	scale: Vec3,
-	rooms: LayoutRoomRegistry
+	scale: Vec3
 ): LayoutVec2[] | null {
 	if (
 		entity.position.length !== 3 ||
@@ -169,9 +162,8 @@ function projectFootprint(
 	return outline.map(([x, z]) => {
 		const scaledX = x * scale[0];
 		const scaledZ = z * scale[2];
-		const localX = entity.position[0] + scaledX * cos + scaledZ * sin;
-		const localZ = entity.position[2] - scaledX * sin + scaledZ * cos;
-		const world = rooms.pointInFrame(entity.roomId, [localX, entity.position[1], localZ]);
-		return [world[0], world[2]];
+		const worldX = entity.position[0] + scaledX * cos + scaledZ * sin;
+		const worldZ = entity.position[2] - scaledX * sin + scaledZ * cos;
+		return [worldX, worldZ];
 	});
 }

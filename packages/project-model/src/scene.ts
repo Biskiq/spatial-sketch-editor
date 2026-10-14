@@ -376,19 +376,23 @@ export type SceneConnection = Omit<
 };
 
 /**
- * P23.0b world-local Scene format discriminator. Present (value `1`) only on
- * Scene documents whose physical values are project/world coordinates;
- * recognized legacy documents carry no `formatVersion` at all.
+ * The Scene document format discriminator. `1` is the one supported format
+ * (PR #115 / WP3): physical values are project/world coordinates and no record
+ * carries `roomId`, so a parsed document is runtime-final and is never resolved
+ * through Room frames.
  */
 export const SCENE_WORLD_LOCAL_FORMAT_VERSION = 1 as const;
 
-/** Authoring-empty scene document: the editor boots into this state before the
- * first entity, navigation node, or connection is authored. It is a valid
- * document — the runtime tour/preview guards a blank project separately, so a
- * project with no navigation graph cannot start a broken tour.
+/**
+ * Authoring-empty Scene document — the Scene half of the canonical
+ * new-project boot. The editor boots into this state before the first entity,
+ * navigation node or connection is authored. It is a valid document: the
+ * runtime tour/preview guards a blank project separately, so a project with no
+ * navigation graph cannot start a broken tour.
  */
-export function createEmptySceneDocument(): SceneDocument {
+export function createEmptyWorldLocalSceneDocument(): SceneDocument {
 	return {
+		formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
 		textures: [],
 		materials: [],
 		entities: [],
@@ -397,31 +401,12 @@ export function createEmptySceneDocument(): SceneDocument {
 	};
 }
 
-/**
- * Authoring-empty WORLD-LOCAL scene document (`formatVersion: 1`) — the Scene
- * half of the canonical new-project boot.
- *
- * P23.0 moves the two discriminators together: `validateProject` rejects a
- * wall-first Layout (any explicit `formatVersion`) that carries the recognized legacy
- * room-local Scene (`scene_not_world_local`), so a project cannot adopt the
- * wall-first Layout and keep the legacy Scene. `createEmptySceneDocument`
- * keeps returning the legacy shape — it stays the compatibility/legacy-
- * fixture constructor, not the new-project boot.
- */
-export function createEmptyWorldLocalSceneDocument(): SceneDocument {
-	return {
-		formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
-		...createEmptySceneDocument()
-	};
-}
-
 export type SceneDocument = {
   /**
-   * P23.0b format discriminator. Absent on recognized legacy (room-local)
-   * documents; `1` on world-local documents whose physical values must never
-   * be resolved through Room frames again.
+   * Current-format discriminator, required: `1`. Its presence is what the
+   * reader checks, so a document without it is not a Scene document at all.
    */
-  formatVersion?: typeof SCENE_WORLD_LOCAL_FORMAT_VERSION;
+  formatVersion: typeof SCENE_WORLD_LOCAL_FORMAT_VERSION;
   textures: SceneTextureAsset[];
   materials: SceneMaterialInstance[];
   entities: SceneEntity[];
@@ -561,39 +546,36 @@ export function cloneSceneEntity(entity: SceneEntity): SceneEntity {
   };
 }
 
-export type SceneRoomResolver = {
-  has(roomId: string): boolean;
-  point(roomId: string, localPoint: Vec3): Vec3;
-};
-
 function cloneVec3(point: Vec3): Vec3 {
   return [...point];
 }
 
-function resolveWaypoint(waypoint: SceneWaypoint, rooms: SceneRoomResolver): Vec3 {
-  return waypoint.roomId
-    ? rooms.point(waypoint.roomId, waypoint.position)
-    : cloneVec3(waypoint.position);
+function resolveWaypoint(waypoint: SceneWaypoint): Vec3 {
+  return cloneVec3(waypoint.position);
 }
 function resolveViewKeyframe(
-  keyframe: SceneCameraViewKeyframe,
-  rooms: SceneRoomResolver
+  keyframe: SceneCameraViewKeyframe
 ): RuntimeCameraViewKeyframe {
   return {
     id: keyframe.id,
     progress: keyframe.progress,
-    cameraTarget: keyframe.roomId
-      ? rooms.point(keyframe.roomId, keyframe.cameraTarget)
-      : cloneVec3(keyframe.cameraTarget),
+    cameraTarget: cloneVec3(keyframe.cameraTarget),
     fov: keyframe.fov,
     ...(keyframe.holdSeconds === undefined ? {} : { holdSeconds: keyframe.holdSeconds }),
     ...(keyframe.easing === undefined ? {} : { easing: keyframe.easing })
   };
 }
 
+/**
+ * Resolve a Scene document into the runtime Scene.
+ *
+ * PR #115 (WP3) — the current format is the only accepted one, and its
+ * physical values are already project/world coordinates, so there is no Room
+ * registry and no Room-frame resolution: every value is cloned once, exactly,
+ * with no transform and no second pass.
+ */
 export function resolveSceneDocument(
   input: unknown,
-  rooms: SceneRoomResolver,
   options: SceneValidationOptions = {}
 ): RuntimeScene {
   const validation = validateSceneDocument(input, options);
@@ -602,13 +584,8 @@ export function resolveSceneDocument(
 
   const navigationNodes = document.navigationNodes.map((node): NavigationNodeData => ({
     ...node,
-    // P23.0b: room-owned records resolve through the legacy Room frame;
-    // records without roomId are already world-local and pass through
-    // unchanged (never a second Room transform).
-    position: node.roomId ? rooms.point(node.roomId, node.position) : cloneVec3(node.position),
-    cameraTarget: node.roomId
-      ? rooms.point(node.roomId, node.cameraTarget)
-      : cloneVec3(node.cameraTarget),
+    position: cloneVec3(node.position),
+    cameraTarget: cloneVec3(node.cameraTarget),
     connectedNodeIds: [...node.connectedNodeIds],
     ...(node.holdSeconds === undefined ? {} : { holdSeconds: node.holdSeconds })
   }));
@@ -626,7 +603,7 @@ export function resolveSceneDocument(
     const interiorAnchors = connection.positionPath.anchors.map(
       (anchor): RuntimePathAnchor => ({
         id: anchor.id,
-        position: resolveWaypoint(anchor, rooms)
+        position: resolveWaypoint(anchor)
       })
     );
     const resolved: RuntimeConnection = {
@@ -647,15 +624,15 @@ export function resolveSceneDocument(
     if (connection.targetWaypoints) {
       resolved.targetWaypoints = [
         cloneVec3(fromNode.cameraTarget),
-        ...connection.targetWaypoints.map((waypoint) => resolveWaypoint(waypoint, rooms)),
+        ...connection.targetWaypoints.map((waypoint) => resolveWaypoint(waypoint)),
         cloneVec3(toNode.cameraTarget)
       ];
     }
 
     if (connection.viewTracks) {
       resolved.viewTracks = {
-        forward: connection.viewTracks.forward.map((keyframe) => resolveViewKeyframe(keyframe, rooms)),
-        reverse: connection.viewTracks.reverse.map((keyframe) => resolveViewKeyframe(keyframe, rooms)),
+        forward: connection.viewTracks.forward.map((keyframe) => resolveViewKeyframe(keyframe)),
+        reverse: connection.viewTracks.reverse.map((keyframe) => resolveViewKeyframe(keyframe)),
         ...(connection.viewTracks.framingEnvelope?.forward === undefined &&
           connection.viewTracks.framingEnvelope?.reverse === undefined
           ? {}

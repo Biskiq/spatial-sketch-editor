@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-	createEmptyProject,
+	createEmptyWallFirstProject,
 	derivePackageId,
 	sha256Bytes,
 	validateProject
@@ -31,7 +31,7 @@ describe('project-model package boundary', () => {
 	it('exposes the portable package primitives directly', async () => {
 		expect(await sha256Bytes(new Uint8Array())).toMatch(/^sha256-[0-9a-f]{64}$/);
 		expect(await derivePackageId([])).toMatch(/^package-[0-9a-f]{12}$/);
-		const project = createEmptyProject({ id: 'project', name: 'Project' });
+		const project = createEmptyWallFirstProject({ id: 'project', name: 'Project' });
 		expect(validateProject(project).success).toBe(true);
 	});
 

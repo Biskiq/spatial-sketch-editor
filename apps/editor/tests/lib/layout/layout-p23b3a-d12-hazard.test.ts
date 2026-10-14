@@ -36,7 +36,10 @@
  * OR-D12-5 and OR-D12-6 obligations for S3a: evaluate against the GENERAL
  * Wall/Junction test (`wallJunctionComponents`), never `connectedRoomIds`, and
  * exercise every caller: wall delete · role change · dissolve · migration ·
- * Room move · chain. Role change is the caller exercised here.
+ * Room move · chain. Role change is the caller exercised here. PR #115 (WP3)
+ * retired the migration caller along with the whole legacy-Layout chain, so its
+ * three cases were deleted with their subject rather than re-expressed; the
+ * remaining callers are unchanged.
  *
  * The D-12 FALLBACK proof has its own suite at the end of this file: faces are
  * always extracted from the candidate document they are reconciled against, and
@@ -52,11 +55,9 @@ import {
 	correspondenceAuthorization,
 	createAuthoringRoomAllocator,
 	createEmptyWallFirstLayoutDocument,
-	decodeLayoutValueCompatible,
 	extractBoundaryCandidateFaces,
 	interiorWitness,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	migrateLegacyLayoutDocument,
 	reconcileRooms,
 	roomBoundaryPolygon,
 	planDeleteWall,
@@ -68,7 +69,6 @@ import {
 	planWallSubdivision,
 	validateWallFirstLayoutDocument,
 	validateWallFirstTopology,
-	type LayoutDocument,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2,
 	type LayoutWall,
@@ -184,65 +184,6 @@ const FULL_CONTAINMENT = pairDocument(
 	{ prefix: 'c', x: 1, z: 1, width: 4, depth: 2 },
 	{ prefix: 'k', x: 0, z: 0, width: 6, depth: 4 }
 );
-
-/**
- * Minimal legacy storey. `layout` is either two Rooms occupying IDENTICAL extents
- * (the collapsed-lineage case) or two Rooms sharing a Wall (the legitimate case),
- * and each Room owns one associated legacy object so an identity merge would be
- * visible as a remapped association.
- */
-function legacyDocumentWithCoincidentRooms(
-	order: [string, string] = ['room-1', 'room-2'],
-	layout: 'coincident' | 'shared-wall' = 'coincident'
-): LayoutDocument {
-	const extents: Record<string, [number, number, number, number]> = {
-		'room-1': [0, 0, 6, 4],
-		'room-2': layout === 'coincident' ? [0, 0, 6, 4] : [6, 0, 12, 4]
-	};
-	const names: Record<string, string> = { 'room-1': 'Legacy one', 'room-2': 'Legacy two' };
-	const legacyRoom = (id: string) => {
-		const [minX, minZ, maxX, maxZ] = extents[id]!;
-		return {
-			id,
-			name: names[id]!,
-			frame: { origin: [0, 0] as LayoutVec2, yaw: 0 },
-			wallThickness: 0.2,
-			floorThickness: 0.1,
-			ceilingThickness: 0.1,
-			boundary: {
-				closed: true,
-				segments: [
-					{ id: `${id}-s`, kind: 'line' as const, start: [minX, minZ] as LayoutVec2, end: [maxX, minZ] as LayoutVec2 },
-					{ id: `${id}-e`, kind: 'line' as const, start: [maxX, minZ] as LayoutVec2, end: [maxX, maxZ] as LayoutVec2 },
-					{ id: `${id}-n`, kind: 'line' as const, start: [maxX, maxZ] as LayoutVec2, end: [minX, maxZ] as LayoutVec2 },
-					{ id: `${id}-w`, kind: 'line' as const, start: [minX, maxZ] as LayoutVec2, end: [minX, minZ] as LayoutVec2 }
-				]
-			},
-			openings: []
-		};
-	};
-	const objectFor = (id: string) => ({
-		id: `obj-${id}`,
-		kind: 'box' as const,
-		position: [1, 0.5, 1] as [number, number, number],
-		rotation: [0, 0, 0] as [number, number, number],
-		dimensions: [1, 1, 1] as [number, number, number],
-		roomId: id
-	});
-	return {
-		units: 'meters',
-		floors: [
-			{
-				id: 'floor-1',
-				name: 'Floor 1',
-				elevation: 0,
-				height: 3,
-				rooms: order.map((id) => legacyRoom(id))
-			}
-		],
-		objects: order.map((id) => objectFor(id))
-	} as unknown as LayoutDocument;
-}
 
 /** The operation under test: change the OPERATED Room's own south Wall to partition. */
 function operateOnOperatedRoom(document: LayoutDocumentWallFirst) {
@@ -519,59 +460,6 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		assertUnrelatedSurvives(plan.document, 'chain');
 	});
 
-	it('OR-D12-6 migration — collapsed LEGACY Room lineage is REFUSED, and the original project is preserved', () => {
-		// Legacy predecessors carry no authored Wall identity, so migration can key
-		// only on geometry. Two DISTINCT legacy Rooms resolving to the SAME candidate
-		// face is therefore not authorized lineage, and the fail-closed contract makes
-		// it a deterministic refusal rather than a successful merge: before this, the
-		// migration SUCCEEDED and silently retired 'room-2' along with its association.
-		const legacy = legacyDocumentWithCoincidentRooms();
-		// The fixture is VALID legacy content, verified through the legacy codec rather
-		// than assumed: the refusal below is about Room correspondence, not malformed
-		// input.
-		const decoded = decodeLayoutValueCompatible(legacy);
-		expect(decoded.kind).toBe('legacy');
-
-		const snapshot = JSON.stringify(legacy);
-		const result = migrateLegacyLayoutDocument(legacy);
-		expect(result.kind).toBe('rejected');
-		if (result.kind !== 'rejected') return;
-		expect(result.code).toBe('ambiguous-room-correspondence');
-		// The refusal names BOTH Rooms, so the failure is attributable.
-		const named = result.issues.map((issue) => issue.message).join(' ');
-		expect(named).toContain('room-1');
-		expect(named).toContain('room-2');
-		// Neither Room identity nor object association was silently remapped: no
-		// document was produced, and the legacy payload is byte-identical, which is
-		// what lets `project-compat` keep the original project on the read-only
-		// `legacy-compatible` path.
-		expect(JSON.stringify(legacy)).toBe(snapshot);
-	});
-
-	it('OR-D12-6 migration — the refusal is independent of the legacy Room ORDER', () => {
-		const forward = legacyDocumentWithCoincidentRooms(['room-1', 'room-2']);
-		const reversed = legacyDocumentWithCoincidentRooms(['room-2', 'room-1']);
-		const forwardResult = migrateLegacyLayoutDocument(forward);
-		const reversedResult = migrateLegacyLayoutDocument(reversed);
-		expect(forwardResult.kind).toBe('rejected');
-		expect(reversedResult.kind).toBe('rejected');
-		if (forwardResult.kind !== 'rejected' || reversedResult.kind !== 'rejected') return;
-		expect(reversedResult.code).toBe(forwardResult.code);
-		// Neither ordering silently keeps a different survivor: both refuse.
-		expect(JSON.stringify(reversed)).not.toContain('"kind":"success"');
-	});
-
-	it('OR-D12-6 migration — a legitimate SHARED-WALL legacy payload still migrates', () => {
-		// The fail-closed rule is about collapapsed lineage, not about migration in
-		// general: two Rooms that share a Wall enclose DIFFERENT faces, so each claims
-		// exactly one predecessor and the migration proceeds as before.
-		const legacy = legacyDocumentWithCoincidentRooms(['room-1', 'room-2'], 'shared-wall');
-		const result = migrateLegacyLayoutDocument(legacy);
-		expect(result.kind).toBe('success');
-		if (result.kind !== 'success') return;
-		expect(result.document.rooms.map((room) => room.id).sort()).toEqual(['room-1', 'room-2']);
-	});
-
 	it('OR-D12-6 Room move — moving the OPERATED Room leaves the unrelated Room intact', () => {
 		// Room move and migration declare their own exact boundary-lineage
 		// components rather than deriving them geometrically, so this is the caller
@@ -626,8 +514,9 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
  *   path) do not use this gate at all: they declare explicit 1→1 boundary-cycle
  *   lineage, which is how an operation that DOES change a boundary reference must
  *   supply its identity (case b at the contract level);
- * - migration replaces no Wall identity: it keys on geometry only and refuses
- *   collapsed lineage (already proven above).
+ * - migration is no longer a caller at all: PR #115 (WP3) deleted the legacy
+ *   Layout chain (and with it the migration cases this file used to carry here),
+ *   so there is no boundary identity for it to replace.
  *
  * So a Room whose authored boundary identity is entirely gone is always a Room
  * whose enclosure is gone too: it takes rule 3's denial into retirement, never

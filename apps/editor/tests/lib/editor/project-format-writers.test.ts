@@ -15,6 +15,12 @@
  * F0 stage-6 describe — it asserted the editor's `LAYOUT_MUTATION_POLICY`
  * store constant — is gone with its subject; the policy constant existed to
  * gate the editor's writes, and there is no editor to gate.
+ *
+ * PR #115 (WP3) — the writers are current-format-only, so the Save cases hold
+ * the writer gate itself: a payload without the current format discriminator or
+ * declaring a superseded version is refused here, and a written payload reads
+ * back through `validateProject`. The retired legacy-compatibility round-trip
+ * describe was deleted with its subject.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -29,11 +35,11 @@ import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	validateWallFirstLayoutDocument
 } from '@portfolio/layout-core';
-import { decodeProjectCompatible } from '@portfolio/project-model';
 import {
 	PACKAGE_MANIFEST_FORMAT_VERSION,
 	buildPackageManifest,
 	serializeWallFirstProject,
+	validateProject,
 	validateWallFirstProject,
 	WallFirstProjectValidationError
 } from '@portfolio/project-model';
@@ -368,13 +374,13 @@ function wallFirstProjectPayload() {
 }
 
 /**
- * A minimal legacy (Room-owned) project in the shape the pre-wall-first
- * generation wrote: a `floors[].rooms[]` layout with no `formatVersion` and a
- * room-local Scene. PR #115 externalized the shipped Chopin project, so this
- * stands in for it. The assertions below are about how the Save gate classifies
- * a legacy payload, which does not depend on *which* legacy project is supplied.
+ * A minimal Layout payload that declares no format discriminator: the
+ * `floors[].rooms[]` shape, with no `formatVersion`. It exists to prove that
+ * incomplete input fails ordinary current-format validation on the Save gate
+ * rather than being accepted as current state, and nothing about the assertion
+ * depends on which historical project the shape once came from.
  */
-function legacyLayoutDocument() {
+function versionlessLayoutDocument() {
 	const [minX, minZ] = [0, 0];
 	const [maxX, maxZ] = [6, 4];
 	return {
@@ -434,17 +440,18 @@ describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 		expect(written.sceneCanonicalJson).toContain('"navigationNodes"');
 	});
 
-	it('rejects a legacy (Room-owned) layout by name — never silently migrated on Save', () => {
-		const payload = { ...wallFirstProjectPayload(), layout: legacyLayoutDocument() };
+	it('rejects a Layout payload with no current format discriminator', () => {
+		const payload = { ...wallFirstProjectPayload(), layout: versionlessLayoutDocument() };
 		const result = validateWallFirstProject(payload);
 		expect(result.success).toBe(false);
 		if (result.success) return;
 		expect(result.issues.some((issue) => issue.side === 'layout')).toBe(true);
-		// Missing version is never silently accepted as wall-first.
+		// A Layout that never declares itself is malformed input, and it is never
+		// silently accepted as current-format state on the writer side.
 		expect(result.issues.some((issue) => issue.code === 'invalid_type')).toBe(true);
 	});
 
-	it('rejects a legacy (room-local) scene by name', () => {
+	it('rejects a Scene payload with no current format discriminator', () => {
 		const payload = {
 			...wallFirstProjectPayload(),
 			scene: {
@@ -459,8 +466,13 @@ describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 		expect(result.success).toBe(false);
 		if (result.success) return;
 		expect(result.issues.some((issue) => issue.side === 'scene')).toBe(true);
-		// The legacy scene shape rejects BY NAME on the Save-side gate.
-		expect(result.issues.some((issue) => issue.code === 'scene_not_world_local')).toBe(true);
+		// The missing discriminator fails ordinary current-format validation at the
+		// Scene's own format field.
+		expect(
+			result.issues.some(
+				(issue) => issue.code === 'invalid_type' && issue.path.endsWith('$.scene.formatVersion')
+			)
+		).toBe(true);
 	});
 
 	it('rejects a world-local scene that still carries roomId', () => {
@@ -510,14 +522,13 @@ describe('P23.0 stage 2 — canonical wall-first Project Save', () => {
 		expect(() => serializeWallFirstProject({ nope: true })).toThrow(WallFirstProjectValidationError);
 	});
 
-	it('saves round-trip through decodeProjectCompatible as wall-first', () => {
+	it('saves round-trip through the current-format reader unchanged', () => {
 		const written = serializeWallFirstProject(wallFirstProjectPayload());
-		const decoded = decodeProjectCompatible(JSON.parse(written.canonicalJson));
-		expect(decoded.kind).toBe('wall-first');
-		if (decoded.kind !== 'wall-first') return;
-		expect(decoded.sceneSpace).toBe('project-world');
-		expect(decoded.project.layout.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
-		expect(decoded.project.scene.formatVersion).toBe(1);
+		const reread = validateProject(JSON.parse(written.canonicalJson));
+		expect(reread.success).toBe(true);
+		if (!reread.success) return;
+		expect(reread.project.layout.formatVersion).toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
+		expect(reread.project.scene.formatVersion).toBe(1);
 	});
 
 	it('rejects a superseded layout version by name — canonical Save never migrates', () => {
@@ -571,27 +582,5 @@ describe('P23.0 stage 2 — package manifest format versioning', () => {
 		// dispatches on the generator string.
 		expect(manifest.package.formatVersion).not.toBe(LAYOUT_WALL_FIRST_FORMAT_VERSION);
 		expect(manifest.package.generator).toBe('editor-5.4');
-	});
-});
-
-// ---------------------------------------------------------------------------
-// 5. Compat round-trips (legacy stays readable)
-// ---------------------------------------------------------------------------
-
-describe('P23.0 stage 2 — legacy compatibility round-trips', () => {
-	it('a legacy layout cannot be saved through the wall-first writer', () => {
-		const result = validateWallFirstProject({
-			id: 'project-legacy',
-			name: 'Legacy',
-			layout: legacyLayoutDocument(),
-			scene: {
-				textures: [],
-				materials: [],
-				entities: [],
-				navigationNodes: [],
-				connections: []
-			}
-		});
-		expect(result.success).toBe(false);
 	});
 });

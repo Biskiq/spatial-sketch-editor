@@ -15,7 +15,6 @@ import {
 	CAMERA_EASING,
 	CAMERA_FOV,
 	type CameraEasing,
-	type RoomId,
 	type SceneConnectionTiming,
 	type Vec3
 } from '../scene';
@@ -41,7 +40,7 @@ import {
 	readRequiredBoolean,
 	readRequiredNumber,
 	readRequiredString,
-	readRoomId,
+	rejectRoomId,
 	readStringArray,
 	readVec3
 } from './readers';
@@ -49,8 +48,7 @@ import {
 export function parseNode(
 	input: unknown,
 	path: string,
-	issues: SceneDocumentIssue[],
-	options: { worldLocal: boolean }
+	issues: SceneDocumentIssue[]
 ): SceneNavigationNode | undefined {
 	if (!isRecord(input)) {
 		addIssue(issues, path, 'invalid_type', 'Expected a navigation node object');
@@ -76,7 +74,7 @@ export function parseNode(
 		issues
 	);
 	const id = readRequiredString(input, 'id', path, issues);
-	const roomId = readWorldLocalRoomId(input, path, issues, options);
+	rejectRoomId(input, 'roomId', path, issues);
 	const label = readRequiredString(input, 'label', path, issues);
 	const position = readVec3(input.position, `${path}.position`, issues);
 	const cameraTarget = readVec3(input.cameraTarget, `${path}.cameraTarget`, issues);
@@ -107,7 +105,6 @@ export function parseNode(
 	const holdSeconds = readHoldSeconds(input, 'holdSeconds', path, issues);
 	if (
 		!id ||
-		(!options.worldLocal && roomId === undefined) ||
 		!label ||
 		!position ||
 		!cameraTarget ||
@@ -125,34 +122,12 @@ export function parseNode(
 		cameraTarget,
 		fov,
 		connectedNodeIds,
-		...(roomId === undefined ? {} : { roomId }),
 		...(nextNodeId === undefined ? {} : { nextNodeId }),
 		...(previousNodeId === undefined ? {} : { previousNodeId }),
 		...(detourOfNodeId === undefined ? {} : { detourOfNodeId }),
 		...(lockInteraction === undefined ? {} : { lockInteraction }),
 		...(holdSeconds === undefined ? {} : { holdSeconds })
 	};
-}
-
-function readWorldLocalRoomId(
-	input: JsonRecord,
-	path: string,
-	issues: SceneDocumentIssue[],
-	options: { worldLocal: boolean }
-): string | undefined {
-	if (!options.worldLocal) return readRoomId(input, 'roomId', path, issues);
-	// Value-based like the entity parser: an absent key is legal world
-	// coordinates, a present value is rejected by name (and reported so the
-	// aggregate issue check sees it). A present-but-undefined key (e.g. a
-	// pre-fix canonical artifact) is tolerated, never a second transform.
-	if (input.roomId === undefined) return undefined;
-	addIssue(
-		issues,
-		`${path}.roomId`,
-		'room_id_forbidden_in_world_local',
-		'World-local scene documents must not carry roomId; convert legacy records instead'
-	);
-	return undefined;
 }
 
 function parseWaypoint(
@@ -165,11 +140,10 @@ function parseWaypoint(
 		return undefined;
 	}
 	assertAllowedKeys(input, ['roomId', 'position'], path, issues);
-	let roomId: RoomId | undefined;
-	if ('roomId' in input) roomId = readRoomId(input, 'roomId', path, issues);
+	rejectRoomId(input, 'roomId', path, issues);
 	const position = readVec3(input.position, `${path}.position`, issues);
 	if (!position) return undefined;
-	return { ...(roomId === undefined ? {} : { roomId }), position };
+	return { position };
 }
 
 export function parsePathAnchor(
@@ -183,11 +157,10 @@ export function parsePathAnchor(
 	}
 	assertAllowedKeys(input, ['id', 'roomId', 'position'], path, issues);
 	const id = readRequiredString(input, 'id', path, issues);
-	let roomId: RoomId | undefined;
-	if ('roomId' in input) roomId = readRoomId(input, 'roomId', path, issues);
+	rejectRoomId(input, 'roomId', path, issues);
 	const position = readVec3(input.position, `${path}.position`, issues);
 	if (!id || !position) return undefined;
-	return { id, ...(roomId === undefined ? {} : { roomId }), position };
+	return { id, position };
 }
 
 export function parseWaypoints(
@@ -308,8 +281,7 @@ export function parseViewKeyframe(
 		);
 	}
 	const cameraTarget = readVec3(input.cameraTarget, `${path}.cameraTarget`, issues);
-	let roomId: RoomId | undefined;
-	if ('roomId' in input) roomId = readRoomId(input, 'roomId', path, issues);
+	rejectRoomId(input, 'roomId', path, issues);
 	const fov = readRequiredNumber(input, 'fov', path, issues);
 	if (
 		fov !== undefined &&
@@ -357,7 +329,6 @@ export function parseViewKeyframe(
 		id,
 		progress,
 		cameraTarget,
-		...(roomId === undefined ? {} : { roomId }),
 		fov,
 		...(holdSeconds === undefined ? {} : { holdSeconds }),
 		...(easing === undefined ? {} : { easing })

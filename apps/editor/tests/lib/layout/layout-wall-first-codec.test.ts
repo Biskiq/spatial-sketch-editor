@@ -1,57 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	createEmptyLayoutDocument,
-	serializeLayoutDocument,
-	validateLayoutDocument,
-	type LayoutDocument
-} from '@portfolio/layout-core';
-import {
 	createEmptyWallFirstLayoutDocument,
 	parseWallFirstLayoutDocumentJson,
 	serializeWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument
 } from '@portfolio/layout-core';
-import {
-	decodeLayoutJsonCompatible,
-	decodeLayoutValueCompatible,
-	LAYOUT_WALL_FIRST_FORMAT_VERSION
-} from '@portfolio/layout-core';
+import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import type { LayoutDocumentWallFirst } from '@portfolio/layout-core';
-import type { LayoutRoom } from '@portfolio/layout-core';
-
-function legacyDocument(): LayoutDocument {
-	const document = createEmptyLayoutDocument();
-	document.floors.push({
-		id: 'floor-main',
-		name: 'Ground',
-		elevation: 0,
-		height: 3,
-		rooms: [legacyRoom()]
-	});
-	return document;
-}
-
-function legacyRoom(): LayoutRoom {
-	return {
-		id: 'room-main',
-		name: 'Main Room',
-		frame: { origin: [3, 2], yaw: 0 },
-		boundary: {
-			closed: true,
-			segments: [
-				{ id: 'seg-a', kind: 'line', start: [0, 0], end: [6, 0] },
-				{ id: 'seg-b', kind: 'line', start: [6, 0], end: [6, 4] },
-				{ id: 'seg-c', kind: 'line', start: [6, 4], end: [0, 4] },
-				{ id: 'seg-d', kind: 'line', start: [0, 4], end: [0, 0] }
-			]
-		},
-		wallThickness: 0.2,
-		floorThickness: 0.1,
-		ceilingThickness: 0.1,
-		openings: []
-	};
-}
 
 /** Rectangle room expressed in the new wall-first schema. */
 function wallFirstDocument(): LayoutDocumentWallFirst {
@@ -218,70 +174,5 @@ describe('wall-first layout codec (P23.0a scaffolding)', () => {
 		const empty = createEmptyWallFirstLayoutDocument();
 		const result = validateWallFirstLayoutDocument(empty);
 		expect(result.success).toBe(true);
-	});
-});
-
-describe('layout format identification (P23.0a dispatch)', () => {
-	it('decodes missing formatVersion through the unchanged legacy decoder', () => {
-		const document = legacyDocument();
-		const json = serializeLayoutDocument(document);
-		expect(validateLayoutDocument(document).success).toBe(true);
-
-		const decoded = decodeLayoutJsonCompatible(json);
-		expect(decoded.kind).toBe('legacy');
-		if (decoded.kind !== 'legacy') return;
-		expect(decoded.sceneSpace).toBe('legacy-room-local');
-		expect(decoded.document.floors[0]!.rooms[0]!.id).toBe('room-main');
-	});
-
-	it('decodes formatVersion 4 as wall-first with project-world sceneSpace', () => {
-		const document = wallFirstDocument();
-		const decoded = decodeLayoutValueCompatible(document);
-		expect(decoded.kind).toBe('wall-first');
-		if (decoded.kind !== 'wall-first') return;
-		expect(decoded.sceneSpace).toBe('project-world');
-		expect(decoded.document.walls).toHaveLength(4);
-	});
-
-	it('rejects unrecognized explicit versions by name, not shape noise', () => {
-		const decoded = decodeLayoutValueCompatible({
-			...wallFirstDocument(),
-			formatVersion: 99
-		});
-		expect(decoded.kind).toBe('unrecognized');
-		if (decoded.kind !== 'unrecognized') return;
-		expect(decoded.reason).toBe('unsupported-format-version');
-		expect(decoded.issues).toContainEqual(
-			expect.objectContaining({ code: 'unsupported_format_version', path: '$.formatVersion' })
-		);
-	});
-
-	it('never infers wall-first from field shapes on a legacy payload', () => {
-		// A legacy document that happens to carry junction/wall-shaped extra
-		// fields is still routed to the legacy decoder (which rejects the
-		// unknown keys) — the dispatch is formatVersion only.
-		const payload = legacyDocument() as unknown as Record<string, unknown>;
-		payload.junctions = [];
-		payload.walls = [];
-		const decoded = decodeLayoutValueCompatible(payload);
-		expect(decoded.kind).toBe('unrecognized');
-		if (decoded.kind !== 'unrecognized') return;
-		expect(decoded.reason).toBe('legacy-invalid');
-		expect(decoded.issues.map((issue) => issue.code)).toContain('unknown_key');
-	});
-
-	it('rejects legacy-invalid payloads explicitly', () => {
-		const decoded = decodeLayoutValueCompatible({ units: 'feet', floors: [] });
-		expect(decoded.kind).toBe('unrecognized');
-		if (decoded.kind !== 'unrecognized') return;
-		expect(decoded.reason).toBe('legacy-invalid');
-		expect(decoded.issues.map((issue) => issue.code)).toContain('unsupported_units');
-	});
-
-	it('reports malformed JSON as invalid-json', () => {
-		const decoded = decodeLayoutJsonCompatible('{not json');
-		expect(decoded.kind).toBe('unrecognized');
-		if (decoded.kind !== 'unrecognized') return;
-		expect(decoded.reason).toBe('invalid-json');
 	});
 });

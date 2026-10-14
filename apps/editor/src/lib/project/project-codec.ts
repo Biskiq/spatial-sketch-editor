@@ -1,11 +1,9 @@
 import {
-	createEmptyProject,
 	createEmptyWallFirstProject,
 	createProject as createCore,
 	parseProjectJson as parseCore,
 	serializeProject as serializeCore,
 	validateProject as validateCore,
-	wallFirstCanonicalProjectFormatIssue,
 	ProjectValidationError,
 	type EmptyProjectInput,
 	type ProjectInput,
@@ -15,12 +13,7 @@ import {
 import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
 
 export type { EmptyProjectInput, ProjectInput, ProjectValidationOptions, ProjectValidationResult };
-export {
-	createEmptyProject,
-	createEmptyWallFirstProject,
-	wallFirstCanonicalProjectFormatIssue,
-	ProjectValidationError
-};
+export { createEmptyWallFirstProject, ProjectValidationError };
 
 const MUSEUM_PROJECT_OPTIONS: ProjectValidationOptions = {
 	scene: MUSEUM_SCENE_VALIDATION_OPTIONS

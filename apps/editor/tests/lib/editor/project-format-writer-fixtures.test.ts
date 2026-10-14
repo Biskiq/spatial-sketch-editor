@@ -26,9 +26,14 @@
  *   rooms reject, and a valid ADJACENT born relation (shared-wall pair per
  *   the stage-5 Save-blocker contract) survives the Save round-trip.
  *
- * Writers stay disabled (pre-F0 stance) — this suite only calls the planners
- * as pure functions; the `wall-first` layout mutation policy remains
- * `disabled` (pinned in the stage-2 suite).
+ * The planners are called as pure functions only; this suite wires no editor
+ * mutation policy (the store constant it used to pin was removed with the
+ * editor shell in WP2).
+ *
+ * PR #115 (WP3) — the Save round-trips here read their written bytes back
+ * through the current-format project reader (`validateProject`) rather than the
+ * deleted compatible decode, so the fixture expectations are unchanged while
+ * the reader under them is the one the product ships.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -50,9 +55,9 @@ import {
 } from '@portfolio/layout-core';
 import {
 	serializeWallFirstProject,
+	validateProject,
 	validateWallFirstProject
 } from '@portfolio/project-model';
-import { decodeProjectCompatible } from '@portfolio/project-model';
 import type { SceneDocument } from '$lib/content/scene';
 
 // ---------------------------------------------------------------------------
@@ -720,11 +725,12 @@ describe('P23.0 stage 3 — portal fixtures against the birth writers', () => {
 			layout: withPortal,
 			scene: worldLocalScene()
 		});
-		const decoded = decodeProjectCompatible(JSON.parse(written.canonicalJson));
-		expect(decoded.kind).toBe('wall-first');
-		if (decoded.kind !== 'wall-first') return;
-		const openings =
-			(decoded.project.layout as LayoutDocumentWallFirst).openings ?? [];
+		// Read the written bytes back through the current-format reader: the born
+		// portal relation survives the Save unchanged.
+		const reread = validateProject(JSON.parse(written.canonicalJson));
+		expect(reread.success).toBe(true);
+		if (!reread.success) return;
+		const openings = reread.project.layout.openings ?? [];
 		expect(openings).toHaveLength(1);
 		expect(openings[0]).toMatchObject({
 			id: 'door-bridge',
@@ -758,12 +764,11 @@ describe('P23.0 stage 3 — Save writer round-trip of born content', () => {
 		expect(validated.success).toBe(true);
 		if (!validated.success) return;
 		const written = serializeWallFirstProject(payload);
-		const decoded = decodeProjectCompatible(JSON.parse(written.canonicalJson));
-		expect(decoded.kind).toBe('wall-first');
-		if (decoded.kind !== 'wall-first') return;
-		const layout = decoded.project.layout as LayoutDocumentWallFirst;
+		const reread = validateProject(JSON.parse(written.canonicalJson));
+		expect(reread.success).toBe(true);
+		if (!reread.success) return;
 		// Full byte-identity: junctions, floor frame and every collection.
-		expect(layout).toEqual(birth.document);
+		expect(reread.project.layout).toEqual(birth.document);
 	});
 
 	it('the Save writer still rejects born content with dangling references', () => {

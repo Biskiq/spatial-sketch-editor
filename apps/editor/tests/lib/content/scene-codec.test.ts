@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type { SceneDocument } from '$lib/content/scene';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
-import { validateProject } from '$lib/project/project-codec';
 import { createCameraPositionPath } from '@portfolio/camera-core';
 import {
 	parseSceneDocumentJson,
@@ -10,10 +8,10 @@ import {
 } from '@portfolio/project-model';
 import { cloneFixtureDocument } from './__fixtures__/load-fixture-scene';
 
-// PR #115 (§3.7): the `resolveSceneDocument(input, chopinRuntime.rooms)` wrapper
-// is gone with the isolated Chopin Room frames. The cases that only validate or
-// serialize a document no longer need it; the one case that did need resolved
-// frame-space positions is recorded below.
+// PR #115 (WP3) — the `tour-minimal` fixture is a current-format (world-local)
+// Scene and this suite validates and serializes documents, never resolving them,
+// so no Room frames and no project-level room gate are involved any more. The
+// `roomId` discipline that remains belongs to the current format itself.
 
 function cloneDocument() {
 	return cloneFixtureDocument('tour-minimal');
@@ -39,7 +37,7 @@ describe('scene document codec', () => {
 		const parsed = parseSceneDocumentJson(json);
 
 		expect(json).toMatch(
-			/^\{\n  "textures": \[\],\n  "materials": \[\],\n  "entities": \[/
+			/^\{\n  "formatVersion": 1,\n  "textures": \[\],\n  "materials": \[\],\n  "entities": \[/
 		);
 		expect(json).toContain('\n  "navigationNodes": [');
 		expect(json).not.toContain('\n  "clusters":');
@@ -78,7 +76,9 @@ describe('scene document codec', () => {
 		nullOptional.navigationNodes[0]!.nextNodeId = null;
 		const nullResult = validateSceneDocument(nullOptional);
 		expect(nullResult.success).toBe(false);
-		if (!nullResult.success) expect(nullResult.issues).toContainEqual(expect.objectContaining({ path: '$.navigationNodes[0].nextNodeId', code: 'invalid_type' }));
+		if (!nullResult.success) expect(nullResult.issues).toContainEqual(
+			expect.objectContaining({ path: '$.navigationNodes[0].nextNodeId', code: 'invalid_type' })
+		);
 	});
 
 	it('reports graph, pose, and cluster semantic blockers', () => {
@@ -89,7 +89,6 @@ describe('scene document codec', () => {
 			{
 				id: 'empty-name',
 				name: 'Cluster',
-				roomId: document.entities[0]!.roomId,
 				memberIds: [document.entities[0]!.id, document.entities[0]!.id]
 			}
 		];
@@ -147,7 +146,6 @@ describe('scene document codec', () => {
 		withIsolated.navigationNodes.push(
 			{
 				id: 'camera-node-1',
-				roomId: 'entrance',
 				label: 'Camera Node 1',
 				position: [2, 1.65, 2],
 				cameraTarget: [2, 1.25, -1],
@@ -156,7 +154,6 @@ describe('scene document codec', () => {
 			},
 			{
 				id: 'camera-node-2',
-				roomId: 'entrance',
 				label: 'Camera Node 2',
 				position: [3, 1.65, 2],
 				cameraTarget: [3, 1.25, -1],
@@ -208,7 +205,6 @@ describe('scene document codec', () => {
 		origin.connectedNodeIds.push('detour-d1', 'detour-d1-tail');
 		document.navigationNodes.push({
 			id: 'detour-d1',
-			roomId: 'entrance',
 			label: 'Detour D1',
 			position: [2, 1.65, 2],
 			cameraTarget: [2, 1.25, -1],
@@ -219,7 +215,6 @@ describe('scene document codec', () => {
 		});
 		document.navigationNodes.push({
 			id: 'detour-d1-tail',
-			roomId: 'entrance',
 			label: 'Detour tail',
 			position: [3, 1.65, 2],
 			cameraTarget: [3, 1.25, -1],
@@ -274,7 +269,6 @@ describe('scene document codec', () => {
 				{
 					id: 'fixture-view-forward-01',
 					progress: 0.25,
-					roomId: 'entrance',
 					cameraTarget: [1.2, 1.4, -2.1],
 					fov: 42
 				},
@@ -303,7 +297,7 @@ describe('scene document codec', () => {
 		expect(result.canonicalJson).toContain('"viewTracks": {\n        "forward": [');
 		expect(result.canonicalJson).toContain('"reverse": []');
 		expect(result.canonicalJson.indexOf('"progress"')).toBeLessThan(
-			result.canonicalJson.indexOf('"roomId": "entrance"', result.canonicalJson.indexOf('"progress"'))
+			result.canonicalJson.indexOf('"cameraTarget"', result.canonicalJson.indexOf('"progress"'))
 		);
 		const repeated = parseSceneDocumentJson(result.canonicalJson);
 		expect(repeated).toEqual(result);
@@ -361,7 +355,7 @@ describe('scene document codec', () => {
 		expect(parseSceneDocumentJson(result.canonicalJson)).toEqual(result);
 	});
 
-	it('keeps legacy no-envelope serialization byte-stable across repeated codec passes', () => {
+	it('keeps no-envelope serialization byte-stable across repeated codec passes', () => {
 		const first = serializeSceneDocument(cloneDocument());
 		const parsed = parseSceneDocumentJson(first);
 		expect(parsed.success).toBe(true);
@@ -421,7 +415,7 @@ describe('scene document codec', () => {
 		expectIssue(invalidDirection, 'unknown_property', '$.connections[0].viewTracks.framingEnvelope.sideways');
 	});
 
-	it('rejects invalid FOV, malformed tracks, IDs, progress, targets, and rooms', () => {
+	it('rejects invalid FOV, malformed tracks, IDs, progress and targets', () => {
 		const nodeFov = cloneDocument();
 		nodeFov.navigationNodes[0]!.fov = 9.99;
 		expectIssue(nodeFov, 'invalid_fov', '$.navigationNodes[0].fov');
@@ -498,45 +492,12 @@ describe('scene document codec', () => {
 		};
 		expectIssue(invalidTarget, 'non_finite_number');
 
-		const unknownRoom = cloneDocument();
-		unknownRoom.connections[0]!.viewTracks = {
-			forward: [
-				{
-					id: 'unknown-room',
-					progress: 0.5,
-					roomId: 'missing-room' as never,
-					cameraTarget: [1, 2, 3],
-					fov: 54
-				}
-			],
-			reverse: []
-		};
-		expect(validateSceneDocument(unknownRoom).success).toBe(true);
-		const projectResult = validateProject({
-			id: 'project:test',
-			name: 'Test',
-			// PR #115 (§7.2 A′): the isolated Chopin layout is gone. An empty wall-first
-			// layout keeps the project-level room check meaningful and the expectation
-			// below unchanged — 'missing-room' is in no layout.
-			layout: createEmptyWallFirstLayoutDocument(),
-			scene: unknownRoom
-		});
-		expect(projectResult.success).toBe(false);
-		if (!projectResult.success) {
-			expect(projectResult.issues).toContainEqual(expect.objectContaining({
-				path: '$.scene.connections[0].viewTracks.forward[0].roomId',
-				code: 'unknown_room'
-			}));
-		}
+		// PR #115 (WP3) — the project-level `unknown_room` case is deleted with its
+		// subject: a `roomId` is no longer readable at all, so there is no room
+		// reference left for a project-level gate to resolve. The `roomId`
+		// discipline itself is asserted by the `world-local roomId discipline`
+		// suite below, and the non-finite view target asserted above still runs.
 	});
-
-	// PR #115 (§7.2 A′ / §3.7): "rejects view targets coincident with exact forward
-	// and reverse edge positions" built its coincident target from
-	// `resolveSceneDocument(document)` under the isolated Chopin Room frames and
-	// validated it against `chopinProject.layout`. Both inputs are frozen-product
-	// data now, and re-deriving the target against a different layout would change
-	// what the case asserts, so it moved with the frozen project. The codec half of
-	// the same rule — a non-finite or unknown-room view target — stays above.
 
 	it('rejects stale legacy fields on the current shape', () => {
 		const current = cloneDocument() as unknown as {
@@ -560,7 +521,6 @@ describe('scene document codec', () => {
 		const source = current.navigationNodes[0]!;
 		current.navigationNodes.push({
 			id: 'free-only-node',
-			roomId: 'entrance',
 			label: 'Free only',
 			position: [1, 1.65, 1],
 			cameraTarget: [1, 1.25, -1],
@@ -665,7 +625,6 @@ describe('scene document codec', () => {
 				kind: 'primitive',
 				id: 'box-01',
 				name: 'Box',
-				roomId: 'paris',
 				primitive: 'box',
 				dimensions: { width: 1, height: 0.5, depth: 2 },
 				materialId: 'wood-walnut',
@@ -678,7 +637,6 @@ describe('scene document codec', () => {
 				kind: 'light',
 				id: 'spot-01',
 				name: 'Spot',
-				roomId: 'paris',
 				light: 'spot',
 				color: '#ffcc88',
 				intensity: 2,
@@ -703,7 +661,6 @@ describe('scene document codec', () => {
 			kind: 'primitive',
 			id: 'bad-box',
 			name: 'Bad',
-			roomId: 'paris',
 			primitive: 'box',
 			dimensions: { width: 0, height: 1, depth: 1 },
 			materialId: 'wood-walnut',
@@ -723,7 +680,6 @@ describe('scene document codec', () => {
 			kind: 'light',
 			id: 'bad-dir',
 			name: 'Dir',
-			roomId: 'paris',
 			light: 'directional',
 			color: '#ffffff',
 			intensity: 1,
@@ -764,7 +720,6 @@ describe('scene document codec', () => {
 			kind: 'primitive',
 			id: 'textured-box',
 			name: 'Textured Box',
-			roomId: 'paris',
 			primitive: 'box',
 			dimensions: { width: 1, height: 1, depth: 1 },
 			materialId: 'wood-walnut',
@@ -882,7 +837,6 @@ describe('scene document codec', () => {
 			kind: 'light',
 			id: 'material-light',
 			name: 'Material Light',
-			roomId: 'paris',
 			light: 'point',
 			color: '#ffffff',
 			intensity: 1,

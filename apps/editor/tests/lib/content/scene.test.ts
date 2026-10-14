@@ -1,19 +1,16 @@
 import { describe, expect, it } from 'vitest';
 //
-// PR #115 section 7.2 category A-prime - extraction note. This file guarded
-// `$lib/content/scene` against the checked-in legacy room-local Scene plus the
-// Chopin Room frames. Those frames (and `chopin-project.json`) were isolated into
-// the external frozen project (section 3.7), and the eight cases that resolved
-// room-qualified records cannot keep their expectations with an identity registry,
-// so they were removed rather than regenerated to fit. What remains asserts the
-// retained module validation and rejection boundaries. Resolution coverage returns
-// with the T2/T3 world-local Scene unit and its own fixtures.
-import { createEmptyLayoutRoomRegistry } from '@portfolio/project-model';
+// PR #115 section 7.2 category A-prime - extraction note. This file guards
+// `$lib/content/scene` against the checked-in fixture. The Room frames it used to
+// resolve against live in the external frozen project (section 3.7), and WP3 made
+// the fixture itself current-format, so resolution is identity and no frame source
+// is passed. What remains asserts the retained module validation and rejection
+// boundaries. Resolution coverage returns with the T2/T3 Scene unit.
 import {
 	assertNavigationGraphMatchesScene,
 	createNavigationGraph,
 	modelEntityToPlacement,
-	resolveSceneDocument as resolveSceneDocumentWithRooms,
+	resolveSceneDocument,
 	type SceneDocument,
 	type SceneModelEntity
 } from '$lib/content/scene';
@@ -25,12 +22,6 @@ import {
 	cloneFixtureDocument,
 	loadFixtureScene
 } from './__fixtures__/load-fixture-scene';
-
-// PR #115 (§3.7): the Chopin Room frames this legacy room-local fixture used to
-// resolve against were isolated into the external frozen project, so the frames are
-// now an explicit input; the identity registry leaves room-less records as authored.
-const resolveSceneDocument = (input: unknown) =>
-	resolveSceneDocumentWithRooms(input, createEmptyLayoutRoomRegistry());
 
 function fixtureDocument(): SceneDocument {
 	return cloneFixtureDocument('tour-minimal');

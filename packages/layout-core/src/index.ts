@@ -1,5 +1,4 @@
 export * from './layout-codec';
-export * from './layout-compat';
 export * from './layout-face-extraction';
 export * from './layout-geometry';
 export * from './layout-geometry-curve';
@@ -11,8 +10,6 @@ export * from './layout-geometry-validation';
 export * from './layout-junction-clearance';
 export * from './layout-junction-resolution';
 export * from './layout-junction-identity';
-export * from './layout-migration';
-export * from './layout-migration-math';
 export * from './layout-opening-set';
 export * from './layout-portals';
 export * from './layout-room-frame';

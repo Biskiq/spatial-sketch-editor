@@ -1,7 +1,24 @@
-import type { SceneDocument, SceneRoomResolver, Vec3 } from './scene';
+/**
+ * `project-layout-semantics.ts` — project-level Scene semantics.
+ *
+ * PR #115 (WP3) — current-format-only. There is exactly one supported document
+ * pair (wall-first Layout + world-local Scene), so there is no Room registry to
+ * build and no cross-document room-reference gate to run: the Scene reader
+ * already rejects any `roomId`, which is what made a registry necessary.
+ *
+ * What remains is the one project-level rule the codec cannot express on its
+ * own: an authored camera view keyframe must not sit on top of the eye position
+ * the connection's own path produces for it.
+ *
+ * `LayoutRoomRegistry` survives as the *type* the retained visitor renderer and
+ * the retained Camera authoring math take, and
+ * `createEmptyLayoutRoomRegistry()` is its current-format value: an empty
+ * registry whose room lookups throw. A record that still names a room is
+ * therefore a defect rather than a silent second transform.
+ */
 import { createCameraPositionPath } from '@portfolio/camera-core';
-import { layoutRoomLocalPoint, layoutRoomPoint } from '@portfolio/layout-core';
-import type { LayoutDocument, LayoutDocumentWallFirst, LayoutFloor, LayoutRoom } from '@portfolio/layout-core';
+import type { LayoutFloor, LayoutRoom } from '@portfolio/layout-core';
+import type { SceneDocument, Vec3 } from './scene';
 import type { ProjectIssue } from './project-types';
 
 const CAMERA_EPSILON = 1e-6;
@@ -15,83 +32,31 @@ export type LayoutRoomRegistryEntry = {
 	rotation: Vec3;
 };
 
-export type LayoutRoomRegistry = SceneRoomResolver & {
+export type LayoutRoomRegistry = {
+	has(roomId: string): boolean;
+	point(roomId: string, localPoint: Vec3): Vec3;
 	readonly entries: readonly LayoutRoomRegistryEntry[];
 	readonly byId: ReadonlyMap<string, LayoutRoomRegistryEntry>;
 	get(roomId: string): LayoutRoomRegistryEntry | undefined;
 	getRequired(roomId: string): LayoutRoomRegistryEntry;
 	localPoint(roomId: string, worldPoint: Vec3): Vec3;
-	/**
-	 * Frame-aware resolution (P23.0b): present `roomId` resolves through the
-	 * Room frame; absent `roomId` is the identity frame — the point is already
-	 * project/world space and must never be transformed again.
-	 */
+	/** Present `roomId` is unresolvable; absent `roomId` is the identity frame. */
 	pointInFrame(roomId: string | undefined, localPoint: Vec3): Vec3;
-	/** Inverse of {@link pointInFrame}. */
+	/** Inverse of {@link LayoutRoomRegistry.pointInFrame}. */
 	localPointInFrame(roomId: string | undefined, worldPoint: Vec3): Vec3;
 };
 
-
-export function createLayoutRoomRegistry(layout: LayoutDocument | LayoutDocumentWallFirst): LayoutRoomRegistry {
-	if (isWallFirstLayout(layout)) return createEmptyLayoutRoomRegistry();
-	const entries = layout.floors.flatMap((floor) =>
-		floor.rooms.map((room): LayoutRoomRegistryEntry => ({
-			id: room.id,
-			name: room.name,
-			floor,
-			room,
-			position: [room.frame.origin[0], floor.elevation, room.frame.origin[1]],
-			rotation: [0, room.frame.yaw, 0]
-		}))
-	);
-	const byId = new Map(entries.map((entry) => [entry.id, entry]));
-	const getRequired = (roomId: string): LayoutRoomRegistryEntry => {
-		const entry = byId.get(roomId);
-		if (!entry) throw new Error(`Unknown project layout room: ${roomId}`);
-		return entry;
-	};
-	return {
-		entries,
-		byId,
-		has: (roomId) => byId.has(roomId),
-		get: (roomId) => byId.get(roomId),
-		getRequired,        point: (roomId, localPoint) => {
-            const entry = getRequired(roomId);
-            return layoutRoomPoint(entry.room, entry.floor, localPoint);
-        },
-        localPoint: (roomId, worldPoint) => {
-            const entry = getRequired(roomId);
-            return layoutRoomLocalPoint(entry.room, entry.floor, worldPoint);
-        },
-        pointInFrame: (roomId, localPoint) =>
-            roomId === undefined
-                ? ([...localPoint] as Vec3)
-                : layoutRoomPoint(getRequired(roomId).room, getRequired(roomId).floor, localPoint),
-        localPointInFrame: (roomId, worldPoint) =>
-            roomId === undefined
-                ? ([...worldPoint] as Vec3)
-                : layoutRoomLocalPoint(getRequired(roomId).room, getRequired(roomId).floor, worldPoint)
-    };
-}
-
-function isWallFirstLayout(
-	layout: LayoutDocument | LayoutDocumentWallFirst
-): layout is LayoutDocumentWallFirst {
-	return 'formatVersion' in layout;
-}
-
 /**
- * Empty room registry for project/world-local documents (P23.0 F0 stage 4).
+ * The registry value every current-format document resolves against.
  *
- * A wall-first Layout carries no Room frames, and a world-local Scene carries
- * no `roomId` references (codec-enforced), so resolution never consults a
- * frame: `point`/`getRequired` throw when called, while the `undefined`
- * frame helpers stay identity — the same contract `resolveSceneDocument`
- * relies on for room-less records on the legacy path.
+ * A wall-first Layout carries no Room frames, and a world-local Scene carries no
+ * `roomId` (reader-enforced), so resolution never consults a frame: room-keyed
+ * lookups throw, while the `undefined`-frame helpers stay identity — points are
+ * already project/world space and must never be transformed again.
  */
 export function createEmptyLayoutRoomRegistry(): LayoutRoomRegistry {
 	const byId = new Map<string, LayoutRoomRegistryEntry>();
-	const getRequired = (roomId: string): LayoutRoomRegistryEntry => {
+	const unknownRoom = (roomId: string): never => {
 		throw new Error(`Unknown project layout room: ${roomId}`);
 	};
 	return {
@@ -99,83 +64,27 @@ export function createEmptyLayoutRoomRegistry(): LayoutRoomRegistry {
 		byId,
 		has: () => false,
 		get: () => undefined,
-		getRequired,
-		point: (roomId: string): Vec3 => {
-			throw new Error(`Unknown project layout room: ${roomId}`);
-		},
-		localPoint: (roomId: string): Vec3 => {
-			throw new Error(`Unknown project layout room: ${roomId}`);
-		},
+		getRequired: unknownRoom,
+		point: (roomId: string): Vec3 => unknownRoom(roomId),
+		localPoint: (roomId: string): Vec3 => unknownRoom(roomId),
 		pointInFrame: (roomId: string | undefined, localPoint: Vec3): Vec3 => {
-			if (roomId !== undefined) throw new Error(`Unknown project layout room: ${roomId}`);
+			if (roomId !== undefined) unknownRoom(roomId);
 			return [...localPoint] as Vec3;
 		},
 		localPointInFrame: (roomId: string | undefined, worldPoint: Vec3): Vec3 => {
-			if (roomId !== undefined) throw new Error(`Unknown project layout room: ${roomId}`);
+			if (roomId !== undefined) unknownRoom(roomId);
 			return [...worldPoint] as Vec3;
 		}
 	};
 }
 
-export function validateProjectSceneRooms(
-	scene: SceneDocument,
-	rooms: LayoutRoomRegistry
-): ProjectIssue[] {
+/**
+ * Reject a camera view keyframe whose authored target coincides with the eye
+ * position its own connection path produces at that progress. Runs on an
+ * already-validated current-format document; positions are project/world space.
+ */
+export function validateProjectSceneCameraPoses(scene: SceneDocument): ProjectIssue[] {
 	const issues: ProjectIssue[] = [];
-	const check = (roomId: string | undefined, path: string) => {
-		if (roomId !== undefined && !rooms.has(roomId)) {
-			issues.push({ path, code: 'unknown_room', message: `Unknown project layout room: ${roomId}` });
-		}
-	};
-
-	for (const [index, entity] of scene.entities.entries()) {
-		check(entity.roomId, `$.scene.entities[${index}].roomId`);
-	}
-	for (const [index, cluster] of (scene.clusters ?? []).entries()) {
-		check(cluster.roomId, `$.scene.clusters[${index}].roomId`);
-	}
-	for (const [index, node] of scene.navigationNodes.entries()) {
-		check(node.roomId, `$.scene.navigationNodes[${index}].roomId`);
-	}
-	for (const [connectionIndex, connection] of scene.connections.entries()) {
-		for (const direction of ['forward', 'reverse'] as const) {
-			const envelope = connection.viewTracks?.framingEnvelope?.[direction];
-			if (!envelope) continue;
-			const keys = ['enterStart', 'enterEnd', 'exitStart', 'exitEnd'] as const;
-			for (const [boundIndex, key] of keys.entries()) {
-				const value = envelope[key];
-				const previous = boundIndex === 0 ? undefined : envelope[keys[boundIndex - 1]!];
-				if (!Number.isFinite(value) || value < 0 || value > 1 || (previous !== undefined && value < previous)) {
-					issues.push({
-						path: `$.scene.connections[${connectionIndex}].viewTracks.framingEnvelope.${direction}.${key}`,
-						code: 'invalid_framing_envelope',
-						message: 'Framing envelope bounds must be finite, ordered, and between zero and one'
-					});
-					break;
-				}
-			}
-		}
-		for (const [anchorIndex, anchor] of connection.positionPath.anchors.entries()) {
-			check(anchor.roomId, `$.scene.connections[${connectionIndex}].positionPath.anchors[${anchorIndex}].roomId`);
-		}
-		for (const [waypointIndex, waypoint] of (connection.targetWaypoints ?? []).entries()) {
-			check(waypoint.roomId, `$.scene.connections[${connectionIndex}].targetWaypoints[${waypointIndex}].roomId`);
-		}
-		for (const direction of ['forward', 'reverse'] as const) {
-			for (const [keyframeIndex, keyframe] of (connection.viewTracks?.[direction] ?? []).entries()) {
-				check(keyframe.roomId, `$.scene.connections[${connectionIndex}].viewTracks.${direction}[${keyframeIndex}].roomId`);
-			}
-		}
-	}
-	if (issues.length === 0) validateProjectCameraPoses(scene, rooms, issues);
-	return issues;
-}
-
-function validateProjectCameraPoses(
-	scene: SceneDocument,
-	rooms: LayoutRoomRegistry,
-	issues: ProjectIssue[]
-): void {
 	const nodeById = new Map(scene.navigationNodes.map((node) => [node.id, node]));
 	for (const [connectionIndex, connection] of scene.connections.entries()) {
 		if (!connection.viewTracks) continue;
@@ -183,15 +92,9 @@ function validateProjectCameraPoses(
 		const toNode = nodeById.get(connection.toNodeId);
 		if (!fromNode || !toNode) continue;
 		const anchors: Vec3[] = [
-			fromNode.roomId
-				? rooms.point(fromNode.roomId, fromNode.position)
-				: ([...fromNode.position] as Vec3),
-			...connection.positionPath.anchors.map((anchor) =>
-				anchor.roomId ? rooms.point(anchor.roomId, anchor.position) : ([...anchor.position] as Vec3)
-			),
-			toNode.roomId
-				? rooms.point(toNode.roomId, toNode.position)
-				: ([...toNode.position] as Vec3)
+			[...fromNode.position] as Vec3,
+			...connection.positionPath.anchors.map((anchor) => [...anchor.position] as Vec3),
+			[...toNode.position] as Vec3
 		];
 		const positionPath = createCameraPositionPath([
 			connection.positionPath.kind === 'rounded-polyline'
@@ -203,10 +106,11 @@ function validateProjectCameraPoses(
 				const eye = positionPath.getPointAt(
 					direction === 'forward' ? keyframe.progress : 1 - keyframe.progress
 				);
-				const target = keyframe.roomId
-					? rooms.point(keyframe.roomId, keyframe.cameraTarget)
-					: keyframe.cameraTarget;
-				if (Math.hypot(eye.x - target[0], eye.y - target[1], eye.z - target[2]) <= CAMERA_EPSILON) {
+				const target = keyframe.cameraTarget;
+				if (
+					Math.hypot(eye.x - target[0], eye.y - target[1], eye.z - target[2]) <=
+					CAMERA_EPSILON
+				) {
 					issues.push({
 						path: `$.scene.connections[${connectionIndex}].viewTracks.${direction}[${keyframeIndex}].cameraTarget`,
 						code: 'camera_target_too_close',
@@ -216,4 +120,5 @@ function validateProjectCameraPoses(
 			}
 		}
 	}
+	return issues;
 }

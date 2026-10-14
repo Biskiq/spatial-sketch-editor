@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createEmptyProject } from '@portfolio/project-model';
+import { createEmptyWallFirstProject } from '@portfolio/project-model';
 import {
 	fetchPublicRelease,
 	fetchPublicReleaseBytes,
@@ -64,7 +64,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('loads an empty project cold with zero camera nodes and no storage', async () => {
-		const project = createEmptyProject({ id: 'project:public-empty', name: 'Empty Public' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-empty', name: 'Empty Public' });
 		const requested: string[] = [];
 		const fetchImpl = vi.fn(async (input: string, _init?: RequestInit) => {
 			requested.push(input);
@@ -96,7 +96,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('uses the released document name and verifies P20 bytes before install', async () => {
-		const project = createEmptyProject({ id: 'project:public-tex', name: 'Released Title' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-tex', name: 'Released Title' });
 		const uri = `/project-assets/${ASSET_ID}`;
 		const document = {
 			...project,
@@ -135,7 +135,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('surfaces asset failures as retryable without a partial bundle', async () => {
-		const project = createEmptyProject({ id: 'project:public-bad-asset', name: 'Bad Asset' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-bad-asset', name: 'Bad Asset' });
 		const uri = `/project-assets/${ASSET_ID}`;
 		const document = {
 			...project,
@@ -177,7 +177,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('keys scopes by public ID + version so releases never share bytes', async () => {
-		const project = createEmptyProject({ id: 'project:public-scope', name: 'Scoped' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-scope', name: 'Scoped' });
 		const uri = `/project-assets/${ASSET_ID}`;
 		const document = {
 			...project,
@@ -214,7 +214,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('propagates aborts so route switches never install stale releases', async () => {
-		const project = createEmptyProject({ id: 'project:public-abort', name: 'Abort' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-abort', name: 'Abort' });
 		const controller = new AbortController();
 		controller.abort();
 		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(project)));
@@ -256,46 +256,20 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('loads a connected two-node Sequence tour through the public loader (fixture 4)', async () => {
-		const project = createEmptyProject({ id: 'project:public-tour', name: 'Tour Public' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-tour', name: 'Tour Public' });
+		// PR #115 (WP3): the released document is a current-format project. The tour
+		// below used to be room-local (a legacy Room-owned Layout plus nodes that
+		// named a room); a current-format Scene carries no `roomId` and its values are
+		// project/world coordinates, so the tour is expressed directly. Every
+		// assertion below is unchanged — this fixture asserts the Sequence tour, not
+		// any Room frame resolution.
 		const document = {
 			...project,
-			layout: {
-				...project.layout,
-				floors: [
-					{
-						id: 'floor-ground',
-						name: 'Ground Floor',
-						elevation: 0,
-						height: 3,
-						rooms: [
-							{
-								id: 'room-a',
-								name: 'Room A',
-								frame: { origin: [0, 0] as [number, number], yaw: 0 },
-								boundary: {
-									closed: true as const,
-									segments: [
-										{ id: 'room-a:wall:0', kind: 'line' as const, start: [0, 0] as [number, number], end: [6, 0] as [number, number] },
-										{ id: 'room-a:wall:1', kind: 'line' as const, start: [6, 0] as [number, number], end: [6, 4] as [number, number] },
-										{ id: 'room-a:wall:2', kind: 'line' as const, start: [6, 4] as [number, number], end: [0, 4] as [number, number] },
-										{ id: 'room-a:wall:3', kind: 'line' as const, start: [0, 4] as [number, number], end: [0, 0] as [number, number] }
-									]
-								},
-								wallThickness: 0.16,
-								floorThickness: 0.1,
-								ceilingThickness: 0.1,
-								openings: []
-							}
-						]
-					}
-				]
-			},
 			scene: {
 				...project.scene,
 				navigationNodes: [
 					{
 						id: 'tour-a',
-						roomId: 'room-a',
 						label: 'Tour A',
 						position: [1, 1.65, 1],
 						cameraTarget: [1, 1.25, -2],
@@ -305,7 +279,6 @@ describe('P22.3 public release client', () => {
 					},
 					{
 						id: 'tour-b',
-						roomId: 'room-a',
 						label: 'Tour B',
 						position: [4, 1.65, 3],
 						cameraTarget: [4, 1.25, 0],
@@ -346,7 +319,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('keeps reduced-motion behavior on the public runtime state', async () => {
-		const project = createEmptyProject({ id: 'project:public-rm', name: 'Reduced Motion' });
+		const project = createEmptyWallFirstProject({ id: 'project:public-rm', name: 'Reduced Motion' });
 		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(project)));
 		const { bundle } = await loadPublicReleaseBundle({
 			publicationId: PUB_A,

@@ -38,16 +38,32 @@ async function sessionCookie(app, userId) {
 	return `${SESSION_COOKIE}=${encodeURIComponent(value)}`;
 }
 
+/**
+ * PR #115 (WP3): publication accepts the current document format only — a
+ * wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
+ * world-local Scene (`formatVersion: 1`). The canonical empty project, with the
+ * caller's textures staged in the Scene.
+ */
 function projectDocument(id, name, textures = []) {
 	return {
 		id,
 		name,
-		layout: { units: 'meters', floors: [], objects: [] },
+		layout: {
+			units: 'meters',
+			formatVersion: 5,
+			floor: { id: 'floor', name: 'Floor', elevation: 0 },
+			junctions: [],
+			walls: [],
+			rooms: [],
+			openings: [],
+			objects: [],
+			identity: { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} }
+		},
 		scene: {
+			formatVersion: 1,
 			textures,
 			materials: [],
 			entities: [],
-			clusters: [],
 			navigationNodes: [],
 			connections: []
 		}

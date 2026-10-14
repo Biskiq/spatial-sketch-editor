@@ -3,8 +3,7 @@ import {
 	resolveSceneDocument,
 	type SceneDocument,
 	type NavigationGraph,
-	type RuntimeScene,
-	type SceneRoomResolver
+	type RuntimeScene
 } from '$lib/content/scene';
 import { validateSceneDocument } from '@portfolio/project-model';
 import tourMinimalRaw from './tour-minimal.json';
@@ -22,24 +21,18 @@ const fixtures: Record<FixtureSceneName, unknown> = {
 };
 
 /**
- * The checked-in fixture is a **legacy room-local** Scene: its entities and
- * navigation records carry `roomId` and local coordinates. PR #115 (§3.7)
- * isolated the Chopin Room frames it used to resolve against into the external
- * frozen project, so resolution can no longer be a no-argument call here — the
- * Room resolver is now an explicit input owned by the caller.
+ * The checked-in fixture is a **current-format** (world-local) Scene: its
+ * entities and navigation records carry no `roomId` and their coordinates are
+ * project/world space, which is what the reader accepts (PR #115 WP3 — the
+ * legacy room-local fixture was migrated by dropping Room ownership and
+ * declaring `formatVersion: 1`; the Room frames it used to resolve against stay
+ * isolated in the external frozen project, §3.7).
  *
- * Callers with a room-local fixture pass the frames they mean; callers whose
- * document is world-local pass `createEmptyLayoutRoomRegistry()` from
- * `@portfolio/project-model`, whose frame helpers stay identity for room-less
- * records. The fixture bytes are unchanged either way; only the frame source
- * moved out of this repository.
+ * There is therefore no frame source to pass: resolution is identity.
  */
-export function loadFixtureScene(
-	rooms: SceneRoomResolver,
-	name: FixtureSceneName = 'tour-minimal'
-): LoadedFixtureScene {
+export function loadFixtureScene(name: FixtureSceneName = 'tour-minimal'): LoadedFixtureScene {
 	const document = loadFixtureSceneDocument(name);
-	const scene = resolveSceneDocument(document, rooms);
+	const scene = resolveSceneDocument(document);
 	const graph = createNavigationGraph(scene);
 	return { document, scene, graph };
 }

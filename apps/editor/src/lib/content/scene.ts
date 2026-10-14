@@ -3,7 +3,6 @@ import {
 	resolveSceneDocument as resolveCore,
 	type SceneModelEntity,
 	type SceneObjectPlacement,
-	type SceneRoomResolver,
 	type RuntimeScene
 } from '@portfolio/project-model';
 import { getAssetById } from './assets';
@@ -31,9 +30,13 @@ export function placementToModelEntity(
 	};
 }
 
-export function resolveSceneDocument(
-	input: unknown,
-	rooms: SceneRoomResolver
-): RuntimeScene {
-	return resolveCore(input, rooms, MUSEUM_SCENE_VALIDATION_OPTIONS);
+/**
+ * App-side resolution seam.
+ *
+ * PR #115 (WP3): the Scene reader is current-format-only and a current-format
+ * Scene carries no Room ownership, so there is no Room registry to pass — the
+ * values are already project/world coordinates.
+ */
+export function resolveSceneDocument(input: unknown): RuntimeScene {
+	return resolveCore(input, MUSEUM_SCENE_VALIDATION_OPTIONS);
 }

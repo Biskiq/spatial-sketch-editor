@@ -136,9 +136,9 @@ export function cloneEntity(entity: SceneEntity): SceneEntity {
 
 export function canonicalDocument(document: SceneDocument): SceneDocument {
 	return {
-		// P23.0b: the format discriminator round-trips so a world-local document
-		// never serializes into an ambiguous legacy-shaped payload.
-		...(document.formatVersion === undefined ? {} : { formatVersion: document.formatVersion }),
+		// The current-format discriminator is part of the canonical bytes: a
+		// serialized document always says which format it is.
+		formatVersion: document.formatVersion,
 		textures: document.textures.map((texture) => ({
 			id: texture.id,
 			name: texture.name,

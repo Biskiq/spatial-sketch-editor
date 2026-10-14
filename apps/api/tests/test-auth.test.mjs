@@ -26,12 +26,34 @@ function testAuthApp(pool = stubPool()) {
 	return createApp({ pool, sessionKey: SESSION_KEY, testAuth: { secret: TEST_SECRET }, logger: false });
 }
 
+/**
+ * PR #115 (WP3): the protected routes accept the current document format only —
+ * a wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
+ * world-local Scene (`formatVersion: 1`). The canonical empty project.
+ */
 function projectDocument(id, name) {
 	return {
 		id,
 		name,
-		layout: { units: 'meters', floors: [], objects: [] },
-		scene: { textures: [], materials: [], entities: [], clusters: [], navigationNodes: [], connections: [] }
+		layout: {
+			units: 'meters',
+			formatVersion: 5,
+			floor: { id: 'floor', name: 'Floor', elevation: 0 },
+			junctions: [],
+			walls: [],
+			rooms: [],
+			openings: [],
+			objects: [],
+			identity: { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} }
+		},
+		scene: {
+			formatVersion: 1,
+			textures: [],
+			materials: [],
+			entities: [],
+			navigationNodes: [],
+			connections: []
+		}
 	};
 }
 
