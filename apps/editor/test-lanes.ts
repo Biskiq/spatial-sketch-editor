@@ -55,6 +55,12 @@ export const ARCH_FILES: string[] = [
 	// references `legacy/`. The frozen project was externalized (§3.7), so this
 	// is now the standing repository-side proof that nothing reintroduced it.
 	'tests/lib/legacy-isolation.test.ts',
+	// PR #115 §9.4/§11: the execution-structure gate. It reads the track and gate registers, the
+	// phase slice register, the router's fresh-agent routes and the cycle's state/mechanism
+	// tables, and it is the only enforcement of the version/eligibility rules, the trusted-base
+	// prerequisite check and the exposure-window opening rule, so it belongs to an unconditional
+	// lane. Its subject is the repository's execution structure, exactly like the docs gate below.
+	'tests/docs/parallel-track-gates.test.ts',
 	// The lane-membership proof itself (WP3T §7.6 area 6): unique, existing,
 	// disjoint lanes whose union is the curated set, with a missing-entry,
 	// overlap, duplicate and dropped-file control. It polices the runner

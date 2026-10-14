@@ -89,21 +89,36 @@ shipped.
 | Scene codec internals | [`reference/components/scene-codec.md`](./reference/components/scene-codec.md) | `packages/project-model/src/scene-codec/` · `apps/editor/src/lib/content/scene.ts` |
 | Assets / catalogue | [`reference/components/assets.md`](./reference/components/assets.md) | `apps/editor/src/lib/content/assets.ts` |
 | Retained authoring semantics (`lib/authoring/`) | [`apps/editor/src/lib/authoring/README.md`](../apps/editor/src/lib/authoring/README.md) — the retention criteria and what is retained | `apps/editor/src/lib/authoring/{camera,layout,scene,a11y}/` |
-| Track planning evidence (T1–T3) and the T4 track | [`roadmap/t1-spatial-world/planning-evidence.md`](./roadmap/t1-spatial-world/planning-evidence.md) · [`roadmap/t2-composition/planning-evidence.md`](./roadmap/t2-composition/planning-evidence.md) · [`roadmap/t3-experience/planning-evidence.md`](./roadmap/t3-experience/planning-evidence.md) · [`roadmap/t4-release/README.md`](./roadmap/t4-release/README.md) — obligations carried forward from the retired P24/P25/P26 material; not implementation authorization | — |
+| Tracks (objectives, phase register, starting foundation, evidence) | [`roadmap/t1-spatial-world/README.md`](./roadmap/t1-spatial-world/README.md) · [`roadmap/t2-composition/README.md`](./roadmap/t2-composition/README.md) · [`roadmap/t3-experience/README.md`](./roadmap/t3-experience/README.md) · [`roadmap/t4-release/README.md`](./roadmap/t4-release/README.md) — each links its own runbook and planning evidence; no track authorizes implementation | — |
+| Gate register (exact interfaces and cutovers) | [`roadmap/README.md`](./roadmap/README.md) §Gate register — version, provider slice, exports, conformance and acceptance identity; F semantics stay in [`reference/composition-execution.md`](./reference/composition-execution.md) | — |
 | Current work / baton | [`operations/current.md`](./operations/current.md) | — |
 | Interrupted work / resume | [`operations/checkpoints/`](./operations/checkpoints/) — transient only; `work-checkpoint` skill owns procedure | — |
+| Event procedures (track completion · integration acceptance · replanning) | [`operations/README.md`](./operations/README.md) — entered only by its explicit events; ordinary slice work never loads it | — |
+| Operational runbook for a track | [`operations/t1-spatial-world/README.md`](./operations/t1-spatial-world/README.md) · [`operations/t2-composition/README.md`](./operations/t2-composition/README.md) · [`operations/t3-experience/README.md`](./operations/t3-experience/README.md) · [`operations/t4-release/README.md`](./operations/t4-release/README.md) — eligibility, start step, test families, routes and debt handling | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
-| Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — states and triggers only | — |
+| Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — stage, bounded exposure window and mechanism register; loaded only by its three hooks (phase planning, implementation start, slice closeout) | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
 | Prototype / QA reference — runnable product hypotheses and their specimens | [`../prototypes/README.md`](../prototypes/README.md) — durable executable artifacts; they test and challenge contracts but are **not** production, persisted-format or implementation authority | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |
 
 ```text
-IMPLEMENT: roadmap → phase → exact active plan
+START: docs/README.md
+ASSIGNED WORK: operations/current.md → exact phase README → exact slice plan
+UNASSIGNED PLANNING: roadmap/README.md → requested track README → phase plan (when registered)
+F-INTERFACE GAP: slice plan → F amendment / gate register row
+START IMPLEMENTATION: track runbook start step (eligibility + one-line cycle check)
+VERIFY: slice acceptance rows + the test manual (the gates test runs in the arch lane)
+SLICE CLOSE: slice-closeout (final-gate guard; cycle-window check only)
+PHASE CLOSE: explicit owner invocation → phase-closeout
+TRACK / PROGRAM / REPLAN: explicit event → exact operations/README.md section
 DESIGN: phase → exact routed context/design artifact
 RESEARCH: phase → exact routed research/synthesis artifact
-STOP: no additional reading currently justified
+STOP: no more reading unless a concrete contradiction or missing fact requires it
 ```
+
+The hierarchy is ownership, not mandatory preloading. Ordinary slice work never loads the program
+runbook, the phase-close procedure, the whole F contract, archived diagnosis or the architecture
+cycle.
 
 The normal route has no mandatory intermediate slice router: the **phase README**
 owns child status/order and links the exact artifact. Slice artifacts may live in
@@ -239,9 +254,10 @@ INCREMENT / VERIFY: optional current-work fields.
 RESUME: interrupted work only → operations/checkpoints/ via work-checkpoint skill.
 CHECKPOINT: continue same unit; handoff = start next unit.
 PLAN: phase README routes the exact plan path and owns child order/status; a slice workspace needs no README.
-PHASE: create README first; umbrella starts build program after discovery/design.
+PHASE: create README first; a phase registers in its track README and owns its own slice register.
 SHIP: use slice-closeout skill.
 PHASE CLOSE: explicit owner request only → phase-closeout skill.
+TRACK / PROGRAM: explicit event only → operations/README.md event section.
 ```
 
 ### Plan hygiene (on-demand — first plan mutation)
@@ -314,8 +330,10 @@ is fixed rather than declared: the gate is
 
 ```text
 UPDATE:
-- P-level state/order → roadmap/README.md
-- phase/child state/order → owning phase README
+- track/phase lifecycle + gate register + future work → roadmap/README.md
+- track objectives/phase register → owning track README
+- phase scope/slice register/FINAL PHASE GATE/PHASE CLOSE → owning phase README
+- track completion / integration acceptance / replanning → operations/README.md event sections
 - current work baton → operations/current.md
 - interrupted resumable work → operations/checkpoints/ via work-checkpoint skill
 - landed truth → reference/* (reconcile; supersede stale claims, never silently promote roadmap proposals)

@@ -7,6 +7,11 @@ description: Consult the signed-in ChatGPT browser reviewer on Museum Editor pro
 
 Never invoke unless the user explicitly requests it; no review would be useful, recommendation or passing mention counts.
 
+**Manual-only, minimal packet.** This is a product/UX/architecture consultation, never a workflow
+step: gate changes and architecture-cycle changes never invoke it, and no plan, phase or closeout
+procedure may route through it. The packet is the smallest self-contained brief — the question,
+the current behavior, the constraints, the exact evidence — not the repository.
+
 Use the in-app Browser and the **Museum Editor — Product, UX & Architecture** ChatGPT project.
 
 1. Read only the local docs/code needed for the question, following `docs/README.md` routing and repository truth precedence.

@@ -89,7 +89,8 @@ export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/reference/design-system/editor-shell-and-visual-system.md',
 	'docs/reference/design-system/spatial-instrument-grammar.md',
 	'docs/reference/north-star.md',
-	// WP5 adds `docs/operations/README.md` (the event sections) here.
+	// PR #115's WP5 added `docs/operations/README.md` (the event procedures) here.
+	'docs/operations/README.md',
 	'docs/operations/current.md',
 	'docs/operations/tech-debt/README.md',
 	'docs/roadmap/README.md',

@@ -7,7 +7,7 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 
 ## Repo facts
 
-- npm workspaces; apps are `@portfolio/editor` and read-only `@portfolio/museum`.
+- npm workspaces; apps are `@portfolio/editor` and `@biskiq/api`; shared packages are `@portfolio/layout-core`, `@portfolio/project-model` and `@portfolio/camera-core`. PR #115 removed `apps/museum`, superseded by the separately hosted frozen project.
 - `prototypes/` holds durable runnable prototypes and their QA/reference evidence
   ([`prototypes/README.md`](./prototypes/README.md)). They are **not** npm
   workspaces, not production applications and not authority — a prototype shortcut
@@ -33,8 +33,14 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum sufficient context. A routed file is not automatically a full-file read: read the smallest relevant section / authority box / route block first, then stop unless the task, missing information, or contradictory evidence requires expanding within the file. Routes are starting points, not hard boundaries: do not preload deeper or adjacent docs speculatively; expand into docs/code/tests/Git only when the task, missing information, or contradictory evidence requires it. Never preload the tree; archive is opt-in historical evidence, not current truth.
 10. **Authority by concern** — no single total ordering; resolve a doc-vs-doc
     conflict through the owner of that concern. `operations/current.md` owns the
-    **current work/baton/status**; an **active plan** owns its approved slice
-    scope; `roadmap/` owns future work; a **landed `reference/*` contract** owns
+    **current work/baton**, never a durable status; `roadmap/README.md` owns
+    **track and phase lifecycle, the gate register and future work**; a **track
+    README** owns its objectives and phase register; a **phase README** owns its
+    own slice register, child status, `FINAL PHASE GATE` and `PHASE CLOSE`; a
+    **track runbook** (`operations/<track>/README.md`) owns operational
+    procedure; the **event sections of `operations/README.md`** own track
+    completion, product integration acceptance and bounded replanning; an
+    **active plan** owns its approved slice scope; a **landed `reference/*` contract** owns
     durable architecture and current product truth (`reference/architecture.md`,
     `reference/north-star.md`, component contracts); `archive` owns history.
     The **ratified decision record**
@@ -78,6 +84,17 @@ STOP: no additional reading currently justified (not "investigation forbidden")
 NO: speculative whole-repo / whole-doc-tree preload
 NO: archive unless routed or evidence requires it
 NO: commit/push unless allowed
+
+ON designated work:
+operations/current.md → exact phase README → exact slice plan;
+start through the track runbook's start step (eligibility + one-line cycle check)
+
+ON verification:
+the slice plan's declared tier and the failure class, per apps/editor/tests/README.md
+(a PR #115 checkpoint keeps the complete plan contract; never narrower)
+
+ON explicit event (track completion, product integration acceptance, replanning):
+the matching operations/README.md event section
 
 ON slice acceptance complete:
 use slice-closeout skill
