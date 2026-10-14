@@ -1,26 +1,46 @@
 # Spatial Sketch Editor
 
-Layout-first editor for indoor 3D. Draw a floor plan. Place openings and objects. Author a camera tour. Export one file. A separate visitor runtime renders it.
+Layout-first editor for indoor 3D — **currently mid-foundation-reset.**
 
-Local-first: the editor works offline in your browser. Optional authenticated
-cloud project save/load runs through the Fastify API and Postgres when configured;
-portable export/import remains available as well.
+PR #115 removed the previous authoring shell (Plan/3D editing, placement, materials,
+Camera tour authoring, preview, publish, import/export) so the spatial foundation
+could be rebuilt on one camera authority, one architectural compiler, separate
+Layout/Scene authorities and a ratified set of cross-domain contracts. What runs
+today is the durable remainder: sign-in, the project hub, cloud persistence and the
+cold public visitor runtime. Authoring capability returns through the T1–T4 tracks;
+it is not merely disabled behind a flag.
 
-## Example
+This is a deliberate, recorded capability loss, not a regression: see
+[`docs/roadmap/parallel-track-cutover/implementation-plan.md`](docs/roadmap/parallel-track-cutover/implementation-plan.md)
+§4.4 and the capability-loss list it records.
 
-**Chopin museum** is the first project built with it. Guided tour, free roam, reduced motion. Paris Salon included.
+## What runs today
 
-Any indoor space works. Gallery, office, store, venue.
+| Route | Behavior |
+| --- | --- |
+| `/` | Public entry — guest start or Google sign-in |
+| `/projects` | Owned project hub (cloud project list) |
+| `/editor` | Redirect to `/project/:id/spatial` |
+| `/project/:id/spatial` | Static notice: authoring is unavailable during the foundation reset. No project load, no session |
+| `/p/:publicationId` | Cold public visitor runtime (strict reader). There are currently no published releases |
 
-## Features
+Removed routes: `/project/:id/preview`, `/project/:id/publish` (404), and the
+`/museum` + `/museum/editor` routes. The frozen Chopin museum project that served
+them is an independent, separately versioned project outside this repository; this
+product does not serve it and does not import it.
 
-- **Plan editor:** draw rooms, bend walls into curves, snap to grid
-- **Openings:** doors, windows, round/pointed profiles
-- **Objects:** boxes, cylinders, spheres, GLB assets
-- **Camera tours:** place nodes, connect paths, smooth rides
-- **3D view:** live preview of your compiled plan
-- **Undo / redo:** shared across the editor
-- **Portable project:** export JSON, import anywhere
+The API (`apps/api`) is functional and current-format only: Save/Load, assets and
+publication work against the wall-first Layout (`formatVersion: 5`) and world-local
+Scene (`formatVersion: 1`) documents. There is no legacy-format reader, detector or
+migration path.
+
+## Start here
+
+- [`AGENTS.md`](AGENTS.md) — bootstrap and hard rules for agents.
+- [`docs/README.md`](docs/README.md) — the documentation router; read the smallest
+  routed context that can answer the task.
+- [`apps/editor/tests/README.md`](apps/editor/tests/README.md) — the test manual:
+  lanes, doctrine and what a given change requires.
 
 ## Run locally
 
@@ -91,21 +111,12 @@ sign-in stay disabled until `PUBLIC_API_ORIGIN` and the backend are configured.
 
 ```bash
 npm install
-```
-
-- `/` or `/editor`: main editor. 2D CAD plan -> 3D render
-- `/museum/editor`: legacy editor
-
-The read-only visitor is a separate app:
-
-```bash
-npm run dev:museum
-```
-
-- `/museum`: frozen Chopin museum visitor
-
-```bash
-npm run build   # production build
+npm run build   # production build (editor)
 npm run check   # svelte + TS checks
-npm test        # tests
+npm test        # the complete editor suite (all lanes)
 ```
+
+The API has its own gates: `npm run check:api` and `npm run test:api` (build plus
+every API contract; publication and the auth seam need a reachable Postgres).
+Kernel packages have `check:layout-core`, `check:project-model` and
+`check:camera-core`.

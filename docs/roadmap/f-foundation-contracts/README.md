@@ -7,18 +7,17 @@ interface ownership, required/optional extensions) in the target contract
 **no implementation is authorized.**
 
 **Goal:** settle the bounded cross-domain contract shapes for the ratified
-direction **before P24/P25/P26 or later capabilities are re-planned**. F is
+direction, so every later capability is re-planned against them. F is
 contract-writing against the destination — not another architecture research
 cycle, and not a requirement to implement the complete composition kernel.
-Independent operational work continues by owner decision;
-consumers must share these formats from their first new persisted or
-cross-domain implementation.
+Independent operational work continues by owner decision; consumers must share
+these formats from their first new persisted or cross-domain implementation.
 
-**Current handoff (#114, 2026-10-13):** accepted unified design →
-[#115 parallel-track planning cutover](../README.md#next-task-handoff--115) →
-foundation-gated production implementation. #115 plans against these ratified
-targets and preserves exact-interface amendments with first consumers. Neither
-design acceptance nor planning changes F implementation authorization.
+**Current state (2026-10-13):** #115's WP4 wrote the T1–T3 planning evidence and
+the T4 track against these ratified targets ([track register](../README.md)).
+Each track's capability work re-derives against F and preserves exact-interface
+amendments with first consumers. Neither design acceptance nor planning changes
+F implementation authorization.
 
 **Authority:** [`../../reference/decisions/northstar-ratification-2026-09-27.md`](../../reference/decisions/northstar-ratification-2026-09-27.md)
 §6 and §10; destination statements live in
@@ -59,8 +58,8 @@ this table remains the phase registration summary.
 Exact interfaces (reference and resolution result, unit header, project
 envelope, authoring intent with expected revision, release manifest) are
 drafted by their first consumer, then ratified as explicit amendments to the
-contract and implemented in shared code; no track mints its own. Byte encodings
-and containers stay deferred.
+contract, implemented in shared code, and registered with the implementation
+gates; no track mints its own. Byte encodings and containers stay deferred.
 
 ## Explicitly open — not decided by this registration
 
@@ -72,8 +71,8 @@ invalidation/cache design, compilation placement, and history implementation
 ratified shapes by F and focused capability planning, never by inventing a
 parallel format.
 
-**Do not write schemas, child slices, or implementation plans from this
-registration.** The contract is owner-ratified with the amendments above;
-implementation and child planning stay separately authorized, and exact
-interfaces land only through F amendments in shared code. Capability
-re-planning re-derives against it; no implementation is authorized.
+The contract is owner-ratified with the amendments above. Implementation stays
+separately authorized: no schema, phase or slice is written from this
+registration, and exact interfaces land only through F amendments in shared
+code. The T1–T3 planning evidence re-derives against it; no implementation is
+authorized by it.

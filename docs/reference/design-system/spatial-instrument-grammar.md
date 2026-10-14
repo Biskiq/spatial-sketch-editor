@@ -18,7 +18,7 @@ It does not declare implementation or a production cutover.
 
 | Authority | Decides |
 | --- | --- |
-| [Product/domain contracts](../../README.md), including [Camera](../components/camera-tour.md), [placement](../components/placement.md), [architecture](../architecture.md) and [F](../composition-execution.md) | What exists, identity, legal operations/constraints, ownership, validity, evaluation, source acceptance and session lifecycle |
+| [Product/domain contracts](../../README.md), including [Camera](../components/camera-tour.md), [Scene transform semantics](../components/scene-content.md), [architecture](../architecture.md) and [F](../composition-execution.md) | What exists, identity, legal operations/constraints, ownership, validity, evaluation, source acceptance and session lifecycle |
 | [Shell and visual system](./editor-shell-and-visual-system.md) | Persistent/contextual homes, lower-surface span, disclosure, material, semantic color/state roles, type/control roles, responsive composition and return/Preview behavior |
 | **This reference** | How domain facts, direct spatial operations and their helpers communicate on Stage: truthful geometry, affordances, emphasis, precision/readout placement, layering, density, hit legibility and correspondence between readings |
 | Feature/domain design | Which supported facts/operations matter for the task, the appropriate domain-specific instrument, and its conformant composition/hit policy |
@@ -313,9 +313,11 @@ techniques are optional within the semantic species and distinctions above:
 - [Conservatory](../../../prototypes/experience-ux-alternative/README.md): accepted
   visual Camera authoring, direct Stage paths, contextual visibility and integrated
   Guide playback, promoted into PLATE; its mock evaluator is not a contract.
-- [Landed visual specifications](./design-specs.md), [Camera graphics/input contract](../components/camera-tour.md)
-  and [placement adapters](../components/placement.md): existing exact geometry,
-  selection, hit arbitration and cancellation policies in their maintained contexts.
+- Landed visual specifications (removed with the editor shell in #115), the
+  [Camera graphics/input contract](../components/camera-tour.md) and the
+  [Scene transform adapters](../components/scene-content.md): existing exact
+  geometry, selection, hit arbitration and cancellation policies in their
+  maintained contexts.
 
 No universal orbit, gizmo, hit priority, all-values rig or new domain constraint is
 introduced. Exact instrument geometry and domain-specific alternatives remain

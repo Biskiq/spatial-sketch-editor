@@ -22,7 +22,7 @@ World-only. They protect Camera, history, selection and World continuity.
 
 C1–C8 and C9.1–C9.9 remain recorded functionality acceptance: MP1–MP4 were accepted
 by the owner for functionality (MP3/MP4 2026-10-11), and #113 is closed.
-[C9 recovery](../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md)
+[C9 recovery](./plans/experience-v2-prototype/authoring-completeness-plan.md)
 and [C9 evidence](./qa/EXPERIENCE-C9-EVIDENCE.md) preserve that boundary.
 No production interface, codec, Camera evaluator, snapshot history or renderer
 strategy is promoted from this static prototype.
@@ -75,5 +75,5 @@ evidence, and old design boards stay in their existing directories.
 
 **Baton:** #114 accepted unified design → #115 parallel-track planning cutover →
 foundation-gated production implementation. No new V2 or Paper prototype work.
-The old phase-local [forward pointer](../../docs/roadmap/p26-spatial-depth/Final-Design-Prototype/README.md)
-continues to route here; there is no second executable.
+The old phase-local forward pointer that used to route here was deleted with the
+P26 tree in #115; this README is the sole entry, and there is no second executable.

@@ -1,6 +1,6 @@
 # Architecture — ownership and boundaries
 
-**Read when:** ownership questions, editor vs relic boundary, import/export.
+**Read when:** ownership questions, product vs frozen-project boundary, or which code owns a concern.
 For a specific surface, go straight to the matching contract doc (table below).
 
 **Authority:** the [ratified decision record](./decisions/northstar-ratification-2026-09-27.md),
@@ -16,42 +16,58 @@ The owner-directed World | Experience reconciliation of 2026-09-29 refines
 product lenses and Experience composition without rewriting the historical
 ratification record.
 
-## Two isolated lanes (current)
+## Product and frozen lanes (current)
 
 ```text
-apps/editor (greenfield)     apps/museum (frozen Chopin visitor)
-  New Project → Plan → 3D        checked-in chopin-project.json + runtime
-  → portable export/import       /museum/editor = frozen legacy editor relic
+apps/editor (product)            frozen Chopin project (separate)
+  sign-in → project hub              independently hosted + versioned
+  → /project/:id/spatial notice      /museum + /museum/editor
+  → cloud Save/Load                  outside this repository entirely
+  → cold public release /p/:id
 ```
 
-- No Chopin project/editor state/history migration into the editor.
-- No editor export promotion into `/museum`.
-- The editor ships in production builds (no build-flag gating).
-- Shared visitor-safe geometry/render modules may serve both lanes; session,
-  selection, hierarchy, gizmo, import, and asset-store code stay editor-only.
-  Runtime-safe domain evaluators (e.g. Layout representation) are shared with
-  visitor runtimes by design — editor-only means session/authoring machinery,
-  not forked domain mathematics.
+- **PR #115 removed the authoring shell.** The product today has no Plan/3D
+  workspace, no placement or transform editing, no Camera authoring, no preview
+  takeover, no publish surface and no import/export. The surviving product
+  capability is sign-in, the project hub, cloud Save/Load, the API and the cold
+  public visitor runtime. Capability returns through the T1–T4 tracks; the loss is
+  recorded in the #115 plan's capability-loss list, not hidden behind a flag.
+- **Frozen, separate projects are outside product scope.** No product file
+  imports, aliases or references them; no Chopin project/editor state or history
+  migrates into the product, and no product export is promoted into the frozen
+  copy. The Chopin museum project was externalized by PR #115 and is independently
+  hosted and versioned.
+- The product has no build-flag gating — the reduced surface is simply what ships.
+- Shared visitor-safe geometry/render modules serve the product's visitor runtime
+  and the frozen project; session, selection, hierarchy, gizmo, authoring, import
+  and asset-store code stay editor-only. Runtime-safe domain evaluators (e.g. Layout
+  representation) are shared with visitor runtimes by design — editor-only means
+  session/authoring machinery, not forked domain mathematics.
 
 ## Product routes (current)
 
 | Route | Role |
 |---|---|
-| `/` | Public entry (start creating guest project, or continue with Google) |
+| `/` | Public entry (guest start, or continue with Google) |
+| `/projects` | Project hub (owned cloud project list for authenticated creators) |
 | `/editor` | Compatibility redirect → `/project/:id/spatial` |
-| `/projects` | Project Hub (owned cloud project list for authenticated creators) |
-| `/project/:id/spatial` | Spatial workspace (Scene · Camera × Plan · 3D) |
-| `/project/:id/publish` | Publish surface (owner-only status, publish/update/unpublish) |
-| `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth) |
-| `/project/:id/preview` | Visitor Preview takeover (transient snapshot, no save required) |
-| `/museum` | Frozen Chopin visitor relic (checked-in `chopin-project.json`) |
-| `/museum/editor` | Frozen legacy editor relic (Scene · Camera, no Layout) |
-| `/dev/materials` · `/dev/assets` · `/dev/perf` | Development previews / G3 harness |
+| `/project/:id/spatial` | Static notice: authoring is unavailable during the foundation reset. No project load, no session |
+| `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth). Strict current-format reader; there are currently no releases (owner statement) |
+| `/dev/materials` · `/dev/assets` | Development previews retained inside the reduced foundation |
 
-The editor boots into a fresh empty project; no Chopin/legacy state is loaded
-or migrated. Guest/local work lives in the browser session with portable
-export/import. Authenticated cloud work adds owned Save/Load with a project
-list and versioned saves.
+Removed by #115: the editor authoring workspace (`/project/:id/spatial` now
+serves the notice above), `/project/:id/publish`, `/project/:id/preview`, the
+`/dev/perf` benchmark harness, and — as **product** routes — `/museum` and
+`/museum/editor`, which belong to the independently deployed frozen project.
+
+The product boots into a fresh empty project; no Chopin/legacy state is loaded or
+migrated. Guest/local work lives in the browser session. Authenticated cloud work
+adds owned Save/Load with a project list and versioned saves. Save/Load, assets
+and publication accept the **current document format only** — wall-first Layout
+(`formatVersion: 5`) with a world-local Scene (`formatVersion: 1`); there is no
+legacy reader, detector, classifier or migration path, and malformed input fails
+ordinary current-format validation (see
+[`components/persistence.md`](./components/persistence.md)).
 
 ## Platform boundary (current)
 
@@ -241,14 +257,14 @@ interior-only.
 | Camera nodes, connections, paths, view tracks | `project.scene` (until the Camera codec cutover) |
 | Derived geometry | pure `compileLayoutGeometry()` (`@portfolio/layout-core`) |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
-| Plan presentation | `CompiledLayoutGeometry` → `PlanRenderModel` → `PlanSvg.svelte` |
+| Plan presentation | **Removed by #115** with the editor shell (`PlanRenderModel` / `PlanSvg.svelte` are gone; recoverable at the baseline SHA). The Plan grammar returns as a T1 capability built against the compiled geometry above |
 | 3D wall meshes | compiled Junction contract (`CompiledJunction` / `resolveJunctionGeometry`) → Junction-aware `wall-mesh-builder` → `wall-geometry-adapter` |
 | Camera route/motion | `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) — replaceable mechanism under the one Camera authority |
 | Publication status, active version, revision | `publications` row (`apps/api`) |
 | Published snapshots + delivery manifests | immutable `releases` rows (`apps/api`); bytes resolved per-release at visitor boot |
 | Public visitor chrome | `/p/:publicationId` route (editor deployment, visitor-safe closure) |
-| Project-local GLB bytes | portable package manifest + editor asset store |
-| Selection, history, gizmo proxies, UI | editor session only |
+| Project-local GLB bytes | the API's project-scoped asset registry (metadata in Postgres, bytes in R2), reached only through `apps/api` |
+| Selection, history, gizmo proxies, UI | **Removed by #115** with the editor shell; each returns as a T-track capability |
 
 Generated geometry, Three objects, renderer handles, selection, and history
 are never serialized as authored truth; immutable release derivatives are the
@@ -274,12 +290,12 @@ drawn across an enclosed Room divides it, producing the derived Room topology
 through the canonical compiler and its lineage. Rooms stay derived, and no Room
 geometry becomes editable. *Current encoding until an explicit Layout cutover:*
 the wall-first document stores an authored `role: 'boundary' | 'partition'`, and
-only `boundary` Walls take part in face extraction (`LayoutWallRole`); the
-editor chooses a chain's role when drawing (`wallChainRoleForTool`) and plans
-role changes. The cutover retires creator-chosen roles as creator-facing
-operations, and Layout must decide two things then: migrating existing
-`partition` Walls, and whether a closed ring may ever be intentionally
-non-enclosing. Division keeps the landed Room reconciliation (P23.8 lineage:
+only `boundary` Walls take part in face extraction (`LayoutWallRole`). The editor
+that drew a chain and planned role changes was removed by #115, so nothing in
+the product writes the authored role today; the cutover retires creator-chosen
+roles as creator-facing operations, and Layout must decide two things then:
+migrating existing `partition` Walls, and whether a closed ring may ever be
+intentionally non-enclosing. Division keeps the landed Room reconciliation (P23.8 lineage:
 split survivor by evidence order, one Room born). The creator-facing expression is
 [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 

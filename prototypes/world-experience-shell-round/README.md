@@ -72,7 +72,7 @@ direction is accepted; the editor still runs the landed PLATE chrome until an ex
   while the original six P26 input rasters are recoverable through the
   [World acceptance preservation anchor](../spatial-authoring/qa/ACCEPTANCE.md#preservation).
   Unique material evidence remains under
-  [`../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/`](../../docs/roadmap/p26-spatial-depth/design/visual-system-refinement/qa/);
+  [`../spatial-authoring/design/visual-system-refinement/qa`](../spatial-authoring/design/visual-system-refinement/qa);
   [`../spatial-authoring/screens/`](../spatial-authoring/screens/) now contains current executable specimens.
 
 ## Deferred to repository-aware reconciliation
@@ -99,7 +99,7 @@ Implementation-dependent questions this design round deliberately leaves open:
 
 #112 World adoption is accepted: [current executable](../spatial-authoring/README.md),
 [QA acceptance](../spatial-authoring/qa/ACCEPTANCE.md) and
-[closed plan](../../docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md).
+[closed plan](../spatial-authoring/plans/world-authoring-prototype.md).
 #113 is closed with functionality acceptance; V2 Experience and World ↔ Experience
 continuity stay regression evidence. The current baton is #114 accepted unified
 design → #115 parallel-track planning → foundation-gated production implementation.

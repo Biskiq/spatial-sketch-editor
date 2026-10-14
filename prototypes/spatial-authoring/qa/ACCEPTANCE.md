@@ -5,7 +5,7 @@
 **Accepted prototype adoption:** 2026-10-02, #112 scope, at the existing spatial-authoring home.
 S0–S7 were already implemented in stages; S8 completed independent shell/spatial proof and fixed
 the remaining lifecycle defects. S9 replaces predecessor explanations/evidence and routes #113.
-[Closed plan/recovery](../../../docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md)
+[Closed plan/recovery](../plans/world-authoring-prototype.md)
 · [current executable](../README.md) · [mechanics](../IMPLEMENTER-REFERENCE.md).
 This is executable prototype acceptance, with no production cutover or F/T1 authorization.
 

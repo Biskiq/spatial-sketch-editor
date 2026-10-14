@@ -17,11 +17,11 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+	NON_DOCUMENTATION_PREFIXES,
 	PROTECTED_PROTOTYPE_SENTINEL,
 	REQUIRED_WALKED_DOCUMENTS,
 	REPO_ROOT,
 	anchorsOf,
-	archivalExclusionProblems,
 	extractReferences,
 	formatFindings,
 	ignoredPaths,
@@ -55,12 +55,12 @@ describe('documentation references', () => {
 		expect(walkedLocalSkills(walked)).toBe(true);
 	});
 
-	it('keeps the temporary archival exclusions off required documents', () => {
-		// `ARCHIVAL_RECORD_PREFIXES` is a WP2 stand-in until WP4 relocates the
-		// closed records under `docs/archive/` (implementation-plan.md §8.4–§8.5).
-		// It may exempt historical records; it may never exempt a document the walk
-		// is required to reach, and it may not name a path that no longer exists.
-		expect(archivalExclusionProblems()).toEqual([]);
+	it('carries no exclusion beyond the permanent archive and audit prefixes', () => {
+		// WP4 removed the temporary `ARCHIVAL_RECORD_PREFIXES` list together with
+		// the closed records it covered, so the walk's whole scope is now the
+		// permanent pair below plus git tracking. A new exclusion has to be added
+		// here deliberately, or the full-tree assertion above grows a blind spot.
+		expect([...NON_DOCUMENTATION_PREFIXES]).toEqual(['docs/archive/', 'Repo-Audit/']);
 	});
 
 	it('fails when the walk silently returns nothing', () => {

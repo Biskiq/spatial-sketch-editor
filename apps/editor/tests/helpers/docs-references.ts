@@ -22,7 +22,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,6 +34,12 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..
  * dependencies and editor/client state. Ignore rules are not read from
  * `.gitignore` on purpose — this walk must behave identically in a working tree
  * and in a fresh clone, and must not depend on git being installed.
+ *
+ * PR #115's WP4 removed the temporary `ARCHIVAL_RECORD_PREFIXES` list this walk
+ * used to carry while the closed P23/P23B/P24/P25/P26 records awaited their
+ * relocation: the records are now archived under `docs/archive/` (covered by
+ * `NON_DOCUMENTATION_PREFIXES`) or deleted. There are no exclusions beyond the
+ * two prefixes below.
  */
 const SKIP_DIRECTORIES = new Set([
 	'.git',
@@ -68,50 +74,6 @@ const SKIP_DIRECTORIES = new Set([
  * rather than implied by where it happens to pass.
  */
 export const NON_DOCUMENTATION_PREFIXES = ['docs/archive/', 'Repo-Audit/'] as const;
-
-/**
- * Records of past work, held to the same rule as `docs/archive/`: their paths
- * are the record, not a route.
- *
- * A closed P23/P23B/P24/P26 phase record or an operating-cycle phase record
- * states what a reader could open **at the time it was written**. PR #115
- * removed the editor shell those records describe, so their relative paths no
- * longer resolve — and rewriting them would falsify the record, which is
- * exactly the reasoning `NON_DOCUMENTATION_PREFIXES` already applies to
- * `docs/archive/`.
- *
- * The plan schedules every one of these for deletion or a move under
- * `docs/archive/` (`implementation-plan.md` §8.4–§8.5), at which point this
- * list collapses into the `docs/archive/` prefix above. It is a stand-in for a
- * relocation WP4 performs, not a permanent widening of the gate: live routers
- * and contracts — `docs/README.md`, `AGENTS.md`, `reference/*` (except the
- * rows named below), `operations/*` and `.agents/*` — stay fully checked, as do
- * the protected prototypes and the immutable decision records, whose dead
- * references were repaired or declared in place under §8.2/§8.3 instead.
- */
-export const ARCHIVAL_RECORD_PREFIXES = [
-	// Closed P23/P23B/P24/P26 phase records: archived or deleted by §8.4/§8.5.
-	'docs/roadmap/p23-layout-depth/',
-	'docs/roadmap/p23b-geometry-performance/',
-	'docs/roadmap/p24-scene-staging/',
-	// P26 is deliberately NOT listed as a whole folder: its `design/**` files move
-	// into `prototypes/` (§8.3), which stays inside the walk, so a blanket prefix
-	// would silently exempt protected evidence. Only the archive/deleted parts are
-	// named here.
-	'docs/roadmap/p26-spatial-depth/research/',
-	'docs/roadmap/p26-spatial-depth/2026-09-24-P26-continuous-spatial-authoring-umbrella.md',
-	'docs/roadmap/architecture-operating-cycle/',
-	'docs/roadmap/f-foundation-contracts/design/proposals/',
-	// Superseded syntheses deleted after their promotion check (§8.4).
-	'docs/World-Experience-Architecture-Synthesis.md',
-	'docs/World-Experience-Model.md',
-	'docs/North-star-final-decision-synthesis.md',
-	'docs/North-star-final-synthesis-peer-review.md',
-	// Reference contracts whose landed subject is removed (§8.2 DELETE).
-	'docs/reference/design-system/design-specs.md',
-	'docs/reference/design-system/design-plan-p21.md',
-	'docs/reference/components/theme.md'
-] as const;
 
 /**
  * The files the walk must still find, so a silently narrowed walk fails here
@@ -156,33 +118,6 @@ export function missingWalkedDocuments(
 /** True when the walk reached at least one tracked `.agents/` skill document. */
 export function walkedLocalSkills(walked: readonly string[]): boolean {
 	return walked.some((file) => file.includes('/.agents/'));
-}
-
-/**
- * Consistency control for `ARCHIVAL_RECORD_PREFIXES`, which is a temporary WP2
- * measure until WP4 performs the §8.4/§8.5 relocation.
- *
- * Two ways that list can quietly cost the gate coverage, both reported here
- * rather than trusted to review:
- *
- * - **a prefix covering a document the gate must walk** — an exemption that
- *   swallows the router, a design contract or protected prototype evidence is a
- *   coverage hole, not a historical record;
- * - **a prefix naming a path that no longer exists** — a stale entry silently
- *   widens the blind spot as the tree moves.
- */
-export function archivalExclusionProblems(root: string = REPO_ROOT): string[] {
-	const required = [...REQUIRED_WALKED_DOCUMENTS, PROTECTED_PROTOTYPE_SENTINEL];
-	const problems: string[] = [];
-	for (const prefix of ARCHIVAL_RECORD_PREFIXES) {
-		if (required.some((document) => document.startsWith(prefix))) {
-			problems.push(`${prefix} — exempts a document the gate must walk`);
-		}
-		if (!existsSync(resolve(root, prefix))) {
-			problems.push(`${prefix} — no such path (stale exclusion)`);
-		}
-	}
-	return problems;
 }
 
 export type ReferenceKind = 'link' | 'definition' | 'path' | 'section' | 'heading';
@@ -572,7 +507,6 @@ function isDocumentation(root: string, file: string, tracked: Set<string> | null
 	const relative = file.slice(root.length + 1);
 	if (relative.startsWith('..')) return true;
 	if (NON_DOCUMENTATION_PREFIXES.some((prefix) => relative.startsWith(prefix))) return false;
-	if (ARCHIVAL_RECORD_PREFIXES.some((prefix) => relative.startsWith(prefix))) return false;
 	return tracked === null || root !== REPO_ROOT || tracked.has(relative);
 }
 
