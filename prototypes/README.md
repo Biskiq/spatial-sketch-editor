@@ -123,7 +123,8 @@ port in use as another prototype's server rather than an error to clear.
 - **Spatial Authoring Prototype** — moved here 2026-09-29 from
   `docs/roadmap/p26-spatial-depth/Final-Design-Prototype/`, where it was the P26
   *Final Design Prototype* synthesised from designers B and D. A path-preserving
-  stub remains at that phase-local location.
+  stub held that phase-local location until PR #115 removed the retired P26 tree;
+  the stub is recoverable at `git show e90a5822:docs/roadmap/p26-spatial-depth/Final-Design-Prototype/README.md`.
 - **Experience Authoring Prototype** — imported 2026-09-29 from the separate
   `Experience-prototype` artifact (`Biskiq/Experience-Prototype`, `main` at
   `70d808f`). Its own Git repository was pruned on import: the artifact is now

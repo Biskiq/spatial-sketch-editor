@@ -46,7 +46,7 @@ footer{max-width:1460px;margin:auto;padding:0 32px 40px;font-size:12px;color:#c4
 </style></head><body><header><div class="eyebrow">MUSEUM EDITOR · EXPERIENCE V3 · PROPOSED 2026-10-13</div>
 <h1>Compose the visit.</h1><p>One museum, reusable Presentations, locally curated Stops, and movement you can inspect where it happens.
 These 15 PNGs are generated design specimens awaiting owner ratification. They are not screenshots of implemented application behavior.</p>
-<nav><a href="../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md">Product proposal ↗</a><a href="README.md">Board acceptance notes ↗</a><a href="../../docs/roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md">Superseding plan ↗</a></nav></header><main>'''
+<nav><a href="design/README.md">Product proposal ↗</a><a href="README.md">Board acceptance notes ↗</a><a href="design/implementation-plan.md">Superseding plan ↗</a></nav></header><main>'''
 html += cards + '</main><footer>Written product and visual rules govern semantics. Geometry, lighting and incidental pixels are illustrative. Historical V2 boards and runtime captures remain preserved.</footer></body></html>'
 (root / 'gallery.html').write_text(html)
 manifest = {'kind': 'generated-design-specimens', 'status': 'proposed-for-ratification',

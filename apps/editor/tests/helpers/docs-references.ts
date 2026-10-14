@@ -79,7 +79,9 @@ export const NON_DOCUMENTATION_PREFIXES = ['docs/archive/', 'Repo-Audit/'] as co
  * The files the walk must still find, so a silently narrowed walk fails here
  * instead of passing vacuously. This replaces a bare `> 100 files` count, which
  * measured the size of the tree rather than the coverage of the gate
- * (`implementation-plan.md` §7.3/§10.3). Locals are added by WP5.
+ * (`implementation-plan.md` §7.3/§10.3). WP5 added the operations root and
+ * `current.md`; WP6 completed §12's set with every track roadmap and the R115
+ * phase README, the register the baton routes current work through.
  */
 export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/README.md',
@@ -94,6 +96,13 @@ export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/operations/current.md',
 	'docs/operations/tech-debt/README.md',
 	'docs/roadmap/README.md',
+	// WP6: each track roadmap is a live route from the global track register, and the
+	// R115 phase README is the current work package's own slice register.
+	'docs/roadmap/t1-spatial-world/README.md',
+	'docs/roadmap/t2-composition/README.md',
+	'docs/roadmap/t3-experience/README.md',
+	'docs/roadmap/t4-release/README.md',
+	'docs/roadmap/parallel-track-cutover/README.md',
 	'apps/editor/tests/README.md'
 ] as const;
 

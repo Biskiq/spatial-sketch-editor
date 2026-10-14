@@ -3560,3 +3560,132 @@ server on `5173` was reused, not restarted.
   §18.4 and §19.3 record; the readiness, provider and trusted-base rules are still proven by fixtures
   (plus, for the arrival, the F1 worktree probe).
 - Independent re-review of these three corrections is owed, and WP6/WP7 remain unstarted.
+
+## 21. WP6 — cross-reference and full verification (executed — acceptance-ready, review owed)
+
+> **Status of this section.** WP6 repaired the incoming cross-references, completed the
+> documentation gate's named coverage, reconciled the test manual, the routers and `AGENTS.md`,
+> and ran the complete §7.4 contract on the committed tree. Independent review is owed; WP7
+> (acceptance, closeout and handoff) has not started, and no slice, phase, track or cycle closure
+> was invoked.
+
+### 21.1 Cross-reference corrections (§10.3)
+
+| Artifact | Problem and its source | Repair |
+| --- | --- | --- |
+| `.claude/launch.json` | Both entries pointed at `docs/roadmap/f-foundation-contracts/design/proposals/c1-explain-and-direct` and `.../c2-objects-and-assemblies`, deleted by WP4 §8.4 (`docs/roadmap/f-foundation-contracts/` now holds only its README). The `c2-objects-and-assemblies` entry is the one `prototypes/object-composition-prototype/README.md` documents as serving port 8832. | Dropped the `c1` entry (its target has no surviving successor); re-pointed `c2` at `prototypes/object-composition-prototype`. |
+| `prototypes/experience-ux-v3/gallery.html` | Its `<nav>` linked the deleted p25 router — `docs/roadmap/p25-experience/design/experience-ux-v3/`, whose `README.md` and `implementation-plan.md` were the targets. WP4 §8.3 moved that package to `prototypes/experience-ux-v3/design/`. | `design/README.md` and `design/implementation-plan.md`, the retained locations. |
+| `prototypes/experience-ux-v3/scripts/build-gallery.py` | The generator that writes `gallery.html` carried the same two dead URLs, so repairing only the generated artifact would have drifted from its source. | The same replacement; `python3 prototypes/experience-ux-v3/scripts/build-gallery.py` runs clean (exit 0), reproduces the committed `gallery.html` exactly and leaves `manifest.json` byte-identical. |
+| `prototypes/README.md` | "A path-preserving stub remains at that phase-local location" for `docs/roadmap/p26-spatial-depth/Final-Design-Prototype/`: WP4 §8.4 deleted the retired P26 tree, so no stub exists there. | Corrected to past tense with the recovery anchor `git show e90a5822:docs/roadmap/p26-spatial-depth/Final-Design-Prototype/README.md`. |
+
+**Why a non-Markdown audit was necessary.** The documentation gate walks tracked Markdown, so a
+route written in HTML, a JSON manifest or a QA launcher is invisible to it. WP6 resolved every
+relative reference in every tracked non-`.md` file (HTML `href`/`src`/`url()`, JSON string values,
+quoted script tokens; file-relative and repository-root-relative, case-sensitively). Beyond the
+four repairs above, every hit was classified and none is a finding:
+
+| Remaining hit class | Verdict |
+| --- | --- |
+| Extension-less import specifiers under `apps/editor/src/lib/museum/` and `apps/editor/src/lib/visitor/` (`fallbacks`, `texture-cache`, `visitor-runtime-state.svelte`, `room-presentation`, `scene-instance-material`) | Vite/TypeScript module resolution, not a written path claim. Not a route. |
+| `qa/checks.js` in `prototypes/object-composition-prototype/qa/checks.js` and `app/model.js` in `prototypes/spatial-authoring/qa/correctness-check.sh` | Console snippets executed inside the served prototype page, so they are URL-relative to the prototype root. Not repository routes. |
+| Captured command output and closeout inventories written against their own revision: `prototypes/spatial-authoring/qa/verification-records/experience-v2-conformance/` (`c8-*`, `v2-*`), the file and document inventories in `prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md`, `.../qa/EXPERIENCE-C9-EVIDENCE.md` and `.../qa/EXPERIENCE-ACCEPTANCE.md`, and `prototypes/world-experience-shell-round/QA-package/ACCEPTANCE.md` under "canonical inputs" | Historical locators: each names a path that was live at the revision the record describes and was later deleted or moved. Rewriting captured evidence would falsify it, so they are left as written; the live navigation for the moved material is its `prototypes/` location or its `git show e90a5822:<path>` anchor. The gate does not flag them, because they are directory-form or un-backticked locators, not link targets or root-relative written paths. |
+
+No redirect stub was created and no deleted documentation was restored.
+
+### 21.2 Documentation-gate coverage and sensitivity controls
+
+`REQUIRED_WALKED_DOCUMENTS` in `apps/editor/tests/helpers/docs-references.ts` now carries §12's
+full named set: `docs/README.md` and `AGENTS.md`; the live reference contracts; **both** retained
+design-system contracts (PLATE and the spatial instrument grammar); the operations root, the baton
+and `tech-debt/`; the global roadmap; **every T1–T4 track roadmap** and the **R115 phase README**;
+and `apps/editor/tests/README.md` — plus the unchanged `PROTECTED_PROTOTYPE_SENTINEL`
+(`prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md`) and the local-skill check.
+
+| Control | What it proves |
+| --- | --- |
+| Exact-exclusion assertion — `NON_DOCUMENTATION_PREFIXES` must equal `['docs/archive/', 'Repo-Audit/']` | The walk's whole scope is declared here, so a new exclusion has to be added deliberately. WP6 adds none, and WP4's temporary `ARCHIVAL_RECORD_PREFIXES` machinery stays removed. |
+| Empty-walk control (preserved) | An empty walk still misses every listed document and every local skill. |
+| Narrowed-walk control (new) | A *partially* populated walk — one reached document — still fails, naming `AGENTS.md`, a track roadmap and `tests/README.md`. That is the shape a silently narrowed or relocated walk actually takes, which the empty-walk control alone does not cover. |
+
+The mechanical `> 100 Markdown files` count was already replaced by semantic coverage in WP2/WP4;
+WP6 extends the named set and does not lower a threshold. Test counts at this revision: the
+documentation gate carries **25** tests (24 at the accepted WP5 checkpoint) and the arch lane
+**15 files / 131 tests**.
+
+### 21.3 Test-manual, router and AGENTS reconciliation
+
+- **`apps/editor/tests/README.md`** stays the single authority for doctrine and commands. Added an
+  `apps/api` row: `check:api` plus the DB-backed `test:api` with **zero skips**, and explicitly
+  that root `check`/`build`/`test` cover the editor only and never substitute for an API run.
+  Rewrote the records caveat (two permanent prefixes, asserted as an exact set; a historical
+  locator is declared in an `EVIDENCE-PATHS` region rather than resolved) and linked the
+  `.env.example` file instead of naming it in prose.
+- **`AGENTS.md`** hard rule 5 read as a fragment ("Editor helpers outside `MuseumScene` / visitor
+  imports."). It now states the rule it encodes, naming the durable owners (`visitor/*`,
+  `public-surface-boundary`, `preview-surface-boundary`) and keeping `MuseumScene.svelte` as a
+  module the preview boundary refuses. Rules 4, 11 and 12 already carried §3.6's route fact, the
+  test-manual pointer and the no-footer rule and are unchanged.
+- **Checked and unchanged** because they are already consistent: root commands are not presented
+  as API verification; the architecture lane is unconditional at the applicable gate; focused runs
+  are never acceptance (rule 25); the gate register records interface and evidence identity only,
+  with F semantics staying in `docs/reference/composition-execution.md`; ordinary slice startup
+  loads no phase, program or cycle procedure; current and destination capabilities are
+  distinguished; and no deleted editor shell, legacy project reader or former Plan/Camera
+  implementation is presented as active in a routed document.
+
+### 21.4 Change boundary, manifests and protected evidence
+
+Eight files changed, plus this record. Each is one of: a §10.3 route repair (`.claude/launch.json`,
+`gallery.html`, `build-gallery.py`, `prototypes/README.md`), the documentation gate's coverage and
+its narrowed-walk control, or the `tests/README` and `AGENTS` reconciliation.
+
+- **No production behavior or persisted format changed.** No `apps/editor/src`, `apps/api/src`,
+  `apps/editor/vite`, `apps/editor/scripts` or `packages/*/src` file is in the diff. The only
+  configuration file touched is the `.claude/launch.json` QA launcher, and only its stale
+  directory arguments.
+- **No ratified UX or product decision changed**, and no protected evidence was modified.
+- **Protected evidence is intact.** All **67** rows of §5's protected-hash table resolve against
+  this tree: **50 byte-identical** to their baseline blobs, **15 changed by link relocation only**
+  (identical once link targets, written paths and path-bearing code spans are stripped from both
+  versions — the same property WP4 §15.3 recorded), **2 kept at their baseline path with a matching
+  `sha256`**, and **0 changed beyond link relocation**.
+- **No deleted historical system was resurrected**; no new documentation exclusion, duplicated test
+  instruction, second documentation checker or parallel workflow authority appeared.
+- **No T1–T4 capability planning or implementation started.**
+- `legacy/` is absent from the tree and the `legacy/` isolation test passes in the arch lane: the
+  repository-side half of the frozen-project property, which is what remains executable here.
+
+### 21.5 Verification (§7.4, tested revision: this checkpoint's committed tree)
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane | `npm run test:arch` | **pass** — 15 files, 131 tests, 0 failures |
+| Documentation gate alone | `npx vitest run --config vitest.arch.config.ts tests/docs/documentation-references.test.ts` | **pass** — 25 tests |
+| Complete suite, including the heavy lane | `npm test` | **pass** — 116 files, 1525 tests, 0 failures, 0 skipped |
+| Editor, kernel and API type checks | `npm run check` · `check:layout-core` · `check:project-model` · `check:camera-core` · `check:api` | **pass** (each exit 0) |
+| Production build | `npm run build` | **pass** |
+| API DB-backed contracts (§7.5, zero skips) | `set -a; . .env; set +a; npm run test:api` | **pass** — 7 files, 39 tests, 0 failures, **0 skipped**, local Postgres 14.19 at `127.0.0.1:5432` |
+| Whitespace over the pending set, then the committed range | `git diff --check 9cd90b61ebc7e2bd9eb755f74c86978d58a996e8` | **clean** |
+| Protected-hash review | §5's table checked against the tree (byte-identical / link-relocation-only / kept-at-path) | **pass** — 50 / 15 / 2, with 0 changed beyond link relocation |
+| Browser checks, retained product routes | the running editor dev server on `http://localhost:5173` with the API on `8787` | **pass** — `/` (public entry), `/projects` (signed-out hub), `/project/x/spatial` (foundation-reset notice) and `/p/x` (unavailable page) each render their expected surface; the console shows only Vite debug lines and the network log holds no failed request |
+
+The API dev server started for the browser check was stopped afterwards; the pre-existing editor dev
+server on `5173` was reused, not restarted.
+
+### 21.6 Findings outside the change boundary and limitations
+
+- **Orphaned, stale architecture diagrams — reported, not changed.** `diagrams/architecture.md` and
+  `diagrams/overall-flow.md` are routed by no live router and appear in neither the §2 source
+  manifest nor the §4 docs manifest. `architecture.md` still records that it was built from
+  `apps/museum/src/lib` and uses retired type and function names (`MuseumProject`,
+  `MuseumSceneDocument`, `parseMuseumProjectJson`, `buildRoomWallMesh`, `resolvePlanHit`). It is
+  dated provenance rather than a live route claim, and rebuilding, archiving or deleting the
+  directory is a documentation decision beyond a route repair, so WP6 records it instead of
+  rewriting an unrouted artifact.
+- The historical locators in §21.1 are intentionally left as written: they are evidence of the
+  revision they describe, and the material they name is reachable at its `prototypes/` location or
+  through its `git show e90a5822:<path>` anchor.
+- The independently hosted frozen Chopin project's WP1 Checkpoint A acceptance remains
+  **owner-verified external evidence** and was not rerun here (§7.4); only the repository-side
+  isolation property was verified.
+- Independent review of the completed WP6 checkpoint is owed, and WP7 remains unstarted.
