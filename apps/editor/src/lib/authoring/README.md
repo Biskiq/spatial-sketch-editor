@@ -16,7 +16,7 @@ A module survived that deletion only if it met **all four** criteria
 That is a retention test, not a maturity claim. These modules are kept **by
 criteria, not by consumer count**: most have no product importer today, because
 the authoring UI is a T-track capability to rebuild
-(`docs/roadmap/parallel-track-cutover/acceptance.md` §10, a6).
+(`docs/roadmap/parallel-track-cutover/acceptance.md`, now the closed-work stub — the #115 retention disposition a6 is in its recovered body).
 
 | Directory | Retained modules | Why it survived | Later owner |
 | --- | --- | --- | --- |
