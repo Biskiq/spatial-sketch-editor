@@ -76,24 +76,27 @@ export function validateSceneDocument(
 		addIssue(issues, '$', 'invalid_type', 'Expected a scene document object');
 		return { success: false, issues };
 	}
-	// P23.0b: an explicit `formatVersion` selects the world-local decoder; the
-	// recognized legacy shape carries no formatVersion. Any other value is
-	// rejected by name (never inferred from field shapes — H5 §10.1).
-	let worldLocal = false;
-	if ('formatVersion' in input) {
-		if (input.formatVersion !== SCENE_WORLD_LOCAL_FORMAT_VERSION) {
-			addIssue(
-				issues,
-				'$.formatVersion',
-				'unsupported_format_version',
-				`Unsupported Scene formatVersion ${JSON.stringify(input.formatVersion)}; recognized values: ${SCENE_WORLD_LOCAL_FORMAT_VERSION}`
-			);
-			return { success: false, issues };
-		}
-		worldLocal = true;
+	// PR #115 (WP3) — current-format-only. The one supported Scene format is the
+	// world-local document, which carries the explicit discriminator
+	// `formatVersion: 1`. A missing discriminator or any other explicit value
+	// fails ordinary current-format validation right here: there is no legacy
+	// decoder branch, no change of shape interpretation and no version
+	// inference from field presence (H5 §10.1).
+	if (typeof input.formatVersion !== 'number') {
+		addIssue(issues, '$.formatVersion', 'invalid_type', 'Expected a number');
+		return { success: false, issues };
+	}
+	if (input.formatVersion !== SCENE_WORLD_LOCAL_FORMAT_VERSION) {
+		addIssue(
+			issues,
+			'$.formatVersion',
+			'unsupported_format_version',
+			`Unsupported Scene formatVersion ${JSON.stringify(input.formatVersion)}; recognized value: ${SCENE_WORLD_LOCAL_FORMAT_VERSION}`
+		);
+		return { success: false, issues };
 	}
 	const rootKeys = [
-		...(worldLocal ? (['formatVersion'] as const) : []),
+		'formatVersion',
 		'textures',
 		'materials',
 		'entities',
@@ -120,15 +123,14 @@ export function validateSceneDocument(
 	const entities = parseArray('entities', (value, path, target) =>
 		parseEntity(value, path, target, {
 			allowMaterialInstance: true,
-			worldLocal,
 			...validation
 		})
 	);
 	const clusters = 'clusters' in input
-		? parseArray('clusters', (value, path, target) => parseCluster(value, path, target, { worldLocal }))
+		? parseArray('clusters', (value, path, target) => parseCluster(value, path, target))
 		: undefined;
 	const navigationNodes = parseArray('navigationNodes', (value, path, target) =>
-		parseNode(value, path, target, { worldLocal })
+		parseNode(value, path, target)
 	);
 	const connections = parseArray('connections', parseConnection);
 	if (
@@ -142,8 +144,12 @@ export function validateSceneDocument(
 	) {
 		return { success: false, issues };
 	}
+	// Room ownership is rejected at parse time for every record (entities,
+	// clusters, navigation nodes, path anchors, waypoints and view keyframes),
+	// so a valid document is project/world coordinates throughout by
+	// construction.
 	const document = {
-		...(worldLocal ? { formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION } : {}),
+		formatVersion: SCENE_WORLD_LOCAL_FORMAT_VERSION,
 		textures,
 		materials,
 		entities,
@@ -151,46 +157,6 @@ export function validateSceneDocument(
 		navigationNodes,
 		connections
 	};
-	if (worldLocal) {
-		// P23.0b: world-local documents must not carry Room ownership anywhere.
-		// Entities/nodes/clusters are rejected at parse time; connection-scoped
-		// records (anchors, waypoints, view keys) are checked here in one place.
-		for (const [index, connection] of document.connections.entries()) {
-			const prefix = `$.connections[${index}]`;
-			for (const [anchorIndex, anchor] of connection.positionPath.anchors.entries()) {
-				if (anchor.roomId !== undefined) {
-					addIssue(
-						issues,
-						`${prefix}.positionPath.anchors[${anchorIndex}].roomId`,
-						'room_id_forbidden_in_world_local',
-						'World-local scene documents must not carry roomId; convert legacy records instead'
-					);
-				}
-			}
-			for (const [waypointIndex, waypoint] of (connection.targetWaypoints ?? []).entries()) {
-				if (waypoint.roomId !== undefined) {
-					addIssue(
-						issues,
-						`${prefix}.targetWaypoints[${waypointIndex}].roomId`,
-						'room_id_forbidden_in_world_local',
-						'World-local scene documents must not carry roomId; convert legacy records instead'
-					);
-				}
-			}
-			for (const direction of ['forward', 'reverse'] as const) {
-				for (const [keyframeIndex, keyframe] of (connection.viewTracks?.[direction] ?? []).entries()) {
-					if (keyframe.roomId !== undefined) {
-						addIssue(
-							issues,
-							`${prefix}.viewTracks.${direction}[${keyframeIndex}].roomId`,
-							'room_id_forbidden_in_world_local',
-							'World-local scene documents must not carry roomId; convert legacy records instead'
-						);
-					}
-				}
-			}
-		}
-	}
 	validateSemantics(document, issues);
 	if (issues.length) return { success: false, issues };
 	const normalized = canonicalDocument(document);

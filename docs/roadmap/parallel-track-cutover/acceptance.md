@@ -2298,3 +2298,139 @@ rows.
 **None.** The compatibility policy is settled, and no question raised by this amendment needs an
 owner ruling. Two items are deliberately deferred rather than decided here: the Layout
 schema/codec split (T1) and Scene/Camera unit extraction (T2/T3).
+
+## 9. WP3 execution — Checkpoint C evidence
+
+> **Status.** WP3 executed on `codex/pr115-architecture-plan` from Checkpoint B (`a90c3be2`)
+> against the revision-4 current-format-only plan (`c63887ca`). Checkpoint C is **pending owner
+> review**. WP3R, WP4 and closeout have not begun, and nothing below claims them. No
+> `unsupported_generation` path, legacy detector, classifier, compatibility facade or dedicated
+> historical-format rejection test was added.
+
+**Change set:** 44 files — 43 tracked modifications/deletions (`+512 / −3,811`, the
+`git diff --shortstat` line) plus the new `packages/project-model/src/runtime.ts` (156 lines).
+
+### 9.1 Production change
+
+| §6 item | Change |
+| --- | --- |
+| 1 — current-format readers and writers | `validateProject`, `parseProjectJson`, `createProject`, `serializeProject` and `prepareRuntime` call `validateWallFirstLayoutDocument` + `validateSceneDocument` directly. There is no generation dispatch, migration branch, decode report or compatibility fallback, and no project-level version rule separate from the nested validators. `ProjectDocument` now names the wall-first Layout type, so boot/read values cross the codec boundary without a cast. |
+| 2 — Scene runtime seam (B2) | `resolveSceneDocument(input, options)` lost its Room-registry parameter; `authoring/scene/plan-scene-footprint.ts` lost `PlanSceneFootprint.roomId`, the `LayoutRoomRegistry` parameter, the `rooms.has()` eligibility check and the `rooms.pointInFrame()` projection. `prepareRuntime` reads the Scene with no Room consultation and hands consumers the empty current-format registry. |
+| 3 — layout-core | `layout-compat`, `layout-migration`, `layout-migration-math` deleted with their `index.ts` exports. |
+| 4 — callers | Visitor cold runtime, editor platform persistence, the editor project codec wrapper, `content/scene.ts` and the API Save/Load/publication paths updated. |
+| 5 — tests and fixtures | §9.3 (API fixtures) and §9.4 (successor dispositions). |
+| 6 — stop rule | §9.5. |
+
+EVIDENCE-PATHS: start — the files this work package deleted, and the removed names it verified absent, as written at the WP3 start revision `a90c3be2`; evidence of that revision, not routes to follow
+
+**Deleted production modules (8 files, 2,508 lines):**
+
+| File | Lines |
+| --- | --- |
+| `packages/layout-core/src/layout-migration.ts` | 1,181 |
+| `packages/project-model/src/project-compat.ts` | 340 |
+| `packages/project-model/src/standalone-scene-import.ts` | 219 |
+| `packages/layout-core/src/layout-compat.ts` | 186 |
+| `packages/layout-core/src/layout-migration-math.ts` | 178 |
+| `packages/project-model/src/scene-world-conversion.ts` | 152 |
+| `packages/project-model/src/compat-runtime.ts` | 149 |
+| `packages/project-model/src/scene-format.ts` | 103 |
+
+**Added:** `packages/project-model/src/runtime.ts` — the one current-format runtime
+preparation (`prepareRuntime`), replacing `prepareCompatibleRuntime`.
+
+**Verified absence (grep at Checkpoint C, excluding the audit log):** the post-WP3 worktree has
+no occurrence of `decodeProjectCompatible`, `prepareCompatibleRuntime`,
+`createLayoutRoomRegistry`, `createEmptyProject`, `SceneRoomResolver`,
+`decodeLayoutJsonCompatible`, `decodeLayoutValueCompatible`,
+`convertSceneDocumentToWorldLocal`, `identifySceneFormat`, `scene_not_world_local` or
+`unsupported_generation` anywhere under `apps/` or `packages/`. At `HEAD` the first eight are
+exactly the sites WP3 removed (for example `prepareCompatibleRuntime` in
+`apps/editor/src/lib/visitor/visitor-cold-runtime.ts:202` and `createLayoutRoomRegistry` in
+`apps/editor/tests/lib/editor/project-format-visitor-parity.test.ts`). `apps/museum` and
+`apps/editor/tests/lib/project/` do not exist. The `unsupported_generation` case named in §8.2
+is **not** present in this tree's history (`git log -S` finds no removal), so nothing was
+deleted for it and nothing replaced it.
+
+EVIDENCE-PATHS: end
+
+### 9.2 §6 evidence
+
+| §6 item 5 evidence | Carrier (post-WP3 names) | Result |
+| --- | --- | --- |
+| Valid current-format Layout and Scene validation | `project-format-writers.test.ts` "validates and serializes the canonical wall-first payload"; `project-format-writer-fixtures.test.ts` (21); `scene-codec.test.ts` (38); `layout-wall-first-codec.test.ts` "keeps createEmptyWallFirstLayoutDocument valid" | green |
+| Canonical serialization and round-trip stability | `project-format-writers.test.ts` "serializeWallFirstProject returns all three canonical strings" and "saves round-trip through the current-format reader unchanged"; `scene-codec.test.ts` canonical-JSON and parse round-trips; `scene.test.ts` (4) | green |
+| Ordinary validation failure for malformed or incomplete input | `project-format-writers.test.ts` "rejects a Layout payload with no current format discriminator", "rejects a Scene payload with no current format discriminator", "rejects a world-local scene that still carries roomId", "rejects unknown root keys, bad IDs and empty names", "throws a typed error from the strict serializer"; `scene-codec.test.ts` `room_id_forbidden_in_world_local` and invalid-shape cases; `layout-wall-height.test.ts` version rejections (35) | green |
+| API Save/Load/publication on valid current-format documents | `api.test.mjs` "project save/load appends immutable versions and isolates owners" and "project body parsing keeps malformed, invalid, mismatched, and oversized JSON distinct"; `publication.test.mjs` "full loop: publish, snapshot freeze, update, unpublish, republish" and its nine siblings; `test-auth.test.mjs` seam isolation | green, real Postgres |
+| Preserved geometry, identity, resource and visitor-isolation invariants | `visitor-identity-isolation.test.ts` (4), `visitor-public-route.test.ts` (15), `visitor-cold-runtime.test.ts` (14), `project-model-boundary.test.ts` (3), plus the full Layout kernel lane (noding, dissolve, curve, geometry, identity) inside `npm test` | green |
+
+**API fixtures (§8.4).** All three `projectDocument()` fixtures now build the canonical empty
+current-format document — wall-first Layout (`formatVersion: 5` with its `identity` ledger) plus
+world-local Scene (`formatVersion: 1`) — and every call site's original behavioural expectation
+is unchanged. `api.test.mjs` 8 call sites, `publication.test.mjs` 19, `test-auth.test.mjs` 2.
+No validation rule was relaxed and no fixture expectation was rewritten.
+
+### 9.3 Verification (Checkpoint C)
+
+| Command | Result |
+| --- | --- |
+| `npm run test:arch` | 13 files / 102 tests passed, 1.2 s |
+| `npm test` | 106 files / 1,501 tests passed (fast + heavy + arch), 17.0 s |
+| `npm run check` | `svelte-check`: 0 errors, 0 warnings |
+| `npm run build` | built in 4.7 s (`@sveltejs/adapter-vercel`) |
+| `npm run check:layout-core`, `check:project-model`, `check:camera-core` | `tsc --noEmit` clean |
+| `npm run check:api` | `tsc --noEmit` clean |
+| `npm run test:api` | build + 3 files: 23 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` |
+| `git diff --check` | clean |
+| Browser check (`vite` dev server) | `/`, `/projects`, `/project/x/spatial` (notice renders), `/p/x`: all 200, expected content, **zero console errors or warnings** |
+
+The DB-backed run is a Checkpoint C result, not inherited from WP2. The frozen-project checks
+remain owner-verified WP1 evidence and were not re-run here (§3.7); the repository-side
+`legacy/` isolation gate is green in `test:arch`.
+
+### 9.4 Test disposition (predecessor / successor)
+
+Removed cases are recorded with the §7.1 rule: a reader path disappearing is not by itself a
+successor claim.
+
+| Removed | Disposition |
+| --- | --- |
+| `describe('layout format identification (P23.0a dispatch)')` and its 6 cases (`layout-wall-first-codec.test.ts`) | **Deleted with their retired subject** — `decodeLayoutJsonCompatible` / `decodeLayoutValueCompatible`. The surviving rules they observed are asserted against the retained current-format gate: `layout-wall-height.test.ts` re-expressed the `4`/unknown-version rejections through `validateWallFirstLayoutDocument` + `wallFirstCanonicalFormatVersionIssue`, keeping the same code, path and "validation is a pure read" guarantees (35 tests). |
+| `describe('P23.0 stage 2 — legacy compatibility round-trips')`, "a legacy layout cannot be saved through the wall-first writer", "saves round-trip through decodeProjectCompatible as wall-first" | **Re-expressed on the current-format gate**: "saves round-trip through the current-format reader unchanged" preserves the round-trip guarantee; the legacy shapes themselves are deleted because no reader accepts them. |
+| "rejects a legacy (Room-owned) layout by name", "rejects a legacy (room-local) scene by name" | **Re-expressed**: "rejects a Layout payload with no current format discriminator", "rejects a Scene payload with no current format discriminator", "rejects a world-local scene that still carries roomId", "rejects a superseded layout version by name — canonical Save never migrates". Same defect class (a payload that is not the current pair must fail closed), current-format subjects. |
+| `describe('P23.0 stage 4 — preparation routing and Room-frame discipline')` and its 4 cases; `describe('… legacy composer parity on a true compat shape (F0 review)')` and its case | **Re-expressed** as `describe('P23.0 stage 4 — current-format preparation discipline')` → "rejects anything that is not the current document pair, before any state is installed", plus the runtime-preparation/compiler-parity parity case. The "legacy geometry equals the direct legacy compile" case is deleted with the legacy compile path it compared against. |
+| `describe('P23.6I legacy migration')` and "seeds migrated Walls from the legacy storey height and drops it from the canonical Floor" | **Deleted with the migration subject.** Its canonical half survives as "keeps floor.height out of the canonical schema". |
+| The three `OR-D12-6 migration —` cases (`layout-p23b3a-d12-hazard.test.ts`) | **Deleted with their retired subject** (`migrateLegacyLayoutDocument`, and `decodeLayoutValueCompatible` which proved the fixture valid). The fail-closed correspondence rule they proved is still asserted for the retained callers through `correspondenceAuthorization` in the same file (lines 349, 571), and the file header records the retirement inline. |
+| `scene-codec.test.ts` room-local fixture cases and the project-level Room gate | **Re-expressed**: the `tour-minimal` fixture is current-format, so the codec cases assert the `roomId` discipline of the current format itself; the project-level room gate has no subject left (no Scene carries `roomId`). |
+| "keeps legacy no-envelope serialization byte-stable…", "rejects invalid FOV, malformed tracks, IDs, progress, targets, **and rooms**" | **Re-expressed in place** with the legacy envelope and the Room dimension dropped; every other dimension of the original assertion is retained. |
+
+### 9.5 Stop rule, deferrals and residual findings
+
+**No §6 item triggered the stop rule.** Every item was a deletion or a parameter removal; none
+required new domain semantics. The two founded retirements stay exactly as §5.1 records them:
+
+- `layout-core` legacy floors/rooms types, `layout-codec`, `layout-room-frame` and the legacy
+  `compileLayoutGeometry` adapter — **RETIRE AT T1**'s authored-schema cutover. After WP3 they
+  are reachable only from wall-first internals and tests, never from a project/API/runtime
+  reader.
+- The P22 authored-snapshot reader — **RETIRE AT T4** (prepared-reader cutover). Made strict in
+  WP3; still the only delivery path.
+
+T1's authored-schema redesign and the T2/T3 Scene/Camera unit extraction were not preempted.
+
+**Residual findings, not actioned here:**
+
+1. `apps/editor/src/lib/project/project-types.ts` is a type-only re-export of the canonical
+   project-model types with **zero consumers** in the worktree. The WP0 per-file manifest
+   retains it (`RETAIN AS FOUNDATION`, §2.1), so removing it is a manifest decision for WP3R's
+   orphaned-abstraction class, not a WP3 edit. Its header comment still calls it a
+   "compatibility facade".
+2. `packages/project-model/src/runtime.ts` is new in WP3; WP3R should confirm its name and
+   ownership alongside the other post-prune abstractions.
+3. `parseWallFirstLayoutDocumentJson`'s malformed-JSON branch lost its only direct assertion
+   when `decodeLayoutJsonCompatible` was deleted. The Scene half keeps an `invalid_json` case
+   (`scene-codec.test.ts`); a Layout-half successor is WP3T's call, not a WP3 requirement.
+4. The unused `LayoutRoomRegistry` **type** (and its empty-registry value) survives because the
+   retained visitor renderer and Camera authoring math are typed by it. That is the §6 item 2
+   "wherever it exists solely for obsolete formats" boundary being read strictly: the type is
+   used, only Room-frame resolution is gone.

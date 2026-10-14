@@ -24,20 +24,32 @@ function stubPool({ query = async () => undefined, end = async () => undefined }
 	return { query, end };
 }
 
+/**
+ * PR #115 (WP3): the API accepts the current document format only — a
+ * wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
+ * world-local Scene (`formatVersion: 1`). This is the canonical empty project,
+ * so a saved-then-loaded document deep-equals the fixture it was built from.
+ */
 function projectDocument(name = 'Cloud project') {
 	return {
 		id: 'project:test',
 		name,
 		layout: {
 			units: 'meters',
-			floors: [],
-			objects: []
+			formatVersion: 5,
+			floor: { id: 'floor', name: 'Floor', elevation: 0 },
+			junctions: [],
+			walls: [],
+			rooms: [],
+			openings: [],
+			objects: [],
+			identity: { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} }
 		},
 		scene: {
+			formatVersion: 1,
 			textures: [],
 			materials: [],
 			entities: [],
-			clusters: [],
 			navigationNodes: [],
 			connections: []
 		}

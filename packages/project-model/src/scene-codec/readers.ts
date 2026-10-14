@@ -8,7 +8,7 @@
  * `SCENE_LIGHT_KINDS`, `HEX_COLOR_PATTERN`) live here because the entity/light
  * parsers read them.
  */
-import type { MaterialId, RoomId, Vec3 } from '../scene';
+import type { MaterialId, Vec3 } from '../scene';
 import type { SceneDocumentIssue } from './index';
 
 // Internal record type shared by every parser. Lives here (the leaf module)
@@ -143,14 +143,26 @@ export function readVec3(
 	return points.length === 3 ? [points[0]!, points[1]!, points[2]!] : undefined;
 }
 
-export function readRoomId(
+/**
+ * PR #115 (WP3) — current-format-only Scene reading: a `roomId` is never
+ * accepted anywhere in a Scene document. `roomId` remains optional in the
+ * document types (absent = project/world coordinates = what the current
+ * format guarantees); a *present* value is rejected by name, because a
+ * world-local record must never carry Room ownership.
+ */
+export function rejectRoomId(
 	value: JsonRecord,
 	key: string,
 	path: string,
 	issues: SceneDocumentIssue[]
-): RoomId | undefined {
-	const roomId = readRequiredString(value, key, path, issues);
-	return roomId as RoomId | undefined;
+): void {
+	if (value[key] === undefined) return;
+	addIssue(
+		issues,
+		`${path}.${key}`,
+		'room_id_forbidden_in_world_local',
+		'Scene documents must not carry roomId; values are project/world coordinates'
+	);
 }
 
 export function readStringArray(

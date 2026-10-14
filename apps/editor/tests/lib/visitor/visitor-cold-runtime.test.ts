@@ -30,7 +30,7 @@ import {
 	listShippedTextureUris,
 	listShippedModelFiles
 } from '$lib/visitor/shipped-static-registry';
-import { createEmptyProject } from '@portfolio/project-model';
+import { createEmptyWallFirstProject } from '@portfolio/project-model';
 import { Group, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 import type { Texture as ThreeTexture } from 'three';
 
@@ -246,7 +246,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 
 	it('composes an empty project store-free and disposes cleanly', () => {
 		setDefaultTextureSourceLoader(null);
-		const project = createEmptyProject({ id: 'project:cold-a', name: 'Cold A' });
+		const project = createEmptyWallFirstProject({ id: 'project:cold-a', name: 'Cold A' });
 		const bundle = composeColdReleaseBundle({
 			projectId: project.id,
 			projectName: project.name,
@@ -265,7 +265,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 	});
 
 	it('composes a P20-textured release from supplied bytes; missing bytes fail closed', () => {
-		const project = createEmptyProject({ id: 'project:cold-b', name: 'Cold B' });
+		const project = createEmptyWallFirstProject({ id: 'project:cold-b', name: 'Cold B' });
 		const uri = '/project-assets/pinned-1';
 		const scene = {
 			...project.scene,

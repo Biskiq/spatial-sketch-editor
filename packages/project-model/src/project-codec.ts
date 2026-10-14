@@ -1,18 +1,14 @@
 import {
-	createEmptyLayoutDocument,
 	createEmptyWallFirstLayoutDocument,
-	validateLayoutDocument,
-	wallFirstCanonicalFormatVersionIssue,
-	type LayoutValidationResult
+	validateWallFirstLayoutDocument
 } from '@portfolio/layout-core';
-import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
-import { createEmptySceneDocument, createEmptyWorldLocalSceneDocument } from './scene';
+import { createEmptyWorldLocalSceneDocument } from './scene';
 import {
 	validateSceneDocument,
 	type SceneDocumentValidationResult,
 	type SceneValidationOptions
 } from './scene-codec';
-import { createLayoutRoomRegistry, validateProjectSceneRooms } from './project-layout-semantics';
+import { validateProjectSceneCameraPoses } from './project-layout-semantics';
 import type {
 	Project,
 	ProjectDocument,
@@ -56,44 +52,41 @@ export type EmptyProjectInput = {
 };
 
 /**
- * Authoring-empty project: one valid empty layout + one valid empty scene.
- * This is the editor's boot state. There is no New Project command — importing
- * a package is the only way to load prior work, and export is the only save.
- */
-export function createEmptyProject(input: EmptyProjectInput): Project {
-	return {
-		id: input.id,
-		name: input.name,
-		layout: createEmptyLayoutDocument(),
-		scene: createEmptySceneDocument()
-	};
-}
-
-/**
- * Authoring-empty WALL-FIRST project — the canonical new-project boot.
+ * Authoring-empty project — the canonical new-project boot.
  *
- * One valid empty wall-first Layout (current `LAYOUT_WALL_FIRST_FORMAT_VERSION`,
- * `5` since P23.6H) plus one valid empty
- * world-local Scene (`formatVersion: 1`): the pair `validateProject` requires,
- * since a wall-first Layout carrying the recognized legacy Scene is rejected
- * by name. Booting the canonical pair is what makes the wall-first Layout path
- * (canonical Junctions/Walls/Rooms/Openings) reachable without importing JSON,
- * while `createEmptyProject` keeps returning the legacy pair for the legacy
- * read path and compatibility fixtures.
+ * One valid empty wall-first Layout (current format, `formatVersion: 5`) plus
+ * one valid empty world-local Scene (`formatVersion: 1`): the pair the readers
+ * accept, and the pair the writers emit. Booting it is what makes the wall-first
+ * Layout path (canonical Junctions/Walls/Rooms/Openings) reachable without
+ * importing JSON.
+ *
+ * `ProjectDocument` names this pair directly, so the boot value needs no cast
+ * to cross the codec boundary.
  */
 export function createEmptyWallFirstProject(input: EmptyProjectInput): Project {
 	return {
 		id: input.id,
 		name: input.name,
-		// The public `Project` document type stays the legacy compatibility
-		// shape; a wall-first payload is carried through this boundary unchanged
-		// at runtime and typed by the compatible runtime/save seams (same cast
-		// `validateProject` performs).
-		layout: createEmptyWallFirstLayoutDocument() as unknown as Project['layout'],
+		layout: createEmptyWallFirstLayoutDocument(),
 		scene: createEmptyWorldLocalSceneDocument()
 	};
 }
 
+/**
+ * Read a Project document.
+ *
+ * PR #115 (WP3) — current-format-only. There is exactly one supported document
+ * pair: a wall-first Layout (`formatVersion: 5`) and a world-local Scene
+ * (`formatVersion: 1`). Both halves go straight to their current-format
+ * validators; there is no generation dispatch, no migration branch and no
+ * compatibility fallback, and nothing about the payload's shape is inferred
+ * from which keys happen to be present.
+ *
+ * Malformed, incomplete or unsupported input still fails, through those same
+ * ordinary validators: no schema rule is relaxed, no unknown field or missing
+ * `formatVersion` is tolerated, and no malformed document gains a path to
+ * success. The failure message is the validator's own.
+ */
 export function validateProject(
 	input: unknown,
 	options: ProjectValidationOptions = {}
@@ -107,18 +100,12 @@ export function validateProject(
 	}
 	const id = readId(input.id, '$.id', issues);
 	const name = readName(input.name, '$.name', issues);
-	const wallFirstLayout = isWallFirstLayoutValue(input.layout);
-	const layoutResult = wallFirstLayout
-		? validateWallFirstLayoutDocument(input.layout)
-		: validateLayoutDocument(input.layout);
+	const layoutResult = validateWallFirstLayoutDocument(input.layout);
 	const sceneResult = validateSceneDocument(input.scene, options.scene);
 	issues.push(...prefixIssues('$.layout', layoutResult));
 	issues.push(...prefixIssues('$.scene', sceneResult));
-	if (wallFirstLayout && !isWorldLocalSceneValue(input.scene)) {
-		issues.push(issue('$.scene.formatVersion', 'scene_not_world_local', 'Wall-first projects require a world-local Scene (formatVersion: 1)'));
-	}
 	if (layoutResult.success && sceneResult.success) {
-		issues.push(...validateProjectSceneRooms(sceneResult.document, createLayoutRoomRegistry(layoutResult.document)));
+		issues.push(...validateProjectSceneCameraPoses(sceneResult.document));
 	}
 	if (!id || !name || !layoutResult.success || !sceneResult.success || issues.length > 0) {
 		return { success: false, issues };
@@ -126,11 +113,7 @@ export function validateProject(
 	const project: ProjectDocument = {
 		id,
 		name,
-		// The public legacy ProjectDocument type remains source-compatible for
-		// the editor's existing legacy consumers. A wall-first payload is
-		// carried through this compatibility boundary unchanged at runtime and
-		// is typed by the compatible runtime/save seams.
-		layout: layoutResult.document as ProjectDocument['layout'],
+		layout: layoutResult.document,
 		scene: sceneResult.document
 	};
 	return { success: true, project, canonicalJson: JSON.stringify(project, null, 2) + '\n' };
@@ -148,54 +131,19 @@ export function parseProjectJson(
 }
 
 /**
- * P23.6H (S1b) — the canonical **writer** gate for the wall-first Layout half of
- * a project payload.
+ * Canonical project writer: validate against the current format, then serialize.
  *
- * Boundary, stated explicitly so there are not two silent writer contracts:
- *
- * - `validateProject()` / `parseProjectJson()` are **readers** and stay
- *   tolerant on purpose — a stored legacy (Room-owned, version-less) release
- *   must remain loadable, and `apps/api/src/publication-persistence.ts`
- *   validates already-persisted releases through `validateProject()`.
- * - `serializeProject()` (and the editor facade that re-exports it) is a
- *   **writer**: a Layout that declares a version other than the single current
- *   canonical one rejects here by name instead of being emitted unchanged. There
- *   is no read-side normalization seam to point at: P23.6I recognizes exactly one
- *   wall-first version (`5`) and a `4` payload fails as an unsupported version
- *   rather than being migrated (`docs/reference/north-star.md` → *Development-stage schema
- *   compatibility*).
- * - A legacy (Room-owned, version-less) Layout is a different shape and is not
- *   gated here: the wall-first gate applies only when the payload declares a
- *   Layout format version. That path is retained **temporarily** for internal
- *   development assets — a development dependency, not a compatibility promise
- *   (`docs/reference/north-star.md` → *Development-stage schema compatibility*).
- *   Retirement is tracked by GitHub Issue #26 and is explicitly post-P23, not a
- *   silent consequence of this gate.
- *
- * `createProject()` stays a tolerant constructor (it returns the validated
- * document and writes nothing); the one rule is exported so any other writer can
- * adopt it without re-deriving the version policy.
+ * The gate is the current-format validator itself — there is no separate
+ * generation check to keep in step with it. A Layout that declares any version
+ * other than the single current one, and a Scene that is not world-local, are
+ * reported by their own validators (`unsupported_format_version`,
+ * `invalid_type`) rather than by a project-level compatibility rule, and a
+ * document that fails never reaches storage.
  */
-export function wallFirstCanonicalProjectFormatIssue(
-	project: unknown
-): ProjectIssue | undefined {
-	if (!record(project)) return undefined;
-	const layout = project.layout;
-	// Only a Layout that *declares* a format version is a wall-first payload; a
-	// version-less Layout is the legacy Room-owned shape, which this gate does
-	// not judge (structural validation owns that report).
-	if (!record(layout) || !('formatVersion' in layout)) return undefined;
-	const gate = wallFirstCanonicalFormatVersionIssue(layout);
-	if (!gate) return undefined;
-	return issue(`$.layout${gate.path.slice(1)}`, gate.code, gate.message);
-}
-
 export function serializeProject(
 	project: unknown,
 	options: ProjectValidationOptions = {}
 ): string {
-	const writerIssue = wallFirstCanonicalProjectFormatIssue(project);
-	if (writerIssue) throw new ProjectValidationError(writerIssue);
 	const result = validateProject(project, options);
 	if (!result.success) throw new ProjectValidationError(result.issues[0]!);
 	return result.canonicalJson;
@@ -204,8 +152,7 @@ export function serializeProject(
 function prefixIssues(
 	prefix: '$.layout' | '$.scene',
 	result:
-		| LayoutValidationResult
-		| ReturnType<typeof import('@portfolio/layout-core')['validateWallFirstLayoutDocument']>
+		| ReturnType<typeof validateWallFirstLayoutDocument>
 		| SceneDocumentValidationResult
 ): ProjectIssue[] {
 	if (result.success) return [];
@@ -213,14 +160,6 @@ function prefixIssues(
 		...item,
 		path: item.path === '$' ? prefix : `${prefix}${item.path.slice(1)}`
 	}));
-}
-
-function isWallFirstLayoutValue(input: unknown): boolean {
-	return record(input) && 'formatVersion' in input;
-}
-
-function isWorldLocalSceneValue(input: unknown): boolean {
-	return record(input) && input.formatVersion === 1;
 }
 
 function record(value: unknown): value is JsonRecord {

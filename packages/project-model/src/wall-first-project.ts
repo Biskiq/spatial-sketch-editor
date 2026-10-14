@@ -11,8 +11,9 @@
  *
  * **Gate boundary.** These writers are the canonical Save path after the F0
  * acceptance gate. The editor's wall-first transaction path and project
- * codec now select this format explicitly; legacy documents remain readable
- * through compatibility decoding.
+ * codec now select this format explicitly, and PR #115 (WP3) made it the only
+ * format any reader accepts: there is no compatibility decoding left to fall
+ * back to, so a payload that is not this pair fails in its own validator.
  */
 import {
 	validateWallFirstLayoutDocument,
@@ -21,9 +22,12 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutDocumentIssue
 } from '@portfolio/layout-core';
-import { SCENE_WORLD_LOCAL_FORMAT_VERSION, type SceneDocument } from './scene';
-import { serializeSceneDocument, type SceneDocumentIssue } from './scene-codec';
-import { identifySceneFormat } from './scene-format';
+import type { SceneDocument } from './scene';
+import {
+	serializeSceneDocument,
+	validateSceneDocument,
+	type SceneDocumentIssue
+} from './scene-codec';
 import type { ProjectIssue } from './project-types';
 
 export type { LayoutDocumentWallFirst, SceneDocument };
@@ -31,7 +35,8 @@ export type { LayoutDocumentWallFirst, SceneDocument };
 /**
  * Canonical wall-first Save payload: `{ id, name, layout, scene }` with the
  * explicit format discriminators on both nested documents. The Project root
- * carries no second schema number (project-compat dispatch rule).
+ * carries no second schema number: the only version discrimination lives on
+ * the nested documents themselves.
  */
 export type WallFirstProjectPayload = {
 	id: string;
@@ -71,23 +76,34 @@ function toSaveIssue(
 	return { ...issue, side };
 }
 
+/**
+ * Rebase a nested document's issue onto the project root.
+ *
+ * The nested validators report root-relative paths (`$`, `$.formatVersion`), so
+ * the leading `$` is replaced rather than concatenated: the previous form
+ * doubled it (`$.scene$.formatVersion`) and made a Save-side issue impossible to
+ * locate in the payload it described.
+ */
 function prefixIssue(
 	prefix: string,
 	issue: LayoutDocumentIssue | SceneDocumentIssue
 ): LayoutDocumentIssue | SceneDocumentIssue {
-	return { ...issue, path: `${prefix}${issue.path}` };
+	return {
+		...issue,
+		path: issue.path === '$' ? prefix : `${prefix}${issue.path.slice(1)}`
+	};
 }
 
 /**
- * Validate a wall-first Save payload with explicit format identification:
- * the Layout must decode through the wall-first codec **at the current
- * canonical format** (P23.6H: a historical `formatVersion: 4` payload is
- * rejected by name here — normalization belongs to the compatible read boundary,
- * not to Save) and the Scene through the explicit world-local identification boundary
- * (`formatVersion: 1`). Legacy shapes reject BY NAME — never silently
- * accepted and never silently migrated here; conversion is P23.0b's read
- * path, not a Save-side normalization (P23.0: "new saves serialize only
- * the new canonical formats after F0 writer enable").
+ * Validate a wall-first Save payload: the Layout must decode through the
+ * wall-first codec **at the current canonical format** (P23.6H: a historical
+ * `formatVersion: 4` payload is rejected by name here) and the Scene through
+ * the current-format Scene validator (`formatVersion: 1`).
+ *
+ * PR #115 (WP3) — the writers are current-format-only, like the readers, and
+ * reach the validators directly: there is no generation identification step, no
+ * migration and no Save-side normalization, so a payload the reader would refuse
+ * cannot become writable here.
  */
 export function validateWallFirstProject(input: unknown): WallFirstProjectValidationResult {
 	const issues: WallFirstSaveIssue[] = [];
@@ -156,19 +172,16 @@ export function validateWallFirstProject(input: unknown): WallFirstProjectValida
 		issues.push(toSaveIssue('layout', prefixIssue('$.layout', layoutVersionIssue)));
 	}
 
-	const scene = identifySceneFormat(record.scene);
-	if (scene.kind === 'unrecognized') {
+	// The Scene half reads through the current-format validator directly, so the
+	// Save gate and the read gate cannot drift apart: anything the reader would
+	// refuse (a missing or non-current `formatVersion`, room-owned records) is
+	// refused here with the same issue.
+	const scene = validateSceneDocument(record.scene);
+	if (!scene.success) {
 		issues.push(...scene.issues.map((issue) => toSaveIssue('scene', prefixIssue('$.scene', issue))));
-	} else if (scene.kind === 'recognized-legacy') {
-		issues.push({
-			side: 'scene',
-			path: '$.scene.formatVersion',
-			code: 'scene_not_world_local',
-			message: `Wall-first Save requires the world-local Scene format (formatVersion: ${SCENE_WORLD_LOCAL_FORMAT_VERSION}); the recognized legacy room-local shape must be converted through the migration path first`
-		});
 	}
 
-	if (!layout.success || scene.kind !== 'world-local' || issues.length > 0) {
+	if (!layout.success || !scene.success || issues.length > 0) {
 		return { success: false, issues };
 	}
 

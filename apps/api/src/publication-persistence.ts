@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import {
-	compileLayoutGeometry,
+	compileWallFirstLayoutGeometry,
 	getShippedMaterialById,
 	getShippedModelByAssetId,
 	hasBlockingLayoutIssues,
@@ -440,7 +440,7 @@ WHERE id = $1 AND owner_id = $2`,
 			validation.issues[0] ? `${validation.issues[0].path}: ${validation.issues[0].message}` : 'Invalid project document'
 		);
 	}
-	const compiled = compileLayoutGeometry(validation.project.layout);
+	const compiled = compileWallFirstLayoutGeometry(validation.project.layout);
 	if (hasBlockingLayoutIssues(compiled.issues)) {
 		throw new PublicationValidationError(compiled.issues[0]?.message ?? 'Layout geometry is invalid');
 	}
