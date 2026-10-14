@@ -2302,13 +2302,17 @@ schema/codec split (T1) and Scene/Camera unit extraction (T2/T3).
 ## 9. WP3 execution — Checkpoint C evidence
 
 > **Status.** WP3 executed on `codex/pr115-architecture-plan` from Checkpoint B (`a90c3be2`)
-> against the revision-4 current-format-only plan (`c63887ca`). Checkpoint C is **pending owner
-> review**. WP3R, WP4 and closeout have not begun, and nothing below claims them. No
-> `unsupported_generation` path, legacy detector, classifier, compatibility facade or dedicated
-> historical-format rejection test was added.
+> against the revision-4 current-format-only plan (`c63887ca`), and was then independently
+> reviewed (findings F1–F5, §9.6). The review corrections are applied on top of WP3. Checkpoint C
+> is **acceptance-ready, pending independent acceptance**. WP3R, WP4 and closeout have not begun,
+> and nothing below claims them. No `unsupported_generation` path, legacy detector, classifier,
+> compatibility facade or dedicated historical-format rejection test was added.
 
-**Change set:** 44 files — 43 tracked modifications/deletions (`+512 / −3,811`, the
-`git diff --shortstat` line) plus the new `packages/project-model/src/runtime.ts` (156 lines).
+**Change set (commit `d0d0ce8a`):** 45 files — 44 tracked modifications/deletions
+(`+648 / −3,811`) plus the new `packages/project-model/src/runtime.ts` (`+156`). The commit totals
+are `+804 / −3,811` (36 modified, 8 deleted, 1 added). §9.6 F4 records the correction to the
+earlier "44 files / +512" line, which double-counted the new file and used the wrong modified-line
+subtotal.
 
 ### 9.1 Production change
 
@@ -2372,21 +2376,29 @@ No validation rule was relaxed and no fixture expectation was rewritten.
 
 ### 9.3 Verification (Checkpoint C)
 
+**Verified revision:** the review-correction head on `codex/pr115-architecture-plan` (its SHA is
+recorded in §9.6), over base `d0d0ce8a`; committed-change range `a90c3be2..<review-correction head>`
+(Checkpoint B → C). The pre-review WP3 commit `d0d0ce8a` produced the same gates with `npm test`
+at 106 files / 1,501 tests; the corrected head adds exactly one case — the F1 regression
+assertion in `project-format-visitor-parity.test.ts` (§9.6).
+
 | Command | Result |
 | --- | --- |
-| `npm run test:arch` | 13 files / 102 tests passed, 1.2 s |
-| `npm test` | 106 files / 1,501 tests passed (fast + heavy + arch), 17.0 s |
+| `npm run test:arch` | 13 files / 102 tests passed |
+| `npm test` | 106 files / 1,502 tests passed (fast + heavy + arch) |
 | `npm run check` | `svelte-check`: 0 errors, 0 warnings |
-| `npm run build` | built in 4.7 s (`@sveltejs/adapter-vercel`) |
+| `npm run build` | built in 4.32 s (`@sveltejs/adapter-vercel`) |
 | `npm run check:layout-core`, `check:project-model`, `check:camera-core` | `tsc --noEmit` clean |
 | `npm run check:api` | `tsc --noEmit` clean |
 | `npm run test:api` | build + 3 files: 23 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` |
-| `git diff --check` | clean |
-| Browser check (`vite` dev server) | `/`, `/projects`, `/project/x/spatial` (notice renders), `/p/x`: all 200, expected content, **zero console errors or warnings** |
+| `git show --check d0d0ce8a`; `git diff --check a90c3be2 d0d0ce8a` | clean (both) — committed-change whitespace for the WP3 commit and the Checkpoint B → C range, per §7.4 (F3 replaces the earlier worktree-scoped `git diff --check`) |
+| Browser check (`vite` dev server on 5173 and the API dev server on 8787) | `/`, `/projects`, `/project/x/spatial` (notice renders), `/p/x`: all 200, expected content, **zero console errors or warnings** |
 
 The DB-backed run is a Checkpoint C result, not inherited from WP2. The frozen-project checks
 remain owner-verified WP1 evidence and were not re-run here (§3.7); the repository-side
-`legacy/` isolation gate is green in `test:arch`.
+`legacy/` isolation gate is green in `test:arch`. The browser check needs the API dev server: the
+`/projects` hub requests `/auth/me`, so without it the console shows one `ERR_CONNECTION_REFUSED`
+that is an environment artifact, not a page defect.
 
 ### 9.4 Test disposition (predecessor / successor)
 
@@ -2434,3 +2446,37 @@ T1's authored-schema redesign and the T2/T3 Scene/Camera unit extraction were no
    retained visitor renderer and Camera authoring math are typed by it. That is the §6 item 2
    "wherever it exists solely for obsolete formats" boundary being read strictly: the type is
    used, only Room-frame resolution is gone.
+
+### 9.6 Independent review (F1–F5) and corrections
+
+An independent review of the WP3 commit `d0d0ce8a` produced five findings. Each was checked
+against current code, contracts and evidence; the dispositions and corrections follow. The
+review-correction commit on `codex/pr115-architecture-plan` (on top of `d0d0ce8a`) carries them,
+and no product policy changed: one format, no legacy detector or compatibility facade, separate
+Layout/Scene ownership, one geometry and Camera authority, visitor/editor isolation, and no
+premature T1–T4 redesign.
+
+| # | Finding | Disposition |
+| --- | --- | --- |
+| **F1** | `prepareRuntime` validated id/name/Layout/Scene but did not reject unknown root keys, whereas `validateProject` did | **Upheld — corrected.** A real regression, not an intentional split: the deleted `decodeProjectCompatible` rejected an unknown root key (`unknown_key`), and §6 requires that no unknown field be tolerated. `prepareRuntime` now opens through `validateProject` — the one canonical validator — and then compiles; the hand-rolled root/id/name checks and the second `ID_PATTERN` are gone, so runtime preparation cannot drift from the persisted-document reader. A focused assertion (`project-format-visitor-parity.test.ts`, "rejects an unknown root key through the canonical validator") pins the equivalence. |
+| **F2** | WP3 rewrote the ratified decision record's historical evidence link from `compat-runtime.ts` to the new `runtime.ts` | **Upheld — corrected.** §8.2/§10.3 hold ratified decision records immutable and turn their old planning links into labeled provenance, exactly as the same record already does for its History-controller row. The row keeps its historical wording and labels the removed path's recovery: "compatible runtime preparation (removed by #115; recoverable with `git show e90a5822:packages/project-model/src/compat-runtime.ts`)". The original edit only existed because a dead link would otherwise fail the documentation gate; labeled provenance satisfies the gate and the immutability rule at once. |
+| **F3** | §9.3 reported a plain `git diff --check`, which covers the worktree rather than committed changes | **Upheld — corrected.** §7.4 requires a committed-range or single-commit check. Recorded: `git show --check d0d0ce8a` (single checkpoint commit) and `git diff --check a90c3be2 d0d0ce8a` (Checkpoint B → C committed range) — both clean. §9.3 now records that scope; the worktree check is not checkpoint evidence. |
+| **F4** | §9 reported 44 files; the commit has 45 | **Upheld — corrected.** `d0d0ce8a` is 45 files (36 modified, 8 deleted, 1 added), `+804 / −3,811` (44 tracked modifications/deletions at `+648 / −3,811` plus the new `runtime.ts` at `+156`). The earlier line double-counted the new file and used the wrong modified-line subtotal; the §9 preamble now records the correct count. |
+| **F5** | The WP3 commit carries an agent footer and co-author trailer, contrary to `AGENTS.md` rule 12 | **Recorded, not rewritten.** `d0d0ce8a` is published on the #115 branch; removing the trailer by history rewrite or force-push is not authorized and was not done. Every commit from this review onward complies with rule 12. |
+
+**Refinement, not a second authority.** The first F1 draft suggested keeping a deliberate split
+between "runtime preparation" and "persisted-document validation". It is not kept:
+`prepareRuntime` prepares the same accepted document pair and now uses the same validator. The
+per-consumer differences that remain are real and intended — the visitor passes catalogue-aware
+`SceneValidationOptions`, `validateProject` additionally returns canonical JSON, and
+`prepareRuntime` adds compilation and Scene resolution on top.
+
+**Claims re-checked and left unchanged.** The §9.1 verified-absence grep holds (all eleven removed
+names are absent from `apps/` and `packages/`), and the `unsupported_generation` history note
+holds (the term never existed under `apps/` or `packages/` — `git grep` at the baseline
+`e90a5822` finds none — so its only occurrences are planning/acceptance prose and nothing was
+deleted for it or replaced).
+
+**Scope guard.** These corrections are evidence- and validation-authority fixes. They do not
+reopen WP3's settled scope, and the surviving-architecture and test-organisation items remain
+assigned to WP3R and WP3T.
