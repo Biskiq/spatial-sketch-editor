@@ -3164,3 +3164,155 @@ No production or test file changed in this correction, so the documentation-only
 for these gates only; §15's full product/API verification is not re-run and is not
 reinterpreted. Every corrected document resolves its own links, written paths and section
 anchors under the same gate §15 recorded, with no new exclusion.
+
+## 17. WP5 entry — bounded maintainability harvest (research — review owed)
+
+> **Status: WP5-entry research, documentation-only.** This records why the previous Museum
+> Editor accumulated oversized files, coupled responsibilities, duplicated documentation and
+> maintenance machinery, and which minimal safeguards are worth adopting. It changes no
+> production code, test, contract or workflow, creates no new document or work package, and
+> installs nothing. WP5 implements only what it separately decides; this section is the
+> evidence for that decision. Ready for independent review.
+
+### 17.1 Method and scope
+
+Four bounded areas were investigated with targeted snapshots, not a repository-wide census:
+(1) the former editor store through Git history; (2) surviving accumulation points in the
+post-#115 foundation; (3) documentation/workflow growth; (4) the protection the current
+architecture tests, test doctrine, routers and closeout skills already provide. No external
+research, code-graph indexing or open-ended audit was performed. All claims below were checked
+against source and Git history at the stated revisions.
+
+EVIDENCE-PATHS: start — baseline and removed implementation paths at the revisions named; WP4 has since deleted these, and each is evidence of a decision, not a route today.
+
+- Former editor store: `apps/editor/src/lib/editor/editor-store.svelte.ts` (3,398 lines at the
+  WP4 baseline `e90a58224443bdbf44114d7285d55c983b79cc84`; landed at 2,839 lines at `3842c3b8`,
+  2026-08-23; last body revision `93111a2b`, 2026-09-10; deleted at `a90c3be2`).
+- Its sub-store directory: `apps/editor/src/lib/editor/store/*.svelte.ts` (16 sub-stores).
+- Removed app-local facades: `apps/editor/src/lib/layout/*` (31 re-export facades),
+  `apps/editor/src/lib/content/package-format.ts`, `apps/editor/src/lib/content/scene-codec/index.ts`.
+- The former shell and its theme/tokens: `apps/editor/src/lib/editor/**`, `apps/editor/src/lib/editor/styles/*.css`.
+- Superseded design-system docs at baseline: `docs/reference/design-system/design-shell-specs.md`,
+  `shell-scene-workspaces.md`, `shell-camera-workspaces.md`, `camera-flow-specs.md`, `camera-layout-design.md`.
+- Top-level syntheses at baseline: `docs/North-star-final-decision-synthesis.md`,
+  `docs/North-star-final-synthesis-peer-review.md`, `docs/World-Experience-Architecture-Synthesis.md`,
+  `docs/World-Experience-Model.md`.
+
+EVIDENCE-PATHS: end
+
+### 17.2 Failure-mechanism decision table
+
+| Failure mechanism | Historical/current evidence | Existing protection | Genuine gap | Smallest proposed safeguard | Disposition |
+| --- | --- | --- | --- | --- | --- |
+| Implementation extracted without migrating its callers — a forwarding facade/shim retained indefinitely | Former editor store: 3,398 lines, 137 getters, 229 methods, **230 `return this.<sub>.` delegations**, 43 import sources, 16 sub-stores. Its own comments: "re-export the moved module helpers so the 40 consumer imports keep compiling unchanged **until Slice 6 collapses the facade surface**"; "every method here is a one-line delegate to the `textureLibraryController`" | `implementation-plan.md` §5.1 states "thin facades are not domain algorithms; callers import packages directly"; WP3R class (b) names "a remaining facade"; `project-model-boundary.test.ts` asserts the app-side package facades are gone; `tests/README.md` rules 17–18 | The principle lives only in the #115 record, not a live authority; nothing prevents a **new** app-local facade that re-exports/delegates its sub-modules | One paragraph in `docs/reference/architecture.md` §Ownership: extraction migrates its callers; no unowned forwarding facade; one owner per state fact | **ADOPT** (one live-contract principle) |
+| A temporary shim scheduled for a "later collapse" that never runs | "until Slice 6 collapses the facade surface" (never executed; #115 later deleted the whole surface); "Slice 2 compat shim"; "Slice 3 debt 3.11"; "Slice 6 may collapse" | `implementation-plan.md` §5.1: "A deferred row is valid only because it names its concrete capability dependency. 'Later cleanup' is never valid" (applies to plan rows, not code shims) | No rule requires a forwarding shim to name its owner and removal slice, or to be removed with its extraction | Same principle as above, stated once; a matching one-line check in the existing `slice-closeout` self-check via WP5 §10.4 | **ADOPT** (folded into the same principle + one closeout line) |
+| Duplicated mutable state ownership (parallel `$state` mirrors) | "instead of a former god-file parallel `$state` mirror"; "the five mirrors" for lighting; "session owns the canonical lighting state" | Shell contract §2.12 "One writable owner per fact"; `architecture.md` distinct-authority rules | None material once one owner per state fact is stated at module level | Folded into the same principle | **COVERED** (no separate safeguard) |
+| Test-suite coupling to a single mutable hub | 80 files under `apps/editor/tests/**` reference the store; 8 dedicated `editor-store-*.test.ts` suites | `tests/README.md` rules 3 (call-site proof), 18 (one contract per suite), 20 (reuse before adding) | Downstream of the caller-migration gap | None | **REJECT** (symptom, not a cause) |
+| Large cohesive modules treated as unhealthy | `packages/layout-core/src/layout-wall-first-precision.ts` 2,814 lines = one responsibility (exact junction/wall length, angle, thickness, height, subdivision plans); `apps/editor/src/lib/layout/wall-mesh-builder.ts` 1,928 = one responsibility (wall mesh from compiled geometry); `packages/camera-core/src/camera-motion.ts` 2,083 = one Camera evaluation responsibility | `tests/README.md` rule 18: "Never split on line count or file size"; rule 13: draw the boundary around the expensive work, not the file | None | None — explicitly no LOC threshold or module-count quota | **REJECT** (a size rule would be a false-positive machine) |
+| Closed-work documentation retained live and duplicate live authorities coexisting | `docs/**` grew 191 files (2026-08-23 `3842c3b8`) → 209 (`95d62665`) → **581** (#115 baseline); baseline composition 265 archive + 227 roadmap + 47 reference + 37 operations + 4 top-level syntheses; the superseded design-system set (above); P23B alone held 100 files; WP4 removed 511 | `slice-closeout` compacts closed work into stubs with Git anchors and forbids new live→archive prose links; the docs router owns "one live normative statement per concern" and promote-then-stub; WP4 §8.1 already replaced the drift-prone compaction default | None mechanical — "two live docs claim one authority" is not decidable by a link/anchor checker | None | **REJECT** (existing mechanism sufficient; the failure was late application, which WP4 corrected) |
+| The architecture lane is the main safeguard but nothing forces it to run | `apps/editor/vitest.arch.config.ts`: "No tracked CI workflow enforces this yet; the reviewed plan and `tests/README.md` are the mechanism" | The reviewed-plan + acceptance-record discipline the file names | Real, but enforcing it means CI and new workflow machinery | None here | **DEFER** (owner-visible; out of this harvest's and WP5's scope) |
+| Adding a new fitness/health/audit layer to "prevent" recurrence | (Counterfactual) | The protections above | — | None | **REJECT** (overengineering) |
+
+### 17.3 Principal causes (symptoms distinguished from causes)
+
+1. **The public surface never narrowed.** Extractions moved *implementation* into sub-stores but
+   kept a delegating facade so the ~77 source importers and 80 test files never had to change. The
+   file shrank by behaviour yet grew back as a getter/delegation wall; its own comments scheduled a
+   "Slice 6" collapse that never ran. This is the disease the 3,398 lines are a symptom of.
+2. **Composition root and facade were conflated.** The store's construction/wiring role
+   (the ordered instantiation of 16 sub-stores, host literals and after-replace listeners) is
+   legitimately cohesive; carrying it in the *same* object as the re-exporting facade is what made
+   the legitimate part inseparable from the coupling.
+3. **Duplicate live documentation and un-compacted closed work.** Growth came from artifacts that
+   stayed live after their phase closed and from superseded authorities (four top-level syntheses;
+   a design-system set later owned by PLATE) that were not promoted-then-stubbed. The mechanisms to
+   prevent this already existed; they were applied late, at WP4.
+
+**Not causes (and not to be "fixed"):** absolute line count, a large module with one
+responsibility, and the existence of a composition root. A split is justified only when it
+improves ownership, testability or change isolation without adding indirection.
+
+### 17.4 Existing safeguards already sufficient
+
+- **The arch lane** (`npm run test:arch`, 14 files) already enforces import/package direction,
+  exactly-one evaluator ownership, visitor/editor isolation, `legacy/` isolation, the absence of
+  app-side package facades, documentation cross-reference integrity and lane membership
+  (`apps/editor/test-lanes.ts`).
+- **Test doctrine** (`apps/editor/tests/README.md`) rules 3, 17, 18, 19 and 20 directly counter the
+  god-file failure (call-site proof, rename ≠ ownership, no split on line count, name the failure,
+  reuse before adding).
+- **Documentation discipline** — the docs router's authority-by-concern, one-live-copy and
+  progressive-disclosure rules, plus `slice-closeout` / `phase-closeout` / `work-checkpoint`.
+- **AGENTS hard rules** 1 (one Camera authority), 2 (distinct authorities) and 6 (no second
+  authority).
+
+These are already sufficient for everything except the caller-migration principle (§17.2), so the
+recommendation set is deliberately one idea with one closeout echo — not a new layer.
+
+### 17.5 Adopted recommendations (smallest defensible set)
+
+- **A1 — one live-contract principle (adopt).** State in `docs/reference/architecture.md`
+  §Ownership (an existing architecture contract, no new document):
+
+  > Extracting a responsibility migrates its callers; it does not leave a forwarding facade or a
+  > re-export of the moved surface. A temporary shim is permitted only while it names its owner and
+  > the slice that removes it, and it is removed with — or before the end of — that slice's work.
+  > Every state fact has one owner; a second mirror of another module's state is not a cache.
+
+  This is the smallest rule that closes the demonstrated gap; it targets coupling and ownership,
+  not file size, and needs no new test, inventory or process.
+- **A2 — one closeout echo (adopt, within WP5's existing scope).** WP5's own §9.6 track
+  README/runbook and its §10.4 skill edit carry one line embodying A1 in the `slice-closeout`
+  self-check ("an extraction migrated its callers; no forwarding shim or unowned 'collapse later'
+  remains"). This refines an existing WP5 responsibility; it does not expand it.
+
+### 17.6 Rejected as overengineering
+
+- **LOC thresholds, module-count quotas, mandated abstraction layers** — `layout-wall-first-precision.ts`
+  (2,814) and `wall-mesh-builder.ts` (1,928) are single-responsibility and healthy; a size rule
+  would flag them and miss the real coupling.
+- **A generic "no facade" or "no duplicate authority" test** — not mechanically decidable without
+  false positives; the narrow package-facade assertion already exists, and a rebuilt composition
+  root can add a targeted boundary proof in its own slice (tests/README rule 4) if the pattern recurs.
+- **A maintainability inventory, health score, background audit, periodic re-census or automatic
+  refactoring trigger** — new maintenance machinery that would itself become debt.
+- **A new skill or work package** — forbidden by the mission and unnecessary; A2 is a focused edit
+  to existing skills.
+- **Extending the WP5 gate register with maintainability gates** — the register owns exact-interface
+  (F) gates; maintainability belongs in architecture doctrine, not the gate register.
+- **Anything that would reopen the accepted foundation** — Layout/Scene ownership, the single
+  Layout compiler, the one Camera authority, visitor/editor isolation and deterministic
+  acceptance/history are untouched.
+
+### 17.7 Deferred / owner-visible residual
+
+- **CI enforcement of the arch lane** (`vitest.arch.config.ts`): a real residual risk, but closing
+  it means adding a tracked CI workflow — new workflow machinery outside this harvest and outside
+  WP5's approved scope. Flagged to the owner; not recommended for adoption here.
+
+### 17.8 Implications for WP5 (recommended, not implemented)
+
+- **§9.6 track READMEs/runbooks:** add the A1 module/caller-discipline line as one sentence where the
+  runbook states a track's working agreements. No new section, no new document.
+- **§10.4 skill edits:** add the A2 self-check line to `slice-closeout`. Focused edit only; no new
+  skill.
+- **Architecture contract:** A1 lands in `docs/reference/architecture.md` §Ownership. WP5 may fold it
+  into its §10 routing/authority edits, or land it as a small adjacent edit; the harvest recommends
+  it and implements nothing.
+- **§9.4 gate register and the `parallel-track-gates` structure test:** unchanged by this harvest.
+- **Explicitly not part of WP5:** any maintainability inventory, health score, audit, LOC policy, CI
+  workflow or refactoring trigger.
+
+### 17.9 Verification
+
+Documentation-only: no production, test, contract or skill file changed, so only the documentation
+and architecture gates apply. `npm run test:arch` (including the documentation cross-reference gate)
+and `git diff --check` over the corrected range are recorded below.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane, including the documentation cross-reference gate | `npm run test:arch` | **pass** — 14 files, 107 tests, 0 failures |
+| Whitespace over the recorded range | `git diff --check 8acf2a2c` | **clean** |
+
+All historical paths quoted above sit inside the §17.1 `EVIDENCE-PATHS` region and are not resolved,
+per the router's record rules.
