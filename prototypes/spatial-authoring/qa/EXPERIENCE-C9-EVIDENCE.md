@@ -183,9 +183,9 @@ and shared structural seams. No acceptance, merge, phase closure or production c
     EVIDENCE-PATHS: start — files this 2026-10-11 pass touched, as written then; the checkpoint
     was retired at #113 closeout (status → P25 README, recipes → PR #114 plan §9)
     `docs/operations/checkpoints/pr113-experience-v2.md`,
-    EVIDENCE-PATHS: end
     `docs/roadmap/p25-experience/README.md`,
-    `docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md`
+    EVIDENCE-PATHS: end
+    `../plans/experience-v2-prototype/authoring-completeness-plan.md`
     (first pass; the second pass updates the last three plus this record)
 
 ## Product work covered
@@ -1192,7 +1192,7 @@ EVIDENCE-PATHS: end
 - C9.6 now supports bounded View/Presentation removal and repair. Automatic offer execution remains excluded, and parent pause/bookmark policies remain experimental.
 - No merge, phase closure, production acceptance or Paper work is claimed or performed. The six-QA reconciliation is a docs/design lock only; the executable still shows the earlier expression.
 
-[plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md
+[plan]: ../plans/experience-v2-prototype/authoring-completeness-plan.md
 [c8]: ./EXPERIENCE-CONFORMANCE-ACCEPTANCE.md
 
 ## Closeout preservation — #113 (2026-10-11)

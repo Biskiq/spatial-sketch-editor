@@ -1,9 +1,11 @@
 # Assets
 
-**Read when:** Paris GLBs, licences, catalogue, import/replace models, project texture registry.  
-**Last reviewed:** 2026-09-27 (ratified direction reconciled; current behavior
-remains authoritative until cutover)
-**Full checklist:** [`../archive/ASSET_WORKFLOW.md`](../../archive/ASSET_WORKFLOW.md)
+**Read when:** catalogue, licences, model preparation and validation, project texture registry,
+published release delivery.
+**Last reviewed:** 2026-10-13 (#115 WP4 — real paths instead of the removed `apps/museum`; the
+retired Paris asset workflow's preparation and validation checklist is absorbed below; the editor
+ingest UI is removed). The ratified direction below is unchanged; a landed contract keeps
+describing current behavior until its explicit cutover.
 
 ---
 
@@ -27,9 +29,10 @@ revision but never prove continuity across re-export.
 
 **First creator loop.** Truthful single-model creator import (retained source,
 provenance and explicit supported capabilities) moves into the first
-creator/audience loop under the re-derived P24/T2 track — it is not contingent
-on a complete asset pipeline, and static-only catalogue supply is no longer the
-scope ceiling.
+creator/audience loop under the re-derived T2 track
+([`../../roadmap/t2-composition/planning-evidence.md`](../../roadmap/t2-composition/planning-evidence.md))
+— it is not contingent on a complete asset pipeline, and static-only catalogue supply is no longer
+the scope ceiling.
 
 ## Current asset system (P20 shipped 2026-09-04 — S0–S4)
 
@@ -40,8 +43,9 @@ Built-in catalogue
 
 Local file texture
 → session BinaryTextureStore
-→ package portability path
 → not durable cloud storage by itself
+→ (the package portability/export path that also read it was editor
+   import/export and was removed with the editor shell in #115)
 
 Cloud file texture
 → authenticated owned project
@@ -56,25 +60,24 @@ Project registry rows
 → PNG/WebP/JPEG
 ```
 
-P20 does **not** build the final Assets workspace. Local/package durability
-conversion is explicit. Cloud Load resolves every referenced logical texture
-before project replacement, verifies registry metadata plus MIME/size/SHA,
-then primes the existing binary store; failure leaves the current project
-unchanged. GLB import, provider search, and delete/GC remain deferred. Built-ins
-retain catalogue identity — do not invent registry behavior for them.
+P20 does **not** build the final Assets workspace. Cloud Load resolves every referenced logical
+texture before project replacement, verifies registry metadata plus MIME/size/SHA, then primes the
+existing binary store; failure leaves the current project unchanged. GLB import, provider search,
+and delete/GC remain deferred — and the editor ingest/staging UI that would have driven uploads was
+removed with the editor shell, so asset creation is an API/T2 rebuild, not a current capability.
+Built-ins retain catalogue identity — do not invent registry behavior for them.
 
 ## Published release delivery (P22 shipped 2026-09-08)
 
 A release manifest pins each referenced P20 texture to its verified object
-key + SHA-256/MIME/size and projects shipped-static dependencies through the
-checked-in compatibility registry (stable logical identity, never bundler
-hash URLs). Public bytes serve only while the publication is active and only
+key + SHA-256/MIME/size. Public bytes serve only while the publication is active and only
 through release membership (`GET /publications/:id/versions/:v/assets/:asset/content`,
 `no-store`, correct MIME/length, `nosniff`, no R2 redirects). The cold visitor
 loader verifies downloaded bytes before installing the runtime and threads a
 release-scoped `TextureLoadScope` through the real material consumers
 (including model-instance texture overrides); colliding logical URIs across
-projects/releases never share cache entries. P22 does not broaden P20 ingest
+projects/releases never share cache entries. Publication **fails closed**: a pending, missing,
+corrupt or wrong-size asset blocks it. P22 does not broaden P20 ingest
 (image textures only, no uploaded models).
 
 The catalogue rows below describe the built-in asset model; the current project
@@ -90,16 +93,58 @@ by F.2/F.1 under the contract's interface-ownership rule (see
 
 | Stage | Location |
 |-------|----------|
-| Source models | `apps/editor/assets-source/models/` |
-| Licences | `apps/editor/assets-source/licenses/` |
-| Production GLBs | `apps/museum/static/museum/models/` |
-| Manifest | app-local `src/lib/content/assets.ts` |
-| Placements | `scene.json` via editor |
+| Source models (raw downloads) | `apps/editor/assets-source/models/<asset-name>/` |
+| Licence and acquisition notes | `apps/editor/assets-source/licenses/<asset-name>.md` |
+| Production GLBs (optimized output only) | `apps/editor/static/museum/models/` |
+| Manifest | `apps/editor/src/lib/content/assets.ts` |
+| Plan proxy metadata | `apps/editor/assets-source/plan-proxy/` |
 
-`AssetModel.svelte` owns load/clone/fallback. Do not add room-local GLTF loaders.  
-The broad GLB import pipeline remains **deferred**; the first truthful
-single-model creator import is re-derived into the first creator/audience loop
-(see destination above), not scheduled by this reconciliation.
+`AssetModel.svelte` owns load/clone/fallback. Do not add a second, room-local GLTF loader — the
+legacy room-frame loader branch was removed in #115 and the single renderer path is the contract.
+
+## Model preparation and validation checklist
+
+Absorbed from the retired Paris asset workflow (`git show
+e90a58224443bdbf44114d7285d55c983b79cc84:docs/archive/ASSET_WORKFLOW.md`), with the removed
+`apps/museum` and `@portfolio/museum` commands replaced by the current editor workspace. This is
+the procedure for preparing a catalogue model; it is not the deferred creator-import pipeline.
+
+**Add or replace a catalogue asset**
+
+1. Place the raw source under `apps/editor/assets-source/models/<asset-name>/`.
+2. Create or update the licence/acquisition record in
+   `apps/editor/assets-source/licenses/<asset-name>.md`.
+3. Optimize the source into a production GLB under `apps/editor/static/museum/models/`.
+4. Add or update the catalogue entry in `apps/editor/src/lib/content/assets.ts` with `id`,
+   `category`, `sourceFile`, `productionFile`, `sourceUrl`, `creator`, `license`, `attribution`,
+   `defaultScale`, `castShadow`/`receiveShadow`, `status`, `rooms`, `notes` and any optional
+   `fallback`.
+5. Update any fallback primitive if the asset needs a new silhouette.
+6. Remove stale references to a replaced asset only after the new asset is in place and verified.
+
+**Optimization checklist.** Edit the source asset, then produce a GLB that is:
+
+- centered on a sensible pivot — usually floor-centered for furniture, ceiling-centered for
+  hanging decor;
+- stripped of unused attributes where that is safe;
+- merged where redundant meshes waste draw calls;
+- scaled to the intended room size **in the manifest**, not baked into the layout;
+- converted to WebP textures where the source allows it;
+- Meshopt-compressed for runtime delivery;
+- still carrying whatever materials, tangents or transmission features it needs (the sofa kept
+  generated tangents; the grandfather clock kept out-of-range UVs unquantized).
+
+**Validation after any change**
+
+- `npm run check` and `npm run build` at the repository root cover the editor app that ships the
+  model.
+- `/dev/assets` shows model load status, bounds and fallback behavior.
+- The production GLB exists at its `static/museum/models/` path.
+- The replaced asset is no longer referenced anywhere.
+
+**Placement rules.** Keep the piano position unchanged unless the owner explicitly asks otherwise.
+Treat furniture clusters as layout data, not scene logic. Do not add a second/room-local GLTF
+loader.
 
 ## Plan footprint metadata (P2.1)
 

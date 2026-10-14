@@ -135,7 +135,7 @@ What the harness knows about keys, measured rather than assumed:
   gate**, and the active contract is the one the current PR is held to:
   - the locked design — [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
     — owns the finalized Experience shell expression: visual roles, hierarchy and density;
-  - the [#114 plan](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md)
+  - the [#114 plan](../plans/unified-design-reconciliation/implementation-plan.md)
     §7 boards own this PR's written acceptance, slice by slice (QA 1–6, Camera precision and Global),
     and each shipped slice's evidence record ([EXPERIENCE-UX-EVIDENCE.md](./EXPERIENCE-UX-EVIDENCE.md))
     records the readings that carry its exit gate. Owner visual acceptance remains the PR's gate.

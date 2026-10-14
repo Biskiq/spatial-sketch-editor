@@ -33,8 +33,10 @@ first edit. Test-design authority for adding/replacing tests:
 
 Durable doctrine for adding, replacing and placing tests. This section is the
 authority; the evidence behind it (measurements, migration history, review
-findings) is in `docs/operations/test-suite-harvest-2026-09-19.md` §Q/§R and is
-not needed to contribute a normal test.
+findings) was recorded in the retired `test-suite-harvest-2026-09-19` harvest
+that #115 deleted because it described a test tree #115 restructures
+(`git show e90a5822:docs/operations/test-suite-harvest-2026-09-19.md`), and none
+of it is needed to contribute a normal test.
 
 ### Successors and deletion
 
@@ -225,9 +227,9 @@ benchmark's purpose as fulfilled.)
 is never path-gated: a Plan or store change can break a camera drawer or
 visitor boundary through shared code. Membership is executable fact in
 `apps/editor/test-lanes.ts`; the rules for *placing* a test are under
-[Test design rules](#test-design-rules) above. See
-`docs/operations/test-suite-harvest-2026-09-19.md` §F for the original lane
-model and §R for the final measurements.
+[Test design rules](#test-design-rules) above. The retired harvest held the
+original lane model and the final measurements
+(`git show e90a5822:docs/operations/test-suite-harvest-2026-09-19.md`).
 
 ## What a change requires
 

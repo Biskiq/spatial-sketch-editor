@@ -2873,3 +2873,138 @@ product behavior (§7.7).
   membership or counts, so it is not re-measured here.
 - **Reported to owners, still not implemented** (unchanged from §13.10): the `virtual:museum-editor-entry`
   declaration in `apps/editor/src/vite-env.d.ts` is production residue outside WP3T's boundary.
+
+## 15. WP4 — documentation consolidation and pruning (executed — acceptance-ready, review owed)
+
+> **Status: executed and verified; acceptance-ready for independent review.** WP4 ran from the
+> accepted Checkpoint D-T head `87e3a56c`. The manifest is applied in full (584/584 rows), the
+> documentation gate is green with no new exclusion, the §7.4 gates pass, protected evidence and
+> recovery anchors are verified, and the QA launchers pass their non-browser dry run. Totals and
+> every command's outcome are recorded below. This is the executing agent's self-report;
+> independent review is still owed, and no track, phase or product status changes here.
+
+### 15.1 Applied in the working tree
+
+**Manifest.** The per-file manifest in §4 (584 rows, every row present) was parsed and applied
+programmatically: **108 moves** (`MOVE` 65 + `ARCHIVE/MOVE` 33 + `CONSOLIDATE then ARCHIVE/MOVE` 2
++ 8 plan-faithful deviations below) were executed with `git mv`, preserving each moved bundle's
+relative layout. Bundle-root derivation is the longest common directory prefix of a group's
+sources; collision, missing-source and destination-exists validation reported zero problems
+before the moves ran.
+
+**Deletions: applied — 450 files.** Every `DELETE` and `CONSOLIDATE then DELETE` row that still
+existed was removed from the working tree, and the emptied directories were pruned. The baseline
+archive default and its three exceptions hold: `docs/archive/README.md` is rewritten, the two p25
+comparator JSONs are byte-identical in place (sha256 `b352f1fc…fb73` and `20f08870…4245`, matching
+§5), and the two `foundation-research` files are kept. The removals are working-tree deletions
+against the immutable baseline `e90a5822`, and nothing is replaced by a stub.
+
+**Manifest reconciliation (post-application).** `DELETE` rows still present: **0**. `MOVE` rows
+whose destination is missing, or whose source survives: **0**. Retained rows missing: **0**. The §4
+action totals reproduce exactly: DELETE 453, MOVE 65, ARCHIVE/MOVE 33, RETAIN + rewrite 8, RETAIN 7,
+RETAIN + update 6, CONSOLIDATE then DELETE 5, KEEP 2, KEEP byte-identical 2, CONSOLIDATE then
+ARCHIVE/MOVE 2, CONSOLIDATE 1 — **584**.
+
+**Result size.** The baseline documentation scope was 583 `docs/**` files plus `AGENTS.md`,
+`README.md` and `README.original.md` (586). The live tree is now **25 documents under `docs/`
+outside the archive**, plus **48 archived closure records** under `docs/archive/technical/` and
+`docs/archive/roadmap/`, plus `AGENTS.md` and `README.md`: a reduction of 511 files, of which 450
+were deleted and 65 moved into `prototypes/` evidence homes (43 further records moved inside
+`docs/`, into the archive).
+
+**New and rewritten documents.** `docs/roadmap/t1-spatial-world/planning-evidence.md`,
+`t2-composition/planning-evidence.md`, `t3-experience/planning-evidence.md` and
+`t4-release/README.md` were written from the §8.4 planning-evidence lists and their retiring
+sources. `docs/README.md`, `docs/roadmap/README.md`, `README.md`, `AGENTS.md`,
+`docs/archive/README.md`, `docs/operations/current.md`, `docs/operations/checkpoints/README.md`,
+`docs/operations/tech-debt/README.md` (compacted per §8.6), `docs/operations/architecture-cycle.md`
+(consolidated per §11), `docs/roadmap/f-foundation-contracts/README.md`,
+`docs/reference/architecture.md` (two-lane and product-route sections, plus the frozen-project
+sentence), `docs/reference/north-star.md` (principle 10) and the component contracts
+(`camera-tour.md`, `persistence.md`, `assets.md`, `scene-codec.md`, `scene-content.md`) were
+rewritten or updated to the post-#115 foundation. `apps/editor/src/lib/authoring/README.md` is new.
+
+**Machinery removed (§8.1).** `ARCHIVAL_RECORD_PREFIXES`, its `isDocumentation` branch and
+`archivalExclusionProblems()` were deleted from `apps/editor/tests/helpers/docs-references.ts`
+(along with the now-unused `existsSync` import), and the documentation test's temporary-exclusion
+case was replaced by a permanent-scope assertion over `NON_DOCUMENTATION_PREFIXES`.
+
+### 15.2 Plan-vs-manifest deviations (§8.1 exact-file rules)
+
+The WP0 expansion classified eight files `DELETE` under a section's *remainder* row while the same
+section names them for preservation. Each was archived instead, because the plan's exact-file rule
+overrides the prefix default and the preservation invariant forbids an obligation disappearing
+with its document:
+
+| File | §8 rule | Why archiving was kept |
+| --- | --- | --- |
+| `p24-scene-staging/research/Pascal-editor-harvest.md`, `three-r175-r186-museum-harvest.md`, `museum-editor-phase2-acquisition-manifest.json` | §8.4 names all six P24 research files for `ARCHIVE/MOVE` to `docs/archive/technical/composition/` | unique research evidence; the manifest archived only three of the six |
+| `p23b.9-correctness-performance-gate/**` (3 files), `p23b.10-phase-closeout/**` (2 files) | §8.5 names the p23b.9 gate record and the p23b.10 phase closeout for `ARCHIVE/MOVE` to `docs/archive/technical/p23b/` | acceptance records holding explicit owner decisions; the archived P23B README references the closeout records by relative path, which stays valid because the bundle keeps its relative layout |
+
+### 15.3 Verification (§7.4, the documentation walk, protected evidence)
+
+Every command below ran on this working tree after the last WP4 edit.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane, including the documentation gate | `npm run test:arch` | **pass** — 14 files, 107 tests, 0 failures |
+| Complete editor suite | `npm test` | **pass** — 115 files, 1501 tests, 0 failures |
+| Fast lane | `npm run test:fast` | **pass** — 93 files, 1276 tests |
+| Svelte and TypeScript check | `npm run check` | **pass** — 0 errors, 0 warnings |
+| Production build | `npm run build` | **pass** |
+| Kernel checks | `check:layout-core`, `check:project-model`, `check:camera-core` | **pass** (all three) |
+| API type check | `npm run check:api` | **pass** |
+| API contracts, DB-backed (§7.5) | `npm run test:api` against a reachable local Postgres | **pass** — 7 suites, 0 failures, **0 skipped** (read from the TAP summary) |
+| Whitespace over the checkpoint range | `git diff --check 87e3a56c` | **clean** (two trailing-space lines introduced by the contract rewrites were fixed) |
+| Documentation walk | `apps/editor/tests/docs/documentation-references.test.ts` | **pass** — the walk reaches its protected documents, its exclusion list is exactly `['docs/archive/', 'Repo-Audit/']`, and the empty-walk mutation still fails |
+| Browser check of the retained routes | `/`, `/projects`, `/project/x/spatial`, `/p/x` on the dev server with the API up | **pass** — each renders its notice or hub with no console errors; `/projects` reached `GET /auth/me → 200` |
+| Retained tests vs deleted docs data | `p23b-fixture-contract.test.ts` after deleting `fixture-ledger.json` and `reuse-counter-ratchet.json` | **pass** — 2 tests, and no code or test references either file |
+| Old P24/P25/P26 trees | `docs/roadmap` listing | **absent** — only `README.md`, `f-foundation-contracts/`, `parallel-track-cutover/` and `t1`–`t4` remain |
+
+**Reference repair.** WP4 began with **386** open reference findings against the pre-deletion tree.
+The deletions removed the P-level records that carried most of them, leaving **253**; a move-table
+rewrite of relative links inside the relocated records repaired **154**, and the same rewrite
+extended to the retained documents repaired **51** more (**91 → 40**). The final **40** were nine
+links to the `#next-task-handoff--115` heading that #115 removed (dropped to the surviving route),
+two already resolved by the same substitution, and 29 links to genuinely deleted documents. Each of
+those was pointed at its surviving owner — the deleted `placement.md` contract → the
+`scene-content.md` contract that absorbed it; the retired P26 router → the T1 planning evidence; the
+deleted P25 accessibility umbrella → the T3 planning evidence — or replaced by labeled
+`git show e90a5822:<old-path>` provenance. The plan's own §8.2–§8.4 disposition tables name baseline
+paths by design and are declared with three `EVIDENCE-PATHS` regions rather than rewritten. Final
+state: **0 findings**, with no checker exclusion added.
+
+**Protected evidence (§8.3).** All 108 moved records were compared against their baseline blob:
+**93 are byte-identical** and **15** changed by link relocation only — verified by stripping every
+path, link target and path-bearing code span from both versions and comparing the whole remaining
+text, which is identical. No non-text asset changed: the nine transition PNG captures and
+`contrast-check.js` are byte-identical, as are the two p25 comparator JSONs. The two §8.3 banners,
+which label the UX3/V3 package and the Paper adoption plan inactive, predate WP4 and were not
+rewritten.
+
+**Recovery anchors.** Every `git show <sha>:<path>` recovery route quoted in the retained tree was
+resolved: **32/32** return a non-empty body, including the two full-body plan recoveries
+(`authoring-completeness-plan.md`, 97,135 B at `74e86104`; `world-authoring-prototype.md`, 63,164 B
+at `7c9bc81b`) and the `e90a5822` locators created by the §10.3 provenance repairs.
+
+**QA-launcher dry run.** The eight moved `visual-system-refinement/qa/*.sh` launchers pass
+`bash -n`, and each self-locates with `cd "$(dirname "$0")"`, so their working directory survives
+the move; the moved `v2-comparisons.py` compiles. No relative reference inside a moved launcher
+points at a missing file. No browser-driven prototype suite was rerun and no capture was rewritten.
+
+### 15.4 Deviations, and what remains owed
+
+The §15.2 archiving deviations stand: they are plan-faithful rather than manifest-faithful, and each
+one preserves a record the plan names. Two further notes go on the record:
+
+- **The two §4.1 delta files.** `implementation-plan.md` and `acceptance.md` are the only tracked
+  `docs/**` files absent from the manifest, as §8.1 expects.
+- **`lib/authoring/**` has no dedicated test file.** Its original editor-coupled suites were
+  classified category C and deleted at WP2, so coverage survives only where a retained suite imports
+  the module (`plan-hit`, `layout-exact-input`, through the retained layout suites). That is a
+  T1/T2/T3 obligation, reported here rather than implemented.
+
+**Limitations.** The frozen-project acceptance steps remain owner-verified WP1 evidence (§7.4): they
+cannot be run in this repository because the folder is absent, and WP4 neither reran nor
+reinterpreted them. The browser check above used a local dev server and the local API, not a
+deployed origin. No WP4 result depends on a skipped or unexecuted check.

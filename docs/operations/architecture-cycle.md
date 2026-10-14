@@ -1,179 +1,155 @@
-# Architecture Cycle — live state
+# Architecture Cycle — live state and protocol
 
-**Role:** live meta state for the architecture operating cycle. Answers: which cycle stage is
-open, on which trigger, and what the next action is.
+**Role:** the sole live cycle state and the operative protocol. Answers: which
+cycle stage is open, which bounded window is configured, and what the next action
+is.
 
 ```text
 NOT:  a plan · an activity diary · product status · product next-work
-OWNS: meta stage only
+OWNS: meta stage, the validation window and the mechanism register
 
-PROVENANCE  strategic model      → ../roadmap/architecture-operating-cycle-plan.md
-            live cycle state     → (this file)
+PROVENANCE  strategic model / harvested workflow rules
+                                 → ../archive/technical/architecture-cycle/operating-cycle-plan.md
+                                   (archived 2026-09-27 evidence; recoverable with
+                                    git show e90a58224443bdbf44114d7285d55c983b79cc84:<old-path>)
             close / transition   → ../../.agents/skills/phase-closeout/SKILL.md (owner-invoked)
-            historical planning evidence
-                                 → ../roadmap/architecture-operating-cycle-workflow-harvest.md
-BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in ./current.md.
-            Nothing here restates either.
+BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in
+            ./current.md. Nothing here restates either.
 ```
 
 ## State
 
-```text
-STAGE              PHASE_1
-STATUS             mechanisms installed — window plan not yet reconciled (the two-step readiness the
-                   PHASE_1 row names). The owner's single overall transition out of ADJUDICATION
-                   was recorded 2026-09-22
-TRIGGER            adjudication justified capture (AC-1, AC-2, AC-3, AC-5) plus one bounded test
-                   correction; the owner authorized the bounded Phase 1 installation
-PRODUCT CONTEXT    P23 (shipped) — the closed phase whose range Phase 0 reviewed. P23B is the phase
-                   in progress (P23B.11 shipped and closed 2026-09-27; the owner-routed pre-P23B.8
-                   follow-up is next — baton → ./current.md). After it the ratified pipeline runs
-                   F foundation contracts → T1–T4 tracks, with P26 re-derived as T1 and remaining
-                   the selected validation window (product status → ../roadmap/README.md)
-OWNER ACTION       not required — installation is agent work; the next owner action is the Phase 3
-                   verdict per mechanism
-NEXT               reconcile the selected window phase's prepared implementation plan against the
-                   installed mechanisms and then write STATUS: ready for validation. In parallel,
-                   P23B implementation and its ordinary owner-close proceed without changing this
-                   stage or the window
-EXIT CONDITION     STATUS: ready for validation, then the selected window's first implementation
-                   slice starts
-VALIDATION WINDOW  P26 — selected, not open
-ACTIVE MECHANISMS  M1 Layout semantic-mutation boundary (architecture.md) · M2 Wall/Floor vertical
-                   authority · M3 persisted canonical curve model · M4 Junction commit-time
-                   identity, ruling R1 — the last three in persistence.md · M5 Navigator
-                   document-replacement seam guard (editor app test contract) · M6 same-state
-                   phase-close rule (phase-closeout) · M7 durable lifecycle reminders (phase
-                   READMEs)
-CALIBRATION        unchanged
-EVIDENCE           frozen range f8411f7..b5f75e7 (P23; 2026-09-08 → 2026-09-22). Phase-0 evidence
-                   complete and integrated under ../roadmap/architecture-operating-cycle/phase-0/
-                   (mechanical-control-pass.md · review-a.md · review-b.md ·
-                   structural-workflow.md · adjudication.md). The installed scope, its
-                   per-mechanism register and every Phase-3 criterion are in
-                   ../roadmap/architecture-operating-cycle/phase-1/2026-09-22-P1-installation-plan.md
-```
+| Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `PHASE_1` | `awaiting-bounded-slice-window-plan` | T-track spatial foundation — **selected, not open** | — (none listed until the first relevant T1 phase plan configures them) | — | — | — | — | — |
 
-`OWNER ACTION` is what makes the `current.md` META pointer mechanical instead of judged (below);
-`EVIDENCE` lets Phase 0 resume without reading the whole evidence set. No field without a job.
+- **`<phase> — selected, not open`** is the only window state before validation:
+  the Phase 0 diagnosis selected a spatial-foundation window, and no capability
+  slice has started because no capability plan is authorized.
+- An **open** window with an empty exposure list is a defect, and `PHASE_1` with no
+  configured window is a STOP for the close preflight.
+- `STEADY` is reached only from `PHASE_3_EVALUATE` with a verdict row per mechanism.
 
-## Stages
+**Stage vocabulary (preserved):** `WAITING` … `STEADY`. Closed Phase 0 reviews,
+adjudication and the installed Phase 1 plan are archived at
+[`../archive/technical/architecture-cycle/`](../archive/technical/architecture-cycle/);
+the frozen reviews are not rewritten.
 
-| Stage | Meaning | Entry trigger | Required action | Exit condition | Next | META |
-| --- | --- | --- | --- | --- | --- | --- |
-| `WAITING` | Cycle installed; nothing due | prerequisite cycle infrastructure installed | none | the owning phase is owner-closed | `PHASE_0_DUE` | no |
-| `PHASE_0_DUE` | A product phase closed; retrospective diagnosis is owed | phase close recorded (phase-closeout step 8) | owner authorizes Phase 0 to start | owner authorizes start | `PHASE_0_ACTIVE` | **yes** |
-| `PHASE_0_ACTIVE` | Phase-0 evidence in progress: two fresh-context semantic architecture reviews + one bounded structural-workflow companion diagnostic | owner authorization | run both semantic reviews over the same range without reading each other's output before adjudication; run the structural-workflow diagnostic as separate evidence — it is not a third architecture reviewer | the Phase-0 evidence required for **both lanes** is available | `ADJUDICATION` | no |
-| `ADJUDICATION` | Owner classifies and decides in two lanes inside one lifecycle | the Phase-0 evidence required for both lanes exists | architecture lane: classify each candidate A/B/C/D and answer "what catches it next time?"; structural-workflow lane: adjudicate the workflow evidence separately (no consequential gap / existing-tool or workflow correction / narrow custom-tool gap) | both lanes adjudicated and the single overall transition recorded | `PHASE_1` or `STEADY` | **yes** |
-| `PHASE_1` | Smallest justified response is being installed | an outcome that justifies ≥1 mechanism | install only the justified mechanisms: write `ACTIVE MECHANISMS`, `VALIDATION WINDOW: <phase> — selected, not open` and `STATUS: mechanisms installed — window plan not yet reconciled`. Then reconcile the window phase's prepared implementation plan against them and write `STATUS: ready for validation` — two writes, not one | STATUS is `ready for validation` and the selected window's first implementation slice starts | `PHASE_2_VALIDATING` | no (unless action pending) |
-| `PHASE_2_VALIDATING` | Prospective validation during normal product work | first implementation slice of the window phase starts | none — observe; answer calibration if scope materially changes | the window phase closes, or a reasoned early mechanism verdict is recorded | `PHASE_3_EVALUATE` | no |
-| `PHASE_3_EVALUATE` | Keep / simplify / delete | the validation window closes, or a reasoned early mechanism verdict is recorded (the window stays open until its own phase closes) | record a verdict per mechanism | verdicts recorded **and** the window closed; survivors folded into normal practice | `STEADY` | **yes** |
-| `STEADY` | No meta action; normal development; every phase close performs ordinary reconciliation/subtraction/closed-work hygiene and **stays** `STEADY` | verdicts recorded, or neither lane justified a mechanism | none | a **new demonstrated architectural failure**, or an explicit owner request for a fresh diagnosis | `PHASE_0_DUE` | no |
+## Mechanism register
 
-## Transitions
+| Mechanism | State after #115 | Proof route |
+| --- | --- | --- |
+| **M1** Layout semantic mutation boundary | **dormant** — the editor mutation runner and its call-site test were removed with the editor shell; the core planner tests remain | re-armed by the first T1 slice that introduces Layout mutation wiring, which supplies the call-site proof |
+| **M2** Wall/Floor vertical authority | core proofs remain (`layout-wall-height`, `layout-wall-birth-height`); the **editor half is dormant** | kernel suite + the T1 slice that re-wires vertical authoring |
+| **M3** Persisted canonical curve model | **unchanged** — core proofs remain (`layout-curve-schema`, `layout-curve-read-path`, `layout-curve-planners`) | kernel suite |
+| **M4** Junction commit-time identity | core proofs remain (`layout-junction-identity`, `layout-wall-chain`, `layout-room-reconciliation`); the **editor half is dormant** | kernel suite + the T1 slice that re-wires junction commits |
+| **M5** Project replacement / Navigator guard | **dormant** — the hierarchy and replacement wiring were removed | re-armed by the first T1 or T3 slice that introduces project/session replacement |
+| **M6** Lifecycle transition | satisfied by the state table, the three hooks and the gates test | `parallel-track-gates` structure check |
+| **M7** Encountered routing | satisfied by the state table, the three hooks and the gates test | `parallel-track-gates` structure check |
 
-```text
-prerequisite cycle infrastructure installed → WAITING
-WAITING      + phase owner-closed      → PHASE_0_DUE
-PHASE_0_DUE  + owner authorizes        → PHASE_0_ACTIVE
-PHASE_0_ACTIVE + Phase-0 evidence for both lanes available → ADJUDICATION
-ADJUDICATION + neither lane justifies a mechanism → STEADY   (no PHASE_1, no PHASE_2)
-ADJUDICATION + either lane justifies ≥1 mechanism → PHASE_1
-PHASE_1      + justified mechanisms installed
-                                       → PHASE_1             (STATUS: mechanisms installed —
-                                                              window plan not yet reconciled)
-PHASE_1      + the window phase's prepared implementation plan reconciled
-                                       → PHASE_1             (STATUS: ready for validation)
-PHASE_1      + the selected window's first implementation slice starts, with
-               STATUS: ready for validation
-                                       → PHASE_2_VALIDATING  (window = that phase, e.g. P26, opens)
-PHASE_1      + that phase's first implementation slice while STATUS is still
-               installed-not-reconciled → no transition (STOP: readiness comes first)
-PHASE_1 | PHASE_2_VALIDATING | PHASE_3_EVALUATE
-             + a product phase other than the selected window closes
-                                       → same stage         (the close is recorded; the stage and the
-                                                              window are preserved)
-PHASE_2_VALIDATING + window phase closes → PHASE_3_EVALUATE  (window recorded closed)
-PHASE_3_EVALUATE + the selected window closes
-                                       → PHASE_3_EVALUATE    (unchanged; the window is now closed and
-                                                              the verdicts stay owed)
-PHASE_3_EVALUATE + verdicts recorded AND the window closed → STEADY
-STEADY       + ordinary major phase close → STEADY   (reconcile · subtract · close work)
-STEADY       + new demonstrated failure, or owner-requested fresh diagnosis → PHASE_0_DUE
-```
+The first configured T1 window should include at least one slice that re-arms a
+dormant mechanism. Otherwise the owner's verdict for those mechanisms is **not
+exposed** — honest, never PASS. Phase 3 outcomes are future evidence, not a #115
+acceptance condition.
 
-**Phase 2 begins at implementation, not at installation.** Installing the mechanisms and
-reconciling the prepared window plan leaves the cycle in `PHASE_1` with
-`STATUS: ready for validation`; `PHASE_2_VALIDATING` opens on the **first implementation slice**
-of the window phase, and no `VALIDATION WINDOW` is opened before it starts.
+## Bounded window rules
 
-**`VALIDATION WINDOW` values.** The field carries one phase and one state, and the two writes above
-are why it has more than two:
+- The first relevant T1 phase plan names **one to three** exposure-bearing slices
+  that capability work already justifies, plus an **expected opener** and a
+  **terminal**. The bound is 3; changing it requires an owner amendment.
+- **Opening.** The window opens when **any** listed exposure slice starts
+  authorized implementation — it does not wait for the nominal opener. The opening
+  slice is the one that moves the cycle from `PHASE_1` to `PHASE_2_VALIDATING`.
+- **Closing.** Closure requires the terminal accepted **and** every other listed
+  exposure accepted or explicitly discharged. Closure moves the cycle to
+  `PHASE_3_EVALUATE`, where the owner gives a per-mechanism
+  keep / simplify / delete / not-exposed verdict. After that verdict the cycle
+  reaches `STEADY`, which triggers no routine diagnosis.
+- **Diagnosis** happens only on a demonstrated failure plus owner authorization. A
+  pending verdict blocks nothing except its own handoff.
 
-```text
-empty                        WAITING → ADJUDICATION, and again when neither lane justifies a mechanism
-<phase> — selected, not open PHASE_1, from installation until the window's first implementation slice
-<phase> — open (started <date>)
-                             from that first slice through PHASE_2_VALIDATING, and it STAYS open if an
-                             early mechanism verdict moved the cycle into PHASE_3_EVALUATE
-<phase> — closed (<date>)    once the window phase itself closes, on either close path
-```
+## Actions
 
-An **open** window with an empty mechanism list stays a defect, and `PHASE_1` with an empty window is
-a STOP for the close preflight. A phase other than the selected window closing never changes this
-value.
+**`configure-window`** — the first relevant T1 phase plan lists ≤3 exposure slices
+with an expected opener and a terminal, sets readiness to `ready` when those slice
+IDs exist in the phase README with a plan anchor, and records the window as
+`selected, not open`.
 
-**Steady state does not re-run Phase 0.** A major phase close is *hygiene*, not *diagnosis*: it
-performs the ordinary closeout work (reconciliation, subtraction of stale guidance, closed-work
-compaction) and the cycle remains `STEADY`. Diagnosis restarts only on evidence — a new
-demonstrated architectural failure — or because the owner explicitly asks for a fresh
-retrospective.
+**`open-window`** — when a listed slice starts authorized implementation, set
+`Opened by` to that slice and move `PHASE_1 → PHASE_2_VALIDATING`. Any listed slice
+may open the window; the opener need not be the nominal one.
 
-**When neither lane justifies a mechanism, no window opens.** The cycle goes straight to `STEADY`
-with `TRIGGER: none pending` and `ACTIVE MECHANISMS: none`; a validation window with an empty
-mechanism list is a defect, not a valid value.
+**`record-exposure`** — when a listed slice is accepted or shipped, add its exposure
+row. A listed slice reaching `accepted`/`shipped` with no exposure row is a defect.
 
-**Two lanes, one transition.** Architecture and structural-workflow evidence are adjudicated
-separately but transition together: a consequential workflow correction alone, or an architecture
-mechanism alone, is enough to reach `PHASE_1`. A mostly-C/D architecture result never vetoes the
-structural-workflow lane, and a workflow finding never manufactures architecture machinery. The
-architecture lane's A/B/C/D classification stays valid inside its lane.
+**`close-window`** — when the terminal is accepted and every other listed exposure is
+accepted or explicitly discharged, mark the window closed and move
+`PHASE_2_VALIDATING → PHASE_3_EVALUATE`.
 
-**Early mechanism verdicts.** A mechanism that clearly succeeds or fails early may move
-`PHASE_2_VALIDATING → PHASE_3_EVALUATE` before the window closes; record the reason here. The
-window phase still closes normally.
+**`owner-verdict`** — the owner records keep / simplify / delete / not-exposed per
+mechanism, then the cycle moves to `STEADY`. A missing verdict row for a mechanism
+blocks `STEADY`. STEADY performs no routine diagnosis; ordinary phase close is
+hygiene (reconcile · subtract · compact closed work) and stays `STEADY`.
+
+**`diagnosis-request`** — a demonstrated architectural failure plus owner
+authorization moves `STEADY → PHASE_0_DUE`. The cycle never re-enters diagnosis on
+its own.
+
+## Hooks — the only entry points
+
+Unrelated work never loads this document. Three one-line hooks are the whole
+integration surface:
+
+1. **Phase planning.** The first relevant T1 phase plan follows `configure-window`.
+2. **Implementation start** (the track runbook's start step): *"If your slice ID is
+   listed under Exposure slices and `Opened by` is empty, follow `open-window`
+   before capability work."*
+3. **Slice closeout:** *"If your slice is listed under Exposure slices, follow
+   `record-exposure`, then `close-window` if the closure predicate is now true."*
+
+## Validation
+
+The `parallel-track-gates` test that WP5 creates with the execution structure
+that registers the tracks (not yet in the tree) uses the same Markdown table
+helper as the gate register, with in-memory negative fixtures and positive
+controls. It must fail on:
+
+- more than three exposures;
+- readiness `ready` without listed slice IDs that exist in a phase README, a
+  terminal, and a plan anchor;
+- **any listed exposure slice at `in-progress`, `accepted` or `shipped` while
+  `Opened by` is empty or the stage is still `PHASE_1`** — a missed opening is
+  caught in that slice's own change;
+- an `accepted`/`shipped` listed slice with no exposure row;
+- a satisfied closure predicate with a stale stage;
+- premature closure while a listed exposure is pending;
+- `STEADY` without a verdict row for every mechanism.
+
+Positive controls: a **non-listed** slice starting causes no cycle requirement; a
+**listed** slice other than the nominal opener may open the window; unrelated T3
+data and T4 envelope slices remain eligible while the T1 window is open.
 
 ## `current.md` META pointer
 
 ```text
-META line present  ⇔  this file's OWNER ACTION: required
+META line present  ⇔  this file requires an owner action
 line shape:  META: Architecture cycle — <action> → ../operations/architecture-cycle.md
-writer:      whoever applies a cycle transition that changes OWNER ACTION — the line is written
-             or removed in that same transition. phase-closeout step 9 is the phase-close
-             instance (WAITING → PHASE_0_DUE, PHASE_2_VALIDATING → PHASE_3_EVALUATE);
-             a non-close transition counts the same way (e.g. PHASE_0_ACTIVE → ADJUDICATION sets
-             OWNER ACTION: required with no close and no ruling), as does a stage change by
-             owner ruling
-removal:     the same rule in reverse — whenever OWNER ACTION returns to not required
-             (Phase 0 authorized, adjudication resolved, verdicts recorded)
+writer:      whoever applies a cycle transition that changes that (phase-closeout steps 8–9 own
+             the phase-close instance); removal follows the same rule in reverse
 ```
 
-This file owns the condition; `docs/operations/current.md` only mirrors it.
+This file owns the condition; [`current.md`](./current.md) only mirrors it.
 
-## ROUTES — the three seams, nothing else
+## Routes
 
 ```text
-1  docs/README.md "Where truth lives"          — the pull-based row (deliberate meta work)
-2  phase README FINAL PHASE GATE line          — the close path discovers the cycle from the
-                                                 phase it is closing
-3  phase-closeout (preflight, 8–9)             — the owner-invoked procedure that performs the
-                                                 phase close writes the stage and the META pointer
-                                                 (slice-closeout only makes the final gate
-                                                 CLOSABLE; it never touches the cycle)
+1  docs/README.md "Where truth lives"   — the pull-based row (deliberate meta work)
+2  every phase plan's FINAL PHASE GATE  — the close path discovers the cycle from the phase it closes
+3  phase-closeout (preflight, steps 8–9) — the owner-invoked procedure that writes the stage and the
+                                          META pointer (slice-closeout only makes the final gate
+                                          CLOSABLE; it never touches the cycle)
 ```
 
-The tracker's `META:` line (`../roadmap/README.md`) repeats the same pointer for P-level readers;
-it is tracker metadata, not a fourth discovery route.
-
-Deliberately **not** routed from `AGENTS.md`, the IMPLEMENT/DESIGN/RESEARCH blocks, any phase
-child route, ordinary implementation startup context, or `work-checkpoint`.
+Deliberately **not** routed from `AGENTS.md`, the router's IMPLEMENT/DESIGN/RESEARCH
+blocks, any phase child route, ordinary implementation startup context, or
+`work-checkpoint`.

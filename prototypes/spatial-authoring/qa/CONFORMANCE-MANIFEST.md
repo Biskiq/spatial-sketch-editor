@@ -1,6 +1,6 @@
 # Experience V2 conformance proof manifest
 
-Historical #113 tested contract: [replacement plan](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md).
+Historical #113 tested contract: [replacement plan](../plans/experience-v2-prototype/conformance-plan.md).
 Historical S0–S9 evidence supplies no acceptance. The captures/recipes below belong
 to the closed #113 conformance scope; preserve `screens/experience-conformance/`.
 Current accepted UX is [Conservatory](../../experience-ux-alternative/README.md),

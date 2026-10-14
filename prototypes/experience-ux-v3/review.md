@@ -77,6 +77,6 @@ Core compositor hashes at delivery:
 | `specimens.css` | `f443a5021d36f43066366169bdbf6762921d0bc7c60b3f4e2a12d039475cc9f9` |
 
 See the [board package](./README.md) for capture commands/lifecycle and the
-[reconciliation record](../../docs/roadmap/p25-experience/design/experience-ux-v3/reconciliation.md)
+[reconciliation record](./design/reconciliation.md)
 for route and historical disposition. Owner ratification of the recommended
 Stop-local model and visitor progression cutoff remains the next step.

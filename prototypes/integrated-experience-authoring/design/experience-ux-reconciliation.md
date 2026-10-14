@@ -12,7 +12,7 @@
 **Status: adopted 2026-10-11 (PR #113) with the adjudications below; design record, not the
 normative text.** The locked contract is [PLATE §0.8.1](../../../docs/reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 (with the [spatial-instrument grammar](../../../docs/reference/design-system/spatial-instrument-grammar.md#camera-routes-and-experience-coordination-projections));
-the implementation plan is the [PR #114 plan](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md).
+the implementation plan is the [PR #114 plan](../../spatial-authoring/plans/unified-design-reconciliation/implementation-plan.md).
 Where this record and PLATE differ, PLATE wins. The six boards it describes now live in
 [`../Design-QAs/`](../Design-QAs/) as `qa-1-camera-path.png` … `qa-6-visitor-preview.png`.
 

@@ -556,6 +556,8 @@ This section is complete for execution. Earlier revisions are only provenance; G
 
 ### 8.2 Live authorities and reference contracts
 
+EVIDENCE-PATHS: start — the baseline paths these rows dispose of, as written at e90a5822. WP4 has since deleted or moved each one, and the row states its disposition; a path here is the record of a decision, not a route.
+
 | Existing file or prefix | Action / reason |
 | --- | --- |
 | `docs/README.md`, `AGENTS.md`, `README.md` | **RETAIN + rewrite routing** (§10). AGENTS gains the separate `legacy/` scope line (§3.6), drops the `scroll-travel` clause, gets the new routes, and updates rule 4's obsolete route enumeration only. Rule 4's visitor/editor isolation guarantee and rule 6 remain unchanged. |
@@ -573,6 +575,7 @@ This section is complete for execution. Earlier revisions are only provenance; G
 | `docs/North-star-final-decision-synthesis.md`, `North-star-final-synthesis-peer-review.md`, `World-Experience-Architecture-Synthesis.md`, `World-Experience-Model.md` | **DELETE after a promotion-coverage check:** every conclusion must already be in the ratified amendment, F, North Star or `architecture.md`. Any unpromoted owner obligation moves to its owning contract or track evidence first; proposals are not promoted. |
 | `README.original.md` | **DELETE**, and repair incoming routes. |
 | The `apps/editor/src/lib/editor/` directory's `README.md` and `DEBUGGING.md` | **DELETE** with the directory. The new short `src/lib/authoring/README.md` (★) states the §4.3 retention criteria. |
+EVIDENCE-PATHS: end
 
 ### 8.3 Protected prototype family: exact moves
 
@@ -586,6 +589,8 @@ Each prototype README identifies its accepted, superseded or unratified role and
 
 The design and QA files below still sit under P-level roadmap folders and move into prototype evidence homes:
 
+EVIDENCE-PATHS: start — baseline source paths of these §8.3 moves, as written at e90a5822.
+
 - `docs/roadmap/p26-spatial-depth/design/visual-system-refinement/**` moves whole to `prototypes/spatial-authoring/design/visual-system-refinement/`. That includes the specification plan, paper-surface brief, QA scripts, acceptance, contrast evidence and transition capture assets.
 - `docs/roadmap/p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md` → target prototypes/spatial-authoring/plans/world-authoring-prototype.md. Keep the accepted plan, its recovery route and the #112 acceptance routes.
 - `docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md` → target prototypes/paper-authoring-commission/plans/inactive-adoption-plan.md. Keep PA0–PA12 and the keymap evidence, under a banner: "inactive, unimplemented; no current authorization".
@@ -594,12 +599,15 @@ The design and QA files below still sit under P-level roadmap folders and move i
 - `docs/roadmap/p25-experience/design/experience-ux-v3/**` moves whole (six files) to `prototypes/experience-ux-v3/design/`, labeled inactive. A matching generated PNG is not acceptance.
 - `docs/operations/checkpoints/experience-v2-conformance-evidence/**` moves whole to `prototypes/spatial-authoring/qa/verification-records/experience-v2-conformance/`, including the failed-run logs that qualify acceptance.
 - `docs/archive/roadmap/p25-experience/p25-unified-design/{p23b-browser-report,p23b-validation-result}.json` stay **byte-identical in place** as accepted UX comparator evidence. They are the only files left in that old tree.
+EVIDENCE-PATHS: end
 
 In protected text, only these may change: links, how recovery paths are interpreted, historical-role banners and the locators of relocatable QA scripts. Hashes are recorded before and after, and every text change needs a reviewed mechanical reason.
 
 Moved QA launchers keep their working-directory and filename assumptions, verified by a non-browser dry run. No prototype suites are rerun and no captures are rewritten. Production pruning cannot reach prototypes, because they import no production code (§2.2). No old P25/P26 stub tree remains.
 
 ### 8.4 Retired P24/P25/P26 planning and unique evidence
+
+EVIDENCE-PATHS: start — baseline paths of these P24/P25/P26 sources, as written at e90a5822; WP4 archived or deleted each one as the row states.
 
 | Baseline source / rule | Action and destination |
 | --- | --- |
@@ -614,6 +622,7 @@ Moved QA launchers keep their working-directory and filename assumptions, verifi
 | `docs/roadmap/backlog/2026-08-27-P13-stop-at-node-playback.md`, `2026-08-21-branch-rejoin-experiment.md` | **CONSOLIDATE** into a short unscheduled-proposals paragraph in the global roadmap, then **DELETE**. T3 may assess pause-at-next-occurrence; branch rejoin stays unscheduled. |
 | `docs/roadmap/f-foundation-contracts/design/proposals/2026-09-27-biskiq-durable-design-commissions.md` | **DELETE** after checking its scenarios against protected prototypes and the North Star. It is a non-authoritative proposal. |
 | `docs/roadmap/model-assessment.md` | **DELETE**, and remove the global META/MODEL routes. |
+EVIDENCE-PATHS: end
 
 **Planning-evidence contents.** Each file is written as evidence and obligations, not as an implementation plan.
 

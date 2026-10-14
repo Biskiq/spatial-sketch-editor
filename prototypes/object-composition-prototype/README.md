@@ -1,8 +1,10 @@
 # Commission 2 — Objects & Assemblies (prototype)
 
-An unratified design proposal for the brief in
-[`2026-09-27-biskiq-durable-design-commissions.md`](../../docs/roadmap/f-foundation-contracts/design/proposals/2026-09-27-biskiq-durable-design-commissions.md)
-(Commission 2, “Compose a reusable display light”). It's a runnable design prototype, not production code, and nothing in it is shipped behaviour.
+An unratified design proposal for the “durable design commissions” brief
+(Commission 2, “Compose a reusable display light”). That brief was itself a
+non-authoritative proposal, deleted by #115;
+its text is `git show e90a5822:docs/roadmap/f-foundation-contracts/design/proposals/2026-09-27-biskiq-durable-design-commissions.md`.
+It's a runnable design prototype, not production code, and nothing in it is shipped behaviour.
 
 ## Run
 

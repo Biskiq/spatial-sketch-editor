@@ -9,7 +9,7 @@ Useful functional assertions remain evidence, not current shell acceptance.
 
 > **Historical coupling inventory:** counts belong to UX0's recorded source,
 > not today's selectors. Reuse as a discovery map; the active unratified work
-> proposal/plan is [V3](../../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md).
+> proposal/plan is [V3](../../experience-ux-v3/design/README.md).
 > No old selector or surface assertion mandates V3 exposure.
 
 **Role:** the UX0 inventory required by the [#114 plan][plan] §5. It records every QA string and
@@ -159,5 +159,5 @@ Deviations and facts this inventory records rather than hides:
   change no behaviour, no class and no layout. `data-home` values are the six homes of the frozen
   shell sketch: `head`, `index`, `stage`, `card`, `deck`, `preview`.
 
-[plan]: ../../../docs/roadmap/p25-experience/design/experience-v2-prototype/ux-pruning-and-shell-reconciliation-plan.md
+[plan]: ../plans/unified-design-reconciliation/implementation-plan.md
 [axis]: ./experience-shell-check.sh

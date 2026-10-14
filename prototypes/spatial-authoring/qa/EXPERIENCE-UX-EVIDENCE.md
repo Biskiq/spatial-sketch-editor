@@ -9,7 +9,7 @@ the deliberately removed benchmark workload, and handed #115 its S0-first mandat
 **Contract:** [PLATE](../../../docs/reference/design-system/editor-shell-and-visual-system.md)
 owns the accepted design, including the non-blocking 3D Scene interface gap.
 Current domain implementations retain their own authorities until explicit cutover.
-[The #115 handoff](../../../docs/roadmap/README.md#next-task-handoff--115) owns future
+[The #115 handoff](../../../docs/roadmap/README.md) owns future
 S0/T-track planning; no assessment, track plan, production UI or new prototype is
 implemented here. Accepted Conservatory revision:
 `426698573e883bc3a16b265ff9efc5be744c5fec`.

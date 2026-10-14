@@ -12,9 +12,9 @@ pending-ratification and acceptance language.
 
 **Generated design specimens, not runtime screenshots. Proposed 2026-10-13;
 owner ratification pending.** This package is the visual companion to the
-[product proposal](../../docs/roadmap/p25-experience/design/experience-ux-v3/README.md),
-[design specification](../../docs/roadmap/p25-experience/design/experience-ux-v3/design-system.md)
-and [implementation plan](../../docs/roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md).
+[product proposal](./design/README.md),
+[design specification](./design/design-system.md)
+and [implementation plan](./design/implementation-plan.md).
 It proposes replacements for the eight old Experience Design-QAs. Their PNGs and
 all prior actual runtime/before-state captures remain intact.
 

@@ -234,7 +234,8 @@ sections and peeling, level-qualified contexts, and runtime-safe Layout
 representation evaluation. The accepted P26 prototype — the **Spatial Authoring
 Prototype** at `prototypes/spatial-authoring/` — keeps journeys A–F as the
 experience/QA authority for this direction (recorded in the
-[P26 router](../roadmap/p26-spatial-depth/README.md); family boundary →
+[T1 spatial-world evidence](../roadmap/t1-spatial-world/planning-evidence.md);
+family boundary →
 [`prototypes/README.md`](../../prototypes/README.md)); its architecture is
 re-derived from F, not inherited, and its implementation shortcuts are not
 production contracts. Multi-level UI and visitor reveal authoring may ship later,
@@ -771,12 +772,14 @@ and several independent commits are never presented as one transaction.
    surface. Runtime-safe domain evaluators (for example Layout representation)
    are shared with visitor runtimes — isolation is about editor machinery, not
    about forking domain mathematics into editor-only code.
-10. **Greenfield product lane.** New projects start from the product editor's
-    own format. The frozen Chopin visitor and legacy editor relic are not a
-    migration source for editor selection/history/workspace state. Persisted
-    legacy project/Scene formats that the product already exports or publishes
-    require explicit compatibility; compatibility never means migrating old
-    editor session state.
+10. **Greenfield product lane, and separate frozen projects.** New projects
+    start from the product's own format. A frozen, separately deployed project —
+    such as the Chopin museum — is not a migration source for editor selection,
+    history or workspace state, and the product neither imports nor serves it.
+    The product supports exactly one document format (wall-first Layout with a
+    world-local Scene): there is no legacy reader, detector, classifier or
+    migration path, and no compatibility obligation for formats the retired
+    editor wrote. Recoverable history is a Git concern, never a product reader.
 11. **Experience references World — and owns its own layer.** Experience binds
     to existing subjects, Camera views and routes and composes visitor-facing
     meaning, editorial occurrences, order, holds, continuation and interaction

@@ -8,7 +8,7 @@ whose interactive states/journeys supply current UX acceptance language through
 UX3/V3's PNGs and standalone plan are also superseded. Neither set defines current
 acceptance through pixels or old layout equivalence.
 
-The [reconciliation inventory](../../../docs/roadmap/p25-experience/design/experience-ux-v3/reconciliation.md#4-existing-board-assessment)
+The [reconciliation inventory](../../experience-ux-v3/design/reconciliation.md#4-existing-board-assessment)
 assesses every old board. Preserve these images for comparison; do not regenerate
 them or overwrite them with V3 or runtime screenshots. Prior PLATE provenance
 and acceptance remain recorded; retaining an asset does not make it a second

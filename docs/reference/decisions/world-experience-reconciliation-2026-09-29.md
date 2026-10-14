@@ -2,8 +2,10 @@
 
 **Date:** September 29, 2026. **Status:** owner-directed amendment to the
 [September 27 north-star ratification](./northstar-ratification-2026-09-27.md),
-following the [product model](../../World-Experience-Model.md),
-[architecture synthesis](../../World-Experience-Architecture-Synthesis.md), and
+following the product model and architecture synthesis that preceded it — both
+promoted into the ratified contracts and then deleted by #115
+(`git show e90a5822:docs/World-Experience-Model.md`,
+`git show e90a5822:docs/World-Experience-Architecture-Synthesis.md`) — and
 reconciliation with current source and contracts. The September 27 record remains
 the historical ratification and normative baseline except where this later
 amendment refines it. This record supplies decision provenance; the routed live

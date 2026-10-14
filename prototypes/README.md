@@ -53,11 +53,11 @@ production authority; their documentation is still a route a reader follows.
 | **World Paper design** | Accepted 2D authoring-depth and precision contract: tools, drafting, dimensions, discovery and advanced procedures; shared shell reconciled with Conservatory | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
 | **V2 Spatial Authoring** | World Spatial Interaction Reference: Plan ↔ 3D continuity, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look/return and World journeys A–F/QA. Experience V2 is historical functional/regression evidence | [spatial-authoring](./spatial-authoring/README.md) · [#114 branch-diff disposition](./spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) |
 | **Object Composition** | Supporting unratified inspection, assembly, provenance, reach and repair research; no product/model/shell authority | [object-composition-prototype](./object-composition-prototype/README.md) |
-| **Production editor** | Actual implemented 2D Layout editing, Scene authoring, rendering and system architecture; existing capabilities are reused, not rebuilt because a prototype resembles them | [architecture](../docs/reference/architecture.md) · [landed shell](../docs/reference/components/shell.md) |
+| **Product foundation** | Actual implemented kernels and runtime: the Layout/Scene/Camera contracts, the canonical compiler, the generic renderer and the cold visitor runtime. #115 removed the authoring shell, placement and transform editing, Camera authoring and the publish surfaces; a capability is reused only where a ratified contract already covers it, never because a prototype resembles it | [architecture](../docs/reference/architecture.md) · [shell destination](../docs/reference/design-system/editor-shell-and-visual-system.md) |
 
 Other retained evidence stays in its existing directories:
 
-- [UX3/V3 proposal](../docs/roadmap/p25-experience/design/experience-ux-v3/README.md)
+- [UX3/V3 proposal](./experience-ux-v3/design/README.md)
   and [15 generated PNGs](./experience-ux-v3/README.md): superseded design/rationale,
   with the standalone plan inactive. No PNG/layout-equivalence acceptance.
 - [Integrated Experience V2](./integrated-experience-authoring/design/Prototype-V2-final-synthesis.md)
@@ -69,7 +69,7 @@ Other retained evidence stays in its existing directories:
 - [Experience Authoring donor](./experience-authoring/README.md): runnable
   behavioral/regression evidence, no current UX authority.
 - [Paper commission](./paper-authoring-commission/designer-packet/COMMISSION.md):
-  original brief and accepted proposal rationale. [PA0–PA12](../docs/roadmap/p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md)
+  original brief and accepted proposal rationale. [PA0–PA12](./paper-authoring-commission/plans/inactive-adoption-plan.md)
   is inactive/unimplemented; #115 is parallel-track planning.
 
 ## Authority semantics

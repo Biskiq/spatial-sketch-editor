@@ -17,7 +17,7 @@ Useful functional assertions remain evidence, not current shell acceptance.
 The original repository failures below are historical. This was review-ready
 prototype evidence, with no merge-readiness, PR closure or major-phase closure claim.
 
-The [C1–C8 replacement contract](../../../docs/roadmap/p25-experience/design/experience-v2-prototype/conformance-plan.md)
+The [C1–C8 replacement contract](../plans/experience-v2-prototype/conformance-plan.md)
 owns this record. [S0–S9 acceptance](./EXPERIENCE-ACCEPTANCE.md), its plan and specimens remain
 unchanged historical evidence. This prototype establishes no production format or cutover.
 
@@ -30,7 +30,7 @@ frozen executable. No code or assertion changed after the final runs. The owner 
 authorized coherent commits and push on 2026-10-04; older checkpoint restrictions are superseded.
 
 Frozen executable SHA256: `91c8fd76fcf50758026beaf7517701326792ba16c97514d5cd23c05f152ceda0`.
-[Final provenance manifest](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-provenance.json)
+[Final provenance manifest](./verification-records/experience-v2-conformance/c8-provenance.json)
 records the exact file digests, harness digests, capture/comparison checksums and verification exits.
 The initial checkout reproduced the paused executable hash before any change; the separated history
 and omitted captures were reconciled against the preserved backup before relying on them.
@@ -341,24 +341,24 @@ rectangle/hit target. Its fresh 13/0 standalone log supersedes the integrated re
 row for that obligation; the other 15 axes and executable remain unchanged. Disposable mutations
 use one owned server/session per run and reject the protected defect with unrelated controls
 green. Normal and failure paths clean up their own resources; external sessions are left alone.
-Final logs live in [C8 evidence](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/).
+Final logs live in [C8 evidence](./verification-records/experience-v2-conformance).
 The older `v2-*-final` and paused manifests retain interruption provenance only and confer no
 final acceptance; C8 logs and final manifest below supersede them.
 
 | Gate | Final result | Complete log |
 |---|---|---|
-| Canonical/companion product capture | PASS 75/75; current PNG/JSON and regenerated comparisons | [capture log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-captures.txt) |
-| Integrated World + Experience | PASS all 16 axes, 686/0 | [integrated log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-integrated.txt) |
-| Successor mutations | PASS 3 World + 7 Experience injected regressions rejected; unrelated controls green | [mutation log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-mutations.txt) |
-| Narrow strengthened successor | PASS 13/13, fresh 1024×768 captures and real Entry hit | [narrow log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-narrow.txt) |
-| Prototype domain/runtime | PASS 40/40 | [domain log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-domain.txt) |
-| Donor preservation | PASS 62/62; typecheck exit 0 | [tests](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-donor.txt), [typecheck](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-donor-typecheck.txt) |
-| Repository architecture | BLOCKED exit 1; 23 files/275 tests pass; 1 documentation test fails on missing fixture references | [arch log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-arch.txt) |
-| Repository complete tests | BLOCKED exit 1; 338 files pass/34 fail/1 skip; 4950 tests pass/2 fail/1 skip; 32 collection failures | [full log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-test.txt) |
-| Repository check | BLOCKED exit 1; 1 missing-module error, 0 warnings; museum check not reached | [check log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-check.txt) |
-| Repository build | BLOCKED exit 1; missing fixture import after 2424 modules; museum build not reached | [build log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-root-build.txt) |
-| Final documentation successor | BLOCKED exit 1; 21/22 pass, only two unchanged historical references to the absent fixture | [documentation log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-docs.txt) |
-| Whitespace | PASS `git diff --check` | [diff-check log](../../../docs/operations/checkpoints/experience-v2-conformance-evidence/c8-diff-check.txt) |
+| Canonical/companion product capture | PASS 75/75; current PNG/JSON and regenerated comparisons | [capture log](./verification-records/experience-v2-conformance/c8-captures.txt) |
+| Integrated World + Experience | PASS all 16 axes, 686/0 | [integrated log](./verification-records/experience-v2-conformance/c8-integrated.txt) |
+| Successor mutations | PASS 3 World + 7 Experience injected regressions rejected; unrelated controls green | [mutation log](./verification-records/experience-v2-conformance/c8-mutations.txt) |
+| Narrow strengthened successor | PASS 13/13, fresh 1024×768 captures and real Entry hit | [narrow log](./verification-records/experience-v2-conformance/c8-narrow.txt) |
+| Prototype domain/runtime | PASS 40/40 | [domain log](./verification-records/experience-v2-conformance/c8-domain.txt) |
+| Donor preservation | PASS 62/62; typecheck exit 0 | [tests](./verification-records/experience-v2-conformance/c8-donor.txt), [typecheck](./verification-records/experience-v2-conformance/c8-donor-typecheck.txt) |
+| Repository architecture | BLOCKED exit 1; 23 files/275 tests pass; 1 documentation test fails on missing fixture references | [arch log](./verification-records/experience-v2-conformance/c8-root-arch.txt) |
+| Repository complete tests | BLOCKED exit 1; 338 files pass/34 fail/1 skip; 4950 tests pass/2 fail/1 skip; 32 collection failures | [full log](./verification-records/experience-v2-conformance/c8-root-test.txt) |
+| Repository check | BLOCKED exit 1; 1 missing-module error, 0 warnings; museum check not reached | [check log](./verification-records/experience-v2-conformance/c8-root-check.txt) |
+| Repository build | BLOCKED exit 1; missing fixture import after 2424 modules; museum build not reached | [build log](./verification-records/experience-v2-conformance/c8-root-build.txt) |
+| Final documentation successor | BLOCKED exit 1; 21/22 pass, only two unchanged historical references to the absent fixture | [documentation log](./verification-records/experience-v2-conformance/c8-docs.txt) |
+| Whitespace | PASS `git diff --check` | [diff-check log](./verification-records/experience-v2-conformance/c8-diff-check.txt) |
 
 Historical import failure: absent owner payload in the P23B roadmap fixture location, imported by
 the P23B baseline fixture module (removed by #115 with the PERF lane and `lib/bench/**`). The file was already

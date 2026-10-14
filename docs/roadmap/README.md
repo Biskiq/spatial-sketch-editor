@@ -1,159 +1,141 @@
 # Roadmap — status authority
 
-**Role:** roadmap status and handoff authority. Existing phase entries retain
-their evidence; #115 will establish parallel-track execution routing here.
+**Role:** roadmap status and handoff authority. This file routes #115's
+parallel-track execution and the T1–T4 tracks.
 
 ```text
-NORMAL ROUTE: roadmap/README → phase README → exact artifact
+NORMAL ROUTE: roadmap/README → track README (when registered) → exact artifact
 ```
 
-The **phase README** owns its children's status and order and routes active
-child work **directly** to the exact plan/context/design/QA artifact it needs.
+The **phase README** owns its children's status and order and routes active child
+work **directly** to the exact plan/context/design/QA artifact it needs.
 Slice-specific artifacts may live in a slice workspace directory, but a
 **workspace directory does not require a README**: there is no mandatory
 intermediate slice router. A workspace-local index is allowed only when a
 workspace genuinely needs a local navigational index, and is then
 **navigation-only** — never a status, plan, decision, acceptance or contract
-authority. Phase root holds phase-wide artifacts only; do not add new
-slice-specific plans flat at `docs/roadmap/<phase>/` (flat slice plans already
-there are grandfathered legacy).
+authority. Phase root holds phase-wide artifacts only.
 
-```text
-PIPELINE (ratified 2026-09-27):
-P23B (CLOSED 2026-09-29 — see its phase row and PHASE CLOSE block)
-  → F foundation contracts (F.1–F.5 owner-ratified 2026-09-27; exact interfaces land as amendments)
-  → parallel tracks   T1 Spatial / P26
-                      T2 Composition data / P24
-                      T3 Experience data / P25
-                      T4 Release
-  → editing UI on T1's viewport seam
-  → creator/audience trials
-  → Source Baseline
-  → P27–P30 (provisional)
-```
+## Accepted basis
 
-**Visual-system sequence (owner-directed):**
+The ratified decision record
+([`../reference/decisions/northstar-ratification-2026-09-27.md`](../reference/decisions/northstar-ratification-2026-09-27.md)),
+as refined by the later
+[World | Experience amendment](../reference/decisions/world-experience-reconciliation-2026-09-29.md),
+is normative for all new design. Its concerns are promoted into one live
+normative statement per concern:
 
-1. **DONE** — the [P26 demo redesign plan](./p26-spatial-depth/design/visual-system-refinement/specification-plan.md) was applied, validated and merged (#104, owner-accepted 2026-09-29). Its [Spatial Authoring Prototype](../../prototypes/spatial-authoring/README.md) retains **deep World journeys A–F and behavioral QA**; the later Conservatory ratification supersedes shared-shell visual treatment. Prototype shortcuts are not production contracts.
-2. **DONE** — P23B closed 2026-09-29 and its PR (#103) is merged to `main`.
-3. **DONE** — the initial PLATE desired-language amendment (docs-only): the desired product visual language and shell contract are updated from the accepted demo, with **landed-now · desired-from-demo · still-unbuilt** labelled explicitly: [`reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md) **§0.7** (section homes §4.4, §6.4, §10, §18.3, §23.1). It authorized no implementation and closed no §0.3 owner call.
-4. **DONE** — the unified **World | Experience design freeze and durable shell promotion** ([PR #111](https://github.com/Biskiq/spatial-sketch-editor/pull/111), 2026-10-01, docs/design/assets only): both the [final World synthesis](../../prototypes/world-experience-shell-round/design/design-synthesis.md) with its [QA package](../../prototypes/world-experience-shell-round/QA-package/) and the [final V2 Experience synthesis](../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) are promoted into [`PLATE`](../reference/design-system/editor-shell-and-visual-system.md) **§0.8–§0.8.3**: shared/World laws, Experience expression, and explicit parked-task return. The retained syntheses/QA are the finalized design records; PLATE owns normative destination shell requirements.
-5. **DONE — prototype adoption accepted 2026-10-02** — the [World Authoring Prototype](../../prototypes/spatial-authoring/README.md) (#112) implements the frozen shell in place, preserving P26 A–F. [Acceptance and harvest](../../prototypes/spatial-authoring/qa/ACCEPTANCE.md) record both axes and retirement; the [closed plan](./p26-spatial-depth/design/world-authoring-prototype/implementation-plan.md) preserves exact recovery. No production cutover.
-6. **#113 — accepted and closed (2026-10-11)** — [Experience V2](../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) runs in the [unified executable](../../prototypes/spatial-authoring/README.md), preserving A–F and proving World ↔ Experience continuity; C9 authoring completeness is implemented and MP1–MP4 are owner-accepted for functionality (not final visual UX). #113 also locks the six-QA Experience UX reconciliation in [PLATE §0.8.1](../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) (docs/design/assets only, with the A1–A7 follow-up amendments). [Implementation plan](./p25-experience/design/experience-v2-prototype/implementation-plan.md) · [C9 plan stub](./p25-experience/design/experience-v2-prototype/authoring-completeness-plan.md) · [C9 evidence](../../prototypes/spatial-authoring/qa/EXPERIENCE-C9-EVIDENCE.md) (with closeout preservation report). Prototype evidence only; no production cutover.
-7. **#114 — accepted/closed unified design and authority reconciliation (2026-10-13)** — the owner accepts [Conservatory Round 2](../../prototypes/experience-ux-alternative/README.md), exact revision `426698573e883bc3a16b265ff9efc5be744c5fec` (Round 2 delivery `8ead6b148e404f38a6ff91db7801ad1a6fa35426`, plus Index refinements). [PLATE](../reference/design-system/editor-shell-and-visual-system.md) promotes shared shell, visual language and Experience authoring/acceptance. Paper §0.8.4 retains accepted World depth. UX3/V3 and UX0–UX7 are inactive historical evidence; no further prototype implementation is required. [V2 diff assessment](../../prototypes/spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) preserves World behavior and prior functional QA without accepting its obsolete Experience UX. Design acceptance authorizes no production cutover.
-8. **#115 — parallel-track planning cutover** — replace sequential P-level capability execution with T1/T2/T3/T4, under the bounded handoff below. The old [Paper PA0–PA12 adoption plan](./p26-spatial-depth/design/paper-authoring-prototype/implementation-plan.md) is inactive and unimplemented; its accepted authoring requirements remain in [PLATE §0.8.4](../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination), not an instruction to build another prototype.
-9. **Foundation-gated production implementation** follows independently reviewable track plans and their relevant readiness/interface gates. Neither design ratification nor planning authorizes capability implementation.
+- product direction → [`../reference/north-star.md`](../reference/north-star.md);
+- ownership and boundaries → [`../reference/architecture.md`](../reference/architecture.md);
+- the ratified cross-domain shapes F.1–F.5 →
+  [`../reference/composition-execution.md`](../reference/composition-execution.md);
+- the ratified shell and visual-system destination (PLATE) →
+  [`../reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md).
 
-**Current baton:** **#114 accepted unified design → #115 parallel-track planning
-cutover → foundation-gated production implementation.** The former #114
-Experience V2/V3 implementation → #115 Paper PA0–PA12 → F sequence is retired.
+The retained prototypes ([`../../prototypes/README.md`](../../prototypes/README.md))
+are runnable product hypotheses and their QA/reference evidence; they test and
+challenge these contracts but are never production, persisted-format or
+implementation authority. Ratification, planning and prototype acceptance
+authorize **no** implementation.
 
-The demo revision and the shell round are bounded design work; product
-implementation remains subject to the foundation and track gates below. Steps 3
-and 4 are **target statements**: the editor still runs the landed PLATE chrome
-until an explicit cutover, so the destination is never presented as shipped.
+## Track register
 
-**#111–#114 are design/prototype evidence; #115 is planning.** They do not satisfy F, do not
-advance T1 implementation state, and do not authorize production; only the F
-interfaces and the re-derived track plans gate production capability work.
+#115 replaced sequential P-level capability planning with four parallel tracks.
+Each track's evidence and obligations are recorded; its phases, slices and
+status register are created by authorized planning, and the execution structure
+that registers them (track READMEs with their starting-foundation and start
+step, and the gate register) is the remaining work package of the reset.
 
-Pre-redesign P24/P25/P26 scope, exclusions and sequencing are planning
-**evidence** only; #115 derives track plans against current production and F.
-Authority: [`../reference/decisions/northstar-ratification-2026-09-27.md`](../reference/decisions/northstar-ratification-2026-09-27.md)
-and the promoted contracts ([`reference/north-star.md`](../reference/north-star.md),
-[`reference/architecture.md`](../reference/architecture.md)).
-
-| Phase / track | Status | Goal | Workspace |
-|-------|--------|------|-----------|
-| P23 | shipped | wall-first architectural Plan editor minimum | [`p23-layout-depth/README.md`](./p23-layout-depth/README.md) |
-| P23B | shipped | geometry performance + stabilization — closed 2026-09-29 by owner ruling after P23B.9's correctness + performance-regression gate was accepted and P23B.10's closeout made the phase closable; shipped on `main` — PR #103 merged 2026-09-29 | [`p23b-geometry-performance/README.md`](./p23b-geometry-performance/README.md) |
-| F | planning (target contract owner-ratified 2026-09-27 with amendments; no implementation authorized) | foundation contracts F.1–F.5 before capability replanning | [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md) |
-| T1 — Spatial foundation and World authoring | planning cutover assigned to #115; no implementation authorized | Paper, spatial readings, viewport/projection dependencies and runtime-safe Layout representation | [`p26-spatial-depth/README.md`](./p26-spatial-depth/README.md) — retained evidence |
-| T2 — Composition data and authoring | planning cutover assigned to #115; no implementation authorized | Scene, reusable objects, assets and editing reach | [`p24-scene-staging/README.md`](./p24-scene-staging/README.md) — retained evidence |
-| T3 — Experience data and authoring | planning cutover assigned to #115; no implementation authorized | Presentations, Views, Guides, Stops, Camera relationships and visitor execution | [`p25-experience/README.md`](./p25-experience/README.md) — retained evidence |
-| T4 — Release and delivery | planning cutover assigned to #115; no implementation authorized | durability, compatibility and deployment foundations | [#115 handoff](#next-task-handoff--115) |
-| P27–P30 | provisional labels | components/reversible presentation · coordinated direction · reuse/alternatives/participation · delivery/presenting/review | — |
+| Track | Status | Scope | Evidence |
+| --- | --- | --- | --- |
+| **T1 — Spatial world** | planning evidence recorded by #115; **no implementation authorized** | architectural representation, Plan/3D spatial readings, viewport and projection, Layout representation, retained precision/a11y seams | [`t1-spatial-world/planning-evidence.md`](./t1-spatial-world/planning-evidence.md) |
+| **T2 — Composition** | planning evidence recorded by #115; **no implementation authorized** | one semantic Scene placement with view-specific projection, footprint/support, assets and ingest, materials and lights | [`t2-composition/planning-evidence.md`](./t2-composition/planning-evidence.md) |
+| **T3 — Experience** | planning evidence recorded by #115; **no implementation authorized** | Experience composition, Presentations, Stops, visitor execution, Camera/Experience order cutover, accessibility | [`t3-experience/planning-evidence.md`](./t3-experience/planning-evidence.md) |
+| **T4 — Release and delivery** | track opened by #115; **no implementation authorized** | durability, the F.5 release envelope, provenance and closed resources | [`t4-release/README.md`](./t4-release/README.md) |
 
 ```text
 CROSS-TRACK CONSTRAINTS (interface/correctness gates, not a waterfall):
-- T2/T3 authoring UI consumes T1's viewport/projection seam; it does not wait
-  for T1's later representation slices.
-- T3 data work may proceed alongside T1/T2. Rich Activities consume real
-  domain capabilities as they become available; T3 does not wait for all T2
-  definitions/components or all T1 representation depth.
-- T3's order cutover lands BEFORE T1 migrates the Camera authoring tools onto
-  the new ownership contract; node links and Experience order are never
-  coequal writable authorities.
+- T2/T3 authoring capability consumes T1's viewport/projection seam; it does not
+  wait for T1's later representation slices.
+- T3's order cutover lands BEFORE T1 migrates Camera authoring onto the new
+  ownership contract; node links and Experience order are never coequal
+  writable authorities.
 - T4 may establish its envelope and existing-data lowering in parallel, then
   integrate new capability payloads as their domain contracts land.
 - Every track conforms to F; unsupported required capabilities fail explicitly.
 ```
 
-**Delivery obligations (ratified):** the ratified F target governs capability
-planning; exact-interface amendments with first consumers gate implementation. Release
-preparation and compatibility before external durability; creator/audience
-trials around the first complete revision loop (import or build → place →
-direct → publish → receive feedback → revise → re-share). Ratify the Source
-Baseline once F's formats land and the supported composition/Experience units
-are stable. Ratification authorizes no implementation by itself.
+**Implementation gates.** F.1–F.5 are owner-ratified as target shapes; each exact
+interface is drafted with its first consumer and ratified as an explicit F
+amendment to
+[`../reference/composition-execution.md`](../reference/composition-execution.md),
+implemented in shared code. No track mints its own format. Production capability
+work starts only from an approved, reviewed track phase plan whose declared final
+gate must pass; the architecture operating cycle
+([`../operations/architecture-cycle.md`](../operations/architecture-cycle.md))
+owns the bounded exposure window that the first T1 plan configures.
 
-## Next-task handoff — #115
+## Closed phases
 
-**One task: replace sequential P-level capability planning with the parallel
-T-track execution system.** This is a handoff, not a set of track plans in #114.
+**P23** (wall-first architectural Plan editor minimum) and **P23B** (geometry
+performance and stabilization — closed 2026-09-29 by owner ruling after P23B.9's
+correctness and performance-regression gate was accepted and P23B.10's closeout
+made the phase closable) are shipped and closed. Their closure provenance,
+format-cutover records, Room lineage and algorithm decisions are archived under
+[`../archive/technical/p23/`](../archive/technical/p23/) and
+[`../archive/technical/p23b/`](../archive/technical/p23b/). No P-level execution
+route remains: #115 replaced that sequence with the tracks above.
 
-**S0 architectural disposition gate — before detailed track plans.** Inspect
-actual production code and classify significant subsystems as `RETAIN`,
-`REFACTOR`, `REPLACE` or `RETIRE`. Treat the current UI presentation layer,
-shell, tokens, toolbar and spatial helper visuals as **REPLACE by default**;
-retain sound Layout, Scene, Camera, geometry, rendering and infrastructure
-implementations where evidence supports them. Reassess rebuild versus
-incremental extension rather than automatically preserving historical structure.
-S0 produces an evidence-based architectural recommendation for owner review
-before expensive detailed planning commitments.
+## Unscheduled proposals
 
-Apply the existing [pre-Source-Baseline policy](../reference/north-star.md#release-and-source-baselines)
-as a **prune-first and single-cutover default**: avoid unsupported migrations,
-legacy readers, duplicate writable models and permanent compatibility facades.
-Preserve explicitly protected trial data, durable releases, supported external
-formats and architectural invariants; each compatibility exception needs a
-demonstrated obligation.
+Retained below because no other document holds them. Neither is authorized, and
+neither has a phase or slice; re-register with an owner decision if either is
+taken up.
 
-1. Retire P24 → P25 → P26 as an active sequential implementation order, retaining
-   their research, architecture investigation, accepted capability decisions and
-   authoring-depth specifications as historical/technical references.
-2. Route new capability implementation through T1/T2/T3/T4. Derive a new plan for
-   each from inspected current production code, accepted contracts, prior evidence
-   and Conservatory/Paper's destination; do not infer behavior from prototypes.
-3. Give each track dependencies, readiness gates, reviewable slices, focused
-   verification, acceptance criteria, review and closeout procedure, so it is
-   independently reviewable/executable once its relevant gates pass. Each plan
-   identifies displaced code, its removal slice, verification and retirement
-   acceptance criteria.
-4. Identify cross-track interfaces and first-consumer dependencies without an
-   artificial waterfall; the constraints above remain interface/correctness gates.
-5. Preserve F.1–F.5 and exact-interface ratification with first consumers. Planning
-   is not implementation authorization, and a track cannot mint its own F format.
+- **Stop-at-next-occurrence playback** (recorded 2026-08-27 as "P13"). In sequence
+  playback, Play would travel to the beginning of the next stop and pause there,
+  with a toggle between stop-at-node and continuous end-to-end playback. The
+  pinned semantics for `A → B → C` were: play from A travels to the start of B and
+  pauses; play again travels B→C; the final play continues to the tail or loops
+  where a closing edge exists. "Beginning of a node" means the end of the inbound
+  motion span and the start of the authored hold. It was estimated as a small
+  change because the arrival progress of every node already existed as data, the
+  playhead advanced under one clock, and the toggle could mirror an existing
+  session-flag pattern. **Its original premise is retired:** the Sequence/timeline
+  transport it extended was editor-only and was removed with the editor shell, and
+  the order model it read is retired at the T3 Camera/Experience cutover. T3 may
+  assess an occurrence-based equivalent against the Experience order contract; it
+  is not carried as a scheduled item.
+- **Branch rejoin — experiment, no schedule** (recorded 2026-08-21). Authoring a
+  branch that rejoins the main sequence at a *later* stop (`C → E → F → D`) is not
+  representable in the shipped model, which expresses only return-to-origin chains.
+  Three modeling options were recorded: (1) a tail-node field, recommended for any
+  future increment as the smallest delta and matching the existing
+  detour-origin precedent, additive to the strict codec with no version field or
+  migration; (2) a first-class Branch record, cleanest but a new top-level
+  collection needing codec, semantics, serialization, export and contract tests;
+  (3) deriving rejoin from the graph, rejected as implicit and silently breakable
+  when the edge is deleted. Risk finding: data risk low, validator/mutator risk
+  medium (every sequence mutation gains a rejoin-validity clause and the rejoin
+  edge likely needs delete guarding), playback risk high and separable (no branch
+  playback engine exists). Open questions: whether rejoin validity restricts
+  re-root/reorder so the target stays after the origin, whether a rejoin edge is
+  delete-guarded, and whether timeline branch rendering is ever part of an
+  increment or branch authoring stays model-only. Revisit only if branch authoring
+  is prioritized.
 
-#114 creates no track plans, folder migration or production slice. #115 owns that
-planning cutover; the useful P24/P25/P26 work is retained reference material.
+## Meta, operations and status
 
 ```text
-BACKLOG: P13 proposed/unscheduled; branch-rejoin experiment, no schedule → backlog/
-META: live state → ../operations/architecture-cycle.md
-      ratified design → architecture-operating-cycle-plan.md
 OPS: current work baton → ../operations/current.md
-MODEL: per-increment routing → model-assessment.md
+META: live cycle state + protocol → ../operations/architecture-cycle.md
 ```
 
-`META` is a process track beside the product pipeline, not a phase in it: it enters no
-product-track slot and adds no P-number. Its live state is
-[`../operations/architecture-cycle.md`](../operations/architecture-cycle.md); its ratified
-design is [`architecture-operating-cycle-plan.md`](./architecture-operating-cycle-plan.md).
+`META` is a process track beside the product pipeline, not a phase in it: it
+enters no product-track slot and adds no P-number. There is no separate model or
+per-increment routing tracker; task-intensity routing is not roadmap status.
 
 Non-milestone: Typed DB layer (conditional infra).
 
 Status enum: `proposed | planning | approved | in-progress | shipped | archived`.
 This tracker is authoritative when a plan doc's `**Status:**` drifts.
-Execution order is pinned by phase README depends-on and the cross-track
-constraints above, not by P-number order.

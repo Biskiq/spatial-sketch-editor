@@ -20,10 +20,11 @@ justify the rule it changes; a feature brief must not casually reinterpret it.
 
 The destination is **World | Experience over one project**. This is design authority,
 not a claim of production implementation or authorization to cut over the editor.
-The maintained editor's current composition is described in the
-[landed shell contract](../components/shell.md); its implementation remains current
-until explicit migration. Prototype adoption and production delivery have their own
-plans and acceptance gates.
+The landed authoring shell and the descriptive contract that recorded its
+composition were removed by #115 (the foundation reset), so this contract is the
+destination a later track rebuilds against and no document describes a maintained
+shell today. Prototype adoption and production delivery have their own plans and
+acceptance gates.
 
 | State | Meaning after #114 |
 | --- | --- |
@@ -240,9 +241,9 @@ presentation, gizmo visuals, transform-space controls, scaling affordances,
 snapping disclosure, numeric manipulation and advanced object Card/inspector
 depth remain uncovered.
 
-This is a **non-blocking design-coverage gap**. Existing production
-[transform semantics](../components/placement.md) and tested domain adapters
-remain current until their explicit cutover. Validate the detailed interaction
+This is a **non-blocking design-coverage gap**. The production
+[Scene transform and validation semantics](../components/scene-content.md) and its
+tested domain adapters remain current until their explicit cutover. Validate the detailed interaction
 design directly in production through the appropriate T2 authoring slice with
 T1 Stage integration; no additional prototype or complete 3D UX specification
 is required here.
@@ -1056,8 +1057,8 @@ fallback specification that a future designer must reopen or an authority cycle.
 | [Conservatory Round 2](../../../prototypes/experience-ux-alternative/README.md), [rationale](../../../prototypes/experience-ux-alternative/design-rationale.md) and [scenarios](../../../prototypes/experience-ux-alternative/scope-and-critique.md) | Accepted unified UX, Experience authoring and shared visual-shell evidence at the revision recorded above; promoted rules live here, mock mechanisms do not |
 | [World final synthesis](../../../prototypes/world-experience-shell-round/design/design-synthesis.md) and [World QA package](../../../prototypes/world-experience-shell-round/QA-package/) | Prior shared/World shell record; valid discovery, procedure and return rationale survives, conflicting shell treatment is superseded |
 | [Experience UX reconciliation](../../../prototypes/integrated-experience-authoring/design/experience-ux-reconciliation.md) and [Experience Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/) | Historical 2026-10-11 Experience design; useful behavioral rationale, no current visual acceptance authority |
-| [UX3/V3 proposal](../../roadmap/p25-experience/design/experience-ux-v3/README.md), [inactive plan](../../roadmap/p25-experience/design/experience-ux-v3/implementation-plan.md) and [generated boards](../../../prototypes/experience-ux-v3/README.md) | Superseded independent proposal, rationale and Git provenance; no active implementation or PNG-equivalence gate |
+| [UX3/V3 proposal](../../../prototypes/experience-ux-v3/design/README.md), [inactive plan](../../../prototypes/experience-ux-v3/design/implementation-plan.md) and [generated boards](../../../prototypes/experience-ux-v3/README.md) | Superseded independent proposal, rationale and Git provenance; no active implementation or PNG-equivalence gate |
 | [Experience V2 final synthesis](../../../prototypes/integrated-experience-authoring/design/Prototype-V2-final-synthesis.md) | Superseded 2026-10-01 Experience record (Set, Peek/Overview, Seam, Coordinate); provenance only. Its boards were retired 2026-10-11 except the two Camera precision specimens; Git history keeps the rest |
 | [World Paper proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) | Accepted World-only refinements, owner rulings and schematic rationale |
-| [P26 surface calibration acceptance](../../roadmap/p26-spatial-depth/design/visual-system-refinement/qa/ACCEPTANCE.md), [specification](../../roadmap/p26-spatial-depth/design/visual-system-refinement/specification-plan.md) and [prototype journeys](../../../prototypes/spatial-authoring/README.md) | Mat/vellum/grid/state calibration and deep World interaction evidence; shortcuts are not production mechanisms |
-| [Shell ratifications](./editor-shell-ratifications.md) and [Atlas](./editor-shell-atlas/index.html) | Existing role-system and state evidence; the Atlas's landed composition does not redefine this destination |
+| [P26 surface calibration acceptance](../../../prototypes/spatial-authoring/design/visual-system-refinement/qa/ACCEPTANCE.md), [specification](../../../prototypes/spatial-authoring/design/visual-system-refinement/specification-plan.md) and [prototype journeys](../../../prototypes/spatial-authoring/README.md) | Mat/vellum/grid/state calibration and deep World interaction evidence; shortcuts are not production mechanisms |
+| [Shell ratifications](../../archive/technical/editor-shell/ratifications.md) and [Atlas](../../archive/technical/editor-shell/atlas/index.html) | Existing role-system and state evidence; the Atlas's landed composition does not redefine this destination |
