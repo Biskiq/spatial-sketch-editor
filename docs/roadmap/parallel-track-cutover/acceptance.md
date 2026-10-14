@@ -2624,7 +2624,7 @@ re-opened. §13.4 records the test-side evidence WP3T owed for §10's b2 seam.
 | 1 | expensive fast setup/matrices | **Applied.** The correspondence suite split: the whole-table differential (OR-1 reference, OR-2 exhaustive neutrality, OR-6 count oracle) is now `correspondence-reference-differential` (heavy, 11 tests), and the self-contained adversarial rows are `correspondence-prune-neutrality` (fast, 16 tests, **no file-wide setup**, 19 ms). `p23b11-conditional-gate` (30 whole-table rows) moved bodily to heavy: unlike the correspondence file it has no cheap subset — every row has the same cost shape — so splitting it would have been arbitrary. Refinement: the plan's 15.3 s figure for the correspondence file measures 6.2 s on today's tree, so the split's extent was fixed by measurement rather than by the plan's number. |
 | 2 | contract location | **Applied.** `camera-motion.test.ts` (2,128 lines / 62 tests) became five durable Camera suites (motion core, position path, framing envelope, guard status, timing); `layout-curve-regressions.test.ts` (1,272 lines / 39 tests) became four (editing, distance-and-crossing, proposals, clearance). Pure moves — every expectation preserved. The retained `camera-motion.test.ts` keeps its name and its `'live target and FOV'` case, so §7.7's cited command is still literally valid. |
 | 3 | completed scaffolding, duplicate execution | **Applied.** `layout-p23b3a-reference.test.ts`: the `REFERENCE_ROWS` register and its three tests retired (24 → 21, §13.3). Curve clearance: both the editor and museum alias imported the same `$lib/layout/wall-mesh-builder` and ran it twice per fixture — one compiler-to-mesh proof kept, 4 duplicate assertions removed, that describe's test count unchanged. |
-| 4 | fixture ownership | **Applied.** `p23b-fixture-contract.test.ts` no longer reads the P23B roadmap ledger; the 15 constructible fixtures' canonical digests, shapes and verdicts are test-owned data (§13.9). The three API files' hand-built project fixture is now one shared builder in `apps/api/tests/test-support.mjs`. |
+| 4 | fixture ownership | **Applied.** `p23b-fixture-contract.test.ts` no longer reads the P23B roadmap ledger; the 15 constructible fixtures' canonical digests, shapes and verdicts are test-owned data (§13.9). The current-format project fixture is one shared builder in `apps/api/tests/test-support.mjs`, used by every API contract file that constructs a document. **Correction:** the two local copies that survived WP3T (`publication.test.mjs`, `test-auth.test.mjs`) were consolidated by the review correction in §14.1 (F1); this row's original wording implied that had already happened. |
 | 5 | mixed ownership, repeated work | **Applied.** `api.test.mjs` (1,213 lines) split into five responsibility files over one transparent helper, with `apps/api/package.json` building once and running every contract. `p23b4-measurements.test.ts` now compares every output of a fixture in ONE named case per fixture: 6 chain runs instead of 18, with all six comparisons kept. |
 | 6 | boundary routing, helper residue | **Applied, one recommendation rejected on evidence.** The unique-flattener / one-centerline-seam claim moved out of `layout-curve-read-path` into `layout-geometry-boundary` (arch), and the visitor→editor-machinery sweep moved into `visitor-identity-isolation` (arch). The layout-core→renderer sweep was **deleted, not moved**: `layout-geometry-boundary` already asserts that defect with a stronger root and a per-file external allowlist (§13.3). `helpers/lib-source.ts` was retired — zero consumers, and its visitor root named the deleted `apps/museum` — and `helpers/import-closure.ts`'s two stale WP3R constants (`MUSEUM_APP_SRC`, the `virtual:museum-editor-entry` branch and its target) were removed. |
 | — | organization | **Applied.** The three `project-format-*` suites moved from `tests/lib/editor/` to `tests/lib/project-model/`, retiring the last historical shell directory in the test tree; the move is path-independent because they import through `$lib`/package specifiers only. |
@@ -2778,3 +2778,98 @@ as a named constant instead of fabricating a 16th fixture. WP4 may delete `fixtu
 - **Residual, not actioned:** the 44-case table's derivation is still a single costly pass
   (~5.6 s); making it incremental would change how the frozen reference is produced, which is
   test-design work for a future owner rather than a WP3T edit.
+
+## 14. WP3T review corrections (F1–F5) and Checkpoint D-T re-verification
+
+> **Status.** WP3T's open review findings were resolved on `codex/pr115-architecture-plan` from
+> `cb3953f9` (the record commit that follows the Checkpoint D-T revision `4e0f6ac5`). §13 remains
+> the evidence record for that WP3T revision and is not rewritten; this section records the review
+> dispositions, the corrections, and the re-verification of the corrected revision `3023d08d`.
+> Checkpoint D-T remains **acceptance-ready, pending independent acceptance**. WP4 has not begun.
+
+**Boundary held.** Only tests, test fixtures/helpers, runner configuration and
+`apps/editor/tests/README.md` changed, plus this record. No production source, schema, format,
+architecture contract or accepted-document semantics changed, and no §5.1/§10 disposition was
+re-opened; the retained Scene resolution and Save-only validator seams remain with T2 and T3
+(§13.4).
+
+### 14.1 Findings, dispositions and evidence
+
+| # | Review finding | Disposition | Evidence |
+| --- | --- | --- | --- |
+| F1 | The record claimed one shared API project-fixture builder, but `publication.test.mjs` and `test-auth.test.mjs` still built their own `projectDocument()` | **Upheld — consolidated, and the claim corrected** | The three builders were byte-identical apart from the project `id` and the staged `textures`, so all three independently pinned the same current-format shape (`formatVersion: 5` / `formatVersion: 1`) that a single edit could drift. `apps/api/tests/test-support.mjs` now takes `projectDocument(name, { id, textures })`, keeping the scenario input visible at each call site (README rule 23); both local builders are deleted and their call sites pass `{ id, textures }` explicitly. Every API contract file that constructs a document (`projects`, `auth-session-origin`, `publication`, `test-auth`) now shares it. All 39 API cases, the real-Postgres coverage and the per-test isolation are preserved (§14.3). |
+| F2 | Test README rule 7 still pointed at the deleted `tests/helpers/lib-source.ts` | **Upheld — rule reconciled to the surviving readers** | Rule 7 now names `apps/editor/tests/helpers/import-closure.ts` (`parseModuleSpecifiers`, `stripComments`, `resolveSpecifier`) for the source/import grammar and `apps/editor/tests/helpers/docs-references.ts` for Markdown, and states that a boundary suite may keep a local walk when its root, allowed-import set or defect differs — a different invariant, not a second pattern for this one. No replacement abstraction was introduced (`import-closure.ts` already existed) and no new parser framework was added. |
+| F3 | `lane-membership.test.ts` pinned test-population and lane sizes (`>100`, `>=13`, `>=6`) | **Upheld — replaced with coverage-based non-vacuity** | The count thresholds could reject legitimate pruning while configuration stayed correct. They are replaced by semantic guarantees: the walk must be non-empty and must reach every curated entry plus at least one fast-lane file; each curated lane must be non-empty; and the effective fast/arch/heavy union must equal the collected population. The membership guarantee (every curated entry is a real collected file) stays in `laneProblems`. The negative controls — renamed/missing entry, overlap, duplicate, dropped file, stray fast file — are unchanged and still assert a non-empty problem list, so the proof cannot pass vacuously. The file still runs 3 tests. |
+| F4 | `p23b-fixture-contract.test.ts` asserted four `control` and two `timing-target` matrix roles | **Upheld — historical measurement classification, removed** | `role: 'control' \| 'timing-target'` on `P23BMatrixSpec` was read only by those two assertions, and `'timing-target'` is a performance-measurement class rather than a behavioral contract. Removed: the two assertions, the `role` field and its derivation, the now-unused `P23BFixtureRole` union, and `P23B_HOSTED_FIXTURE_IDS` (an unreferenced export describing the retired hosted-capture workflow). Kept unchanged: fixture ids, canonical sha256 digests, document shapes, topology decisions and compiler-verdict coverage, the class taxonomy (`semanticClass`), and `P23B_RETIRED_OWNER_FIXTURE_ID` (§13.9). The suite still runs 2 tests. |
+| F5 | Stale PERF-lane, in-progress T-phase and uninstalled-CI comments in the runner configuration | **Upheld — corrected** | `vitest.config.ts` dropped the removed `vitest.perf.config.ts` from its lane list; `vitest.fast.config.ts` says arch and heavy; `vitest.arch.config.ts` and `test-lanes.ts` no longer promise "in CI" — there is no `.github/workflows` — and point at the README change-impact policy; `vitest.heavy.config.ts` lost the stale T1/T4 in-progress phrasing; and the normalize-asset "~29% of the suite's per-file time" relative claim was replaced with the reason the file is heavy. **No lane membership changed.** |
+| — | Worktree residue: one uncommitted edit at `cb3953f9` | **Completed and adopted** | `apps/editor/tests/lib/content/normalize-asset.test.ts` carried an unfinished §7.6 criterion-4 change. It is completed here: `P24A_REQUIRE_PIPELINE=1` makes missing tooling fail the file loudly instead of skipping green, and every case's temporary tree is removed in `afterAll`. Verified with the gate set (§14.3). |
+
+### 14.2 What a change requires, and correctness versus benchmarks
+
+`apps/editor/tests/README.md` gained a **change-impact policy** ("What a change requires") that
+makes test edits first-class verification triggers, reconciled with §7.7 — the section §7.7
+invoked as the home for permanent commands and escalation triggers: editing a test requires the
+complete affected contract; an edited heavy test or fixture requires its exhaustive cases with no
+`-t` narrowing; an edited arch boundary test requires the whole arch lane at the applicable gate;
+production code a heavy invariant exercises requires that heavy contract during verification;
+shared setup, lane membership or runner configuration requires the affected lanes and the full
+suite at acceptance; and every #115 checkpoint and future implementation-PR merge gate keeps the
+declared complete contract including `test:heavy`. Focused runs remain iteration feedback, never
+acceptance evidence.
+
+The same section states the **benchmark-versus-correctness** boundary: expensive correctness work
+(dense numerical/geometric sweeps, whole-table differentials, deterministic operation counts) stays
+in `test:heavy` and must pass; actual latency, frame-time, memory, allocation and throughput
+benchmarks are on demand, against comparable workloads/revisions/environments, and a passing
+correctness suite is not evidence of unchanged runtime performance. No PERF harness, baseline
+recorder, reuse ratchet, timing threshold, benchmark registry, scheduled job or CI gate was
+reintroduced; the permanent benchmark workflow remains WP5's.
+
+**No automatic trigger is claimed.** The repository has no `.github/workflows`, so the README
+states plainly that no CI workflow enforces these triggers today and that the reviewed plan and
+this acceptance record are the mechanism until a CI integration is separately authorized.
+
+### 14.3 Re-verification on the corrected revision
+
+Every command below was run on the corrected worktree immediately before the revision commit
+`3023d08d`; exit statuses were read directly, not inferred from piped output.
+
+| Gate | Result |
+| --- | --- |
+| `npm run test:arch` | 14 files / 107 tests passed (exit 0) |
+| `npm run test:fast` | 93 files / 1,276 tests passed (exit 0) |
+| `npm run test:heavy` | 8 files / 118 tests passed (exit 0) |
+| `npm test` (complete: fast + arch + heavy) | 115 files / 1,501 tests passed (exit 0) |
+| `npm run check` | `svelte-check`: 0 errors, 0 warnings (exit 0) |
+| `npm run build` | built (`@sveltejs/adapter-vercel`) (exit 0) |
+| `npm run check:layout-core`, `check:project-model`, `check:camera-core` | `tsc --noEmit` clean (exit 0) |
+| `npm run check:api` | `tsc --noEmit` clean (exit 0) |
+| `npm run test:api` | build + 7 files: 5 + 6 + 3 + 8 + 1 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` (exit 0) |
+| `P24A_REQUIRE_PIPELINE=1 npx vitest run --config vitest.heavy.config.ts tests/lib/content/normalize-asset.test.ts` | 6 tests passed (exit 0); the `$TMPDIR/p24a-*` tree count was unchanged before/after (156 → 156), so the run leaves **no new temporary directories** |
+| Browser check (`vite` on 5173, API on 8787) | `/`, `/projects`, `/project/x/spatial`, `/p/x`: 200 with the expected notices (foundation-reset, signed-out hub, unavailable-link), **zero console errors** |
+| `git diff --check` (pending, pre-commit) | clean |
+| `git diff --check cb3953f9..3023d08d` (committed range) | clean |
+
+**Lane membership is unchanged** from §13.7: `fast` 93 files / 1,276 tests, `arch` 14 / 107,
+`heavy` 8 / 118 — 115 files and 1,501 tests in total, matching the WP3T revision. The corrections
+changed no test count, no lane assignment and no production code.
+
+**Verified revision:** `3023d08d2965d9b3e259c177d5a0e7edf4cb9c9e`
+(`test(pr115): correct WP3T review findings F1-F5`) on `codex/pr115-architecture-plan`, over base
+`cb3953f9`; committed range `cb3953f9..3023d08d` (13 files, `+187 / −130`). No force-push and no
+merge. This record is added by the revision-record commit that follows it, as at Checkpoints C, D
+and D-T; the documentation gate is re-run for the record commit because a docs edit cannot change
+product behavior (§7.7).
+
+### 14.4 Remaining limitations
+
+- **Pre-existing temporary trees.** The 156 `$TMPDIR/p24a-*` directories predate this revision
+  (created at 23:10 by an earlier run of the suite before the cleanup existed). This revision
+  leaves no new trees; the stale ones were not removed because they live outside the workspace.
+- **`P23B_HOSTED_FIXTURE_IDS` removal is one step beyond the letter of F4.** It is an unreferenced
+  export whose "active interaction captures" no longer exist, so it is the same
+  measurement-era residue rather than a new abstraction; no other fixture data was touched.
+- **§13's cost table** still describes the pre-correction revision; the corrections do not move
+  membership or counts, so it is not re-measured here.
+- **Reported to owners, still not implemented** (unchanged from §13.10): the `virtual:museum-editor-entry`
+  declaration in `apps/editor/src/vite-env.d.ts` is production residue outside WP3T's boundary.
