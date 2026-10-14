@@ -90,9 +90,10 @@ the window; the opener need not be the nominal one.
 
 **`record-exposure`** — when a listed slice is accepted or shipped, add its exposure row. A listed
 slice reaching `accepted`/`shipped` with no exposure row is a defect. An exposure row is the slice id,
-optionally followed by `discharged` and a short reason (`T1.P01.S02 discharged — absorbed by the
-T1.P02 window`); the marker is the explicit record §11 requires, and it is never written for the
-terminal.
+followed **immediately** by `discharged` and a short reason when it records a discharge
+(`T1.P01.S02 discharged — absorbed by the T1.P02 window`); the marker is the explicit record §11
+requires, prose that merely mentions the word (`… not discharged — awaiting owner review`) is not a
+discharge, and the marker is never written for the terminal.
 
 **`close-window`** — when the terminal is accepted and every other listed exposure is accepted or
 explicitly discharged (its exposure row marked `discharged`), mark the window closed, set readiness
@@ -122,15 +123,20 @@ Unrelated work never loads this document. Three one-line hooks are the whole int
 helper as the gate register, and fails on:
 
 - more than three exposures;
+- a ready or open window with no listed exposure slice (`ready` and `open` both mean a configured
+  window);
 - readiness `ready` without listed slice IDs that exist in a phase README, a terminal, an expected
   opener and a plan anchor — and a configured window whose terminal or expected opener is not one of
   its listed exposure slices;
+- an `Opened by` slice that is not one of the listed exposures (any listed slice may open the window,
+  but only a listed one);
 - **any listed exposure slice at `in-progress`, `accepted` or `shipped` while `Opened by` is empty
   or the stage is still `PHASE_1`** — a missed opening is caught in that slice's own change;
 - an `accepted`/`shipped` listed slice with no exposure row;
 - a satisfied closure predicate with a stale stage;
 - premature closure while a listed exposure is neither accepted nor discharged by its exposure row
-  (a discharge recorded for the terminal is itself a defect);
+  (a discharge recorded for the terminal is itself a defect, and a `discharged` marker that does not
+  follow the slice id directly is prose, not a discharge);
 - `STEADY` without a verdict row for every mechanism.
 
 Positive controls: a **non-listed** slice starting causes no cycle requirement; a **listed** slice
