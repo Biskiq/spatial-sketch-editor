@@ -18,7 +18,7 @@ Conflict: **`docs/` reference files + router win** over this file for product de
   folder is absent from this repository, and no product file imports, aliases or
   references it. Product rules, authorities and tests do not apply to such a
   project, and the product's public routes never serve it.
-- Root `dev` / `test` target editor; root `build` / `check` cover both apps.
+- Root `dev` / `test` / `build` / `check` target the editor app only; the API has its own `dev:api` / `build:api` / `check:api` / `test:api` scripts, which root `build` and `check` never run.
 
 ## Hard rules
 
