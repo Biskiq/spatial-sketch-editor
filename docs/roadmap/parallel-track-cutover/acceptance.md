@@ -3209,7 +3209,7 @@ EVIDENCE-PATHS: end
 | Duplicated mutable state ownership (parallel `$state` mirrors) | "instead of a former god-file parallel `$state` mirror"; "the five mirrors" for lighting; "session owns the canonical lighting state" | Shell contract §2.12 "One writable owner per fact"; `architecture.md` distinct-authority rules | None material once one owner per state fact is stated at module level | Folded into the same principle | **COVERED** (no separate safeguard) |
 | Test-suite coupling to a single mutable hub | 80 files under `apps/editor/tests/**` reference the store; 8 dedicated `editor-store-*.test.ts` suites | `tests/README.md` rules 3 (call-site proof), 18 (one contract per suite), 20 (reuse before adding) | Downstream of the caller-migration gap | None | **REJECT** (symptom, not a cause) |
 | Large cohesive modules treated as unhealthy | `packages/layout-core/src/layout-wall-first-precision.ts` 2,814 lines = one responsibility (exact junction/wall length, angle, thickness, height, subdivision plans); `apps/editor/src/lib/layout/wall-mesh-builder.ts` 1,928 = one responsibility (wall mesh from compiled geometry); `packages/camera-core/src/camera-motion.ts` 2,083 = one Camera evaluation responsibility | `tests/README.md` rule 18: "Never split on line count or file size"; rule 13: draw the boundary around the expensive work, not the file | None | None — explicitly no LOC threshold or module-count quota | **REJECT** (a size rule would be a false-positive machine) |
-| Closed-work documentation retained live and duplicate live authorities coexisting | `docs/**` grew 191 files (2026-08-23 `3842c3b8`) → 209 (`95d62665`) → **581** (#115 baseline); baseline composition 265 archive + 227 roadmap + 47 reference + 37 operations + 4 top-level syntheses; the superseded design-system set (above); P23B alone held 100 files; WP4 removed 511 | `slice-closeout` compacts closed work into stubs with Git anchors and forbids new live→archive prose links; the docs router owns "one live normative statement per concern" and promote-then-stub; WP4 §8.1 already replaced the drift-prone compaction default | None mechanical — "two live docs claim one authority" is not decidable by a link/anchor checker | None | **REJECT** (existing mechanism sufficient; the failure was late application, which WP4 corrected) |
+| Closed-work documentation retained live, duplicate live authorities, and a permanent stub retained per closed prose artifact | `docs/**` grew 191 files (2026-08-23 `3842c3b8`) → 209 (`95d62665`) → **581** (#115 baseline); baseline composition 265 archive + 227 roadmap + 47 reference + 37 operations + 4 top-level syntheses; the superseded design-system set (above); P23B alone held 100 files; WP4 removed 511 | `slice-closeout` compacts closed work into stubs with Git anchors and forbids new live→archive prose links; the docs router owns "one live normative statement per concern" and promote-then-stub; WP4 §8.1 already replaced the drift-prone compaction default | **Two causes, not one.** (1) *Historical:* promotion and compaction were applied late, at WP4, not per close. (2) *Residual, acknowledged not solved:* the accepted hybrid-preservation policy (owner ruling 2026-09-22) requires a permanent stub for **every** closed prose artifact — plan, QA, research, design study — plus an archived copy for renderable evidence, so the permanent-artifact count still grows with the slice count even after reusable knowledge is promoted. Relaxing that owner decision needs explicit authorization | None new. Keep WP5's planned §10.4 preservation consolidation, avoid redundant permanent documents, and surface the stub-retention default as a **bounded owner decision** if further reduction is wanted. No new pruning mechanism, exclusion or audit | **ACKNOWLEDGE** (residual owner-owned cost; no mechanism added) |
 | The architecture lane is the main safeguard but nothing forces it to run | `apps/editor/vitest.arch.config.ts`: "No tracked CI workflow enforces this yet; the reviewed plan and `tests/README.md` are the mechanism" | The reviewed-plan + acceptance-record discipline the file names | Real, but enforcing it means CI and new workflow machinery | None here | **DEFER** (owner-visible; out of this harvest's and WP5's scope) |
 | Adding a new fitness/health/audit layer to "prevent" recurrence | (Counterfactual) | The protections above | — | None | **REJECT** (overengineering) |
 
@@ -3223,10 +3223,13 @@ EVIDENCE-PATHS: end
    (the ordered instantiation of 16 sub-stores, host literals and after-replace listeners) is
    legitimately cohesive; carrying it in the *same* object as the re-exporting facade is what made
    the legitimate part inseparable from the coupling.
-3. **Duplicate live documentation and un-compacted closed work.** Growth came from artifacts that
-   stayed live after their phase closed and from superseded authorities (four top-level syntheses;
-   a design-system set later owned by PLATE) that were not promoted-then-stubbed. The mechanisms to
-   prevent this already existed; they were applied late, at WP4.
+3. **Documentation growth has a historical cause and a residual one.** *Historical:* artifacts
+   stayed live after their phase closed and superseded authorities coexisted (four top-level
+   syntheses; a design-system set later owned by PLATE) because promotion and compaction were
+   applied late, at WP4, rather than per close. *Residual:* the accepted hybrid-preservation policy
+   keeps one permanent stub per closed prose artifact even after its reusable knowledge is promoted,
+   so the artifact count still tracks the slice count under perfect adherence. The second is an owner
+   decision, acknowledged here rather than silently solved.
 
 **Not causes (and not to be "fixed"):** absolute line count, a large module with one
 responsibility, and the existence of a composition root. A split is justified only when it
@@ -3246,25 +3249,33 @@ improves ownership, testability or change isolation without adding indirection.
 - **AGENTS hard rules** 1 (one Camera authority), 2 (distinct authorities) and 6 (no second
   authority).
 
-These are already sufficient for everything except the caller-migration principle (§17.2), so the
-recommendation set is deliberately one idea with one closeout echo — not a new layer.
+These are sufficient to enforce the caller-migration principle and to control *live prose*; the one
+cost they do not remove — a permanent stub per closed prose artifact under the owner-ratified
+hybrid-preservation policy — is an owner decision (§17.2, §17.7), not a coverage gap. The
+recommendation set is therefore one idea with one closeout echo — not a new layer.
 
 ### 17.5 Adopted recommendations (smallest defensible set)
 
 - **A1 — one live-contract principle (adopt).** State in `docs/reference/architecture.md`
   §Ownership (an existing architecture contract, no new document):
 
-  > Extracting a responsibility migrates its callers; it does not leave a forwarding facade or a
-  > re-export of the moved surface. A temporary shim is permitted only while it names its owner and
-  > the slice that removes it, and it is removed with — or before the end of — that slice's work.
-  > Every state fact has one owner; a second mirror of another module's state is not a cache.
+  > Extract responsibilities with their callers and ownership boundaries. A forwarding surface is
+  > justified only when it serves an intentional, owned interface or a bounded migration.
+  > Temporary compatibility shims require an explicit retirement condition and cannot be treated as
+  > completed extraction merely because implementation moved behind them. Maintain one authoritative
+  > owner per mutable state fact.
 
-  This is the smallest rule that closes the demonstrated gap; it targets coupling and ownership,
-  not file size, and needs no new test, inventory or process.
+  This distinguishes a legitimate public interface, controlled adapter or composition boundary from
+  the historical defect — an **unowned compatibility surface retained indefinitely** after
+  extraction. Its enforcement point is implementation review; `slice-closeout` then checks that
+  accepted evidence contains no unowned remaining shim, and routine closeout stays
+  documentation-only with no production edit. The rule targets coupling and ownership, not file
+  size, and needs no new test, inventory or process.
 - **A2 — one closeout echo (adopt, within WP5's existing scope).** WP5's own §9.6 track
-  README/runbook and its §10.4 skill edit carry one line embodying A1 in the `slice-closeout`
-  self-check ("an extraction migrated its callers; no forwarding shim or unowned 'collapse later'
-  remains"). This refines an existing WP5 responsibility; it does not expand it.
+  README/runbook and its §10.4 skill edit carry one line embodying A1: **implementation review**
+  owns the caller-migration and shim-retirement decision, and the `slice-closeout` self-check only
+  verifies that accepted evidence contains no unowned remaining shim. Routine closeout introduces no
+  production edit. This refines an existing WP5 responsibility; it does not expand it.
 
 ### 17.6 Rejected as overengineering
 
@@ -3284,11 +3295,15 @@ recommendation set is deliberately one idea with one closeout echo — not a new
   Layout compiler, the one Camera authority, visitor/editor isolation and deterministic
   acceptance/history are untouched.
 
-### 17.7 Deferred / owner-visible residual
+### 17.7 Deferred / owner-visible residuals
 
 - **CI enforcement of the arch lane** (`vitest.arch.config.ts`): a real residual risk, but closing
   it means adding a tracked CI workflow — new workflow machinery outside this harvest and outside
   WP5's approved scope. Flagged to the owner; not recommended for adoption here.
+- **The stub-retention default of the hybrid-preservation policy** (owner ruling 2026-09-22): under
+  perfect adherence it keeps one permanent stub per closed prose artifact, so the archive's
+  permanent-artifact count still tracks the slice count. Reducing it is a bounded owner decision;
+  this harvest recommends no mechanism and changes no policy.
 
 ### 17.8 Implications for WP5 (recommended, not implemented)
 
@@ -3299,6 +3314,11 @@ recommendation set is deliberately one idea with one closeout echo — not a new
 - **Architecture contract:** A1 lands in `docs/reference/architecture.md` §Ownership. WP5 may fold it
   into its §10 routing/authority edits, or land it as a small adjacent edit; the harvest recommends
   it and implements nothing.
+- **§10.4 preservation consolidation:** carry it as planned, and state the stub-retention default's
+  cost explicitly so the Track → Phase → Slice hierarchy does not adopt it blind. Avoid redundant
+  permanent documents; add no pruning mechanism and no audit.
+- **Owner decision surfaced, not taken:** if the stub-per-artifact cost must shrink, that is a bounded
+  decision against the 2026-09-22 hybrid-preservation ruling — WP5 surfaces it, it does not decide it.
 - **§9.4 gate register and the `parallel-track-gates` structure test:** unchanged by this harvest.
 - **Explicitly not part of WP5:** any maintainability inventory, health score, audit, LOC policy, CI
   workflow or refactoring trigger.
@@ -3316,3 +3336,22 @@ and `git diff --check` over the corrected range are recorded below.
 
 All historical paths quoted above sit inside the §17.1 `EVIDENCE-PATHS` region and are not resolved,
 per the router's record rules.
+
+### 17.10 Review corrections (H1–H2) and verification
+
+> A narrow independent re-review accepted the harvest's central diagnosis (extraction without caller
+> migration) and every rejection, and required two corrections. Both are folded into §17.2–§17.8
+> above; the evidence and history in §17.1–§17.9 are preserved as written, and no policy, mechanism
+> or scope was added.
+
+| ID | Review finding | Disposition |
+| --- | --- | --- |
+| **H1** | The harvest concluded documentation safeguards were sufficient and the failure was only late application. But the accepted hybrid-preservation policy requires a permanent stub for **every** closed prose artifact plus an archived copy per renderable-evidence bundle, so permanent artifacts still accumulate under perfect adherence — a cost WP5's new hierarchy would repeat. | **Upheld and revised.** §17.2's documentation row now separates the historical cause (late promotion/compaction) from the residual cause (stub-per-artifact retention); §17.3, §17.4 and §17.7 acknowledge the residual as owner-owned. Handling stays minimal and unchanged in kind: keep the §10.4 preservation consolidation, avoid redundant documents, and surface the stub-retention default as a bounded owner decision. No new pruning mechanism or audit. |
+| **H2** | A1 stated categorically ("must not leave a forwarding facade") could prohibit legitimate public interfaces, controlled adapters or composition boundaries. The defect was an *unowned* compatibility surface retained indefinitely after extraction. | **Upheld and refined.** §17.5 A1 now permits a forwarding surface that serves an intentional, owned interface or a bounded migration, requires an explicit retirement condition for temporary shims, and keeps one authoritative owner per mutable state fact. Enforcement sits in implementation review; the `slice-closeout` self-check only confirms accepted evidence has no unowned remaining shim and introduces no production edit. |
+
+Corrections are documentation-only; the same documentation and architecture gates apply.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane, including the documentation cross-reference gate | `npm run test:arch` | **pass** — 14 files, 107 tests, 0 failures |
+| Whitespace over the correction range | `git diff --check 4169da84` | **clean** |
