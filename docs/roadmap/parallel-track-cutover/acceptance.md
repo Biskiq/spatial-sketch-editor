@@ -2742,7 +2742,13 @@ flattener claim, +5 the new arch proofs (3 lane, 1 flattener, 1 visitor).
 | `npm run test:api` | build + 7 files: 5 + 6 + 3 + 8 + 1 + 10 + 6 = **39 tests, 0 failures, 0 skipped**, real PostgreSQL at `postgresql://localhost:5432/biskiq` |
 | Documentation gate (`tests/docs`, run alone) | 1 file / 24 tests passed |
 | Browser check (`vite` on 5173, API on 8787) | `/`, `/projects`, `/project/x/spatial`, `/p/x`: 200, expected content (foundation-reset notice, unavailable-link notice), **zero console errors** |
-| Committed-range whitespace | recorded with the revision below |
+| `git diff --check d99ad1dc..4e0f6ac5` (committed range); `git show --check 4e0f6ac5` (single commit) | clean (both) — committed-change whitespace |
+
+**Verified revision:** `4e0f6ac5` (`refactor(pr115): WP3T surviving test system — Checkpoint D-T`)
+on `codex/pr115-architecture-plan`, over base `d99ad1dc` (the accepted Checkpoint D head);
+committed-change range `d99ad1dc..4e0f6ac5` (38 files, `+5,304 / −4,381`). The gates above were run
+on this worktree immediately before that commit; this record is added by the revision-record commit
+that follows it, as at Checkpoints C and D. No force-push and no merge.
 
 ### 13.9 WP4 precondition: the P23B ledger has no test consumer
 
