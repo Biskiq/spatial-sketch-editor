@@ -15,11 +15,15 @@ target capability below is presented as shipped. Open mechanism decisions (encod
 kernel implementation, level mechanism, channel operators) are named as open, not
 invented here.
 
-**Current shell:** the shipped `Spatial` workspace (`Scene | Camera` × `Plan | 3D`)
-is the current authoring surface; `Experience`, `Assets` and `Publish` are the
-project-level surfaces from the 2026-08-31 shell ratification — **Experience
-authoring is still destination, not shipped**, while Assets/Publish have current partial
-implementations (P20/P22). Composition, material, typography and control metrics are owned by
+**Current shell (post-#115):** PR #115 removed the `Spatial` authoring workspace
+(`Scene | Camera` × `Plan | 3D`); the `/project/:id/spatial` route serves a static notice
+and the product has no authoring surface, selection, history, gizmo, preview takeover,
+publish surface or import/export. The surviving product capability is sign-in, the project
+hub, cloud Save/Load, the API and the cold public visitor runtime. `Experience`, `Assets`
+and `Publish` are the project-level concerns from the 2026-08-31 shell ratification —
+**Experience authoring is destination, not shipped**, and Assets/Publish retain only
+partial backend implementations (P20/P22) with no product authoring UI. Composition,
+material, typography and control metrics are owned by
 [`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md);
 shell changes still require focused capability/design planning. Current labels do not
 constrain the destination data model or future creative scope. **Destination
@@ -30,7 +34,8 @@ inspection. Experience exposes visitor-facing composition and may delegate
 View/framing/movement edits to the canonical Camera authority. The replacement
 shell's accepted destination composition is recorded in the shell contract
 ([`design-system/editor-shell-and-visual-system.md`](./design-system/editor-shell-and-visual-system.md)
-§0.8); the landed shell remains current until an explicit cutover.
+§0.8); no landed shell exists today — the contract is the destination a later track
+rebuilds against.
 
 ## Ratified north star
 
@@ -201,10 +206,12 @@ reported explicitly, never silently redirected by name or position.
 **Current:** one `ProjectDocument` holds separately owned `LayoutDocument` and
 `SceneDocument` domains; Layout is wall-first (`formatVersion: 5`, one floor
 datum), Scene is world-local (`formatVersion: 1`, no `roomId`) with Camera data
-stored inside Scene. Versionless room-frame payloads are legacy compatibility
-reading only. Generated geometry, Three objects, renderer handles, decoded
-runtime objects, gizmo proxies, selection, hover/transient gesture state and undo
-history are not serialized as authored project truth.
+stored inside Scene. There is no legacy reader, detector or migration path:
+versionless room-frame payloads are no longer decoded, and a malformed or
+historical payload fails ordinary current-format validation. Generated geometry,
+Three objects, renderer handles, decoded runtime objects, gizmo proxies,
+selection, hover/transient gesture state and undo history are not serialized as
+authored project truth.
 
 **Destination:** one explicit codec-bounded unit per semantic domain inside a
 project envelope holding the accepted revision and dependency lock (F.2;
@@ -712,31 +719,36 @@ to component or kit work.
 
 No complete generic command framework is claimed to exist today, and none is
 created by this direction. Extract domain operations incrementally as real
-capabilities require them, after inspecting current mutator/store/history
-abstractions. Current history supports separate Layout/Scene domain entries with
-a 100-entry chronological stack; compound project acceptance is the destination,
-and several independent commits are never presented as one transaction.
+capabilities require them, against the surviving kernel semantics and the
+destination authority model. The editor's chronological undo stack — separate
+Layout/Scene domain entries with a 100-entry cap — was removed by #115 with the
+editor shell, so the product has no history today; compound project acceptance
+(F.4) is the destination, and several independent commits are never presented as
+one transaction.
 
 ## Sacred contracts
 
 1. **Semantic spatial authoring, not a general mesh editor.** Richer CAD-like
    and parametric construction extends the architectural domain and the single
    canonical compiler; no parallel general-purpose mesh-modeling subsystem.
-2. **One project, World | Experience lenses.** The landed shell has `Spatial`
-   (`Scene | Camera` × `Plan | 3D`) plus partial project-level surfaces; it
-   remains the current description until cutover. The destination creator-facing
-   framing is World | Experience over one project, not a `WorldDocument` or a
-   merger of semantic authorities. Shell composition, navigation and Camera
-   control placement are left to focused design; visual-system roles remain
-   owned by the shell contract.
+2. **One project, World | Experience lenses.** The landed `Spatial` shell
+   (`Scene | Camera` × `Plan | 3D`) was removed by #115; the product has no
+   authoring surface today, and the surviving surfaces are sign-in, the project
+   hub, cloud Save/Load, the API and the visitor runtime. The destination
+   creator-facing framing is World | Experience over one project, not a
+   `WorldDocument` or a merger of semantic authorities. Shell composition,
+   navigation and Camera control placement are left to focused design;
+   visual-system roles remain owned by the shell contract.
 3. **Distinct, never-merged semantic authorities; world-local placement.**
    Layout, Scene, Camera, Experience and typed resources are separate
    authorities and are never merged or hidden inside one another. Scene/Camera
    physical placement is project/world-local with explicit internal component
    frames and no mandatory Room frame. The current two-document encoding, fixed
    format numbers and Camera storage inside Scene are the landed encoding until
-   their explicit cutover, not the destination. Legacy Room-local storage
-   remains a compatibility read path for recognized legacy projects.
+   their explicit cutover, not the destination. There is no legacy Room-local
+   compatibility read path: the product supports one document format
+   (wall-first Layout with a world-local Scene), and versionless room-frame
+   payloads are not decoded.
 4. **One canonical architectural compiler.** Architectural geometry and queries
    come from the single canonical compiler (or its evolved successor), never
    from competing consumer-specific reconstructions. Layout-owned runtime-safe
@@ -899,10 +911,12 @@ Current production choices remain deliberate rather than ideological:
 
 - SvelteKit + Svelte 5 + TypeScript remain the product/UI foundation while they
   fit measured requirements.
-- SVG is the current Plan renderer and Three/Threlte the current production 3D
-  renderer. T1 may rebuild the viewport around one evaluated projection;
-  retaining SVG for projected precision overlays is a proposed mechanism, not a
-  separate Plan geometric/input authority.
+- Three/Threlte remain the current production 3D renderer for the retained
+  visitor runtime and dev previews; the editor's SVG Plan renderer
+  (`PlanRenderModel` / `PlanSvg.svelte`) was removed by #115 with the editor
+  shell. T1 may rebuild the viewport around one evaluated projection; retaining
+  SVG for projected precision overlays is a proposed mechanism, not a separate
+  Plan geometric/input authority.
 - Backend, persistence, asset storage/delivery, auth, realtime, hosting and
   external integrations are platform boundaries; vendor choice may change
   without changing project truth.
@@ -1011,9 +1025,9 @@ today:
 4. Each semantic transform preserves components outside its operation; a change
    of viewpoint never changes authored state or ownership.
 5. New Scene/Camera physical placement is project/world-local; explicit
-   relationships are never inferred merely from coordinates. Legacy Room-local
-   data resolves only through explicit trusted compatibility context and is
-   never double-transformed.
+   relationships are never inferred merely from coordinates, and legacy
+   Room-local data is never silently or doubly converted — there is no legacy
+   read path.
 6. Camera operations reuse the canonical route/motion authority.
 7. Generated resources enter the canonical resource ingest path.
 8. Visitor runtime consumes project truth without editor

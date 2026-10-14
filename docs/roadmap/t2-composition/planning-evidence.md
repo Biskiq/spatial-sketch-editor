@@ -10,6 +10,13 @@ later T2 plan must respect, and preserves the decisions and counter-cases the
 deleted documents held. Nothing here is an accepted plan, a slice, or a
 capability claim.
 
+**Disposition note (WP4 review correction).** Where this record says a reducer, gizmo
+host, gesture owner, transaction/history system or workspace-selection seam "exists" or
+is "reused", that names the editor implementation removed by WP2 — it is retained as
+historical implementation evidence or restated as a T2 obligation, never as a system to
+reuse or recreate verbatim. The behavioral invariants below survive: the removed systems
+are rebuilt as T-track capabilities.
+
 **Authority.** T2 is re-derived against the ratified decision record and the
 F contracts, not against P24's staging-only scope. P24's plans, annex, minimum
 freeze, child briefs and sequence were **pre-redesign evidence**, and the former
@@ -79,9 +86,10 @@ re-derived plan. Landed truth for current Scene behavior lives in
 
 - Committed Scene selection is view-independent. An accepted Plan ↔ 3D switch
   must not clear, recreate, reorder or remap the selected Scene entity ids while
-  those entities exist. Selection order and primary/active intent stay owned by
-  the existing Scene selection reducer; a view transition creates no replacement
-  selection identity and no history entry.
+  those entities exist. Selection order and primary/active intent are one
+  Scene-owned authority — the editor's selection reducer that held them was
+  removed by #115, so T2 establishes the successor as a single authority — and a
+  view transition creates no replacement selection identity and no history entry.
 - A selected entity that cannot be represented or edited truthfully in Plan
   remains canonically selected; Plan refuses unsupported manipulation instead of
   deleting the selection or inventing a proxy.
@@ -90,9 +98,11 @@ re-derived plan. Landed truth for current Scene behavior lives in
   explicitly defines partial-operation semantics, the operation is unavailable
   or refused for the whole selection.
 - A Plan-ineligible entity exposes no misleading Plan placement/transform handle.
-- Current seam to close: canonical world-local selection still needs the
-  Room-context cleanup — the behavioral contract is view-independent, but the
-  live workspace-selection and selectability seams are not yet fully Room-free.
+- Historical note (not a current seam): the removed editor's workspace-selection
+  and selectability seams still carried Room context, so canonical world-local
+  selection was not fully Room-free. T2's obligation is the Room-free,
+  view-independent selection contract above, rebuilt with the T2 selection
+  authority rather than restoring the removed seams.
 
 ## 5. Gestures cancel at real transitions
 
@@ -105,10 +115,12 @@ re-derived plan. Landed truth for current Scene behavior lives in
 - Recorded live gap (not an alternate semantics to preserve): switching was
   disabled while an interaction was active. That is safe against an accidental
   commit but is not the accepted-switch → cancel → switch behavior above.
-- Both views' plan cells stay mounted and inert when hidden; teardown is
-  defensive only, and a delayed pointer-up after a cancel cannot commit. The
-  interaction owners are the existing gizmo host, the Plan gesture owner and the
-  pending-placement owner — a second interaction state machine is rejected.
+- Both views' plan cells were kept mounted and inert when hidden, with teardown
+  defensive only so a delayed pointer-up after a cancel could not commit (removed
+  with the editor shell; a T1/T2 rebuild re-establishes equivalent safety). One
+  interaction owner performs the cancellation — the editor's gizmo host, Plan
+  gesture owner and pending-placement owner were the predecessors, removed by
+  #115 — and a second interaction state machine is rejected.
 
 ## 6. A preview candidate equals its commit
 
@@ -125,15 +137,18 @@ re-derived plan. Landed truth for current Scene behavior lives in
 
 ## 7. One acceptance/history result
 
-- All authored operations use the existing Scene transaction/validation/history
-  authorities. One logical commit = one tagged Scene history entry;
+- All authored operations go through one Scene acceptance/validation/history
+  authority (the editor transaction/history system that held this was removed by
+  #115; T2/T3 rebuild it, with F.4 the cross-domain destination). One logical
+  commit = one tagged Scene history entry;
   invalid/cancel/structural no-op = none; undo restores the prior state and redo
   replays the committed ids/result.
 - No Layout write accompanies Scene work. One user action remains one Scene
   history result; no mixed-document gesture, no hidden support-side write without
   an explicit atomic contract.
-- Project/environment replacement resets baseline history under the existing load
-  semantics, with no synthetic user edit and no mid-gesture conversion.
+- Project/environment replacement resets baseline history under the load
+  semantics the rebuild establishes, with no synthetic user edit and no
+  mid-gesture conversion.
 
 ## 8. Mutations follow entity authority
 
@@ -141,12 +156,14 @@ re-derived plan. Landed truth for current Scene behavior lives in
   `SceneDocument`-owned; Layout structure stays Layout-owned.
 - Scene placement and transforms create records **without Room ownership** —
   not even a room field holding undefined.
-- Existing authorities are reused: one selection/history system, one
-  transform/gizmo host with domain adapters, one Layout compiler/query core, one
-  camera graph. Second selection, history, gizmo, geometry or navigation systems,
-  persisted Three objects and nested transform rigs are rejected.
-- Acquisition/approval is outside editor history; scene state is serializable
-  semantic data only.
+- One authority per concern is the contract: one selection/history authority, one
+  transform/gizmo host with domain adapters, one Layout compiler/query core and
+  one camera graph — rebuilt as T2/T3 capabilities, not the removed editor
+  systems restored verbatim. Second selection, history, gizmo, geometry or
+  navigation systems, persisted Three objects and nested transform rigs are
+  rejected.
+- Acquisition/approval is outside the authoring history; scene state is
+  serializable semantic data only.
 
 ## 9. TD-1 — acceptance tests the fix owes (verbatim)
 
@@ -183,8 +200,8 @@ was already owed.
 
 - Flat cluster semantics are retained: membership-only grouping preserves poses,
   one group maximum, no nesting, no Three parenting as an authored hierarchy.
-- Deleting entities cleans references and selection through the existing
-  authority; no dangling member survives.
+- Deleting entities cleans references and selection through one Scene authority;
+  no dangling member survives.
 - Duplicate: deterministic +0.5 world X/Z offset, Y and material sharing
   preserved, no hidden move or grounding entry.
 - A full cluster is duplicated as a cluster; a partial member selection is

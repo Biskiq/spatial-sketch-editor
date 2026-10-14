@@ -106,7 +106,8 @@ legacy room-frame loader branch was removed in #115 and the single renderer path
 
 Absorbed from the retired Paris asset workflow (`git show
 e90a58224443bdbf44114d7285d55c983b79cc84:docs/archive/ASSET_WORKFLOW.md`), with the removed
-`apps/museum` and `@portfolio/museum` commands replaced by the current editor workspace. This is
+`apps/museum` and `@portfolio/museum` commands replaced by the product catalogue workflow (the
+authoring workspace itself was removed by #115). This is
 the procedure for preparing a catalogue model; it is not the deferred creator-import pipeline.
 
 **Add or replace a catalogue asset**

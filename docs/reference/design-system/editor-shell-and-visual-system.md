@@ -29,7 +29,7 @@ acceptance gates.
 | State | Meaning after #114 |
 | --- | --- |
 | **Accepted destination** | Conservatory's unified shell, visual language and Experience authoring principles, promoted below; Paper's accepted World depth in §0.8.4 |
-| **Implemented production** | The landed shell and domain contracts still describe the editor until their explicit cutovers; this ratification implements no product UI |
+| **Implemented production** | None. The landed shell was removed by #115 (the foundation reset); the routed domain contracts describe current kernel, API and visitor behavior, not a shell. This ratification implements no product UI |
 | **Preserved semantics/architecture** | Domain ownership, Camera evaluation, validity, source history and isolation remain governed by their owners |
 | **Deferred depth/refinements** | Advanced authoring remains reachable in future delivery; optional UX improvements below are not unfinished design gates. #115 plans parallel tracks; it does not implement them |
 
@@ -60,10 +60,11 @@ and its runtime-safe representation; Scene owns objects and world presentation;
 Camera owns Views, connectivity, routes, framing, projection and evaluation;
 Experience owns Presentations, Guide occurrences/order, Cues and their pauses,
 continuation and contextual orchestration. Typed resources remain independently owned.
-The distinct LayoutDocument/SceneDocument encodings and existing frame/transform
-contracts, including Room-local conversions where applicable, are unchanged. The
-ratified world-local placement with explicit internal frames remains the destination;
-this shell ratification introduces no mandatory Room frame or transform migration.
+The distinct LayoutDocument/SceneDocument encodings and the current frame/transform
+contracts are unchanged. The ratified world-local placement with explicit internal
+frames remains the destination; this shell ratification introduces no mandatory Room
+frame or transform migration. The editor's Room-local conversion code was removed by
+#115 with the editor shell.
 
 The shell preserves these invariants:
 
@@ -242,11 +243,11 @@ snapping disclosure, numeric manipulation and advanced object Card/inspector
 depth remain uncovered.
 
 This is a **non-blocking design-coverage gap**. The production
-[Scene transform and validation semantics](../components/scene-content.md) and its
-tested domain adapters remain current until their explicit cutover. Validate the detailed interaction
-design directly in production through the appropriate T2 authoring slice with
-T1 Stage integration; no additional prototype or complete 3D UX specification
-is required here.
+[Scene transform and validation semantics](../components/scene-content.md) remain the
+current kernel contract; the editor-side transform/gizmo adapters were removed by #115,
+so the detailed interaction design is validated in production through the appropriate T2
+authoring slice with T1 Stage integration. No additional prototype or complete 3D UX
+specification is required here.
 
 ### Ordinary World and the Context Index
 
@@ -860,9 +861,10 @@ distinction is accepted visual evidence; particular fonts and prototype pixel
 sizes are not mandatory. Sentence-case section titles and clear hierarchy
 separate content identity from operating instructions.
 
-Surfaces consume semantic family/size/weight/leading and control roles. Preserve
-the existing independent product-wide type/control scaling mechanism rather
-than introducing component-local metrics. Primary acceptance, ordinary controls,
+Surfaces consume semantic family/size/weight/leading and control roles. Build one
+independent product-wide type/control scaling mechanism rather than introducing
+component-local metrics (the landed mechanism was removed by #115 with the editor
+shell). Primary acceptance, ordinary controls,
 utilities and inline actions retain distinct roles; pressed/selected state does
 not invent a size tier. Density is calibrated as a complete composition with
 long names, thumbnails, precision values and keyboard focus visible.
@@ -870,9 +872,10 @@ long names, thumbnails, precision values and keyboard focus visible.
 The earlier 9/10/11/12/13/15/20 px ladder, 30/26/24/20 px control heights and
 fitted Tool Tray micro-tier describe prior calibration and landed evidence.
 They do not force Conservatory's destination into the previous chrome or permit
-tiny ordinary text. Production metrics remain unchanged until an explicit
-visual-system cutover; new calibration must preserve contrast, usable targets
-and semantic hierarchy.
+tiny ordinary text. There is no landed production shell to preserve after #115 —
+the previous calibration was removed with the editor shell — so PLATE calibrates
+fresh metrics at its rebuild, preserving contrast, usable targets and semantic
+hierarchy.
 
 Preserve settled identity and Plan drafting/icon semantics where those tools
 apply. A shell change does not require a wholesale icon redraw. Wall/shape/Opening

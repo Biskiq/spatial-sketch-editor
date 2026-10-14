@@ -3008,3 +3008,159 @@ one preserves a record the plan names. Two further notes go on the record:
 cannot be run in this repository because the folder is absent, and WP4 neither reran nor
 reinterpreted them. The browser check above used a local dev server and the local API, not a
 deployed origin. No WP4 result depends on a skipped or unexecuted check.
+
+## 16. WP4 review corrections (F1–F4) and the live-authority reconciliation
+
+> **Status: review-correction addendum — documentation-only.** §15 records WP4 as executed
+> and acceptance-ready with independent review owed. This section records the WP4 review
+> that followed and the corrections it produced. No production code, test, persisted
+> format, manifest row, protected prototype or decision record changed. WP4 stays
+> acceptance-ready, now for independent re-review; no track, phase or product status moves
+> here. §15's execution provenance is preserved unchanged.
+
+### 16.1 Findings and dispositions
+
+The review raised four findings against retained live authorities and T2 planning evidence.
+Each was re-checked against the post-#115 source; **all four were upheld**, and the bounded
+sweep in §16.3 added two further material corrections.
+
+| ID | Finding | Disposition | Corrections |
+| --- | --- | --- | --- |
+| **F1** | `north-star.md` described the removed `Spatial` workspace as shipped, the old editor history stack as current, and legacy Room-local compatibility reading as supported. | **Upheld.** | seven statements reconciled (§16.2) |
+| **F2** | `architecture.md` records editor removal but elsewhere described removed capabilities as current: the `Scene \| Camera` shell, editor-local playback/preview state and chronological editor history. | **Upheld.** | four statements reconciled (§16.2) |
+| **F3** | the PLATE shell contract and the spatial-instrument grammar retained pre-reset statements describing the old editor as implemented or maintained. | **Upheld.** | nine statements reconciled (§16.2) |
+| **F4** | T2 planning evidence described removed selection reducers, gizmo hosts, gesture owners, transaction/history systems and workspace-selection seams as existing. | **Upheld.** | one disposition note and eight statements reclassified (§16.2) |
+
+### 16.2 Current-versus-destination corrections
+
+Every correction keeps the distinction the mission sets: **current** (functionality surviving
+PR #115), **destination** (ratified capability not yet implemented), **historical**
+(predecessor behavior or recoverable evidence) and **deferred** (a T1–T4 obligation). No
+ratified destination text, product decision or historical record was weakened.
+
+**F1 — `docs/reference/north-star.md`** (seven statements):
+
+- **Current shell → current.** The shipped `Spatial` workspace (`Scene | Camera` ×
+  `Plan | 3D`) was replaced by the post-#115 state: the authoring workspace is removed and
+  the surviving product is sign-in, the project hub, cloud Save/Load, the API and the cold
+  visitor runtime. `Experience` authoring stays destination; `Assets`/`Publish` keep only
+  partial backend implementations (P20/P22) with no product authoring UI.
+- **Project truth (current) → current.** "Versionless room-frame payloads are legacy
+  compatibility reading only" became: there is no legacy reader, detector or migration
+  path, and such payloads fail ordinary current-format validation.
+- **Shared authoring operations (current) → historical + deferred.** "Current history
+  supports … a 100-entry chronological stack" became the editor's undone stack, removed by
+  #115, with F.4 compound project acceptance as the destination obligation.
+- **Technology gates (current) → current.** "SVG is the current Plan renderer" became the
+  removed editor SVG Plan renderer, with Three/Threlte recorded as the surviving production
+  3D renderer for the visitor runtime and dev previews.
+- **Sacred contract 2 → current.** The landed `Spatial` shell is removed; the destination
+  World | Experience framing is unchanged.
+- **Sacred contract 3 → current.** Dropped the sentence making "Legacy Room-local storage …
+  a compatibility read path"; the one-document-format truth and the world-local placement
+  invariant stay.
+- **Agent-readiness principle 5 → destination.** Dropped its legacy-compatibility clause;
+  the world-local placement / no-inference-from-coordinates invariant stays.
+
+Evidence: `docs/reference/components/persistence.md` §One document format and §History
+(removed); `docs/reference/components/scene-codec.md` (no legacy shape);
+`docs/reference/architecture.md` §Product routes and §Platform boundary;
+`docs/roadmap/t3-experience/planning-evidence.md` §5 (history successors); the removed-shell
+facts in implementation-plan §4.4.
+
+**F2 — `docs/reference/architecture.md`** (four statements):
+
+- **Execution session row → current.** "Editor-local playback/preview state" became the
+  removed editor state with the visitor cold runtime's session state as the surviving
+  execution surface.
+- **Project coordination row → current.** "Chronological Layout/Scene history" became the
+  removed editor history; no product history exists today.
+- **Product lenses (destination) → current.** Dropped "The current `Scene | Camera` shell
+  remains current until a separate design and implementation cutover"; the shell was removed
+  by #115 and the lenses are destination framing over a rebuilt foundation.
+- **§Layout semantic mutation → current.** "The editor owns interaction, transient preview,
+  selection and the single history transaction" became the removed editor, with a rebuilt
+  authoring surface owning interaction/preview/selection and F.4 owning the accepted result.
+
+Evidence: `docs/reference/components/persistence.md` §History (removed) and §Session-only
+(editor, removed); `docs/reference/components/camera-tour.md` §Visitor guided runtime; the
+`apps/editor/src/lib/authoring/README.md` retention record.
+
+**F3 — PLATE shell contract and spatial-instrument grammar** (nine statements):
+
+- `docs/reference/design-system/editor-shell-and-visual-system.md`: the "Implemented
+  production" state row now reads **None** (the landed shell was removed by #115); the
+  Room-local-conversion clause was dropped as removed code; the 3D-coverage paragraph now
+  keeps the Scene transform/validation kernel and records that the editor-side
+  transform/gizmo adapters were removed; "Preserve the existing … scaling mechanism" became
+  "build one" (the landed mechanism was removed); "Production metrics remain unchanged"
+  became "no landed shell to preserve — PLATE calibrates fresh metrics".
+- `docs/reference/design-system/spatial-instrument-grammar.md`: "The maintained editor's …
+  policies remain current" became removed-with-#115 evidence; "The maintained Camera and
+  placement contracts" became the Camera and Scene-content contracts; "The maintained Camera
+  Plan's framing restrictions remain current until cutover" became historical evidence; "in
+  their maintained contexts" became "belong to their domain contracts".
+
+The full ratified design, interaction grammar, ownership and return laws are untouched.
+
+**F4 — `docs/roadmap/t2-composition/planning-evidence.md`** (one note, eight statements):
+
+- Added a **disposition note** in the preamble: every reference to an "existing" reducer,
+  gizmo host, gesture owner, transaction/history system or workspace-selection seam names the
+  editor implementation removed by WP2 and is retained as historical evidence or restated as
+  a T2 obligation.
+- §4 selection reducer and the "current seam" → reclassified: selection order is one
+  Scene-owned authority rebuilt by T2; the Room-context seam is historical, not live.
+- §5 interaction owners and plan cells → reclassified: the gizmo host / Plan gesture owner /
+  pending-placement owner are predecessors; one interaction owner performs the cancellation.
+- §7 acceptance/history authority and replacement history → reclassified: one Scene
+  acceptance/history authority is rebuilt (F.4 the cross-domain destination).
+- §8 authority reuse and "editor history" → reclassified: one authority per concern is
+  rebuilt as T2/T3 capabilities, not the removed systems restored verbatim; acquisition
+  stays outside the authoring history.
+- §10 entity deletion → "through the existing authority" became one Scene authority.
+
+The behavioral invariants are preserved: view-independent selection, cancellation before
+real transitions, preview = commit, Scene-owned mutations, and deterministic single-result
+acceptance/history. No phrasing now implies that a removed system should be reused or
+recreated verbatim.
+
+### 16.3 Additional material corrections (bounded sweep)
+
+A bounded semantic sweep of the retained live authorities and the T1–T4 evidence searched for
+`current` / `shipped` / `landed` / `existing` / `maintained` / `implemented` / `legacy` and
+references to removed editor systems. Only material contradictions were changed:
+
+- **`docs/reference/composition-execution.md`:** the F.4 "current behavior" no longer claims
+  a live chronological undo stack — it records the removed editor history and the product's
+  resulting no-history state; the F.3 current-mechanisms note no longer lists removed
+  editor-side layout representation, which is a T1 rebuild.
+- **`docs/reference/components/assets.md`:** the catalogue-preparation procedure no longer
+  refers to "the current editor workspace", which was removed by #115; it names the product
+  catalogue workflow instead.
+
+No contradiction required a change in the ratified decision records (immutable), the archive
+(closed history), the protected prototype evidence, the already-reconciled component
+contracts (`camera-tour.md`, `persistence.md`, `scene-codec.md`, `scene-content.md`) or the
+T1/T3/T4 evidence, which already distinguish current, destination and historical correctly.
+No new document, exclusion, framework or workflow was introduced.
+
+### 16.4 Verification and scope limit
+
+Documentation-only correction: no production or test file changed, so §15's full product/API
+verification stands on unchanged behavior. The applicable documentation and architecture
+gates, the committed-range whitespace check and the reference grammar were re-run on the
+corrected tree (§16.5). If a check could not run, it is reported as a limitation rather than
+a pass.
+
+### 16.5 Re-verification on the corrected revision
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Architecture lane, including the documentation cross-reference gate (no exclusion added) | `npm run test:arch` | **pass** — 14 files, 107 tests, 0 failures |
+| Whitespace over the corrected range | `git diff --check 161bfa3d` | **clean** |
+
+No production or test file changed in this correction, so the documentation-only policy calls
+for these gates only; §15's full product/API verification is not re-run and is not
+reinterpreted. Every corrected document resolves its own links, written paths and section
+anchors under the same gate §15 recorded, with no new exclusion.
