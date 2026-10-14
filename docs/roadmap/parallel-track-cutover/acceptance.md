@@ -3832,7 +3832,8 @@ transient artifacts removed:    0   (no checkpoint, husk or __qa-* plate existed
 historical anchor:              3b30b408 · tag closed/r115.s01 (pushed to origin)
 new live → archive prose links: 0
 manual-owed verification rows:  1   (the frozen-project §6.2/§7.4 steps — owner-verified WP1 evidence)
-remaining deferred items:       6   (named owners below)
+remaining deferred items:       owners named below (production dispositions §10 · capability
+                                loss §4.4 · TD ledger · owner-visible deferrals §17.7)
 permanent stubs added:          0
 ```
 
