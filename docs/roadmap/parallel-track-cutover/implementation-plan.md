@@ -14,7 +14,7 @@
 2. **The P23B benchmark is finished.** It was built to stress-test and optimize algorithms that already pass in the kernel code. Its harness, perf routes and measurement apparatus go away together with their seams. Only kernel correctness checks survive.
 3. **The frozen relic is a separate, deletable project** (§3): one self-contained folder that can be kept as an old project and deleted in one step.
 
-**Owner rulings (2026-10-13):** D2 is overridden (the frozen project sits outside the product; §3.6). D3 (capability loss, plus strict readers making legacy-format development projects unloadable) is accepted as not mattering. D4 (checkpoint commits on the #115 branch per WP) is approved for execution. D1 is resolved by the §3 design: `apps/museum` is superseded. Deployment of the frozen project is owner-handled outside #115, and the folder must be deletable without affecting anything (§3.4). No owner decision remains open for plan approval.
+**Owner rulings (2026-10-13):** D2 is overridden (the frozen project sits outside the product; §3.6). D3 (capability loss, plus strict readers making legacy-format development projects unloadable) is accepted as not mattering. The owner has since made the compatibility policy explicit: the product supports **one document format and has no legacy recognition contract** — no dedicated historical-format diagnostic, no generation classifier, no compatibility facade. Readers and writers use the current-format validators directly, and anything that does not match fails ordinary current-format validation (§6). D4 (checkpoint commits on the #115 branch per WP) is approved for execution. D1 is resolved by the §3 design: `apps/museum` is superseded. Deployment of the frozen project is owner-handled outside #115, and the folder must be deletable without affecting anything (§3.4). No owner decision remains open for plan approval.
 
 **Deliverable:** one coherent architectural reset with four parts:
 
@@ -49,7 +49,7 @@ Prototypes supply interaction evidence only. They never supply production format
    - the visitor runtime and its isolation plugins;
    - the API and platform;
    - project persistence, which the entry/hub routes still use.
-4. **Retire legacy-generation *acceptance* in the new product.** After the freeze, nothing in the new product consumes legacy-format payloads, and the owner has stated there are no data obligations. Project-level readers, the API and the cold-release reader therefore become strict wall-first/world-local. The separable compat/migration/conversion modules are deleted. The deep legacy Layout types/codec are entangled with 37 wall-first modules, so separating them is tied to T1's first Layout schema cutover (§6).
+4. **Retire legacy-generation *acceptance* in the new product.** After the freeze, nothing in the new product consumes legacy-format payloads, and the owner has stated there are no data obligations. Project-level readers, the API and the cold-release reader therefore become current-format-only wall-first/world-local, calling the current-format validators directly. The separable compat/migration/conversion modules and the obsolete generation-dispatch branches are deleted, and nothing replaces them: no `isLegacy*` detector, no unsupported-generation classifier, no compatibility facade. The deep legacy Layout types/codec are entangled with 37 wall-first modules, so separating them is tied to T1's first Layout schema cutover (§6).
 5. **Delete tests with their subjects.** Extract the semantic assertions that guard retained kernels. Every retained gate passes. Nothing is skipped or marked expected-to-fail.
 6. **Prune the documentation and rebuild the execution system to match the reduced tree** (§8–§11), with gate machinery that is proportionate but version-aware (§9.4).
 
@@ -88,7 +88,7 @@ More facts:
 
 - **Deployment.** Root `vercel.json` builds only `@portfolio/editor` (`build:vercel`). The repository-configured production `/museum` is therefore the editor's own `/museum` route (recoverable as `git show e90a5822:apps/editor/src/routes/museum/+page.svelte`). `apps/museum` is a separately buildable fork: 59 source files and 14 duplicated static assets. Sixteen of its files have diverged from their editor counterparts (for example `texture-cache.ts` by 143 lines), and it is still co-patched (P23.15/P23B.6 commits). Whether a second Vercel project deploys it is not visible in the repository (owner decision **D1**).
 - **Chopin content** (`chopin-project.json`) is the **legacy floors/rooms Layout + legacy room-local Scene** generation. The frozen products are therefore the only remaining legitimate consumers of the legacy generation.
-- **Legacy acceptance is live in the new product's readers:** `validateProject` in API Save/Load and publication; `prepareCompatibleRuntime` in preview and cold release. Per the owner statement this protects no data.
+- **Legacy acceptance is live in the new product's readers:** `validateProject` in API Save/Load and publication; `prepareCompatibleRuntime` in preview and cold release. Per the owner statement this protects no data. WP3 ends it (§6).
 - **The legacy Layout code is entangled.** `layout-codec.ts` is imported by 9 wall-first modules (including `layout-wall-first-codec.ts` and `layout-wall-first-precision.ts`), and `layout-types.ts` by 37. `layout-compat`, `layout-migration` and `layout-migration-math` are consumed only through `index.ts`. In `project-model`, `project-compat`, `compat-runtime`, `scene-world-conversion` and `standalone-scene-import` form a separable legacy chain.
 - **Five packages have zero app consumers:** `scroll-travel`, `note-cursor`, `portfolio-hud`, `portfolio-content` and `audio-plink`. The last is used only by the other two. `@portfolio/scroll-travel` is still an editor dependency.
 - **Orphan production files** (reachable from no route or API; some only from tests): `museum/materials/surfaces/{Floor,Wall,Ceiling}.svelte`, `museum/MuseumAssets.svelte`, `editor/layout/layout-transaction.ts`, `editor/helpers/package-sha.ts`, `content/{package-format,scene-format}.ts`, `content/scene.json`, and the `layout-geometry-source`/`migration`/`opening-set` facades. The bench `record-baseline`/`reuse-ratchet` CLIs and `p2311-proxy-probe` are also orphans.
@@ -235,7 +235,7 @@ Directory names (`lib/museum` for the generic renderer) are kept to avoid churn 
 | `/project/:id/spatial` | Static notice: authoring is unavailable during the foundation reset. No project load and no session. |
 | `/project/:id/preview`, `/project/:id/publish` | **Removed** (404). |
 | `/p/:publicationId` | Functional strict cold reader for wall-first/world-local releases. There are currently none (owner statement). It is kept because it is the only end-to-end consumer that keeps the public-surface boundary plugin, visitor isolation tests and API publication tests meaningful (§5.1). |
-| API Save/Load/assets/publication | Functional. Legacy-generation documents are now rejected with a validation error. |
+| API Save/Load/assets/publication | Functional, **current-format only**: wall-first Layout (`formatVersion: 5`) with world-local Scene (`formatVersion: 1`). Any other document fails ordinary current-format validation; there is no legacy-generation detection and no named historical-format rejection (§6). |
 | `/dev/perf*`, `bench:record`, `reuse:record`, `test:perf` | **Removed.** |
 
 ### 4.3 Retained pure semantics (moved into `lib/authoring/`, each with its existing tests)
@@ -265,7 +265,7 @@ After #115 the **new product cannot**:
 
 It can sign in, list projects, persist through the API and serve a cold public release.
 
-These losses are by design. They are not regressions, and each one is a T-track capability to rebuild. Regressions are anything else, in particular any change to the frozen project, kernel output, visitor isolation or API behavior other than the legacy rejection.
+These losses are by design. They are not regressions, and each one is a T-track capability to rebuild. Regressions are anything else, in particular any change to the frozen project, kernel output, visitor isolation, or API behavior beyond the current-format-only readers §6 installs.
 
 ## 5. Production disposition and deletion manifest
 
@@ -292,7 +292,7 @@ EVIDENCE-PATHS: start — baseline implementation paths at e90a58224443bdbf44114
 | `layout-core` canonical compiler, topology/noding/faces, Junction resolution/identity, curve algebra, Room reconciliation, snap/align/duplicate/room-move/dissolve planners | **RETAIN AS FOUNDATION**; **REFACTOR LATER at T1** semantic cutovers | Unchanged in #115 apart from §6 deletions. Derived Wall roles, circular enclosure, levels and structures are T1. |
 | `layout-core` legacy generation: `layout-compat`, `layout-migration`, `layout-migration-math` | **REMOVE IN #115** (§6) | Consumed only through `index.ts`. There are no data obligations. |
 | `layout-core` legacy floors/rooms types, `layout-codec`, `layout-room-frame`, legacy `compileLayoutGeometry` adapter, `layout-portals`/`room-isolation` legacy uses | **RETIRE AT T1's first Layout schema cutover** | The concrete dependency is that `layout-types.ts` and `layout-codec.ts` host definitions consumed by 37 and 9 wall-first modules. Separating them *is* the authored-schema redesign that T1 owns (Wall roles and levels). Doing it in #115 would be a premature schema rewrite. After WP3 they are reachable only from wall-first internals and tests, never from a project/API/runtime reader. |
-| `project-model` legacy chain: `project-compat`, `compat-runtime` (→ strict `prepareRuntime`), `scene-world-conversion`, `standalone-scene-import`, legacy room-local Scene decoder branch, legacy `createEmptyProject` | **REMOVE IN #115** (§6) | Separable. There are no data obligations. |
+| `project-model` legacy chain: `project-compat`, `compat-runtime` (→ strict `prepareRuntime`), `scene-world-conversion`, `standalone-scene-import`, legacy room-local Scene decoder branch, legacy `createEmptyProject` | **REMOVE IN #115** (§6) | Separable. There are no data obligations. After WP3 the project readers and writers call the current-format validators directly; no generation dispatch, migration branch, classifier or compatibility facade remains, and no successor detector is built. |
 | `project-model` Scene types/codec/validation (world-local), world transforms | **RETAIN AS FOUNDATION**; **REFACTOR LATER at T2** (Scene unit) and **T3** (Camera extraction) | Strict entity/material/light validation. |
 | Scene/Camera editorial order fields; `camera-core` main-flow/node-order orchestration | **RETIRE AT T3** camera-experience cutover | The concrete dependency is that the retained visitor guided runtime consumes order, and Experience order is its successor representation. The new product has no writer for these fields after #115. |
 | `camera-core` route/motion/framing evaluation | **RETAIN AS FOUNDATION** | One Camera authority. The mechanism stays replaceable. |
@@ -317,20 +317,81 @@ WP0 expands §5.1 into a **per-file source manifest** in `acceptance.md`, with c
 - **`package-lock.json`:** regenerate only through `npm install` after workspace removal. Allow no dependency version bumps. The lockfile diff must contain only the removed workspaces and their removed dependencies.
 - **`vercel.json` and `inject-vercel-api-proxy.mjs`:** unchanged.
 
-## 6. Legacy-generation acceptance retirement (WP3)
+## 6. Current-format-only readers and writers (WP3)
 
-**Precondition:** WP1 (frozen project verified on its own) and WP2 (old editor removed). These remove every new-product consumer of legacy payloads.
+**Owner policy (2026-10-13, revision 4 amendment).** The product supports **one document format**.
+There are no legacy Layout or Scene support obligations, and there is deliberately **no legacy
+recognition contract**: no `unsupported_generation` diagnostic, no `isLegacyLayout` detector, no
+unsupported-generation classifier, no compatibility facade. A compatibility detector that
+recognises historical formats only in order to reject them by name is scope the owner has
+explicitly removed — the new product needs one supported format, not a historical-format
+analyser.
 
-1. `project-model`:
-   - `validateProject`, `parseProjectJson`, `createProject` and `serializeProject` accept only wall-first Layout (format 5) with world-local Scene (`formatVersion: 1`). A legacy payload rejects with a named `unsupported_generation` issue.
-   - `prepareCompatibleRuntime` becomes `prepareRuntime` (wall-first only).
-   - Delete `project-compat`, `scene-world-conversion`, `standalone-scene-import`, the legacy Scene decoder branch and legacy `createEmptyProject`.
-   - `resolveSceneDocument` loses the Room-registry parameter wherever it exists only for room-local resolution.
-2. `layout-core`: delete `layout-compat`, `layout-migration` and `layout-migration-math` and their index exports.
-3. Callers: visitor cold runtime, API Save/Load/publication, and retained `authoring/scene/plan-scene-footprint` (drop its legacy room-frame branch).
-   - Add a DB-free case to `apps/api/tests/api.test.mjs` (fakes, like its existing project body validation cases): a legacy-generation project body is rejected on Save with the named `unsupported_generation` issue, and the matching kernel test asserts the same in `project-model`.
-4. **Stop rule:** if removing an item requires designing new semantics rather than deleting a branch or parameter, stop that item. Record it in `acceptance.md` as a §5.1 "RETIRE AT T1/T2" row with the exact blocker. Do not invent a replacement.
-5. Tests follow §7.2 category D.
+**Supported contract (unchanged from what already validates today):**
+
+- Wall-first Layout, `formatVersion: 5`.
+- World-local Scene, `formatVersion: 1`.
+- The existing current-format validation, canonicalization and deterministic serialization rules
+  stay intact. WP3 changes which documents the readers *accept*, not what a valid document means.
+
+**Precondition:** WP1 (frozen project verified on its own) and WP2 (old editor removed). These
+remove every new-product consumer of legacy payloads.
+
+1. `project-model` — current-format readers and writers, no detection layer.
+   - `validateProject`, `parseProjectJson`, `createProject` and `serializeProject` validate against
+     the current format and nothing else. Obsolete generation dispatch, migration and
+     compatibility branches are deleted, so the modules call the current-format validators
+     directly.
+   - **Malformed, incomplete or unrecognised input still fails**, through ordinary current-format
+     validation. No schema rule is relaxed, no unknown field or missing `formatVersion` is
+     tolerated, and no malformed document gains a path to success. The failure message is the
+     validator's own; it is not a new named historical-format code.
+   - `prepareCompatibleRuntime` becomes `prepareRuntime` (current format only).
+   - Delete `project-compat`, `scene-world-conversion`, `standalone-scene-import`, the legacy Scene
+     decoder branch and legacy `createEmptyProject`.
+2. **Scene runtime seam (B2).** Room-local Scene resolution and its Room-frame dependencies leave
+   the retained runtime and authoring modules, wherever they exist solely for obsolete formats:
+   - `resolveSceneDocument` loses the Room-registry parameter wherever it exists only for
+     room-local resolution;
+   - `authoring/scene/plan-scene-footprint` loses its **legacy room-frame branch** — the `roomId?`
+     field on `PlanSceneFootprint`, the `LayoutRoomRegistry` parameter, the
+     `rooms.has(entity.roomId)` eligibility check and the `rooms.pointInFrame(entity.roomId, …)`
+     projection. Footprint points are project/world space, which is what the document now
+     guarantees.
+   - Preserved: intended world/local coordinate semantics, support-owned elevation behaviour, and
+     the single Geometry and Camera authorities. Any new Scene or Camera schema design belongs to
+     its T-track (T2/T3), not here.
+3. `layout-core`: delete `layout-compat`, `layout-migration` and `layout-migration-math` and their
+   index exports.
+4. Callers to update with the readers: the visitor cold runtime, API Save/Load/publication, and the
+   `project-model` → `authoring` path described in item 2.
+5. **Tests and fixtures (replaces the retired legacy-rejection requirement).**
+   - **The DB-free `api.test.mjs` `unsupported_generation` case and its matching `project-model`
+     assertion are deleted, not replaced.** No other dedicated historical-format rejection test
+     takes their place.
+   - Required evidence instead:
+     - valid current-format Layout and Scene validation;
+     - canonical serialization and round-trip stability;
+     - ordinary validation failure for malformed or incomplete current-format input;
+     - API Save/Load/publication exercised with valid current-format documents;
+     - preserved geometry, identity, resource and visitor-isolation invariants.
+   - **The API fixtures migrate.** `apps/api/tests/api.test.mjs`, `publication.test.mjs` and
+     `test-auth.test.mjs` each build a local `projectDocument()` whose `layout` is the versionless
+     legacy shape (`{ units, floors, objects }`) and whose Scene carries no `formatVersion`. WP3
+     traces every such fixture and replaces it with a valid current-format document **while
+     preserving each test's original behavioural expectation**. Validation is never relaxed to keep
+     an obsolete fixture passing; if a fixture's expectation depended on the legacy shape, that is a
+     finding to record, not a reason to widen the reader.
+   - Historical compatibility tests (`project-compat`, `scene-world-conversion`, the `layout-codec`
+     and `layout-room-frame` legacy-acceptance assertions) are removed with their retired subjects
+     under the §7.1 predecessor/successor rules. Removing the reader path is not by itself a
+     successor claim for them.
+   - Everything else follows §7.2 category D.
+6. **Stop rule (unchanged).** If removing an item requires designing new semantics rather than
+   deleting a branch or parameter, stop that item. Record it in `acceptance.md` as a §5.1 "RETIRE AT
+   T1/T2" row with the exact blocker. The deep `layout-types.ts`/`layout-codec.ts` split is the
+   founded case: separating them *is* T1's authored-schema redesign, so WP3 does not rewrite the
+   canonical compiler to reach it.
 
 ## 7. Test disposition and verification
 
@@ -400,7 +461,7 @@ Product routes that remain in-repo are still browser-checked: load `/`, `/projec
 `apps/api/tests/publication.test.mjs` and `test-auth.test.mjs` call `t.skip(...)` when Postgres is unreachable, so `test:api` can look green while the publication and auth paths never ran. WP3 changes those readers, so:
 
 - WP3 (Checkpoint C) and final acceptance need `check:api` and `test:api` run with a reachable Postgres (`DATABASE_URL`), with the TAP summary showing **zero skipped tests**. The run's skip count and the DB target type (local or CI) are recorded in `acceptance.md`.
-- The DB-free `api.test.mjs` legacy-rejection case (§6) runs in every environment.
+- There is **no** legacy-rejection case to run: §6 deletes the DB-free `api.test.mjs` `unsupported_generation` case and forbids a replacement. What has to hold in every environment instead is ordinary current-format validation, including the ordinary validation failure for malformed or incomplete input.
 - If Postgres is unavailable, WP3 is **blocked**, not accepted. `acceptance.md` lists the DB-backed tests that did not run as "unexecuted", separately from the passing ones. Proceeding without them needs an explicit owner ruling recorded there.
 
 ## 8. Documentation pruning manifest
@@ -420,6 +481,7 @@ This section is complete for execution. Earlier revisions are only provenance; G
 - **Protected material:** protected prototype plans and QA are exempt from deletion and compaction. Existing recovery anchors are preserved when a closed plan moves, and the exact full-body recovery command is re-verified.
 - **Consolidation is semantic extraction, not re-ratification.** Inspect source only for a claim that is missing, ambiguous or contradicted.
 - **Preservation invariant:** an unresolved obligation cannot disappear with its document. The expanded manifest records its surviving owner or anchor. A newly found concrete obligation gets a narrow manifest amendment, not a broad reconciliation.
+- **Temporary WP2 exclusion, removed here.** WP2 added `ARCHIVAL_RECORD_PREFIXES` to `apps/editor/tests/helpers/docs-references.ts` so the closed P23/P23B/P24/P26 records, the superseded syntheses and the removed reference contracts are not held to link resolution while they await their disposition in this section. **WP4 deletes that list and its `isDocumentation` branch** as it performs the §8.3–§8.5 moves: the archived material is then covered by the existing `docs/archive/` prefix, the deleted material is gone, and nothing else was added to the walk's exclusions. The documentation gate must run afterwards with no unintended coverage gap — `archivalExclusionProblems()` in the same helper is the focused control that fails until the list is gone.
 
 ### 8.2 Live authorities and reference contracts
 
@@ -912,9 +974,9 @@ Execution is one reviewed restructuring change set. Each WP ends at a **checkpoi
 | **WP0 — baseline and manifests** | Owner authorization | Record the start SHA, confirm baseline ancestry and inspect intervening deltas. Commit `tests/helpers/import-closure.ts`, the §2.2 resolver, which is reused by the isolation test and WP3R. Expand the per-file **source manifest** (§5.2), **test manifest** (§7.2, one category and reason per test file), **docs manifest** (§8) and protected hashes into `acceptance.md`. | Every in-scope tracked file is classified exactly once. Closure counts are reproduced. Docs totals are recorded. |
 | **WP1 — standalone frozen project** | WP0 | Create `legacy/chopin-museum/` per §3.2: byte copies, `FREEZE.json`, its own config, `kit.alias` kernel mapping, pinned `package.json`/lockfile, `.gitignore`, static assets, category B tests and a freeze test. Add the product-side `legacy/` isolation test. | **Checkpoint A:** inside the folder, `npm ci && npm test && npm run check && npm run build` pass, and the browser check against its own preview matches the baseline. **The product is untouched.** Rollback: delete the folder. |
 | **WP2 — new-product prune** | Checkpoint A (externalized per §3.7) | Relocate the §4.3 modules and their tests. Delete the §5.1 REMOVE rows, the editor's `/museum` routes (no redirect, §3.4) and `apps/museum`. Add the `/project/:id/spatial` notice. Apply the §5.2 manifest, script and lane changes, and regenerate the lockfile by removal only. Apply category C deletions and the A/A′/A″/D re-points and extractions. Fix mechanical breakage (imports, types, dead references) here, not later. | **Checkpoint B:** the §7.4 product gates are green. The external frozen project is neither modified nor reintroduced (§3.7), and its Checkpoint A evidence stands unaltered. The visitor/public and `legacy/` isolation tests are green. Every deleted test is category C with its subject gone or has a recorded extraction, and every category B file is recorded as relocated-at-WP1. |
-| **WP3 — legacy acceptance retirement** | Checkpoint B | Apply §6 with its stop rule, including the API and visitor callers. | **Checkpoint C:** the §7.4 gates are green **including the §7.5 API requirement** (DB-backed tests executed, zero skips). Legacy payloads reject with the named issue (new kernel and API tests). Stop-rule items are recorded as §5.1 rows. |
+| **WP3 — current-format-only readers** | Checkpoint B | Apply §6 with its stop rule: install the current-format readers and writers, delete the obsolete generation dispatch, migration and compatibility branches and the room-local Scene seam, migrate the API test fixtures to valid current-format documents, and remove the historical compatibility tests with their retired subjects. Build **no** legacy detector, classifier, named historical-format diagnostic or compatibility facade, and do not widen validation to keep an obsolete fixture passing. | **Checkpoint C:** the §7.4 gates are green **including the §7.5 API requirement** (DB-backed `test:api` executed with zero skips, recorded at this checkpoint, not inherited from WP2). §6's evidence exists: valid current-format Layout and Scene validation, canonical serialization and round-trip stability, ordinary validation failure for malformed or incomplete input, and API Save/Load/publication exercised with valid current-format documents. No `unsupported_generation` path and no legacy detection exists anywhere. Geometry, identity, resource and visitor-isolation invariants are unchanged. Stop-rule items are recorded as §5.1 rows. |
 | **WP3R — post-prune reassessment** | Checkpoint C | Re-run the closure helper on the **surviving** tree and inspect four classes, using evidence only: (a) **orphaned abstractions**, meaning modules, exports or types with no route/API/runtime consumer that are not §4.3-listed (listed modules are kept by criteria, not by consumer count); (b) **unnecessary coupling**, such as product modules importing across the renderer/visitor/authoring/platform boundaries without need, or a remaining facade; (c) **misleading ownership**, meaning a module whose location or name implies a domain owner it does not have (for example whether `lib/museum` still misleads, or whether Camera authoring math belongs in `camera-core`); (d) **residual legacy dependencies**, meaning legacy types/codec reachable from a product reader, test fixtures on legacy shapes, or leftover legacy names. Classify each finding as **retain** (with reason), **consolidate in #115** (only a behavior-preserving move, merge, deletion or rename with the gates green afterwards and no semantic or format change), or **defer** to a named T-track row with its concrete dependency. Apply only the "consolidate" items. | **Checkpoint D:** the findings table in `acceptance.md` has a class and reason per finding. Consolidations are applied with the §7.4 gates green and the frozen project untouched. If there are no findings, the table says "surviving foundation coherent; no consolidation" and WP4 proceeds. Substantial redesign or new capability is out of scope; it becomes a deferred row. An escalation goes to the owner only if a finding would change a §5.1 decision. |
-| **WP4 — documentation consolidation and pruning** | WP0; finalized after Checkpoint D | Write the T1–T3 planning evidence and the frozen project README. Rewrite or delete the reference contracts (§8.2) to describe the post-WP3R tree. Apply §8.3–8.6. | Docs walk green. Protected hashes match. Full-body recovery is verified. Old P24/25/26 trees are absent. |
+| **WP4 — documentation consolidation and pruning** | WP0; finalized after Checkpoint D | Write the T1–T3 planning evidence and the frozen project README. Rewrite or delete the reference contracts (§8.2) to describe the post-WP3R tree. Apply §8.3–8.6. Remove the temporary WP2 documentation exclusion (§8.1). | Docs walk green. Protected hashes match. Full-body recovery is verified. Old P24/25/26 trees are absent. **The temporary exclusion is gone:** `ARCHIVAL_RECORD_PREFIXES` and its `isDocumentation` branch are deleted as the moves happen, and the full documentation gate then runs over the whole tree with no new exclusions and no coverage gap (`archivalExclusionProblems()` returns empty). |
 | **WP5 — hierarchy, gates and cycle** | WP4 roots | Create the §9.1 structure, track READMEs and runbooks (Starting foundation and start step), the R115 phase README, the `operations/README.md` event sections, the track and gate registers, the markdown-table helper and gates test (§9.4, §11), the cycle tables, action headings and hooks, and the §10.4 skill edits. | The gates test passes, including every §9.4 and §11 negative and positive control. Route fixtures show ordinary slice routes load no phase, track, program or cycle procedure. |
 | **WP6 — cross-reference and full verification** | WP1–5 | Repair links and anchors (§10.3), update `tests/README`, routers and AGENTS, and run §7.4. In `documentation-references.test.ts`, replace the arbitrary ">100 Markdown files" assertion with semantic non-vacuity: the walk must find the router, AGENTS, both design contracts, every track roadmap and operations root, `tests/README`, local skills and a protected-prototype sentinel, and an empty-walk mutation must fail. Do not just lower or remove the threshold. | All gates are green. There are no new checker exclusions. The diff is inspected and nothing outside the manifests changed. |
 | **WP7 — acceptance, closeout and handoff** | WP6 + independent implementation review | Finalize `acceptance.md`: manifests, totals, frozen-project evidence, the WP3R table, API execution evidence, the deletion proof (§3.4 rule 4), capability loss and residuals. Close out R115.S01 with slice-closeout and mark R115 closable. Update `current.md`. | No routine second review. No automatic R115, track or cycle closure. |
@@ -938,11 +1000,12 @@ Execution is one reviewed restructuring change set. Each WP ends at a **checkpoi
   - only the §4.1 tree remains, as adjusted by recorded WP3R consolidations;
   - every deletion is in the source manifest, and retained modules meet §4.3;
   - kernels, renderer, visitor, API and persistence are verifiable;
-  - strict readers are installed, or blockers are recorded by the stop rule;
+  - current-format-only readers and writers are installed with no legacy detection path, or blockers are recorded by the stop rule;
   - the WP3R table is complete.
 - **Tests:**
   - the §7.4 gates are green with no skips or expected failures, and the §7.5 API requirement is met;
   - categories A, A′, A″ and D preserve the kernel assertions with identical expectations, and category C deletions match their removed subjects;
+  - §6's current-format evidence exists: valid Layout/Scene validation, canonical serialization and round-trip stability, ordinary failure for malformed or incomplete input, and API Save/Load/publication exercised with valid current-format documents;
   - successor obligations are recorded in track evidence.
 - **Docs:**
   - the manifest is complete;

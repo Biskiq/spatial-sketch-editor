@@ -2055,7 +2055,7 @@ deleted. No rework was performed.
 | Kernel packages | `npm run check:layout-core && check:project-model && check:camera-core` | **pass** — 0 errors each |
 | API check | `npm run check:api` | **pass** — 0 errors |
 | API tests | `npm run test:api` | **pass** — 10/10 and 6/6, **0 skipped**, DB-backed cases ran against a reachable Postgres |
-| Whitespace | `git diff HEAD --check` | **pass** |
+| Whitespace | `git show --check a90c3be2` and `git diff --check 26ecb97b HEAD` | **pass** — no whitespace errors reported (§7.8) |
 
 The §7.5 zero-skip requirement is satisfied for WP3 in this environment: `publication.test.mjs`
 and `test-auth.test.mjs` ran their real-Postgres cases rather than skipping. WP3 must re-record
@@ -2149,7 +2149,63 @@ the bench/PERF infrastructure are removed rather than dormant; they remain recov
 baseline SHA. TD-1 and TD-2 close as *implementation removed*, TD-4/TD-5 retire with the
 benchmark — never "fixed".
 
-### 7.8 WP3 readiness
+### 7.8 WP2 review close-out
+
+Independent review accepted WP2 with three bounded evidence corrections, applied here without
+re-running the pruning.
+
+**A2 — the whitespace evidence is now the committed diff, not the worktree.** §7.3 originally
+cited `git diff HEAD --check`, which on a clean worktree compares nothing and is therefore
+vacuous. The correction, with the genuine results:
+
+| Command | Scope | Result |
+| --- | --- | --- |
+| `git show --check a90c3be2` | the whole WP2 commit diff | **clean** — exit 0, no whitespace errors |
+| `git show --check d9d0b474` | the evidence follow-up | **clean** — exit 0 |
+| `git diff --check 26ecb97b HEAD` | base-to-head, the full #115 change set | **clean** — exit 0 |
+
+**Non-vacuity of the checker, measured.** A scratch repository (outside this project, removed
+after the probe) was committed clean and then with `b  ` on line 2: `git show --check` reported
+`f.txt:2: trailing whitespace.` and exited 2. The mechanism detects this class in a commit
+diff, so the clean results above are meaningful. The four trailing-blank-line errors the
+worktree check *did* report during WP2 (`scene.test.ts`, `layout-duplicate.test.ts`,
+`layout-openings.test.ts`, `layout-wall-delete.test.ts`) were repaired before `a90c3be2` and
+are not in the committed diff.
+
+**A1 — the temporary documentation exclusions were re-verified and narrowed.**
+
+- Each `ARCHIVAL_RECORD_PREFIXES` entry was checked against the plan's own disposition:
+  `docs/roadmap/{p23-layout-depth,p23b-geometry-performance,p24-scene-staging}`,
+  `docs/roadmap/architecture-operating-cycle/`, `docs/roadmap/f-foundation-contracts/design/proposals/`,
+  the four superseded syntheses and the three removed reference contracts are all §8.2/§8.4/§8.5
+  DELETE or ARCHIVE-to-`docs/archive/` rows.
+- **One over-broad entry was found and removed.** `docs/roadmap/p26-spatial-depth/` was listed
+  as a whole folder, but §8.3 moves its `design/**` files into `prototypes/…`, which stays inside
+  the walk — the blanket prefix silently exempted material that re-enters coverage as protected
+  evidence. It is replaced by the two archive/deleted parts only
+  (`…/research/` and the continuous-spatial-authoring umbrella). Re-running the gate after the
+  narrowing passed, so no P26 `design/**` path had a dead reference and coverage is strictly
+  wider.
+- **Nothing authoritative or protected is excluded.** `docs/README.md`, `AGENTS.md`, the
+  reference contracts, `operations/**`, `.agents/**` and the whole `prototypes/` family remain
+  inside the walk, as do the immutable decision records (whose dead link was repaired with
+  `git show <baseline>:<path>` provenance rather than exempted).
+- **A focused control now enforces that** — `archivalExclusionProblems()` fails the gate if any
+  archival prefix covers a document the walk is required to reach, or names a path that no
+  longer exists. Two tests in `documentation-references.test.ts` use it (24 tests, green).
+- **WP4's acceptance requirement is now explicit in the plan** (§8.1 and the §12 WP4 row): WP4
+  removes the temporary list and its checker branch as it performs the §8.3–§8.5 moves, then
+  runs the full gate with no new exclusions and confirms no coverage gap. The control above is
+  what fails until that list is gone.
+
+**A3 — WP3 ownership of the retained legacy room-frame path is confirmed, not actioned.**
+`lib/authoring/scene/plan-scene-footprint.ts` still carries the legacy room gate: the
+`roomId?` field, the `LayoutRoomRegistry` parameter, the `rooms.has(entity.roomId)` eligibility
+check and the `rooms.pointInFrame(entity.roomId, …)` projection. §6 already assigns its removal
+to WP3; the amendment in §6 makes that ownership explicit and adds it to the B2 seam row. It was
+not touched here.
+
+### 7.9 WP3 readiness
 
 **Ready.** Checkpoint B is met: the §7.4 gates are green, visitor/public and `legacy/`
 isolation are green, every deleted test is category C with its subject gone or has a recorded
@@ -2157,3 +2213,88 @@ extraction, every category B file is recorded as relocated-at-WP1 (§6.4), and t
 frozen project was neither modified nor reintroduced. §7.5's DB requirement is satisfiable in
 this environment (zero skips observed), which is WP3's precondition rather than its result.
 WP3 may be authorized; it has not been started.
+
+## 8. WP3 planning amendment — current format only (revision 4)
+
+> **Status.** Planning only. No WP3 work package has been started, and nothing in §6 of the
+> plan has been executed. This section records the owner's compatibility policy, what it
+> changed in the plan, and the fixture trace the WP3 executor inherits so it does not have to
+> rediscover the sites.
+
+### 8.1 Owner policy
+
+The product supports **one document format**:
+
+- wall-first Layout, `formatVersion: 5`;
+- world-local Scene, `formatVersion: 1`;
+- existing current-format validation, canonicalization and deterministic serialization unchanged.
+
+There is deliberately **no legacy recognition contract**: no `unsupported_generation`
+diagnostic, no `isLegacyLayout` detector, no unsupported-generation classifier and no
+compatibility facade. A detector that recognises historical formats only in order to reject
+them by name is scope the owner has removed. Anything that does not match the current format
+fails **ordinary current-format validation**, and no schema rule is relaxed to make that
+possible.
+
+### 8.2 Requirements removed from the plan
+
+| Removed | Was in |
+| --- | --- |
+| The named `unsupported_generation` rejection as the reader contract | §6 item 1, §4.2 API row |
+| The DB-free `api.test.mjs` case asserting a legacy body is rejected on Save by name | §6 item 3 |
+| The matching `project-model` kernel assertion for that code | §6 item 3 |
+| The §7.5 bullet requiring that DB-free legacy-rejection case to run in every environment | §7.5 |
+| The Checkpoint C clause "legacy payloads reject with the named issue (new kernel and API tests)" | §12 WP3 row |
+| Any successor dedicated historical-format rejection test | §6 item 5 (explicitly forbidden) |
+
+### 8.3 Requirements added or made explicit
+
+- **Readers and writers call the current-format validators directly.** Obsolete generation
+  dispatch, migration and compatibility branches are deleted; nothing replaces them.
+- **Scene runtime seam (§6 item 2).** Room-local Scene resolution and its Room-frame
+  dependencies leave the retained runtime and authoring modules. `authoring/scene/plan-scene-footprint.ts`
+  is the named case: `PlanSceneFootprint.roomId?`, the `LayoutRoomRegistry` parameter,
+  `rooms.has(entity.roomId)` and `rooms.pointInFrame(entity.roomId, …)` are removed. Intended
+  world/local semantics, support-owned elevation and the single Geometry/Camera authorities are
+  preserved; new Scene or Camera schema design belongs to T2/T3.
+- **Evidence replaces the removed tests (§6 item 5):** valid current-format Layout and Scene
+  validation; canonical serialization and round-trip stability; ordinary validation failure for
+  malformed or incomplete input; API Save/Load/publication exercised with valid current-format
+  documents; preserved geometry, identity, resource and visitor-isolation invariants.
+- **Fixture rule.** Validation is never relaxed to keep an obsolete fixture passing. A fixture
+  whose expectation genuinely depended on the legacy shape is a recorded finding.
+- **Stop rule retained.** The deep `layout-types.ts`/`layout-codec.ts` split stays T1's
+  authored-schema redesign; WP3 does not rewrite the canonical compiler to reach it.
+- **§7.5 PostgreSQL gate retained** (B4): reachable database, `check:api` and `test:api`
+  passing, zero skips, real Save/Load/publication coverage, recorded at Checkpoint C and never
+  inherited from WP2.
+
+### 8.4 The API fixtures WP3 must migrate
+
+Each API test file builds a local `projectDocument()` whose `layout` is the versionless legacy
+shape (`{ units, floors, objects }`, no `formatVersion`) and whose Scene carries no
+`formatVersion`. All three are inside the tests that §7.5 requires to run DB-backed.
+
+| File | Fixture | Call sites |
+| --- | --- | --- |
+| `apps/api/tests/api.test.mjs` | `function projectDocument(name = 'Cloud project')` (line 27) | 8 |
+| `apps/api/tests/publication.test.mjs` | `function projectDocument(id, name, textures = [])` (line 41) | 19 |
+| `apps/api/tests/test-auth.test.mjs` | `function projectDocument(id, name)` (line 29) | 2 |
+
+WP3 replaces each fixture with a valid current-format document **while preserving the original
+behavioural expectation of every call site**. The ownership, isolation, asset and publication
+assertions those tests carry are unchanged: only the document shape they persist changes.
+
+### 8.5 Checkpoint C contract (revised)
+
+The §7.4 gates are green **including the §7.5 API requirement**, with the DB-backed run's skip
+count and database target recorded here at Checkpoint C. §6's evidence list exists. No
+`unsupported_generation` path and no legacy detection exists anywhere. Geometry, identity,
+resource and visitor-isolation invariants are unchanged. Stop-rule items are recorded as §5.1
+rows.
+
+### 8.6 Remaining owner decisions
+
+**None.** The compatibility policy is settled, and no question raised by this amendment needs an
+owner ruling. Two items are deliberately deferred rather than decided here: the Layout
+schema/codec split (T1) and Scene/Camera unit extraction (T2/T3).
