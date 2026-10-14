@@ -128,6 +128,11 @@ the PR ref:
 
 anchor 6bd15aa2 · tag `closed/r115` (created by the phase close; local only — not pushed by it,
 and not required to resolve, because the anchor is an ancestor of `main`)
+
+REQUIRED MERGE METHOD — P1: this closeout lands as a merge commit (no squash, no rebase), so the
+recorded anchors stay ancestors of `main` and the recovery reads above resolve. Post-merge
+verification is `git merge-base --is-ancestor 6bd15aa2 main` plus a `git show 6bd15aa2:<path>`
+recovery read; it is owed by the owner's merge and is not claimed here.
 ```
 
 ## Closed-work preservation report
