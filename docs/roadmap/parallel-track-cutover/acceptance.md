@@ -2597,8 +2597,10 @@ whitespace are the applicable checks.
 | --- | --- |
 | `npx vitest run --config vitest.arch.config.ts tests/docs` — the documentation gate, run alone as `apps/editor/tests/README.md` prescribes, on the corrected tree | pass — 1 file / 24 tests |
 | `npm run test:arch` — the whole arch lane, which includes the documentation gate; §7.7 gives docs/planning-only changes the docs/arch gates | pass — 13 files / 102 tests |
-| `git diff --check bbd7cdec..<correction>` (committed range); `git show --check <correction>` (single commit) | recorded with the correction revision below |
+| `git diff --check bbd7cdec..04c2fa14` (committed range); `git show --check 04c2fa14` (single commit) | clean (both) — committed-change whitespace |
 
-**Correction revision.** The docs-only correction commit sits on `codex/pr115-architecture-plan`
-immediately on top of the reviewed `bbd7cdec`; its SHA and the committed-range whitespace results
-are recorded by the revision-record commit that follows it, as at Checkpoints C and D.
+**Correction revision:** `04c2fa14` (`docs(pr115): correct the Checkpoint D record for review
+findings F1-F3`) on `codex/pr115-architecture-plan`, immediately on top of the reviewed
+`bbd7cdec`; committed-change range `bbd7cdec..04c2fa14` (3 files, `+61 / −12`). The correction is
+the only content change in the range; this record is added by the revision-record commit that
+follows it, as at Checkpoints C and D. No force-push and no merge.
