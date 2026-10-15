@@ -71,6 +71,9 @@ gate, with publication ownership, the strict reader and the visitor isolation al
 
 ## Evidence roles
 
+- [First-phase proposal](./first-phase-proposal.md) — track-local planning for current-data
+  lowering, independently versioned prepared releases and the atomic reader cutover. A proposal
+  for review, not a registered phase, F amendment or implementation authorization.
 - [`persistence.md`](../../reference/components/persistence.md) — the current persisted formats and
   the strict current-format reader contract.
 - `apps/api/tests/publication.test.mjs` — the real-Postgres publication lifecycle proof, executed
