@@ -19,6 +19,13 @@ Each track's capability work re-derives against F and preserves exact-interface
 amendments with first consumers. Neither design acceptance nor planning changes
 F implementation authorization.
 
+**Ratification round (proposed, pending owner approval):** the coordinated ratification PR
+promotes exact interfaces AM-1–AM-8 into
+[`../../reference/composition-execution.md`](../../reference/composition-execution.md) and moves
+F1–F4 plus `T1.viewport-projection` to `ratified` version 1 in the gate register, with the
+capability-readiness rule below. F5, the T3 cutover and the T4 reader stay `undrafted` until
+their first-consumer drafts land. Preparing that PR is not ratification.
+
 **Authority:** [`../../reference/decisions/northstar-ratification-2026-09-27.md`](../../reference/decisions/northstar-ratification-2026-09-27.md)
 §6 and §10; destination statements live in
 [`../../reference/north-star.md`](../../reference/north-star.md) and
@@ -82,6 +89,36 @@ accepted     the review and acceptance evidence is recorded → `accepted`
 - **Additional consumers join the same gate** rather than minting a competing one.
 - An **incompatible** amendment adds a `version + 1` row and marks the old row `superseded`,
   retaining that row's provider and evidence. A compatible, optional extension keeps the version.
+
+## Capability readiness (ratified rule; checker enforcement lands in T1.P01.S01)
+
+Overall gate state cannot prove incremental capability scope. Two additive fields carry it:
+**Accepted capabilities** on each gate/version row and **Requires** on each consumer slice row,
+the latter naming exact `Gate@Version:capability-vN` pairs with their prerequisite closure.
+
+- Each Accepted-capabilities entry links a durable record with capability ID/version,
+  contract/amendment anchor, admitted source kinds, prerequisites, extension slice, actual shared
+  exports, conformance, independent acceptance and ancestor implementation commit. Pending scopes
+  stay in plans and never appear as accepted entries; existing evidence is retained when another
+  scope is added and the gate's sole provider is unchanged.
+- Eligibility requires the exact gate **and every required capability**, with its prerequisite
+  closure, to be accepted in the current tree **and at the trusted base**
+  (`git merge-base HEAD main`). No consumer satisfies its own prerequisites; this binds new
+  starts, in-progress and accepted consumers, while shipped historical slices retain their
+  original scopes and evidence, as with historical gate majors.
+- Retirement is a terminal state on the same Accepted-capabilities entry — no parallel registry.
+  A retired scope keeps its historical evidence but no new or in-progress consumer may Require
+  it. For F.4, retirement ends current-source adapter admission only; the revision/result/history
+  invariants endure as unit-capability prerequisites.
+- A capability name cannot disguise an incompatible semantic change: breaking required identity,
+  revision, result, coordinate or lifecycle semantics needs a new major with consumer
+  re-declaration.
+
+Checker schema changes (definition only; implementation is authorized T1.P01.S01 work): accept
+the two fields, evaluate Requires against HEAD plus trusted base, fail Requires naming retired
+or unaccepted scopes, and fail consumer self-satisfaction. Until that enforcement lands,
+consumers needing incremental readiness remain blocked. This README changes neither the live
+register values nor its checker.
 - For F.2 and F.4, the shared **interface** gate is distinct from the T3 behavioural cutover gate:
   Camera extraction, Experience order and the first compound acceptance remain one T3 cutover.
 - A shared implementation lives in an existing package where ownership fits; a **new package needs

@@ -442,3 +442,257 @@ explicit owner amendment; incompatible semantic changes require deliberate
 versioning. Implementation evidence may justify a smaller kernel, adopted
 substrate, different packaging or more precomputation while preserving these
 contracts.
+
+## Ratified amendments
+
+**Status:** proposed for owner ratification; on approval these amendments carry the same
+normative force as the sections above. Each amendment names its exact interface version, sole
+provider assignment, consumer list and conformance requirements. Provider assignments are
+planning authority, not implementation evidence: no shared code, exports, fixtures, acceptance
+records or implementation commits are claimed here, and the gate register records `ratified`
+with empty evidence columns until providers land. Incompatible semantic changes require a new
+major with the old row `superseded`; compatible optional admissions keep the major with new
+capability evidence. Numeric conformance tolerances and calibration defaults stay provider
+conformance parameters unless an amendment states otherwise.
+
+Sole providers (planning assignment; register provider column wires at phase registration):
+F1/F3 → T1.P01.S01 · F4 → T1.P01.S03 (Save/unit extensions T3.P01.S02/S03) · F2 and the
+ExecutionProgram codec → T3.P01.S01 · F5 → T4.P01.S02 · viewport seam → T1.P01.S02 ·
+source/runtime cutover → T3.P01.S04 · prepared reader → T4.P01.S05. Behavioral-gate owners are
+unchanged: viewport T1, cutover T3, reader T4.
+
+## AM-1 F1 references v1
+
+Exact reference interface `references-v1`. All IDs are opaque nonempty stable strings; ordering
+is stable ID ordering, never a parsed display label.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `SemanticReference@1` | `version: 1`; `domain` ∈ Layout, Scene, Camera, Experience or a declared typed-resource kind (unsupported required domain/kind is incompatible); `revision` tagged `exact {contentRevision}` or `project-lock {projectId}` resolved against the supplied accepted snapshot and lock — no ambient latest, and a resolution records its concrete revision; `subject {kind, id}` stable canonical subject; `instancePath` ordered stable instance IDs (empty denotes the root); `location` tagged `project-root` or `layout-location {levelId, structureInstancePath}`; `componentId`/`capabilityId` explicit nullable stable identity (unknown returns a typed result, never nearest/name matching). |
+| Resolution result | `resolved` with canonical subject, concrete revision and owner; or `missing \| removed \| incompatible \| unauthorized \| repair-required` with original reference, code/message and explicit repair actions. Resolvers perform no repair as a read effect. |
+| `SnapshotIdentity@1` | `{acceptedRevision, sourceContentId}` with a separate host SessionEpoch. AcceptedRevision is opaque `{projectId, revisionId}`, fresh on every source change including Undo/Redo. Neither digest nor epoch is the revision token. |
+| `FrameReference@1` | Project-world or an owner-qualified frame identity/reference and revision. The owning domain resolves origin/orientation/datum and validates point/vector conversion; a Room without an authored frame cannot qualify. |
+| `DerivedSourceRef@1` | `{source, generationId, stream, subRef?}`, runtime-only. Selection stores the canonical source, never fragment identity; fragment details expire on recompile. |
+
+Current-domain resolvers admit Layout, Scene and read-only current Camera subjects; Experience
+and resource subjects stay explicitly unresolved until their providers land. Project-lock
+resolution without an admitted F.2 lock reader returns `incompatible`; no dependency lock is
+manufactured. Selection requalification across revisions uses explicit acceptance
+correspondence; missing/retired subjects never retarget by proximity.
+
+**Consumers:** all tracks. **Conformance:** fixtures for nonzero floor qualification, root
+Scene, stable instance-path round trips, generation invalidation, missing/unauthorized/
+unsupported resolution and refusal of nearest/name repair.
+
+## AM-2 F2 unit envelope v1
+
+Exact envelope interface `unit-envelope-v1`. Strict validation rejects unknown keys, non-finite
+or out-of-range values, unsupported format/kind versions and duplicate/conflicting pins. No
+generic object bag admits hidden domains or renderer/session state.
+
+| Element | Ratified meaning |
+| --- | --- |
+| AcceptedRevision | Opaque `{projectId, revisionId}`; equality only, never currency inferred from label, date or publication version. |
+| `UnitHeader` | `{domain, unitId, formatVersion, contentRevision}`: one stable codec identity per admitted domain; header/payload version mismatch rejects. |
+| `DomainUnit` | `{header, data}`: one domain-owned validator/codec/evaluator boundary. Physical files, tables and blob-per-resource layouts are not prescribed. |
+| `ProjectEnvelope` | `{formatVersion, id, name, acceptedRevision, dependencyLock, units}` with exactly one Layout, Scene, Camera, Experience and typed-resource unit; Experience and resource payloads are collections. |
+| `DependencyLock` | `{formatVersion, entries}`: deterministic set keyed by qualified identity/instance scope; exact unit/resource content revisions and required capability/version per entry; external bytes additionally pin hash/MIME/size/immutable locator. |
+| `UnresolvedBinding` | Typed authored diagnostic retaining the original F.1 reference and repair status in the owning domain — never a fabricated resolved pin. Executable closure is distinguished from structural failure. |
+
+Admitted unit versions: envelope format 1; Layout payload 5; Scene 2 (Camera-free); Camera 1;
+Experience 1; typed resources 1. The source-content digest excludes acceptedRevision and
+session/history/receipt metadata; unit contentRevision hashes canonical domain data only.
+The Camera codec split lands in the same cutover as the Experience order cutover (one
+`navigationNodes` migration), as previously ratified.
+
+**Consumers:** T3 coordination, T4 source/program codecs. **Conformance:** empty and
+two-Experience round trips, required-kind/version refusal, reference/lock diagnostics and
+genuine resource pins.
+
+## AM-3 F3 inspection and Camera output v1
+
+Exact channel interface `inspection-v1` with the shared Camera-output protocol. F.3 validates
+shapes, negotiation and conflict rules; it exposes no unrestricted setters.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `ChannelAddress@1` | `{ownerReference, instancePath, componentId, capabilityId, propertyId, frame}` with no delimiter-string parsing; `frame` is a shared FrameReference@1. |
+| `ChannelDescriptor@1` | Value type, units, finite range/categorical values, output/session scope, supported operators/interpolation, required/optional capability, invalidation inputs and validator identity. |
+| `ChannelContribution@1` | Descriptor/address, typed value, invocation identity and monotonic accepted run epoch — separate from the authored baseline. |
+| Layout ordinary Plan family | Cut height relative to an explicit datum (finite meters); depth finite meters > 0, required; optional explicit finite lateral span/crop; source-kind filter; source-qualified Reveal set (set union over declared identities only). Re-evaluate on accepted Layout revision, parameters, generation or frame change. |
+| Camera session inspection family | Finite target in project-world meters, azimuth/elevation radians, positive target-plane frame height, reading/projection policy and motion policy inputs. One exclusive resolved controller per output; accepted ordered replacement/handoff. Camera evaluates pose/projection; no generic pose/FOV interpolation. |
+
+Competing exclusive contributions reject with domain/address/owners and an actionable reason;
+replacement invalidates older run cleanup and a wrong-epoch completion cannot clear the active
+output. Camera-output tickets `{outputId, sourceRevision, sessionEpoch, ownerId, runEpoch}`
+govern inspection, guided/free navigation, Follow, Look-through and Preview through
+acquire/request/replace/return/cancel; return validates current source/output context and
+refuses with a reason otherwise. Exactly one Camera output owner exists per viewport/session.
+
+**Consumers:** T1 viewport; T3 extends `camera-handoff-v1` conformance without a second
+provider. **Conformance:** finite default/depth absence, invalid units/frame/range, unknown
+required vs optional-unsupported families, conflict, replacement and stale cleanup, plus
+runtime-safe import direction.
+
+## AM-4 F4 local acceptance Save and retirement v1
+
+Exact acceptance interface with `local-single-domain-v1` admission. Local editing remains
+immediate; persistence is conditional and explicit.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `AuthoringIntent@1` | Version, registered kind, operation ID, expected AcceptedRevision, qualified targets, typed serializable payload and captured inputs/allocated IDs. Deterministic: no clock, random, network, closure, gesture or renderer handle enters planning. |
+| `AcceptedSnapshot@1` | Validated read facade with accepted revision, source-content identity, admitted source-kind/version and domain read access. No required signature embeds the current ProjectDocument or an F.2 encoding. |
+| `prepareIntent` | Evaluates against the unchanged expected baseline and returns validated candidate changes with correspondence/diagnostics, or typed rejection. Planners stay operation-specific; no universal planner base class. |
+| `AcceptanceResult@1` | Accepted `{operationId, beforeRevision, afterRevision, snapshot, changes, correspondence, undoResult}`, no-op `{operationId, revision}`, or rejected `{operationId, code, expectedRevision, actualRevision when authorized, diagnostics}`. One logical install and one undo result. |
+| `local-single-domain-v1` | Registered Layout or Scene planners over the current source adapter, complete current-project validation, unchanged-domain/resource enforcement and refusal of multi-domain, new-unit, external-staging and resource-changing operations. Proves neither unit/resource compound acceptance nor cloud Save. |
+| History | One 100-entry chronological snapshot stack through the same boundary. Undo/Redo validates, installs once with fresh identity, preserves unrelated contents and truncates redo after new edits. No-op, refusal, cancel and stale results add nothing. Replacement starts a new baseline. |
+| `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. |
+| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (future T3.P01.S03 capabilities; candidate-only before T3.P01.S04). |
+
+Stale writers are rejected by the expected-revision precondition — local and cloud alike — via
+atomic server compare-and-append. Human UI and agents use the same operations, diagnostics and
+revision rule.
+
+**Retirement split (ratified):** the enduring layer — opaque accepted revision, content-digest
+comparison, atomic install with one undo result, stale/ABA rejection and one chronological
+history — persists across the source transition and stays a prerequisite of the unit
+capabilities. The retiring layer is current-source adapter admission (current-source
+planning/validation and `conditional-save-current-v1` persistence), which T3.P01.S04 retires
+together with all its callers. After retirement no new or in-progress consumer may Require the
+retired scope, while shipped slices retain their evidence. Retirement is recorded as a terminal
+state on the same Accepted-capabilities entry: no parallel registry, no permanent legacy
+admission.
+
+**Consumers:** T1/T2 local editing; T3 Save/unit extensions. **Conformance:** captured-input
+determinism, local stale/ABA rejection, real Layout/Scene registration, exact mixed
+chronological Undo/Redo, redo depth/truncation, full-validation rollback, unsupported
+compound/resource refusal, untouched Camera bytes, bypass-sensitive caller proof and real-DB
+same-base contention (one winner), create collision, retry mismatch and stale-response/dirty
+behavior for Save.
+
+## AM-5 Shared Stage and starter gallery v1
+
+Exact viewport seam `viewport-projection-v1` with the shared Stage host protocol and the
+canonical starter gallery. Ordinary project-world Plan/3D only; Section, peel, arbitrary surface
+inverses, Scene support resolution and Camera authoring are excluded.
+
+| Element | Ratified meaning |
+| --- | --- |
+| `StageReadSnapshot` | Source-independent validated read facade: AcceptedRevision, separate content identity/session epoch, admitted source kind/version, compile generation and immutable domain-owned Layout/Scene/Camera read access. No required current-ProjectDocument field. |
+| `ViewportRect` | CSS left/top/width/height and DPR, all finite, width/height positive. A hidden/zero-size viewport yields unavailable output, never division by zero. |
+| `ViewportEvaluation` | Immutable output ID, epoch, source revision, evaluation generation, realized eye/target/up, view and projection matrices plus inverses, near/far, target-plane meters per CSS pixel, projection kind, settled reading, working-plane qualification and diagnostics. Column-major right-handed convention, project +Y up, X/Z horizontal. |
+| `projectWorld` / `pointerRay` / `intersectWorkingPlane` | World→CSS with `visible \| outside-frame \| clipped \| behind`; CSS→ray from the same rendered matrix/inverse (orthographic rays vary origin, share direction); ray→plane against an explicit frame only (never nearest Room), with reasoned `parallel \| behind \| outside-supported-domain \| invalid-frame \| stale-evaluation` failures. Projection is not a membership decision. |
+| `evaluateLayoutPlan` | Four typed streams `cut \| projected \| hidden \| symbol` with per-fragment correspondence, per-source membership and exclusion reasons, bounds and diagnostics. Clips/projects canonical compiled solids and query records; never re-fits curves or derives another topology. |
+| `resolveSourceHit` | Candidate carries source F.1 identity and generation; stale fragments reject; Opening void/cap resolves via host plus compiled intervals/profile, never nearest mesh face. |
+| `registerStageAdapter` | Editor-only registration of domain/required capabilities, world graphics, overlay contribution, eligible hit provider, selection echo, explicit task/instrument factory and disposer. Unknown required capability refuses mounting. |
+| `acquireGesture` | One captured pointer/writer lease with accepted revision and operation parameterization. Policy per operation: continue-after-revalidation, suspend-proposal or cancel-on-reading-change; the host runs it once before projection changes. Loss, lens/project/task exit and unmount cancel exactly once. |
+| Selection and tasks | One read-only ordered selection/primary value plus `select(reference)` and task open/close requests. Adapters may offer Card facts and precision writers but never a second selection or history. |
+| Projection endpoints | Exact orthographic Plan; perspective 3D; Camera-evaluated projective transition (no near-orthographic FOV substitute, no shell tween, no second Plan transform). Flip preserves target and target-plane height, settles azimuth at the nearest 90° (lower-detent tie) and returns to the last working elevation about the current target. Aspect change preserves target, orientation and vertical framing scale. |
+| Shadow selection | The Stage Canvas selects its shadow-map type explicitly (`PCFShadowMap` on the landed r186 base); no boolean `shadows` resolving to the removed PCFSoft filtering path. |
+| Replacement and lifetime | Validate first, then atomically cancel writers, clear selection/task/return context and swap project/session under a new epoch. Stale loads and Camera completions cannot affect the replacement; no project-specific singleton survives. Adapters, buffers, listeners, leases and pending callbacks dispose exactly once. |
+| Starter gallery | Canonical current-format source template: one rectangular enclosure, real reconciled Room/floor polygon and floor datum, no Scene objects and no Camera/Experience content. Validated boot with explicit project-replacement guard. General Wall drawing and the derived-role/schema cutover are deferred and are not prerequisites for compiled-floor support. |
+
+One persistent Threlte Canvas/Stage serves all readings and lenses; renderer Camera objects
+realize evaluated output only. Editor mounting contracts stay editor-only and must not pull
+selection/history/runes/DOM into shared packages.
+
+**Consumers:** T2/T3 editor adapters through the public facade (no private Stage imports).
+**Conformance:** projection/inverse agreement across Plan/3D/transitions, DPR and aspect
+changes; Layout correspondence with reasoned depth/crop/Reveal behavior; T2/T3-style consumer
+probes; replacement teardown; shell/isolation; narrow, long-name and reduced-motion states.
+
+## AM-6 Execution program and visitor profile v1
+
+Shared program codec `ExecutionProgram@1` with the bounded first visitor profile. The codec is
+derived from accepted Experience/Camera/source identities — never another editable order format
+— and its standalone import closure carries delivery validation only.
+
+Required fields: kind/version and required/optional capabilities; selected Experience/entry
+with labelled Presentations and content records; stable Stop occurrences and Camera invocation
+bindings; typed scoped state declarations with initial/reset values; finite local-time/hold
+mappings; bounded guard expressions; channel policies; run-scoped lifecycle/actions. Empty cases
+are explicit. No copied Camera pose/path/graph, renderer object, source selection/history or
+arbitrary executable code.
+
+Bounded v1 semantics: distinct Presentation/Stop/visit-run identities; Cut; supported Travel
+with directed Camera timing; sequence-next, explicit Stop/End and covered return-to-origin
+continuation; nonnegative holds with Continue; text Info Panel with ShowContent/NavigateTo/OpenUrl
+activation rules; boolean/choice state with literal/state-read/equality/conjunction guards;
+exclusive Camera handoff; explicit enter/arrival/complete/cancel events; reduced motion and
+semantic DOM navigation reaching every admitted destination. The same required instruction means
+the same thing in Preview and publication; unsupported required program/state/operator/profile
+refuses. Later optional kinds extend the declared codec/profile with accepted conformance;
+changed existing meaning requires a versioned cutover.
+
+One Experience interpreter (future T3.P01.S03) and one Camera engine serve both paths: editor
+Preview uses the same semantic lowering and evaluation, while release Preview executes the
+actual prepared package. T4 persists the lowered program as an immutable delivery derivative
+and creates no second interpreter.
+
+**Consumers:** T3 Preview, T4 prepared delivery. **Conformance:** non-empty codec/trace
+fixtures covering repeated Stops/runs, initialization/reset, guard failure, finite hold/Continue,
+directed Travel/gap, Cut and stale handoff cleanup.
+
+## AM-7 Source migration v1
+
+Single source-conversion policy for the Camera/Experience transition (future T3.P01.S04).
+Conversion is a named pre-baseline exception, not a multi-format decoder.
+
+- **Prepare without installing.** The sole read-only converter takes the strict post-#115
+  document pair plus captured IDs, policy decisions and staged pins, and produces all unit
+  candidates with a mapping report and domain plus composed authored validation. Ambiguity and
+  refusal are reported before acceptance; unresolved required bindings refuse execution.
+- **Quiesce and accept once.** Block writes during the transition; capture one expected migration
+  baseline and CAS-install Camera extraction, Experience order, Scene removal and locks together.
+  No intermediate Camera-only or order-only state exists. A lost CAS race changes nothing.
+- **Activate one source epoch.** Deploy new readers, API admission and runtime together; old
+  clients fail with version/revision-required diagnostics. No format sniffing, transparent reader
+  fallback or writable feature flag. New bootstrap emits only the new format.
+- **Retire immediately.** Remove Scene/Camera legacy order fields, flow-order exports, node-keyed
+  visitor orchestration and every current-source F4/Save/Stage/starter adapter with all its
+  callers. Only the bounded read-only converter knows the old fields, owned by T3; it retires
+  when the covered migration inventory is completed or discharged and recovery is verified,
+  before the Source Baseline. No reverse serializer, dual write or indefinite migration reader.
+- **Recover deliberately.** Failure before activation leaves prior state untouched. After
+  activation, restore the backed-up pre-cutover source plus matching deployment as a coordinated
+  rollback, or roll forward; never reverse-convert edited new-format data. Source Undo restores
+  new-format authored contents with a fresh revision and never reactivates the retired schema.
+- **Inventory first.** S04 approval requires actual source/project/version/publication counts,
+  format coverage, backups, quiescence and a recovery plan. A publication gap additionally
+  requires verified inventory and explicit owner acceptance at activation; covered releases
+  without a concrete compatibility disposition block activation.
+
+## AM-8 Prepared delivery direction v1
+
+Approved release architecture for T4; the exact F5 envelope/profile/payload codecs and
+canonicalization are provider work for T4.P01.S02 (F5 stays `undrafted` until then). No prepared
+envelope, publication format or Baseline is established by this amendment.
+
+- **Independent release identity.** One source revision yields releases keyed by an independent
+  release ID over the canonical release core (source/lock/build inputs, profile, experiences,
+  payload/resource hashes, program, meaning, public interface, traceability); the release's own
+  hash, pointer revision, timestamps and storage locators stay outside the hash preimage.
+  Release schema, payload and profile versions are independent of the installed Three.js version:
+  a renderer/runtime update changes the Reader/runtime build identity and its
+  supported-format matrix, never an existing release's bytes or meaning.
+- **Closed resources.** Immutable content-hash resources with private storage-locator mappings;
+  releases pin bytes independently of mutable asset/catalogue rows, and pinned bytes survive
+  asset cleanup. Missing, corrupt or externally unclosed inputs refuse; explicit primitive
+  fallback is distinct from failed required content.
+- **Per-Experience pointers.** `(project, experience identity)` uniqueness, stable public ID,
+  nullable active release/entry and monotonic OCC revision. Activation verifies selected-
+  Experience membership; stale/ABA/concurrent writers get conflicts.
+- **Pinned-context delivery.** `/p/:publicationId` resolves its pointer once to release ID,
+  selection and entry; concurrent Update cannot mix releases. Unpublish denies every managed
+  metadata/artifact/byte route including aliases. All public responses are `no-store` without
+  storage keys or credentials.
+- **One coordinated barrier.** The T4.P01.S05 cutover fences publication mutations, switches
+  pointer authority with the prepared API/browser route as a compatible pair, and retires all
+  authored delivery callers (source join/validator, source-version insertion/activation). No
+  per-request fallback, dual writes, second writable pointer or format dispatch reactivating the
+authored reader. Post-barrier rollback prefers a prior compatible prepared runtime/pointer with
+  fresh OCC revisions.
+- **API first.** Owner prepare/activate/update/unpublish flows precede the T4-owned thin
+  publication UI; bounded T2 single-model ingest follows with accepted F.1/F.2 resource identity,
+  staged F.4 acceptance and T4 resource delivery.
