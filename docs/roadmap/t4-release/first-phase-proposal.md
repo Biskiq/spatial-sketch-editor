@@ -9,7 +9,7 @@ persist releases independently of source versions, and replace public snapshot d
 coordinated T4 cutover. T3 owns the sole authored-source conversion and visitor semantic transition;
 T4 reuses its ExecutionProgram codec/lowering/interpreter. No default legacy Experience identity map.
 
-Use the [coordinated provider/readiness/DAG proposal](../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
+Use the [coordinated provider/readiness/DAG proposal](../cross-track-execution.md) and
 [T3 unit/program draft](../t3-experience/t3.p01-camera-experience-foundation/f-amendment-proposals.md). F5 provider work needs the shared program codec, not T3 activation;
 offline lowering/storage can use closed F2 fixtures and accepted runtime primitives. Final public
 activation consumes accepted T3 S04, never completion of T3 authoring/track. These remain proposals.
@@ -242,7 +242,7 @@ prove a bounded synchronous build; measure size/duration before introducing work
 
 ## Exact dependencies and work that can run in parallel
 
-All versions/scopes are proposed. The [shared readiness amendment](../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+All versions/scopes are proposed. The [shared readiness amendment](../cross-track-execution.md#small-readiness-amendment-proposed-for-ratification)
 adds Accepted capabilities to the gate row and Requires to consumer rows. Each exact scope/prerequisite
 must be accepted in current HEAD and trusted base; overall gate acceptance alone is insufficient.
 Pending extensions never count as ready. One provider per gate/version remains: F1/F3 T1 S01,
@@ -371,7 +371,7 @@ that merge obligation to S05; S05 also owes the integrated exhaustive result.
 
 | Decision | Recommended owner ratification |
 | --- | --- |
-| Shared provider/readiness | Adopt the [coordinated matrix](../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and Accepted-capabilities / Requires rule; one gate provider, capability-specific accepted evidence on trusted base. |
+| Shared provider/readiness | Adopt the [coordinated matrix](../cross-track-execution.md) and Accepted-capabilities / Requires rule; one gate provider, capability-specific accepted evidence on trusted base. |
 | F5/program | T4 S02 provides one prepared envelope/profile using T3 S01's ExecutionProgram codec and S03's sole interpreter. Support the bounded semantics above; unsupported required behavior refuses. |
 | Accepted input | Source-first accepted/saved F2 units and authored Experience selection. No default legacy saved-source admission, retained selection map or separate Experience identity adoption. |
 | Domain delivery | Canonical Layout compiler, Scene/resource descriptors and Camera evaluation remain domain-owned; delivery DTOs freeze sufficient values/bytes and avoid live catalogue dependencies. |

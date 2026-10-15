@@ -29,7 +29,7 @@ through T1's explicit project-replacement flow or opening supported source. It n
 architecture silently. Neither a datum nor T1's plinth is support. General Wall drawing and
 its derived-role/schema cutover are not prerequisites for a validated canonical starter.
 
-Use the [coordinated provider/readiness/DAG proposal](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
+Use the [coordinated provider/readiness/DAG proposal](../../cross-track-execution.md) and
 [shared source-independent interfaces](../../t1-spatial-world/t1.p01-stage-foundation/interfaces.md); no proposal link is a trusted-base dependency.
 F4's local Layout/Scene capability, conditional Save and unit/compound capability have separate
 acceptance evidence. Local edits are accepted locally and dirty until an acknowledged conditional
@@ -257,7 +257,7 @@ and evidence. This is proposed acceptance work, not an acceptance record.
 
 ## Minimum dependencies and reconciliation decisions
 
-The [coordinated proposal](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) owns the proposed sole-provider allocation, exact capability
+The [coordinated proposal](../../cross-track-execution.md) owns the proposed sole-provider allocation, exact capability
 IDs, two-field readiness amendment and safe merge DAG. Ratification and implementation are distinct:
 current gate state alone cannot prove incremental capability readiness. No live register changes here.
 

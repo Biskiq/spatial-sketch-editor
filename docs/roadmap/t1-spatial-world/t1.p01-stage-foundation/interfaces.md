@@ -133,7 +133,7 @@ Ratification/implementation in a consumer's own diff cannot satisfy its trusted-
 
 These are the smallest exact interfaces needed by this proposal. The owner must promote/ratify
 them into F with stable anchors, consumer list, version and conformance before implementation. The proposed Accepted-capabilities / Requires extension in
-[cross-track readiness](./cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+[cross-track readiness](../../cross-track-execution.md#small-readiness-amendment-proposed-for-ratification)
 is also a prerequisite; today's checker does not enforce it.
 No change to F/reference, the global gate register or another track is made by this proposal.
 
@@ -253,7 +253,7 @@ T3 S02 adds `conditional-save-current-v1` using captured local accepted source p
 expected-saved-base persistence. This is independent of F2/Stage and introduces no cloud Undo stack.
 T3 S03 adds `unit-acceptance-v1` and `conditional-save-units-v1` to the same implementation, with
 full F2/reference/lock validation, admitted resource staging, real Camera/Experience compound
-planners and whole-operation history. The [coordinated readiness proposal](./cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+planners and whole-operation history. The [coordinated readiness proposal](../../cross-track-execution.md#small-readiness-amendment-proposed-for-ratification)
 requires explicit capability evidence on the trusted base; base gate acceptance cannot satisfy them.
 
 T3 S04 migrates all Stage/acceptance/Save/starter callers and retires current-source adapters in one
@@ -279,7 +279,7 @@ presented as an already conforming F.2 envelope or resource lock.
 
 T3 S01 is the sole proposed F2 unit/envelope/lock provider; T4 S02 provides F5 using T3's shared
 ExecutionProgram codec. Their scopes and readiness are reconciled in
-[cross-track allocation](./cross-track-reconciliation.md#provider-and-acceptance-matrix). This phase exports no
+[cross-track allocation](../../cross-track-execution.md#provider-and-acceptance-matrix). This phase exports no
 prepared program, new publication format or authoring machinery to visitor releases, and
 neither consumes nor provides `F2.unit-envelope` or `F5.release-envelope`. If implementation
 finds it needs a new persisted header, resource lock or cross-domain unit format, stop that

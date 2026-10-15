@@ -6,7 +6,7 @@ the architecture-cycle window remains selected and unopened. Planning route:
 [T1](../README.md) · [roadmap](../../README.md) · [T1 runbook](../../../operations/t1-spatial-world/README.md).
 
 **Recommendation:** provide F1/F3, a small shared Stage/viewport host and the common local F4
-provider, then restore bounded Layout precision. The [cross-track allocation/readiness/DAG](./cross-track-reconciliation.md)
+provider, then restore bounded Layout precision. The [cross-track allocation/readiness/DAG](../../cross-track-execution.md)
 and [exact interface drafts](./interfaces.md) govern this proposal's recommendations; neither is
 ratified. First capability work is S01 after exact amendments, authorization and the landed r186 base (`74efb98b`).
 
@@ -358,7 +358,7 @@ cycle verdict. Do not grow the exposure list to fit later scope without an owner
 
 ## Dependencies and owner decisions
 
-Ratify exact [interfaces](./interfaces.md) and the [coordinated allocation/readiness amendment](./cross-track-reconciliation.md)
+Ratify exact [interfaces](./interfaces.md) and the [coordinated allocation/readiness amendment](../../cross-track-execution.md)
 before registering/authorizing slices. Recommended sole providers: F1/F3 T1 S01; F4 T1 S03;
 F2 T3 S01; F5 T4 S02. T3 S02 is an extension for conditional Save, not another F4 provider.
 T3 S03 supplies unit/compound/Save/handoff capability records before T3 S04 activation. Any

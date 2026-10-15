@@ -153,6 +153,12 @@ PR #115 replaced that sequence with the tracks above.
 These proposals are not authorized and have no phase or slice. Registering execution is an
 owner decision; their presence here is a planning route, not lifecycle or gate readiness.
 
+- **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
+  execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
+  re-derive against; pending independent review and owner ratification. It registers no gate, phase
+  or slice, and its exact interfaces stay the F amendments in
+  [`../reference/composition-execution.md`](../reference/composition-execution.md).
+
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,
   independently reviewed and accepted, merged into `main` as `74efb98b`

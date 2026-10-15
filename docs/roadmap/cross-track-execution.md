@@ -1,10 +1,14 @@
-# T1–T4 proposed allocation, readiness and execution DAG
+# Cross-track execution — proposed allocation, readiness and DAG
 
-**Status:** coordinated proposal pending independent review and owner ratification, 2026-10-14.
-This artifact owns the proposed cross-track allocation and dependency model only. Exact shapes
-stay in the owning track's interface draft; normative F, the live gate register, lifecycle,
-phase registration and implementation authorization are unchanged. All candidate IDs below are
-provisional. Cross-PR links identify proposals, never accepted prerequisites.
+**Status:** coordinated cross-track proposal pending independent review and owner ratification,
+2026-10-14. This artifact owns the proposed allocation, capability dependencies and execution DAG
+only; it is not an F contract. Exact interfaces are the F amendments in
+[`../reference/composition-execution.md`](../reference/composition-execution.md) (AM-1–AM-8), and
+the capability-readiness rule is owned by
+[`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). The
+live gate register, lifecycle, phase registration and implementation authorization are unchanged.
+All candidate IDs below are provisional, and cross-PR links identify proposals, never accepted
+prerequisites.
 
 Planning proceeds on the landed r186 base: the separate
 [Three.js r186 foundation upgrade (PR #122)](https://github.com/Biskiq/spatial-sketch-editor/pull/122)
@@ -71,7 +75,11 @@ Acceptance of an interface is distinct from
 ratification, implementation and consumer eligibility. Add the two-field validation and controls
 for missing/unimplemented scope, consumer self-satisfaction and retired scope in the authorized
 T1 S01 provider; until the owner ratifies and installs this amendment, consumers needing incremental
-readiness remain blocked. This file changes neither the live register nor its checker.
+readiness remain blocked. This file changes neither the live register nor its checker. The rule's
+normative statement and checker definition live in
+[`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness); this
+file keeps only the proposed allocation, the capability dependencies and the enforcement handoff,
+and does not restate F semantics.
 
 Compatible optional kind/family/source-adapter admissions retain the gate major and get explicit
 new capability evidence. Breaking required identity, revision, result, coordinate or lifecycle
