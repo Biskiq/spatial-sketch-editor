@@ -9,12 +9,13 @@ persist releases independently of source versions, and replace public snapshot d
 coordinated T4 cutover. T3 owns the sole authored-source conversion and visitor semantic transition;
 T4 reuses its ExecutionProgram codec/lowering/interpreter. No default legacy Experience identity map.
 
-Use the [coordinated provider/readiness/DAG proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
-[T3 unit/program draft](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t3-camera-experience-proposal/docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/f-amendment-proposals.md). F5 provider work needs the shared program codec, not T3 activation;
+Use the [coordinated provider/readiness/DAG proposal](../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
+[T3 unit/program draft](../t3-experience/t3.p01-camera-experience-foundation/f-amendment-proposals.md). F5 provider work needs the shared program codec, not T3 activation;
 offline lowering/storage can use closed F2 fixtures and accepted runtime primitives. Final public
 activation consumes accepted T3 S04, never completion of T3 authoring/track. These remain proposals.
-Planning proceeds now; every capability implementation waits for the separate
-[r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) to close and land,
+Planning proceeds on the landed r186 base: the separate
+[r186 upgrade (PR #122)](https://github.com/Biskiq/spatial-sketch-editor/pull/122) merged into `main`
+as `74efb98b` (three 0.186.1, Threlte unchanged, explicit `PCFShadowMap`),
 with compatibility verified against that actual baseline. Do not alter the upgrade in these PRs.
 
 ## Evidence and governing boundaries
@@ -147,7 +148,7 @@ tree-shaking an authoring barrel does not establish that boundary.
 | Build key | Digest of normalized source/selection/profile inputs, dependency lock, adapter/compiler/toolchain identity and build policy |
 | Build attempt ID | Operational identity for a controlled attempt and its outcome; retry timestamps are outside deterministic package bytes |
 | Release ID | Content identity of the canonical release core and its artifact/resource hashes; same inputs with deterministic output produce the same release |
-| Release schema / payload / profile versions | Independent semantic compatibility declarations, including required capabilities; not the saved version or coarse npm package version |
+| Release schema / payload / profile versions | Independent semantic compatibility declarations, including required capabilities; not the saved version or coarse npm package version. Independent of the installed Three.js version (landed base 0.186.1): a renderer/runtime update changes the Reader/runtime build identity and its supported-format matrix, never an existing release's bytes or meaning — S05's golden-fixture survival probe proves it |
 | Reader/runtime version | Independently released runtime build with a declared supported-format/profile/capability matrix; a security patch changes this identity without rebuilding or reinterpreting compatible releases |
 | Publication ID and revision | Stable public Experience pointer and monotonic OCC token; activation/Unpublish mutate this row, not the release |
 | Optional release sequence | Owner-facing ordinal if useful later; never a source-version primary key or semantic format version |
@@ -241,7 +242,7 @@ prove a bounded synchronous build; measure size/duration before introducing work
 
 ## Exact dependencies and work that can run in parallel
 
-All versions/scopes are proposed. The [shared readiness amendment](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+All versions/scopes are proposed. The [shared readiness amendment](../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
 adds Accepted capabilities to the gate row and Requires to consumer rows. Each exact scope/prerequisite
 must be accepted in current HEAD and trusted base; overall gate acceptance alone is insufficient.
 Pending extensions never count as ready. One provider per gate/version remains: F1/F3 T1 S01,
@@ -251,7 +252,7 @@ F5's actual F2 dependency is T3 S01's **shared ExecutionProgram codec/identity**
 to wait for T3 runtime/source activation. F3 is real here because the supported program uses typed
 Camera channels/ownership. Simple T2 transforms do not inherit that dependency. T4 never consumes
 T1 viewport or whole-track completion. Static domain projection/closure research can proceed now;
-implementation requires r186 closure and accepted precise interfaces before their consumers start.
+implementation requires the landed r186 base and accepted precise interfaces before their consumers start.
 
 ## Candidate slice sequence
 
@@ -280,7 +281,7 @@ T3 owns source/Save and visitor semantic modules through its S04. T4 coordinates
 work, then owns delivery/publication changes and reuses the shared interpreter. Rebase/review
 against each actual main before overlapping caller edits; do not merge competing visitor models.
 T1's cycle window stays selected/unopened until its listed authorized slice starts. Unrelated T4
-work neither configures it nor waits for its verdict. The r186 closure applies to all capability work.
+work neither configures it nor waits for its verdict. The landed r186 base (`74efb98b`) applies to all capability work.
 
 ## Migration, cutover and rollback
 
@@ -370,7 +371,7 @@ that merge obligation to S05; S05 also owes the integrated exhaustive result.
 
 | Decision | Recommended owner ratification |
 | --- | --- |
-| Shared provider/readiness | Adopt the [coordinated matrix](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and Accepted-capabilities / Requires rule; one gate provider, capability-specific accepted evidence on trusted base. |
+| Shared provider/readiness | Adopt the [coordinated matrix](../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and Accepted-capabilities / Requires rule; one gate provider, capability-specific accepted evidence on trusted base. |
 | F5/program | T4 S02 provides one prepared envelope/profile using T3 S01's ExecutionProgram codec and S03's sole interpreter. Support the bounded semantics above; unsupported required behavior refuses. |
 | Accepted input | Source-first accepted/saved F2 units and authored Experience selection. No default legacy saved-source admission, retained selection map or separate Experience identity adoption. |
 | Domain delivery | Canonical Layout compiler, Scene/resource descriptors and Camera evaluation remain domain-owned; delivery DTOs freeze sufficient values/bytes and avoid live catalogue dependencies. |
@@ -379,4 +380,4 @@ that merge obligation to S05; S05 also owes the integrated exhaustive result.
 
 The next independent review checks all four revised proposals together; owner ratification and
 registration follow separately. No implementation, live gate/lifecycle/cycle change or Baseline is
-made here. First capability implementation waits for the separate landed r186 upgrade.
+made here. First capability implementation waits for the separately landed r186 base (`74efb98b`).
