@@ -8,36 +8,36 @@ Readiness owner: [gate register](../../README.md#gate-register).
 
 ## 1. Provider and readiness decisions
 
-| Interface/cutover | Proposed provider | What acceptance establishes | What it cannot establish |
-| --- | --- | --- | --- |
-| F1.reference@1 | One reconciled shared provider; T1.P01.S01 is a separate candidate | Common qualified reference/resolution/revision context, admission and conformance | Every future domain resolver or T3 behavior |
-| F2.unit-envelope@1 | T3.P01.S01, subject to T2 reconciliation | Shared header/envelope/lock interface, strict actual unit codecs and candidate preparation | Live Camera split, visitor order, history or migration activation |
-| F4.intent-acceptance@1 | T3.P01.S02 under current ratification; reconcile T1 request before assigning | Common deterministic intent/result/undo, composed validation and actual local/cloud CAS conformance | Camera/Experience ownership retirement or Stage authoring readiness |
-| F3.channels@1 | Shared provider allocation remains open; T1 proposes S01 | Typed channel/ownership/epoch negotiation sufficient for admitted families | Full scheduler, performances, arbitrary scripting or T3 cutover behavior |
-| T3.camera-experience-cutover@1 | T3.P01.S03 | Live source/runtime ownership transition, all callers/writers migrated, deterministic atomic operations and visitor behavior | General F interface authority, T1 viewport or T4 prepared delivery |
-| T1.viewport-projection@1 | T1 provider and acceptance | Public shared Stage/projection/input seam for authoring | Authored Camera/Experience units or T3's first compound result |
+Use the [coordinated allocation/readiness/DAG proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md); it is pending ratification,
+not a shared authority or accepted dependency. Sole proposed providers: **F1/F3 T1 S01; F4 T1 S03;
+F2 T3 S01; F5 T4 S02**. T3 extends the same F4 implementation; no competing gate provider.
 
-Shared providers are not consumers of their own outputs. Their first product consumer must
-wait for accepted exact versions at the trusted base. S03 provides the T3 behavioral gate;
-S04 consumes it and T1 viewport, declaring camera-authoring-migration. Do not make S03 depend
-on itself or require viewport readiness for pure document/runtime work.
+The early timing amendment permits registered local Layout/Scene acceptance and conditional Save
+before Experience. First compound View/Presentation/Stop acceptance remains T3. Ratify a source-
+independent common interface before implementing it; keep AcceptedRevision, content digest and host
+epoch separate. T1 local acceptance never proves cloud or compound readiness.
 
-The separate [T1 proposal (PR #118)](https://github.com/Biskiq/spatial-sketch-editor/pull/118)
-proposes an earlier, local-only F4 provider, explicitly requiring a timing amendment. It is an
-unratified proposal, not a prerequisite satisfied by this worktree. Current F4 says first implementation is the
-Experience cutover. **Recommendation:** keep T3 as the first complete provider, let T1 consume
-it, and avoid an interim current-source acceptance adapter unless its capability value
-justifies an owner amendment.
+T3 S01 supplies F2 unit-envelope-v1, F1 unit-resolution-v1 and the shared ExecutionProgram codec.
+T3 S02 independently extends F4 with conditional-save-current-v1 after local-single-domain-v1.
+T3 S03 adds unit-acceptance-v1, conditional-save-units-v1 and F3 camera-handoff-v1 against candidate
+source/runtime fixtures. T3 S04 consumes those preaccepted scopes and provides the behavioral
+camera-experience-cutover gate. S05 authoring consumes accepted viewport plus cutover and declares
+camera-authoring-migration; S06 integrates. No self-consumed provider output or viewport prerequisite
+for pure/runtime preparation. All starts wait for the separate r186 upgrade to close and land.
 
-If the owner instead approves T1's early provider, retain one provider per gate major version
-and one shared operation/result/history implementation. Reconcile its revision interface now
-so cloud support/unit locks do not require a private T3 token. T3.P01.S02 becomes the compound/
-cloud adapter extension slice, not a second provider claim. A compatible extension retains the
-major and records expanded conformance/acceptance; incompatible revision or result semantics
-require a new F major row and consumer re-declaration. A local-only acceptance record cannot
-serve as proof of cloud CAS or cross-domain acceptance; those remain required by the behavioral
-T3 gate. Resolve exact provider/extension readiness before either phase's slice register becomes
-active. No local plan edits the shared gate register to make itself eligible.
+The current register/checker does not enforce capabilities. Proposed minimal amendment:
+Accepted capabilities on a gate row, linking scoped conformance/acceptance/commit records, and
+Requires on a slice row naming exact gate/capability pairs. Each required scope and prerequisite
+closure must be accepted at trusted base as well as current HEAD; a consumer cannot add its own
+readiness. Pending scopes are not accepted entries. One gate/version retains one original provider;
+extension slices are recorded only as capability contributors. Install enforcement in authorized
+T1 S01 after owner ratification. This PR edits no live register/checker.
+
+Optional kind/family/source-adapter additions keep a major only when existing required semantics
+are preserved; breaking revisions/results/coordinates/lifecycle needs a new major and consumer
+re-declaration. An accepted local record cannot stand in for later scopes. Source formats themselves
+change explicitly at S04: current root → envelope 1, Scene 1 → Camera-free Scene 2. Current-source
+normal adapters retire with all callers; no permanent dual-format protocol.
 
 ## 2. F.1 consumer reconciliation
 
@@ -71,7 +71,7 @@ No generic object bag that admits hidden domains or renderer/session state.
 
 | Proposed shape | Required meaning |
 | --- | --- |
-| ProjectRevision = {projectId, revisionId} | Exact opaque identity for one accepted snapshot. Compare equality only; never infer currency from a label/date/publication version. Every successful source change, including undo, gets a fresh identity. |
+| AcceptedRevision = {projectId, revisionId} | Exact opaque identity for one accepted snapshot. Compare equality only; never infer currency from a label/date/publication version. Every successful source change, including undo, gets a fresh identity. |
 | UnitHeader = {domain, unitId, formatVersion, contentRevision} | One stable codec unit identity per admitted domain; explicit supported domain format; immutable content identity over canonical domain payload. A header/payload version mismatch rejects. |
 | DomainUnit = {header, data} | One domain-owned validator/codec/evaluator boundary. Physical files/tables are not prescribed. |
 | ProjectEnvelope = {formatVersion, id, name, acceptedRevision, dependencyLock, units} | Explicit envelope version, project identity/name, revision belonging to that project, complete lock and exactly one Layout/Scene/Camera/Experience/typed-resource unit. Experience and resource payloads are collections; one unit does not mean one Experience/resource. |
@@ -138,91 +138,83 @@ no F4 accepted revision, so none is fabricated. The restricted converter establi
 new-format baseline with one CAS commit and a source/deployment recovery handle. It is not
 normal source Undo into an unsupported schema. No separate Camera-first migration is allowed.
 
-## 4. F.4 intent, result, CAS and history draft
+## 4. F.4 intent, result, conditional Save and history draft
 
-The common interface must serve Layout/Scene/Camera/Experience adapters without normalizing
-all domain planners to the same internal algorithm. Domain-specific planning outputs are
-wrapped at shared coordination. Common results are typed values, not thrown-only diagnostics.
+Reuse the [T1 common source-independent signatures](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/interfaces.md#f4-intentrevisionresult-and-early-local-foundation--s03-provider).
+AcceptedRevision is opaque project/revision identity, content digest compares canonical authored
+source/locks, and SessionEpoch guards host callbacks. No required common method exposes today's
+ProjectDocument or mandates F2 storage; domain/source adapters own full validation and candidates.
+F4@1 remains one implementation with registered planners and exact capability admission.
 
-| Proposed value/operation | Required interface semantics |
+| Capability / slice | Required meaning and conformance |
 | --- | --- |
-| AuthoringIntent = {formatVersion, operationId, kind, expectedRevision, targets, payload, capturedInputs} | Registered intent kind/version, one ProjectRevision, qualified targets, serializable typed payload; includes allocated IDs and sampled/pinned external inputs. No random/time/network/Three/closure read during planning. |
-| prepareIntent(snapshot, intent, capturedResourceSet) | Pure deterministic candidate preparation against the exact expected snapshot. Returns candidate unit/lock changes and correspondence/diagnostics or typed refusal. Does not install state, upload bytes or emit visitor effects. |
-| validateComposedCandidate(candidate, context) | All affected/preserved domain validators, cross-domain references/capabilities and lock/resource checks. Structural validity and permitted repairable authored bindings differ from selected-program executable closure. |
-| acceptIntent(store, intent) | Exact revision CAS, composed validation and one snapshot install/metadata commit. No per-domain installation. Local and server adapters share operation semantics, diagnostics and strict precondition. |
-| AcceptanceResult | accepted {operationId, beforeRevision, afterRevision, snapshot, changes, correspondence, undoResult}; no-op {operationId, revision}; rejected {operationId, code, expectedRevision, actualRevision when authorized, diagnostics}. Unknown/stale/unauthorized/invalid/resource-failed kinds are distinct. |
-| UndoResult | One validated source-content before/after payload and resource-lock restoration data for the whole accepted operation, labelled by source action. Runtime-only history metadata, never part of authored unit data. |
-| Undo/Redo intent | Targets one available chronological entry against the current expected revision; runs normal validation/CAS and installs once with a fresh revision. Does not rewrite old remote history or privilegedly assign an old revision. |
+| local-single-domain-v1 / T1 S03 | Registered Layout or Scene operations over current source, one snapshot/Undo, full current validation, immutable unchanged Camera/resource context, stale/no-op/refusal/ABA proof. Compound/unit/resource mutation refuses. |
+| conditional-save-current-v1 / T3 S02 | Capture local accepted source/revision/digest and create-only or expected-saved-base condition. Atomic server ownership/OCC/full-validation/append; idempotent receipt; explicit dirty/conflict behavior. No F2 or Stage prerequisite. |
+| unit-acceptance-v1 / T3 S03 | F2-backed single-domain and real Camera View + Presentation + optional Stop compound operations; complete reference/lock validation and staged admitted resources; whole-operation Undo/rollback. Candidate-only before S04. |
+| conditional-save-units-v1 / T3 S03 | Same Save semantics with F2 adapter/full lock validation and real-DB conformance. New source admission activates only at S04, retiring the current adapter. |
 
-Allocate IDs and capture Camera pose/projection/aspect, resource definitions/pins and explicit
-scope/migration decisions before evaluation. Revision identity creation must also be reproducible
-from accepted context and captured operation identity, or supplied as an explicit captured grant;
-never allocate a random revision inside a supposedly pure planner. Different operations yielding
-the same source contents still have different accepted revision identity. No-op detection compares
-canonical authored contents and locks before revision bookkeeping, so harmless allocation does
-not itself manufacture an edit.
+### Local acceptance and conditional persistence
 
-First compound kinds:
+`AuthoringIntent@1` carries registered kind/version, operationId, expected AcceptedRevision,
+qualified targets, typed payload and captured inputs. Pure preparation allocates nothing implicitly;
+revision grants/IDs/resource pins/sampled Camera pose/aspect are captured before evaluation. Domain
+planners keep specialized algorithms. Composed validation checks affected/preserved domains,
+references and locks, distinguishing repairable authored state from executable closure.
 
-- CapturePresentation: captured Camera View + new/existing Presentation binding, optional new
-  Stop/Guide insertion. New identities and insertion anchor are explicit; index is not identity.
-- EditStop/ReorderStops/RepeatStop: occurrence-local fields/order edits; Repeat allocates a new
-  Stop referring to the same Presentation, rather than cloning View geometry.
-- EditCameraSupport: domain-valid View/Connection/interior-anchor/timing edit with disclosed
-  shared reach and composed reference/continuation checks.
-- CreateProject/ReplaceProjectSource: explicit captured source
-  and complete validation; create has a create-only condition, replacement expects the current
-  revision. These do not form an unrestricted stale full-document Save bypass.
+`AcceptanceResult@1` is accepted with before/after revisions, snapshot facade, changes,
+correspondence and one undoResult; no-op with unchanged revision; or rejected with typed diagnostics
+and authorized actual revision. One immutable install occurs after all validation. Local operations
+use this same boundary regardless of lens; no raw direct source assignment or separate domain history.
 
-Intent registration is extensible. Unsupported kinds fail explicitly; human UI and agents
-cannot bypass the same adapters with raw document assignments. Group/duplicate operations
-validate together, including final ID collisions and downstream reference effects.
+`SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/
+version, stable operation ID and `create-only` or `expected-saved-base {token}` precondition. A source
+adapter validates this capture through shared coordination, not a parallel cloud document protocol.
+Under the owned project transaction, the server compares the durable saved-base token, runs the full
+source/domain/reference/lock validation and atomically records the captured revision/contents plus
+new saved-base token. Initial create fails on collision; update with missing/stale token fails before
+append. The pre-F2 revision/token lives in persistence metadata, not today's strict source JSON.
+F2 stores the captured accepted revision in its envelope. SQL version ordinal and publication OCC
+are distinct from all of these identities. The server recomputes the canonical source digest and
+rejects accepted revision identity reused for different contents. Source format is negotiated explicitly.
 
-### Local versus cloud preconditions
+The editor keeps local accepted work and one history, with dirty/saving/saved/conflict states.
+A response acknowledges only the captured source revision/digest; newer edits stay dirty. Old-session
+responses cannot install or mark source saved. Save does not create an authoring Undo entry or a new
+cloud history. Divergence preserves local work and remote data pending reload/explicit resolution;
+no automatic merge/rebase or requirement to execute every edit on the server.
 
-Use one opaque source revision type across local/server coordination. Host session epoch
-qualifies callback installation/gesture lifetime separately and is not a fake durable cloud
-revision. Reconcile T1's proposed combined local epoch/sequence/content token into this common
-source-revision plus host-lifetime arrangement, or agree an equivalent tagged shape before
-ratification; T3 cannot accept a private token just because the earlier provider is local.
+Look up stable retry receipts before treating the original saved-base token as a new stale request:
+identical capture returns the original saved receipt without another version; changed payload rejects.
+Ambiguous network outcome is resolved through the receipt. Keep receipts outside source; authorize
+before revealing stored state. Staged bytes are verified before the short transaction and checked
+again with revision/lock metadata; failures roll back source/version/pointer changes, with orphaned
+bytes collectable. No distributed transaction across SQL and object storage is claimed.
 
-Cloud source revision must be stored/returned with each saved envelope and matched under row
-lock before any new version is appended. It is distinct from SQL version number and P22
-expectedPublicationRevision. Missing revision, unknown source epoch or old client format returns
-a typed rejection. A second writer with the same expected revision loses the CAS, even if its
-document looks valid. Full-document PUT without that precondition is retired at activation.
+S02 replaces unrestricted legacy PUT with current-source conditional admission. S03 proves unit
+admission inactive; S04 quiesces, converts once and switches readers/writers/callers to that adapter.
+There is never a live format-sniffing Save fallback. In-progress T1/T2 consumers re-declare already
+accepted unit capabilities; do not consume current-only Save after its adapter retires.
 
-Staged bytes/metadata are prepared before the short SQL transaction. Revalidate staged resource
-tokens/pins and revision when committing. Any failure rolls back all unit/lock/version-pointer
-changes; orphaned staged bytes are collectable, not installed dependencies. No fictitious atomic
-transaction spans SQL and object storage. Ownership checks preserve not-found/unauthorized
-privacy; do not expose another owner's actual revision in a conflict receipt.
+### Compound operation and history scope
 
-One cloud-backed editing session uses the server as accepted authority; local provisional
-geometry is not an independently accepted branch. Local-only projects use the same coordinator
-in memory and can create/import into cloud explicitly. Offline branch/rebase/merge semantics are
-deferred and must not appear as silent Save behavior. A source replacement/new load invalidates
-old session callbacks/history context through the shared M5 guard.
+Explicit Experience creation/select precedes first capture; any combined creation captures the
+Experience identity and all other IDs before one compound acceptance. Never infer an Experience
+from a source array or fabricate one during release lowering.
 
-Propose operation receipts outside source for retry idempotency. Look up an identical already
-accepted operation before treating its old expected revision as a new stale request; return the
-original receipt, without a duplicate acceptance. Payload mismatch or expired/unavailable
-receipt requires explicit conflict/recovery, never a blind repeat. Receipt installation in the
-client still checks its current session epoch/revision lineage.
+First unit operations are CapturePresentation (View + Presentation + optional Stop), occurrence
+edit/reorder/repeat and Camera support edits with composed shared-reach checks. IDs/insertion anchors
+are captured, never array-index identity. Existing Layout/Scene operations migrate unchanged in
+meaning. No full component/performance/import framework is implied by admitted resource staging.
 
-### History mechanism and closure
+Use one 100-entry chronological snapshot history for whole accepted source operations. Compare
+canonical authored contents/locks before revision bookkeeping. Undo/Redo validates against current
+revision, installs once with fresh identity, preserves unrelated contents and truncates redo after
+new edits. No-op/refusal/cancel/stale adds nothing. An administrative schema conversion creates a
+new baseline plus retained recovery handle, not a normal Undo entry into unsupported old source.
 
-Propose a 100-entry chronological snapshot history with whole-operation undo payloads, labelled
-source actions and redo truncation. No source edit/history entry on no-op/refusal/cancel/stale
-revision. History is runtime coordination; cloud receipts/project_versions are separate durable
-metadata. This choice does not ratify CRDTs, selective actor undo, automatic rebase or a general
-op log. An immutable source restoration changes the current revision even when its content is
-identical to an older snapshot, preventing ABA acceptance of an old writer.
-
-Composed authored validity can accept explicit repairable bindings supported by the domain.
-Preview disables/refuses affected required behavior with a diagnosis; selected release execution
-requires closure. Required execution never interprets unresolved as keep-viewpoint, skips a Stop,
-matches a name, drops content or auto-creates a Camera edge. F4 acceptance alone is not publication.
+Conformance scopes are separately accepted under the proposed readiness amendment. Initial local
+acceptance must never authorize unit/resource/compound/cloud use. Required unresolved behavior is
+not keep-viewpoint, a skipped Stop or an auto-created Camera edge. Publication requires closure.
 
 ## 5. Minimal F.3/session amendment needed by cutover
 
@@ -242,11 +234,40 @@ guards. State transitions/effects are explicit reducer outputs. Repeated invocat
 independent sessions do not reuse lifecycle identity. No arbitrary creator script or inferred
 Once/FirstVisit history is admitted by naming an event.
 
-This is a small execution contract, not the full future expression/channel engine. Exact
-family/operator/program-slot spellings and conformance must be ratified in shared F code before
-S03. If T1's F3 gate includes only inspection, expand its declared compatible interface and
-accept the required conformance before T3 consumes it; do not claim inspection acceptance
-already proves guided/Preview handoff. Broader unsupported required behavior fails explicitly.
+This is a bounded execution contract, not a general expression/channel engine. T3 S03 adds
+`camera-handoff-v1` under the common F3 protocol before S04 consumes it; the original F3 provider
+stays T1 S01. Initial inspection acceptance does not prove guided/Preview handoff. T3 S05 proves
+real public-Stage integration and exact capture aspect, using the same role-negotiated output
+acquire/request/replace/return/cancel tickets and operation-specific gesture transition host.
+
+### Shared ExecutionProgram and F5 profile
+
+T3 S01 supplies the proposed runtime-safe `ExecutionProgram@1` codec, separate from authoring
+validator imports; T3 S03 implements its sole semantic lowering/interpreter. It is derived from
+accepted Experience/Camera/source identities, not another editable Guide/order format. T4 S02
+imports that codec for F5 program slots; T4 lowering and editor Preview both invoke T3's shared
+semantic lowering/evaluation. Delivery validation remains independent of source codecs/compilers.
+
+Required fields: kind/version and required capabilities; selected Experience/entry and labelled
+Presentation/content records; stable Stop occurrences and Camera invocation bindings; typed scoped
+state declarations/initial/reset values; finite local-time/hold mappings; bounded guard expressions;
+channel policies; and run-scoped lifecycle/actions. Declare empty cases explicitly. No copied
+Camera pose/path/graph, renderer object, source selection/history or arbitrary executable code.
+
+Bounded v1 semantics include distinct Presentation/Stop/visit-run identities; Cut; supported Travel
+with directed Camera timing; sequence-next, explicit Stop/End and covered return-to-origin;
+nonnegative holds/Continue; text Info Panel, ShowContent/NavigateTo/OpenUrl with real activation
+rules; boolean/choice state and literal/state-read/equality/conjunction guards; exclusive Camera
+handoff; explicit enter/arrival/complete/cancel events; reduced motion and semantic DOM navigation.
+The same required instruction has identical meaning in Preview and publication. Unsupported required
+program/state/operator/profile refuses. Later optional kinds extend the declared codec/profile with
+accepted conformance; changed existing meaning requires a versioned cutover.
+
+Non-empty shared codec/trace fixtures exercise repeated Stops/runs, initialization/reset, guard
+failure, finite hold/Continue, directed Travel/gap, Cut and stale handoff cleanup. T4 owns immutable
+packaging, closure and delivery, not another Experience interpreter. General media, arbitrary guards,
+new motion kinds, branch-rejoin authoring and path-edit UI remain follow-ons, not empty reserved
+fields pretending to implement F's minimum. Program clocks never own a second Camera sampler.
 
 Experience's clock inserts holds/continuation over Camera motion; it never integrates an
 independent pose path. Reduced motion cuts/minimizes motion through Camera to the same resolved
@@ -261,12 +282,13 @@ conformance scope and required/optional negotiation. This draft intentionally na
 export/test/acceptance artifact as existing. Put those paths in the global register when real
 implementation and recorded evidence exist.
 
-Ratify F1 identity extension, F2 header/envelope/lock and bounded unit admission, F4 revision/
-intent/result/undo and cloud mode, and the needed F3 run/handoff/session shape. Ratify the
+Ratify F1 identity extension, F2 header/envelope/lock/program codec and bounded unit admission,
+F4 source-independent revision/intent/result and local-edit/conditional-Save mode, the scoped
+readiness amendment, and the needed F3 run/handoff/session shape. Ratify the
 pre-baseline conversion exception separately. Register/accept the behavioral T3 gate from real
 retirement and visitor/acceptance evidence, not from this F text. F5 prepared delivery and
 source-backed P22 retirement remain coordinated with T4; no release interface is minted here.
 
 Stop before implementation. The next reviewable action is approval/reconciliation of S01's
-shared F2 provider and its F1 prerequisite, not construction of a local Experience schema or
+shared F2/program provider and its accepted F1/F3 prerequisites after r186 closure, not construction of a local Experience schema or
 changes to normative F/reference documents.
