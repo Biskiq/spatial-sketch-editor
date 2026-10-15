@@ -8,7 +8,7 @@ Route: [T3](../README.md) · [runbook](../../../operations/t3-experience/README.
 
 **Recommendation:** reuse T1's shared local F4, deliver conditional Save independently of F2
 activation, then prepare and activate the sole Camera/Experience source/runtime transition.
-Use the [coordinated allocation/readiness/DAG](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and [F amendments](./f-amendment-proposals.md).
+Use the [coordinated allocation/readiness/DAG](../../cross-track-execution.md) and [F amendments](./f-amendment-proposals.md).
 All provider/version/capability assignments remain proposals. First T3 capability work is S01
 unit/program codecs after accepted common interfaces; S02 Save can run independently once local F4
 is accepted. Both implement against the landed r186 base (`74efb98b`: three 0.186.1, camera-core peer
@@ -374,7 +374,7 @@ retires current-source normal admission and scope. No ordinary Undo crosses that
 
 ## 8. Minimum T1/T2/T4 dependencies
 
-The [coordinated matrix/DAG and capability-readiness amendment](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) defines the common
+The [coordinated matrix/DAG and capability-readiness amendment](../../cross-track-execution.md) defines the common
 assignments. T1 S01 supplies F1/F3; T1 S03 alone provides the initial local F4. T3 S01 provides F2,
 S02 adds early conditional Save independently of F2, and S03 extends unit/compound/Save/handoff
 conformance before activation. Required base and extension capabilities must be accepted at trusted

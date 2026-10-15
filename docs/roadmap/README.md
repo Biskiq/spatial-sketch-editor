@@ -33,7 +33,8 @@ per concern:
 - ownership and boundaries → [`../reference/architecture.md`](../reference/architecture.md);
 - the ratified cross-domain shapes F.1–F.5 →
   [`../reference/composition-execution.md`](../reference/composition-execution.md), registered
-  in [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md);
+  in [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md); exact shared
+  interfaces ratified 2026-10-15 ([record](../reference/decisions/f-ratification-2026-10-15.md));
 - the ratified shell and visual-system destination (PLATE) →
   [`../reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md).
 
@@ -83,12 +84,12 @@ ratified amendments.
 
 | Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1.reference | — | foundation | composition-execution.md | [F.1](../reference/composition-execution.md#f1-identity-and-reference) | undrafted | — | — | — | — | — |
-| F2.unit-envelope | — | foundation | composition-execution.md | [F.2](../reference/composition-execution.md#f2-persisted-units-and-the-project-envelope) | undrafted | — | — | — | — | — |
-| F3.channels | — | foundation | composition-execution.md | [F.3](../reference/composition-execution.md#f3-channels-and-representation-parameters) | undrafted | — | — | — | — | — |
-| F4.intent-acceptance | — | foundation | composition-execution.md | [F.4](../reference/composition-execution.md#f4-compound-acceptance) | undrafted | — | — | — | — | — |
+| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | ratified | — | — | — | — | — |
+| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | — | — | — | — | — |
+| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | ratified | — | — | — | — | — |
+| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | — | — | — | — | — |
 | F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — |
-| T1.viewport-projection | — | capability | T1 | — | undrafted | — | — | — | — | — |
+| T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | — | — | — | — | — |
 | T3.camera-experience-cutover | — | capability | T3 | — | undrafted | — | — | — | — | — |
 | T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — |
 
@@ -98,6 +99,9 @@ ratified amendments.
   cutover in one track).
 - **State** is `undrafted | ratified | implemented | accepted | superseded`. None is ready
   today: an undrafted gate has no version, and a ratified shape alone is not readiness.
+  A `ratified` row names its amendment anchor and keeps empty evidence columns; its sole
+  provider assignment lives in the amendment text until phase registration wires the
+  `Provider slice` column.
 - **Version** is `—` while a gate is `undrafted`; the first ratified amendment assigns `1`.
   A compatible, optional extension keeps the version and records its amendment anchor. An
   **incompatible** amendment adds a new row (`version + 1`) and marks the old row
@@ -115,7 +119,10 @@ ratified amendments.
   every consumed `Gate@Version` must already have been `accepted` **at the trusted base**
   (`git merge-base HEAD main`) — a consumer cannot satisfy its own prerequisite by editing
   this register. A consumer of a `superseded` row is ineligible until it re-declares the new
-  version; `shipped` slices keep their historical version.
+  version; `shipped` slices keep their historical version. The finer capability-scope rule
+  (`Accepted capabilities` / `Requires`, including a retired scope being ineligible) is defined
+  by the [capability-readiness rule](./f-foundation-contracts/README.md#capability-readiness);
+  its checker enforcement is authorized T1.P01.S01 work and is not installed here.
 
 ## Lifecycle and completion events
 
@@ -146,6 +153,12 @@ PR #115 replaced that sequence with the tracks above.
 
 These proposals are not authorized and have no phase or slice. Registering execution is an
 owner decision; their presence here is a planning route, not lifecycle or gate readiness.
+
+- **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
+  execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
+  re-derive against; owner-confirmed 2026-10-15. It registers no gate, phase or slice, and its exact
+  interfaces stay the F amendments in
+  [`../reference/composition-execution.md`](../reference/composition-execution.md).
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,
