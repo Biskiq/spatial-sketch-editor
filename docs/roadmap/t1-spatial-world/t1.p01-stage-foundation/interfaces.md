@@ -23,19 +23,21 @@ reference, value, intent or accepted document.
 
 | Surface | Required shape and behavior | Owner |
 | --- | --- | --- |
-| `StageReadSnapshot` | Immutable validated current ProjectDocument, F.1 revision context/content identity, session epoch, compile generation and resolved runtime-safe Layout/Scene inputs. One coherent source snapshot; compiled geometry is never authored or deep-proxied. Later F.2 snapshots enter through an explicit reader adapter, not a cast. | Project coordination; T1 read adapter until T3 cutover |
+| `StageReadSnapshot` | Source-independent validated read facade: AcceptedRevision, separate content identity/session epoch, admitted source kind/version, compile generation and immutable domain-owned Layout/Scene/Camera read access. No public required current-ProjectDocument field. Current/F2 adapters own strict decoding and canonical domain views; derived geometry is never authored or deep-proxied. | Shared project coordination; T1 initial adapter, replaced by T3 S04 |
 | `ViewportRect` | CSS left/top/width/height and DPR, all finite, width/height positive. CSS coordinates drive input/overlays; framebuffer pixels only drive rendering. Hidden/zero-size viewport yields unavailable output rather than division by zero. | Stage host |
 | `ViewportEvaluation` | Immutable output ID, epoch, source revision, evaluation generation, realized eye/target/up, view and projection matrices plus inverses, near/far, target-plane meters per CSS pixel, projection kind, settled reading, working-plane qualification and diagnostics. Matrices use a documented column-major right-handed convention with project +Y up and X/Z horizontal. | Camera evaluation |
 | `projectWorld(point, evaluationId)` | Returns `{css:[x,y], ndcDepth, visibility}` for finite project-world meters. Visibility is `visible`, `outside-frame`, `clipped` or `behind`; projection is not a membership/selection decision. Invalid input/stale evaluation fails explicitly. | Camera projection |
 | `pointerRay(cssPoint, evaluationId)` | Returns finite project-world ray origin and unit direction from the **same** rendered matrix/inverse. Orthographic rays have varying origins/parallel directions. No separately inferred FOV or pixels-per-meter transform. | Camera projection |
 | `intersectWorkingPlane(ray, frame, evaluationId)` | Returns world point and qualified local coordinates, or `parallel`, `behind`, `outside-supported-domain`, `invalid-frame`, `stale-evaluation`. The plane/frame is explicit, never nearest Room. Snapping/host/support constraints are downstream domain operations. | Camera ray math; frame validity from owning domain |
-| `requestViewingIntent(intent, expectedOutputEpoch)` | Pan/orbit/zoom, Plan↔3D reading, Fit extent, Bring into view, explicit return-context operations; returns accepted/rejected/superseded. Intent supplies finite target/frame/scale and explicit policy inputs, never shell-generated tween poses. Duration/reduced-motion changes scheduling, not endpoint meaning. | Camera session controller/evaluator |
+| `acquireCameraOutput(role, expectedContext, policy)` | One Camera-owned ticket `{outputId,sourceRevision,sessionEpoch,ownerId,runEpoch}` for inspection, guided/free navigation, Follow, Look-through or Preview. Unsupported controller capability refuses; competing exclusive control rejects unless explicit replacement/handoff policy permits it. | Camera output owner |
+| `requestViewingIntent(intent, ticket)` | Pan/orbit/zoom, reading, Fit, Bring into view or declared guided/free output; finite domain intent/policy and explicit clock, never shell tween poses. Returns accepted/rejected/superseded. All realized matrices come from Camera evaluation. | Camera evaluator |
+| `replaceCameraOutput(ticket, role, returnPolicy)` / `returnCameraOutput(ticket, returnToken)` / `cancelCameraOutput(ticket)` | Ordered ownership transfer, Camera-owned return context and idempotent epoch-qualified cancellation. Former runs cannot clear/reclaim a replacement. Return validates current source/output context, otherwise refuses with a reason. No shell viewpoint history. | Camera output owner |
 | `evaluateLayoutPlan(compiled, parameters, sourceContext)` | Returns four typed streams, per-fragment correspondence, per-source membership with exclusion reasons, bounds and diagnostics. It clips/projects canonical sampled solids/query records and never re-fits curves or extracts another topology. | Runtime-safe Layout representation |
 | `resolveSourceHit(candidate, readSnapshot)` | Candidate carries source F.1 identity, generation and optional domain sub-reference. Reject stale fragments; resolve to canonical identity or explicit failure. Opening void/cap uses host+compiled intervals/profile, never nearest mesh face. | Domain hit adapter, hosted by Stage |
 | `registerStageAdapter(adapter)` | Editor-only registration of domain/required capabilities, world graphics, overlay contribution, eligible hit provider, selection echo, explicit task/instrument factory and disposer. Unknown required capability refuses mounting. No unowned writable store is passed to it. | T1 host; adapter content T2/T3 |
-| `acquireGesture(owner, outputEpoch, evaluationId)` | One captured pointer/writer lease with revision and domain parameterization; supplies cancellation on loss, replacement, owner unmount. Navigation and overlays cannot steal a captured gesture. Projection changes require adapter revalidation; stale samples cannot silently commit. | Editor session host |
+| `acquireGesture(owner, outputEpoch, evaluationId, transitionPolicy)` | One captured pointer/writer lease with accepted revision and operation parameterization. Policy is continue-after-revalidation, suspend-proposal or cancel-on-reading-change. The host calls the policy once before projection changes and invalidates old samples; loss, lens/project/task exit or unmount cancels once. Navigation cannot steal the lease. | Editor session host |
 
-Public editor access also exposes read-only canonical selection plus `select(reference)` and
+Public editor access also exposes one read-only ordered selection/primary value plus `select(reference)` and
 task open/close requests. There is one selection owner and one instrument home. A domain adapter
 may offer its own Card facts/precision, but may not create another lens selection or history.
 The host arbitrates **gesture ownership and eligible candidates**, not domain validity or one
@@ -73,7 +75,9 @@ Camera session ownership permits declared replacement of the active inspection c
 newer accepted intent supersedes the older run; epoch-qualified old completion/cancellation
 cannot reclaim or clear the new output. No editor OrbitControls object independently writes
 Camera pose/FOV. Pointer controllers translate input into authority requests. When T3 later
-adds Follow/Look-through/Preview, it must declare handoff/return policy through this same owner.
+adds Follow/Look-through/Preview controllers, it requires accepted `F3.channels@1:camera-handoff-v1`
+conformance through this protocol. S02 proves role negotiation/unavailability and inspection
+ownership; its read-only probe does not prove authored Camera capture or Preview execution.
 
 ### Minimal ordinary Plan representation
 
@@ -128,7 +132,9 @@ Ratification/implementation in a consumer's own diff cannot satisfy its trusted-
 ## F amendment drafts
 
 These are the smallest exact interfaces needed by this proposal. The owner must promote/ratify
-them into F with stable anchors, consumer list, version and conformance before implementation.
+them into F with stable anchors, consumer list, version and conformance before implementation. The proposed Accepted-capabilities / Requires extension in
+[cross-track readiness](./cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+is also a prerequisite; today's checker does not enforce it.
 No change to F/reference, the global gate register or another track is made by this proposal.
 
 ### F.1 Reference and resolution — S01 provider
@@ -139,7 +145,7 @@ stable strings; ordering is stable ID ordering, never a parsed display label.
 | Field | Exact proposed meaning |
 | --- | --- |
 | `version: 1`, `domain` | Domain is Layout, Scene, Camera, Experience or a declared typed-resource kind; unsupported required domain/kind is incompatible. |
-| `revision` | Tagged `exact {revisionId}` (immutable content identity) or `project-lock {projectId}` resolved **against the supplied accepted snapshot and lock**. No ambient latest lookup. A resolution records its concrete revision. Session acceptance tokens are not persisted references. |
+| `revision` | Tagged `exact {contentRevision}` (immutable domain/source content identity) or `project-lock {projectId}` resolved **against the supplied accepted snapshot and lock**. No ambient latest lookup. A resolution records its concrete revision. Session acceptance tokens are not persisted references. |
 | `subject {kind, id}` | Stable canonical subject; kind declares target scope and resolver. Components/capabilities have their own opaque IDs where addressable; absent component/capability is explicit, not fabricated. |
 | `instancePath: readonly ID[]` | Ordered stable instance IDs; empty path explicitly denotes the root subject. Mutable hierarchy/name paths are not accepted. |
 | `location` | Tagged `project-root` or `layout-location {levelId, structureInstancePath}`. Current Layout floor ID maps explicitly to level qualification in the read adapter; empty structure path means the project root. No Level schema or fake Room/structure is introduced. |
@@ -149,8 +155,12 @@ stable strings; ordering is stable ID ordering, never a parsed display label.
 subject, concrete revision and owner; or `missing | removed | incompatible | unauthorized |
 repair-required` with original reference, code/message and explicit supported repair actions.
 Resolvers perform no repair as a read effect. S01 also defines the shared read-context identity
-`SnapshotIdentity@1 = {projectId, sourceContentId}`; current-source readers use the canonical
-serialized source's content identity. They resolve exact references against that supplied
+`SnapshotIdentity@1 = {acceptedRevision, sourceContentId}` with a separate host SessionEpoch;
+AcceptedRevision is opaque `{projectId, revisionId}`, while current-source content identity hashes
+the canonical serialized source. S01 owns these read-context types; F4 reuses them. Validated
+read-only boot establishes a captured baseline, without claiming a mutation/history capability.
+The adapter holds accepted metadata outside current source JSON. Resolvers evaluate exact
+references against that supplied
 snapshot, and return `incompatible` for project-lock resolution without an admitted F.2 lock
 reader. Do not manufacture a dependency lock. On valid source acceptance the selection owner
 explicitly requalifies a surviving canonical subject through the acceptance correspondence to
@@ -159,6 +169,11 @@ one identity without pretending an exact old-revision reference resolves to new 
 Current adapters support actual Layout entities,
 Scene entities and read-only current Camera subjects; Experience/resource subjects may remain
 explicitly unresolved until their provider lands. No fake occurrence identity is admitted.
+
+`FrameReference@1` tags project-world or an owner-qualified frame identity/reference and revision.
+The owning domain resolves origin/orientation/datum and validates point/vector conversion; a
+current Room without an authored frame cannot qualify. F3 addresses and T2 typed operation inputs
+reuse this identity contract; no generic execution machinery is required to transform a point.
 
 `DerivedSourceRef@1 = {source: SemanticReference, generationId, stream, subRef?}` is runtime-only.
 Selection stores its canonical source, not fragment identity; generation-qualified fragment
@@ -172,7 +187,7 @@ admission rules, not every future domain resolver or public-address implementati
 ### F.3 Address/value and inspection families — S01 provider, S02 evaluator
 
 Propose `ChannelAddress@1 = {ownerReference, instancePath, componentId, capabilityId,
-propertyId, frame}` with no delimiter-string parsing. `frame` is tagged project-world,
+propertyId, frame}` with no delimiter-string parsing. `frame` uses shared FrameReference@1, tagged project-world,
 Layout-level, Wall-host or declared internal/room-local frame with stable ID and revision;
 validity/conversion comes from its owner. Current Room without a frame does not qualify as one.
 
@@ -196,58 +211,61 @@ their meaning. Fixtures cover finite default/depth absence, invalid units/frame/
 required family, optional unsupported family, conflict, replacement and stale cleanup, plus
 runtime-safe import direction. Rich execution operators are later declared extensions.
 
-### F.4 Intent/revision/result and early local foundation — S03 conditional provider
+### F.4 Intent/revision/result and early local foundation — S03 provider
 
-**Exact timing amendment requested:** replace the first-implementation constraint with:
-“A bounded shared local acceptance/history foundation may precede the Experience cutover for
-single-domain Layout intents over the current project encoding. The first compound acceptance,
-Camera-unit/Experience-order cutover and cloud expected-revision Save remain T3 obligations.
-The early provider neither accepts multi-domain/resource-changing intents nor labels the current
-document as the F.2 destination envelope.” The owner must also approve T1's bounded provider
-assignment or assign it to T3 before S03 starts. This is a sequencing/scope amendment, not
-permission for separate acceptance semantics.
+Proposed sole common provider: T1.P01.S03, with `local-single-domain-v1` admission for registered
+Layout or Scene planners. The exact timing amendment permits this shared local foundation and
+early conditional Save before Experience. First compound Camera/Experience acceptance remains T3.
+The initial local capability proves neither cloud persistence nor unit/lock/resource admission.
 
-Draft common interfaces (implemented in shared project coordination, not phase-local code):
+Ratify these source-independent signatures before implementation:
 
-- `RevisionToken@1`: opaque project identity, session epoch, monotonic accepted sequence and
-  canonical source content identity. Cloud revision tokens are an explicitly supported future
-  extension, not a session sequence sent to today's Save API. Token equality is exact.
-- `AuthoringIntent@1`: version, registered kind/owning domain, expected revision token, stable
-  operation ID, qualified canonical target references, typed serializable payload and captured
-  inputs/allocated identities. No closure, Three object, clock/random call or pending gesture.
-- `PrepareResult@1`: candidate plus domain diagnostics/correspondence and unchanged baseline
-  context, or typed rejection. Domain planners keep operation-specific results behind this
-  coordination adapter; the interface does not force one Layout planner protocol.
-- `AcceptanceResult@1`: `accepted {beforeRevision, afterRevision, snapshot, changes, undoResult}`,
-  `no-op {revision}`, or `rejected {revision, code, diagnostics}`. Failure retains the supplied
-  expected snapshot. Changes/correspondence are domain-qualified source identities; no generated
-  mesh IDs. Selection mapping is an explicit editor policy over that result, not hidden retargeting.
+- `AcceptedRevision@1 = {projectId, revisionId}`: opaque accepted identity, fresh on every source
+  change and Undo/Redo. `SourceContentId` hashes canonical authored contents/resource context;
+  `SessionEpoch` guards host lifetime. Neither digest nor epoch is the accepted revision token.
+- `AuthoringIntent@1`: version, registered kind, operation ID, expected AcceptedRevision, qualified
+  targets, typed serializable payload and captured inputs/allocated IDs. No clock/random/network,
+  closure, pending gesture or renderer handle enters deterministic planning.
+- `AcceptedSnapshot@1`: validated read facade with accepted revision, source-content identity,
+  admitted source-kind/version and domain read access. Domain payloads/candidates remain behind
+  source/domain adapters. No required signature embeds current ProjectDocument or F2 encoding.
+- `prepareIntent(snapshot, intent, capturedInputs)`: unchanged expected baseline plus validated
+  candidate changes/correspondence/diagnostics, or typed rejection. Keep operation-specific Layout
+  planner outputs behind coordination; no universal planner algorithm or base class.
+- `AcceptanceResult@1`: accepted `{operationId,beforeRevision,afterRevision,snapshot,changes,
+  correspondence,undoResult}`, no-op `{operationId,revision}`, or rejected `{operationId,code,
+  expectedRevision,actualRevision when authorized,diagnostics}`. One logical install/undo result.
 
-S03 admits current-source, single-Layout intents only. The current-source read adapter preserves
-Scene/Camera and all existing resource bindings verbatim, runs the full current project validator
-and Layout gates, and refuses any operation that needs new units, lock changes, external staging
-or compound changes. It does not invent an empty dependency lock for an asset-bearing project.
-Its accepted snapshot/revision/history wrapper is session coordination, never serialized into
-ProjectDocument. New F.2 envelope/resource consumers must declare their accepted interface gates
-and install the complete lock/resource validation before they are admitted; unsupported intents
-fail explicitly. The current-source adapter retires when T3's cutover reader replaces that source
-shape, with its callers migrated together and no indefinitely writable legacy branch.
+`local-single-domain-v1` registers Layout and Scene adapters, runs complete current-project
+validation and unchanged-domain/resource enforcement, and refuses multi-domain, new-unit,
+external-staging or resource-changing operations. Prove one real Layout candidate and one
+validated Scene scalar candidate through the registration seam; T2 owns its production placement/
+transform operations. Preserve co-located Camera fields exactly. Do not manufacture a dependency
+lock or serialize this session wrapper into current source.
 
-One Layout gesture/field enters prepare/validate/accept once. Snapshot installation and its undo
-result are one logical publication; partial state is never visible. Validation/refusal/no-op/stale
-results do not mutate selection or history. Snapshot undo/redo uses this same acceptance boundary
-with fresh tokens, canonical validation and unchanged resource context; it is not a privileged
-backdoor. Initial history depth is 100; source comparison uses canonical authored content, not
-display rounding or incidental allocation bookkeeping. Domain-specific no-op diagnostics map to
-the common no-op outcome without a history entry.
+Use one 100-entry chronological snapshot history through the same acceptance boundary. Undo/Redo
+validates current-source restoration with fresh revisions; no-op/refusal/cancel changes neither
+source nor history; new edits truncate redo. Selection requalification uses explicit correspondence.
+Compare authored contents rather than revision/allocation bookkeeping. Prior-epoch callbacks cannot
+install; project replacement starts a new baseline. No privileged direct UI/history write bypass.
 
-Fixtures: identical intent/captured inputs deterministic; captured plinth ID reused on replay;
-local stale writer; previous-epoch
-completion; invalid/no-op rollback; one valid undo result; redo truncation/depth; download/parse
-round trip; resource/compound/unsupported-unit refusal; call-site bypass; untouched Scene/Camera.
-F4 gate acceptance must name this **local scope**. It is not the T3 compound/camera-experience gate
-or evidence that cloud Save is safe. T3 extends the same accepted interface with its required
-unit/lock/staging/compound adapters, using a new major version if the interface breaks.
+T3 S02 adds `conditional-save-current-v1` using captured local accepted source plus create-only or
+expected-saved-base persistence. This is independent of F2/Stage and introduces no cloud Undo stack.
+T3 S03 adds `unit-acceptance-v1` and `conditional-save-units-v1` to the same implementation, with
+full F2/reference/lock validation, admitted resource staging, real Camera/Experience compound
+planners and whole-operation history. The [coordinated readiness proposal](./cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+requires explicit capability evidence on the trusted base; base gate acceptance cannot satisfy them.
+
+T3 S04 migrates all Stage/acceptance/Save/starter callers and retires current-source adapters in one
+source transition. This is an explicit persisted-format cutover, not a second F4 protocol. Keep the
+F4 major only because revision/result/facade semantics are reconciled now; breaking changes later
+require a new major and consumer redeclaration. Administrative migration resets source history
+with retained recovery material; normal Undo never reinstalls the retired schema.
+
+Conformance: captured-input determinism and IDs, local stale/ABA rejection, real Layout/Scene
+registration, exact mixed chronological Undo/Redo, redo depth/truncation, full validation rollback,
+unsupported compound/resource refusal, untouched Camera bytes, and bypass-sensitive caller proof.
+Cloud/unit readiness requires the separately named extension records, never inferred coverage.
 
 ### F.2 and F.5 disposition
 
@@ -257,8 +275,9 @@ does not create a new authored unit. F.2's Camera split remains simultaneous wit
 cutover. The F.4 early-current-source exception above must be explicitly ratified; it must not be
 presented as an already conforming F.2 envelope or resource lock.
 
-T2/T3 draft their first unit header/envelope/lock interfaces with their actual persisted
-consumers. T4 drafts the release manifest/profile/reader interface. This phase exports no
+T3 S01 is the sole proposed F2 unit/envelope/lock provider; T4 S02 provides F5 using T3's shared
+ExecutionProgram codec. Their scopes and readiness are reconciled in
+[cross-track allocation](./cross-track-reconciliation.md#provider-and-acceptance-matrix). This phase exports no
 prepared program, new publication format or authoring machinery to visitor releases, and
 neither consumes nor provides `F2.unit-envelope` or `F5.release-envelope`. If implementation
 finds it needs a new persisted header, resource lock or cross-domain unit format, stop that

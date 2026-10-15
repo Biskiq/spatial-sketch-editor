@@ -128,3 +128,5 @@ for it today. Each is a T1 capability, not a regression.
   `:invalid` defect;
 - **TD-5**'s lesson — do not deep-proxy compiled geometry; measure against the input the editor
   actually hands in.
+
+The phase proposal also routes the [coordinated T1–T4 allocation/readiness/DAG](./t1.p01-stage-foundation/cross-track-reconciliation.md), pending ratification.
