@@ -66,6 +66,11 @@ destination column is shipped.
 No T1 phase is registered. A phase is added here by an authorized plan, with its own README
 under `./t1.p01-<capability>/` and its own slice register.
 
+**Owner-review proposal:** [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md)
+recommends the first bounded phase, its early viewport provider and its unopened cycle window.
+It is track-local planning, not a registered phase, a ratified F amendment or implementation
+authorization. The register below stays unchanged pending the owner's decision.
+
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | — | — | — | — |
@@ -123,3 +128,5 @@ for it today. Each is a T1 capability, not a regression.
   `:invalid` defect;
 - **TD-5**'s lesson — do not deep-proxy compiled geometry; measure against the input the editor
   actually hands in.
+
+The phase proposal also routes the [coordinated T1–T4 allocation/readiness/DAG](./t1.p01-stage-foundation/cross-track-reconciliation.md), pending ratification.
