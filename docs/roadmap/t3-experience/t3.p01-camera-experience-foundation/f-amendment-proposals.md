@@ -8,7 +8,7 @@ Readiness owner: [gate register](../../README.md#gate-register).
 
 ## 1. Provider and readiness decisions
 
-Use the [coordinated allocation/readiness/DAG proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md); it is pending ratification,
+Use the [coordinated allocation/readiness/DAG proposal](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md); it is pending ratification,
 not a shared authority or accepted dependency. Sole proposed providers: **F1/F3 T1 S01; F4 T1 S03;
 F2 T3 S01; F5 T4 S02**. T3 extends the same F4 implementation; no competing gate provider.
 
@@ -23,7 +23,7 @@ T3 S03 adds unit-acceptance-v1, conditional-save-units-v1 and F3 camera-handoff-
 source/runtime fixtures. T3 S04 consumes those preaccepted scopes and provides the behavioral
 camera-experience-cutover gate. S05 authoring consumes accepted viewport plus cutover and declares
 camera-authoring-migration; S06 integrates. No self-consumed provider output or viewport prerequisite
-for pure/runtime preparation. All starts wait for the separate r186 upgrade to close and land.
+for pure/runtime preparation. All starts use the landed r186 base (`74efb98b`).
 
 The current register/checker does not enforce capabilities. Proposed minimal amendment:
 Accepted capabilities on a gate row, linking scoped conformance/acceptance/commit records, and
@@ -140,7 +140,7 @@ normal source Undo into an unsupported schema. No separate Camera-first migratio
 
 ## 4. F.4 intent, result, conditional Save and history draft
 
-Reuse the [T1 common source-independent signatures](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/interfaces.md#f4-intentrevisionresult-and-early-local-foundation--s03-provider).
+Reuse the [T1 common source-independent signatures](../../t1-spatial-world/t1.p01-stage-foundation/interfaces.md#f4-intentrevisionresult-and-early-local-foundation--s03-provider).
 AcceptedRevision is opaque project/revision identity, content digest compares canonical authored
 source/locks, and SessionEpoch guards host callbacks. No required common method exposes today's
 ProjectDocument or mandates F2 storage; domain/source adapters own full validation and candidates.
@@ -192,7 +192,9 @@ bytes collectable. No distributed transaction across SQL and object storage is c
 
 S02 replaces unrestricted legacy PUT with current-source conditional admission. S03 proves unit
 admission inactive; S04 quiesces, converts once and switches readers/writers/callers to that adapter.
-There is never a live format-sniffing Save fallback. In-progress T1/T2 consumers re-declare already
+There is never a live format-sniffing Save fallback. Retirement ends current-source adapter admission
+only; the revision/result/history invariants endure as unit-capability prerequisites and shipped evidence
+stays valid history. In-progress T1/T2 consumers re-declare already
 accepted unit capabilities; do not consume current-only Save after its adapter retires.
 
 ### Compound operation and history scope
@@ -290,5 +292,5 @@ retirement and visitor/acceptance evidence, not from this F text. F5 prepared de
 source-backed P22 retirement remain coordinated with T4; no release interface is minted here.
 
 Stop before implementation. The next reviewable action is approval/reconciliation of S01's
-shared F2/program provider and its accepted F1/F3 prerequisites after r186 closure, not construction of a local Experience schema or
+shared F2/program provider and its accepted F1/F3 prerequisites on the landed r186 base, not construction of a local Experience schema or
 changes to normative F/reference documents.

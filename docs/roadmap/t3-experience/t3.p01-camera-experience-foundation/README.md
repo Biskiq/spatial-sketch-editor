@@ -8,11 +8,11 @@ Route: [T3](../README.md) · [runbook](../../../operations/t3-experience/README.
 
 **Recommendation:** reuse T1's shared local F4, deliver conditional Save independently of F2
 activation, then prepare and activate the sole Camera/Experience source/runtime transition.
-Use the [coordinated allocation/readiness/DAG](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and [F amendments](./f-amendment-proposals.md).
+Use the [coordinated allocation/readiness/DAG](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and [F amendments](./f-amendment-proposals.md).
 All provider/version/capability assignments remain proposals. First T3 capability work is S01
 unit/program codecs after accepted common interfaces; S02 Save can run independently once local F4
-is accepted. Neither implementation may start before the separate r186 foundation upgrade closes
-and lands; each plan records compatibility against its actual landed baseline.
+is accepted. Both implement against the landed r186 base (`74efb98b`: three 0.186.1, camera-core peer
+extended, Threlte unchanged); each plan records compatibility against that actual baseline.
 
 ## 1. Bounded outcome
 
@@ -42,7 +42,8 @@ cannot disable reduced motion. These phases do not complete publication UX or th
 ## 2. Investigated basis and implementation consequences
 
 Source baseline: 61baf02873a63d37e3f5a3e2992396f387600d38 (PR #116 merge), inspected in the
-prepared T3 worktree. This is planning evidence, not compatibility proof for the future r186 base.
+prepared T3 worktree. This is planning evidence, not compatibility proof for the landed r186 base; each
+implementation plan verifies Camera/visitor behavior against `74efb98b`.
 
 Read the [T3 evidence](../planning-evidence.md),
 [ratified architecture](../../../reference/architecture.md#semantic-authorities-ratified-destination),
@@ -139,7 +140,7 @@ Acceptance and PHASE CLOSE remain absent. First authoring does not wait for phas
 VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ./README.md#s06-integrated-final-gate
 
-After exact ratification and r186 closure, implement the sole `F2.unit-envelope@1` provider with
+After exact ratification, on the landed r186 base, implement the sole `F2.unit-envelope@1` provider with
 `unit-envelope-v1`, and extend F1 with `unit-resolution-v1`. Use shared project-model/domain codecs:
 strict headers/envelope/lock, Camera-free Scene version 2, Camera/Experience/resource collections,
 current Layout payload 5, and the runtime-safe **ExecutionProgram@1 codec** described in the F draft.
@@ -373,7 +374,7 @@ retires current-source normal admission and scope. No ordinary Undo crosses that
 
 ## 8. Minimum T1/T2/T4 dependencies
 
-The [coordinated matrix/DAG and capability-readiness amendment](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) defines the common
+The [coordinated matrix/DAG and capability-readiness amendment](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) defines the common
 assignments. T1 S01 supplies F1/F3; T1 S03 alone provides the initial local F4. T3 S01 provides F2,
 S02 adds early conditional Save independently of F2, and S03 extends unit/compound/Save/handoff
 conformance before activation. Required base and extension capabilities must be accepted at trusted
@@ -407,8 +408,10 @@ sequencing. No empty assumption, silent reinterpretation, premature source-capsu
 competing visitor engine. T4 S05 owns prepared API/resource/browser switch and source-reader retirement.
 
 **r186:** the separate [upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122)
-must close and land before capability implementation, including pure providers. Verify actual
-Camera/renderer/Threlte compatibility against that baseline when each implementation starts.
+is landed (`74efb98b`: three 0.186.1 / `@types/three` 0.186.0, Threlte unchanged, explicit
+`PCFShadowMap`). No Camera-authority amendment was needed: the camera-core peer admits `^0.186.1` and
+the dense motion/framing suites pass on the landed base. Verify actual Camera/renderer/Threlte
+compatibility against that baseline when each implementation starts.
 
 ## 9. Meaningful verification and acceptance criteria
 
@@ -465,9 +468,8 @@ Approve the six-slice boundary and defer advanced path/transport/media authoring
 phase. Do not postpone the capture/Cut Preview milestone for them. A publication gap requires verified
 inventory and explicit owner acceptance at activation; covered releases need a concrete disposition.
 No source transition, phase registration, gate acceptance, Baseline or cycle opening is authorized
-by this proposal. The separate r186 upgrade must close/land before any capability implementation.
+by this proposal. The landed r186 base (`74efb98b`) is the required implementation baseline.
 
 **First implementation work, if approved:** S01 unit/program codecs after accepted F1/F3;
-S02 conditional Save can start independently after T1's accepted local F4. Providers/conformance
-merge before consumers. Neither starts before r186 closure. All live registers/contracts and
+S02 conditional Save can start independently after T1's accepted local F4.Providers/conformance merge before consumers. Both start from the landed r186 base. All live registers/contracts and
 capability implementation remain unchanged; independent review and owner ratification come next.
