@@ -1,7 +1,7 @@
 # T1 — Spatial world
 
-**Track:** T1 · **Status:** planning — evidence recorded, **no implementation authorized**
-([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T1 · **Status:** approved — T1.P01 registered and `T1.P01.S01` authorized, not started;
+S02–S06 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
@@ -63,17 +63,18 @@ destination column is shipped.
 
 ## Phase register
 
-No T1 phase is registered. A phase is added here by an authorized plan, with its own README
-under `./t1.p01-<capability>/` and its own slice register.
-
-**Owner-review proposal:** [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md)
-recommends the first bounded phase, its early viewport provider and its unopened cycle window.
-It is track-local planning, not a registered phase, a ratified F amendment or implementation
-authorization. The register below stays unchanged pending the owner's decision.
+One row per registered phase. The phase README owns its objectives, children and order; this
+register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| — | — | — | — |
+| T1.P01 | approved | F1.reference@1, F3.channels@1 (ratified) | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
+
+T1.P01 is registered and **T1.P01.S01 is authorized** (owner decision 2026-10-15,
+[record](../../reference/decisions/f-ratification-2026-10-15.md)). S01 supplies the shared
+`F1.reference@1` and `F3.channels@1` providers and the capability-readiness enforcement. Every
+other slice stays `proposed`, blocked by its own accepted prerequisites; registering this phase
+authorizes no other phase, slice or track.
 
 ## Starting foundation
 
@@ -129,4 +130,4 @@ for it today. Each is a T1 capability, not a regression.
 - **TD-5**'s lesson — do not deep-proxy compiled geometry; measure against the input the editor
   actually hands in.
 
-The phase proposal also routes the [coordinated T1–T4 allocation/readiness/DAG](../cross-track-execution.md); its F amendments and readiness rule are owner-ratified 2026-10-15, while the allocation itself registers no gate, phase or slice.
+T1.P01 also routes the [coordinated T1–T4 allocation/readiness/DAG](../cross-track-execution.md); its F amendments and readiness rule are owner-ratified 2026-10-15, while the allocation itself registers no gate, phase or slice.

@@ -8,7 +8,8 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 (AM-1–AM-8); the readiness rule stays owned by
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
 registers no gate, phase or slice, and each provider is wired through its own authorized track
-phase. Candidate IDs below remain provisional until their phase registers them, and cross-PR links
+phase. Candidate IDs below remain provisional until their phase registers them — T1.P01 is now
+registered with `T1.P01.S01`–`T1.P01.S06` and only `T1.P01.S01` authorized — and cross-PR links
 identify proposals, never accepted prerequisites.
 
 Planning proceeds on the landed r186 base: the separate

@@ -41,7 +41,8 @@ per concern:
 The retained prototypes ([`../../prototypes/README.md`](../../prototypes/README.md)) are
 runnable product hypotheses and their QA/reference evidence; they test and challenge these
 contracts but are never production, persisted-format or implementation authority.
-Ratification, planning and prototype acceptance authorize **no** implementation.
+Ratification, planning and prototype acceptance authorize **no** implementation: capability work
+starts only from a registered phase's authorized slice.
 
 Status vocabulary, used by every register below: `proposed | planning | approved |
 in-progress | shipped | archived`. A register row states what is true now; it never
@@ -55,7 +56,7 @@ owns lifecycle only and never copies their content.
 
 | Track | Status | Roadmap |
 | --- | --- | --- |
-| T1 | planning | [T1 — Spatial world](./t1-spatial-world/README.md) |
+| T1 | approved | [T1 — Spatial world](./t1-spatial-world/README.md) |
 | T2 | planning | [T2 — Composition](./t2-composition/README.md) |
 | T3 | planning | [T3 — Experience](./t3-experience/README.md) |
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
@@ -84,9 +85,9 @@ ratified amendments.
 
 | Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | ratified | — | — | — | — | — |
+| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | ratified | T1.P01.S01 | — | — | — | — |
 | F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | — | — | — | — | — |
-| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | ratified | — | — | — | — | — |
+| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | ratified | T1.P01.S01 | — | — | — | — |
 | F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | — | — | — | — | — |
 | F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — |
 | T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | — | — | — | — | — |

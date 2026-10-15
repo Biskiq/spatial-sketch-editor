@@ -5,7 +5,8 @@ written and owner-ratified 2026-09-27 with amendments** (Camera cutover timing,
 interface ownership, required/optional extensions), and the exact interfaces AM-1–AM-8
 **owner-ratified 2026-10-15**, in the target contract
 [`../../reference/composition-execution.md`](../../reference/composition-execution.md);
-**no implementation is authorized.**
+**no implementation is authorized beyond the registered `T1.P01.S01` entry** (owner decision
+2026-10-15; registered by the [T1 phase register](../t1-spatial-world/README.md#phase-register)).
 
 **Goal:** settle the bounded cross-domain contract shapes for the ratified
 direction, so every later capability is re-planned against them. F is

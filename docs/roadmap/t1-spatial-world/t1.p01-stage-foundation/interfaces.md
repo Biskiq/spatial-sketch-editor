@@ -1,14 +1,18 @@
 # T1.P01 — interface and F amendment drafts
 
-**Status:** owner-review draft, 2026-10-14. This is the exact proposed surface for the
-[phase proposal](./README.md), not a shared contract, implemented export or accepted gate.
-Names and version 1 below are recommendations for ratification. Shared F semantics remain
-owned by [composition-execution.md](../../../reference/composition-execution.md); gate identity
-remains owned by [the roadmap register](../../README.md#gate-register).
+**Status:** registered phase's interface draft. This is the exact surface for
+[the registered phase](./README.md) and its slices, not a shared contract, implemented export or
+accepted gate. The F.1/F.3/F.4 shapes and `T1.viewport-projection` are owner-ratified 2026-10-15
+([record](../../../reference/decisions/f-ratification-2026-10-15.md)); the drafts below stay
+proposals for their providers' implementation and acceptance, and no export, conformance result or
+acceptance exists yet. Shared F semantics remain owned by
+[composition-execution.md](../../../reference/composition-execution.md); gate identity remains
+owned by [the roadmap register](../../README.md#gate-register).
 
 ## Viewport projection v1
 
-**Proposed gate:** `T1.viewport-projection@1` · owner T1 · sole provider T1.P01.S02.
+**Gate:** `T1.viewport-projection@1` — registered `ratified` at version 1 · owner T1 · sole
+provider T1.P01.S02 (proposed and unauthorized; implementation and acceptance are its own work).
 **Consumer boundary:** T2/T3 editor adapters can project/pick/register graphics and invoke
 Camera viewing intent through a public editor host without reaching into Stage internals.
 Acceptance covers ordinary project-world Plan/3D; it does not promise Section, peel, arbitrary
@@ -131,11 +135,14 @@ Ratification/implementation in a consumer's own diff cannot satisfy its trusted-
 
 ## F amendment drafts
 
-These are the smallest exact interfaces needed by this proposal. The owner must promote/ratify
-them into F with stable anchors, consumer list, version and conformance before implementation. The proposed Accepted-capabilities / Requires extension in
+These are the smallest exact interfaces the phase needs. AM-1–AM-8 are owner-ratified in F with
+stable anchors, consumer list and version
+([record](../../../reference/decisions/f-ratification-2026-10-15.md)); implementation, conformance
+and acceptance still belong to the provider slices, so the drafts below remain proposals for that
+work. The Accepted-capabilities / Requires extension in
 [cross-track readiness](../../cross-track-execution.md#capability-readiness-amendment)
-is also a prerequisite; today's checker does not enforce it.
-No change to F/reference, the global gate register or another track is made by this proposal.
+is a ratified rule; the checker enforcing it is authorized `T1.P01.S01` work and is not installed
+yet. No change to F/reference, the global gate register or another track is made by this draft.
 
 ### F.1 Reference and resolution — S01 provider
 
