@@ -9,20 +9,33 @@
  * It never repairs, never falls back to a name, label, index or nearest match,
  * and it fabricates no identity the current source does not author.
  *
- * **One source, one revision.** These adapters are built for one supplied source
- * *and* the `SnapshotIdentity@1` that source is the accepted content of — the
- * phase's F1 draft puts that accepted metadata beside the current source JSON,
- * never inside it, so nothing in the document itself names its revision. Every
- * resolution therefore checks three things before it looks at a subject: that the
- * read context is that same supplied snapshot, that the supplied source is that
- * snapshot's project, and that the reference's revision context is that snapshot's
- * accepted revision. An exact reference naming any other revision, or a
- * dependency lock resolving another project or another revision, is refused
- * rather than answered from content that is not the revision it names; that is
- * what keeps a resolution from reporting one revision while reading another, and
- * what stops another project's locked identity from resolving through this
- * source. A resolution that does proceed records the snapshot's accepted revision
- * as its concrete revision.
+ * **One source, one content, one acceptance.** These adapters are built for one
+ * supplied source *and* the `SnapshotIdentity@1` that source is the accepted
+ * content of — the phase's F1 draft puts that accepted metadata beside the current
+ * source JSON, never inside it, so nothing in the document itself names its
+ * revision. That snapshot carries two different identities and they are not
+ * interchangeable. `acceptedRevision` is the opaque **acceptance** identity, fresh
+ * on every source change *including Undo/Redo* (AM-1), so it names an acceptance
+ * event, not a body of content. `sourceContentId` is the current-source
+ * **content** identity, hashing the canonical serialized source, and it is what
+ * `exact {contentRevision}` names here: AM-1's ratified row and the phase draft
+ * both call `contentRevision` an *immutable domain/source content identity*, and
+ * only the content identity has that property — an undo back to earlier contents
+ * is a new acceptance of the same content.
+ *
+ * Every resolution therefore checks three things before it looks at a subject:
+ * that the read context is that same supplied snapshot, that the supplied source
+ * is that snapshot's project, and that the reference's revision names the content
+ * this source is. The context check is an acceptance-identity check — a context
+ * bound to one acceptance never impersonates another acceptance that happens to
+ * hold identical content — while the revision check is a content-identity check,
+ * so identical content under a different acceptance still resolves. An exact
+ * reference naming other content, or a dependency lock resolving another project
+ * or other content, is refused rather than answered from what this adapter holds;
+ * that is what keeps a resolution from reporting one revision while reading
+ * another, and what stops another project's locked identity from resolving
+ * through this source. A resolution that does proceed records that concrete
+ * content revision.
  *
  * The binding is a property of the pair, not a copy of the source: an adapter
  * serves the object it was built with, so a caller that mutates a document in
@@ -128,6 +141,12 @@ const RELOAD_SNAPSHOT: readonly ReferenceRepairAction[] = [
 	{ kind: 'reload-snapshot', description: 'Reload the accepted snapshot this adapter holds the source for.' }
 ];
 
+/**
+ * A resolution records the concrete revision it verified. The binding check has
+ * already proved that revision is this snapshot's content identity, so the value
+ * recorded is the content a consumer can re-resolve against — never an acceptance
+ * token, which would name an acceptance event rather than a body of content.
+ */
 function resolved(request: ReferenceReadRequest): ReferenceResolverOutcome {
 	return { kind: 'resolved', contentRevision: request.contentRevision };
 }
@@ -136,8 +155,9 @@ function missing(message: string): ReferenceResolverOutcome {
 	return { kind: 'missing', message, repairs: CHOOSE_SUBJECT };
 }
 
+/** Both identities, so a message never makes an acceptance look like a content. */
 function snapshotLabel(snapshot: SnapshotIdentity): string {
-	return `${snapshot.acceptedRevision.projectId}@${snapshot.acceptedRevision.revisionId}`;
+	return `${snapshot.acceptedRevision.projectId}@${snapshot.acceptedRevision.revisionId} (content "${snapshot.sourceContentId}")`;
 }
 
 function sameSnapshot(left: SnapshotIdentity, right: SnapshotIdentity): boolean {
@@ -149,10 +169,13 @@ function sameSnapshot(left: SnapshotIdentity, right: SnapshotIdentity): boolean 
 }
 
 /**
- * The snapshot/source/revision binding every resolution is checked against: the
+ * The snapshot/source/content binding every resolution is checked against: the
  * read context must be the supplied snapshot, the supplied source must be that
- * snapshot's project, and the reference's revision context must be that
- * snapshot's accepted revision. A binding failure is never resolved around.
+ * snapshot's project, and the reference's revision must name the content this
+ * source is. The context and project checks are acceptance-identity checks; the
+ * revision check is a content-identity check, so identical content under a
+ * different acceptance still resolves while a context bound to that other
+ * acceptance does not. A binding failure is never resolved around.
  */
 function bindingRefusal(
 	supplied: CurrentDomainSource,
@@ -176,10 +199,10 @@ function bindingRefusal(
 		};
 	}
 	if (reference.revision.kind === 'exact') {
-		if (reference.revision.contentRevision !== accepted.revisionId) {
+		if (reference.revision.contentRevision !== snapshot.sourceContentId) {
 			return {
 				kind: 'missing',
-				message: `exact revision "${reference.revision.contentRevision}" cannot be resolved against the supplied source, which is accepted revision "${accepted.revisionId}" of project "${accepted.projectId}"`,
+				message: `exact revision "${reference.revision.contentRevision}" names content this adapter does not hold: the supplied source of project "${accepted.projectId}" is content "${snapshot.sourceContentId}" (accepted revision "${accepted.revisionId}")`,
 				repairs: REACQUIRE_REFERENCE
 			};
 		}
@@ -192,10 +215,10 @@ function bindingRefusal(
 			repairs: RELOAD_SNAPSHOT
 		};
 	}
-	if (request.contentRevision !== accepted.revisionId) {
+	if (request.contentRevision !== snapshot.sourceContentId) {
 		return {
 			kind: 'missing',
-			message: `the dependency lock resolves project "${reference.revision.projectId}" to revision "${request.contentRevision}" and the supplied source is accepted revision "${accepted.revisionId}"`,
+			message: `the dependency lock resolves project "${reference.revision.projectId}" to content "${request.contentRevision}" and the supplied source is content "${snapshot.sourceContentId}" (accepted revision "${accepted.revisionId}")`,
 			repairs: RELOAD_SNAPSHOT
 		};
 	}

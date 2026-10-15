@@ -12,7 +12,7 @@
  * the admission rules, not every future domain resolver. On top of it, the
  * bounded current-domain read adapters are proved against a real project
  * document built from the package's own project boot, including their binding to
- * the one supplied snapshot and its accepted revision. Runtime-safe import
+ * the one supplied snapshot, its acceptance identity and its content identity. Runtime-safe import
  * closure is proved by `tests/lib/project-model-boundary.test.ts` (arch lane),
  * which walks every source file in this package.
  */
@@ -511,24 +511,31 @@ function currentDocument(): ProjectDocument {
 }
 
 /**
- * A reference into the supplied current source. Its concrete revision is the supplied
- * snapshot's accepted revision — the revision token, which is not the source digest.
+ * A reference into the supplied current source. Its concrete revision is the
+ * supplied snapshot's source-content identity — the immutable content identity
+ * `exact {contentRevision}` names, not the acceptance token, which is fresh on
+ * every source change including Undo/Redo and so names an acceptance event.
  */
 function currentReference(overrides: Partial<SemanticReference> = {}): SemanticReference {
 	return layoutReference({
-		revision: { kind: 'exact', contentRevision: SNAPSHOT.acceptedRevision.revisionId },
+		revision: { kind: 'exact', contentRevision: SNAPSHOT.sourceContentId },
 		...overrides
 	});
 }
 
-/** The read context for one supplied document, built from its own bounded adapters. */
+/**
+ * The read context for one supplied document, built from its own bounded adapters.
+ * `bound` is the snapshot those adapters were built for, so a fixture can hold
+ * identical content under a different acceptance than the context names.
+ */
 function currentContext(
 	document: ProjectDocument,
-	overrides: Partial<ReferenceReadContext> = {}
+	overrides: Partial<ReferenceReadContext> = {},
+	bound: SnapshotIdentity = SNAPSHOT
 ): ReferenceReadContext {
-	const host = createCurrentDomainResolverHost(document, SNAPSHOT);
+	const host = createCurrentDomainResolverHost(document, bound);
 	return {
-		snapshot: SNAPSHOT,
+		snapshot: bound,
 		sessionEpoch: 'session-1',
 		generationId: 'generation-3',
 		supportedExtensions: [],
@@ -577,7 +584,7 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 			);
 			expect(result.kind, `${kind} "${id}"`).toBe('resolved');
 			if (result.kind !== 'resolved') continue;
-			expect(result.subject.contentRevision).toBe(SNAPSHOT.acceptedRevision.revisionId);
+			expect(result.subject.contentRevision).toBe(SNAPSHOT.sourceContentId);
 			expect(result.subject.owner).toBe('layout');
 			expect(result.subject.subject).toEqual({ kind, id });
 		}
@@ -711,8 +718,9 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 	});
 
 	it('binds every resolution to the one supplied snapshot identity', () => {
-		// The context must be the snapshot the source was read at: another revision of the
-		// same project, another digest, and another project are each a different snapshot.
+		// The context must be the snapshot the source was read at: another acceptance of
+		// the same content, another content, and another project are each a different
+		// snapshot, even when the content identity happens to match.
 		const otherRevision = currentContext(document, {
 			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-8' }, sourceContentId: 'sha256-source-7' }
 		});
@@ -722,6 +730,7 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(staleRevision.code).toBe('repair-required');
 		expect(staleRevision.message).toContain('revision-8');
 		expect(staleRevision.message).toContain('revision-7');
+		expect(staleRevision.message).toContain('sha256-source-7');
 		expect(staleRevision.repairs.length).toBeGreaterThan(0);
 
 		const otherDigest = currentContext(document, {
@@ -745,49 +754,92 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(wrongBinding.message).toContain('project-9');
 	});
 
-	it('refuses a stale exact revision instead of reporting it while reading another', () => {
-		const stale = resolveReference(currentReference({ revision: { kind: 'exact', contentRevision: 'revision-6' } }), read);
-		expect(stale.kind).toBe('failed');
-		if (stale.kind !== 'failed') return;
-		expect(stale.code).toBe('missing');
-		expect(stale.message).toContain('revision-6');
-		expect(stale.message).toContain('revision-7');
-		expect(stale.repairs.length).toBeGreaterThan(0);
+	it('resolves the content an exact reference names across a different acceptance, without one acceptance impersonating another', () => {
+		// The reviewer's case: accept content H, accept an edit of it, then undo back to H.
+		// Acceptances A and C are two different acceptance identities holding identical
+		// content, so a reference pinned to that content is the same reference for both —
+		// while a read context bound to A must not be served as if it were C.
+		const contentA = 'sha256-source-a';
+		const first: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: contentA };
+		const undone: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-3' }, sourceContentId: contentA };
+		const pinned = currentReference({ revision: { kind: 'exact', contentRevision: contentA } });
 
-		// The same subject at the supplied revision still resolves, and the source digest
-		// is not a revision token: naming it as one is a stale revision, not a match.
-		expect(resolveReference(currentReference(), read).kind).toBe('resolved');
-		expect(
-			resolveReference(currentReference({ revision: { kind: 'exact', contentRevision: SNAPSHOT.sourceContentId } }), read).kind
-		).toBe('failed');
+		// Same content, either acceptance: the reference resolves, at that content revision.
+		for (const bound of [first, undone]) {
+			const result = resolveReference(pinned, currentContext(document, {}, bound));
+			expect(result.kind, `content "${contentA}" under acceptance "${bound.acceptedRevision.revisionId}"`).toBe('resolved');
+			if (result.kind !== 'resolved') continue;
+			expect(result.subject.contentRevision).toBe(contentA);
+		}
+
+		// The undo acceptance does not impersonate the original: identical content under a
+		// different acceptance is a different snapshot, and the context must be the bound one.
+		const impersonating = resolveReference(pinned, currentContext(document, { snapshot: first }, undone));
+		expect(impersonating.kind).toBe('failed');
+		if (impersonating.kind !== 'failed') return;
+		expect(impersonating.code).toBe('repair-required');
+		expect(impersonating.message).toContain('revision-1');
+		expect(impersonating.message).toContain('revision-3');
 	});
 
-	it('refuses a dependency lock that resolves another project or another revision', () => {
+	it('refuses an exact reference that names content the supplied source is not', () => {
+		const otherContent = resolveReference(
+			currentReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-6' } }),
+			read
+		);
+		expect(otherContent.kind).toBe('failed');
+		if (otherContent.kind !== 'failed') return;
+		expect(otherContent.code).toBe('missing');
+		expect(otherContent.message).toContain('sha256-source-6');
+		expect(otherContent.message).toContain('sha256-source-7');
+		expect(otherContent.repairs.length).toBeGreaterThan(0);
+
+		// An acceptance token is not a content identity: naming the supplied snapshot's
+		// `acceptedRevision.revisionId` as the exact content revision is other content.
+		const token = resolveReference(
+			currentReference({ revision: { kind: 'exact', contentRevision: SNAPSHOT.acceptedRevision.revisionId } }),
+			read
+		);
+		expect(token.kind === 'failed' && token.code).toBe('missing');
+
+		// The content the source actually holds still resolves, and records that content.
+		const held = resolveReference(currentReference(), read);
+		expect(held.kind).toBe('resolved');
+		if (held.kind !== 'resolved') return;
+		expect(held.subject.contentRevision).toBe(SNAPSHOT.sourceContentId);
+	});
+
+	it('refuses a dependency lock that resolves another project or other content', () => {
 		// A lock for another project: this adapter reads one project's source, so there is
 		// nothing to resolve that identity against.
 		const foreign = currentReference({ revision: { kind: 'project-lock', projectId: 'project-2' } });
-		const foreignLock: DependencyLockReader = { projectId: 'project-2', contentRevisionFor: () => 'revision-7' };
+		const foreignLock: DependencyLockReader = { projectId: 'project-2', contentRevisionFor: () => 'sha256-source-7' };
 		const foreignResult = resolveReference(foreign, currentContext(document, { lock: foreignLock }));
 		expect(foreignResult.kind).toBe('failed');
 		if (foreignResult.kind !== 'failed') return;
 		expect(foreignResult.code).toBe('missing');
 		expect(foreignResult.message).toContain('project-2');
 
-		// A lock that pins this project to a revision the supplied source is not.
+		// A lock that pins this project to content the supplied source is not.
 		const own = currentReference({ revision: { kind: 'project-lock', projectId: 'project-1' } });
-		const staleLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'revision-6' };
+		const staleLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'sha256-source-6' };
 		const stale = resolveReference(own, currentContext(document, { lock: staleLock }));
 		expect(stale.kind).toBe('failed');
 		if (stale.kind !== 'failed') return;
 		expect(stale.code).toBe('missing');
-		expect(stale.message).toContain('revision-6');
+		expect(stale.message).toContain('sha256-source-6');
 
-		// The lock agrees with the supplied snapshot: the reference resolves, at that revision.
-		const currentLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'revision-7' };
+		// A lock resolving to the acceptance token rather than to content is other content too.
+		const tokenLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'revision-7' };
+		expect(resolveReference(own, currentContext(document, { lock: tokenLock })).kind).toBe('failed');
+
+		// The lock agrees with the content the supplied source holds: the reference resolves,
+		// at that same content revision.
+		const currentLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'sha256-source-7' };
 		const ok = resolveReference(own, currentContext(document, { lock: currentLock }));
 		expect(ok.kind).toBe('resolved');
 		if (ok.kind !== 'resolved') return;
-		expect(ok.subject.contentRevision).toBe('revision-7');
+		expect(ok.subject.contentRevision).toBe('sha256-source-7');
 	});
 
 	it('refuses a component or capability qualifier the current source does not author', () => {

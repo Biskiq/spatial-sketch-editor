@@ -19,7 +19,7 @@ branch's diff; a later edit invalidates the rows it touches.
 | `F1.reference@1` (`references-v1`) exports | `packages/project-model/src/references/` (shapes, strict validation, resolver host + resolution, frame resolution, generation-qualified correspondence, stable ID ordering) |
 | `references-v1` bounded current-domain read adapters | `packages/project-model/src/references/read-adapter.ts` — actual Layout entities, actual Scene entities and read-only current Camera subjects from one supplied `ProjectDocument` |
 | `F3.channels@1` (`inspection-v1`) exports | `packages/project-model/src/channels/` (address/descriptor/typed values, the two v1 families including the ratified policy inputs, negotiation, the Camera-output ticket protocol) |
-| F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 31 cases |
+| F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 32 cases |
 | F3 conformance | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` — 26 cases |
 | Accepted-capabilities / Requires enforcement | `capabilityProblems` + the register fields in `apps/editor/tests/docs/parallel-track-gates.test.ts` |
 | Runtime-safe import direction | `apps/editor/tests/lib/project-model-boundary.test.ts` (arch lane) walks every file in the package |
@@ -32,7 +32,7 @@ npm run check                 svelte-kit sync && svelte-check        0 errors, 0
 npm run build                 vite build                                                       PASS
 npm run test:arch             vitest run --config vitest.arch.config.ts   15 files, 137 tests   PASS
 npm run test:heavy            vitest run --config vitest.heavy.config.ts   8 files, 118 tests   PASS
-npm test                      vitest run (complete suite)               118 files, 1588 tests  PASS
+npm test                      vitest run (complete suite)               118 files, 1589 tests  PASS
 npm run check:api             tsc -p tsconfig.json --noEmit                                   PASS
 npm run test:api              node --test (real Postgres)   39 tests, 0 skipped, 0 failed    PASS
 ```
@@ -62,10 +62,12 @@ after the last documentation edit rather than inherited from an earlier green ru
   with an empty instance path: cluster membership is a named same-room member group with no
   prefab/definition model and no instance frame, so it is grouping rather than instancing and it
   never changes how a subject is addressed. The adapters are bound to the one supplied
-  `SnapshotIdentity@1` they were built for — the read context must be that snapshot, the supplied
-  source must be that snapshot's project, and the reference's revision context must be that
-  snapshot's accepted revision — so a stale exact revision, a dependency lock resolving another
-  project or a revision the source is not, and a non-null `componentId`/`capabilityId` that no
+  `SnapshotIdentity@1` they were built for — the read context must be that snapshot (acceptance
+  identity included, so one acceptance never impersonates another holding identical content), the
+  supplied source must be that snapshot's project, and the reference's revision must name the
+  content the source holds (`exact` against the snapshot's `sourceContentId`, and an admitted F.2
+  lock against the same current-source content identity) — so other content, a dependency lock
+  resolving another project or other content, and a non-null `componentId`/`capabilityId` that no
   current domain authors are each a typed refusal instead of a resolution read from other content.
   An id the source does not author is `missing`; a subject kind no current adapter
   resolves is `incompatible`; a level, structure-instance path or Layout location the current source
@@ -147,6 +149,57 @@ What the review's verification section says is fair: the reviewers inspected the
 independently executing the suite. The numbers quoted above are the implementer's runs on the tested
 revision named at the top of this record.
 
+## Response to the third review round
+
+The third round raises one question rather than a defect: which identity `exact {contentRevision}`
+names, and whether comparing it to `acceptedRevision.revisionId` is the ratified reading. Assessed
+against the ratified AM-1 text and this phase's F1 draft **before** any code changed. The finding
+is **confirmed**: the content-identity reading is the one the contract requires, and the
+implementation was the outlier. No contract text, gate register or other track is amended — the
+code is corrected to the contract, not the contract to the code.
+
+| Citation | What it decides |
+| --- | --- |
+| AM-1 `SemanticReference@1.revision`: tagged `exact {contentRevision}` — with the F1 draft glossing it as "**immutable domain/source content identity**" | `contentRevision` names a body of content, not an acceptance event |
+| AM-1 `SnapshotIdentity@1`: "AcceptedRevision is opaque `{projectId, revisionId}`, **fresh on every source change including Undo/Redo**" | an acceptance token changes for *unchanged* content, so it cannot be the immutable content identity — the two fields are different identities and comparing them is a category error |
+| F1 draft: "current-source content identity hashes the canonical serialized source" | for this single-source domain the content identity is `sourceContentId` |
+
+The reviewer's counterexample is decisive. Accept content H as R1, accept an edit as R2, undo to R3
+— which holds H again. Under the old comparison a reference pinned to H is refused as `missing`
+against the undo acceptance even though the content it names is exactly what the adapter holds,
+while the acceptance token it named no longer exists: a no-op round trip would invalidate a durable
+reference. That is precisely what AM-1's "a durable reference identifies meaning, not a location"
+rules out, and it is why the acceptance correspondence — not the token — is what carries identity
+across acceptances. The earlier reading, recorded as owed after round two, argued a content match
+"needs a revision token the current source JSON does not carry"; that step was wrong, because the
+snapshot carries the content identity beside the JSON as `sourceContentId`, which is where the
+phase draft already puts the accepted metadata.
+
+Three independent places in this provider already used the content identity, so the adapter was
+inconsistent with its own package: the F3 Camera-output tickets pin `sourceRevision` to the source
+content identity; the F3 contribution-staleness check compares a contribution's
+`computedFrom.contentRevision` against `context.snapshot.sourceContentId`; and both conformance
+suites' non-adapter fixtures already pinned `'sha256-source-7'`. Only the current-domain adapter
+helper named the acceptance token.
+
+| Corrected | What changed |
+| --- | --- |
+| `exact` revision | Compared against `snapshot.sourceContentId` instead of `acceptedRevision.revisionId`; the refusal names both the content the reference requested and the content (and acceptance) the source holds |
+| `project-lock` revision | The admitted F.2 reader's concrete revision must be that same current-source content identity; a foreign project and other content each refuse |
+| Context/project binding | Unchanged, and now explicitly an **acceptance**-identity check: a read context bound to another acceptance refuses even when the content identity is equal, so one acceptance cannot impersonate another |
+| Recorded revision | The verified content revision (`sourceContentId`), never an acceptance token, which names an acceptance event rather than a body of content |
+| `snapshotLabel` | Reports both identities, so a diagnostic never makes an acceptance look like a content |
+
+Fixtures: **31 → 32 cases**. New coverage — same content under two different acceptances each
+resolving the same pinned reference, and the undo acceptance refusing a context bound to the
+original acceptance despite identical content; other content refused while the held content resolves
+and records it; an acceptance token named as an exact content revision refused; the four binding
+cases re-stated for content identity; and the dependency-lock cases re-stated as foreign project,
+other content, an acceptance token posed as content, and a lock agreeing with the held content
+resolving at that content revision. F1's shared core was unaffected — `resolveReference` was
+already correct, and no hashing was added to a resolver, no compatibility layer and no revision
+registry introduced.
+
 ## Owed to review (not implementer judgement)
 
 - The independent verdict against the plan's acceptance criteria, and the tested-revision
@@ -154,12 +207,15 @@ revision named at the top of this record.
 - Whether the corrected return/epoch semantics and the complete-ticket cancellation are the
   intended reading of AM-3's ordered handoff, and whether the bounded adapter's subject-kind set is
   the right breadth for `references-v1` — both are interface decisions the reviewer owns.
-- Whether binding an exact `contentRevision` to the supplied snapshot's `acceptedRevision.revisionId`
-  is the intended reading for this bounded single-source adapter. AM-1 makes both opaque and warns
-  that neither the digest nor the epoch is the revision token, and F.2's later per-unit
-  `contentRevision` hashes domain data only; the reading taken here is that for the current
-  single-document source the accepted revision *is* the concrete revision a resolution records. A
-  different reading needs a revision token the current source JSON does not carry.
+- ~~Whether binding an exact `contentRevision` to the supplied snapshot's
+  `acceptedRevision.revisionId` is the intended reading.~~ **Answered in round three**: it is not;
+  an exact reference is matched against the snapshot's `sourceContentId`, and the correction is in
+  this diff. Whether *that* reading is the intended one is still the reviewer's to confirm.
+- The identity space an admitted F.2 lock speaks in. The lock branch now compares the reader's
+  concrete revision against today's single-source content identity, and AM-2 says F.2 unit
+  `contentRevision` values hash canonical domain data only — a different identity space. That
+  resolution belongs to the F.2 provider when it lands; nothing here manufactures a lock, and with
+  no admitted reader `project-lock` remains `incompatible`.
 - That the binding holds only while the source object is not mutated in place: an adapter serves the
   object it was built with, so a caller that mutates a document must rebuild its adapters with the
   new accepted snapshot. Sealing or digesting the source on every resolve was not adopted, since the
