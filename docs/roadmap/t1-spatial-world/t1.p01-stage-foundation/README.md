@@ -8,7 +8,7 @@ the architecture-cycle window remains selected and unopened. Planning route:
 **Recommendation:** provide F1/F3, a small shared Stage/viewport host and the common local F4
 provider, then restore bounded Layout precision. The [cross-track allocation/readiness/DAG](./cross-track-reconciliation.md)
 and [exact interface drafts](./interfaces.md) govern this proposal's recommendations; neither is
-ratified. First capability work is S01 after exact amendments, authorization and landed r186 closure.
+ratified. First capability work is S01 after exact amendments, authorization and the landed r186 base (`74efb98b`).
 
 ## Outcome and deliberate boundary
 
@@ -40,10 +40,11 @@ history. Source download/reopen remains available independently; it is not a por
 After T3 S04, Save/source consumers re-declare unit capabilities accepted in T3 S03. No resource
 upload, general importer, publication or complete creator-to-visitor journey is claimed here.
 
-**Foundation prerequisite:** planning proceeds now; the separate
-[r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) must close with its
-implementation landed before any capability slice starts. Each implementation plan records the
-r186 base and affected renderer/Camera compatibility evidence; this proposal is based on post-#116.
+**Foundation prerequisite:** planning proceeds on the landed r186 base: the separate
+[r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) merged into `main`
+as `74efb98b` (closeout PR #123, `d69825fe`), standardizing three 0.186.1 / `@types/three` 0.186.0
+with Threlte unchanged and explicit `PCFShadowMap` at both shadow canvases. Each implementation plan records
+that base and affected renderer/Camera compatibility evidence; this proposal's evidence was inspected at post-#116.
 
 ## Basis and retained-code findings
 
@@ -139,7 +140,7 @@ Acceptance evidence is absent. PHASE CLOSE is not requested or recorded.
 
 ### S01 Shared interface providers
 
-**Prerequisite:** owner approval, landed r186 closure, exact F1/F3 and capability-readiness
+**Prerequisite:** owner approval, the landed r186 base, exact F1/F3 and capability-readiness
 amendments and registered ratified gate rows. Install the proposed Accepted-capabilities /
 Requires validation with the shared provider; do not mark incremental readiness using overall
 gate state alone. No live register or checker is changed by this planning PR.
@@ -176,7 +177,9 @@ Open location and Bring into view separate. Experience has a real empty/unavaila
 posture until T3 mounts its adapter; Preview/Save explain unavailable capability. Do not
 invent Presentations, Guides, Views or a mock editable Experience.
 
-Use one persistent Threlte Canvas/Stage across readings and lenses. Render canonical Layout
+Use one persistent Threlte Canvas/Stage across readings and lenses. Select the shadow-map type
+explicitly at the new Canvas, as the landed r186 upgrade does (`PCFShadowMap`); no boolean `shadows`
+that would resolve to the removed PCFSoft filtering path. Render canonical Layout
 and existing Scene through runtime-safe adapters. Add Layout-owned ordinary Plan evaluation
 from compiled solids/queries: cut/projected/hidden/symbol streams, source correspondence,
 finite depth and reasoned membership. This is ordinary horizontal Plan only, not Section or
@@ -367,8 +370,8 @@ not T1 phase completion. Local F4 and T3 unit work can run alongside viewport wo
 Conditional Save waits only for local F4 plus T3's accepted current-source Save conformance.
 
 Configure the unchanged S02/S04/S05 exposure window only after registration; leave it selected,
-unopened and without verdicts until actual authorized implementation. The separate r186 upgrade
-must close and land before capability starts. This PR changes no ratified contract, live gate,
+unopened and without verdicts until actual authorized implementation. Capability implementation uses
+the landed r186 base (`74efb98b`, three 0.186.1). This PR changes no ratified contract, live gate,
 phase register, authorization, cycle state or Baseline.
 
 ## Deliberately deferred scope and next boundary

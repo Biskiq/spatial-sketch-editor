@@ -257,7 +257,9 @@ planners and whole-operation history. The [coordinated readiness proposal](./cro
 requires explicit capability evidence on the trusted base; base gate acceptance cannot satisfy them.
 
 T3 S04 migrates all Stage/acceptance/Save/starter callers and retires current-source adapters in one
-source transition. This is an explicit persisted-format cutover, not a second F4 protocol. Keep the
+source transition. Retirement ends the current-source adapter admission only; the revision/result/history
+invariants above endure as prerequisites of the unit capabilities, and shipped `local-single-domain-v1`
+evidence stays valid history. This is an explicit persisted-format cutover, not a second F4 protocol. Keep the
 F4 major only because revision/result/facade semantics are reconciled now; breaking changes later
 require a new major and consumer redeclaration. Administrative migration resets source history
 with retained recovery material; normal Undo never reinstalls the retired schema.

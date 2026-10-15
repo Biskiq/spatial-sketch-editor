@@ -6,11 +6,13 @@ stay in the owning track's interface draft; normative F, the live gate register,
 phase registration and implementation authorization are unchanged. All candidate IDs below are
 provisional. Cross-PR links identify proposals, never accepted prerequisites.
 
-Planning may proceed now. **Every capability implementation start waits for the separate
+Planning proceeds on the landed r186 base: the separate
 [Three.js r186 foundation upgrade (PR #122)](https://github.com/Biskiq/spatial-sketch-editor/pull/122)
-to close and its implementation to land on main.** Each authorized implementation plan records
-the landed r186 commit and verifies affected Camera/Threlte/render/loader behavior against it;
-this post-#116 planning baseline is not that compatibility evidence.
+merged into `main` as `74efb98b` (closeout PR #123, `d69825fe`), standardizing three 0.186.1 /
+`@types/three` 0.186.0 with Threlte unchanged and explicit `PCFShadowMap` at both shadow canvases.
+Each authorized implementation plan records that base and verifies affected
+Camera/Threlte/render/loader behavior against it; this post-#116 planning baseline is not that
+compatibility evidence.
 
 ## Provider and acceptance matrix
 
@@ -48,9 +50,20 @@ with historical evidence retained and no new consumer eligible for it.
 
 Eligibility requires the exact gate **and every required capability**, with its prerequisite
 closure, to be accepted in the current tree **and at the trusted base** (`git merge-base HEAD main`).
-The slice cannot add its own prerequisite evidence. This applies to new starts/in-progress/accepted
+The slice cannot add its own prerequisite evidence.This applies to new starts/in-progress/accepted
 consumers; shipped historical slices retain their original scopes/evidence, as with historical gate
 majors. Retiring an adapter removes its active admission, not historical evidence or base invariants.
+
+For F.4, retirement splits two layers that `local-single-domain-v1` initially bundles. The enduring
+layer — opaque accepted revision, content-digest comparison, atomic install with one undo result,
+stale/ABA rejection and one chronological history — persists across the source transition and stays a
+prerequisite of `unit-acceptance-v1` and `conditional-save-units-v1`. The retiring layer is the
+current-source adapter admission (current-source planning/validation and `conditional-save-current-v1`
+persistence), which T3 S04 retires together with all its callers; after that point no new or
+in-progress consumer may Require it, while shipped slices keep their evidence. The checker records
+retirement as a terminal state on the same Accepted-capabilities entry — no parallel registry — and
+fails any new or in-progress Requires naming a retired capability. No permanent legacy admission
+survives: the read-only converter retires with the covered inventory before the Source Baseline.
 Acceptance of an interface is distinct from
 ratification, implementation and consumer eligibility. Add the two-field validation and controls
 for missing/unimplemented scope, consumer self-satisfaction and retired scope in the authorized
@@ -152,7 +165,7 @@ with fresh OCC revisions. No permanent dual-format reader/writer or source fallb
 
 ```mermaid
 flowchart TD
-  R["r186 closure + exact ratifications"] --> A["T1 S01: F1/F3 + readiness enforcement"]
+  R["landed r186 + exact ratifications"] --> A["T1 S01: F1/F3 + readiness enforcement"]
   A --> V["T1 S02: core viewport + starter boot"]
   A --> L["T1 S03: local F4"]
   A --> U["T3 S01: F2 + shared program codec"]
