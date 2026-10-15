@@ -62,6 +62,11 @@ Landed contracts keep describing current behaviour until their explicit cutover.
 No T2 phase is registered. A phase is added here by an authorized plan, with its own README under
 `./t2.p01-<capability>/` and its own slice register.
 
+**Owner-review proposal:** [T2.P01 — supported object composition](./t2.p01-supported-composition/README.md)
+defines a candidate four-slice first phase and its
+[interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md).
+It is planning only: this link registers no phase, authorizes no implementation and accepts no gate.
+
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | — | — | — | — |
