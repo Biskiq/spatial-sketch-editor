@@ -4,7 +4,9 @@
  * `{outputId, sourceRevision, sessionEpoch, ownerId, runEpoch}` governs
  * inspection, guided/free navigation, Follow, Look-through and Preview through
  * acquire / request / replace / return / cancel. Exactly one Camera output owner
- * exists per viewport/session.
+ * exists per viewport/session, and ownership order is monotonic: every accepted
+ * transition — including a return to a replaced run — moves to a strictly newer
+ * run epoch, so a spent ticket can never re-enter.
  *
  * Scope boundary: this module is the **validated ticket protocol only**. It
  * resolves ownership from immutable state and returns a decision — there is no
@@ -56,10 +58,21 @@ export type CameraOutputClaim = {
 	returnContext: CameraReturnContext | null;
 };
 
-/** One viewport/session's ownership state. `claim: null` means the output is free. */
+/**
+ * One viewport/session's ownership state.
+ *
+ * `claim: null` means the output is free. `epochFloor` is the highest run epoch
+ * ever accepted for this output — including a run that has since been replaced,
+ * cancelled or returned. Every ownership transition must be strictly newer than
+ * it, so a ticket from an ended ownership period can never re-enter: a completed
+ * run cannot reclaim or clear a later one, and a handoff cannot be undone by
+ * replaying the ticket that handed it back. `-1` means no run has ever been
+ * accepted here, so the first accepted run may use epoch 0.
+ */
 export type CameraOutputState = {
 	viewportId: string;
 	claim: CameraOutputClaim | null;
+	epochFloor: number;
 };
 
 /** How a request relates to a competing claim. */
@@ -121,9 +134,9 @@ export function validateCameraOutputTicket(input: unknown): { valid: boolean; is
 	return { valid: true, issues: [], ticket: { outputId, sourceRevision, sessionEpoch, ownerId, runEpoch } };
 }
 
-/** A free viewport/session state. */
+/** A free viewport/session state: no claim and no accepted run epoch yet. */
 export function createCameraOutputState(viewportId: string): CameraOutputState {
-	return { viewportId, claim: null };
+	return { viewportId, claim: null, epochFloor: -1 };
 }
 
 function refuses(
@@ -150,10 +163,13 @@ function sameTicket(left: CameraOutputTicket, right: CameraOutputTicket): boolea
  *
  * `exclusive` refuses any live claim (including a newer run of the same owner);
  * `ordered-replacement` and `ordered-handoff` accept a strictly newer
- * `runEpoch`, and `ordered-handoff` additionally issues a Camera-owned return
- * context so the replaced run can return later. A request whose `expected`
- * observation no longer matches the live claim is refused: it was made against
- * state that has already changed.
+ * `runEpoch` than **every run epoch this output has ever accepted**, and
+ * `ordered-handoff` additionally issues a Camera-owned return context so the
+ * replaced run can return later. A request whose `expected` observation no
+ * longer matches the live claim is refused: it was made against state that has
+ * already changed. A ticket whose epoch is at or below the output's floor is
+ * refused even while the output is free, so a completed, cancelled or returned
+ * run cannot re-enter with the epoch it already spent.
  */
 export function acquireCameraOutput(state: CameraOutputState, request: CameraOutputRequest): CameraOutputDecision {
 	const ticket = validateCameraOutputTicket(request.ticket);
@@ -180,8 +196,15 @@ export function acquireCameraOutput(state: CameraOutputState, request: CameraOut
 		);
 	}
 	if (current === null) {
+		if (ticket.ticket!.runEpoch <= state.epochFloor) {
+			return refuses(
+				state,
+				'stale-run-epoch',
+				`run epoch ${ticket.ticket!.runEpoch} cannot take this free output; the highest accepted run epoch was ${state.epochFloor}`
+			);
+		}
 		const claim: CameraOutputClaim = { ticket: ticket.ticket!, role: request.role, returnContext: null };
-		return { kind: 'acquired', state: { ...state, claim }, claim, replaced: null };
+		return { kind: 'acquired', state: { ...state, claim, epochFloor: ticket.ticket!.runEpoch }, claim, replaced: null };
 	}
 	if (request.policy === 'exclusive') {
 		return refuses(
@@ -191,7 +214,8 @@ export function acquireCameraOutput(state: CameraOutputState, request: CameraOut
 			[current.ticket.ownerId]
 		);
 	}
-	if (ticket.ticket!.runEpoch <= current.ticket.runEpoch) {
+	const floor = Math.max(state.epochFloor, current.ticket.runEpoch);
+	if (ticket.ticket!.runEpoch <= floor) {
 		return refuses(
 			state,
 			'stale-run-epoch',
@@ -220,7 +244,7 @@ export function acquireCameraOutput(state: CameraOutputState, request: CameraOut
 		};
 	}
 	const claim: CameraOutputClaim = { ticket: ticket.ticket!, role: request.role, returnContext };
-	return { kind: 'acquired', state: { ...state, claim }, claim, replaced: current };
+	return { kind: 'acquired', state: { ...state, claim, epochFloor: ticket.ticket!.runEpoch }, claim, replaced: current };
 }
 
 export type CameraOutputRequestDecision =
@@ -298,6 +322,14 @@ export type CameraOutputReturnDecision =
  * **current** source/output context — a stale token, a different source revision
  * or a different host session refuses with a reason instead of transferring
  * ownership to a run that no longer means the same thing.
+ *
+ * A return is an ownership transition like any other, so the restored run keeps
+ * its identity and role but receives a **new, strictly newer** run epoch (the
+ * returned claim carries it). Restoring the original epoch would move the
+ * output's ordering backwards: the returned ticket would be able to re-acquire
+ * the output it just gave up, and the handoff would not be binding. The
+ * returning run's old ticket is therefore spent, and a delayed callback holding
+ * it learns `superseded` instead of reclaiming the output.
  */
 export function returnCameraOutput(
 	state: CameraOutputState,
@@ -329,8 +361,10 @@ export function returnCameraOutput(
 	if (context.issuedTo.runEpoch >= current.ticket.runEpoch) {
 		return { kind: 'refused', state, reason: 'stale-run-epoch', message: 'the return context does not name an older run than the active output', owners: [] };
 	}
-	const claim: CameraOutputClaim = { ticket: context.issuedTo, role: context.role, returnContext: null };
-	return { kind: 'returned', state: { ...state, claim }, claim };
+	// The restored run continues under a fresh epoch: ownership order never moves backwards.
+	const restored: CameraOutputTicket = { ...context.issuedTo, runEpoch: current.ticket.runEpoch + 1 };
+	const claim: CameraOutputClaim = { ticket: restored, role: context.role, returnContext: null };
+	return { kind: 'returned', state: { ...state, claim, epochFloor: restored.runEpoch }, claim };
 }
 
 export type CameraOutputCancelDecision =
@@ -339,9 +373,13 @@ export type CameraOutputCancelDecision =
 
 /**
  * Epoch-qualified, idempotent cancellation. Only the run that currently holds the
- * output can release it: a wrong-epoch completion, a foreign owner or an older run
- * cannot clear, reclaim or replace the active output. Cancelling an unowned or
- * already-cancelled output is a no-op, not an error.
+ * output can release it: the presented ticket must match the active one in **every**
+ * field — output, source revision, host session, owner and run epoch — so a
+ * completion from another source revision or another host session cannot clear
+ * this output, and a wrong-epoch or foreign owner cannot clear, reclaim or
+ * replace it. Cancelling an unowned or already-cancelled output is a no-op, not
+ * an error, and the output's epoch floor is retained so the cancelled run cannot
+ * re-acquire with the epoch it already spent.
  */
 export function cancelCameraOutput(state: CameraOutputState, ticket: unknown): CameraOutputCancelDecision {
 	const validation = validateCameraOutputTicket(ticket);
@@ -359,7 +397,7 @@ export function cancelCameraOutput(state: CameraOutputState, ticket: unknown): C
 			message: `run epoch ${request.runEpoch} cannot clear the active run epoch ${current.ticket.runEpoch}`
 		};
 	}
-	if (request.ownerId !== current.ticket.ownerId || request.outputId !== current.ticket.outputId || request.runEpoch !== current.ticket.runEpoch) {
+	if (!sameTicket(current.ticket, request)) {
 		return { kind: 'ignored', state, reason: 'not-owner', message: 'the ticket does not hold the active output' };
 	}
 	return { kind: 'cancelled', state: { ...state, claim: null } };

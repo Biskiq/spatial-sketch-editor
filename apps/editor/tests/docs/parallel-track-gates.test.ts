@@ -86,7 +86,9 @@ const CAPABILITY_RECORD_HEADING = 'Accepted capability';
 const CAPABILITY_RECORD_COLUMNS = [
 	'Capability',
 	'Anchor',
+	'Source kinds',
 	'Prerequisites',
+	'Extension slice',
 	'Exports',
 	'Conformance',
 	'Acceptance',
@@ -211,7 +213,11 @@ export type AcceptedCapabilityEntry = {
 export type CapabilityRecord = {
 	capability: string;
 	anchor: string;
+	/** The source kinds this scope admits, as declared tokens. */
+	sourceKinds: string;
 	prerequisites: string;
+	/** The slice that authored or extended this scope. */
+	extensionSlice: string;
 	exports: string;
 	conformance: string;
 	acceptance: string;
@@ -711,7 +717,9 @@ export function capabilityRecord(source: string, file: string): { record: Capabi
 		record: {
 			capability: stripDecoration(row['Capability'] ?? ''),
 			anchor: linkTarget(row['Anchor'] ?? '') ?? stripDecoration(row['Anchor'] ?? ''),
+			sourceKinds: row['Source kinds'] ?? '',
 			prerequisites: row['Prerequisites'] ?? '',
+			extensionSlice: stripDecoration(row['Extension slice'] ?? ''),
 			exports: row['Exports'] ?? '',
 			conformance: row['Conformance'] ?? '',
 			acceptance: row['Acceptance'] ?? '',
@@ -728,7 +736,9 @@ export function capabilityRecord(source: string, file: string): { record: Capabi
  * `Accepted capabilities` on each gate/version row and `Requires` on each consumer slice row. A
  * consumer is eligible only when the exact gate **and every required scope**, with its
  * prerequisite closure, is `accepted` in the current tree **and** at the trusted base, and every
- * required scope is `active`. `ratified` or `implemented` alone is not acceptance, a retired scope
+ * required scope is `active`. Each entry is filed on the gate row whose version it names, and its
+ * durable record carries the ratified fields — including the admitted source kinds and the
+ * extension slice that authored the scope. `ratified` or `implemented` alone is not acceptance, a retired scope
  * is ineligible for a new or in-progress consumer, a consumer cannot supply its own prerequisite,
  * and a scope accepted only at the trusted base is historical evidence rather than current
  * eligibility.
@@ -743,6 +753,7 @@ export function capabilityProblems(model: StructureModel): string[] {
 	for (const row of model.trustedBase ?? []) {
 		for (const entry of row.capabilities) if (entry.status === 'active') trustedActive.add(entry.capability);
 	}
+	const sliceIds = new Set(model.phases.flatMap((phase) => phase.slices.map((slice) => slice.id)));
 
 	// Fields: every entry is a well-formed scope of a registered version with a real record.
 	const current = new Map<string, { entry: AcceptedCapabilityEntry; row: GateRow }>();
@@ -758,6 +769,15 @@ export function capabilityProblems(model: StructureModel): string[] {
 			if (gateRow === undefined) {
 				problems.push(`${row.gate}: accepted capability "${entry.capability}" names an unregistered gate version`);
 				continue;
+			}
+			// An entry is written on the row whose version it names: a scope recorded on another
+			// gate's row would be evidence filed against the wrong contract.
+			if (isSentinel(row.version)) {
+				problems.push(`${row.gate}: accepted capability "${entry.capability}" sits on a gate row with no version`);
+			} else if (entry.gateVersion !== `${row.gate}@${row.version}`) {
+				problems.push(
+					`${row.gate}: accepted capability "${entry.capability}" names "${entry.gateVersion}" and sits on "${row.gate}@${row.version}" — an entry belongs to the version it is written on`
+				);
 			}
 			if (current.has(entry.capability)) problems.push(`${row.gate}: accepted capability "${entry.capability}" appears on more than one row`);
 			current.set(entry.capability, { entry, row });
@@ -796,6 +816,18 @@ export function capabilityProblems(model: StructureModel): string[] {
 				for (const path of paths) {
 					if (!model.exists(path)) problems.push(`${entry.record}: ${column} path "${path}" does not exist`);
 				}
+			}
+			// The ratified record also carries which source kinds the scope admits and the slice
+			// that authored or extended it, so a scope's breadth and provenance are evidence too.
+			if (tokens(parsed.record.sourceKinds).length === 0) {
+				problems.push(`${entry.capability}: the record requires its admitted source kinds`);
+			}
+			if (isSentinel(parsed.record.extensionSlice)) {
+				problems.push(`${entry.capability}: the record requires the extension slice that authored the scope`);
+			} else if (!sliceIds.has(parsed.record.extensionSlice)) {
+				problems.push(
+					`${entry.record}: extension slice "${parsed.record.extensionSlice}" is not a slice in any phase register`
+				);
 			}
 			if (isSentinel(parsed.record.commit)) problems.push(`${entry.capability}: the record requires a reviewed implementation commit`);
 			else if (!model.ancestorOfHead(parsed.record.commit)) {
@@ -1267,14 +1299,33 @@ const FIXTURE_CAPABILITY_RECORD = 'docs/roadmap/t1-spatial-world/t1.p01-viewport
 const FIXTURE_CAPABILITY = 'F4.intent-acceptance@1:local-single-domain-v1';
 const FIXTURE_PREREQUISITE = 'F1.reference@1:references-v1';
 
-/** The record's own table, as the fixture's `readText` returns it. */
-function recordSource(capability: string, prerequisites: string): string {
+/**
+ * The record's own table, as the fixture's `readText` returns it. One field can be mutated per
+ * negative fixture, because each rule must fail for its own reason.
+ */
+function recordSource(
+	capability: string,
+	prerequisites: string,
+	overrides: Partial<Record<string, string>> = {}
+): string {
+	const fields: Record<string, string> = {
+		Capability: `\`${capability}\``,
+		Anchor: './reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1',
+		'Source kinds': 'layout-unit',
+		Prerequisites: prerequisites,
+		'Extension slice': 'T1.P01.S01',
+		Exports: 'packages/project-model/src',
+		Conformance: 'apps/editor/tests/lib/project-model-boundary.test.ts',
+		Acceptance: FIXTURE_CAPABILITY_RECORD,
+		Commit: 'HEAD',
+		...overrides
+	};
 	return [
-		'## Accepted capability',
+		`## ${CAPABILITY_RECORD_HEADING}`,
 		'',
-		'| Capability | Anchor | Prerequisites | Exports | Conformance | Acceptance | Commit |',
-		'| --- | --- | --- | --- | --- | --- | --- |',
-		`| \`${capability}\` | ./reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1 | ${prerequisites} | packages/project-model/src | apps/editor/tests/lib/project-model-boundary.test.ts | ${FIXTURE_CAPABILITY_RECORD} | HEAD |`,
+		`| ${CAPABILITY_RECORD_COLUMNS.join(' | ')} |`,
+		`| ${CAPABILITY_RECORD_COLUMNS.map(() => '---').join(' | ')} |`,
+		`| ${CAPABILITY_RECORD_COLUMNS.map((column) => fields[column]!).join(' | ')} |`,
 		''
 	].join('\n');
 }
@@ -1816,6 +1867,9 @@ describe('the capability-readiness rule', () => {
 		expect(record.problems).toEqual([]);
 		expect(record.record?.capability).toBe(FIXTURE_CAPABILITY);
 		expect(record.record?.commit).toBe('HEAD');
+		// The record carries the scope's breadth and provenance, not only its evidence paths.
+		expect(record.record?.sourceKinds).toBe('layout-unit');
+		expect(record.record?.extensionSlice).toBe('T1.P01.S01');
 	});
 
 	it('keeps an eligible consumer green and refuses every way a scope can fail to be accepted', () => {
@@ -1854,6 +1908,37 @@ describe('the capability-readiness rule', () => {
 		expect(
 			capabilityProblems(consuming({}, capabilityFixture({ ancestorOfHead: () => false }))).join('\n')
 		).toContain('is not an ancestor of HEAD');
+		// A scope's breadth and provenance are recorded, and the slice that authored it exists.
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ readText: () => recordSource(FIXTURE_CAPABILITY, '—', { 'Source kinds': '—' }) }))
+			).join('\n')
+		).toContain('requires its admitted source kinds');
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ readText: () => recordSource(FIXTURE_CAPABILITY, '—', { 'Extension slice': '—' }) }))
+			).join('\n')
+		).toContain('requires the extension slice that authored the scope');
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ readText: () => recordSource(FIXTURE_CAPABILITY, '—', { 'Extension slice': 'T9.P99.S99' }) }))
+			).join('\n')
+		).toContain('is not a slice in any phase register');
+		// An entry is evidence filed against its own gate version, never another row's.
+		expect(
+			capabilityProblems(
+				consuming(
+					{},
+					capabilityFixture({
+						gates: [
+							withCapabilities(acceptedEntry(FIXTURE_PREREQUISITE)),
+							{ ...fixture().gates[1]!, gate: 'F1.reference', version: '1', state: 'accepted' }
+						],
+						readText: () => recordSource(FIXTURE_PREREQUISITE, '—')
+					})
+				)
+			).join('\n')
+		).toContain('an entry belongs to the version it is written on');
 		// A capability cannot be its own prerequisite, and a cyclic closure is reported.
 		expect(
 			capabilityProblems(consuming({}, capabilityFixture({ readText: () => recordSource(FIXTURE_CAPABILITY, FIXTURE_CAPABILITY) }))).join('\n')

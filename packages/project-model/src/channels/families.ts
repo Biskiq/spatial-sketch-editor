@@ -28,6 +28,14 @@ export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
  * Camera's session inspection output (AM-3, Camera session inspection family).
  * The `controller` property is the one exclusive resolved controller per output;
  * its value names the declared role the Camera output owner admitted.
+ *
+ * The family also publishes the ratified **policy inputs**: the reading/projection
+ * policy the output is read and projected under, and the motion policy its pose
+ * evaluation runs under. They are declared here because the family's contents are
+ * this gate's contract — the owning domain decides which policy values exist
+ * (an open declared set, `values: null`) and Camera's evaluator, not this reader,
+ * acts on them. An absent policy means the authority's own declared default, so
+ * neither is a required property.
  */
 export const CAMERA_SESSION_INSPECTION_FAMILY_ID: ChannelFamilyId = 'camera.session-inspection@1';
 
@@ -195,6 +203,36 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			invalidation: ['intent', 'epoch'],
 			capability: { id: 'camera.session-inspection', required: true },
 			validator: 'camera.session.controller@1'
+		}),
+		descriptor({
+			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
+			propertyId: 'reading-projection-policy',
+			valueKind: 'identifier',
+			units: null,
+			range: null,
+			// An open declared set: Camera owns which reading/projection policies exist.
+			values: null,
+			scope: 'viewport',
+			arbitration: 'exclusive',
+			interpolation: 'none',
+			invalidation: [...CAMERA_INTENT_INVALIDATION],
+			capability: { id: 'camera.session-inspection', required: true },
+			validator: 'camera.session.reading-projection-policy@1'
+		}),
+		descriptor({
+			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
+			propertyId: 'motion-policy',
+			valueKind: 'identifier',
+			units: null,
+			range: null,
+			// An open declared set: Camera owns which motion policies exist.
+			values: null,
+			scope: 'viewport',
+			arbitration: 'exclusive',
+			interpolation: 'none',
+			invalidation: [...CAMERA_INTENT_INVALIDATION],
+			capability: { id: 'camera.session-inspection', required: true },
+			validator: 'camera.session.motion-policy@1'
 		})
 	]
 };

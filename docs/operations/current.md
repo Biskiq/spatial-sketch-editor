@@ -7,14 +7,17 @@ PHASE: T1.P01 — Stage and authoring foundation (registered 2026-10-15). First 
 CHILD: T1.P01.S01 — Shared interface providers — `in-progress` (owner-authorized 2026-10-15),
        implemented on `T1-P1-S1-implementation` and awaiting independent review; no acceptance is
        recorded. It supplies `F1.reference@1` and `F3.channels@1` as `@portfolio/project-model`
-       exports with conformance suites, and installs the Accepted-capabilities / Requires readiness
-       enforcement in the arch lane's execution-structure gate. Plan →
+       exports — including the bounded current-domain read adapters over the current
+       Layout/Scene/read-only-Camera source — with conformance suites, and installs the
+       Accepted-capabilities / Requires readiness enforcement in the arch lane's
+       execution-structure gate. Plan →
        ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/implementation-plan.md;
        implementer-reported evidence (no acceptance, no gate promotion) →
        ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md.
        T1.P01.S02–S06 stay `proposed`, each blocked by its own accepted prerequisites.
 BATON: #124 F-interface ratification merged (owner decision 2026-10-15) → T1.P01 registered and
-       S01 authorized → S01 implemented, independent review owed.
+       S01 authorized → S01 implemented → first review round's findings addressed on the same
+       branch and re-verified; independent review owed.
 NEXT: independent review of T1.P01.S01 against its plan's acceptance criteria, on the tested
       revision the acceptance record names. Its `Consumes` and `Requires` are empty, so
       eligibility held with no prerequisite to satisfy, and it is not a listed cycle exposure,

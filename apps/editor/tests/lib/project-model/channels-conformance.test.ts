@@ -85,6 +85,23 @@ function planAddress(propertyId: string, overrides: Partial<ChannelAddress> = {}
 	};
 }
 
+/**
+ * A Camera-qualified address. The family's owning domain must agree with the address's
+ * owner domain, so a Camera session property is addressed to a Camera subject — current
+ * Camera subjects are its navigation nodes and connections.
+ */
+function cameraAddress(propertyId: string, overrides: Partial<ChannelAddress> = {}): ChannelAddress {
+	return planAddress(propertyId, {
+		ownerReference: {
+			...ownerReference('node-1'),
+			domain: 'camera',
+			subject: { kind: 'navigation-node', id: 'node-1' },
+			instancePath: ['output-1']
+		},
+		...overrides
+	});
+}
+
 type ContributionOptions = {
 	propertyId: string;
 	value: Record<string, unknown>;
@@ -105,7 +122,7 @@ function contribution(options: ContributionOptions): Record<string, unknown> {
 	return {
 		version: 1,
 		descriptor: options.descriptor ?? declared,
-		address: options.address ?? planAddress(options.propertyId),
+		address: options.address ?? (options.camera === true ? cameraAddress(options.propertyId) : planAddress(options.propertyId)),
 		value: options.value,
 		scopeId: options.scopeId ?? 'viewport-1',
 		invocationId: options.invocationId ?? 'invocation-1',
@@ -159,6 +176,33 @@ describe('F.3 inspection-v1 — families, descriptors and addresses', () => {
 		expect(validateChannelDescriptor({ ...declared, extra: true }).success).toBe(false);
 		const controller = declaredProperty(CAMERA_SESSION_INSPECTION_FAMILY, 'controller')!;
 		expect(controller.values).toEqual([...CAMERA_OUTPUT_ROLES]);
+		// AM-3's Camera session inspection family publishes the reading/projection policy and
+		// motion policy inputs, not only the pose values and the controller.
+		expect(CAMERA_SESSION_INSPECTION_FAMILY.properties.map((property) => property.propertyId)).toEqual([
+			'target',
+			'azimuth',
+			'elevation',
+			'frame-height',
+			'controller',
+			'reading-projection-policy',
+			'motion-policy'
+		]);
+		for (const [propertyId, validator] of [
+			['reading-projection-policy', 'camera.session.reading-projection-policy@1'],
+			['motion-policy', 'camera.session.motion-policy@1']
+		] as const) {
+			const policy = declaredProperty(CAMERA_SESSION_INSPECTION_FAMILY, propertyId)!;
+			// The owning domain decides which policies exist: an open declared set, not invented values.
+			expect([policy.valueKind, policy.units, policy.values, policy.arbitration, policy.validator]).toEqual([
+				'identifier',
+				null,
+				null,
+				'exclusive',
+				validator
+			]);
+			// Optional: an absent policy means the Camera authority's own declared default.
+			expect(CAMERA_SESSION_INSPECTION_FAMILY.requiredProperties).not.toContain(propertyId);
+		}
 	});
 
 	it('reads an address field by field and never parses a delimiter string', () => {
@@ -344,6 +388,33 @@ describe('F.3 inspection-v1 — negotiation, conflict and replacement', () => {
 		expect(outcome.diagnostics.action).not.toBe('');
 		// The accepted contribution is untouched: rejection is not a partial write.
 		expect(outcome.state).toBe(first);
+	});
+
+	it('refuses a contribution whose family and address owner name different domains', () => {
+		// A Layout Plan property cannot be qualified by a Scene-owned address: neither the
+		// family nor the address would then be authoritative for the property's meaning.
+		const sceneOwned = contribution({
+			propertyId: 'cut-height',
+			value: { kind: 'number', value: 1.2 },
+			address: planAddress('cut-height', {
+				ownerReference: { ...ownerReference('entity-1'), domain: 'scene', subject: { kind: 'entity', id: 'entity-1' } }
+			})
+		});
+		const outcome = negotiateChannelContribution(HOST, EMPTY_CHANNEL_STATE, sceneOwned, CONTEXT);
+		expect(outcome.kind).toBe('rejected');
+		if (outcome.kind !== 'rejected') return;
+		expect(outcome.reason).toBe('domain-mismatch');
+		expect(outcome.diagnostics.domain).toBe('scene');
+		expect(outcome.state).toBe(EMPTY_CHANNEL_STATE);
+
+		// The matching Camera family and Camera-qualified address still negotiate.
+		const cameraOwned = contribution({
+			propertyId: 'motion-policy',
+			value: { kind: 'identifier', value: 'guided' },
+			camera: true,
+			computedFrom: null
+		});
+		expect(negotiateChannelContribution(HOST, EMPTY_CHANNEL_STATE, cameraOwned, CONTEXT).kind).toBe('accepted');
 	});
 
 	it('allows the holding invocation a deliberate replacement and refuses a stale run epoch', () => {
@@ -535,6 +606,43 @@ describe('F.3 inspection-v1 — negotiation, conflict and replacement', () => {
 		// A second viewport is a distinct output, not another writer to the first.
 		expect(accept(both, otherViewport).contributions).toHaveLength(3);
 	});
+
+	it('keeps a level or revision qualification distinct instead of merging two addresses', () => {
+		const at = (overrides: Partial<SemanticReference>, invocationId: string, runEpoch: number): Record<string, unknown> =>
+			contribution({
+				propertyId: 'cut-height',
+				value: { kind: 'number', value: 1.2 },
+				address: planAddress('cut-height', { ownerReference: { ...ownerReference(), ...overrides } }),
+				invocationId,
+				runEpoch
+			});
+		const level = (levelId: string): SemanticReference['location'] => ({
+			kind: 'layout-location',
+			levelId,
+			structureInstancePath: []
+		});
+
+		// Two levels are two addresses: the second is not a competing exclusive writer to the first.
+		const bothLevels = accept(
+			accept(EMPTY_CHANNEL_STATE, at({ location: level('floor-1') }, 'invocation-1', 1)),
+			at({ location: level('floor-2') }, 'invocation-2', 2)
+		);
+		expect(bothLevels.contributions).toHaveLength(2);
+
+		// So is another revision context: an address identifies meaning, not a location or a label.
+		const withRevision = accept(bothLevels, at({ revision: { kind: 'exact', contentRevision: 'sha256-other' } }, 'invocation-3', 3));
+		expect(withRevision.contributions).toHaveLength(3);
+
+		// The same complete address is still one scope, and still contends exclusively.
+		const competing = negotiateChannelContribution(
+			HOST,
+			withRevision,
+			at({ location: level('floor-1') }, 'invocation-9', 9),
+			CONTEXT
+		);
+		expect(competing.kind === 'rejected' && competing.reason).toBe('competing-exclusive-contribution');
+		expect(competing.kind === 'rejected' && competing.diagnostics.owners).toEqual(['invocation-1', 'invocation-9']);
+	});
 });
 
 function held(outputId: string, runEpoch: number): CameraOutputTicket {
@@ -657,12 +765,63 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 		const returned = returnCameraOutput(handoff.state, handoff.claim.ticket, 'return-1');
 		expect(returned.kind).toBe('returned');
 		if (returned.kind !== 'returned') return;
-		expect(returned.claim.ticket.runEpoch).toBe(1);
+		// The restored run keeps its identity and role, and continues under a strictly newer epoch:
+		// ownership order never moves backwards.
+		expect(returned.claim.ticket.ownerId).toBe('owner-a');
+		expect(returned.claim.ticket.runEpoch).toBe(3);
 		expect(returned.claim.role).toBe('inspection');
 		expect(returned.state.claim?.returnContext).toBeNull();
 
 		// A return without a handoff that issued one cannot transfer anything.
 		expect(returnCameraOutput(first.state, first.claim.ticket, 'return-1').kind).toBe('refused');
+	});
+
+	it('keeps ownership order monotonic across a return, so no spent ticket re-enters', () => {
+		// Owner A holds epoch 1; owner B replaces it at epoch 2 and then returns control to A.
+		const a = acquireCameraOutput(createCameraOutputState('viewport-1'), {
+			ticket: held('output-1', 1),
+			role: 'guided-navigation',
+			expected: { kind: 'unowned' },
+			policy: 'exclusive'
+		});
+		if (a.kind !== 'acquired') throw new Error('the fixture must acquire');
+		const b = replaceCameraOutput(a.state, {
+			ticket: { ...held('output-1', 2), ownerId: 'owner-b' },
+			role: 'preview',
+			expected: { kind: 'held', ticket: held('output-1', 1) },
+			returnToken: 'return-1'
+		});
+		if (b.kind !== 'acquired') throw new Error('the fixture must hand off');
+		const restored = returnCameraOutput(b.state, b.claim.ticket, 'return-1');
+		if (restored.kind !== 'returned') throw new Error('the fixture must return');
+		expect(restored.claim.ticket.runEpoch).toBe(3);
+
+		// B's spent epoch-2 ticket cannot take the output back after handing it over.
+		const replay = acquireCameraOutput(restored.state, {
+			ticket: b.claim.ticket,
+			role: 'preview',
+			expected: { kind: 'held', ticket: restored.claim.ticket },
+			policy: 'ordered-replacement'
+		});
+		expect(replay.kind).toBe('refused');
+		if (replay.kind !== 'refused') return;
+		expect(replay.reason).toBe('stale-run-epoch');
+		expect(replay.state.claim?.ticket.runEpoch).toBe(3);
+
+		// A's original epoch-1 ticket is spent too: the restored claim is the live ownership.
+		const older = requestCameraOutput(restored.state, a.claim.ticket);
+		expect(older.kind).toBe('superseded');
+		if (older.kind !== 'superseded') return;
+		expect(older.holder.runEpoch).toBe(3);
+
+		// B may take the output again only as a genuinely newer accepted run.
+		const newer = acquireCameraOutput(restored.state, {
+			ticket: { ...held('output-1', 4), ownerId: 'owner-b' },
+			role: 'preview',
+			expected: { kind: 'held', ticket: restored.claim.ticket },
+			policy: 'ordered-replacement'
+		});
+		expect(newer.kind).toBe('acquired');
 	});
 
 	it('answers a superseded run and refuses a foreign owner', () => {
@@ -712,6 +871,24 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 		const foreign = cancelCameraOutput(handoff.state, { ...held('output-1', 2), ownerId: 'owner-c' });
 		expect(foreign.kind === 'ignored' && foreign.reason).toBe('not-owner');
 
+		// The complete ticket identifies the holder: a completion from another host session or
+		// another source revision cannot clear this output, even at the same owner and epoch.
+		const foreignSession = cancelCameraOutput(handoff.state, {
+			...held('output-1', 2),
+			ownerId: 'owner-b',
+			sessionEpoch: 'session-2'
+		});
+		expect(foreignSession.kind).toBe('ignored');
+		if (foreignSession.kind !== 'ignored') return;
+		expect(foreignSession.reason).toBe('not-owner');
+		expect(foreignSession.state).toBe(handoff.state);
+		const foreignSource = cancelCameraOutput(handoff.state, {
+			...held('output-1', 2),
+			ownerId: 'owner-b',
+			sourceRevision: 'sha256-other'
+		});
+		expect(foreignSource.kind === 'ignored' && foreignSource.reason).toBe('not-owner');
+
 		const cancelled = cancelCameraOutput(handoff.state, handoff.claim.ticket);
 		expect(cancelled.kind).toBe('cancelled');
 		if (cancelled.kind !== 'cancelled') return;
@@ -720,6 +897,26 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 		// Idempotent: cancelling an unowned or already-cancelled output is a no-op.
 		expect(cancelCameraOutput(cancelled.state, handoff.claim.ticket).kind).toBe('cancelled');
 		expect(cancelCameraOutput(createCameraOutputState('viewport-1'), held('output-1', 1)).kind).toBe('cancelled');
+
+		// Cancellation is not re-entry: the cancelled run's epoch is spent, and only a strictly
+		// newer accepted run may take the freed output.
+		const reacquireOld = acquireCameraOutput(cancelled.state, {
+			ticket: handoff.claim.ticket,
+			role: 'follow',
+			expected: { kind: 'unowned' },
+			policy: 'ordered-replacement'
+		});
+		expect(reacquireOld.kind).toBe('refused');
+		if (reacquireOld.kind !== 'refused') return;
+		expect(reacquireOld.reason).toBe('stale-run-epoch');
+		expect(reacquireOld.state).toBe(cancelled.state);
+		const reacquired = acquireCameraOutput(cancelled.state, {
+			ticket: { ...held('output-1', 3), ownerId: 'owner-b' },
+			role: 'follow',
+			expected: { kind: 'unowned' },
+			policy: 'ordered-replacement'
+		});
+		expect(reacquired.kind).toBe('acquired');
 	});
 
 	it('keeps every decision pure: no state is mutated in place', () => {

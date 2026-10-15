@@ -151,10 +151,11 @@ trusted base and to be `active`; fail a `Requires` naming a missing, unaccepted,
 `ratified`/`implemented`-only or `retired` scope; fail consumer self-satisfaction; and report a scope
 accepted only at the trusted base as historical evidence, never current eligibility. The installed
 checker also requires the `Requires` target's gate version to be one the same row already declares in
-`Consumes`, and validates each accepted scope's durable record (declared capability, resolving
-contract anchor, existing exports/conformance/acceptance paths, an ancestor commit and registered
-prerequisites). This README owns the rule and changes neither the live register values nor the
-checker.
+`Consumes`, requires each entry to sit on the gate/version row it names, and validates each accepted
+scope's durable record (declared capability, resolving contract anchor, admitted source kinds, the
+extension slice that authored the scope, existing exports/conformance/acceptance paths, an ancestor
+commit and registered prerequisites). This README owns the rule and changes neither the live
+register values nor the checker.
 
 ## Explicitly open — not decided by this registration
 

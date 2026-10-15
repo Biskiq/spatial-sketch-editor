@@ -195,6 +195,7 @@ export const CHANNEL_REJECTION_REASONS = [
 	'invalid-contribution',
 	'unsupported-required-family',
 	'unknown-family',
+	'domain-mismatch',
 	'undeclared-property',
 	'descriptor-mismatch',
 	'invalid-value',

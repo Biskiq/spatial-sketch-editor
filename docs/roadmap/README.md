@@ -116,14 +116,15 @@ ratified amendments.
   existing exports and conformance paths, and `accepted` additionally requires an existing
   acceptance record and a commit that is an ancestor of `HEAD`. A ratified-only gate, or one
   whose shared code is absent, never counts as ready.
-- **Accepted capabilities** holds this version's accepted scopes, one entry per scope:
-  `` `Gate@Version:capability-vN` `` then `active` or `retired`, then `—` and a durable record
-  path carrying the scope's contract anchor, prerequisites, exports, conformance, acceptance and
-  ancestor commit. That record declares one row under its `Accepted capability` heading:
-  `Capability | Anchor | Prerequisites | Exports | Conformance | Acceptance | Commit`. This is the
-  capability-scope field the rule below resolves; a scope that is only planned stays in its slice
-  plan and records no entry here, and a `retired` entry keeps its recorded evidence while admitting
-  no new or in-progress consumer.
+- **Accepted capabilities** holds this version's accepted scopes, one entry per scope, filed on
+  **its own** gate/version row: `` `Gate@Version:capability-vN` `` then `active` or `retired`, then
+  `—` and a durable record path carrying the scope's contract anchor, admitted source kinds,
+  prerequisites, extension slice, exports, conformance, acceptance and ancestor commit. That record
+  declares one row under its `Accepted capability` heading:
+  `Capability | Anchor | Source kinds | Prerequisites | Extension slice | Exports | Conformance | Acceptance | Commit`.
+  This is the capability-scope field the rule below resolves; a scope that is only planned stays in
+  its slice plan and records no entry here, and a `retired` entry keeps its recorded evidence while
+  admitting no new or in-progress consumer.
 - **Eligibility:** a slice in `in-progress` or `accepted` consumes only `accepted` rows, and
   every consumed `Gate@Version` must already have been `accepted` **at the trusted base**
   (`git merge-base HEAD main`) — a consumer cannot satisfy its own prerequisite by editing

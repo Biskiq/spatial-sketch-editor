@@ -18,7 +18,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	CURRENT_CAMERA_SUBJECT_KINDS,
+	CURRENT_LAYOUT_SUBJECT_KINDS,
+	CURRENT_SCENE_SUBJECT_KINDS,
 	compareReferences,
+	createCurrentDomainReadAdapters,
+	createCurrentDomainResolverHost,
+	createEmptyWallFirstProject,
 	createReferenceResolverHost,
 	matchesGeneration,
 	resolveDerivedSourceRef,
@@ -31,6 +37,7 @@ import {
 	validateSnapshotIdentity,
 	type DependencyLockReader,
 	type FrameResolver,
+	type ProjectDocument,
 	type ReferenceReadContext,
 	type ReferenceResolver,
 	type SemanticReference,
@@ -426,5 +433,256 @@ describe('F.1 references-v1 — stable ID ordering', () => {
 		// Instance-path position is identity: a longer path sorts after its prefix.
 		const nested = layoutReference({ subject: { kind: 'wall', id: 'wall-1' }, instancePath: ['instance-7'] });
 		expect(compareReferences(first, nested)).toBeLessThan(0);
+	});
+});
+
+/**
+ * A genuinely current document: the canonical new-project boot, then a small authored
+ * world. It is built from the package's own boot value rather than a hand-written payload,
+ * so the Layout floor ID, the Scene root and the entity collections are the real ones.
+ */
+function currentDocument(): ProjectDocument {
+	const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Fixture' });
+	project.layout.floor = { id: 'floor-2', name: 'First floor', elevation: 3 };
+	project.layout.junctions = [
+		{ id: 'junction-1', point: [0, 0] },
+		{ id: 'junction-2', point: [5, 0] }
+	];
+	project.layout.walls = [
+		{
+			id: 'wall-1',
+			startJunctionId: 'junction-1',
+			endJunctionId: 'junction-2',
+			role: 'boundary',
+			thickness: 0.2,
+			height: 3,
+			centerline: { kind: 'line' },
+			name: 'perimeter-wall'
+		},
+		// wall-2 *displays* "wall-1": identity is the id, never the authored name.
+		{
+			id: 'wall-2',
+			startJunctionId: 'junction-2',
+			endJunctionId: 'junction-1',
+			role: 'partition',
+			thickness: 0.1,
+			height: 3,
+			centerline: { kind: 'line' },
+			name: 'wall-1'
+		}
+	];
+	project.layout.rooms = [{ id: 'room-1', name: 'Room', boundary: [], floorThickness: 0.1, ceilingThickness: 0.1 }];
+	project.layout.openings = [
+		{
+			id: 'opening-1',
+			wallId: 'wall-1',
+			kind: 'door',
+			offset: 1,
+			width: 0.9,
+			height: 2.1,
+			sillHeight: 0,
+			profile: 'rectangular'
+		}
+	];
+	project.layout.objects = [
+		{ id: 'object-1', kind: 'box', position: [1, 2, 3], rotation: [0, 0, 0], dimensions: [1, 1, 1] }
+	];
+	project.scene.clusters = [{ id: 'cluster-1', name: 'Cluster', memberIds: ['entity-2'] }];
+	project.scene.entities = [
+		{ id: 'entity-1', name: 'Free', position: [0, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'piano', fallback: 'piano' },
+		{ id: 'entity-2', name: 'Clustered', position: [1, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'chair', fallback: 'chair' }
+	];
+	project.scene.materials = [{ id: 'material-1', name: 'Plaster', baseMaterialId: 'plaster-warm' }];
+	project.scene.textures = [{ id: 'texture-1', name: 'Paper', uri: 'paper.png' }];
+	project.scene.navigationNodes = [
+		{ id: 'node-1', label: 'Entry', position: [0, 0, 0], cameraTarget: [0, 0, 1], fov: 54, connectedNodeIds: ['node-2'] }
+	];
+	project.scene.connections = [
+		{
+			id: 'connection-1',
+			fromNodeId: 'node-1',
+			toNodeId: 'node-2',
+			positionPath: { kind: 'auto-bezier', anchors: [] },
+			clearance: 0.5
+		}
+	];
+	return project;
+}
+
+/** The read context for one supplied document, built from its own bounded adapters. */
+function currentContext(document: ProjectDocument, overrides: Partial<ReferenceReadContext> = {}): ReferenceReadContext {
+	const host = createCurrentDomainResolverHost(document);
+	return {
+		snapshot: SNAPSHOT,
+		sessionEpoch: 'session-1',
+		generationId: 'generation-3',
+		supportedExtensions: [],
+		lock: null,
+		resolvers: host.resolvers,
+		frameResolvers: host.frameResolvers,
+		...overrides
+	};
+}
+
+describe('F.1 references-v1 — bounded current-domain read adapters', () => {
+	const document = currentDocument();
+	const read = currentContext(document);
+
+	it('admits actual Layout, Scene and read-only Camera subjects from one supplied source', () => {
+		const host = createCurrentDomainResolverHost(document);
+		expect(host.problems).toEqual([]);
+		expect(host.resolvers.map((resolver) => resolver.domain)).toEqual(['layout', 'scene', 'camera']);
+		expect(host.resolvers.map((resolver) => [...resolver.subjectKinds])).toEqual([
+			[...CURRENT_LAYOUT_SUBJECT_KINDS],
+			[...CURRENT_SCENE_SUBJECT_KINDS],
+			[...CURRENT_CAMERA_SUBJECT_KINDS]
+		]);
+		// Experience and typed resources have no current provider: no resolver is registered, and
+		// the shared layer reports exactly that instead of a fabricated resolved subject.
+		expect(createCurrentDomainReadAdapters(document).resolvers.map((resolver) => resolver.domain)).not.toContain('experience');
+	});
+
+	it('resolves every actual Layout entity by its stable id and records the concrete revision', () => {
+		const cases: Array<[string, string]> = [
+			['level', 'floor-2'],
+			['wall', 'wall-1'],
+			['wall', 'wall-2'],
+			['room', 'room-1'],
+			['opening', 'opening-1'],
+			['junction', 'junction-1'],
+			['object', 'object-1']
+		];
+		for (const [kind, id] of cases) {
+			const result = resolveReference(
+				layoutReference({
+					subject: { kind, id },
+					location: kind === 'wall' ? { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: [] } : { kind: 'project-root' }
+				}),
+				read
+			);
+			expect(result.kind, `${kind} "${id}"`).toBe('resolved');
+			if (result.kind !== 'resolved') continue;
+			expect(result.subject.contentRevision).toBe('sha256-source-7');
+			expect(result.subject.owner).toBe('layout');
+			expect(result.subject.subject).toEqual({ kind, id });
+		}
+	});
+
+	it('resolves actual Scene entities, the Scene root and the read-only Camera subjects', () => {
+		const sceneRoot = resolveReference(
+			layoutReference({ domain: 'scene', subject: { kind: 'scene', id: 'project-1' } }),
+			read
+		);
+		expect(sceneRoot.kind).toBe('resolved');
+		if (sceneRoot.kind !== 'resolved') return;
+		expect(sceneRoot.subject.owner).toBe('scene');
+
+		expect(
+			resolveReference(layoutReference({ domain: 'scene', subject: { kind: 'entity', id: 'entity-1' } }), read).kind
+		).toBe('resolved');
+		expect(
+			resolveReference(layoutReference({ domain: 'scene', subject: { kind: 'material', id: 'material-1' } }), read).kind
+		).toBe('resolved');
+		expect(
+			resolveReference(layoutReference({ domain: 'scene', subject: { kind: 'texture', id: 'texture-1' } }), read).kind
+		).toBe('resolved');
+		expect(
+			resolveReference(layoutReference({ domain: 'camera', subject: { kind: 'navigation-node', id: 'node-1' } }), read).kind
+		).toBe('resolved');
+		const connection = resolveReference(
+			layoutReference({ domain: 'camera', subject: { kind: 'connection', id: 'connection-1' } }),
+			read
+		);
+		expect(connection.kind).toBe('resolved');
+		if (connection.kind !== 'resolved') return;
+		expect(connection.subject.owner).toBe('camera');
+	});
+
+	it('treats a clustered entity as its cluster path, and refuses the wrong path', () => {
+		// entity-2 is a cluster member: its canonical path is the cluster, so the bare path is
+		// not a second identity for the same subject.
+		const bare = resolveReference(layoutReference({ domain: 'scene', subject: { kind: 'entity', id: 'entity-2' } }), read);
+		expect(bare.kind === 'failed' && bare.code).toBe('missing');
+		const path = resolveReference(
+			layoutReference({ domain: 'scene', subject: { kind: 'entity', id: 'entity-2' }, instancePath: ['cluster-1'] }),
+			read
+		);
+		expect(path.kind).toBe('resolved');
+		if (path.kind !== 'resolved') return;
+		expect(path.subject.instancePath).toEqual(['cluster-1']);
+		// A cluster that does not contain the entity, and a deeper path, are refusals.
+		expect(
+			resolveReference(
+				layoutReference({ domain: 'scene', subject: { kind: 'entity', id: 'entity-1' }, instancePath: ['cluster-1'] }),
+				read
+			).kind
+		).toBe('failed');
+		expect(
+			resolveReference(
+				layoutReference({ domain: 'scene', subject: { kind: 'entity', id: 'entity-2' }, instancePath: ['cluster-1', 'cluster-1'] }),
+				read
+			).kind
+		).toBe('failed');
+	});
+
+	it('refuses an id the source does not author and never resolves by name or label', () => {
+		const unknown = resolveReference(layoutReference({ subject: { kind: 'wall', id: 'wall-9' } }), read);
+		expect(unknown.kind).toBe('failed');
+		if (unknown.kind !== 'failed') return;
+		expect(unknown.code).toBe('missing');
+		expect(unknown.repairs.length).toBeGreaterThan(0);
+		// wall-2 is *named* "wall-1": a name is not identity, so asking for the name is missing.
+		const byName = resolveReference(layoutReference({ subject: { kind: 'wall', id: 'perimeter-wall' } }), read);
+		expect(byName.kind === 'failed' && byName.code).toBe('missing');
+		// A level the source does not author is a missing subject, not a second level.
+		const kind = resolveReference(layoutReference({ subject: { kind: 'level', id: 'floor-1' } }), read);
+		expect(kind.kind === 'failed' && kind.code).toBe('missing');
+		// A subject kind no current adapter resolves is unsupported, not missing.
+		const unsupportedKind = resolveReference(layoutReference({ subject: { kind: 'placed-structure', id: 's-1' } }), read);
+		expect(unsupportedKind.kind === 'failed' && unsupportedKind.code).toBe('incompatible');
+	});
+
+	it('qualifies the one authored level and invents no structure or level schema', () => {
+		// The current floor ID is the level qualification; another level is missing.
+		const otherLevel = resolveReference(
+			layoutReference({ location: { kind: 'layout-location', levelId: 'floor-1', structureInstancePath: [] } }),
+			read
+		);
+		expect(otherLevel.kind === 'failed' && otherLevel.code).toBe('missing');
+		const structure = resolveReference(
+			layoutReference({ location: { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: ['structure-1'] } }),
+			read
+		);
+		expect(structure.kind === 'failed' && structure.code).toBe('missing');
+		// A Scene subject cannot carry a Layout location qualification.
+		const misplaced = resolveReference(
+			layoutReference({
+				domain: 'scene',
+				subject: { kind: 'entity', id: 'entity-1' },
+				location: { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: [] }
+			}),
+			read
+		);
+		expect(misplaced.kind === 'failed' && misplaced.code).toBe('missing');
+	});
+
+	it('leaves Experience and typed resources explicitly unresolved', () => {
+		const experience = resolveReference(layoutReference({ domain: 'experience', subject: { kind: 'tour', id: 'tour-1' } }), read);
+		expect(experience.kind === 'failed' && experience.code).toBe('incompatible');
+		const resource = resolveReference(
+			layoutReference({ domain: 'resource:audio', subject: { kind: 'audio', id: 'audio-1' } }),
+			read
+		);
+		expect(resource.kind === 'failed' && resource.code).toBe('incompatible');
+	});
+
+	it('refuses an owner-qualified frame because the current source authors none', () => {
+		const frame = { version: 1, kind: 'owner-frame', owner: 'layout', frameId: 'floor-2-frame', revision: 'r1' } as const;
+		const result = resolveFrame(frame, read);
+		expect(result.kind).toBe('failed');
+		if (result.kind !== 'failed') return;
+		// A Room without an authored frame is not a frame: no centroid or containment invents one.
+		expect(result.code).toBe('missing');
+		expect(result.repairs.length).toBeGreaterThan(0);
 	});
 });

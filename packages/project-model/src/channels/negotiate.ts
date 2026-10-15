@@ -6,7 +6,11 @@
  * - an unadmitted **required** family is rejected; an unadmitted **optional**
  *   family is reported unavailable and may be ignored;
  * - a contribution whose descriptor does not match the family's declaration is
- *   refused, so a contributor cannot redefine a family's meaning;
+ *   refused, so a contributor cannot redefine a family's meaning, and a family's
+ *   owning domain must agree with the address's owner domain;
+ * - one property scope is the **complete** reference identity plus its scope
+ *   instance, so distinct revisions, levels or locations never merge into one
+ *   contention domain;
  * - competing exclusive contributions are rejected with the domain, address,
  *   the conflicting owners (their invocation identities) and an actionable
  *   reason, while the same invocation's deliberate replacement is accepted;
@@ -43,14 +47,23 @@ export const EMPTY_CHANNEL_STATE: ChannelState = { contributions: [] };
 /**
  * The identity of one property scope: the address without its property, plus the
  * scope instance. Two viewports are two property scopes, not two writers to one.
- * The key is a lookup key only — nothing ever parses it back into fields.
+ *
+ * The key uses the **complete** reference identity, including the reference's
+ * revision context and location — a reference identifies meaning, not a location,
+ * so two addresses that differ only in their revision or their level/instance
+ * qualification are two addresses. Omitting either would let two distinct
+ * semantic addresses contend inside one property scope (or replace each other's
+ * contribution), which is a wrong conflict, not a merged one. The key is a lookup
+ * key only — nothing ever parses it back into fields.
  */
 export function channelScopeKey(address: ChannelAddress, scopeId: string): string {
 	return JSON.stringify([
 		address.ownerReference.domain,
+		address.ownerReference.revision,
 		address.ownerReference.subject.kind,
 		address.ownerReference.subject.id,
 		address.ownerReference.instancePath,
+		address.ownerReference.location,
 		address.ownerReference.componentId,
 		address.ownerReference.capabilityId,
 		address.instancePath,
@@ -251,6 +264,21 @@ export function negotiateChannelContribution(
 				[],
 				`family "${contribution.descriptor.family}" is not declared by this reader`,
 				'Offer the property through a declared family.'
+			)
+		);
+	}
+	// Domain-owned meaning: the family's authority and the address's owner must be the
+	// same authority, or neither is authoritative for the property.
+	if (family.domain !== contributionDomain) {
+		return rejected(
+			state,
+			'domain-mismatch',
+			diagnostic(
+				contributionDomain,
+				contribution.address,
+				[],
+				`family "${family.id}" is owned by domain "${family.domain}" and the address is qualified by owner domain "${contributionDomain}"`,
+				'Address the property under the owner domain that declares it.'
 			)
 		);
 	}

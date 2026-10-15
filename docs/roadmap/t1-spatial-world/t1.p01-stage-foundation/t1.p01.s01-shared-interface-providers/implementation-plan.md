@@ -38,7 +38,9 @@ own outputs; their implementation is one coherent provider. No live shell or doc
 belongs here.
 
 The implementation delivers them in `@portfolio/project-model`: `src/references/` for
-`references-v1` and `src/channels/` for `inspection-v1`, with conformance suites at
+`references-v1` — the shapes and validators, the resolver host, and the **bounded current-domain
+read adapters** over the current Layout/Scene/read-only-Camera source this gate's acceptance scope
+names — and `src/channels/` for `inspection-v1`, with conformance suites at
 `apps/editor/tests/lib/project-model/references-conformance.test.ts` and
 `apps/editor/tests/lib/project-model/channels-conformance.test.ts`. The accepted provider outputs
 below remain unrecorded: only the reviewer's acceptance promotes them.
