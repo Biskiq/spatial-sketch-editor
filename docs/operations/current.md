@@ -1,23 +1,24 @@
 # Current
 
-PHASE: R115 — PR #115 architecture reset (frozen-lane isolation, aggressive pruning,
-       parallel-track cutover). **CLOSED 2026-10-14** by explicit owner ruling
-       (owner-invoked `phase-closeout`) → ../roadmap/parallel-track-cutover/README.md. The
-       [track register](../roadmap/README.md#track-register) carries it as `shipped`.
-       No phase holds capability work: no track phase is registered.
-CHILD: R115.S01 — shipped 2026-10-14 (`slice-closeout`); its single child is the whole phase, and
-       there is no active slice. Acceptance record → the closed-work stub at
-       ../roadmap/parallel-track-cutover/acceptance.md (accepted body recoverable:
-       `git show 6bd15aa2:docs/roadmap/parallel-track-cutover/acceptance.md`); plan of record →
-       ../roadmap/parallel-track-cutover/implementation-plan.md.
-BATON: #114 accepted unified design → #115 parallel-track planning cutover (WP0–WP7 executed;
-       R115.S01 shipped, R115 closed) → the owner's next planning decision → foundation-gated
-       production implementation.
-NEXT: the owner's next planning decision. No track phase is registered, so nothing is authorized
-      and there is no work package to start. Registering a first T-track phase — or invoking a
-      product integration acceptance or a Baseline — is an owner decision.
-      ROUTE: ../roadmap/README.md (track register + gate register) → the chosen track README →
-      ../operations/<track>/README.md start step.
+PHASE: T1.P01 — Stage and authoring foundation (registered 2026-10-15). First capability phase:
+       shared F1/F3 interface providers, then the Stage/viewport host and the common local F4
+       provider, then restored bounded Layout precision. Phase README →
+       ../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md.
+CHILD: T1.P01.S01 — Shared interface providers — `approved` (owner-authorized 2026-10-15), not
+       started. It supplies `F1.reference@1` and `F3.channels@1` and installs the
+       Accepted-capabilities / Requires readiness enforcement. Plan →
+       ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/implementation-plan.md;
+       acceptance record (no evidence recorded) →
+       ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md.
+       T1.P01.S02–S06 stay `proposed`, each blocked by its own accepted prerequisites.
+BATON: #124 F-interface ratification merged (owner decision 2026-10-15) → T1.P01 registered and
+       S01 authorized → S01 implementation under the T1 runbook start step.
+NEXT: start T1.P01.S01 through the T1 runbook start step. Its `Consumes` list is empty, so
+      eligibility holds with no prerequisite to satisfy; it is not a listed cycle exposure, so
+      no window hook applies. Then implementation → review → acceptance → routine closeout →
+      merge.
+      ROUTE: ../roadmap/README.md (track + gate register) → ../roadmap/t1-spatial-world/README.md
+      (phase register) → the phase README → ../operations/t1-spatial-world/README.md.
 BLOCKER: none.
 EXECUTION STRUCTURE (created by WP5, now live): Track → Phase → Slice with one writable owner per
       concern. Track and phase lifecycle and the gate register → ../roadmap/README.md. Track
@@ -27,15 +28,17 @@ EXECUTION STRUCTURE (created by WP5, now live): Track → Phase → Slice with o
       → ./t1-spatial-world/README.md, ./t2-composition/README.md, ./t3-experience/README.md and
       ./t4-release/README.md. Event procedures (track completion, product integration acceptance,
       bounded replanning) → ./README.md.
-GATE: F.1–F.5 target OWNER-RATIFIED; F1–F4 and `T1.viewport-projection` are `ratified` at version 1
-      (2026-10-15, ../reference/decisions/f-ratification-2026-10-15.md); F5 and the T3/T4 cutovers
-      remain undrafted. NO PRODUCTION IMPLEMENTATION AUTHORIZED. Normative text →
-      ../reference/composition-execution.md. Each exact interface is drafted with its first
-      consumer and ratified as an F amendment; track plans cannot mint independent formats or
-      bypass their readiness gates.
-CYCLE: `PHASE_1` · `awaiting-bounded-slice-window-plan` · the T-track spatial-foundation window is
-      selected and not open. State and protocol → ./architecture-cycle.md (loaded only by its three
-      hooks).
+GATE: F1–F4 and `T1.viewport-projection` are `ratified` at version 1 (2026-10-15,
+      ../reference/decisions/f-ratification-2026-10-15.md); F5 and the T3/T4 cutovers remain
+      undrafted. `F1.reference@1` and `F3.channels@1` name `T1.P01.S01` as their sole provider;
+      the proposed F4/F2/F5 providers and `T1.viewport-projection` stay unassigned until their own
+      phases register. No provider is `implemented` or `accepted`, and `T1.P01.S01` is the only
+      authorized implementation anywhere. Normative text → ../reference/composition-execution.md;
+      the capability-level `Requires` distinction is enforced by the readiness rule S01 installs.
+CYCLE: `PHASE_1` · `ready` · the T1.P01 window is configured with T1.P01.S02, T1.P01.S04 and
+      T1.P01.S05 (expected opener S02, terminal S05) and is **not open**: Opened by, exposure
+      rows, Closed by and mechanism verdicts are empty. State and protocol →
+      ./architecture-cycle.md (loaded only by its three hooks).
 CARRY: Capability evidence and obligations → ../roadmap/t1-spatial-world/planning-evidence.md,
        ../roadmap/t2-composition/planning-evidence.md and
        ../roadmap/t3-experience/planning-evidence.md; T4's delivery obligations →
@@ -45,4 +48,5 @@ CARRY: Capability evidence and obligations → ../roadmap/t1-spatial-world/plann
        TD dispositions (TD-1/TD-2 removed, TD-3 fixed, TD-4/TD-5 retired with the
        benchmark) → ./tech-debt/README.md.
        Recovery for the compacted #115 records — including the R115.S01 anchor degradation — → the
-       acceptance stub above; its `Recovery` section owns the routes.
+       acceptance stub at ../roadmap/parallel-track-cutover/acceptance.md; its `Recovery` section
+       owns the routes.

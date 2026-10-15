@@ -20,8 +20,12 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 
 **Preserved by the PR #115 migration:** the completed Phase 0 investigation, its frozen reviews and
 adjudication, the installed Phase 1 plan and the original method (archived above); the stage
-vocabulary `WAITING` … `STEADY`; and the current stage `PHASE_1` with readiness
-`awaiting-bounded-slice-window-plan` and a **selected, unopened** T-track spatial-foundation window.
+vocabulary `WAITING` … `STEADY`; and the current stage `PHASE_1`.
+
+**T1.P01 window configured 2026-10-15.** The first T1 phase plan (T1.P01, registered with
+`T1.P01.S01` authorized) listed three exposure slices; readiness is `ready` and the window is
+**selected, not open** — `Opened by` stays empty until a listed slice actually starts authorized
+implementation.
 The JSON state fence, the transition evaluator and the CLI action codes are gone: the tables below,
 five short action headings and three one-line hooks replace them.
 
@@ -29,11 +33,10 @@ five short action headings and three one-line hooks replace them.
 
 | Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `PHASE_1` | `awaiting-bounded-slice-window-plan` | T-track spatial foundation — **selected, not open** | — | — | — | — | — | — |
+| `PHASE_1` | `ready` | T1.P01 spatial foundation — **selected, not open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | — | — | — |
 
-- **`<phase> — selected, not open`** is the only window state before validation: the Phase 0
-  diagnosis selected a spatial-foundation window, and no capability slice has started because no
-  capability plan is authorized.
+- **`<phase> — selected, not open`** is the configured-but-unopened state: the bounded window is
+  listed with its terminal, and no listed exposure slice has started authorized implementation yet.
 - **Readiness** is `awaiting-bounded-slice-window-plan` before the window is configured, `ready`
   once it is configured with a live slice list and a terminal, `open` in
   `PHASE_2_VALIDATING`, `owner-verdict-owed` in `PHASE_3_EVALUATE`, `steady` in `STEADY` and
