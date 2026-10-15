@@ -29,16 +29,18 @@ through T1's explicit project-replacement flow or opening supported source. It n
 architecture silently. Neither a datum nor T1's plinth is support. General Wall drawing and
 its derived-role/schema cutover are not prerequisites for a validated canonical starter.
 
-Use the [coordinated provider/readiness/DAG proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
-[shared source-independent interfaces](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/interfaces.md); no proposal link is a trusted-base dependency.
+Use the [coordinated provider/readiness/DAG proposal](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
+[shared source-independent interfaces](../../t1-spatial-world/t1.p01-stage-foundation/interfaces.md); no proposal link is a trusted-base dependency.
 F4's local Layout/Scene capability, conditional Save and unit/compound capability have separate
 acceptance evidence. Local edits are accepted locally and dirty until an acknowledged conditional
 Save; the server need not execute every editing command. A conflict preserves local work/history.
 
-Planning proceeds now. Before any capability implementation, the separate
-[r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) must close with its
-implementation landed. Each implementation plan verifies affected projection/model/renderer
-compatibility against that landed base, rather than inheriting this post-#116 planning inspection.
+Planning proceeds on the landed r186 base: the separate
+[r186 upgrade (PR #122)](https://github.com/Biskiq/spatial-sketch-editor/pull/122) merged into `main`
+as `74efb98b` (three 0.186.1, Threlte unchanged, explicit `PCFShadowMap`). Each implementation plan
+verifies affected projection/model/renderer compatibility against that landed base — admitted-model
+contact verification runs on r186 with loader ownership retained — rather than inheriting this
+post-#116 planning inspection.
 
 This is a composition foundation, not publication or the complete creator-to-visitor loop.
 **T2 owns the next bounded single-model ingest phase**, using accepted F2/resource locks,
@@ -255,7 +257,7 @@ and evidence. This is proposed acceptance work, not an acceptance record.
 
 ## Minimum dependencies and reconciliation decisions
 
-The [coordinated proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) owns the proposed sole-provider allocation, exact capability
+The [coordinated proposal](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) owns the proposed sole-provider allocation, exact capability
 IDs, two-field readiness amendment and safe merge DAG. Ratification and implementation are distinct:
 current gate state alone cannot prove incremental capability readiness. No live register changes here.
 
@@ -272,8 +274,8 @@ current gate state alone cannot prove incremental capability readiness. No live 
 No complete T1, new drawing, levels, representation expansion or full T3 authoring prerequisite.
 A compatible adapter/kind admission records additional capability evidence; incompatible shared
 semantics requires a new gate major and consumer redeclaration. The shared F4 timing and bounded
-current-source exception must be explicitly ratified before S02. The separate r186 closure also
-precedes capability implementation. Source-first conversion and visitor activation stay T3/T4-owned.
+current-source exception must be explicitly ratified before S02. The landed r186 base (`74efb98b`)
+is the required implementation baseline. Source-first conversion and visitor activation stay T3/T4-owned.
 
 ## Acceptance evidence to collect
 

@@ -8,8 +8,8 @@ neither changes F nor establishes a parallel T2 reference/envelope/history proto
 
 ## Common identity and frame interfaces
 
-Prefer the [T1 source-independent interface draft](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/interfaces.md) and
-[coordinated readiness proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md).
+Prefer the [T1 source-independent interface draft](../../t1-spatial-world/t1.p01-stage-foundation/interfaces.md) and
+[coordinated readiness proposal](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md).
 Use shared SemanticReference/SnapshotIdentity/DerivedSourceRef and explicit frame qualification.
 Scene operation payloads use canonical domain transform types, not a new runtime channel family. T2 adds requirements,
 not another encoding:
@@ -181,9 +181,7 @@ inputs from accepted immutable resource pins rather than a live catalogue. Scene
 admits native procedural definitions and already pinned palette entries; a missing pin reports
 unavailable, never silently changes the lock. The F2 starter/migration may install an explicitly
 captured bounded palette as part of its baseline. Adding other resources belongs to T2's staged
-resource follow-on, not a Scene-only transform. This is one source transition, not two editable
-formats. Incompatible intent/revision/result semantics needs a new major; compatible registered
-adapter admission keeps F4@1 with explicit new evidence. The [readiness amendment](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+resource follow-on, not a Scene-only transform.This is one source transition, not two editable formats. Incompatible intent/revision/result semantics needs a new major; compatible registered adapter admission keeps F4@1 with explicit new evidence. Retirement ends current-source adapter admission only; the revision/result/history invariants endure as unit-capability prerequisites and shipped evidence stays valid history. The [readiness amendment](../../t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
 requires both Consumes and exact Requires capabilities accepted at trusted base before use.
 
 ## Minimum T1 viewport consumer contract
