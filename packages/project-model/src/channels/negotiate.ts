@@ -17,8 +17,16 @@
  * - an `ordered-replacement` property accepts only a strictly newer accepted run
  *   epoch, so an older run cannot reclaim or clear the current contribution;
  * - `union` merges declared identities instead of contending;
- * - a contribution that can no longer prove it belongs to the supplied accepted
- *   revision or generation is refused as stale.
+ * - a contribution that can no longer prove it belongs to the supplied snapshot's
+ *   **content** or to the active generation is refused as stale. Content, not the
+ *   acceptance token: an accepted revision is fresh on every source change
+ *   *including Undo/Redo*, so a contribution computed from content the snapshot
+ *   still holds is current even when its acceptance has changed, and it is the only
+ *   identity a contribution can actually name. These two declared inputs are the
+ *   ones negotiation can verify, because `computedFrom` is the only provenance a
+ *   contribution carries; a declared `parameters`, `frame`, `intent`, `clock`,
+ *   `viewport-rect`, `source-extent`, `source-kind-filter`, `reveal-set` or `epoch`
+ *   input is the owning evaluator's duty to re-evaluate.
  *
  * This is arbitration of **values**, not evaluation of them: no pose, frame,
  * matrix or geometry is computed here, and no setter is exposed.
@@ -143,8 +151,38 @@ function unionValue(left: ChannelValue, right: ChannelValue): ChannelValue {
 	return left;
 }
 
+/** Membership equality for a declared identifier set; validation rejects duplicates. */
+function sameMembers(left: readonly string[], right: readonly string[]): boolean {
+	if (left.length !== right.length) return false;
+	const members = new Set(left);
+	return right.every((identifier) => members.has(identifier));
+}
+
+/** Membership equality for a declared source-identity set. */
+function sameIdentities(left: readonly ChannelSourceIdentity[], right: readonly ChannelSourceIdentity[]): boolean {
+	if (left.length !== right.length) return false;
+	return left.every((identity) => right.some((candidate) => sameIdentity(candidate, identity)));
+}
+
+/**
+ * Value equality within one declared property scope. The descriptor and address are
+ * already proved equal, so the two values always share a kind; each kind is
+ * compared by the identity *it* declares. A set kind is its membership, never the
+ * order its members were listed in — otherwise re-offering the same declared set
+ * in another order would read as a different value, which for an exclusive or
+ * ordered-replacement property is a spurious same-run-epoch conflict rather than
+ * the idempotent re-offer it actually is.
+ */
 function sameValue(left: ChannelValue, right: ChannelValue): boolean {
-	return JSON.stringify(left) === JSON.stringify(right);
+	if (left.kind !== right.kind) return false;
+	if (left.kind === 'number' && right.kind === 'number') return left.value === right.value;
+	if (left.kind === 'vector3' && right.kind === 'vector3') {
+		return left.value.every((component, index) => component === right.value[index]);
+	}
+	if (left.kind === 'identifier' && right.kind === 'identifier') return left.value === right.value;
+	if (left.kind === 'identifier-set' && right.kind === 'identifier-set') return sameMembers(left.value, right.value);
+	if (left.kind === 'source-set' && right.kind === 'source-set') return sameIdentities(left.value, right.value);
+	return false;
 }
 
 function diagnostic(

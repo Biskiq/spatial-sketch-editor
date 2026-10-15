@@ -435,6 +435,38 @@ describe('F.1 references-v1 — stable ID ordering', () => {
 		const nested = layoutReference({ subject: { kind: 'wall', id: 'wall-1' }, instancePath: ['instance-7'] });
 		expect(compareReferences(first, nested)).toBeLessThan(0);
 	});
+
+	it('orders the complete identity, so two references are never equal unless they are the same', () => {
+		// The revision context and the location qualification are identity too: ordering by
+		// the subject alone would treat two distinct references as one, which is exactly what
+		// a consumer sorting a selection or deduplicating by `compare === 0` must not get.
+		const atOldContent = layoutReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-6' } });
+		const atHeldContent = layoutReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-7' } });
+		expect(compareReferences(atOldContent, atHeldContent)).toBeLessThan(0);
+		expect(compareReferences(atHeldContent, atHeldContent)).toBe(0);
+		// A project-lock reference is not the exact reference with the same subject.
+		const locked = layoutReference({ revision: { kind: 'project-lock', projectId: 'project-1' } });
+		expect(compareReferences(atHeldContent, locked)).not.toBe(0);
+
+		const atLevel = layoutReference({
+			location: { kind: 'layout-location', levelId: 'floor-1', structureInstancePath: [] }
+		});
+		const atOtherLevel = layoutReference({
+			location: { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: [] }
+		});
+		expect(compareReferences(atLevel, atOtherLevel)).toBeLessThan(0);
+		// project-root and a layout location are different qualifications, not equal ones.
+		expect(compareReferences(atLevel, layoutReference())).not.toBe(0);
+		const nestedLevel = layoutReference({
+			location: { kind: 'layout-location', levelId: 'floor-1', structureInstancePath: ['instance-1'] }
+		});
+		expect(compareReferences(atLevel, nestedLevel)).toBeLessThan(0);
+
+		// A declared optional extension carries no payload and cannot change core identity, so
+		// it is deliberately not an ordering key.
+		const extended = layoutReference({ extensions: [{ id: 'x.optional@1', required: false }] });
+		expect(compareReferences(extended, layoutReference())).toBe(0);
+	});
 });
 
 /**

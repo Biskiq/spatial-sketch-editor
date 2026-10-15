@@ -19,8 +19,8 @@ branch's diff; a later edit invalidates the rows it touches.
 | `F1.reference@1` (`references-v1`) exports | `packages/project-model/src/references/` (shapes, strict validation, resolver host + resolution, frame resolution, generation-qualified correspondence, stable ID ordering) |
 | `references-v1` bounded current-domain read adapters | `packages/project-model/src/references/read-adapter.ts` — actual Layout entities, actual Scene entities and read-only current Camera subjects from one supplied `ProjectDocument` |
 | `F3.channels@1` (`inspection-v1`) exports | `packages/project-model/src/channels/` (address/descriptor/typed values, the two v1 families including the ratified policy inputs, negotiation, the Camera-output ticket protocol) |
-| F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 32 cases |
-| F3 conformance | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` — 26 cases |
+| F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 33 cases |
+| F3 conformance | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` — 30 cases |
 | Accepted-capabilities / Requires enforcement | `capabilityProblems` + the register fields in `apps/editor/tests/docs/parallel-track-gates.test.ts` |
 | Runtime-safe import direction | `apps/editor/tests/lib/project-model-boundary.test.ts` (arch lane) walks every file in the package |
 
@@ -32,7 +32,7 @@ npm run check                 svelte-kit sync && svelte-check        0 errors, 0
 npm run build                 vite build                                                       PASS
 npm run test:arch             vitest run --config vitest.arch.config.ts   15 files, 137 tests   PASS
 npm run test:heavy            vitest run --config vitest.heavy.config.ts   8 files, 118 tests   PASS
-npm test                      vitest run (complete suite)               118 files, 1589 tests  PASS
+npm test                      vitest run (complete suite)               118 files, 1594 tests  PASS
 npm run check:api             tsc -p tsconfig.json --noEmit                                   PASS
 npm run test:api              node --test (real Postgres)   39 tests, 0 skipped, 0 failed    PASS
 ```
@@ -200,6 +200,39 @@ resolving at that content revision. F1's shared core was unaffected — `resolve
 already correct, and no hashing was added to a resolver, no compatibility layer and no revision
 registry introduced.
 
+## Foundation hardening (investigation round)
+
+A deeper investigation of the provider's own invariants, run before independent review against the
+ratified AM-1/AM-3 text, this phase's F1 draft, the cross-track provider matrix and the code. Four
+defects were confirmed and fixed, four hypotheses were rejected or explicitly bounded with contract
+evidence, and one area was challenged adversarially without finding a violation. No ratified
+contract, gate register or other track is amended: every change refines an export S01 already owns,
+and `references-v1` / `inspection-v1` keep their versions.
+
+| Finding | Disposition |
+| --- | --- |
+| `compareReferences` was not a total order over reference identity. Two references differing only in their revision context or location qualification compared equal (`0`), so a consumer sorting a selection could not distinguish them and `compare === 0` did not mean "the same reference" — a silent merge of two references in any consumer that deduplicates by the comparator. | **Confirmed defect.** `compareReferences` now orders the complete core identity — domain, revision tag and its opaque id, subject kind and id, component id, capability id, location tag and level id, location structure-instance path, then the reference's instance path — so distinct references never compare equal and `=== 0` is exactly reference equality. `version` is the fixed interface version, and `extensions` are deliberately excluded: an entry carries no payload, so an ignorable optional extension must not change core identity, and ordering by it would let exactly that happen. Fixture: distinct revisions, a project-lock against an exact reference, a level qualification, a structure-instance path and an optional extension. |
+| `sameValue` compared channel values with `JSON.stringify`, so a declared **set** value was compared as a sequence. Re-offering the same `source-kind-filter` (`identifier-set`, `exclusive` in the v1 Layout family) in another order at the same run epoch was refused as `same-run-epoch-conflict` instead of being recognised as the idempotent re-offer it is — a semantic no-op reported as a conflict. | **Confirmed defect.** Value equality is now per declared kind: scalars and vector components by value, `identifier-set` and `source-set` by membership (validation already rejects duplicates, so membership equality is set equality). Fixture: a reordered re-offer is idempotent and leaves the state untouched, a genuinely different set is still the one-contribution-per-run conflict, and a newer run replaces the whole set. |
+| A return at the run-epoch ceiling minted an epoch **equal** to the one it replaced, because `Number.MAX_SAFE_INTEGER + 1 === Number.MAX_SAFE_INTEGER`. That silently stalls the protocol's core invariant ("every accepted transition moves to a strictly newer run epoch") at the numerical boundary, which is what protects replay. | **Confirmed defect.** Accepted and minted run epochs are bounded by `MAX_CAMERA_OUTPUT_RUN_EPOCH`, so a strictly newer epoch always exists; the ticket validator refuses anything above it, and a return that cannot mint one is refused with a reason instead of minting an equal epoch. Fixture: the ceiling is valid, one above it is invalid, and at the ceiling both a return and a superseding acquire are refused with the state unchanged. |
+| `sessionEpoch` was enforced only while a claim existed. On a **free** output there is no claim to compare against, so a ticket minted under a closed host session could take the output — the ratified `SessionEpoch` lifetime guard was ignored exactly where it was the only guard left. | **Confirmed defect.** The ownership state now names the host session it belongs to, and every acquire qualifies its ticket against that session before reading the state, so a foreign-session ticket is refused even with no claim. A live claim's session therefore always equals the state's. Fixture: a foreign-session ticket refused on a never-claimed and on a just-cancelled output, while a new host session's own state accepts its own ticket. |
+| Declared `accepted-revision` invalidation is checked against `sourceContentId`, which "may permit stale contributions across different acceptances with identical content". | **Rejected.** A contribution whose `computedFrom.contentRevision` equals the snapshot's content identity was computed from exactly the content being read, so it is current — and the acceptance token it cannot name is fresh on every change *including Undo/Redo*, so requiring it would refuse a correctly computed contribution after a no-op undo. `contentRevision` is a content identity on both sides of this provider (the F1 adapters match it against `sourceContentId`, and the F3 contribution field is named for content), so comparing it to an acceptance token would reintroduce the category error round three removed. Fixture: none needed — the existing stale-revision, stale-generation and unproven-contribution fixtures already pin this behavior. |
+| Nested handoffs (A → B → C → B → A). | **Bounded, explicitly.** v1 supports one pending return: a handoff issues a return context only for the run it replaced, and the run a return restores holds none. So C returns to B, and B's further return to A is **refused** with a reason rather than silently transferring ownership to a run whose return was spent. Supporting deeper unwinding would need retained history — a persistent stack the scope does not authorize — so the limit is stated in the module and proved by fixture instead. |
+| Declared invalidation inputs other than `accepted-revision` and `generation` (`parameters`, `frame`, `intent`, `clock`, `viewport-rect`, `source-extent`, `source-kind-filter`, `reveal-set`, `epoch`) cannot be verified by negotiation. | **Deferred as a documented division of duty.** `computedFrom` is the only provenance a contribution carries, so those two are the only inputs it can prove anything about; the rest are the owning evaluator's duty to re-evaluate on its declared input. Widening `computedFrom` with parameter/frame/viewport provenance would be a speculative shape change belonging to the families that need it, so the boundary is documented in the module instead. |
+| Whether source-qualified Reveal identities need richer qualification now. | **Deferred, no widening.** A reveal entry is scoped to an address whose `ownerReference` carries the revision context, and negotiation evaluates one supplied snapshot at a time, so every identity resolves inside that context. Adding a revision to `ChannelSourceIdentity` would duplicate the address qualification and widen a serialized shape ahead of an admitted capability — exactly what the scope forbids. T1.P01.S02 picks the reveal semantics it consumes. |
+| `unknown-family` looks unreachable from the v1 host. | **Observation, no change.** A contribution for a family the reader does not admit is answered `unsupported-required-family` (its capability is required) or `unavailable` (optional). Its declared capability decides which, so the branch is defence for a future host whose admission set differs from its family list. A consumer should not depend on `unknown-family` from this host; the two reachable answers are already fixtured. |
+| Capability-readiness checker challenged adversarially: trusted-base acceptance, transitive prerequisite closure, retirement, self-satisfaction, settled/historical slices, registered-version and residency rules. | **No violation found.** The trusted base is read from `git show <merge-base HEAD main>:docs/roadmap/README.md` rather than a self-declared field; a scope accepted only in the current diff fails, a retired scope fails for a new or in-progress consumer, a capability cannot be its own prerequisite, and a `proposed` or settled slice keeps its recorded scopes. Two parity notes are recorded as observations rather than fixed, because neither violates the ratified rule: a malformed entry at the trusted base is not filtered by well-formedness (it still cannot grant eligibility, since its scope string would not match an exact token), and a prerequisite cycle that does not pass through the root capability is not reported as cyclic (the eligibility result is unaffected — every member must still be `active` in the current tree and at the trusted base). |
+
+**Invariants established (each fixtured).**
+
+- *Identity ordering:* `compareReferences` is a total order over the core reference identity, so `=== 0` is reference equality and a sorted selection is fully determined. Optional extensions are not an ordering key.
+- *Value identity:* a declared set value is its membership; only a genuinely different or newer contributed value changes a property scope.
+- *Ownership order:* every accepted Camera-output transition — acquire, ordered replacement, ordered return — moves to a strictly **newer** run epoch than the highest this output ever accepted, including at the numerical ceiling.
+- *Session lifetime:* an output's ownership state belongs to one host session, and a ticket is qualified against it on every acquire, including on a free output.
+- *Return depth:* exactly one pending return per output; deeper unwinding is refused with a reason, never silently mis-transferred.
+- *Revision identity:* an exact reference and a contribution's `computedFrom` both name **content** identity, while the read context and the acceptance token name the **acceptance** identity — the two are never compared to each other.
+
+**Alternatives rejected.** A persistent handoff stack for nested returns — unnecessary retained history for a case the scope does not authorize; widening `computedFrom` or `ChannelSourceIdentity` to carry provenance or revision context the current families do not need; comparing channel values as sequences (the defect above); and enforcing the F1 snapshot binding by hashing the source on every resolve rather than by the supplied snapshot pair.
+
 ## Owed to review (not implementer judgement)
 
 - The independent verdict against the plan's acceptance criteria, and the tested-revision
@@ -225,6 +258,13 @@ registry introduced.
   `F1.reference@1:references-v1` / `F3.channels@1:inspection-v1` Accepted-capabilities entries.
   Until that happens both rows stay `ratified` with empty evidence columns and no consumer may
   Require either scope.
+- Whether the two deliberate tightenings this round introduces are the intended reading. (a)
+  Camera-output ownership state now names its host session, so a host that changes session epoch
+  while keeping one viewport state must start a new state: a ticket from the previous session is
+  refused even on a free output. (b) Accepted run epochs are bounded one below
+  `Number.MAX_SAFE_INTEGER`, so a strictly newer epoch always exists; the ratified ticket **shape**
+  is unchanged and only the accepted value domain is narrowed. Both follow from AM-3's `SessionEpoch`
+  lifetime guard and its strictly-newer-epoch rule as this implementation reads them.
 - Any residual risk the review finds in the recorded contracts.
 
 The record is filled against the plan's acceptance criteria by the reviewer once real code and a

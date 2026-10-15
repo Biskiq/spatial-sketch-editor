@@ -268,29 +268,69 @@ export function resolveDerivedSourceRef(
 	return { kind: 'resolved', fragment: value, source: source.subject };
 }
 
+function compareIds(left: string, right: string): number {
+	return left < right ? -1 : left > right ? 1 : 0;
+}
+
 /**
- * Stable ordering between two references, by ID fields only — never a parsed
+ * Compare two ordered stable-ID paths. No path segment is ever empty (an opaque id
+ * is nonempty), so a shorter path sorts before a path that extends it.
+ */
+function compareIdPaths(left: readonly string[], right: readonly string[]): number {
+	const length = Math.max(left.length, right.length);
+	for (let index = 0; index < length; index += 1) {
+		const order = compareIds(left[index] ?? '', right[index] ?? '');
+		if (order !== 0) return order;
+	}
+	return 0;
+}
+
+/** The opaque id a revision context names: its content revision, or the locked project. */
+function revisionId(revision: SemanticReference['revision']): string {
+	return revision.kind === 'exact' ? revision.contentRevision : revision.projectId;
+}
+
+/**
+ * Stable ordering between two references — by ID fields only, never a parsed
  * display label, instance order or render order.
+ *
+ * This is a **total** order over the core identity AM-1 declares, so two distinct
+ * references never compare equal and a consumer may sort a selection and rely on
+ * the result (`compareReferences(a, b) === 0` is exactly "the same reference").
+ * The compared sequence is: domain, revision tag and its opaque id, subject kind,
+ * subject id, component id, capability id, location tag, location level id, the
+ * location structure-instance path, then the reference's instance path. Every part
+ * is an opaque stable id or a declared tag.
+ *
+ * `version` is the fixed interface version rather than an identity, and
+ * `extensions` are deliberately **not** compared: an extension entry carries no
+ * payload, so an ignorable optional one must not change core reference identity,
+ * and ordering by it would let exactly that happen.
  */
 export function compareReferences(left: SemanticReference, right: SemanticReference): number {
 	const fields: Array<[string, string]> = [
 		[left.domain, right.domain],
+		[left.revision.kind, right.revision.kind],
+		[revisionId(left.revision), revisionId(right.revision)],
 		[left.subject.kind, right.subject.kind],
 		[left.subject.id, right.subject.id],
 		[left.componentId ?? '', right.componentId ?? ''],
-		[left.capabilityId ?? '', right.capabilityId ?? '']
+		[left.capabilityId ?? '', right.capabilityId ?? ''],
+		[left.location.kind, right.location.kind],
+		[
+			left.location.kind === 'layout-location' ? left.location.levelId : '',
+			right.location.kind === 'layout-location' ? right.location.levelId : ''
+		]
 	];
 	for (const [a, b] of fields) {
-		if (a < b) return -1;
-		if (a > b) return 1;
+		const order = compareIds(a, b);
+		if (order !== 0) return order;
 	}
-	for (let index = 0; index < Math.max(left.instancePath.length, right.instancePath.length); index += 1) {
-		const a = left.instancePath[index] ?? '';
-		const b = right.instancePath[index] ?? '';
-		if (a < b) return -1;
-		if (a > b) return 1;
-	}
-	return 0;
+	const locationPath = compareIdPaths(
+		left.location.kind === 'layout-location' ? left.location.structureInstancePath : [],
+		right.location.kind === 'layout-location' ? right.location.structureInstancePath : []
+	);
+	return locationPath !== 0 ? locationPath : compareIdPaths(left.instancePath, right.instancePath);
 }
 
 /** The exact version this reader implements, exposed for negotiation/registration. */

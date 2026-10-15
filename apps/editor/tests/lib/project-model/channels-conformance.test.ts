@@ -23,6 +23,7 @@ import {
 	DEFAULT_CHANNEL_FAMILIES,
 	EMPTY_CHANNEL_STATE,
 	LAYOUT_PLAN_FAMILY,
+	MAX_CAMERA_OUTPUT_RUN_EPOCH,
 	acquireCameraOutput,
 	cancelCameraOutput,
 	channelFamilySatisfaction,
@@ -643,6 +644,41 @@ describe('F.3 inspection-v1 — negotiation, conflict and replacement', () => {
 		expect(competing.kind === 'rejected' && competing.reason).toBe('competing-exclusive-contribution');
 		expect(competing.kind === 'rejected' && competing.diagnostics.owners).toEqual(['invocation-1', 'invocation-9']);
 	});
+
+	it('compares a declared set by membership, so a reordered re-offer is the same value', () => {
+		const filter = (
+			identifiers: readonly string[],
+			runEpoch: number,
+			invocationId = 'invocation-1'
+		): Record<string, unknown> =>
+			contribution({
+				propertyId: 'source-kind-filter',
+				value: { kind: 'identifier-set', value: identifiers },
+				runEpoch,
+				invocationId
+			});
+		const first = accept(EMPTY_CHANNEL_STATE, filter(['wall', 'opening'], 1));
+
+		// The same declared set in another order is the same value: an idempotent re-offer,
+		// never a same-run-epoch conflict and never a silent rewrite of the accepted value.
+		const reordered = negotiateChannelContribution(HOST, first, filter(['opening', 'wall'], 1), CONTEXT);
+		expect(reordered.kind).toBe('accepted');
+		if (reordered.kind !== 'accepted') return;
+		expect(reordered.idempotent).toBe(true);
+		expect(reordered.state).toBe(first);
+
+		// A genuinely different set at the same run is still the one-contribution-per-run conflict.
+		const different = negotiateChannelContribution(HOST, first, filter(['wall'], 1), CONTEXT);
+		expect(different.kind === 'rejected' && different.reason).toBe('same-run-epoch-conflict');
+
+		// And a newer run replaces the whole set rather than merging it.
+		const replaced = negotiateChannelContribution(HOST, first, filter(['wall', 'opening', 'junction'], 2), CONTEXT);
+		expect(replaced.kind).toBe('accepted');
+		if (replaced.kind !== 'accepted') return;
+		expect(replaced.replaced).toHaveLength(1);
+		const stored = findChannelContribution(replaced.state, planAddress('source-kind-filter'), 'viewport-1');
+		expect(stored?.value).toEqual({ kind: 'identifier-set', value: ['wall', 'opening', 'junction'] });
+	});
 });
 
 function held(outputId: string, runEpoch: number): CameraOutputTicket {
@@ -660,7 +696,7 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 	});
 
 	it('acquires one exclusive owner per viewport and refuses a competing exclusive request', () => {
-		const state = createCameraOutputState('viewport-1');
+		const state = createCameraOutputState('viewport-1', 'session-1');
 		const acquired = acquireCameraOutput(state, {
 			ticket: held('output-1', 0),
 			role: 'inspection',
@@ -693,7 +729,7 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 	});
 
 	it('never lets a stale observation, session or source revision take the output', () => {
-		const state = createCameraOutputState('viewport-1');
+		const state = createCameraOutputState('viewport-1', 'session-1');
 		const first = acquireCameraOutput(state, {
 			ticket: held('output-1', 3),
 			role: 'inspection',
@@ -737,7 +773,7 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 	});
 
 	it('hands off in order, validates the return context and returns to the replaced run', () => {
-		const first = acquireCameraOutput(createCameraOutputState('viewport-1'), {
+		const first = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-1'), {
 			ticket: held('output-1', 1),
 			role: 'inspection',
 			expected: { kind: 'unowned' },
@@ -778,7 +814,7 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 
 	it('keeps ownership order monotonic across a return, so no spent ticket re-enters', () => {
 		// Owner A holds epoch 1; owner B replaces it at epoch 2 and then returns control to A.
-		const a = acquireCameraOutput(createCameraOutputState('viewport-1'), {
+		const a = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-1'), {
 			ticket: held('output-1', 1),
 			role: 'guided-navigation',
 			expected: { kind: 'unowned' },
@@ -825,7 +861,7 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 	});
 
 	it('answers a superseded run and refuses a foreign owner', () => {
-		const first = acquireCameraOutput(createCameraOutputState('viewport-1'), {
+		const first = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-1'), {
 			ticket: held('output-1', 2),
 			role: 'guided-navigation',
 			expected: { kind: 'unowned' },
@@ -841,11 +877,11 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 
 		const foreign = requestCameraOutput(first.state, { ...held('output-1', 2), ownerId: 'owner-b' });
 		expect(foreign.kind === 'refused' && foreign.reason).toBe('not-owner');
-		expect(requestCameraOutput(createCameraOutputState('viewport-1'), held('output-1', 0)).kind).toBe('refused');
+		expect(requestCameraOutput(createCameraOutputState('viewport-1', 'session-1'), held('output-1', 0)).kind).toBe('refused');
 	});
 
 	it('makes cancellation epoch-qualified and idempotent', () => {
-		const first = acquireCameraOutput(createCameraOutputState('viewport-1'), {
+		const first = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-1'), {
 			ticket: held('output-1', 1),
 			role: 'inspection',
 			expected: { kind: 'unowned' },
@@ -896,7 +932,7 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 
 		// Idempotent: cancelling an unowned or already-cancelled output is a no-op.
 		expect(cancelCameraOutput(cancelled.state, handoff.claim.ticket).kind).toBe('cancelled');
-		expect(cancelCameraOutput(createCameraOutputState('viewport-1'), held('output-1', 1)).kind).toBe('cancelled');
+		expect(cancelCameraOutput(createCameraOutputState('viewport-1', 'session-1'), held('output-1', 1)).kind).toBe('cancelled');
 
 		// Cancellation is not re-entry: the cancelled run's epoch is spent, and only a strictly
 		// newer accepted run may take the freed output.
@@ -919,8 +955,137 @@ describe('F.3 inspection-v1 — Camera output ticket protocol', () => {
 		expect(reacquired.kind).toBe('acquired');
 	});
 
+	it('qualifies every ticket against the state host session, even with no claim to compare', () => {
+		// A ticket from another host session cannot take an output that has never been
+		// claimed: there is no live claim to compare against, and the session is the host
+		// lifetime the ticket names, so the state's own session is the guard.
+		const fresh = createCameraOutputState('viewport-1', 'session-1');
+		const foreign = acquireCameraOutput(fresh, {
+			ticket: { ...held('output-1', 0), sessionEpoch: 'session-2' },
+			role: 'inspection',
+			expected: { kind: 'unowned' },
+			policy: 'exclusive'
+		});
+		expect(foreign.kind).toBe('refused');
+		if (foreign.kind !== 'refused') return;
+		expect(foreign.reason).toBe('stale-session-epoch');
+		expect(foreign.state).toBe(fresh);
+
+		// The same holds once the output has been freed: a cancelled output belongs to this
+		// session's state, so a ticket left over from a closed session cannot take it.
+		const first = acquireCameraOutput(fresh, {
+			ticket: held('output-1', 0),
+			role: 'inspection',
+			expected: { kind: 'unowned' },
+			policy: 'exclusive'
+		});
+		if (first.kind !== 'acquired') throw new Error('the fixture must acquire');
+		const cancelled = cancelCameraOutput(first.state, first.claim.ticket);
+		if (cancelled.kind !== 'cancelled') throw new Error('the fixture must cancel');
+		const staleSession = acquireCameraOutput(cancelled.state, {
+			ticket: { ...held('output-1', 1), sessionEpoch: 'session-2' },
+			role: 'inspection',
+			expected: { kind: 'unowned' },
+			policy: 'ordered-replacement'
+		});
+		expect(staleSession.kind === 'refused' && staleSession.reason).toBe('stale-session-epoch');
+
+		// A new host session starts from a new state, where its own tickets are valid.
+		const restarted = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-2'), {
+			ticket: { ...held('output-1', 1), sessionEpoch: 'session-2' },
+			role: 'inspection',
+			expected: { kind: 'unowned' },
+			policy: 'ordered-replacement'
+		});
+		expect(restarted.kind).toBe('acquired');
+	});
+
+	it('keeps ownership order strictly increasing at the run-epoch ceiling', () => {
+		const highest = MAX_CAMERA_OUTPUT_RUN_EPOCH;
+		// The bound is on the ticket itself, so no accepted run can sit where its successor
+		// epoch would be unrepresentable.
+		expect(validateCameraOutputTicket(held('output-1', highest)).valid).toBe(true);
+		expect(validateCameraOutputTicket(held('output-1', highest + 1)).valid).toBe(false);
+
+		const first = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-1'), {
+			ticket: held('output-1', highest - 1),
+			role: 'inspection',
+			expected: { kind: 'unowned' },
+			policy: 'exclusive'
+		});
+		if (first.kind !== 'acquired') throw new Error('the fixture must acquire');
+		const handoff = replaceCameraOutput(first.state, {
+			ticket: { ...held('output-1', highest), ownerId: 'owner-b' },
+			role: 'preview',
+			expected: { kind: 'held', ticket: first.claim.ticket },
+			returnToken: 'return-1'
+		});
+		if (handoff.kind !== 'acquired') throw new Error('the fixture must hand off');
+
+		// A return would have to mint an epoch that is not strictly newer than the one it
+		// replaces, so it is refused rather than minting an equal epoch.
+		const returned = returnCameraOutput(handoff.state, handoff.claim.ticket, 'return-1');
+		expect(returned.kind).toBe('refused');
+		if (returned.kind !== 'refused') return;
+		expect(returned.reason).toBe('stale-run-epoch');
+		expect(returned.state).toBe(handoff.state);
+		expect(returned.state.claim?.ticket.runEpoch).toBe(highest);
+
+		// Nothing can supersede the ceiling either, and the refusal is explicit with a reason.
+		const beyond = acquireCameraOutput(handoff.state, {
+			ticket: { ...held('output-1', highest), ownerId: 'owner-c' },
+			role: 'follow',
+			expected: { kind: 'held', ticket: handoff.claim.ticket },
+			policy: 'ordered-replacement'
+		});
+		expect(beyond.kind === 'refused' && beyond.reason).toBe('stale-run-epoch');
+	});
+
+	it('returns only to the run the handoff replaced and refuses a deeper unwind', () => {
+		const a = acquireCameraOutput(createCameraOutputState('viewport-1', 'session-1'), {
+			ticket: held('output-1', 1),
+			role: 'inspection',
+			expected: { kind: 'unowned' },
+			policy: 'exclusive'
+		});
+		if (a.kind !== 'acquired') throw new Error('the fixture must acquire');
+		const b = replaceCameraOutput(a.state, {
+			ticket: { ...held('output-1', 2), ownerId: 'owner-b' },
+			role: 'preview',
+			expected: { kind: 'held', ticket: a.claim.ticket },
+			returnToken: 'return-a'
+		});
+		if (b.kind !== 'acquired') throw new Error('the fixture must hand off');
+		const c = replaceCameraOutput(b.state, {
+			ticket: { ...held('output-1', 3), ownerId: 'owner-c' },
+			role: 'look-through',
+			expected: { kind: 'held', ticket: b.claim.ticket },
+			returnToken: 'return-b'
+		});
+		if (c.kind !== 'acquired') throw new Error('the fixture must hand off');
+
+		// C returns control to B — the run its own handoff replaced — under a fresh epoch.
+		const toB = returnCameraOutput(c.state, c.claim.ticket, 'return-b');
+		expect(toB.kind).toBe('returned');
+		if (toB.kind !== 'returned') return;
+		expect(toB.claim.ticket.ownerId).toBe('owner-b');
+		expect(toB.claim.ticket.runEpoch).toBe(4);
+		expect(toB.claim.returnContext).toBeNull();
+
+		// The restored run holds no return context, so the chain A → B → C → B → A is refused
+		// rather than silently transferring ownership to a run whose return was spent.
+		const toA = returnCameraOutput(toB.state, toB.claim.ticket, 'return-a');
+		expect(toA.kind).toBe('refused');
+		if (toA.kind !== 'refused') return;
+		expect(toA.reason).toBe('invalid-return-token');
+		expect(toA.state.claim?.ticket.ownerId).toBe('owner-b');
+		expect(toA.state.claim?.ticket.runEpoch).toBe(4);
+		// A consumed token cannot be replayed either.
+		expect(returnCameraOutput(toB.state, toB.claim.ticket, 'return-b').kind).toBe('refused');
+	});
+
 	it('keeps every decision pure: no state is mutated in place', () => {
-		const state: CameraOutputState = createCameraOutputState('viewport-1');
+		const state: CameraOutputState = createCameraOutputState('viewport-1', 'session-1');
 		const snapshot = JSON.stringify(state);
 		acquireCameraOutput(state, {
 			ticket: held('output-1', 0),

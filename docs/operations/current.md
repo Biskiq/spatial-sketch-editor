@@ -18,7 +18,10 @@ CHILD: T1.P01.S01 — Shared interface providers — `in-progress` (owner-author
 BATON: #124 F-interface ratification merged (owner decision 2026-10-15) → T1.P01 registered and
        S01 authorized → S01 implemented → three review rounds' findings addressed on the same
        branch and re-verified (round three: an exact reference is matched against the snapshot's
-       current-source content identity, not its acceptance token); independent review owed.
+       current-source content identity, not its acceptance token) → a foundation-hardening
+       investigation fixed four invariants (a total reference order, set-valued equality in
+       negotiation, and the Camera-output epoch ceiling and host-session qualification) and
+       recorded four hypotheses rejected or bounded with contract evidence; independent review owed.
 NEXT: independent review of T1.P01.S01 against its plan's acceptance criteria, on the tested
       revision the acceptance record names. Its `Consumes` and `Requires` are empty, so
       eligibility held with no prerequisite to satisfy, and it is not a listed cycle exposure,
