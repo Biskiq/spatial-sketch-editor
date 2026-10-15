@@ -129,4 +129,4 @@ for it today. Each is a T1 capability, not a regression.
 - **TD-5**'s lesson — do not deep-proxy compiled geometry; measure against the input the editor
   actually hands in.
 
-The phase proposal also routes the [coordinated T1–T4 allocation/readiness/DAG](../cross-track-execution.md), pending ratification.
+The phase proposal also routes the [coordinated T1–T4 allocation/readiness/DAG](../cross-track-execution.md); its F amendments and readiness rule are owner-ratified 2026-10-15, while the allocation itself registers no gate, phase or slice.

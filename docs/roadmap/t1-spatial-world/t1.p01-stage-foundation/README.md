@@ -7,8 +7,10 @@ the architecture-cycle window remains selected and unopened. Planning route:
 
 **Recommendation:** provide F1/F3, a small shared Stage/viewport host and the common local F4
 provider, then restore bounded Layout precision. The [cross-track allocation/readiness/DAG](../../cross-track-execution.md)
-and [exact interface drafts](./interfaces.md) govern this proposal's recommendations; neither is
-ratified. First capability work is S01 after exact amendments, authorization and the landed r186 base (`74efb98b`).
+and [exact interface drafts](./interfaces.md) govern this proposal's recommendations; the F amendments are owner-ratified 2026-10-15
+([record](../../../reference/decisions/f-ratification-2026-10-15.md)), while this phase proposal is
+not yet registered. First capability work is S01 after registration and authorization on the landed
+r186 base (`74efb98b`).
 
 ## Outcome and deliberate boundary
 

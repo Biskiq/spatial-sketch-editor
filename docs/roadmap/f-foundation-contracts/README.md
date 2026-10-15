@@ -2,7 +2,8 @@
 
 **Status:** registered 2026-09-27 by the ratified decision record; **F.1–F.5
 written and owner-ratified 2026-09-27 with amendments** (Camera cutover timing,
-interface ownership, required/optional extensions) in the target contract
+interface ownership, required/optional extensions), and the exact interfaces AM-1–AM-8
+**owner-ratified 2026-10-15**, in the target contract
 [`../../reference/composition-execution.md`](../../reference/composition-execution.md);
 **no implementation is authorized.**
 
@@ -19,14 +20,15 @@ Each track's capability work re-derives against F and preserves exact-interface
 amendments with first consumers. Neither design acceptance nor planning changes
 F implementation authorization.
 
-**Ratification round (proposed, pending owner approval):** the coordinated ratification PR
-promotes exact interfaces AM-1–AM-8 into
-[`../../reference/composition-execution.md`](../../reference/composition-execution.md) and moves
+**Ratification (owner-ratified 2026-10-15):** the ratification PR
+([#124](https://github.com/Biskiq/spatial-sketch-editor/pull/124)) promoted exact interfaces
+AM-1–AM-8 into
+[`../../reference/composition-execution.md`](../../reference/composition-execution.md) and moved
 F1–F4 plus `T1.viewport-projection` to `ratified` version 1 in the gate register, with the
 capability-readiness rule below. F5, the T3 cutover and the T4 reader stay `undrafted` until
-their first-consumer drafts land. Preparing that PR is not ratification. The proposed decisions
-and the questions the evidence cannot settle are recorded in the
-[owner-decision record](./owner-decision-record.md).
+their first-consumer drafts land. Decisions and dispositions → the
+[2026-10-15 F-interface ratification record](../../reference/decisions/f-ratification-2026-10-15.md).
+Ratification is shape approval: it implements and accepts nothing.
 
 **Authority:** [`../../reference/decisions/northstar-ratification-2026-09-27.md`](../../reference/decisions/northstar-ratification-2026-09-27.md)
 §6 and §10; destination statements live in

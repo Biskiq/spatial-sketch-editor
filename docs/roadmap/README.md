@@ -33,7 +33,8 @@ per concern:
 - ownership and boundaries → [`../reference/architecture.md`](../reference/architecture.md);
 - the ratified cross-domain shapes F.1–F.5 →
   [`../reference/composition-execution.md`](../reference/composition-execution.md), registered
-  in [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md);
+  in [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md); exact shared
+  interfaces ratified 2026-10-15 ([record](../reference/decisions/f-ratification-2026-10-15.md));
 - the ratified shell and visual-system destination (PLATE) →
   [`../reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md).
 
@@ -155,8 +156,8 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
-  re-derive against; pending independent review and owner ratification. It registers no gate, phase
-  or slice, and its exact interfaces stay the F amendments in
+  re-derive against; owner-confirmed 2026-10-15. It registers no gate, phase or slice, and its exact
+  interfaces stay the F amendments in
   [`../reference/composition-execution.md`](../reference/composition-execution.md).
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)

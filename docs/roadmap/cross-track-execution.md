@@ -1,14 +1,15 @@
 # Cross-track execution — proposed allocation, readiness and DAG
 
-**Status:** coordinated cross-track proposal pending independent review and owner ratification,
-2026-10-14. This artifact owns the proposed allocation, capability dependencies and execution DAG
-only; it is not an F contract. Exact interfaces are the F amendments in
-[`../reference/composition-execution.md`](../reference/composition-execution.md) (AM-1–AM-8), and
-the capability-readiness rule is owned by
-[`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). The
-live gate register, lifecycle, phase registration and implementation authorization are unchanged.
-All candidate IDs below are provisional, and cross-PR links identify proposals, never accepted
-prerequisites.
+**Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it
+references (AM-1–AM-8) and the capability-readiness rule are owner-ratified
+([decision record](../reference/decisions/f-ratification-2026-10-15.md)); this artifact owns the
+provider allocation, capability dependencies and execution DAG only, and is not an F contract.
+Exact interfaces stay in [`../reference/composition-execution.md`](../reference/composition-execution.md)
+(AM-1–AM-8); the readiness rule stays owned by
+[`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
+registers no gate, phase or slice, and each provider is wired through its own authorized track
+phase. Candidate IDs below remain provisional until their phase registers them, and cross-PR links
+identify proposals, never accepted prerequisites.
 
 Planning proceeds on the landed r186 base: the separate
 [Three.js r186 foundation upgrade (PR #122)](https://github.com/Biskiq/spatial-sketch-editor/pull/122)
@@ -34,7 +35,7 @@ output. Shared formats land in existing runtime-safe packages; no track-local pr
 | T3.camera-experience-cutover@1 | T3.P01.S04 | F1 `unit-resolution-v1`, F2 `unit-envelope-v1`, F3 `camera-handoff-v1`, F4 `unit-acceptance-v1` and `conditional-save-units-v1`, plus their base capabilities | Atomic source/runtime activation, existing caller migration, occurrence behavior and legacy-order retirement. T3 authoring and T4 public activation consume it. No viewport dependency for this provider. |
 | T4.prepared-reader@1 | T4.P01.S05 | F1 `release-addresses-v1`, F2 `unit-envelope-v1`, F3 `camera-handoff-v1`, F5 `prepared-envelope-v1`, accepted T3 cutover, and all base capabilities | Coherent prepared API/resource/pointer/cold-browser activation and retirement of source delivery. Thin publication UX follows; full T3 authoring is unnecessary. |
 
-## Small readiness amendment proposed for ratification
+## Capability-readiness amendment
 
 The current gate checker reads `Consumes` gate/version and overall state, not incremental
 capability scope. It cannot prove that accepted local F4 also implements cloud or compound
@@ -74,8 +75,8 @@ Source Baseline.
 Acceptance of an interface is distinct from
 ratification, implementation and consumer eligibility. Add the two-field validation and controls
 for missing/unimplemented scope, consumer self-satisfaction and retired scope in the authorized
-T1 S01 provider; until the owner ratifies and installs this amendment, consumers needing incremental
-readiness remain blocked. This file changes neither the live register nor its checker. The rule's
+T1 S01 provider; the owner ratified this rule on 2026-10-15, and until the enforcement is installed
+in T1.P01.S01, consumers needing incremental readiness remain blocked. This file changes neither the live register nor its checker. The rule's
 normative statement and checker definition live in
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness); this
 file keeps only the proposed allocation, the capability dependencies and the enforcement handoff,
@@ -232,7 +233,9 @@ an explicit Release Baseline; Source Baseline follows stabilized source formats,
 
 ## Owner ratifications and cycle disposition
 
-Ratify: exact F1–F5 shapes/providers, the two-field readiness amendment, early Layout/Scene F4 and
+**Owner-ratified 2026-10-15** ([decision record](../reference/decisions/f-ratification-2026-10-15.md));
+the recommendation below is preserved as the original proposal text. That decision ratified exact
+F1–F5 shapes/providers, the two-field readiness amendment, early Layout/Scene F4 and
 Save timing, source-independent revision/facade/output contracts, local-edit/conditional-Save mode,
 canonical starter-gallery entry, shared bounded program/profile, and covered migration/recovery/
 converter retirement. Recommended answers are the allocations and scopes above. A publication gap

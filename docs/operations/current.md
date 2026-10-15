@@ -27,8 +27,9 @@ EXECUTION STRUCTURE (created by WP5, now live): Track → Phase → Slice with o
       → ./t1-spatial-world/README.md, ./t2-composition/README.md, ./t3-experience/README.md and
       ./t4-release/README.md. Event procedures (track completion, product integration acceptance,
       bounded replanning) → ./README.md.
-GATE: F.1–F.5 target OWNER-RATIFIED; every gate in the gate register is `undrafted`;
-      NO PRODUCTION IMPLEMENTATION AUTHORIZED. Normative text →
+GATE: F.1–F.5 target OWNER-RATIFIED; F1–F4 and `T1.viewport-projection` are `ratified` at version 1
+      (2026-10-15, ../reference/decisions/f-ratification-2026-10-15.md); F5 and the T3/T4 cutovers
+      remain undrafted. NO PRODUCTION IMPLEMENTATION AUTHORIZED. Normative text →
       ../reference/composition-execution.md. Each exact interface is drafted with its first
       consumer and ratified as an F amendment; track plans cannot mint independent formats or
       bypass their readiness gates.

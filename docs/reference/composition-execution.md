@@ -9,7 +9,9 @@ to the common foundation.
 ([`decisions/northstar-ratification-2026-09-27.md`](./decisions/northstar-ratification-2026-09-27.md)
 §§5–6, §10) settles F.1–F.5's shapes; this document writes them. F.1–F.5 were
 written 2026-09-27 and **owner-ratified 2026-09-27 with amendments (Camera
-cutover timing, interface ownership, required/optional extensions).**
+cutover timing, interface ownership, required/optional extensions).** The exact interfaces
+AM-1–AM-8 below were **owner-ratified 2026-10-15**
+([decision record](./decisions/f-ratification-2026-10-15.md)).
 
 **Owner-directed [reconciliation amendment](./decisions/world-experience-reconciliation-2026-09-29.md), 2026-09-29:** F.1 distinguishes
 Presentation/Stop/visit identity and repairable authored bindings; F.2 names
@@ -455,7 +457,8 @@ contracts.
 
 ## Ratified amendments
 
-**Status:** proposed for owner ratification; on approval these amendments carry the same
+**Status:** **owner-ratified 2026-10-15**
+([decision record](./decisions/f-ratification-2026-10-15.md)); these amendments carry the same
 normative force as the sections above. Each amendment names its exact interface version, sole
 provider assignment, consumer list and conformance requirements. Provider assignments are
 planning authority, not implementation evidence: no shared code, exports, fixtures, acceptance

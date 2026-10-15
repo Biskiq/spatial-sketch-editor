@@ -8,7 +8,7 @@ Readiness owner: [gate register](../../README.md#gate-register).
 
 ## 1. Provider and readiness decisions
 
-Use the [coordinated allocation/readiness/DAG proposal](../../cross-track-execution.md); it is pending ratification,
+Use the [coordinated allocation/readiness/DAG proposal](../../cross-track-execution.md); its F amendments and readiness rule are owner-ratified 2026-10-15, while the allocation itself is
 not a shared authority or accepted dependency. Sole proposed providers: **F1/F3 T1 S01; F4 T1 S03;
 F2 T3 S01; F5 T4 S02**. T3 extends the same F4 implementation; no competing gate provider.
 
