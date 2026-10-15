@@ -61,6 +61,11 @@ Landed contracts keep describing current behaviour until their explicit cutover.
 
 ## Phase register
 
+**Review draft:** [T3.P01 — Camera/Experience cutover and first authoring foundation](./t3.p01-camera-experience-foundation/README.md).
+Its [shared F interface amendments](./t3.p01-camera-experience-foundation/f-amendment-proposals.md)
+are proposals for cross-track reconciliation. Candidate slice/provider identities are not
+registrations, authorization, ratification or gate readiness.
+
 No T3 phase is registered. A phase is added here by an authorized plan, with its own README under
 `./t3.p01-<capability>/` and its own slice register.
 
