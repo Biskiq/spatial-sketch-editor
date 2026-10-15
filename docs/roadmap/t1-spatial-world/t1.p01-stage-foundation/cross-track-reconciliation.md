@@ -55,15 +55,18 @@ consumers; shipped historical slices retain their original scopes/evidence, as w
 majors. Retiring an adapter removes its active admission, not historical evidence or base invariants.
 
 For F.4, retirement splits two layers that `local-single-domain-v1` initially bundles. The enduring
-layer — opaque accepted revision, content-digest comparison, atomic install with one undo result,
-stale/ABA rejection and one chronological history — persists across the source transition and stays a
-prerequisite of `unit-acceptance-v1` and `conditional-save-units-v1`. The retiring layer is the
-current-source adapter admission (current-source planning/validation and `conditional-save-current-v1`
-persistence), which T3 S04 retires together with all its callers; after that point no new or
-in-progress consumer may Require it, while shipped slices keep their evidence. The checker records
-retirement as a terminal state on the same Accepted-capabilities entry — no parallel registry — and
-fails any new or in-progress Requires naming a retired capability. No permanent legacy admission
-survives: the read-only converter retires with the covered inventory before the Source Baseline.
+layer is recorded as its own scope on the same F.4 entry —
+`F4.intent-acceptance@1:acceptance-invariants-v1`, which never retires: opaque accepted revision,
+content-digest comparison, atomic install with one undo result, stale/ABA rejection and one
+chronological history. It persists across the source transition and is the prerequisite of
+`unit-acceptance-v1` and `conditional-save-units-v1`. The retiring layer is the current-source
+adapter admission (`local-single-domain-v1` current-source planning/validation and
+`conditional-save-current-v1` persistence), which T3 S04 retires together with all its callers; after
+that point no new or in-progress consumer may Require either retiring scope, while shipped slices keep
+their evidence. The checker records retirement as a terminal state on the retiring scope's own entry
+— no parallel registry, no permanent legacy admission — and fails any new or in-progress Requires
+naming a retired scope. The read-only converter still retires with the covered inventory before the
+Source Baseline.
 Acceptance of an interface is distinct from
 ratification, implementation and consumer eligibility. Add the two-field validation and controls
 for missing/unimplemented scope, consumer self-satisfaction and retired scope in the authorized
@@ -80,9 +83,16 @@ cannot disguise an incompatible semantic change. A consumer must declare what it
 | F1.reference@1:unit-resolution-v1 | T3.P01.S01 | Camera/Experience/resource kinds and supplied F2 lock resolution; preserves missing/repair identity. Extends `references-v1`. |
 | F1.reference@1:release-addresses-v1 | T4.P01.S02 | Publication/pinned-release semantic addresses with concrete release context and removed/repair results. Extends `references-v1`; needs shared unit/program identity. |
 | F4.intent-acceptance@1:conditional-save-current-v1 | T3.P01.S02 | Create-only / expected-saved-base persistence of current source using full shared validation, atomic server OCC and retry receipts. Needs `local-single-domain-v1`; not F2, Stage or source activation. |
-| F4.intent-acceptance@1:unit-acceptance-v1 | T3.P01.S03 | F2-backed single-domain and compound Camera/Experience acceptance, complete reference/lock validation, admitted resource staging and whole-operation history. Needs F2 and `local-single-domain-v1`. |
+| F4.intent-acceptance@1:unit-acceptance-v1 | T3.P01.S03 | F2-backed single-domain and compound Camera/Experience acceptance, complete reference/lock validation, admitted resource staging and whole-operation history. Needs F2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so the capability stays eligible once the current-source adapter retires. |
 | F4.intent-acceptance@1:conditional-save-units-v1 | T3.P01.S03 | Same conditional Save protocol over F2 source; needs unit-acceptance-v1/base invariants and reuses prior Save protocol evidence, not active current-source admission. Inactive until S04; never a second live writer. |
 | F3.channels@1:camera-handoff-v1 | T3.P01.S03 | Inspection, guided/free, Follow, Look-through and Preview ownership/return with stale-run cleanup; bounded Experience session semantics use the shared program. Needs `inspection-v1` and F2 program codec; real Stage integration is later T3 S05 evidence. |
+
+**Slice prerequisites and exported-capability prerequisites are different claims.** A slice's
+`Requires` names what that slice's implementation consumes; a capability's declared prerequisites
+are what any later consumer needs from it. T3.P01.S03 therefore consumes the still-active
+`local-single-domain-v1` and `conditional-save-current-v1` while it prepares the F2 unit
+implementation, but the `unit-acceptance-v1`/`conditional-save-units-v1` capabilities it exports
+declare F2 and `acceptance-invariants-v1` only — never the retiring admission.
 
 Initial local F4 admission includes registration and conformance for both Layout and Scene,
 not T2's complete placement capability. T2 S02 registers its actual operations. No resource/lock
