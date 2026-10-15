@@ -16,7 +16,7 @@ CHILD: T1.P01.S01 — Shared interface providers — `in-progress` (owner-author
        ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md.
        T1.P01.S02–S06 stay `proposed`, each blocked by its own accepted prerequisites.
 BATON: #124 F-interface ratification merged (owner decision 2026-10-15) → T1.P01 registered and
-       S01 authorized → S01 implemented → first review round's findings addressed on the same
+       S01 authorized → S01 implemented → two review rounds' findings addressed on the same
        branch and re-verified; independent review owed.
 NEXT: independent review of T1.P01.S01 against its plan's acceptance criteria, on the tested
       revision the acceptance record names. Its `Consumes` and `Requires` are empty, so

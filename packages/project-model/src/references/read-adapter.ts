@@ -9,6 +9,45 @@
  * It never repairs, never falls back to a name, label, index or nearest match,
  * and it fabricates no identity the current source does not author.
  *
+ * **One source, one revision.** These adapters are built for one supplied source
+ * *and* the `SnapshotIdentity@1` that source is the accepted content of — the
+ * phase's F1 draft puts that accepted metadata beside the current source JSON,
+ * never inside it, so nothing in the document itself names its revision. Every
+ * resolution therefore checks three things before it looks at a subject: that the
+ * read context is that same supplied snapshot, that the supplied source is that
+ * snapshot's project, and that the reference's revision context is that snapshot's
+ * accepted revision. An exact reference naming any other revision, or a
+ * dependency lock resolving another project or another revision, is refused
+ * rather than answered from content that is not the revision it names; that is
+ * what keeps a resolution from reporting one revision while reading another, and
+ * what stops another project's locked identity from resolving through this
+ * source. A resolution that does proceed records the snapshot's accepted revision
+ * as its concrete revision.
+ *
+ * The binding is a property of the pair, not a copy of the source: an adapter
+ * serves the object it was built with, so a caller that mutates a document in
+ * place must rebuild its adapters with the new accepted snapshot instead of
+ * reusing the old ones. The frame adapters resolve no frame value at all today,
+ * so no frame can be reported under a revision either.
+ *
+ * **Grouping is not instancing.** Scene clusters are named same-room member
+ * groups with no prefab/definition model and no authored instance frame, so
+ * membership is not part of a subject's identity: an entity keeps the canonical
+ * identity its stable ID gives it, addressed with an empty instance path, and
+ * moving it into or out of a cluster does not change how it is addressed. The
+ * cluster itself stays addressable as its own subject. No assembly, instance or
+ * occurrence identity is admitted ahead of the future assembly model.
+ *
+ * **Declared vs. authored identity.** `componentId` and `capabilityId` are
+ * explicit nullable qualifications, and a non-null one only resolves where the
+ * owning domain actually authors that identity. The current source authors none:
+ * Layout/Scene entities carry no component identity, and the F.3 capability
+ * vocabulary is declared per channel family rather than authored per subject. A
+ * non-null qualifier is therefore refused as an unknown qualification — a typed
+ * result, never nearest/name matching — while the same subject addressed without
+ * it resolves. A later provider that authors component or capability identity
+ * admits it in its own resolver.
+ *
  * What stays out, and why:
  *
  * - Experience and typed-resource subjects have no current provider, so no
@@ -37,11 +76,13 @@ import type {
 	FrameReference,
 	FrameResolver,
 	FrameResolverOutcome,
+	ReferenceFailureCode,
 	ReferenceReadRequest,
 	ReferenceRepairAction,
 	ReferenceResolver,
 	ReferenceResolverOutcome,
-	SemanticReference
+	SemanticReference,
+	SnapshotIdentity
 } from './types';
 
 /**
@@ -64,8 +105,27 @@ export const CURRENT_CAMERA_SUBJECT_KINDS = ['navigation-node', 'connection'] as
 /** The domain owners whose current sources author no frame identity. */
 export const CURRENT_FRAMELESS_OWNERS = ['layout', 'scene', 'camera'] as const;
 
+/** One supplied source and the accepted snapshot identity it is the content of. */
+export type CurrentDomainSource = {
+	readonly source: ProjectDocument;
+	readonly snapshot: SnapshotIdentity;
+};
+
+/** A resolver-level refusal: the same shape a resolver outcome uses for a failure. */
+type AdapterRefusal = {
+	readonly kind: Exclude<ReferenceFailureCode, 'incompatible'>;
+	readonly message: string;
+	readonly repairs: readonly ReferenceRepairAction[];
+};
+
 const CHOOSE_SUBJECT: readonly ReferenceRepairAction[] = [
 	{ kind: 'choose-subject', description: 'Re-resolve the subject from the supplied snapshot before binding it again.' }
+];
+const REACQUIRE_REFERENCE: readonly ReferenceRepairAction[] = [
+	{ kind: 'reacquire-reference', description: 'Re-resolve the subject from the current accepted snapshot before binding it again.' }
+];
+const RELOAD_SNAPSHOT: readonly ReferenceRepairAction[] = [
+	{ kind: 'reload-snapshot', description: 'Reload the accepted snapshot this adapter holds the source for.' }
 ];
 
 function resolved(request: ReferenceReadRequest): ReferenceResolverOutcome {
@@ -74,6 +134,96 @@ function resolved(request: ReferenceReadRequest): ReferenceResolverOutcome {
 
 function missing(message: string): ReferenceResolverOutcome {
 	return { kind: 'missing', message, repairs: CHOOSE_SUBJECT };
+}
+
+function snapshotLabel(snapshot: SnapshotIdentity): string {
+	return `${snapshot.acceptedRevision.projectId}@${snapshot.acceptedRevision.revisionId}`;
+}
+
+function sameSnapshot(left: SnapshotIdentity, right: SnapshotIdentity): boolean {
+	return (
+		left.acceptedRevision.projectId === right.acceptedRevision.projectId &&
+		left.acceptedRevision.revisionId === right.acceptedRevision.revisionId &&
+		left.sourceContentId === right.sourceContentId
+	);
+}
+
+/**
+ * The snapshot/source/revision binding every resolution is checked against: the
+ * read context must be the supplied snapshot, the supplied source must be that
+ * snapshot's project, and the reference's revision context must be that
+ * snapshot's accepted revision. A binding failure is never resolved around.
+ */
+function bindingRefusal(
+	supplied: CurrentDomainSource,
+	reference: SemanticReference,
+	request: ReferenceReadRequest
+): AdapterRefusal | null {
+	const { source, snapshot } = supplied;
+	const accepted = snapshot.acceptedRevision;
+	if (!sameSnapshot(request.context.snapshot, snapshot)) {
+		return {
+			kind: 'repair-required',
+			message: `the read context is snapshot "${snapshotLabel(request.context.snapshot)}" and this adapter reads "${snapshotLabel(snapshot)}"`,
+			repairs: RELOAD_SNAPSHOT
+		};
+	}
+	if (source.id !== accepted.projectId) {
+		return {
+			kind: 'repair-required',
+			message: `the supplied source is project "${source.id}" and the bound snapshot is project "${accepted.projectId}"`,
+			repairs: RELOAD_SNAPSHOT
+		};
+	}
+	if (reference.revision.kind === 'exact') {
+		if (reference.revision.contentRevision !== accepted.revisionId) {
+			return {
+				kind: 'missing',
+				message: `exact revision "${reference.revision.contentRevision}" cannot be resolved against the supplied source, which is accepted revision "${accepted.revisionId}" of project "${accepted.projectId}"`,
+				repairs: REACQUIRE_REFERENCE
+			};
+		}
+		return null;
+	}
+	if (reference.revision.projectId !== source.id) {
+		return {
+			kind: 'missing',
+			message: `the dependency lock is consulted for project "${reference.revision.projectId}" and this adapter reads the source of project "${source.id}"; no other project's source is read`,
+			repairs: RELOAD_SNAPSHOT
+		};
+	}
+	if (request.contentRevision !== accepted.revisionId) {
+		return {
+			kind: 'missing',
+			message: `the dependency lock resolves project "${reference.revision.projectId}" to revision "${request.contentRevision}" and the supplied source is accepted revision "${accepted.revisionId}"`,
+			repairs: RELOAD_SNAPSHOT
+		};
+	}
+	return null;
+}
+
+/**
+ * Refuse a component or capability qualification the current source does not
+ * author. AM-1 requires an unknown component/capability to return a typed result
+ * rather than a nearest or name-based match, and no current domain authors
+ * either identity, so every non-null qualifier is that unknown qualification.
+ */
+function qualifierRefusal(reference: SemanticReference, owner: string, subject: string): AdapterRefusal | null {
+	if (reference.componentId !== null) {
+		return {
+			kind: 'missing',
+			message: `the current ${owner} source authors no component identity, so "${subject}" cannot be qualified by component "${reference.componentId}"`,
+			repairs: CHOOSE_SUBJECT
+		};
+	}
+	if (reference.capabilityId !== null) {
+		return {
+			kind: 'missing',
+			message: `the current ${owner} source authors no capability identity, so "${subject}" cannot be qualified by capability "${reference.capabilityId}"`,
+			repairs: CHOOSE_SUBJECT
+		};
+	}
+	return null;
 }
 
 /**
@@ -108,14 +258,18 @@ function byId<T extends { id: string }>(items: readonly T[], id: string): T | un
 }
 
 /** The Layout resolver: one lookup per admitted subject kind, no name fallback. */
-function layoutResolver(source: ProjectDocument): ReferenceResolver {
-	const floorId = source.layout.floor.id;
+function layoutResolver(supplied: CurrentDomainSource): ReferenceResolver {
+	const floorId = supplied.source.layout.floor.id;
 	return {
 		id: 'current-layout-read-adapter',
 		domain: 'layout',
 		subjectKinds: [...CURRENT_LAYOUT_SUBJECT_KINDS],
 		owner: 'layout',
 		resolve(reference, request) {
+			const binding = bindingRefusal(supplied, reference, request);
+			if (binding !== null) return binding;
+			const qualifier = qualifierRefusal(reference, 'Layout', `${reference.subject.kind} "${reference.subject.id}"`);
+			if (qualifier !== null) return qualifier;
 			const level = levelProblem(reference, floorId);
 			if (level !== null) return missing(level);
 			if (reference.instancePath.length > 0) {
@@ -129,23 +283,23 @@ function layoutResolver(source: ProjectDocument): ReferenceResolver {
 						? resolved(request)
 						: missing(`the current Layout source authors level "${floorId}" and no level "${reference.subject.id}"`);
 				case 'room':
-					return byId(source.layout.rooms, reference.subject.id) === undefined
+					return byId(supplied.source.layout.rooms, reference.subject.id) === undefined
 						? missing(`the current Layout source has no room "${reference.subject.id}"`)
 						: resolved(request);
 				case 'wall':
-					return byId(source.layout.walls, reference.subject.id) === undefined
+					return byId(supplied.source.layout.walls, reference.subject.id) === undefined
 						? missing(`the current Layout source has no wall "${reference.subject.id}"`)
 						: resolved(request);
 				case 'opening':
-					return byId(source.layout.openings, reference.subject.id) === undefined
+					return byId(supplied.source.layout.openings, reference.subject.id) === undefined
 						? missing(`the current Layout source has no opening "${reference.subject.id}"`)
 						: resolved(request);
 				case 'junction':
-					return byId(source.layout.junctions, reference.subject.id) === undefined
+					return byId(supplied.source.layout.junctions, reference.subject.id) === undefined
 						? missing(`the current Layout source has no junction "${reference.subject.id}"`)
 						: resolved(request);
 				case 'object':
-					return byId(source.layout.objects, reference.subject.id) === undefined
+					return byId(supplied.source.layout.objects, reference.subject.id) === undefined
 						? missing(`the current Layout source has no object "${reference.subject.id}"`)
 						: resolved(request);
 				default:
@@ -156,56 +310,53 @@ function layoutResolver(source: ProjectDocument): ReferenceResolver {
 }
 
 /**
- * The Scene resolver. `scene` is the document root, addressed with an empty
- * instance path; a clustered entity's canonical path is its cluster, so a bare
- * path for a clustered entity is refused instead of fabricating a second
- * identity for one subject.
+ * The Scene resolver. `scene` is the document root and an entity is its stable
+ * ID: the current Scene authors no instancing, and cluster membership is
+ * grouping rather than an instance frame, so a member keeps the identity its ID
+ * gives it and any instance path is a path the source cannot author.
  */
-function sceneResolver(source: ProjectDocument): ReferenceResolver {
-	const clusters = source.scene.clusters ?? [];
+function sceneResolver(supplied: CurrentDomainSource): ReferenceResolver {
+	const clusters = supplied.source.scene.clusters ?? [];
 	return {
 		id: 'current-scene-read-adapter',
 		domain: 'scene',
 		subjectKinds: [...CURRENT_SCENE_SUBJECT_KINDS],
 		owner: 'scene',
 		resolve(reference, request) {
+			const binding = bindingRefusal(supplied, reference, request);
+			if (binding !== null) return binding;
+			const qualifier = qualifierRefusal(reference, 'Scene', `${reference.subject.kind} "${reference.subject.id}"`);
+			if (qualifier !== null) return qualifier;
 			const qualification = rootQualificationProblem(reference, 'Scene');
 			if (qualification !== null) return missing(qualification);
 			const path = reference.instancePath;
 			const id = reference.subject.id;
 			if (reference.subject.kind === 'scene') {
-				if (id !== source.id) return missing(`the supplied Scene document is the root of project "${source.id}", not "${id}"`);
+				if (id !== supplied.source.id) {
+					return missing(`the supplied Scene document is the root of project "${supplied.source.id}", not "${id}"`);
+				}
 				return path.length === 0 ? resolved(request) : missing('the Scene root carries no instance path');
 			}
-			if (reference.subject.kind === 'entity') {
-				const entity = byId(source.scene.entities, id);
-				if (entity === undefined) return missing(`the current Scene source has no entity "${id}"`);
-				const owner = clusters.find((cluster) => cluster.memberIds.includes(id));
-				if (path.length === 0) {
-					return owner === undefined
-						? resolved(request)
-						: missing(`entity "${id}" belongs to cluster "${owner.id}"; address it with that instance path`);
-				}
-				if (path.length > 1) return missing(`the current Scene authors one cluster level, so path "${path.join(' / ')}" cannot qualify entity "${id}"`);
-				const cluster = byId(clusters, path[0]!);
-				if (cluster === undefined) return missing(`the current Scene source has no cluster "${path[0]}"`);
-				if (!cluster.memberIds.includes(id)) return missing(`cluster "${cluster.id}" does not contain entity "${id}"`);
-				return resolved(request);
-			}
 			if (path.length > 0) {
-				return missing(`the current Scene authors no nested instances, so path "${path.join(' / ')}" cannot qualify "${id}"`);
+				return missing(
+					`the current Scene authors no instances, so path "${path.join(' / ')}" cannot qualify "${id}"; cluster membership is grouping, not an instance identity`
+				);
 			}
 			switch (reference.subject.kind) {
+				case 'entity':
+					return byId(supplied.source.scene.entities, id) === undefined
+						? missing(`the current Scene source has no entity "${id}"`)
+						: resolved(request);
 				case 'cluster':
 					return byId(clusters, id) === undefined
 						? missing(`the current Scene source has no cluster "${id}"`)
 						: resolved(request);
 				case 'material':
-					return byId(source.scene.materials, id) === undefined
+					return byId(supplied.source.scene.materials, id) === undefined
 						? missing(`the current Scene source has no material "${id}"`)
 						: resolved(request);
 				case 'texture':
-					return byId(source.scene.textures, id) === undefined
+					return byId(supplied.source.scene.textures, id) === undefined
 						? missing(`the current Scene source has no texture "${id}"`)
 						: resolved(request);
 				default:
@@ -216,13 +367,17 @@ function sceneResolver(source: ProjectDocument): ReferenceResolver {
 }
 
 /** The read-only current Camera resolver: navigation nodes and their connections. */
-function cameraResolver(source: ProjectDocument): ReferenceResolver {
+function cameraResolver(supplied: CurrentDomainSource): ReferenceResolver {
 	return {
 		id: 'current-camera-read-adapter',
 		domain: 'camera',
 		subjectKinds: [...CURRENT_CAMERA_SUBJECT_KINDS],
 		owner: 'camera',
 		resolve(reference, request) {
+			const binding = bindingRefusal(supplied, reference, request);
+			if (binding !== null) return binding;
+			const qualifier = qualifierRefusal(reference, 'Camera', `${reference.subject.kind} "${reference.subject.id}"`);
+			if (qualifier !== null) return qualifier;
 			const qualification = rootQualificationProblem(reference, 'Camera');
 			if (qualification !== null) return missing(qualification);
 			if (reference.instancePath.length > 0) {
@@ -232,11 +387,11 @@ function cameraResolver(source: ProjectDocument): ReferenceResolver {
 			}
 			switch (reference.subject.kind) {
 				case 'navigation-node':
-					return byId(source.scene.navigationNodes, reference.subject.id) === undefined
+					return byId(supplied.source.scene.navigationNodes, reference.subject.id) === undefined
 						? missing(`the current Camera source has no navigation node "${reference.subject.id}"`)
 						: resolved(request);
 				case 'connection':
-					return byId(source.scene.connections, reference.subject.id) === undefined
+					return byId(supplied.source.scene.connections, reference.subject.id) === undefined
 						? missing(`the current Camera source has no connection "${reference.subject.id}"`)
 						: resolved(request);
 				default:
@@ -263,25 +418,34 @@ function framelessAdapter(owner: 'layout' | 'scene' | 'camera'): FrameResolver {
 }
 
 /**
- * Build the bounded current-domain adapters for one supplied source. The caller
- * supplies both this document and the matching `SnapshotIdentity` in its read
- * context, so a resolution always records the concrete revision it was read at.
+ * Build the bounded current-domain adapters for one supplied source and the
+ * accepted snapshot it is the content of. Both are supplied by the caller,
+ * because the current source JSON does not name its own revision: the adapter
+ * holds that accepted metadata beside the document.
  */
-export function createCurrentDomainReadAdapters(source: ProjectDocument): {
+export function createCurrentDomainReadAdapters(
+	source: ProjectDocument,
+	snapshot: SnapshotIdentity
+): {
 	resolvers: readonly ReferenceResolver[];
 	frameResolvers: readonly FrameResolver[];
 } {
+	const supplied: CurrentDomainSource = { source, snapshot };
 	return {
-		resolvers: [layoutResolver(source), sceneResolver(source), cameraResolver(source)],
+		resolvers: [layoutResolver(supplied), sceneResolver(supplied), cameraResolver(supplied)],
 		frameResolvers: CURRENT_FRAMELESS_OWNERS.map((owner) => framelessAdapter(owner))
 	};
 }
 
 /**
- * Build the resolver host for one supplied source: the current-domain adapters
- * plus the duplicate-registration guard every host carries.
+ * Build the resolver host for one supplied source and its accepted snapshot: the
+ * current-domain adapters bound to that snapshot, plus the duplicate-registration
+ * guard every host carries.
  */
-export function createCurrentDomainResolverHost(source: ProjectDocument): ReferenceResolverHost {
-	const adapters = createCurrentDomainReadAdapters(source);
+export function createCurrentDomainResolverHost(
+	source: ProjectDocument,
+	snapshot: SnapshotIdentity
+): ReferenceResolverHost {
+	const adapters = createCurrentDomainReadAdapters(source, snapshot);
 	return createReferenceResolverHost(adapters.resolvers, adapters.frameResolvers);
 }

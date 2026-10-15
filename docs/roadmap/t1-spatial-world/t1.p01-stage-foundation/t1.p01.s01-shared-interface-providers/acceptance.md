@@ -19,7 +19,7 @@ branch's diff; a later edit invalidates the rows it touches.
 | `F1.reference@1` (`references-v1`) exports | `packages/project-model/src/references/` (shapes, strict validation, resolver host + resolution, frame resolution, generation-qualified correspondence, stable ID ordering) |
 | `references-v1` bounded current-domain read adapters | `packages/project-model/src/references/read-adapter.ts` — actual Layout entities, actual Scene entities and read-only current Camera subjects from one supplied `ProjectDocument` |
 | `F3.channels@1` (`inspection-v1`) exports | `packages/project-model/src/channels/` (address/descriptor/typed values, the two v1 families including the ratified policy inputs, negotiation, the Camera-output ticket protocol) |
-| F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 27 cases |
+| F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 31 cases |
 | F3 conformance | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` — 26 cases |
 | Accepted-capabilities / Requires enforcement | `capabilityProblems` + the register fields in `apps/editor/tests/docs/parallel-track-gates.test.ts` |
 | Runtime-safe import direction | `apps/editor/tests/lib/project-model-boundary.test.ts` (arch lane) walks every file in the package |
@@ -32,7 +32,7 @@ npm run check                 svelte-kit sync && svelte-check        0 errors, 0
 npm run build                 vite build                                                       PASS
 npm run test:arch             vitest run --config vitest.arch.config.ts   15 files, 137 tests   PASS
 npm run test:heavy            vitest run --config vitest.heavy.config.ts   8 files, 118 tests   PASS
-npm test                      vitest run (complete suite)               118 files, 1584 tests  PASS
+npm test                      vitest run (complete suite)               118 files, 1588 tests  PASS
 npm run check:api             tsc -p tsconfig.json --noEmit                                   PASS
 npm run test:api              node --test (real Postgres)   39 tests, 0 skipped, 0 failed    PASS
 ```
@@ -58,12 +58,19 @@ after the last documentation edit rather than inherited from an earlier green ru
   acceptance scope names: actual Layout entities (`level` — the one authored floor ID is the level
   qualification — `room`, `wall`, `opening`, `junction`, `object`), actual Scene entities (`scene`
   root, `entity`, `cluster`, `material`, `texture`) and the read-only current Camera subjects
-  (`navigation-node`, `connection`). A clustered Scene entity's canonical identity is its cluster
-  path, so a bare path for a clustered entity is refused rather than accepted as a second identity
-  for one subject. An id the source does not author is `missing`; a subject kind no current adapter
+  (`navigation-node`, `connection`). A Scene entity's canonical identity is its stable entity ID
+  with an empty instance path: cluster membership is a named same-room member group with no
+  prefab/definition model and no instance frame, so it is grouping rather than instancing and it
+  never changes how a subject is addressed. The adapters are bound to the one supplied
+  `SnapshotIdentity@1` they were built for — the read context must be that snapshot, the supplied
+  source must be that snapshot's project, and the reference's revision context must be that
+  snapshot's accepted revision — so a stale exact revision, a dependency lock resolving another
+  project or a revision the source is not, and a non-null `componentId`/`capabilityId` that no
+  current domain authors are each a typed refusal instead of a resolution read from other content.
+  An id the source does not author is `missing`; a subject kind no current adapter
   resolves is `incompatible`; a level, structure-instance path or Layout location the current source
   cannot author is `missing`, never silently re-qualified. No Level schema, Structure schema or
-  fabricated Room frame is introduced.
+  fabricated Room frame is introduced, and no component/capability model is invented.
 - Frame qualification: `project-world` resolves to the project origin datum; the current-source
   frame adapters refuse every owner-qualified frame as `missing` because the current source authors
   no frame identity, so a Room without an authored frame cannot qualify and neither centroid nor
@@ -123,6 +130,23 @@ one was confirmed as a checker gap. All are fixed in this diff, each with a conf
 The register legend (`docs/roadmap/README.md`) and the readiness rule's checker definition
 (`docs/roadmap/f-foundation-contracts/README.md`) were updated to the enforced grammar.
 
+## Response to the second review round
+
+Again assessed against the ratified AM-1 text, the phase's F1 draft and the Scene ownership
+contract before any code changed. All three findings were confirmed and are fixed in this diff; one
+is confirmed with a corrected mechanism rather than the one the finding names, and one has a stated
+boundary. Each has a conformance fixture.
+
+| Finding | Disposition |
+| --- | --- |
+| Current-domain resolution does not enforce the supplied snapshot's revision: an old exact revision can resolve against a newer document containing the same subject ID, and the document's project is not checked against the snapshot's | **Confirmed defect.** `resolveReference` may not read one revision and report another, and the phase draft is explicit that the adapter holds the accepted metadata *beside* the current source JSON, never inside it. Fixed by binding: `createCurrentDomainReadAdapters` / `createCurrentDomainResolverHost` now take the source **and** its `SnapshotIdentity@1`, and every resolution refuses unless the read context is that snapshot, the source is that snapshot's project, and the reference's revision context is that snapshot's accepted revision. The mechanism is a binding check, not a content check, because the document carries no revision token of its own to compare — which is exactly why the accepted metadata is supplied separately. Fixtures: stale exact revision refused (and the source digest is not a revision token), a rescheduled revision, another digest and another project in the read context refused as `repair-required`, a source that is not the bound snapshot's project refused, and stale/foreign dependency locks refused while a lock agreeing with the snapshot still resolves. |
+| Cluster membership is treated as semantic instancing: a clustered entity must carry its cluster ID in `instancePath` | **Confirmed defect, and the earlier decision was wrong.** The Scene contract states that current clusters are named same-room member groups with no prefab/definition model, and `SceneObjectCluster` carries no `roomId`-qualified frame, no transform and no definition — grouping, not an instance. Encoding membership in the identity path made identity depend on regrouping, which AM-1 forbids (hierarchy and name paths never establish identity). An entity is now addressed by its stable entity ID with an empty instance path, the cluster stays a subject of its own, and any instance path is refused as a path the current Scene cannot author. Fixture: the clustered entity resolves bare with an empty path, the cluster resolves as its own subject, and the cluster path is refused for a member, a non-member and the cluster itself. |
+| `componentId`/`capabilityId` are passed through into a successful resolution without the current domain authoring them | **Confirmed defect.** AM-1 requires an unknown component/capability to be a typed result, not a nearest/name match, so a fabricated qualifier on a real entity must not resolve. Neither identity has a current author: Layout/Scene entities carry no component identity, and the F.3 capability vocabulary is declared per channel family rather than authored per subject. Every non-null qualifier is now refused as `missing` with the subject still resolving without it. No component model is introduced — a later provider that authors these identities admits them in its own resolver, and the F.1 runtime-only `DerivedSubRef` component sub-reference is unaffected because it is a fragment sub-reference, not a subject qualification. Fixtures: component and capability refusals across Layout, Scene and read-only Camera, with the unqualified subject still resolving. |
+
+What the review's verification section says is fair: the reviewers inspected the regression tests without
+independently executing the suite. The numbers quoted above are the implementer's runs on the tested
+revision named at the top of this record.
+
 ## Owed to review (not implementer judgement)
 
 - The independent verdict against the plan's acceptance criteria, and the tested-revision
@@ -130,6 +154,16 @@ The register legend (`docs/roadmap/README.md`) and the readiness rule's checker 
 - Whether the corrected return/epoch semantics and the complete-ticket cancellation are the
   intended reading of AM-3's ordered handoff, and whether the bounded adapter's subject-kind set is
   the right breadth for `references-v1` — both are interface decisions the reviewer owns.
+- Whether binding an exact `contentRevision` to the supplied snapshot's `acceptedRevision.revisionId`
+  is the intended reading for this bounded single-source adapter. AM-1 makes both opaque and warns
+  that neither the digest nor the epoch is the revision token, and F.2's later per-unit
+  `contentRevision` hashes domain data only; the reading taken here is that for the current
+  single-document source the accepted revision *is* the concrete revision a resolution records. A
+  different reading needs a revision token the current source JSON does not carry.
+- That the binding holds only while the source object is not mutated in place: an adapter serves the
+  object it was built with, so a caller that mutates a document must rebuild its adapters with the
+  new accepted snapshot. Sealing or digesting the source on every resolve was not adopted, since the
+  accepted-metadata arrangement the phase draft describes puts that obligation on the caller.
 - Whether to promote `F1.reference@1` and `F3.channels@1` to `implemented` (exports + conformance
   paths) and `accepted` (acceptance record + ancestor commit), and to record the
   `F1.reference@1:references-v1` / `F3.channels@1:inspection-v1` Accepted-capabilities entries.
