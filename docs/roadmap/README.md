@@ -148,11 +148,12 @@ These proposals are not authorized and have no phase or slice. Registering execu
 owner decision; their presence here is a planning route, not lifecycle or gate readiness.
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
-  from the post-PR #116 baseline. Owner-authorized and implemented on
-  `chore/threejs-upgrade` (PR #122); pending independent re-review — not
-  accepted, not closed, not merged, and not a track, phase or gate.
-  Dependency modernization and compatibility fixes only;
-  retained-renderer verification is separate from future T1 Stage integration.
+  from the post-PR #116 baseline. Owner-authorized standalone maintenance,
+  independently reviewed and accepted, merged into `main` as `74efb98b`
+  (PR #122); delivery state in the [acceptance record](./threejs-upgrade/acceptance.md).
+  Not a track, phase or gate. Dependency modernization and compatibility
+  fixes only; retained-renderer verification is separate from future T1
+  Stage integration.
 
 - **Stop-at-next-occurrence playback** (recorded 2026-08-27 as "P13"). In sequence playback,
   Play would travel to the beginning of the next stop and pause there, with a toggle between
