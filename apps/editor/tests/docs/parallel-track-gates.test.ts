@@ -8,15 +8,22 @@
  * gate version, a phase closed with an unshipped final child, a slice plan that quietly narrows
  * acceptance without an integration route, and an exposure window opened too late or never.
  *
- * This file enforces exactly those relationships, with the *same* markdown-table helper as the
- * register it reads (`tests/helpers/markdown-tables.ts`), in-memory negative fixtures for every
- * rule, and positive controls — so a checker that stopped detecting one of them fails here instead
- * of passing vacuously.
+ * This file enforces exactly those relationships, plus the capability-readiness rule the gate
+ * checker could not prove before (T1.P01.S01): the `Accepted capabilities` field on each
+ * gate/version row and `Requires` on each consumer slice row, resolved through the prerequisite
+ * closure, accepted in the current tree **and** at the trusted base, `active` and not retired.
+ * Overall gate state alone cannot prove incremental capability scope, so a green gate row no
+ * longer stands in for a specific accepted capability.
+ *
+ * It does so with the *same* markdown-table helper as the register it reads
+ * (`tests/helpers/markdown-tables.ts`), in-memory negative fixtures for every rule, and positive
+ * controls — so a checker that stopped detecting one of them fails here instead of passing
+ * vacuously.
  *
  * What it deliberately does NOT do: no generic workflow engine, no status store, no scheduler. It
  * reads the registers, resolves their rows, and reports. Truth a checker cannot infer stays with
- * review: that a slice's declared `Consumes` and `Effects` are truthful, and that a new persisted
- * format names its F amendment and owner in the reviewed plan.
+ * review: that a slice's declared `Consumes`, `Requires` and `Effects` are truthful, and that a new
+ * persisted format names its F amendment and owner in the reviewed plan.
  *
  * Run whole (part of `npm run test:arch`, never path-gated), or alone:
  *
@@ -60,17 +67,30 @@ const GATE_COLUMNS = [
 	'Exports',
 	'Conformance',
 	'Acceptance',
-	'Commit'
+	'Commit',
+	'Accepted capabilities'
 ] as const;
 const PHASE_COLUMNS = ['Phase', 'Status', 'Depends on', 'Workspace'] as const;
 const SLICE_COLUMNS = [
 	'Slice',
 	'Status',
 	'Consumes',
+	'Requires',
 	'Effects',
 	'Plan',
 	'Acceptance',
 	'Authorization'
+] as const;
+/** The durable capability record's table, under its heading in the linked record. */
+const CAPABILITY_RECORD_HEADING = 'Accepted capability';
+const CAPABILITY_RECORD_COLUMNS = [
+	'Capability',
+	'Anchor',
+	'Prerequisites',
+	'Exports',
+	'Conformance',
+	'Acceptance',
+	'Commit'
 ] as const;
 const CYCLE_STATE_COLUMNS = [
 	'Stage',
@@ -111,6 +131,13 @@ const MECHANISM_STATUSES = ['installed', 'dormant'];
 const VERIFICATION_TIERS = ['iteration', 'affected-subsystem', 'architecture-integration', 'exhaustive'];
 const SETTLED_SLICE_STATUSES = ['accepted', 'shipped'];
 const GATE_REFERENCE = /^[A-Za-z][A-Za-z0-9._-]*@\d+$/;
+/** An exact Accepted-capabilities scope: `Gate@Version:capability-vN`. */
+const CAPABILITY_REFERENCE = /^([A-Za-z][A-Za-z0-9._-]*)@(\d+):([A-Za-z][A-Za-z0-9._-]*)$/;
+/**
+ * One `Accepted capabilities` cell entry: `<capability> active|retired — <record path>`.
+ * The status is required, so a scope can never be admitted by omission.
+ */
+const CAPABILITY_ENTRY = /^([A-Za-z][A-Za-z0-9._-]*@\d+:[A-Za-z][A-Za-z0-9._-]*)[ \t]+(active|retired)(?:[ \t]*—[ \t]*(.+))?$/;
 /** Qualified ids (§9.1): `T1.P01.S01`, `R115.S01`. */
 const SLICE_ID = /^(?:[A-Z]\d+\.P\d+|R\d+)\.S\d+$/;
 const PHASE_ID = /^(?:[A-Z]\d+\.P\d+|R\d+)$/;
@@ -161,12 +188,42 @@ export type GateRow = {
 	conformance: string;
 	acceptance: string;
 	commit: string;
+	/** Parsed `Accepted capabilities` entries: the accepted scopes of this version. */
+	capabilities: AcceptedCapabilityEntry[];
+};
+
+/** One `Accepted capabilities` entry, with the fields the readiness rule resolves. */
+export type AcceptedCapabilityEntry = {
+	/** The cell text as written, for a diagnostics line. */
+	raw: string;
+	/** The exact `Gate@Version:capability` string `Requires` names. */
+	capability: string;
+	gateVersion: string;
+	scope: string;
+	status: string;
+	/** The durable record that owns this capability's evidence. */
+	record: string;
+	/** False when the entry does not match the written grammar. */
+	wellFormed: boolean;
+};
+
+/** The durable record's own row: what one accepted capability actually landed. */
+export type CapabilityRecord = {
+	capability: string;
+	anchor: string;
+	prerequisites: string;
+	exports: string;
+	conformance: string;
+	acceptance: string;
+	commit: string;
 };
 
 export type SliceRow = {
 	id: string;
 	status: string;
 	consumes: string;
+	/** Exact `Gate@Version:capability` scopes this slice requires, or `—`. */
+	requires: string;
 	effects: string;
 	plan: string;
 	planFile: string;
@@ -226,6 +283,13 @@ export type StructureModel = {
 	exists: (path: string) => boolean;
 	resolves: (fromFile: string, target: string) => boolean;
 	ancestorOfHead: (commit: string) => boolean;
+	/** A repository file's text, or `null` when it does not exist. */
+	readText: (path: string) => string | null;
+	/**
+	 * A slice's status as recorded in its phase README at the trusted base, or `''`. A consumer
+	 * already accepted there keeps its recorded scopes: a later retirement is not retroactive.
+	 */
+	trustedSliceStatus: (file: string, sliceId: string) => string;
 };
 
 // ---------------------------------------------------------------- rules
@@ -606,6 +670,242 @@ export function cycleProblems(model: StructureModel): string[] {
 	return problems;
 }
 
+/**
+ * The `Accepted capabilities` cell of one gate row: one entry per accepted scope.
+ * Entries are separated by `;` or `,`; an entry that does not match the written grammar is
+ * kept as `wellFormed: false` so the rule reports it instead of silently dropping a scope.
+ */
+export function acceptedCapabilitiesOf(cell: string): AcceptedCapabilityEntry[] {
+	const entries: AcceptedCapabilityEntry[] = [];
+	for (const chunk of cell.split(/[;,]/)) {
+		if (isSentinel(chunk)) continue;
+		const raw = stripDecoration(chunk);
+		const match = CAPABILITY_ENTRY.exec(raw);
+		if (match === null) {
+			entries.push({ raw, capability: raw, gateVersion: '', scope: '', status: '', record: '', wellFormed: false });
+			continue;
+		}
+		const capability = match[1]!;
+		entries.push({
+			raw,
+			capability,
+			gateVersion: capability.slice(0, capability.lastIndexOf(':')),
+			scope: capability.slice(capability.lastIndexOf(':') + 1),
+			status: match[2]!,
+			record: (match[3] ?? '').trim(),
+			wellFormed: true
+		});
+	}
+	return entries;
+}
+
+/** The durable record's row for one capability, or `null` plus the report of what is missing. */
+export function capabilityRecord(source: string, file: string): { record: CapabilityRecord | null; problems: string[] } {
+	const problems: string[] = [];
+	const table = tableUnderHeading(source, CAPABILITY_RECORD_HEADING);
+	if (table === null) return { record: null, problems: [`${file}: no ${CAPABILITY_RECORD_HEADING} table`] };
+	problems.push(...columnProblems(table, file, CAPABILITY_RECORD_COLUMNS));
+	const row = rowObjects(table, file).rows.find((entry) => !Object.values(entry).every((cell) => isSentinel(cell)));
+	if (row === undefined) return { record: null, problems: [...problems, `${file}: the ${CAPABILITY_RECORD_HEADING} table has no row`] };
+	return {
+		record: {
+			capability: stripDecoration(row['Capability'] ?? ''),
+			anchor: linkTarget(row['Anchor'] ?? '') ?? stripDecoration(row['Anchor'] ?? ''),
+			prerequisites: row['Prerequisites'] ?? '',
+			exports: row['Exports'] ?? '',
+			conformance: row['Conformance'] ?? '',
+			acceptance: row['Acceptance'] ?? '',
+			commit: stripDecoration(row['Commit'] ?? '')
+		},
+		problems
+	};
+}
+
+/**
+ * The capability-readiness rule (T1.P01.S01 installed enforcement).
+ *
+ * Overall gate state cannot prove incremental capability scope, so two additive fields carry it:
+ * `Accepted capabilities` on each gate/version row and `Requires` on each consumer slice row. A
+ * consumer is eligible only when the exact gate **and every required scope**, with its
+ * prerequisite closure, is `accepted` in the current tree **and** at the trusted base, and every
+ * required scope is `active`. `ratified` or `implemented` alone is not acceptance, a retired scope
+ * is ineligible for a new or in-progress consumer, a consumer cannot supply its own prerequisite,
+ * and a scope accepted only at the trusted base is historical evidence rather than current
+ * eligibility.
+ */
+export function capabilityProblems(model: StructureModel): string[] {
+	const problems: string[] = [];
+	const registered = new Map<string, GateRow>();
+	for (const row of model.gates) {
+		if (!isSentinel(row.version)) registered.set(`${row.gate}@${row.version}`, row);
+	}
+	const trustedActive = new Set<string>();
+	for (const row of model.trustedBase ?? []) {
+		for (const entry of row.capabilities) if (entry.status === 'active') trustedActive.add(entry.capability);
+	}
+
+	// Fields: every entry is a well-formed scope of a registered version with a real record.
+	const current = new Map<string, { entry: AcceptedCapabilityEntry; row: GateRow }>();
+	for (const row of model.gates) {
+		for (const entry of row.capabilities) {
+			if (!entry.wellFormed) {
+				problems.push(
+					`${row.gate}: accepted capability "${entry.raw}" is not written as "<Gate@Version>:<capability> active|retired — <record path>"`
+				);
+				continue;
+			}
+			const gateRow = registered.get(entry.gateVersion);
+			if (gateRow === undefined) {
+				problems.push(`${row.gate}: accepted capability "${entry.capability}" names an unregistered gate version`);
+				continue;
+			}
+			if (current.has(entry.capability)) problems.push(`${row.gate}: accepted capability "${entry.capability}" appears on more than one row`);
+			current.set(entry.capability, { entry, row });
+			if (gateRow.state !== 'accepted') {
+				problems.push(
+					`${row.gate}: accepted capability "${entry.capability}" requires the gate row state "accepted" (found "${gateRow.state}")`
+				);
+			}
+			if (entry.record === '') {
+				problems.push(`${row.gate}: accepted capability "${entry.capability}" requires a durable record path`);
+				continue;
+			}
+			const source = model.readText(entry.record);
+			if (source === null) {
+				problems.push(`${row.gate}: accepted capability "${entry.capability}" record "${entry.record}" does not exist`);
+				continue;
+			}
+			const parsed = capabilityRecord(source, entry.record);
+			problems.push(...parsed.problems);
+			if (parsed.record === null) continue;
+			if (parsed.record.capability !== entry.capability) {
+				problems.push(
+					`${entry.record}: the record declares capability "${parsed.record.capability}", not "${entry.capability}"`
+				);
+			}
+			if (!isSentinel(parsed.record.anchor) && !model.resolves(entry.record, parsed.record.anchor)) {
+				problems.push(`${entry.record}: the contract anchor "${parsed.record.anchor}" does not resolve`);
+			}
+			for (const [column, value] of [
+				['Exports', parsed.record.exports],
+				['Conformance', parsed.record.conformance],
+				['Acceptance', parsed.record.acceptance]
+			] as const) {
+				const paths = tokens(value);
+				if (paths.length === 0) problems.push(`${entry.capability}: the record requires a ${column.toLowerCase()} path`);
+				for (const path of paths) {
+					if (!model.exists(path)) problems.push(`${entry.record}: ${column} path "${path}" does not exist`);
+				}
+			}
+			if (isSentinel(parsed.record.commit)) problems.push(`${entry.capability}: the record requires a reviewed implementation commit`);
+			else if (!model.ancestorOfHead(parsed.record.commit)) {
+				problems.push(`${entry.record}: commit "${parsed.record.commit}" is not an ancestor of HEAD`);
+			}
+			for (const prerequisite of capabilityTokens(parsed.record.prerequisites)) {
+				if (prerequisite === entry.capability) problems.push(`${entry.capability}: a capability cannot be its own prerequisite`);
+				else if (!registered.has(prerequisite.slice(0, prerequisite.lastIndexOf(':')))) {
+					problems.push(`${entry.capability}: prerequisite "${prerequisite}" names an unregistered gate version`);
+				}
+			}
+		}
+	}
+
+	// Consumers: `Requires` is the capability refinement of `Consumes`, enforced with the same
+	// trusted-base rule. A `shipped` slice, or one already settled at the trusted base, keeps its
+	// recorded scopes and evidence.
+	for (const phase of model.phases) {
+		for (const slice of phase.slices) {
+			const requires = capabilityTokens(slice.requires);
+			if (requires.length === 0) continue;
+			if (slice.status === 'shipped') continue;
+			if (SETTLED_SLICE_STATUSES.includes(model.trustedSliceStatus(phase.file, slice.id))) continue;
+			const enforced = slice.status === 'in-progress' || slice.status === 'accepted';
+			const consumed = tokens(slice.consumes);
+			for (const reference of requires) {
+				const match = CAPABILITY_REFERENCE.exec(reference);
+				if (match === null) {
+					if (enforced) problems.push(`${slice.id}: Requires "${reference}" is not an exact Gate@Version:capability`);
+					continue;
+				}
+				const gateVersion = `${match[1]}@${match[2]}`;
+				if (!registered.has(gateVersion)) {
+					if (enforced) problems.push(`${slice.id}: Requires "${reference}", whose gate version is not registered`);
+					continue;
+				}
+				if (!enforced) continue;
+				if (!consumed.includes(gateVersion)) {
+					problems.push(
+						`${slice.id}: Requires "${reference}" but Consumes does not declare "${gateVersion}" — the capability refines a consumed gate`
+					);
+				}
+				for (const member of capabilityClosure(reference, current, model, problems)) {
+					const entry = current.get(member);
+					const trusted = trustedActive.has(member);
+					if (entry === undefined || entry.entry.status !== 'active') {
+						problems.push(
+							trusted
+								? `${slice.id}: "${member}" is accepted only at the trusted base (historical evidence), never current eligibility`
+								: entry === undefined
+									? `${slice.id}: Requires "${member}", which has no Accepted-capabilities entry in the gate register`
+									: `${slice.id}: Requires the retired scope "${member}" — no new or in-progress consumer may require it`
+						);
+					}
+					if (!trusted) {
+						problems.push(
+							`${slice.id}: "${member}" is not accepted at the trusted base — a consumer cannot satisfy its own prerequisite in its own diff`
+						);
+					}
+				}
+			}
+		}
+	}
+	return problems;
+}
+
+/**
+ * A `Requires` / prerequisite cell's capability list: bare `Gate@Version:capability` tokens,
+ * sentinels removed. Prose is not filtered out — a decorated entry fails the exact-match rule
+ * instead of being silently ignored.
+ */
+function capabilityTokens(cell: string): string[] {
+	return tokens(cell);
+}
+
+/**
+ * A capability plus its declared prerequisites, transitively. A prerequisite that is not itself an
+ * accepted-and-active entry is reported and does not extend the walk; a cycle is reported once.
+ */
+function capabilityClosure(
+	root: string,
+	current: Map<string, { entry: AcceptedCapabilityEntry; row: GateRow }>,
+	model: StructureModel,
+	problems: string[]
+): Set<string> {
+	const closure = new Set<string>([root]);
+	const pending = [root];
+	const visited = new Set<string>([root]);
+	while (pending.length > 0) {
+		const capability = pending.pop()!;
+		const holder = current.get(capability);
+		if (holder === undefined) continue;
+		const source = model.readText(holder.entry.record);
+		if (source === null) continue;
+		const parsed = capabilityRecord(source, holder.entry.record);
+		if (parsed.record === null) continue;
+		for (const prerequisite of capabilityTokens(parsed.record.prerequisites)) {
+			if (prerequisite === root) {
+				problems.push(`${root}: the prerequisite closure is cyclic (${prerequisite})`);
+				continue;
+			}
+			closure.add(prerequisite);
+			if (visited.has(prerequisite)) continue;
+			visited.add(prerequisite);
+			pending.push(prerequisite);
+		}
+	}
+	return closure;
+}
+
 /** The fresh-agent routing block must not route ordinary work into a phase, program or cycle document. */
 export const ROUTE_KEYS = [
 	'START',
@@ -763,8 +1063,17 @@ function gateRowsOf(source: string): GateRow[] {
 			exports: row['Exports'] ?? '',
 			conformance: row['Conformance'] ?? '',
 			acceptance: row['Acceptance'] ?? '',
-			commit: stripDecoration(row['Commit'] ?? '')
+			commit: stripDecoration(row['Commit'] ?? ''),
+			capabilities: acceptedCapabilitiesOf(row['Accepted capabilities'] ?? '')
 		}));
+}
+
+/** One slice's status in a phase README at some revision, or `''` when it is not registered there. */
+function sliceStatusOf(source: string, sliceId: string): string {
+	const table = tableUnderHeading(source, 'Slice register');
+	if (table === null) return '';
+	const row = rowObjects(table, 'phase README').rows.find((entry) => stripDecoration(entry['Slice'] ?? '') === sliceId);
+	return row === undefined ? '' : stripDecoration(row['Status'] ?? '');
 }
 
 function schemaProblems(source: string, heading: string, file: string, expected: readonly string[]): string[] {
@@ -865,6 +1174,7 @@ export function readStructure(): StructureModel {
 				id: stripDecoration(row['Slice'] ?? ''),
 				status: stripDecoration(row['Status'] ?? ''),
 				consumes: row['Consumes'] ?? '',
+				requires: row['Requires'] ?? '',
 				effects: row['Effects'] ?? '',
 				plan: planCell,
 				planFile,
@@ -899,12 +1209,27 @@ export function readStructure(): StructureModel {
 	}));
 
 	let trustedBase: GateRow[] | null = null;
+	let base = '';
 	try {
-		const base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: REPO_ROOT }).toString().trim();
+		base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: REPO_ROOT }).toString().trim();
 		trustedBase = gateRowsOf(execFileSync('git', ['show', `${base}:${ROADMAP}`], { cwd: REPO_ROOT }).toString());
 	} catch {
 		trustedBase = null;
 	}
+	// The trusted base's phase registers, read lazily: only a slice that declares `Requires`
+	// needs them, and only to decide whether it was already accepted there.
+	const trustedPhases = new Map<string, string | null>();
+	const trustedSource = (path: string): string | null => {
+		if (base === '') return null;
+		if (!trustedPhases.has(path)) {
+			try {
+				trustedPhases.set(path, execFileSync('git', ['show', `${base}:${path}`], { cwd: REPO_ROOT }).toString());
+			} catch {
+				trustedPhases.set(path, null);
+			}
+		}
+		return trustedPhases.get(path) ?? null;
+	};
 
 	return {
 		gates: gateRowsOf(roadmapSource),
@@ -925,13 +1250,51 @@ export function readStructure(): StructureModel {
 		},
 		exists,
 		resolves,
-		ancestorOfHead
+		ancestorOfHead,
+		readText: readOrNull,
+		trustedSliceStatus: (file, sliceId) => {
+			const source = trustedSource(file);
+			return source === null ? '' : sliceStatusOf(source, sliceId);
+		}
 	};
 }
 
 // ---------------------------------------------------------------- fixtures
 
 const FIXTURE_PLAN = 'docs/roadmap/t1-spatial-world/t1.p01-viewport/t1.p01.s01-viewport/implementation-plan.md';
+/** The durable record a fixture's accepted capability points at. */
+const FIXTURE_CAPABILITY_RECORD = 'docs/roadmap/t1-spatial-world/t1.p01-viewport/acceptance.md';
+const FIXTURE_CAPABILITY = 'F4.intent-acceptance@1:local-single-domain-v1';
+const FIXTURE_PREREQUISITE = 'F1.reference@1:references-v1';
+
+/** The record's own table, as the fixture's `readText` returns it. */
+function recordSource(capability: string, prerequisites: string): string {
+	return [
+		'## Accepted capability',
+		'',
+		'| Capability | Anchor | Prerequisites | Exports | Conformance | Acceptance | Commit |',
+		'| --- | --- | --- | --- | --- | --- | --- |',
+		`| \`${capability}\` | ./reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1 | ${prerequisites} | packages/project-model/src | apps/editor/tests/lib/project-model-boundary.test.ts | ${FIXTURE_CAPABILITY_RECORD} | HEAD |`,
+		''
+	].join('\n');
+}
+
+/** One parsed `Accepted capabilities` entry. */
+function acceptedEntry(
+	capability: string,
+	overrides: Partial<AcceptedCapabilityEntry> = {}
+): AcceptedCapabilityEntry {
+	return {
+		raw: `${capability} active — ${FIXTURE_CAPABILITY_RECORD}`,
+		capability,
+		gateVersion: capability.slice(0, capability.lastIndexOf(':')),
+		scope: capability.slice(capability.lastIndexOf(':') + 1),
+		status: 'active',
+		record: FIXTURE_CAPABILITY_RECORD,
+		wellFormed: true,
+		...overrides
+	};
+}
 
 /** A minimal, internally consistent model that individual rules can be mutated in memory. */
 export function fixture(overrides: Partial<StructureModel> = {}): StructureModel {
@@ -946,7 +1309,8 @@ export function fixture(overrides: Partial<StructureModel> = {}): StructureModel
 		exports: 'packages/project-model/src',
 		conformance: 'apps/editor/tests/lib/project-model-boundary.test.ts',
 		acceptance: 'docs/roadmap/t1-spatial-world/t1.p01-viewport/README.md',
-		commit: 'HEAD'
+		commit: 'HEAD',
+		capabilities: []
 	};
 	const undrafted: GateRow = {
 		gate: 'T3.camera-experience-cutover',
@@ -959,12 +1323,14 @@ export function fixture(overrides: Partial<StructureModel> = {}): StructureModel
 		exports: '—',
 		conformance: '—',
 		acceptance: '—',
-		commit: '—'
+		commit: '—',
+		capabilities: []
 	};
 	const slice: SliceRow = {
 		id: 'T1.P01.S01',
 		status: 'in-progress',
 		consumes: '—',
+		requires: '—',
 		effects: '—',
 		plan: '[plan.md](./t1.p01.s01-viewport/implementation-plan.md)',
 		planFile: FIXTURE_PLAN,
@@ -1019,6 +1385,8 @@ export function fixture(overrides: Partial<StructureModel> = {}): StructureModel
 		exists: () => true,
 		resolves: () => true,
 		ancestorOfHead: () => true,
+		readText: (path) => (path === FIXTURE_CAPABILITY_RECORD ? recordSource(FIXTURE_CAPABILITY, '—') : null),
+		trustedSliceStatus: () => '',
 		...overrides
 	};
 }
@@ -1030,6 +1398,30 @@ function withSlice(overrides: Partial<SliceRow>, model = fixture()): StructureMo
 		...model,
 		phases: [{ ...phase, slices: [{ ...phase.slices[0]!, ...overrides }, ...phase.slices.slice(1)] }]
 	};
+}
+
+/**
+ * A model where one capability is accepted on a gate row and (unless mutated) also at the trusted
+ * base, with a consumer slice that Requires it. Individual rules mutate one field each.
+ */
+function capabilityFixture(overrides: Partial<StructureModel> = {}): StructureModel {
+	const entry = acceptedEntry(FIXTURE_CAPABILITY);
+	const base = fixture();
+	const acceptedGate: GateRow = { ...base.gates[0]!, capabilities: [entry] };
+	return {
+		...base,
+		gates: [acceptedGate, base.gates[1]!],
+		trustedBase: [{ ...acceptedGate }],
+		...overrides
+	};
+}
+
+/** That model with a consumer slice that declares `Requires`. */
+function consuming(overrides: Partial<SliceRow> = {}, model = capabilityFixture()): StructureModel {
+	return withSlice(
+		{ status: 'in-progress', consumes: 'F4.intent-acceptance@1', requires: FIXTURE_CAPABILITY, ...overrides },
+		model
+	);
 }
 
 /** The fixture phase with a mutated second slice (never the final gate). */
@@ -1102,6 +1494,7 @@ describe('execution structure is registered, exact and eligible', () => {
 		expect(gateProblems(model)).toEqual([]);
 		expect(phaseProblems(model)).toEqual([]);
 		expect(cycleProblems(model)).toEqual([]);
+		expect(capabilityProblems(model)).toEqual([]);
 	});
 
 	it('keeps the lane green when a ratified gate, a track phase and an open window arrive', () => {
@@ -1388,6 +1781,173 @@ describe('execution structure is registered, exact and eligible', () => {
 		expect(phaseProblems(withSlice({ verification: 'quarterly' })).join('\n')).toContain('is not one of');
 	});
 });
+
+describe('the capability-readiness rule', () => {
+	const model = readStructure();
+
+	it('installs the two fields and reports nothing for the tree as written', () => {
+		// The readiness rule's fields exist and are resolvable, and no scope claims acceptance
+		// yet: `ratified` on F1/F3 is interface ratification, never implementation or acceptance.
+		expect(model.gates.every((row) => row.capabilities.length === 0)).toBe(true);
+		// The `Requires` field is installed and populated: S02–S06 declare their exact scopes.
+		expect(sliceRequires(model)).toEqual({
+			'T1.P01.S02': ['F1.reference@1:references-v1', 'F3.channels@1:inspection-v1'],
+			'T1.P01.S03': ['F1.reference@1:references-v1'],
+			'T1.P01.S04': ['F1.reference@1:references-v1', 'F4.intent-acceptance@1:local-single-domain-v1'],
+			'T1.P01.S05': ['F1.reference@1:references-v1', 'F4.intent-acceptance@1:local-single-domain-v1'],
+			'T1.P01.S06': ['F1.reference@1:references-v1', 'F4.intent-acceptance@1:local-single-domain-v1']
+		});
+		expect(capabilityProblems(model)).toEqual([]);
+	});
+
+	it('reads an accepted scope only from an exact entry with a real durable record', () => {
+		expect(acceptedCapabilitiesOf('—')).toEqual([]);
+		const parsed = acceptedCapabilitiesOf(
+			`\`${FIXTURE_CAPABILITY}\` active — ${FIXTURE_CAPABILITY_RECORD}; \`F1.reference@1:references-v1\` retired — docs/x.md`
+		);
+		expect(parsed.map((entry) => [entry.capability, entry.status, entry.record])).toEqual([
+			[FIXTURE_CAPABILITY, 'active', FIXTURE_CAPABILITY_RECORD],
+			['F1.reference@1:references-v1', 'retired', 'docs/x.md']
+		]);
+		// A status is required: a bare capability string is not an accepted entry.
+		expect(acceptedCapabilitiesOf(`\`${FIXTURE_CAPABILITY}\``).map((entry) => entry.wellFormed)).toEqual([false]);
+
+		const record = capabilityRecord(recordSource(FIXTURE_CAPABILITY, FIXTURE_PREREQUISITE), FIXTURE_CAPABILITY_RECORD);
+		expect(record.problems).toEqual([]);
+		expect(record.record?.capability).toBe(FIXTURE_CAPABILITY);
+		expect(record.record?.commit).toBe('HEAD');
+	});
+
+	it('keeps an eligible consumer green and refuses every way a scope can fail to be accepted', () => {
+		// Positive control: accepted here and at the trusted base, `active`, with a real record.
+		expect(capabilityProblems(consuming())).toEqual([]);
+
+		// A malformed entry is a register defect, not a silently dropped scope.
+		expect(
+			capabilityProblems(consuming({}, capabilityFixture({ gates: [withCapabilities(acceptedEntry(FIXTURE_CAPABILITY, { wellFormed: false }))] }))).join('\n')
+		).toContain('is not written as');
+		// The scope must name a registered gate version.
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ gates: [withCapabilities(acceptedEntry('F9.nothing@1:scope-v1'))] }))
+			).join('\n')
+		).toContain('names an unregistered gate version');
+		// An accepted scope on a gate row that is not accepted is incoherent.
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ gates: [withCapabilities(acceptedEntry(FIXTURE_CAPABILITY), 'implemented')] }))
+			).join('\n')
+		).toContain('requires the gate row state "accepted"');
+		// A missing or unreadable record, a record for another capability, a missing evidence
+		// path and an unreviewed commit all fail.
+		expect(
+			capabilityProblems(consuming({}, capabilityFixture({ readText: () => null }))).join('\n')
+		).toContain('does not exist');
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ readText: () => recordSource('F1.reference@1:references-v1', '—') }))
+			).join('\n')
+		).toContain('the record declares capability');
+		expect(
+			capabilityProblems(consuming({}, capabilityFixture({ exists: (path) => path !== 'packages/project-model/src' }))).join('\n')
+		).toContain('Exports path "packages/project-model/src" does not exist');
+		expect(
+			capabilityProblems(consuming({}, capabilityFixture({ ancestorOfHead: () => false }))).join('\n')
+		).toContain('is not an ancestor of HEAD');
+		// A capability cannot be its own prerequisite, and a cyclic closure is reported.
+		expect(
+			capabilityProblems(consuming({}, capabilityFixture({ readText: () => recordSource(FIXTURE_CAPABILITY, FIXTURE_CAPABILITY) }))).join('\n')
+		).toContain('cannot be its own prerequisite');
+	});
+
+	it('refuses a Requires that is not an exact scope of a consumed gate', () => {
+		expect(capabilityProblems(consuming({ requires: 'F4.intent-acceptance@1' })).join('\n')).toContain(
+			'is not an exact Gate@Version:capability'
+		);
+		expect(capabilityProblems(consuming({ requires: 'F4.intent-acceptance@1:missing-scope-v1' })).join('\n')).toContain(
+			'has no Accepted-capabilities entry'
+		);
+		expect(capabilityProblems(consuming({ consumes: 'F1.reference@1' })).join('\n')).toContain(
+			'but Consumes does not declare'
+		);
+	});
+
+	it('fails an acceptance recorded only in the current diff, and a retired scope', () => {
+		// Self-satisfaction: the scope is accepted in the working register but absent at the
+		// trusted base, so the consumer cannot supply its own prerequisite.
+		expect(capabilityProblems(consuming({}, capabilityFixture({ trustedBase: [] }))).join('\n')).toContain(
+			'is not accepted at the trusted base'
+		);
+		// A scope accepted only at the trusted base is historical evidence, not current eligibility.
+		const trustedOnly = consuming(
+			{},
+			capabilityFixture({
+				gates: [withCapabilities(acceptedEntry(FIXTURE_CAPABILITY, { status: 'retired' }))],
+				trustedBase: [withCapabilities(acceptedEntry(FIXTURE_CAPABILITY))]
+			})
+		);
+		expect(capabilityProblems(trustedOnly).join('\n')).toContain('accepted only at the trusted base');
+		// Retirement is terminal for a new or in-progress consumer, at any epoch.
+		const bothRetired = consuming(
+			{},
+			capabilityFixture({
+				gates: [withCapabilities(acceptedEntry(FIXTURE_CAPABILITY, { status: 'retired' }))],
+				trustedBase: [withCapabilities(acceptedEntry(FIXTURE_CAPABILITY, { status: 'retired' }))]
+			})
+		);
+		expect(capabilityProblems(bothRetired).join('\n')).toContain('retired scope');
+	});
+
+	it('resolves the prerequisite closure and keeps non-consumers and settled slices eligible', () => {
+		// A capability that itself requires an unaccepted scope is not ready either.
+		const prerequisite = 'F1.reference@1:references-v1';
+		const chained = capabilityFixture({
+			gates: [
+				withCapabilities(acceptedEntry(FIXTURE_CAPABILITY)),
+				{ ...fixture().gates[0]!, gate: 'F1.reference', capabilities: [acceptedEntry(prerequisite)] }
+			],
+			trustedBase: [{ ...fixture().gates[0]!, gate: 'F1.reference', capabilities: [acceptedEntry(prerequisite)] }],
+			readText: (path) => (path === FIXTURE_CAPABILITY_RECORD ? recordSource(FIXTURE_CAPABILITY, prerequisite) : null)
+		});
+		// F1.reference@1 is not registered in this model, so the prerequisite is unresolvable.
+		expect(capabilityProblems(consuming({ requires: FIXTURE_CAPABILITY }, chained)).join('\n')).toContain(
+			FIXTURE_CAPABILITY
+		);
+
+		// A `proposed` consumer is not yet eligible work, so it is not enforced.
+		expect(capabilityProblems(consuming({ status: 'proposed' }))).toEqual([]);
+		// A shipped slice, and one already accepted at the trusted base, keep their recorded
+		// scopes: a later retirement is not retroactive.
+		expect(capabilityProblems(consuming({ status: 'shipped' }, capabilityFixture({ trustedBase: [] })))).toEqual([]);
+		expect(
+			capabilityProblems(
+				consuming({}, capabilityFixture({ trustedBase: [], trustedSliceStatus: () => 'accepted' }))
+			)
+		).toEqual([]);
+		// A slice with no `Requires` declares no capability prerequisite at all.
+		expect(capabilityProblems(consuming({ requires: '—' }, capabilityFixture({ trustedBase: [] })))).toEqual([]);
+	});
+});
+
+/** The gate rows a capability fixture needs: the gate plus its registered version holder. */
+function withCapabilities(entry: AcceptedCapabilityEntry, state = 'accepted'): GateRow {
+	return { ...fixture().gates[0]!, state, capabilities: [entry] };
+}
+
+/** Every slice's declared `Requires`, for the register's current population. */
+function sliceRequires(model: StructureModel): Record<string, string[]> {
+	const declared: Record<string, string[]> = {};
+	for (const phase of model.phases) {
+		for (const slice of phase.slices) {
+			if (isSentinel(slice.requires)) continue;
+			declared[slice.id] = slice.requires
+				.split(',')
+				.map((token) => stripDecoration(token).trim())
+				.filter((token) => token !== '');
+		}
+	}
+	return declared;
+}
 
 describe('the architecture cycle opening rule', () => {
 	const model = readStructure();

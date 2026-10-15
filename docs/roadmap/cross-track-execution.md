@@ -74,10 +74,11 @@ their evidence. The checker records retirement as a terminal state on the retiri
 naming a retired scope. The read-only converter still retires with the covered inventory before the
 Source Baseline.
 Acceptance of an interface is distinct from
-ratification, implementation and consumer eligibility. Add the two-field validation and controls
-for missing/unimplemented scope, consumer self-satisfaction and retired scope in the authorized
-T1 S01 provider; the owner ratified this rule on 2026-10-15, and until the enforcement is installed
-in T1.P01.S01, consumers needing incremental readiness remain blocked. This file changes neither the live register nor its checker. The rule's
+ratification, implementation and consumer eligibility. `T1.P01.S01` installs the two-field
+validation and controls for missing/unimplemented scope, consumer self-satisfaction, retired scope
+and the trusted base (owner-ratified 2026-10-15): a consumer needing incremental readiness now
+fails the arch-lane gate rather than relying on review alone. This file changes neither the live
+register nor its checker. The rule's
 normative statement and checker definition live in
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness); this
 file keeps only the proposed allocation, the capability dependencies and the enforcement handoff,

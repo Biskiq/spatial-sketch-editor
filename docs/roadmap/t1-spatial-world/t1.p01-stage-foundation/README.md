@@ -1,7 +1,7 @@
 # T1.P01 — Stage and authoring foundation
 
-**Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` authorized, not started;
-S02–S06 proposed and unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
+**Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` authorized and in progress
+(implemented, awaiting independent review); S02–S06 proposed and unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
 [`../../../operations/current.md`](../../../operations/current.md)
@@ -125,25 +125,29 @@ Wall-host frames; no Scene `roomId`, authored Room frame or transform migration 
 ## Slice register
 
 One row per slice; the slice's own plan owns its scope, tier and criteria, and its acceptance
-record owns recorded outcomes. `Consumes` lists exact `Gate@Version` prerequisites;
-`Effects` names only documented effects. S01 is **authorized** by the owner decision of
-2026-10-15 and has not started; S02–S06 are **proposed** and hold no implementation permission.
-Same-phase sequencing never bypasses the trusted-base rule: each consumed gate must be accepted
-at the consumer's trusted base.
+record owns recorded outcomes. `Consumes` lists exact `Gate@Version` prerequisites and `Requires`
+the exact `Gate@Version:capability-vN` scopes of those gates the slice actually needs — a consumed
+gate version is not by itself sufficient readiness; `Effects` names only documented effects. S01 is
+**authorized** by the owner decision of 2026-10-15 and **in progress**: its implementation is
+complete on its branch and awaits independent review, so no provider output is accepted and every
+gate row stays `ratified` with empty evidence. S02–S06 are **proposed** and hold no implementation
+permission. Same-phase sequencing never bypasses the trusted-base rule: each consumed gate and each
+required capability must be accepted at the consumer's trusted base.
 
-| Slice | Status | Consumes | Effects | Plan | Acceptance | Authorization |
-| --- | --- | --- | --- | --- | --- | --- |
-| T1.P01.S01 | approved | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)) — approved, not started |
-| T1.P01.S02 | proposed | F1.reference@1, F3.channels@1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | — |
-| T1.P01.S03 | proposed | F1.reference@1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | — |
-| T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
-| T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
-| T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
+| Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| T1.P01.S01 | in-progress | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)) — implemented, awaiting independent review |
+| T1.P01.S02 | proposed | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | — |
+| T1.P01.S03 | proposed | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | — |
+| T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
+| T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
+| T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
 
-Every slice also declares the specific capabilities it requires (`Requires`) in its own plan,
-because a consumed gate version is not by itself sufficient readiness — the readiness rule this
-phase installs at S01 is exactly that distinction. The requirements above describe the
-pre-cutover source adapter. T3 S04 migrates existing callers and unfinished plans to accepted
+Every slice also declares the specific capabilities it requires (`Requires`) in its own plan, and the
+row above restates it for the [checker](../../../roadmap/README.md#gate-register) — a consumed gate
+version is not by itself sufficient readiness, and the readiness rule this phase installs at S01 is
+exactly that distinction. The requirements above describe the pre-cutover source adapter. T3 S04
+migrates existing callers and unfinished plans to accepted
 F2/unit-resolution/unit-acceptance capabilities from T3 S01/S03; Save users additionally
 require conditional-save-units-v1. That migration does not wait for the whole T1 phase. No
 current-source acceptance record proves unit capability readiness.
@@ -161,9 +165,10 @@ PHASE CLOSE
 Stage:        active
 ```
 
-Acceptance evidence is absent for every slice. The final gate is declared, not closeable: no
-slice is accepted, so no `PHASE CLOSE` beyond this active stage marker is written, and closure
-stays an explicit owner request.
+Acceptance evidence is absent for every slice: `T1.P01.S01` reports implementation evidence only,
+and independent acceptance is still owed. The final gate is declared, not closeable: no slice is
+accepted, so no `PHASE CLOSE` beyond this active stage marker is written, and closure stays an
+explicit owner request.
 
 ## Bounded architecture-cycle window
 

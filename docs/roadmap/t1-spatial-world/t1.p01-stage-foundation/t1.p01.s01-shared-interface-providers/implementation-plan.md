@@ -1,6 +1,7 @@
 # T1.P01.S01 — Shared interface providers: implementation plan
 
-**Slice:** T1.P01.S01 · **Status:** approved (owner-authorized 2026-10-15) — not started
+**Slice:** T1.P01.S01 · **Status:** in progress (owner-authorized 2026-10-15) — implemented and
+awaiting independent review; no acceptance is recorded
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
 ```text
@@ -36,9 +37,15 @@ defined in [the F drafts](../interfaces.md#f-amendment-drafts). The slice consum
 own outputs; their implementation is one coherent provider. No live shell or document cutover
 belongs here.
 
+The implementation delivers them in `@portfolio/project-model`: `src/references/` for
+`references-v1` and `src/channels/` for `inspection-v1`, with conformance suites at
+`apps/editor/tests/lib/project-model/references-conformance.test.ts` and
+`apps/editor/tests/lib/project-model/channels-conformance.test.ts`. The accepted provider outputs
+below remain unrecorded: only the reviewer's acceptance promotes them.
+
 This slice is the sole provider of both gates, so its eventual **exact accepted provider outputs
 are `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1`** — the capability strings a
-later consumer names in its `Requires`. Neither output exists today, and neither becomes ready
+later consumer names in its `Requires`. Neither output is accepted today, and neither becomes ready
 `accepted` capability evidence — let alone claimable by another consumer — until all of the
 following hold at this slice's own delivered work:
 

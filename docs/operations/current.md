@@ -4,19 +4,22 @@ PHASE: T1.P01 — Stage and authoring foundation (registered 2026-10-15). First 
        shared F1/F3 interface providers, then the Stage/viewport host and the common local F4
        provider, then restored bounded Layout precision. Phase README →
        ../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md.
-CHILD: T1.P01.S01 — Shared interface providers — `approved` (owner-authorized 2026-10-15), not
-       started. It supplies `F1.reference@1` and `F3.channels@1` and installs the
-       Accepted-capabilities / Requires readiness enforcement. Plan →
+CHILD: T1.P01.S01 — Shared interface providers — `in-progress` (owner-authorized 2026-10-15),
+       implemented on `T1-P1-S1-implementation` and awaiting independent review; no acceptance is
+       recorded. It supplies `F1.reference@1` and `F3.channels@1` as `@portfolio/project-model`
+       exports with conformance suites, and installs the Accepted-capabilities / Requires readiness
+       enforcement in the arch lane's execution-structure gate. Plan →
        ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/implementation-plan.md;
-       acceptance record (no evidence recorded) →
+       implementer-reported evidence (no acceptance, no gate promotion) →
        ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md.
        T1.P01.S02–S06 stay `proposed`, each blocked by its own accepted prerequisites.
 BATON: #124 F-interface ratification merged (owner decision 2026-10-15) → T1.P01 registered and
-       S01 authorized → S01 implementation under the T1 runbook start step.
-NEXT: start T1.P01.S01 through the T1 runbook start step. Its `Consumes` list is empty, so
-      eligibility holds with no prerequisite to satisfy; it is not a listed cycle exposure, so
-      no window hook applies. Then implementation → review → acceptance → routine closeout →
-      merge.
+       S01 authorized → S01 implemented, independent review owed.
+NEXT: independent review of T1.P01.S01 against its plan's acceptance criteria, on the tested
+      revision the acceptance record names. Its `Consumes` and `Requires` are empty, so
+      eligibility held with no prerequisite to satisfy, and it is not a listed cycle exposure,
+      so no window hook applies. Review decides acceptance and whether `F1.reference@1` /
+      `F3.channels@1` are promoted; then routine closeout → merge.
       ROUTE: ../roadmap/README.md (track + gate register) → ../roadmap/t1-spatial-world/README.md
       (phase register) → the phase README → ../operations/t1-spatial-world/README.md.
 BLOCKER: none.
@@ -30,11 +33,13 @@ EXECUTION STRUCTURE (created by WP5, now live): Track → Phase → Slice with o
       bounded replanning) → ./README.md.
 GATE: F1–F4 and `T1.viewport-projection` are `ratified` at version 1 (2026-10-15,
       ../reference/decisions/f-ratification-2026-10-15.md); F5 and the T3/T4 cutovers remain
-      undrafted. `F1.reference@1` and `F3.channels@1` name `T1.P01.S01` as their sole provider;
-      the proposed F4/F2/F5 providers and `T1.viewport-projection` stay unassigned until their own
-      phases register. No provider is `implemented` or `accepted`, and `T1.P01.S01` is the only
-      authorized implementation anywhere. Normative text → ../reference/composition-execution.md;
-      the capability-level `Requires` distinction is enforced by the readiness rule S01 installs.
+      undrafted. `F1.reference@1` and `F3.channels@1` name `T1.P01.S01` as their sole provider and
+      keep empty evidence columns: S01's code and conformance exist, but no gate is `implemented`
+      or `accepted` and no Accepted-capabilities entry is recorded before independent acceptance.
+      The proposed F4/F2/F5 providers and `T1.viewport-projection` stay unassigned until their own
+      phases register. Normative text → ../reference/composition-execution.md; the capability-level
+      `Requires` distinction is enforced by the readiness rule S01 installed in
+      ../roadmap/README.md's execution-structure gate.
 CYCLE: `PHASE_1` · `ready` · the T1.P01 window is configured with T1.P01.S02, T1.P01.S04 and
       T1.P01.S05 (expected opener S02, terminal S05) and is **not open**: Opened by, exposure
       rows, Closed by and mechanism verdicts are empty. State and protocol →

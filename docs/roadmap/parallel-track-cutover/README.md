@@ -18,12 +18,13 @@ stub's anchor.
 
 ## Slice register
 
-| Slice | Status | Consumes | Effects | Plan | Acceptance | Authorization |
-| --- | --- | --- | --- | --- | --- | --- |
-| R115.S01 | shipped | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7; closed 2026-10-14 by `slice-closeout`; the record was compacted to its closed-work stub 2026-10-14 by `phase-closeout` (recovery in the stub) |
+| Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| R115.S01 | shipped | — | — | — | [implementation-plan.md](./implementation-plan.md) | [acceptance.md](./acceptance.md) | owner-authorized 2026-10-13; implementation execution authorized through WP7; closed 2026-10-14 by `slice-closeout`; the record was compacted to its closed-work stub 2026-10-14 by `phase-closeout` (recovery in the stub) |
 
 - **Consumes** is empty: the reset consumes no gate version. Every gate in the
   [gate register](../README.md#gate-register) is still `undrafted`, correctly.
+- **Requires** is empty: the reset requires no accepted capability scope.
 - **Effects** is empty: this phase performs no Camera authoring migration.
 
 ```text

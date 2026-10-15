@@ -106,7 +106,11 @@ accepted     the review and acceptance evidence is recorded → `accepted`
 Overall gate state cannot prove incremental capability scope. Two additive fields carry it:
 **Accepted capabilities** on each gate/version row and **Requires** on each consumer slice row,
 the latter naming the exact `Gate@Version:capability-vN` strings with their prerequisite closure.
-Enforcement is authorized T1.P01.S01 work; this section defines the rule, not a live checker.
+Enforcement is installed by `T1.P01.S01` and runs with the other register rules in
+[`parallel-track-gates.test.ts`](../../../apps/editor/tests/docs/parallel-track-gates.test.ts)
+(`capabilityProblems`, arch lane) over the live [gate register](../README.md#gate-register); this
+section owns the rule, the checker implements it, and the register's own legend carries the entry
+and record grammar.
 
 An Accepted-capabilities entry is the exact capability string `Requires` names, and records
 capability ID/version, contract/amendment anchor, admitted source kinds, prerequisites, extension
@@ -141,13 +145,16 @@ on the same F.4 entry — `acceptance-invariants-v1`, which never retires — an
 `conditional-save-units-v1` consumers, name it as their prerequisite. It adds one scope to one
 existing entry: no new gate, provider, registry or evidence.
 
-Checker definition (implementation is authorized T1.P01.S01 work): parse the two fields; resolve
-each `Requires` target and its transitive closure; require each target to be `accepted` in the
-current tree and at the trusted base and to be `active`; fail a `Requires` naming a missing,
-unaccepted, `ratified`/`implemented`-only or `retired` scope; fail consumer self-satisfaction; and
-report a scope accepted only at the trusted base as historical evidence, never current eligibility.
-Until that enforcement lands, consumers needing incremental readiness remain blocked. This README
-changes neither the live register values nor its checker.
+Checker definition (installed by T1.P01.S01): parse the two fields; resolve each `Requires` target
+and its transitive closure; require each target to be `accepted` in the current tree and at the
+trusted base and to be `active`; fail a `Requires` naming a missing, unaccepted,
+`ratified`/`implemented`-only or `retired` scope; fail consumer self-satisfaction; and report a scope
+accepted only at the trusted base as historical evidence, never current eligibility. The installed
+checker also requires the `Requires` target's gate version to be one the same row already declares in
+`Consumes`, and validates each accepted scope's durable record (declared capability, resolving
+contract anchor, existing exports/conformance/acceptance paths, an ancestor commit and registered
+prerequisites). This README owns the rule and changes neither the live register values nor the
+checker.
 
 ## Explicitly open — not decided by this registration
 
