@@ -68,13 +68,20 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T1.P01 | approved | F1.reference@1, F3.channels@1 (ratified) | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
+| T1.P01 | approved | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
+
+The `Depends on` column stays empty for T1.P01: the phase's first slice, `T1.P01.S01`, is itself
+the sole provider of `F1.reference@1` and `F3.channels@1`, so listing either as a phase dependency
+would be a self-dependency the phase cannot satisfy before it starts. The owner-ratified F1/F3
+contracts remain this phase's design basis, consumed as ratified shapes rather than as an accepted
+prerequisite gate.
 
 T1.P01 is registered and **T1.P01.S01 is authorized** (owner decision 2026-10-15,
 [record](../../reference/decisions/f-ratification-2026-10-15.md)). S01 supplies the shared
-`F1.reference@1` and `F3.channels@1` providers and the capability-readiness enforcement. Every
-other slice stays `proposed`, blocked by its own accepted prerequisites; registering this phase
-authorizes no other phase, slice or track.
+`F1.reference@1` and `F3.channels@1` providers — its eventual accepted outputs
+`F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` — and the capability-readiness
+enforcement. Every other slice stays `proposed`, blocked by its own accepted prerequisites;
+registering this phase authorizes no other phase, slice or track.
 
 ## Starting foundation
 
