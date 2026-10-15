@@ -8,8 +8,10 @@ neither changes F nor establishes a parallel T2 reference/envelope/history proto
 
 ## Common identity and frame interfaces
 
-Prefer the T1 draft's `SemanticReference@1`, `SnapshotIdentity@1`, `DerivedSourceRef@1` and
-`ChannelAddress@1`/descriptor shapes, subject to owner reconciliation. T2 adds requirements,
+Prefer the [T1 source-independent interface draft](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/interfaces.md) and
+[coordinated readiness proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md).
+Use shared SemanticReference/SnapshotIdentity/DerivedSourceRef and explicit frame qualification.
+Scene operation payloads use canonical domain transform types, not a new runtime channel family. T2 adds requirements,
 not another encoding:
 
 | Shared shape | T2 requirement |
@@ -18,7 +20,7 @@ not another encoding:
 | Layout support reference | Stable Layout source plus floor/level qualification, with generation-qualified derived floor fragments retaining source correspondence. A Room ID can identify the compiled floor source, never the owner/frame of the Scene object. Preserve all equivalent source witnesses. |
 | Resolution result | Resolved with concrete revision, or typed missing/removed/incompatible/unauthorized/repair-required. Preserve original identity and diagnostics; no fallback by name, mesh order, nearest Room or position. |
 | Frame | Tagged project-world or an explicitly supplied owner-qualified local frame with stable ID/revision and validated conversion. A working plane, asset-internal frame and Room frame are distinct; absent Room frame is not identity. |
-| Scene root-transform descriptor | Canonical position in meters, Euler radians using the existing renderer's convention, and positive scalar scale. First operations own X/Z, yaw, or explicit floor-contact+scale changes. Allowed operators and writable masks are domain-declared, not generic channel property mutation. |
+| Scene operation transform payload | Canonical position in meters, Euler radians using the existing renderer's convention, and positive scalar scale. First operations own X/Z, yaw, or explicit floor-contact+scale changes. Allowed operators and writable masks are domain-declared, not generic channel property mutation. |
 
 Instance/root references are shared source identity; generation-qualified footprint/hit IDs are
 runtime-only correspondence. Selection requalification after a source edit uses accepted
@@ -148,43 +150,41 @@ yaw-only helper as if it were a correct projection. Lights have no object-footpr
 
 ## Shared local acceptance and F.4 amendment
 
-Reuse the common intent/revision/result draft from T1. **Reconciliation requested:** expand its
-proposed early Layout-only admission to a bounded registered single-domain Layout/Scene foundation:
+Use T1's source-independent AcceptedRevision/AuthoringIntent/AcceptanceResult/AcceptedSnapshot
+contract. Proposed sole F4@1 provider is T1 S03 with **local-single-domain-v1**: registered Layout
+or Scene intents, complete current-source validation, one coherent install/undo result and unchanged
+Camera/resource enforcement. The early timing/admission amendment requires ratification. T2 S02
+supplies actual Scene planners/conformance; it never provides a competing protocol or history.
 
-> A shared local expected-revision acceptance/history foundation may precede the Experience
-> cutover for registered single-domain Layout or Scene intents over the current project encoding.
-> It validates and installs one coherent project and one undo result. Resource-changing,
-> cross-domain and new-unit intents remain unavailable until their complete providers land.
-> T3 retains the first compound Camera/Experience acceptance, unit/order migration and cloud
-> expected-revision Save obligation.
+AcceptedRevision is opaque project/revision identity; source-content digest compares authored
+contents, and SessionEpoch guards callbacks. Undo/Redo gets fresh revisions even when contents
+match an earlier snapshot. Captured metadata/support/IDs and canonical results make replay exact;
+redo never queries a changing catalogue or picks support again. A shared chronological 100-entry
+stack restores whole operations; invalid/no-op/cancel/stale writes nothing and new edits truncate redo.
 
-This proposed text is **not ratified here**. T1.P01.S03 remains the proposed sole common provider;
-T2.P01.S02 is a consumer/domain-adapter implementation. Before S02 begins, the shared gate's
-actual accepted scope must admit Scene registration with these invariants. A Layout-only promise
-is insufficient. If coordination ownership/provider changes, reconcile one provider and migrate
-callers rather than manufacturing another F4 gate or T2 history stack.
+Initial admission preserves co-located Camera fields byte-exactly and refuses new units, compound
+changes and resource acquisition. Full project validation is mandatory, including unchanged-domain
+checks. Scene serialization grants no right to edit Camera order. Source replacement validates
+before installation, cancels callbacks/leases once and starts a new history baseline.
 
-The common contract needs:
+T3 S02 provides **conditional-save-current-v1** on the same F4 contract: capture immutable local
+accepted source/revision/digest and create-only or expected-saved-base precondition; atomically
+compare/validate/append on the server. Conflict preserves local work/history and remote contents.
+Retry receipts prevent duplicate versions. Acknowledgment marks only the captured contents saved;
+newer local work stays dirty. No server-per-command prerequisite, unrestricted stale PUT or cloud
+Undo protocol. S04 requires this separate accepted capability; base local acceptance is insufficient.
 
-- An opaque expected revision token qualified by project identity/session epoch/accepted sequence
-  and content identity. An Undo/Redo acceptance gets a fresh token even when source bytes match
-  an older snapshot; stale work cannot re-enter after an ABA state cycle.
-- One deterministic preparation path, complete current project validation with host policies,
-  unchanged Layout/Camera/resource enforcement, atomic snapshot publication and one chronological
-  undo result. No private Scene-only stack detached from Layout history.
-- Tagged accepted/no-op/rejected results with before/after identity, affected subjects,
-  correspondence and diagnostics. Strict structural source no-op ignores display rounding;
-  array order and materially authored optional values remain significant.
-- Replay of accepted snapshots/captured IDs, source validation on replay, explicit redo truncation,
-  and replacement-reset semantics. Preserve existing asset bindings without inventing an F.2 lock.
-- Local revision tokens never sent as if the existing cloud Save API enforced them. Cloud
-  concurrency and F.2 source cutover remain separate accepted providers.
-
-Existing Camera data stays co-located and unchanged in Scene during this phase. A Scene planner
-patches only its owned fields; full Scene serialization is not permission to edit navigation
-nodes/order. The current-source reader adapter retires with T3's source cutover and all its callers,
-not as an indefinitely writable legacy branch. Breaking shared shapes require a new major gate
-version and consumer re-declaration; compatible family admission follows the common extension rule.
+T3 S03 accepts **unit-acceptance-v1** and **conditional-save-units-v1** against candidate F2 source.
+T3 S04 migrates existing T2 callers/unfinished plan requirements to those accepted capabilities and
+retires current adapters with their readers/writers. The unit adapter supplies normalized definition
+inputs from accepted immutable resource pins rather than a live catalogue. Scene-only placement
+admits native procedural definitions and already pinned palette entries; a missing pin reports
+unavailable, never silently changes the lock. The F2 starter/migration may install an explicitly
+captured bounded palette as part of its baseline. Adding other resources belongs to T2's staged
+resource follow-on, not a Scene-only transform. This is one source transition, not two editable
+formats. Incompatible intent/revision/result semantics needs a new major; compatible registered
+adapter admission keeps F4@1 with explicit new evidence. The [readiness amendment](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md#small-readiness-amendment-proposed-for-ratification)
+requires both Consumes and exact Requires capabilities accepted at trusted base before use.
 
 ## Minimum T1 viewport consumer contract
 
@@ -192,13 +192,13 @@ Consume `T1.viewport-projection@1` through its public editor facade once accepte
 
 | Surface | Required behavior for this phase |
 | --- | --- |
-| Read snapshot | Immutable validated current project, source identity, session epoch and compiled Layout generation. Accepted data remains shallow/raw Svelte state; no deep reactive compiler/Three objects. |
+| Read snapshot | Source-independent validated domain read facade, AcceptedRevision, separate content identity/session epoch and compiled Layout generation; no required current ProjectDocument shape. Accepted data remains shallow/raw Svelte state; no deep reactive compiler/Three objects. |
 | Projection/ray | World-to-CSS and CSS-to-world ray use the exact evaluated matrices rendered by Camera in Plan, 3D and transitions; CSS/DPR/viewport offset explicit. Stale/hidden/zero-size/parallel/behind results fail explicitly. |
 | Working-plane input | Explicit finite world point/frame output or reasoned failure. It supplies pointer evidence, not authoritative support, snapping, Scene Y or semantic eligibility. |
 | Adapter graphics/hits | Mount accepted entities, proposed ghost, truthful derived Plan footprint, selection echo and source-qualified hits. One semantic hit arbitration path; passive helpers cannot intercept the active operation. |
 | Canonical selection/task slots | Read the one ordered selection/primary value; request select or invoke a task through the host. T2 owns Scene eligibility/correspondence, not a Scene-only store. Card shows accepted identity; Instrument owns one precision writer. |
-| Gesture lease/transition | One writer captures expected revision/output epoch. Cancel before accepted reading/lens/project/task transition, capture loss or unmount; invalidate delayed completion. Transition stays possible during preview. |
-| Viewing intent | Explicit Bring into view/Fit requests enter Camera; selection, sheet/Index changes and T2 adapter mounting never move it implicitly. No copied orbit controller, FOV tween or second affine Plan transform. |
+| Gesture lease/transition | One shared-host writer captures accepted revision/output epoch. Declare cancel-on-reading-change for Scene pointer operations; cancel once before the switch while retaining armed task/tool and selection. Lens/project/task exit, capture loss and unmount cancel once; invalidate delayed completion. No private transition FSM. |
+| Viewing intent | Acquire/request/replace/return/cancel use the common epoch-qualified Camera output ticket. Explicit Bring into view/Fit requests enter Camera; selection, sheet/Index changes and T2 adapter mounting never move it implicitly. No copied orbit controller, FOV tween or second affine Plan transform. |
 | Lifetime | Dispose hit providers, leases, preview graphics/listeners and scoped asset clones once; stale callbacks cannot attach into a replacement project. Retained renderer caches keep their declared ownership/refcount rules. |
 
 Stage owns host orchestration; T2 supplies Scene logic. One shared gesture owner coordinates
@@ -225,8 +225,9 @@ current-source exception requested through F.4, not a claim that today's documen
 implements F.2. A new persisted resource/reference requirement pauses that dependent slice for
 an explicit F.1/F.2 amendment/provider decision.
 
-The next import consumer must draft the exact unit/envelope/dependency-lock interface with T3's
-Camera/Experience cutover, and resource revision/staging semantics with T4 delivery. Do not add
+The next import consumer reuses T3 S01's accepted F2 unit/envelope/dependency-lock and shared
+resource identity, T3 S03's staged/unit F4 acceptance and T4's accepted resource delivery. It adds
+only the missing typed model-resource admission/conformance; it does not mint a second F2 provider. Do not add
 ad hoc model URLs, base64 bytes, upload status, signed URLs or normalization provenance fields
 to Scene v1. Acquisition/approval is outside authoring history; installing an approved resource
 and its first placement, when offered together, needs one staged F.4 accepted result.

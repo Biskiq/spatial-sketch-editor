@@ -19,21 +19,31 @@ complete Layout authoring or Experience migration prerequisites.
 
 ## Outcome and boundary
 
-A creator opens a valid current project with an existing compiled floor, chooses a supported
-object through Place/Find, sees its proposed resting pose, commits it, selects it in either
-reading, arranges it by pointer or exact values, revises scale, duplicates/deletes it and
-recovers with Undo/Redo. Source download and atomic source reload preserve the authored result.
-Refusal explains missing support, ambiguous elevation, unavailable model metadata or unsupported
-manipulation without corrupting selection or accepted work.
+A creator explicitly starts T1's canonical starter gallery or opens a valid project with compiled
+floor support, chooses an upright native/verified model object, places/moves/yaws it, and uses
+exact input and shared Undo/Redo in Plan and 3D. T2 S04 adds Resize, duplicate/delete and the
+safe Save/reload journey. Source JSON recovery is available from the first surface.
 
-This is a composition foundation, **not the first audience-delivery loop**. An entirely empty
-Layout has no floor polygon: Place honestly refuses and offers access to available Layout work
-or opening an existing project. A Floor datum alone and T1's native plinth are not floor support.
-The phase does not create an enclosing Room, silently insert architecture, restore cloud Save,
-author Camera/Experience content or publish. Do not make the old museum a required boot fixture.
+Genuinely empty Layout still has no floor polygon: Place refuses and offers **Start gallery**
+through T1's explicit project-replacement flow or opening supported source. It never inserts
+architecture silently. Neither a datum nor T1's plinth is support. General Wall drawing and
+its derived-role/schema cutover are not prerequisites for a validated canonical starter.
 
-Single-model creator import remains required before the first creator/audience trial. Its
-bounded follow-on is identified below; it is not postponed until a complete asset pipeline.
+Use the [coordinated provider/readiness/DAG proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) and
+[shared source-independent interfaces](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/interfaces.md); no proposal link is a trusted-base dependency.
+F4's local Layout/Scene capability, conditional Save and unit/compound capability have separate
+acceptance evidence. Local edits are accepted locally and dirty until an acknowledged conditional
+Save; the server need not execute every editing command. A conflict preserves local work/history.
+
+Planning proceeds now. Before any capability implementation, the separate
+[r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) must close with its
+implementation landed. Each implementation plan verifies affected projection/model/renderer
+compatibility against that landed base, rather than inheriting this post-#116 planning inspection.
+
+This is a composition foundation, not publication or the complete creator-to-visitor loop.
+**T2 owns the next bounded single-model ingest phase**, using accepted F2/resource locks,
+F4 staged/unit acceptance and T4 resource delivery. It must precede the promised creator/audience
+trial; it does not wait for assemblies, a marketplace or a general importer pipeline.
 
 ## Evidence and actual surviving implementation
 
@@ -57,7 +67,7 @@ govern the design.
 | `apps/editor/src/lib/types/assets.ts`, `content/assets.ts`, `museum/assets/AssetModel.svelte`; normalization/Plan-proxy pipeline | Footprints are already canonical meters. The renderer separately applies `defaultScale`/`defaultRotation` inside the instance root. A new entity starts at relative scale 1; copying `defaultScale` into it scales twice. Ground-contact metadata is not a general typed asset field today: verify and declare it for the admitted subset. |
 | `packages/layout-core/src/layout-geometry-types.ts`, `layout-geometry-queries.ts` | Compiled `room-floor` polygons and `CompiledRoom.floorElevation` are usable support evidence. `findPolygonContaining` returns a first reverse-order match; it cannot resolve elevation ambiguity. Enumerate semantic candidates using the canonical compiler output; do not raycast a render mesh for authoritative Y. |
 | Generic entity/material/asset renderers; [asset contract](../../../reference/components/assets.md) | Runtime-safe realization and resource lifetime machinery survive. Creator model/HDR ingestion, approval UI and project GLB upload do not. Current registry upload is image-focused. No second loader or engine upgrade is implied. |
-| `apps/editor/src/lib/platform/project-persistence.ts`, `apps/api/src/project-persistence.ts` | Current readers/writers survive, but cloud saves lack an expected-revision precondition. Local history and safe cloud Save are separate deliverables. This phase offers source JSON recovery, not a false cloud-safety claim. |
+| `apps/editor/src/lib/platform/project-persistence.ts`, `apps/api/src/project-persistence.ts` | Current readers/writers survive, but cloud saves lack an expected-revision precondition. Local history and safe cloud Save are separate deliverables. Use shared JSON recovery and consume separate early conditional-Save evidence; current Save is not already safe. |
 
 Prototype evidence has different roles:
 
@@ -123,12 +133,19 @@ This is a **candidate sequence**, not a live slice register. All rows are propos
 versions below are recommendations, and no listed gate is ready on this base. Earlier slice
 acceptance/merge is also required. [Contracts](./contracts.md) owns the detailed draft shapes.
 
-| Candidate | Consumes, after acceptance at trusted base | Capability and exit evidence |
-| --- | --- | --- |
-| T2.P01.S01 | `F1.reference@1`, `F3.channels@1` | Pure deterministic placement/transform candidates; canonical support enumeration; verified native/catalogue normalization; explicit eligibility/refusals. No viewport or accepted history needed. |
-| T2.P01.S02 | `F1.reference@1`, `F3.channels@1`, `F4.intent-acceptance@1` with the early single-domain admission amendment | Register Scene operations into the shared current-source accept/undo path. Prove Scene-only atomic results, full project validation, stale rejection, no-op/cancel behavior and exact replay. No private store or UI needed. |
-| T2.P01.S03 | `F1.reference@1`, `F3.channels@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` | Mount one Scene adapter: Place, canonical selection, Move, Yaw and Place on floor in ordinary Plan/3D with exact input and shared Undo. This is the earliest coherent creator editing capability. |
-| T2.P01.S04 | `F1.reference@1`, `F3.channels@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1` | Complete uniform Resize on floor, single-entity duplicate/delete, source recovery and the integrated acceptance matrix; review the real 3D interaction design. Proposed final phase gate. |
+| Candidate | Consumes, accepted at trusted base | Requires (proposed capability field) | Capability and exit evidence |
+| --- | --- | --- | --- |
+| T2.P01.S01 | F1.reference@1 | F1.reference@1:references-v1 | Pure deterministic Scene candidates, canonical floor-support enumeration and verified normalization. Existing typed Scene transform payloads; no F3 execution-channel prerequisite. |
+| T2.P01.S02 | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | Register actual Scene operations in the shared current-source coordinator; mixed chronological history, stale/no-op/refusal proof. |
+| T2.P01.S03 | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | Place, Move, Yaw, re-seat and shared Undo on the public Stage. Source recovery; Save shown only when its separate accepted capability is available. |
+| T2.P01.S04 | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | Resize, duplicate/delete and integrated starter → arrange → Undo → safe Save/reload. Exhaustive final gate. |
+
+T3 S04 migrates existing callers and unfinished plans to accepted F2 `unit-envelope-v1`, F1
+`unit-resolution-v1` and F4 `unit-acceptance-v1` from T3 S01/S03, with
+`conditional-save-units-v1` for Save users. Replace current-source capability requirements then;
+do not consume a retired adapter. Plain Scene caller migration does not require T3 Camera-authoring
+UI or the gate produced by that same activation slice. All prerequisite evidence must already be
+on main at trusted base; no consumer satisfies itself with its own readiness edits.
 
 ### S01 — deterministic candidates and canonical floor support
 
@@ -199,8 +216,9 @@ enabled grid step is captured in the intent's resolved candidate, visible in fee
 a hidden commit correction. Withhold a foreshortened grip and retain exact access. No camera
 fit occurs because selection changes, a Card opens or a sheet resizes.
 
-An accepted Plan↔3D change cancels the unfinished interaction before the reading changes,
-restores the accepted baseline, preserves committed selection, releases the lease once and
+The shared host invokes this operation's declared cancel-on-reading-change policy once. An
+accepted Plan↔3D change cancels the unfinished pointer interaction before the reading changes,
+restores the accepted baseline, preserves the armed task/tool and committed selection, releases the lease once and
 invalidates delayed pointer-up. Blur, capture loss, task replacement, project replacement and
 adapter unmount use the same cancel path. A replacement epoch cannot be reached by old asset
 loads or gesture callbacks. View-only changes create no source history.
@@ -225,8 +243,11 @@ Add duplicate/delete through the common scoped actions/Find list and the S02 ope
 Complete canonical source JSON download/parse/reload through the shared project replacement
 guard. Reload validates everything before installation, cancels one active preview, starts a new
 session/history baseline and never creates a synthetic source edit. It is source JSON with
-existing static references, not a portable asset package. Cloud reads may use retained validated
-paths; cloud Save remains unavailable until its expected-revision provider is accepted.
+existing static references, not a portable asset package. Cloud reads use retained validated paths. Consume T3 S02's separately accepted conditional-save-
+current-v1 capability for create-only/expected-saved-base Save and reload. Dirty state tracks
+local accepted contents versus the acknowledged saved digest; an in-flight older Save cannot
+mark newer edits saved. Conflicts preserve work and require reload/explicit resolution. Persistence
+does not add another Undo stack or source edit. After T3 activation use the accepted unit Save adapter.
 
 **Exit:** run the full evidence matrix below, including all required repository verification;
 review all four slice outcomes together. Record any detailed 3D UX decisions with their scope
@@ -234,24 +255,25 @@ and evidence. This is proposed acceptance work, not an acceptance record.
 
 ## Minimum dependencies and reconciliation decisions
 
-The [T1 proposal (PR #118)](https://github.com/Biskiq/spatial-sketch-editor/pull/118) and its
-interface draft were inspected on 2026-10-14. They are unmerged proposals, not trusted-base
-dependencies; reconcile the candidate interfaces before authorizing an implementation plan.
+The [coordinated proposal](https://github.com/Biskiq/spatial-sketch-editor/blob/codex/t1-stage-proposal/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/cross-track-reconciliation.md) owns the proposed sole-provider allocation, exact capability
+IDs, two-field readiness amendment and safe merge DAG. Ratification and implementation are distinct:
+current gate state alone cannot prove incremental capability readiness. No live register changes here.
 
-| Decision/provider | Minimum needed and sequencing |
+| Dependency | Exact scope and owner |
 | --- | --- |
-| F.1 | Reuse one shared semantic-reference/resolution/snapshot identity shape. Current-source entity references are session-qualified against explicit source identity; no fake project lock. T1 proposes first provider S01. Required before T2 S01. |
-| F.3 | Reuse common frame/address/value descriptors. Add bounded Scene root-transform family/admission; no generic setters or execution kernel. T1 proposes common provider S01. Required before T2 S01. |
-| F.4 timing/scope | Ratify an early shared local **single-domain Layout/Scene** acceptance/history foundation, with extensible registered planners. T1's draft currently admits Layout only: its scope must be reconciled before T2 S02 can depend on it. T1 S03 is the proposed sole common provider; T2 S02 supplies Scene conformance, not a competing F4 provider. If refused, S02 waits for T3's provider. |
-| `T1.viewport-projection@1` | T1 proposes S02. Need public read snapshot, same evaluated matrices/rays for both readings, adapter graphics/hit/selection/task slots, epoch-aware gesture cancellation and explicit viewing requests. Required only for S03 onward. Floor resolution is T2/Layout work, not an implicit promise in this gate. |
-| F.2 | No new persisted unit/envelope/lock in this phase. The explicit F.4 current-source exception is essential. Scene v1 remains current and Camera co-location stays untouched until T3's simultaneous Camera/Experience cutover. A new resource/schema need triggers F.2 amendment and re-gating, not a hidden phase extension. |
-| F.5 / T4 | Not consumed. Current source round trip is not prepared release acceptance. T4 later closes resource delivery and visitor-runtime compatibility. |
+| F1 | T1 S01 supplies references-v1, separate accepted revision/content/epoch and explicit frame/source qualification. Required for S01; do not invent locks. |
+| F4 local | T1 S03 supplies local-single-domain-v1 admitting registered Layout/Scene operations. T2 S02 registers actual planners and conformance, not another F4 provider/history. |
+| Conditional Save | T3 S02 extends F4 with conditional-save-current-v1, independent of F2/viewport activation. Needed for S04's safe Save journey; S03 arranging does not wait for it. |
+| Viewport | T1 S02 supplies the source-independent validated facade, rendered matrices/planes, one selection/task/gesture host and Camera output protocol. Required only for S03 onward. Floor support remains a Layout-owned query drafted by T2 S01. |
+| F3 | No direct prerequisite for this phase's simple typed Scene operation payloads. The viewport owns its F3 dependency; T2 does not create runtime channels to place an object. A future real channel consumer must declare its exact capability. |
+| F2/T3 transition | No new source units in T2's initial current-source phase. T3 S04 integrates current callers into already accepted F2/unit-aware adapters; canonical Scene operation semantics remain unchanged. No indefinite current-source writer. |
+| F5/T4 | Not consumed by this phase. Later ingest requires closed release resource delivery; source JSON recovery alone proves no release closure. |
 
-Thus T2 S01 can follow the common F.1/F.3 provider without T1 viewport completion; S02 needs
-shared local acceptance; S03 needs the accepted viewport seam. No T1 track-completion, new Wall
-drawing, curved/vertical representation depth, full precision suite or Experience editor is a gate.
-Acceptance requires actual exports, conformance and recorded provider/commit already accepted at
-`git merge-base HEAD main`; changing a gate in the consumer's own diff cannot satisfy it.
+No complete T1, new drawing, levels, representation expansion or full T3 authoring prerequisite.
+A compatible adapter/kind admission records additional capability evidence; incompatible shared
+semantics requires a new gate major and consumer redeclaration. The shared F4 timing and bounded
+current-source exception must be explicitly ratified before S02. The separate r186 closure also
+precedes capability implementation. Source-first conversion and visitor activation stay T3/T4-owned.
 
 ## Acceptance evidence to collect
 
@@ -259,14 +281,14 @@ These are required future proofs. None is asserted as run by planning.
 
 | Contract/failure | Evidence and practical pass condition |
 | --- | --- |
-| Canonical boot → place → commit (Scene successor to TD-1) | Production entry from a valid wall-first project with a reconciled floor creates exactly one Scene entity, one history result, finite world pose and no `roomId`. Empty/no-floor boot refuses with useful copy and no edit. T3 owns the original Camera-node equivalent; this phase cannot close that obligation. |
+| Canonical boot → place → commit (Scene successor to TD-1) | Production entry from a valid wall-first project with a reconciled floor (including explicit starter gallery) creates exactly one Scene entity, one history result, finite world pose and no `roomId`. Empty/no-floor boot refuses with useful copy and no edit. T3 owns the original Camera-node equivalent; this phase cannot close that obligation. |
 | Support parity | Plan and 3D input for the same X/Z/support yields the same candidate; nonzero floor elevation, local-frame conversion, shared boundary, coincident candidates, overlapping elevations and no support. Reorder query arrays: result does not change. Mesh hit height corruption must not change committed Y. |
 | Truthful geometry | Native centered primitive contact, canonical model footprint and non-unit normalization. Tilted model and ordinary vertical PlaneGeometry get an eligibility reason, not a fake horizontal rectangle. Missing metadata/bytes do not become successful fallback placement. |
 | Owned transforms | Move/yaw preserve non-owned fields exactly; explicit re-seat/resize owns Y; different support elevations require choice. No Layout, Camera or resource mutation. Scale is positive/uniform and applied once. Pivot is placement identity, never PCA or a changing render bound. |
 | Preview/commit/lifetime | Pose tolerance 1e-6 meters/radians (scale is the exact prepared scalar). Reading flip, lost capture, replacement, blur/unmount and delayed callbacks cancel exactly once; invalid candidate cannot commit the last valid pose on its behalf. No ghost/helper in JSON. |
 | Selection and actions | Same selected source ID across views; ineligible selection stays selected; hit halo measured in CSS pixels; deterministic tie order; no silent subset transform. Cluster duplicate/set operation refuses; member deletion cleans references atomically. |
 | History and concurrency | Captured IDs replay; stale local writer refuses; accepted project installed once; invalid/no-op produces zero entries; exact Undo/Redo, redo truncation, mixed-domain chronological order through one stack. Field and pointer paths reach the same writer. |
-| Source persistence | Strict `validateProject` and canonical serialize→parse→reload preserve entities, scale/material references and unrelated domains. Invalid file/resource resolution leaves the current project intact. No new historical decoder; frozen external project stays outside scope. |
+| Source persistence | Strict source-adapter validation and canonical serialize→parse→reload preserve entities, scale/material references and unrelated domains; conditional Save validates under atomic expected-base comparison and create-only collision handling. Invalid file/resource resolution leaves the current project intact. No new historical decoder; frozen external project stays outside scope. |
 | Wiring and isolation | Mutation controls reintroduce mesh-Y authority, a direct Scene write, a persisted Plan proxy or skipped cancellation and make the relevant successor fail. Full arch lane proves project-model, Layout shell, Camera and visitor boundaries; helpers/imports do not enter visitor chunks. |
 | Creator experience | Place → select → arrange → resize → duplicate → undo → reload works through real routes in both readings; reasoned support choice/refusal, one precision writer, selected identity visible, no unsolicited framing; keyboard/narrow/reduced-motion evidence. |
 
@@ -292,7 +314,7 @@ the phase closable; phase/track closure remains a separate owner event.
 | Full 3D transforms and arbitrary projections | Free elevation, pitch/roll, object-local axis tools, planes with orientation-aware projection and edits in Section/Unroll require declared representation/inverse eligibility. Ordinary upright floor placement proves less and ships earlier. |
 | Multi-selection, group/cluster editing and batch duplication | Require ordered set policy, stable pivots and atomic all-candidate validation. Carry the T2 evidence's full/partial cluster duplication and no silent subset rules into that phase. This phase refuses unsupported set operations. |
 | Definitions/components/variants/performances | Need stable component/resource identity and channel baseline/invocation semantics. An opaque mesh and flat cluster do not establish those capabilities. |
-| Camera/Experience and publication | T3 owns authored Views/order/capture, compound acceptance and safe cloud Save; T4 owns prepared readers/releases. Existing Camera fields pass through unchanged. No hidden Camera node is created by object placement. |
+| Camera/Experience and publication | T3 owns authored Views/order/capture, unit/compound acceptance and the early conditional Save extension; T4 owns prepared readers/releases. Existing Camera fields pass through unchanged. No hidden Camera node is created by object placement. |
 
 No new architecture-cycle window is proposed. T1's draft names its own bounded exposures; T2
 does not copy or enlarge that window, re-arm dormant Layout mechanisms, or claim a verdict.
@@ -307,16 +329,16 @@ work. The recommended opening slice is **T2.P01.S01**: a tested, renderer-indepe
 candidate path over compiled floor support, with a small verified object set. It directly
 addresses the removed placement system's central failures and can proceed before the viewport.
 
-The decisions to settle are the common F.1/F.3 drafts, the early F.4 Layout/Scene scope/provider
-amendment, the minimal viewport consumer surface, and the read-only Layout support-query owner.
-Keep the existing current-source format through this phase. Authorize S02 only after the shared
+The decisions to settle are shared F1/frame identity, early F4 Layout/Scene admission and capability
+readiness, source-independent viewport/output/gesture contracts, conditional Save and the Layout-
+owned support query. Simple Scene planners do not require the full F3 execution machinery.
+Begin with the current-source adapter; if T3 activates during this phase, migrate callers and
+requirements together to its already accepted unit adapters. Authorize S02 only after the shared
 acceptance provider is accepted, and S03 only after the viewport seam is accepted. None of those
 decisions is ratified by this track-local proposal.
 
 ## Planning validation
 
-The full architecture lane passed **131 tests** on this planning tree. The repository Markdown
-parser also checked all three changed/new documents directly, including untracked proposal
-files: links, headings, section numbering and whitespace had no findings. These checks verify
-the proposal's documentation and unchanged architecture boundaries; they accept no capability,
-F interface, phase gate or architecture-cycle exposure.
+Run the full architecture lane and whitespace/documentation checks on this revised proposal before
+commit. This is planning validation only: it accepts no production capability, F interface,
+capability scope, phase gate or architecture-cycle exposure. Actual results belong to the PR body.
