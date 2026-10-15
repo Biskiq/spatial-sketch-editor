@@ -2,7 +2,9 @@
 
 **PR:** #122 · **Branch:** `chore/threejs-upgrade` · **Date:** 2026-10-14/15 (America/Toronto).
 **Baseline:** `61baf02873a63d37e3f5a3e2992396f387600d38` (PR #116 merge).
-**Plan:** [implementation-plan.md](./implementation-plan.md) — this record sits beside it.
+**Implementation head:** `e0b7369e` · **Merged into `main` as:** `74efb98b` (merge commit; parents `61baf028` + `e0b7369e`).
+**Disposition:** independently reviewed and accepted; merged. This is the single authoritative acceptance record for the upgrade.
+**Plan:** [implementation-plan.md](./implementation-plan.md) — historical planning record; this document carries the delivery state.
 
 ## 1. Execution route (review ratification)
 
@@ -174,12 +176,17 @@ DPR 1), both tour nodes:
 Browser environment unchanged from §5 (HeadlessChrome 152, ANGLE Metal M2,
 DPR 1; Safari/WebKit still uncovered — recorded residual).
 
-## 8. Closeout / merge requirements
+## 8. Review disposition and merge record
 
-- Head SHA to be recorded at push; **do not merge here** — owner merges
-  via **Merge pull request** and verifies post-merge ancestry and recovery.
-- No independent review acceptance, completed closeout or merge readiness is
-  claimed: those follow successful re-review of this round.
-- Production tree unchanged since the exhaustive gate (§4); that evidence is
-  retained. This round re-ran only affected browser comparisons, fixture
-  validation and the documentation/architecture checks below.
+- Independent review accepted the implementation at `e0b7369e` (production
+  tree identical to the `2af7bdd4` migration commit; this round was
+  docs/evidence only, verified by diff).
+- Owner merged via **Merge pull request** as `74efb98b`; merge ancestry
+  verified on `main` (parents `61baf028` + `e0b7369e`).
+- No formal phase/slice closeout procedure applies: this was owner-authorized
+  standalone maintenance, not a repository phase, and none is claimed here.
+  The exhaustive gate (§4), browser acceptance (§5, §7) and disclosed
+  residuals (§6, §7) above are the retained delivery evidence.
+- T1–T4 build on Three 0.186.1 / `@types/three` 0.186.0 as landed; the
+  Safari/WebKit and custom-texture art-direction residuals transfer to
+  T-track QA.
