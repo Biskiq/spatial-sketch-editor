@@ -167,7 +167,11 @@ document merely because it has storage space.
 **Current behavior:** one `ProjectDocument` holds separately owned
 `LayoutDocument` and `SceneDocument` domains with Camera data inside Scene;
 cloud saves append versions under a row lock but take no expected-revision
-precondition. The destination units are not designed or implemented.
+precondition. The destination units are **designed, not implemented**: their
+exact shared envelope, unit-header, dependency-lock and unresolved-binding
+interfaces are ratified in AM-2, while no unit codec, reader or writer exists and
+the current encoding stays until the T3 cutover. A designed contract is not
+shipped code.
 
 ## F.3 Channels and representation parameters
 
@@ -242,11 +246,13 @@ Acceptance sequence:
   never a half-installed composition. Blob upload and metadata acceptance use a
   staged protocol, not a fictitious distributed transaction across storage
   providers.
-- **Stale writers are rejected** by the expected-revision precondition — local
-  and cloud writers alike. Today's cloud Save (row lock + version append)
-  serializes writes but lets a stale full-document writer overwrite newer
-  intent; that gap is the F.4 cutover obligation before simultaneous human/agent
-  writers.
+- **Stale writers are rejected**, local and cloud alike, through two distinct
+  identities (AM-4): a local intent compares its `expectedRevision` against the
+  local accepted revision, while cloud persistence compares a captured accepted
+  source against a durable saved-base token. The saved-base token is not the
+  local revision. Today's cloud Save (row lock + version append) serializes
+  writes but lets a stale full-document writer overwrite newer intent; that gap
+  is the F.4 cutover obligation before simultaneous human/agent writers.
 - **One coherent snapshot.** Renderers, preview and publication see the accepted
   snapshot; they never observe a partially applied cross-domain change.
 - **Authored validity versus executable closure.** A composed project may
@@ -259,10 +265,14 @@ Acceptance sequence:
 - **Human UI and agents use the same operations, diagnostics and
   expected-revision rule.** Temporary invalid gestures stay local previews;
   accepted cross-domain work and publication require coherent validity.
-- **First implementation: the Experience cutover**, where a compound authoring
-  intent can capture a Camera View, bind it to a Presentation and, when a Guide
-  occurrence is requested, create a Stop referencing that Presentation in one
-  acceptance. Do not defer the contract to component or kit work.
+- **First implementation is staged.** The acceptance boundary first lands in a
+  bounded local form — registered Layout/Scene planners over the current source,
+  extended by conditional Save (AM-4) — and that local stage proves no compound,
+  unit or cloud readiness. The **first compound Camera/Experience acceptance**
+  arrives later through T3 at the source/runtime cutover, where one compound
+  authoring intent can capture a Camera View, bind it to a Presentation and, when
+  a Guide occurrence is requested, create a Stop referencing that Presentation in
+  one acceptance. Do not defer the contract to component or kit work.
 
 This contract fixes the acceptance boundary, not the history mechanism. Event
 sourcing, CRDTs, branch merge and selective actor undo remain separate
@@ -536,8 +546,9 @@ runtime-safe import direction.
 
 ## AM-4 F4 local acceptance Save and retirement v1
 
-Exact acceptance interface with `local-single-domain-v1` admission. Local editing remains
-immediate; persistence is conditional and explicit.
+Exact acceptance interface. F.4 records an enduring acceptance layer plus a current-source
+admission that later retires; local editing remains immediate and persistence is conditional and
+explicit.
 
 | Element | Ratified meaning |
 | --- | --- |
@@ -545,24 +556,35 @@ immediate; persistence is conditional and explicit.
 | `AcceptedSnapshot@1` | Validated read facade with accepted revision, source-content identity, admitted source-kind/version and domain read access. No required signature embeds the current ProjectDocument or an F.2 encoding. |
 | `prepareIntent` | Evaluates against the unchanged expected baseline and returns validated candidate changes with correspondence/diagnostics, or typed rejection. Planners stay operation-specific; no universal planner base class. |
 | `AcceptanceResult@1` | Accepted `{operationId, beforeRevision, afterRevision, snapshot, changes, correspondence, undoResult}`, no-op `{operationId, revision}`, or rejected `{operationId, code, expectedRevision, actualRevision when authorized, diagnostics}`. One logical install and one undo result. |
-| `local-single-domain-v1` | Registered Layout or Scene planners over the current source adapter, complete current-project validation, unchanged-domain/resource enforcement and refusal of multi-domain, new-unit, external-staging and resource-changing operations. Proves neither unit/resource compound acceptance nor cloud Save. |
+| `acceptance-invariants-v1` | The enduring shared acceptance layer on this same F.4 entry: one opaque accepted revision per accepted change, canonical content-digest comparison, one atomic validated install with exactly one undo result, stale/ABA rejection and one bounded chronological history. Established with T1.P01.S03 and **never retired**; it is the prerequisite of `local-single-domain-v1`, `unit-acceptance-v1` and `conditional-save-units-v1`. |
+| `local-single-domain-v1` | Current-source adapter admission: registered Layout or Scene planners over the current source adapter, complete current-project validation, unchanged-domain/resource enforcement and refusal of multi-domain, new-unit, external-staging and resource-changing operations. Requires `acceptance-invariants-v1` and **retires with the current-source adapter at T3.P01.S04**. Proves neither unit/resource compound acceptance nor cloud Save. |
 | History | One 100-entry chronological snapshot stack through the same boundary. Undo/Redo validates, installs once with fresh identity, preserves unrelated contents and truncates redo after new edits. No-op, refusal, cancel and stale results add nothing. Replacement starts a new baseline. |
-| `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. |
-| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (future T3.P01.S03 capabilities; candidate-only before T3.P01.S04). |
+| `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. It requires `local-single-domain-v1` and retires with the current-source adapter at T3.P01.S04. |
+| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (future T3.P01.S03 capabilities; candidate-only before T3.P01.S04). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
 
-Stale writers are rejected by the expected-revision precondition — local and cloud alike — via
-atomic server compare-and-append. Human UI and agents use the same operations, diagnostics and
-revision rule.
+**Local revision and cloud saved base are separate identities.** Local acceptance rejects a stale
+writer by comparing `AuthoringIntent@1.expectedRevision` against the local `AcceptedRevision`; it
+never contacts the server. Cloud persistence is a separate, explicit step: `SaveAcceptedSource@1`
+captures one immutable locally accepted source/revision/digest and is compared atomically against
+the durable **saved-base token** through `create-only` or `expected-saved-base {token}`. The
+saved-base token **is not** the local `AcceptedRevision`, not a SQL version ordinal and not a
+publication pointer revision. The server recomputes the digest and runs the same shared
+validation boundary; retry receipts, dirty state and conflict preservation are as in the
+`conditional-save-current-v1` row. Human UI and agents use the same operations, diagnostics and
+rule; no edit is executed server-per-gesture and Save adds no second history.
 
-**Retirement split (ratified):** the enduring layer — opaque accepted revision, content-digest
-comparison, atomic install with one undo result, stale/ABA rejection and one chronological
-history — persists across the source transition and stays a prerequisite of the unit
-capabilities. The retiring layer is current-source adapter admission (current-source
-planning/validation and `conditional-save-current-v1` persistence), which T3.P01.S04 retires
-together with all its callers. After retirement no new or in-progress consumer may Require the
-retired scope, while shipped slices retain their evidence. Retirement is recorded as a terminal
-state on the same Accepted-capabilities entry: no parallel registry, no permanent legacy
-admission.
+**Retirement is per scope and terminal (ratified):** retirement retires one named scope, never the
+F.4 gate and never the enduring `acceptance-invariants-v1` layer, which persists across the source
+transition and stays the prerequisite of the unit capabilities. The retiring scopes are the
+current-source adapter admission (`local-single-domain-v1` current-source planning/validation and
+`conditional-save-current-v1` persistence), which T3.P01.S04 removes together with all their
+callers. The retired scope keeps its historical evidence and conformance record on the same F.4
+entry — no parallel registry, no permanent legacy admission — but after retirement no new or
+in-progress consumer may Require it, while shipped slices retain their recorded scope and evidence.
+The unit capabilities therefore stay eligible by requiring `acceptance-invariants-v1` and F.2
+instead of the retiring admission, and the checker must reject a `Requires` naming a retired scope
+while accepting one naming the active enduring scope (see the capability-readiness rule in
+[`../roadmap/f-foundation-contracts/README.md`](../roadmap/f-foundation-contracts/README.md#capability-readiness)).
 
 **Consumers:** T1/T2 local editing; T3 Save/unit extensions. **Conformance:** captured-input
 determinism, local stale/ABA rejection, real Layout/Scene registration, exact mixed

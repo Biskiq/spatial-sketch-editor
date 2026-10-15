@@ -118,7 +118,10 @@ ratified amendments.
   every consumed `Gate@Version` must already have been `accepted` **at the trusted base**
   (`git merge-base HEAD main`) — a consumer cannot satisfy its own prerequisite by editing
   this register. A consumer of a `superseded` row is ineligible until it re-declares the new
-  version; `shipped` slices keep their historical version.
+  version; `shipped` slices keep their historical version. The finer capability-scope rule
+  (`Accepted capabilities` / `Requires`, including a retired scope being ineligible) is defined
+  by the [capability-readiness rule](./f-foundation-contracts/README.md#capability-readiness);
+  its checker enforcement is authorized T1.P01.S01 work and is not installed here.
 
 ## Lifecycle and completion events
 

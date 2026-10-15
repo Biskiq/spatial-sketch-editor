@@ -24,7 +24,9 @@ promotes exact interfaces AM-1–AM-8 into
 [`../../reference/composition-execution.md`](../../reference/composition-execution.md) and moves
 F1–F4 plus `T1.viewport-projection` to `ratified` version 1 in the gate register, with the
 capability-readiness rule below. F5, the T3 cutover and the T4 reader stay `undrafted` until
-their first-consumer drafts land. Preparing that PR is not ratification.
+their first-consumer drafts land. Preparing that PR is not ratification. The proposed decisions
+and the questions the evidence cannot settle are recorded in the
+[owner-decision record](./owner-decision-record.md).
 
 **Authority:** [`../../reference/decisions/northstar-ratification-2026-09-27.md`](../../reference/decisions/northstar-ratification-2026-09-27.md)
 §6 and §10; destination statements live in
@@ -38,7 +40,7 @@ their first-consumer drafts land. Preparing that PR is not ratification.
 | **F.1 Identity and reference** | Domain-qualified semantic identity, stable instance-ID paths and revision context; names, indices and mutable hierarchy paths never establish identity. Include Layout levels, structures and instanced definitions, Experience/occurrence identity, local/library resources, and generation-qualified fragments with source correspondence. Public addresses select a publication or pinned release plus a durable semantic location. | Reference kinds (and their validation/conformance rules). |
 | **F.2 Storage units and envelope** | One explicit codec-bounded, versioned unit per semantic domain inside a project envelope holding the accepted revision and dependency lock. The Experience unit supports a collection. Camera is settled as its own codec-bounded unit; the split lands in the same cutover as the Experience order cutover. | Domain admission contract for new units (authority, validation, evaluator, release lowering, fixtures). |
 | **F.3 Channels and representation parameters** | `instance → component → capability/property → frame` addresses with types, units, scope and domain-owned operators. Cut, depth, peel, lift, reveal and related inspection parameters are channel-addressable semantic values; Layout evaluates architectural representation and Camera evaluates viewing intent. | Channel families and operators (declared semantics, validation, conflict rules). |
-| **F.4 Compound acceptance** | One expected project revision; typed, serializable authoring intents; validation across affected domains and resource locks; one atomic accepted result and one undo result. First implemented with the Experience cutover (capture a Camera View, bind it to a Presentation and optionally create a Stop in one acceptance). | Intent kinds and their domain planners; stale-revision rejection for local and cloud writers. |
+| **F.4 Compound acceptance** | One expected project revision; typed, serializable authoring intents; validation across affected domains and resource locks; one atomic accepted result and one undo result. First implemented as a bounded local Layout/Scene acceptance boundary (T1.P01.S03) extended by conditional Save; the first compound Camera/Experience acceptance (capture a Camera View, bind it to a Presentation and optionally create a Stop in one acceptance) arrives at the T3 cutover, and local acceptance is not compound, unit or cloud readiness. | Intent kinds and their domain planners; local expected revision versus cloud saved-base token (AM-4). |
 | **F.5 Release envelope** | Versioned manifest, closed dependencies, required-capability profiles, selected Experience identities/entry points, semantic public addresses, and program slots for occurrences, typed session declarations and declarative logic. The reader never depends on the authoring validator. | Program node kinds, session-state types, profile capabilities. |
 
 Extensions require declared semantics, validation and conformance; unsupported
@@ -89,42 +91,60 @@ accepted     the review and acceptance evidence is recorded → `accepted`
 - **Additional consumers join the same gate** rather than minting a competing one.
 - An **incompatible** amendment adds a `version + 1` row and marks the old row `superseded`,
   retaining that row's provider and evidence. A compatible, optional extension keeps the version.
-
-## Capability readiness (ratified rule; checker enforcement lands in T1.P01.S01)
-
-Overall gate state cannot prove incremental capability scope. Two additive fields carry it:
-**Accepted capabilities** on each gate/version row and **Requires** on each consumer slice row,
-the latter naming exact `Gate@Version:capability-vN` pairs with their prerequisite closure.
-
-- Each Accepted-capabilities entry links a durable record with capability ID/version,
-  contract/amendment anchor, admitted source kinds, prerequisites, extension slice, actual shared
-  exports, conformance, independent acceptance and ancestor implementation commit. Pending scopes
-  stay in plans and never appear as accepted entries; existing evidence is retained when another
-  scope is added and the gate's sole provider is unchanged.
-- Eligibility requires the exact gate **and every required capability**, with its prerequisite
-  closure, to be accepted in the current tree **and at the trusted base**
-  (`git merge-base HEAD main`). No consumer satisfies its own prerequisites; this binds new
-  starts, in-progress and accepted consumers, while shipped historical slices retain their
-  original scopes and evidence, as with historical gate majors.
-- Retirement is a terminal state on the same Accepted-capabilities entry — no parallel registry.
-  A retired scope keeps its historical evidence but no new or in-progress consumer may Require
-  it. For F.4, retirement ends current-source adapter admission only; the revision/result/history
-  invariants endure as unit-capability prerequisites.
-- A capability name cannot disguise an incompatible semantic change: breaking required identity,
-  revision, result, coordinate or lifecycle semantics needs a new major with consumer
-  re-declaration.
-
-Checker schema changes (definition only; implementation is authorized T1.P01.S01 work): accept
-the two fields, evaluate Requires against HEAD plus trusted base, fail Requires naming retired
-or unaccepted scopes, and fail consumer self-satisfaction. Until that enforcement lands,
-consumers needing incremental readiness remain blocked. This README changes neither the live
-register values nor its checker.
 - For F.2 and F.4, the shared **interface** gate is distinct from the T3 behavioural cutover gate:
   Camera extraction, Experience order and the first compound acceptance remain one T3 cutover.
 - A shared implementation lives in an existing package where ownership fits; a **new package needs
   real import or lifetime evidence.**
 - The register records implementation and evidence identity only. It never encodes F semantics, and
   a ratified shape without shared code and an accepted provider is **not** readiness.
+
+## Capability readiness
+
+Overall gate state cannot prove incremental capability scope. Two additive fields carry it:
+**Accepted capabilities** on each gate/version row and **Requires** on each consumer slice row,
+the latter naming the exact `Gate@Version:capability-vN` strings with their prerequisite closure.
+Enforcement is authorized T1.P01.S01 work; this section defines the rule, not a live checker.
+
+An Accepted-capabilities entry is the exact capability string `Requires` names, and records
+capability ID/version, contract/amendment anchor, admitted source kinds, prerequisites, extension
+slice, actual shared exports, conformance, independent acceptance, ancestor implementation commit,
+and a status of `active` or `retired`. Pending scopes stay in plans and never appear as accepted
+entries; adding a scope retains existing evidence and leaves the gate's sole provider unchanged.
+
+- **Eligibility.** A consumer not yet accepted at the trusted base — a new start, in-progress work,
+  or an acceptance recorded only in the current diff — is eligible only when the exact gate and
+  **every required scope**, with its prerequisite closure, is `accepted` both in the current tree
+  and at the trusted base (`git merge-base HEAD main`), and every required scope is `active`.
+  `ratified` or `implemented` alone is not acceptance, and a consumer cannot supply its own
+  prerequisite because an acceptance that exists only in the current diff fails at the trusted base.
+- **Retirement.** Retirement is terminal on the retired scope only, recorded on the same
+  Accepted-capabilities entry — no parallel registry and no permanent legacy admission. The retired
+  scope keeps its historical evidence and conformance record, but no new or in-progress consumer may
+  Require it.
+- **Historical evidence.** A consumer already `accepted` at the trusted base keeps its recorded
+  scopes and evidence: a later retirement is not retroactive, does not fail that slice and does not
+  reactivate the retired scope. It is history, not current eligibility, and it never satisfies
+  another consumer's trusted-base prerequisite.
+- **No disguise.** A capability name cannot hide an incompatible semantic change: breaking required
+  identity, revision, result, coordinate or lifecycle semantics needs a new major with consumer
+  re-declaration.
+
+**The precise insufficiency the rule closes.** The F.4 provider bundles two layers in one scope: the
+enduring shared acceptance invariants and the current-source adapter admission that T3.P01.S04
+retires. Retirement is terminal per scope, so a scope that retires cannot also supply a prerequisite
+that must outlive it. The smallest compatible amendment records the enduring layer as its own scope
+on the same F.4 entry — `acceptance-invariants-v1`, which never retires — and lets the retiring
+`local-single-domain-v1` / `conditional-save-current-v1` scopes, and the `unit-acceptance-v1` /
+`conditional-save-units-v1` consumers, name it as their prerequisite. It adds one scope to one
+existing entry: no new gate, provider, registry or evidence.
+
+Checker definition (implementation is authorized T1.P01.S01 work): parse the two fields; resolve
+each `Requires` target and its transitive closure; require each target to be `accepted` in the
+current tree and at the trusted base and to be `active`; fail a `Requires` naming a missing,
+unaccepted, `ratified`/`implemented`-only or `retired` scope; fail consumer self-satisfaction; and
+report a scope accepted only at the trusted base as historical evidence, never current eligibility.
+Until that enforcement lands, consumers needing incremental readiness remain blocked. This README
+changes neither the live register values nor its checker.
 
 ## Explicitly open — not decided by this registration
 
