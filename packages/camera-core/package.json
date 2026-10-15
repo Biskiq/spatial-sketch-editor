@@ -14,12 +14,12 @@
     "check": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
-    "three": "^0.170.0 || ^0.171.0 || ^0.172.0 || ^0.173.0 || ^0.174.0 || ^0.175.0"
+    "three": "^0.170.0 || ^0.171.0 || ^0.172.0 || ^0.173.0 || ^0.174.0 || ^0.175.0 || ^0.186.1"
   },
   "devDependencies": {
     "@portfolio/tsconfig": "*",
-    "@types/three": "^0.175.0",
-    "three": "^0.175.0",
+    "@types/three": "^0.186.0",
+    "three": "^0.186.1",
     "typescript": "^5.8.0"
   }
 }
