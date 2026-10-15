@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Canvas, T } from '@threlte/core';
+import { PCFShadowMap } from 'three';
   import { OrbitControls } from '@threlte/extras';
   import { getAsset, assets } from '$lib/content/assets';
   import AssetModel from '$lib/museum/assets/AssetModel.svelte';
@@ -126,7 +127,7 @@
   </aside>
 
   <div class="canvas-shell">
-    <Canvas dpr={[1, 1.5]} shadows>
+    <Canvas dpr={[1, 1.5]} shadows={PCFShadowMap}>
       <T.PerspectiveCamera makeDefault position={[3.4, 2.5, 5.4]} fov={44} near={0.05} far={40} />
       <OrbitControls enableDamping target={[0, 0.85, 0]} minDistance={1.2} maxDistance={12} />
 

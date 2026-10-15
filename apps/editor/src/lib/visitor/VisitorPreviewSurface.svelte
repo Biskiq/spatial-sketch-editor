@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+import { PCFShadowMap } from 'three';
 	import { Canvas } from '@threlte/core';
 	import { T } from '@threlte/core';
 	import type { RuntimeScene } from '$lib/content/scene';
@@ -91,7 +92,7 @@
 		aria-label={mode === 'public' ? 'Published project canvas' : 'Visitor preview canvas'}
 		aria-describedby="visitor-preview-help"
 	>
-		<Canvas dpr={[1, 1.5]} shadows>
+		<Canvas dpr={[1, 1.5]} shadows={PCFShadowMap}>
 			<T.Color attach="background" args={[0x050508]} />
 			<T.Fog attach="fog" args={[0x050508, 22, 54]} />
 			<T.AmbientLight intensity={0.2} />
