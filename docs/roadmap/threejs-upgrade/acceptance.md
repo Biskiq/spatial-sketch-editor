@@ -9,7 +9,9 @@
 Owner-authorized bounded maintenance, executed directly on the
 `chore/threejs-upgrade` branch as a standalone maintenance lifecycle. No
 repository phase/slice was manufactured for it, and no T-track or F-gate
-state was touched. Review, acceptance, closeout and merge-commit
+state was touched. This route is specific to this owner-authorized
+maintenance unit; it is not a general exemption from the repository's
+phase/slice workflow. Review, acceptance, closeout and merge-commit
 requirements are preserved by this record and the PR.
 
 ## 2. Dependency and code changes
@@ -114,9 +116,70 @@ judged materially unacceptable; none is escalated.
 3. Threlte stays at 8.5.16/9.21.0: no demonstrated incompatibility, so no
    engine change is proposed.
 
-## 7. Closeout / merge requirements
+## 7. Follow-up review round (P1 architectural rendering, P2 lifecycle)
+
+### P1 — canonical architecture in the browser
+
+The composite fixture was extended with a canonical architectural Layout:
+four `boundary` Walls forming a closed 6 m × 5 m room (south/east/north/west,
+0.2 m thick, 3 m high, straight centerlines, four corner Junctions) plus one
+rectangular door Opening (0.9 m × 2.1 m) hosted on the south wall. Built
+through the existing Layout model and validated twice: strict
+`validateWallFirstProject` passes, and the canonical
+`compileWallFirstLayoutGeometry` reports **4 walls, 1 hosted opening, zero
+blocking issues** (rooms intentionally empty — wall-first permits physical
+Walls without Room records). No derived geometry was hand-authored. Tour
+nodes sit inside the room with the door on the tour-a sightline. Retained
+in [evidence/composite.json](./evidence/composite.json).
+
+Matched r175/r186 comparisons (identical source, camera, lights, 1280×1000,
+DPR 1), both tour nodes:
+
+- tour-a: **0.712/255** · tour-b: **0.499/255** mean-abs, canvas-confined.
+- Both revisions show the same wall faces, the door cut at the same position
+  and width, the corner-Junction wall continuity, the lit floor plane and
+  matching light/shadow behavior — verified row-for-row on a wall-band crop.
+- Endpoint validity: the r175 tour-b capture re-taken 12 s later self-diffs
+  **0.000**, so both sides compare settled endpoints, not mid-motion frames.
+- Paired evidence: `r175/r186-arch-a.png`, `r175/r186-arch-b.png` (these
+  supersede the earlier empty-layout `cold-composite` pair for architecture;
+  that pair is retained for the materials/GLB record).
+
+### P2 — public-resource lifecycle in the browser (r186)
+
+- **Abort mid-load:** release response delayed 9 s server-side; navigated to
+  `/` at 3 s while `Loading published project…` was showing. Home rendered,
+  the late response installed nothing, zero console errors; a subsequent
+  normal load of the same release reached ready cleanly. No stale completion.
+- **Colliding logical texture URIs:** two releases share the identical logical
+  URI `/project-assets/cccccccc-…` with different scoped bytes (47,350 B
+  plaster vs 62,924 B tinted; [evidence/collide.json](./evidence/collide.json)).
+  Each release fetched its own version-qualified scoped asset URL (HTTP 200),
+  both reached ready with correct titles/versions, and six release loads and
+  switches produced no console or disposal errors. Per-release URL identity
+  plus the release-keyed scope IDs (pinned by the scope-isolation unit
+  contracts, green on r186) establish no incorrect reuse.
+- **Pixel-level tint visibility investigated, inconclusive by framing:** the
+  1 m test box could not be isolated from the piano mass at the captured
+  viewpoints (a 2.2 m probe box proved entity meshes render; architecture and
+  lighting match). Crucially, r175 renders the matched views pixel-identically
+  (0.000 cross-revision on identical viewpoints), so no upgrade-caused
+  behavior is implicated either way. Byte→blob→loader wiring stays covered by
+  the texture-cache, remap and cold-runtime unit contracts. No production fix
+  manufactured; T-track QA owns visible custom-texture art direction.
+- **Fail-closed observed live:** fixtures with missing release bytes and with
+  payload/document name mismatch both render the `Could not load this
+  project` card with no errors — the strict reader holds in the browser.
+
+Browser environment unchanged from §5 (HeadlessChrome 152, ANGLE Metal M2,
+DPR 1; Safari/WebKit still uncovered — recorded residual).
+
+## 8. Closeout / merge requirements
 
 - Head SHA to be recorded at push; **do not merge here** — owner merges
   via **Merge pull request** and verifies post-merge ancestry and recovery.
-- Merge readiness: exhaustive gate green (§4), browser acceptance recorded
-  (§5), diff confined to 2 manifests + lockfile + 2 canvases + this record.
+- No independent review acceptance, completed closeout or merge readiness is
+  claimed: those follow successful re-review of this round.
+- Production tree unchanged since the exhaustive gate (§4); that evidence is
+  retained. This round re-ran only affected browser comparisons, fixture
+  validation and the documentation/architecture checks below.

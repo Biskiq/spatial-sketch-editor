@@ -1,6 +1,6 @@
 # Three.js upgrade — scoped maintenance PR
 
-**Status:** proposed; implementation-ready, awaiting owner authorization to execute.
+**Status:** implemented on `chore/threejs-upgrade` (PR #122); pending independent re-review after review findings. Not accepted, not closed, not merged.
 **Research date:** 2026-10-14 (America/Toronto).
 **Baseline:** `61baf02873a63d37e3f5a3e2992396f387600d38`, the PR #116 merge,
 on `chore/threejs-upgrade`; the worktree was clean at inspection.
