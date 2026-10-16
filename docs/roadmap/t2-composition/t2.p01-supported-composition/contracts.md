@@ -96,12 +96,20 @@ all compiled `room-floor` polygons containing X/Z, including declared boundary t
 elevation from the corresponding compiled Room/floor facts. Reject contradictory/missing facts.
 Do not use `findPolygonContaining`'s one reverse-order winner as resolution.
 
-Proposed numerical policy for review: boundary and coplanar elevation tolerance **1e-6 m**;
+Numerical policy confirmed by the
+[independent focused T1/Layout review](./t2.p01.s01-candidates-and-floor-support/independent-review.md):
+boundary and coplanar elevation tolerance **1e-6 m**;
 up-normal equivalence **1e-9** per component. These are operation/query tolerances, not global
 Layout compiler epsilon changes. Canonical values are preserved; tolerance never rounds a Y.
 Equivalent coincident floor results with identical legal support meaning deduplicate into one
 choice retaining all source witnesses. Distinct elevations or incompatible contexts remain
 separate; deterministic source-ID ordering only orders the choices. It never chooses an elevation.
+For the current compiled world-frame, single-level format, context equivalence means the same
+`floorId`, with pairwise coplanar Room elevations; the source-first Room elevation stays exact.
+Future levels, structure instances or internal frames require an explicit context-contract update
+before this equivalence rule can be reused. The **1e-9** normal policy compares each component
+to `[0, 1, 0]`; it does not admit sloped support. Query-point agreement uses Euclidean distance
+within **1e-6 m** and never snaps the prepared world pose to the query point.
 
 The first phase proves contact at the placement anchor. It does not claim whole-footprint
 containment, collision avoidance, clearance or physical stability. Footprint graphics show

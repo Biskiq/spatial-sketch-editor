@@ -22,3 +22,4 @@ export * from './scene';
 export * from './scene-codec';
 export * from './wall-first-project';
 export * from './shipped-static';
+export * from './scene-planning';

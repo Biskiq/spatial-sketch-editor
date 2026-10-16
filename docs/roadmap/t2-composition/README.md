@@ -69,7 +69,7 @@ register owns lifecycle only.
 T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
 [interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md). Only
-**`T2.P01.S01`** is authorized (`approved`, not started); it consumes the accepted
+**`T2.P01.S01`** shipped 2026-10-16; it consumed the accepted
 `F1.reference@1` alone. `Depends on` lists the external gates the phase's later slices consume;
 S02–S04 stay `proposed`, blocked by their own accepted prerequisites.
 
