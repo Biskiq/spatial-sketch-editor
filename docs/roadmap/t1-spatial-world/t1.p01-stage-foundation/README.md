@@ -2,7 +2,8 @@
 
 **Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
 (F1/F3 shared providers and the readiness enforcement landed; independent acceptance recorded at
-`ee463d0b`); S02 and S03 owner-authorized 2026-10-16, approved and not started; S04–S06 proposed and
+`ee463d0b`); S02 owner-authorized 2026-10-16 and **in progress** (parallel batch 2026-10-16, the
+cycle-window opener); S03 owner-authorized 2026-10-16, approved and not started; S04–S06 proposed and
 unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -145,7 +146,7 @@ trusted base.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
-| T1.P01.S02 | approved | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — approved, not started |
+| T1.P01.S02 | in-progress | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — implementation in progress (parallel batch 2026-10-16), awaiting independent review |
 | T1.P01.S03 | approved | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — approved, not started |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
 | T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
@@ -185,7 +186,8 @@ Stage:        active
 ```
 
 `T1.P01.S01` is accepted and shipped, with its acceptance evidence and both accepted capabilities
-recorded; S02–S06 have no acceptance evidence yet (S02/S03 are authorized, not started). The
+recorded; S02–S06 have no acceptance evidence yet (S02 is authorized and in progress; S03 is
+authorized, not started). The
 final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
 stage marker is written, and closure stays an explicit owner request.
 
@@ -204,11 +206,12 @@ M3's installed curve proof remains green. M4's birth/join/noding editor half is 
 its later owner verdict must say not-exposed if this boundary stands. M6/M7 are observed
 through ordinary start/closeout routing, not an additional audit slice.
 
-This configuration is live ([state](../../../operations/architecture-cycle.md)): `PHASE_1`,
-readiness `ready`, this phase **selected, not open**, with these three IDs. `Opened by`, the
-exposure rows, `Closed by` and the mechanism verdicts stay empty until real work earns them. S01
-is not a listed exposure, so registering the phase and authorizing S01 does **not** open the
-window; a planning change is never `open-window`.
+This configuration is live ([state](../../../operations/architecture-cycle.md)):
+`PHASE_2_VALIDATING`, readiness `open`, this phase's window **open**, with these three IDs.
+S02's first authorized implementation opened it on 2026-10-16 through the runbook's start step, and
+`Opened by` names S02. The exposure rows, `Closed by` and the mechanism verdicts stay empty until
+real work earns them. S01 is not a listed exposure, so registering the phase and authorizing S01 did
+**not** open the window; a planning change is never `open-window`.
 
 Any listed slice starting authorized implementation opens the window, even if it is not S02.
 Close only when S05 is accepted and S02/S04 are accepted or explicitly discharged in their
