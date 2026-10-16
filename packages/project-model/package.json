@@ -7,6 +7,22 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./units": {
+      "types": "./src/units/index.ts",
+      "default": "./src/units/index.ts"
+    },
+    "./program": {
+      "types": "./src/program/index.ts",
+      "default": "./src/program/index.ts"
+    },
+    "./migration": {
+      "types": "./src/migration/index.ts",
+      "default": "./src/migration/index.ts"
+    },
+    "./references/unit-resolution": {
+      "types": "./src/references/unit-resolution.ts",
+      "default": "./src/references/unit-resolution.ts"
     }
   },
   "files": ["src"],
