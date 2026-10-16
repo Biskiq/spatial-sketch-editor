@@ -21,7 +21,11 @@ BATON: #124 F-interface ratification merged (owner decision 2026-10-15) → T1.P
        current-source content identity, not its acceptance token) → a foundation-hardening
        investigation fixed four invariants (a total reference order, set-valued equality in
        negotiation, and the Camera-output epoch ceiling and host-session qualification) and
-       recorded four hypotheses rejected or bounded with contract evidence; independent review owed.
+       recorded four hypotheses rejected or bounded with contract evidence → the independent review
+       of `6ec5921c` raised five blockers (source-current and output-bound Camera tickets, union
+       contributor identity, canonical-owner channel scoping, collision-free source identity);
+       all five plus the cleanup, controller-authority and interpolation seams are remediated on the
+       same branch; a fresh independent review of the revised head is owed.
 NEXT: independent review of T1.P01.S01 against its plan's acceptance criteria, on the tested
       revision the acceptance record names. Its `Consumes` and `Requires` are empty, so
       eligibility held with no prerequisite to satisfy, and it is not a listed cycle exposure,

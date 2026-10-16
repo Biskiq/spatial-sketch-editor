@@ -87,6 +87,7 @@ import type { ProjectDocument } from '../project-types';
 import { createReferenceResolverHost, type ReferenceResolverHost } from './resolve';
 import type {
 	FrameReference,
+	ReferenceLocation,
 	FrameResolver,
 	FrameResolverOutcome,
 	ReferenceFailureCode,
@@ -112,8 +113,13 @@ export const CURRENT_SCENE_SUBJECT_KINDS = ['scene', 'entity', 'cluster', 'mater
  * The read-only Camera subjects the current source publishes. Current Camera
  * storage lives inside the Scene document (its own codec lands in the F.2
  * cutover), so these are read through the Scene document's authored data.
+ *
+ * `camera` is the Camera authority's root for the supplied project, addressed by
+ * the project id exactly as the Scene root is. It authors nothing itself; it is
+ * the owner a session-scoped Camera value (an F.3 Camera output channel) is
+ * addressed to, because a session output is not an authored navigation node.
  */
-export const CURRENT_CAMERA_SUBJECT_KINDS = ['navigation-node', 'connection'] as const;
+export const CURRENT_CAMERA_SUBJECT_KINDS = ['camera', 'navigation-node', 'connection'] as const;
 
 /** The domain owners whose current sources author no frame identity. */
 export const CURRENT_FRAMELESS_OWNERS = ['layout', 'scene', 'camera'] as const;
@@ -142,13 +148,27 @@ const RELOAD_SNAPSHOT: readonly ReferenceRepairAction[] = [
 ];
 
 /**
- * A resolution records the concrete revision it verified. The binding check has
- * already proved that revision is this snapshot's content identity, so the value
- * recorded is the content a consumer can re-resolve against — never an acceptance
- * token, which would name an acceptance event rather than a body of content.
+ * A resolution records the concrete revision it verified and the subject's
+ * canonical location. The binding check has already proved that revision is this
+ * snapshot's content identity, so the value recorded is the content a consumer can
+ * re-resolve against — never an acceptance token, which would name an acceptance
+ * event rather than a body of content.
  */
-function resolved(request: ReferenceReadRequest): ReferenceResolverOutcome {
-	return { kind: 'resolved', contentRevision: request.contentRevision };
+function resolved(request: ReferenceReadRequest, location: ReferenceLocation): ReferenceResolverOutcome {
+	return { kind: 'resolved', contentRevision: request.contentRevision, location };
+}
+
+const PROJECT_ROOT: ReferenceLocation = { kind: 'project-root' };
+
+/**
+ * The canonical location of a current Layout subject. The one authored floor is
+ * the current level qualification, so every Layout entity is canonically located
+ * on that level with an empty structure path, and the level itself at the project
+ * root. A reference may still qualify an entity with `project-root`: it is a valid,
+ * distinct F.1 reference that resolves to this same canonical subject.
+ */
+function layoutLocation(kind: string, floorId: string): ReferenceLocation {
+	return kind === 'level' ? PROJECT_ROOT : { kind: 'layout-location', levelId: floorId, structureInstancePath: [] };
 }
 
 function missing(message: string): ReferenceResolverOutcome {
@@ -300,31 +320,32 @@ function layoutResolver(supplied: CurrentDomainSource): ReferenceResolver {
 					`the current Layout authors no nested instances, so path "${reference.instancePath.join(' / ')}" cannot qualify "${reference.subject.id}"`
 				);
 			}
+			const found = resolved(request, layoutLocation(reference.subject.kind, floorId));
 			switch (reference.subject.kind) {
 				case 'level':
 					return reference.subject.id === floorId
-						? resolved(request)
+						? found
 						: missing(`the current Layout source authors level "${floorId}" and no level "${reference.subject.id}"`);
 				case 'room':
 					return byId(supplied.source.layout.rooms, reference.subject.id) === undefined
 						? missing(`the current Layout source has no room "${reference.subject.id}"`)
-						: resolved(request);
+						: found;
 				case 'wall':
 					return byId(supplied.source.layout.walls, reference.subject.id) === undefined
 						? missing(`the current Layout source has no wall "${reference.subject.id}"`)
-						: resolved(request);
+						: found;
 				case 'opening':
 					return byId(supplied.source.layout.openings, reference.subject.id) === undefined
 						? missing(`the current Layout source has no opening "${reference.subject.id}"`)
-						: resolved(request);
+						: found;
 				case 'junction':
 					return byId(supplied.source.layout.junctions, reference.subject.id) === undefined
 						? missing(`the current Layout source has no junction "${reference.subject.id}"`)
-						: resolved(request);
+						: found;
 				case 'object':
 					return byId(supplied.source.layout.objects, reference.subject.id) === undefined
 						? missing(`the current Layout source has no object "${reference.subject.id}"`)
-						: resolved(request);
+						: found;
 				default:
 					return missing(`the current Layout adapter does not resolve subject kind "${reference.subject.kind}"`);
 			}
@@ -358,7 +379,7 @@ function sceneResolver(supplied: CurrentDomainSource): ReferenceResolver {
 				if (id !== supplied.source.id) {
 					return missing(`the supplied Scene document is the root of project "${supplied.source.id}", not "${id}"`);
 				}
-				return path.length === 0 ? resolved(request) : missing('the Scene root carries no instance path');
+				return path.length === 0 ? resolved(request, PROJECT_ROOT) : missing('the Scene root carries no instance path');
 			}
 			if (path.length > 0) {
 				return missing(
@@ -369,19 +390,19 @@ function sceneResolver(supplied: CurrentDomainSource): ReferenceResolver {
 				case 'entity':
 					return byId(supplied.source.scene.entities, id) === undefined
 						? missing(`the current Scene source has no entity "${id}"`)
-						: resolved(request);
+						: resolved(request, PROJECT_ROOT);
 				case 'cluster':
 					return byId(clusters, id) === undefined
 						? missing(`the current Scene source has no cluster "${id}"`)
-						: resolved(request);
+						: resolved(request, PROJECT_ROOT);
 				case 'material':
 					return byId(supplied.source.scene.materials, id) === undefined
 						? missing(`the current Scene source has no material "${id}"`)
-						: resolved(request);
+						: resolved(request, PROJECT_ROOT);
 				case 'texture':
 					return byId(supplied.source.scene.textures, id) === undefined
 						? missing(`the current Scene source has no texture "${id}"`)
-						: resolved(request);
+						: resolved(request, PROJECT_ROOT);
 				default:
 					return missing(`the current Scene adapter does not resolve subject kind "${reference.subject.kind}"`);
 			}
@@ -389,7 +410,7 @@ function sceneResolver(supplied: CurrentDomainSource): ReferenceResolver {
 	};
 }
 
-/** The read-only current Camera resolver: navigation nodes and their connections. */
+/** The read-only current Camera resolver: the Camera root, navigation nodes and their connections. */
 function cameraResolver(supplied: CurrentDomainSource): ReferenceResolver {
 	return {
 		id: 'current-camera-read-adapter',
@@ -409,14 +430,18 @@ function cameraResolver(supplied: CurrentDomainSource): ReferenceResolver {
 				);
 			}
 			switch (reference.subject.kind) {
+				case 'camera':
+					return reference.subject.id === supplied.source.id
+						? resolved(request, PROJECT_ROOT)
+						: missing(`the supplied source is the Camera authority of project "${supplied.source.id}", not "${reference.subject.id}"`);
 				case 'navigation-node':
 					return byId(supplied.source.scene.navigationNodes, reference.subject.id) === undefined
 						? missing(`the current Camera source has no navigation node "${reference.subject.id}"`)
-						: resolved(request);
+						: resolved(request, PROJECT_ROOT);
 				case 'connection':
 					return byId(supplied.source.scene.connections, reference.subject.id) === undefined
 						? missing(`the current Camera source has no connection "${reference.subject.id}"`)
-						: resolved(request);
+						: resolved(request, PROJECT_ROOT);
 				default:
 					return missing(`the current Camera adapter does not resolve subject kind "${reference.subject.kind}"`);
 			}

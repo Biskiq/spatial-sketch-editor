@@ -67,7 +67,7 @@ function layoutResolver(entities: readonly Entity[], seen: { contentRevision: st
 			if (found === undefined) {
 				return { kind: 'missing', message: `no ${reference.subject.kind} "${reference.subject.id}"` };
 			}
-			return { kind: 'resolved', contentRevision: found.revision };
+			return { kind: 'resolved', contentRevision: found.revision, location: reference.location };
 		}
 	};
 }
@@ -218,6 +218,7 @@ describe('F.1 references-v1 — typed resolution', () => {
 			instancePath: [],
 			componentId: null,
 			capabilityId: null,
+			location: { kind: 'project-root' },
 			contentRevision: 'sha256-source-7',
 			owner: 'layout'
 		});
@@ -619,7 +620,20 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 			expect(result.subject.contentRevision).toBe(SNAPSHOT.sourceContentId);
 			expect(result.subject.owner).toBe('layout');
 			expect(result.subject.subject).toEqual({ kind, id });
+			// The resolver states the canonical location, whichever valid qualification was used:
+			// a current Layout entity sits on the one authored level, and the level at the root.
+			expect(result.subject.location).toEqual(
+				kind === 'level' ? { kind: 'project-root' } : { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: [] }
+			);
 		}
+		// Two distinct valid references to one wall resolve to one canonical subject.
+		const rooted = resolveReference(currentReference({ subject: { kind: 'wall', id: 'wall-1' } }), read);
+		const leveled = resolveReference(
+			currentReference({ subject: { kind: 'wall', id: 'wall-1' }, location: { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: [] } }),
+			read
+		);
+		expect(rooted.kind === 'resolved' && leveled.kind === 'resolved' && rooted.subject).toEqual(leveled.kind === 'resolved' && leveled.subject);
+		expect(compareReferences(rooted.reference, leveled.reference)).not.toBe(0);
 	});
 
 	it('resolves actual Scene entities, the Scene root and the read-only Camera subjects', () => {
@@ -650,6 +664,13 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(connection.kind).toBe('resolved');
 		if (connection.kind !== 'resolved') return;
 		expect(connection.subject.owner).toBe('camera');
+		// The Camera authority root, addressed by the project id like the Scene root.
+		const cameraRoot = resolveReference(currentReference({ domain: 'camera', subject: { kind: 'camera', id: 'project-1' } }), read);
+		expect(cameraRoot.kind === 'resolved' && cameraRoot.subject.location).toEqual({ kind: 'project-root' });
+		expect(resolveReference(currentReference({ domain: 'camera', subject: { kind: 'camera', id: 'project-2' } }), read)).toMatchObject({
+			kind: 'failed',
+			code: 'missing'
+		});
 	});
 
 	it('addresses a clustered entity by its stable id and treats cluster membership as grouping, not instancing', () => {

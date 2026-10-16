@@ -303,7 +303,9 @@ export function validateChannelValue(
 		for (const [index, entry] of kind.value.entries()) {
 			const identity = readSourceIdentity(reader, entry, `$.value[${index}]`);
 			if (identity === null) continue;
-			const key = `${identity.domain}\u0001${identity.subject.kind}\u0001${identity.subject.id}\u0001${identity.instancePath.join('\u0001')}`;
+			// An unambiguous canonical encoding: JSON string escaping is injective, so two
+			// distinct opaque id paths can never share a key (a delimiter join could collide).
+			const key = JSON.stringify([identity.domain, identity.subject.kind, identity.subject.id, identity.instancePath]);
 			if (seen.has(key)) reader.problem(`$.value[${index}]`, 'duplicate-source', '$.value must not repeat a source identity');
 			seen.add(key);
 			identities.push(identity);

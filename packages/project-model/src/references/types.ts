@@ -182,6 +182,15 @@ export type ResolvedSubject = {
 	instancePath: readonly string[];
 	componentId: string | null;
 	capabilityId: string | null;
+	/**
+	 * The **canonical** location the owning domain places the subject at. A reference
+	 * may qualify one subject in more than one valid way (the current single Layout
+	 * level is both `project-root` and its own `layout-location`), so the resolver,
+	 * not the reference, states which location the subject canonically has. Two
+	 * references resolving to the same canonical subject therefore report the same
+	 * value here, while the references themselves stay distinct F.1 values.
+	 */
+	location: ReferenceLocation;
 	/** The concrete revision this reference resolved to. */
 	contentRevision: string;
 	/** The domain authority that owns the subject. */
@@ -223,7 +232,8 @@ export type DerivedSourceResolution =
 
 /** What a domain resolver answers with. It never repairs and never guesses. */
 export type ReferenceResolverOutcome =
-	| { kind: 'resolved'; contentRevision: string }
+	/** `location` is the subject's canonical location (see `ResolvedSubject.location`). */
+	| { kind: 'resolved'; contentRevision: string; location: ReferenceLocation }
 	| {
 			kind: Exclude<ReferenceFailureCode, 'incompatible'>;
 			message: string;

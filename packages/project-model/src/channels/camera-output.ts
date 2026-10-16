@@ -4,20 +4,45 @@
  * `{outputId, sourceRevision, sessionEpoch, ownerId, runEpoch}` governs
  * inspection, guided/free navigation, Follow, Look-through and Preview through
  * acquire / request / replace / return / cancel. Exactly one Camera output owner
- * exists per viewport/session, and ownership order is monotonic: every accepted
- * transition — including a return to a replaced run — moves to a strictly newer
- * run epoch, so a spent ticket can never re-enter. Two consequences of that
- * invariant are enforced here rather than left to a caller: a state belongs to one
- * host session, so a ticket minted under another session cannot take this output
- * even while it is free, and accepted run epochs are bounded so a strictly newer
- * one always exists to move to.
+ * exists per output, and ownership order is monotonic: every accepted transition —
+ * including a return to a replaced run — moves to a strictly newer run epoch, so a
+ * spent ticket can never re-enter.
  *
- * Returns nest exactly one deep, deliberately. A handoff issues a return context
- * only for the run it replaced, and the run a return restores is left holding none,
- * so unwinding a chain (A → B → C → B → A) needs no retained history and no stack:
- * the next return is *refused* where the protocol cannot honour it, rather than
- * transferring ownership to a run whose own return was already spent. A deeper
- * unwind is a future admitted capability, not something this protocol fakes.
+ * **One ticket context.** A state is the ownership of *one output* in *one host
+ * session* over *one current source*, and it names all three: `outputId`,
+ * `sessionEpoch` and `sourceRevision`. Every operation qualifies the presented
+ * ticket against that context first (`qualifyTicket`), before the live claim is
+ * consulted — so a ticket for another output, another host session or another
+ * source cannot acquire, request, return or cancel here, whether the output is
+ * free, held or handed off. Because only a qualified ticket is ever accepted, a
+ * live claim always carries the state's own output, session and source.
+ *
+ * **Output vs viewport.** `outputId` is the identity a ticket names; `viewportId`
+ * is the Stage viewport that realises the output. They are separate fields
+ * because they are separate identities — AM-3 says a second viewport is a distinct
+ * output, which the Stage owner (T1.P01.S02) enforces when it creates states, and
+ * this protocol never assumes the two strings are equal. Tickets are qualified by
+ * `outputId` only.
+ *
+ * **Source lifetime.** `sourceRevision` is the current-source content identity the
+ * host's Camera evaluation reads (the snapshot's `sourceContentId`, the same
+ * identity F.3 contribution staleness uses). When the host's source changes, it
+ * calls `rebaseCameraOutputSource`: the live claim **ends** (the output becomes
+ * free), any pending return context is voided, and both are reported so the host
+ * can re-acquire for the new source with a new ticket. Ownership is deliberately
+ * not requalified onto the new source on the owner's behalf — that would mint
+ * authority for a run whose intent was never evaluated against the new source, and
+ * would let a return context cross sources. The epoch floor is kept across the
+ * change, so ticket order stays monotonic for the output's whole session.
+ *
+ * **Returns nest exactly one deep**, deliberately. A handoff issues a return
+ * context only for the run it replaced, and the run a return restores is left
+ * holding none, so unwinding a chain (A → B → C) needs no retained history: when C
+ * replaces B, B's pending return to A is **voided** and reported on that decision
+ * (`voidedReturn`), and a later return from B to A is refused. Every transition that
+ * ends a claim — replacement, cancellation, source rebase — reports the return
+ * obligation it voids, so no obligation disappears silently. A deeper unwind is a
+ * future admitted capability, not something this protocol fakes.
  *
  * Scope boundary: this module is the **validated ticket protocol only**. It
  * resolves ownership from immutable state and returns a decision — there is no
@@ -70,25 +95,23 @@ export type CameraOutputClaim = {
 };
 
 /**
- * One viewport/session's ownership state.
- *
- * `sessionEpoch` is the host session this state belongs to. Every ticket is
- * qualified against it, so a ticket minted under another host session cannot take
- * this output — not even while the output is free and there is no claim left to
- * compare against. Because an accepted ticket must match the state's session, a
- * live claim's session always equals the state's.
+ * One output's ownership state in one host session over one current source.
  *
  * `claim: null` means the output is free. `epochFloor` is the highest run epoch
  * ever accepted for this output — including a run that has since been replaced,
- * cancelled or returned. Every ownership transition must be strictly newer than
- * it, so a ticket from an ended ownership period can never re-enter: a completed
- * run cannot reclaim or clear a later one, and a handoff cannot be undone by
- * replaying the ticket that handed it back. `-1` means no run has ever been
- * accepted here, so the first accepted run may use epoch 0.
+ * cancelled, returned or ended by a source rebase. Every ownership transition must
+ * be strictly newer than it, so a ticket from an ended ownership period can never
+ * re-enter. `-1` means no run has ever been accepted here.
  */
 export type CameraOutputState = {
+	/** The output identity every ticket names. */
+	outputId: string;
+	/** The Stage viewport realising this output; never used to qualify a ticket. */
 	viewportId: string;
+	/** The host session this state belongs to. */
 	sessionEpoch: string;
+	/** The current-source content identity the output is evaluated against. */
+	sourceRevision: string;
 	claim: CameraOutputClaim | null;
 	epochFloor: number;
 };
@@ -115,7 +138,8 @@ export const CAMERA_OUTPUT_REFUSALS = [
 	'invalid-ticket',
 	'invalid-request',
 	'unsupported-role',
-	'output-mismatch',
+	'foreign-output',
+	'stale-observation',
 	'competing-exclusive-owner',
 	'stale-run-epoch',
 	'stale-session-epoch',
@@ -133,6 +157,8 @@ export type CameraOutputDecision =
 			claim: CameraOutputClaim;
 			/** The claim the new run replaced, if any. */
 			replaced: CameraOutputClaim | null;
+			/** The replaced claim's pending return, which can no longer be honoured. */
+			voidedReturn: CameraReturnContext | null;
 	  }
 	| { kind: 'refused'; state: CameraOutputState; reason: CameraOutputRefusal; message: string; owners: readonly string[] };
 
@@ -141,7 +167,9 @@ export type CameraOutputDecision =
  * to move forward, and `Number.MAX_SAFE_INTEGER + 1 === Number.MAX_SAFE_INTEGER`, so
  * accepting that value would let a transition mint an epoch equal to the one it
  * replaced instead of a strictly newer one. Bounding every accepted **and minted**
- * epoch here is what keeps "strictly newer" true at the numerical boundary.
+ * epoch here is what keeps "strictly newer" true at the numerical boundary. An
+ * output that reaches the ceiling can still be cancelled; a new host session (a new
+ * state) is what starts ordering again.
  */
 export const MAX_CAMERA_OUTPUT_RUN_EPOCH = Number.MAX_SAFE_INTEGER - 1;
 
@@ -169,25 +197,33 @@ export function validateCameraOutputTicket(input: unknown): { valid: boolean; is
 	return { valid: true, issues: [], ticket: { outputId, sourceRevision, sessionEpoch, ownerId, runEpoch } };
 }
 
+/** The context a new, free output state is created for. */
+export type CameraOutputContext = {
+	outputId: string;
+	viewportId: string;
+	sessionEpoch: string;
+	sourceRevision: string;
+};
+
 /**
- * A free viewport/session state: the host session it belongs to, no claim and no
- * accepted run epoch yet. The session is part of the state because it is the
- * lifetime guard every ticket is qualified against — a new host session starts from
- * a new state, and a ticket left over from the previous one is refused instead of
- * being honoured against state it never belonged to.
+ * A free output state: the output, the viewport realising it, the host session it
+ * belongs to and the current source — no claim and no accepted run epoch yet. A
+ * new host session starts from a new state, and a ticket left over from the
+ * previous one is refused instead of being honoured against state it never
+ * belonged to.
  */
-export function createCameraOutputState(viewportId: string, sessionEpoch: string): CameraOutputState {
-	return { viewportId, sessionEpoch, claim: null, epochFloor: -1 };
+export function createCameraOutputState(context: CameraOutputContext): CameraOutputState {
+	return {
+		outputId: context.outputId,
+		viewportId: context.viewportId,
+		sessionEpoch: context.sessionEpoch,
+		sourceRevision: context.sourceRevision,
+		claim: null,
+		epochFloor: -1
+	};
 }
 
-function refuses(
-	state: CameraOutputState,
-	reason: CameraOutputRefusal,
-	message: string,
-	owners: readonly string[] = []
-): CameraOutputDecision {
-	return { kind: 'refused', state, reason, message, owners };
-}
+type Refusal = { reason: CameraOutputRefusal; message: string };
 
 function sameTicket(left: CameraOutputTicket, right: CameraOutputTicket): boolean {
 	return (
@@ -200,38 +236,71 @@ function sameTicket(left: CameraOutputTicket, right: CameraOutputTicket): boolea
 }
 
 /**
- * Acquire exclusive ownership of one viewport/session output.
+ * The one ticket-context check every operation runs first: the ticket must name
+ * this output, this host session and this current source. It is what keeps a
+ * ticket for another output, a closed session or an obsolete source from touching
+ * this state — whether the output is free, held or handed off.
+ */
+function qualifyTicket(state: CameraOutputState, ticket: CameraOutputTicket): Refusal | null {
+	if (ticket.outputId !== state.outputId) {
+		return {
+			reason: 'foreign-output',
+			message: `the ticket names output "${ticket.outputId}" and this state is output "${state.outputId}"; address the output the ticket was issued for`
+		};
+	}
+	if (ticket.sessionEpoch !== state.sessionEpoch) {
+		return {
+			reason: 'stale-session-epoch',
+			message: `the ticket belongs to host session "${ticket.sessionEpoch}" and this output belongs to "${state.sessionEpoch}"; acquire again in the current session`
+		};
+	}
+	if (ticket.sourceRevision !== state.sourceRevision) {
+		return {
+			reason: 'stale-source-revision',
+			message: `the ticket was issued for source "${ticket.sourceRevision}" and this output now reads source "${state.sourceRevision}"; re-evaluate the intent and acquire for the current source`
+		};
+	}
+	return null;
+}
+
+function readTicket(state: CameraOutputState, input: unknown): { ticket: CameraOutputTicket } | Refusal {
+	const validation = validateCameraOutputTicket(input);
+	if (!validation.valid) {
+		return { reason: 'invalid-ticket', message: validation.issues[0]?.message ?? 'the ticket is not a valid Camera output ticket' };
+	}
+	const refusal = qualifyTicket(state, validation.ticket!);
+	return refusal ?? { ticket: validation.ticket! };
+}
+
+/**
+ * Acquire exclusive ownership of one output.
  *
  * `exclusive` refuses any live claim (including a newer run of the same owner);
- * `ordered-replacement` and `ordered-handoff` accept a strictly newer
- * `runEpoch` than **every run epoch this output has ever accepted**, and
- * `ordered-handoff` additionally issues a Camera-owned return context so the
- * replaced run can return later. A request whose `expected` observation no
- * longer matches the live claim is refused: it was made against state that has
- * already changed. A ticket whose epoch is at or below the output's floor is
- * refused even while the output is free, so a completed, cancelled or returned
- * run cannot re-enter with the epoch it already spent. A ticket is also only
- * meaningful in its own host session: a ticket whose `sessionEpoch` is not this
- * state's session is refused before the live claim is even consulted, which is what
- * stops a ticket from a closed host session taking an output it no longer shares.
+ * `ordered-replacement` and `ordered-handoff` accept a strictly newer `runEpoch`
+ * than **every run epoch this output has ever accepted**, and `ordered-handoff`
+ * additionally issues a Camera-owned return context so the replaced run can
+ * return later. A request whose `expected` observation no longer matches the live
+ * claim is refused (`stale-observation`): it was made against state that has
+ * already changed. A ticket at or below the output's floor is refused even while
+ * the output is free, so a completed, cancelled, returned or rebased run cannot
+ * re-enter with the epoch it already spent.
  */
 export function acquireCameraOutput(state: CameraOutputState, request: CameraOutputRequest): CameraOutputDecision {
-	const ticket = validateCameraOutputTicket(request.ticket);
-	if (!ticket.valid) {
-		return refuses(state, 'invalid-ticket', ticket.issues[0]?.message ?? 'the ticket is not a valid Camera output ticket');
-	}
+	const refuse = (reason: CameraOutputRefusal, message: string, owners: readonly string[] = []): CameraOutputDecision => ({
+		kind: 'refused',
+		state,
+		reason,
+		message,
+		owners
+	});
+	const read = readTicket(state, request.ticket);
+	if (!('ticket' in read)) return refuse(read.reason, read.message);
+	const ticket = read.ticket;
 	if (!CAMERA_OUTPUT_ROLES.includes(request.role)) {
-		return refuses(state, 'unsupported-role', `role "${request.role}" is not a declared Camera output role`);
+		return refuse('unsupported-role', `role "${request.role}" is not a declared Camera output role`);
 	}
 	if (!CAMERA_OUTPUT_POLICIES.includes(request.policy)) {
-		return refuses(state, 'invalid-request', `policy "${request.policy}" is not a declared Camera output policy`);
-	}
-	if (ticket.ticket!.sessionEpoch !== state.sessionEpoch) {
-		return refuses(
-			state,
-			'stale-session-epoch',
-			`the ticket belongs to host session "${ticket.ticket!.sessionEpoch}" and this output belongs to "${state.sessionEpoch}"`
-		);
+		return refuse('invalid-request', `policy "${request.policy}" is not a declared Camera output policy`);
 	}
 	const current = state.claim;
 	const expectedMatches =
@@ -239,52 +308,35 @@ export function acquireCameraOutput(state: CameraOutputState, request: CameraOut
 			? request.expected.kind === 'unowned'
 			: request.expected.kind === 'held' && sameTicket(request.expected.ticket, current.ticket);
 	if (!expectedMatches) {
-		return refuses(
-			state,
-			'output-mismatch',
-			'the request was made against an ownership observation that no longer matches the live output',
+		return refuse(
+			'stale-observation',
+			'the request was made against an ownership observation that no longer matches the live output; observe it again before requesting',
+			current === null ? [] : [current.ticket.ownerId]
+		);
+	}
+	if (ticket.runEpoch <= state.epochFloor) {
+		return refuse(
+			'stale-run-epoch',
+			`run epoch ${ticket.runEpoch} is not newer than the highest run epoch this output accepted (${state.epochFloor})`,
 			current === null ? [] : [current.ticket.ownerId]
 		);
 	}
 	if (current === null) {
-		if (ticket.ticket!.runEpoch <= state.epochFloor) {
-			return refuses(
-				state,
-				'stale-run-epoch',
-				`run epoch ${ticket.ticket!.runEpoch} cannot take this free output; the highest accepted run epoch was ${state.epochFloor}`
-			);
-		}
-		const claim: CameraOutputClaim = { ticket: ticket.ticket!, role: request.role, returnContext: null };
-		return { kind: 'acquired', state: { ...state, claim, epochFloor: ticket.ticket!.runEpoch }, claim, replaced: null };
+		const claim: CameraOutputClaim = { ticket, role: request.role, returnContext: null };
+		return { kind: 'acquired', state: { ...state, claim, epochFloor: ticket.runEpoch }, claim, replaced: null, voidedReturn: null };
 	}
 	if (request.policy === 'exclusive') {
-		return refuses(
-			state,
+		return refuse(
 			'competing-exclusive-owner',
-			`the output is exclusively held by run ${current.ticket.runEpoch} of owner "${current.ticket.ownerId}" as "${current.role}"`,
+			`the output is exclusively held by run ${current.ticket.runEpoch} of owner "${current.ticket.ownerId}" as "${current.role}"; request an ordered replacement or handoff, or wait for it to end`,
 			[current.ticket.ownerId]
 		);
-	}
-	const floor = Math.max(state.epochFloor, current.ticket.runEpoch);
-	if (ticket.ticket!.runEpoch <= floor) {
-		return refuses(
-			state,
-			'stale-run-epoch',
-			`run epoch ${ticket.ticket!.runEpoch} cannot replace the active run epoch ${current.ticket.runEpoch}`,
-			[current.ticket.ownerId]
-		);
-	}
-	if (ticket.ticket!.sessionEpoch !== current.ticket.sessionEpoch) {
-		return refuses(state, 'stale-session-epoch', 'the request belongs to a different host session than the active output');
-	}
-	if (ticket.ticket!.sourceRevision !== current.ticket.sourceRevision) {
-		return refuses(state, 'stale-source-revision', 'the request belongs to a different source revision than the active output');
 	}
 	let returnContext: CameraReturnContext | null = null;
 	if (request.policy === 'ordered-handoff') {
 		const token = request.returnToken;
 		if (token === undefined || token.trim() === '') {
-			return refuses(state, 'invalid-request', 'an ordered handoff must supply the return token it issues');
+			return refuse('invalid-request', 'an ordered handoff must supply the return token it issues');
 		}
 		returnContext = {
 			token,
@@ -294,61 +346,51 @@ export function acquireCameraOutput(state: CameraOutputState, request: CameraOut
 			sessionEpoch: current.ticket.sessionEpoch
 		};
 	}
-	const claim: CameraOutputClaim = { ticket: ticket.ticket!, role: request.role, returnContext };
-	return { kind: 'acquired', state: { ...state, claim, epochFloor: ticket.ticket!.runEpoch }, claim, replaced: current };
+	const claim: CameraOutputClaim = { ticket, role: request.role, returnContext };
+	return {
+		kind: 'acquired',
+		state: { ...state, claim, epochFloor: ticket.runEpoch },
+		claim,
+		replaced: current,
+		voidedReturn: current.returnContext
+	};
 }
 
 export type CameraOutputRequestDecision =
 	| { kind: 'accepted'; state: CameraOutputState; claim: CameraOutputClaim }
-	| { kind: 'superseded'; state: CameraOutputState; holder: CameraOutputTicket }
+	/** The run no longer holds this output. `owners` names the holder; no reusable ticket is disclosed. */
+	| { kind: 'superseded'; state: CameraOutputState; owners: readonly string[] }
 	| { kind: 'refused'; state: CameraOutputState; reason: CameraOutputRefusal; message: string; owners: readonly string[] };
 
 /**
  * Confirm that a run still owns the output and may continue its declared intent.
- * A caller whose run has been superseded is told so (`superseded`) instead of
- * being left to write into an output it no longer owns; a wrong-epoch or foreign
- * ticket is refused. No intent is evaluated here — the Camera authority evaluates
- * pose and projection.
+ * A qualified run whose ownership has ended is told so (`superseded`) instead of
+ * being left to write into an output it no longer owns; the answer names the
+ * holder's owner only, never the holder's ticket, so a superseded caller cannot
+ * use it to act as the holder. A ticket for another output, session or source is
+ * refused before the claim is consulted. No intent is evaluated here — the Camera
+ * authority evaluates pose and projection.
  */
 export function requestCameraOutput(state: CameraOutputState, ticket: unknown): CameraOutputRequestDecision {
-	const validation = validateCameraOutputTicket(ticket);
-	if (!validation.valid) {
-		return { kind: 'refused', state, reason: 'invalid-ticket', message: validation.issues[0]?.message ?? 'invalid ticket', owners: [] };
-	}
-	const request = validation.ticket!;
+	const read = readTicket(state, ticket);
+	if (!('ticket' in read)) return { kind: 'refused', state, reason: read.reason, message: read.message, owners: [] };
+	const request = read.ticket;
 	const current = state.claim;
-	if (current === null) {
-		return { kind: 'refused', state, reason: 'not-owner', message: 'the output is unowned', owners: [] };
+	if (current !== null && sameTicket(current.ticket, request)) return { kind: 'accepted', state, claim: current };
+	// A run this output already accepted (its epoch is at or below the floor) has ended.
+	if (request.runEpoch <= state.epochFloor) {
+		return { kind: 'superseded', state, owners: current === null ? [] : [current.ticket.ownerId] };
 	}
-	// An older run learns that it was superseded, whoever now holds the output.
-	if (request.runEpoch < current.ticket.runEpoch) {
-		return { kind: 'superseded', state, holder: current.ticket };
-	}
-	if (current.ticket.ownerId !== request.ownerId || current.ticket.outputId !== request.outputId) {
-		return {
-			kind: 'refused',
-			state,
-			reason: 'not-owner',
-			message: `owner "${request.ownerId}" does not hold output "${request.outputId}"`,
-			owners: [current.ticket.ownerId]
-		};
-	}
-	if (request.runEpoch > current.ticket.runEpoch) {
-		return {
-			kind: 'refused',
-			state,
-			reason: 'stale-run-epoch',
-			message: `run epoch ${request.runEpoch} is not the active run epoch ${current.ticket.runEpoch}`,
-			owners: [current.ticket.ownerId]
-		};
-	}
-	if (request.sessionEpoch !== current.ticket.sessionEpoch) {
-		return { kind: 'refused', state, reason: 'stale-session-epoch', message: 'the ticket belongs to a different host session', owners: [] };
-	}
-	if (request.sourceRevision !== current.ticket.sourceRevision) {
-		return { kind: 'refused', state, reason: 'stale-source-revision', message: 'the ticket belongs to a different source revision', owners: [] };
-	}
-	return { kind: 'accepted', state, claim: current };
+	return {
+		kind: 'refused',
+		state,
+		reason: 'not-owner',
+		message:
+			current === null
+				? 'the output is free; acquire it before requesting'
+				: `run ${request.runEpoch} of owner "${request.ownerId}" was never accepted for this output`,
+		owners: current === null ? [] : [current.ticket.ownerId]
+	};
 }
 
 /**
@@ -369,96 +411,122 @@ export type CameraOutputReturnDecision =
 
 /**
  * Return the output to the run that a handoff replaced. The returning run must
- * still hold the output, and the return context is validated against the
- * **current** source/output context — a stale token, a different source revision
- * or a different host session refuses with a reason instead of transferring
- * ownership to a run that no longer means the same thing.
+ * still hold the output with a qualified ticket, and the return context must have
+ * been issued in this session for this source — a stale token, a context from an
+ * obsolete source or a foreign session refuses with a reason instead of
+ * transferring ownership to a run that no longer means the same thing.
  *
  * A return is an ownership transition like any other, so the restored run keeps
  * its identity and role but receives a **new, strictly newer** run epoch (the
- * returned claim carries it). Restoring the original epoch would move the
- * output's ordering backwards: the returned ticket would be able to re-acquire
- * the output it just gave up, and the handoff would not be binding. The
- * returning run's old ticket is therefore spent, and a delayed callback holding
- * it learns `superseded` instead of reclaiming the output.
+ * returned claim carries it). The returning run's old ticket is therefore spent,
+ * and a delayed callback holding it learns `superseded` instead of reclaiming.
  */
 export function returnCameraOutput(
 	state: CameraOutputState,
 	ticket: unknown,
 	returnToken: string | null
 ): CameraOutputReturnDecision {
-	const validation = validateCameraOutputTicket(ticket);
-	if (!validation.valid) {
-		return { kind: 'refused', state, reason: 'invalid-ticket', message: validation.issues[0]?.message ?? 'invalid ticket', owners: [] };
-	}
-	const request = validation.ticket!;
+	const refuse = (reason: CameraOutputRefusal, message: string, owners: readonly string[] = []): CameraOutputReturnDecision => ({
+		kind: 'refused',
+		state,
+		reason,
+		message,
+		owners
+	});
+	const read = readTicket(state, ticket);
+	if (!('ticket' in read)) return refuse(read.reason, read.message);
 	const current = state.claim;
-	if (current === null) {
-		return { kind: 'refused', state, reason: 'not-owner', message: 'the output is unowned and nothing can be returned', owners: [] };
-	}
-	if (!sameTicket(current.ticket, request)) {
-		return { kind: 'refused', state, reason: 'not-owner', message: 'the ticket does not hold the active output', owners: [current.ticket.ownerId] };
+	if (current === null) return refuse('not-owner', 'the output is free and nothing can be returned');
+	if (!sameTicket(current.ticket, read.ticket)) {
+		return refuse('not-owner', 'the ticket does not hold the active output', [current.ticket.ownerId]);
 	}
 	const context = current.returnContext;
 	if (context === null || returnToken === null || returnToken !== context.token) {
-		return { kind: 'refused', state, reason: 'invalid-return-token', message: 'the return token does not name this output transfer', owners: [current.ticket.ownerId] };
+		return refuse('invalid-return-token', 'the return token does not name a pending return of this output', [current.ticket.ownerId]);
 	}
-	if (context.sourceRevision !== current.ticket.sourceRevision) {
-		return { kind: 'refused', state, reason: 'stale-source-revision', message: 'the return context belongs to a different source revision', owners: [] };
+	if (context.sourceRevision !== state.sourceRevision || context.issuedTo.sourceRevision !== state.sourceRevision) {
+		return refuse('stale-source-revision', 'the return context was issued for another source than the output now reads');
 	}
-	if (context.sessionEpoch !== current.ticket.sessionEpoch) {
-		return { kind: 'refused', state, reason: 'stale-session-epoch', message: 'the return context belongs to a different host session', owners: [] };
+	if (context.sessionEpoch !== state.sessionEpoch || context.issuedTo.sessionEpoch !== state.sessionEpoch) {
+		return refuse('stale-session-epoch', 'the return context was issued in another host session');
 	}
-	if (context.issuedTo.runEpoch >= current.ticket.runEpoch) {
-		return { kind: 'refused', state, reason: 'stale-run-epoch', message: 'the return context does not name an older run than the active output', owners: [] };
+	if (context.issuedTo.outputId !== state.outputId) {
+		return refuse('foreign-output', 'the return context names another output');
 	}
 	if (current.ticket.runEpoch >= MAX_CAMERA_OUTPUT_RUN_EPOCH) {
-		return {
-			kind: 'refused',
-			state,
-			reason: 'stale-run-epoch',
-			message: `run epoch ${current.ticket.runEpoch} is the highest this protocol accepts, so a return cannot mint a strictly newer epoch`,
-			owners: []
-		};
+		return refuse(
+			'stale-run-epoch',
+			`run epoch ${current.ticket.runEpoch} is the highest this protocol accepts, so a return cannot mint a strictly newer epoch`
+		);
 	}
 	// The restored run continues under a fresh epoch: ownership order never moves backwards.
-	const restored: CameraOutputTicket = { ...context.issuedTo, runEpoch: current.ticket.runEpoch + 1 };
+	const restored: CameraOutputTicket = { ...context.issuedTo, runEpoch: Math.max(state.epochFloor, current.ticket.runEpoch) + 1 };
 	const claim: CameraOutputClaim = { ticket: restored, role: context.role, returnContext: null };
 	return { kind: 'returned', state: { ...state, claim, epochFloor: restored.runEpoch }, claim };
 }
 
 export type CameraOutputCancelDecision =
-	| { kind: 'cancelled'; state: CameraOutputState }
+	| { kind: 'cancelled'; state: CameraOutputState; voidedReturn: CameraReturnContext | null }
 	| { kind: 'ignored'; state: CameraOutputState; reason: CameraOutputRefusal; message: string };
 
 /**
  * Epoch-qualified, idempotent cancellation. Only the run that currently holds the
- * output can release it: the presented ticket must match the active one in **every**
- * field — output, source revision, host session, owner and run epoch — so a
- * completion from another source revision or another host session cannot clear
- * this output, and a wrong-epoch or foreign owner cannot clear, reclaim or
- * replace it. Cancelling an unowned or already-cancelled output is a no-op, not
- * an error, and the output's epoch floor is retained so the cancelled run cannot
- * re-acquire with the epoch it already spent.
+ * output can release it: the ticket is qualified against this output, session and
+ * source, and must then equal the active ticket in every field, so a wrong-epoch,
+ * foreign or obsolete completion cannot clear, reclaim or replace it. Cancelling a
+ * free output with a qualified ticket is a no-op, not an error, and the epoch floor
+ * is retained so the cancelled run cannot re-acquire with the epoch it spent. A
+ * cancelled claim's pending return is voided and reported.
  */
 export function cancelCameraOutput(state: CameraOutputState, ticket: unknown): CameraOutputCancelDecision {
-	const validation = validateCameraOutputTicket(ticket);
-	if (!validation.valid) {
-		return { kind: 'ignored', state, reason: 'invalid-ticket', message: validation.issues[0]?.message ?? 'invalid ticket' };
-	}
-	const request = validation.ticket!;
+	const read = readTicket(state, ticket);
+	if (!('ticket' in read)) return { kind: 'ignored', state, reason: read.reason, message: read.message };
 	const current = state.claim;
-	if (current === null) return { kind: 'cancelled', state };
-	if (request.runEpoch < current.ticket.runEpoch) {
-		return {
-			kind: 'ignored',
-			state,
-			reason: 'stale-run-epoch',
-			message: `run epoch ${request.runEpoch} cannot clear the active run epoch ${current.ticket.runEpoch}`
-		};
+	if (current === null) return { kind: 'cancelled', state, voidedReturn: null };
+	if (!sameTicket(current.ticket, read.ticket)) {
+		return read.ticket.runEpoch < current.ticket.runEpoch
+			? {
+					kind: 'ignored',
+					state,
+					reason: 'stale-run-epoch',
+					message: `run epoch ${read.ticket.runEpoch} cannot clear the active run epoch ${current.ticket.runEpoch}`
+				}
+			: { kind: 'ignored', state, reason: 'not-owner', message: 'the ticket does not hold the active output' };
 	}
-	if (!sameTicket(current.ticket, request)) {
-		return { kind: 'ignored', state, reason: 'not-owner', message: 'the ticket does not hold the active output' };
+	return { kind: 'cancelled', state: { ...state, claim: null }, voidedReturn: current.returnContext };
+}
+
+export type CameraOutputRebaseDecision =
+	| { kind: 'unchanged'; state: CameraOutputState }
+	| {
+			kind: 'rebased';
+			state: CameraOutputState;
+			/** The claim the source change ended, or `null` when the output was free. */
+			ended: CameraOutputClaim | null;
+			/** The ended claim's pending return, which can no longer be honoured. */
+			voidedReturn: CameraReturnContext | null;
+	  }
+	| { kind: 'refused'; state: CameraOutputState; reason: 'invalid-request'; message: string };
+
+/**
+ * Move the output to a new current source. The host calls this whenever the
+ * source its Camera evaluation reads changes (a replacement or an accepted edit
+ * that changes content). The live claim and its pending return end here; the
+ * output becomes free for the new source, and every ticket issued for the old
+ * source is refused from now on. Rebasing to the source the output already reads
+ * changes nothing, so an Undo that restores identical content does not end a run.
+ */
+export function rebaseCameraOutputSource(state: CameraOutputState, sourceRevision: unknown): CameraOutputRebaseDecision {
+	const reader = new ShapeReader();
+	const next = reader.opaqueId(sourceRevision, '$.sourceRevision');
+	if (next === null) {
+		return { kind: 'refused', state, reason: 'invalid-request', message: reader.issues[0]?.message ?? 'the source revision is not an opaque id' };
 	}
-	return { kind: 'cancelled', state: { ...state, claim: null } };
+	if (next === state.sourceRevision) return { kind: 'unchanged', state };
+	return {
+		kind: 'rebased',
+		state: { ...state, sourceRevision: next, claim: null },
+		ended: state.claim,
+		voidedReturn: state.claim?.returnContext ?? null
+	};
 }

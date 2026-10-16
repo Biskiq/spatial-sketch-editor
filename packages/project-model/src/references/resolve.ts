@@ -153,6 +153,7 @@ export function resolveReference(reference: unknown, context: ReferenceReadConte
 		instancePath: [...value.instancePath],
 		componentId: value.componentId,
 		capabilityId: value.capabilityId,
+		location: outcome.location,
 		contentRevision: outcome.contentRevision,
 		owner: resolver.owner
 	};

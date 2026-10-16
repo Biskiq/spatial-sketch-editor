@@ -11,8 +11,9 @@ implementation or acceptance.
 ## Implementation evidence (implementer-reported — not acceptance)
 
 Delivered on base `main` @ `aeb464b2` (PR #125, including merged PR #124), branch
-`T1-P1-S1-implementation`. The evidence below was produced on a clean tree at that base plus this
-branch's diff; a later edit invalidates the rows it touches.
+`T1-P1-S1-implementation`. The evidence below was re-run in full for the remediation of the
+independent review of `6ec5921c`, on the tree the commit carrying this record contains (the PR
+description names that exact SHA); a later edit invalidates the rows it touches.
 
 | Surface | Delivered in |
 | --- | --- |
@@ -20,7 +21,7 @@ branch's diff; a later edit invalidates the rows it touches.
 | `references-v1` bounded current-domain read adapters | `packages/project-model/src/references/read-adapter.ts` — actual Layout entities, actual Scene entities and read-only current Camera subjects from one supplied `ProjectDocument` |
 | `F3.channels@1` (`inspection-v1`) exports | `packages/project-model/src/channels/` (address/descriptor/typed values, the two v1 families including the ratified policy inputs, negotiation, the Camera-output ticket protocol) |
 | F1 conformance | `apps/editor/tests/lib/project-model/references-conformance.test.ts` — 33 cases |
-| F3 conformance | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` — 30 cases |
+| F3 conformance | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` — 21 cases (families, values, owner qualification, exclusive/ordered/union lifecycle, Camera-value reflection) · `apps/editor/tests/lib/project-model/camera-output-conformance.test.ts` — 11 cases (ticket protocol traces plus a depth-5 exhaustive invariant exploration) |
 | Accepted-capabilities / Requires enforcement | `capabilityProblems` + the register fields in `apps/editor/tests/docs/parallel-track-gates.test.ts` |
 | Runtime-safe import direction | `apps/editor/tests/lib/project-model-boundary.test.ts` (arch lane) walks every file in the package |
 
@@ -32,7 +33,7 @@ npm run check                 svelte-kit sync && svelte-check        0 errors, 0
 npm run build                 vite build                                                       PASS
 npm run test:arch             vitest run --config vitest.arch.config.ts   15 files, 137 tests   PASS
 npm run test:heavy            vitest run --config vitest.heavy.config.ts   8 files, 118 tests   PASS
-npm test                      vitest run (complete suite)               118 files, 1594 tests  PASS
+npm test                      vitest run (complete suite)               119 files, 1596 tests  PASS
 npm run check:api             tsc -p tsconfig.json --noEmit                                   PASS
 npm run test:api              node --test (real Postgres)   39 tests, 0 skipped, 0 failed    PASS
 ```
@@ -83,22 +84,28 @@ after the last documentation edit rather than inherited from an earlier green ru
   selection keeps the canonical source.
 - Channel address/descriptor/typed value family, the Layout ordinary Plan and Camera session
   inspection families — including the ratified `reading-projection-policy` and `motion-policy`
-  inputs, declared as open domain-owned sets and not required — and negotiation: a family's owning
-  domain must agree with the address's owner domain; one property scope is the **complete**
-  reference identity (domain, revision context, subject, instance path, location, component,
-  capability) plus the address's own qualification and scope instance; exclusive conflict rejection
-  with domain/address/owners and an actionable reason; same-invocation deliberate replacement;
-  ordered replacement per run epoch; set union over declared identities; staleness rejection on a
-  declared invalidation input; depth-absence reported as an unsatisfied family rather than an
-  evaluated inspection.
+  inputs, declared as open domain-owned sets and not required — and negotiation against one
+  `ChannelEvaluationContext` (the F.1 read context plus the live Camera-output states): a family's
+  owning domain must agree with the address's owner domain; the address must be one the family
+  admits (owner subject kind, frame kind, no undeclared address qualification); the owner
+  reference and any owner frame must **resolve against the supplied snapshot at its current
+  content**; the contention boundary is the structural `ChannelPropertyScope` — the **canonical
+  resolved owner** plus the address's own qualification, frame, property and scope instance;
+  exclusive conflict rejection with domain/address/owners and an actionable reason;
+  same-invocation replacement by a newer run; ordered replacement across a scope's runs;
+  per-invocation `union` contributions read as a deterministic union; Camera session values
+  admitted only from the run holding the Camera output; one freshness rule shared by negotiation,
+  reads and `pruneChannelState`; epoch-qualified `withdrawChannelContribution`; depth-absence
+  reported as an unsatisfied family rather than an evaluated inspection.
 - AM-3's Camera-output ticket protocol as interface and negotiation behaviour: `{outputId,
-  sourceRevision, sessionEpoch, ownerId, runEpoch}`, one exclusive owner per viewport/session,
-  acquire/request/replace/return/cancel, return validating the current source/output context, and
-  stale owner/epoch rejection. Ownership order is **monotonic**: every accepted transition —
-  including a return to a replaced run, which keeps its identity and role under a strictly newer
-  epoch — moves forward, so a spent ticket cannot re-enter after a return, a cancellation or a
-  replacement, and cancellation clears the output only for the complete matching ticket. No
-  runtime, evaluator, output controller, projection or navigation.
+  sourceRevision, sessionEpoch, ownerId, runEpoch}`, one exclusive owner per output,
+  acquire/request/replace/return/cancel plus the source-lifetime transition
+  `rebaseCameraOutputSource`. A state names its output, realising viewport, host session and
+  current source, and every operation qualifies a ticket against output, session and source before
+  consulting the claim. Ownership order is **monotonic**: every accepted transition — including a
+  return to a replaced run, which keeps its identity and role under a strictly newer epoch — moves
+  forward, so a spent ticket cannot re-enter. Every transition that ends a claim reports the
+  return obligation it voids. No runtime, evaluator, output controller, projection or navigation.
 - Accepted-capabilities / Requires enforcement: the two register fields, the closure walk, the
   trusted-base requirement, retirement ineligibility, self-satisfaction refusal,
   historical-evidence reporting, row residency (an entry is filed on the gate version it names) and
@@ -233,10 +240,93 @@ and `references-v1` / `inspection-v1` keep their versions.
 
 **Alternatives rejected.** A persistent handoff stack for nested returns — unnecessary retained history for a case the scope does not authorize; widening `computedFrom` or `ChannelSourceIdentity` to carry provenance or revision context the current families do not need; comparing channel values as sequences (the defect above); and enforcing the F1 snapshot binding by hashing the source on every resolve rather than by the supplied snapshot pair.
 
+## Response to the independent review of `6ec5921c`
+
+The independent review of head `6ec5921c` raised five acceptance blockers and several adjacent
+seams. Each one was re-derived from AM-1/AM-3, the phase's F drafts and the code before any change,
+and each was reproduced. The remediation is **one contract** rather than five guards: (a) one
+ticket-context check in the Camera-output protocol, (b) one structural property scope derived from
+the *resolved* owner, (c) one shared freshness rule, and (d) epoch marks that outlive the
+contributions they order. That review's verdict applies only to `6ec5921c`; the revised head needs
+its own independent review.
+
+| Finding | Disposition |
+| --- | --- |
+| **B1** — the ticket protocol compared a ticket's source revision with the *holder's*, never with the host's current source, so after a source change an old run could keep, regain or block the output | **Confirmed.** `CameraOutputState` now names its current `sourceRevision` (the current-source content identity, the same identity F.3 staleness uses). Every operation runs one `qualifyTicket` check — output, session, source — before it consults the claim, so an obsolete-source ticket is refused on acquire, replace, request, return and cancel, whether the output is free, held, handed off or cancelled. The new `rebaseCameraOutputSource` **ends** the live claim, voids its pending return and reports both (`ended`, `voidedReturn`); the epoch floor is kept, so ticket order stays monotonic for the whole session. Rebasing to the same source is `unchanged`, so an Undo back to identical content ends no run. *Alternatives weighed:* requalifying the holder onto the new source on its behalf (rejected — it would mint authority for intent never evaluated against that source and let a return context cross sources); keeping the claim as "stale until requalified" (rejected — a second state of ownership with no consumer, and the output would stay blocked by a run that cannot act). Trace fixture: R1 → handoff → R2 → return/request/cancel/acquire. |
+| **B2** — `outputId` was unbound: on a free output any `outputId` acquired, and a ticket for one output could act on another output of the same session | **Confirmed.** The state now names `outputId` (the identity tickets name) and `viewportId` (the Stage viewport that realises it) as **separate** fields. Only `outputId` qualifies a ticket, and the protocol never assumes the two strings are equal. A mismatch is refused as `foreign-output` with the actionable reason, on every operation. The former `output-mismatch` reason (it meant a changed observation) is renamed `stale-observation`, so the two refusals cannot be confused. Fixture: two outputs in one host session, including one realised by a viewport whose id equals the other output's id. |
+| **B3** — `union` collapsed several invocations into one contribution that carried the latest offer's owner, run epoch and provenance: contributor identity was lost, stale re-offers were accepted, and values computed from earlier content survived under newer provenance | **Confirmed.** A union property now holds **one contribution per invocation**, each ordered by its own run epoch. The property's value is a **derived read** (`readChannelProperty`): the union of every *current* contributor's set, members in stable ID order, with each contributor listed with its own run epoch and `computedFrom`. No aggregate owner or revision is fabricated. An owner replaces or withdraws only its own contribution. A contributor computed from other content or another generation is never read and expires on the next negotiation or prune. Trace fixture: X@5, Y@2, X@1 (stale), X@9 (replaces X only), withdraw X, then a spent X run refused; the read is independent of acceptance order; content change and an undo to identical content. |
+| **B4** — multiple references to one subject established independent exclusive holders, and a stale exact or unresolved project-lock owner reference entered negotiation as though current | **Confirmed; the fix keeps F.1 qualifications distinct.** Four layers are separated. *Distinct valid F.1 references* stay distinct: `compareReferences` is unchanged. *The canonical subject* is now explicit: a resolver states the subject's canonical `location` (`ResolvedSubject.location`) — a current Layout entity sits on the one authored level, the level and every Scene/Camera subject at the project root. *The F.3 property scope* is the structural `ChannelPropertyScope`, built from the **resolved** owner, so `exact` versus admitted `project-lock`, and `project-root` versus level-qualified locations of one subject, contend for one property. *Source-content context* is enforced: negotiation resolves the owner reference (and any owner frame) through the supplied F.1 read context and requires the resolution to be at the snapshot's current content, so a stale exact reference, an unresolved lock, an unauthored level or frame, and a subject kind the family does not own are typed refusals (`unresolved-owner-reference`, `unresolved-frame`, `inadmissible-address`). Admissible qualification per family: Plan inspection is owned by a Layout `level` (project-world or a resolvable Layout-owned frame). The Camera session family is owned by the project's Camera authority root (`camera`, added to the bounded Camera subjects and addressed by project id exactly like the Scene root), in project-world only. Neither current family declares an instance/component/capability qualification below its owner. Layout's single-level limit stays explicit; no Level schema, Room frame or Scene instancing is introduced. The round-one fixture that kept "two levels" and "two revisions" as separate scopes is withdrawn: under the current source the second level and the other revision do not resolve, and are now refused rather than admitted as parallel scopes. |
+| **B5** — source-set duplicate detection and identity equality joined ids with `\u0001`, which an opaque id may contain, so distinct id paths collided | **Confirmed.** Equality is structural (`sameChannelSourceIdentity`, path segment by segment), and duplicate detection uses an unambiguous canonical encoding (`JSON.stringify` of the field tuple; JSON string escaping is injective). The serialized source-identity shape and the F.1 comparator are unchanged. The property-scope key that concatenated `\u0000` is gone: scopes are compared structurally, so independently built, structurally equal scopes with differently ordered fields read the same value. Fixture: four collision pairs under single-delimiter joins, plus a delimiter inside a subject id. |
+
+**Adjacent seams resolved in the same design.**
+
+| Seam | Decision |
+| --- | --- |
+| Channel release and cleanup | One shared, epoch-qualified mechanism. `channelContributionStaleness` is the only freshness rule: declared `accepted-revision` against the snapshot content, declared `generation` against the active generation, and — for Camera values — the live output claim. Negotiation refuses a stale offer and expires stale entries in the negotiated scope (reported as `expired`), so a stale holder never blocks a new owner. Reads never return stale values, and `pruneChannelState` is the host-side cleanup when content, generation or ownership changes. `withdrawChannelContribution` removes only the presenting run's own contribution: an older run's cleanup is `ignored`, and another invocation's — including a newer owner's after replacement — is never touched. Withdrawn and replaced runs are **retired** in `ChannelEpochMark`s that outlive the contribution, so a spent run cannot revive. An *expired* run may re-offer a re-evaluated value under the same epoch, because the owning evaluator re-evaluates the same accepted run when its declared inputs change. |
+| Camera controller authority | The channel no longer has its own ownership path. Every Camera session property uses the new `camera-output` arbitration and the new `output` scope (`scopeId` is the output). A Camera value is admitted only from the run that holds the output in the supplied `CameraOutputState` — `invocationId` is the claim's `ownerId`, `runEpoch` its run epoch, and the output must be in this session over this content. The `controller` value must equal the claim's role. Acquire, handoff, return, cancel and rebase are therefore the only things that change who may contribute. A handed-off run's values stop being read immediately, and its late offers are refused (`camera-output-not-held`). Within its own claim run the holder may update its values; ordering inside one run is the run's own sequential duty. This realises AM-3's "one exclusive resolved controller per output; accepted ordered replacement/handoff" through the one protocol. Under the old encoding, a previous inspection target, held `exclusive` by invocation, would have blocked a Preview owner's target. |
+| Interpolation | **Corrected.** Target, azimuth, elevation and frame height declared `linear`, which advertised a generic interpolation AM-3 forbids for Camera pose/FOV. Every Camera property is now `none`, and `familyProblems` refuses a Camera family that declares generic interpolation. `none` means no *generic* channel interpolation; Camera's own evaluator still moves pose and projection. |
+| Ownership diagnostics and lookup | `requestCameraOutput` qualifies the ticket first, so a foreign-output or foreign-session request is refused, never told `superseded`. A `superseded` answer now names the holder's owner only (`owners`) instead of returning the holder's full, reusable ticket. Structurally equal addresses resolve to equal scopes (above). A nested handoff A → B → C reports B's voided return to A on C's acquisition (`voidedReturn`), and B's later return to A is refused. Cancellation reports the return it voids as well. No handoff stack is introduced. |
+| Capability readiness | Re-checked; no eligibility bypass found. The checker is unchanged. |
+
+**Changed public interfaces (all within S01's own unaccepted exports; no gate row, version or
+ratified text changes).** `createCameraOutputState({outputId, viewportId, sessionEpoch,
+sourceRevision})` and `CameraOutputState` gain the output identity and current source;
+`rebaseCameraOutputSource` is new; refusal vocabulary gains `foreign-output` and replaces
+`output-mismatch` with `stale-observation`; `acquire`/`cancel` decisions report `voidedReturn`;
+`superseded` reports `owners` instead of `holder`. `ResolvedSubject` and a resolver's `resolved`
+outcome carry the canonical `location`; `CURRENT_CAMERA_SUBJECT_KINDS` adds `camera`.
+`ChannelEvaluationContext` becomes `{read, cameraOutputs}`; `ChannelState` becomes `{entries,
+marks}`; `ChannelFamily` gains `admission` and `controllerProperty`; scopes gain `output` and
+arbitrations gain `camera-output`; rejection reasons gain `inadmissible-address`,
+`unresolved-owner-reference`, `unresolved-frame` and `camera-output-not-held`. The accepted outcome
+gains `scope` and `expired`, and its `contribution` is always the contributor's own. New exports:
+`resolveChannelPropertyScope`, `readChannelProperty`, `withdrawChannelContribution`,
+`pruneChannelState`, `channelContributionStaleness`, `sameChannelPropertyScope`,
+`sameChannelSourceIdentity`. Removed: `channelScopeKey`, `channelPropertyKey` and
+`findChannelContribution`, whose string keys and reference-qualified lookup were the defect.
+Each change removes an ambiguity the review demonstrated; none was kept merely to spare tests.
+
+**Rejected alternatives.** Collapsing F.1 references globally (it would destroy distinctions F.1
+must keep); keying scopes by the reference minus its revision (still splits `project-root` from
+level-qualified locations, and would silently merge distinct placements once structure instances
+exist); a generic reactive invalidation kernel; feature-specific cleanup per family; a persistent
+handoff stack; and requalifying Camera ownership across sources.
+
+**Verification approach.** Each B-finding has a discriminating trace. The Camera-output protocol is
+also explored **exhaustively to depth 5** over a small action alphabet (acquire by two owners
+under two policies, a spent epoch, a foreign output, an obsolete source, holder and historical
+return/request/cancel, and source rebases), against invariants stated independently of the
+implementation: one holder, always qualified for output, session and current source; strictly
+increasing ownership order; no retired ticket ever holds again; refusals change nothing; inputs are
+never mutated; a rebase leaves no claim from the old source. Each original defect was re-introduced
+temporarily (source qualification, output qualification, reference-qualified scope, delimiter
+dedupe, epoch-blind withdrawal, non-retiring withdrawal, a collapsed union owner), and at least one
+case failed every time. Nothing else changed.
+
+**Remaining limits (stated, not hidden).** Returns nest one deep. Union members are declared
+identities and are not resolved against the source; Layout's evaluator decides Reveal membership,
+as before. The other declared invalidation inputs remain the owning evaluator's duty. Epoch marks
+are retained for the life of a channel state, so they grow with the number of invocations in one
+host session; a new session starts a new state. A Camera output at the run-epoch ceiling can only
+be cancelled until a new session.
+
+**Reviewer-owned decisions this revision introduces.** (1) Ending, rather than requalifying, a
+Camera claim when the source changes. (2) Binding every Camera session value to the output claim
+(`camera-output`) as the reading of AM-3's single controller and ordered handoff. (3) The
+per-family owner admission: a Layout `level` for Plan inspection, and the `camera` authority root
+for Camera session values, which also adds `camera` to `references-v1`'s bounded Camera subjects.
+(4) Canonical `location` on resolved subjects as the F.1 output F.3 scoping depends on. Each is
+within this slice's own unaccepted exports, and none amends a ratified contract. If the reviewer
+reads AM-3 or AM-1 differently on any of them, that is a contract decision for the owner, not an
+implementation detail.
+
 ## Owed to review (not implementer judgement)
 
 - The independent verdict against the plan's acceptance criteria, and the tested-revision
-  confirmation.
+  confirmation. The review of `6ec5921c` covers that head only; the revised head is unreviewed.
+- The four reviewer-owned decisions listed at the end of the response to that review (ending a
+  Camera claim on source change, claim-bound Camera session values, the per-family owner admission
+  including the `camera` root subject, and canonical `location` on resolved subjects).
 - Whether the corrected return/epoch semantics and the complete-ticket cancellation are the
   intended reading of AM-3's ordered handoff, and whether the bounded adapter's subject-kind set is
   the right breadth for `references-v1` — both are interface decisions the reviewer owns.

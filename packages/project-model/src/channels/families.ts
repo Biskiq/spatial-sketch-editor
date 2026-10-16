@@ -26,8 +26,20 @@ export const LAYOUT_PLAN_FAMILY_ID: ChannelFamilyId = 'layout.plan@1';
 
 /**
  * Camera's session inspection output (AM-3, Camera session inspection family).
- * The `controller` property is the one exclusive resolved controller per output;
- * its value names the declared role the Camera output owner admitted.
+ *
+ * Every property is `camera-output`-arbitrated and `output`-scoped: it belongs to
+ * the run that holds the Camera output named by `scopeId`, and is admitted only
+ * from that live claim. The Camera-output ticket protocol is therefore the one
+ * ownership authority — acquiring, replacing, handing off, returning or cancelling
+ * the output is what changes who may contribute — and the channel reflects it
+ * instead of running a second ordered-replacement path. The `controller` property
+ * is the one resolved controller per output: its value must be the claim's role.
+ *
+ * No property declares generic interpolation (`none`): AM-3 forbids generic Camera
+ * pose/FOV interpolation, so target, azimuth, elevation and frame height change
+ * only by a new contribution and are moved only by Camera's own evaluation. The
+ * family is addressed to the project's Camera authority root (`camera`), because a
+ * session output is not an authored navigation node.
  *
  * The family also publishes the ratified **policy inputs**: the reading/projection
  * policy the output is read and projected under, and the motion policy its pose
@@ -50,7 +62,11 @@ export const LAYOUT_PLAN_FAMILY: ChannelFamily = {
 	id: LAYOUT_PLAN_FAMILY_ID,
 	domain: 'layout',
 	capability: { id: 'layout.plan-inspection', required: true },
+	// Ordinary Plan inspection belongs to a Layout level (the current single floor), in
+	// project-world or a Layout-owned frame the owner resolves; no address qualification.
+	admission: { ownerSubjectKinds: ['level'], frameKinds: ['project-world', 'owner-frame'], qualifiedAddresses: false },
 	requiredProperties: ['depth'],
+	controllerProperty: null,
 	properties: [
 		descriptor({
 			family: LAYOUT_PLAN_FAMILY_ID,
@@ -131,7 +147,10 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 	id: CAMERA_SESSION_INSPECTION_FAMILY_ID,
 	domain: 'camera',
 	capability: { id: 'camera.session-inspection', required: true },
+	// A session output is owned by the Camera authority root; its target is project-world.
+	admission: { ownerSubjectKinds: ['camera'], frameKinds: ['project-world'], qualifiedAddresses: false },
 	requiredProperties: ['controller'],
+	controllerProperty: 'controller',
 	properties: [
 		descriptor({
 			family: CAMERA_SESSION_INSPECTION_FAMILY_ID,
@@ -140,9 +159,9 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			units: 'meters',
 			range: { min: null, max: null, minExclusive: false, maxExclusive: false },
 			values: null,
-			scope: 'viewport',
-			arbitration: 'exclusive',
-			interpolation: 'linear',
+			scope: 'output',
+			arbitration: 'camera-output',
+			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
 			validator: 'camera.session.target@1'
@@ -154,9 +173,9 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			units: 'radians',
 			range: { min: null, max: null, minExclusive: false, maxExclusive: false },
 			values: null,
-			scope: 'viewport',
-			arbitration: 'exclusive',
-			interpolation: 'linear',
+			scope: 'output',
+			arbitration: 'camera-output',
+			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
 			validator: 'camera.session.azimuth@1'
@@ -168,9 +187,9 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			units: 'radians',
 			range: { min: null, max: null, minExclusive: false, maxExclusive: false },
 			values: null,
-			scope: 'viewport',
-			arbitration: 'exclusive',
-			interpolation: 'linear',
+			scope: 'output',
+			arbitration: 'camera-output',
+			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
 			validator: 'camera.session.elevation@1'
@@ -182,9 +201,9 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			units: 'meters',
 			range: { min: 0, max: null, minExclusive: true, maxExclusive: false },
 			values: null,
-			scope: 'viewport',
-			arbitration: 'exclusive',
-			interpolation: 'linear',
+			scope: 'output',
+			arbitration: 'camera-output',
+			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
 			validator: 'camera.session.frame-height@1'
@@ -196,9 +215,9 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			units: null,
 			range: null,
 			values: [...CAMERA_OUTPUT_ROLES],
-			scope: 'viewport',
-			// One exclusive resolved controller per output; accepted ordered replacement.
-			arbitration: 'ordered-replacement',
+			scope: 'output',
+			// The one resolved controller per output: the live claim's role.
+			arbitration: 'camera-output',
 			interpolation: 'none',
 			invalidation: ['intent', 'epoch'],
 			capability: { id: 'camera.session-inspection', required: true },
@@ -212,8 +231,8 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			range: null,
 			// An open declared set: Camera owns which reading/projection policies exist.
 			values: null,
-			scope: 'viewport',
-			arbitration: 'exclusive',
+			scope: 'output',
+			arbitration: 'camera-output',
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
@@ -227,8 +246,8 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 			range: null,
 			// An open declared set: Camera owns which motion policies exist.
 			values: null,
-			scope: 'viewport',
-			arbitration: 'exclusive',
+			scope: 'output',
+			arbitration: 'camera-output',
 			interpolation: 'none',
 			invalidation: [...CAMERA_INTENT_INVALIDATION],
 			capability: { id: 'camera.session-inspection', required: true },
@@ -275,6 +294,22 @@ export function familyProblems(families: readonly ChannelFamily[]): string[] {
 			if (property.arbitration === 'union' && property.valueKind !== 'identifier-set' && property.valueKind !== 'source-set') {
 				problems.push(`${family.id}: property "${property.propertyId}" unions declared identities and must hold a set value`);
 			}
+			if (property.arbitration === 'camera-output' && (family.domain !== 'camera' || property.scope !== 'output')) {
+				problems.push(`${family.id}: property "${property.propertyId}" reflects a Camera output and must be a Camera output-scoped property`);
+			}
+			// Domain invariants bind after arbitration: no generic channel interpolates Camera pose/FOV.
+			if (family.domain === 'camera' && property.interpolation !== 'none') {
+				problems.push(`${family.id}: property "${property.propertyId}" may not declare generic interpolation; Camera evaluates pose and projection`);
+			}
+		}
+		if (family.controllerProperty !== null) {
+			const controller = family.properties.find((property) => property.propertyId === family.controllerProperty);
+			if (controller === undefined || controller.arbitration !== 'camera-output' || controller.valueKind !== 'identifier') {
+				problems.push(`${family.id}: controller property "${family.controllerProperty}" must be a declared camera-output identifier`);
+			}
+		}
+		if (family.admission.ownerSubjectKinds.length === 0 || family.admission.frameKinds.length === 0) {
+			problems.push(`${family.id}: a family admits at least one owner subject kind and one frame kind`);
 		}
 		for (const required of family.requiredProperties) {
 			if (!propertyIds.has(required)) {
