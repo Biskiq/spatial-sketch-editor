@@ -23,12 +23,19 @@ import {
 	admitCurrentSource,
 	admitCurrentSourceContent,
 	createCurrentSourceAdapter,
-	serializeProject,
+	canonicalSourceJson,
+	type ProjectDocument,
+	type AcceptanceSourceAdapter,
 	sourceContentIdForCanonicalJson,
 	validateProject,
 	type AcceptedRevision
 } from '@portfolio/project-model';
+import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
+import { buildP23BMatrixFixture, P23B_MATRIX_SPECS } from '../layout/__fixtures__/p23b-fixtures';
 import {
+	createProofSceneScalarPlanner,
+	proofIntent,
+	PROOF_SCENE_SCALAR_KIND,
 	FIXTURE_PROJECT_ID,
 	FIXTURE_UNKNOWN_ASSET_ID,
 	HOST_SCENE_OPTIONS,
@@ -134,37 +141,48 @@ describe('current-source admission', () => {
 		expect(Object.keys(refused.issues[0]!).sort()).toEqual(['code', 'message', 'path']);
 	});
 
-	it('records the per-accept cost on the densest current fixture', async () => {
+	it('records acceptance cost on a dense current candidate with real curved geometry', async () => {
 		const { project } = buildDenseCurrentSourceFixture();
+		const denseLayout = buildP23BMatrixFixture(P23B_MATRIX_SPECS.find((spec) => spec.size === '40-wall' && spec.curvature === 'all-curved')!);
+		project.layout = { ...denseLayout, objects: project.layout.objects };
+		expect(project.layout.walls).toHaveLength(40);
 		expect(project.scene.entities).toHaveLength(240);
+		const baseline = await admitCurrentSourceContent(project);
+		if (baseline.kind !== 'admitted') throw new Error(baseline.message);
+		const inner = createCurrentSourceAdapter();
+		let observedCandidate: unknown;
+		let admissionMs = 0;
+		const adapter: AcceptanceSourceAdapter<ProjectDocument> = {
+			...inner,
+			async admit(candidate, issues) {
+				observedCandidate = candidate; // exactly what the coordinator handed in
+				const start = performance.now();
+				const result = await inner.admit(candidate, issues);
+				admissionMs = performance.now() - start;
+				return result;
+			}
+		};
+		const coordinator = createAcceptanceCoordinator({ adapter, sessionEpoch: 'cost',
+			baseline: { revision: REVISION, source: baseline.project, canonicalJson: baseline.canonicalJson, sourceContentId: baseline.sourceContentId },
+			planners: [createProofSceneScalarPlanner()] });
+		const acceptStart = performance.now();
+		const accepted = await coordinator.accept(proofIntent({ kind: PROOF_SCENE_SCALAR_KIND, operationId: 'dense-edit', expectedRevision: REVISION.revisionId,
+			projectId: REVISION.projectId, contentRevision: baseline.sourceContentId, targets: [], payload: { entityId: 'entity-plinth', receiveShadow: true } }));
+		const acceptMs = performance.now() - acceptStart;
+		expect(accepted.kind).toBe('accepted');
 
+		// Separate probes reuse the observed input, outside the measured acceptance.
 		const validationStart = performance.now();
-		const validated = validateProject(project);
+		expect(validateProject(observedCandidate).success).toBe(true);
 		const validationMs = performance.now() - validationStart;
-		expect(validated.success).toBe(true);
-
 		const serializationStart = performance.now();
-		const canonicalJson = serializeProject(project);
+		const canonical = canonicalSourceJson(observedCandidate);
 		const serializationMs = performance.now() - serializationStart;
-
+		if (canonical.kind !== 'canonical') throw new Error('candidate invalid');
 		const digestStart = performance.now();
-		const sourceContentId = await sourceContentIdForCanonicalJson(canonicalJson);
+		expect(await sourceContentIdForCanonicalJson(canonical.canonicalJson)).toBe(coordinator.current().sourceContentId);
 		const digestMs = performance.now() - digestStart;
-
-		const admissionStart = performance.now();
-		const admitted = await admitCurrentSourceContent(project);
-		const admissionMs = performance.now() - admissionStart;
-		expect(admitted.kind).toBe('admitted');
-		if (admitted.kind !== 'admitted') return;
-		expect(admitted.sourceContentId).toBe(sourceContentId);
-
-		// A recorded observation, never a gate: `tests/README.md` rule 11 forbids a
-		// wall-clock floor or threshold in this suite. The numbers exist so the
-		// acceptance record can state what per-accept validation, serialization and
-		// hashing actually cost on the densest current fixture (the TD-5 lesson)
-		// instead of asserting that they are cheap.
-		console.info(
-			`[T1.P01.S03] per-accept cost, dense current fixture (240 entities, 41 Layout objects): validate ${validationMs.toFixed(1)} ms · serialize ${serializationMs.toFixed(1)} ms · digest ${digestMs.toFixed(1)} ms · admission total ${admissionMs.toFixed(1)} ms`
-		);
+		// Observation only: no wall-clock assertion or permanent benchmark gate.
+		console.info(`[T1.P01.S03] dense candidate: 40 curved Walls, 10 Rooms, 41 Layout objects, 240 entities, ${canonical.canonicalJson.length} JSON characters; validate ${validationMs.toFixed(1)} ms · serialize ${serializationMs.toFixed(1)} ms · digest ${digestMs.toFixed(1)} ms · admission ${admissionMs.toFixed(1)} ms · acceptance ${acceptMs.toFixed(1)} ms`);
 	}, 30000);
 });

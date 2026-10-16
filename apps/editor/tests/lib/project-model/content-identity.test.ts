@@ -155,3 +155,33 @@ describe('current-source content identity', () => {
 		await expect(computeSourceContentId({ id: 'project-identity', name: 'Identity' })).rejects.toThrow();
 	});
 });
+
+it('excludes allocation bookkeeping from authored content identity', async () => {
+	const canonical = canonicalSourceJson(baseProject());
+	if (canonical.kind !== 'canonical') throw new Error('fixture invalid');
+	const changed = structuredClone(canonical.project);
+	changed.layout.identity!.cursor += 100;
+	expect(validateProject(changed).success).toBe(true);
+	expect(await computeSourceContentId(changed)).toBe(await computeSourceContentId(canonical.project));
+});
+
+it('canonicalizes nested identity maps independently of input insertion order', async () => {
+	const project = baseProject();
+	project.layout.identity = { cursor: 2, rooms: {}, junctions: {}, walls: { 'wall-z': 'W-2222', 'wall-a': 'W-2223' }, openings: {} };
+	// Reversing every object includes fixed codec fields and ID-keyed ledger maps.
+	function reversed(value: unknown): unknown {
+		if (Array.isArray(value)) return value.map(reversed);
+		if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).reverse().map(([k, v]) => [k, reversed(v)]));
+		return value;
+	}
+	const other = reversed(project);
+	expect(await computeSourceContentId(other)).toBe(await computeSourceContentId(project));
+	const a = canonicalSourceJson(project);
+	const b = canonicalSourceJson(other);
+	expect(a.kind).toBe('canonical');
+	expect(b.kind).toBe('canonical');
+	if (a.kind === 'canonical' && b.kind === 'canonical') expect(a.canonicalJson).toBe(b.canonicalJson);
+	const changed = structuredClone(project);
+	changed.layout.identity!.walls['wall-z'] = 'W-2224';
+	expect(await computeSourceContentId(changed)).not.toBe(await computeSourceContentId(project));
+});

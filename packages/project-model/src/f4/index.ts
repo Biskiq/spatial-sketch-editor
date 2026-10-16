@@ -23,3 +23,4 @@ export * from './types';
 export * from './intent';
 export * from './prepare';
 export * from './admission';
+export { immutableF4Data, freezeF4Data } from './immutable';

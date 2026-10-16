@@ -32,15 +32,16 @@
  * which `T3.P01.S02`'s shared validation needs.
  */
 
+import { immutableF4Data, freezeF4Data } from './immutable';
 import {
 	hasBlockingLayoutIssues,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	type LayoutGeometryIssue
 } from '@portfolio/layout-core';
 import type { ShapeIssue } from '../strict-shape';
-import { ProjectValidationError, serializeProject } from '../project-codec';
+import { ProjectValidationError } from '../project-codec';
 import { prepareRuntime, type RuntimeReady } from '../runtime';
-import { sourceContentIdForCanonicalJson } from '../content-identity';
+import { canonicalSourceJson, sourceContentIdForCanonicalJson } from '../content-identity';
 import type { SceneValidationOptions } from '../scene-codec';
 import type { ProjectDocument, ProjectIssue } from '../project-types';
 import type {
@@ -118,12 +119,13 @@ export async function admitCurrentSource(
 	input: unknown,
 	options: CurrentSourceAdmissionOptions & { readonly acceptedRevision: AcceptedRevision }
 ): Promise<AdmittedCurrentSourceSnapshot | CurrentSourceRefusal> {
+	const revision = immutableF4Data(options.acceptedRevision);
 	const admitted = await admitCurrentSourceContent(input, options);
 	if (admitted.kind === 'rejected') return admitted;
 	return {
 		...admitted,
-		acceptedRevision: options.acceptedRevision,
-		snapshot: createAcceptedSnapshot(options.acceptedRevision, admitted)
+		acceptedRevision: revision,
+		snapshot: createAcceptedSnapshot(revision, admitted)
 	};
 }
 
@@ -136,16 +138,17 @@ export function createAcceptedSnapshot(
 	acceptedRevision: AcceptedRevision,
 	admitted: AdmittedCurrentSource
 ): AcceptedSnapshot<ProjectDocument> {
-	return {
-		acceptedRevision,
+	const revision = immutableF4Data(acceptedRevision);
+	return freezeF4Data({
+		acceptedRevision: revision,
 		sourceContentId: admitted.sourceContentId,
 		sourceKind: CURRENT_SOURCE_KIND,
 		sourceVersion: CURRENT_SOURCE_VERSION,
 		domain: {
-			identity: { acceptedRevision, sourceContentId: admitted.sourceContentId },
+			identity: { acceptedRevision: revision, sourceContentId: admitted.sourceContentId },
 			source: admitted.project
 		}
-	};
+	});
 }
 
 /**
@@ -157,7 +160,7 @@ export async function admitCurrentSourceContent(
 	input: unknown,
 	options: CurrentSourceAdmissionOptions = {}
 ): Promise<AdmittedCurrentSource | CurrentSourceRefusal> {
-	const baseline = options.baselineBlockingIssues ?? [];
+	const baseline = immutableF4Data(options.baselineBlockingIssues ?? []);
 
 	const preparation = prepareRuntime(input, options.scene);
 	if (preparation.kind === 'rejected') {
@@ -186,7 +189,10 @@ export async function admitCurrentSourceContent(
 
 	let canonicalJson: string;
 	try {
-		canonicalJson = serializeProject(preparation.project, options.scene ? { scene: options.scene } : {});
+		const canonical = canonicalSourceJson(preparation.project, options.scene ? { scene: options.scene } : {});
+		if (canonical.kind === 'rejected') throw new ProjectValidationError(canonical.issues[0]!);
+		canonicalJson = canonical.canonicalJson;
+		preparation.project = canonical.project;
 	} catch (error) {
 		const issue = error instanceof ProjectValidationError
 			? error.issue
@@ -200,6 +206,7 @@ export async function admitCurrentSourceContent(
 		};
 	}
 
+	freezeF4Data(preparation.project);
 	return {
 		kind: 'admitted',
 		project: preparation.project,
@@ -224,6 +231,19 @@ export function createCurrentSourceAdapter(
 	return {
 		sourceKind: CURRENT_SOURCE_KIND,
 		sourceVersion: CURRENT_SOURCE_VERSION,
+		validateChange(before, after, domain) {
+			const issues: ShapeIssue[] = [];
+			function unchanged(path: string, a: unknown, b: unknown) {
+				if (JSON.stringify(a) !== JSON.stringify(b)) issues.push({ path, code: 'unsupported-change', message: `${path} is outside this ${domain} operation's admitted scope` });
+			}
+			unchanged('$.id', before.id, after.id);
+			unchanged('$.name', before.name, after.name);
+			if (domain === 'layout') unchanged('$.scene', before.scene, after.scene);
+			else if (domain === 'scene') unchanged('$.layout', before.layout, after.layout);
+			else issues.push({ path: '$', code: 'unsupported-domain', message: 'Only Layout or Scene changes are admitted' });
+			for (const key of ['navigationNodes', 'connections', 'materials', 'textures'] as const) unchanged(`$.scene.${key}`, before.scene[key], after.scene[key]);
+			return issues;
+		},
 		async admit(candidate, baselineBlockingIssues): Promise<SourceAdmission<ProjectDocument>> {
 			const admitted = await admitCurrentSourceContent(candidate, {
 				...options,

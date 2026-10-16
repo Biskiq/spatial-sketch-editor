@@ -16,6 +16,7 @@
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
+import { immutableF4Data, freezeF4Data } from './immutable';
 import { ShapeReader, type ShapeIssue, type ShapeValidation } from '../strict-shape';
 import { validateAcceptedRevision, validateSemanticReference } from '../references/validate';
 import { isResourceDomain, REFERENCE_DOMAINS, type SemanticDomain } from '../references/types';
@@ -60,6 +61,13 @@ export function validateAuthoringIntent(
 	options: IntentValidationOptions = {}
 ): ShapeValidation<AuthoringIntent> {
 	const reader = new ShapeReader();
+	const problem = deterministicProblem(input, '$');
+	if (problem !== null) return { success: false, issues: [problem] };
+	// structuredClone refuses transparent proxies that reflection cannot identify.
+	// Capture once: getters are already refused and no caller alias reaches planning.
+	try { input = immutableF4Data(input); } catch {
+		return { success: false, issues: [{ path: '$', code: 'not-deterministic', message: 'Intent must be capturable plain data' }] };
+	}
 	const record = reader.object(input, '$', INTENT_KEYS);
 	if (record === null) return { success: false, issues: reader.issues };
 
@@ -82,7 +90,7 @@ export function validateAuthoringIntent(
 
 	return {
 		success: true,
-		value: {
+		value: freezeF4Data({
 			version: F4_VERSION,
 			kind: kind!,
 			operationId: operationId!,
@@ -91,7 +99,7 @@ export function validateAuthoringIntent(
 			payload: payload!,
 			capturedInputs: capturedInputs!,
 			allocatedIds: allocatedIds!
-		},
+		}),
 		ignoredOptionalExtensions: []
 	};
 }
@@ -124,44 +132,33 @@ export function intentScope(intent: AuthoringIntent): IntentScope {
  * rather than inventing a second one.
  */
 export function deterministicProblem(value: unknown, path: string): DeterminismProblem | null {
-	if (value === null) return null;
-	switch (typeof value) {
-		case 'boolean':
-		case 'string':
-			return null;
-		case 'number':
-			return Number.isFinite(value)
-				? null
-				: { path, code: 'non-finite-number', message: `${path} must be a finite number` };
-		case 'object':
-			break;
-		default:
-			return {
-				path,
-				code: 'not-deterministic',
-				message: `${path} must be capturable data, not a ${typeof value}`
-			};
-	}
-	if (Array.isArray(value)) {
-		for (const [index, entry] of value.entries()) {
-			const problem = deterministicProblem(entry, `${path}[${index}]`);
-			if (problem !== null) return problem;
+	const active = new Set<object>();
+	function visit(value: unknown, path: string, depth: number): DeterminismProblem | null {
+		const invalid = (message: string): DeterminismProblem => ({ path, code: 'not-deterministic', message });
+		if (value === null || typeof value === 'string' || typeof value === 'boolean') return null;
+		if (typeof value === 'number') return Number.isFinite(value) ? null : { path, code: 'non-finite-number', message: `${path} must be finite` };
+		if (typeof value !== 'object') return invalid(`${path} must contain data only`);
+		if (depth > 128 || active.has(value)) return invalid(`${path} is cyclic or exceeds the capture depth`);
+		const array = Array.isArray(value);
+		const prototype = Object.getPrototypeOf(value);
+		if (prototype !== (array ? Array.prototype : Object.prototype) && !(prototype === null && !array)) return invalid(`${path} must be a plain object or array`);
+		const descriptors = Object.getOwnPropertyDescriptors(value);
+		if (array && Object.keys(descriptors).length !== (value as unknown[]).length + 1) return invalid(`${path} must be a dense data array`);
+		active.add(value);
+		for (const key of Reflect.ownKeys(descriptors)) {
+			if (array && key === 'length') continue;
+			const descriptor = descriptors[key as string];
+			if (typeof key !== 'string' || !descriptor || !('value' in descriptor) || !descriptor.enumerable) return invalid(`${path} must contain enumerable data properties only`);
+			if (array && !/^(0|[1-9][0-9]*)$/.test(key)) return invalid(`${path} has a non-index array property`);
+			const problem = visit(descriptor.value, `${path}.${key}`, depth + 1);
+			if (problem) return problem;
 		}
+		active.delete(value);
 		return null;
 	}
-	const prototype = Object.getPrototypeOf(value) as unknown;
-	if (prototype !== Object.prototype && prototype !== null) {
-		return {
-			path,
-			code: 'not-deterministic',
-			message: `${path} must be a plain object, not a class instance, handle or reactive proxy`
-		};
+	try { return visit(value, path, 0); } catch {
+		return { path, code: 'not-deterministic', message: `${path} cannot be inspected as plain data` };
 	}
-	for (const [key, entry] of Object.entries(value)) {
-		const problem = deterministicProblem(entry, `${path}.${key}`);
-		if (problem !== null) return problem;
-	}
-	return null;
 }
 
 function readDeterministicValue(reader: ShapeReader, input: unknown, path: string): F4JsonValue | null {
@@ -208,7 +205,7 @@ function readCapturedInputs(reader: ShapeReader, input: unknown): readonly Captu
 		if (record === null) continue;
 		const name = reader.string(record.name, `${path}.name`);
 		const value = readDeterministicValue(reader, record.value, `${path}.value`);
-		if (name === null || value === null) continue;
+		if (name === null) continue;
 		captured.push({ name, value });
 	}
 	return captured.length === input.length ? captured : null;

@@ -18,6 +18,7 @@
 
 import type { ShapeIssue } from '../strict-shape';
 import type { SemanticDomain } from '../references/types';
+import { immutableF4Data } from './immutable';
 import { intentScope, validateAuthoringIntent, type IntentValidationOptions } from './intent';
 import type {
 	AcceptanceRejectionCode,
@@ -75,6 +76,9 @@ export function createPlannerRegistry<Source>(): PlannerRegistry<Source> {
 			return byKind.get(kind) ?? null;
 		},
 		register(planner) {
+			if (!['layout', 'scene'].includes(planner.admission.domain)) {
+				return registrationRefusal('unsupported-domain', 'local-single-domain-v1 admits Layout and Scene planners only');
+			}
 			if (planner.admission.compound) {
 				return registrationRefusal(
 					'compound-acceptance',
@@ -105,7 +109,11 @@ export function createPlannerRegistry<Source>(): PlannerRegistry<Source> {
 					`operation kind "${planner.kind}" is already registered by another planner; one operation kind has one planner`
 				);
 			}
-			byKind.set(planner.kind, planner);
+			byKind.set(planner.kind, Object.freeze({ ...planner,
+				admission: immutableF4Data(planner.admission),
+				sourceKinds: immutableF4Data(planner.sourceKinds),
+				sourceVersions: immutableF4Data(planner.sourceVersions)
+			}));
 			return { kind: 'registered' };
 		}
 	};
@@ -137,14 +145,19 @@ export function prepareIntent<Source>(
 	registry: PlannerRegistry<Source>,
 	snapshot: AcceptedSnapshot<Source>,
 	intent: AuthoringIntent,
-	capturedInputs: readonly CapturedInput[] = intent.capturedInputs,
+	capturedInputs?: readonly CapturedInput[],
 	options: IntentValidationOptions = {}
 ): PrepareResult<Source> {
 	const validated = validateAuthoringIntent(intent, options);
 	if (!validated.success) {
 		return refusal('invalid-intent', null, 'The intent is not a valid, deterministic AuthoringIntent@1', validated.issues);
 	}
-	const valid = validated.value;
+	let valid = validated.value;
+	if (capturedInputs !== undefined) {
+		const captured = validateAuthoringIntent({ ...valid, capturedInputs }, options);
+		if (!captured.success) return refusal('invalid-intent', null, 'Captured inputs must be deterministic data', captured.issues);
+		valid = captured.value;
+	}
 	const scope = intentScope(valid);
 	if (scope.resourceKinds.length > 0) {
 		return refusal(
@@ -194,12 +207,15 @@ export function prepareIntent<Source>(
 		);
 	}
 
-	const outcome = planner.prepare({
+	let outcome;
+	try { outcome = planner.prepare({
 		snapshot,
 		intent: valid,
-		capturedInputs,
+		capturedInputs: valid.capturedInputs,
 		allocatedIds: valid.allocatedIds
-	});
+	}); } catch (error) {
+		return refusal('planner-rejected', 'planner-failed', error instanceof Error ? error.message : 'Planner failed', []);
+	}
 	if (outcome.kind === 'rejected') {
 		return refusal('planner-rejected', outcome.code, outcome.message, outcome.diagnostics);
 	}
@@ -223,7 +239,9 @@ export function prepareIntent<Source>(
 			[]
 		);
 	}
-	return { kind: 'prepared', candidate };
+	try { return { kind: 'prepared', candidate: immutableF4Data(candidate) }; } catch {
+		return refusal('planner-rejected', 'invalid-candidate', 'Candidate must be capturable data', []);
+	}
 }
 
 function refusal(

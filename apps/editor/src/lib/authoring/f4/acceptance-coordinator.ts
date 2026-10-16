@@ -1,42 +1,4 @@
-/**
- * The editor-only F.4 acceptance coordinator (T1.P01.S03, plan §Scope and
- * §Concurrency and lifetime invariants).
- *
- * One boundary admits registered Layout or Scene planners over the current
- * source: registration → preparation → admission → **one** atomic install with
- * exactly one undo result, published exactly once. The four invariants the plan
- * names are structural here, not aspirational:
- *
- * - **Revision minting is outside planning.** Planning is pure and deterministic
- *   (`prepareIntent`); the coordinator mints the revision from its own ordinal
- *   after admission, so a replay compares *contents* and never ids, and a refused
- *   operation consumes no identity.
- * - **Installation is serialized.** Admission is the only asynchronous step, and
- *   the acceptance context (session epoch, then expected revision) is re-checked
- *   after it, in the same synchronous block that installs. Of two preparations
- *   against one expected revision, whichever resumes first installs and the other
- *   is refused as stale — whatever order their digests complete in.
- * - **The accepted revision is published once.** `accept`/`undo`/`redo`/`replace`
- *   each publish exactly one new revision, after the install is complete; nothing
- *   mutates a published snapshot, and a caller can never observe a half-installed
- *   state.
- * - **Content and revision are different identities.** An Undo back to earlier
- *   contents restores that *content* identity under a **fresh** revision, which is
- *   what lets a Camera output rebase report `unchanged` for restored contents
- *   while an exact F.1 reference keeps resolving.
- *
- * Editor-only on purpose (PR #127 decision 5): the shared AM-4 contracts and the
- * current-source admission live in `@portfolio/project-model` because the
- * public route's module graph includes that package, but this coordinator and its
- * history do not. They are proven unreachable from the public route by
- * `apps/editor/tests/lib/authoring/f4-public-isolation.test.ts`.
- *
- * It builds no Save (that is `T3.P01.S02`), no Stage wiring, no Undo/Redo
- * *commands* and no selection requalification (those are `T1.P01.S04`'s): this
- * slice returns correspondence as data and is provable without the host.
- */
-
-import { createPlannerRegistry, prepareIntent, sameRevision } from '@portfolio/project-model';
+import { createPlannerRegistry, prepareIntent, sameRevision, immutableF4Data, freezeF4Data, validateAuthoringIntent, validateAcceptedRevision } from '@portfolio/project-model';
 import type {
 	AcceptanceRejection,
 	AcceptanceRejectionCode,
@@ -48,11 +10,14 @@ import type {
 	AdmittedSource,
 	AuthoringIntent,
 	CapturedInput,
+	CorrespondenceEntry,
 	DomainPlanner,
 	RegistrationOutcome,
 	SessionEpoch,
 	ShapeIssue,
-	SourceAdmission
+	SourceAdmission,
+	PlannerRegistry,
+	PrepareResult
 } from '@portfolio/project-model';
 import { AUTHORING_HISTORY_LIMIT, AuthoringHistory, type HistoryState } from './history';
 
@@ -74,8 +39,12 @@ export type AcceptanceCoordinatorOptions<Source> = {
 	readonly baseline: AcceptanceBaseline<Source>;
 	/** Planners to register up front; refusals are reported, never thrown. */
 	readonly planners?: readonly DomainPlanner<Source>[];
-	readonly historyLimit?: number;
-	/** Deterministic in tests; the default derives an opaque id from the ordinal. */
+	/** Future source admission can extend preparation without replacing lifecycle/history. */
+	readonly preparation?: {
+		readonly registry: PlannerRegistry<Source>;
+		prepare(snapshot: AcceptedSnapshot<Source>, intent: AuthoringIntent, capturedInputs?: readonly CapturedInput[]): PrepareResult<Source>;
+	};
+	/** Deterministic in tests; production uses an opaque UUID outside planning. */
 	readonly mintRevisionId?: (ordinal: number) => string;
 };
 
@@ -99,12 +68,14 @@ export type HistoryOutcome<Source> =
 			readonly snapshot: AcceptedSnapshot<Source>;
 			/** The content identity restored — identical to the state it restores. */
 			readonly restoredContentId: string;
+			readonly correspondence: readonly CorrespondenceEntry[];
 	  }
 	| {
 			readonly kind: 'unavailable';
 			readonly direction: 'undo' | 'redo';
 			readonly revision: AcceptedRevision;
-	  };
+	  }
+	| { readonly kind: 'refused'; readonly direction: 'undo' | 'redo'; readonly code: AcceptanceRejectionCode; readonly message: string; readonly diagnostics: readonly ShapeIssue[] };
 
 export type AcceptanceCoordinator<Source> = {
 	readonly sourceKind: string;
@@ -120,8 +91,8 @@ export type AcceptanceCoordinator<Source> = {
 	/** Registration refusals this provider reported (compound, unit, resource, duplicate). */
 	registrationRefusals(): readonly { readonly reason: string; readonly message: string }[];
 	accept(intent: AuthoringIntent, capturedInputs?: readonly CapturedInput[]): Promise<AcceptanceResult<Source>>;
-	undo(): HistoryOutcome<Source>;
-	redo(): HistoryOutcome<Source>;
+	undo(): Promise<HistoryOutcome<Source>>;
+	redo(): Promise<HistoryOutcome<Source>>;
 	history(): { readonly depth: number; readonly position: number; readonly limit: number };
 	canUndo(): boolean;
 	canRedo(): boolean;
@@ -135,306 +106,186 @@ export type AcceptanceCoordinator<Source> = {
 	replace(next: { readonly revision: AcceptedRevision; readonly source: unknown; readonly sessionEpoch?: SessionEpoch }): Promise<ReplaceOutcome>;
 };
 
+/**
+ * Editor-only serialized acceptance. Every async completion rechecks an internal
+ * lifetime generation and exact revision before one immutable install. History
+ * restoration uses the same adapter and commits its cursor only after admission.
+ */
 export function createAcceptanceCoordinator<Source>(
 	options: AcceptanceCoordinatorOptions<Source>
 ): AcceptanceCoordinator<Source> {
-	const registry = createPlannerRegistry<Source>();
+	const adapter = Object.freeze({ ...options.adapter });
+	const registry = options.preparation?.registry ?? createPlannerRegistry<Source>();
+	const prepare = options.preparation?.prepare.bind(options.preparation) ??
+		((snapshot: AcceptedSnapshot<Source>, intent: AuthoringIntent, inputs?: readonly CapturedInput[]) => prepareIntent(registry, snapshot, intent, inputs));
 	const refusals: { reason: string; message: string }[] = [];
-	for (const planner of options.planners ?? []) {
+	function register(planner: DomainPlanner<Source>): RegistrationOutcome {
 		const outcome = registry.register(planner);
 		if (outcome.kind === 'refused') refusals.push({ reason: outcome.reason, message: outcome.message });
+		return outcome;
 	}
-
-	const mint = options.mintRevisionId ?? ((ordinal: number) => `accepted-${ordinal}`);
-	let epoch: SessionEpoch = options.sessionEpoch;
-	let epochOrdinal = 0;
-	let revisionOrdinal = 0;
-	let installs = 1; // the baseline is one published revision
-	let current = admittedFrom(options.baseline);
-	const history = new AuthoringHistory<Source>(stateOf(current), options.historyLimit ?? AUTHORING_HISTORY_LIMIT);
+	for (const planner of options.planners ?? []) register(planner);
+	const mint = options.mintRevisionId ?? (() => crypto.randomUUID());
+	let epoch = options.sessionEpoch;
+	let generation = 0;
+	let replacing = false;
+	let ordinal = 0;
+	let installs = 1;
+	let current: AdmittedSource<Source> = immutableF4Data({
+		...options.baseline,
+		blockingIssues: options.baseline.blockingIssues ?? [],
+		operationId: options.baseline.operationId ?? 'session-boot',
+		correspondence: []
+	});
+	const seenRevisions = new Set([revisionKey(current.revision)]);
+	const seenEpochs = new Set([epoch]);
+	const history = new AuthoringHistory<Source>(stateOf(current), AUTHORING_HISTORY_LIMIT);
 
 	function snapshotOf(admitted: AdmittedSource<Source>): AcceptedSnapshot<Source> {
-		return {
-			acceptedRevision: admitted.revision,
-			sourceContentId: admitted.sourceContentId,
-			sourceKind: options.adapter.sourceKind,
-			sourceVersion: options.adapter.sourceVersion,
-			domain: {
-				identity: {
-					acceptedRevision: admitted.revision,
-					sourceContentId: admitted.sourceContentId
-				},
-				source: admitted.source
-			}
-		};
+		return freezeF4Data({
+			acceptedRevision: admitted.revision, sourceContentId: admitted.sourceContentId,
+			sourceKind: adapter.sourceKind, sourceVersion: adapter.sourceVersion,
+			domain: { identity: { acceptedRevision: admitted.revision, sourceContentId: admitted.sourceContentId }, source: admitted.source }
+		});
 	}
-
-	function rejection(
-		intent: AuthoringIntent,
-		code: AcceptanceRejectionCode,
-		reason: string | null,
-		message: string,
-		diagnostics: AcceptanceRejection['diagnostics'],
-		actualRevision: AcceptedRevision | null
-	): AcceptanceRejection {
-		return {
-			kind: 'rejected',
-			operationId: intent.operationId,
-			code,
-			reason,
-			message,
-			expectedRevision: intent.expectedRevision,
-			actualRevision,
-			diagnostics
-		};
+	function rejection(intent: AuthoringIntent, code: AcceptanceRejectionCode, reason: string | null, message: string, diagnostics: readonly ShapeIssue[] = [], actualRevision: AcceptedRevision | null = current.revision): AcceptanceRejection {
+		return freezeF4Data({ kind: 'rejected', operationId: intent.operationId, code, reason, message, expectedRevision: intent.expectedRevision, actualRevision, diagnostics });
 	}
-
-	/**
-	 * One accepted install: mint the revision, publish the state and — only when the
-	 * install is a **new** accepted state — record it in the chronological history.
-	 * An Undo/Redo *restores* a state the stack already holds, so it moves the
-	 * cursor and records nothing: pushing there would truncate the redo branch and
-	 * duplicate an entry, which is exactly what a restore is not. Replacement keeps
-	 * its own new baseline. Synchronous by construction — no caller can interleave
-	 * between the checks and the install.
-	 */
-	function install(state: HistoryState<Source>, recordHistoryEntry: boolean): AdmittedSource<Source> {
-		const admitted: AdmittedSource<Source> = {
-			revision: { projectId: current.revision.projectId, revisionId: mint(++revisionOrdinal) },
-			source: state.source,
-			canonicalJson: state.canonicalJson,
-			sourceContentId: state.sourceContentId,
-			blockingIssues: state.blockingIssues,
-			operationId: state.operationId,
-			correspondence: state.correspondence
-		};
-		current = admitted;
+	function freshRevision(): AcceptedRevision | null {
+		try {
+			const next = { projectId: current.revision.projectId, revisionId: mint(++ordinal) };
+			return validateAcceptedRevision(next).success && !seenRevisions.has(revisionKey(next)) ? freezeF4Data(next) : null;
+		} catch { return null; }
+	}
+	function install(state: HistoryState<Source>, revision: AcceptedRevision, record: boolean): AdmittedSource<Source> {
+		current = freezeF4Data({ ...state, revision });
+		seenRevisions.add(revisionKey(revision));
+		if (record) history.push(stateOf(current));
 		installs += 1;
-		if (recordHistoryEntry) history.push(stateOf(admitted));
-		return admitted;
+		return current;
+	}
+	async function admit(source: unknown, issues: readonly AdmissionIssue[]): Promise<SourceAdmission<Source>> {
+		try { return await adapter.admit(source, issues); } catch (error) {
+			return { kind: 'rejected', code: 'admission-failed', message: error instanceof Error ? error.message : 'Source admission failed', issues: [] };
+		}
+	}
+	function historyRefusal(direction: 'undo' | 'redo', code: AcceptanceRejectionCode, message: string, diagnostics: readonly ShapeIssue[] = []): HistoryOutcome<Source> {
+		return { kind: 'refused', direction, code, message, diagnostics };
+	}
+	async function restore(direction: 'undo' | 'redo'): Promise<HistoryOutcome<Source>> {
+		if (replacing) return historyRefusal(direction, 'superseded-epoch', 'Project replacement is in progress');
+		const state = history.peek(direction);
+		if (!state) return { kind: 'unavailable', direction, revision: current.revision };
+		const before = current;
+		const requestGeneration = generation;
+		const admission = await admit(state.source, before.blockingIssues);
+		if (generation !== requestGeneration) return historyRefusal(direction, 'superseded-epoch', 'The session was replaced');
+		if (!sameRevision(current.revision, before.revision)) return historyRefusal(direction, 'stale-revision', 'The accepted revision moved during restoration');
+		if (admission.kind === 'rejected') return historyRefusal(direction, 'admission-refused', admission.message, admission.issues);
+		if (admission.canonicalJson !== state.canonicalJson || admission.sourceContentId !== state.sourceContentId) return historyRefusal(direction, 'admission-refused', 'Restoration must preserve the exact recorded source');
+		const revision = freshRevision();
+		if (!revision) return historyRefusal(direction, 'admission-refused', 'Revision mint must return a fresh valid identity');
+		const correspondence = direction === 'redo' ? state.correspondence : before.correspondence.map(invertCorrespondence);
+		const after = install(state, revision, false);
+		if (direction === 'undo') history.undo(); else history.redo();
+		return freezeF4Data({ kind: 'restored', direction, beforeRevision: before.revision, afterRevision: after.revision, snapshot: snapshotOf(after), restoredContentId: state.sourceContentId,
+			correspondence: qualifyCorrespondence(correspondence, before.sourceContentId, after.sourceContentId) });
 	}
 
 	return {
-		sourceKind: options.adapter.sourceKind,
-		sourceVersion: options.adapter.sourceVersion,
-
-		sessionEpoch: () => epoch,
-		acceptedRevision: () => current.revision,
-		acceptedSnapshot: () => snapshotOf(current),
-		current: () => current,
-		installs: () => installs,
-
-		register(planner) {
-			const outcome = registry.register(planner);
-			if (outcome.kind === 'refused') refusals.push({ reason: outcome.reason, message: outcome.message });
-			return outcome;
-		},
-		planners: () => registry.planners(),
-		registrationRefusals: () => [...refusals],
-
-		async accept(intent, capturedInputs) {
-			const requestEpoch = epoch;
-			const prepared = prepareIntent(
-				registry,
-				snapshotOf(current),
-				intent,
-				capturedInputs ?? intent.capturedInputs
-			);
+		sourceKind: adapter.sourceKind, sourceVersion: adapter.sourceVersion,
+		sessionEpoch: () => epoch, acceptedRevision: () => current.revision,
+		acceptedSnapshot: () => snapshotOf(current), current: () => current,
+		installs: () => installs, register, planners: () => registry.planners(),
+		registrationRefusals: () => immutableF4Data(refusals),
+		async accept(input, capturedInputs) {
+			let validation = validateAuthoringIntent(input);
+			if (validation.success && capturedInputs !== undefined) validation = validateAuthoringIntent({ ...validation.value, capturedInputs });
+			if (!validation.success) return { kind: 'rejected', operationId: '', code: 'invalid-intent', reason: null, message: 'Intent must be deterministic AuthoringIntent@1 data', expectedRevision: null, actualRevision: null, diagnostics: validation.issues };
+			const intent = validation.value;
+			if (replacing) return rejection(intent, 'superseded-epoch', null, 'Project replacement is in progress', [], null);
+			const requestGeneration = generation;
+			const before = current;
+			if (!registry.plannerFor(intent.kind)) return rejection(intent, 'unsupported-operation', null, 'The operation has no registered planner', [], null);
+			if (!sameRevision(before.revision, intent.expectedRevision)) return rejection(intent, 'stale-revision', null, 'The expected accepted revision is stale');
+			let prepared: PrepareResult<Source>;
+			try { prepared = prepare(snapshotOf(before), intent, intent.capturedInputs); } catch (error) {
+				return rejection(intent, 'planner-rejected', 'planner-failed', error instanceof Error ? error.message : 'Planner failed');
+			}
 			if (prepared.kind === 'refused') {
-				// A planner's own `no_op` is the first-class no-op result: nothing was
-				// accepted, so nothing is installed and no history entry appears.
-				if (prepared.reason === 'no_op') {
-					return { kind: 'no-op', operationId: intent.operationId, revision: current.revision };
-				}
-				return rejection(
-					intent,
-					prepared.code,
-					prepared.reason,
-					prepared.message,
-					prepared.diagnostics,
-					current.revision
-				);
+				if (prepared.reason === 'no_op') return { kind: 'no-op', operationId: intent.operationId, revision: current.revision };
+				return rejection(intent, prepared.code, prepared.reason, prepared.message, prepared.diagnostics,
+					prepared.code === 'stale-revision' || prepared.code === 'planner-rejected' ? current.revision : null);
 			}
-
-			const candidate = prepared.candidate;
-			// The one asynchronous step. Everything after it re-checks the context.
-			const admission: SourceAdmission<Source> = await options.adapter.admit(
-				candidate.source,
-				current.blockingIssues
-			);
-
-			if (epoch !== requestEpoch) {
-				return rejection(
-					intent,
-					'superseded-epoch',
-					null,
-					`the host session epoch moved from "${requestEpoch}" to "${epoch}" while the operation was prepared; this completion cannot install`,
-					[],
-					null
-				);
+			let candidate;
+			try { candidate = immutableF4Data(prepared.candidate); } catch {
+				return rejection(intent, 'planner-rejected', 'invalid-candidate', 'Candidate must be capturable data');
 			}
-			if (!sameRevision(current.revision, intent.expectedRevision)) {
-				return rejection(
-					intent,
-					'stale-revision',
-					null,
-					`the operation answered revision "${intent.expectedRevision.revisionId}" and the accepted revision is now "${current.revision.revisionId}"`,
-					[],
-					current.revision
-				);
+			if (candidate.operationId !== intent.operationId || candidate.sourceKind !== adapter.sourceKind || candidate.sourceVersion !== adapter.sourceVersion) return rejection(intent, 'planner-rejected', 'invalid-candidate', 'Candidate must describe this operation and source format');
+			const admission = await admit(candidate.source, before.blockingIssues);
+			if (generation !== requestGeneration) return rejection(intent, 'superseded-epoch', null, 'The session was replaced during preparation', [], null);
+			if (!sameRevision(current.revision, before.revision)) return rejection(intent, 'stale-revision', null, 'The accepted revision moved during preparation');
+			if (admission.kind === 'rejected') return rejection(intent, 'admission-refused', admission.code, admission.message, admission.issues);
+			const planner = registry.plannerFor(intent.kind);
+			if (!planner) return rejection(intent, 'unsupported-operation', null, 'The operation has no registered planner', [], null);
+			let scopeIssues: readonly ShapeIssue[];
+			try { scopeIssues = adapter.validateChange?.(before.source, admission.source, planner.admission.domain) ?? []; } catch {
+				return rejection(intent, 'admission-refused', 'scope-check-failed', 'Candidate scope validation failed');
 			}
-			if (admission.kind === 'rejected') {
-				return rejection(
-					intent,
-					'admission-refused',
-					admission.code,
-					admission.message,
-					admission.issues,
-					current.revision
-				);
-			}
-			if (admission.sourceContentId === current.sourceContentId) {
-				// Identical authored contents: an acceptance would mint a revision for
-				// no change and add a history entry that undoes to itself.
-				return { kind: 'no-op', operationId: intent.operationId, revision: current.revision };
-			}
-
-			// From here to the install there is no `await`: this is the serialized
-			// block that makes two preparations against one expected revision resolve
-			// to exactly one install and one stale refusal.
-			const before = current;
-			const after = install(
-				{
-					source: admission.source,
-					canonicalJson: admission.canonicalJson,
-					sourceContentId: admission.sourceContentId,
-					operationId: intent.operationId,
-					blockingIssues: admission.blockingIssues,
-					correspondence: candidate.correspondence
-				},
-				true
-			);
-			return {
-				kind: 'accepted',
-				operationId: intent.operationId,
-				beforeRevision: before.revision,
-				afterRevision: after.revision,
-				snapshot: snapshotOf(after),
-				changes: candidate.changes,
-				correspondence: candidate.correspondence,
-				undoResult: history.canUndo()
-					? {
-							kind: 'undoable',
-							beforeRevision: before.revision,
-							// The one inverse of this install: restoring the before-state.
-							// A domain inverse is never executed, so the accepted operation's
-							// own id is the inverse's identity.
-							inverseOperationId: intent.operationId
-						}
-					: { kind: 'none' }
-			};
+			if (scopeIssues.length) return rejection(intent, 'admission-refused', 'unsupported-change', 'Candidate changes contents outside its admitted domain', scopeIssues);
+			if (admission.sourceContentId === before.sourceContentId) return { kind: 'no-op', operationId: intent.operationId, revision: current.revision };
+			const revision = freshRevision();
+			if (!revision) return rejection(intent, 'admission-refused', 'reused-revision', 'Revision mint must return a fresh valid identity');
+			const correspondence = qualifyCorrespondence(candidate.correspondence, before.sourceContentId, admission.sourceContentId);
+			const state = immutableF4Data({ source: admission.source, canonicalJson: admission.canonicalJson, sourceContentId: admission.sourceContentId,
+				operationId: intent.operationId, blockingIssues: admission.blockingIssues, correspondence });
+			const after = install(state, revision, true);
+			return freezeF4Data({ kind: 'accepted', operationId: intent.operationId, beforeRevision: before.revision, afterRevision: after.revision,
+				snapshot: snapshotOf(after), changes: candidate.changes, correspondence,
+				undoResult: history.canUndo() ? { kind: 'undoable', beforeRevision: before.revision, inverseOperationId: intent.operationId } : { kind: 'none' } });
 		},
-
-		undo() {
-			const state = history.undo();
-			if (state === null) {
-				return { kind: 'unavailable', direction: 'undo', revision: current.revision };
-			}
-			const before = current;
-			// A fresh revision for the restored content: the state was admitted when
-			// it was first installed, so restoration needs no second admission — the
-			// host's options and this session's adapter cannot have changed for it.
-			const after = install(state, false);
-			return {
-				kind: 'restored',
-				direction: 'undo',
-				beforeRevision: before.revision,
-				afterRevision: after.revision,
-				snapshot: snapshotOf(after),
-				restoredContentId: state.sourceContentId
-			};
-		},
-
-		redo() {
-			const state = history.redo();
-			if (state === null) {
-				return { kind: 'unavailable', direction: 'redo', revision: current.revision };
-			}
-			const before = current;
-			const after = install(state, false);
-			return {
-				kind: 'restored',
-				direction: 'redo',
-				beforeRevision: before.revision,
-				afterRevision: after.revision,
-				snapshot: snapshotOf(after),
-				restoredContentId: state.sourceContentId
-			};
-		},
-
+		undo: () => restore('undo'), redo: () => restore('redo'),
 		history: () => ({ depth: history.depth, position: history.position, limit: history.limit }),
-		canUndo: () => history.canUndo(),
-		canRedo: () => history.canRedo(),
-
-		async replace(next) {
-			// Replacement is a source transition, not an edit. The epoch moves **first**,
-			// before the new source is even admitted, so a completion still in flight
-			// from the project being replaced can never install. The replacement then
-			// goes through the same adapter every other source does: there is no
-			// direct-install bypass, and a refused replacement installs nothing.
-			// A replacement epoch is derived with its own prefix, so it can never
-			// coincide with the session epoch the caller supplied at construction (an
-			// equal epoch would let an in-flight completion from the replaced project
-			// pass the re-check below).
-			epoch = next.sessionEpoch ?? `replacement-${++epochOrdinal}`;
-			const requestEpoch = epoch;
-			const admission = await options.adapter.admit(next.source, []);
-			if (admission.kind === 'rejected') {
-				return { kind: 'refused', code: admission.code, message: admission.message, issues: admission.issues };
+		canUndo: () => history.canUndo(), canRedo: () => history.canRedo(),
+		async replace(input) {
+			const requestGeneration = ++generation;
+			replacing = true;
+			const requestedEpoch = input.sessionEpoch;
+			epoch = requestedEpoch && !seenEpochs.has(requestedEpoch) ? requestedEpoch : crypto.randomUUID();
+			seenEpochs.add(epoch);
+			try {
+				const next = immutableF4Data(input);
+				if (!validateAcceptedRevision(next.revision).success || seenRevisions.has(revisionKey(next.revision))) return { kind: 'refused', code: 'reused-revision', message: 'Replacement requires a fresh valid revision identity', issues: [] };
+				const admission = await admit(next.source, []);
+				if (generation !== requestGeneration) return { kind: 'refused', code: 'superseded-epoch', message: 'A newer replacement superseded this source', issues: [] };
+				if (admission.kind === 'rejected') return { kind: 'refused', code: admission.code, message: admission.message, issues: admission.issues };
+				const state = immutableF4Data({ source: admission.source, canonicalJson: admission.canonicalJson, sourceContentId: admission.sourceContentId,
+					blockingIssues: admission.blockingIssues, operationId: 'project-replacement', correspondence: [] });
+				install(state, next.revision, false);
+				history.replaceBaseline(stateOf(current));
+				return { kind: 'replaced', revision: current.revision, sourceContentId: current.sourceContentId };
+			} catch (error) {
+				return { kind: 'refused', code: 'invalid-source', message: error instanceof Error ? error.message : 'Invalid replacement source', issues: [] };
+			} finally {
+				if (generation === requestGeneration) replacing = false;
 			}
-			if (epoch !== requestEpoch) {
-				return {
-					kind: 'refused',
-					code: 'superseded-epoch',
-					message: `a newer session epoch ("${epoch}") replaced this one while the source was admitted`,
-					issues: []
-				};
-			}
-			current = {
-				revision: next.revision,
-				source: admission.source,
-				canonicalJson: admission.canonicalJson,
-				sourceContentId: admission.sourceContentId,
-				blockingIssues: admission.blockingIssues,
-				operationId: 'project-replacement',
-				correspondence: []
-			};
-			installs += 1;
-			history.replaceBaseline(stateOf(current));
-			return { kind: 'replaced', revision: current.revision, sourceContentId: current.sourceContentId };
 		}
 	};
 }
 
-function admittedFrom<Source>(baseline: AcceptanceBaseline<Source>): AdmittedSource<Source> {
-	return {
-		revision: baseline.revision,
-		source: baseline.source,
-		canonicalJson: baseline.canonicalJson,
-		sourceContentId: baseline.sourceContentId,
-		blockingIssues: baseline.blockingIssues ?? [],
-		operationId: baseline.operationId ?? 'session-boot',
-		correspondence: []
-	};
+function revisionKey(revision: AcceptedRevision): string {
+	return JSON.stringify([revision.projectId, revision.revisionId]);
 }
-
 function stateOf<Source>(admitted: AdmittedSource<Source>): HistoryState<Source> {
-	return {
-		source: admitted.source,
-		canonicalJson: admitted.canonicalJson,
-		sourceContentId: admitted.sourceContentId,
-		operationId: admitted.operationId,
-		blockingIssues: admitted.blockingIssues,
-		correspondence: admitted.correspondence
-	};
+	const { revision: _revision, ...state } = admitted;
+	return state;
+}
+function invertCorrespondence(entry: CorrespondenceEntry): CorrespondenceEntry {
+	return { relation: entry.relation === 'created' ? 'retired' : entry.relation === 'retired' ? 'created' : entry.relation, before: entry.after, after: entry.before };
+}
+function qualifyCorrespondence(entries: readonly CorrespondenceEntry[], beforeId: string, afterId: string): readonly CorrespondenceEntry[] {
+	return entries.map((entry) => ({ ...entry,
+		before: entry.before && { ...entry.before, revision: { kind: 'exact' as const, contentRevision: beforeId } },
+		after: entry.after && { ...entry.after, revision: { kind: 'exact' as const, contentRevision: afterId } }
+	}));
 }

@@ -37,7 +37,7 @@ export type HistoryState<Source> = {
 	readonly sourceContentId: string;
 	/** The operation that first produced this state (`session-boot` for the baseline). */
 	readonly operationId: string;
-	/** Blocking issues this state carries, so a restore reinstates its own baseline. */
+	/** Blocking issues this state carries; restoration is validated against the live baseline. */
 	readonly blockingIssues: readonly AdmissionIssue[];
 	readonly correspondence: readonly CorrespondenceEntry[];
 };
@@ -48,8 +48,8 @@ export class AuthoringHistory<Source> {
 	#cursor = 0;
 
 	constructor(initial: HistoryState<Source>, limit: number = AUTHORING_HISTORY_LIMIT) {
-		if (!Number.isInteger(limit) || limit < 1) {
-			throw new RangeError(`History limit must be a positive integer, received ${String(limit)}`);
+		if (!Number.isInteger(limit) || limit < 2 || limit > AUTHORING_HISTORY_LIMIT) {
+			throw new RangeError(`History limit must be an integer from 2 to 100, received ${String(limit)}`);
 		}
 		this.#limit = limit;
 		this.#states = [initial];
@@ -97,6 +97,12 @@ export class AuthoringHistory<Source> {
 			this.#states = this.#states.slice(this.#states.length - this.#limit);
 			this.#cursor = this.#states.length - 1;
 		}
+	}
+
+	/** Inspect without moving: validation and freshness checks precede cursor changes. */
+	peek(direction: 'undo' | 'redo'): HistoryState<Source> | null {
+		const index = this.#cursor + (direction === 'undo' ? -1 : 1);
+		return this.#states[index] ?? null;
 	}
 
 	/** Move one state back, or `null` when there is nothing to undo. No entry is added. */

@@ -253,6 +253,8 @@ export type AcceptanceSourceAdapter<Source> = {
 	readonly sourceKind: string;
 	readonly sourceVersion: number;
 	admit(candidate: unknown, baselineBlockingIssues: readonly AdmissionIssue[]): Promise<SourceAdmission<Source>>;
+	/** Adapter-owned unchanged-domain/resource guard; applied to the admitted candidate. */
+	validateChange?(before: Source, after: Source, domain: SemanticDomain): readonly ShapeIssue[];
 };
 
 /**

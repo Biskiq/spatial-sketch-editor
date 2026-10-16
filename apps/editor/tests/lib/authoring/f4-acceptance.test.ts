@@ -20,6 +20,7 @@ import {
 	PROOF_LAYOUT_TRANSFORM_KIND,
 	PROOF_SCENE_SCALAR_KIND,
 	buildCurrentSourceFixture,
+	buildFoldedPartitionProject,
 	createInvalidCandidatePlanner,
 	createOverreachingPlanner,
 	createProofLayoutPlanner,
@@ -31,8 +32,13 @@ import {
 import {
 	CURRENT_SOURCE_KIND,
 	admitCurrentSource,
+	admitCurrentSourceContent,
+	createEmptyWallFirstProject,
 	createCurrentSourceAdapter,
 	validateProject,
+	validateAuthoringIntent,
+	type DomainPlanner,
+	type PlannerRegistry,
 	type AcceptanceSourceAdapter,
 	type AcceptedRevision,
 	type ProjectDocument
@@ -45,7 +51,6 @@ const HISTORY_LIMIT = 100;
 async function boot(
 	overrides: {
 		readonly adapter?: AcceptanceSourceAdapter<ProjectDocument>;
-		readonly historyLimit?: number;
 	} = {}
 ) {
 	const fixture = buildCurrentSourceFixture();
@@ -66,8 +71,7 @@ async function boot(
 			createProofSceneScalarPlanner(),
 			createInvalidCandidatePlanner()
 		],
-		mintRevisionId: (ordinal: number) => `revision-${ordinal + 1}`,
-		historyLimit: overrides.historyLimit
+		mintRevisionId: (ordinal: number) => `revision-${ordinal + 1}`
 	});
 	return { coordinator, fixture, admitted };
 }
@@ -359,13 +363,13 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		const sceneState = coordinator.current();
 
 		// One mixed Layout/Scene stack: Undo walks it in exact reverse.
-		const undoOne = coordinator.undo();
+		const undoOne = await coordinator.undo();
 		expect(undoOne.kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(layoutState.canonicalJson);
-		const undoTwo = coordinator.undo();
+		const undoTwo = await coordinator.undo();
 		expect(undoTwo.kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(bootState.canonicalJson);
-		expect(coordinator.undo()).toEqual({
+		expect(await coordinator.undo()).toEqual({
 			kind: 'unavailable',
 			direction: 'undo',
 			revision: coordinator.current().revision
@@ -390,11 +394,11 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		expect(validated.canonicalJson).toBe(coordinator.current().canonicalJson);
 
 		// Redo walks forward again without re-planning.
-		expect(coordinator.redo().kind).toBe('restored');
+		expect((await coordinator.redo()).kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(layoutState.canonicalJson);
-		expect(coordinator.redo().kind).toBe('restored');
+		expect((await coordinator.redo()).kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(sceneState.canonicalJson);
-		expect(coordinator.redo()).toEqual({
+		expect(await coordinator.redo()).toEqual({
 			kind: 'unavailable',
 			direction: 'redo',
 			revision: coordinator.current().revision
@@ -422,8 +426,8 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		expect(coordinator.canUndo()).toBe(true);
 		expect(coordinator.canRedo()).toBe(false);
 
-		expect(coordinator.undo().kind).toBe('restored');
-		expect(coordinator.undo().kind).toBe('restored');
+		expect((await coordinator.undo()).kind).toBe('restored');
+		expect((await coordinator.undo()).kind).toBe('restored');
 		expect(coordinator.canRedo()).toBe(true);
 
 		const afterUndos = coordinator.current().canonicalJson;
@@ -446,9 +450,9 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 
 		// The state the branch edit started from is still one Undo away, not skipped:
 		// a branch edit appends to the timeline instead of overwriting its origin.
-		expect(coordinator.undo().kind).toBe('restored');
+		expect((await coordinator.undo()).kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(afterUndos);
-		expect(coordinator.redo().kind).toBe('restored');
+		expect((await coordinator.redo()).kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).not.toBe(afterUndos);
 		expect(coordinator.history()).toEqual({ depth: 99, position: 98, limit: HISTORY_LIMIT });
 	}, 30000);
@@ -534,4 +538,259 @@ describe('F.4 acceptance coordinator — single-domain scope', () => {
 		expect(coordinator.acceptedSnapshot().sourceKind).toBe(CURRENT_SOURCE_KIND);
 		expect(coordinator.acceptedSnapshot().domain.source.id).toBe('project-conformance');
 	});
+});
+
+// These cases challenge the coordinator with callers/planners that violate its assumptions.
+describe('F.4 adversarial boundary regressions', () => {
+	it('publishes detached immutable source, revision and history', async () => {
+		const { coordinator, admitted, fixture } = await boot();
+		const before = coordinator.current();
+		expect(() => { admitted.project.name = 'external mutation'; }).toThrow();
+		expect(coordinator.current().source.name).toBe(JSON.parse(before.canonicalJson).name);
+		expect(() => { coordinator.current().source.name = 'bypass'; }).toThrow();
+		expect(() => { (coordinator.acceptedRevision() as { revisionId: string }).revisionId = 'bypass'; }).toThrow();
+		const result = await coordinator.accept(layoutIntent(fixture, coordinator.acceptedRevision(), before.sourceContentId, 'immutable', [2, 0.5, 0]));
+		expect(result.kind).toBe('accepted');
+		if (result.kind !== 'accepted') return;
+		expect(() => { result.snapshot.domain.source.name = 'bypass'; }).toThrow();
+		await coordinator.undo();
+		expect(coordinator.current().source.name).toBe(JSON.parse(before.canonicalJson).name);
+	});
+
+	it('enforces domain, Camera, resource and project ownership on actual candidates', async () => {
+		for (const change of ['layout', 'camera', 'resources', 'project'] as const) {
+			const { coordinator } = await boot();
+			const before = coordinator.current();
+			const planner: DomainPlanner<ProjectDocument> = {
+				...createProofSceneScalarPlanner(), kind: `overreach-${change}`,
+				prepare({ snapshot, intent }) {
+					const source = structuredClone(snapshot.domain.source);
+					if (change === 'layout') source.layout.floor.name = 'wrong owner';
+					if (change === 'camera') source.scene.navigationNodes[0]!.label = 'wrong owner';
+					if (change === 'resources') source.scene.materials.push({ id: 'new-material', name: 'wrong owner', baseMaterialId: 'plaster-warm' });
+					if (change === 'project') source.name = 'wrong owner';
+					return { kind: 'prepared', candidate: { operationId: intent.operationId, sourceKind: CURRENT_SOURCE_KIND, sourceVersion: snapshot.sourceVersion, source, changes: [], correspondence: [], diagnostics: [] } };
+				}
+			};
+			coordinator.register(planner);
+			expect(await coordinator.accept({ ...sceneIntent(before.revision, before.sourceContentId, planner.kind, true), kind: planner.kind }), change).toMatchObject({ kind: 'rejected', code: 'admission-refused' });
+			expect(coordinator.current()).toEqual(before);
+			expect(coordinator.installs()).toBe(1);
+		}
+	});
+
+	it('revalidates Undo and preserves the cursor on refusal', async () => {
+		const inner = createCurrentSourceAdapter();
+		let refuse = false;
+		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...inner, async admit(candidate, issues) {
+			return refuse ? { kind: 'rejected', code: 'catalogue-changed', message: 'source no longer resolves', issues: [] } : inner.admit(candidate, issues);
+		} };
+		const { coordinator, fixture } = await boot({ adapter });
+		await coordinator.accept(layoutIntent(fixture, coordinator.acceptedRevision(), coordinator.current().sourceContentId, 'edit', [2, 0.5, 0]));
+		const before = coordinator.current();
+		const history = coordinator.history();
+		refuse = true;
+		expect(await coordinator.undo()).toMatchObject({ kind: 'refused', code: 'admission-refused' });
+		expect(coordinator.current()).toEqual(before);
+		expect(coordinator.history()).toEqual(history);
+	});
+
+	it('mints distinct default revisions across coordinator lifetimes and imported baselines', async () => {
+		const { admitted } = await boot();
+		const options = { adapter: createCurrentSourceAdapter(), sessionEpoch: 'session', baseline: { revision: { projectId: BOOT_REVISION.projectId, revisionId: 'accepted-1' }, source: admitted.project, canonicalJson: admitted.canonicalJson, sourceContentId: admitted.sourceContentId }, planners: [createProofSceneScalarPlanner()] };
+		const a = createAcceptanceCoordinator(options);
+		const b = createAcceptanceCoordinator(options);
+		const intent = sceneIntent(a.acceptedRevision(), a.current().sourceContentId, 'edit', true);
+		expect((await a.accept(intent)).kind).toBe('accepted');
+		expect(a.acceptedRevision()).not.toEqual(options.baseline.revision);
+		expect((await b.accept(intent)).kind).toBe('accepted');
+		expect(a.acceptedRevision()).not.toEqual(b.acceptedRevision());
+	});
+
+	it('captures the intent before admission and rejects caller-mutated stale requests', async () => {
+		const inner = createCurrentSourceAdapter();
+		const gates: Array<() => void> = [];
+		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...inner, admit(candidate, issues) { return new Promise((resolve) => gates.push(() => { void inner.admit(candidate, issues).then(resolve); })); } };
+		const { coordinator, fixture } = await boot({ adapter });
+		const id = coordinator.current().sourceContentId;
+		const stale = layoutIntent(fixture, BOOT_REVISION, id, 'captured', [2, 0.5, 0]);
+		const pending = coordinator.accept(stale);
+		const winner = coordinator.accept(sceneIntent(BOOT_REVISION, id, 'winner', true));
+		gates[1]!(); await winner;
+		(stale as { expectedRevision: AcceptedRevision }).expectedRevision = coordinator.acceptedRevision();
+		gates[0]!();
+		expect(await pending).toMatchObject({ kind: 'rejected', code: 'stale-revision' });
+		expect(coordinator.installs()).toBe(2);
+	});
+
+	it('invalidates pending work even when replacement reuses an epoch string', async () => {
+		const inner = createCurrentSourceAdapter();
+		const gates: Array<() => void> = [];
+		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...inner, admit(candidate, issues) { return new Promise((resolve) => gates.push(() => { void inner.admit(candidate, issues).then(resolve); })); } };
+		const { coordinator, fixture } = await boot({ adapter });
+		const pending = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().sourceContentId, 'old-epoch', [2, 0.5, 0]));
+		const replacing = coordinator.replace({ revision: { ...BOOT_REVISION, revisionId: 'replacement' }, source: fixture.project, sessionEpoch: 'session-1' });
+		gates[0]!();
+		expect(await pending).toMatchObject({ kind: 'rejected', code: 'superseded-epoch' });
+		gates[1]!(); await replacing;
+	});
+
+	it('qualifies correspondence to the accepted content', async () => {
+		const { coordinator } = await boot();
+		const result = await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'correspondence', true));
+		expect(result.kind).toBe('accepted');
+		if (result.kind !== 'accepted') return;
+		expect(result.correspondence[0]!.after!.revision).toEqual({ kind: 'exact', contentRevision: result.snapshot.sourceContentId });
+	});
+
+	it('rejects cycles and accessors without throwing or invoking code', () => {
+		const cyclic: Record<string, unknown> = {}; cyclic.self = cyclic;
+		let reads = 0;
+		const accessor = Object.defineProperty({}, 'value', { enumerable: true, get() { reads += 1; return reads; } });
+		for (const payload of [cyclic, accessor]) {
+			const input = { ...sceneIntent(BOOT_REVISION, 'digest', 'invalid', true), payload };
+			expect(() => validateAuthoringIntent(input)).not.toThrow();
+			expect(validateAuthoringIntent(input).success).toBe(false);
+		}
+		expect(reads).toBe(0);
+	});
+
+	it('retains null captured values and refuses closure overrides', async () => {
+		const { coordinator } = await boot();
+		const intent = sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'capture', true);
+		const result = validateAuthoringIntent({ ...intent, capturedInputs: [{ name: 'nullable', value: null }] });
+		expect(result.success).toBe(true);
+		if (result.success) expect(result.value.capturedInputs).toEqual([{ name: 'nullable', value: null }]);
+		expect(await coordinator.accept(intent, [{ name: 'closure', value: (() => 1) as never }])).toMatchObject({ kind: 'rejected', code: 'invalid-intent' });
+	});
+});
+
+// Controllable admission makes ordering deterministic without timing assertions.
+function controlledAdmission() {
+	const inner = createCurrentSourceAdapter();
+	const gates: Array<() => void> = [];
+	const adapter: AcceptanceSourceAdapter<ProjectDocument> = {
+		...inner,
+		admit(candidate, issues) {
+			return new Promise((resolve, reject) => gates.push(() => { void inner.admit(candidate, issues).then(resolve, reject); }));
+		}
+	};
+	return { adapter, gates };
+}
+
+describe('F.4 replacement and history contention', () => {
+	it('keeps only the latest replacement even with repeated epoch labels and reverse completion', async () => {
+		const { adapter, gates } = controlledAdmission();
+		const { coordinator, fixture } = await boot({ adapter });
+		const first = coordinator.replace({ source: { ...fixture.project, name: 'First' }, revision: { ...BOOT_REVISION, revisionId: 'first' }, sessionEpoch: 'same-label' });
+		const second = coordinator.replace({ source: { ...fixture.project, name: 'Second' }, revision: { ...BOOT_REVISION, revisionId: 'second' }, sessionEpoch: 'same-label' });
+		// An edit during replacement cannot install against the previous project.
+		expect(await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'during-replace', true))).toMatchObject({ kind: 'rejected', code: 'superseded-epoch' });
+		gates[1]!(); expect(await second).toMatchObject({ kind: 'replaced' });
+		gates[0]!(); expect(await first).toMatchObject({ kind: 'refused', code: 'superseded-epoch' });
+		expect(coordinator.current().source.name).toBe('Second');
+		expect(coordinator.installs()).toBe(2);
+	});
+
+	it('refuses reused replacement revisions and keeps the previous baseline', async () => {
+		const { coordinator, fixture } = await boot();
+		expect(await coordinator.replace({ source: { ...fixture.project, name: 'ABA' }, revision: BOOT_REVISION })).toMatchObject({ kind: 'refused', code: 'reused-revision' });
+		expect(coordinator.installs()).toBe(1);
+	});
+
+	it('does not move a stale Undo cursor when an edit wins admission first', async () => {
+		const { adapter, gates } = controlledAdmission();
+		const { coordinator, fixture } = await boot({ adapter });
+		const first = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().sourceContentId, 'first', [2, 0.5, 0]));
+		gates[0]!(); await first;
+		const undo = coordinator.undo();
+		const edit = coordinator.accept(sceneIntent(coordinator.acceptedRevision(), coordinator.current().sourceContentId, 'winner', true));
+		gates[2]!(); expect(await edit).toMatchObject({ kind: 'accepted' });
+		gates[1]!(); expect(await undo).toMatchObject({ kind: 'refused', code: 'stale-revision' });
+		expect(coordinator.history()).toEqual({ depth: 3, position: 2, limit: HISTORY_LIMIT });
+	});
+
+	it('refuses ABA after Undo restores the original contents', async () => {
+		const { coordinator, fixture } = await boot();
+		const originalId = coordinator.current().sourceContentId;
+		const stale = layoutIntent(fixture, BOOT_REVISION, originalId, 'stale', [2, 0.5, 0]);
+		await coordinator.accept(stale);
+		await coordinator.undo();
+		expect(coordinator.current().sourceContentId).toBe(originalId);
+		expect(await coordinator.accept(stale)).toMatchObject({ kind: 'rejected', code: 'stale-revision' });
+		expect(coordinator.history()).toEqual({ depth: 2, position: 0, limit: HISTORY_LIMIT });
+	});
+
+	it('handles digest failures as typed refusals without installing or truncating history', async () => {
+		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...createCurrentSourceAdapter(), async admit() { throw new Error('digest unavailable'); } };
+		const { coordinator } = await boot({ adapter });
+		expect(await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'failed-digest', true))).toMatchObject({ kind: 'rejected', code: 'admission-refused', reason: 'admission-failed' });
+		expect(coordinator.installs()).toBe(1);
+	});
+
+	it('rejects invalid input and planner exceptions without exposing writable state', async () => {
+		const { coordinator } = await boot();
+		expect(await coordinator.accept(null as never)).toMatchObject({ kind: 'rejected', code: 'invalid-intent', actualRevision: null });
+		coordinator.register({ ...createProofSceneScalarPlanner(), kind: 'throws', prepare() { throw new Error('planner error'); } });
+		expect(await coordinator.accept({ ...sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'throws', true), kind: 'throws' })).toMatchObject({ kind: 'rejected', code: 'planner-rejected' });
+		expect(coordinator.installs()).toBe(1);
+	});
+});
+
+it('reuses the enduring lifecycle/history with a source-independent preparation extension', async () => {
+	type Source = { value: number };
+	const planners = new Map<string, DomainPlanner<Source>>();
+	const registry: PlannerRegistry<Source> = {
+		register(planner) { planners.set(planner.kind, planner); return { kind: 'registered' }; },
+		planners: () => [...planners.values()], plannerFor: (kind) => planners.get(kind) ?? null
+	};
+	const adapter: AcceptanceSourceAdapter<Source> = {
+		sourceKind: 'conformance-other-source', sourceVersion: 1,
+		async admit(input) {
+			const source = input as Source;
+			if (!Number.isFinite(source.value)) return { kind: 'rejected', code: 'invalid-value', message: 'value must be finite', issues: [] };
+			return { kind: 'admitted', source, canonicalJson: JSON.stringify(source), sourceContentId: String(source.value), blockingIssues: [] };
+		}
+	};
+	const planner: DomainPlanner<Source> = { id: 'other', kind: 'other', sourceKinds: [adapter.sourceKind], sourceVersions: [1], admission: { domain: 'camera', compound: true, units: true, resources: false },
+		prepare({ intent, snapshot }) { return { kind: 'prepared', candidate: { operationId: intent.operationId, sourceKind: snapshot.sourceKind, sourceVersion: 1, source: { value: intent.payload as number }, changes: [], correspondence: [], diagnostics: [] } }; } };
+	const coordinator = createAcceptanceCoordinator({ adapter, sessionEpoch: 'other', baseline: { revision: BOOT_REVISION, source: { value: 0 }, canonicalJson: '{"value":0}', sourceContentId: '0' }, planners: [planner],
+		preparation: { registry, prepare(snapshot, intent) {
+			const outcome = planner.prepare({ snapshot, intent, capturedInputs: intent.capturedInputs, allocatedIds: intent.allocatedIds });
+			if (outcome.kind !== 'prepared') throw new Error('conformance planner failed');
+			return outcome;
+		} } });
+	const result = await coordinator.accept({ ...sceneIntent(BOOT_REVISION, '0', 'other', true), kind: 'other', targets: [], payload: 1 });
+	expect(result.kind).toBe('accepted');
+	expect(coordinator.acceptedSnapshot().domain.source).toEqual({ value: 1 });
+	expect(await coordinator.accept({ ...sceneIntent(BOOT_REVISION, '0', 'stale-other', true), kind: 'other', targets: [], payload: 2 })).toMatchObject({ kind: 'rejected', code: 'stale-revision' });
+	expect((await coordinator.undo()).kind).toBe('restored');
+	expect(coordinator.acceptedSnapshot().domain.source).toEqual({ value: 0 });
+	expect((await coordinator.redo()).kind).toBe('restored');
+	expect(coordinator.acceptedSnapshot().domain.source).toEqual({ value: 1 });
+});
+
+
+it('validates Undo blocking issues relative to the current accepted baseline after a repair', async () => {
+	const source = buildFoldedPartitionProject();
+	const blocked = await admitCurrentSourceContent(source);
+	if (blocked.kind !== 'rejected') throw new Error('fixture must have a blocking fold');
+	const baseline = await admitCurrentSourceContent(source, { baselineBlockingIssues: blocked.blockingIssues });
+	if (baseline.kind !== 'admitted') throw new Error('repair-mode baseline must be admitted');
+	const repair: DomainPlanner<ProjectDocument> = { ...createProofLayoutPlanner('unused'), kind: 'repair-layout',
+		prepare({ snapshot, intent }) { return { kind: 'prepared', candidate: {
+			operationId: intent.operationId, sourceKind: snapshot.sourceKind, sourceVersion: snapshot.sourceVersion,
+			source: { ...snapshot.domain.source, layout: createEmptyWallFirstProject({ id: 'unused', name: 'unused' }).layout },
+			changes: [], correspondence: [], diagnostics: []
+		} }; }
+	};
+	const coordinator = createAcceptanceCoordinator({ adapter: createCurrentSourceAdapter(), sessionEpoch: 'repair',
+		baseline: { revision: BOOT_REVISION, source: baseline.project, canonicalJson: baseline.canonicalJson, sourceContentId: baseline.sourceContentId, blockingIssues: baseline.blockingIssues }, planners: [repair] });
+	const result = await coordinator.accept({ ...sceneIntent(BOOT_REVISION, baseline.sourceContentId, 'repair', true), kind: repair.kind, targets: [] });
+	expect(result.kind).toBe('accepted');
+	expect(coordinator.current().blockingIssues).toEqual([]);
+	const current = coordinator.current();
+	expect(await coordinator.undo()).toMatchObject({ kind: 'refused', code: 'admission-refused' });
+	expect(coordinator.current()).toBe(current);
+	expect(coordinator.history()).toEqual({ depth: 2, position: 1, limit: HISTORY_LIMIT });
 });

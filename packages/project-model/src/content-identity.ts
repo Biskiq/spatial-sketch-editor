@@ -1,37 +1,9 @@
 /**
- * The one current-source **content** identity (T1.P01.S03, plan §Content
- * identity; PR #127 decision 4).
- *
- * One identity for one body of authored content, computed as the landed
- * `sha256Bytes` (./package-sha) over the strict writer's **canonical** bytes.
- * The canonical bytes are the current-format writer's own output
- * (`validateProject` → `canonicalJson`), built from the normalized document the
- * validator produced, so they carry the writer's key order and its fixed
- * indentation rather than the caller's:
- *
- * - **invariant to input key order** — the canonical document is assembled by
- *   the writer from the parsed values, not by re-serializing the caller's object;
- * - **invariant to input whitespace** — a JSON *string* is parsed first, and a
- *   parsed document has no whitespace to preserve;
- * - **equal for equal authored contents, different for different ones** — the
- *   digest is over the complete canonically ordered document, so a change
- *   anywhere in the authored Layout or Scene changes it;
- * - **free of acceptance bookkeeping** — revision ids, session epochs,
- *   allocation counters and history positions are held *beside* the current
- *   source (the F.1 draft puts accepted metadata outside the source JSON), so
- *   they cannot enter the digest. An Undo back to earlier contents restores that
- *   content's identity under a *fresh* accepted revision: content and revision
- *   are different identities on purpose (see ./references/read-adapter).
- *
- * Why one export: `T1.P01.S02` (boot), `T1.P01.S03` (acceptance/admission) and
- * later `T3.P01.S02` (server-side Save) all need this identity, and two
- * definitions would let `exact` references and Camera-output source identity
- * disagree after integration. Additive API only: nothing here changes a landed
- * contract.
- *
- * Runtime-safe: Web Crypto, the project codec and this package's own issue
- * vocabulary; no editor, renderer, Svelte or Three import. Usable server-side,
- * which is exactly what `T3.P01.S02`'s digest recomputation needs.
+ * One current-source authored identity for boot, acceptance and server Save.
+ * The current writer normalizes fixed fields; this boundary also orders the
+ * Layout identity maps. Only identity.cursor is omitted from the digest:
+ * LayoutIdentityLedger defines it as persisted allocation bookkeeping. Full
+ * canonicalJson retains it for exact Save/Load and Undo/Redo restoration.
  */
 
 import { sha256Bytes } from './package-sha';
@@ -50,14 +22,21 @@ export type SourceContentIdentity =
 
 /**
  * The one digest of canonical source bytes. The **only** place the identity's
- * byte framing is decided: the UTF-8 encoding of the writer's canonical JSON,
+ * byte framing is decided: UTF-8 canonical authored JSON (excluding the cursor),
  * hashed by the shared `sha256Bytes` primitive under its existing `sha256-<hex>`
  * form. A second caller that already holds canonical bytes (a server
  * recomputing the digest after an upload) reuses this rather than re-deriving
  * the framing.
  */
 export async function sourceContentIdForCanonicalJson(canonicalJson: string): Promise<string> {
-	return sha256Bytes(new TextEncoder().encode(canonicalJson));
+	// The writer preserves the allocation cursor for Save/Load, but Layout's
+	// authored identity excludes it (LayoutIdentityLedger). Keep all assignments.
+	const authored = JSON.parse(canonicalJson);
+	if (authored.layout?.identity) {
+		orderIdentityMaps(authored.layout.identity);
+		delete authored.layout.identity.cursor;
+	}
+	return sha256Bytes(new TextEncoder().encode(JSON.stringify(authored, null, 2) + '\n'));
 }
 
 /**
@@ -74,14 +53,12 @@ export async function tryComputeSourceContentId(
 	source: unknown,
 	options: ProjectValidationOptions = {}
 ): Promise<SourceContentIdentity> {
-	const parsed = parseSourceInput(source);
-	if (parsed.kind === 'rejected') return parsed;
-	const validated = validateProject(parsed.value, options);
-	if (!validated.success) return { kind: 'rejected', issues: validated.issues };
+	const canonical = canonicalSourceJson(source, options);
+	if (canonical.kind === 'rejected') return canonical;
 	return {
 		kind: 'computed',
-		sourceContentId: await sourceContentIdForCanonicalJson(validated.canonicalJson),
-		canonicalJson: validated.canonicalJson
+		sourceContentId: await sourceContentIdForCanonicalJson(canonical.canonicalJson),
+		canonicalJson: canonical.canonicalJson
 	};
 }
 
@@ -118,7 +95,9 @@ export function canonicalSourceJson(
 	if (parsed.kind === 'rejected') return parsed;
 	const validated = validateProject(parsed.value, options);
 	if (!validated.success) return { kind: 'rejected', issues: validated.issues };
-	return { kind: 'canonical', canonicalJson: validated.canonicalJson, project: validated.project };
+	// Dynamic ID-keyed maps are the only writer fields whose order follows input.
+	if (validated.project.layout.identity) orderIdentityMaps(validated.project.layout.identity);
+	return { kind: 'canonical', canonicalJson: JSON.stringify(validated.project, null, 2) + '\n', project: validated.project };
 }
 
 /**
@@ -143,5 +122,11 @@ function parseSourceInput(
 				}
 			]
 		};
+	}
+}
+
+function orderIdentityMaps(identity: NonNullable<ProjectDocument['layout']['identity']>): void {
+	for (const family of ['rooms', 'junctions', 'walls', 'openings'] as const) {
+		identity[family] = Object.fromEntries(Object.entries(identity[family]).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
 	}
 }
