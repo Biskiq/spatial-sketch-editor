@@ -83,23 +83,24 @@ records interface and evidence identity only — F semantics stay owned by
 [`../reference/composition-execution.md`](../reference/composition-execution.md) and its
 ratified amendments.
 
-| Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | ratified | T1.P01.S01 | — | — | — | — |
-| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | — | — | — | — | — |
-| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | ratified | T1.P01.S01 | — | — | — | — |
-| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | — | — | — | — | — |
-| F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — |
-| T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | — | — | — | — | — |
-| T3.camera-experience-cutover | — | capability | T3 | — | undrafted | — | — | — | — | — |
-| T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — |
+| Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit | Accepted capabilities |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | accepted | T1.P01.S01 | `packages/project-model/src/references` | `apps/editor/tests/lib/project-model/references-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F1.reference@1:references-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-references-v1.md` |
+| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | — | — | — | — | — | — |
+| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | accepted | T1.P01.S01 | `packages/project-model/src/channels` | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F3.channels@1:inspection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-inspection-v1.md` |
+| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | — | — | — | — | — | — |
+| F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
+| T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | — | — | — | — | — | — |
+| T3.camera-experience-cutover | — | capability | T3 | — | undrafted | — | — | — | — | — | — |
+| T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — | — |
 
 **Legend (enforced by `apps/editor/tests/docs/parallel-track-gates.test.ts`):**
 
 - **Kind** is `foundation` (a ratified cross-domain interface) or `capability` (a declared
   cutover in one track).
-- **State** is `undrafted | ratified | implemented | accepted | superseded`. None is ready
-  today: an undrafted gate has no version, and a ratified shape alone is not readiness.
+- **State** is `undrafted | ratified | implemented | accepted | superseded`. An undrafted
+  gate has no version, and a ratified shape alone is not readiness: only a row that is
+  `accepted`, with exactly one registered provider and recorded evidence, is ready.
   A `ratified` row names its amendment anchor and keeps empty evidence columns; its sole
   provider assignment lives in the amendment text until phase registration wires the
   `Provider slice` column.
@@ -116,14 +117,26 @@ ratified amendments.
   existing exports and conformance paths, and `accepted` additionally requires an existing
   acceptance record and a commit that is an ancestor of `HEAD`. A ratified-only gate, or one
   whose shared code is absent, never counts as ready.
+- **Accepted capabilities** holds this version's accepted scopes, one entry per scope, filed on
+  **its own** gate/version row: `` `Gate@Version:capability-vN` `` then `active` or `retired`, then
+  `—` and a durable record path carrying the scope's contract anchor, admitted source kinds,
+  prerequisites, extension slice, exports, conformance, acceptance and ancestor commit. That record
+  declares one row under its `Accepted capability` heading:
+  `Capability | Anchor | Source kinds | Prerequisites | Extension slice | Exports | Conformance | Acceptance | Commit`.
+  This is the capability-scope field the rule below resolves; a scope that is only planned stays in
+  its slice plan and records no entry here, and a `retired` entry keeps its recorded evidence while
+  admitting no new or in-progress consumer.
 - **Eligibility:** a slice in `in-progress` or `accepted` consumes only `accepted` rows, and
   every consumed `Gate@Version` must already have been `accepted` **at the trusted base**
   (`git merge-base HEAD main`) — a consumer cannot satisfy its own prerequisite by editing
   this register. A consumer of a `superseded` row is ineligible until it re-declares the new
   version; `shipped` slices keep their historical version. The finer capability-scope rule
   (`Accepted capabilities` / `Requires`, including a retired scope being ineligible) is defined
-  by the [capability-readiness rule](./f-foundation-contracts/README.md#capability-readiness);
-  its checker enforcement is authorized T1.P01.S01 work and is not installed here.
+  by the [capability-readiness rule](./f-foundation-contracts/README.md#capability-readiness)
+  and is enforced, with the rules above, by
+  [`parallel-track-gates.test.ts`](../../apps/editor/tests/docs/parallel-track-gates.test.ts)
+  (`capabilityProblems`); a `Requires` names an exact `Gate@Version:capability-vN` scope of a
+  gate the same row already declares in `Consumes`, resolved with its prerequisite closure.
 
 ## Lifecycle and completion events
 

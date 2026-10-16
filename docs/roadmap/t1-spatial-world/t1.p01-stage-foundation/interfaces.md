@@ -141,8 +141,9 @@ stable anchors, consumer list and version
 and acceptance still belong to the provider slices, so the drafts below remain proposals for that
 work. The Accepted-capabilities / Requires extension in
 [cross-track readiness](../../cross-track-execution.md#capability-readiness-amendment)
-is a ratified rule; the checker enforcing it is authorized `T1.P01.S01` work and is not installed
-yet. No change to F/reference, the global gate register or another track is made by this draft.
+is a ratified rule; the checker enforcing it is `T1.P01.S01` work, now installed and green in the
+arch lane's execution-structure gate. No change to F/reference, the global gate register or another
+track is made by this draft.
 
 ### F.1 Reference and resolution — S01 provider
 

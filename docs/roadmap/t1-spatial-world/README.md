@@ -1,7 +1,7 @@
 # T1 — Spatial world
 
-**Track:** T1 · **Status:** approved — T1.P01 registered and `T1.P01.S01` authorized, not started;
-S02–S06 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T1 · **Status:** approved — T1.P01 registered; `T1.P01.S01` shipped (shared F1/F3
+providers accepted), S02–S06 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
@@ -76,12 +76,12 @@ would be a self-dependency the phase cannot satisfy before it starts. The owner-
 contracts remain this phase's design basis, consumed as ratified shapes rather than as an accepted
 prerequisite gate.
 
-T1.P01 is registered and **T1.P01.S01 is authorized** (owner decision 2026-10-15,
-[record](../../reference/decisions/f-ratification-2026-10-15.md)). S01 supplies the shared
-`F1.reference@1` and `F3.channels@1` providers — its eventual accepted outputs
-`F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` — and the capability-readiness
-enforcement. Every other slice stays `proposed`, blocked by its own accepted prerequisites;
-registering this phase authorizes no other phase, slice or track.
+T1.P01 is registered and **T1.P01.S01 is accepted and shipped** (owner-authorized 2026-10-15,
+[record](../../reference/decisions/f-ratification-2026-10-15.md); independently accepted at
+`ee463d0b`). S01 supplied the shared `F1.reference@1` and `F3.channels@1` providers — its accepted
+outputs `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` — and the
+capability-readiness enforcement. Every other slice stays `proposed`, blocked by its own accepted
+prerequisites; registering this phase authorizes no other phase, slice or track.
 
 ## Starting foundation
 
