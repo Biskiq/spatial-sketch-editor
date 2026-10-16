@@ -75,3 +75,19 @@ remaining deferred items:         3   S03 interpreter; S04 activation/cutover/re
 permanent stubs added:            2   the owner-ratified hybrid preservation policy's accepted cost
 required merge method:            merge commit (P1); post-merge anchor verification remains owed
 ```
+
+## Closeout self-check
+
+```text
+acceptance    PASS — claims match evidence at reviewed revision; manual-owed rows = 0
+tier          PASS — architecture-integration evidence recorded; S04 integration route remains explicit
+shims         PASS — review found no unowned shim; closeout changed no production file
+promotion     PASS — no new durable fact required promotion beyond AM-2/AM-6/AM-7 contracts
+preservation  PASS — 2 prose stubs; plan retained for gate checker; anchors/tag valid and tag pushed
+routing       PASS — S01 shipped; T3.P01 stays in progress; registers and current baton agree
+baton         PASS — superseded batch authorization narrative removed; authorized remaining work routed
+stable        PASS — no pending-merge state or branch-head pin in live routers
+report        PASS — preservation counts, residual owners and recovery instructions recorded above
+scope         PASS — documentation-only closeout; no implementation, test or config changes
+P1            PASS — merge commit required; post-merge ancestor/show verification recorded above
+```
