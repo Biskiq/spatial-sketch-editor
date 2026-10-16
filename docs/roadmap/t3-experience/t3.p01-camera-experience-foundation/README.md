@@ -1,49 +1,57 @@
-# T3.P01 — Camera/Experience cutover and first authoring foundation
+# T3.P01 — Camera/Experience cutover foundation
 
-**Status:** track-local phase proposal for owner review, 2026-10-14. Planning is authorized;
-implementation is not. Candidate phase/slice identifiers below are not registered. No F
-amendment, gate version, provider assignment, acceptance or phase closure is ratified here.
-Route: [T3](../README.md) · [runbook](../../../operations/t3-experience/README.md) ·
-[gate register](../../README.md#gate-register).
+**Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` owner-authorized, approved and
+not started; S02–S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
+[gate register](../../README.md#gate-register) · **Runbook:**
+[T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
+[AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
+[F amendment drafts](./f-amendment-proposals.md)
 
-**Recommendation:** reuse T1's shared local F4, deliver conditional Save independently of F2
-activation, then prepare and activate the sole Camera/Experience source/runtime transition.
-Use the [coordinated allocation/readiness/DAG](../../cross-track-execution.md) and [F amendments](./f-amendment-proposals.md).
-All provider/version/capability assignments remain proposals. First T3 capability work is S01
-unit/program codecs after accepted common interfaces; S02 Save can run independently once local F4
-is accepted. Both implement against the landed r186 base (`74efb98b`: three 0.186.1, camera-core peer
-extended, Threlte unchanged); each plan records compatibility against that actual baseline.
+Registered by the owner decision of 2026-10-16
+([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) so that its first
+slice, `T3.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` and `T2.P01.S01`. That is
+the phase's only implementation permission: S02–S04 are registered as `proposed` and hold none, no
+gate changes state and no architecture-cycle transition is made.
 
-## 1. Bounded outcome
+**Phase scope (decided at registration).** This phase is the sole Camera/Experience
+**source/runtime transition**: shared unit and program codecs (S01), early conditional Save (S02),
+compound acceptance and runtime preparation (S03) and the live ownership cutover (S04), which is both
+the provider of `T3.camera-experience-cutover@1` and this phase's final gate. The proposal's first
+capture/Cut Preview slice and its integrated gate become the candidate next phase,
+[T3.P02 — First capture and Cut Preview](../t3.p02-capture-and-cut-preview/README.md): they consume a
+cutover gate that is still `undrafted` with no version, so they could not be registered truthfully,
+and the activation slice is already the exhaustive integration point. Capture/Cut Preview remains the
+first T3 authoring milestone and does not wait for advanced path, transport or media authoring.
 
-A creator continues local accepted editing with one history and explicit dirty state. Early Save
-uses a create-only or exact saved-base condition and atomic server validation/comparison; conflicts
+All slices implement against the landed r186 base (three 0.186.1, camera-core peer extended, Threlte
+unchanged) and record compatibility against their own actual base.
+
+## Bounded outcome
+
+A creator continues local accepted editing with one history and explicit dirty state. Early Save uses
+a create-only or exact saved-base condition and atomic server validation/comparison; conflicts
 preserve work. No per-edit server execution or separate cloud history is required.
 
-After one Camera/Experience source cutover, capture a View and bind a Presentation plus optional
-Guide Stop in one acceptance. Reuse a Presentation in distinct Stops, reorder by stable identity,
-set finite holds/continuation, and run a **Cut-based isolated Preview** with labels/text Info Panel,
-semantic navigation and reduced motion. Collection-capable source supports two Experiences over
-one world; the first UI may concentrate on one but switches between two in conformance.
+The phase then performs one Camera/Experience source cutover: Camera retains routes, intrinsic
+timing/framing and one output evaluator; Experience owns editorial order; collection-capable source
+supports several Experiences over one world. Existing supported Travel invokes the Camera engine with
+authored directional timing; missing support reports a gap, never an implicit Cut. Source conversion
+preserves supported existing paths/keys/envelopes.
 
-Camera retains routes, intrinsic timing/framing and one output evaluator. Existing supported
-Travel invokes that engine with authored directional timing; missing support reports a gap, never
-an implicit Cut. Source conversion preserves supported existing paths/keys/envelopes. First capture/
-Cut Preview does not wait for new path/anchor authoring, rich transport/scrub UI, media or broad
-behavior editing. Those are explicit T3 follow-on scope, with the same shared host and authority.
-
-Minimum runtime semantics include distinct Stop/run identity, Content/Info Panel,
+Minimum runtime semantics prepared here include distinct Stop/run identity, Content/Info Panel,
 Activate/DestinationReached, ShowContent, NavigateTo, real OpenUrl semantics, explicit Continue,
 finite holds, bounded guards/state and covered return-to-origin detours. All lower to one shared
-ExecutionProgram codec/interpreter consumed by Preview and T4. No parallel release language.
-DOM navigation reaches every admitted destination and explains gaps/repair; author preference
-cannot disable reduced motion. These phases do not complete publication UX or the whole product.
+ExecutionProgram codec/interpreter consumed by Preview (T3.P02) and T4. No parallel release language.
+DOM navigation reaches every admitted destination and explains gaps/repair; author preference cannot
+disable reduced motion. This phase does not complete publication UX or the first authoring surface.
 
-## 2. Investigated basis and implementation consequences
+## Investigated basis and implementation consequences
 
 Source baseline: 61baf02873a63d37e3f5a3e2992396f387600d38 (PR #116 merge), inspected in the
-prepared T3 worktree. This is planning evidence, not compatibility proof for the landed r186 base; each
-implementation plan verifies Camera/visitor behavior against `74efb98b`.
+prepared T3 worktree, and rechecked for the 2026-10-16 registration against post-PR #126 `main`
+(`6964c2dc`), where F1/F3 are landed and accepted and the persistence `PUT` is still unconditional.
+This is planning evidence, not compatibility proof; each implementation plan verifies
+Camera/visitor behavior against its own base.
 
 Read the [T3 evidence](../planning-evidence.md),
 [ratified architecture](../../../reference/architecture.md#semantic-authorities-ratified-destination),
@@ -78,7 +86,7 @@ node holds. Preserve Camera intrinsic framing/timing facts, and explicitly move 
 station holds to Experience invocation context where their use is unambiguous. Never blindly
 copy every similarly named field into Camera or silently discard unevaluated authored data.
 
-## 3. Ownership invariants
+## Ownership invariants
 
 | Concern | Sole authority after activation |
 | --- | --- |
@@ -114,154 +122,43 @@ Required laws:
 8. Authored anchors remain interior only. Endpoints, generated samples, geometry, Three
    objects, selection, session values and history are never authored document fields.
 
-## 4. Candidate slice sequence
+## Slice register
 
-All rows are proposed, without registration/authorization/acceptance. `Requires` is the proposed
-capability field, whose enforcement must be ratified/installed before consumers start. Each exact
-gate and scope must already be accepted at trusted base, including same-phase dependencies.
+Each slice's scope, exit evidence and verification tier live in its plan; this register owns
+lifecycle and prerequisites only.
 
-| Slice | Status | Consumes | Requires (proposed capability field) | Effects | Plan | Acceptance | Authorization |
+| Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P01.S01 | proposed | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit/program codecs](#s01-shared-unit-and-program-codecs) | — | — |
-| T3.P01.S02 | proposed | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](#s02-early-conditional-save) | — | — |
-| T3.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound/runtime preparation](#s03-compound-and-runtime-preparation) | — | — |
-| T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](#s04-live-ownership-cutover) | — | — |
-| T3.P01.S05 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | camera-authoring-migration | [First capture/Cut Preview](#s05-first-capture-and-cut-preview) | — | — |
-| T3.P01.S06 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Integrated final gate](#s06-integrated-final-gate) | — | — |
+| T3.P01.S01 | approved | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — approved, not started |
+| T3.P01.S02 | proposed | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | — |
+| T3.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | — |
+| T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
 
-Every non-base scope includes its declared base/prerequisite closure in the coordinated readiness
-proposal. No provider consumes the new scope it supplies. F4's sole gate provider stays T1 S03.
+`references-v1` and `inspection-v1` are accepted on post-PR #126 `main`, so S01 is eligible once
+this registration merges. S02 waits for `T1.P01.S03`'s accepted `local-single-domain-v1`. S03 waits
+for S01's `unit-envelope-v1`/`unit-resolution-v1` and S02's `conditional-save-current-v1`. As the
+[allocation](../../cross-track-execution.md#capability-readiness-amendment) records, S03 consumes the
+still-active current-source scopes while it builds the unit implementation, but the unit capabilities
+it exports declare only F2 and the enduring `acceptance-invariants-v1`. S04 consumes only the unit
+scopes. Every non-base scope includes its declared prerequisite
+closure; no provider consumes the new scope it supplies, and F4's sole gate provider stays
+`T1.P01.S03`.
 
-FINAL PHASE GATE: T3.P01.S06 → [integrated final-gate plan](#s06-integrated-final-gate).
-Acceptance and PHASE CLOSE remain absent. First authoring does not wait for phase closure.
+`T3.camera-experience-cutover` is `undrafted`. S04 is its intended sole provider, so the gate must be
+drafted and owner-ratified at version 1 before S04 is authorized; the T3.P02 registration follows.
 
-### S01 Shared unit and program codecs
+```text
+FINAL PHASE GATE: T3.P01.S04 → ./t3.p01.s04-live-ownership-cutover/acceptance.md
 
-VERIFICATION: architecture-integration
-INTEGRATION ROUTE: ./README.md#s06-integrated-final-gate
+PHASE CLOSE
+Stage:        active
+```
 
-After exact ratification, on the landed r186 base, implement the sole `F2.unit-envelope@1` provider with
-`unit-envelope-v1`, and extend F1 with `unit-resolution-v1`. Use shared project-model/domain codecs:
-strict headers/envelope/lock, Camera-free Scene version 2, Camera/Experience/resource collections,
-current Layout payload 5, and the runtime-safe **ExecutionProgram@1 codec** described in the F draft.
-It is the same derived program shape later persisted in F5, not another editable order authority.
-Its standalone import closure contains delivery validation only, not source validators/compilers.
+No slice has acceptance evidence. The final gate is declared, not closeable; acceptance would make the
+phase closable, and phase/track closure remains a separate owner event. The first authoring surface
+does not wait for this phase's closure.
 
-Prove empty/two-Experience and non-empty program round trips, required-kind/version refusal,
-references/lock diagnostics and genuine resource pins. Implement the sole current-source converter
-as a pure candidate/report operation using captured IDs/policy decisions. New codecs/conversion
-are not active in normal readers/writers. No Camera-only live split. S01 enables T4 F5 schema work
-before runtime activation; it does not provide F4 or accept the behavioral T3 gate.
-
-### S02 Early conditional Save
-
-VERIFICATION: architecture-integration
-INTEGRATION ROUTE: ./README.md#s06-integrated-final-gate
-
-Extend T1's shared F4 with `conditional-save-current-v1`. It requires local-single-domain-v1,
-not F2, F3, viewport or the source cutover. Implement capture of immutable local accepted source,
-AcceptedRevision/content digest, create-only or exact saved-base precondition and stable operation
-identity. Use the existing source adapter's full validation; compare ownership/revision, validate
-and append/update atomically in the server transaction. Replace unrestricted current-source PUT
-admission, including old-client rejection and create collision/privacy behavior.
-
-Recompute the digest and reject revision identity reused for different contents. Return persisted
-source revision/digest plus a fresh saved-base token; keep metadata outside the
-strict current source document. Identical retries return their prior receipt, never another version.
-An older in-flight Save cannot mark newer local edits saved or install into a replaced session.
-Local editing/Undo remains immediate; server conflict preserves local work/history and remote data.
-UI provides dirty/saving/saved/conflict states with explicit reload/resolution. Do not automatically
-merge, rebase or make every individual edit a server command. Save adds no authoring Undo entry.
-
-Acceptance requires real-Postgres same-base writers (one winner), create-only collision, no partial
-version/pointer update, retry payload mismatch, failed full validation and stale response/dirty
-behavior. The common gate being accepted for local operations is not Save evidence. Register this
-capability record before T1/T2 enable Save; F2-backed Save remains unsupported until S03.
-
-### S03 Compound and runtime preparation
-
-VERIFICATION: architecture-integration
-INTEGRATION ROUTE: ./README.md#s06-integrated-final-gate
-
-Extend the same F4 implementation with `unit-acceptance-v1` and `conditional-save-units-v1`.
-Implement actual Camera View + Presentation + optional Stop candidates, complete domain/reference/
-resource-lock validation, staged admitted resources, one install/whole-operation history, and the
-same conditional Save protocol over F2 candidates. Real-DB conformance is required; no new live
-unit writer or new-format Save route is exposed yet. Current-source Save remains the one live path.
-
-Prepare the shared Experience lowering/interpreter, reducer/clock, occurrence holds/continuation,
-minimal guard/Continue/detour state, semantic DOM companion/Info Panel and Camera guided/free/
-reduced-motion controllers against closed fixtures. Extend F3 with `camera-handoff-v1`, using the
-shared Camera ticket acquisition/request/replace/return/cancel protocol. No independent OrbitControls
-pose writer, Experience BFS or pose/FOV interpolation. Intrinsic directed timing remains Camera-owned.
-These runtime primitives/exports can be accepted inactive before the cohesive activation diff.
-
-Use the exact ExecutionProgram codec from S01; Preview and T4 consume its lowering/evaluator.
-S03 conformance proves unit single/compound operations, resource rollback, unit Save, supported
-program traces and ownership/stale-event behavior. Actual Stage capture/Preview integration is S05;
-no viewport prerequisite is invented for this pure/runtime preparation. Accept extension scopes on
-main before S04 consumes them. Never relabel T1's base acceptance as complete F4 readiness.
-
-### S04 Live ownership cutover
-
-VERIFICATION: exhaustive
-
-Sole provider of `T3.camera-experience-cutover@1`. After the source/release inventory, approved
-migration/refusal coverage, quiescence/recovery plan and any owner-accepted publication gap, activate
-the already accepted unit/acceptance/runtime/Save adapters together. Migrate project boot/import/
-export, validation/runtime composition, platform/API persistence, Stage read facade, starter boot,
-and every existing T1/T2 operation/history caller. Review the integrated callers against new main.
-Rebind Scene definition inputs to immutable project pins. The F2 starter/migration may install
-an explicitly captured bounded verified palette; Scene-only placement otherwise admits only
-already pinned/procedural definitions and reports missing pins unavailable. New resource admission
-remains a staged T2 follow-on. Update unfinished consumer requirements to preaccepted F2/unit F4
-scopes; they cannot continue to
-claim a retired current adapter. No whole-track completion prerequisite and no second live writer.
-
-Remove Scene Camera fields, legacy flow-order exports/callers and node-keyed visitor orchestration.
-One source revision/lock and new history baseline installs atomically. Re-arm/conform to M5 where
-replacement actually occurs. This slice migrates model/runtime callers, not Camera authoring UI,
-so it does not declare camera-authoring-migration or consume its own output gate.
-
-The exact migration/refusal/recovery matrix below governs acceptance. T3 owns source conversion
-and visitor semantics; T4 subsequently owns prepared delivery activation. Preserve a real public
-route and honest unavailable/not-found behavior during an explicitly approved empty-release gap.
-If covered releases exist without an approved compatibility disposition, activation is blocked.
-
-### S05 First capture and Cut Preview
-
-VERIFICATION: architecture-integration
-INTEGRATION ROUTE: ./README.md#s06-integrated-final-gate
-
-Consume accepted viewport and T3 cutover at trusted base; declare camera-authoring-migration.
-Mount the public Stage adapter: explicitly create/select an Experience when none exists, then
-capture Camera View, bind Presentation/Default and optional Stop
-in one operation; repeat/reorder stable Stops, edit labels/text/holds/continuation, switch two
-Experiences and Undo/Redo. A first **Cut Guide** and isolated Preview must work without new Travel
-path/anchor authoring or rich scrub/transport. Existing supported Travel can be selected with clear
-gap diagnostics through the same Camera/runtime primitives. Advanced Camera/path tools are the next
-T3 phase, not hidden work inside this first useful surface.
-
-Use the shared Camera output tickets for inspection/Look-through/Follow/Preview ownership and
-return; use the shared gesture host with explicit operation transition policy and one selection.
-Expose exact rendered capture aspect. View Update discloses shared reach; rebinding to a deliberately
-captured View is a narrow alternative. Source edits stop stale playback. Preview hides authoring
-infrastructure, executes the same shared lowering/interpreter as T4 and exits through the Camera
-return token, preserving authoring identity/context. It never writes source or requires T4 activation.
-
-### S06 Integrated final gate
-
-VERIFICATION: exhaustive
-
-Record independent acceptance of early conditional Save, source migration and first capture/Cut
-Preview on the integrated tree using §9. Include a starter/composed subject, repeat Presentation
-with distinct Stop/run identity, holds/Continue, supported existing Travel/gap, two Experiences,
-source Undo/Save/reload and Preview return. Advanced path editing is not an acceptance prerequisite.
-No unowned current-source adapter, old order caller or second interpreter remains. Reconcile landed
-references only after actual cutover. Passing makes the phase closable; closure, track completion,
-T4 reader acceptance and either Baseline remain separate owner events.
-
-## 5. Cutover mechanics and retirement
+## Cutover mechanics and retirement
 
 1. **Agree formats and coverage.** Ratify shared F amendments/provider assignment separately.
    Before S04 approval inventory actual source files/packages, pending session saves, cloud
@@ -305,7 +202,7 @@ package format has its own version/header; any new envelope admission needs an e
 version/interface decision. Unknown package/source formats fail. Coordinate that boundary
 with T2/T4 rather than hide a second project reader behind import.
 
-## 6. Conversion and refusal matrix
+## Conversion and refusal matrix
 
 The proposed migration exception covers **valid post-#115 current source**, not historical
 room-local Scene/Layout generations, external frozen projects or old public releases. It
@@ -329,7 +226,7 @@ requires owner-approved product reason, exact inventory, recovery and converter 
 | Travel missing route, Cut over same pair, keep-viewpoint | Travel reports gap and cannot play that required transition; Cut realizes resolved View without geometry; keep-viewpoint does not resolve a missing View by accident. |
 | Failed staged upload, stale local/cloud writer, late prior-run event | Prior accepted source/lock/history/output remains intact; staged bytes are collectable. Typed refusal, no automatic last-write-wins/rebase, no stale cleanup affecting a newer run. |
 
-## 7. Acceptance/history and cloud authority
+## Acceptance/history and cloud authority
 
 One immutable accepted project snapshot feeds renderer, authoring and Preview preparation.
 One typed intent captures all new IDs, source revision, resource revisions and any sampled
@@ -372,7 +269,7 @@ S02 activates only the current-source protocol. S03 proves the new unit adapter 
 old writers, migrates stored sources and switches all callers to the unit adapter atomically; it
 retires current-source normal admission and scope. No ordinary Undo crosses that format boundary.
 
-## 8. Minimum T1/T2/T4 dependencies
+## Minimum T1/T2/T4 dependencies
 
 The [coordinated matrix/DAG and capability-readiness amendment](../../cross-track-execution.md) defines the common
 assignments. T1 S01 supplies F1/F3; T1 S03 alone provides the initial local F4. T3 S01 provides F2,
@@ -380,12 +277,13 @@ S02 adds early conditional Save independently of F2, and S03 extends unit/compou
 conformance before activation. Required base and extension capabilities must be accepted at trusted
 base; overall local gate acceptance cannot authorize an unimplemented cloud or compound consumer.
 
-**Viewport:** only S05 authoring/S06 integration needs the accepted public T1 seam. Its source-
+**Viewport:** no slice of this phase consumes it; the first authoring surface in the candidate
+[T3.P02](../t3.p02-capture-and-cut-preview/README.md) needs the accepted public T1 seam. Its source-
 independent facade accepts the new F2 adapter without required-method changes. Canonical selection,
 gesture transition policy, rendered matrices/rays/planes, capture aspect and Camera ticket/return
 protocol stay single. Missing required methods block mounting; no casts/private Stage imports,
-separate canvas, projection or navigation authority. S01–S04 data/runtime/activation work has no
-viewport gate prerequisite. If a Stage host already exists, S04 must migrate it and prove replacement
+separate canvas, projection or navigation authority. This phase's data/runtime/activation work has
+no viewport gate prerequisite. If a Stage host already exists, S04 must migrate it and prove replacement
 cancellation as caller integration, rather than wait for all of T1 or add a second M5 guard.
 
 **T2:** existing Scene subject labels/identity suffice for first capture; full placement/import/
@@ -413,7 +311,7 @@ is landed (`74efb98b`: three 0.186.1 / `@types/three` 0.186.0, Threlte unchanged
 the dense motion/framing suites pass on the landed base. Verify actual Camera/renderer/Threlte
 compatibility against that baseline when each implementation starts.
 
-## 9. Meaningful verification and acceptance criteria
+## Verification and acceptance criteria
 
 Tests prove public behavior and real composition roots; source scans are reserved for ownership,
 caller retirement and import isolation. Retire obsolete flow-model tests only with explicit
@@ -429,7 +327,6 @@ consumer returns. No snapshot of implementation text substitutes for acceptance.
 | Motion/continuation | Forward/reverse authored timing, envelopes and interior Y survive; arbitrary seeks match Camera samples. Cut changes no topology; Travel gap never silently cuts or searches from Experience. Hold boundaries, explicit nonadjacent/End, Continue and detour return resolve by occurrence. All admitted exit Views are checked. |
 | Session/handoff | Two previews/visitor sessions have independent clocks/choices. Free exploration releases guided control; rejoin evaluates from the actual current pose and leaves autoplay paused. Old arrival/cancel after new visit, replacement, source edit or Preview exit cannot advance order or clear the new output. Seek replays explicit ordered events/checkpoints and never guesses visitor history. |
 | Accessibility | DOM nav/keyboard/pointer/touch have the same Activate meaning and reach; aria-current/progress are occurrence-derived. Info Panel focus-in/Escape/return, useful labels and links work without raycast. Reduced motion reaches the same destination without accelerated travel, and explicit media playback remains activation-safe if media is later admitted. |
-| Real authoring | Selection alone never navigates. Capture/Update/Exit, Ask Rule reach, shared Default versus Stop-local entry/hold, one Guide context, supported existing Travel/gap, paused edit lifecycle and one-step source Undo work on T1's host. Preview removes authoring chrome; exit preserves authoring identity and returns through Camera. Dense 20/50-View and 15/30-Stop fixtures test discovery/orientation, not product limits. |
 | Architecture | One Camera evaluation/route authority, one order writer, shared acceptance exports, no old flow callers, runtime-safe domain adapters; cold/public/preview boundaries exclude editor stores/history/gizmos. T3 adapters import only the public T1 seam. |
 
 Keep existing Camera fast contracts and the complete dense sweeps in the heavy lane, including
@@ -444,32 +341,31 @@ not phase-local copies of the same assertions.
 Verification commands/tiers are owned by
 [the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). During work run
 affected whole contracts/package checks and relevant heavy proofs. Every implementation-PR merge
-gate keeps the complete contract, including heavy tests; S04 and S06 additionally record the
+gate keeps the complete contract, including heavy tests; S04 additionally records the
 integrated caller/runtime journeys, root check/build, relevant package checks, full editor lanes
 and check:api/test:api on a reachable DB with **zero skips**. A focused green run cannot accept
 a gate. This planning-only change runs documentation and the whole arch lane; no product
 behavior or DB acceptance is claimed here.
 
 **Acceptance:** S04 makes the behavioral cutover gate ready only with exports, conformance,
-independent acceptance and a real ancestor commit recorded in the global register. S06 accepts
-the creator loop and all scoped migration obligations, with unresolved residuals named by owner.
+independent acceptance and a real ancestor commit recorded in the global register, and as this
+phase's final gate it accepts early conditional Save and every scoped migration obligation, with
+unresolved residuals named by owner. The creator loop (capture/Cut Preview) is T3.P02's acceptance.
 One-Camera, one-order, current-format, visitor-isolation and source/session separation must all
 hold. Refusals must be reviewable results with unchanged accepted state, not silent exclusions.
 
-## 10. Owner/reconciliation decisions before work starts
+## Authorization and open decisions
 
-Ratify the coordinated F providers, exact shared revision/facade/result and capability-readiness
-amendments, early F4 timing and conditional Save mode. T1 remains the sole F4@1 provider; T3 extends
-its implementation/scoped conformance. Ratify F2 unit/program schemas and the bounded shared
-program/profile, then the named migration exception with actual inventory, ambiguous policy mapping,
-quiescence/recovery and converter retirement. Recommended source versions are in the F draft.
-
-Approve the six-slice boundary and defer advanced path/transport/media authoring to a named next T3
-phase. Do not postpone the capture/Cut Preview milestone for them. A publication gap requires verified
-inventory and explicit owner acceptance at activation; covered releases need a concrete disposition.
-No source transition, phase registration, gate acceptance, Baseline or cycle opening is authorized
-by this proposal. The landed r186 base (`74efb98b`) is the required implementation baseline.
-
-**First implementation work, if approved:** S01 unit/program codecs after accepted F1/F3;
-S02 conditional Save can start independently after T1's accepted local F4.Providers/conformance merge before consumers. Both start from the landed r186 base. All live registers/contracts and
-capability implementation remain unchanged; independent review and owner ratification come next.
+- **Authorized:** `T3.P01.S01` only (2026-10-16). It runs in parallel under the
+  [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16).
+- **Before S02 is authorized:** `T1.P01.S03` accepted, and the home of the Save control settled — the
+  dirty/saving/saved/conflict states mount in T1's shell Head, which S02 must not build privately; the
+  owner assigns that control to S02 (consuming the accepted host) or to the host↔F4 wiring slice.
+  `T1.P01.S02` boots read-only and never calls the unconditional `PUT`, so no unsafe writer exists
+  meanwhile.
+- **Before S03 is authorized:** S01 and S02 accepted on `main`.
+- **Before S04 is authorized:** the AM-7 inventory, migration/refusal coverage, quiescence and
+  recovery plan, any owner-accepted publication gap, and a drafted, ratified
+  `T3.camera-experience-cutover@1`.
+- **No architecture-cycle window.** T3 slices are not exposures of the configured T1 window and do
+  not open it.

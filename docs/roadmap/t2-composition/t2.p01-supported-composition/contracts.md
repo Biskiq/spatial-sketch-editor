@@ -1,9 +1,12 @@
 # T2.P01 — Contract drafts and reconciliation requests
 
-**Status:** owner-review drafts, 2026-10-14; companion to the [phase proposal](./README.md).
-These names describe intended interfaces, not shipped exports or accepted gates. Shared exact
-formats must be reconciled with T1/T3 and ratified as amendments to
-[F](../../../reference/composition-execution.md), then implemented in shared code. This document
+**Status:** drafts of 2026-10-14, companion to the [registered phase](./README.md) (2026-10-16).
+These names describe intended interfaces, not shipped exports or accepted gates. The shared parts
+are now owner-ratified in [AM-1–AM-5](../../../reference/composition-execution.md#ratified-amendments),
+and F1/F3 are landed and accepted; where a draft here differs from a ratified amendment or a landed
+export, those win. The floor-support query's ownership is decided: Layout-owned, built by
+`T2.P01.S01` in `@portfolio/layout-core` under T1 review
+([decision](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)). This document
 neither changes F nor establishes a parallel T2 reference/envelope/history protocol.
 
 ## Common identity and frame interfaces
@@ -68,8 +71,9 @@ locks and staged F.4 acceptance in the follow-on phase.
 
 ## Floor support query
 
-Proposed public runtime-safe Layout-owned query, implemented against the existing canonical
-compiled Layout. T2 drafts its first consumer; T1/Layout review must settle its export/ownership.
+Public runtime-safe Layout-owned query, implemented against the existing canonical compiled
+Layout by `T2.P01.S01` under T1 review. Because `layout-core` sits below `project-model`, it returns
+Layout-native source IDs plus the caller's generation; F1 qualification happens in the planner.
 No new architectural compiler, Room lookup service or renderer authority is admitted.
 
 ```text

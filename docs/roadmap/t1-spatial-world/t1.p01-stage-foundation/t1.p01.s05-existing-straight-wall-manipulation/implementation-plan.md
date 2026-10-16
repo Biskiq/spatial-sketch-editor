@@ -6,7 +6,7 @@
 
 ```text
 CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1
+REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../t1.p01.s06-integrated-final-gate/implementation-plan.md
 ```

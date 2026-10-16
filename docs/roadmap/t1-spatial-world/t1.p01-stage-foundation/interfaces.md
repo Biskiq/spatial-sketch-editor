@@ -3,16 +3,20 @@
 **Status:** registered phase's interface draft. This is the exact surface for
 [the registered phase](./README.md) and its slices, not a shared contract, implemented export or
 accepted gate. The F.1/F.3/F.4 shapes and `T1.viewport-projection` are owner-ratified 2026-10-15
-([record](../../../reference/decisions/f-ratification-2026-10-15.md)); the drafts below stay
-proposals for their providers' implementation and acceptance, and no export, conformance result or
-acceptance exists yet. Shared F semantics remain owned by
+([record](../../../reference/decisions/f-ratification-2026-10-15.md)). F.1 and F.3 are now landed and
+accepted (S01, `ee463d0b`): **where this draft differs from the landed `references-v1`/`inspection-v1`
+surface, the landed surface wins** and the difference is noted inline
+([2026-10-16 reconciliation](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)).
+The viewport and F.4 drafts stay proposals for S02/S03, which are authorized and not started; no
+export, conformance result or acceptance exists for them yet. Shared F semantics remain owned by
 [composition-execution.md](../../../reference/composition-execution.md); gate identity remains
 owned by [the roadmap register](../../README.md#gate-register).
 
 ## Viewport projection v1
 
 **Gate:** `T1.viewport-projection@1` — registered `ratified` at version 1 · owner T1 · sole
-provider T1.P01.S02 (proposed and unauthorized; implementation and acceptance are its own work).
+provider T1.P01.S02 (authorized 2026-10-16, not started; implementation and acceptance are its own
+work) · capability `viewport-projection-v1`, which every consumer names in `Requires`.
 **Consumer boundary:** T2/T3 editor adapters can project/pick/register graphics and invoke
 Camera viewing intent through a public editor host without reaching into Stage internals.
 Acceptance covers ordinary project-world Plan/3D; it does not promise Section, peel, arbitrary
@@ -85,20 +89,24 @@ ownership; its read-only probe does not prove authored Camera capture or Preview
 
 ### Minimal ordinary Plan representation
 
-S02 admits one horizontal Plan on the current floor's datum. Proposed initial values:
-`cutHeightMeters = 1.2` above that datum; **required finite** `depthMeters = 100` below the cut;
-crop/span either explicit finite ranges or explicit unbounded lateral coverage; visible source
-kind filter and Reveal set explicit. Defaults are calibration choices to ratify with the
+S02 admits one horizontal Plan on the current floor's datum through the landed `layout.plan@1`
+family (`cut-height`, required `depth`, optional `lateral-span`, `source-kind-filter`, union
+`reveal`). Proposed initial values: `cutHeightMeters = 1.2` above that datum; **required finite**
+`depthMeters = 100` below the cut; lateral coverage either one explicit finite `lateral-span` — the
+contract's "lateral span/crop" is that single property — or, when absent, explicit unbounded lateral
+coverage; visible source kind filter and Reveal set explicit. Defaults are calibration choices to ratify with the
 family, not values copied into authored Layout. Wall height stays unconstrained by them.
 
 Streams are `cut | projected | hidden | symbol`. Every selectable primitive includes canonical
-source reference, compile/representation generation, stream, and optional domain `subRef`
-(e.g. Wall side or Opening interval). Never merge selectable primitives and lose membership.
+source reference, compile/representation generation, stream, and optional domain `subRef` — the
+landed `DerivedSourceRef`, whose `subRef` is a `component` (a Wall side is a Layout-declared
+component ID) or an `interval` (an Opening span); a new kind is an F.1 extension. Never merge selectable primitives and lose membership.
 Keep compiled canonical curves and hosted intervals; a rendered subdivision is not a new Wall.
 Cut/hide/show changes neither authored topology nor source ownership.
 
 The single Layout membership stage reports `included` or one of `outside-depth`,
-`outside-span`, `outside-crop`, `filtered-type`, `no-meaningful-projection`. Depth/crop exclusions
+`outside-span`, `filtered-type`, `no-meaningful-projection` (the draft's separate `outside-crop`
+folds into `outside-span`, since the landed family has one lateral property). Depth/span exclusions
 are discoverable in the selected subject/Search state with **Reveal**, a source-qualified
 temporary contribution that explicitly alters display/hit eligibility without changing depth
 or history. Projection's `outside-frame` is a separate camera/framing reason. Reveal is not
@@ -221,8 +229,11 @@ runtime-safe import direction. Rich execution operators are later declared exten
 
 ### F.4 Intent/revision/result and early local foundation — S03 provider
 
-Proposed sole common provider: T1.P01.S03, with `local-single-domain-v1` admission for registered
-Layout or Scene planners. The exact timing amendment permits this shared local foundation and
+Sole common provider: T1.P01.S03 (authorized 2026-10-16, not started), with the enduring
+`acceptance-invariants-v1` layer and the retiring `local-single-domain-v1` admission for registered
+Layout or Scene planners, as
+[AM-4](../../../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1)
+assigns; the plan carries the package/editor placement, admission and content-identity decisions. The exact timing amendment permits this shared local foundation and
 early conditional Save before Experience. First compound Camera/Experience acceptance remains T3.
 The initial local capability proves neither cloud persistence nor unit/lock/resource admission.
 

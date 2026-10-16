@@ -1,43 +1,40 @@
 # Current
 
-PHASE: T1.P01 — Stage and authoring foundation (registered 2026-10-15). First capability phase:
-       shared F1/F3 interface providers (accepted), then the Stage/viewport host and the common local
-       F4 provider, then restored bounded Layout precision. Phase README →
-       ../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md.
-CHILD: T1.P01.S01 — Shared interface providers — `shipped`: independently accepted at `ee463d0b`,
-       closed 2026-10-16 by `slice-closeout`, merge-ready on `T1-P1-S1-implementation` (PR #126).
-       It supplies `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` from
-       `@portfolio/project-model` and installed the Accepted-capabilities / Requires readiness
-       enforcement. Acceptance record (closed-work stub, with recovery) and plan →
-       ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/.
-       T1.P01.S02–S06 stay `proposed`, each blocked by its own accepted prerequisites.
-BATON: S01 is accepted and its routine closeout is complete on the branch; the next owner action is
-       the merge of PR #126. Accepted readiness is claimable by a consumer only once it sits on the
-       trusted base, so the F1/F3 rows are `accepted` on the branch while `main` carries the
-       capability readiness only after the merge.
-NEXT: merge PR #126 into `main` **as a merge commit (P1: no squash, no rebase** — a squash would make
-      `ee463d0b` a non-ancestor of `main` and red the execution-structure gate's `Commit` column
-      there), then verify `git merge-base --is-ancestor ee463d0b main` and the gate register at the
-      trusted base. The next eligible T-track slices are then T1.P01.S02 and T1.P01.S03 — S01's
-      accepted `F1.reference@1:references-v1` / `F3.channels@1:inspection-v1` satisfy their `Requires`;
-      S04–S06 additionally require `F4.intent-acceptance@1:local-single-domain-v1`, which is not yet
-      accepted. Each still needs its own owner authorization before implementation.
-      ROUTE: ../roadmap/README.md (track + gate register) → ../roadmap/t1-spatial-world/README.md
-      (phase register) → the phase README → ../operations/t1-spatial-world/README.md.
-BLOCKER: none.
-GATE: F1–F4 and `T1.viewport-projection` were ratified at version 1 (2026-10-15,
-      ../reference/decisions/f-ratification-2026-10-15.md). `F1.reference@1` and `F3.channels@1` are
-      now `accepted` for `T1.P01.S01`, each carrying its accepted capability scope
-      (`F1.reference@1:references-v1`, `F3.channels@1:inspection-v1`) and a durable record; the other
-      ratified rows keep empty evidence and no accepted capability. F5 and the T3/T4 cutovers remain
-      undrafted, and the proposed F4/F2/F5 providers and `T1.viewport-projection` stay unassigned
-      until their own phases register. Normative text → ../reference/composition-execution.md; the
-      capability-level `Requires` distinction is enforced by the readiness rule S01 installed in
-      ../roadmap/README.md's execution-structure gate.
+PHASE: Parallel batch 2026-10-16 across T1.P01, T2.P01 and T3.P01 — four owner-authorized slices,
+       registered and reconciled by one docs-only PR on branch `parallel-four-slice-authorization`.
+       Decision record → ../reference/decisions/parallel-slice-authorization-2026-10-16.md; shared-file
+       ownership, merge protocol and remaining risks → ../roadmap/cross-track-execution.md
+       (§Parallel batch 2026-10-16).
+CHILD: All four are `approved` and not started; none is claimable until the PR merges.
+       - T1.P01.S02 Shell, Stage and viewport provider (cycle-window opener) →
+         ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md
+       - T1.P01.S03 Local acceptance and history foundation →
+         ../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md
+       - T2.P01.S01 Deterministic candidates and canonical floor support →
+         ../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s01-candidates-and-floor-support/implementation-plan.md
+       - T3.P01.S01 Shared unit and program codecs →
+         ../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s01-unit-and-program-codecs/implementation-plan.md
+       T1.P01.S01 is shipped (PR #126 merged as `6964c2dc`; `ee463d0b` is an ancestor of `main`).
+       Every other T1/T2/T3 slice stays `proposed`; T3.P02 is an unregistered candidate phase.
+BATON: The authorization PR awaits independent review, then the owner's merge. No implementation or
+       orchestration starts before that merge.
+NEXT: After merge, each slice starts through its own track runbook's start step (eligibility + the
+      one-line cycle check) on a branch cut from the then-current `main`. T1.P01.S02's first authorized
+      implementation follows `open-window`; the other three are not exposures. Each merges on its own
+      under the batch protocol, rerunning the complete merge gate on the then-current `main`.
+      ROUTE: ../roadmap/README.md (track + gate register) → the track README's phase register → the
+      phase README → the slice plan → ./t1-spatial-world/README.md, ./t2-composition/README.md or
+      ./t3-experience/README.md.
+BLOCKER: none (independent review pending).
+GATE: `F1.reference@1` and `F3.channels@1` are `accepted` with their capability records. The
+      authorization wires the providers `T1.viewport-projection@1` → T1.P01.S02,
+      `F4.intent-acceptance@1` → T1.P01.S03 and `F2.unit-envelope@1` → T3.P01.S01; each stays
+      `ratified` with empty evidence. F5 and the T3/T4 cutover gates remain undrafted. Normative text →
+      ../reference/composition-execution.md; register → ../roadmap/README.md.
 CYCLE: `PHASE_1` · `ready` · the T1.P01 window is configured with T1.P01.S02, T1.P01.S04 and
       T1.P01.S05 (expected opener S02, terminal S05) and is **not open**: Opened by, exposure rows,
-      Closed by and mechanism verdicts are empty. S01 is not a listed exposure, so this close opened
-      no window. State and protocol → ./architecture-cycle.md (loaded only by its three hooks).
+      Closed by and mechanism verdicts are empty. Authorizing S02 does not open it; S02's first
+      authorized implementation does. State and protocol → ./architecture-cycle.md (loaded only by its three hooks).
 CARRY: Capability evidence and obligations → ../roadmap/t1-spatial-world/planning-evidence.md,
        ../roadmap/t2-composition/planning-evidence.md and
        ../roadmap/t3-experience/planning-evidence.md; T4's delivery obligations →

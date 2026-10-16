@@ -6,7 +6,7 @@
 
 ```text
 CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1
+REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: exhaustive
 ```
 
@@ -60,7 +60,7 @@ owner phase-close request closes it; neither phase nor cycle closure is fabricat
 This slice is `proposed` and **not authorized**: it runs only after S01–S05 are accepted with
 routine closeout, it consumes `F1.reference@1`, `F4.intent-acceptance@1` and
 `T1.viewport-projection@1` accepted at its trusted base, and its `Requires` capabilities
-(`references-v1`, `local-single-domain-v1`) must be accepted before it starts. No gate state,
+(`references-v1`, `local-single-domain-v1`, `viewport-projection-v1`) must be accepted before it starts. No gate state,
 readiness, implementation, acceptance, evidence or commit is claimed by this plan. A passed
 final gate makes the phase closable, not closed, and only an explicit owner phase-close request
 closes it. Under the architecture cycle, this slice neither opens nor waits for the window: the
