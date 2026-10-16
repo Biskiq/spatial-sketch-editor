@@ -1,9 +1,9 @@
 # T1.P01 — Stage and authoring foundation
 
 **Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
-(F1/F3 shared providers and the readiness enforcement landed; independent acceptance recorded at
-`ee463d0b`); S02 and S03 owner-authorized 2026-10-16; S02 is approved, and S03 is in progress under independent review; S04–S06 proposed and
-unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
+(F1/F3 shared providers and readiness enforcement); `T1.P01.S03` accepted and shipped 2026-10-16
+(F4 `acceptance-invariants-v1` and `local-single-domain-v1`); S02 remains approved;
+S04–S06 proposed and unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
 [`../../../operations/current.md`](../../../operations/current.md)
@@ -136,8 +136,9 @@ gate version is not by itself sufficient readiness; `Effects` names only documen
 **authorized** by the owner decision of 2026-10-15 and is now **accepted and shipped**: independent
 review accepted its implementation at `ee463d0b`, so its provider outputs are recorded as the accepted
 capabilities `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` and both gate rows are
-`accepted`. **S02 and S03 are authorized** by the owner decision of 2026-10-16; S03 is `in-progress` with review evidence, and neither is
-formally accepted; their prerequisites are accepted on `main`, where `ee463d0b` is an ancestor. S04–S06 are
+`accepted`. **S02 and S03 are authorized** by the owner decision of 2026-10-16; S03 is accepted and
+shipped with its two F4 capability records; S02 remains approved. Their prerequisites are accepted
+on the trusted base, where `ee463d0b` is an ancestor. S04–S06 are
 **proposed** and hold no implementation permission. Same-phase sequencing never bypasses the
 trusted-base rule: each consumed gate and each required capability must be accepted at the consumer's
 trusted base.
@@ -146,7 +147,7 @@ trusted base.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
 | T1.P01.S02 | approved | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — approved, not started |
-| T1.P01.S03 | in-progress | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — implementation in progress on the 2026-10-16 parallel batch, awaiting independent review; no acceptance claimed |
+| T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
 | T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
 | T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
@@ -160,15 +161,10 @@ F2/unit-resolution/unit-acceptance capabilities from T3 S01/S03; Save users addi
 require conditional-save-units-v1. That migration does not wait for the whole T1 phase. No
 current-source acceptance record proves unit capability readiness.
 
-The [global gate register](../../README.md#gate-register) wires only authorized providers:
-`F1.reference@1` and `F3.channels@1` name `T1.P01.S01` and are `accepted`, each carrying its accepted
-capability (`F1.reference@1:references-v1`, `F3.channels@1:inspection-v1`) with a durable record;
-`T1.viewport-projection@1` names S02 and `F4.intent-acceptance@1` names S03 since their 2026-10-16
-authorization, both still `ratified` with empty evidence. S03's accepted outputs, when recorded, are
-the two F4 scopes AM-4 assigns it — `acceptance-invariants-v1` and `local-single-domain-v1` — and
-S02's is `T1.viewport-projection@1:viewport-projection-v1`, which every viewport consumer above
-names in `Requires`. `F5.release-envelope@1` (T4.P01.S02) stays unassigned until its own phase
-registers.
+The [global gate register](../../README.md#gate-register) records accepted F1/F3 providers from S01
+and the accepted F4 provider from S03. S03's two AM-4 outputs have separate durable capability
+records; S02's `T1.viewport-projection@1:viewport-projection-v1` remains unaccepted. `F5.release-envelope@1`
+(T4.P01.S02) stays unassigned until its own phase registers.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
@@ -184,8 +180,8 @@ PHASE CLOSE
 Stage:        active
 ```
 
-`T1.P01.S01` is accepted and shipped, with its acceptance evidence and both accepted capabilities
-recorded; S03 has implementation/review evidence but no formal acceptance. S02–S06 have no accepted result. The
+`T1.P01.S01` and `T1.P01.S03` are accepted and shipped with their evidence and accepted capability
+records. S02–S06 have no other accepted result. The
 final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
 stage marker is written, and closure stays an explicit owner request.
 

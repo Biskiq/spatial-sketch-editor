@@ -35,6 +35,14 @@ Implementation acceptance authorizes routine closeout. Routine closeout requires
 exceptional triggers below reopen review. This skill owns mechanical documentation and preservation
 verification — it REUSES the implementer's and reviewer's recorded evidence and re-runs nothing.
 
+When the owner explicitly authorizes a **combined acceptance-and-closeout** request, first adjudicate
+the existing independent-review evidence against every approved acceptance criterion and prerequisite.
+If it passes, record formal acceptance and each capability outcome in the routed acceptance artifact
+and owning registers, then continue this procedure in the same invocation. If evidence is missing,
+stale, contradictory or fails a criterion, STOP and report it. Green tests or invoking this skill
+alone never constitute acceptance; all acceptance prerequisites, evidence-validity rules and
+independent-review requirements above still apply.
+
 ```text
 implementation accepted   code, architecture and required acceptance evidence passed review
 merge-ready               closeout complete and its self-check passed
