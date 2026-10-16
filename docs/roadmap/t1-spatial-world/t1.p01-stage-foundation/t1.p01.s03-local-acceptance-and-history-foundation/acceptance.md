@@ -82,7 +82,7 @@ reference promotions:            0   no additional durable reference promotion r
 renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:     0
 transient artifacts removed:     0
-historical anchor:               8ec0c5f15126190863d1f6db2220e2487bf7d7f6 · closed/t1.p01.s03 (push pending)
+historical anchor:               8ec0c5f15126190863d1f6db2220e2487bf7d7f6 · closed/t1.p01.s03 (pushed)
 new live → archive prose links:  0
 manual-owed verification rows:   0
 remaining deferred items:        4 (S06 integration; S04 host wiring; later Save/unit/resource/cloud scopes; future allocation discipline)
