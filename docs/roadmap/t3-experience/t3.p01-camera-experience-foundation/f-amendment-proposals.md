@@ -1,8 +1,12 @@
 # T3.P01 — shared F amendment proposals
 
-**Status:** draft for later reconciliation, 2026-10-14. These recommendations support the
-[phase proposal](./README.md), not an independent contract. Names and @1 versions below are
-candidate interfaces; no shared gate/version/provider is registered or ratified by this file.
+**Status:** draft of 2026-10-14, now planning evidence for the [registered phase](./README.md)
+(2026-10-16). The shared parts were owner-ratified 2026-10-15 as
+[AM-1–AM-8](../../../reference/composition-execution.md#ratified-amendments); where this draft differs
+from a ratified amendment or a landed export, those win. The first capture/Cut Preview slice and its
+integrated gate referred to below as S05/S06 moved to the candidate
+[T3.P02](../t3.p02-capture-and-cut-preview/README.md). No gate, version or provider is registered or
+ratified by this file.
 Normative owner: [composition-execution.md](../../../reference/composition-execution.md).
 Readiness owner: [gate register](../../README.md#gate-register).
 
@@ -130,7 +134,7 @@ their support is removed. Cut needs a resolved target View but no Connection. Re
 change prepares a composed candidate and recomputes support for all admitted origin Views.
 
 Existing-data conversion is a named pre-baseline exception, not a common multi-format decoder.
-The [phase conversion matrix](./README.md#6-conversion-and-refusal-matrix) owns coverage/refusal;
+The [phase conversion matrix](./README.md#conversion-and-refusal-matrix) owns coverage/refusal;
 the original input, mappings, policy choices, staged pins and exact legacy migration baseline
 are captured inputs to one administrative conversion request. The baseline carries project ID,
 canonical source-content identity and stored version when cloud-backed; the old document has

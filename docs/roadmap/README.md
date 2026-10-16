@@ -57,8 +57,8 @@ owns lifecycle only and never copies their content.
 | Track | Status | Roadmap |
 | --- | --- | --- |
 | T1 | approved | [T1 — Spatial world](./t1-spatial-world/README.md) |
-| T2 | planning | [T2 — Composition](./t2-composition/README.md) |
-| T3 | planning | [T3 — Experience](./t3-experience/README.md) |
+| T2 | approved | [T2 — Composition](./t2-composition/README.md) |
+| T3 | approved | [T3 — Experience](./t3-experience/README.md) |
 | T4 | planning | [T4 — Release and delivery](./t4-release/README.md) |
 | R115 | shipped | [R115 — PR #115 architecture reset](./parallel-track-cutover/README.md) |
 
@@ -86,11 +86,11 @@ ratified amendments.
 | Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit | Accepted capabilities |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | accepted | T1.P01.S01 | `packages/project-model/src/references` | `apps/editor/tests/lib/project-model/references-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F1.reference@1:references-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-references-v1.md` |
-| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | — | — | — | — | — | — |
+| F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | T3.P01.S01 | — | — | — | — | — |
 | F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | accepted | T1.P01.S01 | `packages/project-model/src/channels` | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F3.channels@1:inspection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-inspection-v1.md` |
-| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | — | — | — | — | — | — |
+| F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | T1.P01.S03 | — | — | — | — | — |
 | F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
-| T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | — | — | — | — | — | — |
+| T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | T1.P01.S02 | — | — | — | — | — |
 | T3.camera-experience-cutover | — | capability | T3 | — | undrafted | — | — | — | — | — | — |
 | T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — | — |
 
@@ -172,7 +172,9 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
   re-derive against; owner-confirmed 2026-10-15. It registers no gate, phase or slice, and its exact
   interfaces stay the F amendments in
-  [`../reference/composition-execution.md`](../reference/composition-execution.md).
+  [`../reference/composition-execution.md`](../reference/composition-execution.md). It also carries
+  the [shared-file and merge protocol](./cross-track-execution.md#parallel-batch-2026-10-16) for the
+  four slices authorized 2026-10-16.
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,

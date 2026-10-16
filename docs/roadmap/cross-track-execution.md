@@ -8,9 +8,11 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 (AM-1–AM-8); the readiness rule stays owned by
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
 registers no gate, phase or slice, and each provider is wired through its own authorized track
-phase. Candidate IDs below remain provisional until their phase registers them — T1.P01 is now
-registered with `T1.P01.S01`–`T1.P01.S06` and only `T1.P01.S01` authorized — and cross-PR links
-identify proposals, never accepted prerequisites.
+phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
+T1.P01 (`T1.P01.S01` shipped; S02/S03 authorized 2026-10-16), T2.P01 (S01 authorized) and T3.P01
+(S01–S04, S01 authorized); the proposal's T3 S05/S06 are the unregistered candidate T3.P02. The
+four slices authorized 2026-10-16 run under the [parallel batch protocol](#parallel-batch-2026-10-16).
+Cross-PR links identify proposals, never accepted prerequisites.
 
 Planning proceeds on the landed r186 base: the separate
 [Three.js r186 foundation upgrade (PR #122)](https://github.com/Biskiq/spatial-sketch-editor/pull/122)
@@ -30,7 +32,7 @@ output. Shared formats land in existing runtime-safe packages; no track-local pr
 | F1.reference@1 | T1.P01.S01 | Ratified F1 amendment | `references-v1`: source-independent identity/resolution/frame qualification and bounded current-domain resolvers. All tracks consume it; new unit/public resolvers require separate accepted capabilities below. |
 | F2.unit-envelope@1 | T3.P01.S01 | F1 `references-v1`, F3 `inspection-v1` for shared typed program/channel shapes | `unit-envelope-v1`: actual strict envelope/lock/unit codecs, Experience execution-program codec and pure conversion candidates. No live reader/writer activation. T3 coordination and T4 source/program codecs consume it. |
 | F3.channels@1 | T1.P01.S01 | Ratified F3 amendment; F1 is supplied coherently in this same provider | `inspection-v1`: addresses, typed descriptors, negotiation and exclusive epoch-qualified ownership; Layout/Camera inspection families. T1 viewport uses it. T3 extends Camera/session conformance without a second provider. |
-| F4.intent-acceptance@1 | T1.P01.S03 | F1 `references-v1`; explicit F4 timing/admission amendment | `local-single-domain-v1`: one local acceptance/history boundary admitting registered Layout or Scene planners over the current source adapter. T1/T2 use it. It proves neither unit/resource compound acceptance nor cloud Save. |
+| F4.intent-acceptance@1 | T1.P01.S03 | F1 `references-v1`; explicit F4 timing/admission amendment | The enduring `acceptance-invariants-v1` layer plus the retiring `local-single-domain-v1`: one local acceptance/history boundary admitting registered Layout or Scene planners over the current source adapter. T1/T2 use it; T3's unit capabilities require the enduring layer. It proves neither unit/resource compound acceptance nor cloud Save. |
 | F5.release-envelope@1 | T4.P01.S02 | F1 `references-v1`, F2 `unit-envelope-v1`, F3 `inspection-v1` | `prepared-envelope-v1`: release/profile/payload codecs, canonicalization and capability negotiation using T3's shared program codec. T4 compiler/reader/storage consume it; schema acceptance is not live delivery acceptance. |
 | T1.viewport-projection@1 | T1.P01.S02 | F1 `references-v1`, F3 `inspection-v1` | Rendered Plan/3D projection, source-independent facade, ordinary representation, selection/task/gesture host and Camera output protocol. T2 UI and T3 authoring consume it; Scene support and authored Camera operations are excluded. |
 | T3.camera-experience-cutover@1 | T3.P01.S04 | F1 `unit-resolution-v1`, F2 `unit-envelope-v1`, F3 `camera-handoff-v1`, F4 `unit-acceptance-v1` and `conditional-save-units-v1`, plus their base capabilities | Atomic source/runtime activation, existing caller migration, occurrence behavior and legacy-order retirement. T3 authoring and T4 public activation consume it. No viewport dependency for this provider. |
@@ -96,7 +98,7 @@ cannot disguise an incompatible semantic change. A consumer must declare what it
 | F4.intent-acceptance@1:conditional-save-current-v1 | T3.P01.S02 | Create-only / expected-saved-base persistence of current source using full shared validation, atomic server OCC and retry receipts. Needs `local-single-domain-v1`; not F2, Stage or source activation. |
 | F4.intent-acceptance@1:unit-acceptance-v1 | T3.P01.S03 | F2-backed single-domain and compound Camera/Experience acceptance, complete reference/lock validation, admitted resource staging and whole-operation history. Needs F2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so the capability stays eligible once the current-source adapter retires. |
 | F4.intent-acceptance@1:conditional-save-units-v1 | T3.P01.S03 | Same conditional Save protocol over F2 source; needs unit-acceptance-v1/base invariants and reuses prior Save protocol evidence, not active current-source admission. Inactive until S04; never a second live writer. |
-| F3.channels@1:camera-handoff-v1 | T3.P01.S03 | Inspection, guided/free, Follow, Look-through and Preview ownership/return with stale-run cleanup; bounded Experience session semantics use the shared program. Needs `inspection-v1` and F2 program codec; real Stage integration is later T3 S05 evidence. |
+| F3.channels@1:camera-handoff-v1 | T3.P01.S03 | Inspection, guided/free, Follow, Look-through and Preview ownership/return with stale-run cleanup; bounded Experience session semantics use the shared program. Needs `inspection-v1` and F2 program codec; real Stage integration is later T3.P02 evidence. |
 
 **Slice prerequisites and exported-capability prerequisites are different claims.** A slice's
 `Requires` names what that slice's implementation consumes; a capability's declared prerequisites
@@ -202,7 +204,7 @@ flowchart TD
   X --> CUT["T3 S04: source/runtime cutover"]
   X --> OFF["T4 S03/S04: offline delivery + storage"]
   F --> OFF
-  CUT --> PRE["T3 S05: capture/Cut Preview"]
+  CUT --> PRE["T3.P02: capture/Cut Preview"]
   V --> PRE
   CUT --> PUB["T4 S05: public prepared cutover"]
   OFF --> PUB
@@ -232,6 +234,61 @@ against each new main rather than merged as independent competing implementation
 
 These phases do not complete the full creator-to-visitor product. Durable external links require
 an explicit Release Baseline; Source Baseline follows stabilized source formats, not these merges.
+
+## Parallel batch 2026-10-16
+
+The owner authorized `T1.P01.S02`, `T1.P01.S03`, `T2.P01.S01` and `T3.P01.S01` to run in parallel
+([decision](../reference/decisions/parallel-slice-authorization-2026-10-16.md)). Each consumes only
+the accepted `references-v1`/`inspection-v1` on post-PR #126 `main`; none consumes another, so none
+may wire, import or depend on another's unmerged output. A slice that finds it needs to stops and
+reports instead.
+
+**Shared-file ownership.** One writer per shared module for the batch's duration:
+
+| Area | Writer in this batch | Rule for everyone else |
+| --- | --- | --- |
+| `@portfolio/camera-core` | `T1.P01.S02` | read-only |
+| Editor route, host, Stage and shell modules | `T1.P01.S02` | read-only |
+| `@portfolio/layout-core` | new modules only: `T1.P01.S02` (Plan representation), `T2.P01.S01` (floor-support query) | nobody changes the compiler, its tolerances or an existing query |
+| `@portfolio/project-model` | new modules only: `T1.P01.S03` (F4 contracts, admission, content identity), `T2.P01.S01` (Scene planning), `T3.P01.S01` (units, program, converter, additive reference extension) | nobody changes landed reference/channel behavior or the Scene v1 codec |
+| [`package.json`](../../packages/project-model/package.json) `exports` of project-model | `T3.P01.S01` adds its subpaths | any other addition appends |
+| Editor F4 coordinator/history module | `T1.P01.S03` | — |
+| Editor object-definition policy and admitted inventory | `T2.P01.S01` | — |
+| Barrels [`project-model`](../../packages/project-model/src/index.ts), [`layout-core`](../../packages/layout-core/src/index.ts) and [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the textual conflict |
+| Boundary tests (public surface, project-model, camera-core) | additive assertions per slice | no slice weakens an existing assertion |
+| Landed `reference/*` contracts | none during the batch | `T1.P01.S02` updates `architecture.md` §Product routes at its own closeout |
+
+**Content identity.** `T1.P01.S02` and `T1.P01.S03` both need the current-source content identity
+that S03 owns. Whichever merges first lands the single project-model export with its invariance
+tests; the other rebases and reuses it. `T3.P01.S01` uses the same hash primitive for unit
+`contentRevision` and defines no current-source identity.
+
+**Merge protocol.** Each slice merges on its own after independent acceptance and routine closeout;
+there is no batch merge and no imposed order. Every merge reruns the complete merge gate in
+[`tests/README.md`](../../apps/editor/tests/README.md#what-a-change-requires) on the then-current
+`main`, whatever the slice's iteration tier; a slice whose shared module changed underneath it
+rebases and reruns before merging. Integration of the viewport host with F4 (accepted install, Undo/
+Redo commands, replacement baseline, selection requalification, Camera-output rebase) is
+`T1.P01.S04`'s first increment by default.
+
+**Cycle.** `T1.P01.S02` is a listed exposure: its first authorized implementation opens the T1.P01
+window through the runbook start step. `T1.P01.S03`, `T2.P01.S01` and `T3.P01.S01` are not exposures
+and open nothing; an open window and its pending verdicts block none of them.
+
+**Remaining risks** (owners named; none blocks the batch's start):
+
+| # | Risk | Owner and mitigation |
+| --- | --- | --- |
+| R1 | `T1.P01.S02` is large and on the critical path of every viewport consumer. | S02 implementer proposes a registered split rather than silently deferring criteria. |
+| R2 | `T3.P01.S01` is large, and Experience 1 / `ExecutionProgram@1` freeze before the interpreter and authoring UI exist. | Codec-level fixtures for every AM-6 case now; a later required-meaning change is a versioned F amendment. A split (converter as its own slice) is the owner's option. |
+| R3 | `T2.P01.S03` authorized before `T1.P01.S04` would leave host↔F4 wiring unowned. | Owner assigns it explicitly at that authorization. |
+| R4 | Contact-metadata verification may exclude the non-unit-normalization model. | `T2.P01.S01` records the exclusion; the phase proceeds with analytical primitives and verified models. |
+| R5 | `T3.P01.S02`'s Save control needs a home in the T1 shell Head. | Settled by the owner before S02 is authorized; `T1.P01.S02` never calls the unconditional `PUT`. |
+| R6 | T3.P02 cannot register until `T3.camera-experience-cutover@1` is drafted and ratified. | T3 drafts it with `T3.P01.S04`'s authorization request. |
+| R7 | Per-accept validation, serialization and hashing may be costly on dense projects. | `T1.P01.S03` records a measured observation on the densest fixture (TD-5's lesson). |
+| R8 | Client/server canonical-byte or digest-version skew would make equal contents compare unequal. | `T3.P01.S02` refuses explicitly on version mismatch. |
+| R9 | Barrel and lane-list merge conflicts. | Append-only rule; second merger resolves. |
+| R10 | The window `T1.P01.S02` opens may stay open for a long time. | Pending verdicts block no other track (cycle disposition below). |
 
 ## Owner ratifications and cycle disposition
 

@@ -1,7 +1,7 @@
 # T2 — Composition
 
-**Track:** T2 · **Status:** planning — evidence recorded, **no implementation authorized**
-([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T2 · **Status:** approved — T2.P01 registered 2026-10-16; `T2.P01.S01` owner-authorized,
+not started; S02–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
@@ -59,17 +59,19 @@ Landed contracts keep describing current behaviour until their explicit cutover.
 
 ## Phase register
 
-No T2 phase is registered. A phase is added here by an authorized plan, with its own README under
-`./t2.p01-<capability>/` and its own slice register.
-
-**Owner-review proposal:** [T2.P01 — supported object composition](./t2.p01-supported-composition/README.md)
-defines a candidate four-slice first phase and its
-[interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md).
-It is planning only: this link registers no phase, authorizes no implementation and accepts no gate.
+One row per registered phase. The phase README owns its objectives, children and order; this
+register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| — | — | — | — |
+| T2.P01 | approved | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P01 — Supported object composition](./t2.p01-supported-composition/README.md) |
+
+T2.P01 is registered by the owner decision of 2026-10-16
+([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
+[interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md). Only
+**`T2.P01.S01`** is authorized (`approved`, not started); it consumes the accepted
+`F1.reference@1` alone. `Depends on` lists the external gates the phase's later slices consume;
+S02–S04 stay `proposed`, blocked by their own accepted prerequisites.
 
 ## Starting foundation
 

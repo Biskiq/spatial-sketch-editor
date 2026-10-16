@@ -1843,13 +1843,41 @@ describe('the capability-readiness rule', () => {
 		// what guards the advance; an assertion that no scope claims acceptance would fail the first
 		// legitimate provider, exactly as an "all undrafted" assertion would.
 		expect(model.gates.flatMap((row) => row.capabilities).every((entry) => entry.wellFormed)).toBe(true);
-		// The `Requires` field is installed and populated: S02–S06 declare their exact scopes.
+		// The `Requires` field is installed and populated: every registered unshipped slice declares
+		// its exact scopes, and a registration changes this pin deliberately.
+		const viewport = 'T1.viewport-projection@1:viewport-projection-v1';
+		const local = 'F4.intent-acceptance@1:local-single-domain-v1';
 		expect(sliceRequires(model)).toEqual({
 			'T1.P01.S02': ['F1.reference@1:references-v1', 'F3.channels@1:inspection-v1'],
 			'T1.P01.S03': ['F1.reference@1:references-v1'],
-			'T1.P01.S04': ['F1.reference@1:references-v1', 'F4.intent-acceptance@1:local-single-domain-v1'],
-			'T1.P01.S05': ['F1.reference@1:references-v1', 'F4.intent-acceptance@1:local-single-domain-v1'],
-			'T1.P01.S06': ['F1.reference@1:references-v1', 'F4.intent-acceptance@1:local-single-domain-v1']
+			'T1.P01.S04': ['F1.reference@1:references-v1', local, viewport],
+			'T1.P01.S05': ['F1.reference@1:references-v1', local, viewport],
+			'T1.P01.S06': ['F1.reference@1:references-v1', local, viewport],
+			'T2.P01.S01': ['F1.reference@1:references-v1'],
+			'T2.P01.S02': ['F1.reference@1:references-v1', local],
+			'T2.P01.S03': ['F1.reference@1:references-v1', local, viewport],
+			'T2.P01.S04': [
+				'F1.reference@1:references-v1',
+				local,
+				'F4.intent-acceptance@1:conditional-save-current-v1',
+				viewport
+			],
+			'T3.P01.S01': ['F1.reference@1:references-v1', 'F3.channels@1:inspection-v1'],
+			'T3.P01.S02': ['F1.reference@1:references-v1', local],
+			'T3.P01.S03': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F3.channels@1:inspection-v1',
+				local,
+				'F4.intent-acceptance@1:conditional-save-current-v1'
+			],
+			'T3.P01.S04': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F3.channels@1:camera-handoff-v1',
+				'F4.intent-acceptance@1:unit-acceptance-v1',
+				'F4.intent-acceptance@1:conditional-save-units-v1'
+			]
 		});
 		expect(capabilityProblems(model)).toEqual([]);
 	});

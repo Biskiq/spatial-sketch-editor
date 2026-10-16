@@ -1,0 +1,55 @@
+# T2.P01.S03 — First coherent editing surface: implementation plan
+
+**Slice:** T2.P01.S03 · **Status:** proposed — not authorized · **Phase:** [T2.P01](../README.md) ·
+[slice register](../README.md#slice-register) · **Track:** [T2](../../README.md) · **Runbook:**
+[T2 operations](../../../../operations/t2-composition/README.md)
+
+```text
+CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
+REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
+VERIFICATION: architecture-integration
+INTEGRATION ROUTE: ../t2.p01.s04-bounded-composition-loop/implementation-plan.md
+```
+
+## Prerequisite
+
+S02 accepted; `T1.P01.S02`'s viewport and `T1.P01.S03`'s local acceptance accepted at this slice's
+trusted base; and the host↔F4 wiring (accepted install into the Stage, Undo/Redo commands,
+replacement baseline, selection requalification, Camera-output rebase) present on `main`. That
+wiring is `T1.P01.S04`'s first increment by default; if the owner authorizes this slice first, the
+owner assigns it explicitly, and it is never built twice.
+
+## Scope
+
+Use the existing shell's Place family/Find registration, Index, Card, task home and gesture lease.
+Arming changes session state only. Place stays armed after success until Esc/Select; the newly
+created object becomes selected. Both views display the same prepared candidate; a 3D surface hit
+resolves back to compiled Layout evidence. A wall, plinth or another object's mesh cannot be mistaken
+for floor support. Card continues to describe accepted identity/facts; proposed values and precision
+live in the invoked World Instrument. A support choice, when one is ever required, is presented here.
+
+Offer horizontal drag and yaw around the entity's declared placement pivot, plus X/Z and angle entry
+through the same writer. Snap is an explicit session option (off by default here); any enabled grid
+step is captured in the intent's resolved candidate, visible in feedback and never a hidden commit
+correction. Withhold a foreshortened grip and retain exact access. No camera fit occurs because
+selection changes, a Card opens or a sheet resizes.
+
+The shared host invokes this operation's declared cancel-on-reading-change policy once. An accepted
+Plan↔3D change cancels the unfinished pointer interaction before the reading changes, restores the
+accepted baseline, preserves the armed task/tool and committed selection, releases the lease once and
+invalidates delayed pointer-up. Blur, capture loss, task replacement, project replacement and adapter
+unmount use the same cancel path. A replacement epoch cannot be reached by old asset loads or gesture
+callbacks. View-only changes create no source history.
+
+## Exit criteria
+
+From a valid floor project, a creator can place an object, move it, rotate it, switch readings, enter
+an exact value and undo/redo without data/UI divergence. Include a Plan-ineligible selected entity,
+missing model bytes, unsupported host and mid-gesture reading switch. Review desktop, narrow,
+keyboard-only and reduced-motion journeys on the real surface. The last valid displayed candidate
+equals its committed pose within 1e-6 meters/radians; no post-preview Y fix.
+
+## Readiness declaration
+
+This slice is **proposed and not authorized**; it holds no implementation permission, and nothing
+here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).

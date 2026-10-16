@@ -6,7 +6,7 @@
 
 ```text
 CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1
+REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: affected-subsystem
 INTEGRATION ROUTE: ../t1.p01.s06-integrated-final-gate/implementation-plan.md
 ```
@@ -17,6 +17,16 @@ The integration route is the phase's exhaustive final gate; a narrowed tier neve
 
 S02/S03 providers accepted at trusted base. **Produces:** useful scalar authoring/source download
 and deferred shell discovery depth; re-arms M1 and M2. No schema change.
+
+**Host↔F4 integration (first increment).** S02 and S03 are authorized to run in parallel and
+neither consumes the other, so their wiring is this slice's by default
+([2026-10-16 decision](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)):
+an accepted install replaces the Stage read snapshot (S02's composed snapshot gives way to S03's
+`AcceptedSnapshot@1` export without renaming consumers); Undo/Redo become host commands through the
+shared boundary; project replacement starts a new history baseline; selection requalifies only
+through accepted correspondence; and the inspection Camera output rebases on every content change,
+re-acquiring without moving the view. If the owner authorizes `T2.P01.S03` before this slice, the
+owner assigns this wiring explicitly to one of them; it is never built twice.
 
 ## Scope
 
@@ -64,7 +74,7 @@ This slice is **proposed and not authorized**: it holds no implementation permis
 implementation, acceptance, readiness, revision or evidence is claimed here. It consumes
 `F1.reference@1`, `F4.intent-acceptance@1` and `T1.viewport-projection@1` and requires the
 accepted capabilities `F1.reference@1:references-v1` and
-`F4.intent-acceptance@1:local-single-domain-v1`; the S02 viewport provider and the S03
+`F4.intent-acceptance@1:local-single-domain-v1` and `T1.viewport-projection@1:viewport-projection-v1`; the S02 viewport provider and the S03
 local-acceptance provider must be accepted at this slice's trusted base before it is eligible.
 It is one of the phase's three listed cycle-window exposures, so an authorized start opens the
 architecture-cycle window. Nothing here marks any gate `implemented` or `accepted`.

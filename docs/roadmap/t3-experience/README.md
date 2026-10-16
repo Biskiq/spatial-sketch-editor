@@ -1,7 +1,7 @@
 # T3 — Experience
 
-**Track:** T3 · **Status:** planning — evidence recorded, **no implementation authorized**
-([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T3 · **Status:** approved — T3.P01 registered 2026-10-16; `T3.P01.S01` owner-authorized,
+not started; S02–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -61,17 +61,23 @@ Landed contracts keep describing current behaviour until their explicit cutover.
 
 ## Phase register
 
-**Review draft:** [T3.P01 — Camera/Experience cutover and first authoring foundation](./t3.p01-camera-experience-foundation/README.md).
-Its [shared F interface amendments](./t3.p01-camera-experience-foundation/f-amendment-proposals.md)
-are proposals for cross-track reconciliation. Candidate slice/provider identities are not
-registrations, authorization, ratification or gate readiness.
-
-No T3 phase is registered. A phase is added here by an authorized plan, with its own README under
-`./t3.p01-<capability>/` and its own slice register.
+One row per registered phase. The phase README owns its objectives, children and order; this
+register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| — | — | — | — |
+| T3.P01 | approved | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
+
+T3.P01 is registered by the owner decision of 2026-10-16
+([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
+source/runtime cutover phase (S01–S04, final gate S04), with its
+[F amendment drafts](./t3.p01-camera-experience-foundation/f-amendment-proposals.md) as planning
+evidence. Only **`T3.P01.S01`** is authorized (`approved`, not started). `Depends on` lists the
+external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
+
+**Candidate next phase (not registered):**
+[T3.P02 — First capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md), which registers
+once `T3.camera-experience-cutover@1` is drafted and owner-ratified.
 
 ## Starting foundation
 
