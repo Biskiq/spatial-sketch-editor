@@ -129,13 +129,15 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P01.S01 | approved | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — approved, not started |
+| T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
 | T3.P01.S02 | proposed | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | — |
 | T3.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | — |
 | T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
 
-`references-v1` and `inspection-v1` are accepted on post-PR #126 `main`, so S01 is eligible once
-this registration merges. S02 waits for `T1.P01.S03`'s accepted `local-single-domain-v1`. S03 waits
+`references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 is now shipped with
+accepted `unit-envelope-v1` and additive `unit-resolution-v1`; their exact records, prerequisites,
+exports and conformance are in the gate register and linked capability records. S02 waits for
+`T1.P01.S03`'s accepted `local-single-domain-v1`. S03 waits
 for S01's `unit-envelope-v1`/`unit-resolution-v1` and S02's `conditional-save-current-v1`. As the
 [allocation](../../cross-track-execution.md#capability-readiness-amendment) records, S03 consumes the
 still-active current-source scopes while it builds the unit implementation, but the unit capabilities
