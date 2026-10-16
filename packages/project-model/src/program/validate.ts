@@ -168,11 +168,17 @@ function readContinuation(reader: ShapeReader, input: unknown, path: string): Pr
 	return { kind: 'stop', stopId };
 }
 
-function readGuard(reader: ShapeReader, input: unknown, path: string): ProgramGuard | null {
+function readGuard(reader: ShapeReader, input: unknown, path: string, depth = 0): ProgramGuard | null {
+	if (depth >= 32) {
+		reader.problem(path, 'guard-too-deep', 'a bounded guard may nest at most 32 expressions');
+		return null;
+	}
 	const record = reader.object(input, path, GUARD_KEYS);
 	if (record === null) return null;
 	const kind = reader.tag(record.kind, `${path}.kind`, ['literal', 'state', 'equals', 'conjunction']);
 	if (kind === null) return null;
+	const keys = { literal: ['kind', 'value'], state: ['kind', 'stateId'], equals: ['kind', 'stateId', 'value'], conjunction: ['kind', 'guards'] };
+	reader.object(record, path, keys[kind as keyof typeof keys]);
 	if (kind === 'literal') {
 		const value = reader.boolean(record.value, `${path}.value`);
 		if (value === null) return null;
@@ -192,7 +198,7 @@ function readGuard(reader: ShapeReader, input: unknown, path: string): ProgramGu
 		if (stateId === null || value === null) return null;
 		return { kind: 'equals', stateId, value };
 	}
-	const guards = readArray(reader, record.guards, `${path}.guards`, (entry, entryPath) => readGuard(reader, entry, entryPath));
+	const guards = readArray(reader, record.guards, `${path}.guards`, (entry, entryPath) => readGuard(reader, entry, entryPath, depth + 1));
 	if (guards === null) return null;
 	if (guards.length === 0) {
 		reader.problem(`${path}.guards`, 'empty-conjunction', `${path}.guards must contain at least one guard`);
@@ -206,6 +212,8 @@ function readAction(reader: ShapeReader, input: unknown, path: string): ProgramA
 	if (record === null) return null;
 	const kind = reader.tag(record.kind, `${path}.kind`, ['show-content', 'navigate-to', 'open-url', 'continue', 'set-state']);
 	if (kind === null) return null;
+	const keys = { 'show-content': ['kind', 'contentId'], 'navigate-to': ['kind', 'stopId'], 'open-url': ['kind', 'url'], continue: ['kind'], 'set-state': ['kind', 'stateId', 'value'] };
+	reader.object(record, path, keys[kind as keyof typeof keys]);
 	switch (kind) {
 		case 'show-content': {
 			const contentId = reader.opaqueId(record.contentId, `${path}.contentId`);
@@ -220,6 +228,12 @@ function readAction(reader: ShapeReader, input: unknown, path: string): ProgramA
 		case 'open-url': {
 			const url = reader.string(record.url, `${path}.url`);
 			if (url === null) return null;
+			try {
+				if (!['https:', 'http:'].includes(new URL(url).protocol)) throw new Error('unsupported protocol');
+			} catch {
+				reader.problem(`${path}.url`, 'invalid-url', 'OpenUrl requires an absolute HTTP(S) URL');
+				return null;
+			}
 			return { kind: 'open-url', url };
 		}
 		case 'continue':
@@ -307,12 +321,19 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 	const presentationIds = new Set(presentations.map((entry) => entry.id));
 	const stopIds = new Set(stops.map((entry) => entry.id));
 	const stateIds = new Set(state.map((entry) => entry.id));
-	const contentIds = new Set(presentations.flatMap((entry) => entry.content.map((record) => record.id)));
+	const allContentIds = presentations.flatMap((entry) => entry.content.map((record) => record.id));
+	if (!uniqueIds(reader, allContentIds, '$.presentations', 'content record')) return failed(reader);
+	const contentIds = new Set(allContentIds);
+	const stateById = new Map(state.map((entry) => [entry.id, entry]));
 
 	for (const [index, stop] of stops.entries()) {
 		const path = `$.stops[${index}]`;
 		if (!presentationIds.has(stop.presentationId)) {
 			reader.problem(`${path}.presentationId`, 'missing-presentation', `${path}.presentationId names no presentation`);
+		}
+		const presentation = presentations.find((entry) => entry.id === stop.presentationId);
+		if (stop.invocation.kind === 'cut' && presentation !== undefined && stop.invocation.viewId !== presentation.viewId) {
+			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize its Presentation view');
 		}
 		if (stop.continuation.kind === 'stop' && !stopIds.has(stop.continuation.stopId)) {
 			reader.problem(`${path}.continuation.stopId`, 'missing-stop', `${path}.continuation.stopId names no stop`);
@@ -326,20 +347,21 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 		reader.problem('$.entryStopId', 'missing-stop', '$.entryStopId must name one of the program stops');
 	}
 	for (const [index, mapping] of localTime.entries()) {
+		const stop = stops.find((entry) => entry.id === mapping.stopId);
+		if (stop !== undefined && stop.holdSeconds !== mapping.holdSeconds) {
+			reader.problem(`$.localTime[${index}].holdSeconds`, 'hold-mismatch', 'the local-time mapping must agree with its Stop hold');
+		}
 		if (!stopIds.has(mapping.stopId)) {
 			reader.problem(`$.localTime[${index}].stopId`, 'missing-stop', `$.localTime[${index}].stopId names no stop`);
 		}
 	}
-	for (const [index, action] of lifecycle.entries()) {
-		checkAction(reader, action.action, `$.lifecycle[${index}].action`, { stopIds, stateIds, contentIds });
-	}
-	const guards = collectGuards(lifecycle);
-	for (const [index, guard] of guards.entries()) {
-		for (const stateId of referencedStates(guard)) {
-			if (!stateIds.has(stateId)) {
-				reader.problem(`$.lifecycle[${index}].guard`, 'missing-state', `the guard reads undeclared state "${stateId}"`);
-			}
+	for (const [index, entry] of lifecycle.entries()) {
+		const path = `$.lifecycle[${index}]`;
+		checkAction(reader, entry.action, `${path}.action`, { stopIds, stateIds, contentIds });
+		if (entry.action.kind === 'set-state') {
+			checkStateValue(reader, stateById.get(entry.action.stateId), entry.action.value, `${path}.action.value`);
 		}
+		if (entry.guard !== null) checkGuard(reader, entry.guard, `${path}.guard`, stateById);
 	}
 	if (reader.issues.length > 0) return failed(reader);
 
@@ -458,21 +480,21 @@ function checkAction(
 	}
 }
 
-function collectGuards(lifecycle: readonly ProgramLifecycleAction[]): ProgramGuard[] {
-	const guards: ProgramGuard[] = [];
-	for (const entry of lifecycle) if (entry.guard !== null) guards.push(entry.guard);
-	return guards;
+function checkStateValue(reader: ShapeReader, state: ProgramStateDeclaration | undefined, value: string | boolean, path: string): void {
+	if (state === undefined) return; // the reference check reports the missing declaration
+	if (state.type === 'boolean' ? typeof value !== 'boolean' : typeof value !== 'string' || !state.values.includes(value)) {
+		reader.problem(path, 'out-of-range', 'the value is outside the referenced state declaration');
+	}
 }
 
-function referencedStates(guard: ProgramGuard): string[] {
-	switch (guard.kind) {
-		case 'state':
-		case 'equals':
-			return [guard.stateId];
-		case 'conjunction':
-			return guard.guards.flatMap(referencedStates);
-		default:
-			return [];
+function checkGuard(reader: ShapeReader, guard: ProgramGuard, path: string, stateById: ReadonlyMap<string, ProgramStateDeclaration>): void {
+	if (guard.kind === 'conjunction') {
+		guard.guards.forEach((child, index) => checkGuard(reader, child, `${path}.guards[${index}]`, stateById));
+	} else if (guard.kind === 'state' || guard.kind === 'equals') {
+		const state = stateById.get(guard.stateId);
+		if (state === undefined) reader.problem(`${path}.stateId`, 'missing-state', `the guard reads undeclared state "${guard.stateId}"`);
+		else if (guard.kind === 'state' && state.type !== 'boolean') reader.problem(`${path}.stateId`, 'out-of-range', 'a state-read guard requires boolean state');
+		else if (guard.kind === 'equals') checkStateValue(reader, state, guard.value, `${path}.value`);
 	}
 }
 

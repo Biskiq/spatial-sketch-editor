@@ -27,6 +27,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	EDITOR_SRC,
 	PACKAGES_ROOT,
+	REPO_ROOT,
 	importClosure,
 	listSourceFiles,
 	parseModuleSpecifiers,
@@ -38,10 +39,13 @@ const PROJECT_MODEL_SRC = path.join(PACKAGES_ROOT, 'project-model/src');
 const INACTIVE_MODULES = [
 	path.join(PROJECT_MODEL_SRC, 'units/index.ts'),
 	path.join(PROJECT_MODEL_SRC, 'units/types.ts'),
+	path.join(PROJECT_MODEL_SRC, 'units/identity.ts'),
 	path.join(PROJECT_MODEL_SRC, 'units/canonical.ts'),
 	path.join(PROJECT_MODEL_SRC, 'units/validate.ts'),
+	path.join(PROJECT_MODEL_SRC, 'program/index.ts'),
 	path.join(PROJECT_MODEL_SRC, 'program/types.ts'),
 	path.join(PROJECT_MODEL_SRC, 'program/validate.ts'),
+	path.join(PROJECT_MODEL_SRC, 'migration/index.ts'),
 	path.join(PROJECT_MODEL_SRC, 'migration/types.ts'),
 	path.join(PROJECT_MODEL_SRC, 'migration/convert.ts'),
 	path.join(PROJECT_MODEL_SRC, 'references/unit-resolution.ts')
@@ -111,4 +115,39 @@ describe('the F.2 entries stay inactive before the cutover', () => {
 			expect(Object.keys(manifest.exports), subpath).toContain(subpath);
 		}
 	});
+});
+
+
+// The shared closure helper resolves workspace subpaths to their root barrel.
+// Check incoming edges as well, including relative imports and API sources.
+const inactiveRoots = ['units', 'program', 'migration', 'references/unit-resolution']
+	.map((relative) => path.join(PROJECT_MODEL_SRC, relative));
+function isInactivePath(file: string): boolean {
+	const stem = file.replace(/\.(ts|js|mjs)$/, '');
+	return inactiveRoots.some((root) => stem === root || stem.startsWith(`${root}${path.sep}`));
+}
+function reachesInactive(importer: string, specifier: string): boolean {
+	const target = specifier.split('?')[0]!;
+	return INACTIVE_SUBPATHS.some((subpath) => target === subpath || target.startsWith(`${subpath}/`)) ||
+		(target.startsWith('.') && isInactivePath(path.resolve(path.dirname(importer), target)));
+}
+
+it('rejects inactive imports through API, other packages, relative paths and subpath aliases', () => {
+	for (const root of [EDITOR_SRC, path.join(REPO_ROOT, 'apps/api/src'), PACKAGES_ROOT]) {
+		for (const file of listSourceFiles(root)) {
+			if (!/\.(ts|svelte|js|mjs)$/.test(file) || !file.includes(`${path.sep}src${path.sep}`) || isInactivePath(file)) continue;
+			for (const specifier of parseModuleSpecifiers(readFileSync(file, 'utf8'))) {
+				expect(reachesInactive(file, specifier), `${relativeToRepo(file)} imports ${specifier}`).toBe(false);
+			}
+		}
+	}
+});
+
+it('recognizes relative and dynamic entry bypasses as forbidden incoming edges', () => {
+	for (const specifier of parseModuleSpecifiers("import('../program/index.js'); export * from './units/validate';")) {
+		const importer = specifier.startsWith('../') ? path.join(PROJECT_MODEL_SRC, 'other/adapter.ts') : path.join(PROJECT_MODEL_SRC, 'index.ts');
+		expect(reachesInactive(importer, specifier)).toBe(true);
+	}
+	expect(reachesInactive(path.join(REPO_ROOT, 'apps/api/src/app.ts'), '@portfolio/project-model/migration')).toBe(true);
+	expect(reachesInactive(path.join(PROJECT_MODEL_SRC, 'index.ts'), './references/index')).toBe(false);
 });

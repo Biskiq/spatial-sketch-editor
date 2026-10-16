@@ -28,6 +28,8 @@ import {
 	validateDependencyLock,
 	validateProjectEnvelope,
 	validateResourcePayload,
+	validateCameraPayload,
+	validateExperiencePayload,
 	verifyUnitContentRevisions,
 	type CameraUnitPayload,
 	type CameraView,
@@ -295,14 +297,9 @@ describe('the strict refusal matrix', () => {
 			fov: 54,
 			connectedViewIds: []
 		};
-		const built = await envelope({
-			camera: {
-				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
-				views: [view, { ...view, label: 'Again', eye: [1, 0, 0], target: [1, 0, 1] }],
-				connections: []
-			}
-		});
-		const refused = validateProjectEnvelope(readBack(built));
+		const built = await envelope();
+		built.units.camera.data.views = [view, { ...view, label: 'Again', eye: [1, 0, 0], target: [1, 0, 1] }];
+		const refused = validateProjectEnvelope(built);
 		expect(refused.success).toBe(false);
 		if (refused.success) return;
 		expect(refused.issues.map((issue) => issue.code)).toContain('duplicate-identity');
@@ -400,4 +397,63 @@ describe('references, lock diagnostics and closure', () => {
 		const other = { ...built, acceptedRevision: { projectId: 'project-1', revisionId: 'revision-9' } };
 		expect(await computeEnvelopeSourceContentId(other)).toBe(await computeEnvelopeSourceContentId(built));
 	});
+});
+
+
+describe('independent AM-2 regressions', () => {
+	it('requires the accepted revision to belong to the envelope and validates writes', async () => {
+		const built = await envelope();
+		const invalid = { ...built, acceptedRevision: { projectId: 'other', revisionId: 'r' } };
+		expect(validateProjectEnvelope(invalid).success).toBe(false);
+		expect(() => serializeProjectEnvelope(invalid)).toThrow();
+	});
+
+	it('keys lock paths and kind/id pairs without delimiter collisions', () => {
+		const entry = { domain: 'camera' as const, subjectKind: 'view', subjectId: 'a|b', instancePath: ['x/y'],
+			contentRevision: 'r', requiredCapabilities: [], pin: null };
+		expect(validateDependencyLock(lock([entry, { ...entry, instancePath: ['x', 'y'] },
+			{ ...entry, subjectKind: 'view|a', subjectId: 'b' }])).success).toBe(true);
+	});
+
+	it('refuses conflicting versions of one required capability and inexact byte sizes', () => {
+		const entry = { domain: 'camera' as const, subjectKind: 'view', subjectId: 'view-1', instancePath: [],
+			contentRevision: 'r', requiredCapabilities: [{ id: 'f', version: '1' }, { id: 'f', version: '2' }], pin: null };
+		expect(validateDependencyLock(lock([entry])).success).toBe(false);
+		expect(validateResourcePayload({ formatVersion: 1, resources: [{ kind: 'texture', id: 't',
+			contentRevision: null, pin: { ...PIN, size: 1e30 }, unresolved: null }] }).success).toBe(false);
+	});
+
+	it('reports pin-only revision mismatches and absent lock pin metadata', async () => {
+		const resource: TypedResource = { kind: 'texture', id: 'texture-1', contentRevision: null, pin: PIN, unresolved: null };
+		for (const entry of [
+			{ contentRevision: 'other', pin: PIN },
+			{ contentRevision: PIN.hash, pin: null }
+		]) {
+			const built = await envelope({ resources: { formatVersion: 1, resources: [resource] }, dependencyLock: lock([{
+				domain: 'resource:texture', subjectKind: 'resource', subjectId: 'texture-1', instancePath: [],
+				requiredCapabilities: [], ...entry
+			}]) });
+			const read = validateProjectEnvelope(built);
+			expect(read.success && read.closure.length > 0).toBe(true);
+		}
+	});
+});
+
+
+it('retains the current project codec camera eye/target constraint in the Camera unit', () => {
+	const result = validateCameraPayload({ formatVersion: 1, views: [
+		{ id: 'a', label: 'A', eye: [0, 0, 0], target: [0, 0, 1], fov: 54, connectedViewIds: ['b'] },
+		{ id: 'b', label: 'B', eye: [4, 0, 0], target: [4, 0, 1], fov: 54, connectedViewIds: ['a'] }
+	], connections: [{ id: 'c', fromNodeId: 'a', toNodeId: 'b', clearance: 0.5,
+		positionPath: { kind: 'auto-bezier', anchors: [] },
+		viewTracks: { forward: [{ id: 'k', progress: 0.5, cameraTarget: [2, 0, 0], fov: 54 }], reverse: [] }
+	}] });
+	expect(result.success).toBe(false);
+	if (!result.success) expect(result.issues[0]!.code).toBe('camera_target_too_close');
+});
+
+it('requires distinct Stop identities for repeated authored Guide placements', () => {
+	const value = experience('experience-a', 'view-1');
+	value.guides = [{ ...value.guides[0]!, stopIds: ['stop-1', 'stop-1'] }];
+	expect(validateExperiencePayload({ formatVersion: 1, experiences: [value] }).success).toBe(false);
 });

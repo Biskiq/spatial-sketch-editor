@@ -88,8 +88,6 @@ export const MIGRATION_REFUSAL_CODES = [
 	'missing-baseline',
 	'missing-revision',
 	'unsupported-unit',
-	'duplicate-identity',
-	'asymmetric-links',
 	'requires-policy-mapping',
 	'ambiguous-origin',
 	'policy-mismatch'
@@ -132,7 +130,7 @@ export type MigrationReport = {
 	}[];
 	/** One row per produced Guide, with its ordered Stop ids. */
 	guides: readonly { guideId: string; experienceId: string; entryStopId: string; stopIds: readonly string[] }[];
-	experiences: readonly { experienceId: string; entryGuideId: string | null; entryStopId: string }[];
+	experiences: readonly { experienceId: string; entryGuideId: string | null; entryStopId: string | null }[];
 	connections: readonly { connectionId: string; fromViewId: string; toViewId: string }[];
 	/** Authored View-key holds and the mapping that covered them. */
 	retainedViewKeyHolds: readonly {

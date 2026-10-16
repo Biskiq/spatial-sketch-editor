@@ -24,11 +24,14 @@
  *   needs repair, which is a different answer.
  */
 
+import { dependencyLockKey } from '../units/identity';
+import { validateDependencyLock } from '../units/validate';
 import { computeEnvelopeSourceContentId } from '../units/canonical';
 import type { DependencyLock, ProjectEnvelope } from '../units/types';
 import type {
 	DependencyLockReader,
 	ReferenceReadContext,
+	ReferenceFailureCode,
 	ReferenceRepairAction,
 	ReferenceResolution,
 	ReferenceResolver,
@@ -45,15 +48,6 @@ const QUALIFY: readonly ReferenceRepairAction[] = [
 	{ kind: 'choose-subject', description: 'Qualify the subject with its owning instance path so the reference names exactly one subject.' }
 ];
 
-function lockKeyOf(
-	domain: string,
-	subjectKind: string,
-	subjectId: string,
-	instancePath: readonly string[]
-): string {
-	return [domain, subjectKind, subjectId, instancePath.join('/')].join('|');
-}
-
 /**
  * An admitted `DependencyLockReader` over the F.2 lock.
  *
@@ -61,17 +55,32 @@ function lockKeyOf(
  * against a reference's `project-lock` revision before asking this reader, so a
  * lock can never answer for another project. A scope the lock does not pin
  * answers `null`, which the caller reports as `missing` — no ambient latest
- * lookup and no manufactured pin.
+ * lookup and no manufactured pin. Supplied units allow an owned subject to use
+ * its actual owning-unit pin, as emitted by the source converter.
  */
-export function createDependencyLockReader(projectId: string, lock: DependencyLock): DependencyLockReader {
+export function createDependencyLockReader(
+	projectId: string,
+	lock: DependencyLock,
+	units?: ProjectEnvelope['units']
+): DependencyLockReader {
+	const validated = validateDependencyLock(lock);
+	if (!validated.success) throw new Error(validated.issues[0]!.message);
 	const byKey = new Map<string, string>();
-	for (const entry of lock.entries) {
-		byKey.set(lockKeyOf(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath), entry.contentRevision);
+	for (const entry of validated.value.entries) {
+		byKey.set(dependencyLockKey(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath), entry.contentRevision);
 	}
 	return {
 		projectId,
 		contentRevisionFor(reference: SemanticReference): string | null {
-			return byKey.get(lockKeyOf(reference.domain, reference.subject.kind, reference.subject.id, reference.instancePath)) ?? null;
+			const direct = byKey.get(dependencyLockKey(reference.domain, reference.subject.kind, reference.subject.id, reference.instancePath));
+			if (direct !== undefined) return direct;
+			// A domain unit pin covers its owned subjects. Match the supplied unit's
+			// identity exactly; never substitute its current header revision for a pin.
+			if (units !== undefined && (reference.domain === 'camera' || reference.domain === 'experience' || reference.domain === 'layout' || reference.domain === 'scene')) {
+				const unit = units[reference.domain];
+				return byKey.get(dependencyLockKey(reference.domain, 'unit', unit.header.unitId, [])) ?? null;
+			}
+			return null;
 		}
 	};
 }
@@ -83,20 +92,28 @@ export function createDependencyLockReader(projectId: string, lock: DependencyLo
  * invents a revision for it.
  */
 type UnitSubject = {
+	kind: string;
 	id: string;
 	instancePath: readonly string[];
 	revision: string | null;
 	repair?: string;
+	failure?: Exclude<ReferenceFailureCode, 'incompatible'>;
 };
 
-function scoped(subjects: readonly UnitSubject[], reference: SemanticReference): ReferenceResolverOutcome {
+function scoped(subjects: readonly UnitSubject[], reference: SemanticReference, contentRevision: string): ReferenceResolverOutcome {
+	if (reference.componentId !== null || reference.capabilityId !== null || reference.location.kind !== 'project-root') {
+		return { kind: 'missing', message: 'this unit authors no such component, capability or Layout location', repairs: REACQUIRE };
+	}
 	const owner = reference.instancePath[0];
-	const byId = subjects.filter((subject) => subject.id === reference.subject.id);
+	const byId = subjects.filter((subject) => subject.kind === reference.subject.kind && subject.id === reference.subject.id);
 	// A qualified reference is restricted to the container it names; an
 	// unqualified one is allowed to find a subject that is genuinely unique. A
 	// qualification that names the wrong container is `missing`, never a silent
 	// global search that happens to succeed.
-	const candidates = owner === undefined ? byId : byId.filter((subject) => subject.instancePath[0] === owner);
+	const candidates = reference.instancePath.length === 0 ? byId : byId.filter((subject) =>
+		subject.instancePath.length === reference.instancePath.length &&
+		subject.instancePath.every((segment, index) => segment === reference.instancePath[index])
+	);
 	if (candidates.length === 0) {
 		return {
 			kind: 'missing',
@@ -115,12 +132,15 @@ function scoped(subjects: readonly UnitSubject[], reference: SemanticReference):
 		};
 	}
 	const found = candidates[0]!;
-	if (found.revision === null) {
+	if (found.revision === null || found.repair !== undefined) {
 		return {
-			kind: 'repair-required',
+			kind: found.failure ?? 'repair-required',
 			message: found.repair ?? `${reference.subject.kind} "${reference.subject.id}" has no resolved content revision`,
 			repairs: REACQUIRE
 		};
+	}
+	if (contentRevision !== found.revision) {
+		return { kind: 'repair-required', message: 'the reference revision names content this unit does not hold', repairs: REACQUIRE };
 	}
 	return { kind: 'resolved', contentRevision: found.revision, location: { kind: 'project-root' } };
 }
@@ -129,14 +149,21 @@ function resolver(
 	id: string,
 	domain: ReferenceResolver['domain'],
 	subjectKinds: readonly string[],
-	subjects: readonly UnitSubject[]
+	subjects: readonly UnitSubject[],
+	envelope: ProjectEnvelope
 ): ReferenceResolver {
 	return {
 		id,
 		domain,
 		subjectKinds,
 		owner: domain,
-		resolve: (reference) => scoped(subjects, reference)
+		resolve: (reference, request) => {
+			const accepted = request.context.snapshot.acceptedRevision;
+			if (envelope.acceptedRevision.projectId !== envelope.id || accepted.projectId !== envelope.id || accepted.revisionId !== envelope.acceptedRevision.revisionId) {
+				return { kind: 'repair-required', message: 'the resolver and read context must name the same accepted envelope', repairs: REACQUIRE };
+			}
+			return scoped(subjects, reference, request.contentRevision);
+		}
 	};
 }
 
@@ -165,45 +192,50 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 			'camera',
 			['view', 'connection'],
 			[
-				...envelope.units.camera.data.views.map((view) => ({ id: view.id, instancePath: [] as readonly string[], revision: cameraRevision })),
+				...envelope.units.camera.data.views.map((view) => ({ kind: 'view', id: view.id, instancePath: [] as readonly string[], revision: cameraRevision })),
 				...envelope.units.camera.data.connections.map((connection) => ({
+					kind: 'connection',
 					id: connection.id,
 					instancePath: [] as readonly string[],
 					revision: cameraRevision
 				}))
-			]
+			],
+			envelope
 		),
 		resolver(
 			'unit.experience@1',
 			'experience',
 			['experience', 'guide', 'stop', 'presentation'],
 			envelope.units.experience.data.experiences.flatMap((experience) => [
-				{ id: experience.id, instancePath: [experience.id], revision: experienceRevision },
-				...experience.guides.map((guide) => ({ id: guide.id, instancePath: [experience.id], revision: experienceRevision })),
-				...experience.stops.map((stop) => ({ id: stop.id, instancePath: [experience.id], revision: experienceRevision })),
+				{ kind: 'experience', id: experience.id, instancePath: [experience.id], revision: experienceRevision },
+				...experience.guides.map((guide) => ({ kind: 'guide', id: guide.id, instancePath: [experience.id], revision: experienceRevision })),
+				...experience.stops.map((stop) => ({ kind: 'stop', id: stop.id, instancePath: [experience.id], revision: experienceRevision })),
 				...experience.presentations.map((presentation) => ({
+					kind: 'presentation',
 					id: presentation.id,
 					instancePath: [experience.id],
 					revision: experienceRevision
 				}))
-			])
+			]),
+			envelope
 		)
 	];
-	const byDomain = new Map<string, UnitSubject[]>();
+	const byDomain = new Map<string, UnitSubject[]>([['texture', []], ['asset', []]]);
 	for (const resource of envelope.units.resources.data.resources) {
 		const subjects = byDomain.get(resource.kind) ?? [];
 		subjects.push({
+			kind: 'resource',
 			id: resource.id,
 			instancePath: [],
 			revision: resource.contentRevision ?? resource.pin?.hash ?? null,
 			...(resource.unresolved === null
 				? {}
-				: { repair: resource.unresolved.message })
+				: { repair: resource.unresolved.message, failure: resource.unresolved.status === 'incompatible' ? 'repair-required' : resource.unresolved.status })
 		});
 		byDomain.set(resource.kind, subjects);
 	}
 	for (const [kind, subjects] of byDomain) {
-		resolvers.push(resolver(`unit.resource.${kind}@1`, `resource:${kind}`, ['resource'], subjects));
+		resolvers.push(resolver(`unit.resource.${kind}@1`, `resource:${kind}`, ['resource'], subjects, envelope));
 	}
 	return resolvers;
 }
@@ -226,7 +258,7 @@ export function createUnitReadContext(input: UnitResolutionInput): ReferenceRead
 		sessionEpoch: input.sessionEpoch,
 		generationId: input.generationId ?? null,
 		supportedExtensions: input.supportedExtensions ?? [],
-		lock: input.lock === undefined ? createDependencyLockReader(input.envelope.id, input.envelope.dependencyLock) : input.lock,
+		lock: input.lock === undefined ? createDependencyLockReader(input.envelope.id, input.envelope.dependencyLock, input.envelope.units) : input.lock,
 		resolvers: createUnitSubjectResolvers(input.envelope),
 		frameResolvers: []
 	};
@@ -240,4 +272,3 @@ export async function resolveUnitReference(
 	const sourceContentId = await computeEnvelopeSourceContentId(input.envelope);
 	return resolveReference(reference, createUnitReadContext({ ...input, sourceContentId }));
 }
-

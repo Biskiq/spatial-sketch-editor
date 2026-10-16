@@ -46,7 +46,7 @@ import {
 	type TypedResource,
 	type UnitDomain
 } from '../units/types';
-import { validateProjectEnvelope } from '../units/validate';
+import { validateProjectEnvelope, validateResourcePayload, validateUnitPayload } from '../units/validate';
 import type {
 	LockInteractionDecision,
 	MigrationInput,
@@ -80,22 +80,18 @@ function viewIdOf(nodeId: string): string {
 	return nodeId;
 }
 
-function lockDomainFor(domain: UnitDomain): ReferenceDomain {
-	return domain === 'resources' ? 'resource:registry' : domain;
-}
-
 /** The reference domain an admitted resource kind is addressed by. */
 function resourceDomain(kind: TypedResource['kind']): ReferenceDomain {
 	return kind === 'texture' ? 'resource:texture' : 'resource:asset';
 }
 
-/** The binding a texture carries when its bytes are not staged yet. */
-function resourceReference(textureId: string, sourceContentId: string): SemanticReference {
+/** The binding a resource carries when its bytes are not staged yet. */
+function resourceReference(kind: TypedResource['kind'], resourceId: string, sourceContentId: string): SemanticReference {
 	return {
 		version: 1,
-		domain: 'resource:texture',
+		domain: resourceDomain(kind),
 		revision: { kind: 'exact', contentRevision: sourceContentId },
-		subject: { kind: 'resource', id: textureId },
+		subject: { kind: 'resource', id: resourceId },
 		instancePath: [],
 		location: { kind: 'project-root' },
 		componentId: null,
@@ -210,64 +206,7 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 
 	const nodes = project.scene.navigationNodes;
 	const connections = project.scene.connections;
-	const nodeById = new Map<string, SceneNavigationNode>();
-	for (const node of nodes) {
-		if (nodeById.has(node.id)) {
-			return refuse(
-				'duplicate-identity',
-				'$.scene.navigationNodes',
-				`node "${node.id}" is declared twice`,
-				'Repair the duplicated ids before converting; a duplicate would collapse two occurrences into one identity.'
-			);
-		}
-		nodeById.set(node.id, node);
-	}
-
-	// Legacy links must be resolvable and mutual. An asymmetric link is not
-	// repairable by the converter: it would have to choose which side is right.
-	for (const node of nodes) {
-		for (const targetId of node.connectedNodeIds) {
-			const target = nodeById.get(targetId);
-			if (target === undefined) {
-				return refuse(
-					'invalid-source',
-					`$.scene.navigationNodes["${node.id}"].connectedNodeIds`,
-					`node "${node.id}" is connected to unknown node "${targetId}"`,
-					'Repair the connectivity before converting.'
-				);
-			}
-			if (!target.connectedNodeIds.includes(node.id)) {
-				return refuse(
-					'asymmetric-links',
-					`$.scene.navigationNodes["${node.id}"].connectedNodeIds`,
-					`node "${node.id}" declares "${targetId}" and "${targetId}" does not declare "${node.id}"`,
-					'Repair the connectivity to a mutual declaration; the converter never picks one side of an asymmetric link.'
-				);
-			}
-		}
-		if (node.nextNodeId !== undefined) {
-			const next = nodeById.get(node.nextNodeId);
-			if (next === undefined || next.previousNodeId !== node.id) {
-				return refuse(
-					'asymmetric-links',
-					`$.scene.navigationNodes["${node.id}"].nextNodeId`,
-					`node "${node.id}" continues to "${node.nextNodeId}" without a reciprocal previous link`,
-					'Repair the order links before converting; an unmatched link is not a sequence.'
-				);
-			}
-		}
-		if (node.previousNodeId !== undefined) {
-			const previous = nodeById.get(node.previousNodeId);
-			if (previous === undefined || previous.nextNodeId !== node.id) {
-				return refuse(
-					'asymmetric-links',
-					`$.scene.navigationNodes["${node.id}"].previousNodeId`,
-					`node "${node.id}" follows "${node.previousNodeId}" without a reciprocal next link`,
-					'Repair the order links before converting.'
-				);
-			}
-		}
-	}
+	const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
 	const components = componentsOf(nodes, nodeById);
 	const needsEntryChoice = components.length > 1 || components.some((component) => component.cycle);
@@ -284,7 +223,7 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 
 	const stopNodeIds: string[] = components.flatMap((component) => component.nodeIds);
 	const entryStopIdFromPolicy = input.policy.entry?.entryStopId ?? null;
-	if (entryStopIdFromPolicy !== null && !stopNodeIds.includes(entryStopIdFromPolicy.replace(/^stop:/, ''))) {
+	if (entryStopIdFromPolicy !== null && !stopNodeIds.some((nodeId) => stopIdOf(nodeId) === entryStopIdFromPolicy)) {
 		return refuse(
 			'policy-mismatch',
 			'$.policy.entry.entryStopId',
@@ -327,7 +266,6 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 				'Flatten or explicitly model the nested detour; a nested rejoin is not resolved by proximity or guessing.'
 			);
 		}
-		if (!detourNodeIds.includes(node.id)) detourNodeIds.push(node.id);
 	}
 	for (const nodeId of detourNodeIds) if (!stopNodeIds.includes(nodeId)) stopNodeIds.push(nodeId);
 
@@ -347,7 +285,8 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 			id: `guide:${component.nodeIds[0]!}`,
 			label: component.cycle ? 'Cycle' : (nodeById.get(component.nodeIds[0]!)?.label ?? 'Guide'),
 			stopIds: order.map(stopIdOf),
-			entryStopId: stopIdOf(order[0]!),
+			entryStopId: entryStopIdFromPolicy !== null && order.some((nodeId) => stopIdOf(nodeId) === entryStopIdFromPolicy)
+				? entryStopIdFromPolicy : stopIdOf(order[0]!),
 			order,
 			cycle: component.cycle
 		};
@@ -393,8 +332,8 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 			if (guide.cycle && successor === undefined) {
 				const closing = connections.filter(
 					(connection) =>
-						connection.fromNodeId === nodeId &&
-						connection.toNodeId === guide.order[0]! &&
+						((connection.fromNodeId === nodeId && connection.toNodeId === guide.order[0]!) ||
+						 (connection.toNodeId === nodeId && connection.fromNodeId === guide.order[0]!)) &&
 						!usedConnections.has(connection.id)
 				);
 				continuationOf.set(
@@ -435,8 +374,8 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 					'Supply the identity-qualified Stop this hold belongs to; a hold is never silently dropped or turned into a second Camera timeline.'
 				);
 			}
-			const targetNodeId = decision.stopId.replace(/^stop:/, '');
-			if (!stopNodeIds.includes(targetNodeId)) {
+			const targetNodeId = stopNodeIds.find((nodeId) => stopIdOf(nodeId) === decision.stopId);
+			if (targetNodeId === undefined || !Number.isFinite(decision.holdSeconds) || decision.holdSeconds < 0) {
 				return refuse(
 					'policy-mismatch',
 					`$.policy.viewKeyHolds["${connection.id}/${direction}"].stopId`,
@@ -519,12 +458,18 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 	const detourRows: Array<MigrationReport['detours'][number]> = [];
 	for (const nodeId of detourNodeIds) {
 		const decision = input.policy.detours[nodeId]!;
+		const originId = nodeById.get(nodeId)!.detourOfNodeId!;
+		if (decision.fromStopId !== stopIdOf(originId) || decision.toStopId !== stopIdOf(nodeId) || decision.returnToStopId !== decision.fromStopId) {
+			return refuse('policy-mismatch', `$.policy.detours["${nodeId}"]`,
+				'the mapping must preserve the authored detour origin/target and return to its initiating occurrence',
+				'Supply the authored from/to occurrence and return to that origin; a later rejoin needs a separately supported mapping.');
+		}
 		for (const [field, stopId] of [
 			['fromStopId', decision.fromStopId],
 			['toStopId', decision.toStopId],
 			['returnToStopId', decision.returnToStopId]
 		] as const) {
-			if (!stopNodeIds.includes(stopId.replace(/^stop:/, ''))) {
+			if (!stopNodeIds.some((nodeId) => stopIdOf(nodeId) === stopId)) {
 				return refuse(
 					'policy-mismatch',
 					`$.policy.detours["${nodeId}"].${field}`,
@@ -559,27 +504,26 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 	};
 
 	// Typed resources: identities are preserved, bytes are pinned only when staged.
-	const resources: TypedResource[] = project.scene.textures.map((texture) => {
-		const staged = input.pins.find((pin) => pin.kind === 'texture' && pin.id === texture.id);
-		if (staged !== undefined) {
-			return {
-				kind: 'texture',
-				id: texture.id,
-				contentRevision: staged.contentRevision,
-				pin: staged.pin,
-				unresolved: null
-			};
-		}
+	const stagedResources = validateResourcePayload({ formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+		resources: input.pins.map((pin) => ({ ...pin, unresolved: null })) });
+	if (!stagedResources.success || stagedResources.value.resources.some((resource) => resource.pin === null)) {
+		return refuse('policy-mismatch', '$.pins', stagedResources.success ? 'a staged external resource requires a verified bytes pin' : stagedResources.issues[0]!.message,
+			'Supply one verified pin per resource identity; duplicate or conflicting pins are refused.');
+	}
+	const requiredResources: Array<{ kind: TypedResource['kind']; id: string }> = [
+		...project.scene.textures.map((texture) => ({ kind: 'texture' as const, id: texture.id })),
+		...[...new Set(project.scene.entities.filter((entity) => entity.kind === 'model').map((entity) => entity.assetId))]
+			.map((id) => ({ kind: 'asset' as const, id }))
+	];
+	const resources: TypedResource[] = requiredResources.map(({ kind, id }) => {
+		const staged = stagedResources.value.resources.find((pin) => pin.kind === kind && pin.id === id);
+		if (staged !== undefined) return staged;
 		return {
-			kind: 'texture',
-			id: texture.id,
-			contentRevision: null,
-			pin: null,
+			kind, id, contentRevision: null, pin: null,
 			unresolved: {
-				reference: resourceReference(texture.id, baseline.sourceContentId),
-				domain: 'resource:texture',
-				status: 'repair-required',
-				message: `texture "${texture.id}" has no staged external pin; its bytes are not admitted`
+				reference: resourceReference(kind, id, baseline.sourceContentId),
+				domain: resourceDomain(kind), status: 'repair-required',
+				message: `${kind} "${id}" has no staged external pin; its bytes are not admitted`
 			}
 		};
 	});
@@ -621,11 +565,17 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 		experience: experiencePayload,
 		resources: resourcePayload
 	};
+	for (const domain of UNIT_DOMAINS) {
+		const admitted = validateUnitPayload(domain, payloads[domain]);
+		if (!admitted.success) return refuse('policy-mismatch', `$.units.${domain}`, admitted.issues[0]!.message,
+			'Supply policy values admitted by the target unit codec.');
+		payloads[domain] = admitted.value;
+	}
 	const entries: DependencyLockEntry[] = [];
 	for (const domain of UNIT_DOMAINS) {
 		if (domain === 'resources') continue;
 		entries.push({
-			domain: lockDomainFor(domain),
+			domain,
 			subjectKind: 'unit',
 			subjectId: unitIds[domain],
 			instancePath: [],
@@ -675,7 +625,7 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 
 	return {
 		kind: 'prepared',
-		envelope,
+		envelope: verified.envelope,
 		report: {
 			baseline,
 			unitIds,
@@ -693,7 +643,7 @@ export async function prepareSourceMigration(input: MigrationInput): Promise<Mig
 				entryStopId: guide.entryStopId,
 				stopIds: guide.stopIds
 			})),
-			experiences: [{ experienceId, entryGuideId: experience.entryGuideId, entryStopId: entryStopId ?? '' }],
+			experiences: [{ experienceId, entryGuideId: experience.entryGuideId, entryStopId }],
 			connections: connections.map((connection) => ({
 				connectionId: connection.id,
 				fromViewId: connection.fromNodeId,

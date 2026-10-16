@@ -272,3 +272,49 @@ describe('typed scoped state and bounded guards', () => {
 		).toContain('unknown-tag');
 	});
 });
+
+
+describe('independent AM-6 admission regressions', () => {
+	it('refuses fields belonging to another guard/action variant instead of dropping them', () => {
+		expect(codes({ ...program(), lifecycle: [{ event: 'enter', action: { kind: 'continue', url: 'https://example.com' }, guard: null }] })).toContain('unknown-key');
+		expect(codes({ ...program(), lifecycle: [{ event: 'enter', action: { kind: 'continue' }, guard: { kind: 'literal', value: true, stateId: 'state-seen' } }] })).toContain('unknown-key');
+	});
+
+	it('type-checks assignments, equality values and boolean state reads against declarations', () => {
+		for (const action of [
+			{ kind: 'set-state', stateId: 'state-room', value: 'absent' },
+			{ kind: 'set-state', stateId: 'state-seen', value: 'true' }
+		]) expect(codes({ ...program(), lifecycle: [{ event: 'enter', action, guard: null }] })).toContain('out-of-range');
+		for (const guard of [
+			{ kind: 'state', stateId: 'state-room' },
+			{ kind: 'equals', stateId: 'state-room', value: true },
+			{ kind: 'equals', stateId: 'state-room', value: 'absent' }
+		]) expect(codes({ ...program(), lifecycle: [{ event: 'enter', action: { kind: 'continue' }, guard }] })).toContain('out-of-range');
+	});
+
+	it('refuses ambiguous global content identities and inconsistent Cut/hold meanings', () => {
+		const duplicate = program().presentations.map((presentation) => ({ ...presentation, content: [{ id: 'same', kind: 'text', text: 'Text' }] }));
+		expect(codes({ ...program(), presentations: duplicate })).toContain('duplicate-identity');
+		expect(codes({ ...program(), stops: program().stops.map((stop) => stop.id === 'stop-1'
+			? { ...stop, invocation: { kind: 'cut', viewId: 'view-2' } } : stop) })).toContain('view-mismatch');
+		expect(codes({ ...program(), localTime: [{ stopId: 'stop-1', holdSeconds: 3 }] })).toContain('hold-mismatch');
+	});
+
+	it('admits absolute HTTP(S) activation URLs and refuses executable or relative URLs', () => {
+		for (const url of ['https://example.com/info', 'http://example.com/info']) expect(validateExecutionProgram({ ...program(),
+			lifecycle: [{ event: 'enter', action: { kind: 'open-url', url }, guard: null }] }).success).toBe(true);
+		for (const url of ['javascript:alert(1)', 'data:text/html,content', '/relative', 'invalid']) expect(codes({ ...program(),
+			lifecycle: [{ event: 'enter', action: { kind: 'open-url', url }, guard: null }] })).toContain('invalid-url');
+	});
+
+	it('bounds recursive guards and preserves the actual lifecycle diagnostic path', () => {
+		let guard: unknown = { kind: 'literal', value: true };
+		for (let index = 0; index < 100; index++) guard = { kind: 'conjunction', guards: [guard] };
+		expect(codes({ ...program(), lifecycle: [{ event: 'enter', action: { kind: 'continue' }, guard }] })).toContain('guard-too-deep');
+		const result = validateExecutionProgram({ ...program(), lifecycle: [
+			{ event: 'enter', action: { kind: 'continue' }, guard: null },
+			{ event: 'arrival', action: { kind: 'continue' }, guard: { kind: 'state', stateId: 'absent' } }
+		] });
+		expect(!result.success && result.issues[0]!.path).toBe('$.lifecycle[1].guard.stateId');
+	});
+});

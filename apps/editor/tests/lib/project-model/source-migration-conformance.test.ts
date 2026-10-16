@@ -13,11 +13,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	createEmptyWallFirstProject,
+	validateProject,
 	type ProjectDocument,
 	type SceneConnection,
 	type SceneNavigationNode
 } from '@portfolio/project-model';
 import { prepareSourceMigration, type MigrationInput, type MigrationResult } from '@portfolio/project-model/migration';
+import { resolveUnitReference } from '@portfolio/project-model/references/unit-resolution';
 import { serializeProjectEnvelope, verifyUnitContentRevisions } from '@portfolio/project-model/units';
 
 function node(id: string, x: number, overrides: Partial<SceneNavigationNode> = {}): SceneNavigationNode {
@@ -531,4 +533,108 @@ describe('the conversion matrix — refused rows', () => {
 		expect(refusalCodes(await prepareSourceMigration(input(broken)))).toContain('invalid-source');
 		expect(JSON.stringify(broken)).toBe(brokenBefore);
 	});
+});
+
+
+describe('independent AM-7 fidelity regressions (admitted post-#115 sources)', () => {
+	it('honors a supplied mid-chain entry in the candidate and report', async () => {
+		const source = openChain();
+		expect(validateProject(source).success).toBe(true);
+		const result = prepared(await prepareSourceMigration(input(source, { policy: {
+			entry: { experienceId: 'chosen', entryStopId: 'stop:node-2' }, lockInteraction: {}, viewKeyHolds: {}, detours: {}
+		} })));
+		expect(result.envelope.units.experience.data.experiences[0]!.guides[0]!.entryStopId).toBe('stop:node-2');
+		expect(result.report.experiences[0]!.entryStopId).toBe('stop:node-2');
+	});
+
+	it('recognizes a distinct closing connection authored in reverse', async () => {
+		const source = distinctClosingCycle();
+		source.scene.connections[2] = connection('connection-3', 'node-1', 'node-3');
+		expect(validateProject(source).success).toBe(true);
+		const result = prepared(await prepareSourceMigration(input(source, { policy: {
+			entry: { experienceId: 'chosen', entryStopId: 'stop:node-1' }, lockInteraction: {}, viewKeyHolds: {}, detours: {}
+		} })));
+		expect(result.envelope.units.experience.data.experiences[0]!.stops.find((stop) => stop.id === 'stop:node-3')!.continuation).toEqual({ kind: 'stop', stopId: 'stop:node-1' });
+	});
+
+	it('refuses detour policies that change the authored origin/target or invent a later rejoin', async () => {
+		const source = openChain();
+		source.scene.navigationNodes.push(node('node-3', 8, { detourOfNodeId: 'node-1' }));
+		expect(validateProject(source).success).toBe(true);
+		for (const decision of [
+			{ fromStopId: 'stop:node-2', toStopId: 'stop:node-3', returnToStopId: 'stop:node-2' },
+			{ fromStopId: 'stop:node-1', toStopId: 'stop:node-2', returnToStopId: 'stop:node-1' },
+			{ fromStopId: 'stop:node-1', toStopId: 'stop:node-3', returnToStopId: 'stop:node-2' }
+		]) expect(refusalCodes(await prepareSourceMigration(input(source, { policy: {
+			entry: null, lockInteraction: {}, viewKeyHolds: {}, detours: { 'node-3': decision }
+		} })))).toEqual(['policy-mismatch']);
+	});
+
+	it('requires actual Stop ids in policies and reports invalid mapped values without throwing', async () => {
+		const source = openChain();
+		expect(validateProject(source).success).toBe(true);
+		expect(refusalCodes(await prepareSourceMigration(input(source, { policy: {
+			entry: { experienceId: 'chosen', entryStopId: 'node-1' }, lockInteraction: {}, viewKeyHolds: {}, detours: {}
+		} })))).toEqual(['policy-mismatch']);
+		expect(refusalCodes(await prepareSourceMigration(input(source, { policy: {
+			entry: { experienceId: 'invalid id', entryStopId: 'stop:node-1' }, lockInteraction: {}, viewKeyHolds: {}, detours: {}
+		} })))).toEqual(['policy-mismatch']);
+	});
+
+	it('refuses duplicate staged pins instead of selecting the first one', async () => {
+		const source = project();
+		source.scene.textures = [{ id: 't', name: 'Texture', uri: '/textures/paper.png' }];
+		expect(validateProject(source).success).toBe(true);
+		const staged = { kind: 'texture' as const, id: 't', contentRevision: null,
+			pin: { hash: 'one', mime: 'image/png', size: 1, locator: 'objects/one' } };
+		expect(refusalCodes(await prepareSourceMigration(input(source, { pins: [staged, { ...staged, pin: { ...staged.pin, hash: 'two' } }] })))).toEqual(['policy-mismatch']);
+	});
+
+	it('includes model asset identities as unresolved resources or verified staged pins', async () => {
+		const source = project();
+		source.scene.entities = [{ kind: 'model', id: 'model-1', name: 'Model', assetId: 'piano', fallback: 'piano', position: [0, 0, 0], rotation: [0, 0, 0] }];
+		expect(validateProject(source).success).toBe(true);
+		const pending = prepared(await prepareSourceMigration(input(source)));
+		expect(pending.report.unresolved).toMatchObject([{ resourceKind: 'asset', resourceId: 'piano' }]);
+		const pin = { hash: 'asset-bytes', mime: 'model/gltf-binary', size: 123, locator: 'objects/asset' };
+		const resolved = prepared(await prepareSourceMigration(input(source, { pins: [{ kind: 'asset', id: 'piano', contentRevision: null, pin }] })));
+		expect(resolved.envelope.units.resources.data.resources[0]).toMatchObject({ kind: 'asset', id: 'piano', pin, unresolved: null });
+	});
+});
+
+
+it('preserves Camera path, framing and directed timing with byte-for-byte parity in both directions', async () => {
+	const source = openChain();
+	source.scene.connections = [connection('connection-1', 'node-1', 'node-2', {
+		positionPath: { kind: 'rounded-polyline', anchors: [{ id: 'anchor-1', position: [2, 0.25, 0] }] },
+		targetWaypoints: [{ position: [2, 1.5, 3] }],
+		timing: { forward: { durationSeconds: 2.75, easing: 'ease-in' }, reverse: { durationSeconds: 4.125, easing: 'ease-out' } },
+		viewTracks: {
+			forward: [{ id: 'key-forward', progress: 0.25, cameraTarget: [1, 1, 3], fov: 65, easing: 'smoothstep' }],
+			reverse: [{ id: 'key-reverse', progress: 0.625, cameraTarget: [2, 1, 3], fov: 42, easing: 'smootherstep' }],
+			framingEnvelope: { forward: { enterStart: 0, enterEnd: 0.2, exitStart: 0.8, exitEnd: 1 },
+				reverse: { enterStart: 0, enterEnd: 0.3, exitStart: 0.7, exitEnd: 1 } }
+		}
+	})];
+	expect(validateProject(source).success).toBe(true);
+	const result = prepared(await prepareSourceMigration(input(source)));
+	expect(result.envelope.units.camera.data.connections).toEqual(source.scene.connections);
+	for (const direction of ['forward', 'reverse'] as const) {
+		expect(result.envelope.units.camera.data.connections[0]!.viewTracks![direction]).toEqual(source.scene.connections[0]!.viewTracks![direction]);
+		expect(result.envelope.units.camera.data.connections[0]!.timing![direction]).toEqual(source.scene.connections[0]!.timing![direction]);
+	}
+	expect(await verifyUnitContentRevisions(result.envelope)).toEqual([]);
+});
+
+
+it('resolves project-lock subjects using the actual unit pins produced by conversion', async () => {
+	const result = prepared(await prepareSourceMigration(input(openChain())));
+	for (const [domain, kind, id] of [['camera', 'view', 'node-1'], ['experience', 'stop', 'stop:node-1']] as const) {
+		const resolution = await resolveUnitReference({ version: 1, domain,
+			revision: { kind: 'project-lock', projectId: 'project-1' }, subject: { kind, id }, instancePath: [],
+			location: { kind: 'project-root' }, componentId: null, capabilityId: null
+		}, { envelope: result.envelope, sessionEpoch: 'session' });
+		expect(resolution.kind).toBe('resolved');
+		if (resolution.kind === 'resolved') expect(resolution.subject.contentRevision).toBe(result.envelope.units[domain].header.contentRevision);
+	}
 });

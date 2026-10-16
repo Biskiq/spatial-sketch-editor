@@ -34,6 +34,7 @@ import {
 	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
 	createProjectEnvelope,
+	createDomainUnit,
 	type DependencyLock,
 	type Experience,
 	type ProjectEnvelope,
@@ -164,7 +165,7 @@ describe('the F.2 lock reader', () => {
 describe('Camera, Experience and resource subjects', () => {
 	it('resolves an existing Camera view to the Camera unit revision', async () => {
 		const envelope = await build();
-		const resolution = await resolveUnitReference(reference(), input(envelope));
+		const resolution = await resolveUnitReference(reference({ revision: { kind: 'exact', contentRevision: envelope.units.camera.header.contentRevision } }), input(envelope));
 		expect(resolution.kind).toBe('resolved');
 		if (resolution.kind !== 'resolved') return;
 		expect(resolution.subject.contentRevision).toBe(envelope.units.camera.header.contentRevision);
@@ -197,6 +198,7 @@ describe('Camera, Experience and resource subjects', () => {
 				}
 			}
 		};
+		twoExperiences.units.experience = await createDomainUnit('experience', twoExperiences.units.experience.header.unitId, twoExperiences.units.experience.data);
 		const ambiguous = await resolveUnitReference(
 			reference({ domain: 'experience', subject: { kind: 'stop', id: 'stop-shared' } }),
 			input(twoExperiences)
@@ -209,6 +211,7 @@ describe('Camera, Experience and resource subjects', () => {
 			reference({
 				domain: 'experience',
 				subject: { kind: 'stop', id: 'stop-shared' },
+				revision: { kind: 'exact', contentRevision: twoExperiences.units.experience.header.contentRevision },
 				instancePath: ['experience-b']
 			}),
 			input(twoExperiences)
@@ -243,7 +246,7 @@ describe('Camera, Experience and resource subjects', () => {
 			{ kind: 'texture', id: 'texture-1', contentRevision: null, pin: PIN, unresolved: null }
 		]);
 		const resolved = await resolveUnitReference(
-			reference({ domain: 'resource:texture', subject: { kind: 'resource', id: 'texture-1' } }),
+			reference({ domain: 'resource:texture', subject: { kind: 'resource', id: 'texture-1' }, revision: { kind: 'exact', contentRevision: PIN.hash } }),
 			input(pinned)
 		);
 		expect(resolved.kind).toBe('resolved');
@@ -260,5 +263,55 @@ describe('Camera, Experience and resource subjects', () => {
 		expect(resolution.kind).toBe('failed');
 		if (resolution.kind !== 'failed') return;
 		expect(resolution.code).toBe('incompatible');
+	});
+});
+
+
+describe('independent identity and revision regressions', () => {
+	it('does not resolve one kind through the id of another kind', async () => {
+		const envelope = await build();
+		const result = await resolveUnitReference(reference({ subject: { kind: 'connection', id: 'view-1' } }), input(envelope));
+		expect(result.kind === 'failed' && result.code).toBe('missing');
+		const wrongKind = await resolveUnitReference(reference({ domain: 'experience', subject: { kind: 'guide', id: 'stop-1' } }), input(envelope));
+		expect(wrongKind.kind === 'failed' && wrongKind.code).toBe('missing');
+	});
+
+	it('refuses stale exact and locked revisions instead of rebinding to current contents', async () => {
+		const envelope = await build([], [{ domain: 'camera', subjectKind: 'view', subjectId: 'view-1', instancePath: [],
+			contentRevision: 'old', requiredCapabilities: [], pin: null }]);
+		for (const revision of [{ kind: 'exact', contentRevision: 'old' } as const,
+			{ kind: 'project-lock', projectId: 'project-1' } as const]) {
+			const result = await resolveUnitReference(reference({ revision }), input(envelope));
+			expect(result.kind === 'failed' && result.code).toBe('repair-required');
+		}
+	});
+
+	it('checks every path segment, location, component and capability qualification', async () => {
+		const envelope = await build();
+		const ref = reference({ domain: 'experience', subject: { kind: 'stop', id: 'stop-1' },
+			revision: { kind: 'exact', contentRevision: envelope.units.experience.header.contentRevision } });
+		for (const qualifiers of [{ instancePath: ['experience-a', 'ghost'] }, { componentId: 'ghost' },
+			{ capabilityId: 'ghost' }, { location: { kind: 'layout-location', levelId: 'ghost', structureInstancePath: [] } }]) {
+			const result = await resolveUnitReference({ ...ref, ...qualifiers }, input(envelope));
+			expect(result.kind === 'failed' && result.code).toBe('missing');
+		}
+	});
+
+	it('does not reuse a resolver under another accepted snapshot', async () => {
+		const envelope = await build();
+		const context = createUnitReadContext({ ...input(envelope), sourceContentId: 'source' });
+		context.snapshot = { ...context.snapshot, acceptedRevision: { projectId: 'other', revisionId: 'r' } };
+		const result = resolveReference(reference({ revision: { kind: 'exact', contentRevision: envelope.units.camera.header.contentRevision } }), context);
+		expect(result.kind === 'failed' && result.code).toBe('repair-required');
+	});
+
+	it('keeps delimiter-bearing instance paths distinct in a real lock reader', () => {
+		const entry = { domain: 'experience' as const, subjectKind: 'stop', subjectId: 's', instancePath: ['x/y'],
+			contentRevision: 'one', requiredCapabilities: [], pin: null };
+		const reader = createDependencyLockReader('project-1', { formatVersion: 1, entries: [entry,
+			{ ...entry, instancePath: ['x', 'y'], contentRevision: 'two' }] });
+		for (const [instancePath, expected] of [[['x/y'], 'one'], [['x', 'y'], 'two']] as const) {
+			expect(reader.contentRevisionFor(reference({ domain: 'experience', subject: { kind: 'stop', id: 's' }, instancePath }))).toBe(expected);
+		}
 	});
 });

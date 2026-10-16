@@ -23,6 +23,8 @@ import {
 	computeUnitContentRevision,
 	createProjectEnvelope,
 	serializeProjectEnvelope,
+	validateProjectEnvelope,
+	verifyUnitContentRevisions,
 	type ProjectEnvelope,
 	type ProjectEnvelopeInput
 } from '@portfolio/project-model/units';
@@ -197,4 +199,17 @@ describe('the envelope source-content digest', () => {
 		});
 		expect(await computeEnvelopeSourceContentId(edited)).not.toBe(await computeEnvelopeSourceContentId(built));
 	});
+});
+
+
+it('hashes codec-normalized contents and remains self-consistent after a real read', async () => {
+	const values = parts();
+	values.experience.data.experiences[0]!.stops = [{ id: 'stop-1', presentationId: 'presentation-1' }];
+	const built = await createProjectEnvelope({ id: 'project-1', name: 'Project one',
+		acceptedRevision: { projectId: 'project-1', revisionId: 'r' }, dependencyLock: { formatVersion: 1, entries: [] }, ...values });
+	const read = validateProjectEnvelope(JSON.parse(serializeProjectEnvelope(built)));
+	expect(read.success).toBe(true);
+	if (!read.success) return;
+	expect(await verifyUnitContentRevisions(read.envelope)).toEqual([]);
+	expect(await computeEnvelopeSourceContentId(read.envelope)).toBe(await computeEnvelopeSourceContentId(built));
 });

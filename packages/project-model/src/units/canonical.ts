@@ -22,6 +22,7 @@
  * hashing implementation.
  */
 
+import { validateUnitPayload } from './validate';
 import { sha256Bytes } from '../package-sha';
 import {
 	ADMITTED_UNIT_VERSIONS,
@@ -35,6 +36,7 @@ import {
 	type ProjectUnits,
 	type ResourceUnitPayload,
 	type UnitDomain,
+	type PayloadOf,
 	type UnitHeader
 } from './types';
 
@@ -91,12 +93,19 @@ export async function createUnitHeader(
 }
 
 /** Wrap validated domain data as a complete unit. */
-export async function createDomainUnit<TData>(
-	domain: UnitDomain,
+export async function createDomainUnit<D extends UnitDomain>(
+	domain: D,
 	unitId: string,
-	data: TData
-): Promise<DomainUnit<TData>> {
-	return { header: await createUnitHeader(domain, unitId, data), data };
+	data: PayloadOf<D>
+): Promise<DomainUnit<PayloadOf<D>>> {
+	const result = validateUnitPayload(domain, data);
+	if (!result.success) {
+		const first = result.issues[0]!;
+		throw new Error(`${first.path} (${first.code}): ${first.message}`);
+	}
+	// Hash the same normalized domain data that a reader returns.
+	const normalized = result.value as PayloadOf<D>;
+	return { header: await createUnitHeader(domain, unitId, normalized), data: normalized };
 }
 
 /**

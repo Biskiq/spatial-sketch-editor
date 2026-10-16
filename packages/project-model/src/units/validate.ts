@@ -21,10 +21,12 @@
  * supply the records it expects and never re-interpret them.
  */
 
+import { dependencyLockKey } from './identity';
 import { validateWallFirstLayoutDocument } from '@portfolio/layout-core';
 import { ShapeReader, type ShapeIssue, type ShapeValidation } from '../strict-shape';
 import { validateAcceptedRevision, validateSemanticReference } from '../references/validate';
 import { REFERENCE_FAILURE_CODES, isReferenceDomain } from '../references/types';
+import { validateProjectSceneCameraPoses } from '../project-layout-semantics';
 import { SCENE_WORLD_LOCAL_FORMAT_VERSION } from '../scene';
 import { validateSceneDocument } from '../scene-codec';
 import {
@@ -144,6 +146,10 @@ function readPin(reader: ShapeReader, input: unknown, path: string): ResourcePin
 	const size = reader.integerAtLeast(record.size, `${path}.size`, 0);
 	const locator = reader.string(record.locator, `${path}.locator`);
 	if (hash === null || mime === null || size === null || locator === null) return null;
+	if (!Number.isSafeInteger(size)) {
+		reader.problem(`${path}.size`, 'out-of-range', 'a resource byte size must be an exact safe integer');
+		return null;
+	}
 	return { hash, mime, size, locator };
 }
 
@@ -161,9 +167,9 @@ function readCapabilities(reader: ShapeReader, input: unknown, path: string): Re
 		const id = reader.opaqueId(record.id, `${entryPath}.id`);
 		const version = reader.opaqueId(record.version, `${entryPath}.version`);
 		if (id === null || version === null) return null;
-		const key = `${id}@${version}`;
+		const key = id;
 		if (seen.has(key)) {
-			reader.problem(`${entryPath}.id`, 'duplicate-capability', `${key} is required twice by one lock entry`);
+			reader.problem(`${entryPath}.id`, 'duplicate-capability', `capability ${id} is required more than once by one lock entry`);
 		}
 		seen.add(key);
 		capabilities.push({ id, version });
@@ -173,7 +179,7 @@ function readCapabilities(reader: ShapeReader, input: unknown, path: string): Re
 
 /** The qualified identity/instance scope a lock entry is keyed by. */
 function lockKey(entry: DependencyLockEntry): string {
-	return [entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath.join('/')].join('|');
+	return dependencyLockKey(entry.domain, entry.subjectKind, entry.subjectId, entry.instancePath);
 }
 
 /**
@@ -372,6 +378,8 @@ export function validateCameraPayload(input: unknown): ShapeValidation<CameraUni
 		connections: record.connections
 	});
 	if (!delegated.success) return { success: false, issues: delegatedIssues(delegated.issues) };
+	const poseIssues = validateProjectSceneCameraPoses(delegated.document);
+	if (poseIssues.length > 0) return { success: false, issues: poseIssues.map((issue) => ({ ...issue, path: issue.path.replace('$.scene.', '$.') })) };
 	const resolved: CameraView[] = delegated.document.navigationNodes.map((node) => ({
 		id: node.id,
 		label: node.label,
@@ -405,7 +413,7 @@ const DETOUR_KEYS = ['id', 'fromStopId', 'toStopId', 'returnToStopId'] as const;
 const EXPERIENCE_PAYLOAD_KEYS = ['formatVersion', 'experiences'] as const;
 
 function readContinuation(reader: ShapeReader, input: unknown, path: string): ExperienceContinuation | null {
-	if (input === undefined || input === null) return { kind: 'sequence-next' };
+	if (input === undefined) return { kind: 'sequence-next' };
 	const record = reader.object(input, path, ['kind', 'stopId']);
 	if (record === null) return null;
 	const kind = reader.tag(record.kind, `${path}.kind`, ['sequence-next', 'stop', 'end']);
@@ -462,6 +470,10 @@ function readExperience(reader: ShapeReader, input: unknown, path: string): Expe
 		const stopIds = reader.opaqueIdArray(value.stopIds, `${entryPath}.stopIds`);
 		const entryStopId = reader.opaqueId(value.entryStopId, `${entryPath}.entryStopId`);
 		if (guideId === null || guideLabel === null || stopIds === null || entryStopId === null) return null;
+		if (new Set(stopIds).size !== stopIds.length) {
+			reader.problem(`${entryPath}.stopIds`, 'duplicate-identity', 'repeated guided placements require distinct Stop identities');
+			return null;
+		}
 		if (!stopIds.includes(entryStopId)) {
 			reader.problem(
 				`${entryPath}.entryStopId`,
@@ -565,8 +577,8 @@ function readCollection<T>(
 /**
  * Strict read of the Experience 1 payload. The payload is a collection because
  * several Experiences share one world; an empty collection is explicit. Stop,
- * Presentation and Guide identity are independent: a repeated Stop use shares
- * one `id`, and two Presentations may point at one view.
+ * Presentation and Guide identity are independent: repeated visits create fresh
+ * runs of a Stop, and repeated guided placements use distinct Stop IDs.
  */
 export function validateExperiencePayload(input: unknown): ShapeValidation<ExperienceUnitPayload> {
 	const reader = new ShapeReader();
@@ -783,6 +795,10 @@ export function validateProjectEnvelope(input: unknown): EnvelopeValidation {
 	) {
 		return { success: false, issues: reader.issues };
 	}
+	if (acceptedRevision.value.projectId !== id) {
+		reader.problem('$.acceptedRevision.projectId', 'project-mismatch', 'the accepted revision must belong to this envelope');
+		return { success: false, issues: reader.issues };
+	}
 	const units: ProjectUnits = { layout, scene, camera, experience, resources };
 	const found = envelopeFindings(units, lock.value);
 	return {
@@ -876,6 +892,25 @@ function envelopeFindings(
 		}
 	});
 
+	const resources = units.resources.data.resources;
+	for (const [index, resource] of resources.entries()) {
+		if (resource.unresolved !== null) diagnostics.push({
+			path: `$.units.resources.data.resources[${index}].unresolved`,
+			code: resource.unresolved.status, message: resource.unresolved.message
+		});
+	}
+	const requiredResources = [
+		...units.scene.data.textures.map((texture) => ({ kind: 'texture', id: texture.id })),
+		...units.scene.data.entities.filter((entity) => entity.kind === 'model').map((entity) => ({ kind: 'asset', id: entity.assetId }))
+	];
+	for (const required of requiredResources) {
+		const resource = resources.find((candidate) => candidate.kind === required.kind && candidate.id === required.id);
+		if (resource === undefined || resource.unresolved !== null) closure.push({
+			path: '$.units.resources.data.resources', code: resource === undefined ? 'missing-resource' : 'unresolved-resource',
+			message: `Scene requires ${required.kind} "${required.id}" with resolved bytes`
+		});
+	}
+
 	// Executable closure: every lock entry whose scope is a resource must be
 	// satisfied by a registry record, and a pinned entry must agree with the
 	// registry's own pin. This is a closure failure, not a structural defect.
@@ -883,7 +918,8 @@ function envelopeFindings(
 		if (!entry.domain.startsWith('resource:')) continue;
 		const kind = entry.domain.slice('resource:'.length);
 		const path = `$.dependencyLock.entries[${index}]`;
-		const record = units.resources.data.resources.find((resource) => resource.kind === kind && resource.id === entry.subjectId);
+		const record = entry.subjectKind === 'resource' && entry.instancePath.length === 0
+			? resources.find((resource) => resource.kind === kind && resource.id === entry.subjectId) : undefined;
 		if (record === undefined) {
 			closure.push({
 				path,
@@ -892,14 +928,16 @@ function envelopeFindings(
 			});
 			continue;
 		}
-		if (record.contentRevision !== null && record.contentRevision !== entry.contentRevision) {
+		if (record.unresolved !== null) closure.push({ path, code: 'unresolved-resource', message: record.unresolved.message });
+		const revision = record.contentRevision ?? record.pin?.hash ?? null;
+		if (revision !== null && revision !== entry.contentRevision) {
 			closure.push({
 				path,
 				code: 'resource-revision-mismatch',
-				message: `the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the resource unit declares ${record.contentRevision}`
+				message: `the lock pins "${entry.subjectId}" to ${entry.contentRevision} and the resource unit declares ${revision}`
 			});
 		}
-		if (record.pin !== null && entry.pin !== null && !samePin(record.pin, entry.pin)) {
+		if (!samePin(record.pin, entry.pin)) {
 			closure.push({
 				path,
 				code: 'resource-pin-mismatch',
@@ -912,5 +950,10 @@ function envelopeFindings(
 
 /** Serialize a validated envelope in its canonical field order. */
 export function serializeProjectEnvelope(envelope: ProjectEnvelope): string {
-	return JSON.stringify(envelope, null, 2) + '\n';
+	const result = validateProjectEnvelope(envelope);
+	if (!result.success) {
+		const first = result.issues[0]!;
+		throw new Error(`${first.path} (${first.code}): ${first.message}`);
+	}
+	return JSON.stringify(result.envelope, null, 2) + '\n';
 }
