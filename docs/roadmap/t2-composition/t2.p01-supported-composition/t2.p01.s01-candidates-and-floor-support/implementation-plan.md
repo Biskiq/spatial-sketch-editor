@@ -1,7 +1,8 @@
 # T2.P01.S01 — Deterministic candidates and canonical floor support: implementation plan
 
 **Slice:** T2.P01.S01 · **Status:** approved (owner-authorized 2026-10-16,
-[record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — not started ·
+[record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — in progress,
+awaiting independent review (parallel batch 2026-10-16) ·
 **Phase:** [T2.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T2](../../README.md) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 

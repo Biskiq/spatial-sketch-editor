@@ -11,6 +11,7 @@ export * from './package-format';
 export * from './package-sha';
 export * from './runtime';
 export * from './project-codec';
+export * from './scene-planning';
 export * from './project-layout-semantics';
 export * from './project-types';
 export * from './scene';
