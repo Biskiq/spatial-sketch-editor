@@ -126,6 +126,43 @@ Focused-run observation at the tested implementation: validation **1.8 ms**, ser
 digest **1.4 ms**, admission **51.8 ms**, complete acceptance **57.3 ms**. These are observations,
 not a benchmark guarantee or threshold. No permanent performance workflow was added.
 
+## Content-identity reconciliation and PR #128 implications
+
+The owner's reconciliation adopts the reviewed cursor-excluded authored-content hashing in
+PR #129 and makes decision 4 of [PR #127's ratified decision](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)
+explicit. The decision, AM-4, shared interface, batch protocol and both slice plans now distinguish
+full canonical source from the digest preimage. The reviewed hashing behavior is retained:
+ordered ID-keyed identity maps, only `layout.identity.cursor` excluded, all authored assignments
+included. Full canonical source retains the cursor for persistence/history. A cursor-only
+candidate is a no-op; an authored edit that also advances it records and restores the full source.
+Equal content identities cannot establish byte-exact restoration or identical Save retry payloads;
+T3's server must use the shared digest export and also compare full captured payloads for retries.
+This does not change F2 unit hashing or claim Save readiness.
+
+Read-only inspection of [PR #128](https://github.com/Biskiq/spatial-sketch-editor/pull/128) at
+`f3c286aa7e3fed941be532355380c8d2e555ea87` confirms its `computeSourceContentId` still hashes
+`serializeProject` output directly, including the cursor, and relies on writer order for dynamic
+identity maps. Its PR-body claim of digest equivalence is therefore superseded by this
+reconciliation. The second merger must retain one shared implementation/export, adopt #129's
+cursor and nested-map conformance tests, and rerun boot/Camera-output identity checks and the full
+merge gate on the then-current `main`. Cursor-only movement must not invalidate the Camera output;
+authored identity-assignment changes must change its source identity. There is no hash-version or
+persisted-data migration introduced here: neither sibling has merged. No #128 worktree was edited.
+
+The strengthened identity test uses an independent SHA-256 byte oracle, checks full-source
+round trips with the cursor intact and exercises the server recomputation entry point. The
+coordinator regression proves cursor-only no-op without installation/history and exact source,
+cursor and digest restoration with fresh revisions on Undo/Redo after an authored edit.
+
+Focused reconciliation verification (review evidence only; no acceptance or closeout):
+
+- Three whole behavioral contracts: **45 tests in 3 files passed**.
+- Whole architecture lane: **140 tests in 16 files passed**.
+- `npm test -w @portfolio/editor -- --maxWorkers=2`: **1,645 tests in 123 files passed**,
+  including heavy and arch; 103.14 s amid concurrent batch verification.
+- `git diff --check`: passed.
+- `npm run check:project-model` and `npm run check`: passed; editor reports zero errors/warnings.
+
 ## Final review and remaining obligations
 
 Re-review covered the complete PR against the approved scope and AM-4, plus the corrective diff

@@ -13,9 +13,11 @@
  * recomputation) inherits from the export that lands here.
  */
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 
 import {
 	canonicalSourceJson,
+	sourceContentIdForCanonicalJson,
 	computeSourceContentId,
 	createEmptyWallFirstProject,
 	createEmptyWorldLocalSceneDocument,
@@ -52,12 +54,12 @@ function withEntity(project: ProjectDocument, ...entities: SceneEntity[]): Proje
 }
 
 describe('current-source content identity', () => {
-	it('is the shared sha256 fingerprint over canonical bytes', async () => {
+	it('is the shared sha256 fingerprint over canonical authored bytes', async () => {
 		const identity = await computeSourceContentId(baseProject());
 		expect(identity).toMatch(/^sha256-[0-9a-f]{64}$/);
 	});
 
-	it("matches the project writer's own canonical bytes (no second canonical form)", async () => {
+	it("preserves the project writer's full canonical source for fixed-field documents", async () => {
 		const project = baseProject();
 		const canonical = canonicalSourceJson(project);
 		expect(canonical.kind).toBe('canonical');
@@ -163,6 +165,23 @@ it('excludes allocation bookkeeping from authored content identity', async () =>
 	changed.layout.identity!.cursor += 100;
 	expect(validateProject(changed).success).toBe(true);
 	expect(await computeSourceContentId(changed)).toBe(await computeSourceContentId(canonical.project));
+	const full = await tryComputeSourceContentId(changed);
+	if (full.kind !== 'computed') throw new Error('advanced fixture invalid');
+	expect(full.canonicalJson).not.toBe(canonical.canonicalJson);
+	expect(JSON.parse(full.canonicalJson).layout.identity.cursor).toBe(changed.layout.identity!.cursor);
+	const reopened = canonicalSourceJson(full.canonicalJson);
+	if (reopened.kind !== 'canonical') throw new Error('persisted fixture invalid');
+	expect(reopened.canonicalJson).toBe(full.canonicalJson);
+	expect(reopened.project.layout.identity!.cursor).toBe(changed.layout.identity!.cursor);
+
+	// Independent byte oracle pins the exact preimage and sha256 framing.
+	const authored = JSON.parse(full.canonicalJson);
+	delete authored.layout.identity.cursor;
+	const preimage = JSON.stringify(authored, null, 2) + '\n';
+	expect(full.sourceContentId).toBe(`sha256-${createHash('sha256').update(preimage, 'utf8').digest('hex')}`);
+	expect(full.sourceContentId).not.toBe(`sha256-${createHash('sha256').update(full.canonicalJson, 'utf8').digest('hex')}`);
+	// Server recomputation consumes full persisted source through the same export.
+	expect(await sourceContentIdForCanonicalJson(full.canonicalJson)).toBe(full.sourceContentId);
 });
 
 it('canonicalizes nested identity maps independently of input insertion order', async () => {

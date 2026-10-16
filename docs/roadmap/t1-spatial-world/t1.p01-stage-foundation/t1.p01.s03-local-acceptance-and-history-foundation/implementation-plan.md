@@ -98,7 +98,10 @@ Layout already defines it as allocation bookkeeping (`LayoutIdentityLedger`). S0
 - different authored contents give different identities, and identical contents give the same one —
   so an Undo back to earlier contents restores that content identity under a fresh revision, and the
   Camera output rebase is `unchanged`;
-- revision and allocation bookkeeping never enter it.
+- revision and allocation bookkeeping never enter it. A cursor-only candidate is a no-op and
+  neither installs nor creates history; an authored change that also advances the cursor stores
+  the full canonical source and restores that cursor exactly on Undo/Redo. Hash equality alone
+  cannot prove byte-exact restoration or an identical Save retry payload.
 
 S02 needs the same identity for boot in parallel. Whichever slice merges first lands the export with
 these tests; the other reuses it. `T3.P01.S02`'s server recomputation reuses it too.

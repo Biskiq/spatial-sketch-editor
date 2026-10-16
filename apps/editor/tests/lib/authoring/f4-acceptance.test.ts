@@ -31,6 +31,7 @@ import {
 } from './__fixtures__/f4-current-source-fixtures';
 import {
 	CURRENT_SOURCE_KIND,
+	CURRENT_SOURCE_VERSION,
 	admitCurrentSource,
 	admitCurrentSourceContent,
 	createEmptyWallFirstProject,
@@ -51,6 +52,7 @@ const HISTORY_LIMIT = 100;
 async function boot(
 	overrides: {
 		readonly adapter?: AcceptanceSourceAdapter<ProjectDocument>;
+		readonly planners?: readonly DomainPlanner<ProjectDocument>[];
 	} = {}
 ) {
 	const fixture = buildCurrentSourceFixture();
@@ -66,7 +68,7 @@ async function boot(
 			sourceContentId: admitted.sourceContentId,
 			blockingIssues: admitted.blockingIssues
 		},
-		planners: [
+		planners: overrides.planners ?? [
 			createProofLayoutPlanner(fixture.objectId),
 			createProofSceneScalarPlanner(),
 			createInvalidCandidatePlanner()
@@ -199,6 +201,45 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 		expect(coordinator.current().canonicalJson).toBe(afterFirst.canonicalJson);
 		expect(coordinator.installs()).toBe(installsAfterFirst);
 		expect(coordinator.history()).toEqual({ depth: 2, position: 1, limit: HISTORY_LIMIT });
+	});
+
+	it('ignores cursor-only candidates and restores full source after authored edits with cursor movement', async () => {
+		const planner: DomainPlanner<ProjectDocument> = {
+			...createProofLayoutPlanner('unused'),
+			prepare({ snapshot, intent }) {
+				const source = structuredClone(snapshot.domain.source);
+				source.layout.identity!.cursor += 100;
+				if ((intent.payload as { position: number[] }).position[0] === 1) source.layout.floor.name = 'Renamed floor';
+				return { kind: 'prepared', candidate: {
+					operationId: intent.operationId, sourceKind: CURRENT_SOURCE_KIND, sourceVersion: CURRENT_SOURCE_VERSION,
+					source, changes: [], correspondence: [], diagnostics: []
+				} };
+			}
+		};
+		const { coordinator, fixture } = await boot({ planners: [planner] });
+		const before = coordinator.current();
+		const historyBefore = coordinator.history();
+		const installsBefore = coordinator.installs();
+		expect((await coordinator.accept(layoutIntent(fixture, before.revision, before.sourceContentId, 'cursor-only', [0, 0.5, 0]))).kind).toBe('no-op');
+		expect(coordinator.current()).toEqual(before);
+		expect(coordinator.history()).toEqual(historyBefore);
+		expect(coordinator.installs()).toBe(installsBefore);
+
+		expect((await coordinator.accept(layoutIntent(fixture, before.revision, before.sourceContentId, 'authored-and-cursor', [1, 0.5, 0]))).kind).toBe('accepted');
+		const after = coordinator.current();
+		expect(after.sourceContentId).not.toBe(before.sourceContentId);
+		expect(after.source.layout.identity!.cursor).toBe(before.source.layout.identity!.cursor + 100);
+		expect(JSON.parse(after.canonicalJson).layout.identity.cursor).toBe(after.source.layout.identity!.cursor);
+		expect((await coordinator.undo()).kind).toBe('restored');
+		expect(coordinator.current().canonicalJson).toBe(before.canonicalJson);
+		expect(coordinator.current().source.layout.identity).toEqual(before.source.layout.identity);
+		expect(coordinator.current().sourceContentId).toBe(before.sourceContentId);
+		expect(coordinator.current().revision).not.toEqual(before.revision);
+		expect((await coordinator.redo()).kind).toBe('restored');
+		expect(coordinator.current().canonicalJson).toBe(after.canonicalJson);
+		expect(coordinator.current().source.layout.identity).toEqual(after.source.layout.identity);
+		expect(coordinator.current().sourceContentId).toBe(after.sourceContentId);
+		expect(coordinator.current().revision).not.toEqual(after.revision);
 	});
 
 	it('refuses a revision the accepted state has moved past (stale/ABA)', async () => {

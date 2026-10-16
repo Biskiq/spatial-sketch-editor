@@ -21,10 +21,11 @@ export type SourceContentIdentity =
 	| { readonly kind: 'rejected'; readonly issues: readonly ProjectIssue[] };
 
 /**
- * The one digest of canonical source bytes. The **only** place the identity's
+ * The one digest derived from full canonical source. The **only** place the identity's
  * byte framing is decided: UTF-8 canonical authored JSON (excluding the cursor),
  * hashed by the shared `sha256Bytes` primitive under its existing `sha256-<hex>`
- * form. A second caller that already holds canonical bytes (a server
+ * form. Input must be full canonical JSON from `canonicalSourceJson`, not the
+ * cursor-excluded hash preimage. A second caller that holds that source (a server
  * recomputing the digest after an upload) reuses this rather than re-deriving
  * the framing.
  */
@@ -81,8 +82,9 @@ export async function computeSourceContentId(
 }
 
 /**
- * Canonical authored bytes without the digest, for callers that hold the bytes
- * (serialization round trips, the API's shared validation) but not the hash.
+ * Full canonical source, including the allocation cursor, without the digest.
+ * These persistence/history bytes differ from the authored hash preimage. Used
+ * by serialization round trips and the API's shared validation without hashing.
  */
 export function canonicalSourceJson(
 	source: unknown,
