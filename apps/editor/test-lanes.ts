@@ -61,6 +61,12 @@ export const ARCH_FILES: string[] = [
 	// prerequisite check and the exposure-window opening rule, so it belongs to an unconditional
 	// lane. Its subject is the repository's execution structure, exactly like the docs gate below.
 	'tests/docs/parallel-track-gates.test.ts',
+	// T1.P01.S03: the F.4 editor-only isolation boundary — the public route's
+	// module graph stays free of the acceptance coordinator and its history while
+	// the shared contract package stays reachable. Nothing imports an F4 editor
+	// module, so no lane report or build can see the leak, and only the
+	// unconditional lane can own it.
+	'tests/lib/authoring/f4-public-isolation.test.ts',
 	// The lane-membership proof itself (WP3T §7.6 area 6): unique, existing,
 	// disjoint lanes whose union is the curated set, with a missing-entry,
 	// overlap, duplicate and dropped-file control. It polices the runner

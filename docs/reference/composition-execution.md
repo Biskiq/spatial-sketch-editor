@@ -565,6 +565,14 @@ explicit.
 | `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. It requires `local-single-domain-v1` and retires with the current-source adapter at T3.P01.S04. |
 | `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (future T3.P01.S03 capabilities; candidate-only before T3.P01.S04). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
 
+**Current-source content identity.** The single project-model export hashes UTF-8 canonical
+authored-content JSON with `sha256Bytes` (`sha256-<hex>`): strict normalized source, ID-keyed
+Layout identity maps ordered, and only `layout.identity.cursor` omitted. The cursor is persisted
+allocation bookkeeping; identity assignments remain authored and affect the digest. Full canonical
+source retains the cursor for Save/Load and exact Undo/Redo. Equal digests therefore do not prove
+full-source byte equality: exact history restoration and changed-payload Save retries must also
+compare the full captured source. This current-source rule does not define F2 unit hashing.
+
 **Local revision and cloud saved base are separate identities.** Local acceptance rejects a stale
 writer by comparing `AuthoringIntent@1.expectedRevision` against the local `AcceptedRevision`; it
 never contacts the server. Cloud persistence is a separate, explicit step: `SaveAcceptedSource@1`

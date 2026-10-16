@@ -14,8 +14,9 @@ PROVENANCE  strategic model / harvested workflow rules
                                     git show e90a58224443bdbf44114d7285d55c983b79cc84:<old-path>)
             closed Phase 0 investigation, frozen reviews, adjudication and the installed Phase 1
             plan → ../archive/technical/architecture-cycle/
-BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in
-            ./current.md. Nothing here restates either.
+BOUNDARY    product status stays in ../roadmap/README.md; the product baton stays in the
+            owning track's ./<track>/current.md, navigated from ./current.md. Nothing here
+            restates either.
 ```
 
 **Preserved by the PR #115 migration:** the completed Phase 0 investigation, its frozen reviews and

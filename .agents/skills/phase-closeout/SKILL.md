@@ -103,8 +103,9 @@ event (`operations/README.md`).
 
 ### Step 6 — Product baton
 
-Rewrite `docs/operations/current.md` as the reconciled current-state snapshot: the phase that now
-holds the work, its active slice, and the next real step. **Never assume a next phase** — read the
+Rewrite the **owning track's** baton `docs/operations/<track>/current.md` as the reconciled
+current-state snapshot: the phase that now holds the work, its active slice, and the next real step;
+never edit another track's baton. **Never assume a next phase** — read the
 track's phase register and the global roadmap, and if no phase is registered, say so and leave the
 baton on the track's next planning decision. The baton stays product-only here.
 

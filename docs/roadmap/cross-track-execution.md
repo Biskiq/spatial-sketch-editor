@@ -259,7 +259,10 @@ reports instead.
 | Landed `reference/*` contracts | none during the batch | `T1.P01.S02` updates `architecture.md` §Product routes at its own closeout |
 
 **Content identity.** `T1.P01.S02` and `T1.P01.S03` both need the current-source content identity
-that S03 owns. Whichever merges first lands the single project-model export with its invariance
+that S03 owns: `sha256Bytes` over the strict writer's normalized source with ID-keyed Layout
+identity maps ordered and only `layout.identity.cursor` excluded from the digest. Full canonical
+source retains the cursor for persistence/history; hash equality is authored-content equality,
+not full-source byte equality. Whichever merges first lands the single project-model export with its invariance
 tests; the other rebases and reuses it. `T3.P01.S01` uses the same hash primitive for unit
 `contentRevision` and defines no current-source identity.
 

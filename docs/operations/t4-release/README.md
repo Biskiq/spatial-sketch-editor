@@ -5,7 +5,7 @@ file copies no status and owns no list.
 
 ```text
 STATUS:  ../../roadmap/README.md#track-register → ../../roadmap/t4-release/README.md → phase child row
-BATON:   ../current.md
+BATON:   ./current.md
 GATES:  ../../roadmap/README.md#gate-register          (eligibility rules live there, never here)
 CYCLE:   ../architecture-cycle.md                      (loaded only by the start step below)
 EVENTS:  ../README.md                                  (completion · integration · replanning)

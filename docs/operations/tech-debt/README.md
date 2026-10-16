@@ -5,7 +5,7 @@ against this repository.
 **Purpose:** record a defect that is **understood, reproduced and deliberately not
 fixed yet** — with the evidence needed to fix it without re-deriving it.
 **Not** a plan, not a status tracker and not current working-tree state: those live
-in [`docs/roadmap/README.md`](../../roadmap/README.md) and
+in [`docs/roadmap/README.md`](../../roadmap/README.md) and in the track batons routed from
 [`docs/operations/current.md`](../current.md).
 
 Entry template:

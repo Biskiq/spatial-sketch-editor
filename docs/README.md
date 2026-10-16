@@ -91,7 +91,7 @@ shipped.
 | Retained authoring semantics (`lib/authoring/`) | [`apps/editor/src/lib/authoring/README.md`](../apps/editor/src/lib/authoring/README.md) — the retention criteria and what is retained | `apps/editor/src/lib/authoring/{camera,layout,scene,a11y}/` |
 | Tracks (objectives, phase register, starting foundation, evidence) | [`roadmap/t1-spatial-world/README.md`](./roadmap/t1-spatial-world/README.md) · [`roadmap/t2-composition/README.md`](./roadmap/t2-composition/README.md) · [`roadmap/t3-experience/README.md`](./roadmap/t3-experience/README.md) · [`roadmap/t4-release/README.md`](./roadmap/t4-release/README.md) — each links its own runbook and planning evidence; no track authorizes implementation | — |
 | Gate register (exact interfaces and cutovers) | [`roadmap/README.md`](./roadmap/README.md) §Gate register — version, provider slice, exports, conformance and acceptance identity; F semantics stay in [`reference/composition-execution.md`](./reference/composition-execution.md) | — |
-| Current work / baton | [`operations/current.md`](./operations/current.md) | — |
+| Current work / baton | [`operations/current.md`](./operations/current.md) (navigation) → the owning track's `operations/<track>/current.md` | — |
 | Interrupted work / resume | [`operations/checkpoints/`](./operations/checkpoints/) — transient only; `work-checkpoint` skill owns procedure | — |
 | Event procedures (track completion · integration acceptance · replanning) | [`operations/README.md`](./operations/README.md) — entered only by its explicit events; ordinary slice work never loads it | — |
 | Operational runbook for a track | [`operations/t1-spatial-world/README.md`](./operations/t1-spatial-world/README.md) · [`operations/t2-composition/README.md`](./operations/t2-composition/README.md) · [`operations/t3-experience/README.md`](./operations/t3-experience/README.md) · [`operations/t4-release/README.md`](./operations/t4-release/README.md) — eligibility, start step, test families, routes and debt handling | — |
@@ -103,7 +103,7 @@ shipped.
 
 ```text
 START: docs/README.md
-ASSIGNED WORK: operations/current.md → exact phase README → exact slice plan
+ASSIGNED WORK: operations/current.md → your track's operations/<track>/current.md → exact phase README → exact slice plan
 UNASSIGNED PLANNING: roadmap/README.md → requested track README → phase plan (when registered)
 F-INTERFACE GAP: slice plan → F amendment / gate register row
 START IMPLEMENTATION: track runbook start step (eligibility + one-line cycle check)
@@ -334,7 +334,7 @@ UPDATE:
 - track objectives/phase register → owning track README
 - phase scope/slice register/FINAL PHASE GATE/PHASE CLOSE → owning phase README
 - track completion / integration acceptance / replanning → operations/README.md event sections
-- current work baton → operations/current.md
+- current work baton → the owning track's operations/<track>/current.md (never another track's)
 - interrupted resumable work → operations/checkpoints/ via work-checkpoint skill
 - landed truth → reference/* (reconcile; supersede stale claims, never silently promote roadmap proposals)
 - deferred bug → operations/tech-debt/

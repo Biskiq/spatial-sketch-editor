@@ -173,7 +173,9 @@ repair-required` with original reference, code/message and explicit supported re
 Resolvers perform no repair as a read effect. S01 also defines the shared read-context identity
 `SnapshotIdentity@1 = {acceptedRevision, sourceContentId}` with a separate host SessionEpoch;
 AcceptedRevision is opaque `{projectId, revisionId}`, while current-source content identity hashes
-the canonical serialized source. S01 owns these read-context types; F4 reuses them. Validated
+canonical authored contents: the strict writer's normalized source with ordered ID-keyed Layout
+identity maps and only `layout.identity.cursor` excluded. Full canonical source retains the cursor
+for persistence/history. S01 owns these read-context types; F4 reuses them. Validated
 read-only boot establishes a captured baseline, without claiming a mutation/history capability.
 The adapter holds accepted metadata outside current source JSON. Resolvers evaluate exact
 references against that supplied

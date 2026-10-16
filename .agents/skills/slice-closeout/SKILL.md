@@ -35,6 +35,14 @@ Implementation acceptance authorizes routine closeout. Routine closeout requires
 exceptional triggers below reopen review. This skill owns mechanical documentation and preservation
 verification — it REUSES the implementer's and reviewer's recorded evidence and re-runs nothing.
 
+When the owner explicitly authorizes a **combined acceptance-and-closeout** request, first adjudicate
+the existing independent-review evidence against every approved acceptance criterion and prerequisite.
+If it passes, record formal acceptance and each capability outcome in the routed acceptance artifact
+and owning registers, then continue this procedure in the same invocation. If evidence is missing,
+stale, contradictory or fails a criterion, STOP and report it. Green tests or invoking this skill
+alone never constitute acceptance; all acceptance prerequisites, evidence-validity rules and
+independent-review requirements above still apply.
+
 ```text
 implementation accepted   code, architecture and required acceptance evidence passed review
 merge-ready               closeout complete and its self-check passed
@@ -74,8 +82,8 @@ no phase closure · no track completion · no cycle transition · no automatic p
    cycle document.
 2. Retire any active checkpoint: promote durable findings first (deferred bug → `operations/tech-debt/`;
    research → owning artifact; landed behaviour → `reference/*`; verification → closeout; status →
-   phase README), then delete the checkpoint and any `current.md` RESUME pointer. NEVER archive a raw
-   checkpoint.
+   phase README), then delete the checkpoint and any RESUME pointer in the owning track's baton.
+   NEVER archive a raw checkpoint.
 3. Update `docs/reference/...` only where the slice changed durable knowledge a future agent would
    rediscover; reconcile the stale claims it invalidates. Only landed behaviour moves: roadmap
    proposals and rejected or speculative research NEVER become reference truth. Promote a closing
@@ -88,7 +96,8 @@ no phase closure · no track completion · no cycle transition · no automatic p
 6. Update the track README or `docs/roadmap/README.md` only if the phase's or track's registration
    changed (a new phase row, a gate version and its provider, a superseded row). A slice close never
    changes a track's or phase's status.
-7. Rewrite `docs/operations/current.md` as the current-state snapshot (invariant below). Reconcile
+7. Rewrite the **owning track's** baton `docs/operations/<track>/current.md` as the current-state
+   snapshot (invariant below); never edit another track's baton. Reconcile
    every existing entry against the repository and the phase README: replace what changed, delete
    superseded status/NEXT statements, drop completed execution narrative and closeout reports, and
    route completed evidence to its owning documents. Never append the new state onto the old.
@@ -103,23 +112,25 @@ no phase closure · no track completion · no cycle transition · no automatic p
     (`apps/editor/tests/docs/documentation-references.test.ts`, in the arch lane:
     `npx vitest run --config vitest.arch.config.ts tests/docs`), not every product gate.
 11. Confirm no live router (`docs/README.md`, `docs/roadmap/README.md`, the track README, the phase
-    README, `docs/operations/current.md`) treats closed material as authority, and that this close
+    README, the owning track's baton) treats closed material as authority, and that this close
     added no new live → archived-prose link. The documentation cross-reference checker
     (`apps/editor/tests/docs/documentation-references.test.ts`) resolves links, written paths and
     anchors mechanically; run it after any link edit, and report every moved or stubbed path it
     cannot see by hand. Invalid preservation link or missing evidence → report it, NEVER accept it
     silently.
 
-## current.md invariant
+## baton invariant
 
-`docs/operations/current.md` is a replaceable current-state snapshot, never an append-only historical
-ledger. It carries only: phase · active slice with its authorization and immediate next step · real
-blockers and unresolved dependencies · minimal routes to authoritative documents · brief
-carry-forwards. Owners: the phase README → status/order; closed stubs → completed work and evidence;
-acceptance records → gate numbers; `operations/tech-debt/` → deferred bugs; Git → history.
+`docs/operations/current.md` is navigation only. The **owning track's** baton
+(`docs/operations/<track>/current.md`) is that track's replaceable current-state snapshot, never an
+append-only historical ledger. It carries only: phase · active slice with its authorization and
+immediate next step · real blockers and unresolved dependencies · minimal routes to authoritative
+documents · brief carry-forwards. Owners: the phase README → status/order; closed stubs → completed
+work and evidence; acceptance records → gate numbers; `operations/tech-debt/` → deferred bugs; Git →
+history. Never synchronize another track's baton, and never treat stale baton text as a blocker.
 
-Closeout rewrites the file in place — reconcile existing entries, remove superseded status and NEXT
-text, and leave it no larger than the current state it describes.
+Closeout rewrites only the owning track's file in place — reconcile existing entries, remove
+superseded status and NEXT text, and leave it no larger than the current state it describes.
 
 ## Self-check — required before reporting merge-ready
 
@@ -135,7 +146,7 @@ shims         accepted evidence contains no unowned remaining shim — an extrac
 promotion     durable conclusions sit with their correct reference owners
 preservation  stubs, Git anchors, tags and archive/evidence links all valid
 routing       routers, slice status and next-work baton agree
-baton         current.md is the reconciled snapshot: one statement per status · superseded
+baton         the owning track's current.md is the reconciled snapshot: one statement per status · superseded
               status/NEXT text deleted · no completed slice's execution narrative · no closed work
               listed as a blocker without a real unresolved dependency · no fact already owned by a
               closed stub or phase documentation · no unnecessary growth of the operational index

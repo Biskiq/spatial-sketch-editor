@@ -101,7 +101,9 @@ The phase interface draft predates S01's acceptance. Where it differs from what 
 - **Content identity.** The boot snapshot's source-content identity is the single project-model
   export described in [S03](../t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md#content-identity):
   [`sha256Bytes`](../../../../../packages/project-model/src/package-sha.ts) over the strict writer's
-  canonical bytes, invariant to input key order and whitespace. Whichever of S02/S03 merges first
+  canonical authored-content bytes with ordered ID-keyed Layout identity maps and only
+  `layout.identity.cursor` excluded from the digest. Full canonical source retains the cursor for
+  persistence/history. The digest is invariant to input key order and whitespace. Whichever of S02/S03 merges first
   lands the export with its invariance tests; the other reuses it.
 
 ## Boot, persistence and admission
