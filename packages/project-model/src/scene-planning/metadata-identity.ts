@@ -38,7 +38,7 @@ export function canonicalDefinitionMetadata(facts: DefinitionMetadataFacts): str
 			uprightOnly: facts.admission.uprightOnly,
 			provenance: canonicalProvenance(facts.admission.provenance),
 			exclusions: [...facts.admission.exclusions]
-				.sort((left, right) => compareText(left.code, right.code))
+				.sort((left, right) => compareText(left.code, right.code) || compareText(left.reason, right.reason))
 				.map((exclusion) => ({ code: exclusion.code, reason: exclusion.reason }))
 		},
 		footprintMeters: facts.footprintMeters.map(([x, z]) => [x, z]),

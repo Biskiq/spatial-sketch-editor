@@ -135,3 +135,12 @@ describe('captured definition metadata identity', () => {
 		).not.toBe(baseline);
 	});
 });
+
+
+it('canonicalizes repeated exclusion codes by their reason as well', () => {
+	const original = facts();
+	const exclusions = [{ code: 'unavailable', reason: 'z' }, { code: 'unavailable', reason: 'a' }];
+	expect(canonicalDefinitionMetadata({ ...original, admission: { ...original.admission, exclusions } })).toBe(
+		canonicalDefinitionMetadata({ ...original, admission: { ...original.admission, exclusions: [...exclusions].reverse() } })
+	);
+});

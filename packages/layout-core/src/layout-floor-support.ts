@@ -49,14 +49,14 @@ export type FloorSupportTolerances = {
 	upNormalComponent: number;
 };
 
-export const FLOOR_SUPPORT_TOLERANCES: FloorSupportTolerances = {
+export const FLOOR_SUPPORT_TOLERANCES: Readonly<FloorSupportTolerances> = Object.freeze({
 	boundaryMeters: 1e-6,
 	coplanarElevationMeters: 1e-6,
 	upNormalComponent: 1e-9
-};
+});
 
 /** A compiled Room floor faces up; support candidates carry this normal. */
-export const FLOOR_SUPPORT_UP_NORMAL: Vec3 = [0, 1, 0];
+export const FLOOR_SUPPORT_UP_NORMAL: Readonly<Vec3> = Object.freeze([0, 1, 0]);
 
 /**
  * The one compiled `room-floor` record shape the query reads. Picking the
@@ -123,18 +123,20 @@ export type FloorSupportWitness = {
 	/** Compiled identity of the authored inputs that produced the record. */
 	cacheKey: string;
 	sourceId: string;
-	/** Collision-safe ordering key derived from the Layout-native source ids. */
+	/** Collision-safe choice identity derived from Layout-native IDs; not a lexical comparator. */
 	orderKey: string;
 };
 
 export type FloorSupportCandidate = {
+	/** World X/Z at which these witnesses were queried. */
+	queryPoint: LayoutVec2;
 	elevation: number;
 	upNormal: Vec3;
 	/** The caller's generation, echoed so acceptance can recheck it. */
 	generationId: string;
-	/** Every equivalent source witness, ordered by `orderKey`. */
+	/** Every equivalent source witness, ordered lexically by source, Room, floor and record IDs. */
 	witnesses: readonly FloorSupportWitness[];
-	/** Minimum witness `orderKey`: stable, source-derived, never an elevation pick. */
+	/** First source-ordered witness identity: stable and unique, never an elevation pick. */
 	orderKey: string;
 	/** Stable diagnostic/display label; never an identity and never a float readout. */
 	label: string;
@@ -144,21 +146,21 @@ export type FloorSupportQueryResult =
 	| { kind: 'candidates'; candidates: readonly FloorSupportCandidate[] }
 	| { kind: 'none' }
 	| {
-			kind: 'invalid-input';
-			code: 'non-finite-point' | 'missing-generation-id';
-			message: string;
-	  }
+		kind: 'invalid-input';
+		code: 'non-finite-point' | 'missing-generation-id';
+		message: string;
+	}
 	| {
-			kind: 'stale-generation';
-			generationId: string;
-			evidenceGenerationId: string;
-			message: string;
-	  }
+		kind: 'stale-generation';
+		generationId: string;
+		evidenceGenerationId: string;
+		message: string;
+	}
 	| {
-			kind: 'unsupported';
-			code: 'unknown-scope-floor' | 'missing-support-facts' | 'contradictory-support-facts';
-			message: string;
-	  };
+		kind: 'unsupported';
+		code: 'unknown-scope-floor' | 'missing-support-facts' | 'contradictory-support-facts';
+		message: string;
+	};
 
 /**
  * Tolerance-inclusive point/polygon membership.
@@ -177,7 +179,7 @@ export function polygonContainsWithTolerance(
 	polygon: readonly LayoutVec2[],
 	toleranceMeters: number = FLOOR_SUPPORT_TOLERANCES.boundaryMeters
 ): boolean {
-	if (polygon.length < 3) return false;
+	if (!hasUsableBoundary(polygon) || point.some(value => !Number.isFinite(value))) return false;
 	if (!Number.isFinite(toleranceMeters) || toleranceMeters < 0) return false;
 	if (pointInPolygon(point, polygon)) return true;
 	for (let index = 0; index < polygon.length; index += 1) {
@@ -232,12 +234,12 @@ export function queryFloorSupports(
 	for (const polygon of snapshot.queryPolygons) {
 		if (polygon.kind !== 'room-floor') continue;
 		if (scopeFloorId !== undefined && polygon.floorId !== scopeFloorId) continue;
-		if (polygon.polygon.length < 3) {
+		if (!hasUsableBoundary(polygon.polygon)) {
 			if (pointWithinToleranceOfBounds(point, polygon.polygon, FLOOR_SUPPORT_TOLERANCES.boundaryMeters)) {
 				return {
 					kind: 'unsupported',
 					code: 'missing-support-facts',
-					message: `Compiled room-floor record "${polygon.id}" carries fewer than three boundary points but reaches the queried point, so this query cannot report an honest support set.`
+					message: `Compiled room-floor record "${polygon.id}" carries an invalid or degenerate boundary but reaches the queried point, so this query cannot report an honest support set.`
 				};
 			}
 			continue;
@@ -257,6 +259,16 @@ export function queryFloorSupports(
 				kind: 'unsupported',
 				code: 'missing-support-facts',
 				message: `Compiled room-floor record "${polygon.id}" names no ${polygon.roomId === undefined ? 'Room' : 'floor'} owner, so its support cannot be qualified.`
+			};
+		}
+		// Duplicate identities must agree exactly; a Map's last writer is no authority.
+		const roomFacts = snapshot.rooms.filter(room => room.roomId === polygon.roomId);
+		const floorFacts = snapshot.floors.filter(floor => floor.floorId === polygon.floorId);
+		if (roomFacts.some(room => room.floorElevation !== roomFacts[0]!.floorElevation) ||
+			floorFacts.some(floor => floor.elevation !== floorFacts[0]!.elevation)) {
+			return {
+				kind: 'unsupported', code: 'contradictory-support-facts',
+				message: `Compiled record "${polygon.id}" has conflicting facts for one source identity.`
 			};
 		}
 		const room = roomByRoomId.get(polygon.roomId);
@@ -300,12 +312,18 @@ export function queryFloorSupports(
 		}
 		elevationByRoomId.set(polygon.roomId, room.floorElevation);
 
-		// The ordering key is the compiled **source** identity first (the plan's own
-		// "ordering by source ID"), with the Room id as its deterministic tie-break: two
-		// Rooms may share one floor source, and neither key ever encodes an elevation.
-		const orderKey = geometryId([polygon.sourceId, polygon.roomId]);
+		// The choice identity includes the fragment record. Lexical ordering compares
+		// the source fields directly, never this length-prefixed encoding or elevation.
+		const orderKey = geometryId([polygon.sourceId, polygon.roomId, polygon.floorId, polygon.id]);
 		const witnessKey = geometryId([polygon.floorId, polygon.roomId, polygon.id]);
-		if (!witnessByKey.has(witnessKey)) {
+		const previous = witnessByKey.get(witnessKey);
+		if (previous && (previous.cacheKey !== polygon.cacheKey || previous.sourceId !== polygon.sourceId)) {
+			return {
+				kind: 'unsupported', code: 'contradictory-support-facts',
+				message: `Compiled record "${polygon.id}" has conflicting source correspondence.`
+			};
+		}
+		if (!previous) {
 			witnessByKey.set(witnessKey, {
 				floorId: polygon.floorId,
 				roomId: polygon.roomId,
@@ -319,14 +337,15 @@ export function queryFloorSupports(
 
 	// Source-ID ordering is the only ordering here, and it never picks an
 	// elevation: grouping below merges only supports the tolerance declares equal.
-	const witnesses = [...witnessByKey.values()].sort(compareByOrderKey);
+	const witnesses = [...witnessByKey.values()].sort(compareWitnesses);
 	const buckets: Array<{ elevation: number; witnesses: FloorSupportWitness[] }> = [];
 	for (const witness of witnesses) {
 		const elevation = elevationByRoomId.get(witness.roomId)!;
 		const bucket = buckets.find(
 			(candidate) =>
-				Math.abs(candidate.elevation - elevation) <=
-				FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+				candidate.witnesses[0]!.floorId === witness.floorId &&
+				candidate.witnesses.every(member =>
+					Math.abs(elevationByRoomId.get(member.roomId)! - elevation) <= FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters)
 		);
 		if (bucket === undefined) buckets.push({ elevation, witnesses: [witness] });
 		else bucket.witnesses.push(witness);
@@ -336,6 +355,7 @@ export function queryFloorSupports(
 		.map((bucket) => {
 			const first = bucket.witnesses[0]!;
 			return {
+				queryPoint: [input.x, input.z] as LayoutVec2,
 				elevation: bucket.elevation,
 				upNormal: [FLOOR_SUPPORT_UP_NORMAL[0], FLOOR_SUPPORT_UP_NORMAL[1], FLOOR_SUPPORT_UP_NORMAL[2]] as Vec3,
 				generationId: input.generationId,
@@ -344,12 +364,12 @@ export function queryFloorSupports(
 				label: `Floor ${first.floorId} / Room ${first.roomId}`
 			};
 		})
-		.sort(compareByOrderKey);
+		.sort((left, right) => compareWitnesses(left.witnesses[0]!, right.witnesses[0]!));
 
 	return { kind: 'candidates', candidates };
 }
 
-/** An explicit creator choice, by ordering key or by elevation. */
+/** An explicit creator choice, by opaque source-derived choice key or by elevation. */
 export type FloorSupportChoice =
 	| { kind: 'order-key'; orderKey: string }
 	| { kind: 'elevation'; elevation: number };
@@ -358,10 +378,10 @@ export type FloorSupportChoiceResult =
 	| { kind: 'resolved'; support: FloorSupportCandidate }
 	| { kind: 'choice-required'; candidates: readonly FloorSupportCandidate[] }
 	| {
-			kind: 'invalid-choice';
-			code: 'no-support' | 'unknown-choice' | 'ambiguous-choice';
-			message: string;
-	  };
+		kind: 'invalid-choice';
+		code: 'no-support' | 'unknown-choice' | 'ambiguous-choice';
+		message: string;
+	};
 
 /**
  * Resolve one support from the query's candidates.
@@ -392,10 +412,10 @@ export function chooseFloorSupport(
 			? candidates.filter((candidate) => candidate.orderKey === explicitChoice.orderKey)
 			: Number.isFinite(explicitChoice.elevation)
 				? candidates.filter(
-						(candidate) =>
-							Math.abs(candidate.elevation - explicitChoice.elevation) <=
-							FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
-					)
+					(candidate) =>
+						Math.abs(candidate.elevation - explicitChoice.elevation) <=
+						FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters
+				)
 				: [];
 
 	if (matches.length === 0) {
@@ -420,11 +440,25 @@ export function chooseFloorSupport(
 	return { kind: 'resolved', support: matches[0]! };
 }
 
-function compareByOrderKey(
-	left: Pick<FloorSupportWitness, 'orderKey'>,
-	right: Pick<FloorSupportWitness, 'orderKey'>
-): number {
-	return left.orderKey < right.orderKey ? -1 : left.orderKey > right.orderKey ? 1 : 0;
+// `geometryId` is collision-safe identity encoding, not a lexical sort key:
+// its length prefixes would sort "b" before "a-long-source".
+function compareWitnesses(left: FloorSupportWitness, right: FloorSupportWitness): number {
+	for (const key of ['sourceId', 'roomId', 'floorId', 'recordId', 'cacheKey'] as const) {
+		if (left[key] !== right[key]) return left[key] < right[key] ? -1 : 1;
+	}
+	return 0;
+}
+
+function hasUsableBoundary(polygon: readonly LayoutVec2[]): boolean {
+	if (polygon.length < 3 || polygon.some(point => point.some(value => !Number.isFinite(value)))) return false;
+	const origin = polygon[0]!;
+	let area = 0;
+	for (let index = 1; index + 1 < polygon.length; index++) {
+		const a = polygon[index]!;
+		const b = polygon[index + 1]!;
+		area += (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0]);
+	}
+	return Number.isFinite(area) && area !== 0;
 }
 
 function distanceToSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {

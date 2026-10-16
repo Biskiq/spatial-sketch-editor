@@ -25,9 +25,13 @@
  * (`missing-footprint`, then `missing-contact-metadata`), admission
  * (`unsupported-surface`), support resolution (`no-support` /
  * `support-choice-required`), a refused support query (`invalid-value` with the
- * query's code), then staleness (`stale-generation`).
+ * query's code), then staleness (`stale-generation`). Snapshot/frame qualification
+ * is checked with captured inputs; stale support query refusals keep their code.
  */
-import type { FloorSupportCandidate, LayoutVec2 } from '@portfolio/layout-core';
+import { FLOOR_SUPPORT_TOLERANCES, type FloorSupportCandidate, type LayoutVec2 } from '@portfolio/layout-core';
+import { validateSceneDocument } from '../scene-codec';
+import { validateFrameReference, validateSnapshotIdentity, type DerivedSourceRef, type FrameReference, type SnapshotIdentity } from '../references';
+import { isSimplePlacementFootprint } from './footprint';
 import type {
 	SceneBoxDimensions,
 	SceneCylinderDimensions,
@@ -56,6 +60,13 @@ export type PlaceObjectSupportInput =
 export type PlaceObjectInput = {
 	/** The accepted source the candidate is prepared against. */
 	document: SceneDocument;
+	/** Accepted baseline and the snapshot that produced the support query. */
+	snapshot: SnapshotIdentity;
+	supportSnapshot: SnapshotIdentity;
+	/** Snapshot against which the owner resolved the captured input frame. */
+	frameSnapshot: SnapshotIdentity;
+	/** Explicit identity of the host-resolved input frame. */
+	frameReference: FrameReference;
 	/** Captured before preparation; never allocated during it. */
 	entityId: string;
 	definition: NormalizedPlacementDefinition;
@@ -76,10 +87,15 @@ export type PlaceObjectRefusalCode =
 	| 'missing-footprint'
 	| 'missing-contact-metadata'
 	| 'invalid-value'
-	| 'stale-generation';
+	| 'stale-generation'
+	| 'stale-revision';
 
 /** The read-only Layout evidence the accepted pose rests on. */
 export type PlacementSupportEvidence = {
+	/** Every equivalent compiled witness, F1-qualified at the captured source content. */
+	fragments: readonly DerivedSourceRef[];
+	witnesses: FloorSupportCandidate['witnesses'];
+	queryPoint: LayoutVec2;
 	floorId: string;
 	roomId: string;
 	elevation: number;
@@ -97,9 +113,13 @@ export type PlaceObjectWorldPose = {
 
 export type PlaceObjectCandidate = {
 	operationKind: 'place-object';
+	baseline: SnapshotIdentity;
+	frameReference: FrameReference;
 	entityId: string;
 	definitionKey: string;
 	metadataContentId: string;
+	/** Captured contact, footprint, defaults and provenance for deterministic acceptance. */
+	definition: NormalizedPlacementDefinition;
 	/** The one new entity; nothing else in the Scene is touched. */
 	entity: SceneEntity;
 	/** The candidate Scene: the entity list replaced, every other field carried over. */
@@ -111,11 +131,11 @@ export type PlaceObjectCandidate = {
 export type PlaceObjectResult =
 	| { kind: 'candidate'; candidate: PlaceObjectCandidate }
 	| {
-			kind: 'refusal';
-			code: PlaceObjectRefusalCode;
-			message: string;
-			diagnostics: readonly string[];
-	  };
+		kind: 'refusal';
+		code: PlaceObjectRefusalCode;
+		message: string;
+		diagnostics: readonly string[];
+	};
 
 export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjectResult {
 	const invalid = validateCapturedInput(input);
@@ -145,12 +165,12 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 	if (input.support.kind === 'choice-required') {
 		return refuse(
 			'support-choice-required',
-			`${input.support.candidates.length} floor supports contain this point at different elevations; the creator must choose one.`,
+			`${input.support.candidates.length} distinct floor contexts or elevations support this point; the creator must choose one.`,
 			input.support.candidates.map((candidate) => candidate.orderKey)
 		);
 	}
 	if (input.support.kind === 'refused') {
-		return refuse('invalid-value', input.support.message, [input.support.code]);
+		return refuse(input.support.code === 'stale-generation' ? 'stale-generation' : 'invalid-value', input.support.message, [input.support.code]);
 	}
 
 	const support = input.support.support;
@@ -172,6 +192,11 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 
 	// Contact elevation is Layout support, never the frame's incidental origin
 	// height: the frame's Y contributes nothing to the resting pose.
+	if (support.upNormal.length !== 3 || support.upNormal.some((value, index) => !Number.isFinite(value) ||
+		Math.abs(value - (index === 1 ? 1 : 0)) > FLOOR_SUPPORT_TOLERANCES.upNormalComponent)) {
+		return refuse('unsupported-surface', 'Floor support must have a finite upward normal.', ['upNormal']);
+	}
+
 	const worldPoint = framePointToWorld(input.frame, [input.worldXZ[0], 0, input.worldXZ[1]]);
 	const scale = 1 as const;
 	const position: Vec3 = [
@@ -186,6 +211,10 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 			['non-finite-pose']
 		);
 	}
+	if (support.queryPoint.length !== 2 || support.queryPoint.some(value => !Number.isFinite(value)) ||
+		Math.hypot(worldPoint[0] - support.queryPoint[0], worldPoint[2] - support.queryPoint[1]) > FLOOR_SUPPORT_TOLERANCES.boundaryMeters) {
+		return refuse('invalid-value', 'Support was queried at a different world point.', ['support-query-point']);
+	}
 	const rotation: Vec3 = [0, frameYawToWorld(input.frame, input.yaw), 0];
 
 	const entity = buildEntity(input, position, rotation);
@@ -198,18 +227,50 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 	}
 
 	const scene: SceneDocument = { ...input.document, entities: [...input.document.entities, entity] };
+	// Validate through the landed codec, but keep the structural candidate: the
+	// canonicalizer must never rebuild or normalize unrelated Camera fields.
+	const validation = validateSceneDocument(scene);
+	if (!validation.success) {
+		return refuse('invalid-value', 'The prepared Scene fails current-format validation.',
+			validation.issues.map(issue => `${issue.path}: ${issue.code}`));
+	}
+
+	if (entity.kind === 'primitive') {
+		const expectedContact = entity.primitive === 'sphere' ? -entity.dimensions.radius :
+			entity.primitive === 'plane' ? NaN : -entity.dimensions.height / 2;
+		if (input.definition.admission.provenance.kind !== 'analytical' ||
+			input.definition.contactMinY !== expectedContact) {
+			return refuse('missing-contact-metadata', 'Native contact must agree with the analytical primitive dimensions.', ['contactMinY', 'dimensions']);
+		}
+	}
 
 	return {
 		kind: 'candidate',
 		candidate: {
 			operationKind: 'place-object',
+			baseline: input.snapshot,
+			frameReference: input.frameReference,
 			entityId: input.entityId,
 			definitionKey: input.definition.definitionKey,
 			metadataContentId: input.definition.metadataContentId,
+			definition: input.definition,
 			entity,
 			scene,
 			worldPose: { position, rotation, scale },
 			support: {
+				fragments: support.witnesses.map(witness => ({
+					source: {
+						version: 1, domain: 'layout',
+						revision: { kind: 'exact', contentRevision: input.supportSnapshot.sourceContentId },
+						subject: { kind: 'room', id: witness.roomId }, instancePath: [],
+						location: { kind: 'layout-location', levelId: witness.floorId, structureInstancePath: [] },
+						componentId: null, capabilityId: null
+					},
+					generationId: support.generationId, stream: 'layout:room-floor',
+					subRef: { kind: 'component', componentId: witness.recordId }
+				})),
+				witnesses: support.witnesses.map(witness => ({ ...witness })),
+				queryPoint: [...support.queryPoint],
 				floorId: support.witnesses[0]!.floorId,
 				roomId: support.witnesses[0]!.roomId,
 				elevation: support.elevation,
@@ -222,6 +283,22 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 }
 
 function validateCapturedInput(input: PlaceObjectInput): PlaceObjectResult | null {
+	if (!validateSnapshotIdentity(input.snapshot).success || !validateSnapshotIdentity(input.supportSnapshot).success || !validateSnapshotIdentity(input.frameSnapshot).success ||
+		!validateFrameReference(input.frameReference).success) {
+		return refuse('invalid-value', 'Placement requires valid F1 snapshot and frame qualification.', ['snapshot', 'supportSnapshot', 'frameReference']);
+	}
+	if (input.snapshot.sourceContentId !== input.supportSnapshot.sourceContentId ||
+		input.snapshot.acceptedRevision.projectId !== input.supportSnapshot.acceptedRevision.projectId ||
+		input.snapshot.acceptedRevision.revisionId !== input.supportSnapshot.acceptedRevision.revisionId ||
+		input.snapshot.sourceContentId !== input.frameSnapshot.sourceContentId ||
+		input.snapshot.acceptedRevision.projectId !== input.frameSnapshot.acceptedRevision.projectId ||
+		input.snapshot.acceptedRevision.revisionId !== input.frameSnapshot.acceptedRevision.revisionId) {
+		return refuse('stale-revision', 'Support or input frame belongs to another accepted snapshot.', ['snapshot']);
+	}
+	if (isFinitePlacementFrame(input.frame) && input.frameReference.kind === 'project-world' &&
+		(input.frame.yaw !== 0 || input.frame.origin.some(value => value !== 0))) {
+		return refuse('invalid-value', 'A project-world frame must have the identity conversion.', ['frameReference']);
+	}
 	if (typeof input.entityId !== 'string' || input.entityId.trim().length === 0) {
 		return refuse('invalid-value', 'A placement needs a captured entity id.', ['entityId']);
 	}
@@ -298,12 +375,26 @@ function validateFootprint(definition: NormalizedPlacementDefinition): PlaceObje
 			);
 		}
 	}
+	if (!isSimplePlacementFootprint(footprint)) {
+		return refuse('missing-footprint', 'The canonical footprint must be a nondegenerate simple polygon.', ['footprintMeters']);
+	}
 	return null;
 }
 
 function validateAdmission(definition: NormalizedPlacementDefinition): PlaceObjectResult | null {
 	const admission = definition.admission;
-	if (!admission.supportedSurfaces.includes('floor') || !admission.uprightOnly) {
+	const provenance = admission.provenance;
+	if (definition.creationDefaults.kind === 'model' &&
+		(provenance.kind !== 'verified-model' || !provenance.verificationId?.trim())) {
+		return refuse('missing-contact-metadata', 'Model contact requires recorded loader verification.', ['provenance']);
+	}
+	const normalization = definition.renderNormalization;
+	if (!Number.isFinite(normalization.defaultScale) || normalization.defaultScale <= 0 ||
+		(normalization.defaultRotation !== undefined &&
+			(normalization.defaultRotation.length !== 3 || normalization.defaultRotation.some(value => !Number.isFinite(value))))) {
+		return refuse('invalid-value', 'Renderer normalization must be finite with a positive scale.', ['renderNormalization']);
+	}
+	if (!admission.operations.includes('place-object') || !admission.supportedSurfaces.includes('floor') || !admission.uprightOnly) {
 		return refuse(
 			'unsupported-surface',
 			`Definition "${definition.definitionKey}" is not admitted for upright floor support (surfaces: ${admission.supportedSurfaces.join(', ') || 'none'}, uprightOnly: ${String(admission.uprightOnly)}).`,

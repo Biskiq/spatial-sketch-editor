@@ -32,6 +32,7 @@ import type { Asset } from '$lib/types/assets';
 const FLOOR_ASSETS = assets.filter((asset) => asset.placementSurface === 'floor');
 
 const SUPPORT: FloorSupportCandidate = {
+	queryPoint: [0, 0],
 	elevation: 0,
 	upNormal: [0, 1, 0],
 	generationId: 'generation-1',
@@ -86,7 +87,8 @@ describe('admitted object-definition inventory', () => {
 
 	it('records the unverified floor models as pending verification rather than admitting them', () => {
 		const pending = pendingVerificationDefinitionKeys();
-		expect(pending).toContain(modelDefinitionKey('paris-grand-piano'));
+		expect(pending).not.toContain(modelDefinitionKey('paris-grand-piano'));
+		expect(catalogueModelExclusions(getAssetById('paris-grand-piano')!).map(reason => reason.code)).toContain('model-geometry-mismatch');
 		expect(pending.length).toBeGreaterThan(0);
 		for (const entry of objectDefinitionInventory()) {
 			if (entry.admission !== 'excluded') continue;
@@ -188,6 +190,10 @@ describe('normalization is applied exactly once', () => {
 		const result = preparePlaceObjectCandidate({
 			document: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] },
 			entityId: 'entity-1',
+			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },
+			supportSnapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },
+			frameSnapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },
+			frameReference: { version: 1, kind: 'project-world' },
 			definition,
 			worldXZ: [0, 0],
 			yaw: 0,

@@ -76,6 +76,13 @@ export type CatalogueModelContactRecord = {
 	verified: boolean;
 	/** The verification this record cites; present exactly when `verified`. */
 	verificationId?: string;
+	/** Reproducible corrected-geometry failure; never permission to admit. */
+	verificationFailure?: {
+		verificationId: string;
+		contactMinY: number;
+		footprintWidth: number;
+		footprintDepth: number;
+	};
 	/** True when the source model needs a non-unit scale correction to reach canonical meters. */
 	nonUnitSourceNormalization: boolean;
 	notes: string;
@@ -87,9 +94,9 @@ export type CatalogueModelContactRecord = {
  * The floor-pivoted production models declare their contact as 0 m. That is a
  * *declaration*, not a verification: the retained-loader contact verification on
  * the landed r186 base (three 0.186.1, `PCFShadowMap`) is the outstanding
- * obligation recorded with this slice, so every record below stays unverified
- * and every model is excluded from new placement until that verification is run
- * and its id recorded here. Analytical primitives need no such verification.
+ * obligation recorded with this slice. The piano geometry check failed and is
+ * recorded below; the other models await verification. Every model remains
+ * excluded until corrected geometry, footprint/contact and readiness are verified. Analytical primitives need no such verification.
  */
 export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactRecord[] = [
 	{
@@ -98,8 +105,14 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 		contactSource: 'catalogue-floor-pivot-note',
 		verified: false,
 		nonUnitSourceNormalization: true,
+		verificationFailure: {
+			verificationId: 's01-r186-piano-geometry-v1',
+			contactMinY: 0.0000507284917601325,
+			footprintWidth: 1.4825150338836297,
+			footprintDepth: 2.524
+		},
 		notes:
-			'Non-unit source normalization is the discriminating case: the asset declares defaultScale 0.032 and a floor-centred pivot, and its canonical footprint is the authored 1.48 x 1.59 m outline. Contact and corrected footprint require the r186 loader verification before admission.'
+			'Non-unit source normalization is the discriminating case: the asset declares defaultScale 0.032 and a floor-centred pivot, and its canonical footprint is the authored 1.48 x 1.59 m outline. The r186 geometry verification failed: corrected X/Z extent is 1.482515 x 2.524 m, exceeding the declared 1.48 x 1.59 m footprint; min Y is 0.0000507285 m rather than the declared zero. The source/metadata needs a separately reviewed correction before admission.'
 	},
 	{
 		assetId: 'paris-salon-chair',
@@ -138,8 +151,8 @@ export const CATALOGUE_MODEL_CONTACT_RECORDS: readonly CatalogueModelContactReco
 export type PlacementDefinitionInventoryEntry = {
 	definitionKey: string;
 	source:
-		| { kind: 'native'; primitive: NativePlacementPrimitive }
-		| { kind: 'catalogue-model'; assetId: string };
+	| { kind: 'native'; primitive: NativePlacementPrimitive }
+	| { kind: 'catalogue-model'; assetId: string };
 	admission: 'admitted' | 'excluded';
 	exclusions: readonly ObjectDefinitionExclusion[];
 	footprintSource: 'analytical-primitive' | 'catalogue-footprint' | 'none';
@@ -299,6 +312,9 @@ export function catalogueModelExclusions(asset: Asset): readonly ObjectDefinitio
 		exclusions.push({ code: 'missing-footprint-metadata', reason: footprintIssue });
 	}
 	const record = contactRecordFor(asset.id);
+	if (record?.verificationFailure) {
+		exclusions.push({ code: 'model-geometry-mismatch', reason: `${record.verificationFailure.verificationId}: ${record.notes}` });
+	}
 	if (record === undefined) {
 		exclusions.push({
 			code: 'missing-contact-record',

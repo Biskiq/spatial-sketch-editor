@@ -11,7 +11,7 @@
  * world.z = oz - local.x*sin(a) + local.z*cos(a)
  * ```
  *
- * Every function here is pure and total on finite input. Directions omit the
+ * Every function here is pure; the planner refuses composed point overflow. Directions omit the
  * origin; yaw composes the frame once. Contact elevation is deliberately **not**
  * a frame concern: a support comes from Layout, so the planner that uses these
  * helpers takes the resulting Y from the support, never from the frame's
@@ -71,12 +71,18 @@ export function frameDirectionFromWorld(frame: LocalInputFrame, direction: Vec3)
 
 /**
  * Compose the supplied frame's yaw with a local yaw exactly once, in the
- * renderer's normalized `(-pi, pi]` range.
+ * renderer's normalized `[-pi, pi)` range.
  */
 export function frameYawToWorld(frame: LocalInputFrame, yaw: number): number {
-	return normalizeLayoutRoomYaw(frame.yaw + yaw);
+	return normalizeLayoutRoomYaw(principalYaw(frame.yaw) + principalYaw(yaw));
 }
 
 export function frameYawFromWorld(frame: LocalInputFrame, yaw: number): number {
-	return normalizeLayoutRoomYaw(yaw - frame.yaw);
+	return normalizeLayoutRoomYaw(principalYaw(yaw) - principalYaw(frame.yaw));
+}
+
+// Reduce with the same trig argument reduction as the point/direction matrix.
+// A floating remainder on huge finite radians can disagree with that matrix.
+function principalYaw(yaw: number): number {
+ return Math.atan2(Math.sin(yaw), Math.cos(yaw));
 }

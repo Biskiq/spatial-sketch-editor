@@ -92,6 +92,7 @@ function candidateOf(
 	roomId: string
 ): FloorSupportCandidate {
 	return {
+		queryPoint: [3, -1],
 		elevation,
 		upNormal: [...FLOOR_SUPPORT_UP_NORMAL],
 		generationId: 'generation-1',
@@ -235,7 +236,12 @@ describe('floor-support query over the canonical compiled Layout', () => {
 	});
 
 	it('pins the current single-datum real format so a future multi-datum format fails loudly', () => {
-		const geometry = compiledGeometry();
+		const baseline = enclosure(2.5);
+		const addition = planWallChain({ baseline, points: [p(20, -4), p(27, -4), p(27, 2), p(20, 2)], close: true, role: 'boundary' });
+		if (addition.kind !== 'success') throw new Error('second enclosure failed');
+		const { geometry, issues } = compileWallFirstLayoutGeometry(addition.document);
+		expect(issues.filter(issue => issue.severity !== 'warning')).toEqual([]);
+		expect(geometry.rooms).toHaveLength(2);
 		const datum = geometry.floors[0]!.elevation;
 		for (const room of geometry.rooms) {
 			// Today the canonical compiler places every Room floor at the one level
@@ -505,4 +511,47 @@ describe('the floor-support chooser never chooses an elevation', () => {
 		expect(result.kind).toBe('invalid-choice');
 		if (result.kind === 'invalid-choice') expect(result.code).toBe('no-support');
 	});
+});
+
+
+describe('independent floor-support regressions', () => {
+	const input = { generationId: 'generation-1', x: 3, z: -1 };
+	it('orders unequal-length source ids lexically and orders every same-source fragment', () => {
+		const records = [polygonRecord({ id: 'fragment-z', sourceId: 'a-long-source', roomId: 'room-a' }), polygonRecord({ id: 'fragment-a', sourceId: 'a-long-source', roomId: 'room-a' }), polygonRecord({ id: 'fragment-b', sourceId: 'b', roomId: 'room-b' })];
+		const snapshot = snapshotOf([{ floorId: 'floor-1', elevation: 0 }], [{ roomId: 'room-a', floorElevation: 0 }, { roomId: 'room-b', floorElevation: 0 }], records);
+		const forward = queryFloorSupports(snapshot, input);
+		expect(queryFloorSupports({ ...snapshot, queryPolygons: [...records].reverse() }, input)).toEqual(forward);
+		expect(resultCandidates(forward)[0]!.witnesses.map(w => w.recordId)).toEqual(['fragment-a', 'fragment-z', 'fragment-b']);
+	});
+	it('requires a choice between different floor contexts even at the same elevation', () => {
+		const result = queryFloorSupports(snapshotOf([{ floorId: 'floor-1', elevation: 0 }, { floorId: 'floor-2', elevation: 0 }], [{ roomId: 'room-a', floorElevation: 0 }, { roomId: 'room-b', floorElevation: 0 }], [polygonRecord({ id: 'a', roomId: 'room-a' }), polygonRecord({ id: 'b', floorId: 'floor-2', roomId: 'room-b' })]), input);
+		expect(chooseFloorSupport(resultCandidates(result)).kind).toBe('choice-required');
+	});
+	it('refuses contradictory duplicate Room and floor facts in either order', () => {
+		const baseline = snapshotOf([{ floorId: 'floor-1', elevation: 0 }], [{ roomId: 'room-1', floorElevation: 0 }], [polygonRecord({ id: 'a' })]);
+		for (const field of ['rooms', 'floors'] as const) {
+			const extra = field === 'rooms' ? { roomId: 'room-1', floorElevation: 2 } : { floorId: 'floor-1', elevation: 2 };
+			for (const reversed of [false, true]) {
+				const values = [...baseline[field], extra];
+				expect(queryFloorSupports({ ...baseline, [field]: reversed ? values.reverse() : values }, input)).toMatchObject({ kind: 'unsupported', code: 'contradictory-support-facts' });
+			}
+		}
+	});
+	it('refuses zero-area and non-finite boundaries', () => {
+		for (const polygon of [[[0, 0], [1, 0], [2, 0]], [[0, 0], [7, 0], [Number.NaN, 2]]] as [number, number][][]) {
+			expect(queryFloorSupports(snapshotOf([{ floorId: 'floor-1', elevation: 0 }], [{ roomId: 'room-1', floorElevation: 0 }], [polygonRecord({ id: 'bad', polygon })]), { ...input, x: 1, z: 0 }).kind).toBe('unsupported');
+		}
+	});
+});
+
+
+it('does not let a middle elevation bridge supports more than one tolerance apart', () => {
+ const epsilon = FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters;
+ const elevations = [epsilon * 0.75, 0, epsilon * 1.5];
+ const rooms = elevations.map((floorElevation, index) => ({ roomId: `room-${index}`, floorElevation }));
+ const records = rooms.map((room, index) => polygonRecord({ id: `record-${index}`, roomId: room.roomId }));
+ const snapshot = snapshotOf([{ floorId: 'floor-1', elevation: epsilon * 0.75 }], rooms, records);
+ const result = queryFloorSupports(snapshot, { generationId: 'generation-1', x: 3, z: -1 });
+ expect(resultCandidates(result)).toHaveLength(2);
+ expect(queryFloorSupports({ ...snapshot, queryPolygons: [...records].reverse() }, { generationId: 'generation-1', x: 3, z: -1 })).toEqual(result);
 });

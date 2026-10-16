@@ -18,8 +18,18 @@
  *    cannot diverge: a mesh hit's Y has nowhere to enter.
  */
 import { describe, expect, it } from 'vitest';
+import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene';
 import {
 	createEmptyWallFirstProject,
+	framePointToWorld,
+	planWallChain,
+	compileWallFirstLayoutGeometry,
+	floorSupportSnapshotOf,
+	queryFloorSupports,
+	chooseFloorSupport,
+	parseProjectJson,
+	serializeProject,
+	validateDerivedSourceRef,
 	preparePlaceObjectCandidate,
 	validateProject,
 	type FloorSupportCandidate,
@@ -33,10 +43,12 @@ import {
 } from '@portfolio/project-model';
 
 const GENERATION = 'generation-1';
+const SNAPSHOT = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' };
 const FRAME: LocalInputFrame = { origin: [1, 0.5, 2], yaw: Math.PI / 2 };
 
 function support(elevation: number, generationId = GENERATION): FloorSupportCandidate {
 	return {
+		queryPoint: [1, 1],
 		elevation,
 		upNormal: [0, 1, 0],
 		generationId,
@@ -128,7 +140,10 @@ function emptyScene(): SceneDocument {
 }
 
 function placeInput(overrides: Partial<PlaceObjectInput> = {}): PlaceObjectInput {
+	const point = framePointToWorld(overrides.frame ?? FRAME, [(overrides.worldXZ ?? [1, 0])[0], 0, (overrides.worldXZ ?? [1, 0])[1]]);
 	return {
+		snapshot: SNAPSHOT, supportSnapshot: SNAPSHOT, frameSnapshot: SNAPSHOT,
+		frameReference: { version: 1, kind: 'owner-frame', owner: 'scene', frameId: 'supplied-input-frame', revision: 'content-1' },
 		document: emptyScene(),
 		entityId: 'entity-1',
 		definition: nativeDefinition(),
@@ -136,7 +151,7 @@ function placeInput(overrides: Partial<PlaceObjectInput> = {}): PlaceObjectInput
 		yaw: 0.25,
 		frame: FRAME,
 		generationId: GENERATION,
-		support: { kind: 'resolved', support: support(2.5) },
+		support: { kind: 'resolved', support: { ...support(2.5), queryPoint: [point[0], point[2]] } },
 		...overrides
 	};
 }
@@ -422,4 +437,134 @@ describe('place-object determinism', () => {
 		preparePlaceObjectCandidate(placeInput({ document }));
 		expect(JSON.stringify(document)).toBe(before);
 	});
+});
+
+
+describe('independent placement regressions', () => {
+	it('keeps a stale query refusal typed as stale-generation', () => {
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ support: { kind: 'refused', code: 'stale-generation', message: 'old hit' } })))).toBe('stale-generation');
+	});
+	it('refuses degenerate and self-intersecting footprints', () => {
+		for (const footprintMeters of [[[0, 0], [1, 0], [2, 0]], [[0, 0], [2, 2], [0, 2], [2, 0]]] as [number, number][][]) {
+			expect(refusalCode(preparePlaceObjectCandidate(placeInput({ definition: nativeDefinition({ footprintMeters }) })))).toBe('missing-footprint');
+		}
+	});
+	it('refuses invalid dimensions and dangling material defaults before returning a candidate', () => {
+		const defaults = nativeDefinition().creationDefaults;
+		if (defaults.kind !== 'primitive' || defaults.primitive !== 'box') throw new Error('box fixture');
+		for (const creationDefaults of [{ ...defaults, dimensions: { ...defaults.dimensions, height: -1 } }, { ...defaults, materialInstanceId: 'missing-material' }, { ...defaults, name: '' }]) {
+			expect(refusalCode(preparePlaceObjectCandidate(placeInput({ definition: nativeDefinition({ creationDefaults }) })))).toBe('invalid-value');
+		}
+	});
+	it('refuses unverified model contact and invalid renderer correction', () => {
+		const definition = modelDefinition();
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ definition: modelDefinition({ admission: { ...definition.admission, provenance: { kind: 'analytical', detail: 'guess' } } }) })))).toBe('missing-contact-metadata');
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ definition: modelDefinition({ renderNormalization: { defaultScale: Number.NaN } }) })))).toBe('invalid-value');
+	});
+	it('refuses a non-upward resolved support', () => {
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ support: { kind: 'resolved', support: { ...support(0), upNormal: [0, -1, 0] } } })))).toBe('unsupported-surface');
+	});
+	it('never returns a non-finite rotation for finite captured yaw inputs', () => {
+		const result = preparePlaceObjectCandidate(placeInput({ yaw: Number.MAX_VALUE, frame: { origin: [0, 0, 0], yaw: Number.MAX_VALUE } }));
+		expect(result.kind).toBe('candidate');
+		if (result.kind === 'candidate') expect(result.candidate.entity.rotation.every(Number.isFinite)).toBe(true);
+	});
+});
+
+
+describe('placement source and support qualification', () => {
+	it('retains every equivalent witness as an exact F1 derived source reference', () => {
+		const chosen = support(0);
+		chosen.witnesses = [chosen.witnesses[0]!, { ...chosen.witnesses[0]!, roomId: 'room-2', recordId: 'record-2', sourceId: 'room-2' }];
+		const result = preparePlaceObjectCandidate(placeInput({ support: { kind: 'resolved', support: chosen } }));
+		expect(result.kind).toBe('candidate');
+		if (result.kind !== 'candidate') return;
+		expect(result.candidate.baseline).toEqual(SNAPSHOT);
+		expect(result.candidate.support.witnesses).toEqual(chosen.witnesses);
+		expect(result.candidate.support.fragments).toHaveLength(2);
+		for (const [index, fragment] of result.candidate.support.fragments.entries()) {
+			expect(validateDerivedSourceRef(fragment).success).toBe(true);
+			expect(fragment.source.subject).toEqual({ kind: 'room', id: chosen.witnesses[index]!.roomId });
+			expect(fragment.source.revision).toEqual({ kind: 'exact', contentRevision: SNAPSHOT.sourceContentId });
+			expect(fragment.generationId).toBe(GENERATION);
+		}
+	});
+	it('refuses a support from another accepted revision even if the generation string matches', () => {
+		for (const supportSnapshot of [
+			{ ...SNAPSHOT, sourceContentId: 'old-content' },
+			{ ...SNAPSHOT, acceptedRevision: { ...SNAPSHOT.acceptedRevision, revisionId: 'old-revision' } },
+			{ ...SNAPSHOT, acceptedRevision: { ...SNAPSHOT.acceptedRevision, projectId: 'other-project' } }
+		]) expect(refusalCode(preparePlaceObjectCandidate(placeInput({ supportSnapshot })))).toBe('stale-revision');
+	});
+	it('refuses a stale input frame and a nonidentity project-world conversion', () => {
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ frameSnapshot: { ...SNAPSHOT, sourceContentId: 'old-content' } })))).toBe('stale-revision');
+		expect(refusalCode(preparePlaceObjectCandidate(placeInput({ frameReference: { version: 1, kind: 'project-world' } })))).toBe('invalid-value');
+	});
+	it('refuses support queried for a different placement point', () => {
+		const input = placeInput();
+		input.support = { kind: 'resolved', support: { ...support(0), queryPoint: [30, 40] } };
+		expect(refusalCode(preparePlaceObjectCandidate(input))).toBe('invalid-value');
+	});
+});
+
+
+it('places on a real raised compiled floor with Plan/3D parity and strict project round trip', () => {
+	const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Raised gallery' });
+	const baseline = { ...project.layout, floor: { ...project.layout.floor, elevation: 2.5 } };
+	const planned = planWallChain({ baseline, points: [[0, 0], [7, 0], [7, 6], [0, 6]], close: true, role: 'boundary' });
+	if (planned.kind !== 'success') throw new Error('enclosure failed');
+	const source = { ...project, layout: planned.document };
+	const compiled = compileWallFirstLayoutGeometry(source.layout);
+	const result = queryFloorSupports(floorSupportSnapshotOf(compiled.geometry), { generationId: GENERATION, x: 3, z: 2 });
+	if (result.kind !== 'candidates') throw new Error('support query failed');
+	const chosen = chooseFloorSupport(result.candidates);
+	if (chosen.kind !== 'resolved') throw new Error('support choice failed');
+	const input = placeInput({ document: source.scene, worldXZ: [3, 2], frame: { origin: [0, 0, 0], yaw: 0 }, frameReference: { version: 1, kind: 'project-world' }, support: chosen });
+	const plan = preparePlaceObjectCandidate(input);
+	const meshHit = { x: 3, y: 9999, z: 2 };
+	const hit = preparePlaceObjectCandidate({ ...input, worldXZ: [meshHit.x, meshHit.z] });
+	expect(hit).toEqual(plan);
+	if (plan.kind !== 'candidate') throw new Error('placement failed');
+	expect(plan.candidate.entity.position).toEqual([3, 3, 2]);
+	const candidateProject = { ...source, scene: plan.candidate.scene };
+	expect(validateProject(candidateProject).success).toBe(true);
+	expect(parseProjectJson(serializeProject(candidateProject)).success).toBe(true);
+	expect(plan.candidate.support.fragments[0]!.source.subject.id).toBe(compiled.geometry.rooms[0]!.roomId);
+});
+
+
+it('does not confuse a frame owner revision with the snapshot content identity', () => {
+	expect(preparePlaceObjectCandidate(placeInput({ frameReference: { version: 1, kind: 'owner-frame', owner: 'scene', frameId: 'frame-1', revision: 'independent-frame-revision' } })).kind).toBe('candidate');
+});
+
+it('refuses a finite native contact inconsistent with the primitive dimensions', () => {
+	expect(refusalCode(preparePlaceObjectCandidate(placeInput({ definition: nativeDefinition({ contactMinY: -0.25 }) })))).toBe('missing-contact-metadata');
+});
+
+
+it('preserves populated Camera, resource and cluster bytes across every admitted entity kind', () => {
+ const document = cloneFixtureDocument('tour-minimal');
+ document.textures = [{ id: 'texture-1', name: 'Texture', uri: '/textures/test.png' }];
+ document.materials = [{ id: 'material-1', name: 'Material', baseMaterialId: 'plaster-warm', baseTextureId: 'texture-1', roughness: 0.25, metalness: 0.75 }];
+ document.clusters = [{ id: 'cluster-1', name: 'Group', memberIds: document.entities.map(entity => entity.id) }];
+ const freeze = (value: unknown): void => {
+  if (value && typeof value === 'object') { Object.values(value).forEach(freeze); Object.freeze(value); }
+ };
+ freeze(document);
+ const before = JSON.stringify(document);
+ const canonicalUnrelated = (scene: SceneDocument): string => {
+  const validated = validateProject({ ...createEmptyWallFirstProject({ id: 'project-1', name: 'Project' }), scene });
+  if (!validated.success) throw new Error(JSON.stringify(validated.issues));
+  const { entities: _entities, ...rest } = validated.project.scene;
+  return JSON.stringify(rest);
+ };
+ for (const definition of [nativeDefinition(), modelDefinition(), ...(['cylinder', 'sphere'] as const).map(primitive => nativeDefinition({
+  creationDefaults: { kind: 'primitive', primitive, name: primitive, dimensions: primitive === 'sphere' ? { radius: 0.5 } : { radius: 0.5, height: 1 }, materialId: 'plaster-warm', castShadow: true, receiveShadow: true } as ObjectCreationDefaults
+ }))]) {
+  const result = preparePlaceObjectCandidate(placeInput({ document, definition }));
+  if (result.kind !== 'candidate') throw new Error(result.message);
+  expect(canonicalUnrelated(result.candidate.scene)).toBe(canonicalUnrelated(document));
+  expect(result.candidate.scene.entities.slice(0, document.entities.length)).toEqual(document.entities);
+  expect(JSON.stringify(document)).toBe(before);
+ }
 });

@@ -71,3 +71,13 @@ describe('the yaw-only local input frame', () => {
 		expect(isFinitePlacementFrame({ origin: [0, 0], yaw: 0 } as unknown as LocalInputFrame)).toBe(false);
 	});
 });
+
+
+it('keeps composed yaw consistent with the frame matrix for huge finite radians', () => {
+ const frame: LocalInputFrame = { origin: [0, 0, 0], yaw: Number.MAX_VALUE };
+ const localYaw = Number.MAX_VALUE;
+ const composed = frameYawToWorld(frame, localYaw);
+ const direction = frameDirectionToWorld(frame, [Math.cos(localYaw), 0, -Math.sin(localYaw)]);
+ expect(Math.cos(composed)).toBeCloseTo(direction[0], 12);
+ expect(-Math.sin(composed)).toBeCloseTo(direction[2], 12);
+});
