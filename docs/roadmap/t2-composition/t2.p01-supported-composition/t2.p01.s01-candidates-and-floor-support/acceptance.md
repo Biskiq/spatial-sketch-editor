@@ -1,13 +1,14 @@
 # T2.P01.S01 — independent review evidence
 
-**Slice:** T2.P01.S01 · **Status:** in progress; independent implementation review and fixes recorded 2026-10-16; acceptance pending T1 review
+**Slice:** T2.P01.S01 · **Status:** in progress; independent implementation review and fixes recorded 2026-10-16; focused T1/Layout sign-off recorded; owner acceptance pending
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns the criteria
 **Phase:** [T2.P01](../README.md) · **Register:** [slice register](../README.md#slice-register)
 **PR:** [#130](https://github.com/Biskiq/spatial-sketch-editor/pull/130) · branch `T2-P01-S01`
 
 This is review evidence, not slice acceptance, closeout, a capability registration or permission to
 merge. The owner requested an independent review and direct in-scope repairs, stopping before
-closeout or merge. No T1 role authorization was supplied.
+closeout or merge. The owner subsequently authorized the focused T1/Layout role review recorded
+below; it was performed by a distinct reviewer agent, not self-signed by the implementation agent.
 
 ## Scope and tested source
 
@@ -79,15 +80,49 @@ support, definition evidence or frame identity is added to persisted Scene recor
 of the actual accepted source, owner-resolved frame conversion, asset readiness and final acceptance
 revalidation remain S02/S03 integration responsibilities, not claims made by these pure tests.
 
-## Owed review and remaining gate
+## Focused independent T1/Layout review — 2026-10-16
 
-**T1 review of floor-query exports and tolerances: owed.** This independent T2 implementation
-review does not satisfy that role. T1 must review the Layout-owned public exports and proposed
-**1e-6 m boundary/coplanar** and **1e-9 normal-component** policy, including context equivalence,
-canonical-elevation preservation and the query-point comparison. The values were not changed or
-presented as confirmed; no compiler epsilon was changed.
+**Sign-off recorded:** [reviewer-authored evidence](./independent-review.md), by distinct reviewer
+agent `/root/t1_layout_review`, authorized by the owner's focused review request. This is a scoped
+T1/Layout role review, not a claim that a repository T1 owner approved the PR, and not overall
+slice acceptance. Reviewed baseline **`3b66feb325137945c797bef4c0e2ebf746c34d5f`** (implementation
+**`29fd21e307b5cbbc26700c8016961013b8b2feaf`**) plus this change's four threshold evidence tests.
+No substantiated production defect was found; no behavioral repair was required.
 
-No closeout or merge was performed. The complete repository merge gate, including API checks and
-DB-backed tests with zero skips, must run against then-current main before any merge. API/DB runs
-and browser journeys were not required or claimed for this affected-subsystem review: no API,
-Save/Load, host/UI or delivery wiring changed. T2.P01.S04 still owns integrated phase acceptance.
+The review confirms the append-only Layout-native exports and **1e-6 m boundary/coplanar** /
+**1e-9 per-component up-normal** policy without compiler/legacy-query changes. It confirms same-floor
+context equivalence for the current compiled world-frame, single-level format, pairwise elevation
+comparison, exact source-first canonical elevation, retained witnesses, and deterministic explicit
+ambiguity. Future level/instance/frame contexts need an explicit contract update before reuse.
+Query-point comparison permits Euclidean round-trip drift without snapping the world pose.
+
+Four added regressions prove Euclidean corner membership (rather than a rectangular halo),
+inclusive coplanarity preserving exact canonical Y, component-wise normal limits, and near/far
+query-point drift preserving exact composed X/Z. The final focused run passes **6 files / 78 tests**;
+architecture checks pass **15 files / 137 tests**. Layout, project-model and Camera package checks
+pass; final editor check reports **0 errors / 0 warnings**, and production build passes (the existing
+dependency unused-import advisories remain nonblocking). The final complete run:
+
+```sh
+P24A_REQUIRE_PIPELINE=1 npm run test -w @portfolio/editor -- --maxWorkers=2
+```
+
+passes **125 files / 1,675 tests**, zero skips, including heavy correctness, compiler suites and all
+asset-pipeline cases. The suite's tests and timeouts are unchanged; only worker concurrency was
+limited. Before that rerun, an unrestricted final run concurrent with build/check work timed out in
+the existing Camera exhaustive and Layout correspondence-reference contracts (123 files / 1,673
+other tests passed). Both contracts then passed in the complete reduced-concurrency run. The
+pre-addition baseline full run also passed 125 files / 1,671 tests. This is affected-subsystem review
+evidence, not the future merge gate against then-current main.
+
+Source changes only confirm the reviewed policy in a comment; contract and plan wording now
+reflect the sign-off. Verification covers the implementation at `29fd21e3` plus the two test-file
+additions in the commit carrying this evidence; all other changes are review documentation.
+
+## Remaining gate
+
+No closeout or merge was performed. Slice and phase status remain in progress. The complete
+repository merge gate, including API checks and DB-backed tests with zero skips, must run against
+then-current main before any merge. API/DB runs and browser journeys were not required or claimed
+for this affected-subsystem review: no API, Save/Load, host/UI or delivery wiring changed.
+T2.P01.S04 still owns integrated phase acceptance.

@@ -2,7 +2,7 @@
 
 **Slice:** T2.P01.S01 · **Status:** approved (owner-authorized 2026-10-16,
 [record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — in progress,
-independent review fixes recorded; T1 export/tolerance review owed (parallel batch 2026-10-16) ·
+independent review fixes and focused T1/Layout sign-off recorded; owner acceptance pending (parallel batch 2026-10-16) ·
 **Phase:** [T2.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T2](../../README.md) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 
@@ -65,8 +65,12 @@ review**.
   yet produce distinct elevations. `choice-required` stays typed: the chooser is proven on
   constructed candidates, and a test pins the real-format property so a future multi-datum format
   fails loudly rather than resolving silently.
-- Proposed operation tolerances (1e-6 m boundary/coplanar, 1e-9 normal) are confirmed or replaced in
-  T1 review; they never round a canonical value or alter compiler epsilon.
+- Operation tolerances **1e-6 m boundary/coplanar** and **1e-9 per normal component** are confirmed
+  by the [independent focused T1/Layout review](./independent-review.md). They never round a
+  canonical value or alter compiler epsilon. Context equivalence is the same floor ID in today's
+  world-frame, single-level compiled format; future level/instance/frame contexts require an
+  explicit contract update. Query-point agreement uses Euclidean distance within 1e-6 m and
+  preserves the composed world pose.
 - There is no chooser UI here; S03 presents the choice.
 
 ## Definitions and admitted inventory
@@ -125,4 +129,5 @@ In addition, recorded acceptance must show:
 - T1 review of the query's export and tolerances recorded with the acceptance.
 
 Implementation review and verification evidence is recorded in [acceptance.md](./acceptance.md).
-Slice acceptance remains pending the required T1 review; no closeout or merge is claimed.
+The required focused T1/Layout review is recorded in [independent-review.md](./independent-review.md).
+Slice acceptance remains pending the owner; no closeout or merge is claimed.

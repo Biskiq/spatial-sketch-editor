@@ -516,6 +516,26 @@ describe('the floor-support chooser never chooses an elevation', () => {
 
 describe('independent floor-support regressions', () => {
 	const input = { generationId: 'generation-1', x: 3, z: -1 };
+	it('measures boundary tolerance as Euclidean distance, including outside corners', () => {
+		const square: [number, number][] = [[0, 0], [1, 0], [1, 1], [0, 1]];
+		const epsilon = FLOOR_SUPPORT_TOLERANCES.boundaryMeters;
+		expect(polygonContainsWithTolerance([-epsilon, 0.5], square)).toBe(true);
+		expect(polygonContainsWithTolerance([-epsilon * 1.01, 0.5], square)).toBe(false);
+		expect(polygonContainsWithTolerance([-epsilon * 0.7, -epsilon * 0.7], square)).toBe(true);
+		expect(polygonContainsWithTolerance([-epsilon * 0.8, -epsilon * 0.8], square)).toBe(false);
+	});
+	it('preserves the source-ordered canonical elevation when coplanar witnesses differ within tolerance', () => {
+		const epsilon = FLOOR_SUPPORT_TOLERANCES.coplanarElevationMeters;
+		const rooms = [{ roomId: 'room-a', floorElevation: epsilon }, { roomId: 'room-b', floorElevation: 0 }];
+		const records = rooms.map(room => polygonRecord({ id: room.roomId, roomId: room.roomId, sourceId: room.roomId }));
+		const snapshot = snapshotOf([{ floorId: 'floor-1', elevation: 0 }], rooms, records);
+		const result = queryFloorSupports(snapshot, input);
+		expect(resultCandidates(result)).toHaveLength(1);
+		expect(resultCandidates(result)[0]!.elevation).toBe(epsilon);
+		expect(resultCandidates(result)[0]!.witnesses).toHaveLength(2);
+		expect(queryFloorSupports({ ...snapshot, rooms: [...rooms].reverse(), queryPolygons: [...records].reverse() }, input)).toEqual(result);
+		expect(queryFloorSupports({ ...snapshot, rooms: [{ ...rooms[0]!, floorElevation: epsilon * 1.01 }, rooms[1]!] }, input)).toMatchObject({ kind: 'unsupported', code: 'contradictory-support-facts' });
+	});
 	it('orders unequal-length source ids lexically and orders every same-source fragment', () => {
 		const records = [polygonRecord({ id: 'fragment-z', sourceId: 'a-long-source', roomId: 'room-a' }), polygonRecord({ id: 'fragment-a', sourceId: 'a-long-source', roomId: 'room-a' }), polygonRecord({ id: 'fragment-b', sourceId: 'b', roomId: 'room-b' })];
 		const snapshot = snapshotOf([{ floorId: 'floor-1', elevation: 0 }], [{ roomId: 'room-a', floorElevation: 0 }, { roomId: 'room-b', floorElevation: 0 }], records);

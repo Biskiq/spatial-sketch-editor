@@ -37,7 +37,8 @@ import { pointInPolygon } from './layout-geometry-objects';
 /**
  * Operation/query tolerances, not compiler epsilon.
  *
- * Proposed values for T1 review; they never round a canonical value and never
+ * Confirmed by independent focused T1/Layout review (2026-10-16; S01 review
+ * evidence); they never round a canonical value and never
  * change `layout-core`'s compiler tolerances. `boundaryMeters` is the declared
  * boundary-membership tolerance, `coplanarElevationMeters` decides when two
  * compiled elevations denote the same support, and `upNormalComponent` is the

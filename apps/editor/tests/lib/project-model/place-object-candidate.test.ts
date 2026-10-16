@@ -20,6 +20,7 @@
 import { describe, expect, it } from 'vitest';
 import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene';
 import {
+	FLOOR_SUPPORT_TOLERANCES,
 	createEmptyWallFirstProject,
 	framePointToWorld,
 	planWallChain,
@@ -473,6 +474,27 @@ describe('independent placement regressions', () => {
 
 
 describe('placement source and support qualification', () => {
+	it('admits component-wise normal drift only within the declared tolerance', () => {
+		const epsilon = FLOOR_SUPPORT_TOLERANCES.upNormalComponent;
+		for (const upNormal of [[epsilon, 1, -epsilon], [epsilon * 1.01, 1, 0], [0, 1, -epsilon * 1.01]] as [number, number, number][]) {
+			const result = preparePlaceObjectCandidate(placeInput({ support: { kind: 'resolved', support: { ...support(0), upNormal } } }));
+			expect(refusalCode(result)).toBe(upNormal[0] === epsilon ? 'candidate' : 'unsupported-surface');
+		}
+	});
+	it('allows query-point round-trip drift without snapping the canonical pose to the query point', () => {
+		const epsilon = FLOOR_SUPPORT_TOLERANCES.boundaryMeters;
+		const input = placeInput();
+		const world = framePointToWorld(input.frame, [input.worldXZ[0], 0, input.worldXZ[1]]);
+		for (const drift of [epsilon * 0.99, epsilon * 1.01]) {
+			const queryPoint: [number, number] = [world[0] + drift, world[2]];
+			const result = preparePlaceObjectCandidate({ ...input, support: { kind: 'resolved', support: { ...support(2.5), queryPoint } } });
+			expect(refusalCode(result)).toBe(drift < epsilon ? 'candidate' : 'invalid-value');
+			if (result.kind === 'candidate') {
+				expect(result.candidate.worldPose.position).toEqual([world[0], 3, world[2]]);
+				expect(result.candidate.support.queryPoint).toEqual(queryPoint);
+			}
+		}
+	});
 	it('retains every equivalent witness as an exact F1 derived source reference', () => {
 		const chosen = support(0);
 		chosen.witnesses = [chosen.witnesses[0]!, { ...chosen.witnesses[0]!, roomId: 'room-2', recordId: 'record-2', sourceId: 'room-2' }];
