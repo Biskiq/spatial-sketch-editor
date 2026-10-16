@@ -1,7 +1,6 @@
 # T3.P01.S01 — Shared unit and program codecs: implementation plan
 
-**Slice:** T3.P01.S01 · **Status:** approved (owner-authorized 2026-10-16,
-[record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — not started ·
+**Slice:** T3.P01.S01 · **Status:** shipped (accepted 2026-10-16; implementation PR #131) ·
 **Phase:** [T3.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
@@ -119,11 +118,13 @@ In addition, recorded acceptance must show:
 - the public route's module graph and the current readers/writers unchanged;
 - the two capability records with their exports, conformance and acceptance paths.
 
-These criteria are not met, reviewed or evidenced; evidence belongs in [acceptance.md](./acceptance.md).
+The criteria and evidence are recorded in the [acceptance record](./acceptance.md); the integrated
+runtime result remains assigned to the declared S04 route.
 
 ## Readiness declaration
 
 `F2.unit-envelope@1` names this slice as its sole provider in the
-[gate register](../../../README.md#gate-register) and stays `ratified` with empty evidence until real
-code, independent review and recorded evidence exist. Neither scope is accepted by this authorization,
-and no consumer may claim either from this plan.
+[gate register](../../../README.md#gate-register), and its accepted `unit-envelope-v1` capability
+and the additive `F1.reference@1:unit-resolution-v1` capability are recorded in the gate register
+and [acceptance record](./acceptance.md). Their prerequisites and distinct scopes are recorded in
+their capability records. Runtime activation and source cutover remain deferred to S04.
