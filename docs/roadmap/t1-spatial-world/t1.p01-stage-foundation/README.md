@@ -2,7 +2,7 @@
 
 **Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
 (F1/F3 shared providers and the readiness enforcement landed; independent acceptance recorded at
-`ee463d0b`); S02 and S03 owner-authorized 2026-10-16, approved and not started; S04–S06 proposed and
+`ee463d0b`); S02 and S03 owner-authorized 2026-10-16; S02 is approved, and S03 is in progress under independent review; S04–S06 proposed and
 unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -136,8 +136,8 @@ gate version is not by itself sufficient readiness; `Effects` names only documen
 **authorized** by the owner decision of 2026-10-15 and is now **accepted and shipped**: independent
 review accepted its implementation at `ee463d0b`, so its provider outputs are recorded as the accepted
 capabilities `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` and both gate rows are
-`accepted`. **S02 and S03 are authorized** by the owner decision of 2026-10-16 and are `approved`, not
-started; their prerequisites are accepted on `main`, where `ee463d0b` is an ancestor. S04–S06 are
+`accepted`. **S02 and S03 are authorized** by the owner decision of 2026-10-16; S03 is `in-progress` with review evidence, and neither is
+formally accepted; their prerequisites are accepted on `main`, where `ee463d0b` is an ancestor. S04–S06 are
 **proposed** and hold no implementation permission. Same-phase sequencing never bypasses the
 trusted-base rule: each consumed gate and each required capability must be accepted at the consumer's
 trusted base.
@@ -185,7 +185,7 @@ Stage:        active
 ```
 
 `T1.P01.S01` is accepted and shipped, with its acceptance evidence and both accepted capabilities
-recorded; S02–S06 have no acceptance evidence yet (S02/S03 are authorized, not started). The
+recorded; S03 has implementation/review evidence but no formal acceptance. S02–S06 have no accepted result. The
 final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
 stage marker is written, and closure stays an explicit owner request.
 

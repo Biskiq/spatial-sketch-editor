@@ -1,7 +1,7 @@
 # T1.P01.S03 — Local acceptance and history foundation: implementation plan
 
-**Slice:** T1.P01.S03 · **Status:** approved (owner-authorized 2026-10-16,
-[record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — not started
+**Slice:** T1.P01.S03 · **Status:** in-progress (owner-authorized 2026-10-16,
+[record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — implementation and independent review recorded; acceptance pending
 **Phase:** [T1.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 **Track:** [T1](../../README.md) · **Runbook:**
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
@@ -88,7 +88,10 @@ the canonical bytes of the Camera-bearing Scene fields before and after accept, 
 ## Content identity
 
 One current-source content identity, exported once from `@portfolio/project-model`: the landed
-`sha256Bytes` over the strict writer's canonical bytes. S03 owns its meaning:
+`sha256Bytes` over canonical authored bytes: the strict writer's normalized document, with
+ID-keyed Layout identity maps ordered and only the persisted `identity.cursor` omitted from the
+digest. The full canonical source retains that cursor for exact persistence/history restoration;
+Layout already defines it as allocation bookkeeping (`LayoutIdentityLedger`). S03 owns its meaning:
 
 - it is invariant to input key order and whitespace; if the writer's output follows input key order,
   S03 fixes the canonical form and proves permuted-key equality;
@@ -152,7 +155,8 @@ In addition, recorded acceptance must show:
 - a recorded per-accept cost observation (validation, serialization and digest) on the densest
   current fixture, measured on the input the editor actually hands in.
 
-These criteria are not met, reviewed or evidenced; evidence belongs in [acceptance.md](./acceptance.md).
+Implementation and independent-review evidence is recorded in [acceptance.md](./acceptance.md);
+formal acceptance and capability readiness remain pending.
 
 ## Readiness declaration
 
