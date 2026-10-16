@@ -2,7 +2,7 @@
 
 **Slice:** T2.P01.S01 · **Status:** approved (owner-authorized 2026-10-16,
 [record](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — in progress,
-awaiting independent review (parallel batch 2026-10-16) ·
+independent review fixes recorded; T1 export/tolerance review owed (parallel batch 2026-10-16) ·
 **Phase:** [T2.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T2](../../README.md) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 
@@ -124,4 +124,5 @@ In addition, recorded acceptance must show:
   editor module or Three, and the policy adapter stays editor-side;
 - T1 review of the query's export and tolerances recorded with the acceptance.
 
-These criteria are not met, reviewed or evidenced; evidence belongs in [acceptance.md](./acceptance.md).
+Implementation review and verification evidence is recorded in [acceptance.md](./acceptance.md).
+Slice acceptance remains pending the required T1 review; no closeout or merge is claimed.
