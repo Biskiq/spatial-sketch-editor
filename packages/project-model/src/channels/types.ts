@@ -378,7 +378,12 @@ export type ChannelContributionHandle = { scope: ChannelPropertyScope; invocatio
 export type ChannelWithdrawal =
 	/** The invocation's contribution at exactly that run epoch was removed. */
 	| { kind: 'withdrawn'; state: ChannelState; contribution: ChannelContribution }
-	/** The invocation holds nothing in this scope: an idempotent no-op. */
+	/**
+	 * The run's contribution had already expired and been pruned, so nothing was removed,
+	 * but the run is now retired: an expired run may re-offer, a withdrawn one may not.
+	 */
+	| { kind: 'retired'; state: ChannelState }
+	/** The invocation holds nothing in this scope and that run is already retired or unknown: a no-op. */
 	| { kind: 'absent'; state: ChannelState }
 	/** A newer run of the invocation holds the scope; a stale cleanup removes nothing. */
 	| { kind: 'ignored'; state: ChannelState; reason: 'stale-run-epoch'; message: string };

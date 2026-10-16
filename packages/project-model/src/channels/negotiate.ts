@@ -707,13 +707,31 @@ export function readChannelProperty(
  * that holds it removes it: a stale completion (an older run of the invocation)
  * is ignored, and another invocation's contribution — including a newer owner's
  * after a replacement — is never touched. Withdrawal retires the run, so neither it
- * nor an older run of the invocation can re-enter the scope afterwards.
+ * nor an older run of the invocation can re-enter the scope afterwards — including
+ * when its contribution had already expired and been pruned (`retired`).
  */
 export function withdrawChannelContribution(state: ChannelState, handle: ChannelContributionHandle): ChannelWithdrawal {
 	const own = state.entries.find(
 		(entry) => entry.contribution.invocationId === handle.invocationId && sameChannelPropertyScope(entry.scope, handle.scope)
 	);
-	if (own === undefined) return { kind: 'absent', state };
+	if (own === undefined) {
+		// Expiry permits re-evaluation; explicit withdrawal retires the run. A run whose
+		// contribution already expired and was pruned still has its un-retired mark, and
+		// withdrawing it must retire that mark, or a delayed re-offer at the same epoch
+		// would be admitted as a re-evaluation.
+		const mark = markFor(state, handle.scope, handle.invocationId);
+		if (mark === null || mark.retired || mark.runEpoch !== handle.runEpoch) {
+			return mark !== null && mark.runEpoch > handle.runEpoch
+				? {
+						kind: 'ignored',
+						state,
+						reason: 'stale-run-epoch',
+						message: `run ${handle.runEpoch} of "${handle.invocationId}" is older than its accepted run ${mark.runEpoch} on "${handle.scope.propertyId}"`
+					}
+				: { kind: 'absent', state };
+		}
+		return { kind: 'retired', state: { entries: state.entries, marks: withMark(state.marks, { ...mark, retired: true }) } };
+	}
 	if (own.contribution.runEpoch !== handle.runEpoch) {
 		return {
 			kind: 'ignored',

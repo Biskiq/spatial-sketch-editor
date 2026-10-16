@@ -33,7 +33,7 @@ npm run check                 svelte-kit sync && svelte-check        0 errors, 0
 npm run build                 vite build                                                       PASS
 npm run test:arch             vitest run --config vitest.arch.config.ts   15 files, 137 tests   PASS
 npm run test:heavy            vitest run --config vitest.heavy.config.ts   8 files, 118 tests   PASS
-npm test                      vitest run (complete suite)               119 files, 1596 tests  PASS
+npm test                      vitest run (complete suite)               119 files, 1597 tests  PASS
 npm run check:api             tsc -p tsconfig.json --noEmit                                   PASS
 npm run test:api              node --test (real Postgres)   39 tests, 0 skipped, 0 failed    PASS
 ```
@@ -319,6 +319,16 @@ for Camera session values, which also adds `camera` to `references-v1`'s bounded
 within this slice's own unaccepted exports, and none amends a ratified contract. If the reviewer
 reads AM-3 or AM-1 differently on any of them, that is a contract decision for the owner, not an
 implementation detail.
+
+## Response to the re-review of `73bd68d3`
+
+The re-review accepts B1–B5 and the four reviewer-owned decisions, and raises one P1 lifecycle race.
+
+| Finding | Disposition |
+| --- | --- |
+| P1 — after a contribution had **expired and been pruned**, `withdrawChannelContribution` found no entry, returned `absent` and left the run's epoch mark un-retired, so a delayed callback could re-offer the cancelled run at the same epoch as though it were a re-evaluation | **Confirmed, and fixed at that one branch.** Expiry and withdrawal are now distinct even with no entry left. Expiry keeps the mark un-retired, so the owning evaluator may re-offer a re-evaluated value under the same run epoch. A withdrawal whose run's mark is still un-retired at exactly that epoch retires the mark and answers the new `retired` outcome. `absent` remains the idempotent no-op for a run that is already retired or was never accepted, and an older run's cleanup is still `ignored`. No other arbitration, mark or freshness rule changed. Fixture, for an exclusive and a union property: prune → re-offer accepted at the same epoch; prune → withdraw (`retired`) → the same and an older epoch refused, a repeated withdrawal `absent`, a newer run accepted. With the old branch restored, the new case fails. |
+
+Public interface: `ChannelWithdrawal` gains `{ kind: 'retired'; state }`. That re-review's verdict applies to `73bd68d3` only; this correction needs its own final re-review.
 
 ## Owed to review (not implementer judgement)
 

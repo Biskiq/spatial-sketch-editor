@@ -517,6 +517,45 @@ describe('F.3 inspection-v1 — exclusive ownership, replacement and cleanup', (
 		expect(readChannelProperty(x.state, scope, context({ generationId: 'generation-4' })).kind).toBe('absent');
 	});
 
+	it('distinguishes expiry (re-evaluation permitted) from withdrawal (run retired), even after a prune', () => {
+		const edited: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-8' }, sourceContentId: 'sha256-source-8' };
+		const next = context({ snapshot: edited });
+		const nextOwner = levelReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-8' } });
+		for (const [propertyId, value] of [
+			['cut-height', number(1.2)],
+			['reveal', walls('wall-1')]
+		] as const) {
+			const offer = (runEpoch: number, ctx: ChannelEvaluationContext) =>
+				contribution({
+					propertyId,
+					value,
+					invocationId: 'x',
+					runEpoch,
+					...(ctx === next
+						? { address: address(propertyId, { ownerReference: nextOwner }), computedFrom: { contentRevision: 'sha256-source-8', generationId: 'generation-3' } }
+						: {})
+				});
+			const x4 = accepted(negotiate(EMPTY_CHANNEL_STATE, offer(4, CONTEXT)));
+			const pruned = pruneChannelState(x4.state, next);
+			expect(pruned.state.entries, propertyId).toEqual([]);
+			const scope = x4.scope;
+
+			// prune → re-offer: the expired run re-evaluates under the same run epoch.
+			expect(accepted(negotiate(pruned.state, offer(4, next), next)).contribution.runEpoch, propertyId).toBe(4);
+
+			// prune → withdraw → re-offer: the withdrawal retires the run although nothing was left to remove.
+			const withdrawn = withdrawChannelContribution(pruned.state, { scope, invocationId: 'x', runEpoch: 4 });
+			expect(withdrawn.kind, propertyId).toBe('retired');
+			expect(reason(negotiate(withdrawn.state, offer(4, next), next)), propertyId).toBe('stale-run-epoch');
+			expect(reason(negotiate(withdrawn.state, offer(3, next), next)), propertyId).toBe('stale-run-epoch');
+			// Idempotent, and an older run's cleanup is still a stale no-op.
+			expect(withdrawChannelContribution(withdrawn.state, { scope, invocationId: 'x', runEpoch: 4 })).toEqual({ kind: 'absent', state: withdrawn.state });
+			expect(withdrawChannelContribution(pruned.state, { scope, invocationId: 'x', runEpoch: 3 }).kind, propertyId).toBe('ignored');
+			// A genuinely newer run of the invocation is unaffected.
+			expect(accepted(negotiate(withdrawn.state, offer(5, next), next)).contribution.runEpoch, propertyId).toBe(5);
+		}
+	});
+
 	it('orders a declared ordered-replacement property across every invocation in its scope', () => {
 		// No v1 family declares ordered replacement now that the Camera controller reflects the
 		// output claim; the common rule is proved through a test-only Layout family.
