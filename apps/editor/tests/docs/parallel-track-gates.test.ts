@@ -972,10 +972,49 @@ export function routeProblems(source: string): string[] {
 		}
 	}
 	const assigned = byKey.get('ASSIGNED WORK') ?? '';
-	if (!assigned.includes('operations/current.md')) problems.push('router: ASSIGNED WORK must start at the baton');
+	if (!assigned.includes('operations/current.md')) problems.push('router: ASSIGNED WORK must start at the baton navigation');
+	// The global baton routes; the owning track's baton is the handoff a task reads and replaces.
+	if (!/operations\/(<track>|[a-z0-9-]+)\/current\.md/.test(assigned)) {
+		problems.push("router: ASSIGNED WORK must route through the owning track's baton");
+	}
 	if (!assigned.includes('phase README')) problems.push('router: ASSIGNED WORK must route through the phase README');
 	if (!(byKey.get('START IMPLEMENTATION') ?? '').includes('runbook')) {
 		problems.push('router: START IMPLEMENTATION must name the track runbook start step');
+	}
+	return problems;
+}
+
+/** The four operational runbooks whose per-track baton wiring is part of the execution structure. */
+export const TRACK_RUNBOOKS = [
+	't1-spatial-world',
+	't2-composition',
+	't3-experience',
+	't4-release'
+] as const;
+
+/**
+ * Baton wiring. Current work is track-local: each runbook names its own `./current.md`, that file
+ * exists, and the global `docs/operations/current.md` is navigation only — it routes to every track
+ * baton and carries no slice status of its own. A runbook pointed back at the global baton, or a
+ * global baton turned into a status store, is exactly the coordination drift this rule catches, so a
+ * task never has to synchronize another parallel track.
+ */
+export function batonProblems(
+	batons: Array<{ track: string; runbook: string; exists: boolean }>,
+	global: string
+): string[] {
+	const problems: string[] = [];
+	if (!global.toLowerCase().includes('navigation only')) {
+		problems.push('baton: docs/operations/current.md must be navigation only');
+	}
+	for (const baton of batons) {
+		if (!/BATON:[ \t]*\.\/current\.md/.test(baton.runbook)) {
+			problems.push(`baton: the ${baton.track} runbook does not point at its own ./current.md`);
+		}
+		if (!baton.exists) problems.push(`baton: ${baton.track} has no operations/${baton.track}/current.md`);
+		if (!global.includes(`./${baton.track}/current.md`)) {
+			problems.push(`baton: the navigation file does not route to the ${baton.track} baton`);
+		}
 	}
 	return problems;
 }
@@ -2235,6 +2274,31 @@ describe('routing and skill preflights', () => {
 		expect(routeProblems(router.replace('F-INTERFACE GAP:', 'INTERFACE GAP:')).join('\n')).toContain(
 			'has no F-INTERFACE GAP route'
 		);
+	});
+
+	it('keeps each track baton track-local and the global baton navigation-only', () => {
+		const batons = TRACK_RUNBOOKS.map((track) => ({
+			track,
+			runbook: readFile(`docs/operations/${track}/README.md`),
+			exists: existsSync(resolve(REPO_ROOT, `docs/operations/${track}/current.md`))
+		}));
+		const global = readFile('docs/operations/current.md');
+		expect(batonProblems(batons, global)).toEqual([]);
+		// Sensitivity controls: the global baton as a status store, and a runbook
+		// pointed back at the global baton, both fail.
+		expect(batonProblems(batons, global.replace('Navigation only', 'STATUS')).join('\n')).toContain(
+			'navigation only'
+		);
+		expect(
+			batonProblems(
+				batons.map((baton) => ({
+					...baton,
+					runbook: baton.runbook.replace('BATON:   ./current.md', 'BATON:   ../current.md')
+				})),
+				global
+			).join('\n')
+		).toContain('its own ./current.md');
+		expect(batonProblems([{ ...batons[0]!, exists: false }], global).join('\n')).toContain('has no operations/');
 	});
 
 	it('carries the evidence preflight in both closeout skills', () => {

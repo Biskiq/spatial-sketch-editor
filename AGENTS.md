@@ -32,8 +32,9 @@ Conflict: **`docs/` reference files + router win** over this file for product de
 8. **No commits** unless user asks.
 9. **Token discipline (progressive disclosure)** — start at `docs/README.md`, follow router links, read minimum sufficient context. A routed file is not automatically a full-file read: read the smallest relevant section / authority box / route block first, then stop unless the task, missing information, or contradictory evidence requires expanding within the file. Routes are starting points, not hard boundaries: do not preload deeper or adjacent docs speculatively; expand into docs/code/tests/Git only when the task, missing information, or contradictory evidence requires it. Never preload the tree; archive is opt-in historical evidence, not current truth.
 10. **Authority by concern** — no single total ordering; resolve a doc-vs-doc
-    conflict through the owner of that concern. `operations/current.md` owns the
-    **current work/baton**, never a durable status; `roadmap/README.md` owns
+    conflict through the owner of that concern. The owning track's
+    `operations/<track>/current.md` owns its **current work/baton** (the global
+    `operations/current.md` is navigation only), never a durable status; `roadmap/README.md` owns
     **track and phase lifecycle, the gate register and future work**; a **track
     README** owns its objectives and phase register; a **phase README** owns its
     own slice register, child status, `FINAL PHASE GATE` and `PHASE CLOSE`; a
@@ -86,8 +87,10 @@ NO: archive unless routed or evidence requires it
 NO: commit/push unless allowed
 
 ON designated work:
-operations/current.md → exact phase README → exact slice plan;
+operations/current.md (navigation) → your track's operations/<track>/current.md →
+exact phase README → exact slice plan;
 start through the track runbook's start step (eligibility + one-line cycle check)
+only your own track's baton is replaced; never synchronize another track's baton
 
 ON verification:
 the slice plan's declared tier and the failure class, per apps/editor/tests/README.md

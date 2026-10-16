@@ -5,13 +5,14 @@
 explicit events below.
 
 ```text
-NOT:  product status (roadmap/README.md) · the baton (current.md) · a plan or a project tracker
+NOT:  product status (roadmap/README.md) · a baton (current.md or a track baton) · a plan or a tracker
 OWNS: the completion handoff, integration acceptance and replanning procedures
 LOAD: only when one of the three events is actually invoked
 ```
 
 Ordinary slice work never loads this file. A slice's own route is
-[`current.md`](./current.md) → its phase README → its plan, with the track runbook's start step
+[`current.md`](./current.md) (navigation) → the owning track's baton → its phase README → its plan,
+with the track runbook's start step
 and the [gate register](../roadmap/README.md#gate-register) for eligibility.
 
 ## Track completion
@@ -74,7 +75,7 @@ recorded debt (that is [`tech-debt/README.md`](./tech-debt/README.md)).
 TRACK STATUS:      ../roadmap/README.md          (track + phase lifecycle, gate register)
 TRACK OBJECTIVES:  ../roadmap/<track>/README.md
 OP PROCEDURE:      ./<track>/README.md           (runbooks: eligibility, start step, routes)
-CURRENT WORK:      ./current.md
+CURRENT WORK:      ./current.md                (navigation → the owning track's baton)
 CYCLE STATE:       ./architecture-cycle.md       (its own three hooks only)
 INTERRUPTION:      ./checkpoints/README.md
 ```

@@ -93,7 +93,14 @@ export const REQUIRED_WALKED_DOCUMENTS = [
 	'docs/reference/north-star.md',
 	// PR #115's WP5 added `docs/operations/README.md` (the event procedures) here.
 	'docs/operations/README.md',
+	// The global baton is navigation only; each track's own baton is the handoff a
+	// task reads and replaces, so a baton outside the walk is a blind spot in the
+	// very gate that protects the current-work routes.
 	'docs/operations/current.md',
+	'docs/operations/t1-spatial-world/current.md',
+	'docs/operations/t2-composition/current.md',
+	'docs/operations/t3-experience/current.md',
+	'docs/operations/t4-release/current.md',
 	'docs/operations/tech-debt/README.md',
 	'docs/roadmap/README.md',
 	// WP6: each track roadmap is a live route from the global track register, and the

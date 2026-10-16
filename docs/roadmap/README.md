@@ -2,7 +2,7 @@
 
 **Role:** the roadmap owns **track and phase lifecycle**, the **track register**, the
 **gate register** and future work. Operational procedure lives in the track runbooks
-([`../operations/`](../operations/)); current assignments live in
+([`../operations/`](../operations/)); current assignments live in each track's baton, routed from
 [`../operations/current.md`](../operations/current.md); closed-work procedures live in the
 event sections of [`../operations/README.md`](../operations/README.md).
 

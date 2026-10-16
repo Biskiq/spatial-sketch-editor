@@ -25,14 +25,14 @@ UPDATE:
 - preserve still-valid ESTABLISHED / EVIDENCE / RULED OUT
 
 POINT:
-- current.md RESUME → checkpoint path
+- the owning track's baton RESUME → checkpoint path
 - NEXT = resume checkpoint
 
 COMPLETE:
 - promote durable findings
 - delete checkpoint
 - remove RESUME pointer
-- advance current.md if clean boundary reached
+- advance the owning track's baton if a clean boundary was reached
 ```
 
 ## Schema
@@ -109,7 +109,7 @@ unfinished frontier; the durable owner owns established deferred diagnosis.
 
 ## Resume
 
-- Read current.md → checkpoint.
+- Read the owning track's baton → checkpoint.
 - Inspect live Git state.
 - START: checkpoint READ / EVIDENCE targets.
 - EXPAND: bounded new files/symbols/tests allowed when NEXT or new evidence
@@ -128,7 +128,7 @@ research completed → owning research/synthesis artifact
 landed behavior → reference/*
 verification/rulings → closeout/archive
 phase/child status/order → phase README
-current resume/next unit → operations/current.md
+current resume/next unit → the owning track's operations/<track>/current.md
 active plan-specific state → the owning active plan (only if that plan owns it)
 ```
 

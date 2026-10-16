@@ -6,7 +6,7 @@
 S04–S06 proposed and unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
-[`../../../operations/current.md`](../../../operations/current.md)
+[`../../../operations/t1-spatial-world/current.md`](../../../operations/t1-spatial-world/current.md)
 
 **Basis:** the F amendments and the capability-readiness rule this phase implements are
 owner-ratified 2026-10-15 ([decision record](../../../reference/decisions/f-ratification-2026-10-15.md)).
