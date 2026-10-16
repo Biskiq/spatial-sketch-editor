@@ -11,6 +11,11 @@ export * from './package-format';
 export * from './package-sha';
 export * from './runtime';
 export * from './project-codec';
+// T1.P01.S03 — the one current-source content identity, and the F.4 acceptance
+// contract, intent reader, planner registry and current-source admission.
+// (Appended: barrels are append-only for the 2026-10-16 parallel batch.)
+export * from './content-identity';
+export * from './f4';
 export * from './project-layout-semantics';
 export * from './project-types';
 export * from './scene';
