@@ -1837,9 +1837,12 @@ describe('the capability-readiness rule', () => {
 	const model = readStructure();
 
 	it('installs the two fields and reports nothing for the tree as written', () => {
-		// The readiness rule's fields exist and are resolvable, and no scope claims acceptance
-		// yet: `ratified` on F1/F3 is interface ratification, never implementation or acceptance.
-		expect(model.gates.every((row) => row.capabilities.length === 0)).toBe(true);
+		// The readiness rule's two fields are installed and resolvable: every gate row parses its
+		// `Accepted capabilities` cell, and no entry is malformed. The count is deliberately not
+		// frozen — the field exists to advance as providers land, and `capabilityProblems` below is
+		// what guards the advance; an assertion that no scope claims acceptance would fail the first
+		// legitimate provider, exactly as an "all undrafted" assertion would.
+		expect(model.gates.flatMap((row) => row.capabilities).every((entry) => entry.wellFormed)).toBe(true);
 		// The `Requires` field is installed and populated: S02–S06 declare their exact scopes.
 		expect(sliceRequires(model)).toEqual({
 			'T1.P01.S02': ['F1.reference@1:references-v1', 'F3.channels@1:inspection-v1'],

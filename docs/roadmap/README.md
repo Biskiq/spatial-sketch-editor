@@ -85,9 +85,9 @@ ratified amendments.
 
 | Gate | Version | Kind | Owner | Contract anchor | State | Provider slice | Exports | Conformance | Acceptance | Commit | Accepted capabilities |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | ratified | T1.P01.S01 | — | — | — | — | — |
+| F1.reference | 1 | foundation | composition-execution.md | [F.1 + AM-1](../reference/composition-execution.md#am-1-f1-references-v1) | accepted | T1.P01.S01 | `packages/project-model/src/references` | `apps/editor/tests/lib/project-model/references-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F1.reference@1:references-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-references-v1.md` |
 | F2.unit-envelope | 1 | foundation | composition-execution.md | [F.2 + AM-2](../reference/composition-execution.md#am-2-f2-unit-envelope-v1) | ratified | — | — | — | — | — | — |
-| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | ratified | T1.P01.S01 | — | — | — | — | — |
+| F3.channels | 1 | foundation | composition-execution.md | [F.3 + AM-3](../reference/composition-execution.md#am-3-f3-inspection-and-camera-output-v1) | accepted | T1.P01.S01 | `packages/project-model/src/channels` | `apps/editor/tests/lib/project-model/channels-conformance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/acceptance.md` | `ee463d0b` | `F3.channels@1:inspection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s01-shared-interface-providers/capability-inspection-v1.md` |
 | F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | ratified | — | — | — | — | — | — |
 | F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
 | T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | ratified | — | — | — | — | — | — |
@@ -98,8 +98,9 @@ ratified amendments.
 
 - **Kind** is `foundation` (a ratified cross-domain interface) or `capability` (a declared
   cutover in one track).
-- **State** is `undrafted | ratified | implemented | accepted | superseded`. None is ready
-  today: an undrafted gate has no version, and a ratified shape alone is not readiness.
+- **State** is `undrafted | ratified | implemented | accepted | superseded`. An undrafted
+  gate has no version, and a ratified shape alone is not readiness: only a row that is
+  `accepted`, with exactly one registered provider and recorded evidence, is ready.
   A `ratified` row names its amendment anchor and keeps empty evidence columns; its sole
   provider assignment lives in the amendment text until phase registration wires the
   `Provider slice` column.

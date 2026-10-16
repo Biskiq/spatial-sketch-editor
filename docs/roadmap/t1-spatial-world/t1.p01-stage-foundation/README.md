@@ -1,7 +1,8 @@
 # T1.P01 — Stage and authoring foundation
 
-**Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` authorized and in progress
-(implemented, awaiting independent review); S02–S06 proposed and unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
+**Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
+(F1/F3 shared providers and the readiness enforcement landed; independent acceptance recorded at
+`ee463d0b`); S02–S06 proposed and unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
 [`../../../operations/current.md`](../../../operations/current.md)
@@ -11,8 +12,10 @@ owner-ratified 2026-10-15 ([decision record](../../../reference/decisions/f-rati
 The [coordinated allocation/readiness/DAG](../../cross-track-execution.md) and the
 [exact interface drafts](./interfaces.md) govern this phase's recommendations; the allocation is
 coordination, never a registration. Registering this phase and authorizing S01 is the only
-implementation permission it carries: no provider is `implemented` or `accepted`, every gate row
-stays `ratified`, and no downstream slice, phase or track is authorized.
+implementation permission it carries: no downstream slice, phase or track is authorized. At
+registration no provider was `implemented` or `accepted` and every gate row stayed `ratified`;
+`F1.reference@1` and `F3.channels@1` are now `accepted` for S01's landed outputs, which admits
+their consumers only once that acceptance is at the consumer's trusted base (§Slice register).
 
 **Objective:** provide F1/F3, a small shared Stage/viewport host and the common local F4
 provider, then restore bounded Layout precision. First capability work is S01 on the landed r186
@@ -127,16 +130,18 @@ Wall-host frames; no Scene `roomId`, authored Room frame or transform migration 
 One row per slice; the slice's own plan owns its scope, tier and criteria, and its acceptance
 record owns recorded outcomes. `Consumes` lists exact `Gate@Version` prerequisites and `Requires`
 the exact `Gate@Version:capability-vN` scopes of those gates the slice actually needs — a consumed
-gate version is not by itself sufficient readiness; `Effects` names only documented effects. S01 is
-**authorized** by the owner decision of 2026-10-15 and **in progress**: its implementation is
-complete on its branch and awaits independent review, so no provider output is accepted and every
-gate row stays `ratified` with empty evidence. S02–S06 are **proposed** and hold no implementation
-permission. Same-phase sequencing never bypasses the trusted-base rule: each consumed gate and each
-required capability must be accepted at the consumer's trusted base.
+gate version is not by itself sufficient readiness; `Effects` names only documented effects. S01 was
+**authorized** by the owner decision of 2026-10-15 and is now **accepted and shipped**: independent
+review accepted its implementation at `ee463d0b`, so its provider outputs are recorded as the accepted
+capabilities `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` and both gate rows are
+`accepted`. S02–S06 are **proposed** and hold no implementation permission. Same-phase sequencing
+never bypasses the trusted-base rule: each consumed gate and each required capability must be accepted
+at the consumer's trusted base, so S01's accepted capability is claimable by a consumer only once this
+acceptance has landed on that base.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T1.P01.S01 | in-progress | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)) — implemented, awaiting independent review |
+| T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
 | T1.P01.S02 | proposed | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | — |
 | T1.P01.S03 | proposed | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | — |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
@@ -153,10 +158,12 @@ require conditional-save-units-v1. That migration does not wait for the whole T1
 current-source acceptance record proves unit capability readiness.
 
 The [global gate register](../../README.md#gate-register) wires only the providers this
-registration authorizes: `F1.reference@1` and `F3.channels@1` name `T1.P01.S01` while their state
-stays `ratified`. The proposed providers of `F4.intent-acceptance@1` (S03), `T1.viewport-projection@1`
-(S02), `F2.unit-envelope@1` (T3.P01.S01) and `F5.release-envelope@1` (T4.P01.S02) stay unassigned
-in the register until their own phases are registered and authorized.
+registration authorizes, and now records their accepted evidence: `F1.reference@1` and
+`F3.channels@1` name `T1.P01.S01` and are `accepted`, each carrying its accepted capability
+(`F1.reference@1:references-v1`, `F3.channels@1:inspection-v1`) with a durable record. The proposed
+providers of `F4.intent-acceptance@1` (S03), `T1.viewport-projection@1` (S02), `F2.unit-envelope@1`
+(T3.P01.S01) and `F5.release-envelope@1` (T4.P01.S02) stay unassigned in the register until their
+own phases are registered and authorized.
 
 ```text
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md
@@ -165,10 +172,10 @@ PHASE CLOSE
 Stage:        active
 ```
 
-Acceptance evidence is absent for every slice: `T1.P01.S01` reports implementation evidence only,
-and independent acceptance is still owed. The final gate is declared, not closeable: no slice is
-accepted, so no `PHASE CLOSE` beyond this active stage marker is written, and closure stays an
-explicit owner request.
+`T1.P01.S01` is accepted and shipped, with its acceptance evidence and both accepted capabilities
+recorded; S02–S06 have no acceptance evidence yet. The final gate is declared, not closeable: the
+phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
+stage marker is written, and closure stays an explicit owner request.
 
 ## Bounded architecture-cycle window
 

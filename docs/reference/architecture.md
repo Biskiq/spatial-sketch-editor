@@ -257,6 +257,7 @@ interior-only.
 | Camera nodes, connections, paths, view tracks | `project.scene` (until the Camera codec cutover) |
 | Derived geometry | pure `compileLayoutGeometry()` (`@portfolio/layout-core`) |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
+| Cross-domain reference (F.1) and channel (F.3) interfaces | `packages/project-model/src/references` · `packages/project-model/src/channels` — shared runtime-safe interfaces with no editor/renderer dependency; their accepted readiness is recorded in the [gate register](../roadmap/README.md#gate-register) |
 | Plan presentation | **Removed by #115** with the editor shell (`PlanRenderModel` / `PlanSvg.svelte` are gone; recoverable at the baseline SHA). The Plan grammar returns as a T1 capability built against the compiled geometry above |
 | 3D wall meshes | compiled Junction contract (`CompiledJunction` / `resolveJunctionGeometry`) → Junction-aware `wall-mesh-builder` → `wall-geometry-adapter` |
 | Camera route/motion | `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) — replaceable mechanism under the one Camera authority |

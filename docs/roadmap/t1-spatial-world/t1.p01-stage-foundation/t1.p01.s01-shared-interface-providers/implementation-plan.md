@@ -1,7 +1,8 @@
 # T1.P01.S01 — Shared interface providers: implementation plan
 
-**Slice:** T1.P01.S01 · **Status:** in progress (owner-authorized 2026-10-15) — implemented and
-awaiting independent review; no acceptance is recorded
+**Slice:** T1.P01.S01 · **Status:** shipped (owner-authorized 2026-10-15; independently accepted at
+`ee463d0b`; closed 2026-10-16 by `slice-closeout`) — accepted outputs
+`F1.reference@1:references-v1` and `F3.channels@1:inspection-v1`
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
 ```text
@@ -11,10 +12,9 @@ VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../t1.p01.s06-integrated-final-gate/implementation-plan.md
 ```
 
-Nothing here is implemented, accepted or evidenced yet. Registration and authorization make this
-slice claimable work; they are not a result. `Phase` owns the phase's objectives and register,
-this plan owns the slice's scope, tier and criteria, and the
-[acceptance record](./acceptance.md) owns recorded evidence — no evidence is recorded today.
+`Phase` owns the phase's objectives and register, this plan owns the slice's scope, tier and
+criteria, and the [acceptance record](./acceptance.md) owns recorded evidence and the acceptance
+verdict.
 
 ## Prerequisite
 
