@@ -68,7 +68,7 @@ reference promotions:            0   current AM-2/AM-6/AM-7 semantics already ow
 renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:       0
 transient artifacts removed:      0
-historical anchor:                c25a7d3916201413c99f856e97b1c028909fe160 · tag closed/T3.P01.S01 (push pending)
+historical anchor:                c25a7d3916201413c99f856e97b1c028909fe160 · tag closed/T3.P01.S01 (pushed)
 new live → archive prose links:   0
 manual-owed verification rows:    0
 remaining deferred items:         3   S03 interpreter; S04 activation/cutover/recovery; trusted-reader closure
