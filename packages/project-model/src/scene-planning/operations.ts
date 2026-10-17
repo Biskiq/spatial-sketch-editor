@@ -223,8 +223,9 @@ export function planPlaceOnFloor(input: {
 	const scale = entityScale(target.entity);
 	const y = support.support.elevation - scale * contact.value;
 	const rotation: Vec3 =
-		input.yaw === undefined				? target.entity.rotation
-				: [
+		input.yaw === undefined
+			? target.entity.rotation
+			: [
 					target.entity.rotation[0],
 					ownedYaw(target.entity.rotation[1], input.frame, input.yaw),
 					target.entity.rotation[2]

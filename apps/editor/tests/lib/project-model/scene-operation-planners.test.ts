@@ -941,8 +941,8 @@ describe('scene operation planners — support and refusals', () => {
 	it('refuses a captured identity, target or frame that does not answer this snapshot', async () => {
 		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
-		const cases = [
-			intent({
+		const cases: Array<[AuthoringIntent, string]> = [
+			[intent({
 				kind: 'set-yaw',
 				operationId: 'wrong-target',
 				snapshot,
@@ -953,8 +953,8 @@ describe('scene operation planners — support and refusals', () => {
 					frame: projectWorldFrame(),
 					frameReference: frameReference()
 				}
-			}),
-			intent({
+			}), 'stale-revision'],
+			[intent({
 				kind: 'set-yaw',
 				operationId: 'wrong-payload-target',
 				snapshot,
@@ -965,8 +965,8 @@ describe('scene operation planners — support and refusals', () => {
 					frame: projectWorldFrame(),
 					frameReference: frameReference()
 				}
-			}),
-			intent({
+			}), 'invalid-target'],
+			[intent({
 				kind: 'set-yaw',
 				operationId: 'wrong-frame',
 				snapshot,
@@ -977,8 +977,8 @@ describe('scene operation planners — support and refusals', () => {
 					frame: { origin: [1, 0, 0], yaw: 0 },
 					frameReference: frameReference()
 				}
-			}),
-			intent({
+			}), 'frame-mismatch'],
+			[intent({
 				kind: 'set-yaw',
 				operationId: 'unexpected-allocation',
 				snapshot,
@@ -990,10 +990,13 @@ describe('scene operation planners — support and refusals', () => {
 					frameReference: frameReference()
 				},
 				allocatedIds: [{ kind: 'scene-entity', id: 'unexpected' }]
-			})
+			}), 'unexpected-allocation']
 		];
-		for (const captured of cases) {
-			expect(prepare('set-yaw', snapshot, captured)).toMatchObject({ kind: 'rejected' });
+		for (const [captured, diagnostic] of cases) {
+			const result = prepare('set-yaw', snapshot, captured);
+			expect(result, diagnostic).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
+			if (result.kind !== 'rejected') continue;
+			expect(result.diagnostics.some((issue) => issue.code === diagnostic), diagnostic).toBe(true);
 		}
 	});
 });
