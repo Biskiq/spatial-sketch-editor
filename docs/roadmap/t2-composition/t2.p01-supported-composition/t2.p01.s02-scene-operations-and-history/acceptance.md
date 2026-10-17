@@ -49,7 +49,7 @@ reference promotions:            0
 renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:      0
 transient artifacts removed:     0
-historical anchor:               4945e926e30db105dde429478d84453147dc463c · tag closed/T2.P01.S02 (local only — not pushed)
+historical anchor:               4945e926e30db105dde429478d84453147dc463c · tag closed/T2.P01.S02 (pushed)
 new live → archive prose links:  0
 manual-owed verification rows:   0
 remaining deferred items:        0 slice-owned defects; integration residuals remain assigned above
