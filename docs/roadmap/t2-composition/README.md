@@ -1,7 +1,7 @@
 # T2 — Composition
 
 **Track:** T2 · **Status:** approved — T2.P01 registered 2026-10-16; `T2.P01.S01` shipped
-2026-10-16; `T2.P01.S02` owner-authorized 2026-10-16, not started; S03–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+2026-10-16; `T2.P01.S02` shipped 2026-10-17; S03–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
@@ -70,8 +70,9 @@ T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
 [interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md). Only
 **`T2.P01.S01`** shipped 2026-10-16; it consumed the accepted
-`F1.reference@1` alone. **`T2.P01.S02`** is owner-authorized
-([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md); `approved`, not started).
+`F1.reference@1` alone. **`T2.P01.S02`** shipped 2026-10-17, consuming `F1.reference@1` and
+`F4.intent-acceptance@1`; its authorization is the owner decision of 2026-10-16
+([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md)).
 `Depends on` lists the external gates the phase's later slices consume; S03–S04 stay `proposed`,
 blocked by their own accepted prerequisites.
 

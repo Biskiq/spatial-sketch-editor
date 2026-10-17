@@ -18,22 +18,17 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 implemented,
-        reviewed at `af39acd1`, two follow-up findings repaired at `62d4d5b0`, independent re-review
-        pending; S03–S04 proposed and unauthorized.
-BATON: T2.P01.S02 (Scene operations and shared history) is at independent re-review readiness on
-       branch `T2-P01-S02` (PR #134), head `62d4d5b0`, cut from `main` `74367936`, in parallel with
-       T3.P01.S02 under the pair protocol. It consumes the accepted `local-single-domain-v1`, not
-       T1.P01.S02 (PR #128) or any host.
-NEXT: Independent re-review of `62d4d5b0` (owner frame refusal, component-scoped yaw grant), then
-      owner acceptance of T2.P01.S02, closeout and the merge gate against then-current `main`.
-      Evidence and the reviewer rounds are in
-      `docs/roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/{acceptance,independent-review}.md`.
-      S03 is not authorized.
+SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 shipped 2026-10-17
+        under an owner override of the pending re-review of `62d4d5b0`; S03–S04 proposed and
+        unauthorized.
+BATON: none active. S02 (Scene operations and shared history) is closed on branch `T2-P01-S02`
+       (PR #134), cut from `main` `74367936`, in parallel with `T3.P01.S02` under the pair protocol.
+       It consumes the accepted `local-single-domain-v1` and registered no live host.
+NEXT: Merge gate for PR #134 against then-current `main` — reconcile `origin/main` first; the required
+      merge method is a merge commit so the `closed/T2.P01.S02` anchor stays reachable, and post-merge
+      anchor verification follows. S03 is not authorized.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/implementation-plan.md
-       (pair protocol: ../../roadmap/cross-track-execution.md#parallel-pair-2026-10-16)
+       ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
 BLOCKER: none.
 ```
