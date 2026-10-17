@@ -574,4 +574,77 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		const faceHit = facade.resolveSourceHit({ evaluationId: id, css: onFace.css });
 		expect(faceHit.kind === 'resolved' ? faceHit.hit.sourceId : null).toBe(wall.ref.sourceId);
 	});
+
+	it('picks the Wall above the Plan cut, where the cut fragment is shorter than the Wall', async () => {
+		const { facade } = await mount();
+		facade.acquireInspection('exclusive');
+		const bounds = facade.snapshot().domain.geometry.bounds;
+		expect(bounds).not.toBeNull();
+		if (bounds === null) return;
+		expect(
+			facade.requestViewingIntent(
+				{ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect: RECT },
+				facade.inspectionTicket(),
+				1
+			).kind
+		).toBe('accepted');
+		const id = evaluate(facade);
+		const datum = facade.snapshot().domain.datumMeters;
+
+		const plan = facade.plan();
+		expect(plan.kind).toBe('evaluated');
+		if (plan.kind !== 'evaluated') return;
+		const wall = facade.eligibleFragments().find((fragment) => fragment.ref.sourceKind === 'wall');
+		expect(wall).toBeDefined();
+		if (wall === undefined) return;
+		const compiled = facade
+			.snapshot()
+			.domain.geometry.walls.find((candidate) => candidate.wallId === wall.ref.sourceId);
+		expect(compiled).toBeDefined();
+		if (compiled === undefined) return;
+
+		// The premise of the defect: the Plan places a Wall's cut fragment **at the cut**,
+		// while the Wall is drawn to its own height. A picker built from the fragment's
+		// elevation therefore covered only the part of the Wall below 1.2 m.
+		expect(wall.ref.stream).toBe('cut');
+		expect(wall.elevationMeters).toBeCloseTo(plan.plan.cutHeightMeters + datum, 6);
+		expect(compiled.height).toBeGreaterThan(plan.plan.cutHeightMeters + 1);
+
+		const geometry = wall.geometry;
+		const points =
+			geometry.kind === 'span'
+				? [geometry.start, geometry.end]
+				: geometry.kind === 'polyline'
+					? geometry.polyline
+					: geometry.polygon;
+		const start = points[0];
+		const end = points[Math.min(1, points.length - 1)];
+		if (start === undefined || end === undefined) return;
+		const along: [number, number] = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
+
+		// The upper visible region of the Wall: well above the cut, and again just under
+		// its top edge. Both must resolve to the Wall, because both are drawn Wall.
+		for (const heightFraction of [0.85, 0.98]) {
+			const height = datum + compiled.height * heightFraction;
+			expect(height).toBeGreaterThan(wall.elevationMeters);
+			const projected = facade.projectWorld([along[0], height, along[1]], id);
+			expect(projected.kind).toBe('projected');
+			if (projected.kind !== 'projected') return;
+			const hit = facade.resolveSourceHit({ evaluationId: id, css: projected.css });
+			expect(hit.kind === 'resolved' ? hit.hit.sourceKind : null).toBe('wall');
+			if (hit.kind !== 'resolved') return;
+			expect(hit.hit.sourceId).toBe(wall.ref.sourceId);
+
+			// The reported point lies on the Wall — on its span line in plan, at the height
+			// the creator pointed at — not on a horizontal plane at the cut height.
+			expect(hit.hit.worldPoint[1]).toBeCloseTo(height, 1);
+			const dx = end[0] - start[0];
+			const dz = end[1] - start[1];
+			const length = Math.hypot(dx, dz);
+			const offsetX = hit.hit.worldPoint[0] - start[0];
+			const offsetZ = hit.hit.worldPoint[2] - start[1];
+			const perpendicular = Math.abs(offsetX * dz - offsetZ * dx) / length;
+			expect(perpendicular).toBeLessThan(0.05);
+		}
+	});
 });

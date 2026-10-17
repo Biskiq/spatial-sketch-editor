@@ -81,43 +81,52 @@ green. Both findings were real defects, and each is now pinned by a test that fa
    with behavioural ones, decomposition counts handed back to the Layout suites, the unknown-asset
    refusal made to name the asset, the older-format refusal added, and the consumer probes written.
 
-## Independent architecture review of the pushed revision (`eb0d94a`)
+## Independent architecture review — two rounds (`eb0d94a`, then `7c801808`)
 
-A second independent review, of the revision pushed for re-review, raised four P1 hypotheses against
-the host. Each was traced end to end — AM-5, the S02 plan, the seam contract and the suites —
-before anything changed. Three were real S02 defects; the fourth described a claim the
-implementation never supported and is now narrowed rather than "fixed".
+Two independent reviews ran against pushed revisions. Every finding was traced end to end — AM-5, the
+S02 plan, the seam contract, the suites — before anything changed; one round-one finding described a
+claim the implementation never supported, and one round-two finding was a regression the round-one
+fix introduced.
 
 | Finding | Verdict | Disposition |
 | --- | --- | --- |
-| 1. Plan representation vs rendered geometry | not an S02 defect; an overstated claim | claim narrowed, owner for the missing half named |
+| 1. Plan representation vs rendered geometry | real gap between the contract's display language and what S02 draws | **open owner decision**, recorded below; not a silent deferral |
 | 2. `StageAdapter.hitProvider` declared but unused | real: a registered T2/T3 picker was unreachable | fixed (and the built-in Layout pick was broken in 3D too) |
 | 3. Project load not bound to the session epoch | real: a late GET or admission could install over a replacement | fixed |
 | 4. Gesture policies stored, not executed | real: refusal ignored, cancellation leaked the lease | fixed |
+| 5. Drag could select what it was dropped on (round two) | real **regression**: the round-one `endGesture` cleared the press origin before `click` | fixed; event-sequence regression added |
+| 6. 3D Wall picking still used the Plan cut height (round two) | real: the face was built from the cut fragment, so the Wall above 1.2 m was unpickable | fixed; upper-Wall regression added |
 
-### 1. Plan representation and rendering — claim narrowed, not a defect
+### 1. Plan display and the Plan cut — an **open owner decision**
 
 `evaluateLayoutPlan` yields `cut | projected | hidden | symbol` streams, per-source membership and
-Reveal; `StageCanvas` takes `geometry: CompiledLayoutGeometry` and always renders that one canonical
-set through the same runtime-safe adapters the visitor uses. The Stage's Plan *reading* is that same
-geometry under the exact orthographic endpoint — AM-5 requires exactly this ("render canonical Layout
-and existing Scene through runtime-safe adapters"; "one persistent Threlte Canvas/Stage serves all
-readings"), and S02's scope adds Plan evaluation beside the renderer, not a second cut drawing. A
-plan-cut renderer is not in this slice: the cut height and its Sheet are S04's, and Section/peel/lift
-stay out of AM-5.
+Reveal. `StageCanvas` takes `geometry: CompiledLayoutGeometry` and always renders that one canonical
+set through the same runtime-safe adapters the visitor uses; the Plan *reading* is that geometry under
+the exact orthographic endpoint. The representation therefore governs membership, Reveal, the Index
+and hit eligibility — and it does **not** govern what pixels the Stage draws.
 
-What the review was right about is the *claim*, not the code: the representation governs membership,
-Reveal and hit eligibility, and it does **not** govern what pixels the Stage draws. In the product's
-only boot document (the starter gallery) that gap cannot be observed — the enclosure has four walls
-and a floor and all five sources are `included`, so drawn, eligible and reveal-able coincide; verified
-in a browser against the live document (all five membership rows `included`, 105 fragments, picking
-resolves those same sources). Where it *would* be observable is a document with content above the cut
-or outside the finite depth: such a source is drawn (canonical geometry) but not hit-eligible, and
-Reveal restores eligibility without changing the drawing. That is a known, recorded non-claim of this
-increment, not a wiring defect. The `stage-shell-composition` test now states the division of labour
-it can hold (one geometry input to the Canvas; eligibility and the Index come from `stage.plan()` and
-`planView.membership`, the same call the hit path makes) instead of implying a representation-driven
-renderer.
+The reviewer is right that this is not the agent's call to move. The landed F3 language says Reveal
+alters **display** and hit eligibility; this host changes hit eligibility only. Neither the approved
+S02 implementation plan nor the current S04 plan explicitly assigns a Plan-cut renderer or the Sheet
+that would drive it, so "S04 owns it" was an assertion the record did not support. It is withdrawn.
+
+**Decision required from the owner.** Two coherent options, both compatible with the invariants this
+slice keeps (one Canvas, one Camera/projection authority, Layout-owned representation):
+
+- **A — approve the reduced S02 visual contract.** S02 claims eligibility, membership, Reveal and the
+  Index, not a Plan display contract; Plan-cut rendering is assigned to a named later slice with the
+  Sheet that sets cut height. The cost is that the Plan reading draws the same geometry as 3D, so a
+  source hidden above the cut is visible but not selectable until the assigned slice lands.
+- **B — retain the Plan-display expectation in S02.** The Stage's Plan reading draws the
+  representation's `cut` stream and withholds `hidden`/`projected` geometry, through the same Canvas
+  and evaluation (a drawing selection, not a second renderer). That is a larger change than this
+  re-review round and would need its own regression set.
+
+Until the owner decides, this record claims only what is implemented and tested, and does not claim a
+Plan display contract. In the product's only boot document the two options cannot be distinguished —
+the enclosure is four 3 m walls plus a floor, all five sources `included`, 105 fragments, so drawn,
+eligible and reveal-able coincide (verified in a browser against the live document). They differ only
+for content above the cut or outside the finite depth.
 
 ### 2. Domain hit providers — real, fixed
 
@@ -135,7 +144,7 @@ have left the shipped path unusable.
 Both are fixed in `stage-facade`:
 
 - Registered providers are consulted in registration order against the **live** evaluation (`adapterContext`), before the built-in Layout fallback, and the first claim wins. The host invents no cross-domain priority it cannot measure; Layout keeps its deterministic within-Layout order (Wall, Opening, object, floor, then source identity). A stale candidate is refused before any provider is asked, and a disposed registration loses reach.
-- The built-in pick is screen-space against the **drawn** geometry, through the one live evaluation: the fragmented footprint, a Wall's face between datum and top edge, a floor's interior, with the same CSS-pixel tolerance (`PLAN_HIT_TOLERANCE_CSS_PX = 8`) and no datum-plane round trip. The resolved world point is the pointer's ray on the fragment's own height, not the floor beneath it, with the fragment's first drawn point as the honest fallback when that ray is parallel.
+- The built-in pick is screen-space against the **drawn** geometry, through the one live evaluation: the fragmented footprint, a Wall's drawn face, a floor's interior, with the same CSS-pixel tolerance (`PLAN_HIT_TOLERANCE_CSS_PX = 8`) and no datum-plane round trip. (Round two replaced the face's extent and the reported world point — see finding 6.)
 
 Tests: `stage-facade` — "lets a domain adapter claim a candidate the Layout Plan resolves to
 nothing" (provider reach, order, decline, stale refusal, dispose) and "selects the visible Wall in
@@ -177,43 +186,99 @@ Tests: `stage-facade` — "runs the live gesture policy once when a reading chan
 "holds the gesture contract at the route" (refusal branch, cancel/lost-capture handlers, the single
 `endGesture`, and the post-flip drop).
 
+### 5. Drag-versus-click event ordering — a round-one regression, fixed
+
+The round-one consolidation made one `endGesture()` the single ending path and had it clear the press
+origin. That is wrong for the browser's order: `pointerdown` → `pointerup` → `click`. By the time the
+click arrived the origin was gone, so the drag-suppression check was skipped and a pan or orbit ending
+over geometry selected it (or reported that nothing was selectable). A pointer capture released
+implicitly after `pointerup` would have cleared it a second way.
+
+Fixed by separating the two state machines that were being conflated:
+
+- `createStagePressTracker()` in `stage-input` owns the drag-versus-click decision. `end()` is a normal
+  pointer ending and keeps the decision for the click; `abort()` is an interruption (pointer cancel,
+  capture lost while the pointer is down, Escape, a policy cancel) and refuses the click that may still
+  be dispatched; `decide()` consumes it, so one press authorises at most one selection.
+- `endGesture()` now ends the **gesture** only (drag samples and the lease), and `abortGesture()` is the
+  interruption path that also aborts the press. `onLostPointerCapture` aborts only while the pointer is
+  still down (`drag !== null`), because implicit release after `pointerup` is the normal ending.
+
+The regression is pinned at the event sequence, not at the tolerance: `stage-input` — "suppresses the
+click that follows a drag, using the real pointer order" drives `begin → end → decide(far)` and fails
+if the pointer-up ending clears the decision (verified by restoring that line); plus the interruption
+and one-press-one-selection cases. `stage-shell-composition` holds the call site: `onPointerUp` calls
+`press.end()` and never `press.abort()`.
+
+### 6. 3D Wall picking still used the Plan cut height — real, fixed
+
+The round-one picker built a Wall's face from `PlanFragment.elevationMeters`. For a 3 m Wall with the
+default 1.2 m cut the fragment sits **at the cut**, so the pickable face was 0–1.2 m while the drawn
+Wall runs to 3 m — a click high on the visible Wall missed, and the Plan cut was silently deciding 3D
+picking. The reported world point had the same defect: a horizontal plane at the fragment's elevation
+is not on a vertical Wall.
+
+Fixed without a second geometry authority:
+
+- `pickSurfacesOf(fragment, compiledGeometry, datum)` separates **surface** from **cut**: a Wall's faces
+  come from its compiled `solidSpans` (`datum + bottomY` … `datum + topY`, the records the mesh
+  builders draw), falling back to the Wall's own `height` over the fragment's line when no solid span is
+  compiled. Everything else keeps its fragment geometry as a flat surface. Eligibility, streams and
+  identity still come from the Plan evaluation, so a Wall above the cut is pickable without becoming a
+  different subject.
+- The world point for a face hit intersects the face's own vertical plane (normal perpendicular to the
+  span; the frame's yaw is the span's direction, so the basis cannot collapse on a wall aligned with a
+  world axis) and is clamped to the span, keeping the ray's height. Flat fragments keep the
+  horizontal-plane answer, with the first drawn point as the parallel-ray fallback.
+
+Tests: `stage-facade` — "picks the Wall above the Plan cut, where the cut fragment is shorter than the
+Wall": the fragment is asserted to be a `cut` fragment at the cut elevation while the compiled Wall is
+higher, then clicks at 85 % and 98 % of the Wall's height must resolve that Wall, report a world point
+at the clicked height, and put it on the Wall's own span line (perpendicular offset < 5 cm). Restoring
+the cut-extent pick makes this test fail.
+
 ### Verification of this revision
 
-The §7.4 contract on this tree (tested code revision `90aa6729`; `origin/main` = `74367936`,
-zero behind-commits; this record is the commit after it, so no product file differs between the
-tested tree and the pushed branch; `apps/editor` unless noted):
+The §7.4 contract, run on the tree this record ships on (the only file changed after the runs is
+this record). Round-one results were measured at `90aa6729`; round two at the head of this branch,
+with `origin/main` = `74367936` and zero behind-commits (`apps/editor` unless noted):
 
 ```text
-npm test                 146 files / 1,917 tests passed
+npm test                 146 files / 1,919 tests passed
 npm run test:arch         19 files /   158 tests passed
-npm run test:fast        119 files / 1,641 tests passed
+npm run test:fast        119 files / 1,643 tests passed
 npm run test:heavy         8 files /   118 tests passed
 npm run check             0 errors, 0 warnings
 npm run build             completed (@sveltejs/adapter-vercel)
-npm run check:layout-core / check:project-model / check:camera-core   tsc --noEmit, clean
 git diff --check <base>..<head>   clean
 ```
 
-`check:api`/`test:api` are not re-run for this revision: no `apps/api` file, project-model reader,
-schema or contract changed here, and this pass adds no DB-backed behaviour to the slice.
+`check:layout-core`, `check:project-model` and `check:camera-core` were clean at `90aa6729`; no file
+in those packages changed in round two, so the run still covers them. `check:api`/`test:api` are not
+re-run for either revision: no `apps/api` file, project-model reader, schema or contract changed here,
+and this pass adds no DB-backed behaviour to the slice.
 
 Browser observation (Vite dev server on the S02 checkout, starter-gallery boot, 1086×826 CSS stage):
 
 - The starter boot renders four Walls and the floor in the Index, one Canvas, and the Plan ⟷ 3D switch reports `aria-pressed` for the settled reading (3D at boot, Plan after a flip).
 - Picking was measured in the page against the production facade with the live document and its own evaluation (the attached preview webview does not composite, so `requestAnimationFrame` — and with it the route's per-frame evaluation — is starved; this is an environment limit, not a host behaviour, and the probe is why it is disclosed rather than claimed as a full UI pass). 3D: a mid-band click resolves `wall`, a lower click resolves `room-floor`, frame corners resolve `no-fragment`, which the datum-plane pick could not do (it named the floor under a Wall and resolved no Wall at all). Plan: the same facade reports `projection-kind: plan-orthographic` and resolves `room-floor`; no second renderer or transform appears.
-- The Plan presentation is the orthographic reading of the same geometry: 105 fragments, membership `included` for all five sources, and Reveal has nothing to restore in the starter document. What a cut drawing does with excluded sources remains the recorded non-claim above.
+- The round-two upper-Wall case in the same page, on the starter document (3 m Walls, 1.2 m cut): the Wall's Plan fragment is a `cut` fragment at 1.2 m, a click there resolves `wall` at `y = 1.2`, a click at 90 % of the Wall's height resolves the same Wall at `y = 2.7`, and a click at 99 % resolves it at `y = 2.97`. Before this round the two upper clicks resolved nothing: the face stopped at the cut.
+- The Plan presentation is the orthographic reading of the same geometry: 105 fragments, membership `included` for all five sources, and Reveal has nothing to restore in the starter document. What a cut drawing does with excluded sources is the open owner decision above.
 
-Limitations of this pass, stated as such: no full keyboard/screen-reader pass; no cloud-backed
-replacement observed in the browser (no API origin in this environment — the race is proved at the
-session and call-site level); the preview webview produced no frames for screenshot capture.
+Limitations of this pass, stated as such: no full keyboard/screen-reader pass; the drag-versus-click
+and gesture-lifecycle sequences are pinned by tests at the state machine and call-site level rather
+than by synthesized pointer capture in this webview; no cloud-backed replacement observed in the
+browser (no API origin in this environment — the race is proved at the session and call-site level);
+the preview webview produced no frames for screenshot capture.
 
 ## What this increment does not implement
 
 - **Plan-cut rendering.** The Stage draws one canonical geometry set in both readings; the
   `cut | projected | hidden | symbol` streams and membership govern hit eligibility, the Index and
   Reveal. A source above the cut or outside the finite depth is drawn but not selectable, and Reveal
-  restores eligibility without changing the drawing. Rendering the cut itself belongs to the Sheet
-  work (S04), not to S02.
+  restores eligibility without changing the drawing. Whether S02 owes a cut **drawing** and who owns
+  it if not is the open owner decision recorded above; this slice does not move that responsibility
+  to S04 on its own authority.
 - Save (T3's conditional Save), F4 intents, Undo/Redo, history and replacement baselines (S04), any
   Layout or Scene editing, Camera authoring, publish, and Preview/visitor parity beyond the shared
   renderers the Stage reuses.

@@ -58,7 +58,7 @@
 	import type { PlanEvaluation, PlanMembershipReason } from '@portfolio/layout-core';
 	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 	import {
-		isStageDrag,
+		createStagePressTracker,
 		readingIntentClockSeconds,
 		stageKeyAction,
 		stageKeyFromTextEntry
@@ -124,7 +124,9 @@
 		notice = '';
 		cardOpen = true;
 		drag = null;
-		pressOrigin = null;
+		// A replacement is not a press the creator finished: no click from the old
+		// project may select into the new one.
+		press.abort();
 		planView = null;
 		// The key must be dropped with the view it described, or the recompute that
 		// follows a swap would be skipped as unchanged.
@@ -412,7 +414,7 @@
 		// `cancel-on-reading-change` ended is already gone, and its delta samples were
 		// taken against the reading that is ending. Dropping them here is what makes
 		// T2.S03's "cancel before the flip" mean the gesture also stops moving.
-		if (drag !== null && session.gesture() === null) endGesture();
+		if (drag !== null && session.gesture() === null) abortGesture();
 	}
 
 	function fit(): void {
@@ -521,8 +523,12 @@
 	/* --- pointer and keyboard ---------------------------------------------- */
 
 	let drag: { x: number; y: number; mode: 'pan' | 'orbit' } | null = null;
-	/** Where the current press started, so a drag is never also a click. */
-	let pressOrigin: { x: number; y: number } | null = null;
+	/**
+	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
+	 * gesture, but the click that follows still has to know how far the pointer
+	 * travelled, and an interruption has to stop that click from selecting.
+	 */
+	const press = createStagePressTracker();
 
 	function onPointerDown(event: PointerEvent): void {
 		const stage = facade;
@@ -541,7 +547,7 @@
 			return;
 		}
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		pressOrigin = { x: event.clientX, y: event.clientY };
+		press.begin({ x: event.clientX, y: event.clientY });
 		drag = { x: event.clientX, y: event.clientY, mode: event.button === 0 && !event.shiftKey ? 'pan' : 'orbit' };
 	}
 
@@ -551,7 +557,7 @@
 		// exit, an adapter taking the pointer). Samples taken under a lease we no
 		// longer hold must not keep moving the view.
 		if (session.gesture() === null) {
-			endGesture();
+			abortGesture();
 			return;
 		}
 		const dx = event.clientX - drag.x;
@@ -564,17 +570,32 @@
 	/**
 	 * End the live gesture exactly once.
 	 *
-	 * Release is idempotent, so every ending — pointer up, pointer cancel, lost
-	 * capture, Escape — can call this without a second cancel of a lease that was
-	 * already ended by the host's own policy run.
+	 * Release is idempotent, so every ending can call this without a second cancel of
+	 * a lease that was already ended by the host’s own policy run. It ends the
+	 * **gesture** only: a normal pointer up still owes the following click its
+	 * drag-versus-click decision, which is why the press tracker is not touched here.
 	 */
 	function endGesture(): void {
 		drag = null;
-		pressOrigin = null;
 		session.gesture()?.release();
 	}
 
+	/**
+	 * End the gesture **and** refuse the click that may still arrive.
+	 *
+	 * Pointer cancel, a capture lost while the pointer is down, Escape and a policy
+	 * cancel all mean the creator did not finish this press, so nothing it would
+	 * select is theirs to select.
+	 */
+	function abortGesture(): void {
+		press.abort();
+		endGesture();
+	}
+
 	function onPointerUp(): void {
+		// A normal ending: the click that follows decides by distance, so the press is
+		// ended, not aborted.
+		press.end();
 		endGesture();
 	}
 
@@ -582,15 +603,22 @@
 		// The browser took the pointer back (touch interruption, a system gesture, the
 		// window losing focus). Without this the lease would stay held and the next
 		// stray move would pan with samples from a gesture the creator never finished.
-		endGesture();
+		abortGesture();
+	}
+
+	function onLostPointerCapture(): void {
+		// Capture is also released implicitly *after* a normal pointer up, and that click
+		// is still owed its drag decision. Losing it while the press is live is an
+		// interruption instead.
+		if (drag !== null) abortGesture();
+		else endGesture();
 	}
 
 	function onClick(event: MouseEvent): void {
-		const origin = pressOrigin;
-		pressOrigin = null;
 		// A pan or orbit drag ends with a click too; it moved the view, so it must not
-		// also select (or report that nothing was selectable).
-		if (origin !== null && isStageDrag(origin, { x: event.clientX, y: event.clientY })) return;
+		// also select (or report that nothing was selectable). The decision is consumed
+		// here, after the pointer sequence has ended.
+		if (!press.decide({ x: event.clientX, y: event.clientY })) return;
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (stage === null || id === null || rect === null) return;
@@ -635,7 +663,7 @@
 				break;
 			case 'dismiss':
 				// The deepest open context closes first: the task, then the selection.
-				endGesture();
+				abortGesture();
 				if (task !== null) closeTask();
 				else if (selection !== null) closeSelection();
 				break;
@@ -827,7 +855,7 @@
 				onpointermove={onPointerMove}
 				onpointerup={onPointerUp}
 				onpointercancel={onPointerCancel}
-				onlostpointercapture={onPointerCancel}
+				onlostpointercapture={onLostPointerCapture}
 				onclick={onClick}
 				onwheel={onWheel}
 			>

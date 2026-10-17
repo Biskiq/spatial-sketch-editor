@@ -45,9 +45,11 @@ import {
 	evaluateLayoutPlan,
 	eligiblePlanFragments,
 	pointInPolygon,
+	type CompiledLayoutGeometry,
 	type LayoutVec2,
 	type PlanEvaluationResult,
 	type PlanFragment,
+	type PlanFragmentGeometry,
 	type PlanSourceKind,
 	type PlanSubRef,
 	type PlanStream
@@ -292,26 +294,30 @@ function closestOnCssSegment(
 }
 
 /**
- * The distance, in **CSS pixels**, from a pointer position to one fragment's drawn
- * geometry — the surface the creator is actually pointing at.
+ * One surface the pointer can actually land on, expressed in the coordinates it is
+ * **drawn** in and projected through the one live evaluation.
  *
- * This replaces a datum-plane-only pick, which measured plan metres from a point
- * that the ray reached at floor level: in the 3D reading that point sits metres
- * behind the surface under the pointer, so a visible Wall could not be selected at
- * all. Proximity is a screen question and the drawing is where the creator looks, so
- * the test is made where both agree, through the one live evaluation.
+ * `face` is a vertical Wall surface between two plan points, with the vertical extent
+ * the compiler draws. `flat` is a fragment drawn in plan only — a floor, an object
+ * footprint, an Opening symbol — at its own elevation.
  */
-function cssDistanceToFragment(
-	css: readonly [number, number],
-	fragment: PlanFragment,
-	datumMeters: number,
-	project: (point: Vec3) => readonly [number, number] | null
-): number | null {
-	const elevation = fragment.elevationMeters;
-	const projectAt = (point: LayoutVec2, height: number): readonly [number, number] | null =>
-		project([point[0], height, point[1]]);
+type StagePickSurface =
+	| {
+			readonly kind: 'face';
+			readonly start: LayoutVec2;
+			readonly end: LayoutVec2;
+			readonly bottomMeters: number;
+			readonly topMeters: number;
+		}
+	| {
+			readonly kind: 'flat';
+			readonly elevationMeters: number;
+			readonly geometry: PlanFragmentGeometry;
+		};
 
-	const geometry = fragment.geometry;
+type StagePick = { readonly distanceCss: number; readonly surface: StagePickSurface };
+
+function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, LayoutVec2])[] {
 	const segments: (readonly [LayoutVec2, LayoutVec2])[] = [];
 	if (geometry.kind === 'span') {
 		segments.push([geometry.start, geometry.end]);
@@ -324,49 +330,126 @@ function cssDistanceToFragment(
 			segments.push([geometry.polygon[index]!, geometry.polygon[(index + 1) % geometry.polygon.length]!]);
 		}
 	}
+	return segments;
+}
 
-	let best: number | null = null;
-	const consider = (distance: number): void => {
-		best = best === null ? distance : Math.min(best, distance);
+/**
+ * The surfaces one fragment is **drawn** as.
+ *
+ * A Plan fragment is Layout's cut placement: a Wall cut at 1.2 m yields a fragment at
+ * 1.2 m even when the Wall is drawn to 3 m. Building the pickable face from the
+ * fragment's own elevation therefore shortened every Wall above the cut, so a click
+ * high on the visible Wall missed it — the Plan cut quietly decided 3D picking. The
+ * compiled Wall's own solid spans (the same records the mesh builders draw, including
+ * their `bottomY`/`topY`) carry the real extent, so the surface tested is the surface
+ * on screen. Layout remains the one geometry authority: this reads compiled Layout,
+ * never the renderer or a second compiler, and it does not change what is drawn.
+ */
+function pickSurfacesOf(
+	fragment: PlanFragment,
+	geometry: CompiledLayoutGeometry,
+	datumMeters: number
+): readonly StagePickSurface[] {
+	const flat: StagePickSurface = {
+		kind: 'flat',
+		elevationMeters: fragment.elevationMeters,
+		geometry: fragment.geometry
+	};
+	if (fragment.ref.sourceKind !== 'wall') return [flat];
+	const wall = geometry.walls.find((candidate) => candidate.wallId === fragment.ref.sourceId);
+	if (wall === undefined) return [flat];
+	const spans = [...wall.solidSpans].sort((left, right) => left.startDistance - right.startDistance);
+	if (spans.length === 0) {
+		// No compiled span to test: the Wall's own height over the fragment's line is the
+		// honest face, never a shorter one inferred from the cut.
+		return planSegments(fragment.geometry).map(([start, end]) => ({
+			kind: 'face' as const,
+			start,
+			end,
+			bottomMeters: datumMeters,
+			topMeters: datumMeters + wall.height
+		}));
+	}
+	return spans.map((span) => ({
+		kind: 'face' as const,
+		start: span.start,
+		end: span.end,
+		bottomMeters: datumMeters + span.bottomY,
+		topMeters: datumMeters + span.topY
+	}));
+}
+
+/**
+ * The distance, in **CSS pixels**, from a pointer position to the surfaces a fragment
+ * is drawn as — the surface the creator is actually pointing at.
+ *
+ * This replaces a datum-plane-only pick, which measured plan metres from a point that
+ * the ray reached at floor level: in the 3D reading that point sits metres behind the
+ * surface under the pointer, so a visible Wall could not be selected at all. Proximity
+ * is a screen question and the drawing is where the creator looks, so the test is made
+ * where both agree, through the one live evaluation.
+ */
+function cssDistanceToSurfaces(
+	css: readonly [number, number],
+	surfaces: readonly StagePickSurface[],
+	project: (point: Vec3) => readonly [number, number] | null
+): StagePick | null {
+	let best: StagePick | null = null;
+	const consider = (distanceCss: number, surface: StagePickSurface): void => {
+		if (best === null || distanceCss < best.distanceCss) best = { distanceCss, surface };
 	};
 	const considerSegment = (
 		start: readonly [number, number] | null,
-		end: readonly [number, number] | null
+		end: readonly [number, number] | null,
+		surface: StagePickSurface
 	): void => {
-		// A segment with an endpoint behind the camera is not something the pointer
-		// can be over; skipping it also keeps a mirrored projection out of the test.
+		// A segment with an endpoint behind the camera is not something the pointer can be
+		// over; skipping it also keeps a mirrored projection out of the test.
 		if (start === null || end === null) return;
-		consider(closestOnCssSegment(css, start, end).distance);
+		consider(closestOnCssSegment(css, start, end).distance, surface);
 	};
 
-	for (const [startPlan, endPlan] of segments) {
-		considerSegment(projectAt(startPlan, elevation), projectAt(endPlan, elevation));
-		if (geometry.kind === 'polygon' || elevation === datumMeters) continue;
-		// A Wall is drawn as a **face**, not a line: the band between its footprint
-		// and its top edge. Testing only the top line made a click on the middle of a
-		// visible Wall fall through, because the ray had already passed the face by the
-		// time it reached the floor. The quad is made of the fragment's own two
-		// heights through the same projection — no second geometry authority.
-		const startBase = projectAt(startPlan, datumMeters);
-		const endBase = projectAt(endPlan, datumMeters);
-		considerSegment(startBase, endBase);
-		considerSegment(startBase, projectAt(startPlan, elevation));
-		considerSegment(endBase, projectAt(endPlan, elevation));
-		const face: [number, number][] = [];
-		for (const corner of [startBase, endBase, projectAt(endPlan, elevation), projectAt(startPlan, elevation)]) {
-			if (corner !== null) face.push([corner[0], corner[1]]);
+	for (const surface of surfaces) {
+		if (surface.kind === 'face') {
+			// A Wall is a **face**, not a line: the quad between its footprint and its top
+			// edge, at the extent the compiler draws.
+			const corners = [
+				project([surface.start[0], surface.bottomMeters, surface.start[1]]),
+				project([surface.end[0], surface.bottomMeters, surface.end[1]]),
+				project([surface.end[0], surface.topMeters, surface.end[1]]),
+				project([surface.start[0], surface.topMeters, surface.start[1]])
+			];
+			for (let index = 0; index < 4; index += 1) {
+				considerSegment(corners[index] ?? null, corners[(index + 1) % 4] ?? null, surface);
+			}
+			const polygon: [number, number][] = [];
+			for (const corner of corners) {
+				if (corner !== null) polygon.push([corner[0], corner[1]]);
+			}
+			if (polygon.length === 4 && pointInPolygon([css[0], css[1]], polygon)) consider(0, surface);
+			continue;
 		}
-		if (face.length === 4 && pointInPolygon([css[0], css[1]], face)) return 0;
-	}
 
-	if (geometry.kind === 'polygon') {
-		// Inside the drawn footprint the pointer is on the surface itself.
-		const projected: [number, number][] = [];
-		for (const point of geometry.polygon) {
-			const cssPoint = projectAt(point, elevation);
-			if (cssPoint !== null) projected.push([cssPoint[0], cssPoint[1]]);
+		const elevation = surface.elevationMeters;
+		const projectAt = (point: LayoutVec2): readonly [number, number] | null =>
+			project([point[0], elevation, point[1]]);
+		for (const [start, end] of planSegments(surface.geometry)) {
+			considerSegment(projectAt(start), projectAt(end), surface);
 		}
-		if (projected.length === geometry.polygon.length && pointInPolygon([css[0], css[1]], projected)) return 0;
+		if (surface.geometry.kind === 'polygon') {
+			// Inside the drawn footprint the pointer is on the surface itself.
+			const projected: [number, number][] = [];
+			for (const point of surface.geometry.polygon) {
+				const cssPoint = projectAt(point);
+				if (cssPoint !== null) projected.push([cssPoint[0], cssPoint[1]]);
+			}
+			if (
+				projected.length === surface.geometry.polygon.length &&
+				pointInPolygon([css[0], css[1]], projected)
+			) {
+				consider(0, surface);
+			}
+		}
 	}
 	return best;
 }
@@ -381,37 +464,23 @@ function compareFragments(left: PlanFragment, right: PlanFragment): number {
 }
 
 /**
- * The world point a resolved hit reports: the pointer's ray on the plane at the
- * fragment's own height.
+ * The world point a resolved hit reports, **on the surface that was picked**.
  *
- * A datum-only point would name the floor under a Wall rather than the surface the
- * creator pointed at. When the ray cannot reach that plane (a nearly horizontal
- * view), the fragment's first drawn point is the honest fallback rather than an
- * invented position.
+ * A Wall is a vertical plane, so a horizontal plane at the fragment's elevation would
+ * report a point that is not on the surface the creator pointed at — the Plan cut
+ * height again, in world coordinates. A face hit therefore intersects the face's own
+ * plane (the plane of its span, clamped to the span) and keeps the ray's height; a flat
+ * fragment keeps the horizontal-plane answer. When the ray never meets the plane (a
+ * nearly parallel view), the fragment's first drawn point is the honest fallback rather
+ * than an invented position.
  */
-function worldPointOnFragment(
+function worldPointOnSurface(
 	css: readonly [number, number],
+	surface: StagePickSurface,
 	fragment: PlanFragment,
 	evaluation: ViewportEvaluation,
 	token: ViewportEvaluationToken
 ): Vec3 {
-	const elevation = fragment.elevationMeters;
-	const ray = pointerRay(css, evaluation, token);
-	if (ray.kind === 'ray') {
-		const hit = intersectWorkingPlane(
-			ray.ray,
-			{
-				originMeters: [0, elevation, 0],
-				normal: [0, 1, 0],
-				yawRadians: 0,
-				datumMeters: elevation,
-				supportedLocalExtent: null
-			},
-			evaluation,
-			token
-		);
-		if (hit.kind === 'intersected') return hit.worldPoint;
-	}
 	const geometry = fragment.geometry;
 	const first: LayoutVec2 =
 		geometry.kind === 'span'
@@ -419,7 +488,57 @@ function worldPointOnFragment(
 			: geometry.kind === 'polyline'
 				? (geometry.polyline[0] ?? [0, 0])
 				: (geometry.polygon[0] ?? [0, 0]);
-	return [first[0], elevation, first[1]];
+	const fallback: Vec3 = [first[0], fragment.elevationMeters, first[1]];
+	const ray = pointerRay(css, evaluation, token);
+	if (ray.kind !== 'ray') return fallback;
+
+	if (surface.kind === 'face') {
+		const dx = surface.end[0] - surface.start[0];
+		const dz = surface.end[1] - surface.start[1];
+		const length = Math.hypot(dx, dz);
+		if (length > 0) {
+			const hit = intersectWorkingPlane(
+				ray.ray,
+				{
+					originMeters: [surface.start[0], surface.bottomMeters, surface.start[1]],
+					// The horizontal normal of the face: perpendicular to its span, in the plane
+					// the Wall is drawn in. The yaw is the span's own direction, so the frame's
+					// local up axis is the span rather than a second horizontal axis that could
+					// collapse onto the normal (a wall parallel to the default axis).
+					normal: [-dz / length, 0, dx / length],
+					yawRadians: Math.atan2(dx, dz),
+					datumMeters: surface.bottomMeters,
+					supportedLocalExtent: null
+				},
+				evaluation,
+				token
+			);
+			if (hit.kind === 'intersected') {
+				// Keep the point on the span the face covers: the ray's height is already on the
+				// face's plane, and clamping along the span stays on it.
+				const raw =
+					((hit.worldPoint[0] - surface.start[0]) * dx + (hit.worldPoint[2] - surface.start[1]) * dz) /
+					(length * length);
+				const amount = Math.min(1, Math.max(0, raw));
+				return [surface.start[0] + dx * amount, hit.worldPoint[1], surface.start[1] + dz * amount];
+			}
+		}
+	}
+
+	const elevation = surface.kind === 'flat' ? surface.elevationMeters : fragment.elevationMeters;
+	const hit = intersectWorkingPlane(
+		ray.ray,
+		{
+			originMeters: [0, elevation, 0],
+			normal: [0, 1, 0],
+			yawRadians: 0,
+			datumMeters: elevation,
+			supportedLocalExtent: null
+		},
+		evaluation,
+		token
+	);
+	return hit.kind === 'intersected' ? hit.worldPoint : fallback;
 }
 
 /** The working plane the Plan hit path intersects: the level datum, unbounded. */
@@ -710,13 +829,9 @@ export function createStageFacade(input: {
 			// identity), never Map iteration or a changing label.
 			const eligible = [...eligiblePlanFragments(plan)].sort(compareFragments);
 			for (const fragment of eligible) {
-				const distanceCss = cssDistanceToFragment(
-					candidate.css,
-					fragment,
-					currentSnapshot.domain.datumMeters,
-					project
-				);
-				if (distanceCss === null || distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
+				const surfaces = pickSurfacesOf(fragment, currentSnapshot.domain.geometry, currentSnapshot.domain.datumMeters);
+				const pick = cssDistanceToSurfaces(candidate.css, surfaces, project);
+				if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 				return {
 					kind: 'resolved',
 					hit: {
@@ -725,7 +840,7 @@ export function createStageFacade(input: {
 						generationId: fragment.ref.generationId,
 						stream: fragment.ref.stream,
 						subRef: fragment.ref.subRef,
-						worldPoint: worldPointOnFragment(candidate.css, fragment, evaluation, token)
+						worldPoint: worldPointOnSurface(candidate.css, pick.surface, fragment, evaluation, token)
 					}
 				};
 			}

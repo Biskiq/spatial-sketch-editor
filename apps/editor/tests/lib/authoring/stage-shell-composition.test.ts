@@ -171,13 +171,23 @@ describe('Stage shell composition', () => {
 		const route = stripComments(readFileSync(ROUTE, 'utf8'));
 		expect(route).toContain("acquisition.kind !== 'granted'");
 		expect(route).toContain('onpointercancel={onPointerCancel}');
-		expect(route).toContain('onlostpointercapture={onPointerCancel}');
+		expect(route).toContain('onlostpointercapture={onLostPointerCapture}');
 		// A reading change can end the lease before the flip is drawn; the samples the
 		// gesture took belong to the reading that is ending.
-		expect(route).toContain('session.gesture() === null) endGesture()');
+		expect(route).toContain('session.gesture() === null) abortGesture()');
 		// One ending, used by every path, so a policy- released lease is not released
 		// twice and no ending is forgotten.
 		expect((route.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
+
+		// The click that follows pointerup still has to know how far the pointer travelled,
+		// so a normal ending **ends** the press decision while an interruption aborts it.
+		// Collapsing the two is how every drag came to select what it was dropped on.
+		const pointerUp = route.slice(route.indexOf('function onPointerUp()'));
+		const pointerUpBody = pointerUp.slice(0, pointerUp.indexOf('}'));
+		expect(pointerUpBody).toContain('press.end()');
+		expect(pointerUpBody).not.toContain('press.abort()');
+		expect(route).toContain('press.decide(');
+		expect(route).toContain('createStagePressTracker()');
 	});
 
 	it('measures the viewport in one place and never scales the stage with CSS', () => {
