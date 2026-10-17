@@ -90,14 +90,14 @@ fix introduced.
 
 | Finding | Verdict | Disposition |
 | --- | --- | --- |
-| 1. Plan representation vs rendered geometry | real gap between the contract's display language and what S02 draws | **open owner decision**, recorded below; not a silent deferral |
+| 1. Plan representation vs rendered geometry | real gap between the contract's display language and what S02 draws | **owner decision (2026-10-16)**: reduced S02 visual contract approved; completion obligation recorded and unassigned, below |
 | 2. `StageAdapter.hitProvider` declared but unused | real: a registered T2/T3 picker was unreachable | fixed (and the built-in Layout pick was broken in 3D too) |
 | 3. Project load not bound to the session epoch | real: a late GET or admission could install over a replacement | fixed |
 | 4. Gesture policies stored, not executed | real: refusal ignored, cancellation leaked the lease | fixed |
 | 5. Drag could select what it was dropped on (round two) | real **regression**: the round-one `endGesture` cleared the press origin before `click` | fixed; event-sequence regression added |
 | 6. 3D Wall picking still used the Plan cut height (round two) | real: the face was built from the cut fragment, so the Wall above 1.2 m was unpickable | fixed; upper-Wall regression added |
 
-### 1. Plan display and the Plan cut — an **open owner decision**
+### 1. Plan display and the Plan cut — owner decision: reduced S02 contract approved
 
 `evaluateLayoutPlan` yields `cut | projected | hidden | symbol` streams, per-source membership and
 Reveal. `StageCanvas` takes `geometry: CompiledLayoutGeometry` and always renders that one canonical
@@ -110,23 +110,29 @@ alters **display** and hit eligibility; this host changes hit eligibility only. 
 S02 implementation plan nor the current S04 plan explicitly assigns a Plan-cut renderer or the Sheet
 that would drive it, so "S04 owns it" was an assertion the record did not support. It is withdrawn.
 
-**Decision required from the owner.** Two coherent options, both compatible with the invariants this
-slice keeps (one Canvas, one Camera/projection authority, Layout-owned representation):
+The two coherent options, both compatible with the invariants this slice keeps (one Canvas, one
+Camera/projection authority, Layout-owned representation):
 
-- **A — approve the reduced S02 visual contract.** S02 claims eligibility, membership, Reveal and the
-  Index, not a Plan display contract; Plan-cut rendering is assigned to a named later slice with the
-  Sheet that sets cut height. The cost is that the Plan reading draws the same geometry as 3D, so a
-  source hidden above the cut is visible but not selectable until the assigned slice lands.
+- **A — the reduced S02 visual contract.** S02 claims eligibility, membership, Reveal and the Index,
+  not a Plan display contract. The cost is that the Plan reading draws the same geometry as 3D, so a
+  source hidden above the cut is visible but not selectable until a Plan-cut renderer lands.
 - **B — retain the Plan-display expectation in S02.** The Stage's Plan reading draws the
   representation's `cut` stream and withholds `hidden`/`projected` geometry, through the same Canvas
-  and evaluation (a drawing selection, not a second renderer). That is a larger change than this
-  re-review round and would need its own regression set.
+  and evaluation (a drawing selection, not a second renderer) — a larger change with its own
+  regression set.
 
-Until the owner decides, this record claims only what is implemented and tested, and does not claim a
-Plan display contract. In the product's only boot document the two options cannot be distinguished —
-the enclosure is four 3 m walls plus a floor, all five sources `included`, 105 fragments, so drawn,
-eligible and reveal-able coincide (verified in a browser against the live document). They differ only
-for content above the cut or outside the finite depth.
+**Decided by the owner on 2026-10-16: option A.** S02 is not required to draw a Plan cut, and this
+record does not claim one. The completion obligation — a Plan reading that draws the representation's
+`cut` stream and withholds `hidden`/`projected` geometry, plus the Sheet that sets cut height and
+depth — is recorded here as **unassigned**: no slice in the current roadmap owns a Sheet or a Plan-cut
+renderer (S04 is Layout precision, not the Sheet), so the phase owner places it when the next shell
+slice is planned. S02's acceptance does not depend on it. Until that slice lands, the Plan reading and
+the 3D reading draw the same geometry, and a source above the cut or outside the finite depth is drawn
+but not hit-eligible; Reveal restores eligibility without changing the drawing.
+
+In the product's only boot document the distinction cannot be seen — the enclosure is four 3 m walls
+plus a floor, all five sources `included`, 105 fragments, so drawn, eligible and reveal-able coincide
+(verified in a browser against the live document).
 
 ### 2. Domain hit providers — real, fixed
 
@@ -271,7 +277,7 @@ Browser observation (Vite dev server on the S02 checkout, starter-gallery boot, 
 - The starter boot renders four Walls and the floor in the Index, one Canvas, and the Plan ⟷ 3D switch reports `aria-pressed` for the settled reading (3D at boot, Plan after a flip).
 - Picking was measured in the page against the production facade with the live document and its own evaluation (the attached preview webview does not composite, so `requestAnimationFrame` — and with it the route's per-frame evaluation — is starved; this is an environment limit, not a host behaviour, and the probe is why it is disclosed rather than claimed as a full UI pass). 3D: a mid-band click resolves `wall`, a lower click resolves `room-floor`, frame corners resolve `no-fragment`, which the datum-plane pick could not do (it named the floor under a Wall and resolved no Wall at all). Plan: the same facade reports `projection-kind: plan-orthographic` and resolves `room-floor`; no second renderer or transform appears.
 - The round-two upper-Wall case in the same page, on the starter document (3 m Walls, 1.2 m cut): the Wall's Plan fragment is a `cut` fragment at 1.2 m, a click there resolves `wall` at `y = 1.2`, a click at 90 % of the Wall's height resolves the same Wall at `y = 2.7`, and a click at 99 % resolves it at `y = 2.97`. Before this round the two upper clicks resolved nothing: the face stopped at the cut.
-- The Plan presentation is the orthographic reading of the same geometry: 105 fragments, membership `included` for all five sources, and Reveal has nothing to restore in the starter document. What a cut drawing does with excluded sources is the open owner decision above.
+- The Plan presentation is the orthographic reading of the same geometry: 105 fragments, membership `included` for all five sources, and Reveal has nothing to restore in the starter document. What a cut drawing does with excluded sources is the owner decision above (reduced contract approved; renderer unassigned).
 
 Limitations of this pass, stated as such: no full keyboard/screen-reader pass; the drag-versus-click
 and gesture-lifecycle sequences are pinned by tests at the state machine and call-site level rather
@@ -284,9 +290,9 @@ the preview webview produced no frames for screenshot capture.
 - **Plan-cut rendering.** The Stage draws one canonical geometry set in both readings; the
   `cut | projected | hidden | symbol` streams and membership govern hit eligibility, the Index and
   Reveal. A source above the cut or outside the finite depth is drawn but not selectable, and Reveal
-  restores eligibility without changing the drawing. Whether S02 owes a cut **drawing** and who owns
-  it if not is the open owner decision recorded above; this slice does not move that responsibility
-  to S04 on its own authority.
+  restores eligibility without changing the drawing. A Plan-cut **drawing** is not part of S02 by the
+  owner decision recorded above, and its completion obligation is recorded there as unassigned — not
+  moved to S04, which does not own a Sheet.
 - Save (T3's conditional Save), F4 intents, Undo/Redo, history and replacement baselines (S04), any
   Layout or Scene editing, Camera authoring, publish, and Preview/visitor parity beyond the shared
   renderers the Stage reuses.
