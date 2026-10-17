@@ -18,29 +18,26 @@ prerequisites instead.
 ```text
 PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
-SLICES: T3.P01's slice register is authoritative — S01 shipped 2026-10-16 (`F2.unit-envelope@1` and
-        additive `F1.reference@1:unit-resolution-v1`); S02 shipped 2026-10-16 (PR #133) with accepted
-        `F4.intent-acceptance@1:conditional-save-current-v1`; S03 is the in-progress umbrella;
-        S05 (unit acceptance + unit Save) and S06 (Experience runtime + Camera handoff) are
-        owner-authorized 2026-10-17 and in progress in parallel; S04 proposed and unauthorized;
-        T3.P02 is an unregistered candidate phase.
-BATON: S03's approved split is registered and authorized as S05 and S06. Both branches carry one
-       coordinated registration commit, run in parallel from post-PR #139 `main` (`d2607caf`), and
-       touch disjoint surfaces: S05 owns F4/F2/unit/Save, S06 owns F3 channels and new camera-core
-       runtime modules. Neither consumes the other's unaccepted output.
-NEXT: Implement S05 (real F2 candidates, one-envelope validation, resource staging/rollback,
-      unit/compound install and whole-operation history, `conditional-save-units-v1` with real
-      Postgres at zero skips) and S06 (complete `camera-handoff-v1`, lowering/interpreter,
-      reducer/clock, holds/continuation, guard/Continue/detour, DOM companion, three controllers,
-      AM-6 traces), then coordinator review and independent review. No source/runtime activation and
-      no live unit writer in either slice.
+SLICES: S01 and S02 shipped 2026-10-16. S05 (unit acceptance + unit Save) shipped 2026-10-17
+        (PR #140) with `F4.intent-acceptance@1:unit-acceptance-v1` and
+        `conditional-save-units-v1` accepted. S06 (Experience runtime + Camera handoff) is
+        implemented and independently accepted; its closeout and merge are next. S03 stays the
+        in-progress umbrella until S05 and S06 are reconciled. S04 proposed and unauthorized.
+BATON: S05 closed on its branch — plan stub, acceptance record and two capability records; F4 gate
+       register updated. S06 needs its own closeout record (acceptance + `camera-handoff-v1`
+       capability + F3 gate entry) on a branch rebased onto post-#140 `main`, then merge.
+NEXT: (1) close and merge S06 with the docs gate, merge commit only; (2) reconcile S03: map every
+      original S03 exit criterion to the accepted S05/S06 evidence, record S03's acceptance, mark it
+      shipped and rewrite this baton; (3) do not authorize S04 — it still needs the AM-7 inventory,
+      a drafted and owner-ratified `T3.camera-experience-cutover@1`, and its own authorization.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
-       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md
-       (S06: ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md)
-BLOCKER: none for implementation. Acceptance of either half requires its full evidence and
-         independent review; S04 stays unauthorized until both halves' outputs are accepted at its
-         trusted base and its own AM-7 inventory/cutover prerequisites are met. The missing authored
-         Cut/Travel invocation selector in Experience@1 is a disclosed S06 residual for S04/T3.P02.
+       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md
+BLOCKER: none for S06 closeout or S03 reconciliation. S04 remains unauthorized and its gate is
+         undrafted. Disclosed residuals owned by S04/T4: no authored Cut/Travel invocation selector
+         in Experience@1 (lowering takes closed bindings and a preparation-only transition table);
+         holds/Gates start at editorial arrival, not Camera-confirmed arrival; uploaded resource
+         bytes are host-asserted until storage verifies them; the envelope's embedded
+         acceptedRevision is baseline provenance, not revision authority.
 ```
