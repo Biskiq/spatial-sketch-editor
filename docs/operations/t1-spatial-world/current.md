@@ -18,22 +18,22 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: T1.P01.S07 (Stage↔F4 integration bridge) is authorized (2026-10-17) and in progress from
-        `main` at `fcf1fbaa`; S04–S06 remain proposed.
-BATON: S02 was accepted under owner-override on 2026-10-17. Its `T1.viewport-projection@1`
-       capability remains ratified. By owner ruling D1 (2026-10-17), S07's acceptance, not S06's,
-       is the viewport readiness route; S07 also owns the host↔F4 wiring (D2), and Head Save stays
-       with S04 (D3).
-NEXT: PR #137 carries the complete AM-5 increment on `T1-P01-S07`: implementation `a67793e4` plus
-      three rounds of review fixes (`4127b63f`, `4c831fc5`, `933bf285`) and reconciled records. Every
-      lane that was run is green on the final code tree. The next step is a fresh independent review
-      of that code head, then the full gate at the actual proposed merge revision, then slice
-      acceptance. Review was performed in-round; acceptance, closeout and merge have not happened.
+ACTIVE: none. T1.P01.S07 (Stage↔F4 integration bridge) is accepted and shipped 2026-10-17;
+        S04–S06 remain proposed and unauthorized.
+BATON: S02 was accepted under owner-override on 2026-10-17. By owner ruling D1 (2026-10-17), S07's
+       acceptance is the viewport readiness route; it recorded `T1.viewport-projection@1`
+       (`viewport-projection-v1`) accepted with S02 as the unchanged sole provider.
+NEXT: PR #137 carries the accepted increment on `T1-P01-S07`; merge candidate `049e89f5` (code head
+      `ab8504aa`, `origin/main` `279e1340` merged) passed the complete gate, including the DB-backed
+      API suites (65 tests, zero skips). Merge is withheld at the owner's instruction. Once the
+      owner authorizes it: merge as a merge commit, verify the recorded anchor, then compact the
+      closed work into its stub, tag `closed/T1.P01.S07`, and confirm consumers see the capability
+      at the new trusted base.
 ROUTE: ./README.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17 →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md
-BLOCKER: The final code head has had no review *after* its fixes, and no gate has run against a
-         proposed merge revision (the DB-backed API suites were not run for the increment). Actual
-         merge-revision acceptance remains owed; S04–S06 wait for S07's closeout.
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md
+BLOCKER: Owner authorization to merge PR #137. Closed-work compaction and the anchor tag wait for that
+         merge because a P1 anchor is only reachable from `main` after it. S04–S06 stay unauthorized
+         until the owner authorizes them; their capability prerequisites are met at the merge.
 ```

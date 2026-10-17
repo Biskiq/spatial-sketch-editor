@@ -1,6 +1,6 @@
 # AM-5 conformance reconciliation and bounded completion
 
-**2026-10-17 · PR #137 · owner-approved bounded completion, implemented, reviewed and verified; not acceptance.**
+**2026-10-17 · PR #137 · owner-approved bounded completion, implemented, reviewed, verified and accepted; merge withheld.**
 The [approved S07 plan](./implementation-plan.md) and [AM-5 interface](../interfaces.md#viewport-projection-v1)
 remain the acceptance contract. Passing a probe does not waive an unimplemented row.
 
@@ -12,23 +12,24 @@ remain the acceptance contract. Passing a probe does not waive an unimplemented 
 | F.1 ordered selection and primary identity | `StageSelection` held one Layout `PlanSourceRef`; its kind set could not name a Scene entity. | [`semantic-selection.ts`](../../../../../apps/editor/src/lib/authoring/stage/semantic-selection.ts) holds ordered entries of F.1 `SemanticReference` plus an optional Layout representation, one explicit primary, deterministic first-occurrence dedup on the resolver's **canonical** identity, and refusal of an unknown/stale reference, an invalid representation or a primary outside the ordered value. The session owns one value; the retained Layout `selection()/select()` are projections of it, not a second store. The facade and adapter context add `selectionState()/setSelection()`, bindings add `selectionChanged`, Card subjects accept an F.1 reference, and the host requalifies every entry through accepted correspondence. |
 | Lens/task exit lifetime | The route's lens setter only changed `lens`; no cancellation, no inactive task, no Resume. | The session owns lens, task status and a writer generation: `changeLens` parks the task and then cancels registered task/gesture/command/Camera writers exactly once; `resumeTask` requalifies the target against current content, refuses the wrong lens and an invalid configuration, and requires the owning adapter's `revalidate` **for a contributed task** (a directly opened host task carries no adapter configuration and resumes on target requalification alone). It never restores selection, view or proposals. The facade rebinds factory bindings on a lens transition and on a successful Resume, the coordinator gains an additive `cancelPending()`, the host registers pending accepts **and restores** as command writers (so work cancelled at lens exit cannot commit), and the route shows the inactive task with explicit Resume/Close in the lens where Resume can succeed. |
 
-The three rows are implemented, exercised and reviewed: focused suites, the arch/full lanes, a
-recorded browser session and three independent review rounds whose findings were fixed across
-`4127b63f`, `4c831fc5` and `933bf285` (see [verification](./evidence/verification.md) and the
-[review section](./acceptance.md#independent-review)). Nothing here is a new gate
-version, waiver, storage migration, second source/selection/history/Camera authority or production
-Layout/Scene writer.
+The three rows are implemented, exercised, reviewed and accepted: focused suites, the arch/full
+lanes, the DB-backed API suites, a recorded browser session and four independent review rounds whose
+findings were fixed across `4127b63f`, `4c831fc5`, `933bf285` and `ab8504aa` (see
+[verification](./evidence/verification.md) and the [review section](./acceptance.md#independent-review)).
+Nothing here is a new gate version, waiver, storage migration, second source/selection/history/Camera
+authority or production Layout/Scene writer.
 
 ## What the review round changed
 
-Independent passes over the increment raised lifetime, identity, refusal-message, robustness and
-narrow-shell findings; all were fixed across `4127b63f`, `4c831fc5` and `933bf285` (requalified
+Independent passes over the increment raised lifetime, identity, refusal-message, robustness,
+narrow-shell and reentrant-lens-exit findings; all were fixed across `4127b63f`, `4c831fc5`,
+`933bf285` and `ab8504aa` (requalified
 identities are canonical, accepted content cancels real task writers, task open/close no longer
 aborts a concurrent accept, contributor throws are isolated, refusal messages name the actual
 condition, the parked panel no longer covers the toolbar or the notice, and only a genuinely cleared
 task is restored across a lens transition). The findings and their dispositions are listed in
 [verification](./evidence/verification.md#am-5-increment--independent-review-round), and the scope
-limits they clarified are in the [acceptance record](./acceptance.md#known-limits-a-reviewer-should-check-not-re-derive).
+limits they clarified are in the [acceptance record](./acceptance.md#known-limits).
 
 ## What the browser run found and what was fixed
 

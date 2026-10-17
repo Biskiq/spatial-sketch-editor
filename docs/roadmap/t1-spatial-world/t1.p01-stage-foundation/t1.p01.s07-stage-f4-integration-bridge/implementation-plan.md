@@ -1,9 +1,9 @@
 # T1.P01.S07 — Stage↔F4 integration bridge: implementation plan
 
-**Slice:** T1.P01.S07 · **Status:** in-progress — owner-authorized 2026-10-17 (D1–D4,
-[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); the host wiring and
-the owner-approved AM-5 completion are implemented with lane and browser evidence, the merge-revision
-gate and independent slice acceptance are still withheld ·
+**Slice:** T1.P01.S07 · **Status:** accepted and shipped 2026-10-17 — owner-authorized 2026-10-17
+(D1–D4, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); the host
+wiring and the owner-approved AM-5 completion passed four review rounds and the complete gate at
+merge candidate `049e89f5`; PR #137's merge is withheld at the owner's instruction ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -164,7 +164,10 @@ full editor suite and a browser session in both readings cover it, and the produ
 every probe sentinel — all recorded in [acceptance.md](./acceptance.md) with
 [browser evidence](./evidence/browser-actions.json).
 
-The AM-5 increment is committed at `a67793e4` with review fixes through `933bf285` and was reviewed
-in three rounds, but the complete gate has not run at a merge revision (API suites included). S07 therefore remains **unaccepted**: the actual
-merge-revision gate, fresh independent review of the increment and of the PR head, independent slice
-acceptance and routine closeout remain required; the viewport capability stays ratified.
+The AM-5 increment is committed at `a67793e4` with review and approver fixes through `ab8504aa` and
+was reviewed in four rounds. The complete gate ran at merge candidate `049e89f5` (`origin/main`
+`279e1340` merged): check 0/0, arch 20/161, fast 130/1812, heavy 8/118, full 158/2091, build green,
+the four kernel checks green, and the DB-backed API suites 65 tests with zero skips on disposable
+PostgreSQL. The production build excludes every probe sentinel. S07 is therefore **accepted and
+shipped** and `viewport-projection-v1` is accepted; merge is withheld at the owner's instruction. See
+[acceptance.md](./acceptance.md) for the criteria adjudication and remaining closeout step.

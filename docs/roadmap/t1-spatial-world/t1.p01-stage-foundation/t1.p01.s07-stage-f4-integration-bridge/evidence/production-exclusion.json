@@ -1,5 +1,5 @@
 {
-  "increment": "T1.P01.S07 AM-5 completion plus review fixes (a67793e4 + 4127b63f + 4c831fc5 + 933bf285, on top of bbc1203a)",
+  "increment": "T1.P01.S07 AM-5 completion plus review fixes through ab8504aa, scanned at merge candidate 049e89f5 (origin/main 279e1340 merged)",
   "command": "production build (`npm run build`), then scan of every emitted output file",
   "roots": [
     ".svelte-kit/output",
@@ -25,5 +25,5 @@
     "conformance-adapter"
   ],
   "matches": 0,
-  "reading": "Zero probe sentinels in any emitted file: the test-only Vite hook, adapter, planners, instrument labels and replacement control exist only under the explicit conformance config."
+  "reading": "Zero probe sentinels in any emitted file: the test-only Vite hook, adapter, planners, instrument labels and replacement control exist only under the explicit conformance config. Re-scanned on the merge-candidate build; same 349 files and zero matches as the pre-merge run."
 }

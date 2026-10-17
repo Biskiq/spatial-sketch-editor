@@ -7,17 +7,17 @@ accepted gate. The F.1/F.3/F.4 shapes and `T1.viewport-projection` are owner-rat
 accepted (S01, `ee463d0b`): **where this draft differs from the landed `references-v1`/`inspection-v1`
 surface, the landed surface wins** and the difference is noted inline
 ([2026-10-16 reconciliation](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)).
-The viewport and F.4 drafts stay proposals for S02/S03, which are authorized; no export,
-conformance result or acceptance exists for either yet. Shared F semantics remain owned by
+`T1.viewport-projection` is accepted at version 1 through S07, and F.4 is accepted through S03; the
+draft shapes below remain the phase's interface record, not a second contract. Shared F semantics remain owned by
 [composition-execution.md](../../../reference/composition-execution.md); gate identity remains
 owned by [the roadmap register](../../README.md#gate-register).
 
 ## Viewport projection v1
 
-**Gate:** `T1.viewport-projection@1` — registered `ratified` at version 1 · owner T1 · sole
-provider T1.P01.S02 (authorized 2026-10-16, implementation in progress — partial and awaiting
-independent review; implementation and acceptance are its own work) · capability
-`viewport-projection-v1`, which every consumer names in `Requires`.
+**Gate:** `T1.viewport-projection@1` — version 1 · owner T1 · sole provider T1.P01.S02 · **accepted
+2026-10-17** through [T1.P01.S07's acceptance](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md)
+and its [capability record](./t1.p01.s07-stage-f4-integration-bridge/capability-viewport-projection-v1.md);
+capability `viewport-projection-v1`, which every consumer names in `Requires`, is active.
 **Consumer boundary:** T2/T3 editor adapters can project/pick/register graphics and invoke
 Camera viewing intent through a public editor host without reaching into Stage internals.
 Acceptance covers ordinary project-world Plan/3D; it does not promise Section, peel, arbitrary

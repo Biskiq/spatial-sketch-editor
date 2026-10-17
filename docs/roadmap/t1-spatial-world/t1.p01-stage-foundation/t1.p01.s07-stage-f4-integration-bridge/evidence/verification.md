@@ -1,6 +1,6 @@
 # PR #137 verification evidence — 2026-10-17
 
-**Acceptance withheld.** [Owning record](../acceptance.md) ·
+**Accepted 2026-10-17; merge withheld at the owner's instruction.** [Owning record](../acceptance.md) ·
 [AM-5 completion](../am5-reconciliation.md).
 
 Two increments are recorded here and they are **not interchangeable**:
@@ -8,40 +8,44 @@ Two increments are recorded here and they are **not interchangeable**:
 | Increment | Revision | State | Evidence |
 | --- | --- | --- | --- |
 | Host wiring, contributions, adapter re-binding | committed `bbc1203a` (base `fcf1fbaa`) | pushed, PR [#137](https://github.com/Biskiq/spatial-sketch-editor/pull/137), independently reviewed | this file's later section, plus the files listed there |
-| AM-5 completion (encoding-neutral read, F.1 selection, lens/task lifecycle) | committed `a67793e4` + `4127b63f` + `4c831fc5` + `933bf285` (base `bbc1203a`) | pushed to PR #137, **three review rounds, findings fixed** | this file's first sections |
+| AM-5 completion (encoding-neutral read, F.1 selection, lens/task lifecycle, reentrant lens exit) | committed `a67793e4` + `4127b63f` + `4c831fc5` + `933bf285` + `ab8504aa` (base `bbc1203a`) | pushed to PR #137; **four review rounds, findings fixed**; merge candidate `049e89f5` gated | this file's first sections |
 
 ## AM-5 increment — tested source identity
 
 Commits `a67793e4` (implementation; parent `bbc1203acbb83530780e429b3ab3b930b82169db`) plus the
-review fixes `4127b63f`, `4c831fc5` and `933bf285` on `T1-P01-S07`. The 22 changed files under
-`apps/editor/src` and `apps/editor/tests` are individually hashed in
+review and approver fixes `4127b63f`, `4c831fc5`, `933bf285` and `ab8504aa` on `T1-P01-S07`. The 22
+changed files under `apps/editor/src` and `apps/editor/tests` are individually hashed in
 [am5-source-manifest.json](./am5-source-manifest.json); the test-only
 `vite.stage-conformance.config.ts` is outside that hash set. Aggregate SHA-256
-**`7351d55edd223804cdcf27965f1e07638ad64c266d9768be537713371a561e2a`** over the sorted lines
-`<path>` TAB `<file sha256>` newline. The manifest states that algorithm itself, so the
-aggregate is reproducible from the commit without guessing a serialization. Documentation,
-screenshots and the browser transcript are outside that manifest.
+**`1ecf8fc9e8cdd5974dfa9136d4935ae2a906a3fdcc1d8915773a3f110cdf8830`** over the sorted lines
+`<path>` TAB `<file sha256>` newline, recomputed at the merge candidate. The manifest states that
+algorithm itself, so the aggregate is reproducible without guessing a serialization.
+Documentation, screenshots and the browser transcript are outside that manifest.
 
-## AM-5 increment — check results
+## AM-5 increment — check results at the merge candidate
 
-All run on the final code tree `933bf285`, after the last source edit. Raw summaries, including the
-per-commit `git show --check` results, are in [check-summaries-review.txt](./check-summaries-review.txt).
+Merge candidate **`049e89f5a40d3ecf8c18214ca7fcd604265b8929`**: `origin/main` `279e1340` merged into
+`T1-P01-S07`, tested code head `ab8504aa`. Every command below ran on that tree, after the last
+source edit, with its exit status read directly. Raw lane and API summaries are in
+[check-summaries-merge-candidate.txt](./check-summaries-merge-candidate.txt).
 
 | Command | Observed result |
 | --- | --- |
 | `npm run check` | **0 errors / 0 warnings** |
-| `npm run test:fast` | 127 files / **1,765 tests** passed |
-| `npm run test:heavy` | 8 files / 118 tests passed |
 | `npm run test:arch` | 20 files / 161 tests passed |
-| `npm test` | 155 files / **2,044 tests** passed |
-| `npm run build` | ordinary production build passed |
+| `npm run test:fast` | 130 files / **1,812 tests** passed |
+| `npm run test:heavy` | 8 files / 118 tests passed |
+| `npm test` | 158 files / **2,091 tests** passed |
+| `npm run build` | production build passed |
 | `npm run check:layout-core`, `check:project-model`, `check:camera-core`, `check:api` | all passed |
-| `git show --check` on each commit of the increment | passed |
+| `npm run test:api` | **65 tests, 0 failed, 0 skipped** in 9 contract files, disposable PostgreSQL 14.19 database `biskiq_s07_merge_20261017`, after `migrate` applied the schema |
+| `git show --check` | clean on `ab8504aa` and the merge commit |
 
-**Not run:** `npm run test:api` (the DB-backed API contracts, which need a disposable Postgres this
-round did not create) and any run against a merge revision. No API or package source changed.
+The earlier branch-only run at `933bf285` recorded check 0/0, arch 20/161, fast 127/1,765, heavy
+8/118, full 155/2,044 and a passing build. It is superseded by the merge-candidate numbers above,
+which are the acceptance basis; `test:api` was not run there.
 
-The focused set that covers the increment directly:
+The focused set that covers the increment directly, re-run at the merge candidate:
 `tests/lib/authoring/stage-semantic-lifecycle.test.ts` (11), `stage-host-acceptance.test.ts` (33),
 `stage-session.test.ts` (7), `stage-facade.test.ts` (12), `stage-content-change.test.ts` (5),
 `stage-source-admission.test.ts` (9), `stage-consumer-probes.test.ts` (2), `stage-boot-states.test.ts`
@@ -91,6 +95,18 @@ session epoch; and the legacy selection helper now reports `admitted`/`cleared`/
 boolean that meant two things. Its remaining note — that the requalification module header described
 only the Layout helper's rule — is fixed in that module's header.
 
+A fourth, approver-directed round reviewed the one remaining P2 and its fix `ab8504aa`: a cancellation
+callback that opens a new task for the departing lens left it active in the destination lens. The
+focused independent review returned **accept with nits**. It confirmed the guard runs after the
+parked-restore block so the deliberate replacement survives and the old task is not resurrected, that
+`task.lens ?? 'world'` agrees with `openTask`'s ownership rule, that the late writer registered inside
+the canceller is cancelled exactly once, and that the updated regression fails on the pre-change code
+(parked status, cancelled late writer, lens moved, Resume refused `wrong-lens`). Its comment nit — the
+"always parks" wording ignored a canceller that completes the lens change itself — is fixed. It also
+reported two sibling reentrancy asymmetries (`closeTask` clears a task a canceller just opened;
+`installAccepted` reports `closedTask: true` while a task opened during its sweep stays active); both
+are recorded as limits in [acceptance.md](../acceptance.md#known-limits), not fixed here.
+
 The review also recorded limits that are **not** defects but were overstated in the records and are
 now scoped in [acceptance.md](../acceptance.md) and [am5-reconciliation.md](../am5-reconciliation.md):
 the "second encoding" proof is an encoding-metadata proof (the domain read still publishes the
@@ -118,9 +134,9 @@ retired (it resumes a target that no longer resolves).
 
 ## AM-5 increment — production exclusion
 
-[production-exclusion.json](./production-exclusion.json): after `npm run build` on `933bf285`, all
-**349** emitted files under `.svelte-kit/output` and `.vercel/output` were scanned for 15 probe
-sentinels (writer, probe state, the three planner kinds, adapter id, entity id, replacement hook
+[production-exclusion.json](./production-exclusion.json): after `npm run build` on the merge
+candidate `049e89f5`, all **349** emitted files under `.svelte-kit/output` and `.vercel/output` were
+scanned for 15 probe sentinels (writer, probe state, the three planner kinds, adapter id, entity id, replacement hook
 text *and its data attribute*, plugin name, the four instrument labels, the module name).
 **Zero matches.** The scan reads every emitted entry; directory symlinks are skipped as directories
 and file symlinks are read through their target, so the count is files with content.
@@ -193,8 +209,9 @@ the behavioural evidence, and the two new panels' text and stacking are what cha
 
 ### Limits of this evidence
 
-- No independent reviewer has seen the head **after** the third review round's fixes, and no
-  merge-revision gate exists.
+- The reentrant lens-exit path is covered by its regression test and the focused review, not by the
+  browser run: the UI session exercised parking and Resume through ordinary user actions, not a
+  cancellation callback that opens a task.
 - The browser session used the test-only Vite configuration; it is not production authoring.
 - A **Layout-only** accepted edit clears a Scene selection, because the accepted correspondence for
   that operation lists only Layout subjects and the host refuses to assume an unlisted subject
