@@ -37,7 +37,8 @@ with `T1.P01.S02` the unchanged, sole provider.
 
 Merge candidate **`049e89f5a40d3ecf8c18214ca7fcd604265b8929`** — `origin/main`
 `279e1340` merged into `T1-P01-S07`, tested code head **`ab8504aa`**. A rebuilt candidate against the
-then-moved `origin/main` is recorded below under the gate table. The 22 changed/added `src`/`tests`
+then-moved `origin/main` is recorded below under the gate table, at candidate `bdc91c93`. The 22
+changed/added `src`/`tests`
 files are individually hashed in the archived `am5-source-manifest.json`; aggregate SHA-256
 **`1ecf8fc9e8cdd5974dfa9136d4935ae2a906a3fdcc1d8915773a3f110cdf8830`**.
 
@@ -53,6 +54,27 @@ files are individually hashed in the archived `am5-source-manifest.json`; aggreg
 | `npm run test:api` | 65 tests, 0 fail, **0 skipped** (disposable PostgreSQL 14.19, `biskiq_s07_merge_20261017`) |
 | Production exclusion | 349 emitted files, 15 probe sentinels, 0 matches |
 | `git show --check` | clean on `ab8504aa` and the merge commit |
+
+**Rebuilt candidate `bdc91c93`** (`84a6a437` closeout compaction on `T1-P01-S07`, then
+`origin/main` `dfbd6c7c` (post-PR #144, containing PRs #139–#144 incl. T3.P01.S05/S06),
+clean auto-merge re-apply of the recorded candidate; code head unchanged at `ab8504aa`):
+
+| Command | Observed result |
+| --- | --- |
+| `npm run check` | 0 errors / 0 warnings |
+| `npm test` (full editor suite) | 160 files / 2,143 tests passed |
+| `npm run test:arch` | 161 tests passed (docs gate: `tests/docs` 2 files / 55 tests) |
+| `npm run test:heavy` | 8 files / 118 tests passed |
+| `check:project-model`, `check:camera-core`, `check:api` | all passed |
+| `npm run build` | production build passed |
+| Production exclusion (re-scan on the rebuilt candidate) | 349 emitted files, 15 sentinels, **0 matches** |
+| `git show --check` | clean on `ab8504aa`, `049e89f5`, the compaction commit and `bdc91c93` |
+
+The full-suite growth (158→160 files, 2,091→2,143 tests) is entirely the T3.P01.S05/S06 test files
+that arrived with `origin/main`; no Stage/viewport source changes with it. Not re-run at the rebuilt
+candidate: the DB-backed API suite (`npm run test:api`, 65 tests at `049e89f5`) — the merged range
+touches no API route or schema, and `check:api` typechecks clean; that is a routine re-run the owner
+may require at merge time if desired.
 
 Browser evidence (archived, below): the 267-command workflow in both readings, a 17-command 390 px
 spot check after the review fixes, and the merge-candidate spot check (selection → lens park →
