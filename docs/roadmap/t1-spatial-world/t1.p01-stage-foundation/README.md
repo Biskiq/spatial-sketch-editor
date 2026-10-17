@@ -254,7 +254,9 @@ Baseline.
 
 ## Deliberately deferred scope and next boundary
 
-The next T1 phase should derive a bounded **Wall authoring/schema cutover**: creator-neutral
+Owner ruling K3 (2026-10-17, [Core Editor Stability](../../core-editor-stability.md)): bounded
+straight-Wall creation is planned after the F2 cutover, with derived Rooms, explicit connections and
+canonical Layout authority. The next T1 phase should derive a bounded **Wall authoring/schema cutover**: creator-neutral
 Draw, derived Wall roles, legacy partition disposition, intentional non-enclosing rings,
 connectivity-policy reconciliation, current-format change/fresh-authority decision, Room
 lineage and retirement of the legacy Layout types/codec/frame/compiler adapter. None is

@@ -55,6 +55,21 @@ R3, so the F5 drafting does not run either.
 | T3 obligations kept | The T3.P01.S04 source/release **inventory**, migration/refusal coverage, quiescence/recovery plan and **publication compatibility disposition** (AM-7; [S04 plan](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#prerequisite)) are unchanged by this deferral. Because T4's prepared delivery now follows Core Editor Stability, any publication gap the owner accepts at T3.P01.S04 runs until T4's prepared-reader cutover. Existing publications need a concrete disposition before activation, and the public and owner publication routes must report honest unavailability throughout. |
 | Retained delivery path | The P22 authored-snapshot reader and API publication format stay as the T4 README records ("retire at the T4 prepared-reader cutover"). The deferral neither deletes nor extends them beyond what T3.P01.S04's disposition allows. |
 
+## Core Editor Stability rulings (2026-10-17)
+
+After re-review, the owner approved the [Core Editor Stability](../../roadmap/core-editor-stability.md)
+direction and ruled on its sequencing findings. None of these rulings authorizes implementation. Each
+named owner plans through normal phase registration and slice authorization.
+
+| # | Ruling | Intended owner |
+| --- | --- | --- |
+| Route | The milestone has its own acceptance route, the [product milestone acceptance](../../operations/README.md#product-milestone-acceptance) event, with evidence under `docs/roadmap/integration/core-editor-stability/`. It creates no gate row and changes no capability checker. The gate-based integration procedure is not claimed to cover it. | Owner authorizes the acceptance plan |
+| Workflow | The milestone requires a useful self-contained creator workflow, not a collection of accepted core providers. Its browser acceptance includes basic responsiveness (no blocked interaction, stale state or lost input on a realistic project), with no new benchmark infrastructure. | Acceptance plan |
+| K1 | One bounded editor-side GLB import is required before the milestone. There is no T4 release closure, and advanced ingest stays deferred. | T2 (after T3.P01.S04) |
+| K2 | Temporary publication unavailability is accepted in principle. The actual gap is approved only at T3.P01.S04, after the live inventory and compatibility review. There is no blanket approval. | Owner, at T3.P01.S04 |
+| K3 | Bounded straight-Wall creation is planned after the F2 cutover. Rooms stay derived, connections explicit and Layout the canonical authority. | T1 |
+| K4 | Project rename/delete: T3 owns persistence/API in a separate small slice (not T3.P01.S04), and T1 owns the shell integration. | T3 + T1 |
+
 ## Explicit non-implications
 
 - **No other slice is authorized.** `T1.P01.S04`–`S06`, `T2.P01.S03`–`S04`, `T3.P01.S04` and every T4

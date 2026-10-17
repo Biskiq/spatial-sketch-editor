@@ -93,7 +93,7 @@ shipped.
 | Gate register (exact interfaces and cutovers) | [`roadmap/README.md`](./roadmap/README.md) §Gate register — version, provider slice, exports, conformance and acceptance identity; F semantics stay in [`reference/composition-execution.md`](./reference/composition-execution.md) | — |
 | Current work / baton | [`operations/current.md`](./operations/current.md) (navigation) → the owning track's `operations/<track>/current.md` | — |
 | Interrupted work / resume | [`operations/checkpoints/`](./operations/checkpoints/) — transient only; `work-checkpoint` skill owns procedure | — |
-| Event procedures (track completion · integration acceptance · replanning) | [`operations/README.md`](./operations/README.md) — entered only by its explicit events; ordinary slice work never loads it | — |
+| Event procedures (track completion · integration acceptance · milestone acceptance · replanning) | [`operations/README.md`](./operations/README.md) — entered only by its explicit events; ordinary slice work never loads it | — |
 | Operational runbook for a track | [`operations/t1-spatial-world/README.md`](./operations/t1-spatial-world/README.md) · [`operations/t2-composition/README.md`](./operations/t2-composition/README.md) · [`operations/t3-experience/README.md`](./operations/t3-experience/README.md) · [`operations/t4-release/README.md`](./operations/t4-release/README.md) — eligibility, start step, test families, routes and debt handling | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
 | Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — stage, bounded exposure window and mechanism register; loaded only by its three hooks (phase planning, implementation start, slice closeout) | — |
@@ -333,7 +333,7 @@ UPDATE:
 - track/phase lifecycle + gate register + future work → roadmap/README.md
 - track objectives/phase register → owning track README
 - phase scope/slice register/FINAL PHASE GATE/PHASE CLOSE → owning phase README
-- track completion / integration acceptance / replanning → operations/README.md event sections
+- track completion / integration acceptance / milestone acceptance / replanning → operations/README.md event sections
 - current work baton → the owning track's operations/<track>/current.md (never another track's)
 - interrupted resumable work → operations/checkpoints/ via work-checkpoint skill
 - landed truth → reference/* (reconcile; supersede stale claims, never silently promote roadmap proposals)

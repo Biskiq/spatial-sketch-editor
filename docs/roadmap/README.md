@@ -146,10 +146,11 @@ ratified amendments.
 | Phase closure | Explicit owner invocation, then the `phase-closeout` skill | The final gate, integration and residuals are verified, and `PHASE CLOSE` plus the track's phase row are written. No track, product or cycle closure follows. |
 | Track completion | Explicit owner request against the approved bounded objectives | Objective evidence, required phase closures and residual transfers are verified, and `TRACK COMPLETE` is written on this register. Domain code, contracts, gates and regressions are kept. |
 | Product integration acceptance | An approved integration plan plus its recorded acceptance | Only that gate and version are accepted. Contributing phases and tracks are not closed, and no Baseline is declared. |
+| Product milestone acceptance | An owner-approved milestone definition plus an authorized acceptance plan under `docs/roadmap/integration/<milestone-id>/` | The milestone's own acceptance record only. No gate row, version or capability changes; no phase or track closes; unblocked work still needs authorization. |
 
 The routine slice sequence is implementation → review → acceptance → closeout → merge, using
 the recorded acceptance without re-running gates just to close. A substantive change introduced
-at closeout reopens only the affected review. **All four event procedures are owned by the
+at closeout reopens only the affected review. **All five event procedures are owned by the
 event sections of [`../operations/README.md`](../operations/README.md)**; this table states the
 lifecycle consequence and routes.
 
@@ -222,7 +223,7 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
 
 ```text
 CURRENT WORK:    ../operations/current.md
-EVENT PROCEDURES: ../operations/README.md       (track completion · integration · replanning)
+EVENT PROCEDURES: ../operations/README.md       (track completion · integration · milestone · replanning)
 TRACK RUNBOOKS:   ../operations/<track>/README.md
 CYCLE STATE:      ../operations/architecture-cycle.md   (loaded only by its three hooks)
 DEFERRED DEFECTS: ../operations/tech-debt/README.md

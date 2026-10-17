@@ -25,7 +25,7 @@ T4 → ./t4-release/current.md
 STATUS:    ../roadmap/README.md#gate-register · the owning phase README
 RUNBOOKS:  ./t1-spatial-world/README.md · ./t2-composition/README.md ·
            ./t3-experience/README.md · ./t4-release/README.md
-ESCALATE:  ./README.md                     (track completion · integration · replanning)
+ESCALATE:  ./README.md                     (track completion · integration · milestone · replanning)
 CYCLE:     ./architecture-cycle.md         (loaded only by its three hooks)
 INTERRUPT: ./checkpoints/README.md         (work-checkpoint skill)
 ```

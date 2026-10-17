@@ -1,13 +1,14 @@
 # Operations — event procedures
 
-**Role:** the three event procedures that outlive a single slice — **track completion**,
-**product integration acceptance** and **bounded replanning**. They are entered only by the
-explicit events below.
+**Role:** the four event procedures that outlive a single slice — **track completion**,
+**product integration acceptance** (a gate), **product milestone acceptance** (a named product
+milestone, never a gate) and **bounded replanning**. They are entered only by the explicit events
+below.
 
 ```text
 NOT:  product status (roadmap/README.md) · a baton (current.md or a track baton) · a plan or a tracker
-OWNS: the completion handoff, integration acceptance and replanning procedures
-LOAD: only when one of the three events is actually invoked
+OWNS: the completion handoff, integration acceptance, milestone acceptance and replanning procedures
+LOAD: only when one of the four events is actually invoked
 ```
 
 Ordinary slice work never loads this file. A slice's own route is
@@ -47,6 +48,34 @@ NOT:        contributing phases and tracks are not closed, no Baseline is declar
 An integration plan exists only when one is needed: if a phase's integrated gate already supplies
 the proof, that gate is routed instead of a second plan being written. A concrete, owner-authorized
 product goal writes **one** plan under `docs/roadmap/integration/<gate-id>/`; ids are stable.
+This procedure accepts a gate only. It does not accept a product milestone; that is the next
+section's separate outcome.
+
+## Product milestone acceptance
+
+A product milestone (for example [Core Editor Stability](../roadmap/core-editor-stability.md)) is a
+named, owner-approved state of the product's usefulness. It is **not** a gate. It has no version,
+provider, `Requires` scope or register row, and accepting it changes no gate state or capability
+readiness. It is evidenced as a whole product workflow, not as a sum of accepted providers.
+
+```text
+ENTRY:      an owner-approved milestone definition (docs/roadmap/<milestone-id>.md) plus an
+            owner-authorized acceptance plan at docs/roadmap/integration/<milestone-id>/plan.md
+VERIFY:     every criterion of the definition on one integrated tree at a recorded revision: the
+            complete merge gate, the definition's browser journeys and observations, and
+            independent review; contributing slices' accepted evidence is cited, and re-run only
+            where the plan requires the integrated result
+WRITE:      docs/roadmap/integration/<milestone-id>/acceptance.md (revision, evidence, review,
+            owner acceptance, any explicit owner waiver per criterion) and the definition's status
+            line; nothing in the gate register, and no checker change
+NOT:        no gate, version or capability is created or accepted; no phase or track is closed;
+            no Baseline is declared; work the milestone unblocks still needs its own owner
+            authorization
+```
+
+A failed or unevidenced criterion stops acceptance. The owner may amend the definition explicitly
+or waive a named criterion in the acceptance record; nothing is waived silently. One milestone has
+one plan directory, and its id is stable.
 
 ## Bounded replanning
 
