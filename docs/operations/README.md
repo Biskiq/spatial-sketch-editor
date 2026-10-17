@@ -66,16 +66,16 @@ VERIFY:     every criterion of the definition on one integrated tree at a record
             independent review; contributing slices' accepted evidence is cited, and re-run only
             where the plan requires the integrated result
 WRITE:      docs/roadmap/integration/<milestone-id>/acceptance.md (revision, evidence, review,
-            owner acceptance, any explicit owner waiver per criterion) and the definition's status
-            line; nothing in the gate register, and no checker change
+            owner acceptance and references to any prior owner-approved definition amendments);
+            update the definition's status line; no gate-register or checker change
 NOT:        no gate, version or capability is created or accepted; no phase or track is closed;
             no Baseline is declared; work the milestone unblocks still needs its own owner
             authorization
 ```
 
-A failed or unevidenced criterion stops acceptance. The owner may amend the definition explicitly
-or waive a named criterion in the acceptance record; nothing is waived silently. One milestone has
-one plan directory, and its id is stable.
+A failed or unevidenced criterion blocks acceptance. Changing required criteria needs an explicit
+owner-approved amendment to the milestone definition before acceptance. The acceptance record
+cannot waive a criterion on its own. One milestone has one plan directory, and its id is stable.
 
 ## Bounded replanning
 
