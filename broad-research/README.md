@@ -3,20 +3,33 @@
 Research input for future design work. **Not** a product contract or routed authority —
 `docs/README.md` and the `docs/reference/` contracts govern product truth.
 
-| File | Contents |
-| --- | --- |
-| [`multi-level-spatial-authoring-ux.html`](./multi-level-spatial-authoring-ux.html) | Multi-level spatial representation and authoring UX for Museum Editor. Single self-contained file (open it directly in a browser; no network needed). Theme: Auto / Light / Dark. |
-| [`creative-scene-composition-ux.html`](./creative-scene-composition-ux.html) | Creative scene composition, surface authoring, and look development for expressive spatial environments. Single self-contained file (open it directly in a browser; no network needed). Theme: Auto / Light / Dark. |
+Each topic is a pair of files:
 
-Each HTML file is the single source of record for its research topic and shares three views:
+| Topic | Interactive synthesis | Verbatim report |
+| --- | --- | --- |
+| Multi-level spatial representation and authoring UX | [`multi-level-spatial-authoring-ux.html`](./multi-level-spatial-authoring-ux.html) | [`multi-level-spatial-authoring-ux.md`](./multi-level-spatial-authoring-ux.md) |
+| Creative scene composition, surface authoring and look development | [`creative-scene-composition-ux.html`](./creative-scene-composition-ux.html) | [`creative-scene-composition-ux.md`](./creative-scene-composition-ux.md) |
+| Interactive experience authoring and spatial storytelling | [`spatial-storytelling-ux.html`](./spatial-storytelling-ux.html) | [`spatial-storytelling-ux.md`](./spatial-storytelling-ux.md) |
+| Expressive roofs, ceilings and volumetric spatial authoring | [`expressive-roof-volume-authoring-ux.html`](./expressive-roof-volume-authoring-ux.html) | [`expressive-roof-volume-authoring-ux.md`](./expressive-roof-volume-authoring-ux.md) |
 
-- **Full report** (`#/report`) — the research chapters verbatim from the original export,
-  with all works cited. Text-only: bracketed markers show where the source figures sat.
-  This text is canonical.
-- **Interactive** (`#/interactive`) — explorable panels, charts, and simulators rebuilt from
-  the report and from the widget snapshots the export had flattened to images. Panels read
-  the report's paragraphs and tables at load time — there is no second copy of the data — so
-  they cannot drift from it.
-- **Source notes** (`#/notes`) — provenance, drift/variance logs where applicable, the
-  embedded widget/figure snapshots and their transcriptions, and the inline equation
-  transcriptions.
+- **Verbatim report (`.md`)** — the research chapters exactly as the original export has them,
+  with all tables and works cited. It is self-contained, and this text is canonical. Every
+  heading, paragraph (`…-pN`) and table (`…-tN`) has a stable `<a id>` anchor. Citations link
+  to `#ref-N`. Inline equation images are transcribed as text. Figure positions are marked
+  with a link to the HTML page that shows them. The front matter names the source export.
+- **Interactive synthesis (`.html`)** — a single self-contained file: open it directly in a
+  browser, with no network needed. The theme can be Auto, Light or Dark. It has two views:
+  - **Interactive** (`#/interactive`) — explorable panels, charts and simulators rebuilt from
+    the report and from widget snapshots the export flattened to images.
+  - **Source notes** (`#/notes`) — provenance, the reconstruction log, the embedded
+    widget/figure snapshots with their transcriptions, flagged in-source variances, and the
+    equation transcriptions.
+
+  Panels quote report paragraphs and tables from a hidden excerpt store. That store is
+  generated in the same pass as the Markdown, with the same anchor ids, so quoted text matches
+  the report exactly. "Read in verbatim report ↗" links and the header's **Verbatim report ↗**
+  open the `.md` at the matching anchor.
+
+Panels marked *reconstruction* are rebuilt from flattened widget snapshots. Panels marked
+*illustrative* act out a mechanism the report describes, using sample content that is not in
+the source. Each page's Source notes say which is which.
