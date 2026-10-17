@@ -542,6 +542,30 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(coordinator.current().canonicalJson).toBe(afterSecond.canonicalJson);
 	});
 
+	it('installs nothing when a caller writes and admits a Scene document directly', async () => {
+		// The bypass this fails on is a second install path: a caller that prepares
+		// and admits a changed document itself must still not reach the accepted
+		// source, its revision or its history. Only `accept` may install.
+		const { coordinator } = await boot();
+		const before = coordinator.current();
+		const historyBefore = coordinator.history();
+		const installsBefore = coordinator.installs();
+		const bypassed: SceneDocument = {
+			...before.source.scene,
+			entities: [...before.source.scene.entities, box('entity-bypass', [5, ELEVATION + 0.5, 4])]
+		};
+		const admitted = await admitCurrentSourceContent({ ...before.source, scene: bypassed });
+		expect(admitted.kind).toBe('admitted');
+
+		expect(coordinator.current()).toEqual(before);
+		expect(coordinator.current().source.scene.entities.map((entity) => entity.id)).not.toContain(
+			'entity-bypass'
+		);
+		expect(coordinator.acceptedRevision()).toEqual(before.revision);
+		expect(coordinator.history()).toEqual(historyBefore);
+		expect(coordinator.installs()).toBe(installsBefore);
+	});
+
 	it('refuses a mutation-control candidate the adapter admits, through the T2 record-scope guard', async () => {
 		const { coordinator } = await boot();
 		const before = coordinator.current();
