@@ -1,7 +1,7 @@
 # T2.P01 — Supported object composition
 
 **Phase:** T2.P01 · **Status:** registered 2026-10-16 — `T2.P01.S01` shipped 2026-10-16;
-S02–S04 proposed and
+`T2.P01.S02` owner-authorized 2026-10-16 (approved, not started); S03–S04 proposed and
 unauthorized · **Track:** [T2](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) ·
@@ -11,8 +11,9 @@ unauthorized · **Track:** [T2](../README.md) · **Roadmap:**
 Registered by the owner decision of 2026-10-16
 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) so that its
 first slice, `T2.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` and `T3.P01.S01`.
-That is the phase's only implementation permission: S02–S04 are registered as `proposed` and hold
-none, no gate changes state and no architecture-cycle transition is made.
+S02 was authorized by the later owner decision of 2026-10-16
+([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel with
+`T3.P01.S02`; S03–S04 stay `proposed` and hold no implementation permission.
 
 **Phase outcome.** Rebuild a small, complete object-arranging experience over the current Scene
 format: upright floor-supported objects, one canonical placement, Plan/3D selection, horizontal
@@ -102,7 +103,7 @@ No historical editor source is restored by this plan, and prototype QA is not pr
 | Architecture and floor evidence | Layout's canonical compiler/query records; the read-only floor-support query in `@portfolio/layout-core`, built by T2.P01.S01 under T1 review (decided 2026-10-16), supplies floor candidates |
 | Projection, rays, framing and navigation | Camera through the public T1 viewport seam; T2 never drives an independent Camera or projection transform |
 | Selection, task focus, gesture lease and display lifecycle | One T1 editor host. T2 supplies Scene identity/eligibility adapters, not another selection store |
-| Accepted project revision and chronological history | The shared F.4 coordinator provided by T1.P01.S03; T2.P01.S02 registers Scene planners into it and owns no history |
+| Accepted project revision and chronological history | The shared F.4 coordinator provided by T1.P01.S03; T2.P01.S02 supplies the Scene planner set and its conformance against that coordinator and owns no history; live host registration is the host↔F4 wiring's and S03's |
 | View-specific graphics and helpers | T2 editor adapter; derived and disposable, with no path into authored JSON or visitor authoring imports |
 
 **Frames.** The owner clarified the request during planning: keep world-local Scene storage and
@@ -146,15 +147,17 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T2.P01.S01 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Deterministic candidates and canonical floor support](./t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | [record](./t2.p01.s01-candidates-and-floor-support/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 with independent implementation review and focused T1/Layout sign-off |
-| T2.P01.S02 | proposed | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](./t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](./t2.p01.s02-scene-operations-and-history/acceptance.md) | — |
+| T2.P01.S02 | approved | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](./t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](./t2.p01.s02-scene-operations-and-history/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)) — approved, not started |
 | T2.P01.S03 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](./t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](./t2.p01.s03-first-editing-surface/acceptance.md) | — |
 | T2.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](./t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record](./t2.p01.s04-bounded-composition-loop/acceptance.md) | — |
 
-`F1.reference@1:references-v1` is accepted on post-PR #126 `main`, so S01 is eligible once this
-registration merges. S02 waits for `T1.P01.S03`'s accepted `local-single-domain-v1`; S03 also for
+`F1.reference@1:references-v1` was accepted at `ee463d0b` and S01 shipped in PR #130. S02's
+`local-single-domain-v1` (with `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor
+of post-PR #129 `main`, so S02 is eligible. S03 also waits for
 `T1.P01.S02`'s `viewport-projection-v1` **and** for the host↔F4 wiring, which is `T1.P01.S04`'s
 first increment by default — if the owner authorizes S03 first, the owner assigns that wiring
-explicitly. S04 additionally needs `T3.P01.S02`'s `conditional-save-current-v1`. Every prerequisite
+explicitly. S04 additionally needs `T3.P01.S02`'s `conditional-save-current-v1` **and** T1's Head Save
+integration (decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
 is judged at the slice's own trusted base.
 
 The requirements above describe the pre-cutover source adapter. `T3.P01.S04` migrates existing
@@ -170,7 +173,7 @@ PHASE CLOSE
 Stage:        active
 ```
 
-No slice has acceptance evidence. The final gate is declared, not closeable; acceptance would make
+Only S01 has acceptance evidence. The final gate is declared, not closeable; acceptance would make
 the phase closable, and phase/track closure remains a separate owner event.
 
 ## Minimum dependencies
@@ -179,7 +182,7 @@ the phase closable, and phase/track closure remains a separate owner event.
 | --- | --- |
 | F1 | `T1.P01.S01` supplied `references-v1` (accepted): separate accepted revision/content/epoch and explicit frame/source qualification. Required from S01; no locks are invented. |
 | F4 local | `T1.P01.S03` (authorized 2026-10-16) supplies `acceptance-invariants-v1` and `local-single-domain-v1`. S02 registers actual planners and conformance, not another F4 provider or history. |
-| Conditional Save | `T3.P01.S02` extends F4 with `conditional-save-current-v1`, independent of F2/viewport activation. Needed for S04's safe Save journey; S03 arranging does not wait for it. |
+| Conditional Save | `T3.P01.S02` extends F4 with `conditional-save-current-v1` and owns the client Save state, independent of F2/viewport activation; T1 owns its Head integration. Both are needed for S04's safe Save journey; S03 arranging waits for neither. |
 | Viewport | `T1.P01.S02` (authorized 2026-10-16) supplies the source-independent facade, rendered matrices/planes, one selection/task/gesture host and the Camera output protocol. Required from S03. It also owns the compile-generation identity the support query is called with. |
 | F3 | No direct prerequisite for this phase's simple typed Scene operation payloads. The viewport owns its F3 dependency; a future real channel consumer declares its exact capability. |
 | F2/T3 transition | No new source units in this current-source phase. `T3.P01.S04` integrates current callers into already accepted unit-aware adapters; canonical Scene operation semantics stay unchanged. |
@@ -232,6 +235,8 @@ also require real-Postgres checks with zero skips; they are not planned here.
 No new architecture-cycle window is proposed. T1's window names its own bounded exposures; T2 does
 not copy or enlarge that window, re-arm dormant Layout mechanisms or claim a verdict, and T2 slices
 cannot open it. Each start still runs the runbook's one-line listed-slice check against the
-then-live cycle register. S01 runs in parallel with three other slices under the
-[batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16), which names the shared
-files it may write and how merges reconcile.
+then-live cycle register. S01 ran in parallel with three other slices under the
+[batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16); S02 runs in parallel with
+`T3.P01.S02` (and the still-open `T1.P01.S02`) under the
+[pair protocol](../../cross-track-execution.md#parallel-pair-2026-10-16). Each names the shared files
+its slices may write and how merges reconcile.

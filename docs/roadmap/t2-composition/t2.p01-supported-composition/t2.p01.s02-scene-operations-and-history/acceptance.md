@@ -1,12 +1,13 @@
 # T2.P01.S02 — acceptance record: Scene operations and shared history
 
-**Slice:** T2.P01.S02 · **Status:** proposed, not authorized — no acceptance recorded
+**Slice:** T2.P01.S02 · **Status:** authorized 2026-10-16, not started — no acceptance recorded
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T2.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-No evidence is recorded against this slice. `T2.P01.S02` is a proposed, unauthorized child of
-T2.P01: it has not been implemented, reviewed or accepted, so this record claims no result, no
-tested revision, no gate state, no conformance fixture and no commit.
+No evidence is recorded against this slice. `T2.P01.S02` is owner-authorized
+([record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)) but has not been
+implemented, reviewed or accepted, so this record claims no result, no tested revision, no gate
+state, no conformance fixture and no commit.
 
 When the slice is implemented, the evidence its declared tier requires is recorded here in the form
 [the tests README](../../../../../apps/editor/tests/README.md#what-a-change-requires) requires, and

@@ -14,7 +14,11 @@ This is the phase's **FINAL PHASE GATE**.
 
 ## Prerequisite
 
-S01–S03 accepted; `T3.P01.S02`'s `conditional-save-current-v1` accepted at this slice's trusted base.
+S01–S03 accepted; `T3.P01.S02`'s `conditional-save-current-v1` accepted at this slice's trusted base;
+T1's Head Save integration accepted
+([assignment](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). The integration is a
+slice dependency, not a capability. The gate checker cannot see it, so it is checked at this slice's
+start against the named T1 slice's acceptance record.
 
 ## Scope
 
@@ -28,11 +32,12 @@ Add duplicate/delete through the common scoped actions/Find list and the S02 ope
 canonical source JSON download/parse/reload through the shared project replacement guard. Reload
 validates everything before installation, cancels one active preview, starts a new session/history
 baseline and never creates a synthetic source edit. It is source JSON with existing static
-references, not a portable asset package. Cloud reads use retained validated paths. Consume
-`T3.P01.S02`'s separately accepted `conditional-save-current-v1` capability for
-create-only/expected-saved-base Save and reload. Dirty state tracks local accepted contents versus
-the acknowledged saved digest; an in-flight older Save cannot mark newer edits saved. Conflicts
-preserve work and require reload/explicit resolution. Persistence adds no Undo stack or source edit.
+references, not a portable asset package. Cloud reads use retained validated paths. Save and reload
+go through `T3.P01.S02`'s accepted `conditional-save-current-v1` and its client Save state, as
+mounted by T1's Head integration. This slice builds no Save state, protocol or Head control of its
+own. It proves the creator journey: dirty versus saved by full captured source, an in-flight older
+Save never marking newer edits saved, and a conflict preserving work until Reload. Persistence adds
+no Undo stack or source edit.
 After T3 activation use the accepted unit Save adapter.
 
 ## Exit criteria
