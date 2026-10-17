@@ -1,10 +1,23 @@
 import type { ProjectDocument } from '@portfolio/project-model';
+import {
+	isSavedBaseToken,
+	readSaveRequest,
+	type SaveAcknowledgement,
+	type SaveRequest
+} from '@portfolio/project-model/save';
 import { validateProject } from '$lib/project/project-codec';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 
 export type ProjectLoginIntent = 'projects' | 'save';
 
-export const PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v1';
+/**
+ * The pending draft now carries the whole `SaveAcceptedSource@1` request
+ * (precondition, operation ID and canonical source), not a bare document: a
+ * resumed save can never become an unconditioned write. `v1` entries are legacy
+ * and read as invalid.
+ */
+export const PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v2';
+export const LEGACY_PENDING_CLOUD_SAVE_KEY = 'museum:pending-cloud-save:v1';
 export const PENDING_CLOUD_SAVE_MAX_AGE_MS = 15 * 60 * 1000;
 export { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 
@@ -37,7 +50,8 @@ export type SessionStorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeIt
 export type PendingCloudSaveResult =
 	| { status: 'missing' }
 	| { status: 'invalid' | 'expired' }
-	| { status: 'ready'; project: ProjectDocument };
+	/** `project` keeps the `/` route's existing reader shape compatible. */
+	| { status: 'ready'; project: ProjectDocument; save: SaveRequest };
 
 export type ProjectSummary = {
 	id: string;
@@ -47,7 +61,13 @@ export type ProjectSummary = {
 };
 
 export type SavedProject = Omit<ProjectSummary, 'id'> & { projectId: string };
-export type LoadedProject = SavedProject & { document: unknown };
+export type LoadedProject = SavedProject & {
+	document: unknown;
+	/** Additive saved-base metadata; absent on a pre-migration row. */
+	savedBaseToken: string | null;
+	savedRevision: { projectId: string; revisionId: string } | null;
+	savedSourceContentId: string | null;
+};
 
 export type ProjectSession =
 	| { authenticated: false }
@@ -69,7 +89,8 @@ export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
 
 export type ProjectApi = {
 	listProjects(signal?: AbortSignal): Promise<ProjectSummary[]>;
-	saveProject(project: ProjectDocument, signal?: AbortSignal): Promise<SavedProject>;
+	/** The one write: conditional `SaveAcceptedSource@1`, never a bare document. */
+	saveAcceptedSource(request: SaveRequest, signal?: AbortSignal): Promise<SaveAcknowledgement>;
 	loadProject(projectId: string, signal?: AbortSignal): Promise<LoadedProject>;
 	listAssets(projectId: string, signal?: AbortSignal): Promise<ProjectAssetMetadata[]>;
 	registerAsset(projectId: string, name: string, signal?: AbortSignal): Promise<ProjectAssetMetadata>;
@@ -89,13 +110,20 @@ export type ProjectPersistenceErrorCode =
 	| 'not-found'
 	| 'too-large'
 	| 'network'
-	| 'server';
+	| 'server'
+	/** The expected saved base moved; reload explicitly, never overwrite. */
+	| 'conflict'
+	/** `create-only` found an existing project; owner-blind. */
+	| 'collision';
 
 export class ProjectPersistenceError extends Error {
 	constructor(
 		readonly code: ProjectPersistenceErrorCode,
 		message: string,
-		readonly status?: number
+		readonly status?: number,
+		/** The server's typed refusal, when it supplied one. */
+		readonly serverCode?: string,
+		readonly issues?: readonly { path: string; code: string; message: string }[]
 	) {
 		super(message);
 		this.name = 'ProjectPersistenceError';
@@ -133,14 +161,14 @@ export function createProjectApi(
 	return {
 		listProjects: (signal) =>
 			requestJson(requestFetch, origin, '/projects', { method: 'GET' }, signal).then(readProjectList),
-		saveProject: (project, signal) =>
+		saveAcceptedSource: (request, signal) =>
 			requestJson(
 				requestFetch,
 				origin,
-				`/projects/${encodeURIComponent(project.id)}`,
-				{ method: 'PUT', body: JSON.stringify({ document: project }) },
+				`/projects/${encodeURIComponent(request.capture.projectId)}`,
+				{ method: 'PUT', body: JSON.stringify(request) },
 				signal
-			).then(readSavedProject),
+			).then(readSaveAcknowledgement),
 		loadProject: (projectId, signal) =>
 			requestJson(
 				requestFetch,
@@ -189,24 +217,30 @@ export function createProjectId(randomUUID: () => string = () => globalThis.cryp
 }
 
 export function writePendingCloudSave(
-	project: unknown,
+	save: SaveRequest,
 	storage: SessionStorageLike | null = browserSessionStorage(),
 	createdAt = Date.now()
 ): boolean {
 	if (!storage || !Number.isFinite(createdAt)) return false;
-	// This is a **writer** (it persists canonical JSON into the session
-	// handoff), so it carries the same gate as `serializeProject()`: the
-	// current-format validators themselves. PR #115 (WP3) deleted the separate
-	// project-level version rule, so the gate and the reader cannot drift apart.
-	// Unreachable for documents the editor holds (always current format);
-	// defensive for imported/hand-built input.
+	// The draft is a capture, not a document: validate the protocol shape and the
+	// captured project before persisting, so a resumed save can only reach the
+	// server with its precondition and operation ID intact.
+	const parsed = readSaveRequest(save);
+	if (parsed.kind === 'invalid') return false;
+	let project: unknown;
+	try {
+		project = JSON.parse(parsed.request.capture.canonicalJson);
+	} catch {
+		return false;
+	}
 	const validation = validateProject(project);
 	if (!validation.success) return false;
+	// The draft pairs this capture with the document it names. A capture whose
+	// project ID disagrees with its own bytes would resume a Save against one
+	// project while the reader shows another, so it is not a draft at all.
+	if (validation.project.id !== parsed.request.capture.projectId) return false;
 	try {
-		storage.setItem(
-			PENDING_CLOUD_SAVE_KEY,
-			JSON.stringify({ createdAt, project: JSON.parse(validation.canonicalJson) })
-		);
+		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
 	} catch {
 		return false;
@@ -219,10 +253,22 @@ export function readPendingCloudSave(
 ): PendingCloudSaveResult {
 	if (!storage) return { status: 'missing' };
 	const raw = storage.getItem(PENDING_CLOUD_SAVE_KEY);
-	if (!raw) return { status: 'missing' };
+	if (!raw) {
+		// A v1 entry held only a document and cannot become a conditional Save.
+		// Read it as invalid (and clear it) rather than pretending it is absent.
+		if (storage.getItem(LEGACY_PENDING_CLOUD_SAVE_KEY) !== null) {
+			safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
+			return { status: 'invalid' };
+		}
+		return { status: 'missing' };
+	}
 	try {
 		const value: unknown = JSON.parse(raw);
-		if (!isRecord(value) || Object.keys(value).some((key) => !['createdAt', 'project'].includes(key))) {
+		if (
+			!isRecord(value) ||
+			Object.keys(value).length !== 2 ||
+			Object.keys(value).some((key) => !['createdAt', 'save'].includes(key))
+		) {
 			throw new Error('invalid handoff');
 		}
 		if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt) || value.createdAt > now) {
@@ -232,22 +278,32 @@ export function readPendingCloudSave(
 			storage.removeItem(PENDING_CLOUD_SAVE_KEY);
 			return { status: 'expired' };
 		}
-		const validation = validateProject(value.project);
+		const parsed = readSaveRequest(value.save);
+		if (parsed.kind === 'invalid') throw new Error('invalid capture');
+		const validation = validateProject(JSON.parse(parsed.request.capture.canonicalJson));
 		if (!validation.success) throw new Error('invalid project');
-		return { status: 'ready', project: JSON.parse(validation.canonicalJson) as ProjectDocument };
+		// Same rule on the read side: the capture and the document it names must
+		// describe one project, or the entry is invalid and cleared.
+		if (validation.project.id !== parsed.request.capture.projectId) throw new Error('capture mismatch');
+		return {
+			status: 'ready',
+			project: JSON.parse(validation.canonicalJson) as ProjectDocument,
+			save: parsed.request
+		};
 	} catch {
-		try {
-			storage.removeItem(PENDING_CLOUD_SAVE_KEY);
-		} catch {
-			// Session storage can disappear while a tab is closing.
-		}
+		safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
 		return { status: 'invalid' };
 	}
 }
 
 export function clearPendingCloudSave(storage: SessionStorageLike | null = browserSessionStorage()): void {
+	safeRemove(storage, PENDING_CLOUD_SAVE_KEY);
+	safeRemove(storage, LEGACY_PENDING_CLOUD_SAVE_KEY);
+}
+
+function safeRemove(storage: SessionStorageLike | null, key: string): void {
 	try {
-		storage?.removeItem(PENDING_CLOUD_SAVE_KEY);
+		storage?.removeItem(key);
 	} catch {
 		// Best-effort cleanup; the slot is session-scoped and expires on read.
 	}
@@ -453,11 +509,32 @@ async function readBoundedAssetBody(response: Response, expectedLength: number):
 }
 
 function responseError(status: number, body: unknown): ProjectPersistenceError {
-	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status);
-	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status);
-	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status);
-	if (status >= 500) return new ProjectPersistenceError('server', 'Cloud service is unavailable', status);
-	return new ProjectPersistenceError('invalid', readErrorMessage(body) ?? 'Cloud request was rejected', status);
+	const serverCode = readErrorCode(body);
+	const issues = readErrorIssues(body);
+	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
+	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
+	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status, serverCode);
+	// A gateway timeout is the ambiguous case the receipt protocol exists for: the
+	// server may have committed the Save, so the caller must retry the *same*
+	// captured operation and let its receipt decide instead of minting a fresh one
+	// from a base that has already moved. A throttle is the unambiguous twin: the
+	// write was not applied, and the same capture is still safe to resend.
+	if (status === 408) return new ProjectPersistenceError('network', 'Cloud request timed out', status, serverCode);
+	if (status === 429) return new ProjectPersistenceError('network', 'Cloud request was throttled', status, serverCode);
+	if (status >= 500) return new ProjectPersistenceError('server', 'Cloud service is unavailable', status, serverCode);
+	if (status === 409 && serverCode === 'conflict') {
+		return new ProjectPersistenceError('conflict', 'The saved base changed; reload before saving', status, serverCode);
+	}
+	if (status === 409 && serverCode === 'save_collision') {
+		return new ProjectPersistenceError('collision', 'A project with this ID already exists', status, serverCode);
+	}
+	return new ProjectPersistenceError(
+		'invalid',
+		readErrorMessage(body) ?? 'Cloud request was rejected',
+		status,
+		serverCode,
+		issues
+	);
 }
 
 function readSession(value: unknown): ProjectSession {
@@ -534,11 +611,56 @@ function readSavedProject(value: unknown): SavedProject {
 	};
 }
 
+function readSaveAcknowledgement(value: unknown): SaveAcknowledgement {
+	const saved = readSavedProject(value);
+	if (!isRecord(value)) throw invalidResponse();
+	const savedBaseToken = value.savedBaseToken;
+	if (!isSavedBaseToken(savedBaseToken)) throw invalidResponse();
+	return {
+		...saved,
+		savedBaseToken,
+		savedRevision: readRevision(value.savedRevision),
+		sourceContentId: readContentId(value.sourceContentId)
+	};
+}
+
 function readLoadedProject(value: unknown): LoadedProject {
 	if (!isRecord(value) || !Object.prototype.hasOwnProperty.call(value, 'document')) {
 		throw invalidResponse();
 	}
-	return { ...readSavedProject(value), document: value.document };
+	return {
+		...readSavedProject(value),
+		document: value.document,
+		savedBaseToken: readNullableSavedBaseToken(value.savedBaseToken),
+		savedRevision: readNullableRevision(value.savedRevision),
+		savedSourceContentId: readNullableContentId(value.savedSourceContentId)
+	};
+}
+
+function readRevision(value: unknown): { projectId: string; revisionId: string } {
+	if (!isRecord(value)) throw invalidResponse();
+	return { projectId: readString(value.projectId), revisionId: readString(value.revisionId) };
+}
+
+function readNullableRevision(value: unknown): { projectId: string; revisionId: string } | null {
+	if (value === null || value === undefined) return null;
+	return readRevision(value);
+}
+
+function readNullableSavedBaseToken(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	if (!isSavedBaseToken(value)) throw invalidResponse();
+	return value as string;
+}
+
+function readContentId(value: unknown): string {
+	if (typeof value !== 'string' || !/^sha256-[0-9a-f]{64}$/.test(value)) throw invalidResponse();
+	return value;
+}
+
+function readNullableContentId(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	return readContentId(value);
 }
 
 function readSummary(value: unknown): ProjectSummary {
@@ -621,6 +743,23 @@ function invalidResponse(): ProjectPersistenceError {
 function readErrorMessage(value: unknown): string | null {
 	if (!isRecord(value) || !isRecord(value.error) || typeof value.error.message !== 'string') return null;
 	return value.error.message;
+}
+
+function readErrorCode(value: unknown): string | undefined {
+	if (!isRecord(value) || !isRecord(value.error) || typeof value.error.code !== 'string') return undefined;
+	return value.error.code;
+}
+
+function readErrorIssues(value: unknown): { path: string; code: string; message: string }[] | undefined {
+	if (!isRecord(value) || !Array.isArray(value.issues)) return undefined;
+	const issues: { path: string; code: string; message: string }[] = [];
+	for (const issue of value.issues) {
+		if (!isRecord(issue) || typeof issue.path !== 'string' || typeof issue.code !== 'string' || typeof issue.message !== 'string') {
+			return undefined;
+		}
+		issues.push({ path: issue.path, code: issue.code, message: issue.message });
+	}
+	return issues;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

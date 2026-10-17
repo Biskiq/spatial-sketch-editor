@@ -24,6 +24,8 @@ import { EDITOR_SRC, importClosure, relativeToRepo } from '../../helpers/import-
 const PUBLIC_ROUTE_ROOT = join(EDITOR_SRC, 'routes', 'p', '[publicationId]', '+page.svelte');
 const EDITOR_F4_DIR = join(EDITOR_SRC, 'lib', 'authoring', 'f4');
 const COORDINATOR = join(EDITOR_F4_DIR, 'acceptance-coordinator.ts');
+const SAVE_STATE = join(EDITOR_SRC, 'lib', 'authoring', 'save', 'save-state.ts');
+const SAVE_CLIENT = join(EDITOR_SRC, 'lib', 'platform', 'project-persistence.ts');
 
 describe('F.4 editor-only isolation', () => {
 	it('keeps the acceptance coordinator and its history out of the public route closure', () => {
@@ -41,6 +43,32 @@ describe('F.4 editor-only isolation', () => {
 		// The guarantee: no editor authoring machinery, and nothing of this slice's
 		// editor half, is on the public path.
 		expect(reached.filter((file) => file.startsWith('apps/editor/src/lib/authoring/'))).toEqual([]);
+		// T3.P01.S02: the conditional Save state and its cloud client are
+		// editor-only; a visitor chunk must not carry a writer.
+		expect(reached).not.toContain('apps/editor/src/lib/platform/project-persistence.ts');
+		expect(reached.filter((file) => file.startsWith('apps/editor/src/lib/authoring/save/'))).toEqual([]);
+	});
+
+	it('keeps the Save state framework-free', () => {
+		expect(existsSync(SAVE_STATE), 'the Save state must exist for this proof to mean anything').toBe(true);
+		expect(existsSync(SAVE_CLIENT), 'the conditional client must exist for this proof to mean anything').toBe(true);
+
+		const reached = [...importClosure([SAVE_STATE])].map(relativeToRepo);
+		expect(reached).toContain('apps/editor/src/lib/authoring/save/save-state.ts');
+		// The closure helper resolves a package subpath to the package root entry;
+		// the runtime import is still the shared package, not a local copy.
+		expect(reached).toContain('packages/project-model/src/index.ts');
+		// No Svelte runes, no host/Stage/route module, no visitor state: the state
+		// machine takes explicit inputs and commands only.
+		expect(
+			reached.filter(
+				(file) =>
+					file.includes('/lib/visitor/') ||
+					file.includes('/lib/authoring/stage/') ||
+					file.includes('/routes/') ||
+					file.endsWith('.svelte')
+			)
+		).toEqual([]);
 	});
 
 	it('reaches no visitor module from the coordinator', () => {

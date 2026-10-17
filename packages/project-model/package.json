@@ -23,6 +23,10 @@
     "./references/unit-resolution": {
       "types": "./src/references/unit-resolution.ts",
       "default": "./src/references/unit-resolution.ts"
+    },
+    "./save": {
+      "types": "./src/save/index.ts",
+      "default": "./src/save/index.ts"
     }
   },
   "files": ["src"],
