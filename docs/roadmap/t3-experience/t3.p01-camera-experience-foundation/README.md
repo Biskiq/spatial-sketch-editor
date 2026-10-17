@@ -293,7 +293,8 @@ ID refuses. A network-ambiguous Save is resolved via its receipt before retrying
 Receipt/history metadata never enters authored units. Staging occurs before short metadata commits;
 failed validation/revision/resource checks leave prior source/lock intact and staged bytes collectable.
 
-S02 activates only the current-source protocol. S03 proves the new unit adapter inactive. S04 fences
+S02 activates only the current-source protocol. S05 (the first half of the S03 split) proved the
+new unit adapter inactive. S04 fences
 old writers, migrates stored sources and switches all callers to the unit adapter atomically; it
 retires current-source normal admission and scope. No ordinary Undo crosses that format boundary.
 
@@ -301,8 +302,8 @@ retires current-source normal admission and scope. No ordinary Undo crosses that
 
 The [coordinated matrix/DAG and capability-readiness amendment](../../cross-track-execution.md) defines the common
 assignments. T1 S01 supplies F1/F3; T1 S03 alone provides the initial local F4. T3 S01 provides F2,
-S02 adds early conditional Save independently of F2, and S03 extends unit/compound/Save/handoff
-conformance before activation. Required base and extension capabilities must be accepted at trusted
+S02 adds early conditional Save independently of F2, and the S03 split (S05: unit acceptance and
+unit Save; S06: runtime and Camera handoff) extended unit/Save/handoff conformance before activation. Required base and extension capabilities must be accepted at trusted
 base; overall local gate acceptance cannot authorize an unimplemented cloud or compound consumer.
 
 **Viewport:** no slice of this phase consumes it; the first authoring surface in the candidate
@@ -386,7 +387,11 @@ hold. Refusals must be reviewable results with unchanged accepted state, not sil
 
 - **Authorized:** `T3.P01.S01` (2026-10-16, shipped in PR #131) and `T3.P01.S02` (2026-10-16, shipped
   in PR #133), which ran in parallel with `T2.P01.S02` under the
-  [pair protocol](../../cross-track-execution.md#parallel-pair-2026-10-16).
+  [pair protocol](../../cross-track-execution.md#parallel-pair-2026-10-16); `T3.P01.S03` (2026-10-17,
+  [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), executed through its
+  registered split `T3.P01.S05` (PR #140) and `T3.P01.S06` (PR #141)
+  ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)) and closed
+  as the reconciled umbrella. All five are shipped.
 - **Save ownership (settled 2026-10-16,
   [record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)):** S02 owns the
   protocol, the server path, the client and the framework-free client Save state; T1 owns the Head
@@ -396,6 +401,7 @@ hold. Refusals must be reviewable results with unchanged accepted state, not sil
 - **Before S03 is authorized:** S01 and S02 accepted on `main`.
 - **Before S04 is authorized:** the AM-7 inventory, migration/refusal coverage, quiescence and
   recovery plan, any owner-accepted publication gap, and a drafted, ratified
-  `T3.camera-experience-cutover@1`.
+  `T3.camera-experience-cutover@1`. The ordered checklist, owners and evidence locations are in
+  S04's [authorization path](./t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path).
 - **No architecture-cycle window.** T3 slices are not exposures of the configured T1 window and do
   not open it.

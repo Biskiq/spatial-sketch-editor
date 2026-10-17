@@ -72,10 +72,14 @@ register owns lifecycle only.
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
-source/runtime cutover phase (S01–S04, final gate S04), with its
+source/runtime cutover phase (S01–S06, final gate S04), with its
 [F amendment drafts](./t3.p01-camera-experience-foundation/f-amendment-proposals.md) as planning
-evidence. **`T3.P01.S01`** shipped 2026-10-16 (PR #131); **`T3.P01.S02`** is owner-authorized
-([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md); `approved`, not started).
+evidence. **`T3.P01.S01`** shipped 2026-10-16 (PR #131) and **`T3.P01.S02`** shipped 2026-10-16 (PR
+#133). **`T3.P01.S03`** shipped 2026-10-17 through its registered split, **`T3.P01.S05`** (PR #140)
+and **`T3.P01.S06`** (PR #141), which accepted `unit-acceptance-v1`, `conditional-save-units-v1` and
+`camera-handoff-v1`. The final gate **`T3.P01.S04`** is the only open child. It stays `proposed`, and
+its [authorization path](./t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path)
+lists what must exist before the owner can authorize it.
 `Depends on` lists the
 external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
 

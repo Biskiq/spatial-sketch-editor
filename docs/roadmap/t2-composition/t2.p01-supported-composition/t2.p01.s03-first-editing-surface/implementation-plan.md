@@ -1,6 +1,6 @@
 # T2.P01.S03 — First coherent editing surface: implementation plan
 
-**Slice:** T2.P01.S03 · **Status:** proposed — not authorized · **Phase:** [T2.P01](../README.md) ·
+**Slice:** T2.P01.S03 · **Status:** approved — owner-authorized 2026-10-17 as batch B ([record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)), not started · **Phase:** [T2.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T2](../../README.md) · **Runbook:**
 [T2 operations](../../../../operations/t2-composition/README.md)
 
@@ -20,17 +20,21 @@ replacement baseline, selection requalification, Camera-output rebase, adapter r
 contribution points), and its acceptance records `viewport-projection-v1`, with `T1.P01.S02` as
 provider. This slice is in batch B, **after** S07
 ([conditions](../../../next-batch-2026-10-17.md#t2p01s03-launch-conditions)). It may start only when
-all of these hold:
+all of these hold. Conditions 1–4 were verified at authorization against `main` `a8e4d45e`
+([batch B record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); the runbook start step re-checks 2–4 at this slice's own trusted
+base:
 
-1. The owner authorizes it, and its register row reads `approved`. The 2026-10-17 decision does
-   not authorize it.
+1. The owner authorizes it, and its register row reads `approved`. **Met:** batch B authorization,
+   2026-10-17 (the earlier next-batch decision did not authorize it).
 2. `T1.viewport-projection@1` is `accepted`, with an `active` `viewport-projection-v1` entry, both in
-   the tree and at this slice's trusted base (`git merge-base HEAD main`).
+   the tree and at this slice's trusted base (`git merge-base HEAD main`). **Met on `main`:** accepted
+   at `ab8504aa` through S07.
 3. `T1.P01.S07` is shipped on that base. The host↔F4 wiring, adapter re-binding across installs and
    the AM-5 contribution points (task/instrument factory, Card facts, Place/Find entries) are then on
    `main`. This slice registers through them and edits no host, route or shell core module.
+   **Met on `main`:** PR #137 (merge `a0026cf4`).
 4. `local-single-domain-v1` stays `active`, and `T2.P01.S02` stays shipped. Both hold today.
-5. If it runs alongside `T1.P01.S04`, the [shared-file protocol](../../../cross-track-execution.md#authorized-batch-2026-10-17)
+5. If it runs alongside `T1.P01.S04`, the [batch B shared-file protocol](../../../cross-track-execution.md#authorized-batch-b-2026-10-17)
    is in force: each writes only its own adapter, and T1 alone writes the Head and host core.
 
 It does **not** wait for S04's precision tools, the Head Save integration (`T2.P01.S04`'s
@@ -68,5 +72,6 @@ equals its committed pose within 1e-6 meters/radians; no post-preview Y fix.
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**; it holds no implementation permission, and nothing
-here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).
+This slice is **approved** (owner-authorized 2026-10-17 as batch B, [record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and not
+started. Implementation starts only through the T2 runbook start step after the authorizing PR
+merges; nothing here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).

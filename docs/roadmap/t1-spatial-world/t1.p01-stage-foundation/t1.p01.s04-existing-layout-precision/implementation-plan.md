@@ -1,12 +1,12 @@
 # T1.P01.S04 — Existing Layout precision: implementation plan
 
-**Slice:** T1.P01.S04 · **Status:** proposed — not authorized · **Phase:** [T1.P01](../README.md) ·
+**Slice:** T1.P01.S04 · **Status:** approved — owner-authorized 2026-10-17 as batch B ([record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)), not started · **Phase:** [T1.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:**
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
 ```text
 CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
+REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: affected-subsystem
 INTEGRATION ROUTE: ../t1.p01.s06-integrated-final-gate/implementation-plan.md
 ```
@@ -18,8 +18,9 @@ The integration route is the phase's exhaustive final gate; a narrowed tier neve
 S02/S03 providers accepted at trusted base. Under owner
 rulings D1/D2 of 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)),
 that means `T1.P01.S07` shipped and `viewport-projection-v1` accepted through it, both at this slice's
-trusted base. Until then this slice cannot start: its `Requires` names a capability that is still
-`ratified`. **Produces:** useful scalar authoring/source download
+trusted base. Both hold on `main` since PR #137 (`viewport-projection-v1` accepted at `ab8504aa`),
+verified at authorization ([batch B record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); the runbook start step re-checks them
+at this slice's own trusted base. **Produces:** useful scalar authoring/source download
 and deferred shell discovery depth; re-arms M1 and M2. No schema change.
 
 **Host↔F4 wiring is consumed, not built here (ruling D2, 2026-10-17, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)).**
@@ -35,8 +36,8 @@ This slice mounts `T3.P01.S02`'s framework-free client Save state and commands i
 includes unsaved-work signalling at project exit and replacement, resuming a pending sign-in draft, and
 routing *Reload remote* through the host's replacement guard. T3 owns the protocol, the server and the
 state machine; this slice builds none of them. `F4.intent-acceptance@1:conditional-save-current-v1`
-(accepted since PR #133) joins this plan's `Requires` and the register row at this slice's
-authorization, since a scope is fixed then and never mid-slice. This slice is the Head's sole writer
+(accepted since PR #133) joined this plan's `Requires` and the register row at this slice's
+authorization (batch B ruling B1), since a scope is fixed then and never mid-slice. This slice is the Head's sole writer
 while it runs, and it must be accepted before `T2.P01.S04` starts.
 
 ## Scope
@@ -81,11 +82,14 @@ no object/history; replacement clears its ghost. This is the phase's smallest gr
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**: it holds no implementation permission, and no
-implementation, acceptance, readiness, revision or evidence is claimed here. It consumes
+This slice is **approved** (owner-authorized 2026-10-17 as batch B, [record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and not
+started. Implementation starts only through the T1 runbook start step after the authorizing PR
+merges; no implementation, acceptance, readiness, revision or evidence is claimed here. It consumes
 `F1.reference@1`, `F4.intent-acceptance@1` and `T1.viewport-projection@1` and requires the
 accepted capabilities `F1.reference@1:references-v1` and
-`F4.intent-acceptance@1:local-single-domain-v1` and `T1.viewport-projection@1:viewport-projection-v1`; the S02 viewport provider and the S03
+`F4.intent-acceptance@1:local-single-domain-v1`, `F4.intent-acceptance@1:conditional-save-current-v1` and
+`T1.viewport-projection@1:viewport-projection-v1`; the S02 viewport provider and the S03
 local-acceptance provider must be accepted at this slice's trusted base before it is eligible.
-It is one of the phase's three listed cycle-window exposures, so an authorized start opens the
-architecture-cycle window. Nothing here marks any gate `implemented` or `accepted`.
+It is one of the phase's three listed cycle-window exposures. The window has been open since
+`T1.P01.S02` opened it on 2026-10-16, so this slice's start records no new opening (batch B ruling
+B4); its exposure row and mechanism verdicts are recorded at its closeout. Nothing here marks any gate `implemented` or `accepted`.
