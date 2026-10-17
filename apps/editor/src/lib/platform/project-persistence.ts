@@ -235,6 +235,10 @@ export function writePendingCloudSave(
 	}
 	const validation = validateProject(project);
 	if (!validation.success) return false;
+	// The draft pairs this capture with the document it names. A capture whose
+	// project ID disagrees with its own bytes would resume a Save against one
+	// project while the reader shows another, so it is not a draft at all.
+	if (validation.project.id !== parsed.request.capture.projectId) return false;
 	try {
 		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
@@ -278,6 +282,9 @@ export function readPendingCloudSave(
 		if (parsed.kind === 'invalid') throw new Error('invalid capture');
 		const validation = validateProject(JSON.parse(parsed.request.capture.canonicalJson));
 		if (!validation.success) throw new Error('invalid project');
+		// Same rule on the read side: the capture and the document it names must
+		// describe one project, or the entry is invalid and cleared.
+		if (validation.project.id !== parsed.request.capture.projectId) throw new Error('capture mismatch');
 		return {
 			status: 'ready',
 			project: JSON.parse(validation.canonicalJson) as ProjectDocument,
@@ -507,6 +514,13 @@ function responseError(status: number, body: unknown): ProjectPersistenceError {
 	if (status === 401) return new ProjectPersistenceError('auth', 'Sign-in is required', status, serverCode);
 	if (status === 404) return new ProjectPersistenceError('not-found', 'Project not found', status, serverCode);
 	if (status === 413) return new ProjectPersistenceError('too-large', 'Project payload is too large', status, serverCode);
+	// A gateway timeout is the ambiguous case the receipt protocol exists for: the
+	// server may have committed the Save, so the caller must retry the *same*
+	// captured operation and let its receipt decide instead of minting a fresh one
+	// from a base that has already moved. A throttle is the unambiguous twin: the
+	// write was not applied, and the same capture is still safe to resend.
+	if (status === 408) return new ProjectPersistenceError('network', 'Cloud request timed out', status, serverCode);
+	if (status === 429) return new ProjectPersistenceError('network', 'Cloud request was throttled', status, serverCode);
 	if (status >= 500) return new ProjectPersistenceError('server', 'Cloud service is unavailable', status, serverCode);
 	if (status === 409 && serverCode === 'conflict') {
 		return new ProjectPersistenceError('conflict', 'The saved base changed; reload before saving', status, serverCode);

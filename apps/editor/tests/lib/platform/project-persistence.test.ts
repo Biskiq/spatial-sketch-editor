@@ -120,6 +120,28 @@ describe('client Save transport', () => {
 		}
 	});
 
+	it('treats a gateway timeout and a throttle as retryable transport failures', async () => {
+		for (const status of [408, 429]) {
+			const { request } = await fixture();
+			const api = createProjectApi({
+				apiOrigin: 'https://api.example',
+				fetch: async () =>
+					new Response(JSON.stringify({ error: { code: 'upstream', message: 'later' } }), {
+						status,
+						headers: { 'content-type': 'application/json' }
+					})
+			});
+			if (!api) throw new Error('api was not created');
+			// `network` is what keeps the capture so the retry replays the same
+			// operation and resolves through its receipt.
+			await expect(api.saveAcceptedSource(request)).rejects.toMatchObject({
+				name: 'ProjectPersistenceError',
+				code: 'network',
+				status
+			});
+		}
+	});
+
 	it('reads saved-base metadata beside the document, including a legacy null', async () => {
 		const { project, sourceContentId } = await fixture();
 		const responses = [
@@ -201,6 +223,29 @@ describe('pending cloud Save draft', () => {
 		expect(writePendingCloudSave(request, expired, 1000)).toBe(true);
 		expect(readPendingCloudSave(expired, 1000 + 16 * 60 * 1000)).toEqual({ status: 'expired' });
 		expect(expired.getItem(PENDING_CLOUD_SAVE_KEY)).toBeNull();
+	});
+
+	it('refuses a draft whose capture names a different project than its bytes', async () => {
+		const { request } = await fixture();
+		// Shape-valid (the capture and revision agree with each other) but the
+		// canonical bytes belong to another project: resuming it would save one
+		// project while the reader shows another.
+		const mismatched = {
+			...request,
+			capture: {
+				...request.capture,
+				projectId: 'project:other',
+				acceptedRevision: { projectId: 'project:other', revisionId: 'revision-1' }
+			}
+		};
+		const storage = memoryStorage();
+		expect(writePendingCloudSave(mismatched, storage, 1000)).toBe(false);
+		expect(storage.getItem(PENDING_CLOUD_SAVE_KEY)).toBeNull();
+
+		// The same entry written by an older build is invalid on read and cleared.
+		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt: 1000, save: mismatched }));
+		expect(readPendingCloudSave(storage, 2000)).toEqual({ status: 'invalid' });
+		expect(storage.getItem(PENDING_CLOUD_SAVE_KEY)).toBeNull();
 	});
 
 	it('clears both the current and legacy slots', async () => {

@@ -22,9 +22,22 @@ ALTER TABLE projects
 	ALTER COLUMN saved_base_token SET DEFAULT ('saved-base:' || gen_random_uuid()::text),
 	ALTER COLUMN saved_base_token SET NOT NULL;
 
-ALTER TABLE projects
-	ADD CONSTRAINT projects_saved_base_token_format
-	CHECK (saved_base_token ~ '^saved-base:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+-- Guarded like every other statement in this tree: two migration runners that
+-- race on the same database both reach this point, and Postgres has no
+-- `ADD CONSTRAINT IF NOT EXISTS`. The loser would abort an otherwise complete
+-- schema and exit non-zero.
+DO $$
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint
+		WHERE conrelid = 'projects'::regclass
+			AND conname = 'projects_saved_base_token_format'
+	) THEN
+		ALTER TABLE projects
+			ADD CONSTRAINT projects_saved_base_token_format
+			CHECK (saved_base_token ~ '^saved-base:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
+	END IF;
+END $$;
 
 -- One receipt per (project, Save operation ID). It binds the operation to the
 -- full canonical bytes (cursor included) and the precondition, so an identical

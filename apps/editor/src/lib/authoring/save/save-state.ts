@@ -15,9 +15,15 @@
  * - **acknowledgment marks only what it captured**: edits made during an
  *   in-flight Save stay dirty.
  * - **an old session epoch's response is dropped**: it neither marks saved nor
- *   installs anything.
+ *   installs anything, and its capture is discarded with it — the state now
+ *   describes another project, so retrying it would write the previous one.
  * - **a conflict preserves local source/history**: reload is an explicit offer,
- *   never an automatic merge or overwrite.
+ *   never an automatic merge or overwrite, and a load is installed only into the
+ *   conflict that requested it.
+ * - **a snapshot is self-consistent**: a steady-state `status` is derived from
+ *   the same full-source comparison as `dirty`, so it can never read `saved`
+ *   over unsaved edits. An acknowledgement that does not describe the captured
+ *   source is refused instead of adopted.
  */
 
 import type { AcceptedRevision, ProjectDocument } from '@portfolio/project-model';
@@ -141,7 +147,11 @@ export type ReloadOffer =
 export type SaveState = {
 	getSnapshot(): SaveSnapshot;
 	subscribe(listener: (snapshot: SaveSnapshot) => void): () => void;
-	/** Recompute saved/dirty from the current source (call after accepted edits). */
+	/**
+	 * Recompute saved/dirty and notify listeners. Optional for correctness: a
+	 * snapshot derives its steady status from the current source already, so an
+	 * accepted edit is never reported as saved.
+	 */
 	refresh(): SaveSnapshot;
 	/** The one command. Reuses a retained capture/precondition when it is still exact. */
 	save(signal?: AbortSignal): Promise<SaveOutcome>;
@@ -208,9 +218,30 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		return current !== baseline.savedCanonicalJson;
 	}
 
-	function derivedStatus(): SaveStatus {
+	function steadyStatus(currentDirty: boolean): SaveStatus {
 		if (baseline.savedBaseToken === null) return 'never-saved';
-		return isDirty() ? 'dirty' : 'saved';
+		return currentDirty ? 'dirty' : 'saved';
+	}
+
+	function derivedStatus(): SaveStatus {
+		return steadyStatus(isDirty());
+	}
+
+	/**
+	 * The status one snapshot reports. A transient state keeps its own name; a
+	 * steady state is derived from the **same** full-source comparison the
+	 * `dirty` flag uses, so a snapshot can never claim `saved` while `dirty` is
+	 * true. An accepted edit is therefore visible without waiting for
+	 * `refresh()` — the Head renders one consistent answer either way.
+	 */
+	function reportedStatus(currentDirty: boolean): SaveStatus {
+		const transient =
+			status === 'saving' ||
+			status === 'conflict' ||
+			status === 'refused' ||
+			status === 'error' ||
+			status === 'auth-required';
+		return transient ? status : steadyStatus(currentDirty);
 	}
 
 	// A pre-migration row has a token but no captured contents to compare, so it
@@ -220,7 +251,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	function snapshot(): SaveSnapshot {
 		const currentDirty = isDirty();
 		return {
-			status,
+			status: reportedStatus(currentDirty),
 			dirty: currentDirty,
 			busy: inFlight !== null,
 			pending: pending !== null,
@@ -301,6 +332,10 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		// session's state.
 		if (epoch() !== requestEpoch || inFlight?.epoch !== requestEpoch) {
 			inFlight = null;
+			// The replaced session owns neither this outcome nor its capture: the
+			// state now describes another project, so retrying the old capture
+			// would write the previous one under a token this session never held.
+			pending = null;
 			status = derivedStatus();
 			emit();
 			return { kind: 'stale-epoch' };
@@ -309,11 +344,32 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 
 		switch (result.kind) {
 			case 'saved': {
+				const acknowledged = result.acknowledgement;
+				// The acknowledgement answers exactly this capture. A response that
+				// describes other contents or another project is a protocol
+				// violation, not a saved state: adopting it would pair a foreign
+				// token/digest with these bytes. Refuse it instead of marking saved,
+				// and do not keep the capture — a replay returns the same answer.
+				if (
+					acknowledged.projectId !== request.capture.projectId ||
+					!sameAcceptedRevision(acknowledged.savedRevision, request.capture.acceptedRevision) ||
+					acknowledged.sourceContentId !== request.capture.sourceContentId
+				) {
+					pending = null;
+					error = {
+						code: 'server',
+						message: 'The Save acknowledgement does not describe the captured source',
+						retryable: false
+					};
+					status = 'error';
+					emit();
+					return { kind: 'error', message: error.message };
+				}
 				baseline = {
-					savedBaseToken: result.acknowledgement.savedBaseToken,
-					savedRevision: result.acknowledgement.savedRevision,
+					savedBaseToken: acknowledged.savedBaseToken,
+					savedRevision: acknowledged.savedRevision,
 					savedCanonicalJson: capturedJson,
-					savedSourceContentId: result.acknowledgement.sourceContentId
+					savedSourceContentId: acknowledged.sourceContentId
 				};
 				pending = null;
 				// Acknowledgment marks only the captured contents; edits made during
@@ -321,25 +377,29 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				const kind = currentCanonical() === capturedJson ? 'saved' : 'dirty';
 				status = kind;
 				emit();
-				return { kind, acknowledgement: result.acknowledgement };
+				return { kind, acknowledgement: acknowledged };
 			}
 			case 'conflict': {
 				pending = null;
 				const local = readCurrent();
-				conflict = {
+				const offer: SaveConflict = {
 					localJson: capturedJson,
 					localSourceContentId: local?.sourceContentId ?? request.capture.sourceContentId,
 					remote: null
 				};
+				conflict = offer;
 				status = 'conflict';
 				emit();
 				if (options.loadRemote) {
 					try {
 						const remote = await options.loadRemote(request.capture.projectId);
-						// Only install remote *data* into the conflict view, and only if
-						// the session/epoch still describes this conflict.
-						if (status === 'conflict' && conflict?.localJson === capturedJson) {
-							conflict = { ...conflict, remote };
+						// Only install remote *data* into the exact conflict this call
+						// created. A second Save can run while this load is outstanding
+						// (`busy` already cleared), and its conflict may capture the same
+						// bytes for another project — comparing bytes alone would install
+						// the wrong offer.
+						if (conflict === offer) {
+							conflict = { ...offer, remote };
 							emit();
 						}
 					} catch {

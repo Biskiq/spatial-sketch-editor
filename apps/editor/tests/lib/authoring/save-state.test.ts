@@ -317,4 +317,126 @@ describe('framework-free Save state', () => {
 		expect(coordinator.history().depth).toBe(before);
 		expect(coordinator.canUndo()).toBe(false);
 	});
+
+	it('reports an accepted edit as dirty in the snapshot itself, not only after refresh()', async () => {
+		const { state, coordinator, fixture, setBehaviour } = await boot();
+		setBehaviour(async (request) => acknowledgement(request));
+		await expect(state.save()).resolves.toMatchObject({ kind: 'saved' });
+
+		await acceptEdit(coordinator, fixture);
+		const snapshot = state.getSnapshot();
+		expect(snapshot.dirty).toBe(true);
+		// A snapshot may not contradict its own flag while the Head renders it.
+		expect(snapshot.status).toBe('dirty');
+	});
+
+	it('drops the retained capture when the session epoch is replaced', async () => {
+		const { state, coordinator, fixture, admitted, calls, setBehaviour } = await boot();
+		const reply = deferred<SaveTransportResult>();
+		setBehaviour(() => reply.promise);
+
+		const pending = state.save();
+		await coordinator.replace({
+			revision: { projectId: fixture.project.id, revisionId: 'revision-replaced' },
+			source: admitted.project,
+			sessionEpoch: 'session-2'
+		});
+		reply.resolve(acknowledgement(calls[0]));
+		await expect(pending).resolves.toEqual({ kind: 'stale-epoch' });
+		expect(state.getSnapshot().pending).toBe(false);
+
+		// The replaced session's capture must not be retried against the project
+		// this session now holds.
+		setBehaviour(async (request) => acknowledgement(request));
+		await state.retry();
+		expect(calls).toHaveLength(2);
+		expect(calls[1].capture.operationId).not.toBe(calls[0].capture.operationId);
+		expect(calls[1].capture.acceptedRevision).toEqual(coordinator.current().revision);
+	});
+
+	it('retains the capture across a retryable failure and retries the same operation', async () => {
+		const { state, calls, setBehaviour } = await boot();
+		setBehaviour(async () => ({ kind: 'error', message: 'Cloud request failed', retryable: true }));
+
+		await expect(state.save()).resolves.toMatchObject({ kind: 'error' });
+		expect(state.getSnapshot().pending).toBe(true);
+		expect(state.getSnapshot().status).toBe('error');
+
+		// The ambiguous Save resolves through its receipt: same capture, same ID.
+		setBehaviour(async (request) => acknowledgement(request));
+		await expect(state.retry()).resolves.toMatchObject({ kind: 'saved' });
+		expect(calls).toHaveLength(2);
+		expect(calls[1].capture.operationId).toBe(calls[0].capture.operationId);
+		expect(state.getSnapshot().pending).toBe(false);
+		expect(state.getSnapshot().status).toBe('saved');
+	});
+
+	it('mints a new operation ID after a refusal so changed bytes never reuse it', async () => {
+		const { state, calls, setBehaviour } = await boot();
+		setBehaviour(async () => ({ kind: 'refused', code: 'invalid-project', message: 'Rejected' }));
+		await state.save();
+		expect(state.getSnapshot().pending).toBe(false);
+
+		setBehaviour(async (request) => acknowledgement(request));
+		await state.save();
+		expect(calls).toHaveLength(2);
+		expect(calls[1].capture.operationId).not.toBe(calls[0].capture.operationId);
+	});
+
+	it('refuses an acknowledgement that describes other contents than the capture', async () => {
+		const { state, admitted, setBehaviour } = await boot();
+		setBehaviour(async (request) => ({
+			kind: 'saved',
+			acknowledgement: {
+				projectId: request.capture.projectId,
+				name: 'Conformance fixture',
+				version: 2,
+				updatedAt: '2026-10-16T00:00:00.000Z',
+				savedBaseToken: TOKEN_TWO,
+				savedRevision: request.capture.acceptedRevision,
+				sourceContentId: `sha256-${'0'.repeat(64)}`
+			}
+		}));
+
+		await expect(state.save()).resolves.toMatchObject({ kind: 'error' });
+		const snapshot = state.getSnapshot();
+		expect(snapshot.status).toBe('error');
+		expect(snapshot.error?.code).toBe('server');
+		// Nothing was adopted: the original base and its bytes are untouched.
+		expect(snapshot.savedBaseToken).toBe(TOKEN_ONE);
+		expect(snapshot.savedCanonicalJson).toBe(admitted.canonicalJson);
+		expect(snapshot.pending).toBe(false);
+	});
+
+	it('never installs a conflict load into a newer conflict that captured the same bytes', async () => {
+		const { coordinator, admitted, revision } = await boot();
+		const stale = deferred<SaveRemoteProject>();
+		const current = deferred<SaveRemoteProject>();
+		let loads = 0;
+		const state = createSaveState({
+			coordinator,
+			save: async () => ({ kind: 'conflict' }),
+			baseline: {
+				savedBaseToken: TOKEN_ONE,
+				savedRevision: revision,
+				savedCanonicalJson: admitted.canonicalJson,
+				savedSourceContentId: admitted.sourceContentId
+			},
+			loadRemote: () => ((loads += 1) === 1 ? stale.promise : current.promise)
+		});
+
+		const first = state.save();
+		// Let the first run reach its outstanding load, where `busy` is already clear.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const second = state.save();
+
+		stale.resolve({ ...remoteProject(admitted, revision), projectId: 'project:foreign' });
+		await first;
+		// The newer conflict owns the view; the older load is not its answer.
+		expect(state.reloadRemote()).toEqual({ kind: 'unavailable' });
+
+		current.resolve(remoteProject(admitted, revision));
+		await second;
+		expect(state.reloadRemote()).toMatchObject({ kind: 'reload', projectId: revision.projectId });
+	});
 });

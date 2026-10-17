@@ -62,6 +62,14 @@ async function createProject(cookie, document) {
 	return { projectId, request, acknowledgement: response.json() };
 }
 
+async function receiptOperations(projectId) {
+	const result = await pool.query(
+		'SELECT operation_id FROM save_receipts WHERE project_id = $1 ORDER BY operation_id',
+		[projectId]
+	);
+	return result.rows.map((row) => row.operation_id);
+}
+
 async function counts(projectId) {
 	const result = await pool.query(
 		`SELECT
@@ -91,23 +99,32 @@ after(async () => {
 test('same-base writers: exactly one winner, the loser gets a conflict and no version', async () => {
 	const cookie = await sessionCookie(app, 'google:s02-save-1');
 	const projectId = track(nextProjectId());
-	const first = await save(projectId, cookie, await saveRequestBody(projectDocument('Base', { id: projectId })));
+	const createOperation = `create-${randomUUID()}`;
+	const first = await save(
+		projectId,
+		cookie,
+		await saveRequestBody(projectDocument('Base', { id: projectId }), { operationId: createOperation })
+	);
 	assert.equal(first.statusCode, 200);
 	const token = first.json().savedBaseToken;
 
+	const leftOperation = `left-${randomUUID()}`;
+	const rightOperation = `right-${randomUUID()}`;
 	const [left, right] = await Promise.all([
 		save(
 			projectId,
 			cookie,
 			await saveRequestBody(projectDocument('Left', { id: projectId }), {
-				precondition: { kind: 'expected-saved-base', token }
+				precondition: { kind: 'expected-saved-base', token },
+				operationId: leftOperation
 			})
 		),
 		save(
 			projectId,
 			cookie,
 			await saveRequestBody(projectDocument('Right', { id: projectId }), {
-				precondition: { kind: 'expected-saved-base', token }
+				precondition: { kind: 'expected-saved-base', token },
+				operationId: rightOperation
 			})
 		)
 	]);
@@ -123,6 +140,11 @@ test('same-base writers: exactly one winner, the loser gets a conflict and no ve
 	assert.equal(state.latestVersion, 2);
 	assert.equal(state.receipts, 2);
 	assert.notEqual(state.savedBaseToken, token);
+	// One receipt for the create and one for the winner: the loser wrote none.
+	assert.deepEqual(
+		(await receiptOperations(projectId)).sort(),
+		[createOperation, left.statusCode === 200 ? leftOperation : rightOperation].sort()
+	);
 });
 
 test('concurrent identical retries both replay the winner receipt without a second version', async () => {
@@ -159,6 +181,39 @@ test('concurrent create-only: exactly one winner and one collision', async () =>
 	const state = await counts(projectId);
 	assert.equal(state.versions, 1);
 	assert.equal(state.receipts, 1);
+});
+
+test('concurrent identical create-only retries replay the winner receipt with no second version', async () => {
+	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const projectId = track(nextProjectId());
+	const request = await saveRequestBody(projectDocument('Create retry', { id: projectId }));
+	const [left, right] = await Promise.all([save(projectId, cookie, request), save(projectId, cookie, request)]);
+	assert.equal(left.statusCode, 200, JSON.stringify(left.json()));
+	assert.equal(right.statusCode, 200, JSON.stringify(right.json()));
+	assert.deepEqual(left.json(), right.json());
+	assert.equal(left.json().version, 1);
+	const state = await counts(projectId);
+	assert.equal(state.versions, 1);
+	assert.equal(state.receipts, 1);
+});
+
+test('concurrent create-only under one operation ID with different bytes refuses the loser', async () => {
+	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const projectId = track(nextProjectId());
+	const operationId = `create-race-${randomUUID()}`;
+	const [left, right] = await Promise.all([
+		save(projectId, cookie, await saveRequestBody(projectDocument('Left create', { id: projectId }), { operationId })),
+		save(projectId, cookie, await saveRequestBody(projectDocument('Right create', { id: projectId }), { operationId }))
+	]);
+	const responses = [left, right];
+	assert.equal(responses.filter((response) => response.statusCode === 200).length, 1);
+	const refused = responses.filter((response) => response.statusCode === 400);
+	assert.equal(refused.length, 1, JSON.stringify(responses.map((response) => response.json())));
+	assert.equal(refused[0].json().error.code, 'retry-payload-mismatch');
+	const state = await counts(projectId);
+	assert.equal(state.versions, 1);
+	assert.equal(state.receipts, 1);
+	assert.deepEqual(await receiptOperations(projectId), [operationId]);
 });
 
 test('create-only collision is owner-blind and another owner is not-found', async () => {
@@ -303,6 +358,10 @@ test('admission refusals write nothing: unknown asset, unknown material, invalid
 	const unknownAssetSave = await save(projectId, cookie, await saveRequestBody(unknownAsset));
 	assert.equal(unknownAssetSave.statusCode, 400);
 	assert.equal(unknownAssetSave.json().error.code, 'invalid_project');
+	// The admission's own issues reach the client; they are what makes the
+	// refusal actionable rather than a bare 400.
+	assert.ok(Array.isArray(unknownAssetSave.json().issues));
+	assert.ok(unknownAssetSave.json().issues.length > 0);
 
 	const unknownMaterial = projectDocument('Unknown material', { id: projectId });
 	unknownMaterial.scene.entities = [
