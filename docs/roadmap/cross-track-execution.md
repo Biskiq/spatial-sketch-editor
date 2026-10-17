@@ -98,16 +98,19 @@ cannot disguise an incompatible semantic change. A consumer must declare what it
 | F1.reference@1:unit-resolution-v1 | T3.P01.S01 | Camera/Experience/resource kinds and supplied F2 lock resolution; preserves missing/repair identity. Extends `references-v1`. |
 | F1.reference@1:release-addresses-v1 | T4.P01.S02 | Publication/pinned-release semantic addresses with concrete release context and removed/repair results. Extends `references-v1`; needs shared unit/program identity. |
 | F4.intent-acceptance@1:conditional-save-current-v1 | T3.P01.S02 | Create-only / expected-saved-base persistence of current source using full shared validation, atomic server OCC and retry receipts. Needs `local-single-domain-v1`; not F2, Stage or source activation. |
-| F4.intent-acceptance@1:unit-acceptance-v1 | T3.P01.S03 | F2-backed single-domain and compound Camera/Experience acceptance, complete reference/lock validation, admitted resource staging and whole-operation history. Needs F2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so the capability stays eligible once the current-source adapter retires. |
-| F4.intent-acceptance@1:conditional-save-units-v1 | T3.P01.S03 | Same conditional Save protocol over F2 source; needs unit-acceptance-v1/base invariants and reuses prior Save protocol evidence, not active current-source admission. Inactive until S04; never a second live writer. |
-| F3.channels@1:camera-handoff-v1 | T3.P01.S03 | Inspection, guided/free, Follow, Look-through and Preview ownership/return with stale-run cleanup; bounded Experience session semantics use the shared program. Needs `inspection-v1` and F2 program codec; real Stage integration is later T3.P02 evidence. |
+| F4.intent-acceptance@1:unit-acceptance-v1 | T3.P01.S05 | F2-backed single-domain and compound Camera/Experience acceptance, complete reference/lock validation, admitted resource staging and whole-operation history. Needs F2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so the capability stays eligible once the current-source adapter retires. |
+| F4.intent-acceptance@1:conditional-save-units-v1 | T3.P01.S05 | Same conditional Save protocol over F2 source; needs unit-acceptance-v1/base invariants and reuses prior Save protocol evidence, not active current-source admission. Inactive until S04; never a second live writer. |
+| F3.channels@1:camera-handoff-v1 | T3.P01.S06 | Inspection, guided/free, Follow, Look-through and Preview ownership/return with stale-run cleanup; bounded Experience session semantics use the shared program. Needs `inspection-v1` and F2 program codec; real Stage integration is later T3.P02 evidence. |
 
 **Slice prerequisites and exported-capability prerequisites are different claims.** A slice's
 `Requires` names what that slice's implementation consumes; a capability's declared prerequisites
-are what any later consumer needs from it. T3.P01.S03 therefore consumes the still-active
-`local-single-domain-v1` and `conditional-save-current-v1` while it prepares the F2 unit
-implementation, but the `unit-acceptance-v1`/`conditional-save-units-v1` capabilities it exports
-declare F2 and `acceptance-invariants-v1` only — never the retiring admission.
+are what any later consumer needs from it. `T3.P01.S03` stays the in-progress umbrella; its two
+registered halves own the implementation. `T3.P01.S05` builds the F2 unit admission and Save and
+consumes F2 plus the enduring `acceptance-invariants-v1`; it does not consume the retiring
+`local-single-domain-v1`/`conditional-save-current-v1` admissions. `T3.P01.S06` consumes
+`inspection-v1` and the F2 program codec. The `unit-acceptance-v1`, `conditional-save-units-v1` and
+`camera-handoff-v1` capabilities declare F2, `acceptance-invariants-v1` and `inspection-v1` as
+appropriate — never a retiring admission and never each other's unaccepted output.
 
 Initial local F4 admission includes registration and conformance for both Layout and Scene,
 not T2's complete placement capability. T2 S02 registers its actual operations. No resource/lock
@@ -325,7 +328,9 @@ and starts only after `conditional-save-current-v1` is accepted. Neither slice i
 ## Authorized batch 2026-10-17
 
 **Batch A is owner-authorized 2026-10-17** ([decision](../reference/decisions/next-batch-authorization-2026-10-17.md)):
-`T1.P01.S07` and `T3.P01.S03`. Batch B is not authorized. All T4 work, including `T4.P01.S01`, is
+`T1.P01.S07` and `T3.P01.S03`. S03's two follow-ups, `T3.P01.S05` and `T3.P01.S06`, were separately
+owner-authorized on 2026-10-17 ([record](../reference/decisions/s03-split-followup-authorization-2026-10-17.md));
+S03 stays the umbrella. Batch B is not authorized. All T4 work, including `T4.P01.S01`, is
 deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted. These are the shared-file and merge rules for the batches of the
 [2026-10-17 next-batch proposal](./next-batch-2026-10-17.md). The decisions, rationale and launch conditions live
 in that proposal, not here. Batch A is `T1.P01.S07` and `T3.P01.S03`. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
@@ -340,7 +345,9 @@ flowchart LR
   P --> W["T1 S05: Wall manipulation"] --> G["T1 S06: final gate"]
   P --> T2F["T2 S04 (needs Head Save)"]
   UI --> T2F
-  U["T3 S01/S02 (shipped)"] --> X["T3 S03"] --> CUT["T3 S04"]
+  U["T3 S01/S02 (shipped)"] --> X["T3 S03 (umbrella)"]
+  X --> X5["T3 S05: unit acceptance + Save"] --> CUT["T3 S04"]
+  X --> X6["T3 S06: runtime + handoff"] --> CUT
 ```
 
 This delta replaces only the `V --> UI` edge of the DAG above with `V → S07 → UI`, and it adds S07 as
@@ -351,15 +358,15 @@ S04's predecessor. Every other edge is unchanged.
 | Area | Writer | Rule for everyone else |
 | --- | --- | --- |
 | Editor routes, host, Stage, shell and Head modules | `T1.P01.S07` | read-only; a needed change is a stop-and-report to T1 |
-| Existing `@portfolio/camera-core` modules (`viewport.ts`, `camera-motion.ts`, `camera-route.ts`, …) | `T1.P01.S07`, only where the wiring requires it | read-only for `T3.P01.S03`; a needed change is a stop-and-report to T1 |
-| New `@portfolio/camera-core` modules (guided/free/reduced-motion controllers) | `T3.P01.S03` | evaluate through the existing Camera authority; no second pose/FOV interpolation |
-| `project-model` `src/f4/**` and the editor `authoring/f4/**` coordinator | `T3.P01.S03` for the additive unit-acceptance extension | `T1.P01.S07` consumes public exports; any host-facing addition is additive, and the second merger resolves; landed `local-single-domain-v1` behavior changes for neither |
-| `project-model` `src/channels/**` (F3) | `T3.P01.S03` (additive `camera-handoff-v1`) | `inspection-v1` and the ticket protocol S07 rebases on stay byte-compatible; S07 reruns its probes if T3 merges first |
-| `project-model` Save subpath, `apps/api/**`, migrations and editor `authoring/save/**` | `T3.P01.S03` | read-only |
+| Existing `@portfolio/camera-core` modules (`viewport.ts`, `camera-motion.ts`, `camera-route.ts`, …) | `T1.P01.S07`, only where the wiring requires it | read-only for `T3.P01.S05` and `T3.P01.S06`; a needed change is a stop-and-report to T1 |
+| New `@portfolio/camera-core` modules (guided/free/reduced-motion controllers) | `T3.P01.S06` | evaluate through the existing Camera authority; no second pose/FOV interpolation |
+| `project-model` `src/f4/**` and `src/units/**` (the additive unit-acceptance extension) | `T3.P01.S05` | `T1.P01.S07` consumes public exports; any host-facing addition is additive, and the second merger resolves; landed `local-single-domain-v1` behavior changes for neither. `T3.P01.S06` is read-only here |
+| `project-model` `src/channels/**` (F3) | `T3.P01.S06` (additive `camera-handoff-v1`) | `inspection-v1` and the ticket protocol S07 rebases on stay byte-compatible; S07 reruns its probes if T3 merges first. `T3.P01.S05` is read-only here |
+| `project-model` Save subpath, `apps/api/**`, migrations and editor `authoring/save/**` | `T3.P01.S05` | read-only for `T3.P01.S06`; no live unit route is enabled |
 | `docs/roadmap/t4-release/**` | none (T4 deferred, R1-D) | frozen |
 | Root barrels, `package.json` exports and [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the textual conflict |
 | Boundary tests (public surface, project-model, camera-core) | additive assertions per slice | no slice weakens an existing assertion |
-| Gate register rows | each slice's closeout edits only its own gate rows (S07: `T1.viewport-projection`; T3 S03: F1/F3/F4 entries) | same table, distinct rows; the second merger resolves |
+| Gate register rows | each slice's closeout edits only its own gate rows (S07: `T1.viewport-projection`; S05: F4 entries; S06: the F3 entry) | same table, distinct rows; the second merger resolves |
 
 **Batch B shared-file ownership** (after S07 ships): `T1.P01.S04` is the sole writer of the Head
 (Save integration) and of Layout adapter modules. `T2.P01.S03` is the sole writer of its Scene adapter
@@ -370,9 +377,17 @@ query or `src/scene-planning/` semantics.
 
 **Merge protocol.** As in the earlier batches, each slice merges on its own after independent
 acceptance and routine closeout, with no imposed order inside a batch. Every merge reruns the complete
-merge gate on the then-current `main`. `T3.P01.S03` also runs the DB-backed API suite with zero
+merge gate on the then-current `main`. `T3.P01.S05` also runs the DB-backed API suite with zero
 skips. Between batches, **S07 must merge, and its closeout must record `viewport-projection-v1`
 accepted, before either batch-B slice starts**. Their trusted bases must contain that merge.
+
+**S03 split follow-up ownership (2026-10-17).** S05 and S06 register inside their own implementation
+PRs and carry one coordinated registration commit; no planning-only PR exists. They are not cycle
+exposures. S05 owns the F4/F2/unit/Save surfaces above and must leave the live Save route
+current-source-only; S06 owns the F3 channels surface and new camera-core runtime modules. S03's
+umbrella row, plan and acceptance record stay in place until both are accepted and reconciled. The
+original S03 batch-A rules for editor routes/host/Stage/T1-owned modules, retired gates and T4 stay
+in force for both.
 
 **Cycle.** None of these slices is an exposure except `T1.P01.S04`, which is already listed. Its start
 records no new opening, because the window has been open since S02. S07 is deliberately not added:

@@ -20,27 +20,27 @@ PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
 SLICES: T3.P01's slice register is authoritative — S01 shipped 2026-10-16 (`F2.unit-envelope@1` and
         additive `F1.reference@1:unit-resolution-v1`); S02 shipped 2026-10-16 (PR #133) with accepted
-        `F4.intent-acceptance@1:conditional-save-current-v1`; S03 owner-authorized 2026-10-17 and in
-        progress with an approved split direction (S03a/S03b not yet registered or authorized);
-        S04 proposed and unauthorized;
+        `F4.intent-acceptance@1:conditional-save-current-v1`; S03 is the in-progress umbrella;
+        S05 (unit acceptance + unit Save) and S06 (Experience runtime + Camera handoff) are
+        owner-authorized 2026-10-17 and in progress in parallel; S04 proposed and unauthorized;
         T3.P02 is an unregistered candidate phase.
-BATON: T3.P01.S02 (early conditional Save) is accepted and shipped on PR #133 from post-PR #132
-       `main`. T3 owns the protocol, server path, client and framework-free client Save state; T1
-       owns the Head integration (`T1.P01.S04` by default), which is not part of this slice. Runtime
-       activation, source cutover, migration inventory and recovery remain T3.P01.S04's. S03 is in progress; its preparatory increment is not a completed slice.
-NEXT: S03 (compound and runtime preparation) is in progress. Its first increment implements the F4
-      unit-admission seam (`f4/unit-acceptance.ts`) and the F3 `camera-handoff-v1` protocol
-      (`channels/handoff.ts`) with conformance suites; the F2 candidates, unit Save with real-DB
-      evidence and the Experience runtime preparation are not implemented. The
-      [split proposal](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/split-proposal.md)
-      has delegated owner approval, but both follow-up slices require separate registration and
-      authorization before work; then run the full verification
-      tier (lane, `check`, arch, zero-skip DB suite for the Save half). Phase/track closure is not
-      available: S04, the declared final gate, is neither accepted nor shipped.
+BATON: S03's approved split is registered and authorized as S05 and S06. Both branches carry one
+       coordinated registration commit, run in parallel from post-PR #139 `main` (`d2607caf`), and
+       touch disjoint surfaces: S05 owns F4/F2/unit/Save, S06 owns F3 channels and new camera-core
+       runtime modules. Neither consumes the other's unaccepted output.
+NEXT: Implement S05 (real F2 candidates, one-envelope validation, resource staging/rollback,
+      unit/compound install and whole-operation history, `conditional-save-units-v1` with real
+      Postgres at zero skips) and S06 (complete `camera-handoff-v1`, lowering/interpreter,
+      reducer/clock, holds/continuation, guard/Continue/detour, DOM companion, three controllers,
+      AM-6 traces), then coordinator review and independent review. No source/runtime activation and
+      no live unit writer in either slice.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
-       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md
-BLOCKER: none for the reviewed preparatory increment. The S03a/S03b follow-ups remain
-         unregistered and unauthorized; no capability is accepted without their full evidence.
+       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md
+       (S06: ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md)
+BLOCKER: none for implementation. Acceptance of either half requires its full evidence and
+         independent review; S04 stays unauthorized until both halves' outputs are accepted at its
+         trusted base and its own AM-7 inventory/cutover prerequisites are met. The missing authored
+         Cut/Travel invocation selector in Experience@1 is a disclosed S06 residual for S04/T3.P02.
 ```

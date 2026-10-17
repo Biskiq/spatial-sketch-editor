@@ -1911,6 +1911,16 @@ describe('the capability-readiness rule', () => {
 				local,
 				'F4.intent-acceptance@1:conditional-save-current-v1'
 			],
+			'T3.P01.S05': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F4.intent-acceptance@1:acceptance-invariants-v1'
+			],
+			'T3.P01.S06': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F3.channels@1:inspection-v1'
+			],
 			'T3.P01.S04': [
 				'F1.reference@1:unit-resolution-v1',
 				'F2.unit-envelope@1:unit-envelope-v1',
