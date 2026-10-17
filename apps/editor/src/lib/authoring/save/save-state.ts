@@ -108,7 +108,11 @@ export type SaveStatus =
 	| 'auth-required';
 
 export type SaveConflict = {
-	/** The local canonical source; the Head offers a JSON download before reload. */
+	/**
+	 * The local canonical source **as of this snapshot**: editing and Undo stay
+	 * immediate while a conflict stands, so the download the Head offers must be
+	 * the newest local work, not the bytes local when the server answered.
+	 */
 	readonly localJson: string;
 	readonly localSourceContentId: string;
 	/** Remote data, when the load port answered. */
@@ -267,6 +271,22 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	// starts dirty rather than claiming saved. The token alone is its precondition.
 	status = derivedStatus();
 
+	/**
+	 * The conflict view a snapshot reports. Its remote side and its lifetime are
+	 * fixed when the conflict is detected; only the local side is derived, because
+	 * the creator can keep editing (and undoing) while the conflict stands.
+	 */
+	function conflictView(): SaveConflict | null {
+		if (!conflict) return null;
+		const local = readCurrent();
+		if (!local) return conflict;
+		return {
+			...conflict,
+			localJson: local.canonicalJson,
+			localSourceContentId: local.sourceContentId
+		};
+	}
+
 	function snapshot(): SaveSnapshot {
 		const currentDirty = isDirty();
 		return {
@@ -279,7 +299,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			savedCanonicalJson: baseline.savedCanonicalJson,
 			savedSourceContentId: baseline.savedSourceContentId,
 			error,
-			conflict
+			conflict: conflictView()
 		};
 	}
 

@@ -241,6 +241,40 @@ describe('framework-free Save state', () => {
 		});
 	});
 
+	it('offers edits made after a conflict without moving the remote offer', async () => {
+		const { coordinator, fixture, admitted, revision } = await boot();
+		const remote = remoteProject(admitted, revision);
+		const state = createSaveState({
+			coordinator,
+			save: async () => ({ kind: 'conflict' }),
+			baseline: {
+				savedBaseToken: TOKEN_ONE,
+				savedRevision: revision,
+				savedCanonicalJson: admitted.canonicalJson,
+				savedSourceContentId: admitted.sourceContentId
+			},
+			loadRemote: async () => remote
+		});
+
+		await expect(state.save()).resolves.toEqual({ kind: 'conflict' });
+		const remoteOffer = state.reloadRemote();
+		expect(remoteOffer).toMatchObject({ kind: 'reload', savedBaseToken: TOKEN_TWO });
+
+		// Local editing stays immediate while a conflict stands, so the recovery
+		// download must offer the newer work, not the bytes local at detection.
+		await acceptEdit(coordinator, fixture);
+		const current = coordinator.current();
+		expect(current.canonicalJson).not.toBe(admitted.canonicalJson);
+		const snapshot = state.getSnapshot();
+		expect(snapshot.status).toBe('conflict');
+		expect(snapshot.conflict?.localJson).toBe(current.canonicalJson);
+		expect(snapshot.conflict?.localSourceContentId).toBe(current.sourceContentId);
+
+		// The remote side and the conflict's lifetime are untouched.
+		expect(snapshot.conflict?.remote?.document).toEqual(remote.document);
+		expect(state.reloadRemote()).toEqual(remoteOffer);
+	});
+
 	it('Undo back to saved contents reads saved only on full-source equality', async () => {
 		const { state, coordinator, fixture, admitted, setBehaviour } = await boot();
 		setBehaviour(async (request) => acknowledgement(request));
