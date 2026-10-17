@@ -1,11 +1,13 @@
 /**
- * T1.P01.S02 — read-only boot: **the editor host reaches no write path**.
+ * T1.P01.S02/S04 — **the editor host reaches exactly one write path**.
  *
- * The cloud API client the host uses can save a project (`PUT`), and the platform
- * layer exports pending-cloud-save helpers. This slice's contract is that the host
- * performs only the project **GET**: conditional Save arrives with `T3.P01.S02`, so
- * a host that quietly wrote would change persisted content from a slice that
- * promises a read-only boot.
+ * The cloud API client can save a project (`PUT`), and the platform layer exports
+ * pending-cloud-save helpers. T1.P01.S02's contract was a read-only boot. T1.P01.S04
+ * is the owner-authorized exception: the Head mounts `T3.P01.S02`'s conditional Save,
+ * so the **one** authorized writer is `api.saveAcceptedSource`, and it must be
+ * reached only through the Save transport (`save/api-transport.ts`) — never from the
+ * route, a shell module or an adapter. The pending-cloud-save helpers and any other
+ * write path stay forbidden.
  *
  * Nothing executable can prove an absence. The writer is *reachable* (the API
  * client is a single module), an imported name is not a call, and no lane, build or
@@ -50,8 +52,12 @@ const HOST_MEMBERS = REACHED.filter(
 		member.startsWith(EDITOR_SOURCE_PREFIX) && member !== PLATFORM_PERSISTENCE_MEMBER
 );
 
-/** The three write paths the host must never reach. */
+/** The write paths the host must never reach, even with conditional Save mounted. */
 const WRITE_PATHS = ['saveProject', 'writePendingCloudSave', 'clearPendingCloudSave'] as const;
+
+/** The one authorized writer, allowed only in its platform transport module. */
+const AUTHORIZED_SAVE = 'saveAcceptedSource';
+const SAVE_TRANSPORT_MEMBER = 'apps/editor/src/lib/authoring/save/api-transport.ts';
 
 /**
  * Which write paths this source *calls*. Comments are blanked first: the host's own
@@ -66,7 +72,7 @@ function sourceOf(member: string): string {
 	return readFileSync(join(REPO_ROOT, member), 'utf8');
 }
 
-describe('the editor host reaches no write path', () => {
+describe('the editor host reaches only authorized write paths', () => {
 	it('walks the route host and the editor modules it mounts', () => {
 		// Positive controls: the walk is real, and it is the host's own graph.
 		expect(REACHED).toContain(ROUTE_MEMBER);
@@ -80,7 +86,7 @@ describe('the editor host reaches no write path', () => {
 		expect(REACHED.filter((member) => member.endsWith('+page.svelte'))).toEqual([ROUTE_MEMBER]);
 	});
 
-	it('calls no write path from the host or from any editor module it mounts', () => {
+	it('calls no forbidden write path from the host or any editor module it mounts', () => {
 		// The reader is the host's whole interaction with persistence, so a rename of it
 		// cannot leave this suite approving an otherwise empty host.
 		expect(/\bloadProject\s*\(/.test(stripComments(sourceOf(ROUTE_MEMBER)))).toBe(true);
@@ -89,6 +95,25 @@ describe('the editor host reaches no write path', () => {
 			(member) => `${member}: ${callsIn(sourceOf(member)).join(', ')}`
 		);
 		expect(offenders).toEqual([]);
+	});
+
+	it('mounts the one authorized Save controller on the Head', () => {
+		const route = stripComments(sourceOf(ROUTE_MEMBER));
+		// The exception is scoped to the Head Save mount: the route builds the epoch's
+		// state machine and passes it to the Head. It must not grow a second writer.
+		expect(/\bcreateSaveState\s*\(/.test(route)).toBe(true);
+		expect(/\bcreateHeadSave\s*\(/.test(route)).toBe(true);
+		expect(/save=\{headSave\}/.test(route)).toBe(true);
+	});
+
+	it('reaches the authorized Save writer only through its transport module', () => {
+		const callers = HOST_MEMBERS.filter((member) =>
+			new RegExp(`\\b${AUTHORIZED_SAVE}\\s*\\(`).test(stripComments(sourceOf(member)))
+		);
+		// Conditional Save is mounted, so the transport must be reached; and no other
+		// host module may call the writer directly.
+		expect(callers).toEqual([SAVE_TRANSPORT_MEMBER]);
+		expect(REACHED).toContain(SAVE_TRANSPORT_MEMBER);
 	});
 
 	it('would flag a write call, and does flag the writer module the walk reaches', () => {

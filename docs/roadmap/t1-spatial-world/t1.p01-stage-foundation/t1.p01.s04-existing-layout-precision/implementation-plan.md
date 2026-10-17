@@ -1,6 +1,6 @@
 # T1.P01.S04 — Existing Layout precision: implementation plan
 
-**Slice:** T1.P01.S04 · **Status:** approved — owner-authorized 2026-10-17 as batch B ([record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)), not started · **Phase:** [T1.P01](../README.md) ·
+**Slice:** T1.P01.S04 · **Status:** approved — owner-authorized 2026-10-17 as batch B ([record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); implementation in progress, unaccepted · **Phase:** [T1.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) · **Runbook:**
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -82,9 +82,15 @@ no object/history; replacement clears its ghost. This is the phase's smallest gr
 
 ## Readiness declaration
 
-This slice is **approved** (owner-authorized 2026-10-17 as batch B, [record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and not
-started. Implementation starts only through the T1 runbook start step after the authorizing PR
-merges; no implementation, acceptance, readiness, revision or evidence is claimed here. It consumes
+This slice is **approved** (owner-authorized 2026-10-17 as batch B, [record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)); implementation
+started 2026-10-17 through the T1 runbook start step on the merged batch base. No acceptance,
+readiness, revision or evidence is claimed here. The two composition-root obligations this slice's
+first implementation pass reported — no Card name-writer point, and no route mount for the
+T3.P01.S02 Save state — are resolved under the owner's [narrow host-integration
+exception](../../../../reference/decisions/t1-s04-host-integration-2026-10-17.md): the Card delegates
+its one name writer to canonical Layout planning, the route builds the epoch's Save state and passes
+it to the Head, and a live Layout proposal holds the host gesture lease so Undo reports
+`live-proposal`. It consumes
 `F1.reference@1`, `F4.intent-acceptance@1` and `T1.viewport-projection@1` and requires the
 accepted capabilities `F1.reference@1:references-v1` and
 `F4.intent-acceptance@1:local-single-domain-v1`, `F4.intent-acceptance@1:conditional-save-current-v1` and

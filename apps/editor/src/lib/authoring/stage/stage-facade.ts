@@ -225,6 +225,26 @@ export type StageCardSubject = {
 export type StageCardFactRecord = StageCardFact & { readonly adapterId: string };
 
 /**
+ * The one writable Card fact: the subject's name, delegated to its owning domain
+ * planner through the adapter that owns it.
+ *
+ * The Card renders the value and the host routes the command; it never builds an
+ * intent itself, so the single name writer stays in the domain that already owns
+ * canonical metadata planning.
+ */
+export type StageCardNameWrite =
+	| { readonly kind: 'accepted' }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
+
+export type StageCardNameTarget = {
+	readonly value: string;
+	commit(name: string): Promise<StageCardNameWrite>;
+};
+
+/** A Card name writer as the host publishes it, stamped with its owning adapter. */
+export type StageCardNameWriterRecord = StageCardNameTarget & { readonly adapterId: string };
+
+/**
  * What an adapter's instrument contribution shows for one invoked task.
  *
  * The host mounts it in the one `StageInstrumentHost`; the adapter supplies the
@@ -256,6 +276,8 @@ export type StageAdapterBinding = {
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 	readonly tasks?: readonly StageTaskContribution[];
 	readonly cardFacts?: (subject: StageCardSubject) => readonly StageCardFact[];
+	/** The subject's name writer, or `null` when this adapter does not own one. */
+	readonly cardName?: (subject: StageCardSubject) => StageCardNameTarget | null;
 	readonly findEntries?: readonly StageFindEntry[];
 	/** The instrument this adapter's invoked task shows, or `null` for none. */
 	readonly instrument?: (task: {
@@ -444,6 +466,8 @@ export type StageFacade = {
 	findEntries(): readonly StageFindEntryRecord[];
 	/** Card facts contributed for one subject, ordered by adapter ID then label. */
 	cardFacts(subject: StageCardSubject): readonly StageCardFactRecord[];
+	/** The one name writer contributed for a subject, or `null` when none claims it. */
+	cardNameWriter(subject: StageCardSubject): StageCardNameWriterRecord | null;
 	overlays(): readonly StageOverlayContribution[];
 	graphics(): readonly StageWorldGraphic[];
 	acquireGesture(request: {
@@ -1493,14 +1517,34 @@ export function createStageFacade(input: {
 				return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
 			});
 		},
+		cardNameWriter(subject) {
+			if (!isLive()) return null;
+			ensureBindings();
+			// Deterministic owner: adapter ID order, so two adapters cannot disagree
+			// about which writer the Card shows on different renders.
+			const ids = [...adapters.keys()].sort();
+			for (const adapterId of ids) {
+				const entry = adapters.get(adapterId);
+				if (entry?.contributions.cardName === undefined) continue;
+				let target: StageCardNameTarget | null = null;
+				try { target = entry.contributions.cardName(subject); } catch { target = null; }
+				if (target !== null) return { ...target, adapterId };
+			}
+			return null;
+		},
 		acquireGesture(request) {
 			if (!isLive()) return { kind: 'refused', code: 'stale-epoch', owner: request.owner };
-			return session.acquireGesture({
+			const outcome = session.acquireGesture({
 				owner: request.owner,
 				evaluationId: request.evaluationId,
 				acceptedRevision: currentSnapshot.acceptedRevision,
 				policy: request.policy
 			});
+			// A held proposal changes what the host can command (Undo/Redo report
+			// `live-proposal`), so the shell's derived history state must refresh now,
+			// not only when the next acceptance happens.
+			if (outcome.kind === 'granted') notifyAdaptersChanged();
+			return outcome;
 		},
 		dispose() {
 			if (disposed) return;

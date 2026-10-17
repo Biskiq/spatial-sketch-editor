@@ -15,6 +15,7 @@
 	let {
 		identity,
 		facts,
+		nameWriter = null,
 		onClose,
 		onFocusTask,
 		onOpenTask,
@@ -27,11 +28,49 @@
 			status: string;
 		} | null;
 		facts: readonly { label: string; value: string }[];
+		/** The selected subject's name writer, when its domain contributes one. */
+		nameWriter?: {
+			readonly value: string;
+			commit(name: string): Promise<{ readonly kind: string; readonly message?: string }>;
+		} | null;
 		onClose: () => void;
 		onFocusTask: () => void;
 		onOpenTask: () => void;
 		onBringIntoView: () => void;
 	} = $props();
+
+	/**
+	 * The Card's one writable fact is the subject's name, and it is delegated: the
+	 * input sends text to the adapter's canonical name planner, never to the source.
+	 * Enter commits, Esc resets, blur never commits.
+	 */
+	let nameDraft = $state('');
+	let nameError = $state<string | null>(null);
+	let nameBusy = $state(false);
+
+	$effect(() => {
+		nameDraft = nameWriter?.value ?? '';
+		nameError = null;
+		nameBusy = false;
+	});
+
+	async function commitName(): Promise<void> {
+		if (nameWriter === null || nameBusy) return;
+		const name = nameDraft.trim();
+		if (name.length === 0) {
+			nameError = 'Enter a name; an empty name is not a rename.';
+			return;
+		}
+		nameBusy = true;
+		nameError = null;
+		const outcome = await nameWriter.commit(name);
+		nameBusy = false;
+		if (outcome.kind !== 'accepted') {
+			nameError = outcome.message ?? 'The name was not accepted.';
+			return;
+		}
+		nameDraft = name;
+	}
 </script>
 
 {#if identity}
@@ -45,17 +84,48 @@
 				</p>
 				<!-- The full name stays available even when the header ellipsizes. -->
 				<h2 class="name" title={identity.label}>{identity.label}</h2>
+				{#if nameWriter}
+					<form
+						class="rename"
+						onsubmit={(event) => {
+							event.preventDefault();
+							void commitName();
+						}}
+					>
+						<input
+							aria-label="Name"
+							type="text"
+							value={nameDraft}
+							disabled={nameBusy}
+							oninput={(event) => {
+								nameDraft = event.currentTarget.value;
+								nameError = null;
+							}}
+							onkeydown={(event) => {
+								if (event.key === 'Escape') {
+									event.preventDefault();
+									nameDraft = nameWriter.value;
+									nameError = null;
+								}
+							}}
+						/>
+						<button type="submit" class="action" disabled={nameBusy}>Rename</button>
+					</form>
+					{#if nameError !== null}
+						<p class="error" role="alert">{nameError}</p>
+					{/if}
+				{/if}
 			</div>
 			<button type="button" class="icon" onclick={onClose} aria-label="Close selection card">✕</button>
 		</header>
 
 		{#if facts.length > 0}
 			<dl class="facts">
-				{#each facts as fact (fact.label)}
-					<dt>{fact.label}</dt>
-					<dd>{fact.value}</dd>
-				{/each}
-			</dl>
+					{#each facts as fact (fact.label)}
+						<dt>{fact.label}</dt>
+						<dd>{fact.value}</dd>
+					{/each}
+				</dl>
 		{:else}
 			<p class="quiet">No further facts.</p>
 		{/if}
@@ -130,6 +200,30 @@
 		font-weight: 650;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+	}
+
+	.rename {
+		display: flex;
+		gap: 0.35rem;
+		margin-top: 0.35rem;
+	}
+
+	.rename input {
+		min-width: 0;
+		flex: 1;
+		min-height: 2.75rem;
+		padding: 0 0.45rem;
+		border: 1px solid var(--plate-control-edge, #cfd5cb);
+		border-radius: 0.45rem;
+		background: var(--plate-control-surface, #f5f6f4);
+		color: inherit;
+		font: inherit;
+	}
+
+	.error {
+		margin: 0.3rem 0 0;
+		color: #a33b24;
+		font-size: 0.74rem;
 	}
 
 	.icon {
