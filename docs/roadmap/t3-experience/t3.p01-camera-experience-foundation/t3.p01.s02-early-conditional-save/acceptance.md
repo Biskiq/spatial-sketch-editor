@@ -21,7 +21,7 @@ This record holds implementation evidence for independent review. It is **not** 
 | Branch | `T3-P01-S02` |
 | PR | [#133](https://github.com/Biskiq/spatial-sketch-editor/pull/133) |
 | Base | post-PR #132 `main` (`74367936ea0cb1754c45021c4f10ca69b17ca7b0`) |
-| Tested code revision | `f2fe16507c7ee897d714a7d47e41063b5b0a1c9f` (implementation + tests) |
+| Tested code revision | `b02721f24a57ebc077434417576ef65c399971fa` (implementation + tests) |
 | Evidence docs | this record's docs commit after the tested revision; docs-only, no product change |
 | Runtime | macOS (aarch64), Node `v26.7.0` |
 | Database | PostgreSQL `14.19` (Homebrew), local database `biskiq_s02`, migrations applied twice |
@@ -36,14 +36,19 @@ remote/production database. No production or preview environment was touched.
 | `npm run check:project-model` | pass (tsc, no errors) |
 | `npm run check:api` | pass (tsc, no errors) |
 | `npm run check` | pass (`svelte-check`, 0 errors / 0 warnings) |
-| `npx vitest run` on the six new editor suites | 6 files / 27 tests pass |
+| `npx vitest run` on the six new editor suites | 6 files / **28 tests** pass |
 | `npm run test:arch` | 18 files / **151 tests pass** |
-| `npm test` | 140 files / **1844 tests pass** |
+| `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1845 tests pass** |
 | `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **49 tests pass, 0 failed, 0 skipped** |
 
-The full editor suite includes the heavy lane (`test:heavy` members run in the default config). The
-API command is the DB-backed `test:api` lane; its zero-skip output is the concurrency/failure
-evidence, not a mock.
+The full editor suite includes the heavy lane (`test:heavy` members run in the default config). On
+this host the same `npm test` command was green at the parent implementation revision (`f2fe1650`,
+1844/1844) but, while the machine was under load average >60, repeatedly hit the **pre-existing 5 s
+timeout** of `camera-output-conformance.test.ts` while 1844 other tests passed. That file was not
+touched by this slice; the complete suite was therefore also run with one worker
+(`npx vitest run --maxWorkers=1`, same config, assertions and timeouts) and passed 1845/1845. No test
+was skipped, narrowed or given a longer timeout. The API command is the DB-backed `test:api` lane;
+its zero-skip output is the concurrency/failure evidence, not a mock.
 
 ## Exit-criterion evidence
 
@@ -68,7 +73,7 @@ evidence, not a mock.
 rows, owner isolation, additive `GET` metadata, stale-token conflict, malformed/invalid/mismatched/
 oversized request distinction, and a payload just under 2 MiB.
 
-### Client Save state — `apps/editor/tests/lib/authoring/save-state.test.ts` (6 tests)
+### Client Save state — `apps/editor/tests/lib/authoring/save-state.test.ts` (7 tests)
 
 Driven by a real `createAcceptanceCoordinator` and the current-source adapter:
 
@@ -78,6 +83,7 @@ Driven by a real `createAcceptanceCoordinator` and the current-source adapter:
   offer, and `reloadRemote()` returns data for the Head's replacement guard;
 - Undo back to saved contents reads `saved` on full-source equality;
 - a cursor-only divergence with an equal digest reads `dirty` (full-byte comparison);
+- a pre-migration token-only baseline starts `dirty` and uses the token as its precondition;
 - Save adds no history entry and leaves Undo unavailable.
 
 ### Client transport and draft — `apps/editor/tests/lib/platform/project-persistence.test.ts` (9 tests)
