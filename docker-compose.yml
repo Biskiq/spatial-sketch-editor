@@ -8,7 +8,10 @@
 # Secrets (Google OAuth, SESSION_KEY, R2_*) come from the developer's .env; the
 # database and origins are overridden here so the container never targets the
 # database named in .env.
-name: biskiq
+# BISKIQ_STACK names the Compose project, its image and its volume. The default
+# is one shared stack; a parallel worktree that needs its own database sets
+# BISKIQ_STACK plus distinct BISKIQ_DB_PORT and BISKIQ_API_PORT (see README).
+name: ${BISKIQ_STACK:-biskiq}
 
 services:
   db:
@@ -32,7 +35,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: biskiq-api-dev
+    image: ${BISKIQ_STACK:-biskiq}-api-dev
     command: ['node', 'dist/migrate.js']
     env_file:
       - path: .env
@@ -50,7 +53,7 @@ services:
     restart: 'no'
 
   api:
-    image: biskiq-api-dev
+    image: ${BISKIQ_STACK:-biskiq}-api-dev
     env_file:
       - path: .env
         required: true
@@ -80,5 +83,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  # Project-scoped: <BISKIQ_STACK>_pgdata.
   pgdata:
-    name: biskiq-pgdata

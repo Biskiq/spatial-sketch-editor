@@ -4,7 +4,7 @@
 `T2.P01.S03` to run in parallel as batch B, the batch the
 [2026-10-17 next-batch record](./next-batch-authorization-2026-10-17.md#explicit-non-implications)
 deferred until `T1.P01.S07` shipped and `viewport-projection-v1` was accepted. The authorization lands
-in one docs-only development-wave preparation PR and takes effect only when that PR merges after
+in the development-wave preparation PR (which also adds the local Docker Compose backend) and takes effect only when that PR merges after
 independent review. Until then nothing here is claimable work.
 
 This record is decision provenance, like the
