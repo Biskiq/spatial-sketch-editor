@@ -21,7 +21,7 @@ import {
 	type ExperienceEvent,
 	type ExperienceInterpreterOptions
 } from '@portfolio/project-model/units';
-import { EXPERIENCE, experienceEnvelope, LOWERING_OPTIONS } from './fixtures';
+import { CONNECTIONS, EXPERIENCE, experienceEnvelope, LOWERING_OPTIONS, VIEWS } from './fixtures';
 
 const OPTIONS = { runId: 'run-1', runEpoch: 1 } as const;
 
@@ -39,6 +39,66 @@ async function program(): Promise<ExecutionProgram> {
 	expect(lowered.kind).toBe('lowered');
 	if (lowered.kind !== 'lowered') throw new Error(lowered.message);
 	return lowered.program;
+}
+
+/**
+ * Three Stops where `stop-3` is reached by a Travel from `stop-2`'s view. It makes
+ * the difference between "the Guide predecessor" and "the predecessor this run
+ * actually came from" observable.
+ */
+async function threeStopLowering(jumpFromEntry = false) {
+	const base = EXPERIENCE.experiences[0]!;
+	const thirdView = {
+		id: 'view-3',
+		label: 'Study',
+		eye: [8, 1.6, 2] as [number, number, number],
+		target: [8, 1.4, 0] as [number, number, number],
+		fov: 54,
+		connectedViewIds: ['view-2']
+	};
+	const secondConnection = {
+		...CONNECTIONS[0]!,
+		id: 'connection-2',
+		fromNodeId: 'view-2',
+		toNodeId: 'view-3',
+		positionPath: { ...CONNECTIONS[0]!.positionPath, anchors: [{ id: 'anchor-2', position: [6, 1.6, 2] as [number, number, number] }] }
+	};
+	const envelope = await experienceEnvelope({
+		camera: {
+			formatVersion: 1,
+			views: [
+				...VIEWS.map((view) =>
+					view.id === 'view-2' ? { ...view, connectedViewIds: ['view-1', 'view-3'] } : view
+				),
+				thirdView
+			],
+			connections: [...CONNECTIONS, secondConnection]
+		},
+		experience: {
+			...EXPERIENCE,
+			experiences: [
+				{
+					...base,
+					presentations: [...base.presentations, { id: 'presentation-3', label: 'Study', viewId: 'view-3' }],
+					stops: [
+						jumpFromEntry
+							? { ...base.stops[0]!, continuation: { kind: 'stop' as const, stopId: 'stop-3' } }
+							: base.stops[0]!,
+						base.stops[1]!,
+						{ id: 'stop-3', presentationId: 'presentation-3', continuation: { kind: 'end' as const } }
+					],
+					guides: [{ ...base.guides[0]!, stopIds: ['stop-1', 'stop-2', 'stop-3'] }]
+				}
+			]
+		}
+	});
+	return lowerExperienceProgram(envelope, {
+		...LOWERING_OPTIONS,
+		bindings: [
+			{ stopId: 'stop-2', invocation: { kind: 'travel' as const, connectionId: 'connection-1' } },
+			{ stopId: 'stop-3', invocation: { kind: 'travel' as const, connectionId: 'connection-2' } }
+		]
+	});
 }
 
 describe('Experience lowering', () => {
@@ -77,6 +137,23 @@ describe('Experience lowering', () => {
 			bindings: [{ stopId: 'stop-2', invocation: { kind: 'travel', connectionId: 'connection-absent' } }]
 		});
 		expect(lowered).toMatchObject({ kind: 'refused', code: 'travel-gap', stopId: 'stop-2' });
+	});
+
+	it('derives a transition for every authored edge from its real Camera route', async () => {
+		const lowered = await threeStopLowering();
+		expect(lowered.kind).toBe('lowered');
+		if (lowered.kind !== 'lowered') return;
+		expect(lowered.transitions).toEqual([
+			{ fromStopId: 'stop-1', toStopId: 'stop-2', invocation: { kind: 'travel', connectionId: 'connection-1' } },
+			{ fromStopId: 'stop-2', toStopId: 'stop-3', invocation: { kind: 'travel', connectionId: 'connection-2' } }
+		]);
+	});
+
+	it('refuses an authored explicit jump whose Travel starts at a different Stop', async () => {
+		// stop-1 authors an explicit continuation to stop-3, but stop-3's Travel is
+		// bound from stop-2's view. The edge has no Camera route of its own.
+		const lowered = await threeStopLowering(true);
+		expect(lowered).toMatchObject({ kind: 'refused', code: 'travel-gap' });
 	});
 
 	it('refuses an unresolved Presentation View', async () => {
@@ -186,6 +263,94 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(completed.effects).toContainEqual({ kind: 'completed' });
 	});
 
+	it('treats an arrival confirmation as no second Camera write', async () => {
+		const lowered = await program();
+		const entered = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter'));
+		const arrival = reduceExperience(lowered, entered.state, event('arrival'));
+		expect(arrival.outcome).toBe('accepted');
+		expect(arrival.effects).toEqual([]);
+		expect(arrival.state).toEqual({ ...entered.state, lastEvent: 'arrival' });
+	});
+
+	it('ignores an arrival that reaches a completed or cancelled run', async () => {
+		const lowered = await program();
+		let state = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter')).state;
+		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 })).state;
+		state = reduceExperience(lowered, state, event('continue')).state;
+		const completed = reduceExperience(lowered, state, event('continue')).state;
+		expect(completed.phase).toBe('completed');
+		const lateArrival = reduceExperience(lowered, completed, event('arrival'));
+		expect(lateArrival).toMatchObject({ outcome: 'ignored', effects: [] });
+		expect(lateArrival.state).toEqual(completed);
+
+		const cancelled = reduceExperience(lowered, state, event('cancel'));
+		expect(cancelled.state.phase).toBe('cancelled');
+		const afterCancel = reduceExperience(lowered, cancelled.state, event('arrival'));
+		expect(afterCancel).toMatchObject({ outcome: 'ignored', effects: [] });
+		expect(afterCancel.state).toEqual(cancelled.state);
+	});
+
+	it('never borrows a Travel bound to a different predecessor', async () => {
+		const lowered = await threeStopLowering();
+		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
+		const options: ExperienceInterpreterOptions = { ...OPTIONS, transitions: lowered.transitions };
+		let state = reduceExperience(lowered.program, createExperienceRun(lowered.program, options), event('enter', {}, options), options).state;
+		state = reduceExperience(lowered.program, state, event('tick', { milliseconds: 500 }, options), options).state;
+		// stop-3's Travel is bound from stop-2's view; this run is still at stop-1.
+		const jumped = reduceExperience(lowered.program, state, event('navigate', { stopId: 'stop-3' }, options), options);
+		expect(jumped.outcome).toBe('ignored');
+		expect(jumped.state.stopId).toBe('stop-1');
+		expect(jumped.effects.some((effect) => effect.kind === 'gap')).toBe(true);
+		expect(jumped.effects.some((effect) => effect.kind === 'camera')).toBe(false);
+	});
+
+	it('uses the transition for the predecessor the run actually came from', async () => {
+		const lowered = await threeStopLowering();
+		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
+		const options: ExperienceInterpreterOptions = { ...OPTIONS, transitions: lowered.transitions };
+		let state = reduceExperience(lowered.program, createExperienceRun(lowered.program, options), event('enter', {}, options), options).state;
+		state = reduceExperience(lowered.program, state, event('tick', { milliseconds: 500 }, options), options).state;
+		const toGallery = reduceExperience(lowered.program, state, event('navigate', { stopId: 'stop-2' }, options), options);
+		expect(toGallery.effects).toContainEqual({
+			kind: 'camera',
+			stopId: 'stop-2',
+			invocation: { kind: 'travel', connectionId: 'connection-1' }
+		});
+		// Navigate rather than continue: stop-2 authors an end, and the point here is
+		// that the edge from the actual predecessor (stop-2) is the one resolved.
+		const toStudy = reduceExperience(lowered.program, toGallery.state, event('navigate', { stopId: 'stop-3' }, options), options);
+		expect(toStudy.state).toMatchObject({ stopId: 'stop-3', phase: 'ready' });
+		expect(toStudy.effects).toContainEqual({
+			kind: 'camera',
+			stopId: 'stop-3',
+			invocation: { kind: 'travel', connectionId: 'connection-2' }
+		});
+		expect(toStudy.state.visited.map((visit) => visit.stopId)).toEqual(['stop-1', 'stop-2', 'stop-3']);
+	});
+
+	it('does not place another Presentation\'s content in the active panel', async () => {
+		const envelope = await experienceEnvelope();
+		const lowered = lowerExperienceProgram(envelope, {
+			...LOWERING_OPTIONS,
+			content: [
+				...LOWERING_OPTIONS.content,
+				{ presentationId: 'presentation-2', records: [{ id: 'content-2', text: 'The gallery.' }] }
+			]
+		});
+		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
+		const selected: ExecutionProgram = {
+			...lowered.program,
+			lifecycle: [{ event: 'arrival', guard: null, action: { kind: 'show-content', contentId: 'content-2' } }]
+		};
+		const entered = reduceExperience(selected, createExperienceRun(selected, OPTIONS), event('enter'));
+		expect(entered.state.panel).toMatchObject({
+			presentationId: 'presentation-1',
+			content: [{ id: 'content-1', text: 'The piano.' }]
+		});
+		expect(entered.state.panel?.content.some((record) => record.id === 'content-2')).toBe(false);
+		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('content-2'))).toBe(true);
+	});
+
 	it('ignores Continue while a hold is still running', async () => {
 		const lowered = await program();
 		const state = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter'));
@@ -238,6 +403,9 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		const stale = reduceExperience(lowered, state, { kind: 'cancel', runId: 'run-1', runEpoch: 1 }, newer);
 		expect(stale.outcome).toBe('stale');
 		expect(stale.state).toEqual(state);
+		const staleArrival = reduceExperience(lowered, state, { kind: 'arrival', runId: 'run-1', runEpoch: 1 }, newer);
+		expect(staleArrival).toMatchObject({ outcome: 'stale', effects: [] });
+		expect(staleArrival.state).toEqual(state);
 	});
 
 	it('initializes state once and resets it explicitly', async () => {

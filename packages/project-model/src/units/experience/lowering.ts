@@ -16,7 +16,10 @@
  *   never infers Travel from connectivity and never falls back from a missing
  *   Travel to Cut. A binding is `{stopId, occurrence?, invocation}`; the entry
  *   stop may omit it (Cut to its View). A missing binding for a non-entry
- *   occurrence refuses.
+ *   occurrence refuses. Lowering also returns a per-edge transition table for
+ *   every authored approach (Guide adjacency, explicit continuations, detours),
+ *   so the interpreter validates a Travel against the predecessor the run
+ *   actually came from; the table is preparation output, not a program field.
  * - **presentation content** — `ProgramPresentation.content` is a required
  *   program field, while `ExperiencePresentation` carries only `label` and
  *   `viewId`. The caller supplies the text records it has; an absent map means an
@@ -106,8 +109,24 @@ export type ExperienceLoweringRefusal = {
 	readonly stopId?: string;
 };
 
+/**
+ * One validated runtime edge. The interpreter uses these instead of a Stop's
+ * Guide-adjacent binding when the run reaches it from a different predecessor.
+ * This is preparation output, not a program field: the codec stays unamended.
+ */
+export type ExperienceProgramTransition = {
+	readonly fromStopId: string;
+	readonly toStopId: string;
+	readonly invocation: ProgramInvocation;
+};
+
 export type ExperienceLoweringResult =
-	| { readonly kind: 'lowered'; readonly program: ExecutionProgram }
+	| {
+			readonly kind: 'lowered';
+			readonly program: ExecutionProgram;
+			/** Every authored edge with the invocation that actually starts from its source. */
+			readonly transitions: readonly ExperienceProgramTransition[];
+	  }
 	| ExperienceLoweringRefusal;
 
 function refuse(
@@ -279,6 +298,88 @@ export function lowerExperienceProgram(
 		}
 	}
 
+	// Every authored edge is validated against the real Camera connections: Guide
+	// adjacency, each explicit Stop continuation, and each authored detour (out and
+	// back). A runtime jump outside this table may Cut, but a Travel is never
+	// borrowed from another predecessor's connection.
+	const viewByStopId = new Map(
+		stops.map((entry) => [entry.id, presentationById.get(entry.presentationId)!.viewId])
+	);
+	const transitionByKey = new Map<string, ExperienceProgramTransition>();
+	const addTransition = (
+		fromStopId: string,
+		toStopId: string,
+		invocation: ProgramInvocation,
+		label: string
+	): ExperienceLoweringRefusal | null => {
+		const key = `${fromStopId}\u0000${toStopId}`;
+		if (transitionByKey.has(key)) return null;
+		if (invocation.kind === 'cut') {
+			transitionByKey.set(key, { fromStopId, toStopId, invocation });
+			return null;
+		}
+		const fromViewId = viewByStopId.get(fromStopId);
+		const toViewId = viewByStopId.get(toStopId);
+		if (fromViewId === undefined || toViewId === undefined) {
+			return refuse('unknown-stop', `${label} names a Stop outside the lowered order`, fromStopId);
+		}
+		const resolved = travelInvocation(envelope, context, cameraRevision, invocation.connectionId, fromViewId, toViewId);
+		if (resolved === null) {
+			return refuse(
+				'travel-gap',
+				`${label} needs a Camera connection between "${fromViewId}" and "${toViewId}"; connection "${invocation.connectionId}" does not resolve to one`,
+				toStopId
+			);
+		}
+		transitionByKey.set(key, { fromStopId, toStopId, invocation: resolved });
+		return null;
+	};
+	for (const [index, stop] of stops.entries()) {
+		if (index === 0) continue;
+		const failure = addTransition(
+			stops[index - 1]!.id,
+			stop.id,
+			stop.invocation,
+			`Guide adjacency into Stop "${stop.id}"`
+		);
+		if (failure !== null) return failure;
+	}
+	for (const stop of stops) {
+		if (stop.continuation.kind !== 'stop') continue;
+		const targetId = stop.continuation.stopId;
+		const target = stops.find((entry) => entry.id === targetId);
+		if (target === undefined) continue;
+		const failure = addTransition(
+			stop.id,
+			targetId,
+			target.invocation,
+			`The explicit continuation from Stop "${stop.id}" to "${targetId}"`
+		);
+		if (failure !== null) return failure;
+	}
+	for (const detour of experience.detours) {
+		// A detour authored on a Stop outside this Guide's order is not an edge of
+		// this program; runtime policy still refuses a dangling identity.
+		if (!viewByStopId.has(detour.fromStopId)) continue;
+		const out = stops.find((entry) => entry.id === detour.toStopId);
+		const back = stops.find((entry) => entry.id === detour.returnToStopId);
+		if (out === undefined || back === undefined) continue;
+		const outFailure = addTransition(
+			detour.fromStopId,
+			detour.toStopId,
+			out.invocation,
+			`The detour from Stop "${detour.fromStopId}" to "${detour.toStopId}"`
+		);
+		if (outFailure !== null) return outFailure;
+		const backFailure = addTransition(
+			detour.toStopId,
+			detour.returnToStopId,
+			back.invocation,
+			`The detour return from Stop "${detour.toStopId}" to "${detour.returnToStopId}"`
+		);
+		if (backFailure !== null) return backFailure;
+	}
+
 	const program: ExecutionProgram = {
 		kind: 'execution-program',
 		formatVersion: 1,
@@ -303,7 +404,7 @@ export function lowerExperienceProgram(
 			first === undefined ? 'the lowered program is not a valid ExecutionProgram@1' : `${first.path} (${first.code}): ${first.message}`
 		);
 	}
-	return { kind: 'lowered', program: validated.value };
+	return { kind: 'lowered', program: validated.value, transitions: [...transitionByKey.values()] };
 }
 
 function indexBindings(
@@ -323,6 +424,32 @@ function indexBindings(
 
 function bindingKey(stopId: string, occurrence: number | undefined): string {
 	return occurrence === undefined ? `stop:${stopId}` : `occurrence:${stopId}:${occurrence}`;
+}
+
+/**
+ * The one Travel answer: a real, F.1-resolvable Camera connection joining these
+ * two views in either direction, or nothing. Connection closure is F.1's answer,
+ * not a local array scan: the resolver checks the subject and its unit revision
+ * against this exact snapshot.
+ */
+function travelInvocation(
+	envelope: ProjectEnvelope,
+	context: ReferenceReadContext,
+	cameraRevision: string,
+	connectionId: string,
+	fromViewId: string,
+	toViewId: string
+): ProgramInvocation | null {
+	const resolution = resolveReference(
+		reference('camera', 'connection', connectionId, cameraRevision, []),
+		context
+	);
+	if (resolution.kind === 'failed') return null;
+	const connection = envelope.units.camera.data.connections.find((candidate) => candidate.id === connectionId);
+	if (connection === undefined) return null;
+	const forward = connection.fromNodeId === fromViewId && connection.toNodeId === toViewId;
+	const reverse = connection.fromNodeId === toViewId && connection.toNodeId === fromViewId;
+	return forward || reverse ? { kind: 'travel', connectionId: connection.id } : null;
 }
 
 /**
@@ -367,38 +494,16 @@ function resolveInvocation(
 			stop.id
 		);
 	}
-	// Destructured after the Cut branch: the narrowing must not be lost inside
-	// the find callback below.
 	const invocation = binding.invocation;
-	// Connection closure is F.1's answer, not a local array scan: the resolver
-	// checks the subject and its unit revision against this exact snapshot.
-	const connectionResolution = resolveReference(
-		reference('camera', 'connection', invocation.connectionId, cameraRevision, []),
-		context
-	);
-	if (connectionResolution.kind === 'failed') {
+	const resolved = travelInvocation(envelope, context, cameraRevision, invocation.connectionId, previousViewId, viewId);
+	if (resolved === null) {
 		return refuse(
 			'travel-gap',
-			`Stop "${stop.id}" binds Travel over connection "${invocation.connectionId}", which this envelope does not resolve: ${connectionResolution.message}`,
+			`Travel to Stop "${stop.id}" needs a Camera connection between "${previousViewId}" and "${viewId}"; connection "${invocation.connectionId}" does not resolve to one`,
 			stop.id
 		);
 	}
-	const connection = envelope.units.camera.data.connections.find(
-		(candidate) => candidate.id === invocation.connectionId
-	);
-	if (connection === undefined) {
-		return refuse('travel-gap', `Stop "${stop.id}" binds Travel over connection "${invocation.connectionId}", which this envelope does not carry`, stop.id);
-	}
-	const forward = connection.fromNodeId === previousViewId && connection.toNodeId === viewId;
-	const reverse = connection.fromNodeId === viewId && connection.toNodeId === previousViewId;
-	if (!forward && !reverse) {
-		return refuse(
-			'travel-gap',
-			`Travel to Stop "${stop.id}" needs a Camera connection between "${previousViewId}" and "${viewId}"; connection "${connection.id}" joins "${connection.fromNodeId}" and "${connection.toNodeId}"`,
-			stop.id
-		);
-	}
-	return { kind: 'resolved', invocation: { kind: 'travel', connectionId: connection.id } };
+	return { kind: 'resolved', invocation: resolved };
 }
 
 function toProgramContinuation(continuation: Experience['stops'][number]['continuation']): ProgramContinuation {

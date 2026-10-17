@@ -16,6 +16,9 @@
  * - every event is qualified by `runId` + `runEpoch`; an event from an older run
  *   is rejected (`stale`) and can neither advance, complete nor clear the newer
  *   run;
+ * - an `arrival` event only confirms the current occurrence. The Camera intent is
+ *   emitted once at editorial arrival, so a confirmation never reissues it, and
+ *   a terminal run ignores the confirmation entirely;
  * - state is initialized once per run and reset explicitly, never on every
  *   arrival. A `reset` rewinds the **same** run (`runId`/`runEpoch` unchanged)
  *   to a fresh entry; starting a new run is the host's new-run path, not reset.
@@ -114,6 +117,18 @@ export type ExperienceDetourPolicy = {
 	readonly returnToStopId: string;
 };
 
+/**
+ * One validated runtime edge: the Camera invocation for arriving at `toStopId`
+ * **from `fromStopId`**. Lowering derives these for every authored edge, so the
+ * invocation a run uses is the one that starts at its actual predecessor, never
+ * the Guide-adjacent binding of some other approach.
+ */
+export type ExperienceTransition = {
+	readonly fromStopId: string;
+	readonly toStopId: string;
+	readonly invocation: ProgramInvocation;
+};
+
 export type ExperienceInterpreterOptions = {
 	readonly runId: string;
 	readonly runEpoch: number;
@@ -126,6 +141,12 @@ export type ExperienceInterpreterOptions = {
 	 */
 	readonly gates?: readonly string[];
 	readonly detours?: readonly ExperienceDetourPolicy[];
+	/**
+	 * Lowering-derived invocation per authored edge. Without a table the run only
+	 * trusts a Stop's own invocation for its authored predecessor; any other jump
+	 * may Cut, and a Travel without a matching edge is a typed gap.
+	 */
+	readonly transitions?: readonly ExperienceTransition[];
 };
 
 export type ExperienceEffect =
@@ -204,7 +225,7 @@ export function reduceExperience(
 	if (event.kind === 'reset') return resetRun(program, state, options);
 	if (event.kind === 'cancel') return finish(program, state, 'cancel', options);
 	if (event.kind === 'complete') return finish(program, state, 'complete', options);
-	if (event.kind === 'arrival') return arrivalEvent(program, state);
+	if (event.kind === 'arrival') return arrivalEvent(state);
 	if (event.kind === 'set-state') return setState(program, state, event.stateId, event.value);
 	if (event.kind === 'navigate') return navigate(program, state, event.stopId, options);
 	return continueRun(program, state, options);
@@ -289,13 +310,45 @@ function enter(
 	return arrive(program, actioned.state, program.entryStopId, options, effects);
 }
 
-function arrivalEvent(
+function arrivalEvent(state: ExperienceRunState): ExperienceReduceResult {
+	if (state.stopId === null) return ignored(state);
+	// A terminal run has already issued every Camera intent it is allowed to; a
+	// late confirmation from its old travel must not write to the Camera again.
+	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
+	// Confirming an arrival is not a second visit and not a second Camera intent:
+	// the occurrence identity stays and the invocation was issued once at editorial
+	// arrival. Re-emitting it here would duplicate the one Camera write and could
+	// restart a completed travel.
+	return accepted({ ...state, lastEvent: 'arrival' }, []);
+}
+
+/**
+ * Resolve the invocation for the actual approach. A transition table entry wins;
+ * the Stop's own binding is trusted only for its authored predecessor. A Cut
+ * needs no route, but a Travel must never borrow a connection that starts
+ * somewhere else.
+ */
+function invocationFor(
 	program: ExecutionProgram,
-	state: ExperienceRunState
-): ExperienceReduceResult {
-	if (state.stopId === null || state.invocation === null) return ignored(state);
-	// Confirming an arrival is not a second visit: the occurrence identity stays.
-	return accepted(state, [{ kind: 'camera', stopId: state.stopId, invocation: state.invocation }]);
+	state: ExperienceRunState,
+	stopId: string,
+	stop: ProgramStop,
+	options: ExperienceInterpreterOptions
+): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | { readonly kind: 'gap'; readonly message: string } {
+	const predecessor = state.stopId;
+	if (predecessor === null) return { kind: 'resolved', invocation: stop.invocation };
+	const transition = (options.transitions ?? []).find(
+		(entry) => entry.fromStopId === predecessor && entry.toStopId === stopId
+	);
+	if (transition !== undefined) return { kind: 'resolved', invocation: transition.invocation };
+	const index = program.stops.findIndex((entry) => entry.id === stopId);
+	const authoredPredecessor = index > 0 ? program.stops[index - 1]!.id : null;
+	if (authoredPredecessor === predecessor) return { kind: 'resolved', invocation: stop.invocation };
+	if (stop.invocation.kind === 'cut') return { kind: 'resolved', invocation: stop.invocation };
+	return {
+		kind: 'gap',
+		message: `arriving at Stop "${stopId}" from "${predecessor}" has no resolved Camera transition; its bound Travel starts from "${authoredPredecessor ?? 'the entry'}"`
+	};
 }
 
 /**
@@ -342,6 +395,23 @@ function arrive(
 			message: `Stop "${stopId}" names no Presentation`
 		}] };
 	}
+	// The invocation must be valid for the approach this run actually made. A
+	// Travel bound to another predecessor is a typed gap: the run does not arrive
+	// and no Camera intent is emitted.
+	const resolvedInvocation = invocationFor(program, state, stopId, stop, options);
+	if (resolvedInvocation.kind === 'gap') {
+		return {
+			state,
+			outcome: 'ignored',
+			effects: [...effects, {
+				kind: 'gap',
+				fromStopId: state.stopId,
+				toStopId: stopId,
+				message: resolvedInvocation.message
+			}]
+		};
+	}
+	const invocation = resolvedInvocation.invocation;
 	const visit: ExperienceVisit = {
 		stopId,
 		occurrenceId: `${state.runId}:${stopId}:${state.visited.length + 1}`,
@@ -374,7 +444,7 @@ function arrive(
 		visited: appendVisit ? [...state.visited, visit] : state.visited,
 		panel,
 		pendingContent: [],
-		invocation: stop.invocation,
+		invocation,
 		gated,
 		holdRemainingMs: null,
 		phase: 'ready',
@@ -382,7 +452,7 @@ function arrive(
 	};
 	const nextEffects: ExperienceEffect[] = [
 		...effects,
-		{ kind: 'camera', stopId, invocation: stop.invocation },
+		{ kind: 'camera', stopId, invocation },
 		{ kind: 'panel', panel }
 	];
 	for (const contentId of outsideSelection) {
@@ -649,18 +719,40 @@ function applyAction(
 ): LifecycleApplication {
 	switch (action.kind) {
 		case 'show-content': {
-			const record = program.presentations
-				.flatMap((presentation) => presentation.content)
-				.find((entry) => entry.id === action.contentId);
-			if (record === undefined) return { state, navigateTo: null, continueRequested: false };
 			if (state.panel === null) {
 				// The panel does not exist yet: queue the selection for the arrival that
-				// creates it instead of dropping the declared action.
+				// creates it instead of dropping the declared action. Ownership is checked
+				// against the arriving Presentation then, so a pre-arrival selection cannot
+				// be steered by whatever Presentation happens to carry the id.
+				const queued = program.presentations
+					.flatMap((presentation) => presentation.content)
+					.find((entry) => entry.id === action.contentId);
+				if (queued === undefined) return { state, navigateTo: null, continueRequested: false };
 				return {
-					state: { ...state, pendingContent: [...state.pendingContent, record.id] },
+					state: { ...state, pendingContent: [...state.pendingContent, queued.id] },
 					navigateTo: null,
 					continueRequested: false
 				};
+			}
+			// An open panel belongs to exactly one Presentation. A content record from
+			// another Presentation is a typed gap, never content placed under the wrong
+			// label and View.
+			const active = program.presentations.find((presentation) => presentation.id === state.presentationId);
+			const record = active?.content.find((entry) => entry.id === action.contentId);
+			if (record === undefined) {
+				const livedElsewhere = program.presentations.some(
+					(presentation) => presentation.id !== state.presentationId &&
+						presentation.content.some((entry) => entry.id === action.contentId)
+				);
+				if (livedElsewhere) {
+					effects.push({
+						kind: 'gap',
+						fromStopId: state.stopId,
+						toStopId: state.stopId ?? '',
+						message: `show-content selected "${action.contentId}", which the active Presentation does not carry`
+					});
+				}
+				return { state, navigateTo: null, continueRequested: false };
 			}
 			const panel: ExperiencePanel = { ...state.panel, content: [{ id: record.id, text: record.text }] };
 			effects.push({ kind: 'panel', panel });

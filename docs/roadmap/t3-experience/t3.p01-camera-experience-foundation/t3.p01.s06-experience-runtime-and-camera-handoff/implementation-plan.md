@@ -62,8 +62,13 @@ reads it, and no source/runtime cutover happens here.
    (never through a hold or a Gate), and is explicitly ignored where no occurrence can advance.
    Occurrence identity is never an array index, label, Room or Camera view id. A run also carries the
    lowering source identity: an event prepared from a different source is stale and cannot advance
-   the run. The same required instruction means the same thing in Preview and publication; an
-   unsupported required program, state, operator or profile refuses.
+   the run. An `arrival` event **confirms** the current occurrence and emits no second Camera intent;
+   a completed or cancelled run ignores it, so a late travel confirmation cannot reissue a write.
+   Invocation validity follows the predecessor the run actually came from: lowering emits a per-edge
+   transition table for Guide adjacency, explicit continuations and authored detours, and a Travel
+   with no edge for that approach is a typed gap — never a borrowed connection or a silent Cut. The
+   same required instruction means the same thing in Preview and publication; an unsupported required
+   program, state, operator or profile refuses.
 4. **Semantic companion.** A framework-free DOM/Info-Panel view model: current presentation label and
    text content, every admitted destination reachable by keyboard/DOM navigation, occurrence-derived
    `aria-current`/progress, repair/gap explanations with useful labels and links, panel focus-in/
@@ -130,11 +135,11 @@ activation gaps owned by `T3.P01.S04`/`T3.P02`, not a second authoring surface.
 | --- | --- |
 | `camera-handoff-v1` with guided/free ownership, Follow, Look-through, Preview, return and stale cleanup | Conformance: one owner per output; guided→follow→preview→return unwinds in order; return refuses a wrong token/source/session; cancel after replacement is ignored; a stale run cannot clear, reclaim or advance the newer output; source rebase ends the claim. |
 | Shared lowering/interpreter using the accepted codec | Lowered fixtures validate against `validateExecutionProgram`; every binding resolves or refuses; a supplied order that is not an authored Guide order refuses; no pose/path copy; lowering is deterministic and replayable. |
-| Deterministic reducer/clock, occurrence holds, continuation | Replay from identical events produces identical state; clock is explicit; repeated Stop visits get fresh run ids; hold boundaries, sequence-next, nonadjacent Stop, End and detour return resolve by occurrence. |
-| Minimal guard/Continue/detour state | Guard failure skips the guarded action; Continue is explicit at a gate/hold; lifecycle `continue` advances a ready occurrence once and is ignored through a hold or Gate; `show-content` before a panel is deferred to its arrival; state initializes/resets and choice values are bounded; every detour returns to its origin occurrence regardless of the target's continuation kind. |
+| Deterministic reducer/clock, occurrence holds, continuation | Replay from identical events produces identical state; clock is explicit; repeated Stop visits get fresh run ids; hold boundaries, sequence-next, nonadjacent Stop, End and detour return resolve by occurrence; an arrival confirmation emits no Camera effect and a terminal run ignores it. |
+| Minimal guard/Continue/detour state | Guard failure skips the guarded action; Continue is explicit at a gate/hold; lifecycle `continue` advances a ready occurrence once and is ignored through a hold or Gate; `show-content` before a panel is deferred to its arrival, and an arrival-time selection cannot place another Presentation's content in the active panel; state initializes/resets and choice values are bounded; every detour returns to its origin occurrence regardless of the target's continuation kind. |
 | Semantic DOM companion/Info Panel | Every admitted destination is keyboard/DOM-reachable with the same Activate meaning; `aria-current`/progress are occurrence-derived and bounded; a Gate exposes an explicit Continue control with its reason; panel focus-in/Escape/return and gap explanations work without raycast. |
 | Guided/free/reduced-motion controllers against closed fixtures | Guided plays supported travel with directed timing; a gap reports; free releases guided control and rejoin pauses autoplay; reduced motion reaches the same destination without accelerated travel. |
-| Required AM-6 traces and stale-event behavior | The trace fixture set above, asserting ordered events/checkpoints, not implementation snapshots; a stale event from an ended run or a different lowering source cannot advance, complete or clear the newer run. |
+| Required AM-6 traces and stale-event behavior | The trace fixture set above, asserting ordered events/checkpoints, not implementation snapshots; a stale event from an ended run or a different lowering source cannot advance, complete or clear the newer run; an authored explicit jump or detour whose Travel starts at another Stop refuses at lowering, and a runtime jump with no transition for its actual predecessor gaps without a Camera effect. |
 | No second Camera/Experience authority | Import/closures prove Camera owns route/motion/evaluation; Experience code has no BFS, no pose/FOV interpolation and no second timeline. |
 
 ## Verification
@@ -167,6 +172,14 @@ record exact results in [acceptance.md](./acceptance.md):
 - `traveling`/`arrived` remain reserved phase names for a host that realizes travel and staging; the
   reducer reports `ready`/`holding`/`blocked` and never produces either. S04 owns that host contract.
 - A `show-content` selection that names another Presentation's content is not a refusal: the arrival
-  happens with the matching content only and a typed `gap` effect explains the unconsumed id.
+  happens with the matching content only and a typed `gap` effect explains the unconsumed id; once a
+  panel is open the same selection leaves the active panel untouched.
+- Occurrence activation (hold/Gate start) happens at editorial arrival, when the single Camera intent
+  is issued; the interpreter does not wait for a Camera-confirmed arrival before starting editorial
+  time. Whether a hold is measured from confirmed travel is an `T3.P01.S04` activation decision; the
+  reserved `traveling`/`arrived` phases are where such a host contract would live.
+- The per-edge transition table is preparation output alongside the invocation bindings, not an
+  `ExecutionProgram@1` field: the program codec stays unamended, and an authored home for the
+  selector remains the same pre-S04 contract decision.
 - `camera-handoff-v1` is recorded at acceptance only with the whole role/ownership meaning; the
   partial module landed in PR #138 is not acceptance evidence on its own.
