@@ -1,9 +1,11 @@
-# T3.P01.S03 — registered split proposal (2026-10-17)
+# T3.P01.S03 — approved split direction (2026-10-17)
 
-**Status:** **proposed, awaiting owner decision.** This is not an authorization, a
-registration and not an acceptance record. It is the split the
-[implementation plan](./implementation-plan.md#scope) requires the implementer to
-propose **instead of silently narrowing a criterion**.
+**Status:** **split direction approved 2026-10-17 by delegated owner decision; follow-up registration
+and authorization pending.** The owner explicitly delegated PR #138's acceptance decisions. This
+document records the decision to divide S03's remaining obligations into S03a and S03b; it does
+**not** register or authorize either follow-up slice, accept any capability, or close S03. The
+[implementation plan](./implementation-plan.md#scope) requires the implementer to propose a
+registered split rather than silently narrow a criterion.
 
 **Slice:** T3.P01.S03 · **Phase:** [T3.P01](../README.md) · **Track:** [T3](../../README.md)
 **Authorizing record:** [2026-10-17 next batch](../../../../reference/decisions/next-batch-authorization-2026-10-17.md) (D5)
@@ -97,17 +99,27 @@ conditional Save over F2 with real-DB evidence, the runtime/interpreter/DOM
 companion and the three controllers. The acceptance record states that
 explicitly; no capability is recorded as accepted.
 
-## Owner decision requested
+## Delegated owner decision and required follow-up
 
-1. Approve the split, or choose a different seam. Until then T3.P01.S03 stays the
-   authorized slice and its acceptance record claims only the evidence above.
-2. If approved, register `T3.P01.S03a` and `T3.P01.S03b` as two rows in the
-   [T3.P01 slice register](../README.md#slice-register), set S03 to `shipped` only
-   when all its criteria are accepted under one of the two, and restate
-   `F3.channels@1:camera-handoff-v1`'s owner on the S03b row and in the
-   [allocation](../../../cross-track-execution.md#capability-readiness-amendment).
-3. `T3.P01.S04`'s `Requires` does not change: it names the four capability
-   scopes, not the slice that produces them.
+1. **APPROVED:** S03a owns unit acceptance, F2 candidates and unit Save; S03b owns
+   Experience runtime and the complete F3 Camera handoff. Every original S03 exit
+   criterion is preserved. The implementation in PR #138 is accepted **for this
+   preparatory increment only**, not as acceptance or closeout of S03, S03a or S03b.
+2. **NOT AUTHORIZED:** The proposed S03a/S03b implementation is not permitted by this
+   decision alone. Before either starts, separately register its proposed row in the
+   [T3.P01 slice register](../README.md#slice-register), write its exact plan and
+   acceptance stub, reconcile the allocation and capability provider identities,
+   and obtain explicit implementation authorization under the existing readiness
+   rules. Keep S03 in progress as the original umbrella obligation; only mark it
+   shipped after both halves' original criteria have accepted evidence and the
+   prescribed closeout.
+3. **UNCHANGED:** `T3.P01.S04`'s `Requires` still names the accepted capability
+   scopes; it may not start until all required outputs are accepted at its trusted
+   base. No F3/F4 capability is accepted by PR #138, and no T4 work is authorized.
+
+**Evidence/provenance:** decision by the assistant acting under the owner's explicit
+2026-10-17 delegation in the coordinating conversation; PR #138, code increment
+`b13c5d73`. This decision is not a substitute for each follow-up slice's review.
 
 ## Explicit non-implications
 
