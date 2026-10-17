@@ -22,7 +22,7 @@ This record holds implementation evidence for independent review. It is **not** 
 | PR | [#133](https://github.com/Biskiq/spatial-sketch-editor/pull/133) |
 | Base | post-PR #132 `main` (`74367936ea0cb1754c45021c4f10ca69b17ca7b0`) |
 | Tested code revision | `b22d32f258abb852b96db85ba479c0d14ee985db` (implementation + tests, including the independent-review fixes) |
-| Evidence docs | this record's docs commit after the tested revision; docs-only, no product change |
+| Evidence docs | the commit after the tested revision: this record plus the Save state's binding/outcome doc comments. Comment-only, no behavioural product change; `npm run check`, the 13-test state suite, the arch lane and the one-worker full suite (**1853/1853**) were re-run on it |
 | Runtime | macOS (aarch64), Node `v26.7.0` |
 | Database | PostgreSQL `14.19` (Homebrew), local database `biskiq_s02`, migrations applied twice |
 
@@ -188,6 +188,12 @@ the next Save conflicts instead); the additive `GET` metadata is safe in either 
 
 - **No acceptance.** The capability is not accepted, the gate register is unchanged, and no T1/T2
   slice may enable Save from this evidence.
+- **The Save state is bound to the baseline it was constructed with.** It is not re-derived when a
+  session is replaced: a Head that swaps in a *different* project must construct a new state, or it
+  will send the old project's token with the new project's capture. The server refuses and writes
+  nothing, so this is a wiring rule, not a data risk — and it is the Head integration's to honour.
+- **A returned `SaveOutcome` is a fact about that request**, not the live view: a second Save may
+  already have replaced the snapshot by the time an earlier promise resolves.
 - **No Head integration.** The state machine is unmounted by design; `T1.P01.S04` (or the authorized
   host↔F4 slice) owns the PLATE Head, unsaved-work signalling and routing *Reload* through the
   replacement guard. The read-only T1 boot remains safe in either merge order because `GET` is

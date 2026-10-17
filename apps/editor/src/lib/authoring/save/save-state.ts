@@ -24,6 +24,13 @@
  *   the same full-source comparison as `dirty`, so it can never read `saved`
  *   over unsaved edits. An acknowledgement that does not describe the captured
  *   source is refused instead of adopted.
+ * - **the state belongs to the project it was constructed for**: the saved base
+ *   is fixed at construction. A Head that replaces the session with a
+ *   *different* project must create a new state; reusing this one would send the
+ *   old project's token with the new project's capture (the server refuses and
+ *   writes nothing, but the token would never be repaired here). A returned
+ *   outcome likewise describes the request that produced it — `getSnapshot()` is
+ *   the live view.
  */
 
 import type { AcceptedRevision, ProjectDocument } from '@portfolio/project-model';
@@ -153,7 +160,11 @@ export type SaveState = {
 	 * accepted edit is never reported as saved.
 	 */
 	refresh(): SaveSnapshot;
-	/** The one command. Reuses a retained capture/precondition when it is still exact. */
+	/**
+	 * The one command. Reuses a retained capture/precondition when it is still
+	 * exact. An outcome is a historical fact about that request; read the snapshot
+	 * for the current view (a newer run may already have replaced it).
+	 */
 	save(signal?: AbortSignal): Promise<SaveOutcome>;
 	/** Retry the retained capture, resolving network ambiguity through its receipt. */
 	retry(signal?: AbortSignal): Promise<SaveOutcome>;
