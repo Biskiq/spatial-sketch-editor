@@ -447,6 +447,31 @@ test('a stored base that fails registry admission does not block a valid Save', 
 	assert.equal((await counts(projectId)).versions, 2);
 });
 
+test('admission refusal writes nothing, including an owner row', async () => {
+	const owner = 'google:s02-save-no-write';
+	const cookie = await sessionCookie(app, owner);
+	const projectId = track(nextProjectId());
+	const project = projectDocument('Unknown asset refusal', { id: projectId });
+	project.scene.entities = [
+		{
+			kind: 'model',
+			id: 'imported',
+			name: 'Imported',
+			assetId: 'asset-not-in-the-host-catalogue',
+			fallback: 'piano',
+			position: [0, 0, 0],
+			rotation: [0, 0, 0]
+		}
+	];
+	const refused = await save(projectId, cookie, await saveRequestBody(project));
+	assert.equal(refused.statusCode, 400);
+	assert.equal(refused.json().error.code, 'invalid_project');
+	const user = await pool.query('SELECT 1 FROM users WHERE id = $1', [owner]);
+	assert.equal(user.rows.length, 0);
+	const projectRow = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
+	assert.equal(projectRow.rows.length, 0);
+});
+
 test('the unconditioned old-client body refuses with no write', async () => {
 	const cookie = await sessionCookie(app, 'google:s02-save-1');
 	const projectId = track(nextProjectId());

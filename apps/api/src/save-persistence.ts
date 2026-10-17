@@ -131,13 +131,6 @@ export async function saveAcceptedSource(
 	const capturedFullSourceHash = await fullSourceHash(canonical.canonicalJson);
 
 	return withTransaction(pool, async (db) => {
-		await db.query(
-			`INSERT INTO users (id)
-VALUES ($1)
-ON CONFLICT (id) DO NOTHING`,
-			[ownerId]
-		);
-
 		const locked = await queryRows<ProjectRow>(
 			db,
 			`SELECT id, owner_id AS "ownerId", name, latest_version AS version,
@@ -167,6 +160,14 @@ FOR UPDATE`,
 			if (row) {
 				throw new SaveRefusalError('collision', 'A project with this ID already exists');
 			}
+			// The user row is created only when this Save actually creates a
+			// project; a refused Save writes nothing, not even an owner record.
+			await db.query(
+				`INSERT INTO users (id)
+VALUES ($1)
+ON CONFLICT (id) DO NOTHING`,
+				[ownerId]
+			);
 			const inserted = await queryRows<{ id: unknown }>(
 				db,
 				`INSERT INTO projects (id, owner_id, name, saved_base_token)
