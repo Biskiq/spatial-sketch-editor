@@ -18,15 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: no authorized T1 slice; S04–S06 remain proposed in the phase register.
-BATON: S02 was accepted under owner-override on 2026-10-17. Its
-       `T1.viewport-projection@1` capability remains ratified; S06's integrated result is still owed,
-       and no consumer readiness is claimed.
-NEXT: Await owner authorization for the next T1 slice, then use this runbook's eligibility, trusted-
-      base and cycle checks before starting its declared verification tier and integration route.
+ACTIVE: T1.P01.S07 (Stage↔F4 integration bridge) is authorized (2026-10-17) and not started;
+        S04–S06 remain proposed.
+BATON: S02 was accepted under owner-override on 2026-10-17. Its `T1.viewport-projection@1`
+       capability remains ratified. By owner ruling D1 (2026-10-17), S07's acceptance, not S06's,
+       is the viewport readiness route; S07 also owns the host↔F4 wiring (D2), and Head Save stays
+       with S04 (D3).
+NEXT: Once the authorizing PR merges, start S07 through this runbook's eligibility, trusted-base and
+      one-line cycle check (S07 is not an exposure and opens nothing). Batch A: it runs beside
+      T3.P01.S03 under the authorized-batch shared-file protocol.
 ROUTE: ./README.md →
-       ../../roadmap/README.md#gate-register →
+       ../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17 →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md
-BLOCKER: no next slice is authorized; S06 integration proof remains required for viewport consumer readiness.
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md
+BLOCKER: none for S07 once the authorizing PR merges. S04–S06 wait for S07's closeout.
 ```

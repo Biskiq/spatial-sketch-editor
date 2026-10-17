@@ -1,6 +1,6 @@
 # T3.P01.S03 — Compound and runtime preparation: implementation plan
 
-**Slice:** T3.P01.S03 · **Status:** proposed — not authorized · **Phase:** [T3.P01](../README.md) ·
+**Slice:** T3.P01.S03 · **Status:** approved — owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); not started · **Phase:** [T3.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T3](../../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md)
 
@@ -11,11 +11,34 @@ VERIFICATION: architecture-integration
 INTEGRATION ROUTE: ../t3.p01.s04-live-ownership-cutover/implementation-plan.md
 ```
 
+**Engineering principle.** Exercise ambitious independent engineering judgment: challenge
+assumptions, investigate missing invariants and cross-system failure modes, pursue stronger or
+simpler solutions, and resolve demonstrated defects without speculative abstractions or
+unauthorized contract changes.
+
 ## Prerequisite
 
 S01 and S02 accepted, with `T1.P01.S03`'s local acceptance, at this slice's trusted base. The slice
 consumes the still-active current-source scopes while it builds the unit implementation; the
 capabilities it exports declare only F2 and the enduring `acceptance-invariants-v1`.
+
+**Verified 2026-10-17 on post-PR #135 `main` (`c9aa53cf`).** Every required scope is `active`.
+`unit-envelope-v1` and `unit-resolution-v1` were accepted at `6dcb6d6d`.
+`inspection-v1` was accepted at `ee463d0b`, and `local-single-domain-v1` with
+`acceptance-invariants-v1` at `8ec0c5f1`. `conditional-save-current-v1` was accepted at
+`8dd53260` (PR #133). All are ancestors of `main`. The slice consumes no `T1.viewport-projection@1`, editor
+route, host or Stage module, so the T1 viewport cycle neither blocks it nor is blocked by it.
+The owner authorized it on 2026-10-17 (D5). While it runs beside `T1.P01.S07`, the
+[shared-file protocol](../../../cross-track-execution.md#authorized-batch-2026-10-17) applies. It
+covers additive-only `f4`/Save/channel extensions, new `camera-core` modules only, and no editor
+route or host edits.
+
+**Size.** This is the largest remaining T3 slice: two F4 extension scopes with real-DB Save, plus the
+F3 `camera-handoff-v1` and runtime preparation. As with R1/R2 of the
+[2026-10-16 batch](../../../cross-track-execution.md#parallel-batch-2026-10-16), the implementer proposes
+a registered split to the owner rather than silently deferring a criterion. The natural seam is
+(a) unit acceptance/Save versus (b) runtime/handoff preparation. They touch disjoint modules, and
+`T4.P01.S03` needs only (b).
 
 ## Scope
 
@@ -48,5 +71,5 @@ them. Never relabel T1's base acceptance as complete F4 readiness.
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**; it holds no implementation permission, and nothing
-here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).
+This slice is **authorized** (owner, 2026-10-17) and **not started**; it starts through the T3 runbook's
+start step once the authorizing PR has merged. Nothing here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).

@@ -20,20 +20,21 @@ PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
 SLICES: T3.P01's slice register is authoritative — S01 shipped 2026-10-16 (`F2.unit-envelope@1` and
         additive `F1.reference@1:unit-resolution-v1`); S02 shipped 2026-10-16 (PR #133) with accepted
-        `F4.intent-acceptance@1:conditional-save-current-v1`; S03–S04 proposed and unauthorized;
-        T3.P02 is an unregistered candidate phase.
+        `F4.intent-acceptance@1:conditional-save-current-v1`; S03 owner-authorized 2026-10-17 (not started);
+        S04 proposed and unauthorized; T3.P02 is an unregistered candidate phase.
 BATON: T3.P01.S02 (early conditional Save) is accepted and shipped on PR #133 from post-PR #132
        `main`. T3 owns the protocol, server path, client and framework-free client Save state; T1
        owns the Head integration (`T1.P01.S04` by default), which is not part of this slice. Runtime
        activation, source cutover, migration inventory and recovery remain T3.P01.S04's. No T3 slice
        is in progress.
-NEXT: The next T3 authorization is S03 (compound and runtime preparation). Its prerequisite closure
-      — S01's unit capabilities and S02's `conditional-save-current-v1` — is complete on `main` once
-      this close merges, so an owner authorization can open S03. Phase/track closure is not
+NEXT: S03 (compound and runtime preparation) is authorized (2026-10-17, D5). Once the authorizing PR
+      merges, start it through this runbook's start step: its prerequisite closure was re-verified at
+      `c9aa53cf`, and it runs in batch A beside T1's S07 under the authorized-batch shared-file
+      protocol. Phase/track closure is not
       available: S04, the declared final gate, is neither accepted nor shipped.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md
-BLOCKER: none (S03 authorization is an owner decision, not an unresolved dependency).
+BLOCKER: none for S03 once the authorizing PR merges.
 ```

@@ -274,7 +274,7 @@ there is no batch merge and no imposed order. Every merge reruns the complete me
 `main`, whatever the slice's iteration tier; a slice whose shared module changed underneath it
 rebases and reruns before merging. Integration of the viewport host with F4 (accepted install, Undo/
 Redo commands, replacement baseline, selection requalification, Camera-output rebase) is
-`T1.P01.S04`'s first increment by default.
+`T1.P01.S04`'s first increment by default (reassigned to `T1.P01.S07` by ruling D2 of 2026-10-17).
 
 **Cycle.** `T1.P01.S02` is a listed exposure: its first authorized implementation opens the T1.P01
 window through the runbook start step. `T1.P01.S03`, `T2.P01.S01` and `T3.P01.S01` are not exposures
@@ -321,6 +321,62 @@ and reports instead.
 routine closeout. Every merge reruns the complete merge gate on the then-current `main`;
 `T3.P01.S02` also runs the DB-backed API suite with zero skips. The Head Save integration is T1's
 and starts only after `conditional-save-current-v1` is accepted. Neither slice is a cycle exposure.
+
+## Authorized batch 2026-10-17
+
+**Batch A is owner-authorized 2026-10-17** ([decision](../reference/decisions/next-batch-authorization-2026-10-17.md)):
+`T1.P01.S07` and `T3.P01.S03`. Batch B is not authorized. All T4 work, including `T4.P01.S01`, is
+deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted. These are the shared-file and merge rules for the batches of the
+[2026-10-17 next-batch proposal](./next-batch-2026-10-17.md). The decisions, rationale and launch conditions live
+in that proposal, not here. Batch A is `T1.P01.S07` and `T3.P01.S03`. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
+and `viewport-projection-v1` is accepted at their trusted base.
+
+```mermaid
+flowchart LR
+  V["T1 S02 (shipped)"] --> B["T1 S07: Stage↔F4 bridge → viewport-projection-v1 accepted"]
+  L["T1 S03 (shipped)"] --> B
+  B --> P["T1 S04: Layout precision + Head Save"]
+  B --> UI["T2 S03: Place/Move/Yaw/Undo"]
+  P --> W["T1 S05: Wall manipulation"] --> G["T1 S06: final gate"]
+  P --> T2F["T2 S04 (needs Head Save)"]
+  UI --> T2F
+  U["T3 S01/S02 (shipped)"] --> X["T3 S03"] --> CUT["T3 S04"]
+```
+
+This delta replaces only the `V --> UI` edge of the DAG above with `V → S07 → UI`, and it adds S07 as
+S04's predecessor. Every other edge is unchanged.
+
+**Batch A shared-file ownership** (for its duration):
+
+| Area | Writer | Rule for everyone else |
+| --- | --- | --- |
+| Editor routes, host, Stage, shell and Head modules | `T1.P01.S07` | read-only; a needed change is a stop-and-report to T1 |
+| Existing `@portfolio/camera-core` modules (`viewport.ts`, `camera-motion.ts`, `camera-route.ts`, …) | `T1.P01.S07`, only where the wiring requires it | read-only for `T3.P01.S03`; a needed change is a stop-and-report to T1 |
+| New `@portfolio/camera-core` modules (guided/free/reduced-motion controllers) | `T3.P01.S03` | evaluate through the existing Camera authority; no second pose/FOV interpolation |
+| `project-model` `src/f4/**` and the editor `authoring/f4/**` coordinator | `T3.P01.S03` for the additive unit-acceptance extension | `T1.P01.S07` consumes public exports; any host-facing addition is additive, and the second merger resolves; landed `local-single-domain-v1` behavior changes for neither |
+| `project-model` `src/channels/**` (F3) | `T3.P01.S03` (additive `camera-handoff-v1`) | `inspection-v1` and the ticket protocol S07 rebases on stay byte-compatible; S07 reruns its probes if T3 merges first |
+| `project-model` Save subpath, `apps/api/**`, migrations and editor `authoring/save/**` | `T3.P01.S03` | read-only |
+| `docs/roadmap/t4-release/**` | none (T4 deferred, R1-D) | frozen |
+| Root barrels, `package.json` exports and [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the textual conflict |
+| Boundary tests (public surface, project-model, camera-core) | additive assertions per slice | no slice weakens an existing assertion |
+| Gate register rows | each slice's closeout edits only its own gate rows (S07: `T1.viewport-projection`; T3 S03: F1/F3/F4 entries) | same table, distinct rows; the second merger resolves |
+
+**Batch B shared-file ownership** (after S07 ships): `T1.P01.S04` is the sole writer of the Head
+(Save integration) and of Layout adapter modules. `T2.P01.S03` is the sole writer of its Scene adapter
+modules. Both register Place/Find/Card/instrument entries only through S07's contribution points.
+Neither edits host core, route or shell modules, and a needed change is a stop-and-report to T1.
+`layout-core` and `project-model` stay new-modules-only. Nobody changes the compiler, an existing
+query or `src/scene-planning/` semantics.
+
+**Merge protocol.** As in the earlier batches, each slice merges on its own after independent
+acceptance and routine closeout, with no imposed order inside a batch. Every merge reruns the complete
+merge gate on the then-current `main`. `T3.P01.S03` also runs the DB-backed API suite with zero
+skips. Between batches, **S07 must merge, and its closeout must record `viewport-projection-v1`
+accepted, before either batch-B slice starts**. Their trusted bases must contain that merge.
+
+**Cycle.** None of these slices is an exposure except `T1.P01.S04`, which is already listed. Its start
+records no new opening, because the window has been open since S02. S07 is deliberately not added:
+the window is at its bound of three.
 
 ## Owner ratifications and cycle disposition
 

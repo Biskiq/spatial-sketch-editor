@@ -17,7 +17,8 @@ ready or evidenced.
 
 ## Prerequisite
 
-S01–S05 accepted with routine closeout; the seam provider remains independently accepted.
+S01–S05 and S07 accepted with routine closeout. The seam provider remains independently accepted:
+under owner ruling D1 (2026-10-17) the viewport capability is accepted through S07, not through this gate.
 
 ## Produces
 
@@ -33,7 +34,7 @@ independent coincident structures, dense geometry, long identity, narrow/short s
 reduced motion. Add empty boot → native plinth → precision → source reopen. Include the seam
 consumer probes and zero editor machinery in public chunks.
 
-Proposed slice tiers: S01/S02/S03/S05 architecture-integration, S04 affected-subsystem; each
+Proposed slice tiers: S01/S02/S03/S05/S07 architecture-integration, S04 affected-subsystem; each
 narrows through this exhaustive S06 integration route. Focused iteration never substitutes for
 acceptance. Every implementation-PR merge still retains the complete repository gate including
 heavy correctness. Do not add a second harness or repeat accepted evidence merely for closeout.
@@ -57,8 +58,8 @@ owner phase-close request closes it; neither phase nor cycle closure is fabricat
 
 ## Readiness declaration
 
-This slice is `proposed` and **not authorized**: it runs only after S01–S05 are accepted with
-routine closeout, it consumes `F1.reference@1`, `F4.intent-acceptance@1` and
+This slice is `proposed` and **not authorized**: it runs only after S01–S05 and S07 are
+accepted with routine closeout, it consumes `F1.reference@1`, `F4.intent-acceptance@1` and
 `T1.viewport-projection@1` accepted at its trusted base, and its `Requires` capabilities
 (`references-v1`, `local-single-domain-v1`, `viewport-projection-v1`) must be accepted before it starts. No gate state,
 readiness, implementation, acceptance, evidence or commit is claimed by this plan. A passed
