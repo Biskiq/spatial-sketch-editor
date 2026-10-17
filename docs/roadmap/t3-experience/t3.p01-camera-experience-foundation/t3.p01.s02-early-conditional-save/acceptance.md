@@ -21,7 +21,7 @@ This record holds implementation evidence for independent review. It is **not** 
 | Branch | `T3-P01-S02` |
 | PR | [#133](https://github.com/Biskiq/spatial-sketch-editor/pull/133) |
 | Base | post-PR #132 `main` (`74367936ea0cb1754c45021c4f10ca69b17ca7b0`) |
-| Tested code revision | `3f893cc33b87c9e8fd0b893637a27796cb448c56` (implementation + tests) |
+| Tested code revision | `5593b8bc2bf316546cdd8b95486f8dd712367436` (implementation + tests) |
 | Evidence docs | this record's docs commit after the tested revision; docs-only, no product change |
 | Runtime | macOS (aarch64), Node `v26.7.0` |
 | Database | PostgreSQL `14.19` (Homebrew), local database `biskiq_s02`, migrations applied twice |
@@ -39,7 +39,7 @@ remote/production database. No production or preview environment was touched.
 | `npx vitest run` on the six new editor suites | 6 files / **28 tests** pass |
 | `npm run test:arch` | 18 files / **151 tests pass** |
 | `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1845 tests pass** |
-| `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **50 tests pass, 0 failed, 0 skipped** |
+| `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **51 tests pass, 0 failed, 0 skipped** |
 
 The full editor suite includes the heavy lane (`test:heavy` members run in the default config). At
 the tested revision, plain `npm test` reached **1844/1845** and failed only on the **pre-existing 5 s
@@ -52,7 +52,7 @@ concurrency/failure evidence, not a mock.
 
 ## Exit-criterion evidence
 
-### Real-Postgres Save conformance — `apps/api/tests/save.test.mjs` (11 tests, no skip guards)
+### Real-Postgres Save conformance — `apps/api/tests/save.test.mjs` (12 tests, no skip guards)
 
 | Criterion | Evidence |
 | --- | --- |
@@ -65,6 +65,7 @@ concurrency/failure evidence, not a mock.
 | Failed full validation | Invalid document, unknown registry asset and unknown registry material each return 400 `invalid_project` with issues and write nothing. |
 | Editor/API unknown-asset parity | API Save refuses `asset-not-in-the-host-catalogue`; the editor-side fixture in `save-admission-parity.test.ts` refuses the same source through `MUSEUM_SCENE_VALIDATION_OPTIONS`. |
 | Unconditioned body refuses | 400 `precondition_required`; no project row and no write. |
+| Any refusal writes nothing at all | A create-only admission refusal leaves no project row **and no `users` row**: the whole transaction, owner record included, is undone. |
 | Scheme / source-version / digest mismatch | Each returns its own refusal (`identity-scheme-mismatch`, `source-version-mismatch`, `content-identity-mismatch`), never `conflict`; non-canonical bytes also return `content-identity-mismatch`. |
 | Revision identity reuse | Same accepted revision with different contents returns 400 `revision-reuse`; no version. |
 | Legacy base that fails registry admission | A permissively written unknown-asset row (token, no revision/digest) contributes an empty baseline; a valid candidate saves as version 2 and repairs it. |
