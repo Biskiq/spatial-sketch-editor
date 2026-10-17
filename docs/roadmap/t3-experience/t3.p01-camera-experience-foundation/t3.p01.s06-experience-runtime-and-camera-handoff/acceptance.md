@@ -5,7 +5,8 @@ AUTHORITY: NONE — this is closed work. Current truth lives in the phase README
            the F3 gate register and the accepted capability record linked below.
 STATUS:    ACCEPTED and SHIPPED 2026-10-17. The owner authorized closeout after independent
            implementation review accepted the whole slice; review corrections landed at
-           575050e0, 9b18a20c, 156b3a17, 9fb1be6c and 70dee4a3, with no open in-scope finding.
+           84671384, f94e77af, b2bfed5b, 0a530a95 and ff5a14da (the rebased successors of
+           575050e0, 9b18a20c, 156b3a17, 9fb1be6c and 70dee4a3), with no open in-scope finding.
            `F3.channels@1:camera-handoff-v1` is accepted. Routine `slice-closeout` compacted the
            plan to a stub and wrote this evidence record; no criterion was inferred from skill
            invocation or green tests alone.
