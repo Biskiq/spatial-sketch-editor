@@ -1,8 +1,8 @@
 # T2.P01.S02 — Scene operations and shared history: implementation plan
 
 **Slice:** T2.P01.S02 · **Status:** approved (owner-authorized 2026-10-16,
-[record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)) — implemented at
-`d38594b3`, awaiting independent review ·
+[record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)) — implemented and
+independently reviewed at `af39acd1`, acceptance justified ·
 **Phase:** [T2.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T2](../../README.md) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 
@@ -100,6 +100,7 @@ returns `created` entries. There are no Camera/Experience subject-reference sche
 
 ## Readiness declaration
 
-This slice is **owner-authorized, implemented at `d38594b3` and awaiting independent review**.
-Nothing here claims acceptance, closeout, merge or readiness. Evidence is recorded in
-[acceptance.md](./acceptance.md).
+This slice is **owner-authorized, implemented and independently reviewed at `af39acd1`**, with
+acceptance justified and no substantiated defect remaining. Nothing here claims owner acceptance,
+closeout, merge or readiness. Evidence is recorded in [acceptance.md](./acceptance.md) and the
+reviewer verdict in [independent-review.md](./independent-review.md).
