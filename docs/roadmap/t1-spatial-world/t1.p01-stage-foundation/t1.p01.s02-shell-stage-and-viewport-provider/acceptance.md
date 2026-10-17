@@ -245,10 +245,10 @@ the cut-extent pick makes this test fail.
 
 ### Verification of this revision
 
-The §7.4 contract, run on the tree this record ships on (the only file changed after the runs is
-this record and the positive control named below). Round-one results were measured at `90aa6729`;
-round two after merging `origin/main` = `94283377` (T3.P01.S02), zero behind-commits, `apps/editor`
-unless noted:
+The §7.4 contract, run on the merged tree these results describe (after those runs, only this record
+changed; the positive-control adjustment described below is included in them). Round-one results were
+measured at `90aa6729`; round two after merging `origin/main` = `94283377` (T3.P01.S02), zero
+behind-commits, `apps/editor` unless noted:
 
 ```text
 npm test                 151 files / 1,955 tests passed
