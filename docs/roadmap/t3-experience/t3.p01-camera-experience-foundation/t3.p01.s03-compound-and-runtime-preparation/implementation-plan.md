@@ -1,6 +1,6 @@
 # T3.P01.S03 — Compound and runtime preparation: implementation plan
 
-**Slice:** T3.P01.S03 · **Status:** proposed — not authorized · **Phase:** [T3.P01](../README.md) ·
+**Slice:** T3.P01.S03 · **Status:** approved — owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); not started · **Phase:** [T3.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T3](../../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md)
 
@@ -28,9 +28,8 @@ capabilities it exports declare only F2 and the enduring `acceptance-invariants-
 `acceptance-invariants-v1` at `8ec0c5f1`. `conditional-save-current-v1` was accepted at
 `8dd53260` (PR #133). All are ancestors of `main`. The slice consumes no `T1.viewport-projection@1`, editor
 route, host or Stage module, so the T1 viewport cycle neither blocks it nor is blocked by it.
-Authorization is proposed as D5 of the [2026-10-17 next-batch proposal](../../../next-batch-2026-10-17.md#proposed-decisions)
-and is not yet owner-ratified. While it runs beside `T1.P01.S07`, the
-[shared-file protocol](../../../cross-track-execution.md#proposed-batch-2026-10-17) applies. It
+The owner authorized it on 2026-10-17 (D5). While it runs beside `T1.P01.S07`, the
+[shared-file protocol](../../../cross-track-execution.md#authorized-batch-2026-10-17) applies. It
 covers additive-only `f4`/Save/channel extensions, new `camera-core` modules only, and no editor
 route or host edits.
 
@@ -72,5 +71,5 @@ them. Never relabel T1's base acceptance as complete F4 readiness.
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**; it holds no implementation permission, and nothing
-here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).
+This slice is **authorized** (owner, 2026-10-17) and **not started**; it starts through the T3 runbook's
+start step once the authorizing PR has merged. Nothing here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).

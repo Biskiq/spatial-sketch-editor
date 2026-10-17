@@ -20,13 +20,13 @@ TRACK: T4 Release and delivery (planning — no implementation authorized) →
        ../../roadmap/t4-release/README.md
 PHASES: no capability phase is registered; `T4.prepared-reader` is an undrafted gate. Registration
         and authorization are owner decisions.
-BATON: No T4 work is authorized. A registration-ready T4.P01 draft and its docs-only S01 plan exist.
-       Registration (D6) and S01 authorization (D7) are separate owner decisions in the 2026-10-17
-       next-batch proposal, and registration alone authorizes nothing.
-NEXT: Wait for the owner's D6/D7 rulings. If both are granted, start S01 (documents only) through this
-      runbook's start step. Do not start implementation from this baton.
+BATON: No T4 work is authorized. The owner approved T4.P01 registration (D6) and the docs-only S01
+       (D7) on 2026-10-17, but both are held: S03–S05 consume gate versions that do not exist yet
+       (F5@1 and the T3 cutover), so no honest registered row can be written.
+NEXT: Wait for the owner's choice of hold resolution (R1–R3 in the next-batch proposal). Do not start
+      implementation from this baton.
 ROUTE: ./README.md →
        ../../roadmap/next-batch-2026-10-17.md →
        ../../roadmap/t4-release/t4.p01-prepared-release-foundation/README.md
-BLOCKER: no T4 phase is registered or authorized.
+BLOCKER: the D6/D7 hold, an owner choice among R1–R3.
 ```

@@ -2,7 +2,7 @@
 
 **Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
 `T3.P01.S02` shipped 2026-10-16 (PR #133), accepted with `conditional-save-current-v1`;
-S03–S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
+S03 owner-authorized 2026-10-17 (not started); S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
@@ -13,7 +13,9 @@ Registered by the owner decision of 2026-10-16
 slice, `T3.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` and `T2.P01.S01`. That is
 the phase's first implementation permission. S02 was authorized by the later owner decision of
 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel
-with `T2.P01.S02`; S03–S04 stay `proposed` and hold none.
+with `T2.P01.S02`. S03 was authorized on 2026-10-17
+([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), in parallel with
+`T1.P01.S07`; S04 stays `proposed` and holds none.
 
 **Phase scope (decided at registration).** This phase is the sole Camera/Experience
 **source/runtime transition**: shared unit and program codecs (S01), early conditional Save (S02),
@@ -133,7 +135,7 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
 | T3.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); accepted 2026-10-16 from recorded independent-review evidence; output `F4.intent-acceptance@1:conditional-save-current-v1` accepted |
-| T3.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | — |
+| T3.P01.S03 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)) |
 | T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 and S02 are now shipped
@@ -142,9 +144,8 @@ the gate register and the linked capability records. S02's `local-single-domain-
 `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor of post-PR #129 `main`, so S02 was
 eligible, and its own `conditional-save-current-v1` output is now accepted. S03's prerequisite
 closure — S01's `unit-envelope-v1`/`unit-resolution-v1` and S02's `conditional-save-current-v1` — is
-complete on `main` (re-verified 2026-10-17 at `c9aa53cf`); S03 still needs its own owner authorization,
-proposed as D5 of the [2026-10-17 next-batch proposal](../../next-batch-2026-10-17.md#proposed-decisions)
-and independent of T1's viewport work. As
+complete on `main` (re-verified 2026-10-17 at `c9aa53cf`); S03 is owner-authorized 2026-10-17 (D5, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)),
+independent of T1's viewport work. As
 the [allocation](../../cross-track-execution.md#capability-readiness-amendment) records, S03 consumes
 the still-active current-source scopes while it builds the unit implementation, but the unit
 capabilities it exports declare only F2 and the enduring `acceptance-invariants-v1`. S04 consumes only

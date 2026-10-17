@@ -4,7 +4,7 @@
 (F1/F3 shared providers and readiness enforcement); `T1.P01.S03` accepted and shipped 2026-10-16
 (F4 `acceptance-invariants-v1` and `local-single-domain-v1`); `T1.P01.S02` accepted and shipped
 2026-10-17 by owner-override (PR #128); S04–S06 proposed and
-unauthorized; S07 (Stage↔F4 integration bridge) proposed 2026-10-17, pending owner decision ·
+unauthorized; S07 (Stage↔F4 integration bridge) registered and authorized 2026-10-17 ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -15,8 +15,9 @@ owner-ratified 2026-10-15 ([decision record](../../../reference/decisions/f-rati
 The [coordinated allocation/readiness/DAG](../../cross-track-execution.md) and the
 [exact interface drafts](./interfaces.md) govern this phase's recommendations; the allocation is
 coordination, never a registration. The phase's implementation permissions are exactly S01
-(2026-10-15) and S02/S03 (2026-10-16,
-[record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); no other slice,
+(2026-10-15), S02/S03 (2026-10-16,
+[record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) and S07
+(2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); no other slice,
 phase or track is authorized by this README. `F1.reference@1` and `F3.channels@1` are `accepted` for
 S01's landed outputs on `main` (post-PR #126), which admits S02/S03 at their trusted base
 (§Slice register).
@@ -150,7 +151,7 @@ accepted at the consumer's trusted base.
 | T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
 | T1.P01.S02 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted and shipped 2026-10-17 by owner-override at PR #128 revision `567a17e7`; waived the current-main merge-gate rerun and S06 integration proof as prerequisites to S02 acceptance; S06 result remains owed and `T1.viewport-projection@1` remains ratified |
 | T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
-| T1.P01.S07 | proposed | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | — |
+| T1.P01.S07 | approved | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); runs before S04 |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
 | T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
 | T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
@@ -170,25 +171,23 @@ records. S02 is accepted as a slice by owner-override, but `T1.viewport-projecti
 remains ratified pending S06's integrated result; no consumer readiness is claimed. `F5.release-envelope@1`
 (T4.P01.S02) stays unassigned until its own phase registers.
 
-**Readiness cycle and the proposed route (pending owner decision).** As written, the viewport route is
-circular: S04, S05 and S06 each require `viewport-projection-v1`, which waits for S06's integrated
-result, and S06 waits for S01–S05. The [2026-10-17 next-batch proposal](../../next-batch-2026-10-17.md)
-proposes the proposed slice **S07** (D1–D4) as the narrow way out. S07 does the host↔F4 wiring and
-completes the AM-5 adapter contribution points. It reruns the seam conformance and the complete merge
-gate on then-current `main`, and its acceptance records `viewport-projection-v1` with `T1.P01.S02` as
-the unchanged sole provider. S06 stays the exhaustive final gate but stops being the viewport readiness
-route. S02's acceptance record is unchanged. Until the owner rules, the S02 ruling above stands and no
-slice here is startable.
+**Viewport readiness route (owner ruling D1, 2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)).** The route as
+originally written was circular: S04, S05 and S06 each require `viewport-projection-v1`, which waited for
+S06's integrated result, and S06 waits for S01–S05. **S07** is the route out. It does the host↔F4
+wiring, adapter re-binding and the AM-5 adapter contribution points, and it reruns the seam conformance
+and the complete merge gate on then-current `main`. Its acceptance records `viewport-projection-v1`,
+with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
+the viewport readiness route. S02's acceptance record is unchanged. Until S07's closeout, the capability
+stays `ratified` and S04–S06 cannot start.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
 module, append-only barrels and lane lists, and the full merge gate rerun on the then-current `main`.
 Neither consumes the other, so the host↔F4 wiring (accepted install into the Stage, Undo/Redo
 commands, replacement baseline, selection requalification, Camera-output rebase) is S04's first
-increment unless the owner assigns it explicitly elsewhere. The 2026-10-17 proposal asks for that
-explicit assignment to S07 (D2), with the Head Save integration staying with S04 (D3). It also
-proposes the [shared-file protocol](../../cross-track-execution.md#proposed-batch-2026-10-17) for S07
-alongside `T3.P01.S03`, and later S04 alongside `T2.P01.S03`.
+increment unless the owner assigns it explicitly elsewhere. The owner assigned it to S07 on 2026-10-17
+(D2), with the Head Save integration staying with S04 (D3). The [shared-file protocol](../../cross-track-execution.md#authorized-batch-2026-10-17) for S07
+alongside `T3.P01.S03` (batch A, authorized), and later S04 alongside `T2.P01.S03` (batch B, not authorized).
 
 ```text
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md
@@ -229,7 +228,7 @@ Any listed slice starting authorized implementation opens the window, even if it
 Close only when S05 is accepted and S02/S04 are accepted or explicitly discharged in their
 exposure rows; the terminal cannot be discharged. Then the owner owes per-mechanism verdicts.
 S06/phase close and unrelated T2/T3/T4 work do not trigger those transitions or wait for a
-cycle verdict. The proposed S07 is not a listed exposure. The window already holds its maximum of three, so S07's
+cycle verdict. S07 is not a listed exposure. The window already holds its maximum of three, so S07's
 start opens nothing and adds no exposure row. Do not grow the exposure list to fit later scope without an owner amendment.
 
 ## Dependencies and owner decisions

@@ -322,13 +322,14 @@ routine closeout. Every merge reruns the complete merge gate on the then-current
 `T3.P01.S02` also runs the DB-backed API suite with zero skips. The Head Save integration is T1's
 and starts only after `conditional-save-current-v1` is accepted. Neither slice is a cycle exposure.
 
-## Proposed batch 2026-10-17
+## Authorized batch 2026-10-17
 
-**Pending owner decision. Nothing here is authorized.** These are the shared-file and merge rules
-for the batches proposed in the [2026-10-17 next-batch proposal](./next-batch-2026-10-17.md). They
-take effect only for slices the owner authorizes. The decisions, rationale and launch conditions live
-in that proposal, not here. Batch A is `T1.P01.S07`, `T3.P01.S03` and the docs-only `T4.P01.S01`,
-startable on authorization. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
+**Batch A is owner-authorized 2026-10-17** ([decision](../reference/decisions/next-batch-authorization-2026-10-17.md)):
+`T1.P01.S07` and `T3.P01.S03`. `T4.P01.S01` is approved but held (T4.P01 is not registered). Batch B
+is not authorized. These are the shared-file and merge rules for the batches of the
+[2026-10-17 next-batch proposal](./next-batch-2026-10-17.md). The decisions, rationale and launch conditions live
+in that proposal, not here. Batch A is `T1.P01.S07` and `T3.P01.S03`, with the docs-only `T4.P01.S01` joining once its hold is
+resolved. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
 and `viewport-projection-v1` is accepted at their trusted base.
 
 ```mermaid

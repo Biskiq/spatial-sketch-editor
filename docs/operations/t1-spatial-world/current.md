@@ -18,16 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: no authorized T1 slice; S04–S07 are proposed in the phase register.
-BATON: S02 was accepted under owner-override on 2026-10-17. Its
-       `T1.viewport-projection@1` capability remains ratified. As written, its readiness route is a
-       cycle (S06 needs S04/S05, and those need the capability), so no S04–S06 start is possible.
-NEXT: Owner decision on D1–D4 of the 2026-10-17 next-batch proposal: the S07 Stage↔F4 bridge as the
-      viewport readiness route, and its authorization. If granted, start S07 through this runbook's
-      eligibility, trusted-base and one-line cycle check (S07 is not an exposure and opens nothing).
+ACTIVE: T1.P01.S07 (Stage↔F4 integration bridge) is authorized (2026-10-17) and not started;
+        S04–S06 remain proposed.
+BATON: S02 was accepted under owner-override on 2026-10-17. Its `T1.viewport-projection@1`
+       capability remains ratified. By owner ruling D1 (2026-10-17), S07's acceptance, not S06's,
+       is the viewport readiness route; S07 also owns the host↔F4 wiring (D2), and Head Save stays
+       with S04 (D3).
+NEXT: Once the authorizing PR merges, start S07 through this runbook's eligibility, trusted-base and
+      one-line cycle check (S07 is not an exposure and opens nothing). Batch A: it runs beside
+      T3.P01.S03 under the authorized-batch shared-file protocol.
 ROUTE: ./README.md →
-       ../../roadmap/next-batch-2026-10-17.md →
+       ../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17 →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md
-BLOCKER: owner decision D1–D4 (the readiness-route change and S07's authorization).
+BLOCKER: none for S07 once the authorizing PR merges. S04–S06 wait for S07's closeout.
 ```

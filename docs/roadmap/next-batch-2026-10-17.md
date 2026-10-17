@@ -1,10 +1,9 @@
 # Next parallel batch — coordination proposal (2026-10-17)
 
-**Status:** **proposed — pending owner decision.** Nothing in this document is owner-ratified,
-registered or authorized. It changes no gate state, ratified contract, accepted record or cycle
-state. Every "D" below is a recommendation with an empty owner-ruling cell. Implementation starts
-only after the owner records rulings and the [ratification checklist](#ratification-checklist) has
-been applied in a reviewed docs PR.
+**Status:** **owner-approved 2026-10-17** ([decision record](../reference/decisions/next-batch-authorization-2026-10-17.md)).
+D1–D5 are applied in the same PR. **D6/D7 are approved but held**, because this proposal's D6 cannot be
+registered truthfully under the register rules ([hold](#application-hold-d6d7)). The analysis below is
+kept as written, and only the ruling column and the checklist record the outcome.
 
 **Basis:** `main` at `c9aa53cf` (post-PR #135; PR #128 `T1.P01.S02` and PR #134 `T2.P01.S02`
 merged). Authorities read: the [gate register](./README.md#gate-register), the four phase registers,
@@ -76,13 +75,13 @@ three exposures and is not enlarged. The scope is in the [S07 plan](./t1-spatial
 
 | # | Proposed decision | Why | Owner ruling |
 | --- | --- | --- | --- |
-| D1 | **Viewport readiness route.** Register `T1.P01.S07` (Stage↔F4 integration bridge) in T1.P01. Its independently reviewed acceptance, with the complete merge gate on then-current `main`, records `T1.viewport-projection@1:viewport-projection-v1`, with `T1.P01.S02` as the unchanged sole provider. S06 remains the exhaustive `FINAL PHASE GATE` and is no longer the viewport readiness route. S02's acceptance record is not reopened or edited. | F-1, F-2. This restores S02's original plan intent with the smallest DAG change. | — |
-| D2 | **Wiring owner.** Assign the host↔F4 wiring explicitly to S07, which the 2026-10-16 record lets the owner do. S07 also completes the AM-5 adapter contribution points and adapter re-binding, and it gets no Layout or Scene production writer. | F-2, F-3. It is never built twice. | — |
-| D3 | **Head Save integration** stays with `T1.P01.S04`, named under the [2026-10-16 decision 1](../reference/decisions/s02-pair-authorization-2026-10-16.md) remaining-decision mechanism. `conditional-save-current-v1` joins S04's `Requires` at S04's authorization. It still precedes `T2.P01.S04`. | It keeps the critical-path bridge narrow. S04 is T1's first Head-bearing surface. | — |
-| D4 | **Authorize `T1.P01.S07`** (batch A). It is not a cycle exposure, since the window is at its bound of three. | Prerequisites are accepted on `main`. | — |
-| D5 | **Authorize `T3.P01.S03`** (batch A), under the [batch A protocol](./cross-track-execution.md#proposed-batch-2026-10-17), with the split-on-discovery clause. | The prerequisite closure is verified, and it is independent of T1 viewport work ([below](#t3p01s03-verification)). | — |
-| D6 | **Register T4.P01** from the [registration draft](./t4-release/t4.p01-prepared-release-foundation/README.md), with all slices `proposed`. T4 moves from `planning` to `approved`. No gate changes state. | Registration is lifecycle only and authorizes nothing. | — |
-| D7 | **Authorize `T4.P01.S01`** (docs-only delivery specification, batch A). | It consumes nothing and writes only T4 docs. | — |
+| D1 | **Viewport readiness route.** Register `T1.P01.S07` (Stage↔F4 integration bridge) in T1.P01. Its independently reviewed acceptance, with the complete merge gate on then-current `main`, records `T1.viewport-projection@1:viewport-projection-v1`, with `T1.P01.S02` as the unchanged sole provider. S06 remains the exhaustive `FINAL PHASE GATE` and is no longer the viewport readiness route. S02's acceptance record is not reopened or edited. | F-1, F-2. This restores S02's original plan intent with the smallest DAG change. | approved, applied |
+| D2 | **Wiring owner.** Assign the host↔F4 wiring explicitly to S07, which the 2026-10-16 record lets the owner do. S07 also completes the AM-5 adapter contribution points and adapter re-binding, and it gets no Layout or Scene production writer. | F-2, F-3. It is never built twice. | approved, applied |
+| D3 | **Head Save integration** stays with `T1.P01.S04`, named under the [2026-10-16 decision 1](../reference/decisions/s02-pair-authorization-2026-10-16.md) remaining-decision mechanism. `conditional-save-current-v1` joins S04's `Requires` at S04's authorization. It still precedes `T2.P01.S04`. | It keeps the critical-path bridge narrow. S04 is T1's first Head-bearing surface. | approved, applied |
+| D4 | **Authorize `T1.P01.S07`** (batch A). It is not a cycle exposure, since the window is at its bound of three. | Prerequisites are accepted on `main`. | approved, applied |
+| D5 | **Authorize `T3.P01.S03`** (batch A), under the [batch A protocol](./cross-track-execution.md#authorized-batch-2026-10-17), with the split-on-discovery clause. | The prerequisite closure is verified, and it is independent of T1 viewport work ([below](#t3p01s03-verification)). | approved, applied |
+| D6 | **Register T4.P01** from the [registration draft](./t4-release/t4.p01-prepared-release-foundation/README.md), with all slices `proposed`. T4 moves from `planning` to `approved`. No gate changes state. | Registration is lifecycle only and authorizes nothing. | approved, **held** |
+| D7 | **Authorize `T4.P01.S01`** (docs-only delivery specification, batch A). | It consumes nothing and writes only T4 docs. | approved, **held** |
 | D8 | *Not requested now.* Ratify F5@1 from S01's draft before any `T4.P01.S02` authorization. | It mirrors the viewport precedent (shape approval before provider acceptance). | deferred |
 | — | *Not requested now.* Authorize batch B (`T1.P01.S04`, `T2.P01.S03`). | Blocked until S07 ships and `viewport-projection-v1` is accepted ([conditions](#t2p01s03-launch-conditions)). | deferred |
 
@@ -108,6 +107,21 @@ Registration (D6) creates lifecycle rows and the phase README. It gives no slice
 stays `undrafted`, so no `Provider slice` is wired. Authorization (D7) admits only S01's documents.
 F5@1 ratification (D8) is a third, later decision. The draft records which statements of the
 2026-10-14 proposal are superseded by the 2026-10-15 ratification and accepted providers.
+
+## Application hold (D6/D7)
+
+**This proposal's error.** D6 assumed T4.P01 could register with S02–S05 as `proposed` rows. The register
+checker refuses any registered row whose `Consumes` names a gate version that does not exist, and
+`proposed` rows are included. `T4.P01.S03`–`S05` consume `F5.release-envelope@1`, which is `undrafted`
+with no version, and S05 (the final gate) also consumes the undrafted `T3.camera-experience-cutover@1`.
+Omitting them would be the dishonest registration the T3.P02 proposal refused. D7 needs a registered
+row, so it is held with D6. The owner chooses one resolution:
+
+| Option | Effect | Trade-off |
+| --- | --- | --- |
+| **R1 (recommended).** Run S01's F5 drafting now as unregistered track planning in the T4.P01 draft workspace. Register T4.P01 once F5@1 is ratified (D8) and the cutover gate is drafted. | F5 drafting starts at once and no rule changes. It follows the T3.P02 precedent. | T4 has no registered phase for longer, and the drafting is planning rather than a slice with acceptance. |
+| R2. Register a narrower T4.P01 now with S01 and S02 only, and make S02 a temporary final gate. | Registers something now. | A false final gate that must later be moved. Not recommended. |
+| R3. Amend the checker so `proposed` rows may consume an `undrafted` gate. | Registers as originally proposed. | It changes an enforced readiness rule, which needs its own owner decision and review. |
 
 ## T2.P01.S03 launch conditions
 
@@ -149,7 +163,8 @@ channel module, S07 reruns its seam probes before merging. Gate-register edits t
 
 ## Ratification checklist
 
-On owner approval, one reviewed docs commit applies only the rulings granted:
+Applied 2026-10-17 for D1–D5 in PR #136. Item 5 is held ([above](#application-hold-d6d7)). The
+original list follows:
 
 1. Copy the granted rows into a new `docs/reference/decisions/next-batch-authorization-2026-10-17.md`
    with owner and date. Fill the ruling column here and link the record.

@@ -2,8 +2,10 @@
 
 **Status:** registration-ready draft, 2026-10-17. It is **not registered**: no row exists in the
 [T4 phase register](../README.md#phase-register), and nothing here is a phase, slice, gate version
-or authorization. Registration (D6) and the docs-only S01 authorization (D7) are separate owner
-decisions proposed in the [2026-10-17 next-batch proposal](../../next-batch-2026-10-17.md#proposed-decisions).
+or authorization. The owner approved registration (D6) and the docs-only S01 authorization (D7) on 2026-10-17, but both
+are **held**: S03–S05 consume `F5.release-envelope@1`, and S05 also consumes the undrafted
+`T3.camera-experience-cutover@1`, so no honest registered row exists yet
+([hold and options](../../next-batch-2026-10-17.md#application-hold-d6d7)).
 Routes: [T4](../README.md) · [first-phase proposal](../first-phase-proposal.md) (scope and rationale,
 not repeated here) · [runbook](../../../operations/t4-release/README.md) ·
 [gate register](../../README.md#gate-register).
@@ -28,7 +30,7 @@ evidence:
 | "Shared provider/readiness" listed as a decision to reconcile | Ratified 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)): F5 → T4.P01.S02, prepared reader → T4.P01.S05, Accepted-capabilities/Requires enforced by the gates test. |
 | "F5/program" and "Domain delivery" decisions | Direction ratified as [AM-8](../../../reference/composition-execution.md#am-8-prepared-delivery-direction-v1); [AM-6](../../../reference/composition-execution.md#am-6-execution-program-and-visitor-profile-v1) fixes `ExecutionProgram@1`, accepted in T3.P01.S01. Exact F5 codecs remain S02 provider work. |
 | S02 needs `F2.unit-envelope@1:unit-envelope-v1` and `F3.channels@1:inspection-v1` | Both are `active` on `main`. S02 is gated only by registration, F5@1 ratification and its own authorization. |
-| S03/S04 need `F3.channels@1:camera-handoff-v1` | Still unaccepted. Its provider is `T3.P01.S03`, proposed for authorization in the same batch (D5). |
+| S03/S04 need `F3.channels@1:camera-handoff-v1` | Still unaccepted. Its provider is `T3.P01.S03`, owner-authorized 2026-10-17 (D5). |
 | S05 consumes `T3.camera-experience-cutover@1` | Still `undrafted`. T3 drafts it with the `T3.P01.S04` authorization request ([R6](../../cross-track-execution.md#parallel-batch-2026-10-16)). |
 
 The proposal's remaining open items move to S01 and the owner. They are "Accepted input",

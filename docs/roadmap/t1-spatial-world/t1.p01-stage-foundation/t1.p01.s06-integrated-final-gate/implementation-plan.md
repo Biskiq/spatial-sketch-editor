@@ -17,9 +17,8 @@ ready or evidenced.
 
 ## Prerequisite
 
-S01–S05 accepted with routine closeout, and S07 too if the owner adopts it (proposal D1). The seam
-provider remains independently accepted: under D1 the viewport capability is accepted through S07,
-not through this gate.
+S01–S05 and S07 accepted with routine closeout. The seam provider remains independently accepted:
+under owner ruling D1 (2026-10-17) the viewport capability is accepted through S07, not through this gate.
 
 ## Produces
 
@@ -59,7 +58,7 @@ owner phase-close request closes it; neither phase nor cycle closure is fabricat
 
 ## Readiness declaration
 
-This slice is `proposed` and **not authorized**: it runs only after S01–S05 (and S07, if adopted) are
+This slice is `proposed` and **not authorized**: it runs only after S01–S05 and S07 are
 accepted with routine closeout, it consumes `F1.reference@1`, `F4.intent-acceptance@1` and
 `T1.viewport-projection@1` accepted at its trusted base, and its `Requires` capabilities
 (`references-v1`, `local-single-domain-v1`, `viewport-projection-v1`) must be accepted before it starts. No gate state,

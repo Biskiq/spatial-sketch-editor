@@ -1,7 +1,7 @@
 # T1.P01.S07 — Stage↔F4 integration bridge: implementation plan
 
-**Slice:** T1.P01.S07 · **Status:** proposed — not authorized (decisions D1–D4 of the
-[2026-10-17 next-batch proposal](../../../next-batch-2026-10-17.md), pending owner decision) ·
+**Slice:** T1.P01.S07 · **Status:** approved — owner-authorized 2026-10-17 (D1–D4,
+[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); not started ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -46,7 +46,7 @@ never declare the gate it makes ready.
 
 1. The live **host↔F4 wiring** assigned to "S04's first increment by default" by the
    [2026-10-16 decision](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md),
-   moved here by owner assignment D2.
+   moved here by owner ruling D2.
 2. The adapter contribution points AM-5 already ratifies but the landed seam lacks.
 3. The recorded acceptance evidence for `T1.viewport-projection@1:viewport-projection-v1`, provider
    `T1.P01.S02`, on the then-current `main`.
@@ -92,7 +92,7 @@ still refuse mounting. If a needed contribution cannot be expressed inside AM-5'
 stop and report: that is an F amendment, not provider latitude.
 
 **Out of scope.** No Layout or Scene production writer: precision, plinth and Wall manipulation stay
-in S04/S05, and Scene placement in `T2.P01.S03`. The Head Save integration goes to S04 under D3. There
+in S04/S05, and Scene placement in `T2.P01.S03`. The Head Save integration stays with S04 (ruling D3). There
 is no Plan-cut drawing (still unassigned), no new Plan family property and no Camera authoring. The
 [conformance Layout planner](../t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md)
 is the only writer, and only in tests.
@@ -103,7 +103,7 @@ S07 is the sole writer of the editor route, host, Stage and shell modules and of
 existing modules for its duration. The project-model `src/f4/**` module and the editor
 `authoring/f4/**` coordinator are consumed through their public exports. A needed change to either
 is additive and coordinated with `T3.P01.S03` under the
-[batch protocol](../../../cross-track-execution.md#proposed-batch-2026-10-17). Barrels and the test-lane
+[batch protocol](../../../cross-track-execution.md#authorized-batch-2026-10-17). Barrels and the test-lane
 list change by appending only.
 
 ## Acceptance criteria
@@ -150,6 +150,6 @@ proof, and M5's composed exposure stays S05's.
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**. It holds no implementation permission, and nothing
-here is implemented, accepted, ready or evidenced. Its prerequisites are accepted on `main` today. It
-becomes startable only when the owner ratifies D1–D4 and its register row reads `approved`.
+This slice is **authorized** (owner, 2026-10-17) and **not started**. Its prerequisites are accepted on
+`main`. It starts through the T1 runbook's start step once the authorizing PR has merged. Nothing here
+is implemented, accepted, ready or evidenced.
