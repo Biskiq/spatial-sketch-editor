@@ -84,7 +84,7 @@ three exposures and is not enlarged. The scope is in the [S07 plan](./t1-spatial
 | D6 | **Register T4.P01** from the [registration draft](./t4-release/t4.p01-prepared-release-foundation/README.md), with all slices `proposed`. T4 moves from `planning` to `approved`. No gate changes state. | Registration is lifecycle only and authorizes nothing. | approved, held; **superseded by R1-D** (T4 deferred) |
 | D7 | **Authorize `T4.P01.S01`** (docs-only delivery specification, batch A). | It consumes nothing and writes only T4 docs. | approved, held; **superseded by R1-D** (T4 deferred) |
 | D8 | *Not requested now.* Ratify F5@1 from S01's draft before any `T4.P01.S02` authorization. | It mirrors the viewport precedent (shape approval before provider acceptance). | deferred |
-| — | *Not requested now.* Authorize batch B (`T1.P01.S04`, `T2.P01.S03`). | Blocked until S07 ships and `viewport-projection-v1` is accepted ([conditions](#t2p01s03-launch-conditions)). | deferred |
+| — | *Not requested now.* Authorize batch B (`T1.P01.S04`, `T2.P01.S03`). | Blocked until S07 ships and `viewport-projection-v1` is accepted ([conditions](#t2p01s03-launch-conditions)). | deferred; **later authorized** 2026-10-17 by its own [batch B record](../reference/decisions/batch-b-authorization-2026-10-17.md) after S07 shipped (PR #137) |
 
 ## T3.P01.S03 verification
 

@@ -18,18 +18,24 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: none. T1.P01.S07 is accepted and closeout-complete (2026-10-17); S04–S06 remain proposed
-        and unauthorized.
-BATON: S02 was accepted under owner-override on 2026-10-17. By owner ruling D1 (2026-10-17), S07's
-       acceptance is the viewport readiness route; it recorded `T1.viewport-projection@1`
-       (`viewport-projection-v1`) accepted with S02 as the unchanged sole provider. S07's routine
-       closeout is complete: closed-work compaction, the preservation report, the
-       `closed/T1.P01.S07` anchor tag (local only) and the merge-stability reconciliation are done on
-       PR #137's branch; consumer eligibility starts at a base containing its merge.
-NEXT: The owner merges PR #137 as a merge commit (P1 — no squash, no rebase). Post-merge, verify the
-      recorded anchors are ancestors of `main` and push the `closed/T1.P01.S07` tag.
-ROUTE: ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md →
-       ../../roadmap/README.md#gate-register
-BLOCKER: the owner's merge decision on PR #137. S04–S06 stay unauthorized until the owner
-         authorizes them; their capability prerequisites are met once the merge is on `main`.
+ACTIVE: none in progress. T1.P01.S04 is authorized (batch B, 2026-10-17) and not started; S05–S06
+        remain proposed and unauthorized.
+BATON: S07 shipped in PR #137 (merge `a0026cf4`, a merge commit as P1 required). Its recorded anchors,
+       including `ab8504aa` (`viewport-projection-v1` accepted) and the closeout anchor `d1c93d47`, are
+       ancestors of `main`. The owner authorized batch B (`T1.P01.S04` ∥ `T2.P01.S03`) on 2026-10-17
+       ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04's scope includes
+       the Head Save integration, so `conditional-save-current-v1` joined its `Requires` (ruling D3).
+       Housekeeping: the `closed/T1.P01.S07` tag points at `d1c93d47` locally and is not yet on the
+       remote; the owner pushes it.
+NEXT: After the authorizing PR merges, start S04 through the runbook start step: eligibility at its
+      trusted base (which must contain PR #137's merge), then the cycle check. The window has been
+      open since S02, so no new opening is recorded. S04 runs alongside T2.P01.S03 under the
+      batch B protocol (sole writer of the Head and the Layout adapters; registers through S07's
+      contribution points; no host core, route or shell edits). It must be accepted before
+      T2.P01.S04 starts.
+ROUTE: ./README.md →
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/implementation-plan.md →
+       ../../roadmap/cross-track-execution.md#authorized-batch-b-2026-10-17
+BLOCKER: none, once the authorizing PR merges. S05–S06 stay unauthorized.
 ```

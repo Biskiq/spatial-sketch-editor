@@ -53,6 +53,79 @@ values in [`.env`](.env) (do not commit it):
 cp .env.example .env
 ```
 
+Keep valid local Google OAuth credentials, a 32-byte `SESSION_KEY` and the
+`R2_*` values in `.env`, with the editor's API origin:
+
+```env
+PUBLIC_API_ORIGIN=http://localhost:8787
+```
+
+Google must allow:
+
+```text
+Authorized JavaScript origin: http://localhost:5173
+Authorized redirect URI:     http://localhost:8787/auth/callback
+```
+
+### Backend in Docker (recommended)
+
+Needs Docker with Compose v2. One command builds the API image, starts
+PostgreSQL 16, applies every migration and returns once the API reports ready
+(`/health/ready` reaches the database):
+
+```bash
+npm run stack:up
+```
+
+That starts the backend only. Then run the editor natively, with Vite hot reload
+(two commands by design: the editor is never containerized):
+
+```bash
+npm run dev
+```
+
+Open <http://localhost:5173>. The Compose stack ([`docker-compose.yml`](docker-compose.yml))
+reads the secrets from `.env` but always uses its own database and origins:
+the API serves `http://localhost:8787` and restarts when `apps/api/src` or
+`packages/*/src` change. Data lives in the `biskiq_pgdata` volume and survives
+restarts; the database is also reachable from the host at
+`postgresql://biskiq:biskiq@localhost:5433/biskiq`. `BISKIQ_DB_PORT` and
+`BISKIQ_API_PORT` change the host ports; with a different API port, set
+`PUBLIC_API_ORIGIN` and the Google redirect URI to match.
+
+```bash
+npm run stack:logs      # follow API, migration and database logs
+npm run stack:migrate   # re-apply migrations after adding one (idempotent)
+npm run stack:down      # stop; data is kept
+npm run stack:reset     # stop and delete the database volume
+npm run test:api:stack  # API suite against the Compose database
+```
+
+**Object storage is not isolated.** Compose replaces the database, but the API
+still uses the `R2_*` values from `.env` for real uploads and reads. Point them at
+a development-only R2 bucket with credentials scoped to it — never the
+production bucket or keys.
+
+**Parallel worktrees.** By default every checkout shares one stack (project,
+image and volume `biskiq`); `stack:up` from another worktree rebuilds the shared
+API from that checkout and `stack:reset` deletes the shared database. For an
+isolated stack per worktree, set a distinct name and host ports in that
+worktree's environment before every `stack:*` command, and point its editor at
+the matching API origin:
+
+```bash
+export BISKIQ_STACK=biskiq-t2 BISKIQ_DB_PORT=5434 BISKIQ_API_PORT=8788
+npm run stack:up
+```
+
+Its `.env` then needs `PUBLIC_API_ORIGIN=http://localhost:8788`, and Google must
+allow `http://localhost:8788/auth/callback`.
+
+The image is for local development only; deployment (`render.yaml`,
+`vercel.json`) does not use it.
+
+### Backend on a host Postgres
+
 Use a local Postgres database:
 
 ```bash
@@ -68,14 +141,6 @@ PORT=8787
 EDITOR_ORIGIN=http://localhost:5173
 API_ORIGIN=http://localhost:8787
 PUBLIC_API_ORIGIN=http://localhost:8787
-```
-
-Keep valid local Google OAuth credentials and a 32-byte `SESSION_KEY` in the
-same file. Google must allow:
-
-```text
-Authorized JavaScript origin: http://localhost:5173
-Authorized redirect URI:     http://localhost:8787/auth/callback
 ```
 
 Apply the database schema once:
@@ -117,6 +182,7 @@ npm test        # the complete editor suite (all lanes)
 ```
 
 The API has its own gates: `npm run check:api` and `npm run test:api` (build plus
-every API contract; publication and the auth seam need a reachable Postgres).
+every API contract; the persistence, Save, publication and auth-seam contracts
+need a reachable Postgres — `npm run test:api:stack` uses the Compose database).
 Kernel packages have `check:layout-core`, `check:project-model` and
 `check:camera-core`.

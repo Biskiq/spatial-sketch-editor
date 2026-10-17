@@ -54,6 +54,29 @@ order caller or second interpreter remains. Reconcile landed references only aft
 cutover. Passing makes the phase closable; closure, track completion, T4 reader acceptance and either
 Baseline remain separate owner events.
 
+## Authorization path
+
+Reconciled 2026-10-17 against `main` `a8e4d45e`, after S03 shipped through S05/S06. This path
+**authorizes nothing**. It orders what must exist before the owner can authorize this slice. The
+capability side is met: all five `Requires` scopes are `active` at ancestors of `main` (S01 at
+`6dcb6d6d`; `unit-acceptance-v1` and `conditional-save-units-v1` at `d7ab6984`; `camera-handoff-v1` at
+`ff5a14da`), and S01, S02, S05 and S06 are accepted with S03 reconciled. Every item below is
+**open**. Preflight evidence lives in this slice workspace under `preflight/`, and no item is
+evidence until the owner reviews it.
+
+| # | Pre-authorization item | Owner | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| 1 | **AM-7 inventory.** Actual remote and local source/project/version/publication counts, format coverage and the retained-bytes census, taken from the deployed database and object storage. A clean local database is not evidence that no saved projects exist. | T3 | `preflight/inventory.md` | open |
+| 2 | **Migration/refusal coverage.** Each inventoried format and source kind is mapped to a row of the [conversion and refusal matrix](../README.md#conversion-and-refusal-matrix), with fixtures for every convert and refuse outcome. | T3 | `preflight/migration-coverage.md` | open |
+| 3 | **Quiescence and recovery plan.** The writer fence, backups taken before activation, a restore rehearsal and rollback criteria, per the [cutover mechanics](../README.md#cutover-mechanics-and-retirement). The local Compose stack (`npm run stack:up`) can host a rehearsal against a restored backup copy, but it is never inventory evidence. | T3 | `preflight/quiescence-recovery.md` | open |
+| 4 | **Publication compatibility disposition (AM-7, K2).** A concrete disposition for every existing publication, and the owner's decision on any temporary publication gap, which runs until T4's prepared-reader cutover under R1-D. Public and owner routes must report honest unavailability throughout. There is no blanket approval. | Owner, on T3's review | `preflight/publication-disposition.md` plus the authorization record | open |
+| 5 | **Draft and ratify `T3.camera-experience-cutover@1`.** The cutover gate is drafted with this slice's authorization request (cross-track R6) and owner-ratified at version 1. Its register row moves `undrafted` → `ratified`, with this slice as sole provider. | T3 drafts; owner ratifies | an amendment in the owning contract, plus the gate-register row | open |
+| 6 | **Owner authorization** of this slice, after 1–5, in its own decision record. The register row moves `proposed` → `approved`. | Owner | `docs/reference/decisions/` | open |
+
+Not on this path: project rename/delete (ruling K4) is a separate small T3 persistence/API slice, with
+T1 owning the shell. Neither batch B nor any T1/T2 slice is a prerequisite of this one. T1/T2 slices
+still unaccepted at activation have their current-source adapters migrated here (K6).
+
 ## Readiness declaration
 
 This slice is **proposed and not authorized**; it holds no implementation permission, and nothing

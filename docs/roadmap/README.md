@@ -184,6 +184,13 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
   deferred all T4 work until [Core Editor Stability](./core-editor-stability.md), the pre-publication
   milestone whose criteria are proposed there.
 
+- **Batch B (2026-10-17), owner-authorized** ([record](../reference/decisions/batch-b-authorization-2026-10-17.md)):
+  `T1.P01.S04` (Layout precision with the Head Save integration) ∥ `T2.P01.S03` (first editing
+  surface), after S07 shipped and `viewport-projection-v1` was accepted. Shared-file and merge rules:
+  [batch B protocol](./cross-track-execution.md#authorized-batch-b-2026-10-17). No gate changes state;
+  T3.P01.S04 keeps its own [authorization path](./t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path),
+  and T4 stays deferred under R1-D.
+
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,
   independently reviewed and accepted, merged into `main` as `74efb98b`

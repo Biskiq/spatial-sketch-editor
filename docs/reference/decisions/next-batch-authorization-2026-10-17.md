@@ -82,6 +82,12 @@ named owner plans through normal phase registration and slice authorization.
 - **No gate changes state.** `T1.viewport-projection@1` stays `ratified` until S07's closeout.
 - **No cycle transition.** The T1.P01 window stays open with exposures S02, S04 and S05.
 
+**Later outcome (dated pointer, not a revision of the rulings above).** S07 shipped in PR #137, and its
+acceptance recorded `T1.viewport-projection@1:viewport-projection-v1` accepted at `ab8504aa`. Batch B
+(`T1.P01.S04` ∥ `T2.P01.S03`) was then authorized by its own
+[2026-10-17 batch B record](./batch-b-authorization-2026-10-17.md). T3.P01.S03 shipped through its
+registered split ([record](./s03-split-followup-authorization-2026-10-17.md)). R1-D is unchanged.
+
 ## Provenance
 
 Owner approval in the coordinating session, 2026-10-17, against post-PR #135 `main` (`c9aa53cf`), on
