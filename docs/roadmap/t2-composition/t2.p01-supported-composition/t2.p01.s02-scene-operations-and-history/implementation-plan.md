@@ -2,7 +2,8 @@
 
 **Slice:** T2.P01.S02 · **Status:** approved (owner-authorized 2026-10-16,
 [record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)) — implemented and
-independently reviewed at `af39acd1`, acceptance justified ·
+reviewed at `af39acd1`; two follow-up findings repaired at `62d4d5b0`, independent re-review
+pending ·
 **Phase:** [T2.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T2](../../README.md) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 
@@ -100,7 +101,10 @@ returns `created` entries. There are no Camera/Experience subject-reference sche
 
 ## Readiness declaration
 
-This slice is **owner-authorized, implemented and independently reviewed at `af39acd1`**, with
-acceptance justified and no substantiated defect remaining. Nothing here claims owner acceptance,
-closeout, merge or readiness. Evidence is recorded in [acceptance.md](./acceptance.md) and the
-reviewer verdict in [independent-review.md](./independent-review.md).
+This slice is **owner-authorized and implemented**. It was reviewed at `af39acd1`, and a third
+round adjudicating two follow-up findings then reproduced and repaired an unresolved owner frame
+and an over-broad yaw grant at `62d4d5b0`. Acceptance is **not** claimed for `62d4d5b0`: the repairs
+are independently re-reviewable but were authored by the same coordinator that ran the review.
+Nothing here claims owner acceptance, closeout, merge or readiness. Evidence is recorded in
+[acceptance.md](./acceptance.md) and the reviewer rounds in
+[independent-review.md](./independent-review.md).

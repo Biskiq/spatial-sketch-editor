@@ -18,15 +18,16 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 implemented and
-        independently reviewed 2026-10-16 at `af39acd1`, acceptance justified; S03–S04 proposed and
-        unauthorized.
-BATON: T2.P01.S02 (Scene operations and shared history) is at independent-review readiness on
-       branch `T2-P01-S02` (PR #134), cut from `main` `74367936`, in parallel with T3.P01.S02 under
-       the pair protocol. It consumes the accepted `local-single-domain-v1`, not T1.P01.S02
-       (PR #128) or any host.
-NEXT: Owner acceptance of T2.P01.S02, then routine slice closeout and the merge gate against
-      then-current `main`. Evidence and the reviewer verdict are in
+SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 implemented,
+        reviewed at `af39acd1`, two follow-up findings repaired at `62d4d5b0`, independent re-review
+        pending; S03–S04 proposed and unauthorized.
+BATON: T2.P01.S02 (Scene operations and shared history) is at independent re-review readiness on
+       branch `T2-P01-S02` (PR #134), head `62d4d5b0`, cut from `main` `74367936`, in parallel with
+       T3.P01.S02 under the pair protocol. It consumes the accepted `local-single-domain-v1`, not
+       T1.P01.S02 (PR #128) or any host.
+NEXT: Independent re-review of `62d4d5b0` (owner frame refusal, component-scoped yaw grant), then
+      owner acceptance of T2.P01.S02, closeout and the merge gate against then-current `main`.
+      Evidence and the reviewer rounds are in
       `docs/roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/{acceptance,independent-review}.md`.
       S03 is not authorized.
 ROUTE: ./README.md →
