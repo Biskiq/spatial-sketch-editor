@@ -21,7 +21,7 @@ ratification record.
 ```text
 apps/editor (product)            frozen Chopin project (separate)
   sign-in → project hub              independently hosted + versioned
-  → /project/:id/spatial notice      /museum + /museum/editor
+  → /project/:id/spatial read-only Stage  /museum + /museum/editor
   → cloud Save/Load                  outside this repository entirely
   → cold public release /p/:id
 ```
@@ -63,13 +63,15 @@ apps/editor (product)            frozen Chopin project (separate)
 | `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth). Strict current-format reader; there are currently no releases (owner statement) |
 | `/dev/materials` · `/dev/assets` | Development previews retained inside the reduced foundation |
 
-Removed by #115: the editor authoring workspace (`/project/:id/spatial` now
-serves the notice above), `/project/:id/publish`, `/project/:id/preview`, the
-`/dev/perf` benchmark harness, and — as **product** routes — `/museum` and
-`/museum/editor`, which belong to the independently deployed frozen project.
+PR #115 removed the earlier editable workspace. T1.P01.S02 restores the
+read-only Stage described above. Still removed by #115 are `/project/:id/publish`,
+`/project/:id/preview`, the `/dev/perf` benchmark harness, and — as **product**
+routes — `/museum` and `/museum/editor`, which belong to the independently
+deployed frozen project.
 
-The product boots into a fresh empty project; no Chopin/legacy state is loaded or
-migrated. Guest/local work lives in the browser session. Authenticated cloud work
+The `/editor` compatibility route and hub's New Project enter the starter gallery
+for a minted identity; choosing an empty project is explicit. No Chopin/legacy
+state is loaded or migrated. Guest/local work lives in the browser session. Authenticated cloud work
 adds owned Save/Load with a project list and versioned saves. Save/Load, assets
 and publication accept the **current document format only** — wall-first Layout
 (`formatVersion: 5`) with a world-local Scene (`formatVersion: 1`); there is no
@@ -266,14 +268,14 @@ interior-only.
 | Derived geometry | pure `compileLayoutGeometry()` (`@portfolio/layout-core`) |
 | Project/scene validation, codecs, room semantics, runtime graph | `@portfolio/project-model` |
 | Cross-domain reference (F.1) and channel (F.3) interfaces | `packages/project-model/src/references` · `packages/project-model/src/channels` — shared runtime-safe interfaces with no editor/renderer dependency; their accepted readiness is recorded in the [gate register](../roadmap/README.md#gate-register) |
-| Plan presentation | **Removed by #115** with the editor shell (`PlanRenderModel` / `PlanSvg.svelte` are gone; recoverable at the baseline SHA). The Plan grammar returns as a T1 capability built against the compiled geometry above |
+| Plan presentation | T1.P01.S02 adds the orthographic Plan reading and Layout Plan representation over compiled geometry. The current Stage draws the canonical geometry in both readings; Plan membership, Reveal, Index and hit eligibility use the representation, but it does not draw a Plan cut. Plan-cut rendering remains future work |
 | 3D wall meshes | compiled Junction contract (`CompiledJunction` / `resolveJunctionGeometry`) → Junction-aware `wall-mesh-builder` → `wall-geometry-adapter` |
 | Camera route/motion | `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) — replaceable mechanism under the one Camera authority |
 | Publication status, active version, revision | `publications` row (`apps/api`) |
 | Published snapshots + delivery manifests | immutable `releases` rows (`apps/api`); bytes resolved per-release at visitor boot |
 | Public visitor chrome | `/p/:publicationId` route (editor deployment, visitor-safe closure) |
 | Project-local GLB bytes | the API's project-scoped asset registry (metadata in Postgres, bytes in R2), reached only through `apps/api` |
-| Selection, history, gizmo proxies, UI | **Removed by #115** with the editor shell; each returns as a T-track capability |
+| Selection, history, gizmo proxies, UI | T1.P01.S02 restores read-only Stage selection, Index and shell/session UI; it authors no source changes. History, gizmo proxies and editing remain future T-track capabilities |
 
 Generated geometry, Three objects, renderer handles, selection, and history
 are never serialized as authored truth; immutable release derivatives are the

@@ -20,8 +20,8 @@ This is a deliberate, recorded capability loss, not a regression: see
 | --- | --- |
 | `/` | Public entry — guest start or Google sign-in |
 | `/projects` | Owned project hub (cloud project list) |
-| `/editor` | Redirect to `/project/:id/spatial` |
-| `/project/:id/spatial` | Static notice: authoring is unavailable during the foundation reset. No project load, no session |
+| `/editor` | Redirect to a minted project at `/project/:id/spatial?create=1` |
+| `/project/:id/spatial` | Read-only Stage for a stored source, a minted project's starter gallery, an empty project, or explicitly opened source JSON. One Canvas; no write path |
 | `/p/:publicationId` | Cold public visitor runtime (strict reader). There are currently no published releases |
 
 Removed routes: `/project/:id/preview`, `/project/:id/publish` (404), and the

@@ -28,9 +28,9 @@ vocabulary `WAITING` … `STEADY`; and the stage it preserved as `PHASE_1`, adva
 registered with `T1.P01.S01` authorized) listed three exposure slices; readiness is `open` and the
 window is **open** — a listed slice's first authorized implementation opened it through the track
 runbook's start step (`open-window`). `T1.P01.S02` started, so the stage moved
-`PHASE_1 → PHASE_2_VALIDATING` and `Opened by` is `T1.P01.S02`. The exposure rows, `Closed by` and
-the mechanism verdicts stay empty until real work earns them; M5 stays `dormant` until the
-replacement wiring it names is actually proved.
+`PHASE_1 → PHASE_2_VALIDATING` and `Opened by` is `T1.P01.S02`. Its shipped exposure is recorded
+below; S04/S05 rows, `Closed by` and the mechanism verdicts remain empty until real work earns them.
+M5 stays `dormant` until the replacement wiring it names is actually proved.
 The JSON state fence, the transition evaluator and the CLI action codes are gone: the tables below,
 five short action headings and three one-line hooks replace them.
 
@@ -38,7 +38,7 @@ five short action headings and three one-line hooks replace them.
 
 | Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `PHASE_2_VALIDATING` | `open` | T1.P01 spatial foundation — **open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | `T1.P01.S02` | — | — |
+| `PHASE_2_VALIDATING` | `open` | T1.P01 spatial foundation — **open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S02` | — |
 
 - **`<phase> — selected, not open`** is the configured-but-unopened state: the bounded window is
   listed with its terminal, and no listed exposure slice has started authorized implementation yet.

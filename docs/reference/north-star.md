@@ -15,11 +15,13 @@ target capability below is presented as shipped. Open mechanism decisions (encod
 kernel implementation, level mechanism, channel operators) are named as open, not
 invented here.
 
-**Current shell (post-#115):** PR #115 removed the `Spatial` authoring workspace
-(`Scene | Camera` × `Plan | 3D`); the `/project/:id/spatial` route serves a static notice
-and the product has no authoring surface, selection, history, gizmo, preview takeover,
-publish surface or import/export. The surviving product capability is sign-in, the project
-hub, cloud Save/Load, the API and the cold public visitor runtime. `Experience`, `Assets`
+**Current shell (post-#115 and T1.P01.S02):** PR #115 removed the earlier editable
+`Spatial` workspace (`Scene | Camera` × `Plan | 3D`). T1.P01.S02 restores a read-only
+Stage at `/project/:id/spatial`, with source inspection, selection and an Index; it writes
+nothing back. The product still has no Layout/Scene editing, history, gizmo, Camera
+authoring, preview takeover, publish surface or import/export. The surviving product
+capability is sign-in, the project hub, cloud Save/Load, the API and the cold public visitor
+runtime. `Experience`, `Assets`
 and `Publish` are the project-level concerns from the 2026-08-31 shell ratification —
 **Experience authoring is destination, not shipped**, and Assets/Publish retain only
 partial backend implementations (P20/P22) with no product authoring UI. Composition,

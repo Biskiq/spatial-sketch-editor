@@ -2,8 +2,8 @@
 
 **Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
 (F1/F3 shared providers and readiness enforcement); `T1.P01.S03` accepted and shipped 2026-10-16
-(F4 `acceptance-invariants-v1` and `local-single-domain-v1`); S02 owner-authorized 2026-10-16 and
-**in progress** (parallel batch 2026-10-16, the cycle-window opener); S04–S06 proposed and
+(F4 `acceptance-invariants-v1` and `local-single-domain-v1`); `T1.P01.S02` accepted and shipped
+2026-10-17 by owner-override (PR #128); S04–S06 proposed and
 unauthorized · **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -137,17 +137,17 @@ gate version is not by itself sufficient readiness; `Effects` names only documen
 **authorized** by the owner decision of 2026-10-15 and is now **accepted and shipped**: independent
 review accepted its implementation at `ee463d0b`, so its provider outputs are recorded as the accepted
 capabilities `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` and both gate rows are
-`accepted`. **S02 and S03 are authorized** by the owner decision of 2026-10-16; S03 is accepted and
-shipped with its two F4 capability records; S02 remains approved. Their prerequisites are accepted
-on the trusted base, where `ee463d0b` is an ancestor. S04–S06 are
-**proposed** and hold no implementation permission. Same-phase sequencing never bypasses the
-trusted-base rule: each consumed gate and each required capability must be accepted at the consumer's
-trusted base.
+`accepted`. **S02 and S03 were authorized** by the owner decision of 2026-10-16. S03 is accepted and
+shipped with its two F4 capability records; S02 is accepted and shipped under the owner-override
+documented in its row. Their prerequisites were accepted on the trusted base, where `ee463d0b` is
+an ancestor. S04–S06 are **proposed** and hold no implementation permission. Same-phase sequencing
+never bypasses the trusted-base rule: each consumed gate and each required capability must be
+accepted at the consumer's trusted base.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
-| T1.P01.S02 | in-progress | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — implementation complete and locally verified (parallel batch 2026-10-16); two independent reviews folded in; the merge gate on the then-current `main`, the S06 integration route and owner adjudication are owed |
+| T1.P01.S02 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted and shipped 2026-10-17 by owner-override at PR #128 revision `567a17e7`; waived the current-main merge-gate rerun and S06 integration proof as prerequisites to S02 acceptance; S06 result remains owed and `T1.viewport-projection@1` remains ratified |
 | T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
 | T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
@@ -164,7 +164,8 @@ current-source acceptance record proves unit capability readiness.
 
 The [global gate register](../../README.md#gate-register) records accepted F1/F3 providers from S01
 and the accepted F4 provider from S03. S03's two AM-4 outputs have separate durable capability
-records; S02's `T1.viewport-projection@1:viewport-projection-v1` remains unaccepted. `F5.release-envelope@1`
+records. S02 is accepted as a slice by owner-override, but `T1.viewport-projection@1:viewport-projection-v1`
+remains ratified pending S06's integrated result; no consumer readiness is claimed. `F5.release-envelope@1`
 (T4.P01.S02) stays unassigned until its own phase registers.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
@@ -181,9 +182,9 @@ PHASE CLOSE
 Stage:        active
 ```
 
-`T1.P01.S01` and `T1.P01.S03` are accepted and shipped with their evidence and accepted capability
-records; S02 is implemented with local evidence recorded in its acceptance record but no acceptance
-and no capability record yet. S02–S06 have no other accepted result. The
+`T1.P01.S01`, `T1.P01.S02` and `T1.P01.S03` are accepted and shipped. S02's acceptance uses the
+owner-override recorded in its acceptance stub; its viewport capability remains ratified pending the
+S06 integrated result, and no consumer readiness is claimed. S04–S06 have no accepted result. The
 final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
 stage marker is written, and closure stays an explicit owner request.
 
@@ -224,15 +225,17 @@ T3 S03 supplies unit/compound/Save/handoff capability records before T3 S04 acti
 breaking shared semantics requires a new major rather than a falsely compatible capability.
 
 Approved: the canonical starter entry and bounded Layout scope; deferred general drawing
-preserved. The core viewport is accepted independently at S02, before S04–S06. T2/T3 UI consumes
-the public seam, not T1 phase completion. Local F4 and T3 unit work can run alongside viewport work
-after F1. Conditional Save waits only for local F4 plus T3's accepted current-source Save
-conformance.
+preserved. The S02 slice is accepted independently of the phase final gate; its
+`T1.viewport-projection@1` capability remains ratified pending S06's integrated result. T2/T3 UI
+must not claim readiness from S02 until that route is complete. Local F4 and T3 unit work can run
+alongside viewport work after F1. Conditional Save waits only for local F4 plus T3's accepted
+current-source Save conformance.
 
-The S02/S04/S05 exposure window above is configured and unopened, without verdicts, until actual
-authorized implementation. Capability implementation uses the landed r186 base (`74efb98b`, three
-0.186.1). This registration changed no ratified contract, no gate state, no other phase
-registration, no Baseline and no cycle opening.
+The S02/S04/S05 exposure window above is configured and open: S02 opened it on 2026-10-16, and its
+shipped exposure is recorded in the live cycle table. S04/S05 exposure rows and mechanism verdicts
+remain owed. Capability implementation uses the landed r186 base (`74efb98b`, three 0.186.1). This
+registration changed no ratified contract, no gate state, no other phase registration and no
+Baseline.
 
 ## Deliberately deferred scope and next boundary
 
