@@ -21,3 +21,10 @@ export * from './types';
 export * from './canonical';
 export * from './validate';
 export * from './acceptance-staging';
+export * from './planning';
+export * from './acceptance';
+export * from './save';
+// The F.4-facing half of the same capability (the wider registry and the
+// dispatcher entry) is re-exported here so a host that opts into F.2 reaches one
+// unit-acceptance entry. It imports no unit module, so this stays acyclic.
+export { createUnitPlannerRegistry, createUnitTargetInspector, prepareUnitIntent, validateUnitTargets } from '../f4/unit-acceptance';
