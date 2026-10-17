@@ -7,7 +7,11 @@
  * test builds its own pool/store and gets fresh data.
  */
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
+
+import { canonicalSourceJson, sourceContentIdForCanonicalJson } from '@portfolio/project-model';
+import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
 
 export const SESSION_KEY = Buffer.alloc(32, 7);
 export const SESSION_COOKIE = 'museum-editor-session';
@@ -56,6 +60,34 @@ export function projectDocument(name = 'Cloud project', { id = 'project:test', t
 			entities: [],
 			navigationNodes: [],
 			connections: []
+		}
+	};
+}
+
+/**
+ * Build one `SaveAcceptedSource@1` wire request from a current-format document.
+ * The capture carries the canonical bytes and their digest, exactly as the
+ * editor client does; the server recomputes both and refuses a mismatch.
+ */
+export async function saveRequestBody(
+	document,
+	{ precondition = { kind: 'create-only' }, revisionId = `revision-${randomUUID()}`, operationId = randomUUID() } = {}
+) {
+	const canonical = canonicalSourceJson(document);
+	if (canonical.kind === 'rejected') throw new Error(`fixture was not canonical: ${canonical.issues[0]?.message}`);
+	const sourceContentId = await sourceContentIdForCanonicalJson(canonical.canonicalJson);
+	return {
+		contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
+		capture: {
+			protocol: 'SaveAcceptedSource@1',
+			projectId: canonical.project.id,
+			operationId,
+			precondition,
+			sourceKind: 'current-source',
+			sourceVersion: 5,
+			acceptedRevision: { projectId: canonical.project.id, revisionId },
+			sourceContentId,
+			canonicalJson: canonical.canonicalJson
 		}
 	};
 }

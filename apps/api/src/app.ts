@@ -31,13 +31,8 @@ import {
 	uploadAsset
 } from './asset-persistence.js';
 import type { ObjectStore } from './object-store.js';
-import {
-	listProjects,
-	loadProject,
-	ProjectNotFoundError,
-	projectValidationError,
-	saveProject
-} from './project-persistence.js';
+import { listProjects, loadProject, ProjectNotFoundError } from './project-persistence.js';
+import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
 import {
 	getPublicationStatus,
 	isValidPublicationId,
@@ -57,6 +52,7 @@ import {
 	type TestAuthOptions
 } from './test-auth.js';
 import { validateProject } from '@portfolio/project-model';
+import { readSaveRequest } from '@portfolio/project-model/save';
 
 export type ApiAppOptions = {
 	pool: DatabasePool;
@@ -348,20 +344,28 @@ export function createApp({
 		if (typeof projectId !== 'string' || !projectId) {
 			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
 		}
-		if (!isDocumentBody(body)) {
-			return reply.code(400).send(errorBody('invalid_body', 'Expected a document body'));
+		// The unconditional document body is the old client. Refuse it with no
+		// write and no implicit create rather than accepting an overwrite.
+		if (isUnconditionedDocumentBody(body)) {
+			return reply
+				.code(400)
+				.send(errorBody('precondition_required', 'Save requires a create-only or expected-saved-base precondition'));
 		}
-		const validation = validateProject(body.document);
-		if (!validation.success) {
-			return reply.code(400).send(errorBody('invalid_project', projectValidationError(validation)));
+		const parsed = readSaveRequest(body);
+		if (parsed.kind === 'invalid') {
+			return reply.code(400).send({
+				error: { code: 'invalid_save_request', message: 'Invalid SaveAcceptedSource@1 request' },
+				issues: parsed.issues
+			});
 		}
-		if (validation.project.id !== projectId) {
-			return reply.code(400).send(errorBody('project_id_mismatch', 'Project ID does not match document ID'));
+		if (parsed.request.capture.projectId !== projectId) {
+			return reply.code(400).send(errorBody('project_id_mismatch', 'Project ID does not match captured project ID'));
 		}
 		try {
-			return await saveProject(pool, userId, validation.project);
+			return await saveAcceptedSource(pool, userId, parsed.request);
 		} catch (error) {
 			if (error instanceof ProjectNotFoundError) return notFound(reply);
+			if (error instanceof SaveRefusalError) return saveRefusal(reply, error);
 			return databaseFailure(app, reply, error, 'Project save failed');
 		}
 	});
@@ -764,7 +768,29 @@ function publicationConflict(
 		.send({ error: { code: 'revision_conflict', message: error.message }, revision: error.revision });
 }
 
-function isDocumentBody(value: unknown): value is { document: unknown } {
+function saveRefusal(
+	reply: { code(statusCode: number): { send(body: unknown): unknown } },
+	error: SaveRefusalError
+) {
+	if (error.code === 'conflict') {
+		// A conflict carries no remote contents; the client reloads explicitly.
+		return reply.code(409).send(errorBody('conflict', error.message));
+	}
+	if (error.code === 'collision') {
+		// Owner-blind: one answer for any existing ID, revealing nothing.
+		return reply.code(409).send(errorBody('save_collision', error.message));
+	}
+	if (error.code === 'not-found') return notFound(reply);
+	return reply.code(400).send({
+		error: {
+			code: error.code === 'invalid-project' ? 'invalid_project' : error.code,
+			message: error.message
+		},
+		...(error.issues.length > 0 ? { issues: error.issues } : {})
+	});
+}
+
+function isUnconditionedDocumentBody(value: unknown): value is { document: unknown } {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
