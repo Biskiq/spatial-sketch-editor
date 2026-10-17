@@ -221,7 +221,9 @@ export function reduceExperience(
 	}
 	// A terminal run is finished: no lifecycle action, hold, state write or
 	// navigation may run again, and a late complete/cancel cannot resurrect it or
-	// flip one terminal phase into the other. `reset` is the one supported rewind.
+	// flip one terminal phase into the other. `reset` is the explicit rewind and
+	// is the only event admitted here; it deliberately runs the `enter` lifecycle
+	// again on the same run.
 	if ((state.phase === 'completed' || state.phase === 'cancelled') && event.kind !== 'reset') {
 		return ignored(state);
 	}

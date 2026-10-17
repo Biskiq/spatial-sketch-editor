@@ -332,6 +332,9 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		const reset = reduceExperience(lowered, completed.state, event('reset'));
 		expect(reset.state).toMatchObject({ entered: true, stopId: 'stop-1', phase: 'holding' });
 		expect(reset.state.visited).toHaveLength(1);
+		const resetCancelled = reduceExperience(lowered, cancelled.state, event('reset'));
+		expect(resetCancelled.state).toMatchObject({ entered: true, stopId: 'stop-1', phase: 'holding' });
+		expect(resetCancelled.state.visited).toHaveLength(1);
 	});
 
 	it('never borrows a Travel bound to a different predecessor', async () => {
