@@ -125,7 +125,7 @@ into a live session belongs to T1's Head integration.
   changed-payload retry refuses; failed full validation; an unknown-asset source refuses with the
   same result in editor admission and API Save (parity fixture); the unconditioned body refuses;
   scheme, source-version and digest mismatch refuse; a stored base that fails registry admission does
-not block a valid Save.
+  not block a valid Save.
 - Client-state conformance against a real `createAcceptanceCoordinator`:
   - an edit during an in-flight Save stays dirty;
   - a stale prior-epoch response is dropped;
