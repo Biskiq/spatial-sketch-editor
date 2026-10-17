@@ -4,6 +4,11 @@
 authorized by this document. Candidate IDs below describe sequence only. No F amendment, gate
 version, shared contract, capability implementation or Baseline is established here.
 
+**Reconciled 2026-10-17.** Several gate-state statements below predate the 2026-10-15 F ratification
+and the accepted F1–F4 providers. The [T4.P01 registration draft](./t4.p01-prepared-release-foundation/README.md#reconciliation-of-the-2026-10-14-proposal-against-post-pr-135-main)
+records which statements are superseded and by what. This proposal stays as evidence and is not
+rewritten.
+
 **Recommendation:** compile accepted F2 Camera/Experience source into one bounded prepared profile,
 persist releases independently of source versions, and replace public snapshot delivery in one
 coordinated T4 cutover. T3 owns the sole authored-source conversion and visitor semantic transition;

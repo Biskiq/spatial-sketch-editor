@@ -28,12 +28,13 @@ BATON: T3.P01.S02 (early conditional Save) is accepted and shipped on PR #133 fr
        activation, source cutover, migration inventory and recovery remain T3.P01.S04's. No T3 slice
        is in progress.
 NEXT: The next T3 authorization is S03 (compound and runtime preparation). Its prerequisite closure
-      — S01's unit capabilities and S02's `conditional-save-current-v1` — is complete on `main` once
-      this close merges, so an owner authorization can open S03. Phase/track closure is not
+      — S01's unit capabilities and S02's `conditional-save-current-v1` — is complete on `main`
+      (re-verified 2026-10-17 at `c9aa53cf`). Authorization is proposed as D5 of the 2026-10-17
+      next-batch proposal, in batch A beside T1's S07 under its shared-file protocol. Phase/track closure is not
       available: S04, the declared final gate, is neither accepted nor shipped.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md
-BLOCKER: none (S03 authorization is an owner decision, not an unresolved dependency).
+BLOCKER: none (S03 authorization is owner decision D5, not an unresolved dependency).
 ```

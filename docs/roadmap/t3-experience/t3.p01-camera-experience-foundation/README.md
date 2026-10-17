@@ -142,7 +142,9 @@ the gate register and the linked capability records. S02's `local-single-domain-
 `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor of post-PR #129 `main`, so S02 was
 eligible, and its own `conditional-save-current-v1` output is now accepted. S03's prerequisite
 closure — S01's `unit-envelope-v1`/`unit-resolution-v1` and S02's `conditional-save-current-v1` — is
-therefore complete on `main` once this close merges; S03 still needs its own owner authorization. As
+complete on `main` (re-verified 2026-10-17 at `c9aa53cf`); S03 still needs its own owner authorization,
+proposed as D5 of the [2026-10-17 next-batch proposal](../../next-batch-2026-10-17.md#proposed-decisions)
+and independent of T1's viewport work. As
 the [allocation](../../cross-track-execution.md#capability-readiness-amendment) records, S03 consumes
 the still-active current-source scopes while it builds the unit implementation, but the unit
 capabilities it exports declare only F2 and the enduring `acceptance-invariants-v1`. S04 consumes only

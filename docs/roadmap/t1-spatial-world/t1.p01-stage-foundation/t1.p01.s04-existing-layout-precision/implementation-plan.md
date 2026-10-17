@@ -15,7 +15,11 @@ The integration route is the phase's exhaustive final gate; a narrowed tier neve
 
 ## Prerequisite
 
-S02/S03 providers accepted at trusted base. **Produces:** useful scalar authoring/source download
+S02/S03 providers accepted at trusted base. Under the
+[2026-10-17 proposal](../../../next-batch-2026-10-17.md#proposed-decisions) (D1/D2, pending owner
+decision), that means `T1.P01.S07` shipped and `viewport-projection-v1` accepted through it, both at
+this slice's trusted base. Until then this slice cannot start: its `Requires` names a capability that
+is still `ratified`. **Produces:** useful scalar authoring/source download
 and deferred shell discovery depth; re-arms M1 and M2. No schema change.
 
 **Host↔F4 integration (first increment).** S02 and S03 are authorized to run in parallel and
@@ -26,7 +30,11 @@ an accepted install replaces the Stage read snapshot (S02's composed snapshot gi
 shared boundary; project replacement starts a new history baseline; selection requalifies only
 through accepted correspondence; and the inspection Camera output rebases on every content change,
 re-acquiring without moving the view. If the owner authorizes `T2.P01.S03` before this slice, the
-owner assigns this wiring explicitly to one of them; it is never built twice.
+owner assigns this wiring explicitly to one of them; it is never built twice. **Proposed
+reassignment (D2, pending):** the wiring and the AM-5 adapter contribution points move to
+`T1.P01.S07`. This slice then registers its Dimensions instrument, Card name writer, capability-Find
+entries and Place → Layout plinth item through those contribution points, as a Layout adapter, and
+edits no host core module.
 
 **Head Save integration (assigned 2026-10-16,
 [record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)).** The slice that owns
@@ -37,7 +45,11 @@ the server and the state machine; this slice builds none of them. This slice's s
 is authorized, never mid-slice. If `F4.intent-acceptance@1:conditional-save-current-v1` is accepted
 by then, the Head Save integration is in scope and that capability joins this plan's `Requires` and
 the register row. If not, it is out of scope, the Head keeps S02's "Save unavailable" posture, and
-the owner names the T1 slice that mounts Save before `T2.P01.S04` starts.
+the owner names the T1 slice that mounts Save before `T2.P01.S04` starts. `conditional-save-current-v1`
+has been accepted since PR #133. **Proposed (D3, pending):** the Head Save integration stays with
+this slice, not S07, so the critical-path bridge stays narrow. At this slice's authorization
+`F4.intent-acceptance@1:conditional-save-current-v1` therefore joins its `Requires` and register row.
+This slice is the Head's sole writer while it runs.
 
 ## Scope
 

@@ -90,6 +90,13 @@ No T4 phase is registered. A phase is added here by an authorized plan, with its
 | --- | --- | --- | --- |
 | — | — | — | — |
 
+A registration-ready draft of the first phase exists:
+[T4.P01 — Prepared release foundation](./t4.p01-prepared-release-foundation/README.md), proposed
+2026-10-17. It reconciles the [first-phase proposal](./first-phase-proposal.md) against current
+`main` and drafts the docs-only S01 plan. Until the owner registers it (D6 of the
+[next-batch proposal](../next-batch-2026-10-17.md#proposed-decisions)), it is not a row in this
+register and it authorizes nothing.
+
 ## Starting foundation
 
 **Retained modules and gates this track builds on**

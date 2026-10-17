@@ -19,6 +19,27 @@ replacement baseline, selection requalification, Camera-output rebase) present o
 wiring is `T1.P01.S04`'s first increment by default; if the owner authorizes this slice first, the
 owner assigns it explicitly, and it is never built twice.
 
+**Launch conditions (2026-10-17 reconciliation).** The viewport capability's current route is
+circular, so this slice cannot start under the plan as written: `viewport-projection-v1` stays
+`ratified` until S06, and S06 waits for S04, which needs the same capability. The
+[next-batch proposal](../../../next-batch-2026-10-17.md#t2p01s03-launch-conditions) (pending owner
+decision) puts this slice in the batch **after** `T1.P01.S07`. It may start only when all of these
+hold:
+
+1. The owner authorizes it, and its register row reads `approved`. Nothing in the 2026-10-17
+   proposal authorizes it.
+2. `T1.viewport-projection@1` is `accepted`, with an `active` `viewport-projection-v1` entry, both in
+   the tree and at this slice's trusted base (`git merge-base HEAD main`).
+3. `T1.P01.S07` is shipped on that base. The host↔F4 wiring, adapter re-binding across installs and
+   the AM-5 contribution points (task/instrument factory, Card facts, Place/Find entries) are then on
+   `main`. This slice registers through them and edits no host, route or shell core module.
+4. `local-single-domain-v1` stays `active`, and `T2.P01.S02` stays shipped. Both hold today.
+5. If it runs alongside `T1.P01.S04`, the [shared-file protocol](../../../cross-track-execution.md#proposed-batch-2026-10-17)
+   is in force: each writes only its own adapter, and T1 alone writes the Head and host core.
+
+It does **not** wait for S04's precision tools, the Head Save integration (`T2.P01.S04`'s
+prerequisite), conditional Save or T1 phase closure.
+
 ## Scope
 
 Use the existing shell's Place family/Find registration, Index, Card, task home and gesture lease.
