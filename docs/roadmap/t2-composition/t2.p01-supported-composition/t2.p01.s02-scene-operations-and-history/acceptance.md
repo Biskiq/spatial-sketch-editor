@@ -37,18 +37,18 @@ planners yet.
 No F4 capability, no production Layout operation and no editor policy import is added to the
 package; the normalized-definition policy is injected.
 
-## Verification at `d38594b3` (2026-10-16)
+## Verification at `7eadfcfb` (2026-10-16)
 
-Run from the slice worktree: the code under test is commit `d38594b3`, and the only working-tree
-change on top of it is this record and the baton/register text committed with it (the documentation
-link checks ran against that text):
+Run from the slice worktree. Production code is exactly `d38594b3`; `7eadfcfb` adds only the
+direct-install bypass regression below, and the remaining working-tree change is this record and
+the baton/register text committed with it (the documentation link checks ran against that text):
 
 | Gate | Command | Result |
 | --- | --- | --- |
-| Fast lane | `npm run test:fast` | 112 files / 1,586 tests pass |
+| Fast lane | `npm run test:fast` | 112 files / 1,587 tests pass |
 | Architecture lane | `npm run test:arch` | 17 files / 148 tests pass |
 | Heavy lane | `npm run test:heavy` | 8 files / 118 tests pass |
-| Complete suite | `npm run test:full -- --maxWorkers=2` | 137 files / 1,852 tests pass, zero skips |
+| Complete suite | `npm run test:full -- --maxWorkers=2` | 137 files / 1,853 tests pass, zero skips |
 | Editor check | `npm run check` | 0 errors, 0 warnings |
 | Package check | `npm run check:project-model` | `tsc --noEmit` clean |
 | Production build | `npm run build` | passes |
@@ -56,7 +56,7 @@ link checks ran against that text):
 Focused contracts, each run whole:
 
 - `tests/lib/project-model/scene-operation-planners.test.ts` — 25 tests.
-- `tests/lib/authoring/scene-operation-acceptance.test.ts` — 7 tests.
+- `tests/lib/authoring/scene-operation-acceptance.test.ts` — 8 tests.
 
 **One pre-existing concurrency flake, left unchanged.** `tests/lib/project-model/camera-output-conformance.test.ts`
 ("holds every invariant over all action sequences up to depth 5", a bounded exhaustive traversal)
@@ -80,7 +80,7 @@ recorded exactly as observed rather than presented as green.
 | Untargeted rewrite admitted by the adapter is refused by T2's guard | acceptance "refuses a mutation-control candidate the adapter admits, through the T2 record-scope guard" (entity, cluster and field variants) |
 | Support refusals: no-support, choice no longer yielded, duplicate without support; query order independent | planner suite "support and refusals" and "snapshot-qualified support selection" |
 | Delete cleans membership and empty clusters atomically, exact correspondence | planner suite delete case; acceptance Undo restores the exact prior snapshot |
-| Direct-caller bypass fails | the layout of the landed contracts is unchanged: the coordinator is the only accepted writer (`f4-acceptance.test.ts` bypass test, T1-owned) and this slice adds no install path |
+| Direct-caller bypass fails | acceptance "installs nothing when a caller writes and admits a Scene document directly": a directly admitted document leaves the accepted source, revision, history and install count unchanged, so a second install path would be caught. This slice adds no install API |
 | Public-route isolation; no editor policy in a package barrel | `f4-public-isolation.test.ts` (arch lane) still reaches the package's F.4 modules and no editor authoring module; `scene-planning/` imports no editor, Svelte or Three module |
 
 ## Not claimed
