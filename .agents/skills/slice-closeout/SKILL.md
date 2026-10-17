@@ -43,6 +43,21 @@ stale, contradictory or fails a criterion, STOP and report it. Green tests or in
 alone never constitute acceptance; all acceptance prerequisites, evidence-validity rules and
 independent-review requirements above still apply.
 
+## The closeout invocation is the acceptance signal
+
+This skill is manual — only a deliberate owner request invokes it — so that request is the owner's
+acceptance act. When the routed acceptance artifact already carries an independent-review verdict
+covering the current implementation revision with no open, withdrawn or unadjudicated finding,
+invoking this skill records acceptance and proceeds; the owner need not restate "accepted".
+
+A missing, stale, withdrawn or pending verdict still stops (step 1). The owner may then waive a gating
+prerequisite only by an explicit ruling recorded in the acceptance artifact — its date, scope and what
+was waived — after which the register and baton read `owner-override`, never `reviewed`. An override
+is per-slice and per-revision and is never inferred from the invocation alone.
+
+Manual invocation is the hygiene guard: a hook, bot or scheduled job is not an owner acceptance and
+must not invoke this skill.
+
 ```text
 implementation accepted   code, architecture and required acceptance evidence passed review
 merge-ready               closeout complete and its self-check passed
