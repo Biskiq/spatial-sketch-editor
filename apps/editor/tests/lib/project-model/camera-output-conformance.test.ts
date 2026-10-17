@@ -333,5 +333,11 @@ describe('F.3 Camera output — bounded exhaustive invariants', () => {
 		};
 		visit({ state: output(), history: [], retired: new Set(), sources: [R1] }, [], 5);
 		expect(explored).toBeGreaterThan(10_000);
-	});
+		// A bounded exhaustive traversal, not a unit-scale assertion: it takes
+		// ~2.5 s alone but exceeds vitest's 5 s default when the fast lane starves
+		// it, which reproduces on unmodified `main`. Bounded sweeps in this tree
+		// declare their own budget (`f4-acceptance`, `layout-scale-compile`,
+		// `angled-plan-noding-sweeps`); the traversal and its assertion are
+		// unchanged.
+	}, 30_000);
 });
