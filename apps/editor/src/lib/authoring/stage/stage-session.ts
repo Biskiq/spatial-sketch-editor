@@ -140,7 +140,12 @@ export type AcceptedSlotInstall =
 			readonly closedTask: boolean;
 			/** The proposal bound to the replaced revision, released by the change. */
 			readonly releasedGestures: number;
-			/** What the host's requalification did with the live selection. */
+			/**
+			 * What the retained Layout helper did with its primary projection. It is a
+			 * compatibility report, not the canonical record: `selectionRemovals` names
+			 * every ordered entry that did not survive, including Scene entries this field
+			 * never described.
+			 */
 			readonly requalification: SelectionRequalificationOutcome;
 			readonly selectionRemovals: readonly SelectionRemoval[];
 	  }
@@ -332,8 +337,8 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		const ref = entry?.representation;
 		return ref ? { sourceId: ref.sourceId, sourceKind: ref.sourceKind, generationId: ref.generationId, ref } : null;
 	}
-	function setLegacy(next: StageSelection | null): void {
-		if (next === null || current === null) { selectionValue = EMPTY_SELECTION; return; }
+	function setLegacy(next: StageSelection | null): boolean {
+		if (next === null || current === null) { selectionValue = EMPTY_SELECTION; return next === null; }
 		// Retained Layout helper shares the exact same owner and ordered value.
 		const reference = layoutSelectionReference(next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null }, current);
 		const admitted = admitSelection({ ordered: [{ reference, representation: next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null } }], primary: reference }, current);
@@ -341,6 +346,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		// names the previous revision: the caller re-reads the projection, and a
 		// stale ref would otherwise be shown as the subject just clicked.
 		selectionValue = 'kind' in admitted ? EMPTY_SELECTION : admitted;
+		return !('kind' in admitted);
 	}
 	/**
 	 * Cancel the writers that belong to a task or gesture, never the command that is
@@ -391,10 +397,16 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		writerGeneration: () => writerGeneration,
 		changeLens(next) {
 			if (disposed || next === lens) return false;
-			// Park before cancelling: a canceller then observes an inactive task, never
-			// an "active" one it could close and take the Resume path with it.
+			// Park before cancelling, and hold the parked task across cancellation: a
+			// canceller then observes an inactive task, and one that closes it anyway
+			// cannot take the only Resume path with it.
+			const parked = task;
 			if (task !== null) taskStatus = 'inactive';
 			cancelAllWriters();
+			if (parked !== null && task !== parked) {
+				task = parked;
+				taskStatus = 'inactive';
+			}
 			lens = next;
 			return true;
 		},
@@ -553,8 +565,12 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 					}
 					selectionValue = immutableF4Data({ ordered, primary: primary ?? ordered[0]?.reference ?? null });
 				} else {
-					setLegacy(requalification.kind === 'requalified' ? requalification.selection : null);
-					for (const entry of previousOrdered.ordered) if (requalification.kind !== 'requalified') selectionRemovals.push({ reference: entry.reference, reason: requalification.kind === 'cleared' ? requalification.reason : 'no-correspondence' });
+					const admittedLegacy = setLegacy(requalification.kind === 'requalified' ? requalification.selection : null);
+					// A convenience selection the new content refuses is gone even though the
+					// requalification said it survived; the three reported fields must agree
+					// instead of claiming a requalified selection that is no longer held.
+					if (!admittedLegacy) requalification = previousOrdered.ordered.length === 0 ? requalification : { kind: 'cleared', reason: 'no-correspondence' };
+					for (const entry of previousOrdered.ordered) if (requalification.kind !== 'requalified' || !admittedLegacy) selectionRemovals.push({ reference: entry.reference, reason: requalification.kind === 'cleared' ? requalification.reason : 'no-correspondence' });
 				}
 				// Accepted content closes an active task. Its writer callbacks are cancelled
 				// for real (not merely generation-invalidated), but the acceptance's own
@@ -564,7 +580,8 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 					kind: 'installed',
 					previousSourceContentId: active.sourceContentId,
 					sourceContentId: next.sourceContentId,
-					clearedSelection: selectionValue.ordered.length === 0,
+					// A clear, not an emptiness: an install with nothing selected clears nothing.
+					clearedSelection: previousOrdered.ordered.length > 0 && selectionValue.ordered.length === 0,
 					closedTask,
 					releasedGestures,
 					requalification,

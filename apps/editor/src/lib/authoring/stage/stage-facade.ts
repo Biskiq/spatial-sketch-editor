@@ -340,7 +340,11 @@ export type StageContentInstall =
 			readonly clearedSelection: boolean;
 			readonly closedTask: boolean;
 			readonly releasedGestures: number;
-			/** Whether the live selection survived through accepted correspondence. */
+			/**
+			 * The retained Layout helper's report for its primary projection. The canonical
+			 * record of what survived is `selectionRemovals`, which also covers domains the
+			 * Layout helper never described.
+			 */
 			readonly requalification: SelectionRequalificationOutcome;
 			readonly selectionRemovals: readonly SelectionRemoval[];
 	  }

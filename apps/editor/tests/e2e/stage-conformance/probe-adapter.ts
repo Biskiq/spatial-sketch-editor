@@ -151,7 +151,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						target: reference, configuration: { receiveShadow: entity?.kind === 'primitive' ? entity.receiveShadow : false },
 						// Explicit Resume only: the configuration stays valid for the current content.
 						revalidate: (task: StageTask, current: StageReadSnapshot): TaskResumeOutcome => {
-							if (resolveReference(reference, current.domain.references).kind !== 'resolved') {
+							// The session hands the requalified target; resolving the bind-time
+							// reference instead would only prove that a re-bind happened.
+							if (resolveReference(task.target ?? reference, current.domain.references).kind !== 'resolved') {
 								return { kind: 'refused', code: 'missing', message: 'The conformance entity no longer exists. Choose another target.' };
 							}
 							const configuration = task.configuration as { readonly receiveShadow?: unknown } | undefined;

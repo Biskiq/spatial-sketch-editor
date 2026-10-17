@@ -30,8 +30,10 @@ export default mergeConfig(defineConfig({ plugins: [{
 		const [file, query] = id.split('?');
 		if (file === route) {
 			// The Svelte plugin also transforms the component's style block through
-			// this id with a query. Only the component module itself carries markup.
-			if (query !== undefined && query !== '') return;
+			// this id with a query. Only that sub-request is skipped: an HMR update
+			// arrives with a `?t=` stamp and still carries markup, so skipping every
+			// query would silently drop the control mid-session.
+			if (query !== undefined && query.includes('type=style')) return;
 			const patched = code.replace(ROOT_MARKER, REPLACEMENT_CONTROL);
 			if (patched === code) {
 				throw new Error(

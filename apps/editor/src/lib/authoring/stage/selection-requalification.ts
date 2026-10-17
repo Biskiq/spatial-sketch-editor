@@ -109,6 +109,14 @@ export type EntryRequalification = { readonly kind: 'requalified'; readonly entr
  * Matching is full-address (owner, subject, instance path, component, canonical
  * location), never id-alone or proximity. The correspondence entity is the only
  * authority on whether the subject survived.
+ *
+ * Consequence: an entry's `before` must state the **canonical** address of the
+ * subject it names — the address the resolver reports, which is what admission
+ * stored. A second valid qualification of the same subject (an entity qualified with
+ * `project-root` when the owner's canonical location is elsewhere) is a different
+ * address for matching purposes, so it finds no entry and the subject is reported
+ * as `no-correspondence` rather than retargeted. The stored `after` is canonicalised
+ * for the same reason, so both sides of the next change speak one address.
  */
 export function requalifySelectionEntry(entry: StageSelectionEntry, correspondence: readonly CorrespondenceEntry[], next: StageReadSnapshot): EntryRequalification {
 	const mapping = correspondence.find((candidate) => candidate.before !== null && sameSubject(candidate.before, entry.reference));

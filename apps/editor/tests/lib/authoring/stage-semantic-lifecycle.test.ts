@@ -127,6 +127,21 @@ describe('Stage lens exit and explicit task Resume', () => {
 		expect(stage.instrumentForTask('scene', 'scene-task')?.summary).toBe('active only');
 		stage.closeTask(); session.dispose(); expect(cancelled).toBe(1);
 	});
+	it('keeps a parked task when a canceller closes it during the lens transition', async () => {
+		const { stage, session, scene } = await mount();
+		stage.registerStageAdapter({ id: 'scene-task', tasks: [{ id: 'scene', taskKind: 'scene', label: 'Scene task', target: scene() }] });
+		stage.openContributedTask('scene', 'scene-task');
+		// A hostile but legal canceller: it closes the task it is being cancelled for.
+		session.writers().register('task', session.token(), () => { session.closeTask(); });
+		expect(stage.changeLens('experience')).toBe(true);
+		expect(session.taskLifecycle()?.status).toBe('inactive');
+		expect(session.task()).toBeNull();
+	});
+	it('reports no cleared selection when nothing was selected', async () => {
+		const { stage, edit } = await mount();
+		expect(stage.selectionState().ordered).toEqual([]);
+		expect(await edit()).toMatchObject({ kind: 'installed', install: { clearedSelection: false, selectionRemovals: [] } });
+	});
 	it('refuses a lens-bound contribution outside its lens with an actionable reason', async () => {
 		const { stage, session } = await mount();
 		stage.registerStageAdapter({ id: 'experience-only', tasks: [{ id: 'experience', taskKind: 'experience', label: 'Experience task', lens: 'experience' }] });
