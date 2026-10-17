@@ -520,7 +520,8 @@ export function createPresentationStopCreatePlanner(
 				dependencyLock: { ...envelope.dependencyLock, entries: dependencyEntries }
 			};
 
-			// Resource staging is derived from the **candidate** and compared with the
+			// Resource staging is derived from the **accepted snapshot** plus the
+			// intent's new identity for a changed resource, and compared with the
 			// captured set. A host that uploads bytes for a different revision or pin
 			// has not staged this operation, and a target with no capture is refused
 			// rather than silently staged from the envelope alone.
