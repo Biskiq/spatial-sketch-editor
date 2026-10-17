@@ -21,8 +21,8 @@ This record holds implementation evidence for independent review. It is **not** 
 | Branch | `T3-P01-S02` |
 | PR | [#133](https://github.com/Biskiq/spatial-sketch-editor/pull/133) |
 | Base | post-PR #132 `main` (`74367936ea0cb1754c45021c4f10ca69b17ca7b0`) |
-| Tested code revision | `b22d32f258abb852b96db85ba479c0d14ee985db` (implementation + tests, including the independent-review fixes) |
-| Evidence docs | the commit after the tested revision: this record plus the Save state's binding/outcome doc comments. Comment-only, no behavioural product change; `npm run check`, the 13-test state suite, the arch lane and the one-worker full suite (**1853/1853**) were re-run on it |
+| Tested code revision | `fd3c55ec1e2e236259a7934222ca5257098012d2` (implementation + tests, including the review and P1 follow-up fixes) |
+| Evidence docs | the commit after the tested revision: this record only, no product change |
 | Runtime | macOS (aarch64), Node `v26.7.0` |
 | Database | PostgreSQL `14.19` (Homebrew), local database `biskiq_s02`, migrations applied twice |
 
@@ -36,19 +36,19 @@ remote/production database. No production or preview environment was touched.
 | `npm run check:project-model` | pass (tsc, no errors) |
 | `npm run check:api` | pass (tsc, no errors) |
 | `npm run check` | pass (`svelte-check`, 0 errors / 0 warnings) |
-| `npx vitest run` on the six new editor suites | 6 files / **36 tests** pass |
+| `npx vitest run` on the six new editor suites | 6 files / **38 tests** pass |
 | `npm run test:arch` | 18 files / **151 tests pass** |
-| `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1853 tests pass** |
+| `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1855 tests pass** |
 | `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **53 tests pass, 0 failed, 0 skipped** |
 | `psql -f migrations/004-conditional-save.sql` twice on the migrated schema | both exit 0, one constraint |
 
 The full editor suite includes the heavy lane (`test:heavy` members run in the default config). At
-the tested revision, plain `npm test` reached **1851/1853** and failed only on the **pre-existing 5 s
-timeouts** of `camera-output-conformance.test.ts` (7.8 s) and `p23b11-conditional-gate.test.ts`
-(8.7 s) — both files this slice does not touch — while the host was heavily loaded. The same
-command was fully green earlier in the slice at `f2fe1650` (1844/1844). The complete suite was
-therefore run with one worker (`npx vitest run --maxWorkers=1`, same config, assertions and
-timeouts) and passed **1853/1853**. No test was skipped, narrowed or given a longer timeout. The
+the tested revision, plain `npm test` reached **1854/1855** and failed only on the **pre-existing 5 s
+timeout** of `camera-output-conformance.test.ts` (10.5 s) — a file this slice does not touch —
+while the host was heavily loaded; an earlier run also caught `p23b11-conditional-gate.test.ts`
+(8.7 s) the same way. The same command was fully green earlier in the slice at `f2fe1650`
+(1844/1844). The complete suite was therefore run with one worker (`npx vitest run
+--maxWorkers=1`, same config, assertions and timeouts) and passed **1855/1855**. No test was skipped, narrowed or given a longer timeout. The
 API command is the DB-backed `test:api` lane; its zero-skip output is the concurrency/failure
 evidence, not a mock.
 
@@ -78,7 +78,7 @@ evidence, not a mock.
 rows, owner isolation, additive `GET` metadata, stale-token conflict, malformed/invalid/mismatched/
 oversized request distinction, and a payload just under 2 MiB.
 
-### Client Save state — `apps/editor/tests/lib/authoring/save-state.test.ts` (13 tests)
+### Client Save state — `apps/editor/tests/lib/authoring/save-state.test.ts` (15 tests)
 
 Driven by a real `createAcceptanceCoordinator` and the current-source adapter:
 
@@ -99,7 +99,12 @@ Driven by a real `createAcceptanceCoordinator` and the current-source adapter:
 - an acknowledgement that does not describe the captured project, revision and digest is refused as
   a non-retryable `server` error instead of being adopted;
 - a conflict load only ever fills the conflict that requested it, never a newer one that captured
-  the same bytes.
+  the same bytes;
+- a conflict's JSON offer is the **current** local source, so an edit made during the Save is what
+  the user can keep, and its digest describes the same bytes;
+- a new Save while a network-ambiguous capture is unresolved answers `unresolved`, sends nothing and
+  keeps the capture; `retry()` then settles it through its receipt before newer contents save under
+  a fresh operation ID.
 
 ### Client transport and draft — `apps/editor/tests/lib/platform/project-persistence.test.ts` (11 tests)
 
@@ -171,6 +176,20 @@ writes; Save and publish share no lock order that can deadlock; replaying a rece
 since moved is correct (returning the newer token would silently skip the other writer's version —
 the next Save conflicts instead); the additive `GET` metadata is safe in either merge order.
 
+### Follow-up P1 review (2026-10-16)
+
+Two P1 findings were reproduced against the state machine and AM-4 before anything changed; both
+regression tests failed on the reviewed head and pass at `fd3c55ec`.
+
+| Finding | Reproduction | Disposition |
+| --- | --- | --- |
+| A conflict's recovery offer captured the in-flight bytes while local work had moved on, so the JSON the Head would hand the user was stale and its digest described a different source | Edit during an in-flight Save, then answer `conflict`: `localJson` was the captured bytes, `localSourceContentId` the newer source's digest | Fixed: the offer reads the current source and pairs it with its own digest. AM-4's "conflicts preserve local work/history" now holds for edits made during the Save. History is untouched, reload stays explicit. |
+| After a network-ambiguous Save, a new Save with changed contents minted a fresh operation and overwrote the retained capture, discarding the receipt that could still decide whether the earlier write landed | Retryable error, edit, then `save()`: the transport was called with a new operation ID and `pending` was replaced | Fixed: `save()` answers `unresolved` while the retained capture no longer matches, so `retry()` resolves the ambiguity first; identical contents still reuse the operation and its receipt. An in-flight Save still answers `busy`. |
+
+Both fixes are within the ratified contract: receipt idempotency, the conditional write, local
+history and explicit conflict resolution are unchanged, and no server, protocol or migration file
+was touched.
+
 ### Deferred findings (not this slice)
 
 - **The migration runner is not safe for two concurrent processes.** `apps/api/src/migrate.ts`
@@ -193,7 +212,8 @@ the next Save conflicts instead); the additive `GET` metadata is safe in either 
   will send the old project's token with the new project's capture. The server refuses and writes
   nothing, so this is a wiring rule, not a data risk — and it is the Head integration's to honour.
 - **A returned `SaveOutcome` is a fact about that request**, not the live view: a second Save may
-  already have replaced the snapshot by the time an earlier promise resolves.
+  already have replaced the snapshot by the time an earlier promise resolves. The Head must handle
+  the `unresolved` outcome by offering `retry()`; that is the receipt path, not an error.
 - **No Head integration.** The state machine is unmounted by design; `T1.P01.S04` (or the authorized
   host↔F4 slice) owns the PLATE Head, unsaved-work signalling and routing *Reload* through the
   replacement guard. The read-only T1 boot remains safe in either merge order because `GET` is
