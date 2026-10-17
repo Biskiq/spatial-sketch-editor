@@ -150,7 +150,7 @@ ratified amendments.
 
 The routine slice sequence is implementation → review → acceptance → closeout → merge, using
 the recorded acceptance without re-running gates just to close. A substantive change introduced
-at closeout reopens only the affected review. **All five event procedures are owned by the
+at closeout reopens only the affected review. **All four cross-track event procedures are owned by the
 event sections of [`../operations/README.md`](../operations/README.md)**; this table states the
 lifecycle consequence and routes.
 
@@ -177,8 +177,8 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
   the [shared-file and merge protocol](./cross-track-execution.md#parallel-batch-2026-10-16) for the
   four slices authorized 2026-10-16.
 
-- **Next parallel batch (2026-10-17), owner-approved** ([record](../reference/decisions/next-batch-authorization-2026-10-17.md); D1–D5 applied, D6/D7 held). The [coordination proposal](./next-batch-2026-10-17.md)
-  resolves the `viewport-projection-v1` readiness cycle with a proposed narrow `T1.P01.S07` bridge. It
+- **Next parallel batch (2026-10-17), owner-approved** ([record](../reference/decisions/next-batch-authorization-2026-10-17.md); D1–D5 applied, D6/D7 superseded by R1-D). The [coordination proposal](./next-batch-2026-10-17.md)
+  resolves the `viewport-projection-v1` readiness cycle with an authorized narrow `T1.P01.S07` bridge. It
   verifies `T3.P01.S03`'s prerequisite closure, drafts T4.P01 registration and the docs-only S01, and
   states `T2.P01.S03`'s exact launch conditions. The proposal itself registers, authorizes and accepts nothing; the record does. Ruling R1-D then
   deferred all T4 work until [Core Editor Stability](./core-editor-stability.md), the pre-publication
