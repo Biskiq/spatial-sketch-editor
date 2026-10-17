@@ -1169,7 +1169,7 @@ describe('scene record-scope guard', () => {
 	it('grants only the position components each horizontal operation owns', () => {
 		const withEntity = (patch: Partial<ScenePrimitiveEntity>): SceneDocument => ({
 			...before,
-			entities: [{ ...before.entities[0]!, ...patch }, before.entities[1]!]
+			entities: [{ ...before.entities[0]!, ...patch } as SceneEntity, before.entities[1]!]
 		});
 		const moveScope = {
 			operationKind: 'move-horizontal',
@@ -1214,10 +1214,11 @@ describe('scene record-scope guard', () => {
 				resizeScope
 			)
 		).toEqual([]);
-		for (const position of [
+		const forbiddenResizePositions: Vec3[] = [
 			[3.25, 1, 2],
 			[3, 1, 2.25]
-		] as const) {
+		];
+		for (const position of forbiddenResizePositions) {
 			expect(
 				checkSceneRecordScope(
 					before,
