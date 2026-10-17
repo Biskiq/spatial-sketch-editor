@@ -1,6 +1,6 @@
 # T3.P01.S03 — Compound and runtime preparation: implementation plan
 
-**Slice:** T3.P01.S03 · **Status:** approved — owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); not started · **Phase:** [T3.P01](../README.md) ·
+**Slice:** T3.P01.S03 · **Status:** approved — owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); **in progress** with a [registered split proposal](./split-proposal.md) awaiting the owner's decision · **Phase:** [T3.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T3](../../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md)
 
@@ -71,5 +71,9 @@ them. Never relabel T1's base acceptance as complete F4 readiness.
 
 ## Readiness declaration
 
-This slice is **authorized** (owner, 2026-10-17) and **not started**; it starts through the T3 runbook's
-start step once the authorizing PR has merged. Nothing here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).
+This slice is **authorized** (owner, 2026-10-17) and **in progress**. The declared scope does not fit one
+acceptance contract at the evidence tier it requires, so the implementer has written the
+[registered split proposal](./split-proposal.md) the Size section asks for rather than narrowing a
+criterion. The F4 admission seam and the F3 handoff protocol are implemented with conformance suites;
+everything else is neither implemented nor claimed. Evidence and its limits belong in
+[acceptance.md](./acceptance.md).

@@ -27,6 +27,10 @@
     "./save": {
       "types": "./src/save/index.ts",
       "default": "./src/save/index.ts"
+    },
+    "./f4/unit-acceptance": {
+      "types": "./src/f4/unit-acceptance.ts",
+      "default": "./src/f4/unit-acceptance.ts"
     }
   },
   "files": ["src"],
