@@ -19,6 +19,7 @@
  * current-format documents rather than on hand-written shapes.
  */
 import { describe, expect, it } from 'vitest';
+import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planWallChain,
@@ -351,5 +352,226 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		expect(refreshed.kind).toBe('acquired');
 		expect(facade.inspectionTicket()?.runEpoch).toBeGreaterThan(ticket!.runEpoch);
 		expect(facade.requestViewingIntent({ kind: 'zoom', scale: 2 }, ticket, 1).kind).toBe('superseded');
+	});
+
+	it('lets a domain adapter claim a candidate the Layout Plan resolves to nothing', async () => {
+		const { facade, snapshot } = await mount();
+		const id = evaluate(facade);
+
+		// A frame point where the built-in Layout resolution finds nothing: the Plan
+		// places fragments only where a compiled source is, so the corners of the
+		// frame are the honest free space.
+		let freeCss: [number, number] | null = null;
+		for (let x = 8; x < RECT.width && freeCss === null; x += 24) {
+			for (let y = 8; y < RECT.height; y += 24) {
+				if (facade.resolveSourceHit({ evaluationId: id, css: [x, y] }).kind === 'none') {
+					freeCss = [x, y];
+					break;
+				}
+			}
+		}
+		expect(freeCss, 'the frame must have at least one point with nothing selectable').not.toBeNull();
+		if (freeCss === null) return;
+		expect(facade.resolveSourceHit({ evaluationId: id, css: freeCss })).toEqual({
+			kind: 'none',
+			reason: 'no-fragment'
+		});
+
+		// `hitProvider` was declared on the seam but never consulted, so a T2/T3
+		// adapter could register a 3D picker and nothing it offered was reachable.
+		const contexts: string[] = [];
+		const probe = facade.registerStageAdapter({
+			id: 'scene-probe',
+			hitProvider: (candidate, context) => {
+				contexts.push(context.evaluationId);
+				if (candidate.css[0] !== freeCss[0] || candidate.css[1] !== freeCss[1]) return null;
+				return {
+					sourceId: 'entity-plinth',
+					sourceKind: 'object',
+					generationId: snapshot.compileGeneration,
+					stream: 'symbol',
+					subRef: null,
+					worldPoint: [0, 0, 0]
+				};
+			}
+		});
+		expect(probe.kind).toBe('registered');
+
+		const claimed = facade.resolveSourceHit({ evaluationId: id, css: freeCss });
+		expect(claimed.kind === 'resolved' ? claimed.hit.sourceId : null).toBe('entity-plinth');
+		expect(contexts).toEqual([id]);
+		// The provider is handed the host's own live evaluation, never a second one.
+		const withContext = facade.adapters()[0];
+		expect(withContext?.hitProvider).toBeDefined();
+
+		// A provider that declines leaves the candidate to the next claimant, and the
+		// built-in Layout resolution still answers over the drawn room floor:
+		// adapter-first order changes nothing while no adapter claims.
+		const floorPlan = facade.plan();
+		expect(floorPlan.kind).toBe('evaluated');
+		if (floorPlan.kind !== 'evaluated') return;
+		const floorId = floorPlan.plan.membership.find((row) => row.sourceKind === 'room-floor')?.sourceId;
+		expect(floorId).toBeDefined();
+		const onFloor = (() => {
+			const floor = facade.eligibleFragments().find((fragment) => fragment.ref.sourceId === floorId);
+			if (floor === undefined) return null;
+			const geometry = floor.geometry;
+			const points =
+				geometry.kind === 'span'
+					? [geometry.start, geometry.end]
+					: geometry.kind === 'polyline'
+						? geometry.polyline
+						: geometry.polygon;
+			const middle = points.reduce<[number, number]>(
+				(accumulator, point) => [
+					accumulator[0] + point[0] / points.length,
+					accumulator[1] + point[1] / points.length
+				],
+				[0, 0]
+			);
+			return facade.projectWorld([middle[0], floor.elevationMeters, middle[1]], id);
+		})();
+		expect(onFloor?.kind).toBe('projected');
+		if (onFloor === null || onFloor === undefined || onFloor.kind !== 'projected') return;
+		const layoutHit = facade.resolveSourceHit({ evaluationId: id, css: onFloor.css });
+		expect(layoutHit.kind === 'resolved' ? layoutHit.hit.sourceKind : null).toBe('room-floor');
+
+		// Registration order is the deterministic tie rule: a later adapter that
+		// claims the same point wins over Layout's own fragment, and the host never
+		// invents a cross-domain priority it cannot measure.
+		const claiming = facade.registerStageAdapter({
+			id: 'scene-claim-all',
+			hitProvider: () => ({
+				sourceId: 'entity-claim',
+				sourceKind: 'object',
+				generationId: snapshot.compileGeneration,
+				stream: 'symbol',
+				subRef: null,
+				worldPoint: [0, 0, 0]
+			})
+		});
+		expect(claiming.kind).toBe('registered');
+		const overridden = facade.resolveSourceHit({ evaluationId: id, css: onFloor.css });
+		expect(overridden.kind === 'resolved' ? overridden.hit.sourceId : null).toBe('entity-claim');
+
+		// A stale candidate is refused before any provider is asked: a provider must
+		// never see a candidate from an evaluation the host no longer publishes.
+		const callsBefore = contexts.length;
+		expect(facade.resolveSourceHit({ evaluationId: 'stale', css: freeCss })).toEqual({
+			kind: 'failed',
+			code: 'stale-evaluation'
+		});
+		expect(contexts.length).toBe(callsBefore);
+
+		// Ending the registrations ends their reach too.
+		if (claiming.kind === 'registered') claiming.dispose();
+		if (probe.kind === 'registered') probe.dispose();
+		expect(facade.resolveSourceHit({ evaluationId: id, css: freeCss })).toEqual({
+			kind: 'none',
+			reason: 'no-fragment'
+		});
+	});
+
+	it('runs the live gesture policy once when a reading change is accepted', async () => {
+		const { facade, session } = await mount();
+		const id = evaluate(facade);
+		facade.acquireInspection('exclusive');
+		const ticket = facade.inspectionTicket();
+		expect(ticket).not.toBeNull();
+		if (ticket === null) return;
+
+		// `cancel-on-reading-change` is T2.S03's dependency: the gesture must be gone
+		// *before* a frame draws the flip, or its samples pan a 3D gesture in Plan.
+		const cancelling = facade.acquireGesture({
+			owner: 'stage-pointer',
+			evaluationId: id,
+			policy: 'cancel-on-reading-change'
+		});
+		expect(cancelling.kind).toBe('granted');
+		const flip = facade.requestViewingIntent({ kind: 'set-reading', reading: 'plan' }, ticket, 1);
+		expect(flip.kind).toBe('accepted');
+		expect(session.gesture()).toBeNull();
+		expect(facade.evaluation()?.settledReading).toBe('3d');
+
+		const settled = facade.camera.evaluate(RECT, 1 + VIEWPORT_READING_TRANSITION_SECONDS + 0.5);
+		expect(settled.kind).toBe('evaluated');
+		if (settled.kind !== 'evaluated') return;
+		expect(settled.evaluation.settledReading).toBe('plan');
+
+		// `continue-after-revalidation` keeps the same lease across the same flip: the
+		// accepted revision is unchanged, so the operation it names is unchanged.
+		const continuing = facade.acquireGesture({
+			owner: 'stage-pointer',
+			evaluationId: facade.evaluationId() ?? '',
+			policy: 'continue-after-revalidation'
+		});
+		expect(continuing.kind).toBe('granted');
+		const back = facade.requestViewingIntent({ kind: 'set-reading', reading: '3d' }, ticket, 10);
+		expect(back.kind).toBe('accepted');
+		expect(session.gesture()).toBe(continuing.kind === 'granted' ? continuing.lease : null);
+
+		// A reading request the evaluator refuses changes no projection, so the policy
+		// must not run: the lease survives a no-op Plan press.
+		const again = facade.camera.evaluate(RECT, 10 + VIEWPORT_READING_TRANSITION_SECONDS + 0.5);
+		expect(again.kind).toBe('evaluated');
+		const refused = facade.requestViewingIntent({ kind: 'set-reading', reading: '3d' }, ticket, 40);
+		expect(refused.kind).toBe('rejected');
+		expect(session.gesture()).not.toBeNull();
+	});
+
+	it('selects the visible Wall in the 3D reading, where a datum-plane pick lands metres away', async () => {
+		const { facade } = await mount();
+		facade.acquireInspection('exclusive');
+		const bounds = facade.snapshot().domain.geometry.bounds;
+		expect(bounds).not.toBeNull();
+		if (bounds === null) return;
+		// Frame the enclosure and keep the 3D reading: this is the ordinary 3D view a
+		// creator clicks in, not a top-down Plan where the two models coincide.
+		expect(
+			facade.requestViewingIntent(
+				{ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect: RECT },
+				facade.inspectionTicket(),
+				1
+			).kind
+		).toBe('accepted');
+		const id = evaluate(facade);
+		expect(facade.evaluation()?.settledReading).toBe('3d');
+
+		const wall = facade.eligibleFragments().find((fragment) => fragment.ref.sourceKind === 'wall');
+		expect(wall).toBeDefined();
+		if (wall === undefined) return;
+		const geometry = wall.geometry;
+		const points =
+			geometry.kind === 'span'
+				? [geometry.start, geometry.end]
+				: geometry.kind === 'polyline'
+					? geometry.polyline
+					: geometry.polygon;
+		const start = points[0];
+		const end = points[Math.min(1, points.length - 1)];
+		if (start === undefined || end === undefined) return;
+		const midpoint: [number, number, number] = [
+			(start[0] + end[0]) / 2,
+			wall.elevationMeters,
+			(start[1] + end[1]) / 2
+		];
+		const onWall = facade.projectWorld(midpoint, id);
+		expect(onWall.kind).toBe('projected');
+		if (onWall.kind !== 'projected') return;
+		const hit = facade.resolveSourceHit({ evaluationId: id, css: onWall.css });
+		expect(hit.kind === 'resolved' ? hit.hit.sourceId : null).toBe(wall.ref.sourceId);
+
+		// The middle of the drawn face, not its top edge: a Wall is a surface, so a
+		// click anywhere on the band between its footprint and its top must land on
+		// it. Testing only the top line left the whole visible face unpickable.
+		const datum = facade.snapshot().domain.datumMeters;
+		const onFace = facade.projectWorld(
+			[(start[0] + end[0]) / 2, datum + (wall.elevationMeters - datum) / 2, (start[1] + end[1]) / 2],
+			id
+		);
+		expect(onFace.kind).toBe('projected');
+		if (onFace.kind !== 'projected') return;
+		const faceHit = facade.resolveSourceHit({ evaluationId: id, css: onFace.css });
+		expect(faceHit.kind === 'resolved' ? faceHit.hit.sourceId : null).toBe(wall.ref.sourceId);
 	});
 });

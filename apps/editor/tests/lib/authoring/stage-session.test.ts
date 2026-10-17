@@ -28,6 +28,7 @@ import { createCameraSession } from '$lib/authoring/stage/camera-session';
 import {
 	createCancellationRegistry,
 	createStageSession,
+	runBoundLoad,
 	type StageSession
 } from '$lib/authoring/stage/stage-session';
 
@@ -215,6 +216,124 @@ describe('stage session — one replacement epoch and one teardown', () => {
 		expect(registry.cancelAll('teardown')).toBe(2);
 		expect(cancelled.sort()).toEqual(['load', 'task']);
 		expect(registry.size).toBe(0);
+	});
+});
+
+describe('stage session — the gesture policy runs at a reading change', () => {
+	function deferred<T>() {
+		let resolve!: (value: T) => void;
+		let reject!: (reason: unknown) => void;
+		const promise = new Promise<T>((ok, fail) => {
+			resolve = ok;
+			reject = fail;
+		});
+		return { promise, resolve, reject };
+	}
+
+	it('cancels a cancel-on-reading-change lease exactly once, and keeps the others', async () => {
+		const session = createStageSession({ sessionEpoch: 'session-gesture' });
+		const snapshot = await admit(enclosureProject(PROJECT_ID));
+		session.replace(snapshot);
+		const revision = snapshot.acceptedRevision;
+
+		const cancelling = session.acquireGesture({
+			owner: 'stage-pointer',
+			evaluationId: 'evaluation-1',
+			acceptedRevision: revision,
+			policy: 'cancel-on-reading-change'
+		});
+		if (cancelling.kind !== 'granted') throw new Error('the lease was not granted');
+
+		// A reading change is the one projection move a captured gesture must be told
+		// about; before this run the policy was stored and never executed, so a
+		// cancelled gesture kept panning with samples from the reading that ended.
+		expect(session.applyReadingChange()).toEqual({
+			cancelled: true,
+			suspended: false,
+			owner: 'stage-pointer'
+		});
+		expect(session.gesture()).toBeNull();
+		expect(cancelling.lease.active).toBe(false);
+		// Exactly once: the host's policy run and the gesture's own ending are both
+		// releases, and a second release is a no-op rather than a second cancel.
+		cancelling.lease.release();
+		expect(session.applyReadingChange()).toEqual({ cancelled: false, suspended: false, owner: null });
+
+		// `continue-after-revalidation` keeps the same lease across the flip: the
+		// accepted revision did not change, so the operation it names is unchanged.
+		const continuing = session.acquireGesture({
+			owner: 'stage-pointer',
+			evaluationId: 'evaluation-1',
+			acceptedRevision: revision,
+			policy: 'continue-after-revalidation'
+		});
+		if (continuing.kind !== 'granted') throw new Error('the second lease was not granted');
+		expect(session.applyReadingChange()).toEqual({
+			cancelled: false,
+			suspended: false,
+			owner: 'stage-pointer'
+		});
+		expect(session.gesture()).toBe(continuing.lease);
+		continuing.lease.release();
+
+		// `suspend-proposal` keeps the lease and reports the proposal withheld; S02 has
+		// no proposal writer, so that report is the whole effect.
+		const suspended = session.acquireGesture({
+			owner: 'scene-placement',
+			evaluationId: 'evaluation-1',
+			acceptedRevision: revision,
+			policy: 'suspend-proposal'
+		});
+		if (suspended.kind !== 'granted') throw new Error('the third lease was not granted');
+		expect(session.applyReadingChange()).toEqual({
+			cancelled: false,
+			suspended: true,
+			owner: 'scene-placement'
+		});
+		expect(session.gesture()).toBe(suspended.lease);
+	});
+
+	it('drops and aborts a cloud load when a replacement or teardown takes the stage', async () => {
+		const session = createStageSession({ sessionEpoch: 'session-load' });
+		const pending = deferred<string>();
+		// Held in an object because the assignment happens inside the load callback:
+		// a `let` would be narrowed to `null` at every later read.
+		const captured: { signal: AbortSignal | null } = { signal: null };
+
+		const load = runBoundLoad(session, (signal) => {
+			captured.signal = signal;
+			return pending.promise;
+		});
+		expect(session.writers().size).toBe(1);
+
+		// A replacement aborts the in-flight GET exactly once, and its completion can no
+		// longer install into the project that replaced it.
+		session.replace(await admit(enclosureProject(OTHER_PROJECT_ID)));
+		expect(captured.signal?.aborted).toBe(true);
+		expect(session.writers().size).toBe(0);
+		pending.resolve('the previous project\u2019s document');
+		expect(await load).toBeNull();
+
+		// Teardown is the same answer: an outstanding load is cancelled, and nothing it
+		// resolves can mount a stage that has already been disposed.
+		const teardownPending = deferred<string>();
+		const teardown: { signal: AbortSignal | null } = { signal: null };
+		const second = runBoundLoad(session, (signal) => {
+			teardown.signal = signal;
+			return teardownPending.promise;
+		});
+		session.dispose();
+		expect(teardown.signal?.aborted).toBe(true);
+		expect(session.isCurrent(session.token())).toBe(false);
+		teardownPending.resolve('a document for a page that no longer exists');
+		expect(await second).toBeNull();
+
+		// A load that settles while its epoch is still current is the load's answer.
+		const live = createStageSession({ sessionEpoch: 'session-live' });
+		await expect(runBoundLoad(live, async () => 'the current document')).resolves.toBe(
+			'the current document'
+		);
+		expect(live.writers().size).toBe(0);
 	});
 });
 

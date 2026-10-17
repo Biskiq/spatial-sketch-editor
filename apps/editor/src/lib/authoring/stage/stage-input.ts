@@ -98,4 +98,3 @@ export function isStageDrag(
 ): boolean {
 	return Math.hypot(point.x - origin.x, point.y - origin.y) > STAGE_CLICK_TOLERANCE_CSS_PX;
 }
-

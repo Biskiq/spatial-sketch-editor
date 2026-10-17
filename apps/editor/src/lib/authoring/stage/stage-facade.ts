@@ -151,6 +151,14 @@ export type StageAdapter = {
 	readonly requiredCapabilities?: readonly string[];
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
+	/**
+	 * Claim a hit for this candidate, or `null` to leave it to the next claimant.
+	 *
+	 * Consulted in registration order **before** the built-in Layout Plan
+	 * resolution, with the same live evaluation the meshes were drawn from, so a
+	 * domain adapter can pick its own 3D subjects (a Scene object on a Wall). The
+	 * host arbitrates eligible candidates, never one global priority among domains.
+	 */
 	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 };
@@ -263,47 +271,104 @@ function tokenOf(evaluation: ViewportEvaluation): ViewportEvaluationToken {
 	return evaluation.token;
 }
 
-function distanceToSegment(point: LayoutVec2, start: LayoutVec2, end: LayoutVec2): number {
+/** The closest point on one CSS segment to a CSS point, as a `[distance, amount]` pair. */
+function closestOnCssSegment(
+	point: readonly [number, number],
+	start: readonly [number, number],
+	end: readonly [number, number]
+): { readonly distance: number; readonly amount: number } {
 	const dx = end[0] - start[0];
-	const dz = end[1] - start[1];
-	const squared = dx * dx + dz * dz;
-	if (squared === 0) return Math.hypot(point[0] - start[0], point[1] - start[1]);
-	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dz) / squared;
+	const dy = end[1] - start[1];
+	const squared = dx * dx + dy * dy;
+	if (squared === 0) {
+		return { distance: Math.hypot(point[0] - start[0], point[1] - start[1]), amount: 0 };
+	}
+	const raw = ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / squared;
 	const amount = Math.min(1, Math.max(0, raw));
-	return Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dz * amount));
+	return {
+		distance: Math.hypot(point[0] - (start[0] + dx * amount), point[1] - (start[1] + dy * amount)),
+		amount
+	};
 }
 
-/** Minimum plan distance from a point to one fragment's geometry, in meters. */
-function distanceToFragment(point: LayoutVec2, fragment: PlanFragment): number {
+/**
+ * The distance, in **CSS pixels**, from a pointer position to one fragment's drawn
+ * geometry — the surface the creator is actually pointing at.
+ *
+ * This replaces a datum-plane-only pick, which measured plan metres from a point
+ * that the ray reached at floor level: in the 3D reading that point sits metres
+ * behind the surface under the pointer, so a visible Wall could not be selected at
+ * all. Proximity is a screen question and the drawing is where the creator looks, so
+ * the test is made where both agree, through the one live evaluation.
+ */
+function cssDistanceToFragment(
+	css: readonly [number, number],
+	fragment: PlanFragment,
+	datumMeters: number,
+	project: (point: Vec3) => readonly [number, number] | null
+): number | null {
+	const elevation = fragment.elevationMeters;
+	const projectAt = (point: LayoutVec2, height: number): readonly [number, number] | null =>
+		project([point[0], height, point[1]]);
+
 	const geometry = fragment.geometry;
-	switch (geometry.kind) {
-		case 'span':
-			return distanceToSegment(point, geometry.start, geometry.end);
-		case 'polyline': {
-			if (geometry.polyline.length === 0) return Infinity;
-			if (geometry.polyline.length === 1) {
-				const only = geometry.polyline[0]!;
-				return Math.hypot(point[0] - only[0], point[1] - only[1]);
-			}
-			let best = Infinity;
-			for (let index = 1; index < geometry.polyline.length; index += 1) {
-				best = Math.min(best, distanceToSegment(point, geometry.polyline[index - 1]!, geometry.polyline[index]!));
-			}
-			return best;
+	const segments: (readonly [LayoutVec2, LayoutVec2])[] = [];
+	if (geometry.kind === 'span') {
+		segments.push([geometry.start, geometry.end]);
+	} else if (geometry.kind === 'polyline') {
+		for (let index = 1; index < geometry.polyline.length; index += 1) {
+			segments.push([geometry.polyline[index - 1]!, geometry.polyline[index]!]);
 		}
-		case 'polygon': {
-			if (geometry.polygon.length === 0) return Infinity;
-			if (pointInPolygon(point, geometry.polygon)) return 0;
-			let best = Infinity;
-			for (let index = 0; index < geometry.polygon.length; index += 1) {
-				best = Math.min(
-					best,
-					distanceToSegment(point, geometry.polygon[index]!, geometry.polygon[(index + 1) % geometry.polygon.length]!)
-				);
-			}
-			return best;
+	} else {
+		for (let index = 0; index < geometry.polygon.length; index += 1) {
+			segments.push([geometry.polygon[index]!, geometry.polygon[(index + 1) % geometry.polygon.length]!]);
 		}
 	}
+
+	let best: number | null = null;
+	const consider = (distance: number): void => {
+		best = best === null ? distance : Math.min(best, distance);
+	};
+	const considerSegment = (
+		start: readonly [number, number] | null,
+		end: readonly [number, number] | null
+	): void => {
+		// A segment with an endpoint behind the camera is not something the pointer
+		// can be over; skipping it also keeps a mirrored projection out of the test.
+		if (start === null || end === null) return;
+		consider(closestOnCssSegment(css, start, end).distance);
+	};
+
+	for (const [startPlan, endPlan] of segments) {
+		considerSegment(projectAt(startPlan, elevation), projectAt(endPlan, elevation));
+		if (geometry.kind === 'polygon' || elevation === datumMeters) continue;
+		// A Wall is drawn as a **face**, not a line: the band between its footprint
+		// and its top edge. Testing only the top line made a click on the middle of a
+		// visible Wall fall through, because the ray had already passed the face by the
+		// time it reached the floor. The quad is made of the fragment's own two
+		// heights through the same projection — no second geometry authority.
+		const startBase = projectAt(startPlan, datumMeters);
+		const endBase = projectAt(endPlan, datumMeters);
+		considerSegment(startBase, endBase);
+		considerSegment(startBase, projectAt(startPlan, elevation));
+		considerSegment(endBase, projectAt(endPlan, elevation));
+		const face: [number, number][] = [];
+		for (const corner of [startBase, endBase, projectAt(endPlan, elevation), projectAt(startPlan, elevation)]) {
+			if (corner !== null) face.push([corner[0], corner[1]]);
+		}
+		if (face.length === 4 && pointInPolygon([css[0], css[1]], face)) return 0;
+	}
+
+	if (geometry.kind === 'polygon') {
+		// Inside the drawn footprint the pointer is on the surface itself.
+		const projected: [number, number][] = [];
+		for (const point of geometry.polygon) {
+			const cssPoint = projectAt(point, elevation);
+			if (cssPoint !== null) projected.push([cssPoint[0], cssPoint[1]]);
+		}
+		if (projected.length === geometry.polygon.length && pointInPolygon([css[0], css[1]], projected)) return 0;
+	}
+	return best;
 }
 
 function compareFragments(left: PlanFragment, right: PlanFragment): number {
@@ -313,6 +378,48 @@ function compareFragments(left: PlanFragment, right: PlanFragment): number {
 	const leftStart = left.ref.subRef?.kind === 'interval' ? left.ref.subRef.start : 0;
 	const rightStart = right.ref.subRef?.kind === 'interval' ? right.ref.subRef.start : 0;
 	return leftStart - rightStart;
+}
+
+/**
+ * The world point a resolved hit reports: the pointer's ray on the plane at the
+ * fragment's own height.
+ *
+ * A datum-only point would name the floor under a Wall rather than the surface the
+ * creator pointed at. When the ray cannot reach that plane (a nearly horizontal
+ * view), the fragment's first drawn point is the honest fallback rather than an
+ * invented position.
+ */
+function worldPointOnFragment(
+	css: readonly [number, number],
+	fragment: PlanFragment,
+	evaluation: ViewportEvaluation,
+	token: ViewportEvaluationToken
+): Vec3 {
+	const elevation = fragment.elevationMeters;
+	const ray = pointerRay(css, evaluation, token);
+	if (ray.kind === 'ray') {
+		const hit = intersectWorkingPlane(
+			ray.ray,
+			{
+				originMeters: [0, elevation, 0],
+				normal: [0, 1, 0],
+				yawRadians: 0,
+				datumMeters: elevation,
+				supportedLocalExtent: null
+			},
+			evaluation,
+			token
+		);
+		if (hit.kind === 'intersected') return hit.worldPoint;
+	}
+	const geometry = fragment.geometry;
+	const first: LayoutVec2 =
+		geometry.kind === 'span'
+			? geometry.start
+			: geometry.kind === 'polyline'
+				? (geometry.polyline[0] ?? [0, 0])
+				: (geometry.polygon[0] ?? [0, 0]);
+	return [first[0], elevation, first[1]];
 }
 
 /** The working plane the Plan hit path intersects: the level datum, unbounded. */
@@ -475,7 +582,17 @@ export function createStageFacade(input: {
 					...(decision.kind === 'refused' ? { reason: decision.reason } : {})
 				};
 			}
-			return camera.applyIntent(intent, clockSeconds);
+			const result = camera.applyIntent(intent, clockSeconds);
+			// A reading change is the one projection move a captured gesture must be told
+			// about, and it happens at the *next* evaluation — `applyIntent` only moves
+			// session state. Running the live lease's policy here is therefore strictly
+			// before the projection changes, and it runs exactly once per accepted
+			// request, whether the request came from the keyboard, the toolbar or an
+			// adapter's `requestIntent`.
+			if (result.kind === 'accepted' && intent.kind === 'set-reading') {
+				session.applyReadingChange();
+			}
+			return result;
 		},
 		acquireInspection(policy = 'exclusive') {
 			// The host owns one inspection output, so it mints its own run order: every
@@ -554,39 +671,61 @@ export function createStageFacade(input: {
 			if (evaluation === null || evaluationIdOf(evaluation) !== candidate.evaluationId) {
 				return { kind: 'failed', code: 'stale-evaluation' };
 			}
+			// Domain hit providers are asked first, in registration order, and the first
+			// claim wins. The host does not arbitrate one global priority among Camera,
+			// Scene and Layout species (interfaces §“Viewport projection v1”): an adapter
+			// answers for its own domain and its own hit policy, so a Scene object mounted
+			// on a Wall is reachable even though the Wall's Plan fragment is nearer the
+			// datum-plane point. Layout's own Plan resolution is the built-in fallback
+			// when no adapter claims, which keeps its priority deterministic within Layout.
+			const context = adapterContext();
+			if (context !== null) {
+				for (const entry of adapters.values()) {
+					const provider = entry.adapter.hitProvider;
+					if (provider === undefined) continue;
+					const claimed = provider(candidate, context);
+					if (claimed !== null) return { kind: 'resolved', hit: claimed };
+				}
+			}
+			if (
+				!Number.isFinite(candidate.css[0]) ||
+				!Number.isFinite(candidate.css[1])
+			) {
+				return { kind: 'failed', code: 'invalid-css-point' };
+			}
 			const token = tokenOf(evaluation);
-			const rayResult = pointerRay(candidate.css, evaluation, token);
-			if (rayResult.kind === 'failed') return { kind: 'failed', code: rayResult.code };
-			const hit = intersectWorkingPlane(
-				rayResult.ray,
-				datumWorkingPlane(currentSnapshot.domain.datumMeters),
-				evaluation,
-				token
-			);
-			if (hit.kind === 'failed') return { kind: 'failed', code: hit.code };
 			const planResult = planFor();
 			if (planResult.kind !== 'evaluated') return { kind: 'none', reason: 'no-fragment' };
 			const plan = planResult.plan;
-			const point: LayoutVec2 = [hit.worldPoint[0], hit.worldPoint[2]];
-			const tolerance = Math.max(
-				evaluation.targetPlaneMetersPerCssPixel * PLAN_HIT_TOLERANCE_CSS_PX,
-				0.01
-			);
-			// Only eligible placements become fragments, so the nearest fragment within
-			// tolerance *is* the eligible hit; there is no second pass that could
-			// surface an excluded target.
+			const project = (point: Vec3): readonly [number, number] | null => {
+				const result = projectWorld(point, evaluation, token);
+				// A point behind the camera projects to a mirrored CSS position; it is not
+				// something the pointer can be over, so it must not become a candidate.
+				return result.kind === 'projected' && result.visibility !== 'behind' ? result.css : null;
+			};
+			// Only eligible placements become fragments, so the first fragment within the
+			// screen tolerance *is* the eligible hit; there is no second pass that could
+			// surface an excluded target. The sort keeps the retained Layout priority
+			// deterministic (Wall before Opening before object before floor, then source
+			// identity), never Map iteration or a changing label.
 			const eligible = [...eligiblePlanFragments(plan)].sort(compareFragments);
-			const eligibleHit = eligible.find((fragment) => distanceToFragment(point, fragment) <= tolerance);
-			if (eligibleHit !== undefined) {
+			for (const fragment of eligible) {
+				const distanceCss = cssDistanceToFragment(
+					candidate.css,
+					fragment,
+					currentSnapshot.domain.datumMeters,
+					project
+				);
+				if (distanceCss === null || distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 				return {
 					kind: 'resolved',
 					hit: {
-						sourceId: eligibleHit.ref.sourceId,
-						sourceKind: eligibleHit.ref.sourceKind,
-						generationId: eligibleHit.ref.generationId,
-						stream: eligibleHit.ref.stream,
-						subRef: eligibleHit.ref.subRef,
-						worldPoint: hit.worldPoint
+						sourceId: fragment.ref.sourceId,
+						sourceKind: fragment.ref.sourceKind,
+						generationId: fragment.ref.generationId,
+						stream: fragment.ref.stream,
+						subRef: fragment.ref.subRef,
+						worldPoint: worldPointOnFragment(candidate.css, fragment, evaluation, token)
 					}
 				};
 			}
@@ -658,4 +797,3 @@ export function createStageFacade(input: {
 
 	return facade;
 }
-

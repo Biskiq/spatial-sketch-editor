@@ -87,6 +87,13 @@ export type GestureAcquisition =
 	| { readonly kind: 'granted'; readonly lease: GestureLease }
 	| { readonly kind: 'refused'; readonly code: 'gesture-held' | 'stale-epoch'; readonly owner: string };
 
+/** What the host's reading-change policy run did, so the caller can drop its samples. */
+export type GestureReadingChange = {
+	readonly cancelled: boolean;
+	readonly suspended: boolean;
+	readonly owner: string | null;
+};
+
 /**
  * The outcome of installing changed content into the one accepted-source slot.
  *
@@ -140,6 +147,18 @@ export type StageSession = {
 		acceptedRevision: AcceptedRevision;
 		policy: GestureTransitionPolicy;
 	}): GestureAcquisition;
+	/**
+	 * Run the live lease's transition policy once, immediately before the host
+	 * changes the reading.
+	 *
+	 * `cancel-on-reading-change` releases the lease (the samples the gesture took
+	 * were projected in the reading that is ending). `continue-after-revalidation`
+	 * keeps it: the accepted revision is unchanged, so the operation it names is
+	 * still the same operation. `suspend-proposal` keeps the lease but reports the
+	 * proposal suspended — S02 has no proposal writer, so that is the whole effect
+	 * today and the reason it is reported rather than silently assumed.
+	 */
+	applyReadingChange(): GestureReadingChange;
 	/** Validate-first, then atomically cancel/clear/swap. */
 	replace(admitted: StageReadSnapshot): ReplacementResult;
 	/**
@@ -183,6 +202,36 @@ export function createCancellationRegistry(): CancellationRegistry {
 			return live.size;
 		}
 	};
+}
+
+/**
+ * Run one cloud read as a **bound load**.
+ *
+ * The load registers itself in the session's cancellation registry, so a
+ * replacement or teardown aborts the request exactly once instead of leaving it
+ * to resolve into a stage that has moved on. Its result is returned only when the
+ * epoch it started under is still the current one — a completion that lands after
+ * a replacement is `null`, never an install.
+ *
+ * This is the mechanism the session's contract already names ("every registered
+ * load ... is cancelled exactly once", "a prior-epoch load ... is refused rather
+ * than installed"); the route must use it rather than holding a private
+ * `AbortController` nobody cancels.
+ */
+export async function runBoundLoad<T>(
+	session: StageSession,
+	start: (signal: AbortSignal) => Promise<T>
+): Promise<T | null> {
+	const token = session.token();
+	const controller = new AbortController();
+	const unregister = session.writers().register('load', token, () => controller.abort());
+	try {
+		const value = await start(controller.signal);
+		if (controller.signal.aborted || !session.isCurrent(token)) return null;
+		return value;
+	} finally {
+		unregister();
+	}
 }
 
 let epochCounter = 0;
@@ -233,6 +282,10 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		},
 		token,
 		isCurrent(candidate) {
+			// A disposed session has no current epoch: a load, gesture or Camera
+			// completion that lands after teardown is stale by definition, and must not
+			// mount a facade no one will ever dispose.
+			if (disposed) return false;
 			return candidate.sessionEpoch === sessionEpoch && candidate.epoch === epoch;
 		},
 		writers() {
@@ -285,7 +338,23 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 			};
 			activeGesture = { lease: internal };
 			return { kind: 'granted', lease: internal };
-		},			installAccepted(next) {
+		},
+		applyReadingChange() {
+			const lease = activeGesture?.lease;
+			if (lease === undefined || !lease.active) {
+				return { cancelled: false, suspended: false, owner: null };
+			}
+			if (lease.policy === 'cancel-on-reading-change') {
+				lease.release();
+				return { cancelled: true, suspended: false, owner: lease.owner };
+			}
+			// `continue-after-revalidation` and `suspend-proposal` both keep the lease:
+			// the reading is a projection of the same accepted revision, so the captured
+			// operation is unchanged. Only a proposal would be withheld, and S02 has no
+			// proposal writer — reported rather than silently assumed.
+			return { cancelled: false, suspended: lease.policy === 'suspend-proposal', owner: lease.owner };
+		},
+		installAccepted(next) {
 				if (disposed) {
 					return { kind: 'refused', code: 'disposed', message: 'the session is disposed and accepts no source' };
 				}

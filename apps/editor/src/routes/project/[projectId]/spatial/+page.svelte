@@ -41,7 +41,14 @@
 	} from '$lib/authoring/stage/boot-state';
 	import type { AdmissionContext, StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 	import { STARTER_TEMPLATES } from '$lib/authoring/stage/starter-gallery';
-	import { createStageSession, type StageSession, type StageSelection, type StageTask } from '$lib/authoring/stage/stage-session';	import {
+	import {
+		createStageSession,
+		runBoundLoad,
+		type StageSession,
+		type StageSelection,
+		type StageTask
+	} from '$lib/authoring/stage/stage-session';
+	import {
 		createStageFacade,
 		type StageFacade,
 		type StageIntentResult,
@@ -85,6 +92,8 @@
 	let selectionMarker = $state<{ css: readonly [number, number]; label: string } | null>(null);
 	let notice = $state('');
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
+	/** Set by the route's teardown: no late completion may mount a stage after it. */
+	let tornDown = false;
 	let stageEl: HTMLDivElement | undefined = $state(undefined);
 	/**
 	 * Whether the contextual Card is shown. Closing the Card never clears the
@@ -125,6 +134,10 @@
 	}
 
 	function activate(snapshot: StageReadSnapshot): void {
+		// A completion that arrives after the route tore down must not mount a stage:
+		// nothing would ever dispose it, and it would hold a camera for a page that
+		// no longer exists.
+		if (tornDown) return;
 		// Replacement: validate first (the snapshot is already admitted), then the
 		// session atomically cancels writers, clears selection/task and swaps.
 		session.replace(snapshot);
@@ -158,17 +171,36 @@
 					: { status: 'error', projectId: projectIdToLoad, message: 'Cloud service is unavailable' };
 			return;
 		}
-		const controller = new AbortController();
-		let outcome: BootLoadOutcome;
+		const token = session.token();
+		let outcome: BootLoadOutcome | null;
 		try {
-			// The host performs only the project GET.
-			const loaded = await api.loadProject(projectIdToLoad, controller.signal);
-			outcome = { kind: 'loaded', document: loaded.document };
-		} catch (error) {
-			if (controller.signal.aborted) return;
-			outcome = loadOutcomeFromError(error);
+			// The host performs only the project GET, as a load bound to this session
+			// epoch: a replacement or teardown aborts it exactly once, and a completion
+			// that lands after either is dropped instead of installing itself over the
+			// newer source.
+			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal));
+		} catch {
+			// The GET was cancelled: the replacement that cancelled it owns the stage now.
+			return;
 		}
-		applyState(await bootFromLoadOutcome(boot, outcome, admissionContext()));
+		if (outcome === null) return;
+		const next = await bootFromLoadOutcome(boot, outcome, admissionContext());
+		// Admission is asynchronous too, so the same question is asked again with its
+		// answer: a replacement or teardown that happened during it still wins.
+		if (!session.isCurrent(token)) return;
+		applyState(next);
+	}
+
+	async function fetchOutcome(projectIdToLoad: string, signal: AbortSignal): Promise<BootLoadOutcome> {
+		try {
+			const loaded = await api!.loadProject(projectIdToLoad, signal);
+			return { kind: 'loaded', document: loaded.document };
+		} catch (error) {
+			// An abort is not a cloud answer, so it must not become one: rethrow so the
+			// bound load drops the whole attempt.
+			if (signal.aborted) throw error;
+			return loadOutcomeFromError(error);
+		}
 	}
 
 	function loadOutcomeFromError(error: unknown): BootLoadOutcome {
@@ -337,10 +369,16 @@
 		void load(projectId, intent);
 
 		return () => {
+			// Order matters: the flag and the session teardown both run before the
+			// facade is disposed, so a load already past its fetch sees a torn-down
+			// session (`isCurrent` is false, the registered abort fires) and drops its
+			// result instead of mounting a second stage.
+			tornDown = true;
 			cancelAnimationFrame(frame);
 			media.removeEventListener('change', onMedia);
 			window.removeEventListener('keydown', onKey);
-			// Session teardown runs every registered disposer exactly once; no
+			// Session teardown cancels every registered writer (including an in-flight
+			// project GET) and runs every registered disposer exactly once; no
 			// project-specific singleton survives the route.
 			facade?.dispose();
 			session.dispose();
@@ -370,6 +408,11 @@
 		// Reduced motion cuts directly to the declared endpoint through the one
 		// settling rule — it is not a shortened tween.
 		submit({ kind: 'set-reading', reading }, readingIntentClockSeconds(reducedMotion, nowSeconds()));
+		// The host ran the live lease's policy as part of that request: a lease that
+		// `cancel-on-reading-change` ended is already gone, and its delta samples were
+		// taken against the reading that is ending. Dropping them here is what makes
+		// T2.S03's "cancel before the flip" mean the gesture also stops moving.
+		if (drag !== null && session.gesture() === null) endGesture();
 	}
 
 	function fit(): void {
@@ -482,22 +525,35 @@
 	let pressOrigin: { x: number; y: number } | null = null;
 
 	function onPointerDown(event: PointerEvent): void {
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		const stage = facade;
 		if (stage === null || evaluation === null) return;
 		// A gesture is one captured writer with an explicit transition policy; a
-		// replacement cancels it exactly once.
-		stage.acquireGesture({
+		// replacement cancels it exactly once. Navigation cannot steal the lease, so a
+		// refused acquisition means this press does not move the view at all — the
+		// capture is taken only once the lease is actually ours.
+		const acquisition = stage.acquireGesture({
 			owner: 'stage-pointer',
 			evaluationId: stage.evaluationId() ?? '',
 			policy: 'continue-after-revalidation'
 		});
+		if (acquisition.kind !== 'granted') {
+			notice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
+			return;
+		}
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		pressOrigin = { x: event.clientX, y: event.clientY };
 		drag = { x: event.clientX, y: event.clientY, mode: event.button === 0 && !event.shiftKey ? 'pan' : 'orbit' };
 	}
 
 	function onPointerMove(event: PointerEvent): void {
 		if (drag === null) return;
+		// The lease can end underneath us (a cancel-on-reading-change policy, a task
+		// exit, an adapter taking the pointer). Samples taken under a lease we no
+		// longer hold must not keep moving the view.
+		if (session.gesture() === null) {
+			endGesture();
+			return;
+		}
 		const dx = event.clientX - drag.x;
 		const dy = event.clientY - drag.y;
 		drag = { x: event.clientX, y: event.clientY, mode: drag.mode };
@@ -505,10 +561,28 @@
 		else pan(dx, dy);
 	}
 
-	function onPointerUp(): void {
+	/**
+	 * End the live gesture exactly once.
+	 *
+	 * Release is idempotent, so every ending — pointer up, pointer cancel, lost
+	 * capture, Escape — can call this without a second cancel of a lease that was
+	 * already ended by the host's own policy run.
+	 */
+	function endGesture(): void {
 		drag = null;
-		// The gesture lease is released exactly once, whatever ended it.
+		pressOrigin = null;
 		session.gesture()?.release();
+	}
+
+	function onPointerUp(): void {
+		endGesture();
+	}
+
+	function onPointerCancel(): void {
+		// The browser took the pointer back (touch interruption, a system gesture, the
+		// window losing focus). Without this the lease would stay held and the next
+		// stray move would pan with samples from a gesture the creator never finished.
+		endGesture();
 	}
 
 	function onClick(event: MouseEvent): void {
@@ -561,7 +635,7 @@
 				break;
 			case 'dismiss':
 				// The deepest open context closes first: the task, then the selection.
-				session.gesture()?.release();
+				endGesture();
 				if (task !== null) closeTask();
 				else if (selection !== null) closeSelection();
 				break;
@@ -752,6 +826,8 @@
 				onpointerdown={onPointerDown}
 				onpointermove={onPointerMove}
 				onpointerup={onPointerUp}
+				onpointercancel={onPointerCancel}
+				onlostpointercapture={onPointerCancel}
 				onclick={onClick}
 				onwheel={onWheel}
 			>

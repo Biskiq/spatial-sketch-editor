@@ -122,6 +122,64 @@ describe('Stage shell composition', () => {
 		expect(route).not.toMatch(/\.applyIntent\s*\(/);
 	});
 
+	it('renders one geometry set and takes Plan eligibility from the representation, not a second renderer', () => {
+		// The Plan representation (`evaluateLayoutPlan`) is Layout-owned **data**: cut,
+		// projected, hidden and symbol streams with membership and Reveal. The Stage's
+		// Plan *reading* is the same canonical geometry under the exact orthographic
+		// endpoint, so the representation must reach the host as eligibility and
+		// membership, never as a second renderer, a clipped geometry copy or a 2D
+		// transform of the same mesh. A defect here is invisible in a lane report: the
+		// drawing would simply disagree with what the hit path calls selectable.
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		const canvas = codeOf(CANVAS_FILE);
+
+		// One geometry set: the Canvas takes the compiled domain geometry and the
+		// renderer components take that and nothing else.
+		expect(canvas).toContain('geometry: CompiledLayoutGeometry');
+		expect(route).toContain('<StageCanvas');
+		expect(route).toContain('geometry={boot.snapshot.domain.geometry}');
+		expect(canvas).not.toMatch(/planView|PlanFragment|PlanEvaluation|planParameters/);
+
+		// The representation drives eligibility and the Index, through the facade's
+		// own evaluation — the same call the hit path makes.
+		expect(route).toContain('stage.setPlanParameters(parameters)');
+		expect(route).toContain('stage.plan()');
+		expect(route).toContain('planView.membership');
+		expect(route).toContain('stage.resolveSourceHit(');
+	});
+
+	it('binds the project read to the session, so a stale load cannot install', () => {
+		// The route used to hold a private `AbortController` nobody cancelled: an
+		// older GET or admission completing after a replacement (or after teardown)
+		// installed itself over the newer source and mounted a stage no one would
+		// dispose. The mechanism is the session's own cancellation registry, so the
+		// call site — not the helper's unit test — is what proves the host uses it.
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toContain('runBoundLoad(session,');
+		expect(route).toContain('session.isCurrent(token)');
+		expect(route).not.toMatch(/new AbortController\(/);
+		expect(route).not.toMatch(/loadProject\([^)]*controller\.signal/);
+	});
+
+	it('holds the gesture contract at the route: refusals and every ending release once', () => {
+		// `acquireGesture` and the transition policies were tested at the session while
+		// the route ignored both: a refused acquisition still started the drag, a
+		// browser-cancelled pointer left the lease held, and a reading flip left a
+		// cancelled gesture's samples panning. The policy run itself is the facade's
+		// (behavioural in `stage-facade`); what only the route can prove is that it
+		// acts on the answer and ends the gesture at every ending.
+		const route = stripComments(readFileSync(ROUTE, 'utf8'));
+		expect(route).toContain("acquisition.kind !== 'granted'");
+		expect(route).toContain('onpointercancel={onPointerCancel}');
+		expect(route).toContain('onlostpointercapture={onPointerCancel}');
+		// A reading change can end the lease before the flip is drawn; the samples the
+		// gesture took belong to the reading that is ending.
+		expect(route).toContain('session.gesture() === null) endGesture()');
+		// One ending, used by every path, so a policy- released lease is not released
+		// twice and no ending is forgotten.
+		expect((route.match(/function endGesture\(\)/g) ?? []).length).toBe(1);
+	});
+
 	it('measures the viewport in one place and never scales the stage with CSS', () => {
 		// The CSS rect a pointer is reported in and the rect the evaluation was
 		// computed for must be the same rectangle. A second measurement (a
