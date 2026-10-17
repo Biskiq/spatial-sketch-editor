@@ -21,12 +21,20 @@
 	let pendingDraft = $state(false);
 	let redirecting = $state(false);
 
-	function projectUrl(projectId: string): string {
-		return `/project/${encodeURIComponent(projectId)}/spatial`;
+	/**
+	 * The spatial route for one project.
+	 *
+	 * `create` is the boot intent the route reads (`?create=1`): a freshly minted
+	 * identity must say so, or the host cannot tell a mistyped address from a project
+	 * it just started and answers "not found" instead of offering the starter gallery.
+	 */
+	function projectUrl(projectId: string, flags: { create?: boolean } = {}): string {
+		const query = flags.create === true ? '?create=1' : '';
+		return `/project/${encodeURIComponent(projectId)}/spatial${query}`;
 	}
 
 	async function startCreating(): Promise<void> {
-		await goto(projectUrl(createProjectId()));
+		await goto(projectUrl(createProjectId(), { create: true }));
 	}
 
 	async function signIn(intent: ProjectLoginIntent = 'projects'): Promise<void> {

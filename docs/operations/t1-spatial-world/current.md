@@ -18,16 +18,15 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-SLICES: T1.P01's slice register is authoritative — S01 (2026-10-15) and S03 (2026-10-16) shipped;
-        S02 approved and not started; S04–S06 proposed.
-BATON: The next authorized T1 work is T1.P01.S02 (Shell, Stage and viewport provider) — the
-       configured architecture-cycle opener and the `T1.viewport-projection@1` provider.
-NEXT: Start T1.P01.S02 through this track's runbook start step: eligibility at the trusted base,
-      the one-line cycle check (`open-window` before capability work for a listed exposure), then
-      the plan's declared verification tier and integration route.
+ACTIVE: no authorized T1 slice; S04–S06 remain proposed in the phase register.
+BATON: S02 was accepted under owner-override on 2026-10-17. Its
+       `T1.viewport-projection@1` capability remains ratified; S06's integrated result is still owed,
+       and no consumer readiness is claimed.
+NEXT: Await owner authorization for the next T1 slice, then use this runbook's eligibility, trusted-
+      base and cycle checks before starting its declared verification tier and integration route.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md
-BLOCKER: none.
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md
+BLOCKER: no next slice is authorized; S06 integration proof remains required for viewport consumer readiness.
 ```

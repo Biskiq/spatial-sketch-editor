@@ -19,17 +19,16 @@ Future feature design extends this shell. A proposed shell change must identify 
 justify the rule it changes; a feature brief must not casually reinterpret it.
 
 The destination is **World | Experience over one project**. This is design authority,
-not a claim of production implementation or authorization to cut over the editor.
-The landed authoring shell and the descriptive contract that recorded its
-composition were removed by #115 (the foundation reset), so this contract is the
-destination a later track rebuilds against and no document describes a maintained
-shell today. Prototype adoption and production delivery have their own plans and
-acceptance gates.
+not authorization to cut over the editor. PR #115 removed the earlier full authoring
+shell and its descriptive composition contract. T1.P01.S02 restores a partial,
+read-only Stage shell; it does not implement this destination composition. Later
+tracks still need to build the unified shell against this contract. Prototype adoption
+and production delivery have their own plans and acceptance gates.
 
 | State | Meaning after #114 |
 | --- | --- |
 | **Accepted destination** | Conservatory's unified shell, visual language and Experience authoring principles, promoted below; Paper's accepted World depth in §0.8.4 |
-| **Implemented production** | None. The landed shell was removed by #115 (the foundation reset); the routed domain contracts describe current kernel, API and visitor behavior, not a shell. This ratification implements no product UI |
+| **Implemented production** | Partial read-only Stage shell and viewport from T1.P01.S02. The unified World/Experience composition and its full authoring behavior remain unimplemented; this ratification itself implements no product UI |
 | **Preserved semantics/architecture** | Domain ownership, Camera evaluation, validity, source history and isolation remain governed by their owners |
 | **Deferred depth/refinements** | Advanced authoring remains reachable in future delivery; optional UX improvements below are not unfinished design gates. #115 plans parallel tracks; it does not implement them |
 

@@ -21,12 +21,16 @@ BOUNDARY    product status stays in ../roadmap/README.md; the product baton stay
 
 **Preserved by the PR #115 migration:** the completed Phase 0 investigation, its frozen reviews and
 adjudication, the installed Phase 1 plan and the original method (archived above); the stage
-vocabulary `WAITING` … `STEADY`; and the current stage `PHASE_1`.
+vocabulary `WAITING` … `STEADY`; and the stage it preserved as `PHASE_1`, advanced to
+`PHASE_2_VALIDATING` by the T1.P01 window opening below.
 
-**T1.P01 window configured 2026-10-15.** The first T1 phase plan (T1.P01, registered with
-`T1.P01.S01` authorized) listed three exposure slices; readiness is `ready` and the window is
-**selected, not open** — `Opened by` stays empty until a listed slice actually starts authorized
-implementation.
+**T1.P01 window configured 2026-10-15; opened 2026-10-16.** The first T1 phase plan (T1.P01,
+registered with `T1.P01.S01` authorized) listed three exposure slices; readiness is `open` and the
+window is **open** — a listed slice's first authorized implementation opened it through the track
+runbook's start step (`open-window`). `T1.P01.S02` started, so the stage moved
+`PHASE_1 → PHASE_2_VALIDATING` and `Opened by` is `T1.P01.S02`. Its shipped exposure is recorded
+below; S04/S05 rows, `Closed by` and the mechanism verdicts remain empty until real work earns them.
+M5 stays `dormant` until the replacement wiring it names is actually proved.
 The JSON state fence, the transition evaluator and the CLI action codes are gone: the tables below,
 five short action headings and three one-line hooks replace them.
 
@@ -34,7 +38,7 @@ five short action headings and three one-line hooks replace them.
 
 | Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `PHASE_1` | `ready` | T1.P01 spatial foundation — **selected, not open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | — | — | — |
+| `PHASE_2_VALIDATING` | `open` | T1.P01 spatial foundation — **open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S02` | — |
 
 - **`<phase> — selected, not open`** is the configured-but-unopened state: the bounded window is
   listed with its terminal, and no listed exposure slice has started authorized implementation yet.

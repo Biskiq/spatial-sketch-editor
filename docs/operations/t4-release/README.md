@@ -51,8 +51,8 @@ is eligible; it replaces the strict snapshot reader atomically rather than runni
   public-surface boundary plugin test, all unconditional in
   [`test-lanes.ts`](../../../apps/editor/test-lanes.ts) because no lane or build can see a broken
   `/p/:publicationId` entry point;
-- browser checks on the retained product routes (sign-in entry, project hub, the spatial notice and
-  a cold `/p/:id`), recorded as manual evidence when they are the only coverage.
+- browser checks on the retained product routes (sign-in entry, project hub, the read-only spatial
+  Stage and a cold `/p/:id`), recorded as manual evidence when they are the only coverage.
 
 Tier, evidence and escalation are owned by
 [`apps/editor/tests/README.md`](../../../apps/editor/tests/README.md) ("What a change requires" and

@@ -100,7 +100,18 @@ describe('camera-core package boundary', () => {
   });
 
   it('keeps package sources headless and independent from app/editor code', () => {
-    const files = ['index.ts', 'camera-motion.ts', 'camera-route.ts', 'navigation.ts', 'scene-types.ts'];
+    // T1.P01.S02 added the session-inspection viewport evaluation. It is held to the
+    // same headless/import-direction proof as the rest of the package: an additive
+    // assertion, never a weaker one.
+    const files = [
+      'index.ts',
+      'camera-motion.ts',
+      'camera-route.ts',
+      'navigation.ts',
+      'scene-types.ts',
+      'viewport-math.ts',
+      'viewport.ts'
+    ];
     for (const file of files) {
       expect(existsSync(resolve(packageSrc, file))).toBe(true);
       const source = readFileSync(resolve(packageSrc, file), 'utf8');

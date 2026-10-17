@@ -81,7 +81,19 @@ export const ARCH_FILES: string[] = [
 	// delivery-only program closure and the "no product file imports an inactive
 	// F.2 entry before the T3.P01.S04 cutover" guarantee are import-graph facts,
 	// which no lane, build or type check can see.
-	'tests/lib/project-model/program-entry-closure.test.ts'
+	'tests/lib/project-model/program-entry-closure.test.ts',
+	// T1.P01.S02: read-only boot. The stage route host must reach no write path —
+	// only the project GET. The writer is reachable (one API client module), an
+	// imported name is not a call, and no build or type check breaks when a host
+	// file starts calling a writer, so only a call-site proof can hold it.
+	'tests/lib/authoring/editor-host-no-write.test.ts',
+	// T1.P01.S02: the Stage shell's composition boundary — one Canvas rendering
+	// through the visitor's own renderers, the explicit shadow-map type, and no
+	// camera authority outside the realizer. These are composition facts: nothing
+	// imports an `OrbitControls`, no build fails when a second renderer appears, and
+	// the shell is mountable only in a browser, so only the unconditional lane can
+	// own the guarantee.
+	'tests/lib/authoring/stage-shell-composition.test.ts'
 ];
 
 /**

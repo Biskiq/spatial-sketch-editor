@@ -4,7 +4,10 @@
 	import { createProjectId } from '$lib/platform/project-persistence';
 
 	onMount(() => {
-		void goto(`/project/${encodeURIComponent(createProjectId())}/spatial`, { replaceState: true });
+		// `/editor` mints a fresh project id, so its address carries the create intent:
+		// the route host reads it to offer the starter gallery on an absent row instead
+		// of reporting a project that was never started.
+		void goto(`/project/${encodeURIComponent(createProjectId())}/spatial?create=1`, { replaceState: true });
 	});
 </script>
 

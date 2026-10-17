@@ -40,7 +40,7 @@ packages/project-model/src/scene-codec/
 
 ## Boundary rule
 
-- **Only `index.ts` is public.** Package consumers import from `@portfolio/project-model`. The app seam is `apps/editor/src/lib/content/scene.ts`, which re-exports the barrel and supplies the catalogue validation options from `apps/editor/src/lib/content/scene-validation.ts`. The editor shell and the separate `apps/museum` app are gone (#115), so the visitor cold runtime consumes that same seam. No consumer imports the siblings.
+- **Only `index.ts` is public.** Package consumers import from `@portfolio/project-model`. The app seam is `apps/editor/src/lib/content/scene.ts`, which re-exports the barrel and supplies the catalogue validation options from `apps/editor/src/lib/content/scene-validation.ts`. The pre-#115 editable shell and separate `apps/museum` app are gone; T1.P01.S02's read-only Stage consumes this same seam. No consumer imports the siblings.
 - `scene.ts` also exposes `resolveSceneDocument(input)` as the app-side resolution seam. It wraps the package entry with the catalogue options; it takes **no** Room registry, because a current-format Scene carries no Room ownership and its values are already project/world coordinates.
 - The boundary is **convention, not enforced by the module system.** The `@internal` JSDoc tags are the contract: they forbid sibling imports. The app seam is a thin adapter, not a second codec; restructuring the five files is safe as long as the package `index.ts` surface is unchanged.
 - Public surface (frozen): `SceneDocumentIssue`, `SceneDocumentValidationResult`, `SceneDocumentValidationError`, `cameraSceneConnectionTimingFailureReason`, `validateSceneDocument`, `parseSceneDocumentJson`, `serializeSceneDocument`.

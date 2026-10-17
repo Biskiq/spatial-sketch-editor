@@ -30,13 +30,15 @@ Current clusters are **not** a durable assembly/instance model: they carry membe
 editor-only hierarchy metadata, and cloning a Three hierarchy supplies no authored component
 identity or revision policy. GLB provenance: [`assets.md`](./assets.md).
 
-**The editor shell is removed by #115.** There is no authoring surface (Plan or 3D), no
-publication UI and no import/export, so today a Scene document is created, validated, serialized
-and rendered only by the retained paths: the strict codec in `packages/project-model`, the
+**The earlier editable shell was removed by #115.** T1.P01.S02 restores a read-only Plan/3D
+Stage for source inspection and selection; it adds no Scene mutation path. There is still no
+publication UI or import/export, so Scene documents are created, validated, serialized and
+rendered through the retained paths: the strict codec in `packages/project-model`, the
 catalogue-configured policy in `apps/editor/src/lib/content/scene-validation.ts`, the generic
 renderer modules under `apps/editor/src/lib/museum/` (`assets/`, `entities/`, `materials/`,
 `layout/` — the directory name is retained to avoid churn in test paths and does not denote a
-museum product), and the visitor cold runtime. Scene authoring is a T2 capability to rebuild.
+museum product), the visitor cold runtime, and the Stage's shared renderers. Scene editing remains
+a T2 capability.
 
 ## Validation and transform contract (current)
 
