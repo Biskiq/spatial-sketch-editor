@@ -3,7 +3,7 @@
 **Slice:** T3.P01.S03 · **Status:** authorized 2026-10-17, **in progress — partial
 implementation, no acceptance recorded, no capability accepted**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
-**Split proposal:** [split-proposal.md](./split-proposal.md) — awaiting owner decision
+**Split direction:** [split-proposal.md](./split-proposal.md) — owner-delegated approval 2026-10-17; follow-up rows not registered or authorized
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 ## What is implemented in this increment
@@ -87,8 +87,11 @@ none of them is evidenced here:
 
 ## Status and next step
 
-This record claims no result and no revision. The next step is the owner's split
-decision, then the verification run the coordinator owns: the full lane for the
+This record claims **no S03 slice acceptance or capability acceptance**. The PR #138
+preparatory increment (`b13c5d73`) passed independent code review and was accepted
+**only as an incremental implementation**, under the owner's delegated decision
+of 2026-10-17. Register and separately authorize the proposed S03a/S03b follow-ups
+before their implementation, then complete the verification each plan requires: the full lane for the
 two new suites, `npm run check` for the touched packages, the arch lane, and the
 zero-skip DB suite for the Save half once it exists. Neither capability can be
 recorded from this increment alone: `unit-acceptance-v1` needs the candidates and
