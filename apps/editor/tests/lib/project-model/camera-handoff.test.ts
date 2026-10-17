@@ -1,6 +1,6 @@
 /**
  * `F3.channels@1:camera-handoff-v1` — the additive Experience handoff discipline
- * over the landed Camera-output ticket protocol (T3.P01.S03).
+ * over the landed Camera-output ticket protocol (T3.P01.S06).
  *
  * The suite proves the rules this module adds, not the landed protocol it
  * delegates to: only a handoff role may receive the output, a same-role takeover
@@ -11,8 +11,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	acquireCameraOutput,
+	beginExperienceNavigation,
 	cancelCameraHandoff,
+	cleanupCameraHandoff,
 	createCameraOutputState,
+	endExperienceNavigation,
 	handoffCameraOutput,
 	pendingCameraHandoff,
 	returnCameraHandoff,
@@ -97,6 +100,82 @@ describe('camera handoff — acquisition', () => {
 	});
 });
 
+describe('camera handoff — guided and free ownership', () => {
+	it('moves guided ownership to free as an ordered replacement', () => {
+		const guided = beginExperienceNavigation(state(), {
+			ticket: ticket('guided-run', 1),
+			mode: 'guided-navigation',
+			expected: { kind: 'unowned' }
+		});
+		if (guided.kind !== 'acquired') throw new Error('guided acquisition failed');
+		const free = beginExperienceNavigation(guided.state, {
+			ticket: ticket('free-run', 2),
+			mode: 'free-navigation',
+			expected: { kind: 'held', ticket: ticket('guided-run', 1) }
+		});
+		expect(free.kind).toBe('acquired');
+		if (free.kind !== 'acquired') return;
+		expect(free.claim.role).toBe('free-navigation');
+		expect(free.replaced?.role).toBe('guided-navigation');
+		expect(pendingCameraHandoff(free.state)).toBeNull();
+		// The displaced guided run cannot reclaim or continue.
+		expect(requestCameraOutput(free.state, ticket('guided-run', 1))).toMatchObject({ kind: 'superseded' });
+	});
+
+	it('refuses to preempt a Follow run from navigation', () => {
+		const held = inspection(state());
+		const follow = handoffCameraOutput(held, {
+			ticket: ticket('follow-run', 2),
+			role: 'follow',
+			expected: { kind: 'held', ticket: ticket('inspection-run', 1) },
+			returnToken: 'return-inspection'
+		});
+		if (follow.kind !== 'acquired') throw new Error('handoff must be acquired');
+		const navigation = beginExperienceNavigation(follow.state, {
+			ticket: ticket('guided-run', 3),
+			mode: 'guided-navigation',
+			expected: { kind: 'held', ticket: ticket('follow-run', 2) }
+		});
+		expect(navigation).toMatchObject({ kind: 'refused', reason: 'invalid-request' });
+		expect(follow.state.claim?.role).toBe('follow');
+		expect(pendingCameraHandoff(follow.state)?.role).toBe('inspection');
+	});
+
+	it('ends navigation without ending a handoff claim', () => {
+		const guided = beginExperienceNavigation(state(), {
+			ticket: ticket('guided-run', 1),
+			mode: 'guided-navigation',
+			expected: { kind: 'unowned' }
+		});
+		if (guided.kind !== 'acquired') throw new Error('guided acquisition failed');
+		expect(endExperienceNavigation(guided.state, ticket('guided-run', 1))).toMatchObject({ kind: 'cancelled' });
+
+		const held = inspection(state());
+		expect(endExperienceNavigation(held, ticket('inspection-run', 1))).toMatchObject({
+			kind: 'ignored',
+			reason: 'unsupported-role'
+		});
+	});
+
+	it('ignores stale-run cleanup and never clears the newer output', () => {
+		const first = beginExperienceNavigation(state(), {
+			ticket: ticket('guided-run', 1),
+			mode: 'guided-navigation',
+			expected: { kind: 'unowned' }
+		});
+		if (first.kind !== 'acquired') throw new Error('guided acquisition failed');
+		const free = beginExperienceNavigation(first.state, {
+			ticket: ticket('free-run', 2),
+			mode: 'free-navigation',
+			expected: { kind: 'held', ticket: ticket('guided-run', 1) }
+		});
+		if (free.kind !== 'acquired') throw new Error('free acquisition failed');
+		const stale = cleanupCameraHandoff(free.state, ticket('guided-run', 1));
+		expect(stale).toMatchObject({ kind: 'ignored', reason: 'stale-run-epoch' });
+		expect(stale.state.claim?.ticket.ownerId).toBe('free-run');
+	});
+});
+
 describe('camera handoff — return and cleanup', () => {
 	it('restores the displaced run under a strictly newer epoch and spends the returning ticket', () => {
 		const held = inspection(state());
@@ -166,6 +245,15 @@ describe('camera handoff — return and cleanup', () => {
 		const cancelled = cancelCameraHandoff(free, ticket('any-run', 2));
 		expect(cancelled).toMatchObject({ kind: 'cancelled', voidedReturn: null });
 		expect(cancelled.state.claim).toBeNull();
+	});
+
+	it('qualifies the ticket even when no run holds the output', () => {
+		// A foreign-session ticket cannot report a successful cleanup of a free
+		// output; the cleanup entry delegates to the landed qualified cancellation.
+		const free = state();
+		const foreign = { ...ticket('foreign-run', 2), sessionEpoch: 'session-foreign' };
+		expect(cleanupCameraHandoff(free, foreign)).toMatchObject({ kind: 'ignored' });
+		expect(cleanupCameraHandoff(free, ticket('any-run', 2))).toMatchObject({ kind: 'cancelled', voidedReturn: null });
 	});
 
 	it('does not end an inspection claim through handoff cleanup', () => {
