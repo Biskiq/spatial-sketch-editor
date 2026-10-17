@@ -21,7 +21,7 @@ This record holds implementation evidence for independent review. It is **not** 
 | Branch | `T3-P01-S02` |
 | PR | [#133](https://github.com/Biskiq/spatial-sketch-editor/pull/133) |
 | Base | post-PR #132 `main` (`74367936ea0cb1754c45021c4f10ca69b17ca7b0`) |
-| Tested code revision | `b02721f24a57ebc077434417576ef65c399971fa` (implementation + tests) |
+| Tested code revision | `3f893cc33b87c9e8fd0b893637a27796cb448c56` (implementation + tests) |
 | Evidence docs | this record's docs commit after the tested revision; docs-only, no product change |
 | Runtime | macOS (aarch64), Node `v26.7.0` |
 | Database | PostgreSQL `14.19` (Homebrew), local database `biskiq_s02`, migrations applied twice |
@@ -39,20 +39,20 @@ remote/production database. No production or preview environment was touched.
 | `npx vitest run` on the six new editor suites | 6 files / **28 tests** pass |
 | `npm run test:arch` | 18 files / **151 tests pass** |
 | `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1845 tests pass** |
-| `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **49 tests pass, 0 failed, 0 skipped** |
+| `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **50 tests pass, 0 failed, 0 skipped** |
 
-The full editor suite includes the heavy lane (`test:heavy` members run in the default config). On
-this host the same `npm test` command was green at the parent implementation revision (`f2fe1650`,
-1844/1844) but, while the machine was under load average >60, repeatedly hit the **pre-existing 5 s
-timeout** of `camera-output-conformance.test.ts` while 1844 other tests passed. That file was not
-touched by this slice; the complete suite was therefore also run with one worker
-(`npx vitest run --maxWorkers=1`, same config, assertions and timeouts) and passed 1845/1845. No test
-was skipped, narrowed or given a longer timeout. The API command is the DB-backed `test:api` lane;
-its zero-skip output is the concurrency/failure evidence, not a mock.
+The full editor suite includes the heavy lane (`test:heavy` members run in the default config). At
+the tested revision, plain `npm test` reached **1844/1845** and failed only on the **pre-existing 5 s
+timeout** of `camera-output-conformance.test.ts` (a file this slice does not touch) while the host
+was heavily loaded; the same command had been fully green (1844/1844) at `f2fe1650` earlier. The
+complete suite was therefore run with one worker (`npx vitest run --maxWorkers=1`, same config,
+assertions and timeouts) and passed **1845/1845**. No test was skipped, narrowed or given a longer
+timeout. The API command is the DB-backed `test:api` lane; its zero-skip output is the
+concurrency/failure evidence, not a mock.
 
 ## Exit-criterion evidence
 
-### Real-Postgres Save conformance — `apps/api/tests/save.test.mjs` (10 tests, no skip guards)
+### Real-Postgres Save conformance — `apps/api/tests/save.test.mjs` (11 tests, no skip guards)
 
 | Criterion | Evidence |
 | --- | --- |
@@ -60,7 +60,7 @@ its zero-skip output is the concurrency/failure evidence, not a mock.
 | Concurrent `create-only`, one winner | Two concurrent create-only Saves on one ID: one 200, one 409 `save_collision`; exactly one version and one receipt. |
 | Owner-blind collision | Owner and stranger both receive the identical `save_collision` body; expected-precondition stranger receives 404 `not_found`. |
 | No partial version/pointer update | An injected `BEFORE UPDATE` trigger on `projects` fails the pointer write after version staging: 503, zero new version, zero receipt, pointer/token unchanged; a subsequent Save succeeds. |
-| Retry returns original receipt | Exact replay returns byte-identical acknowledgement and adds no version/receipt. |
+| Retry returns original receipt | Exact replay returns byte-identical acknowledgement and adds no version/receipt. Two **concurrent** identical retries both replay the winner's receipt with one version. |
 | Changed-payload retry refuses | Same operation ID with different source, and same operation ID with a changed precondition, both return 400 `retry-payload-mismatch`; no version. |
 | Failed full validation | Invalid document, unknown registry asset and unknown registry material each return 400 `invalid_project` with issues and write nothing. |
 | Editor/API unknown-asset parity | API Save refuses `asset-not-in-the-host-catalogue`; the editor-side fixture in `save-admission-parity.test.ts` refuses the same source through `MUSEUM_SCENE_VALIDATION_OPTIONS`. |
