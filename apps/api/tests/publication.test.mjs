@@ -7,7 +7,7 @@ import test, { after, before } from 'node:test';
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
 
-import { projectDocument } from './test-support.mjs';
+import { projectDocument, saveRequestBody } from './test-support.mjs';
 
 const SESSION_KEY = Buffer.alloc(32, 11);
 const SESSION_COOKIE = 'museum-editor-session';
@@ -52,15 +52,25 @@ function nextProjectId() {
 	return `p22t${Date.now().toString(36)}${projectCounter}`;
 }
 
+// Conditional Save is the one write path: the first save of an ID is
+// create-only, later saves name the token the previous save returned.
+const savedTokens = new Map();
+
 async function saveDoc(projectId, cookie, document) {
+	const token = savedTokens.get(projectId);
+	const request = await saveRequestBody(document, {
+		precondition: token ? { kind: 'expected-saved-base', token } : { kind: 'create-only' }
+	});
 	const response = await app.inject({
 		method: 'PUT',
 		url: `/projects/${projectId}`,
 		headers: { cookie, 'content-type': 'application/json' },
-		payload: { document }
+		payload: request
 	});
-	assert.equal(response.statusCode, 200);
-	return response.json();
+	assert.equal(response.statusCode, 200, JSON.stringify(response.json()));
+	const saved = response.json();
+	savedTokens.set(projectId, saved.savedBaseToken);
+	return saved;
 }
 
 async function uploadTexture(projectId, cookie, name = 'pinned.png') {
@@ -120,10 +130,16 @@ async function cleanupProject(projectId) {
 test('migrations apply twice on real Postgres', async (t) => {
 	if (!HAS_DB) return t.skip('Postgres unreachable');
 	const check = await pool.query(
-		`SELECT to_regclass('publications') AS publications, to_regclass('releases') AS releases`
+		`SELECT to_regclass('publications') AS publications, to_regclass('releases') AS releases,
+	to_regclass('save_receipts') AS receipts,
+	exists (SELECT 1 FROM information_schema.columns
+		WHERE table_name = 'projects' AND column_name = 'saved_base_token') AS has_saved_base
+	FROM (SELECT 1) AS one`
 	);
 	assert.equal(check.rows[0].publications, 'publications');
 	assert.equal(check.rows[0].releases, 'releases');
+	assert.equal(check.rows[0].receipts, 'save_receipts');
+	assert.equal(check.rows[0].has_saved_base, true);
 });
 
 test('never-published status is normal and allocates nothing', async (t) => {

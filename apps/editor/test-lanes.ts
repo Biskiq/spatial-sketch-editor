@@ -67,6 +67,10 @@ export const ARCH_FILES: string[] = [
 	// module, so no lane report or build can see the leak, and only the
 	// unconditional lane can own it.
 	'tests/lib/authoring/f4-public-isolation.test.ts',
+	// T3.P01.S02: the conditional Save caller-retirement proof. It reads the
+	// editor tree for the old unconditional write and the one conditional client
+	// entry point; no lane report can see an uncalled legacy writer.
+	'tests/lib/authoring/save-call-sites.test.ts',
 	// The lane-membership proof itself (WP3T §7.6 area 6): unique, existing,
 	// disjoint lanes whose union is the curated set, with a missing-entry,
 	// overlap, duplicate and dropped-file control. It polices the runner

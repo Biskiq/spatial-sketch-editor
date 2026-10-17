@@ -6,7 +6,7 @@ import { createApp } from '../dist/app.js';
 import { ConfigError, readConfig } from '../dist/config.js';
 import { runMigrations } from '../dist/migrate.js';
 
-import { projectDocument } from './test-support.mjs';
+import { projectDocument, saveRequestBody } from './test-support.mjs';
 
 const SESSION_KEY = Buffer.alloc(32, 13);
 const SESSION_COOKIE = 'museum-editor-session';
@@ -188,6 +188,7 @@ after(async () => {
 
 async function cleanupProject(projectId) {
 	if (!HAS_DB) return;
+	await pool.query('DELETE FROM save_receipts WHERE project_id = $1', [projectId]);
 	await pool.query('DELETE FROM releases WHERE project_id = $1', [projectId]);
 	await pool.query('DELETE FROM publications WHERE project_id = $1', [projectId]);
 	await pool.query('DELETE FROM assets WHERE project_id = $1', [projectId]);
@@ -228,9 +229,10 @@ test('seam user B cannot reach seam user A projects (real Postgres)', async (t) 
 			method: 'PUT',
 			url: `/projects/${projectId}`,
 			headers: { cookie: cookieA, 'content-type': 'application/json' },
-			payload: { document: projectDocument('A project', { id: projectId }) }
+			payload: await saveRequestBody(projectDocument('A project', { id: projectId }))
 		});
 		assert.equal(saved.statusCode, 200);
+		const token = saved.json().savedBaseToken;
 
 		const foreignRead = await app.inject({
 			method: 'GET',
@@ -243,7 +245,9 @@ test('seam user B cannot reach seam user A projects (real Postgres)', async (t) 
 			method: 'PUT',
 			url: `/projects/${projectId}`,
 			headers: { cookie: cookieB, 'content-type': 'application/json' },
-			payload: { document: projectDocument('B takeover', { id: projectId }) }
+			payload: await saveRequestBody(projectDocument('B takeover', { id: projectId }), {
+				precondition: { kind: 'expected-saved-base', token }
+			})
 		});
 		assert.equal(foreignWrite.statusCode, 404);
 

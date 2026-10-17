@@ -1,4 +1,4 @@
-import type { ProjectDocument, ProjectValidationResult } from '@portfolio/project-model';
+import type { AcceptedRevision, ProjectValidationResult } from '@portfolio/project-model';
 
 import type { DatabaseClient, DatabasePool, DatabaseQueryResult } from './database.js';
 
@@ -15,6 +15,14 @@ export type SavedProject = Omit<ProjectSummary, 'id'> & {
 
 export type LoadedProject = SavedProject & {
 	document: unknown;
+	/**
+	 * Durable saved-base metadata, additive beside the document. Pre-migration
+	 * rows have a token but no revision/digest; the token alone is then the
+	 * precondition. The read-only boot works with or without these fields.
+	 */
+	savedBaseToken: string | null;
+	savedRevision: AcceptedRevision | null;
+	savedSourceContentId: string | null;
 };
 
 export class ProjectNotFoundError extends Error {
@@ -31,9 +39,13 @@ type ProjectRow = {
 	updatedAt: unknown;
 };
 
-type OwnedProjectRow = ProjectRow & { ownerId: unknown };
-
-type LoadedProjectRow = ProjectRow & { projectId: unknown; document: unknown };
+type LoadedProjectRow = ProjectRow & {
+	projectId: unknown;
+	document: unknown;
+	savedBaseToken: unknown;
+	savedRevision: unknown;
+	savedSourceContentId: unknown;
+};
 
 export async function listProjects(
 	db: Pick<DatabasePool, 'query'>,
@@ -50,63 +62,6 @@ ORDER BY updated_at DESC, id ASC`,
 	return result.map(readProjectSummary);
 }
 
-export async function saveProject(
-	pool: DatabasePool,
-	ownerId: string,
-	project: ProjectDocument
-): Promise<SavedProject> {
-	return withTransaction(pool, async (db) => {
-		await db.query(
-			`INSERT INTO users (id)
-VALUES ($1)
-ON CONFLICT (id) DO NOTHING`,
-			[ownerId]
-		);
-		await db.query(
-			`INSERT INTO projects (id, owner_id, name)
-VALUES ($1, $2, $3)
-ON CONFLICT (id) DO NOTHING`,
-			[project.id, ownerId, project.name]
-		);
-
-		const owned = await queryRows<OwnedProjectRow>(
-			db,
-			`SELECT id, owner_id AS "ownerId", name, latest_version AS version,
-	updated_at AS "updatedAt"
-FROM projects
-WHERE id = $1
-FOR UPDATE`,
-			[project.id]
-		);
-		const row = owned[0];
-		if (!row || row.ownerId !== ownerId) throw new ProjectNotFoundError();
-
-		const nextVersion = readSafeInteger(row.version) + 1;
-		await db.query(
-			`INSERT INTO project_versions (project_id, version, document)
-VALUES ($1, $2, $3)`,
-			[project.id, nextVersion, project]
-		);
-		const updated = await queryRows<ProjectRow>(
-			db,
-			`UPDATE projects
-SET name = $3, latest_version = $2, updated_at = now()
-WHERE id = $1
-RETURNING id, name, latest_version AS version, updated_at AS "updatedAt"`,
-			[project.id, nextVersion, project.name]
-		);
-		const result = updated[0];
-		if (!result) throw new Error('Project update returned no row');
-		const summary = readProjectSummary(result);
-		return {
-			projectId: summary.id,
-			name: summary.name,
-			version: summary.version,
-			updatedAt: summary.updatedAt
-		};
-	});
-}
-
 export async function loadProject(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
@@ -115,7 +70,9 @@ export async function loadProject(
 	const result = await queryRows<LoadedProjectRow>(
 		db,
 		`SELECT p.id AS "projectId", p.name, p.latest_version AS version,
-	p.updated_at AS "updatedAt", v.document
+	p.updated_at AS "updatedAt", p.saved_base_token AS "savedBaseToken",
+	p.saved_revision AS "savedRevision", p.saved_source_content_id AS "savedSourceContentId",
+	v.document
 FROM projects p
 JOIN project_versions v
 	ON v.project_id = p.id AND v.version = p.latest_version
@@ -135,11 +92,14 @@ WHERE p.id = $1 AND p.owner_id = $2`,
 		name: summary.name,
 		version: summary.version,
 		updatedAt: summary.updatedAt,
-		document: parseJsonb(row.document)
+		document: parseJsonb(row.document),
+		savedBaseToken: readNullableString(row.savedBaseToken),
+		savedRevision: readNullableRevision(row.savedRevision),
+		savedSourceContentId: readNullableString(row.savedSourceContentId)
 	};
 }
 
-async function withTransaction<T>(
+export async function withTransaction<T>(
 	pool: DatabasePool,
 	work: (db: DatabaseClient) => Promise<T>
 ): Promise<T> {
@@ -184,6 +144,29 @@ function readProjectSummary(row: ProjectRow): ProjectSummary {
 function readString(value: unknown): string {
 	if (typeof value !== 'string' || value.length === 0) throw new Error('Database row contained an invalid string');
 	return value;
+}
+
+function readNullableString(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	return readString(value);
+}
+
+function readNullableRevision(value: unknown): AcceptedRevision | null {
+	if (value === null || value === undefined) return null;
+	const parsed = parseJsonb(value);
+	if (
+		typeof parsed !== 'object' ||
+		parsed === null ||
+		Array.isArray(parsed) ||
+		typeof (parsed as Record<string, unknown>).projectId !== 'string' ||
+		typeof (parsed as Record<string, unknown>).revisionId !== 'string'
+	) {
+		throw new Error('Database row contained an invalid accepted revision');
+	}
+	return {
+		projectId: (parsed as Record<string, string>).projectId,
+		revisionId: (parsed as Record<string, string>).revisionId
+	};
 }
 
 function readSafeInteger(value: unknown): number {
