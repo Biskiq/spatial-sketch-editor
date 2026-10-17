@@ -733,7 +733,7 @@
 
 	/* --- pointer and keyboard ---------------------------------------------- */
 
-	let drag: { x: number; y: number; mode: 'pan' | 'orbit' } | null = null;
+	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' } | null = null;
 	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
@@ -743,9 +743,35 @@
 	 */
 	const press = createStagePressTracker();
 
+	/**
+	 * CSS pixels relative to the Stage surface, the space adapter pointer intents
+	 * use. This reads the one accepted rect (`measure()`), never a second DOM
+	 * measurement: the drawn image, the ray and the adapter intent must share a
+	 * coordinate space.
+	 */
+	function stageCss(event: PointerEvent): [number, number] {
+		const current = rect ?? measure();
+		return [event.clientX - current.left, event.clientY - current.top];
+	}
+
 	function onPointerDown(event: PointerEvent): void {
 		const stage = facade;
 		if (stage === null || evaluation === null) return;
+		// A contributed task gets the press first: its adapter may claim a drag
+		// (a Scene transform), and only a refusal falls through to navigation.
+		const pointerEvaluationId = stage.evaluationId();
+		if (task !== null && pointerEvaluationId !== null) {
+			const css = stageCss(event);
+			if (stage.pointerIntent({ phase: 'down', css, evaluationId: pointerEvaluationId, shift: event.shiftKey }).claimed) {
+				(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+				if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey });
+					return;
+				}
+				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
+				return;
+			}
+		}
 		// A gesture is one captured writer with an explicit transition policy; a
 		// replacement cancels it exactly once. Navigation cannot steal the lease, so a
 		// refused acquisition means this press does not move the view at all — the
@@ -773,6 +799,15 @@
 
 	function onPointerMove(event: PointerEvent): void {
 		if (drag === null) return;
+		if (drag.mode === 'adapter') {
+			if (!press.ownsPointer(event.pointerId)) return;
+			const stage = facade;
+			const id = stage?.evaluationId() ?? null;
+			if (stage === null || id === null) return;
+			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
+			return;
+		}
 		// Movement is the one thing a refused pointer still produces. Its samples are at
 		// its own position, not the owner's, so taking them would pan by the distance
 		// between two fingers — the camera would jump while the owner held the gesture.
@@ -821,6 +856,15 @@
 		// ended, not aborted. Only the owning pointer may end it — a refused second
 		// pointer's release must not release the first pointer's lease.
 		if (!press.end(event.pointerId)) return;
+		if (drag?.mode === 'adapter') {
+			const stage = facade;
+			const id = stage?.evaluationId() ?? null;
+			drag = null;
+			if (stage !== null && id !== null) {
+				stage.pointerIntent({ phase: 'up', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+			}
+			return;
+		}
 		endGesture();
 	}
 
@@ -829,6 +873,15 @@
 		// window losing focus). Without this the lease would stay held and the next
 		// stray move would pan with samples from a gesture the creator never finished.
 		if (!press.abort(event.pointerId)) return;
+		if (drag?.mode === 'adapter') {
+			const stage = facade;
+			const id = stage?.evaluationId() ?? null;
+			drag = null;
+			if (stage !== null && id !== null) {
+				stage.pointerIntent({ phase: 'cancel', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+			}
+			return;
+		}
 		endGesture();
 	}
 
