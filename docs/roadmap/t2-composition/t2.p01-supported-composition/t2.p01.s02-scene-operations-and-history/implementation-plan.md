@@ -51,11 +51,13 @@ issue); the landed coordinator installs them. Do not add another validation pass
 installer or adapter variant. A missing target, invalid value or refused admission leaves
 everything unchanged. Acquire no resources.
 
-**Scene scope guard.** For Scene-domain changes the T1-owned adapter guards only Layout. Every T2
-planner therefore returns through one T2-owned guard. The guard admits changes to entity records,
-cluster membership and empty-cluster removal only. Camera-bearing Scene fields (navigation nodes
-and connections), material/resource bindings and unrelated records are compared exactly. Do not
-modify the T1-owned adapter.
+**Scene scope guard.** The T1-owned adapter already refuses, for every Scene change, any change to
+Layout, project identity, the Camera-bearing `navigationNodes`/`connections`, `materials` or
+`textures` (`validateChange`). It does not check *which* entities or clusters a Scene operation
+touches. Every T2 planner therefore returns through one T2-owned record-scope guard. The guard
+admits only the operation's targeted entity, its captured new entity, membership cleanup and
+empty-cluster removal. Every other entity and cluster is compared exactly. Do not modify the
+T1-owned adapter.
 
 **Support.** Planners that need support (`place-object`, `move-horizontal`, `place-on-floor`,
 `resize-on-floor` and `duplicate-one`) re-derive floor candidates from the snapshot's canonical
@@ -85,8 +87,9 @@ returns `created` entries. There are no Camera/Experience subject-reference sche
   (L2, then S1, then L1). No Undo skips or merges across domains. The Layout steps use
   `T1.P01.S03`'s conformance Layout planner in tests; this slice registers no production Layout
   operation.
-- Camera-bearing Scene bytes are unchanged by every operation. A mutation-control planner that
-  rewrites one is refused by the scope guard.
+- Camera-bearing Scene bytes are unchanged by every operation (the adapter's guard, re-proved here).
+  A mutation-control planner that rewrites an *untargeted* entity or cluster, which the adapter
+  admits, is refused by the T2 record-scope guard.
 - Support: nonzero floor elevation, a choice the snapshot no longer yields, and a duplicate whose
   shifted contact lacks support all refuse with their typed codes. Reordering the query input does
   not change the result.

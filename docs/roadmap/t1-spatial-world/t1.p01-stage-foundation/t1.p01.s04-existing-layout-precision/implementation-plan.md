@@ -33,11 +33,11 @@ owner assigns this wiring explicitly to one of them; it is never built twice.
 this wiring also owns mounting `T3.P01.S02`'s framework-free client Save state and commands in the
 PLATE Head. That includes unsaved-work signalling at project exit and replacement, resuming a pending
 sign-in draft, and routing *Reload remote* through the host's replacement guard. T3 owns the protocol,
-the server and the state machine; this slice builds none of them. Save is enabled only if
-`F4.intent-acceptance@1:conditional-save-current-v1` is accepted at this slice's trusted base. In
-that case the pair is added to `Requires` when this slice is authorized. Otherwise the Head keeps
-S02's "Save unavailable" posture, and the owner names the T1 slice that mounts Save before
-`T2.P01.S04` starts.
+the server and the state machine; this slice builds none of them. This slice's scope is fixed when it
+is authorized, never mid-slice. If `F4.intent-acceptance@1:conditional-save-current-v1` is accepted
+by then, the Head Save integration is in scope and that capability joins this plan's `Requires` and
+the register row. If not, it is out of scope, the Head keeps S02's "Save unavailable" posture, and
+the owner names the T1 slice that mounts Save before `T2.P01.S04` starts.
 
 ## Scope
 

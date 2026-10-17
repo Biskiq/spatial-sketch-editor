@@ -9,9 +9,11 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
 registers no gate, phase or slice, and each provider is wired through its own authorized track
 phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
-T1.P01 (`T1.P01.S01` shipped; S02/S03 authorized 2026-10-16), T2.P01 (S01 authorized) and T3.P01
-(S01–S04, S01 authorized); the proposal's T3 S05/S06 are the unregistered candidate T3.P02. The
-four slices authorized 2026-10-16 run under the [parallel batch protocol](#parallel-batch-2026-10-16).
+T1.P01 (`T1.P01.S01` and S03 shipped; S02 authorized 2026-10-16), T2.P01 (S01 shipped; S02
+authorized) and T3.P01 (S01–S04; S01 shipped; S02 authorized); the proposal's T3 S05/S06 are the
+unregistered candidate T3.P02. The four slices authorized first on 2026-10-16 run under the
+[parallel batch protocol](#parallel-batch-2026-10-16); `T2.P01.S02` and `T3.P01.S02` run under the
+[parallel pair protocol](#parallel-pair-2026-10-16).
 Cross-PR links identify proposals, never accepted prerequisites.
 
 Planning proceeds on the landed r186 base: the separate
@@ -289,7 +291,7 @@ and open nothing; an open window and its pending verdicts block none of them.
 | R5 | `T3.P01.S02`'s Save control needs a home in the T1 shell Head. | **Settled 2026-10-16** ([record](../reference/decisions/s02-pair-authorization-2026-10-16.md)): T3 owns persistence and client Save state; T1's host↔F4 wiring slice owns the Head integration. `T1.P01.S02` never calls the unconditional `PUT`. |
 | R6 | T3.P02 cannot register until `T3.camera-experience-cutover@1` is drafted and ratified. | T3 drafts it with `T3.P01.S04`'s authorization request. |
 | R7 | Per-accept validation, serialization and hashing may be costly on dense projects. | `T1.P01.S03` records a measured observation on the densest fixture (TD-5's lesson). |
-| R8 | Client/server canonical-byte or digest-version skew would make equal contents compare unequal. | `T3.P01.S02` carries the declared content-identity scheme and refuses a mismatch explicitly (`identity-scheme-mismatch` / `content-identity-mismatch`), never as a conflict. |
+| R8 | Client/server canonical-byte or digest-version skew would make equal contents compare unequal. | `T3.P01.S02` carries the content-identity scheme as transport metadata, pinned by a golden-digest test, and refuses a mismatch explicitly (`identity-scheme-mismatch` / `source-version-mismatch` / `content-identity-mismatch`), never as a conflict. |
 | R9 | Barrel and lane-list merge conflicts. | Append-only rule; second merger resolves. |
 | R10 | The window `T1.P01.S02` opens may stay open for a long time. | Pending verdicts block no other track (cycle disposition below). |
 
@@ -308,7 +310,7 @@ and reports instead.
 | --- | --- | --- |
 | `project-model` `src/scene-planning/` | `T2.P01.S02` | read-only |
 | `project-model` Save protocol subpath module and its `package.json` `exports` entry | `T3.P01.S02` | appending another subpath is fine |
-| `content-identity.ts` | `T3.P01.S02` adds one additive scheme constant, under T1 review | nobody changes the digest's meaning |
+| `content-identity.ts` and its test | none in the pair: T3's scheme constant lives in its Save subpath | #128 still carries a stale copy; per the batch's content-identity rule it drops it on rebase and reuses the landed export |
 | `project-model` `src/f4/**`, the current-source adapter and `apps/editor/src/lib/authoring/f4/**` (T1-owned, shipped) | none | read-only; a needed change is a stop-and-report to T1 |
 | `apps/api/**`, migrations, `apps/editor/src/lib/platform/project-persistence.ts` and the editor client Save state | `T3.P01.S02` | read-only; T1's read-only boot relies on the additive `GET` shape |
 | Editor routes, host, Stage and shell modules | `T1.P01.S02` (#128) | read-only for both slices: no route, Head or host edit |

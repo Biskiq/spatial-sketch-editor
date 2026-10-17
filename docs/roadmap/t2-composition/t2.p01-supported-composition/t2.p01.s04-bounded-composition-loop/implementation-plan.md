@@ -16,7 +16,9 @@ This is the phase's **FINAL PHASE GATE**.
 
 S01–S03 accepted; `T3.P01.S02`'s `conditional-save-current-v1` accepted at this slice's trusted base;
 T1's Head Save integration accepted
-([assignment](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)).
+([assignment](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). The integration is a
+slice dependency, not a capability. The gate checker cannot see it, so it is checked at this slice's
+start against the named T1 slice's acceptance record.
 
 ## Scope
 

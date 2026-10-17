@@ -47,17 +47,24 @@ no route.
 
 ## Scope
 
-**Capture.** Save captures one immutable locally accepted source and its full canonical JSON,
-`AcceptedRevision`, content digest, `sourceKind`/`sourceVersion`, the content-identity scheme, a
-stable Save operation ID and a `create-only` or `expected-saved-base {token}` precondition. The scheme
-is one additive constant beside the content-identity export. T3 adds it under T1 review; T1 keeps
-ownership of the digest's meaning. Saving neither edits the source nor adds an Undo entry.
+**Capture.** `SaveAcceptedSource@1` captures exactly the AM-4 fields: one immutable locally
+accepted source and its full canonical JSON, `AcceptedRevision`, content digest,
+`sourceKind`/`sourceVersion`, a stable Save operation ID and a `create-only` or
+`expected-saved-base {token}` precondition. The content-identity scheme travels as **transport
+metadata** on the request, outside `SaveAcceptedSource@1`, so the ratified shape is not extended.
+The scheme constant lives in the Save subpath module, not in `content-identity.ts`. A golden-digest
+conformance test pins it to the landed export's output, so any canonicalization change fails the
+test until the scheme is bumped. T1 keeps ownership of the digest's meaning and reviews the pin.
+Saving neither edits the source nor adds an Undo entry.
 
 **Server write.** Use one write route. The transaction runs the shared current-source admission:
 `admitCurrentSourceContent` with full validation, runtime preparation and blocking-compile
 comparison. It uses the API's existing registry Scene catalogue, moved into one API module that
 publication also uses, with publication behavior unchanged. The blocking-issue baseline is the
-expected saved base's issues; `create-only` has an empty baseline. Under the row lock, compare
+expected saved base's blocking compile issues; `create-only` has an empty baseline. A stored base
+that itself fails registry admission (for example a row written by today's permissive `PUT`)
+contributes an empty baseline. The candidate is judged on its own merits, so a legacy row never
+blocks Save permanently; a valid candidate repairs it. Under the row lock, compare
 ownership and the saved-base token. Then recompute the digest with the single content-identity
 export, and append the version and update the pointer atomically. A partial version/pointer update
 is impossible.
@@ -76,7 +83,8 @@ publication status keeps reading unchanged) and from publication OCC.
 | `create-only` against any existing ID | One owner-blind collision |
 | Another owner's project under `expected-saved-base` | `not-found` |
 | Admission failure | The admission's own issues |
-| Scheme or source-kind/version mismatch | `identity-scheme-mismatch` |
+| Content-identity scheme mismatch | `identity-scheme-mismatch` |
+| Source kind/version not admitted | `source-version-mismatch` |
 | Same scheme, different digest | `content-identity-mismatch` |
 | Revision identity reused with different contents | Refused |
 
@@ -93,8 +101,9 @@ stay absent, and the token alone is the precondition. The `projects` listing is 
 
 **Client.** Replace the unconditional client `saveProject` with the conditional call. No unconditioned
 write remains in the editor. The pending sign-in draft is re-keyed to carry the whole capture
-(precondition, operation ID and source). Legacy entries read as `unavailable`. `readPendingCloudSave`
-and `clearPendingCloudSave` keep their signatures, so the `/` route needs no edit. Resuming a draft
+(precondition, operation ID and source). Legacy entries read as `invalid`. `readPendingCloudSave`
+and `clearPendingCloudSave` keep their signatures and statuses (`missing | invalid | expired |
+ready`, with `ready` still exposing `project`), so the `/` route needs no edit. Resuming a draft
 into a live session belongs to T1's Head integration.
 
 **Client state.** The state machine tracks never-saved (`create-only`), `saved`, `dirty`, `saving`
@@ -115,7 +124,8 @@ into a live session belongs to T1's Head integration.
   `not-found`; no partial version/pointer update; retry returns the original receipt; a
   changed-payload retry refuses; failed full validation; an unknown-asset source refuses with the
   same result in editor admission and API Save (parity fixture); the unconditioned body refuses;
-  scheme and digest mismatch refuse.
+  scheme, source-version and digest mismatch refuse; a stored base that fails registry admission does
+not block a valid Save.
 - Client-state conformance against a real `createAcceptanceCoordinator`:
   - an edit during an in-flight Save stays dirty;
   - a stale prior-epoch response is dropped;
