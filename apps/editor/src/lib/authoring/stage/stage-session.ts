@@ -337,16 +337,21 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		const ref = entry?.representation;
 		return ref ? { sourceId: ref.sourceId, sourceKind: ref.sourceKind, generationId: ref.generationId, ref } : null;
 	}
-	function setLegacy(next: StageSelection | null): boolean {
-		if (next === null || current === null) { selectionValue = EMPTY_SELECTION; return next === null; }
+/** What a convenience `select()` request did to the one selection value. */
+type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
+
+	function setLegacy(next: StageSelection | null): LegacySelectionOutcome {
+		if (next === null) { selectionValue = EMPTY_SELECTION; return 'cleared'; }
+		if (current === null) { selectionValue = EMPTY_SELECTION; return 'refused'; }
 		// Retained Layout helper shares the exact same owner and ordered value.
 		const reference = layoutSelectionReference(next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null }, current);
 		const admitted = admitSelection({ ordered: [{ reference, representation: next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null } }], primary: reference }, current);
 		// A refused convenience request clears rather than retaining a value that
 		// names the previous revision: the caller re-reads the projection, and a
 		// stale ref would otherwise be shown as the subject just clicked.
-		selectionValue = 'kind' in admitted ? EMPTY_SELECTION : admitted;
-		return !('kind' in admitted);
+		if ('kind' in admitted) { selectionValue = EMPTY_SELECTION; return 'refused'; }
+		selectionValue = admitted;
+		return 'admitted';
 	}
 	/**
 	 * Cancel the writers that belong to a task or gesture, never the command that is
@@ -399,11 +404,14 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 			if (disposed || next === lens) return false;
 			// Park before cancelling, and hold the parked task across cancellation: a
 			// canceller then observes an inactive task, and one that closes it anyway
-			// cannot take the only Resume path with it.
+			// cannot take the only Resume path with it. Only a *cleared* task is held:
+			// a canceller that opened a different task, or replaced the session, made a
+			// deliberate change this transition must not overwrite.
 			const parked = task;
+			const parkedToken = token();
 			if (task !== null) taskStatus = 'inactive';
 			cancelAllWriters();
-			if (parked !== null && task !== parked) {
+			if (parked !== null && task === null && !disposed && token().sessionEpoch === parkedToken.sessionEpoch && token().epoch === parkedToken.epoch) {
 				task = parked;
 				taskStatus = 'inactive';
 			}
@@ -565,7 +573,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 					}
 					selectionValue = immutableF4Data({ ordered, primary: primary ?? ordered[0]?.reference ?? null });
 				} else {
-					const admittedLegacy = setLegacy(requalification.kind === 'requalified' ? requalification.selection : null);
+					const admittedLegacy = setLegacy(requalification.kind === 'requalified' ? requalification.selection : null) === 'admitted';
 					// A convenience selection the new content refuses is gone even though the
 					// requalification said it survived; the three reported fields must agree
 					// instead of claiming a requalified selection that is no longer held.

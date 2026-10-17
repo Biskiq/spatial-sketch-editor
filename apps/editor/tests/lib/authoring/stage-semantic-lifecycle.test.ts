@@ -137,6 +137,14 @@ describe('Stage lens exit and explicit task Resume', () => {
 		expect(session.taskLifecycle()?.status).toBe('inactive');
 		expect(session.task()).toBeNull();
 	});
+	it('does not overwrite a task a canceller deliberately opened', async () => {
+		const { stage, session, scene } = await mount();
+		stage.registerStageAdapter({ id: 'scene-task', tasks: [{ id: 'scene', taskKind: 'scene', label: 'Scene task', target: scene() }] });
+		stage.openContributedTask('scene', 'scene-task');
+		session.writers().register('task', session.token(), () => { session.openTask({ kind: 'replacement', label: 'Replacement task', targetRef: null }); });
+		expect(stage.changeLens('experience')).toBe(true);
+		expect(session.taskLifecycle()).toMatchObject({ status: 'active', task: { kind: 'replacement' } });
+	});
 	it('reports no cleared selection when nothing was selected', async () => {
 		const { stage, edit } = await mount();
 		expect(stage.selectionState().ordered).toEqual([]);

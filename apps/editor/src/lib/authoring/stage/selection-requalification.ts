@@ -22,6 +22,12 @@
  *   vanished component is a retired subject, not a fragment of the new one;
  * - no entry at all is **not** a reason to guess: the selection clears with a
  *   reason rather than retargeting by proximity.
+ *
+ * Two entry points enforce that rule at different strengths: the retained Layout
+ * helper (`requalifySelection`) matches the subject kind and id because a
+ * `PlanSourceRef` carries nothing more, while the canonical entry path
+ * (`requalifySelectionEntry`) matches the **complete** F.1 address and is the one the
+ * host uses for the ordered selection. Neither retargets by id alone.
  */
 import { resolveReference, type CorrespondenceEntry, type SemanticReference } from '@portfolio/project-model';
 
