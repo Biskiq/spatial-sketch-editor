@@ -8,32 +8,32 @@ Two increments are recorded here and they are **not interchangeable**:
 | Increment | Revision | State | Evidence |
 | --- | --- | --- | --- |
 | Host wiring, contributions, adapter re-binding | committed `bbc1203a` (base `fcf1fbaa`) | pushed, PR [#137](https://github.com/Biskiq/spatial-sketch-editor/pull/137), independently reviewed | this file's later section, plus the files listed there |
-| AM-5 completion (encoding-neutral read, F.1 selection, lens/task lifecycle) | committed `a67793e4` + `4127b63f` + `4c831fc5` (base `bbc1203a`) | pushed to PR #137, **two review rounds, findings fixed** | this file's first sections |
+| AM-5 completion (encoding-neutral read, F.1 selection, lens/task lifecycle) | committed `a67793e4` + `4127b63f` + `4c831fc5` + `933bf285` (base `bbc1203a`) | pushed to PR #137, **three review rounds, findings fixed** | this file's first sections |
 
 ## AM-5 increment — tested source identity
 
-Commits `a67793e4` (implementation; parent `bbc1203acbb83530780e429b3ab3b930b82169db`), its review
-fixes `4127b63f`, and the second round's fixes `4c831fc5` on `T1-P01-S07`. The 22 changed files under
+Commits `a67793e4` (implementation; parent `bbc1203acbb83530780e429b3ab3b930b82169db`) plus the
+review fixes `4127b63f`, `4c831fc5` and `933bf285` on `T1-P01-S07`. The 22 changed files under
 `apps/editor/src` and `apps/editor/tests` are individually hashed in
 [am5-source-manifest.json](./am5-source-manifest.json); the test-only
 `vite.stage-conformance.config.ts` is outside that hash set. Aggregate SHA-256
-**`91316523bbbd790133221be3e0963bad8e793ee8fded1cf1ecb258afc4d304c7`** over the sorted lines
+**`7351d55edd223804cdcf27965f1e07638ad64c266d9768be537713371a561e2a`** over the sorted lines
 `<path>` TAB `<file sha256>` newline. The manifest states that algorithm itself, so the
 aggregate is reproducible from the commit without guessing a serialization. Documentation,
 screenshots and the browser transcript are outside that manifest.
 
 ## AM-5 increment — check results
 
-All run on the final code tree `4c831fc5`, after the last source edit. Raw summaries, including the
+All run on the final code tree `933bf285`, after the last source edit. Raw summaries, including the
 per-commit `git show --check` results, are in [check-summaries-review.txt](./check-summaries-review.txt).
 
 | Command | Observed result |
 | --- | --- |
 | `npm run check` | **0 errors / 0 warnings** |
-| `npm run test:fast` | 127 files / **1,764 tests** passed |
+| `npm run test:fast` | 127 files / **1,765 tests** passed |
 | `npm run test:heavy` | 8 files / 118 tests passed |
 | `npm run test:arch` | 20 files / 161 tests passed |
-| `npm test` | 155 files / **2,043 tests** passed |
+| `npm test` | 155 files / **2,044 tests** passed |
 | `npm run build` | ordinary production build passed |
 | `npm run check:layout-core`, `check:project-model`, `check:camera-core`, `check:api` | all passed |
 | `git show --check` on each commit of the increment | passed |
@@ -42,10 +42,10 @@ per-commit `git show --check` results, are in [check-summaries-review.txt](./che
 round did not create) and any run against a merge revision. No API or package source changed.
 
 The focused set that covers the increment directly:
-`tests/lib/authoring/stage-semantic-lifecycle.test.ts` (10), `stage-host-acceptance.test.ts` (33),
+`tests/lib/authoring/stage-semantic-lifecycle.test.ts` (11), `stage-host-acceptance.test.ts` (33),
 `stage-session.test.ts` (7), `stage-facade.test.ts` (12), `stage-content-change.test.ts` (5),
 `stage-source-admission.test.ts` (9), `stage-consumer-probes.test.ts` (2), `stage-boot-states.test.ts`
-(11) — 8 files / 89 tests, all passing.
+(11) — 8 files / 90 tests, all passing.
 
 ## AM-5 increment — independent review round
 
@@ -81,8 +81,15 @@ could destroy the parked task during the lens transition; the conformance hook s
 transforms, silently dropping its control mid-session; the probe's validator resolved its bind-time
 reference instead of `task.target`; and the records carried a stale "no reviewer" sentence, a wrong
 file count, a wrong layer for one invariant, mismatched `git diff --check` evidence and mislabelled
-kernel scripts. The code corrections are in `4c831fc5`; the record corrections are in the docs commit
-that follows it (and that commit also repairs one blank line the previous docs commit left at EOF).
+kernel scripts. The code corrections are in `4c831fc5`; the record corrections are in `308c6659`
+(which also repairs one blank line `95fff696` left at EOF).
+
+A third round reviewed only the code those fixes changed, and found one defect and one clarity
+problem, fixed in `933bf285`: the parked-task hold could overwrite a task a canceller deliberately
+opened (or resurrect one after a replacement), so it now restores only a *cleared* task in the same
+session epoch; and the legacy selection helper now reports `admitted`/`cleared`/`refused` instead of a
+boolean that meant two things. Its remaining note — that the requalification module header described
+only the Layout helper's rule — is fixed in that module's header.
 
 The review also recorded limits that are **not** defects but were overstated in the records and are
 now scoped in [acceptance.md](../acceptance.md) and [am5-reconciliation.md](../am5-reconciliation.md):

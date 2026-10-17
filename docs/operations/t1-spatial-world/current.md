@@ -24,11 +24,11 @@ BATON: S02 was accepted under owner-override on 2026-10-17. Its `T1.viewport-pro
        capability remains ratified. By owner ruling D1 (2026-10-17), S07's acceptance, not S06's,
        is the viewport readiness route; S07 also owns the host↔F4 wiring (D2), and Head Save stays
        with S04 (D3).
-NEXT: PR #137 carries the complete AM-5 increment on `T1-P01-S07`: implementation `a67793e4`, first
-      review fixes `4127b63f`, and a second round of fix and record corrections. Every lane that was
-      run is green on the final code tree. The next step is a fresh independent review of that code
-      head, then the full gate at the actual proposed merge revision, then slice acceptance. Review
-      was performed in-round; acceptance, closeout and merge have not happened.
+NEXT: PR #137 carries the complete AM-5 increment on `T1-P01-S07`: implementation `a67793e4` plus
+      three rounds of review fixes (`4127b63f`, `4c831fc5`, `933bf285`) and reconciled records. Every
+      lane that was run is green on the final code tree. The next step is a fresh independent review
+      of that code head, then the full gate at the actual proposed merge revision, then slice
+      acceptance. Review was performed in-round; acceptance, closeout and merge have not happened.
 ROUTE: ./README.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17 →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →

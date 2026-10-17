@@ -87,13 +87,13 @@ No capability or closeout is recorded here.
 
 ## Evidence identity
 
-Work continues on **T1-P01-S07**, based on `fcf1fbaa`. The code head is **`4c831fc5`**
-(`a67793e4` + review fixes `4127b63f` + second-round fixes `4c831fc5`; base `bbc1203a`), the pushed
-AM-5 increment after both review rounds. Its 22 changed/added `src`/`tests` files are individually
-hashed in [am5-source-manifest.json](./evidence/am5-source-manifest.json), aggregate SHA-256
-`91316523bbbd790133221be3e0963bad8e793ee8fded1cf1ecb258afc4d304c7` over the sorted
+Work continues on **T1-P01-S07**, based on `fcf1fbaa`. The code head is **`933bf285`** (`a67793e4`
+plus review fixes `4127b63f`, `4c831fc5`, `933bf285`; base `bbc1203a`), the pushed AM-5 increment
+after three review rounds. Its 22 changed/added `src`/`tests` files are individually hashed in
+[am5-source-manifest.json](./evidence/am5-source-manifest.json), aggregate SHA-256
+`7351d55edd223804cdcf27965f1e07638ad64c266d9768be537713371a561e2a` over the sorted
 `<path>` TAB `<sha256>` newline lines that the manifest itself defines. All lanes were re-run on
-`4c831fc5`; see [verification](./evidence/verification.md). `npm run test:api` was **not** run and
+`933bf285`; see [verification](./evidence/verification.md). `npm run test:api` was **not** run and
 no gate has run against a merge revision.
 
 The committed increment's own identity (HEAD `bdaf5721` plus its review fixes at `bbc1203a`, and the
@@ -208,7 +208,7 @@ These are recorded as limits of this increment, not as hidden defects:
 
 ## Exact acceptance and merge blockers
 
-1. **A fresh independent review of the final code head** (`4c831fc5`, `91316523…` manifest). The
+1. **A fresh independent review of the final code head** (`933bf285`, `7351d55e…` manifest). The
    2026-10-17 rounds fixed what they found, but each reviewed the increment before its own fixes.
 2. **The complete gate at the actual proposed merge revision** against then-current `main`:
    `npm test`, `npm run test:arch`, `npm run check`, `npm run build`, the three kernel checks, and
