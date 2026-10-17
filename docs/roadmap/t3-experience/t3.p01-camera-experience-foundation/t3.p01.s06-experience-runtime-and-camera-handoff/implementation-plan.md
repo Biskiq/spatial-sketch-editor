@@ -90,6 +90,14 @@ an authored invocation selector is a contract decision for `T3.P01.S04`/`T3.P02`
 residual in the acceptance record and must be resolved before activation. No F2 shape is changed
 here.
 
+Two further inputs follow from the same ratified minimum. `ExperiencePresentation` has no text
+content field, so lowering takes a closed presentation-content record set; and `ExecutionProgram@1`
+has no Gate or detour slot, so the interpreter takes them as policy. Gate and detour policy is
+**derived from the authored Experience** (`deriveExperienceRuntimePolicy`) and refuses a dangling
+identity; only presentation text has no authored home at all. All three are disclosed activation
+gaps for S04/T3.P02, not new formats, and none of them changes F2, the program codec or the Camera
+authority.
+
 ## Explicit non-goals
 
 - No source/runtime activation, editor Preview route, Stage capture, host wiring or visitor bootstrap
