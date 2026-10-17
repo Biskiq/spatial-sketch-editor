@@ -8,39 +8,77 @@ Two increments are recorded here and they are **not interchangeable**:
 | Increment | Revision | State | Evidence |
 | --- | --- | --- | --- |
 | Host wiring, contributions, adapter re-binding | committed `bbc1203a` (base `fcf1fbaa`) | pushed, PR [#137](https://github.com/Biskiq/spatial-sketch-editor/pull/137), independently reviewed | this file's later section, plus the files listed there |
-| AM-5 completion (source-independent read, F.1 selection, lens/task lifecycle) | **uncommitted** on top of `bbc1203a` | **not committed, not reviewed** | this file's first sections |
+| AM-5 completion (encoding-neutral read, F.1 selection, lens/task lifecycle) | committed `a67793e4` + review fixes `4127b63f` (base `bbc1203a`) | pushed to PR #137, **reviewed in-round, findings fixed** | this file's first sections |
 
 ## AM-5 increment — tested source identity
 
-Working tree `T1-P01-S07`, HEAD `bbc1203acbb83530780e429b3ab3b930b82169db` plus the uncommitted
-increment. The 22 changed/untracked implementation, test and probe files are individually hashed in
-[am5-source-manifest.json](./am5-source-manifest.json); aggregate SHA-256
-**`a50bbd174ff66931e764f9ceeb6fd627011630e2b272ae2e8394e724963334fe`**. Documentation, screenshots
-and the browser transcript are outside that manifest.
+Commits `a67793e4` (implementation) and `4127b63f` (review fixes) on `T1-P01-S07`, parent
+`bbc1203acbb83530780e429b3ab3b930b82169db`. The 22 implementation, test and probe files the two
+commits change or add are individually hashed in [am5-source-manifest.json](./am5-source-manifest.json);
+aggregate SHA-256 **`b1a69d74f9fb48d22eef9d3647bf8d0e86fe5d1fc89ed4d921e2044f7ac9f983`** over the
+sorted lines `<path>` TAB `<file sha256>` newline. The manifest states that algorithm itself, so the
+aggregate is reproducible from the commit without guessing a serialization. Documentation,
+screenshots and the browser transcript are outside that manifest.
 
 ## AM-5 increment — check results
 
-All run on that tree, in this order, after the last source edit. Raw summaries in
-[check-summaries-am5.txt](./check-summaries-am5.txt).
+All run on `4127b63f`, in this order, after the last source edit. Raw summaries in
+[check-summaries-review.txt](./check-summaries-review.txt).
 
 | Command | Observed result |
 | --- | --- |
 | `npm run check` | **0 errors / 0 warnings** |
-| `npm run test:fast` | 127 files / **1,761 tests** passed |
+| `npm run test:fast` | 127 files / **1,762 tests** passed |
 | `npm run test:heavy` | 8 files / 118 tests passed |
 | `npm run test:arch` | 20 files / 161 tests passed |
-| `npm test` | 155 files / **2,040 tests** passed |
+| `npm test` | 155 files / **2,041 tests** passed |
 | `npm run build` | ordinary production build passed |
 | `npm run check:layout-core`, `check:project-model`, `check:camera-core`, `check:api` | all passed |
-| `git diff --check` | passed |
+| `git diff --check` | passed on both commits |
 
 **Not run:** `npm run test:api` (the DB-backed API contracts, which need a disposable Postgres this
 round did not create) and any run against a merge revision. No API or package source changed.
 
 The focused set that covers the increment directly:
-`tests/lib/authoring/stage-semantic-lifecycle.test.ts` (7), `stage-host-acceptance.test.ts` (33),
+`tests/lib/authoring/stage-semantic-lifecycle.test.ts` (8), `stage-host-acceptance.test.ts` (33),
 `stage-session.test.ts` (7), `stage-facade.test.ts` (12), `stage-content-change.test.ts` (5),
-`stage-source-admission.test.ts` (9), `stage-consumer-probes.test.ts` (2) — all passing.
+`stage-source-admission.test.ts` (9), `stage-consumer-probes.test.ts` (2), `stage-boot-states.test.ts`
+(11) — 8 files / 87 tests, all passing.
+
+## AM-5 increment — independent review round
+
+Four independent review passes read the increment without writing to it: concurrency/lifecycle,
+contract and identity, route/browser harness, and evidence honesty. Their findings were fixed in
+`4127b63f` rather than argued away:
+
+1. **Task lifetime.** A lens transition parked the task *after* cancelling its writers, so a canceller
+   observed an active task; an accepted content change closed an active task while leaving its
+   registrations live; and opening or closing a task cancelled the `command` writer of a concurrent
+   accept. Parking now precedes cancellation, accepted content cancels the task-scoped writers for
+   real, and a lens transition is the only thing that cancels commands.
+2. **Identity.** Requalification stored the correspondence's `after` address instead of the owner's
+   canonical subject, so a valid-but-non-canonical alias would fail the next change's full-address
+   match. It now stores `canonicalReference(resolved.subject)`, the same rule admission uses.
+3. **Refusals.** `select()` retained a stale value when admission refused it; a lens-bound task
+   reported "the session is disposed"; a capable task reported "capability removed" when its
+   adapter merely had no binding; `selectionClearedReason` reported anything-removed instead of the
+   primary being lost. Each now reports what happened.
+4. **Robustness.** One throwing adapter contribution froze the route's animation loop; contributor
+   calls are isolated and the frame is rescheduled in `finally`. The conformance hook failed
+   silently if its marker disappeared; it now throws. An unguarded `selectionState()` on an ended
+   binding now returns the empty selection.
+5. **Narrow shell.** At 390 px the parked-task panel sat over the reading toolbar, and the notice
+   paragraph intercepted clicks on the Experience panel's button. The panel moved below the toolbar,
+   the notice became non-interactive, and the parked panel now appears only in the lens where its
+   Resume can actually succeed.
+
+The review also recorded limits that are **not** defects but were overstated in the records and are
+now scoped in [acceptance.md](../acceptance.md) and [am5-reconciliation.md](../am5-reconciliation.md):
+the "second encoding" proof is an encoding-metadata proof (the domain read still publishes the
+current Layout/Scene projections); Resume of a directly opened host task rests on target
+requalification, not an adapter validator; instrument services guard selection, gesture and accept
+but not structural facade mutators; and no test resumes a task whose target a real accepted change
+retired (it resumes a target that no longer resolves).
 
 ### Defects the increment had to fix before these results
 
@@ -61,10 +99,11 @@ The focused set that covers the increment directly:
 
 ## AM-5 increment — production exclusion
 
-[production-exclusion.json](./production-exclusion.json): after `npm run build`, all **349** emitted
-files under `.svelte-kit/output` and `.vercel/output` were scanned for 14 probe sentinels (writer,
-probe state, the three planner kinds, adapter id, entity id, replacement hook text, plugin name,
-the four instrument labels, the module name). **Zero matches.**
+[production-exclusion.json](./production-exclusion.json): after `npm run build` on `4127b63f`, all
+**363** emitted files under `.svelte-kit/output` and `.vercel/output` were scanned for 15 probe
+sentinels (writer, probe state, the three planner kinds, adapter id, entity id, replacement hook
+text *and its data attribute*, plugin name, the four instrument labels, the module name).
+**Zero matches.**
 
 ## AM-5 increment — browser reproduction
 
@@ -111,6 +150,26 @@ Scene selection and lifecycle: [selection + Card](./plan-scene-selection.png),
 [Scene redo](./plan-scene-redo.png), [lens inactive](./plan-scene-lens-inactive.png),
 [back in World, still inactive](./plan-scene-lens-return.png),
 [explicit Resume](./plan-scene-resume.png).
+
+### Narrow-shell spot check after the review fixes (`4127b63f`)
+
+One owned browser session against the same conformance server, viewport **390 × 844**, no console
+errors:
+
+1. Open the starter, open **Conformance height**, switch to **Experience**, resize to 390 px.
+   `<html>` scroll width is 390 (no horizontal overflow); the Experience panel is the only task
+   surface, because the parked world task is not shown in a lens it cannot resume in.
+2. **Back to World** now receives its click (the notice paragraph is non-interactive and sits below
+the panel): the parked task panel appears, and **Resume Conformance height** is refused with
+   *"This adapter cannot revalidate its task. Close it and invoke it again."* — the documented rule
+   for a contribution without a validator, not a layout failure.
+3. Measured boxes: parked panel `x 16–368`, `y 570–685`; reading toolbar `x 65–378`,
+   `y 526–559`. No overlap and a 1 rem margin on both sides (the pre-fix panel reached `x 390`).
+   Screenshots: [parked panel](./plan-review-390-parked.png), [Experience panel](./plan-review-390-lens.png).
+   The 17 commands are in [browser-actions-review.json](./browser-actions-review.json) (no page errors).
+
+This is a layout spot check, not a repetition of the workflow above: the 267-command transcript is
+the behavioural evidence, and the two new panels' text and stacking are what changed.
 
 ### Limits of this evidence
 

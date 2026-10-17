@@ -1,27 +1,28 @@
 {
-  "increment": "T1.P01.S07 AM-5 completion (uncommitted, on top of bbc1203a)",
+  "increment": "T1.P01.S07 AM-5 completion plus review fixes (a67793e4 + 4127b63f, on top of bbc1203a)",
   "command": "production build (`npm run build`), then scan of every emitted output file",
   "roots": [
     ".svelte-kit/output",
     ".vercel/output"
   ],
-  "scanned_files": 349,
+  "scanned_files": 363,
   "sentinels": [
     "STAGE_BROWSER_CONFORMANCE_WRITER",
     "STAGE_BROWSER_CONFORMANCE_PROBE_STATE",
     "conformance-wall-height",
-    "conformance-scene-entity-create",
-    "conformance-scene-entity-shadow",
-    "stage-browser-conformance",
+    "conformance-scene-scalar",
+    "conformance-entity-create",
     "entity-conformance",
-    "Replace conformance starter",
     "stage-browser-conformance-only",
-    "Apply conformance height",
+    "Replace conformance starter",
+    "data-stage-conformance-replacement",
     "Create conformance entity",
-    "Toggle conformance entity shadow",
     "Select conformance entity",
-    "probe-state"
+    "Toggle conformance entity shadow",
+    "Resume Conformance Scene",
+    "Conformance height",
+    "conformance-adapter"
   ],
-  "matches": {},
-  "result": "zero matches"
+  "matches": 0,
+  "reading": "Zero probe sentinels in any emitted file: the test-only Vite hook, adapter, planners, instrument labels and replacement control exist only under the explicit conformance config."
 }

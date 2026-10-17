@@ -24,15 +24,15 @@ BATON: S02 was accepted under owner-override on 2026-10-17. Its `T1.viewport-pro
        capability remains ratified. By owner ruling D1 (2026-10-17), S07's acceptance, not S06's,
        is the viewport readiness route; S07 also owns the host↔F4 wiring (D2), and Head Save stays
        with S04 (D3).
-NEXT: PR #137 remains on T1-P01-S07, unmerged. Disposal, replacement atomicity and generic
-      planner/submission/UI integration fixes have regressions and fresh independent code review.
-      Bounded browser edit→Undo/Redo→replacement is recorded in both readings; complete current-main
-      candidate results and source identity are in S07 acceptance/evidence. Resolve the AM-5
-      source-independent read, ordered F.1/Scene selection and inactive-lens lifecycle gaps via the
-      bounded proposal linked from S07 acceptance before slice acceptance, closeout or merge.
+NEXT: PR #137 carries the complete AM-5 increment on `T1-P01-S07`: `a67793e4` plus review fixes
+      `4127b63f`, with every lane green on the final commit. The next step is a fresh independent
+      review of that head, then the full gate at the actual proposed merge revision, then slice
+      acceptance. Review was performed in-round; acceptance, closeout and merge have not happened.
 ROUTE: ./README.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17 →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md
-BLOCKER: S07 AM-5 conformance and actual merge-revision acceptance remain unmet. S04–S06 wait for S07's closeout.
+BLOCKER: The final head has had no review *after* its fixes, and no gate has run against a proposed
+         merge revision (the DB-backed API suites were not run for the increment). Actual
+         merge-revision acceptance remains owed; S04–S06 wait for S07's closeout.
 ```

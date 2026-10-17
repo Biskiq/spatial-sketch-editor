@@ -1,8 +1,9 @@
 # T1.P01.S07 — Stage↔F4 integration bridge: implementation plan
 
 **Slice:** T1.P01.S07 · **Status:** in-progress — owner-authorized 2026-10-17 (D1–D4,
-[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); implementation and focused
-tests written; fresh code review and bounded browser evidence recorded, full AM-5 acceptance withheld ·
+[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); the host wiring and
+the owner-approved AM-5 completion are implemented with lane and browser evidence, the merge-revision
+gate and independent slice acceptance are still withheld ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -155,10 +156,15 @@ proof, and M5's composed exposure stays S05's.
 This slice is **authorized** (owner, 2026-10-17) and **in progress**. Its prerequisites are accepted on
 `main`, and implementation started from `main` at `fcf1fbaa` through the T1 runbook's start step (the
 eligibility row is `in-progress` and the one-line cycle check opens nothing: S07 is not a listed
-exposure). The host wiring, adapter re-binding, contribution points, regression tests and fresh independent
-code review are recorded in [acceptance.md](./acceptance.md), with bounded browser evidence in both
-readings and a validation candidate on then-current main. S07 remains **unaccepted**: full AM-5
-source-independent read, ordered F.1/Scene selection and inactive-lens lifecycle requirements are
-unmet. The [bounded API/completion proposal](./am5-reconciliation.md) preserves those requirements
-and requests no acceptance exception. The actual merge-revision gate, independent slice acceptance
-and routine closeout remain required; the viewport capability stays ratified.
+exposure). The host wiring, adapter re-binding and contribution points are committed and independently
+reviewed; the owner approved the [bounded AM-5 completion](./am5-reconciliation.md), which is
+implemented on the branch: the source-independent accepted read, ordered F.1 selection with one
+primary, and the lens/task parking and explicit revalidated Resume. Focused suites, the arch lane, the
+full editor suite and a browser session in both readings cover it, and the production build excludes
+every probe sentinel — all recorded in [acceptance.md](./acceptance.md) with
+[browser evidence](./evidence/browser-actions.json).
+
+The AM-5 increment is committed at `a67793e4` and `4127b63f` (the review fixes) and was reviewed in
+round, but the complete gate has not run at a merge revision (API suites included). S07 therefore remains **unaccepted**: the actual
+merge-revision gate, fresh independent review of the increment and of the PR head, independent slice
+acceptance and routine closeout remain required; the viewport capability stays ratified.

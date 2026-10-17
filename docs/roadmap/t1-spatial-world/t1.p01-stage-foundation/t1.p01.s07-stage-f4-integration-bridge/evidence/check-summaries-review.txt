@@ -1,0 +1,105 @@
+# T1.P01.S07 review round — raw check summaries (2026-10-17)
+
+Revision: `4127b63f` on `T1-P01-S07` (`a67793e4` plus the review fixes; base `bbc1203a`).
+Host: macOS, local working tree with no other changes; each command run from the repository root.
+
+```
+$ npm run check
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/apps/editor
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings
+```
+
+```
+$ npm run test:fast
+
+ Test Files  127 passed (127)
+      Tests  1762 passed (1762)
+   Start at  16:15:08
+   Duration  13.46s (transform 4.25s, setup 0ms, collect 32.65s, tests 29.51s, environment 14ms, prepare 8.10s)
+
+```
+
+```
+$ npm run test:heavy
+
+ Test Files  8 passed (8)
+      Tests  118 passed (118)
+   Start at  16:15:22
+   Duration  13.52s (transform 820ms, setup 0ms, collect 3.16s, tests 52.45s, environment 2ms, prepare 552ms)
+
+```
+
+```
+$ npm run test:arch
+
+ Test Files  20 passed (20)
+      Tests  161 passed (161)
+   Start at  16:15:05
+   Duration  2.09s (transform 1.73s, setup 0ms, collect 5.72s, tests 3.13s, environment 5ms, prepare 1.15s)
+
+```
+
+```
+$ npm run test
+
+ Test Files  155 passed (155)
+      Tests  2041 passed (2041)
+   Start at  16:15:36
+   Duration  26.87s (transform 4.80s, setup 0ms, collect 39.62s, tests 110.34s, environment 23ms, prepare 10.14s)
+
+```
+
+```
+$ npm run build
+✓ built in 5.34s
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-vercel
+  ✔ done
+```
+
+```
+$ npm run check:layout:core
+> npm run check -w @portfolio/layout-core
+
+
+> @portfolio/layout-core@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+
+```
+
+```
+$ npm run check:project:model
+> npm run check -w @portfolio/project-model
+
+
+> @portfolio/project-model@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+
+```
+
+```
+$ npm run check:camera:core
+> npm run check -w @portfolio/camera-core
+
+
+> @portfolio/camera-core@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+
+```
+
+```
+$ npm run check:api
+> npm run check -w @biskiq/api
+
+
+> @biskiq/api@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+
+```
+

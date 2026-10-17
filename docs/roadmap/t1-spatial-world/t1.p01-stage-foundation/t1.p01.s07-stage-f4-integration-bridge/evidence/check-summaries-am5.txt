@@ -39,3 +39,12 @@ Failed to load texture for material "effective": /textures/injected-fail.png Err
 .svelte-kit/output/server/entries/fallbacks/error.svelte.js                            0.35 kB
 ✓ built in 4.87s
 ```
+
+---
+
+**Provenance (added when the increment was committed).** These runs are the implementation commit
+`a67793e4` with one difference: two trailing blank lines (`accepted-read.ts`, this file) were removed
+afterwards to satisfy `git diff --check`, so the commit differs from the tested tree only in
+whitespace. The review-fix commit `4127b63f` re-ran the same lanes; its raw summaries are in
+[check-summaries-review.txt](./check-summaries-review.txt), and that file — not this one — describes
+the current head.
