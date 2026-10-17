@@ -142,14 +142,15 @@ capabilities `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` an
 `accepted`. **S02 and S03 were authorized** by the owner decision of 2026-10-16. S03 is accepted and
 shipped with its two F4 capability records; S02 is accepted and shipped under the owner-override
 documented in its row. Their prerequisites were accepted on the trusted base, where `ee463d0b` is
-an ancestor. S04–S06 are **proposed** and hold no implementation permission. Same-phase sequencing
+an ancestor. **S07 was authorized** by the owner decision of 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)) and is not started. S04–S06
+are **proposed** and hold no implementation permission. Same-phase sequencing
 never bypasses the trusted-base rule: each consumed gate and each required capability must be
 accepted at the consumer's trusted base.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
-| T1.P01.S02 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted and shipped 2026-10-17 by owner-override at PR #128 revision `567a17e7`; waived the current-main merge-gate rerun and S06 integration proof as prerequisites to S02 acceptance; S06 result remains owed and `T1.viewport-projection@1` remains ratified |
+| T1.P01.S02 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted and shipped 2026-10-17 by owner-override at PR #128 revision `567a17e7`; waived the current-main merge-gate rerun and S06 integration proof as prerequisites to S02 acceptance; `T1.viewport-projection@1` remains ratified, and its acceptance route is S07 (ruling D1, 2026-10-17) |
 | T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
 | T1.P01.S07 | approved | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); runs before S04 |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
@@ -168,12 +169,12 @@ current-source acceptance record proves unit capability readiness.
 The [global gate register](../../README.md#gate-register) records accepted F1/F3 providers from S01
 and the accepted F4 provider from S03. S03's two AM-4 outputs have separate durable capability
 records. S02 is accepted as a slice by owner-override, but `T1.viewport-projection@1:viewport-projection-v1`
-remains ratified pending S06's integrated result; no consumer readiness is claimed. `F5.release-envelope@1`
+remains `ratified` until S07's acceptance records it; no consumer readiness is claimed. `F5.release-envelope@1`
 (T4.P01.S02) stays unassigned until its own phase registers.
 
-**Viewport readiness route (owner ruling D1, 2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)).** The route as
-originally written was circular: S04, S05 and S06 each require `viewport-projection-v1`, which waited for
-S06's integrated result, and S06 waits for S01–S05. **S07** is the route out. It does the host↔F4
+**Viewport readiness route (owner ruling D1, 2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)).** **S07** is the
+route that accepts the viewport capability. The earlier S06-coupled route was circular, and it is
+recorded only in the decision record. It does the host↔F4
 wiring, adapter re-binding and the AM-5 adapter contribution points, and it reruns the seam conformance
 and the complete merge gate on then-current `main`. Its acceptance records `viewport-projection-v1`,
 with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
@@ -183,10 +184,9 @@ stays `ratified` and S04–S06 cannot start.
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
 module, append-only barrels and lane lists, and the full merge gate rerun on the then-current `main`.
-Neither consumes the other, so the host↔F4 wiring (accepted install into the Stage, Undo/Redo
-commands, replacement baseline, selection requalification, Camera-output rebase) is S04's first
-increment unless the owner assigns it explicitly elsewhere. The owner assigned it to S07 on 2026-10-17
-(D2), with the Head Save integration staying with S04 (D3). The [shared-file protocol](../../cross-track-execution.md#authorized-batch-2026-10-17) for S07
+Neither consumed the other. The host↔F4 wiring (accepted install into the Stage, Undo/Redo commands,
+replacement baseline, selection requalification, Camera-output rebase) is **S07's** by ruling D2
+(2026-10-17), and the Head Save integration is **S04's** by ruling D3. The [shared-file protocol](../../cross-track-execution.md#authorized-batch-2026-10-17) governs S07
 alongside `T3.P01.S03` (batch A, authorized), and later S04 alongside `T2.P01.S03` (batch B, not authorized).
 
 ```text
@@ -197,8 +197,8 @@ Stage:        active
 ```
 
 `T1.P01.S01`, `T1.P01.S02` and `T1.P01.S03` are accepted and shipped. S02's acceptance uses the
-owner-override recorded in its acceptance stub; its viewport capability remains ratified pending the
-S06 integrated result, and no consumer readiness is claimed. S04–S07 have no accepted result. The
+owner-override recorded in its acceptance stub; its viewport capability remains `ratified` until S07's
+acceptance records it, and no consumer readiness is claimed. S04–S07 have no accepted result. The
 final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
 stage marker is written, and closure stays an explicit owner request.
 
@@ -241,8 +241,8 @@ breaking shared semantics requires a new major rather than a falsely compatible 
 
 Approved: the canonical starter entry and bounded Layout scope; deferred general drawing
 preserved. The S02 slice is accepted independently of the phase final gate; its
-`T1.viewport-projection@1` capability remains ratified pending S06's integrated result. T2/T3 UI
-must not claim readiness from S02 until that route is complete. Local F4 and T3 unit work can run
+`T1.viewport-projection@1` capability remains `ratified` until S07 is accepted (ruling D1). T2/T3 UI
+must not claim readiness from S02 alone. Local F4 and T3 unit work can run
 alongside viewport work after F1. Conditional Save waits only for local F4 plus T3's accepted
 current-source Save conformance.
 

@@ -13,18 +13,14 @@ INTEGRATION ROUTE: ../t2.p01.s04-bounded-composition-loop/implementation-plan.md
 
 ## Prerequisite
 
-S02 accepted; `T1.P01.S02`'s viewport and `T1.P01.S03`'s local acceptance accepted at this slice's
-trusted base; and the host↔F4 wiring (accepted install into the Stage, Undo/Redo commands,
-replacement baseline, selection requalification, Camera-output rebase) present on `main`. That
-wiring is `T1.P01.S04`'s first increment by default; if the owner authorizes this slice first, the
-owner assigns it explicitly, and it is never built twice.
-
-**Launch conditions (2026-10-17).** The owner moved the wiring to `T1.P01.S07` and made S07's
-acceptance the viewport readiness route (D1/D2,
-[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)). The paragraph above
-is superseded on that point: this slice is in batch B, **after** S07
-([conditions](../../../next-batch-2026-10-17.md#t2p01s03-launch-conditions)). It may start only when all of these
-hold:
+S02 accepted, and `T1.P01.S03`'s local acceptance accepted at this slice's trusted base. By owner
+rulings D1/D2 of 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)),
+`T1.P01.S07` owns the host↔F4 wiring (accepted install into the Stage, Undo/Redo commands,
+replacement baseline, selection requalification, Camera-output rebase, adapter re-binding and the AM-5
+contribution points), and its acceptance records `viewport-projection-v1`, with `T1.P01.S02` as
+provider. This slice is in batch B, **after** S07
+([conditions](../../../next-batch-2026-10-17.md#t2p01s03-launch-conditions)). It may start only when
+all of these hold:
 
 1. The owner authorizes it, and its register row reads `approved`. The 2026-10-17 decision does
    not authorize it.

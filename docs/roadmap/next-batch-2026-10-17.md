@@ -1,8 +1,9 @@
 # Next parallel batch — coordination proposal (2026-10-17)
 
 **Status:** **owner-approved 2026-10-17** ([decision record](../reference/decisions/next-batch-authorization-2026-10-17.md)).
-D1–D5 are applied in the same PR. **D6/D7 are approved but held**, because this proposal's D6 cannot be
-registered truthfully under the register rules ([hold](#application-hold-d6d7)). The analysis below is
+D1–D5 are applied in the same PR. D6/D7 were approved but held, because this proposal's D6 cannot be
+registered truthfully ([hold](#application-hold-d6d7)). Owner ruling **R1-D** then superseded them:
+all T4 work is deferred until [Core Editor Stability](./core-editor-stability.md) is accepted. The analysis below is
 kept as written, and only the ruling column and the checklist record the outcome.
 
 **Basis:** `main` at `c9aa53cf` (post-PR #135; PR #128 `T1.P01.S02` and PR #134 `T2.P01.S02`
@@ -80,8 +81,8 @@ three exposures and is not enlarged. The scope is in the [S07 plan](./t1-spatial
 | D3 | **Head Save integration** stays with `T1.P01.S04`, named under the [2026-10-16 decision 1](../reference/decisions/s02-pair-authorization-2026-10-16.md) remaining-decision mechanism. `conditional-save-current-v1` joins S04's `Requires` at S04's authorization. It still precedes `T2.P01.S04`. | It keeps the critical-path bridge narrow. S04 is T1's first Head-bearing surface. | approved, applied |
 | D4 | **Authorize `T1.P01.S07`** (batch A). It is not a cycle exposure, since the window is at its bound of three. | Prerequisites are accepted on `main`. | approved, applied |
 | D5 | **Authorize `T3.P01.S03`** (batch A), under the [batch A protocol](./cross-track-execution.md#authorized-batch-2026-10-17), with the split-on-discovery clause. | The prerequisite closure is verified, and it is independent of T1 viewport work ([below](#t3p01s03-verification)). | approved, applied |
-| D6 | **Register T4.P01** from the [registration draft](./t4-release/t4.p01-prepared-release-foundation/README.md), with all slices `proposed`. T4 moves from `planning` to `approved`. No gate changes state. | Registration is lifecycle only and authorizes nothing. | approved, **held** |
-| D7 | **Authorize `T4.P01.S01`** (docs-only delivery specification, batch A). | It consumes nothing and writes only T4 docs. | approved, **held** |
+| D6 | **Register T4.P01** from the [registration draft](./t4-release/t4.p01-prepared-release-foundation/README.md), with all slices `proposed`. T4 moves from `planning` to `approved`. No gate changes state. | Registration is lifecycle only and authorizes nothing. | approved, held; **superseded by R1-D** (T4 deferred) |
+| D7 | **Authorize `T4.P01.S01`** (docs-only delivery specification, batch A). | It consumes nothing and writes only T4 docs. | approved, held; **superseded by R1-D** (T4 deferred) |
 | D8 | *Not requested now.* Ratify F5@1 from S01's draft before any `T4.P01.S02` authorization. | It mirrors the viewport precedent (shape approval before provider acceptance). | deferred |
 | — | *Not requested now.* Authorize batch B (`T1.P01.S04`, `T2.P01.S03`). | Blocked until S07 ships and `viewport-projection-v1` is accepted ([conditions](#t2p01s03-launch-conditions)). | deferred |
 
@@ -115,7 +116,9 @@ checker refuses any registered row whose `Consumes` names a gate version that do
 `proposed` rows are included. `T4.P01.S03`–`S05` consume `F5.release-envelope@1`, which is `undrafted`
 with no version, and S05 (the final gate) also consumes the undrafted `T3.camera-experience-cutover@1`.
 Omitting them would be the dishonest registration the T3.P02 proposal refused. D7 needs a registered
-row, so it is held with D6. The owner chooses one resolution:
+row, so it is held with D6. *Historical:* the options below were offered, and the owner chose none.
+Ruling R1-D deferred T4 entirely instead
+([record](../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)).
 
 | Option | Effect | Trade-off |
 | --- | --- | --- |
@@ -144,7 +147,6 @@ closure. Those gate `T2.P01.S04`.
 APPROVAL → batch A, in parallel, no imposed merge order:
   T1.P01.S07  (critical path for T1 S04 and T2 S03)
   T3.P01.S03  (critical path for T3 S04 and T4 S03/S04)
-  T4.P01.S01  (docs; feeds the F5@1 ratification)
 S07 merged + viewport-projection-v1 accepted → batch B (owner-authorized separately):
   T1.P01.S04 ∥ T2.P01.S03
 then T1.P01.S05; T2.P01.S04 after T2.S03 + T1 S04's Head Save; T1.P01.S06 last
@@ -159,7 +161,7 @@ channel module, S07 reruns its seam probes before merging. Gate-register edits t
 | --- | --- | --- | --- |
 | `T1.P01.S07` | [T1 baton](../operations/t1-spatial-world/current.md) → [T1.P01](./t1-spatial-world/t1.p01-stage-foundation/README.md) → [S07 plan](./t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | T1 runbook start step (eligibility + one-line cycle check: not listed, so it opens nothing) | Independent review; closeout writes the `viewport-projection-v1` record and the gate goes `accepted` |
 | `T3.P01.S03` | [T3 baton](../operations/t3-experience/current.md) → [T3.P01](./t3-experience/t3.p01-camera-experience-foundation/README.md) → [S03 plan](./t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | T3 runbook start step | `unit-acceptance-v1`, `conditional-save-units-v1` and `camera-handoff-v1` accepted, with real-DB evidence at zero skips |
-| `T4.P01.S01` | [T4 baton](../operations/t4-release/current.md) → T4.P01 README (after D6) → [S01 plan](./t4-release/t4.p01-prepared-release-foundation/t4.p01.s01-delivery-specification/implementation-plan.md) | T4 runbook start step | Reviewed F5@1 draft package ready for D8 |
+| ~~`T4.P01.S01`~~ deferred by R1-D | [T4 baton](../operations/t4-release/current.md) → T4.P01 README (after D6) → [S01 plan](./t4-release/t4.p01-prepared-release-foundation/t4.p01.s01-delivery-specification/implementation-plan.md) | T4 runbook start step | Reviewed F5@1 draft package ready for D8 |
 
 ## Ratification checklist
 

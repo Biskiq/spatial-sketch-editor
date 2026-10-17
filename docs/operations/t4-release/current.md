@@ -20,13 +20,14 @@ TRACK: T4 Release and delivery (planning — no implementation authorized) →
        ../../roadmap/t4-release/README.md
 PHASES: no capability phase is registered; `T4.prepared-reader` is an undrafted gate. Registration
         and authorization are owner decisions.
-BATON: No T4 work is authorized. The owner approved T4.P01 registration (D6) and the docs-only S01
-       (D7) on 2026-10-17, but both are held: S03–S05 consume gate versions that do not exist yet
-       (F5@1 and the T3 cutover), so no honest registered row can be written.
-NEXT: Wait for the owner's choice of hold resolution (R1–R3 in the next-batch proposal). Do not start
-      implementation from this baton.
+BATON: No T4 work is authorized. Owner ruling R1-D (2026-10-17) defers all T4 planning and
+       implementation until Core Editor Stability is accepted. It supersedes the D6/D7
+       approved-but-held disposition. The T4.P01 draft is frozen evidence.
+NEXT: None. Resumption is two owner acts after Core Editor Stability's recorded acceptance: renewed
+      planning authorization, then separately registration/implementation. Do not start any T4 work
+      from this baton.
 ROUTE: ./README.md →
-       ../../roadmap/next-batch-2026-10-17.md →
-       ../../roadmap/t4-release/t4.p01-prepared-release-foundation/README.md
-BLOCKER: the D6/D7 hold, an owner choice among R1–R3.
+       ../../reference/decisions/next-batch-authorization-2026-10-17.md →
+       ../../roadmap/core-editor-stability.md
+BLOCKER: Core Editor Stability is not accepted (product-priority deferral R1-D).
 ```

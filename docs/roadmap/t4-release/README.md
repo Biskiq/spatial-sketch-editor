@@ -93,9 +93,10 @@ No T4 phase is registered. A phase is added here by an authorized plan, with its
 A registration-ready draft of the first phase exists:
 [T4.P01 — Prepared release foundation](./t4.p01-prepared-release-foundation/README.md), proposed
 2026-10-17. It reconciles the [first-phase proposal](./first-phase-proposal.md) against current
-`main` and drafts the docs-only S01 plan. Registration (D6) was approved on 2026-10-17 but is held
-([why](../next-batch-2026-10-17.md#application-hold-d6d7)). Until then it is not a row in this
-register and it authorizes nothing.
+`main` and drafts the docs-only S01 plan. **All T4 planning and implementation is deferred** by owner ruling R1-D of 2026-10-17
+([record](../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)) until [Core Editor Stability](../core-editor-stability.md) is accepted.
+The draft is frozen evidence, not a row in this register, and it authorizes nothing. Resumption needs
+renewed owner authorization of planning first, then a separate registration/implementation decision.
 
 ## Starting foundation
 

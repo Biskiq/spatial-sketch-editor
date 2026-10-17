@@ -152,15 +152,12 @@ lifecycle and prerequisites only.
 
 `F1.reference@1:references-v1` was accepted at `ee463d0b` and S01 shipped in PR #130. S02's
 `local-single-domain-v1` (with `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor
-of post-PR #129 `main`, so S02 is eligible. S03 also waits for
-`T1.P01.S02`'s `viewport-projection-v1` **and** for the host↔F4 wiring, which is `T1.P01.S04`'s
-first increment by default — if the owner authorizes S03 first, the owner assigns that wiring
-explicitly. The owner moved that wiring to a narrow `T1.P01.S07` on 2026-10-17
-([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), whose acceptance also
-makes the viewport capability ready. That removes the cycle in which `viewport-projection-v1` waited for T1's final gate.
+of post-PR #129 `main`, so S02 is eligible. S03 also waits for `viewport-projection-v1` **and** the
+host↔F4 wiring. By owner rulings D1/D2 of 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), both come from `T1.P01.S07`:
+it owns the wiring, and its acceptance records the viewport capability, with `T1.P01.S02` as provider.
 S03's [exact launch conditions](./t2.p01.s03-first-editing-surface/implementation-plan.md#prerequisite)
 are in its plan, and S03 stays unauthorized. S04 additionally needs `T3.P01.S02`'s
-`conditional-save-current-v1` (accepted) **and** T1's Head Save integration (decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
+`conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
 is judged at the slice's own trusted base.
 
 The requirements above describe the pre-cutover source adapter. `T3.P01.S04` migrates existing

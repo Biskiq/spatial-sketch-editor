@@ -274,7 +274,7 @@ there is no batch merge and no imposed order. Every merge reruns the complete me
 `main`, whatever the slice's iteration tier; a slice whose shared module changed underneath it
 rebases and reruns before merging. Integration of the viewport host with F4 (accepted install, Undo/
 Redo commands, replacement baseline, selection requalification, Camera-output rebase) is
-`T1.P01.S04`'s first increment by default.
+`T1.P01.S04`'s first increment by default (reassigned to `T1.P01.S07` by ruling D2 of 2026-10-17).
 
 **Cycle.** `T1.P01.S02` is a listed exposure: its first authorized implementation opens the T1.P01
 window through the runbook start step. `T1.P01.S03`, `T2.P01.S01` and `T3.P01.S01` are not exposures
@@ -325,11 +325,10 @@ and starts only after `conditional-save-current-v1` is accepted. Neither slice i
 ## Authorized batch 2026-10-17
 
 **Batch A is owner-authorized 2026-10-17** ([decision](../reference/decisions/next-batch-authorization-2026-10-17.md)):
-`T1.P01.S07` and `T3.P01.S03`. `T4.P01.S01` is approved but held (T4.P01 is not registered). Batch B
-is not authorized. These are the shared-file and merge rules for the batches of the
+`T1.P01.S07` and `T3.P01.S03`. Batch B is not authorized. All T4 work, including `T4.P01.S01`, is
+deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted. These are the shared-file and merge rules for the batches of the
 [2026-10-17 next-batch proposal](./next-batch-2026-10-17.md). The decisions, rationale and launch conditions live
-in that proposal, not here. Batch A is `T1.P01.S07` and `T3.P01.S03`, with the docs-only `T4.P01.S01` joining once its hold is
-resolved. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
+in that proposal, not here. Batch A is `T1.P01.S07` and `T3.P01.S03`. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
 and `viewport-projection-v1` is accepted at their trusted base.
 
 ```mermaid
@@ -342,7 +341,6 @@ flowchart LR
   P --> T2F["T2 S04 (needs Head Save)"]
   UI --> T2F
   U["T3 S01/S02 (shipped)"] --> X["T3 S03"] --> CUT["T3 S04"]
-  D["T4 S01 docs"] --> R["F5@1 ratification"] --> F["T4 S02"]
 ```
 
 This delta replaces only the `V --> UI` edge of the DAG above with `V → S07 → UI`, and it adds S07 as
@@ -358,7 +356,7 @@ S04's predecessor. Every other edge is unchanged.
 | `project-model` `src/f4/**` and the editor `authoring/f4/**` coordinator | `T3.P01.S03` for the additive unit-acceptance extension | `T1.P01.S07` consumes public exports; any host-facing addition is additive, and the second merger resolves; landed `local-single-domain-v1` behavior changes for neither |
 | `project-model` `src/channels/**` (F3) | `T3.P01.S03` (additive `camera-handoff-v1`) | `inspection-v1` and the ticket protocol S07 rebases on stay byte-compatible; S07 reruns its probes if T3 merges first |
 | `project-model` Save subpath, `apps/api/**`, migrations and editor `authoring/save/**` | `T3.P01.S03` | read-only |
-| `docs/roadmap/t4-release/**` | `T4.P01.S01` | — |
+| `docs/roadmap/t4-release/**` | none (T4 deferred, R1-D) | frozen |
 | Root barrels, `package.json` exports and [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the textual conflict |
 | Boundary tests (public surface, project-model, camera-core) | additive assertions per slice | no slice weakens an existing assertion |
 | Gate register rows | each slice's closeout edits only its own gate rows (S07: `T1.viewport-projection`; T3 S03: F1/F3/F4 entries) | same table, distinct rows; the second merger resolves |

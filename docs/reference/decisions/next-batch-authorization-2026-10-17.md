@@ -3,7 +3,9 @@
 **Date:** October 17, 2026. **Status:** **owner-approved** — the owner approved D1–D7 of the
 [2026-10-17 next-batch proposal](../../roadmap/next-batch-2026-10-17.md#proposed-decisions) as proposed.
 D1–D5 are applied by the PR that carries this record and take effect when it merges after independent
-review. **D6/D7 are approved but not applied**: see [Application hold](#application-hold-d6d7).
+review. D6/D7 were first approved but held ([Application hold](#application-hold-d6d7--superseded-by-r1-d)). That hold is
+**superseded** by the later same-day ruling [R1-D](#ruling-r1-d-t4-deferral-2026-10-17), which defers
+all T4 work.
 
 This record is decision provenance, like the
 [2026-10-16 S02 pair record](./s02-pair-authorization-2026-10-16.md). It changes no ratified contract:
@@ -24,7 +26,7 @@ Every consumed gate and required scope of S07 and T3.P01.S03 is `accepted` and `
 of post-PR #135 `main` (`c9aa53cf`); the proposal lists the commits. Batch A runs S07 and T3.P01.S03 in
 parallel; neither consumes the other.
 
-## Application hold (D6/D7)
+## Application hold (D6/D7) — superseded by R1-D
 
 D6 (register T4.P01 with all slices `proposed`) cannot be written truthfully today, and D7 (authorize
 the docs-only `T4.P01.S01`) needs a registered phase row. The register checker refuses any registered
@@ -33,18 +35,40 @@ consume `F5.release-envelope@1` (still `undrafted`, no version), and the final g
 undrafted `T3.camera-experience-cutover@1`. Dropping those from `Consumes` would be the dishonest
 registration the [T3.P02 proposal](../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md)
 already refused. The proposal missed this; it is recorded as the proposal's error, not the owner's.
-The owner's choice between the resolutions listed in the proposal is pending; until then T4.P01 stays
-an unregistered draft and nothing in T4 is authorized.
+The proposal listed resolutions R1–R3. *Historical:* this hold stood until the owner ruled R1-D below,
+which replaces it.
+
+## Ruling R1-D: T4 deferral (2026-10-17)
+
+The owner ratified D1–D5 and ruled **R1-D**: **all T4 planning and implementation is deferred until
+[Core Editor Stability](../../roadmap/core-editor-stability.md) is accepted.** This is a product-priority
+deferral, not a dependency finding. It supersedes D6/D7 and the hold above. It does not select R1, R2 or
+R3, so the F5 drafting does not run either.
+
+| Concern | Disposition under R1-D |
+| --- | --- |
+| T4 track | Stays `planning`. |
+| T4.P01 | Stays unregistered. The registration draft and S01 plan draft remain as **frozen evidence**: they are not work in progress and not a queue. |
+| F5 and `T4.prepared-reader` | Stay `undrafted`. No F5 drafting, ratification (D8) or provider wiring. |
+| T4 slices | None is registered or authorized. No temporary final gate and no checker change (R2/R3 are not taken). |
+| Resumption | Two separate owner acts, in this order, and only after Core Editor Stability has a recorded acceptance: (1) renewed authorization of T4 **planning**, which re-validates the frozen drafts against then-current `main`; (2) separately, T4 registration and any implementation authorization. |
+| T3 obligations kept | The T3.P01.S04 source/release **inventory**, migration/refusal coverage, quiescence/recovery plan and **publication compatibility disposition** (AM-7; [S04 plan](../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#prerequisite)) are unchanged by this deferral. Because T4's prepared delivery now follows Core Editor Stability, any publication gap the owner accepts at T3.P01.S04 runs until T4's prepared-reader cutover. Existing publications need a concrete disposition before activation, and the public and owner publication routes must report honest unavailability throughout. |
+| Retained delivery path | The P22 authored-snapshot reader and API publication format stay as the T4 README records ("retire at the T4 prepared-reader cutover"). The deferral neither deletes nor extends them beyond what T3.P01.S04's disposition allows. |
 
 ## Explicit non-implications
 
 - **No other slice is authorized.** `T1.P01.S04`–`S06`, `T2.P01.S03`–`S04`, `T3.P01.S04` and every T4
   candidate stay `proposed` or unregistered. Batch B (`T1.P01.S04` ∥ `T2.P01.S03`) needs its own
   authorization after S07 ships and `viewport-projection-v1` is accepted.
+- **No T4 work of any kind** (R1-D): no planning, drafting, registration or implementation until Core
+  Editor Stability is accepted and the owner renews authorization.
+- **Core Editor Stability is a milestone, not authorization.** Its definition registers no gate, phase
+  or slice, and authorizes no new work in T1, T2 or T3.
 - **No gate changes state.** `T1.viewport-projection@1` stays `ratified` until S07's closeout.
 - **No cycle transition.** The T1.P01 window stays open with exposures S02, S04 and S05.
 
 ## Provenance
 
 Owner approval in the coordinating session, 2026-10-17, against post-PR #135 `main` (`c9aa53cf`), on
-PR #136. Independent review precedes merge, and no implementation starts before the merge.
+PR #136. R1-D was ruled in the same session after review of the D6/D7 hold. Independent review precedes
+merge, and no implementation starts before the merge.

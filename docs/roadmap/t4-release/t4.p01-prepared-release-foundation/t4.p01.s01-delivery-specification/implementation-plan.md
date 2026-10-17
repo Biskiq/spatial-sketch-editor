@@ -1,8 +1,8 @@
 # T4.P01.S01 — Delivery specification (docs-only): implementation plan draft
 
-**Slice:** T4.P01.S01 · **Status:** draft for a phase that is not yet registered. The owner approved D6/D7 on
-2026-10-17, but they are held until an honest registration exists
-([hold](../../../next-batch-2026-10-17.md#application-hold-d6d7)). It holds no permission. **Phase:**
+**Slice:** T4.P01.S01 · **Status:** draft for a phase that is not yet registered. It is frozen by owner ruling R1-D
+(2026-10-17, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)) until Core Editor Stability is accepted. It holds no
+permission. **Phase:**
 [T4.P01 draft](../README.md) · **Track:** [T4](../../README.md) · **Runbook:**
 [T4 operations](../../../../operations/t4-release/README.md)
 

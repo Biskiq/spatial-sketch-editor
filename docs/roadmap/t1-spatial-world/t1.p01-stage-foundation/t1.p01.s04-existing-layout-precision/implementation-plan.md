@@ -22,34 +22,22 @@ trusted base. Until then this slice cannot start: its `Requires` names a capabil
 `ratified`. **Produces:** useful scalar authoring/source download
 and deferred shell discovery depth; re-arms M1 and M2. No schema change.
 
-**Host↔F4 integration (first increment).** S02 and S03 are authorized to run in parallel and
-neither consumes the other, so their wiring is this slice's by default
-([2026-10-16 decision](../../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)):
-an accepted install replaces the Stage read snapshot (S02's composed snapshot gives way to S03's
-`AcceptedSnapshot@1` export without renaming consumers); Undo/Redo become host commands through the
-shared boundary; project replacement starts a new history baseline; selection requalifies only
-through accepted correspondence; and the inspection Camera output rebases on every content change,
-re-acquiring without moving the view. If the owner authorizes `T2.P01.S03` before this slice, the
-owner assigns this wiring explicitly to one of them; it is never built twice. **Reassigned
-(ruling D2, 2026-10-17):** the wiring and the AM-5 adapter contribution points move to
-`T1.P01.S07`. This slice then registers its Dimensions instrument, Card name writer, capability-Find
-entries and Place → Layout plinth item through those contribution points, as a Layout adapter, and
-edits no host core module.
+**Host↔F4 wiring is consumed, not built here (ruling D2, 2026-10-17, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)).**
+`T1.P01.S07` owns the accepted install, host Undo/Redo commands, replacement baseline, selection
+requalification, Camera-output rebase, adapter re-binding and the AM-5 adapter contribution points.
+This slice registers its Dimensions instrument, Card name writer, capability-Find entries and
+Place → Layout plinth item through those contribution points, as a Layout adapter, and edits no host
+core, route or shell module. A needed change there is a stop-and-report to the S07 owner.
 
-**Head Save integration (assigned 2026-10-16,
-[record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)).** The slice that owns
-this wiring also owns mounting `T3.P01.S02`'s framework-free client Save state and commands in the
-PLATE Head. That includes unsaved-work signalling at project exit and replacement, resuming a pending
-sign-in draft, and routing *Reload remote* through the host's replacement guard. T3 owns the protocol,
-the server and the state machine; this slice builds none of them. This slice's scope is fixed when it
-is authorized, never mid-slice. If `F4.intent-acceptance@1:conditional-save-current-v1` is accepted
-by then, the Head Save integration is in scope and that capability joins this plan's `Requires` and
-the register row. If not, it is out of scope, the Head keeps S02's "Save unavailable" posture, and
-the owner names the T1 slice that mounts Save before `T2.P01.S04` starts. `conditional-save-current-v1`
-has been accepted since PR #133. **Ruling D3 (2026-10-17):** the Head Save integration stays with
-this slice, not S07, so the critical-path bridge stays narrow. At this slice's authorization
-`F4.intent-acceptance@1:conditional-save-current-v1` therefore joins its `Requires` and register row.
-This slice is the Head's sole writer while it runs.
+**Head Save integration is in scope (ruling D3, 2026-10-17; assignment origin: decision 1 of the
+[2026-10-16 S02 pair record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)).**
+This slice mounts `T3.P01.S02`'s framework-free client Save state and commands in the PLATE Head. That
+includes unsaved-work signalling at project exit and replacement, resuming a pending sign-in draft, and
+routing *Reload remote* through the host's replacement guard. T3 owns the protocol, the server and the
+state machine; this slice builds none of them. `F4.intent-acceptance@1:conditional-save-current-v1`
+(accepted since PR #133) joins this plan's `Requires` and the register row at this slice's
+authorization, since a scope is fixed then and never mid-slice. This slice is the Head's sole writer
+while it runs, and it must be accepted before `T2.P01.S04` starts.
 
 ## Scope
 

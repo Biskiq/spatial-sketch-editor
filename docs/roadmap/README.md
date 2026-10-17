@@ -179,7 +179,9 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
 - **Next parallel batch (2026-10-17), owner-approved** ([record](../reference/decisions/next-batch-authorization-2026-10-17.md); D1–D5 applied, D6/D7 held). The [coordination proposal](./next-batch-2026-10-17.md)
   resolves the `viewport-projection-v1` readiness cycle with a proposed narrow `T1.P01.S07` bridge. It
   verifies `T3.P01.S03`'s prerequisite closure, drafts T4.P01 registration and the docs-only S01, and
-  states `T2.P01.S03`'s exact launch conditions. The proposal itself registers, authorizes and accepts nothing; the record does.
+  states `T2.P01.S03`'s exact launch conditions. The proposal itself registers, authorizes and accepts nothing; the record does. Ruling R1-D then
+  deferred all T4 work until [Core Editor Stability](./core-editor-stability.md), the pre-publication
+  milestone whose criteria are proposed there.
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,

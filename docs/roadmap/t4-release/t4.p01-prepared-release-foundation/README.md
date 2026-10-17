@@ -2,10 +2,10 @@
 
 **Status:** registration-ready draft, 2026-10-17. It is **not registered**: no row exists in the
 [T4 phase register](../README.md#phase-register), and nothing here is a phase, slice, gate version
-or authorization. The owner approved registration (D6) and the docs-only S01 authorization (D7) on 2026-10-17, but both
-are **held**: S03–S05 consume `F5.release-envelope@1`, and S05 also consumes the undrafted
-`T3.camera-experience-cutover@1`, so no honest registered row exists yet
-([hold and options](../../next-batch-2026-10-17.md#application-hold-d6d7)).
+or authorization. **Frozen — deferred by owner ruling R1-D (2026-10-17, [record](../../../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)).**
+All T4 planning and implementation waits for [Core Editor Stability](../../core-editor-stability.md).
+The earlier D6/D7 approval and its hold ([history](../../next-batch-2026-10-17.md#application-hold-d6d7))
+are superseded. On resumption this draft is re-validated against then-current `main` before any use.
 Routes: [T4](../README.md) · [first-phase proposal](../first-phase-proposal.md) (scope and rationale,
 not repeated here) · [runbook](../../../operations/t4-release/README.md) ·
 [gate register](../../README.md#gate-register).

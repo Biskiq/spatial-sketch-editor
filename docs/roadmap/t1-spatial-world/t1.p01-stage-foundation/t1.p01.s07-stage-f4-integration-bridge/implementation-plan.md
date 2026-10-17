@@ -21,7 +21,8 @@ unauthorized contract changes.
 
 ## Why this slice exists
 
-`T1.P01.S02` shipped under owner-override, and its acceptance kept
+Before ruling D1, the route was as follows. `T1.P01.S02` shipped under owner-override, and its
+acceptance kept
 `T1.viewport-projection@1:viewport-projection-v1` `ratified` "pending S06's integrated result". S04,
 S05 and S06 each `Require` that capability, and S06 cannot start before S01–S05 are accepted. The
 viewport capability therefore waits for S06, which waits for S04/S05, which wait for the capability:

@@ -17,7 +17,9 @@ slice is authorized.
 ## Prerequisite
 
 S01–S03 accepted at this slice's trusted base; the AM-7 inventory, migration/refusal coverage,
-quiescence and recovery plan, and any owner-accepted publication gap.
+quiescence and recovery plan, and any owner-accepted publication gap. The T4 deferral (ruling R1-D,
+2026-10-17) leaves these obligations unchanged. It means any accepted gap runs until T4's
+prepared-reader cutover, which follows [Core Editor Stability](../../../core-editor-stability.md) (K2).
 
 ## Scope
 
