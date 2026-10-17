@@ -10,8 +10,8 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 registers no gate, phase or slice, and each provider is wired through its own authorized track
 phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
 T1.P01 (`T1.P01.S01` and S03 shipped; S02 authorized 2026-10-16), T2.P01 (S01 shipped; S02
-authorized) and T3.P01 (S01–S06; S01/S02 shipped, S03 the in-progress umbrella, S05/S06 owner-
-authorized 2026-10-17 under the approved split, S04 proposed and unauthorized). T3.P02 remains
+authorized) and T3.P01 (S01–S06; S01/S02/S03/S05/S06 shipped, with S03 reconciled through its
+owner-authorized split halves, S04 proposed and unauthorized). T3.P02 remains
 unregistered candidate work. The four slices authorized first on 2026-10-16 run under the
 [parallel batch protocol](#parallel-batch-2026-10-16); `T2.P01.S02` and `T3.P01.S02` run under the
 [parallel pair protocol](#parallel-pair-2026-10-16).
@@ -105,8 +105,8 @@ cannot disguise an incompatible semantic change. A consumer must declare what it
 
 **Slice prerequisites and exported-capability prerequisites are different claims.** A slice's
 `Requires` names what that slice's implementation consumes; a capability's declared prerequisites
-are what any later consumer needs from it. `T3.P01.S03` stays the in-progress umbrella; its two
-registered halves own the implementation. `T3.P01.S05` builds the F2 unit admission and Save and
+are what any later consumer needs from it. `T3.P01.S03`'s two registered halves owned the
+implementation and are shipped; S03's original obligations are reconciled. `T3.P01.S05` builds the F2 unit admission and Save and
 consumes F2 plus the enduring `acceptance-invariants-v1`; it does not consume the retiring
 `local-single-domain-v1`/`conditional-save-current-v1` admissions. `T3.P01.S06` consumes
 `inspection-v1` and the F2 program codec. The `unit-acceptance-v1`, `conditional-save-units-v1` and
@@ -156,8 +156,8 @@ proposal. No private transition, projection, selection or navigation infrastruct
 
 T3 S01 prepares the **sole** old-source conversion candidate and mapping report. T3 S05 prepares the
 new-source unit planners, acceptance and Save adapters, and T3 S06 the Experience runtime, Camera
-handoff and profile controllers, both without live activation; S03 remains the umbrella that
-reconciles the original scope once both close. T3 S04 inventories
+handoff and profile controllers, both without live activation; S03's umbrella reconciled the
+original scope once both closed. T3 S04 inventories
 local/source packages, cloud projects/versions, pending saves, releases/publications and retained
 bytes; obtains the covered-data exception and owner disposition; quiesces writers and CAS-installs
 Camera extraction, Experience order, Scene removal and locks together. It migrates every existing
@@ -336,7 +336,7 @@ and starts only after `conditional-save-current-v1` is accepted. Neither slice i
 **Batch A is owner-authorized 2026-10-17** ([decision](../reference/decisions/next-batch-authorization-2026-10-17.md)):
 `T1.P01.S07` and `T3.P01.S03`. S03's two follow-ups, `T3.P01.S05` and `T3.P01.S06`, were separately
 owner-authorized on 2026-10-17 ([record](../reference/decisions/s03-split-followup-authorization-2026-10-17.md));
-S03 stays the umbrella. Batch B is not authorized. All T4 work, including `T4.P01.S01`, is
+S03's umbrella was reconciled and closed after both halves shipped. Batch B is not authorized. All T4 work, including `T4.P01.S01`, is
 deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted. These are the shared-file and merge rules for the batches of the
 [2026-10-17 next-batch proposal](./next-batch-2026-10-17.md). The decisions, rationale and launch conditions live
 in that proposal, not here. Batch A is `T1.P01.S07` and `T3.P01.S03`. Batch B is `T1.P01.S04` and `T2.P01.S03`, startable only after S07 ships
@@ -390,8 +390,8 @@ accepted, before either batch-B slice starts**. Their trusted bases must contain
 **S03 split follow-up ownership (2026-10-17).** S05 and S06 register inside their own implementation
 PRs and carry one coordinated registration commit; no planning-only PR exists. They are not cycle
 exposures. S05 owns the F4/F2/unit/Save surfaces above and must leave the live Save route
-current-source-only; S06 owns the F3 channels surface and new camera-core runtime modules. S03's
-umbrella row, plan and acceptance record stay in place until both are accepted and reconciled. The
+current-source-only; S06 owns the F3 channels surface and new camera-core runtime modules. S03's umbrella row, plan and
+acceptance record stayed in place until both were accepted, then closed by reconciliation. The
 original S03 batch-A rules for editor routes/host/Stage/T1-owned modules, retired gates and T4 stay
 in force for both.
 

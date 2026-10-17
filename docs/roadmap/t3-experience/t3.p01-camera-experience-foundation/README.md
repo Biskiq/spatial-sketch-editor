@@ -2,9 +2,9 @@
 
 **Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
 `T3.P01.S02` shipped 2026-10-16 (PR #133), accepted with `conditional-save-current-v1`;
-S03 owner-authorized 2026-10-17, in progress as the umbrella for its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md);
-`T3.P01.S05` shipped 2026-10-17 (PR #140) with both unit capabilities accepted; `T3.P01.S06`
-shipped 2026-10-17 (PR #141) with `camera-handoff-v1` accepted; S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
+`T3.P01.S03` shipped 2026-10-17 (PRs #140/#141) through its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md),
+with its original obligations reconciled; `T3.P01.S05` shipped with both unit capabilities accepted
+and `T3.P01.S06` with `camera-handoff-v1` accepted; S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
@@ -20,9 +20,9 @@ with `T2.P01.S02`. S03 was authorized on 2026-10-17
 `T1.P01.S07`; S04 stays `proposed` and holds none. On the same day the owner authorized S03's two
 follow-ups, `T3.P01.S05` and `T3.P01.S06`, after PR #138's preparatory increment and its approved
 split direction ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)).
-The split moves execution ownership only; every original S03 obligation stays registered and S03
-stays in progress until both halves are accepted and reconciled. S05 was accepted and shipped
-2026-10-17 (PR #140) and S06 on 2026-10-17 (PR #141); S03's reconciliation is the remaining closeout step.
+The split moved execution ownership only; every original S03 obligation stayed registered. S05 was
+accepted and shipped 2026-10-17 (PR #140) and S06 on 2026-10-17 (PR #141); S03's
+[reconciliation](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) closes the umbrella.
 
 **Phase scope (decided at registration).** This phase is the sole Camera/Experience
 **source/runtime transition**: shared unit and program codecs (S01), early conditional Save (S02),
@@ -142,7 +142,7 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
 | T3.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); accepted 2026-10-16 from recorded independent-review evidence; output `F4.intent-acceptance@1:conditional-save-current-v1` accepted |
-| T3.P01.S03 | in-progress | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); in progress as the umbrella for its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) — closes only after S05 and S06 are accepted and reconciled |
+| T3.P01.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); umbrella for its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) — accepted and shipped 2026-10-17 (PRs #140/#141); every original criterion reconciled to the half slices |
 | T3.P01.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:acceptance-invariants-v1 | — | [Unit acceptance and unit Save](./t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md) | [record](./t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #140) — `unit-acceptance-v1` and `conditional-save-units-v1` accepted; first half of the S03 split |
 | T3.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1 | — | [Experience runtime and Camera handoff](./t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md) | [record](./t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #141) — `camera-handoff-v1` accepted; second half of the S03 split |
 | T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
@@ -167,8 +167,9 @@ staging, whole-operation history and unit-Save obligations (`unit-acceptance-v1`
 obligations. Their `Requires` therefore name only accepted scopes (F2 and the enduring
 `acceptance-invariants-v1`; `inspection-v1` and the F2 program codec), never S03's retiring
 current-source admissions and never each other's unaccepted output. The split changes no ratified F
-contract, no capability prerequisite and no part of S04's scope. S03 remains in progress until both
-halves are accepted and its original exit criteria are reconciled; S04 stays `proposed`.
+contract, no capability prerequisite and no part of S04's scope. Both halves are accepted and S03's
+original exit criteria are [reconciled](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md);
+S04 stays `proposed`.
 
 `T3.camera-experience-cutover` is `undrafted`. S04 is its intended sole provider, so the gate must be
 drafted and owner-ratified at version 1 before S04 is authorized; the T3.P02 registration follows.
@@ -180,8 +181,8 @@ PHASE CLOSE
 Stage:        active
 ```
 
-S01 and S02 are accepted and shipped with their accepted capability records. The final gate is
-declared, not closeable: the final child `T3.P01.S04` is neither accepted nor shipped, so no `PHASE
+S01, S02, S03, S05 and S06 are accepted and shipped with their accepted capability records. The
+final gate is declared, not closeable: the final child `T3.P01.S04` is neither accepted nor shipped, so no `PHASE
 CLOSE` beyond the active stage marker is written, and phase/track closure stays a separate owner
 event. The first authoring surface does not wait for this phase's closure.
 

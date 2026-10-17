@@ -1,99 +1,124 @@
-# T3.P01.S03 — acceptance record: Compound and runtime preparation
+# T3.P01.S03 — accepted and closed record — CLOSED STUB
 
-**Slice:** T3.P01.S03 · **Status:** authorized 2026-10-17, **in-progress umbrella — partial
-implementation, no acceptance recorded, no capability accepted**
-**Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
-**Split direction:** [split-proposal.md](./split-proposal.md) — owner-delegated approval 2026-10-17; registered and authorized as `T3.P01.S05` + `T3.P01.S06` ([record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md))
-**Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
+```text
+AUTHORITY: NONE — this is closed work. Current truth lives in the phase README's slice register and
+           the gate register; the accepted evidence lives in S05's and S06's records, which are not
+           compacted here.
+STATUS:    ACCEPTED and SHIPPED 2026-10-17. S03's obligations were executed by its registered split
+           halves, `T3.P01.S05` (PR #140, commit 279e1340) and `T3.P01.S06` (PR #141, commit
+           f6962e1c), each independently reviewed and accepted. This record reconciles every original
+           S03 criterion to that accepted evidence; it accepts no capability of its own and infers
+           nothing from the split's registration or from green tests alone.
+ROLE:      umbrella reconciliation and preservation route for T3.P01.S03.
+NOT:       product contract · plan · status store · authority for declined or residual capabilities.
+```
 
-## What is implemented in this increment
+## Delivered and accepted
 
-| Artifact | What it is |
-| --- | --- |
-| [`packages/project-model/src/f4/unit-acceptance.ts`](../../../../../packages/project-model/src/f4/unit-acceptance.ts) | The F4-facing half of the additive `unit-acceptance-v1` admission: `createUnitPlannerRegistry` (the **landed** registry with a wider admission profile — compound/unit planners admitted, resource planners only with explicit staging, duplicate kind still refused), `prepareUnitIntent` (the **landed** dispatcher, taking its granted profile from the registry alone, so registration and dispatch cannot disagree) and `validateUnitTargets` (F.1 resolution against one supplied envelope). |
-| [`packages/project-model/src/units/acceptance-staging.ts`](../../../../../packages/project-model/src/units/acceptance-staging.ts) | The F.2-dependent half: `stageUnitResources` (deterministic, duplicate-free staging or nothing), taking the resolved identity from the resolver and cross-checking it against the envelope field that identity is derived from, so a staged record cannot name a revision the resolver did not answer. A content revision and an external-bytes pin are different identities and both are kept when present. It lives behind the inactive `./units` subpath because the architecture gate forbids `f4/**` from reaching the unit envelope before `T3.P01.S04`; `f4/unit-acceptance.ts` imports nothing from it. |
-| [`packages/project-model/src/f4/prepare.ts`](../../../../../packages/project-model/src/f4/prepare.ts) | Additive per-call `PrepareAdmission` (`inspectTargets` only) and an **optional** `PlannerRegistry.admission` profile. Both admissions must hold for a compound or resource-bearing intent: the registry's granted profile **and** the planner's own declaration. With no profile the dispatcher is exactly the landed `local-single-domain-v1` rule — compound, unit and resource operations are still refused, with the landed reasons and messages. |
-| [`packages/project-model/src/channels/handoff.ts`](../../../../../packages/project-model/src/channels/handoff.ts) | The **role half** of `camera-handoff-v1` only: handoff roles (Follow, Look-through, Preview), the different-role rule, return and cleanup rules, and the displaced run's pending obligation for stale-run cleanup — all delegating to the landed ticket protocol. Guided/free ownership/return and bounded Experience session semantics are **not** here, so no scope constant is exported and the capability is not claimed. No pose, FOV or order authority. |
-| Barrels | `f4/index.ts` and `channels/index.ts` appends only. No landed export changed. |
+S03 was the largest T3 slice: the F4 unit-acceptance and unit-Save extension plus the F3
+`camera-handoff-v1` and Experience-runtime preparation. It was split by registered owner decision
+into two slices with different evidence contracts, and both are now accepted on `main`:
 
-## Interface changes in this increment
+- [`T3.P01.S05`](../t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) — F.2 candidate planners,
+  one-envelope validation, admitted resource staging, single/compound install with whole-operation
+  history, and conditional unit Save on real PostgreSQL. Accepted capabilities:
+  [`unit-acceptance-v1`](../t3.p01.s05-unit-acceptance-and-unit-save/capability-unit-acceptance-v1.md)
+  and
+  [`conditional-save-units-v1`](../t3.p01.s05-unit-acceptance-and-unit-save/capability-conditional-save-units-v1.md).
+- [`T3.P01.S06`](../t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) — the complete
+  F3 handoff, the one Experience lowering/interpreter over `ExecutionProgram@1`, the semantic
+  companion and the three profile controllers. Accepted capability:
+  [`F3.channels@1:camera-handoff-v1`](../t3.p01.s06-experience-runtime-and-camera-handoff/capability-camera-handoff-v1.md).
 
-- `PlannerRegistry.admission` is a new **optional** member: a registry built without
-a profile behaves exactly as the landed `local-single-domain-v1` (same domain set,
-refusal order, reasons and messages), and a hand-built conformance registry needs
-no change. This keeps the addition additive rather than a required field on a
-landed shape. The registry **publishes no profile at all** when the caller asked for
-none, because an always-present profile made the dispatcher treat the landed path
-as widened and emit the widened wording; the landed compound and resource
-messages are now pinned text in the suite rather than a property of a code path.
-- `PrepareAdmission` carries only `inspectTargets`; it cannot widen admission at
-dispatch time. The registry is the single authority for the granted profile, and
-there is no exported admission constant that could downgrade it.
-- `StagedUnitResource.contentRevision` is the **resolver's** concrete revision —
-the resource's own revision, or its pin's content hash for external bytes. A
-resource with neither is `repair-required` at resolution and never stages.
+The preparatory increment merged earlier (PR #138, `b13c5d73`) remains what it claimed to be: provider
+seams accepted only as an increment. Its F4 admission and F3 role half are acceptance evidence only
+through S05's and S06's completed, independently reviewed scopes.
 
-## Evidence
+## Criterion reconciliation
 
-Conformance suites exist and the coordinator ran them on the tree this record
-describes: `check:project-model` clean; the editor `check` red only on the
-pre-existing unrelated `camera-output-conformance.test.ts:345` error, which is
-also red on untouched `main`; `test:arch` 161/161 (including the F.2 inactivity
-boundary); `test:fast` 1744/1744; `test:heavy` 118/118; and the focused suites
-(`f4-unit-acceptance` 15, `camera-handoff` 8, `f4-acceptance` 31) green. Those
-are the coordinator's observations on these worktrees, not a merge-gate record
-against `main`: this increment is not merged, nothing is accepted, and the
-real-Postgres/API evidence this plan requires does not exist because no Save or
-API code is part of it. The suites are the declared evidence rows:
+| Original S03 obligation / exit criterion | Accepted evidence | Outcome |
+| --- | --- | --- |
+| Extend F4 with `unit-acceptance-v1` and `conditional-save-units-v1` | S05 acceptance + both capability records; F4 gate register names both scopes active | accepted |
+| Actual Camera View + Presentation + optional Stop candidates; complete domain/reference/resource-lock validation; staged admitted resources | S05 planning/acceptance conformance (24 + 15 focused tests); staging compared with the captured set | accepted |
+| Unit single/compound operations, whole-operation history, resource rollback | S05 acceptance suite and coordinator history/rollback regressions; API transaction-failure case leaves the prior version and base intact | accepted |
+| Unit Save with real-DB conformance at zero skips, no new live writer | S05 `save-units` 12/12 inside the API lane's 65 tests / 9 suites, zero skips; source-level inactivity proof keeps the live route current-source-only | accepted |
+| Extend F3 with `camera-handoff-v1` through the shared ticket protocol; guided/free ownership, Follow, Look-through, Preview, return, stale cleanup | S06 handoff conformance (13 tests) and the accepted capability record | accepted |
+| Shared Experience lowering/interpreter over the exact `ExecutionProgram@1` codec; reducer/clock, occurrence holds/continuation, guard/Continue/detour | S06 runtime conformance (42 tests); lowering validates against the accepted codec and refuses unsupported bindings | accepted |
+| Semantic DOM companion / Info Panel | S06 runtime and companion assertions: keyboard/DOM reachability, occurrence-derived `aria-current`, Gate Continue, focus/return, gap explanations | accepted |
+| Guided/free/reduced-motion controllers; no second Camera authority | S06 controller conformance (5 tests) plus channels, camera-output, route and motion suites (142 focused tests across 8 files) | accepted |
+| Supported program traces (AM-6) and ownership/stale-event behavior | S06 trace fixtures for repeated Stops/runs, guards, holds, Cut, travel and gaps, detour return, handoff and stale cleanup; terminal-run finality regressions | accepted |
+| Accept extension scopes on `main` before S04 consumes them | `unit-acceptance-v1`, `conditional-save-units-v1` and `camera-handoff-v1` are active in the F4/F3 gate rows on `main` (`f6962e1c`) | accepted |
+| Never relabel T1's base acceptance as complete F4 readiness | T1's provider records are unchanged; S05 names F2 and `acceptance-invariants-v1` as prerequisites, S06 names `inspection-v1` | unchanged |
 
-- [`apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts`](../../../../../apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts)
-  — the wider admission installs through the same coordinator and history; the
-  landed registry still refuses the same planner and publishes no profile, so its
-  compound and resource dispatch messages stay the landed text (pinned); duplicate
-  kind and unconfigured resource planners are refused; an unresolved target
-  refuses **before** planning and installs nothing; a real Camera view resolves
-  against a real F.2 envelope; resource staging dedupes, sorts, stages a pinned
-  external resource by its pin hash, refuses a partial set or a resource with
-  neither revision nor pin, and refuses a record whose resolver answer and
-  envelope fields disagree; a compound or resource-bearing intent is refused for a
-  planner that did not declare that acceptance even in a widened registry; and a
-  staging-registry planner is not refused at dispatch for the need it registered
-  with, tested with a resource-bearing intent.
-- [`apps/editor/tests/lib/project-model/camera-handoff.test.ts`](../../../../../apps/editor/tests/lib/project-model/camera-handoff.test.ts)
-  — handoff from Inspection to a declared role records the return obligation;
-  non-handoff and same-role handoffs refuse; a return restores the displaced role
-  under a strictly newer epoch and spends the returning ticket; a replaced
-  handoff's return is voided; handoff cleanup never ends an Inspection claim;
-  return and cleanup of a free output are idempotent no-ops.
+Nothing in S03's plan remains unimplemented or unowned. Deferred product decisions are recorded as
+S04/T4 obligations below, not as gaps in this acceptance.
 
-## Not implemented, and therefore not claimed
+## Evidence and route
 
-The [split proposal](./split-proposal.md) moves these to the two proposed slices;
-none of them is evidenced here:
+S05's recorded evidence at `983d7a60`/`d7ab6984`: clean project-model/API/editor checks, 53 focused
+unit tests, the 156-file / 2047-test editor lane, 161 arch tests, and 65 API tests with zero skips.
+S06's recorded evidence at `ff5a14da` (rebased onto post-#140 `main`): clean project-model,
+camera-core and editor checks, 142 focused tests across 8 files, the 158-file / 2099-test editor lane,
+161 arch tests and 118 heavy tests. Both PRs paired the evidence with an independent ACCEPT and a
+coordinator review. These results are reused from the half-slice records, not re-run here.
 
-- the F.2 **candidates** themselves — actual Camera View + Presentation +
-  optional Stop construction by domain planners, and resource-lock validation
-  beyond the admission seam;
-- `conditional-save-units-v1` and its **real-DB conformance at zero skips** (the
-  live current-source Save path is unchanged and is the only live path — no
-  second writer and no new-format route were added);
-- the shared Experience lowering/interpreter, reducer/clock, holds/continuation,
-  guard/Continue/detour state, semantic DOM companion/Info Panel and the
-  guided/free/reduced-motion controllers;
-- the AM-6 program traces, ownership/stale-event acceptance rows and the unit
-  single/compound operation matrices;
-- any capability acceptance, gate state change or `F4` readiness claim. T1's base
-  acceptance is not relabelled as complete F4 readiness.
+The architecture-integration route remains [`T3.P01.S04`](../t3.p01.s04-live-ownership-cutover/implementation-plan.md):
+all three capabilities are accepted but inactive, and no product source imports them.
 
-## Status and next step
+## Entry points
 
-This record claims **no S03 slice acceptance or capability acceptance**. The PR #138
-preparatory increment (`b13c5d73`) passed independent code review and was accepted
-**only as an incremental implementation**, under the owner's delegated decision
-of 2026-10-17. Register and separately authorize the proposed S03a/S03b follow-ups
-before their implementation, then complete the verification each plan requires: the full lane for the
-two new suites, `npm run check` for the touched packages, the arch lane, and the
-zero-skip DB suite for the Save half once it exists. Neither capability can be
-recorded from this increment alone: `unit-acceptance-v1` needs the candidates and
-unit Save, and `camera-handoff-v1` needs the guided/free and Experience-session
-half that this module does not provide.
+```text
+umbrella record   ./acceptance.md (this file) · ./split-proposal.md · ../README.md#slice-register
+half slices       ../t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md
+                  ../t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md
+capabilities      ../../README.md#gate-register (F3 and F4 rows)
+integration       ../t3.p01.s04-live-ownership-cutover/implementation-plan.md
+```
+
+## Residuals
+
+```text
+integration     T3.P01.S04 owns activation, caller migration, the AM-7 inventory, quiescence and
+                recovery, and retirement of the current visitor orchestration
+contract        T3.camera-experience-cutover@1 is undrafted and unratified; S04 is unauthorized
+invocation      Experience@1 has no authored Cut/Travel selector; lowering takes a closed binding set
+authored inputs presentation text, bindings, state, lifecycle and channel policy have no authored F2
+                home and may not be host-injected
+timing          hold/Gate time starts at editorial arrival; confirmed-arrival timing and the
+                transition table's authored home are S04/T3.P02 decisions
+staging         uploaded resource bytes stay host-asserted until S04's storage path verifies them
+revision        the envelope's embedded acceptedRevision is baseline provenance; the accepted
+                snapshot is revision authority
+live Save       conditional-save-current-v1 remains the only live Save route
+```
+
+## Recovery and P1 merge requirement
+
+```text
+full original obligations and split record:
+  git show f6962e1c:docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md
+  git show f6962e1c:docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s03-compound-and-runtime-preparation/split-proposal.md
+
+REQUIRED MERGE METHOD — P1: merge commit (no squash, no rebase), so this anchor and the half-slice
+records' history stay reachable on `main`. Post-merge, verify the anchor is an ancestor of `main`.
+anchor f6962e1c · tag `closed/T3.P01.S03` (created at this close; pushed).
+```
+
+## Closed-work preservation report
+
+```text
+CLOSEOUT PRESERVATION — T3.P01.S03 (2026-10-17)
+prose compacted:                 2   implementation-plan.md and this acceptance record; stubs at original paths
+reference promotions:            0   all three capability records were promoted by S05/S06 closeouts
+renderable evidence archived:    0 files / 0 bytes
+evidence stubs / manifests:      0
+transient artifacts removed:     0
+historical anchor:               f6962e1c · closed/T3.P01.S03 (pushed)
+new live → archive prose links:  0
+manual-owed verification rows:   0
+remaining deferred items:        7 (S04 activation; undrafted cutover gate; authored invocation
+                                 selector; authored input/presentation home; confirmed-arrival timing;
+                                 host-asserted staging bytes; baseline revision semantics)
+permanent stubs added:           2   (owner-ratified one-per-compacted-prose-artifact cost)
+required merge method:           merge commit (P1), no squash/rebase; post-merge anchor check owed
+```
