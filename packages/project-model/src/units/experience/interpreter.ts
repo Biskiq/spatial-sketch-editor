@@ -421,9 +421,13 @@ function arrive(
 	// an arrival action that ran before the panel existed) narrows the panel to the
 	// selected records. The selection is consumed once, here, so a later Stop shows
 	// its own full Presentation.
-	const selected = state.pendingContent.length === 0
+	const matchedSelection = state.pendingContent.length === 0
 		? presentation.content
 		: presentation.content.filter((record) => state.pendingContent.includes(record.id));
+	// A selection that names only another Presentation's content must not blank the
+	// panel: the arrival shows its own full Presentation and reports the foreign id
+	// as a gap below. A partially matching selection still narrows as declared.
+	const selected = matchedSelection.length === 0 ? presentation.content : matchedSelection;
 	// A selection that belongs to another Presentation cannot silently narrow this
 	// panel to nothing: the arrival still happens and the unconsumed selection is
 	// reported as a typed gap for the host/companion to explain.
@@ -563,7 +567,13 @@ function advance(
 	// detour target's own continuation and never discharge the return obligation.
 	if (state.returnToStopId !== null) {
 		const origin = state.returnToStopId;
-		return arrive(program, { ...state, returnToStopId: null }, origin, options, effects, true, 0, continueDepth + 1);
+		const returned = arrive(program, state, origin, options, effects, true, 0, continueDepth + 1);
+		// The obligation is discharged only once the origin arrival actually happened;
+		// a gapped return (for example a missing transition in a partial table) leaves
+		// the run at the detour target with its return still owed.
+		return returned.outcome === 'ignored'
+			? returned
+				: { ...returned, state: { ...returned.state, returnToStopId: null } };
 	}
 
 	if (continuation.kind === 'end') {

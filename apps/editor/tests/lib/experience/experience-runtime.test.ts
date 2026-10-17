@@ -484,6 +484,29 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(returned.state).toMatchObject({ stopId: 'stop-3', returnToStopId: null });
 	});
 
+	it('keeps the return obligation when the return edge has no transition', async () => {
+		const base = await program();
+		// The return origin is Travel-bound, so a return with no edge for the actual
+		// predecessor must gap instead of borrowing its authored approach.
+		const origin = { ...base.stops[0]!, id: 'stop-3', invocation: { kind: 'travel' as const, connectionId: 'connection-1' } };
+		const extended: ExecutionProgram = { ...base, stops: [...base.stops, origin] };
+		const options: ExperienceInterpreterOptions = {
+			...OPTIONS,
+			detours: [{ fromStopId: 'stop-3', toStopId: 'stop-1', returnToStopId: 'stop-3' }]
+		};
+		let state = reduceExperience(extended, createExperienceRun(extended, options), event('enter', {}, options), options).state;
+		state = reduceExperience(extended, state, event('tick', { milliseconds: 500 }, options), options).state;
+		state = reduceExperience(extended, state, event('continue', {}, options), options).state;
+		state = reduceExperience(extended, state, event('navigate', { stopId: 'stop-3' }, options), options).state;
+		state = reduceExperience(extended, state, event('navigate', { stopId: 'stop-1' }, options), options).state;
+		expect(state).toMatchObject({ stopId: 'stop-1', returnToStopId: 'stop-3' });
+		state = reduceExperience(extended, state, event('tick', { milliseconds: 500 }, options), options).state;
+		const gapped = reduceExperience(extended, state, event('continue', {}, options), options);
+		expect(gapped.state).toMatchObject({ stopId: 'stop-1', returnToStopId: 'stop-3' });
+		expect(gapped.effects.some((effect) => effect.kind === 'gap')).toBe(true);
+		expect(gapped.effects.some((effect) => effect.kind === 'camera')).toBe(false);
+	});
+
 	it('keeps the outer return obligation when a detour starts inside an excursion', async () => {
 		const lowered = await program();
 		const options: ExperienceInterpreterOptions = {
@@ -550,7 +573,7 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 			lifecycle: [{ event: 'enter', guard: null, action: { kind: 'show-content', contentId: 'content-2' } }]
 		};
 		const entered = reduceExperience(selected, createExperienceRun(selected, OPTIONS), event('enter'));
-		expect(entered.state.panel?.content).toEqual([]);
+		expect(entered.state.panel?.content).toEqual([{ id: 'content-1', text: 'The piano.' }]);
 		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('content-2'))).toBe(true);
 	});
 
