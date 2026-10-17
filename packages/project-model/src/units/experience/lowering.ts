@@ -27,6 +27,7 @@
  * persisted format. Runtime-safe: no editor, renderer, Svelte or Three import.
  */
 
+import { CAMERA_SESSION_INSPECTION_FAMILY_ID } from '../../channels/families';
 import { resolveReference } from '../../references/resolve';
 import { createUnitReadContext } from '../../references/unit-resolution';
 import type { ReferenceReadContext } from '../../references/types';
@@ -47,7 +48,7 @@ import type {
 import type { Experience, ProjectEnvelope } from '../types';
 
 /** The family the selected Experience's run owns while it is executing. */
-const CAMERA_CHANNEL_FAMILY = 'camera.session-inspection@1';
+const CAMERA_CHANNEL_FAMILY = CAMERA_SESSION_INSPECTION_FAMILY_ID;
 
 export type ExperienceInvocationBinding = {
 	readonly stopId: string;
@@ -67,9 +68,16 @@ export type ExperienceLoweringOptions = {
 	/** The accepted snapshot identity this lowering request reads. */
 	readonly sourceContentId: string;
 	readonly sessionEpoch: string;
-	/** Defaults to the entry guide's `entryStopId`. */
+	/** Defaults to the selected guide's `entryStopId`. */
 	readonly entryStopId?: string;
-	/** Defaults to the entry guide's ordered `stopIds`. */
+	/** Selects an authored Guide; defaults to the Experience's entry guide. */
+	readonly guideId?: string;
+	/**
+	 * Must equal the selected Guide's authored `stopIds` exactly. It exists so a
+	 * caller can name an order explicitly, never so it can author one: a reordered,
+	 * shortened or cross-guide sequence refuses, because Guide order is the one
+	 * editorial order authority.
+	 */
 	readonly order?: readonly string[];
 	readonly bindings?: readonly ExperienceInvocationBinding[];
 	readonly content?: readonly ExperienceLoweringContent[];
@@ -83,8 +91,10 @@ export type ExperienceLoweringRefusal = {
 	readonly kind: 'refused';
 	readonly code:
 		| 'unknown-experience'
+		| 'unknown-guide'
 		| 'unknown-presentation'
 		| 'unknown-stop'
+		| 'invalid-order'
 		| 'unknown-view'
 		| 'missing-entry'
 		| 'missing-binding'
@@ -155,10 +165,27 @@ export function lowerExperienceProgram(
 	const experienceRevision = envelope.units.experience.header.contentRevision;
 	const cameraRevision = envelope.units.camera.header.contentRevision;
 	const entryGuide = experience.guides.find((guide) => guide.id === experience.entryGuideId) ?? null;
-	const order = [...(options.order ?? entryGuide?.stopIds ?? [])];
+	const selectedGuide = options.guideId === undefined
+		? entryGuide
+		: experience.guides.find((guide) => guide.id === options.guideId) ?? null;
+	if (options.guideId !== undefined && selectedGuide === null) {
+		return refuse('unknown-guide', `this Experience carries no Guide "${options.guideId}"`);
+	}
+	if (options.order !== undefined) {
+		// An explicit order is a claim about the authored Guide, never a second
+		// editable sequence: it must match one Guide's stopIds exactly.
+		const authored = experience.guides.some((guide) =>
+			guide.stopIds.length === options.order!.length &&
+			guide.stopIds.every((stopId, index) => stopId === options.order![index])
+		);
+		if (!authored) {
+			return refuse('invalid-order', 'the lowering order must equal an authored Guide\'s stopIds exactly; Experience order is authored, not supplied');
+		}
+	}
+	const order = [...(options.order ?? selectedGuide?.stopIds ?? [])];
 
 	if (order.length === 0 && experience.stops.length > 0) {
-		return refuse('missing-entry', 'the Experience has Stops but no entry Guide order; supply an explicit order');
+		return refuse('missing-entry', 'the Experience has Stops but no Guide order; select a guide or supply its authored order');
 	}
 	const stopById = new Map(experience.stops.map((stop) => [stop.id, stop]));
 	for (const stopId of order) {
@@ -166,7 +193,7 @@ export function lowerExperienceProgram(
 			return refuse('unknown-stop', `the lowering order names Stop "${stopId}", which this Experience does not carry`, stopId);
 		}
 	}
-	const entryStopId = options.entryStopId ?? entryGuide?.entryStopId ?? order[0] ?? null;
+	const entryStopId = options.entryStopId ?? selectedGuide?.entryStopId ?? order[0] ?? null;
 	if (order.length === 0 && entryStopId !== null) {
 		return refuse('missing-entry', 'an empty program cannot declare an entry Stop');
 	}
@@ -223,7 +250,7 @@ export function lowerExperienceProgram(
 				stop.id
 			);
 		}
-		const invocation = resolveInvocation(envelope, stop, presentation.viewId, occurrence, previousViewId, bindings);
+		const invocation = resolveInvocation(envelope, context, cameraRevision, stop, presentation.viewId, occurrence, previousViewId, bindings);
 		if (invocation.kind === 'refused') return invocation;
 		stops.push({
 			id: stop.id,
@@ -301,6 +328,8 @@ function bindingKey(stopId: string, occurrence: number | undefined): string {
  */
 function resolveInvocation(
 	envelope: ProjectEnvelope,
+	context: ReferenceReadContext,
+	cameraRevision: string,
 	stop: Experience['stops'][number],
 	viewId: string,
 	occurrence: number,
@@ -336,6 +365,19 @@ function resolveInvocation(
 	// Destructured after the Cut branch: the narrowing must not be lost inside
 	// the find callback below.
 	const invocation = binding.invocation;
+	// Connection closure is F.1's answer, not a local array scan: the resolver
+	// checks the subject and its unit revision against this exact snapshot.
+	const connectionResolution = resolveReference(
+		reference('camera', 'connection', invocation.connectionId, cameraRevision, []),
+		context
+	);
+	if (connectionResolution.kind === 'failed') {
+		return refuse(
+			'travel-gap',
+			`Stop "${stop.id}" binds Travel over connection "${invocation.connectionId}", which this envelope does not resolve: ${connectionResolution.message}`,
+			stop.id
+		);
+	}
 	const connection = envelope.units.camera.data.connections.find(
 		(candidate) => candidate.id === invocation.connectionId
 	);

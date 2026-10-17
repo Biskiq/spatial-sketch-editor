@@ -45,22 +45,32 @@ reads it, and no source/runtime cutover happens here.
 2. **Experience lowering.** Lower one selected Experience plus its Camera unit to the accepted
    `ExecutionProgram@1` codec: labelled Presentations and content records, stable Stop occurrences,
    Camera invocation bindings, finite holds, explicit continuation, guards, channel policies,
-   lifecycle actions and the required reduced-motion/semantic-DOM profile. Lowering validates
-   Experience→Presentation→View and Camera connection closure through F.1/unit resolution and refuses
-   an unsupported or missing binding. It copies no pose, path, FOV, graph, renderer object or source
-   history into the program.
+   lifecycle actions and the required reduced-motion/semantic-DOM profile. Lowering selects an
+   authored Guide (the entry guide by default); an explicit `order` is admitted only when it equals
+   that Guide's `stopIds` exactly, so no caller can reorder, drop, mix or invent an editorial
+   sequence. It validates Experience→Presentation→View and Camera connection closure through F.1/unit
+   resolution and refuses an unsupported or missing binding. It copies no pose, path, FOV, graph,
+   renderer object or source history into the program.
 3. **One interpreter.** A deterministic reducer plus an explicit integer clock executes the lowered
    program: fresh run identity per visit, sequence-next/explicit Stop/End continuation, finite holds
    with Continue, boolean/choice state with initial/reset and literal/state/equality/conjunction
    guards, covered detour and return-to-origin, and the run-scoped `enter`/`arrival`/`complete`/
-   `cancel` events with `show-content`/`navigate-to`/`open-url`/`continue`/`set-state` actions.
-   Occurrence identity is never an array index, label, Room or Camera view id. The same required
-   instruction means the same thing in Preview and publication; an unsupported required program,
-   state, operator or profile refuses.
+   `cancel` events with `show-content`/`navigate-to`/`open-url`/`continue`/`set-state` actions. A
+   covered detour returns to its origin occurrence before resolving **any** continuation kind, and a
+   lifecycle `show-content` applied before a panel exists is deferred to the arrival that creates it
+   rather than dropped; a lifecycle `continue` resolves the occurrence once, only when it is ready
+   (never through a hold or a Gate), and is explicitly ignored where no occurrence can advance.
+   Occurrence identity is never an array index, label, Room or Camera view id. A run also carries the
+   lowering source identity: an event prepared from a different source is stale and cannot advance
+   the run. The same required instruction means the same thing in Preview and publication; an
+   unsupported required program, state, operator or profile refuses.
 4. **Semantic companion.** A framework-free DOM/Info-Panel view model: current presentation label and
    text content, every admitted destination reachable by keyboard/DOM navigation, occurrence-derived
    `aria-current`/progress, repair/gap explanations with useful labels and links, panel focus-in/
-   Escape/return, and no raycast dependency. It contains no editor selection, history or gizmo state.
+   Escape/return, and no raycast dependency. It exposes the one explicit Continue control a Gate
+   needs (availability, label, reason, and the occurrence it advances), clears the current
+   destination and bounds progress when the run ends or a Stop repeats. It contains no editor
+   selection, history or gizmo state.
 5. **Profile controllers.** Guided, free and reduced-motion controllers in new `camera-core` modules
    that realize Camera intents through the existing Camera authority: guided evaluates route/timing
    and holds, free releases guided ownership and rejoin evaluates from the actual current pose with
@@ -98,6 +108,12 @@ identity; only presentation text has no authored home at all. All three are disc
 gaps for S04/T3.P02, not new formats, and none of them changes F2, the program codec or the Camera
 authority.
 
+The remaining lowering inputs — `state` declarations, `lifecycle` actions, `channels`/`capabilities`
+and invocation bindings — are **closed-fixture declarations only**. They exist so the runtime can be
+prepared and traced before F2 carries an authored home for them; no host, route or visitor
+bootstrap may author or inject them, and this slice adds no persisted slot for them. They are
+activation gaps owned by `T3.P01.S04`/`T3.P02`, not a second authoring surface.
+
 ## Explicit non-goals
 
 - No source/runtime activation, editor Preview route, Stage capture, host wiring or visitor bootstrap
@@ -112,12 +128,12 @@ authority.
 | Original S03 obligation | This slice's evidence |
 | --- | --- |
 | `camera-handoff-v1` with guided/free ownership, Follow, Look-through, Preview, return and stale cleanup | Conformance: one owner per output; guided→follow→preview→return unwinds in order; return refuses a wrong token/source/session; cancel after replacement is ignored; a stale run cannot clear, reclaim or advance the newer output; source rebase ends the claim. |
-| Shared lowering/interpreter using the accepted codec | Lowered fixtures validate against `validateExecutionProgram`; every binding resolves or refuses; no pose/path copy; lowering is deterministic and replayable. |
+| Shared lowering/interpreter using the accepted codec | Lowered fixtures validate against `validateExecutionProgram`; every binding resolves or refuses; a supplied order that is not an authored Guide order refuses; no pose/path copy; lowering is deterministic and replayable. |
 | Deterministic reducer/clock, occurrence holds, continuation | Replay from identical events produces identical state; clock is explicit; repeated Stop visits get fresh run ids; hold boundaries, sequence-next, nonadjacent Stop, End and detour return resolve by occurrence. |
-| Minimal guard/Continue/detour state | Guard failure refuses the action; Continue is explicit at a gate/hold; state initializes/resets and choice values are bounded; detour return restores the origin occurrence. |
-| Semantic DOM companion/Info Panel | Every admitted destination is keyboard/DOM-reachable with the same Activate meaning; `aria-current`/progress are occurrence-derived; panel focus-in/Escape/return and gap explanations work without raycast. |
+| Minimal guard/Continue/detour state | Guard failure skips the guarded action; Continue is explicit at a gate/hold; lifecycle `continue` advances a ready occurrence once and is ignored through a hold or Gate; `show-content` before a panel is deferred to its arrival; state initializes/resets and choice values are bounded; every detour returns to its origin occurrence regardless of the target's continuation kind. |
+| Semantic DOM companion/Info Panel | Every admitted destination is keyboard/DOM-reachable with the same Activate meaning; `aria-current`/progress are occurrence-derived and bounded; a Gate exposes an explicit Continue control with its reason; panel focus-in/Escape/return and gap explanations work without raycast. |
 | Guided/free/reduced-motion controllers against closed fixtures | Guided plays supported travel with directed timing; a gap reports; free releases guided control and rejoin pauses autoplay; reduced motion reaches the same destination without accelerated travel. |
-| Required AM-6 traces and stale-event behavior | The trace fixture set above, asserting ordered events/checkpoints, not implementation snapshots. |
+| Required AM-6 traces and stale-event behavior | The trace fixture set above, asserting ordered events/checkpoints, not implementation snapshots; a stale event from an ended run or a different lowering source cannot advance, complete or clear the newer run. |
 | No second Camera/Experience authority | Import/closures prove Camera owns route/motion/evaluation; Experience code has no BFS, no pose/FOV interpolation and no second timeline. |
 
 ## Verification
@@ -140,5 +156,9 @@ record exact results in [acceptance.md](./acceptance.md):
   integration, source migration and the retirement of the current visitor orchestration.
 - The authored invocation selector is unresolved by the ratified F2 shape and must be decided before
   S04 activation; the lowering's explicit binding input is the disclosed interim contract.
+- Presentation text, invocation bindings, state declarations, lifecycle actions and channel/
+  capability policy have no authored F2 home; they remain closed-fixture inputs, must not be
+  host-authored, and need an authored home (or a deliberate profiles-only decision) before S04
+  activation.
 - `camera-handoff-v1` is recorded at acceptance only with the whole role/ownership meaning; the
   partial module landed in PR #138 is not acceptance evidence on its own.

@@ -1,6 +1,6 @@
 /**
  * `F3.channels@1:camera-handoff-v1` — the additive Experience handoff discipline
- * over the landed Camera-output ticket protocol (T3.P01.S03).
+ * over the landed Camera-output ticket protocol (T3.P01.S06).
  *
  * The suite proves the rules this module adds, not the landed protocol it
  * delegates to: only a handoff role may receive the output, a same-role takeover
@@ -245,6 +245,15 @@ describe('camera handoff — return and cleanup', () => {
 		const cancelled = cancelCameraHandoff(free, ticket('any-run', 2));
 		expect(cancelled).toMatchObject({ kind: 'cancelled', voidedReturn: null });
 		expect(cancelled.state.claim).toBeNull();
+	});
+
+	it('qualifies the ticket even when no run holds the output', () => {
+		// A foreign-session ticket cannot report a successful cleanup of a free
+		// output; the cleanup entry delegates to the landed qualified cancellation.
+		const free = state();
+		const foreign = { ...ticket('foreign-run', 2), sessionEpoch: 'session-foreign' };
+		expect(cleanupCameraHandoff(free, foreign)).toMatchObject({ kind: 'ignored' });
+		expect(cleanupCameraHandoff(free, ticket('any-run', 2))).toMatchObject({ kind: 'cancelled', voidedReturn: null });
 	});
 
 	it('does not end an inspection claim through handoff cleanup', () => {

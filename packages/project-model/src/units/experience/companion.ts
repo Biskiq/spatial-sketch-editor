@@ -47,6 +47,19 @@ export type ExperienceCompanion = {
 		readonly focusOnOpen: 'content';
 		readonly escapeReturnsTo: 'canvas';
 	} | null;
+	/**
+	 * The explicit Continue control, or `null` when no occurrence is current. A
+	 * Gate is not passable by arriving again: the DOM/keyboard visitor needs this
+	 * one reachable action, and `reason` explains a control that is present but not
+	 * yet available (a running hold).
+	 */
+	readonly continueControl: {
+		readonly available: boolean;
+		readonly label: string;
+		readonly reason: string | null;
+		readonly stopId: string;
+		readonly occurrenceId: string;
+	} | null;
 	readonly instructions: {
 		readonly activate: string;
 		readonly navigation: string;
@@ -69,6 +82,7 @@ export function buildExperienceCompanion(
 ): ExperienceCompanion {
 	const stopIndex = new Map(program.stops.map((stop, index) => [stop.id, index]));
 	const presentationById = new Map(program.presentations.map((presentation) => [presentation.id, presentation]));
+	const ended = state.phase === 'completed' || state.phase === 'cancelled';
 	const destinations: CompanionDestination[] = program.stops.map((stop) => {
 		const presentation = presentationById.get(stop.presentationId);
 		const gap = gaps.get(stop.id) ?? null;
@@ -76,12 +90,21 @@ export function buildExperienceCompanion(
 			stopId: stop.id,
 			label: presentation?.label ?? stop.id,
 			presentationId: stop.presentationId,
-			current: state.stopId === stop.id,
+			current: !ended && state.stopId === stop.id,
 			reachable: gap === null,
 			gap
 		};
 	});
 	const currentPresentation = state.presentationId === null ? undefined : presentationById.get(state.presentationId);
+	const current = ended || state.stopId === null || state.occurrenceId === null
+		? null
+		: {
+				stopId: state.stopId,
+				occurrenceId: state.occurrenceId,
+				label: currentPresentation?.label ?? state.stopId,
+				content: state.panel?.content ?? [],
+				ariaCurrent: 'step' as const
+			};
 	const panel = state.panel === null
 		? null
 		: {
@@ -93,21 +116,24 @@ export function buildExperienceCompanion(
 	return {
 		experienceId: program.experienceId,
 		title: currentPresentation?.label ?? program.experienceId,
-		current: state.stopId === null || state.occurrenceId === null
-			? null
-			: {
-					stopId: state.stopId,
-					occurrenceId: state.occurrenceId,
-					label: currentPresentation?.label ?? state.stopId,
-					content: state.panel?.content ?? [],
-					ariaCurrent: 'step'
-				},
+		current,
 		progress: {
-			visited: state.visited.length,
+			// Progress counts distinct Stops reached, so a revisited Stop cannot push
+			// the count past the run's own size; `occurrences` keeps every visit.
+			visited: Math.min(new Set(state.visited.map((visit) => visit.stopId)).size, program.stops.length),
 			total: program.stops.length,
-			index: state.stopId === null ? null : stopIndex.get(state.stopId) ?? null,
+			index: current === null ? null : stopIndex.get(current.stopId) ?? null,
 			occurrences: state.visited.map((visit) => visit.occurrenceId)
 		},
+		continueControl: current === null
+			? null
+			: {
+					available: state.phase === 'blocked' || state.phase === 'ready',
+					label: 'Continue',
+					reason: state.phase === 'holding' ? 'This Stop is still holding.' : null,
+					stopId: current.stopId,
+					occurrenceId: current.occurrenceId
+				},
 		destinations,
 		panel,
 		instructions: {

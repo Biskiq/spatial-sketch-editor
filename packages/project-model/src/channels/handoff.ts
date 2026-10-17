@@ -245,7 +245,10 @@ export function cleanupCameraHandoff(
 	ticket: unknown
 ): CameraOutputCancelDecision {
 	const current = state.claim;
-	if (current === null) return { kind: 'cancelled', state, voidedReturn: null };
+	// Even with no active claim the ticket must still be qualified: reporting
+	// "cancelled" for a foreign or malformed ticket would let a cleanup pass
+	// believe it ended a run it never held.
+	if (current === null) return cancelCameraOutput(state, ticket);
 	return isCameraHandoffRole(current.role)
 		? cancelCameraOutput(state, ticket)
 		: endExperienceNavigation(state, ticket);

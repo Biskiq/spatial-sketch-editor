@@ -57,6 +57,12 @@ export type ExperienceVisit = {
 export type ExperienceRunState = {
 	readonly runId: string;
 	readonly runEpoch: number;
+	/**
+	 * The lowering source this run was prepared from, or `null` when the host did
+	 * not declare one. A run belongs to exactly one source: dispatching against a
+	 * different source is a rebase and every event for the old run is stale.
+	 */
+	readonly sourceContentId: string | null;
 	readonly entered: boolean;
 	readonly stopId: string | null;
 	readonly occurrenceId: string | null;
@@ -71,6 +77,8 @@ export type ExperienceRunState = {
 	readonly visited: readonly ExperienceVisit[];
 	readonly values: Readonly<Record<string, string | boolean>>;
 	readonly panel: ExperiencePanel | null;
+	/** Content ids a lifecycle `show-content` selected before a panel existed. */
+	readonly pendingContent: readonly string[];
 	readonly invocation: ProgramInvocation | null;
 	/** The origin a covered detour must return to, or `null`. */
 	readonly returnToStopId: string | null;
@@ -104,6 +112,8 @@ export type ExperienceDetourPolicy = {
 export type ExperienceInterpreterOptions = {
 	readonly runId: string;
 	readonly runEpoch: number;
+	/** The lowering source this run belongs to; a differing value ends the run. */
+	readonly sourceContentId?: string | null;
 	/**
 	 * Presentation ids whose arrival waits for an explicit Continue. A Gate is
 	 * authored experience policy; it is passed in because `ExecutionProgram@1`
@@ -146,6 +156,7 @@ export function createExperienceRun(
 	return {
 		runId: options.runId,
 		runEpoch: options.runEpoch,
+		sourceContentId: options.sourceContentId ?? null,
 		entered: false,
 		stopId: null,
 		occurrenceId: null,
@@ -157,6 +168,7 @@ export function createExperienceRun(
 		visited: [],
 		values,
 		panel: null,
+		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
 		pendingOpenUrl: null,
@@ -172,6 +184,16 @@ export function reduceExperience(
 	options: ExperienceInterpreterOptions = { runId: state.runId, runEpoch: state.runEpoch }
 ): ExperienceReduceResult {
 	if (!sameRun(state, event)) return { state, outcome: 'stale', effects: [] };
+	// A source edit replaces the run: an event prepared from a different lowering
+	// source can never advance the old run, nor resurrect state it once held.
+	if (
+		options.sourceContentId !== undefined &&
+		options.sourceContentId !== null &&
+		state.sourceContentId !== null &&
+		options.sourceContentId !== state.sourceContentId
+	) {
+		return { state, outcome: 'stale', effects: [] };
+	}
 
 	if (event.kind === 'tick') return tick(state, event.milliseconds);
 	if (event.kind === 'enter') return enter(program, state, options);
@@ -254,6 +276,8 @@ function enter(
 	}
 	const entered: ExperienceRunState = { ...state, entered: true, lastEvent: 'enter' };
 	const effects: ExperienceEffect[] = [];
+	// An `enter` cancellation can have no occurrence to continue from yet; only the
+	// arrival lifecycle may request a continuation.
 	const actioned = applyLifecycle(program, entered, 'enter', effects);
 	if (actioned.navigateTo !== null) {
 		return arrive(program, actioned.state, actioned.navigateTo, options, effects);
@@ -281,7 +305,8 @@ function arrive(
 	options: ExperienceInterpreterOptions,
 	effects: ExperienceEffect[],
 	appendVisit = true,
-	depth = 0
+	depth = 0,
+	continueDepth = 0
 ): ExperienceReduceResult {
 	if (depth > 8) {
 		return {
@@ -318,10 +343,17 @@ function arrive(
 		occurrenceId: `${state.runId}:${stopId}:${state.visited.length + 1}`,
 		index: state.visited.length + 1
 	};
+	// A `show-content` selected before this arrival (an `enter` lifecycle action, or
+	// an arrival action that ran before the panel existed) narrows the panel to the
+	// selected records. The selection is consumed once, here, so a later Stop shows
+	// its own full Presentation.
+	const selected = state.pendingContent.length === 0
+		? presentation.content
+		: presentation.content.filter((record) => state.pendingContent.includes(record.id));
 	const panel: ExperiencePanel = {
 		presentationId: presentation.id,
 		title: presentation.label,
-		content: presentation.content.map((record) => ({ id: record.id, text: record.text }))
+		content: selected.map((record) => ({ id: record.id, text: record.text }))
 	};
 	const gated = (options.gates ?? []).includes(presentation.id);
 	const base: ExperienceRunState = {
@@ -331,6 +363,7 @@ function arrive(
 		presentationId: presentation.id,
 		visited: appendVisit ? [...state.visited, visit] : state.visited,
 		panel,
+		pendingContent: [],
 		invocation: stop.invocation,
 		gated,
 		holdRemainingMs: null,
@@ -356,6 +389,12 @@ function arrive(
 		nextEffects.push({ kind: 'blocked', stopId });
 	} else {
 		nextEffects.push({ kind: 'ready', stopId });
+	}
+	// A lifecycle `continue` resolves the occurrence exactly once, and only when the
+	// occurrence is actually ready: a hold is time and a Gate is a prompt, so neither
+	// is skipped by the action.
+	if (actioned.continueRequested && result.phase === 'ready') {
+		return advance(program, result, options, nextEffects, continueDepth);
 	}
 	return { state: result, outcome: 'accepted', effects: nextEffects };
 }
@@ -410,33 +449,47 @@ function advance(
 	program: ExecutionProgram,
 	state: ExperienceRunState,
 	options: ExperienceInterpreterOptions,
-	effects: ExperienceEffect[]
+	effects: ExperienceEffect[],
+	continueDepth = 0
 ): ExperienceReduceResult {
 	if (state.stopId === null) return ignored(state);
+	if (continueDepth > 8) {
+		return {
+			state,
+			outcome: 'ignored',
+			effects: [...effects, {
+				kind: 'gap',
+				fromStopId: state.stopId,
+				toStopId: state.stopId,
+				message: 'the arrival lifecycle continues too many times'
+			}]
+		};
+	}
 	const stop = stopById(program, state.stopId);
 	if (stop === undefined) return ignored(state);
 	const continuation = stop.continuation;
 
+	// A covered detour is an excursion: finishing the detour occurrence returns to
+	// the origin occurrence before **any** continuation kind is resolved, including
+	// sequence-next and an explicit Stop target. Otherwise the run would follow the
+	// detour target's own continuation and never discharge the return obligation.
+	if (state.returnToStopId !== null) {
+		const origin = state.returnToStopId;
+		return arrive(program, { ...state, returnToStopId: null }, origin, options, effects, true, 0, continueDepth + 1);
+	}
+
 	if (continuation.kind === 'end') {
-		if (state.returnToStopId !== null) {
-			const origin = state.returnToStopId;
-			return arrive(program, { ...state, returnToStopId: null }, origin, options, effects);
-		}
 		return finish(program, state, 'complete', options, effects);
 	}
 	if (continuation.kind === 'stop') {
-		return arrive(program, { ...state, returnToStopId: null }, continuation.stopId, options, effects);
+		return arrive(program, { ...state, returnToStopId: null }, continuation.stopId, options, effects, true, 0, continueDepth + 1);
 	}
 	const index = program.stops.findIndex((entry) => entry.id === state.stopId);
 	const next = index >= 0 ? program.stops[index + 1] : undefined;
 	if (next === undefined) {
-		if (state.returnToStopId !== null) {
-			const origin = state.returnToStopId;
-			return arrive(program, { ...state, returnToStopId: null }, origin, options, effects);
-		}
 		return finish(program, state, 'complete', options, effects);
 	}
-	return arrive(program, state, next.id, options, effects);
+	return arrive(program, state, next.id, options, effects, true, 0, continueDepth + 1);
 }
 
 function navigate(
@@ -495,6 +548,7 @@ function resetRun(
 		visited: [],
 		values,
 		panel: null,
+		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
 		pendingOpenUrl: null,
@@ -515,8 +569,18 @@ function finish(
 	const values = event === 'cancel'
 		? Object.fromEntries(program.state.map((declaration) => [declaration.id, declaration.reset]))
 		: actioned.state.values;
+	// A `navigate-to` in a complete/cancel lifecycle is deliberately not followed:
+	// the run has ended, so the declared navigation has no occurrence to reach. The
+	// obligation is cleared with the run instead of leaving a stale redirect.
 	return {
-		state: { ...actioned.state, phase, values, holdRemainingMs: null },
+		state: {
+			...actioned.state,
+			phase,
+			values,
+			holdRemainingMs: null,
+			returnToStopId: null,
+			pendingContent: []
+		},
 		outcome: 'accepted',
 		effects: event === 'complete' ? [...effects, { kind: 'completed' }] : effects
 	};
@@ -525,6 +589,8 @@ function finish(
 type LifecycleApplication = {
 	readonly state: ExperienceRunState;
 	readonly navigateTo: string | null;
+	/** An applied `continue` action asked this occurrence to resolve its continuation. */
+	readonly continueRequested: boolean;
 };
 
 /**
@@ -540,14 +606,16 @@ function applyLifecycle(
 ): LifecycleApplication {
 	let current = state;
 	let navigateTo: string | null = null;
+	let continueRequested = false;
 	for (const entry of program.lifecycle) {
 		if (entry.event !== event) continue;
 		if (entry.guard !== null && !evaluateGuard(entry.guard, current.values)) continue;
 		const applied = applyAction(program, current, entry.action, effects);
 		current = applied.state;
 		if (applied.navigateTo !== null) navigateTo = applied.navigateTo;
+		if (applied.continueRequested) continueRequested = true;
 	}
-	return { state: current, navigateTo };
+	return { state: current, navigateTo, continueRequested };
 }
 
 function applyAction(
@@ -561,22 +629,35 @@ function applyAction(
 			const record = program.presentations
 				.flatMap((presentation) => presentation.content)
 				.find((entry) => entry.id === action.contentId);
-			if (record === undefined || state.panel === null) return { state, navigateTo: null };
+			if (record === undefined) return { state, navigateTo: null, continueRequested: false };
+			if (state.panel === null) {
+				// The panel does not exist yet: queue the selection for the arrival that
+				// creates it instead of dropping the declared action.
+				return {
+					state: { ...state, pendingContent: [...state.pendingContent, record.id] },
+					navigateTo: null,
+					continueRequested: false
+				};
+			}
 			const panel: ExperiencePanel = { ...state.panel, content: [{ id: record.id, text: record.text }] };
 			effects.push({ kind: 'panel', panel });
-			return { state: { ...state, panel }, navigateTo: null };
+			return { state: { ...state, panel }, navigateTo: null, continueRequested: false };
 		}
 		case 'navigate-to':
-			return { state, navigateTo: action.stopId };
+			return { state, navigateTo: action.stopId, continueRequested: false };
 		case 'open-url':
 			effects.push({ kind: 'open-url', url: action.url });
-			return { state: { ...state, pendingOpenUrl: action.url }, navigateTo: null };
+			return { state: { ...state, pendingOpenUrl: action.url }, navigateTo: null, continueRequested: false };
 		case 'continue':
-			return { state, navigateTo: null };
+			// `continue` is resolved by the arrival that applied this action; on any
+			// other event (enter/complete/cancel) there is no occurrence to advance and
+			// the action is ignored rather than silently pretending to act.
+			return { state, navigateTo: null, continueRequested: true };
 		case 'set-state':
 			return {
 				state: { ...state, values: { ...state.values, [action.stateId]: action.value } },
-				navigateTo: null
+				navigateTo: null,
+				continueRequested: false
 			};
 	}
 }
