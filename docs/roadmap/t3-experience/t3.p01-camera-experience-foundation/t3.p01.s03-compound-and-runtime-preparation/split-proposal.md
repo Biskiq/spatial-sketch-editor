@@ -1,9 +1,10 @@
 # T3.P01.S03 — approved split direction (2026-10-17)
 
-**Status:** **split direction approved 2026-10-17 by delegated owner decision; follow-up registration
-and authorization pending.** The owner explicitly delegated PR #138's acceptance decisions. This
-document records the decision to divide S03's remaining obligations into S03a and S03b; it does
-**not** register or authorize either follow-up slice, accept any capability, or close S03. The
+**Status:** **split direction approved 2026-10-17 by delegated owner decision; both follow-ups
+registered and owner-authorized the same day as `T3.P01.S05` and `T3.P01.S06`**
+([record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)). This
+document records the decision to divide S03's remaining obligations into two registered slices; it
+does **not** accept any capability or close S03. The
 [implementation plan](./implementation-plan.md#scope) requires the implementer to propose a
 registered split rather than silently narrow a criterion.
 
@@ -121,8 +122,19 @@ explicitly; no capability is recorded as accepted.
 2026-10-17 delegation in the coordinating conversation; PR #138, code increment
 `b13c5d73`. This decision is not a substitute for each follow-up slice's review.
 
+## Registration and authorization (applied 2026-10-17)
+
+The follow-up requirement above is discharged. The owner authorized the two halves; they are
+registered with numeric ids in the [T3.P01 slice register](../README.md#slice-register) as
+**`T3.P01.S05` — Unit acceptance and unit Save** and **`T3.P01.S06` — Experience runtime and Camera
+handoff**, with plans and acceptance stubs written at registration. The authorization provenance is
+[the follow-up record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md).
+The capability allocation moves `unit-acceptance-v1`/`conditional-save-units-v1` to S05 and
+`camera-handoff-v1` to S06; their prerequisite sets are unchanged. S03 stays the in-progress umbrella
+and closes only after both halves are accepted and its original exit criteria are reconciled.
+
 ## Explicit non-implications
 
-No slice is registered or authorized here, no gate changes state, no capability
-is accepted, and `T3.P01.S04` remains `proposed`. The split changes no ratified
+Registration and authorization are not acceptance. No gate changes state, no capability
+is accepted, and `T3.P01.S04` remains `proposed` and unauthorized. The split changes no ratified
 contract: AM-1–AM-8, F1–F4 and the Camera authority are untouched.

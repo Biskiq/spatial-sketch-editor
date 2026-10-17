@@ -2,12 +2,13 @@
  * Conditional Save (`SaveAcceptedSource@1`, AM-4 `conditional-save-current-v1`).
  *
  * One write path, one transaction. The server does not trust the captured
- * digest: it re-parses the captured canonical bytes, re-canonicalizes through
- * the single project export, recomputes the identity and runs the **same**
- * current-source admission the visitor runtime uses, against the shipped Scene
- * catalogue. A legacy row that itself fails registry admission contributes an
- * empty blocking baseline, so a valid candidate repairs it and a dirty row never
- * blocks Save permanently.
+ * digest: the admitted source handler re-parses the captured canonical bytes,
+ * re-canonicalizes through its own codec, recomputes the identity and runs that
+ * source's full admission. The **current-source** handler is the API's and runs
+ * the same admission the visitor runtime uses, against the shipped Scene
+ * catalogue; the **F.2 envelope** handler is injected by
+ * `T3.P01.S05`'s backed contract and is not reachable from any route until
+ * `T3.P01.S04` activates it.
  *
  * The saved base token is durable metadata beside the strict document. It is not
  * the local `AcceptedRevision`, the SQL `latest_version` ordinal publication
@@ -21,26 +22,26 @@ import {
 	canonicalSourceJson,
 	sourceContentIdForCanonicalJson
 } from '@portfolio/project-model';
-import type { AcceptedRevision, AdmissionIssue, ProjectIssue } from '@portfolio/project-model';
+import type { AcceptedRevision, ProjectIssue } from '@portfolio/project-model';
 import {
 	SAVE_CONTENT_IDENTITY_SCHEME,
 	createSavedBaseToken,
 	fullSourceHash,
+	resolveSaveSourceHandler,
 	sameAcceptedRevision,
 	samePrecondition,
+	type PreparedSaveSource,
 	type SaveAcknowledgement,
 	type SavePrecondition,
 	type SaveReceipt,
 	type SaveRefusalCode,
-	type SaveRequest
+	type SaveRequest,
+	type SaveSourceDatabase,
+	type SaveSourceHandler
 } from '@portfolio/project-model/save';
 
 import type { DatabaseClient, DatabasePool } from './database.js';
-import {
-	ProjectNotFoundError,
-	queryRows,
-	withTransaction
-} from './project-persistence.js';
+import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
 import { REGISTRY_SCENE_OPTIONS } from './scene-registry.js';
 
 /** One typed refusal. The route maps the code to its HTTP result and status. */
@@ -82,61 +83,147 @@ type ReceiptRow = {
 	createdAt: unknown;
 };
 
+function saveDatabase(db: DatabaseClient): SaveSourceDatabase {
+	return {
+		query: (sql, params) => db.query(sql, params === undefined ? undefined : [...params])
+	};
+}
+
+/**
+ * The current-source handler: today's admitted source pair. It is the default
+ * the live route uses; nothing in this file can select another handler from a
+ * request field, so a client cannot ask the server to admit a format the build
+ * has not enabled.
+ */
+export const CURRENT_SOURCE_SAVE_HANDLER: SaveSourceHandler = {
+	sourceKind: CURRENT_SOURCE_KIND,
+	sourceVersion: CURRENT_SOURCE_VERSION,
+	async prepare(capture) {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(capture.canonicalJson);
+		} catch {
+			return { kind: 'refused', code: 'invalid-project', message: 'The captured source is not valid JSON' };
+		}
+		const canonical = canonicalSourceJson(parsed, { scene: REGISTRY_SCENE_OPTIONS });
+		if (canonical.kind === 'rejected') {
+			return {
+				kind: 'refused',
+				code: 'invalid-project',
+				message: canonical.issues[0]?.message ?? 'Invalid project',
+				issues: canonical.issues
+			};
+		}
+		if (canonical.canonicalJson !== capture.canonicalJson) {
+			return {
+				kind: 'refused',
+				code: 'content-identity-mismatch',
+				message: 'The captured source is not the canonical encoding of its contents'
+			};
+		}
+		if (canonical.project.id !== capture.projectId) {
+			return { kind: 'refused', code: 'invalid-save-request', message: 'The captured source belongs to a different project' };
+		}
+		const digest = await sourceContentIdForCanonicalJson(canonical.canonicalJson);
+		if (digest !== capture.sourceContentId) {
+			return { kind: 'refused', code: 'content-identity-mismatch', message: 'The recomputed content identity does not match the capture' };
+		}
+		const prepared: PreparedSaveSource = {
+			canonicalJson: canonical.canonicalJson,
+			document: JSON.parse(canonical.canonicalJson) as unknown,
+			projectId: canonical.project.id,
+			name: canonical.project.name,
+			sourceContentId: digest,
+			fullSourceHash: await fullSourceHash(canonical.canonicalJson)
+		};
+		return { kind: 'prepared', source: prepared };
+	},
+	async validate({ prepared, baseline }) {
+		const admitted = await admitCurrentSourceContent(JSON.parse(prepared.canonicalJson), {
+			scene: REGISTRY_SCENE_OPTIONS,
+			baselineBlockingIssues: baseline
+		});
+		if (admitted.kind === 'rejected') {
+			return { kind: 'refused', code: 'invalid-project', message: admitted.message, issues: admitted.issues };
+		}
+		if (admitted.canonicalJson !== prepared.canonicalJson || admitted.sourceContentId !== prepared.sourceContentId) {
+			return {
+				kind: 'refused',
+				code: 'content-identity-mismatch',
+				message: 'Admission produced a different canonical source than the capture'
+			};
+		}
+		return { kind: 'prepared', source: prepared };
+	},
+	async baseline(db, projectId, version) {
+		const rows = await queryRows<{ document: unknown }>(
+			db,
+			`SELECT document FROM project_versions WHERE project_id = $1 AND version = $2`,
+			[projectId, version]
+		);
+		if (!rows[0]) return [];
+		const base = await admitCurrentSourceContent(parseJsonb(rows[0].document), { scene: REGISTRY_SCENE_OPTIONS });
+		return base.kind === 'admitted' ? base.blockingIssues : [];
+	}
+};
+
+/** Save one captured source through the default current-source admission. */
 export async function saveAcceptedSource(
 	pool: DatabasePool,
 	ownerId: string,
 	request: SaveRequest
 ): Promise<SaveAcknowledgement> {
+	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [CURRENT_SOURCE_SAVE_HANDLER]);
+}
+
+/**
+ * Save one captured source through exactly one injected handler.
+ *
+ * This is the seam the F.2 unit Save contract uses. It is never called by a
+ * route: the route imports `saveAcceptedSource` alone, whose handler list is the
+ * current source.
+ */
+export async function saveAcceptedSourceWithHandler(
+	pool: DatabasePool,
+	ownerId: string,
+	request: SaveRequest,
+	handler: SaveSourceHandler
+): Promise<SaveAcknowledgement> {
+	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [handler]);
+}
+
+/** The one Save transaction, parameterized by the admitted source handlers. */
+export async function saveAcceptedSourceWithHandlers(
+	pool: DatabasePool,
+	ownerId: string,
+	request: SaveRequest,
+	handlers: readonly SaveSourceHandler[]
+): Promise<SaveAcknowledgement> {
 	if (request.contentIdentityScheme !== SAVE_CONTENT_IDENTITY_SCHEME) {
-		throw new SaveRefusalError(
-			'identity-scheme-mismatch',
-			`This server saves ${SAVE_CONTENT_IDENTITY_SCHEME} sources`
-		);
+		throw new SaveRefusalError('identity-scheme-mismatch', `This server saves ${SAVE_CONTENT_IDENTITY_SCHEME} sources`);
 	}
 	const capture = request.capture;
-	if (capture.sourceKind !== CURRENT_SOURCE_KIND || capture.sourceVersion !== CURRENT_SOURCE_VERSION) {
-		throw new SaveRefusalError(
-			'source-version-mismatch',
-			`Save admits ${CURRENT_SOURCE_KIND}@${CURRENT_SOURCE_VERSION} only`
-		);
-	}
+	const resolved = resolveSaveSourceHandler(handlers, capture);
+	if (resolved.kind === 'refused') throw new SaveRefusalError(resolved.code, resolved.message);
+	const handler = resolved.handler;
 
-	// Canonicalization and digest happen once, outside the row lock. The server
-	// still reruns full admission inside the transaction against the expected
-	// base; this pass only proves the captured bytes are the canonical encoding
-	// of their contents before any write can happen.
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(capture.canonicalJson);
-	} catch {
-		throw new SaveRefusalError('invalid-project', 'The captured source is not valid JSON');
+	// Canonicalization and identity happen once, outside the row lock. The server
+	// still reruns the source's own admission inside the transaction against the
+	// expected base; this pass only proves the captured bytes are the canonical
+	// encoding of their contents before any write can happen.
+	const preparedResult = await handler.prepare(capture);
+	if (preparedResult.kind === 'refused') {
+		throw new SaveRefusalError(preparedResult.code, preparedResult.message, preparedResult.issues ?? []);
 	}
-	const canonical = canonicalSourceJson(parsed, { scene: REGISTRY_SCENE_OPTIONS });
-	if (canonical.kind === 'rejected') {
-		throw new SaveRefusalError('invalid-project', canonical.issues[0]?.message ?? 'Invalid project', canonical.issues);
-	}
-	if (canonical.canonicalJson !== capture.canonicalJson) {
-		throw new SaveRefusalError(
-			'content-identity-mismatch',
-			'The captured source is not the canonical encoding of its contents'
-		);
-	}
-	if (canonical.project.id !== capture.projectId) {
-		throw new SaveRefusalError('invalid-save-request', 'The captured source belongs to a different project');
-	}
-	const digest = await sourceContentIdForCanonicalJson(canonical.canonicalJson);
-	if (digest !== capture.sourceContentId) {
-		throw new SaveRefusalError('content-identity-mismatch', 'The recomputed content identity does not match the capture');
-	}
-	const capturedFullSourceHash = await fullSourceHash(canonical.canonicalJson);
+	const prepared = preparedResult.source;
 
 	return withTransaction(pool, async (db) => {
 		const locked = await queryRows<ProjectRow>(
 			db,
 			`SELECT id, owner_id AS "ownerId", name, latest_version AS version,
-	updated_at AS "updatedAt", saved_base_token AS "savedBaseToken",
-	saved_revision AS "savedRevision", saved_source_content_id AS "savedSourceContentId",
-	saved_full_source_hash AS "savedFullSourceHash"
+updated_at AS "updatedAt", saved_base_token AS "savedBaseToken",
+saved_revision AS "savedRevision", saved_source_content_id AS "savedSourceContentId",
+saved_full_source_hash AS "savedFullSourceHash"
 FROM projects
 WHERE id = $1
 FOR UPDATE`,
@@ -151,15 +238,13 @@ FOR UPDATE`,
 		// owner's operation.
 		const receipt = await readReceipt(db, ownerId, capture.projectId, capture.operationId);
 		if (receipt) {
-			assertReceiptMatches(receipt, capture.precondition, capture.acceptedRevision, digest, capturedFullSourceHash);
+			assertReceiptMatches(receipt, capture.precondition, capture.acceptedRevision, prepared.sourceContentId, prepared.fullSourceHash);
 			return receiptAcknowledgement(receipt);
 		}
 
 		let latestVersion: number;
 		if (capture.precondition.kind === 'create-only') {
-			if (row) {
-				throw new SaveRefusalError('collision', 'A project with this ID already exists');
-			}
+			if (row) throw new SaveRefusalError('collision', 'A project with this ID already exists');
 			// The user row is created only when this Save actually creates a
 			// project; a refused Save writes nothing, not even an owner record.
 			await db.query(
@@ -174,7 +259,7 @@ ON CONFLICT (id) DO NOTHING`,
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (id) DO NOTHING
 RETURNING id`,
-				[capture.projectId, ownerId, canonical.project.name, createSavedBaseToken()]
+				[capture.projectId, ownerId, prepared.name, createSavedBaseToken()]
 			);
 			if (!inserted[0]) {
 				// Lost a create-only race. A concurrent identical retry may already
@@ -182,7 +267,7 @@ RETURNING id`,
 				// collision answer.
 				const raced = await readReceipt(db, ownerId, capture.projectId, capture.operationId);
 				if (!raced) throw new SaveRefusalError('collision', 'A project with this ID already exists');
-				assertReceiptMatches(raced, capture.precondition, capture.acceptedRevision, digest, capturedFullSourceHash);
+				assertReceiptMatches(raced, capture.precondition, capture.acceptedRevision, prepared.sourceContentId, prepared.fullSourceHash);
 				return receiptAcknowledgement(raced);
 			}
 			latestVersion = 0;
@@ -198,33 +283,31 @@ RETURNING id`,
 				row.savedRevision !== null &&
 				row.savedRevision !== undefined &&
 				sameAcceptedRevision(readRevision(row.savedRevision), capture.acceptedRevision) &&
-				(readNullableString(row.savedSourceContentId) !== digest ||
-					readNullableString(row.savedFullSourceHash) !== capturedFullSourceHash)
+				(readNullableString(row.savedSourceContentId) !== prepared.sourceContentId ||
+					readNullableString(row.savedFullSourceHash) !== prepared.fullSourceHash)
 			) {
-				throw new SaveRefusalError(
-					'revision-reuse',
-					'A saved revision identity cannot be reused for different contents'
-				);
+				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
 			}
 		}
 
-		// The baseline is the expected saved base's own blocking compile issues.
-		// A stored base that fails registry admission contributes an empty
-		// baseline: the candidate is judged on its own merits, never permanently
-		// blocked by a legacy permissive `PUT` row.
-		const baseline = row ? await readBaseline(db, readString(row.id), readSafeInteger(row.version)) : [];
-		const admitted = await admitCurrentSourceContent(parsed, {
-			scene: REGISTRY_SCENE_OPTIONS,
-			baselineBlockingIssues: baseline
-		});
-		if (admitted.kind === 'rejected') {
-			throw new SaveRefusalError('invalid-project', admitted.message, admitted.issues);
+		// The baseline is the expected saved base's own blocking issues. Only the
+		// current-source handler reads one; a whole-envelope format validates every
+		// attempt from scratch and returns an empty baseline.
+		const baseline = row
+			? handler.baseline
+				? await handler.baseline(saveDatabase(db), readString(row.id), readSafeInteger(row.version))
+				: []
+			: [];
+		const admitted = await handler.validate({ capture, prepared, baseline });
+		if (admitted.kind === 'refused') {
+			throw new SaveRefusalError(admitted.code, admitted.message, admitted.issues ?? []);
 		}
-		if (admitted.canonicalJson !== canonical.canonicalJson || admitted.sourceContentId !== digest) {
-			throw new SaveRefusalError(
-				'content-identity-mismatch',
-				'Admission produced a different canonical source than the capture'
-			);
+		const finalSource = admitted.source;
+		if (
+			finalSource.sourceContentId !== prepared.sourceContentId ||
+			finalSource.fullSourceHash !== prepared.fullSourceHash
+		) {
+			throw new SaveRefusalError('content-identity-mismatch', 'Admission produced a different source than the capture');
 		}
 
 		const nextVersion = latestVersion + 1;
@@ -232,24 +315,24 @@ RETURNING id`,
 		await db.query(
 			`INSERT INTO project_versions (project_id, version, document)
 VALUES ($1, $2, $3)`,
-			[capture.projectId, nextVersion, JSON.parse(admitted.canonicalJson)]
+			[capture.projectId, nextVersion, finalSource.document]
 		);
 		const updated = await queryRows<ProjectRow>(
 			db,
 			`UPDATE projects
 SET name = $3, latest_version = $2, saved_base_token = $4,
-	saved_revision = $5, saved_source_content_id = $6, saved_full_source_hash = $7,
-	updated_at = now()
+saved_revision = $5, saved_source_content_id = $6, saved_full_source_hash = $7,
+updated_at = now()
 WHERE id = $1
 RETURNING id, name, latest_version AS version, updated_at AS "updatedAt"`,
 			[
 				capture.projectId,
 				nextVersion,
-				canonical.project.name,
+				finalSource.name,
 				savedBaseToken,
 				capture.acceptedRevision,
-				digest,
-				capturedFullSourceHash
+				finalSource.sourceContentId,
+				finalSource.fullSourceHash
 			]
 		);
 		const saved = updated[0];
@@ -261,13 +344,13 @@ RETURNING id, name, latest_version AS version, updated_at AS "updatedAt"`,
 			updatedAt: readTimestamp(saved.updatedAt),
 			savedBaseToken,
 			savedRevision: capture.acceptedRevision,
-			sourceContentId: digest
+			sourceContentId: finalSource.sourceContentId
 		};
 
 		await db.query(
 			`INSERT INTO save_receipts (
-	project_id, operation_id, precondition_kind, precondition_token,
-	accepted_revision, source_content_id, full_source_hash, version, saved_base_token, saved_name
+project_id, operation_id, precondition_kind, precondition_token,
+accepted_revision, source_content_id, full_source_hash, version, saved_base_token, saved_name
 )
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 			[
@@ -276,8 +359,8 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 				capture.precondition.kind,
 				capture.precondition.kind === 'expected-saved-base' ? capture.precondition.token : null,
 				capture.acceptedRevision,
-				digest,
-				capturedFullSourceHash,
+				finalSource.sourceContentId,
+				finalSource.fullSourceHash,
 				nextVersion,
 				savedBaseToken,
 				acknowledgement.name
@@ -285,26 +368,6 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
 		);
 		return acknowledgement;
 	});
-}
-
-/**
- * Read the base document that the expected precondition names and admit it
- * through the registry. Only an admitted base contributes a blocking baseline;
- * an unadmitted one contributes `[]` so the candidate is judged on its merits.
- */
-async function readBaseline(
-	db: DatabaseClient,
-	projectId: string,
-	version: number
-): Promise<readonly AdmissionIssue[]> {
-	const rows = await queryRows<{ document: unknown }>(
-		db,
-		`SELECT document FROM project_versions WHERE project_id = $1 AND version = $2`,
-		[projectId, version]
-	);
-	if (!rows[0]) return [];
-	const base = await admitCurrentSourceContent(parseJsonb(rows[0].document), { scene: REGISTRY_SCENE_OPTIONS });
-	return base.kind === 'admitted' ? base.blockingIssues : [];
 }
 
 async function readReceipt(
@@ -316,11 +379,11 @@ async function readReceipt(
 	const rows = await queryRows<ReceiptRow>(
 		db,
 		`SELECT r.project_id AS "projectId", r.operation_id AS "operationId",
-	r.precondition_kind AS "preconditionKind", r.precondition_token AS "preconditionToken",
-	r.accepted_revision AS "acceptedRevision", r.source_content_id AS "sourceContentId",
-	r.full_source_hash AS "fullSourceHash", r.version,
-	r.saved_base_token AS "savedBaseToken", r.saved_name AS "savedName",
-	r.created_at AS "createdAt"
+r.precondition_kind AS "preconditionKind", r.precondition_token AS "preconditionToken",
+r.accepted_revision AS "acceptedRevision", r.source_content_id AS "sourceContentId",
+r.full_source_hash AS "fullSourceHash", r.version,
+r.saved_base_token AS "savedBaseToken", r.saved_name AS "savedName",
+r.created_at AS "createdAt"
 FROM save_receipts r
 JOIN projects p ON p.id = r.project_id
 WHERE r.project_id = $1 AND r.operation_id = $2 AND p.owner_id = $3`,
@@ -363,10 +426,7 @@ function assertReceiptMatches(
 		receipt.sourceContentId !== digest ||
 		receipt.fullSourceHash !== hashedSource
 	) {
-		throw new SaveRefusalError(
-			'retry-payload-mismatch',
-			'This operation ID already records a different payload or precondition'
-		);
+		throw new SaveRefusalError('retry-payload-mismatch', 'This operation ID already records a different payload or precondition');
 	}
 }
 

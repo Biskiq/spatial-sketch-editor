@@ -29,6 +29,7 @@ import { validateDependencyLock } from '../units/validate';
 import { computeEnvelopeSourceContentId } from '../units/canonical';
 import type { DependencyLock, ProjectEnvelope } from '../units/types';
 import type {
+	AcceptedRevision,
 	DependencyLockReader,
 	ReferenceReadContext,
 	ReferenceFailureCode,
@@ -159,8 +160,14 @@ function resolver(
 		owner: domain,
 		resolve: (reference, request) => {
 			const accepted = request.context.snapshot.acceptedRevision;
-			if (envelope.acceptedRevision.projectId !== envelope.id || accepted.projectId !== envelope.id || accepted.revisionId !== envelope.acceptedRevision.revisionId) {
-				return { kind: 'repair-required', message: 'the resolver and read context must name the same accepted envelope', repairs: REACQUIRE };
+			// Project identity binds the context to this envelope. The revision ids are
+			// deliberately not compared: an F.2 envelope keeps the **baseline** revision
+			// it was prepared from (history restoration is byte-exact), while
+			// `snapshot.acceptedRevision` names the snapshot currently being read. A
+			// later accepted revision therefore shares the envelope's embedded baseline
+			// without being a different source.
+			if (envelope.acceptedRevision.projectId !== envelope.id || accepted.projectId !== envelope.id) {
+				return { kind: 'repair-required', message: 'the resolver and read context must name the same accepted project', repairs: REACQUIRE };
 			}
 			return scoped(subjects, reference, request.contentRevision);
 		}
@@ -242,6 +249,13 @@ export function createUnitSubjectResolvers(envelope: ProjectEnvelope): Reference
 
 export type UnitResolutionInput = {
 	envelope: ProjectEnvelope;
+	/**
+	 * The accepted snapshot's revision identity. Defaults to the envelope's
+	 * embedded revision for a raw-envelope read; an accepted unit source must pass
+	 * the coordinator's accepted revision explicitly, because the embedded value is
+	 * the immutable baseline the candidate was prepared from.
+	 */
+	acceptedRevision?: AcceptedRevision;
 	/** The accepted snapshot's own content identity; never derived from the reference. */
 	sourceContentId: string;
 	sessionEpoch: ReferenceReadContext['sessionEpoch'];
@@ -254,7 +268,7 @@ export type UnitResolutionInput = {
 /** A `ReferenceReadContext` for one envelope: snapshot identity, lock and resolvers. */
 export function createUnitReadContext(input: UnitResolutionInput): ReferenceReadContext {
 	return {
-		snapshot: { acceptedRevision: input.envelope.acceptedRevision, sourceContentId: input.sourceContentId },
+		snapshot: { acceptedRevision: input.acceptedRevision ?? input.envelope.acceptedRevision, sourceContentId: input.sourceContentId },
 		sessionEpoch: input.sessionEpoch,
 		generationId: input.generationId ?? null,
 		supportedExtensions: input.supportedExtensions ?? [],

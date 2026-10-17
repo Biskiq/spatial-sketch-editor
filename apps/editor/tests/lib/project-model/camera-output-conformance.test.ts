@@ -342,5 +342,5 @@ describe('F.3 Camera output — bounded exhaustive invariants', () => {
 		// declare their own budget (`f4-acceptance`, `layout-scale-compile`,
 		// `angled-plan-noding-sweeps`); the traversal and its assertion are
 		// unchanged.
-	}, 30_000);
+	});
 });

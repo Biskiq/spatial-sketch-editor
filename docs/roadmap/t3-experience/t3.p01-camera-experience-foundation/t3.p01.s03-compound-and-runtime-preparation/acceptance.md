@@ -1,9 +1,9 @@
 # T3.P01.S03 — acceptance record: Compound and runtime preparation
 
-**Slice:** T3.P01.S03 · **Status:** authorized 2026-10-17, **in progress — partial
+**Slice:** T3.P01.S03 · **Status:** authorized 2026-10-17, **in-progress umbrella — partial
 implementation, no acceptance recorded, no capability accepted**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
-**Split direction:** [split-proposal.md](./split-proposal.md) — owner-delegated approval 2026-10-17; follow-up rows not registered or authorized
+**Split direction:** [split-proposal.md](./split-proposal.md) — owner-delegated approval 2026-10-17; registered and authorized as `T3.P01.S05` + `T3.P01.S06` ([record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md))
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 ## What is implemented in this increment

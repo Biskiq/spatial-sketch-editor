@@ -9,7 +9,7 @@
     "start": "vite-node dist/start.js",
     "check": "tsc -p tsconfig.json --noEmit",
     "migrate": "npm run build && node dist/migrate.js",
-    "test": "npm run build && vite-node tests/health-config-shutdown.test.mjs && vite-node tests/auth-session-origin.test.mjs && vite-node tests/projects.test.mjs && vite-node tests/save.test.mjs && vite-node tests/assets.test.mjs && vite-node tests/migration.test.mjs && vite-node tests/publication.test.mjs && vite-node tests/test-auth.test.mjs"
+    "test": "npm run build && vite-node tests/health-config-shutdown.test.mjs && vite-node tests/auth-session-origin.test.mjs && vite-node tests/projects.test.mjs && vite-node tests/save.test.mjs && vite-node tests/save-units.test.mjs && vite-node tests/assets.test.mjs && vite-node tests/migration.test.mjs && vite-node tests/publication.test.mjs && vite-node tests/test-auth.test.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1125.0",
