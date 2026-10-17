@@ -179,8 +179,9 @@ Tests: `stage-facade` — "runs the live gesture policy once when a reading chan
 
 ### Verification of this revision
 
-The §7.4 contract on this tree, at the pushed revision (base `origin/main` = `74367936`, no
-behind-commits; `apps/editor` unless noted):
+The §7.4 contract on this tree (tested code revision `90aa6729`; `origin/main` = `74367936`,
+zero behind-commits; this record is the commit after it, so no product file differs between the
+tested tree and the pushed branch; `apps/editor` unless noted):
 
 ```text
 npm test                 146 files / 1,917 tests passed
