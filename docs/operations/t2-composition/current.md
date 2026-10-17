@@ -18,17 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02–S04 proposed and
-        unauthorized.
-BATON: No T2 slice is authorized. T2.P01.S02 (Scene operations and shared history) is next in
-       sequence; its F4 `local-single-domain-v1` prerequisite is accepted, and it waits on an owner
-       authorization (a baton never grants one).
-NEXT: On an owner authorization, start T2.P01.S02 through this track's runbook start step:
-      eligibility at the trusted base, the one-line cycle check, then the plan's declared
-      verification tier and integration route.
+SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 owner-authorized
+        2026-10-16, approved and not started; S03–S04 proposed and unauthorized.
+BATON: The next authorized T2 work is T2.P01.S02 (Scene operations and shared history), running in
+       parallel with T3.P01.S02 under the pair protocol. It consumes the accepted
+       `local-single-domain-v1`, not T1.P01.S02 (PR #128) or any host.
+NEXT: Start T2.P01.S02 through this track's runbook start step: eligibility at the trusted base
+      (post-PR #129 `main` or later), the one-line cycle check (not an exposure), then the plan's
+      declared verification tier and integration route.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/implementation-plan.md
-BLOCKER: no live T2 blocker; S02 is unauthorized.
+       (pair protocol: ../../roadmap/cross-track-execution.md#parallel-pair-2026-10-16)
+BLOCKER: none.
 ```

@@ -1,7 +1,7 @@
 # T3.P01 — Camera/Experience cutover foundation
 
-**Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` owner-authorized, approved and
-not started; S02–S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
+**Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
+`T3.P01.S02` owner-authorized 2026-10-16 (approved, not started); S03–S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
@@ -10,8 +10,9 @@ not started; S02–S04 proposed and unauthorized · **Track:** [T3](../README.md
 Registered by the owner decision of 2026-10-16
 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) so that its first
 slice, `T3.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` and `T2.P01.S01`. That is
-the phase's only implementation permission: S02–S04 are registered as `proposed` and hold none, no
-gate changes state and no architecture-cycle transition is made.
+the phase's first implementation permission. S02 was authorized by the later owner decision of
+2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel
+with `T2.P01.S02`; S03–S04 stay `proposed` and hold none.
 
 **Phase scope (decided at registration).** This phase is the sole Camera/Experience
 **source/runtime transition**: shared unit and program codecs (S01), early conditional Save (S02),
@@ -130,14 +131,15 @@ lifecycle and prerequisites only.
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
-| T3.P01.S02 | proposed | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | — |
+| T3.P01.S02 | approved | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)) — approved, not started |
 | T3.P01.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | — |
 | T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 is now shipped with
 accepted `unit-envelope-v1` and additive `unit-resolution-v1`; their exact records, prerequisites,
-exports and conformance are in the gate register and linked capability records. S02 waits for
-`T1.P01.S03`'s accepted `local-single-domain-v1`. S03 waits
+exports and conformance are in the gate register and linked capability records. S02's
+`local-single-domain-v1` (with `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor of
+post-PR #129 `main`, so S02 is eligible. S03 waits
 for S01's `unit-envelope-v1`/`unit-resolution-v1` and S02's `conditional-save-current-v1`. As the
 [allocation](../../cross-track-execution.md#capability-readiness-amendment) records, S03 consumes the
 still-active current-source scopes while it builds the unit implementation, but the unit capabilities
@@ -156,7 +158,7 @@ PHASE CLOSE
 Stage:        active
 ```
 
-No slice has acceptance evidence. The final gate is declared, not closeable; acceptance would make the
+Only S01 has acceptance evidence. The final gate is declared, not closeable; acceptance would make the
 phase closable, and phase/track closure remains a separate owner event. The first authoring surface
 does not wait for this phase's closure.
 
@@ -358,13 +360,15 @@ hold. Refusals must be reviewable results with unchanged accepted state, not sil
 
 ## Authorization and open decisions
 
-- **Authorized:** `T3.P01.S01` only (2026-10-16). It runs in parallel under the
-  [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16).
-- **Before S02 is authorized:** `T1.P01.S03` accepted, and the home of the Save control settled — the
-  dirty/saving/saved/conflict states mount in T1's shell Head, which S02 must not build privately; the
-  owner assigns that control to S02 (consuming the accepted host) or to the host↔F4 wiring slice.
-  `T1.P01.S02` boots read-only and never calls the unconditional `PUT`, so no unsafe writer exists
-  meanwhile.
+- **Authorized:** `T3.P01.S01` (2026-10-16, shipped in PR #131) and `T3.P01.S02` (2026-10-16), which
+  runs in parallel with `T2.P01.S02` under the
+  [pair protocol](../../cross-track-execution.md#parallel-pair-2026-10-16).
+- **Save ownership (settled 2026-10-16,
+  [record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)):** S02 owns the
+  protocol, the server path, the client and the framework-free client Save state; T1 owns the Head
+  integration in its host↔F4 wiring slice (`T1.P01.S04` by default), which enables Save only with
+  `conditional-save-current-v1` accepted at its own trusted base. S02 builds no shell control, and
+  `T1.P01.S02` boots read-only, so no unsafe writer exists meanwhile.
 - **Before S03 is authorized:** S01 and S02 accepted on `main`.
 - **Before S04 is authorized:** the AM-7 inventory, migration/refusal coverage, quiescence and
   recovery plan, any owner-accepted publication gap, and a drafted, ratified
