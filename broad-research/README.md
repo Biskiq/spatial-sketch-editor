@@ -11,6 +11,7 @@ Each topic is a pair of files:
 | Creative scene composition, surface authoring and look development | [`creative-scene-composition-ux.html`](./creative-scene-composition-ux.html) | [`creative-scene-composition-ux.md`](./creative-scene-composition-ux.md) |
 | Interactive experience authoring and spatial storytelling | [`spatial-storytelling-ux.html`](./spatial-storytelling-ux.html) | [`spatial-storytelling-ux.md`](./spatial-storytelling-ux.md) |
 | Expressive roofs, ceilings and volumetric spatial authoring | [`expressive-roof-volume-authoring-ux.html`](./expressive-roof-volume-authoring-ux.html) | [`expressive-roof-volume-authoring-ux.md`](./expressive-roof-volume-authoring-ux.md) |
+| Visitor interfaces, interactive content and spatial web authoring | [`spatial-interface-authoring-ux.html`](./spatial-interface-authoring-ux.html) | [`spatial-interface-authoring-ux.md`](./spatial-interface-authoring-ux.md) |
 
 - **Verbatim report (`.md`)** — the research chapters exactly as the original export has them,
   with all tables and works cited. It is self-contained, and this text is canonical. Every
