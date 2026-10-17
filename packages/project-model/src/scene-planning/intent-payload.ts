@@ -451,6 +451,18 @@ function readFrame(reader: ShapeReader, input: unknown, path: string): LocalInpu
 	return { origin: origin as Vec3, yaw };
 }
 
+/**
+ * Validate one captured `FrameReference@1` against the conversion that came with
+ * it.
+ *
+ * `project-world` is the identity conversion and needs no owner data, so a
+ * non-identity transform behind it refuses (`frame-mismatch`). An `owner-frame`
+ * names a frame only its owner can place: resolving it needs that owner's
+ * `FrameResolver`, and a pure planner is given none. A structurally valid
+ * owner-qualified reference therefore refuses (`unsupported-frame`) instead of
+ * accepting a caller-supplied origin and yaw as if the owner had produced them.
+ * No frame is invented from a Room, its centroid or its containment.
+ */
 function readFrameReference(
 	reader: ShapeReader,
 	input: unknown,
@@ -465,10 +477,15 @@ function readFrameReference(
 		return { ok: false };
 	}
 	if (frame === null) return { ok: false };
-	if (
-		validated.value.kind === 'project-world' &&
-		(frame.yaw !== 0 || frame.origin.some((value) => value !== 0))
-	) {
+	if (validated.value.kind === 'owner-frame') {
+		reader.problem(
+			path,
+			'unsupported-frame',
+			`Frame "${validated.value.frameId}" is owner-qualified by "${validated.value.owner}"; its placement is only usable through that owner's frame resolver, and this reader admits none, so the supplied conversion is not verified`
+		);
+		return { ok: false };
+	}
+	if (frame.yaw !== 0 || frame.origin.some((value) => value !== 0)) {
 		reader.problem(
 			path,
 			'frame-mismatch',

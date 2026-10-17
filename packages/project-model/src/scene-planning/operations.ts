@@ -12,8 +12,8 @@
  * | Operation | Owned values |
  * | --- | --- |
  * | `move-horizontal` | world X/Z only; Y, rotation, scale, dimensions and materials are preserved |
- * | `set-yaw` | yaw only; position and every other component are preserved |
- * | `place-on-floor` | contact-resolved Y and X/Z; captured yaw when the payload supplies one |
+ * | `set-yaw` | the yaw component of `rotation` only; position, pitch, roll and every other value are preserved |
+ * | `place-on-floor` | contact-resolved Y and X/Z; the captured yaw component when the payload supplies one |
  * | `resize-on-floor` | uniform scale and the compensating Y; X/Z and rotation are preserved |
  * | `duplicate-one` | one appended entity at +0.5 m world X/Z, everything else copied |
  * | `delete-one` | exact removal, cluster-membership cleanup and an emptied-cluster drop |
@@ -52,6 +52,7 @@ export type SceneOperationRefusalCode =
 	| 'missing-target'
 	| 'invalid-value'
 	| 'unsupported-transform'
+	| 'unsupported-frame'
 	| 'unsupported-surface'
 	| 'unsupported-set'
 	| 'missing-footprint'
@@ -116,6 +117,14 @@ const CONTACT_TOLERANCE_METERS = 1e-9;
 
 /** `duplicate-one`'s fixed world offset, in meters. */
 export const DUPLICATE_OFFSET_METERS = 0.5;
+
+/**
+ * The one `rotation` component a yaw edit owns. A Scene rotation is
+ * `[pitch, yaw, roll]`, so the record-scope guard grants index `1` alone and
+ * still compares the other two: an operation that rewrites the pitch it does
+ * not own is refused rather than admitted as "rotation changed".
+ */
+export const YAW_SCOPE_FIELD = 'rotation[1]';
 
 export function planMoveHorizontal(input: {
 	readonly context: SceneOperationContext;
@@ -187,7 +196,7 @@ export function planSetYaw(input: {
 		fields: ['rotation'],
 		scope: {
 			changedEntityIds: [target.entity.id],
-			changedEntityFields: ['rotation'],
+			changedEntityFields: [YAW_SCOPE_FIELD],
 			createdEntityIds: [],
 			removedEntityIds: [],
 			allowClusterCleanup: false
@@ -232,6 +241,9 @@ export function planPlaceOnFloor(input: {
 				];
 	const next: SceneEntity = { ...target.entity, position: [point[0], y, point[1]], rotation };
 	const fields = input.yaw === undefined ? ['position'] : ['position', 'rotation'];
+	// The candidate reports the field it touched; the guard grants only the yaw
+	// component of it, so pitch and roll still compare exactly.
+	const scopeFields = input.yaw === undefined ? ['position'] : ['position', YAW_SCOPE_FIELD];
 	return finalize({
 		context: input.context,
 		operationKind: 'place-on-floor',
@@ -239,7 +251,7 @@ export function planPlaceOnFloor(input: {
 		fields,
 		scope: {
 			changedEntityIds: [target.entity.id],
-			changedEntityFields: fields,
+			changedEntityFields: scopeFields,
 			createdEntityIds: [],
 			removedEntityIds: [],
 			allowClusterCleanup: false

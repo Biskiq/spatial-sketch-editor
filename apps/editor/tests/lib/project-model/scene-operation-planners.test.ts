@@ -27,6 +27,7 @@ import {
 	selectSceneSupport,
 	checkSceneRecordScope,
 	DUPLICATE_OFFSET_METERS,
+	YAW_SCOPE_FIELD,
 	sceneSupportGenerationId,
 	type AcceptedSnapshot,
 	type AuthoringIntent,
@@ -999,6 +1000,102 @@ describe('scene operation planners — support and refusals', () => {
 			expect(result.diagnostics.some((issue) => issue.code === diagnostic), diagnostic).toBe(true);
 		}
 	});
+
+	it('refuses an owner-qualified frame instead of trusting an unverified conversion', async () => {
+		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const snapshot = await snapshotOf(project);
+		// Structurally valid: owner, frame id and revision are all present, so the
+		// reference's shape is not the problem. What is missing is the owner's
+		// resolved placement — no frame resolver is admitted here — so the supplied
+		// origin and yaw are an unverified claim, not a resolved frame.
+		const ownerFrame = {
+			version: 1 as const,
+			kind: 'owner-frame' as const,
+			owner: 'scene' as const,
+			frameId: 'frame-1',
+			revision: 'content-1'
+		};
+		const conversion = { origin: [1.5, 0, -2], yaw: 0.4 };
+		const captured: readonly AuthoringIntent[] = [
+			intent({
+				kind: 'place-object',
+				operationId: 'owner-frame-place',
+				snapshot,
+				payload: placePayload({ frame: conversion, frameReference: ownerFrame }),
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }]
+			}),
+			intent({
+				kind: 'move-horizontal',
+				operationId: 'owner-frame-move',
+				snapshot,
+				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					worldXZ: [1, 1],
+					frame: conversion,
+					frameReference: ownerFrame,
+					contactMinY: -0.5
+				}
+			}),
+			intent({
+				kind: 'set-yaw',
+				operationId: 'owner-frame-yaw',
+				snapshot,
+				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				payload: { entityId: 'entity-a', yaw: 0.9, frame: conversion, frameReference: ownerFrame }
+			}),
+			intent({
+				kind: 'place-on-floor',
+				operationId: 'owner-frame-seat',
+				snapshot,
+				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					worldXZ: [1, 1],
+					frame: conversion,
+					frameReference: ownerFrame,
+					contactMinY: -0.5,
+					yaw: 0.3
+				}
+			})
+		];
+		for (const capturedIntent of captured) {
+			const result = prepare(capturedIntent.kind, snapshot, capturedIntent, [nativeBoxDefinition()]);
+			expect(result, capturedIntent.kind).toMatchObject({ kind: 'rejected', code: 'unsupported-frame' });
+			if (result.kind !== 'rejected') continue;
+			expect(
+				result.diagnostics.some((issue) => issue.code === 'unsupported-frame'),
+				capturedIntent.kind
+			).toBe(true);
+		}
+
+		// Refusing resolution is not a licence to accept a malformed reference: a
+		// structurally invalid owner-frame stays `invalid-value`.
+		const malformed = intent({
+			kind: 'set-yaw',
+			operationId: 'owner-frame-malformed',
+			snapshot,
+			targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+			payload: {
+				entityId: 'entity-a',
+				yaw: 0.9,
+				frame: projectWorldFrame(),
+				frameReference: { version: 1, kind: 'owner-frame', owner: 'scene', frameId: 'frame-1' }
+			}
+		});
+		expect(prepare('set-yaw', snapshot, malformed)).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
+
+		// The identity frame still plans: the refusal is about unverified owner
+		// data, not about frames as such.
+		const identity = intent({
+			kind: 'set-yaw',
+			operationId: 'identity-frame-yaw',
+			snapshot,
+			targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+			payload: { entityId: 'entity-a', yaw: 0.6, frame: projectWorldFrame(), frameReference: frameReference() }
+		});
+		expect(prepare('set-yaw', snapshot, identity)).toMatchObject({ kind: 'prepared' });
+	});
 });
 
 describe('scene record-scope guard', () => {
@@ -1038,7 +1135,7 @@ describe('scene record-scope guard', () => {
 			checkSceneRecordScope(before, rewrittenCluster, {
 				operationKind: 'set-yaw',
 				changedEntityIds: ['entity-a'],
-				changedEntityFields: ['rotation'],
+				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
@@ -1057,7 +1154,7 @@ describe('scene record-scope guard', () => {
 			checkSceneRecordScope(before, renamed, {
 				operationKind: 'set-yaw',
 				changedEntityIds: ['entity-a'],
-				changedEntityFields: ['rotation'],
+				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
@@ -1069,6 +1166,45 @@ describe('scene record-scope guard', () => {
 		});
 	});
 
+	it('admits a yaw change but refuses one that rewrites the pitch or roll it does not own', () => {
+		// This is the exact grant `set-yaw` (and `place-on-floor` with a captured
+		// yaw) hands the guard: `rotation[1]`, one component of a vector field.
+		// Pitch and roll stay inside the exact comparison, so a planner that spins
+		// the object about another axis is refused rather than waved through as
+		// "rotation changed".
+		const scope = {
+			operationKind: 'set-yaw',
+			changedEntityIds: ['entity-a'],
+			changedEntityFields: [YAW_SCOPE_FIELD],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		};
+		const withRotation = (rotation: readonly [number, number, number]): SceneDocument => ({
+			...before,
+			entities: [{ ...before.entities[0]!, rotation: [...rotation] as Vec3 }, before.entities[1]!]
+		});
+
+		expect(checkSceneRecordScope(before, withRotation([0, 0.75, 0]), scope)).toEqual([]);
+
+		for (const rotation of [
+			[0.25, 0.75, 0],
+			[0, 0.75, 0.25]
+		] as const) {
+			expect(checkSceneRecordScope(before, withRotation(rotation), scope)).toContainEqual({
+				path: '$.scene.entities.entity-a',
+				code: 'record-scope-violation',
+				message: expect.stringContaining('does not own')
+			});
+		}
+
+		// The grant really is per-component, not a whole-field pass: granting
+		// `rotation` instead admits both spins, which is what a coarse grant would
+		// have allowed in production.
+		const wholeField = { ...scope, changedEntityFields: ['rotation'] };
+		expect(checkSceneRecordScope(before, withRotation([0.25, 0.75, 0.25]), wholeField)).toEqual([]);
+	});
+
 	it('refuses a top-level field the Scene format does not define yet', () => {
 		// The comparison is derived from the documents, not a fixed list of known
 		// fields, so a new Scene field is protected the day it lands.
@@ -1077,7 +1213,7 @@ describe('scene record-scope guard', () => {
 			checkSceneRecordScope(before, withUnknownField, {
 				operationKind: 'set-yaw',
 				changedEntityIds: ['entity-a'],
-				changedEntityFields: ['rotation'],
+				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
@@ -1144,7 +1280,7 @@ describe('scene record-scope guard', () => {
 			checkSceneRecordScope(before, withClusterField, {
 				operationKind: 'set-yaw',
 				changedEntityIds: ['entity-a'],
-				changedEntityFields: ['rotation'],
+				changedEntityFields: [YAW_SCOPE_FIELD],
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false

@@ -364,6 +364,18 @@ function payloadMismatch(kind: string): SceneOperationResult {
 }
 
 function invalidPayload(issues: readonly ShapeIssue[]): PlannerOutcome<ProjectDocument> {
+	// A structurally valid reference to a frame this reader cannot resolve is not
+	// malformed intent, it is an unsupported capability, so it keeps its own code
+	// instead of being flattened into `invalid-value`.
+	const unsupported = issues.find((issue) => issue.code === 'unsupported-frame');
+	if (unsupported !== undefined) {
+		return {
+			kind: 'rejected',
+			code: 'unsupported-frame',
+			message: unsupported.message,
+			diagnostics: issues
+		};
+	}
 	return { kind: 'rejected', code: 'invalid-value', message: 'The operation intent is not valid captured data.', diagnostics: issues };
 }
 

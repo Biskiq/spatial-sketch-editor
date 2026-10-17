@@ -9,9 +9,9 @@
  *
  * - the entity id sequence is exactly "before, minus removals, plus captured
  *   creations" — no reordering, no renaming, no uncaptured id;
- * - an operation may only change the fields it owns on its targeted entity
- *   (move owns `position`, yaw owns `rotation`, …) — everything else compares
- *   exactly;
+ * - an operation may only change the values it owns on its targeted entity
+ *   (move owns `position`, yaw owns `rotation[1]` alone, …) — everything else
+ *   compares exactly, down to the components a vector grant does not name;
  * - a created entity is new, appended and unclustered;
  * - cluster membership may only lose removed ids, and only a cluster that falls
  *   below the codec's two-member minimum may disappear. No cluster is created.
@@ -33,15 +33,20 @@ import type { ShapeIssue } from '../strict-shape';
 import type { SceneDocument } from '../scene';
 
 /**
- * The records one operation may touch. `changedEntityFields` is the field-level
- * grant for a targeted existing entity; a changed entity's every other field is
- * compared exactly.
+ * The records one operation may touch. `changedEntityFields` is the value-level
+ * grant for a targeted existing entity; a changed entity's every other field —
+ * and every component a grant does not name — is compared exactly.
  */
 export type SceneRecordScope = {
 	readonly operationKind: string;
 	/** Existing entities this operation may replace in place (same id, same position). */
 	readonly changedEntityIds: readonly string[];
-	/** Fields the operation owns on each changed entity. */
+	/**
+	 * Values the operation owns on each changed entity. A grant is either a whole
+	 * field (`position`) or one component of a vector field (`rotation[1]`): the
+	 * components it does not name still compare exactly, so a yaw edit may not
+	 * rewrite the pitch or roll it does not own.
+	 */
 	readonly changedEntityFields: readonly string[];
 	/** Entities this operation may append; each must be new and unclustered. */
 	readonly createdEntityIds: readonly string[];
@@ -183,8 +188,8 @@ export function checkSceneRecordScope(
 			}
 			continue;
 		}
-		const beforeOutsideFields = omitFields(previous, scope.changedEntityFields);
-		const afterOutsideFields = omitFields(entity, scope.changedEntityFields);
+		const beforeOutsideFields = omitGrants(previous, scope.changedEntityFields);
+		const afterOutsideFields = omitGrants(entity, scope.changedEntityFields);
 		if (stableJson(beforeOutsideFields) !== stableJson(afterOutsideFields)) {
 			issues.push({
 				path: `$.scene.entities.${entity.id}`,
@@ -306,9 +311,26 @@ function checkClusterScope(
 	return issues;
 }
 
-function omitFields(entity: object, fields: readonly string[]): Record<string, unknown> {
+/**
+ * Remove the granted values so everything else compares exactly. A
+ * `field[index]` grant drops that one component of an array field; a value that
+ * is not an array stays in the comparison, so a malformed grant can only make
+ * the guard stricter, never looser.
+ */
+function omitGrants(entity: object, grants: readonly string[]): Record<string, unknown> {
 	const copy = { ...(entity as Record<string, unknown>) };
-	for (const field of fields) delete copy[field];
+	for (const grant of grants) {
+		const component = /^([^[\]]+)\[(\d+)\]$/.exec(grant);
+		if (component === null) {
+			delete copy[grant];
+			continue;
+		}
+		const field = component[1]!;
+		const value = copy[field];
+		if (Array.isArray(value)) {
+			copy[field] = value.filter((_, index) => index !== Number(component[2]));
+		}
+	}
 	return copy;
 }
 
