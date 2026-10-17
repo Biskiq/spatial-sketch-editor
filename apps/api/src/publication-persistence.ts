@@ -7,17 +7,15 @@ import {
 	getShippedModelByAssetId,
 	hasBlockingLayoutIssues,
 	isAllowedShippedTextureUri,
-	isShippedFallback,
 	validateProject,
-	type ProjectDocument,
-	type SceneObjectFallback,
-	type SceneValidationOptions
+	type ProjectDocument
 } from '@portfolio/project-model';
 
 import { MAX_ASSET_BYTES, type StoredAsset } from './asset-persistence.js';
 import type { DatabaseClient, DatabasePool } from './database.js';
 import { ProjectNotFoundError, queryRows } from './project-persistence.js';
 import type { ObjectStore } from './object-store.js';
+import { REGISTRY_SCENE_OPTIONS, isRootRelativeSafe } from './scene-registry.js';
 
 export type PublicationStatus = {
 	publicationId: string | null;
@@ -85,33 +83,6 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 export function isValidPublicationId(value: unknown): value is string {
 	return typeof value === 'string' && UUID_PATTERN.test(value);
-}
-
-const REGISTRY_SCENE_OPTIONS: SceneValidationOptions = {
-	isKnownAssetId: (assetId: string) => getShippedModelByAssetId(assetId) !== undefined,
-	isKnownMaterialId: (materialId: string) => getShippedMaterialById(materialId) !== undefined,
-	isSceneObjectFallback: (value: unknown): value is SceneObjectFallback => isShippedFallback(value),
-	isSafeTextureUri: (uri: string) => isRootRelativeSafe(uri)
-};
-
-function isRootRelativeSafe(uri: string): boolean {
-	if (!uri.startsWith('/') || uri.startsWith('//')) return false;
-	if (uri.includes('\\') || uri.includes('?') || uri.includes('#')) return false;
-	let decoded = uri;
-	for (let depth = 0; depth < 8; depth += 1) {
-		let next: string;
-		try {
-			next = decodeURIComponent(decoded);
-		} catch {
-			return false;
-		}
-		if (next === decoded) break;
-		decoded = next;
-		if (depth === 7) return false;
-	}
-	if (!decoded.startsWith('/') || decoded.startsWith('//')) return false;
-	if (/[\u0000-\u001f\u007f]/.test(decoded)) return false;
-	return decoded.split('/').every((segment) => segment !== '.' && segment !== '..');
 }
 
 type PublicationRow = {
