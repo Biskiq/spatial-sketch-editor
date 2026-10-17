@@ -290,6 +290,50 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(afterCancel.state).toEqual(cancelled.state);
 	});
 
+	it('does not resurrect, flip or re-effect a terminal run', async () => {
+		const lowered = await program();
+		const entered = reduceExperience(lowered, createExperienceRun(lowered, OPTIONS), event('enter'));
+		const cancelled = reduceExperience(lowered, entered.state, event('cancel'));
+		expect(cancelled.state.phase).toBe('cancelled');
+
+		// cancel → complete and complete → cancel must not flip the terminal phase or
+		// run the other lifecycle list.
+		const lateComplete = reduceExperience(lowered, cancelled.state, event('complete'));
+		expect(lateComplete).toMatchObject({ outcome: 'ignored', effects: [] });
+		expect(lateComplete.state).toEqual(cancelled.state);
+		const lateCancel = reduceExperience(lowered, cancelled.state, event('cancel'));
+		expect(lateCancel.state).toEqual(cancelled.state);
+
+		let state = reduceExperience(lowered, entered.state, event('tick', { milliseconds: 500 })).state;
+		state = reduceExperience(lowered, state, event('continue')).state;
+		const completed = reduceExperience(lowered, state, event('continue'));
+		expect(completed.state.phase).toBe('completed');
+		const duplicate = reduceExperience(lowered, completed.state, event('complete'));
+		expect(duplicate).toMatchObject({ outcome: 'ignored', effects: [] });
+		expect(duplicate.state).toEqual(completed.state);
+		const cancelledLate = reduceExperience(lowered, completed.state, event('cancel'));
+		expect(cancelledLate.state).toEqual(completed.state);
+
+		// No state-changing event runs after the end either.
+		for (const late of [
+			event('tick', { milliseconds: 100 }),
+			event('set-state', { stateId: 'seen', value: true }),
+			event('navigate', { stopId: 'stop-1' }),
+			event('continue'),
+			event('enter'),
+			event('arrival')
+		]) {
+			const result = reduceExperience(lowered, completed.state, late);
+			expect(result).toMatchObject({ outcome: 'ignored', effects: [] });
+			expect(result.state).toEqual(completed.state);
+		}
+
+		// Reset remains the one supported rewind: it re-enters the same run.
+		const reset = reduceExperience(lowered, completed.state, event('reset'));
+		expect(reset.state).toMatchObject({ entered: true, stopId: 'stop-1', phase: 'holding' });
+		expect(reset.state.visited).toHaveLength(1);
+	});
+
 	it('never borrows a Travel bound to a different predecessor', async () => {
 		const lowered = await threeStopLowering();
 		if (lowered.kind !== 'lowered') throw new Error(lowered.message);

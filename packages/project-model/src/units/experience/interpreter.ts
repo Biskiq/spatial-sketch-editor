@@ -219,6 +219,12 @@ export function reduceExperience(
 	) {
 		return { state, outcome: 'stale', effects: [] };
 	}
+	// A terminal run is finished: no lifecycle action, hold, state write or
+	// navigation may run again, and a late complete/cancel cannot resurrect it or
+	// flip one terminal phase into the other. `reset` is the one supported rewind.
+	if ((state.phase === 'completed' || state.phase === 'cancelled') && event.kind !== 'reset') {
+		return ignored(state);
+	}
 
 	if (event.kind === 'tick') return tick(state, event.milliseconds);
 	if (event.kind === 'enter') return enter(program, state, options);
@@ -667,6 +673,9 @@ function finish(
 	options: ExperienceInterpreterOptions,
 	effects: ExperienceEffect[] = []
 ): ExperienceReduceResult {
+	// Defence in depth for any internal caller: an ended run never runs another
+	// lifecycle list. The dispatcher already rejects terminal runs.
+	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
 	const actioned = applyLifecycle(program, state, event, effects);
 	const phase: ExperienceRunPhase = event === 'complete' ? 'completed' : 'cancelled';
 	const values = event === 'cancel'
