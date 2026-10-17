@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+
 	/**
 	 * T1.P01.S02 — the editor **route host**.
 	 *
@@ -27,7 +29,7 @@
 		ProjectPersistenceError,
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
-	import { serializeProject } from '$lib/project/project-codec';
+	import { primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import {
 		bootEmpty,
 		bootFromLoadOutcome,
@@ -111,13 +113,32 @@
 		undoUnavailableReason: 'Nothing to undo yet — no change has been accepted.',
 		redoUnavailableReason: 'Nothing to redo.'
 	});
-	let selection = $state<StageSelection | null>(null);
+	let selection = $state<StageSelectionEntry | null>(null);
 	let task = $state<StageTask | null>(null);
 	/** Instrument content contributed by the adapter whose task is open, if any. */
 	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
 		void contributionsVersion;
 		return contributedTaskId === null ? null : facade?.instrumentForTask(contributedTaskId.id, contributedTaskId.adapterId) ?? null;
 	});
+	const inactiveTask = $derived.by(() => {
+		void contributionsVersion;
+		const lifecycle = facade?.session.taskLifecycle();
+		return lifecycle?.status === 'inactive' ? lifecycle.task : null;
+	});
+	function changeLens(next: 'world' | 'experience'): void {
+		abortGesture();
+		if (facade?.changeLens(next)) {
+			lens = session.lens();
+			task = null;
+			contributionsVersion += 1;
+		}
+	}
+	function resumeTask(): void {
+		const result = facade?.resumeTask();
+		if (result?.kind === 'refused') notice = result.message;
+		else { task = session.task(); notice = ''; }
+		contributionsVersion += 1;
+	}
 	let revealed = $state<string[]>([]);
 	let lens = $state<'world' | 'experience'>('world');
 	let indexOpen = $state(true);
@@ -188,7 +209,8 @@
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
-			if (task === null) contributedTaskId = null;
+			selection = facade ? primaryEntry(facade.selectionState()) : null;
+			if (facade?.session.taskLifecycle() === null) contributedTaskId = null;
 		});
 		task = null;
 		contributedTaskId = null;
@@ -202,7 +224,7 @@
 			sessionEpoch: snapshot.sessionEpoch,
 			baseline: {
 				revision: snapshot.acceptedRevision,
-				source: snapshot.domain.project,
+				source: currentStageSource(snapshot).source,
 				// The baseline's bytes must be the snapshot's own canonical form: the F4
 				// adapter re-admits them on Undo and refuses a different serialization.
 				canonicalJson: snapshot.canonicalJson,
@@ -219,8 +241,8 @@
 				boot = { ...boot, snapshot: facade.snapshot() };
 			}
 			task = facade?.session.task() ?? null;
-			if (task === null) contributedTaskId = null;
-			selection = facade?.selection() ?? null;
+			selection = facade ? primaryEntry(facade.selectionState()) : null;
+			if (facade?.session.taskLifecycle() === null) contributedTaskId = null;
 			planKey = '';
 			refresh();
 		});
@@ -388,11 +410,11 @@
 		selectionMarker = selected === null ? null : selectionEcho(selected);
 	}
 
-	function selectionEcho(selected: StageSelection): { css: readonly [number, number]; label: string } | null {
+	function selectionEcho(selected: StageSelectionEntry): { css: readonly [number, number]; label: string } | null {
 		const stage = facade;
 		if (stage === null) return null;
 		const plan = planView;
-		const fragment = plan?.fragments.find((candidate) => candidate.ref.sourceId === selected.sourceId);
+		const fragment = plan?.fragments.find((candidate) => candidate.ref.sourceId === selected.reference.subject.id);
 		if (fragment === undefined) return null;
 		const points =
 			fragment.geometry.kind === 'span'
@@ -406,7 +428,7 @@
 		);
 		const projected = stage.projectWorld([center[0], fragment.elevationMeters, center[1]], stage.evaluationId() ?? '');
 		if (projected.kind !== 'projected') return null;
-		return { css: projected.css, label: selected.sourceId };
+		return { css: projected.css, label: selected.reference.subject.id };
 	}
 
 	onMount(() => {
@@ -547,7 +569,7 @@
 			// The restored state installed through the same facade path an accept uses:
 			// the view stays, the selection was requalified against the restored
 			// correspondence, and the plan/markers refresh below reads the new snapshot.
-			selection = facade?.selection() ?? null;
+			selection = facade ? primaryEntry(facade.selectionState()) : null;
 			if (outcome.selectionClearedReason !== null) {
 				notice = 'The selected subject no longer exists in the restored source.';
 			}
@@ -570,7 +592,7 @@
 		const outcome = await host.redo();
 		if (acceptance !== host || tornDown) return;
 		if (outcome.kind === 'installed') {
-			selection = facade?.selection() ?? null;
+			selection = facade ? primaryEntry(facade.selectionState()) : null;
 			if (outcome.selectionClearedReason !== null) {
 				notice = 'The selected subject no longer exists in the restored source.';
 			}
@@ -610,7 +632,7 @@
 			}
 		};
 		stage.select(selected);
-		selection = selected;
+		selection = primaryEntry(stage.selectionState());
 		cardOpen = true;
 	}
 
@@ -639,17 +661,23 @@
 			generationId: fragment.ref.generationId,
 			ref: fragment.ref
 		});
-		selection = stage.selection();
+		selection = primaryEntry(stage.selectionState());
 	}
 
 	function openTask(): void {
 		const stage = facade;
 		const selected = selection;
 		if (stage === null || selected === null) return;
+		if (selected.reference.domain !== 'layout') {
+			// The host's own task is Plan membership, a Layout projection. A Scene or
+			// other-domain subject is worked through its adapter's contributed task.
+			notice = 'This subject has no Plan membership task. Invoke a contributed operation from the Index.';
+			return;
+		}
 		const next: StageTask = {
 			kind: 'subject-membership',
 			label: 'Plan membership',
-			targetRef: selected.ref
+			targetRef: selected.representation ?? null, target: selected.reference
 		};
 		if (stage.openTask(next)) {
 			task = next;
@@ -866,11 +894,11 @@
 	function downloadSourceJson(): void {
 		const snapshot = boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot : null;
 		if (snapshot === null) return;
-		const canonical = serializeProject(snapshot.domain.project);
+		const canonical = snapshot.canonicalJson;
 		const url = URL.createObjectURL(new Blob([canonical], { type: 'application/json' }));
 		const anchor = document.createElement('a');
 		anchor.href = url;
-		anchor.download = `${snapshot.domain.project.name.replace(/[^\w.-]+/g, '-') || 'project'}.json`;
+		anchor.download = `${snapshot.domain.name.replace(/[^\w.-]+/g, '-') || 'project'}.json`;
 		anchor.click();
 		URL.revokeObjectURL(url);
 	}
@@ -904,22 +932,23 @@
 			.filter((group) => group.items.length > 0);
 	});
 
+	/** Plan membership is a Layout fact; another domain's subject has none to report. */
 	const selectedMembership = $derived.by((): PlanMembershipReason | null => {
 		const plan = planView;
 		const selected = selection;
-		if (plan === null || selected === null) return null;
-		return plan.membership.find((row) => row.sourceId === selected.sourceId)?.reason ?? null;
+		if (plan === null || selected === null || selected.reference.domain !== 'layout') return null;
+		return plan.membership.find((row) => row.sourceId === selected.reference.subject.id)?.reason ?? null;
 	});
 
-	/** The Card's identity: the canonical subject and its declared membership status. */
+	/** The Card's identity: the canonical subject and, for Layout, its membership. */
 	const cardIdentity = $derived(
 		selection === null
 			? null
 			: {
-					sourceId: selection.sourceId,
-					label: selection.sourceId,
-					kind: selection.sourceKind,
-					status: selectedMembership ?? 'unknown'
+					sourceId: selection.reference.subject.id,
+					label: selection.reference.subject.id,
+					kind: selection.reference.subject.kind,
+					status: selectedMembership ?? selection.reference.domain
 				}
 	);
 
@@ -932,19 +961,23 @@
 		void contributionsVersion;
 		const selected = selection;
 		if (selected === null) return [];
-		const membership = planView?.membership.find((row) => row.sourceId === selected.sourceId);
-		const own = [
-			{ label: 'Stream', value: selected.ref.stream },
-			{ label: 'Eligible', value: String(membership?.eligible ?? false) },
-			{ label: 'Revealed', value: String(revealed.includes(selected.sourceId)) },
-			{
-				label: 'Datum',
-				value: `${boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0} m`
-			}
-		];
+		const own = selected.reference.domain === 'layout'
+			? [
+				{ label: 'Stream', value: selected.representation?.stream ?? 'canonical' },
+				{ label: 'Eligible', value: String(planView?.membership.find((row) => row.sourceId === selected.reference.subject.id)?.eligible ?? false) },
+				{ label: 'Revealed', value: String(revealed.includes(selected.reference.subject.id)) },
+				{
+					label: 'Datum',
+					value: `${boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0} m`
+				}
+			]
+			// Plan eligibility, Reveal and datum are Layout projections. A Scene or
+			// other-domain subject shows its domain here and lets its own adapter
+			// contribute the facts it actually owns.
+			: [{ label: 'Domain', value: selected.reference.domain }];
 		// Whatever adapters registered for this subject appears here without this
 		// route knowing which domain contributed it.
-		return stageCardFacts(facade, { sourceId: selected.sourceId, sourceKind: selected.sourceKind, ref: selected.ref }, own);
+		return stageCardFacts(facade, { sourceId: selected.reference.subject.id, sourceKind: selected.reference.subject.kind, ref: selected.representation ?? null, reference: selected.reference }, own);
 	});
 
 	/** Every contributed Find/rail entry from the adapters currently mounted. */
@@ -977,7 +1010,7 @@
 		const plan = planView;
 		const selected = selection;
 		if (plan === null || selected === null) return null;
-		const fragment = plan.fragments.find((candidate) => candidate.ref.sourceId === selected.sourceId);
+		const fragment = plan.fragments.find((candidate) => candidate.ref.sourceId === selected.reference.subject.id);
 		if (fragment === undefined) return null;
 		const points =
 			fragment.geometry.kind === 'span'
@@ -997,9 +1030,9 @@
 <div class="editor-host">
 	<EditorHead
 		{projectId}
-		projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.project.name : 'Loading project'}
+		projectName={boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.name : 'Loading project'}
 		{lens}
-		onLens={(next) => (lens = next)}
+		onLens={changeLens}
 		canDownloadSource={activeProject()}
 		onDownloadSource={downloadSourceJson}
 		historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
@@ -1020,7 +1053,7 @@
 			onToggle={() => (indexOpen = !indexOpen)}
 			groups={indexGroups}
 			contributions={contributionGroups}
-			selectionId={selection?.sourceId ?? null}
+			selectionId={selection?.reference.subject.id ?? null}
 			{query}
 			onQuery={(next) => (query = next)}
 			onSelect={selectSource}
@@ -1104,13 +1137,25 @@
 					<!-- The Experience lens has a real unavailable posture until T3 mounts
 						its adapter on this Stage: never a mock editable Experience, and never a
 						silent no-op that looks like a broken switch. -->
-					<div class="lens-unavailable" role="status">
+					<!--
+						Like the toolbar, this panel stops its own pointer/click events: the
+						Stage surface below is pointer-driven and captures the pointer on press,
+						so a bubbled press would move the click onto the Stage and the button
+						would never receive it.
+					-->
+					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+					<div
+						class="lens-unavailable"
+						role="status"
+						onpointerdown={(event) => event.stopPropagation()}
+						onclick={(event) => event.stopPropagation()}
+					>
 						<h2>Experience is not available yet</h2>
 						<p>
 							The Experience lens arrives with T3, which mounts its own adapter on this
-							Stage. The World view keeps exactly the state you left it in.
+							Stage. Pending work is cancelled. Return to World for ordinary viewing or explicitly resume the inactive task.
 						</p>
-						<button type="button" onclick={() => (lens = 'world')}>Back to World</button>
+						<button type="button" onclick={() => changeLens('world')}>Back to World</button>
 					</div>
 				{/if}
 
@@ -1131,9 +1176,22 @@
 				}}
 			/>
 
+			{#if inactiveTask}
+				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+				<div
+					class="inactive-task"
+					role="status"
+					onpointerdown={(event) => event.stopPropagation()}
+					onclick={(event) => event.stopPropagation()}
+				>
+					<p>{inactiveTask.label} is inactive. Pending proposals were discarded.</p>
+					<button type="button" onclick={resumeTask}>Resume {inactiveTask.label}</button>
+					<button type="button" onclick={closeTask}>Close inactive task</button>
+				</div>
+			{/if}
 			<StageInstrumentHost task={taskHost} onClose={closeTask} instrument={contributedInstrument}>
 				{#if selection !== null}
-					{@const selectedId = selection.sourceId}
+					{@const selectedId = selection.reference.subject.id}
 					<div class="instrument-body">
 						<p>Declared membership: <strong>{selectedMembership ?? 'unknown'}</strong></p>
 						<button type="button" onclick={() => toggleReveal(selectedId)}>
@@ -1307,6 +1365,12 @@
 		background: rgb(25 24 31 / 88%);
 		color: #e3c4c4;
 	}
+	/*
+	 * Parked-task notice. It sits at the top-left because the lower edge already
+	 * belongs to the instrument and the selection Card, and it must never be covered
+	 * by another control: Resume is the only way back into a parked task.
+	 */
+	.inactive-task { position: absolute; top: 1rem; left: 1rem; z-index: 9; max-width: min(22rem, calc(100% - 2rem)); padding: 0.75rem; background: #19181f; border: 1px solid #635a6f; }
 	.instrument-body {
 		display: flex;
 		align-items: center;

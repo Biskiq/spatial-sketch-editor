@@ -1,3 +1,8 @@
+import { primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
+import type { EntryRequalification } from './selection-requalification';
+import type { StageSelectionEntry } from './semantic-selection';
+import type { StageLens, TaskResumeOutcome } from './stage-session';
+import type { SemanticReference, F4JsonValue } from '@portfolio/project-model';
 /**
  * The public editor host facade — the consumer boundary of
  * `T1.viewport-projection@1`.
@@ -68,7 +73,7 @@ import type {
 
 import { planParameters, type PlanParameterOverrides } from './plan-parameters';
 import { createCameraSession, evaluationIdOf, type CameraSession } from './camera-session';
-import type { StageReadSnapshot } from './source-admission';
+import type { StageReadSnapshot } from './accepted-read';
 import type {
 	GestureAcquisition,
 	SelectionRequalification,
@@ -158,6 +163,8 @@ export type StageAdapterContext = {
 	ray(css: readonly [number, number]): PointerRay | null;
 	intersect(ray: PointerRay, plane: WorkingPlane): WorkingPlaneHit;
 	selection(): StageSelection | null;
+	selectionState(): StageSelectionState;
+	setSelection(value: StageSelectionState): StageSelectionChange;
 	select(selection: StageSelection | null): void;
 	requestIntent(intent: ViewingIntent, clockSeconds: number): StageIntentResult;
 };
@@ -169,6 +176,11 @@ export type StageTaskContribution = {
 	readonly taskKind: string;
 	readonly label: string;
 	readonly targetRef?: PlanSourceRef | null;
+	readonly target?: SemanticReference | null;
+	readonly configuration?: F4JsonValue;
+	readonly lens?: StageLens;
+	/** Called for explicit Resume against current content, never at lens return. */
+	readonly revalidate?: (task: StageTask, snapshot: StageReadSnapshot) => TaskResumeOutcome;
 	/** Explicit deterministic order; ties break by adapter ID, then contribution ID. */
 	readonly order?: number;
 };
@@ -204,7 +216,8 @@ export type StageCardFact = { readonly label: string; readonly value: string };
 /** The Card's subject identity, supplied by the host (never private Stage state). */
 export type StageCardSubject = {
 	readonly sourceId: string;
-	readonly sourceKind: PlanSourceKind;
+	readonly sourceKind: string;
+	readonly reference?: SemanticReference;
 	readonly ref: PlanSourceRef | null;
 };
 
@@ -239,6 +252,7 @@ export type StageAdapterBinding = {
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
+	readonly selectionChanged?: (selection: StageSelectionState) => void;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 	readonly tasks?: readonly StageTaskContribution[];
 	readonly cardFacts?: (subject: StageCardSubject) => readonly StageCardFact[];
@@ -328,6 +342,7 @@ export type StageContentInstall =
 			readonly releasedGestures: number;
 			/** Whether the live selection survived through accepted correspondence. */
 			readonly requalification: SelectionRequalificationOutcome;
+			readonly selectionRemovals: Extract<import('./stage-session').AcceptedSlotInstall, {kind:'installed'}>['selectionRemovals'];
 	  }
 	| { readonly kind: 'unchanged'; readonly sourceContentId: string; readonly claim: CameraOutputClaim | null }
 	| {
@@ -363,6 +378,7 @@ export type StageFacade = {
 		next: StageReadSnapshot,
 		options?: {
 			readonly requalify?: SelectionRequalification;
+			readonly requalifyEntry?: (entry: StageSelectionEntry) => EntryRequalification;
 			/**
 			 * Mutation-control seam for the adapter-lifetime criterion, keyed by a
 			 * symbol this module exports so no ordinary option can trigger it. Only the
@@ -383,9 +399,13 @@ export type StageFacade = {
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	selection(): StageSelection | null;
+	selectionState(): StageSelectionState;
+	setSelection(value: StageSelectionState): StageSelectionChange;
 	select(selection: StageSelection | null): void;
 	openTask(task: StageTask): boolean;
 	closeTask(): boolean;
+	changeLens(next: StageLens): boolean;
+	resumeTask(): TaskResumeOutcome;
 	registerStageAdapter(adapter: StageAdapter): StageAdapterRegistration;
 	adapters(): readonly StageAdapter[];
 	/**
@@ -824,15 +844,29 @@ export function createStageFacade(input: {
 		});
 	}
 
-	function adapterContext(): StageAdapterContext | null {
+	/**
+	 * One adapter context plus the handle that ends it.
+	 *
+	 * A context is bounded by **its binding**, not by the session's writer
+	 * generation: opening or closing a task must not invalidate an adapter's
+	 * selection capability, because the binding is still built from live content and
+	 * the adapter is still registered. `end()` is what makes a rebuilt, replaced or
+	 * disposed binding's old callbacks inert — the same lifetime the disposer already
+	 * ends. Task-scoped callbacks are the ones that expire with a writer generation,
+	 * and the instrument services guard them with it separately.
+	 */
+	type AdapterContextHandle = { readonly context: StageAdapterContext; end(): void };
+
+	function adapterContext(): AdapterContextHandle | null {
 		const evaluation = camera.evaluation();
 		if (!isLive() || evaluation === null) return null;
 		const boundSnapshot = currentSnapshot;
-		const contextIsLive = () => isLive() && currentSnapshot === boundSnapshot;
+		let ended = false;
+		const contextIsLive = () => !ended && isLive() && currentSnapshot === boundSnapshot;
 		const token = tokenOf(evaluation);
 		const id = evaluationIdOf(evaluation);
 		const hasLiveEvaluation = () => contextIsLive() && camera.evaluationId() === id;
-		return {
+		const context: StageAdapterContext = {
 			snapshot: currentSnapshot,
 			evaluation,
 			evaluationId: id,
@@ -851,19 +885,36 @@ export function createStageFacade(input: {
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
 			selection: () => contextIsLive() ? session.selection() : null,
-			select: (selection) => { if (contextIsLive()) select(selection); },					// The adapter names the clock: an adapter-initiated transition starts at
-					// the caller's own time, never at a fabricated zero that would make every
-					// transition begin in the past and land instantly.
-					requestIntent: (intent, clockSeconds) =>
-						contextIsLive() ? facade.requestViewingIntent(intent, camera.inspectionTicket(), clockSeconds)
-						: { kind: 'superseded', state: camera.state(), message: 'the adapter binding lifetime has ended' }
+			selectionState: () => session.selectionState(),
+			setSelection: (value) => contextIsLive() ? setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
+			select: (selection) => { if (contextIsLive()) select(selection); },
+			// The adapter names the clock: an adapter-initiated transition starts at
+			// the caller's own time, never at a fabricated zero that would make every
+			// transition begin in the past and land instantly.
+			requestIntent: (intent, clockSeconds) =>
+				contextIsLive() ? facade.requestViewingIntent(intent, camera.inspectionTicket(), clockSeconds)
+				: { kind: 'superseded', state: camera.state(), message: 'the adapter binding lifetime has ended' }
 		};
+		return { context, end: () => { ended = true; } };
 	}
 
 	function select(selection: StageSelection | null): void {
 		if (!isLive()) return;
 		session.select(selection);
-		for (const entry of adapters.values()) entry.contributions.selectionEcho?.(selection);
+		echoSelection();
+		notifyAdaptersChanged();
+	}
+
+	function echoSelection(): void {
+		for (const entry of adapters.values()) {
+			try { entry.contributions.selectionEcho?.(session.selection()); entry.contributions.selectionChanged?.(session.selectionState()); } catch { /* Subscriber isolation. */ }
+		}
+	}
+	function setSelection(value: StageSelectionState): StageSelectionChange {
+		if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+		const result = session.setSelection(value);
+		if (result.kind === 'selected') { echoSelection(); notifyAdaptersChanged(); }
+		return result;
 	}
 
 	/** End every binding and registration: used by dispose, never by a content change. */
@@ -896,8 +947,9 @@ export function createStageFacade(input: {
 	function buildBinding(adapter: StageAdapter):
 		| { readonly kind: 'built'; readonly contributions: StageAdapterBinding; readonly dispose: () => void }
 		| { readonly kind: 'deferred' } {
-		const context = adapterContext();
-		if (adapter.bind === undefined || context === null) return { kind: 'deferred' };
+		const handle = adapterContext();
+		if (adapter.bind === undefined || handle === null) return { kind: 'deferred' };
+		const { context, end } = handle;
 		let binding: StageAdapterBinding = {};
 		try {
 			binding = adapter.bind({ ...context, adapterId: adapter.id });
@@ -908,14 +960,15 @@ export function createStageFacade(input: {
 		// The install requalified it before any rebuild, so the adapter observes the
 		// surviving selection — never a cleared-then-restored pair.
 		const live = session.selection();
-		if (live !== null) {
+		{
 			try {
-				binding.selectionEcho?.(live);
+				if (live !== null) binding.selectionEcho?.(live);
+				binding.selectionChanged?.(session.selectionState());
 			} catch {
 				// An echo that throws must not discard a binding that was built.
 			}
 		}
-		return { kind: 'built', contributions: binding, dispose: once(() => binding.dispose?.()) };
+		return { kind: 'built', contributions: binding, dispose: once(() => { end(); binding.dispose?.(); }) };
 	}
 
 	/**
@@ -1113,7 +1166,7 @@ export function createStageFacade(input: {
 				return { kind: 'unchanged', sourceContentId: next.sourceContentId, claim: camera.output().claim };
 			}
 			const requalify = options?.requalify;
-			const installed = session.installAccepted(next, requalify === undefined ? undefined : { requalify });
+			const installed = session.installAccepted(next, { requalify, requalifyEntry: options?.requalifyEntry });
 			if (installed.kind !== 'installed') {
 				// The session holds one accepted-source slot, so this is the "nothing
 				// mounted yet" case; a disposed or divergent session is named as such.
@@ -1155,6 +1208,7 @@ export function createStageFacade(input: {
 					}
 				}
 			}
+			for (const entry of adapters.values()) if (!entry.factory) { try { entry.contributions.selectionChanged?.(session.selectionState()); } catch { /* Subscriber isolation. */ } }
 			const acquired = camera.acquireInspection('exclusive', nextInspectionRun());
 			return {
 				kind: 'installed',
@@ -1167,7 +1221,8 @@ export function createStageFacade(input: {
 				clearedSelection: installed.clearedSelection,
 				closedTask: installed.closedTask,
 				releasedGestures: installed.releasedGestures,
-				requalification: installed.requalification
+				requalification: installed.requalification,
+				selectionRemovals: installed.selectionRemovals
 			};
 		},
 		plan: (overrides) => planFor(overrides),
@@ -1191,12 +1246,12 @@ export function createStageFacade(input: {
 			// datum-plane point. Layout's own Plan resolution is the built-in fallback
 			// when no adapter claims, which keeps its priority deterministic within Layout.
 			ensureBindings();
-			const context = adapterContext();
-			if (context !== null) {
+			const handle = adapterContext();
+			if (handle !== null) {
 				for (const entry of adapters.values()) {
 					const provider = entry.contributions.hitProvider;
 					if (provider === undefined) continue;
-					const claimed = provider(candidate, context);
+					const claimed = provider(candidate, handle.context);
 					if (claimed !== null) return { kind: 'resolved', hit: claimed };
 				}
 			}
@@ -1241,9 +1296,32 @@ export function createStageFacade(input: {
 			return { kind: 'none', reason: 'no-fragment' };
 		},
 		selection: () => session.selection(),
+		selectionState: () => session.selectionState(),
+		setSelection,
 		select,
 		openTask: (task) => { if (!isLive()) return false; contributedTaskOwner = null; return session.openTask(task); },
-		closeTask: () => { if (!isLive()) return false; contributedTaskOwner = null; return session.closeTask(); },
+		closeTask: () => { if (!isLive()) return false; contributedTaskOwner = null; const closed = session.closeTask(); notifyAdaptersChanged(); return closed; },
+		changeLens(next) {
+			if (!isLive() || !session.changeLens(next)) return false;
+			// A lens exit ends bindings as well as writers. Old callbacks cannot become live on return.
+			rebindAdapters();
+			notifyAdaptersChanged();
+			return true;
+		},
+		resumeTask() {
+			if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+			ensureBindings();
+			const owner = contributedTaskOwner;
+			const entry = owner ? tasksOf().find((candidate) => candidate.adapterId === owner.adapterId && candidate.id === owner.taskId) : null;
+			const result = session.resumeTask((task, snapshot) => {
+				if (owner && !entry) return { kind: 'refused', code: 'missing-task', message: 'This capability is no longer available. Close the inactive task and choose another.' };
+				if (entry && !entry.revalidate) return { kind: 'refused', code: 'resume-unavailable', message: 'This adapter cannot revalidate its task. Close it and invoke it again.' };
+				return entry?.revalidate?.(task, snapshot) ?? { kind: 'resumed' };
+			});
+			if (result.kind === 'resumed') rebindAdapters();
+			notifyAdaptersChanged();
+			return result;
+		},
 		registerStageAdapter(adapter) {
 			if (!isLive()) {
 				return {
@@ -1311,30 +1389,42 @@ export function createStageFacade(input: {
 		},
 		overlays() {
 			ensureBindings();
-			const context = adapterContext();
-			if (context === null) return [];
-			return [...adapters.values()].flatMap((entry) => entry.contributions.overlay?.(context) ?? []);
+			const handle = adapterContext();
+			if (handle === null) return [];
+			return [...adapters.values()].flatMap((entry) => entry.contributions.overlay?.(handle.context) ?? []);
 		},
 		graphics() {
 			ensureBindings();
-			const context = adapterContext();
-			if (context === null) return [];
-			return [...adapters.values()].flatMap((entry) => entry.contributions.graphics?.(context) ?? []);
+			const handle = adapterContext();
+			if (handle === null) return [];
+			return [...adapters.values()].flatMap((entry) => entry.contributions.graphics?.(handle.context) ?? []);
 		},
 		tasks() {
 			ensureBindings();
 			return tasksOf();
 		},
 		instrumentForTask(id, adapterId) {
-			if (disposed) return null;
+			if (!isLive() || session.task() === null) return null;
 			ensureBindings();
 			const entry = tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
 			if (entry === undefined || session.task()?.kind !== entry.taskKind ||
 				contributedTaskOwner?.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) return null;
 			try {
-				return adapters.get(entry.adapterId)?.contributions.instrument?.({
+				const content = adapters.get(entry.adapterId)?.contributions.instrument?.({
 					kind: entry.taskKind, targetRef: entry.targetRef ?? null
 				}) ?? null;
+				if (!content?.view) return content;
+				const services = content.view.services;
+				const generation = session.writerGeneration();
+				const active = () => isLive() && generation === session.writerGeneration() && session.task() !== null;
+				return { ...content, view: { ...content.view, services: {
+					stage: { ...services.stage,
+						setSelection: (value) => active() ? setSelection(value) : { kind: 'refused', code: 'inactive-task', message: 'Resume the task before selecting.' },
+						select: (value) => { if (active()) select(value); },
+						acquireGesture: (request) => active() ? facade.acquireGesture(request) : { kind: 'refused', code: 'stale-epoch', owner: request.owner }
+					},
+					authoring: { ...services.authoring, accept: (intent) => active() ? services.authoring.accept(intent) : Promise.resolve({ kind: 'refused', code: 'inactive-task', message: 'Resume the task before applying a proposal.' }) }
+				} } };
 			} catch { return null; }
 		},
 		openFindEntry(adapterId, id) {
@@ -1356,12 +1446,13 @@ export function createStageFacade(input: {
 			const task: StageTask = {
 				kind: entry.taskKind,
 				label: entry.label,
-				targetRef: entry.targetRef ?? null
+				targetRef: entry.targetRef ?? null, target: entry.target ?? null, configuration: entry.configuration ?? null, lens: entry.lens ?? 'world'
 			};
 			if (!session.openTask(task)) {
 				return { kind: 'refused', code: 'task-closed', message: 'the session is disposed and opens no task' };
 			}
 			contributedTaskOwner = { adapterId: entry.adapterId, taskId: entry.id };
+			notifyAdaptersChanged();
 			const instrument = facade.instrumentForTask(id, entry.adapterId);
 			return { kind: 'opened', taskId: entry.id, task, adapterId: entry.adapterId, instrument };
 		},

@@ -48,7 +48,7 @@ import {
 	type CameraOutputTicket
 } from '@portfolio/project-model';
 
-import type { StageReadSnapshot } from './source-admission';
+import type { StageReadSnapshot } from './accepted-read';
 
 /** The default inspection framing of a project, from its compiled bounds. */
 export function initialInspectionPose(bounds: { min: Vec3; max: Vec3 } | null): InspectionPose {

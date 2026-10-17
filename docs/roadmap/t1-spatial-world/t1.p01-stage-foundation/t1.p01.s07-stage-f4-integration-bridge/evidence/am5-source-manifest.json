@@ -1,0 +1,30 @@
+{
+  "increment": "T1.P01.S07 AM-5 completion (source-independent read, F.1 ordered selection, lens/task lifecycle)",
+  "base": "bbc1203acbb83530780e429b3ab3b930b82169db",
+  "algorithm": "aggregateSha256 = sha256 over the sorted lines `<path>\\t<fileSha256>\\n`",
+  "pathToSha256": {
+    "apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts": "6f7aed30845a26c67c90125d05127b5cccaf734c5cfaa2c17a6ace8e0fb8964b",
+    "apps/editor/src/lib/authoring/stage/accepted-read.ts": "935fa27ada07f27768006e0bca1317e4b475745f35fd999ab1aa834033228f0d",
+    "apps/editor/src/lib/authoring/stage/camera-session.ts": "26078759368fa91ad8b64edbbe3091b3edd56f899d03cbdcb882dadfcb987304",
+    "apps/editor/src/lib/authoring/stage/current-stage-source.ts": "22a32bf9efb67e155d690b81a6dad780803da136cb8d587c0b73e3872f6391cc",
+    "apps/editor/src/lib/authoring/stage/host-acceptance.ts": "e8190d09137a5f12b67332b55baba3330e691da8929a54f85bb3bc6bb0a7c33a",
+    "apps/editor/src/lib/authoring/stage/selection-requalification.ts": "aead78f395bd08d555a47809501f40468770980a41722cb9ba6cad2e93acebb6",
+    "apps/editor/src/lib/authoring/stage/semantic-selection.ts": "36e1bee6b4be5c37c0f282c2dd2875a842aa82c61923ec5741bcdfb78fa5d131",
+    "apps/editor/src/lib/authoring/stage/source-admission.ts": "4e5a8744ecfa5372639268f759f724e2d8da6482646b3a545bb5eaefff9054bf",
+    "apps/editor/src/lib/authoring/stage/stage-adapter-host.ts": "6694b9df24e47eb5501a4747ca51ef4dde475f3a9f3f17031363109237ff7d15",
+    "apps/editor/src/lib/authoring/stage/stage-facade.ts": "8a02d382f58450793f1326826e8ed0f4f70b9b97b018777b3a714c03976f81ac",
+    "apps/editor/src/lib/authoring/stage/stage-session.ts": "19a6e091bfa7a865a06bbbb6f822739dede2ccd806f63b8c891d77c3fb2d813f",
+    "apps/editor/src/routes/project/[projectId]/spatial/+page.svelte": "c47b375550a21d6aec459038c9bb5ae6543afd90c0943cac3928fec27d6375cf",
+    "apps/editor/tests/e2e/stage-conformance/ProbeInstrument.svelte": "9af02861c5123c875b2443fba318799aee55a13a608685b40c57ec62b8c438e1",
+    "apps/editor/tests/e2e/stage-conformance/probe-adapter.ts": "759907cd38e23d44a93d3b3951886914211d3076b410d9b61f1fa1aa99900ac3",
+    "apps/editor/tests/e2e/stage-conformance/probe-state.ts": "147eb4a32eef37d340ada1adfd11644e441590f7791fe86d5b5024b097dc8a60",
+    "apps/editor/tests/lib/authoring/__fixtures__/stage-accepted-read-consumer.ts": "abae41332337d9a2271fbb5538e2ea53aa6835499c51dc9e5b40cdfa161fe2f5",
+    "apps/editor/tests/lib/authoring/__fixtures__/stage-domain-consumer.ts": "1506ae5cbec94cf3f89d4583a3497ed38351d5a02fd63d2048b26aa085b29d4e",
+    "apps/editor/tests/lib/authoring/stage-boot-states.test.ts": "4143cd87a77d15f9e17721d06dd8809a350819eb0f29a847393615e8a44394ee",
+    "apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts": "6c0a565906f9738a0633eb1dbcf712eebd19272c44257b030a46ad87e3da411a",
+    "apps/editor/tests/lib/authoring/stage-semantic-lifecycle.test.ts": "84b16cfbb84c52a11a11a28633cf92bf432ebbbbf069d743b4a48b8e1ce2b17f",
+    "apps/editor/tests/lib/authoring/stage-session.test.ts": "08f8226bc23b3e006e210f5d67f265ae3d6ef78ec8fff92d7c62c696cfe2e2e7",
+    "apps/editor/tests/lib/authoring/stage-source-admission.test.ts": "96c290cb66638b40234f702e521a8171ad860c7f100da6632e06b8ca3ab33460"
+  },
+  "aggregateSha256": "392e0d4c5d5a8dfcbefc790ee30bc944157909b4105678de80ce2fb09913b0d7"
+}

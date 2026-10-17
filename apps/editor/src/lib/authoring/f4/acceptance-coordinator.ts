@@ -95,6 +95,8 @@ export type AcceptanceCoordinator<Source> = {
 	planners(): readonly DomainPlanner<Source>[];
 	/** Registration refusals this provider reported (compound, unit, resource, duplicate). */
 	registrationRefusals(): readonly { readonly reason: string; readonly message: string }[];
+	/** Cancel preparations without changing accepted content or history. */
+	cancelPending(): void;
 	accept(intent: AuthoringIntent, capturedInputs?: readonly CapturedInput[]): Promise<AcceptanceResult<Source>>;
 	undo(): Promise<HistoryOutcome<Source>>;
 	redo(): Promise<HistoryOutcome<Source>>;
@@ -203,6 +205,7 @@ export function createAcceptanceCoordinator<Source>(
 		acceptedSnapshot: () => snapshotOf(current), current: () => current,
 		installs: () => installs, register, planners: () => registry.planners(),
 		registrationRefusals: () => immutableF4Data(refusals),
+		cancelPending() { generation += 1; },
 		async accept(input, capturedInputs) {
 			let validation = validateAuthoringIntent(input);
 			if (validation.success && capturedInputs !== undefined) validation = validateAuthoringIntent({ ...validation.value, capturedInputs });

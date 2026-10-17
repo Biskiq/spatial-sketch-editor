@@ -1,3 +1,4 @@
+import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S07 — the host↔F4 integration bridge, proved from the host boundary.
  *
@@ -133,7 +134,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 	it('mounts an external domain factory with planner registration, submission and live UI contributions', async () => {
 		const { facade, snapshot, objectId } = await mount();
 		const host = createStageAcceptanceHost({ facade, sessionEpoch: snapshot.sessionEpoch,
-			baseline: { revision: snapshot.acceptedRevision, source: snapshot.domain.project,
+			baseline: { revision: snapshot.acceptedRevision, source: currentStageSource(snapshot).source,
 				canonicalJson: snapshot.canonicalJson, sourceContentId: snapshot.sourceContentId } });
 		settle(facade);
 		const disposed: string[] = [];
@@ -154,10 +155,10 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		facade.openContributedTask('consumer-move');
 		expect(facade.instrumentForTask('consumer-move')?.summary).toBe(facade.snapshot().sourceContentId);
 		expect((await consumerSceneEdit(services)).kind).toBe('installed');
-		expect(facade.snapshot().domain.project.scene.entities[0]).toMatchObject({ receiveShadow: true });
+		expect(currentStageSource(facade.snapshot()).source.scene.entities[0]).toMatchObject({ receiveShadow: true });
 		expect(host.history()).toMatchObject({ depth: 3, position: 2 });
 		expect((await host.undo()).kind).toBe('installed');
-		expect(facade.snapshot().domain.project.scene.entities[0]).toMatchObject({ receiveShadow: false });
+		expect(currentStageSource(facade.snapshot()).source.scene.entities[0]).toMatchObject({ receiveShadow: false });
 		expect((await host.redo()).kind).toBe('installed');
 		settle(facade);
 		facade.openContributedTask('consumer-move');
@@ -432,7 +433,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		settle(facade);
 		facade.select(objectSelection(facade, objectId));
 		const proof = createProofLayoutPlanner(objectId);
-		host.registerPlanner({ ...proof, id: 'delete-probe', kind: 'delete-probe', prepare(input) {
+		host.registerPlanner(currentStagePlanner({ ...proof, id: 'delete-probe', kind: 'delete-probe', prepare(input) {
 			const prepared = proof.prepare(input);
 			if (prepared.kind !== 'prepared') return prepared;
 			const deletion = planDeleteLayoutObject(input.snapshot.domain.source.layout, objectId);
@@ -440,11 +441,11 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 			return { ...prepared, candidate: { ...prepared.candidate,
 				source: { ...input.snapshot.domain.source, layout: deletion.document },
 				correspondence: [{ relation: 'retired', before: layoutObjectReference(input.snapshot.sourceContentId, objectId), after: null }] } };
-		} });
+		} }));
 		const intent = moveIntent(objectId, snapshot.acceptedRevision.revisionId, snapshot.sourceContentId, 'delete-operation', [2, 0, 1]);
 		expect(await host.accept({ ...intent, kind: 'delete-probe' })).toMatchObject({ kind: 'installed', selectionClearedReason: 'subject-retired' });
 		expect(facade.selection()).toBeNull();
-		expect(facade.snapshot().domain.project.layout.objects).toEqual([]);
+		expect(currentStageSource(facade.snapshot()).source.layout.objects).toEqual([]);
 		facade.dispose();
 	});
 
@@ -954,7 +955,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 		facade.registerStageAdapter({ id: 'still-live', dispose: () => { disposed += 1; } });
 		// F4 validates the source, but Stage refuses the mismatched project identity.
 		// No fake admission function or host bypass is involved.
-		expect(await host.replace({ source: snapshot.domain.project,
+		expect(await host.replace({ source: currentStageSource(snapshot).source,
 			revision: { projectId: 'wrong-project', revisionId: 'failed-replacement' },
 			sessionEpoch: 'failed-replacement-epoch' })).toMatchObject({ kind: 'refused', code: 'project-mismatch' });
 		expect(host.coordinator().current()).toBe(current);
@@ -1019,7 +1020,7 @@ describe('T1.P01.S07 — contribution surface signal', () => {
 
 		// Identical content is `unchanged`: nothing rebinds, so the surface is not
 		// invalidated and a mounted adapter's entries are not rebuilt for nothing.
-		const same = await admitSource(facade.snapshot().domain.project, {
+		const same = await admitSource(currentStageSource(facade.snapshot()).source, {
 			sessionEpoch: facade.snapshot().sessionEpoch,
 			acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'revision-same-content' }
 		});

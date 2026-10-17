@@ -34,7 +34,7 @@ import {
 } from '$lib/authoring/f4';
 import { admitSource, type StageReadSnapshot } from './source-admission';
 import type { StageContentInstall, StageFacade } from './stage-facade';
-import { requalifySelection } from './selection-requalification';
+import { requalifySelectionEntry, requalifySelection } from './selection-requalification';
 
 /** The baseline one host lifetime starts from; the route already admitted it. */
 export type StageAcceptanceBaseline = {
@@ -113,7 +113,18 @@ export type StageAcceptanceHost = {
 	acceptedRevision(): AcceptedRevision;
 	/** The single bounded authoring history, with its own availability reasons. */
 	history(): StageHistoryState;
-	registerPlanner(planner: DomainPlanner<ProjectDocument>): RegistrationOutcome;
+	/**
+	 * The domain-neutral registration port.
+	 *
+	 * A planner registered here is not handed the source at registration, and
+	 * dispatch (`prepareIntent`) refuses a planner whose declared
+	 * `sourceKinds`/`sourceVersions` do not name the admitted snapshot before it
+	 * is ever called. `sourceKind`/`sourceVersion` on this host are the one source
+	 * slot's, so a planner that names that encoding is a current-format planner by
+	 * contract; `currentStagePlanner` is the explicit adapter that says so for a
+	 * planner written against the typed source.
+	 */
+	registerPlanner(planner: DomainPlanner<unknown>): RegistrationOutcome;
 	onChanged(listener: () => void): () => void;
 	accept(intent: AuthoringIntent): Promise<StageAcceptOutcome>;
 	undo(): Promise<StageHistoryCommandOutcome>;
@@ -230,6 +241,7 @@ export function createStageAcceptanceHost(options: {
 			return { kind: 'refused', code: 'stale-session', message: 'the snapshot belongs to another host lifetime' };
 		}
 		const installed = facade.installAccepted(admission.snapshot, {
+			requalifyEntry: (entry) => requalifySelectionEntry(entry, correspondence, admission.snapshot),
 			requalify: (selection) => {
 				const outcome = requalifySelection(selection, correspondence, {
 					generationId: admission.snapshot.compileGeneration
@@ -252,7 +264,7 @@ export function createStageAcceptanceHost(options: {
 			kind: 'installed',
 			install: installed,
 			selectionClearedReason:
-				installed.requalification.kind === 'cleared' ? installed.requalification.reason : null
+				installed.selectionRemovals[0]?.reason ?? null
 		};
 	}
 
@@ -308,7 +320,7 @@ export function createStageAcceptanceHost(options: {
 	return {
 		sessionEpoch,
 		acceptedRevision: () => coordinator.acceptedRevision(),
-		registerPlanner: (planner) => coordinator.register(planner),
+		registerPlanner: (planner) => coordinator.register(planner as DomainPlanner<ProjectDocument>),
 		onChanged(listener) {
 			listeners.add(listener);
 			return () => { listeners.delete(listener); };
@@ -339,6 +351,7 @@ export function createStageAcceptanceHost(options: {
 			}
 			if (inFlight > 0) return { kind: 'refused', code: 'live-proposal', message: 'Another host command is live.' };
 			inFlight += 1;
+			const unregister = facade.session.writers().register('command', facade.session.token(), () => coordinator.cancelPending());
 			changed();
 			try {
 				const result = await coordinator.accept(intent);
@@ -350,6 +363,7 @@ export function createStageAcceptanceHost(options: {
 				}
 				return installed;
 			} finally {
+				unregister();
 				inFlight -= 1;
 				changed();
 			}

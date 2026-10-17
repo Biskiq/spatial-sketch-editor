@@ -1,3 +1,4 @@
+import { currentStageSource, currentStagePlanner } from '$lib/authoring/stage/current-stage-source';
 /** Independent domain consumer: public facade + public authoring port only. */
 import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';
 import { createProofLayoutPlanner, createProofSceneScalarPlanner, proofIntent,
@@ -6,7 +7,7 @@ import { createProofLayoutPlanner, createProofSceneScalarPlanner, proofIntent,
 export function createDomainConsumer(objectId: string, disposals: string[]): StageAdapterFactory {
 	return ({ stage, authoring }) => {
 		for (const planner of [createProofLayoutPlanner(objectId), createProofSceneScalarPlanner()]) {
-			const registration = authoring.registerPlanner(planner);
+			const registration = authoring.registerPlanner(currentStagePlanner(planner));
 			if (registration.kind !== 'registered') throw new Error('planner registration failed');
 		}
 		return {
@@ -38,7 +39,7 @@ export function consumerMove(services: Parameters<StageAdapterFactory>[0], objec
 
 export function consumerSceneEdit(services: Parameters<StageAdapterFactory>[0]) {
 	const snapshot = services.stage.snapshot();
-	const entity = snapshot.domain.project.scene.entities[0]!;
+	const entity = currentStageSource(snapshot).source.scene.entities[0]!;
 	return services.authoring.accept(proofIntent({ kind: 'conformance-scene-entity-scalar',
 		operationId: 'consumer-scene-operation', expectedRevision: services.authoring.acceptedRevision().revisionId,
 		projectId: snapshot.acceptedRevision.projectId, contentRevision: snapshot.sourceContentId,

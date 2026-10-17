@@ -23,8 +23,10 @@
  * - no entry at all is **not** a reason to guess: the selection clears with a
  *   reason rather than retargeting by proximity.
  */
-import type { CorrespondenceEntry } from '@portfolio/project-model';
+import { resolveReference, type CorrespondenceEntry, type SemanticReference } from '@portfolio/project-model';
 
+import type { StageReadSnapshot } from './accepted-read';
+import { sameSubject, type StageSelectionEntry } from './semantic-selection';
 import type { StageSelection } from './stage-session';
 
 export type SelectionRequalificationResult =
@@ -94,4 +96,32 @@ export function requalifySelection(
 	return { kind: 'cleared', reason: componentId !== null && correspondence.some((entry) =>
 		entry.before?.subject.kind === selection.sourceKind && entry.before.subject.id === selection.sourceId)
 		? 'subject-retired' : 'no-correspondence' };
+}
+
+/** What became of one ordered F.1 selection entry across accepted content. */
+export type EntryRequalification = { readonly kind: 'requalified'; readonly entry: StageSelectionEntry }
+	| { readonly kind: 'cleared'; readonly reason: 'subject-retired' | 'no-correspondence' };
+
+/**
+ * Requalify one ordered F.1 entry: match the **complete** prior address against the
+ * accepted correspondence, then ask the owner to resolve the new identity.
+ *
+ * Matching is full-address (owner, subject, instance path, component, canonical
+ * location), never id-alone or proximity. The correspondence entity is the only
+ * authority on whether the subject survived.
+ */
+export function requalifySelectionEntry(entry: StageSelectionEntry, correspondence: readonly CorrespondenceEntry[], next: StageReadSnapshot): EntryRequalification {
+	const mapping = correspondence.find((candidate) => candidate.before !== null && sameSubject(candidate.before, entry.reference));
+	if (!mapping) return { kind: 'cleared', reason: 'no-correspondence' };
+	const after = mapping.after;
+	if (!after || after.domain !== entry.reference.domain || after.subject.kind !== entry.reference.subject.kind) return { kind: 'cleared', reason: 'subject-retired' };
+	const reference: SemanticReference = { ...after, revision: { kind: 'exact', contentRevision: next.sourceContentId } };
+	if (resolveReference(reference, next.domain.references).kind !== 'resolved') return { kind: 'cleared', reason: 'subject-retired' };
+	let representation = entry.representation;
+	if (representation) {
+		if (representation.subRef?.kind === 'component' && reference.componentId !== representation.subRef.componentId ||
+			representation.subRef?.kind === 'interval' && reference.subject.id !== entry.reference.subject.id) return { kind: 'cleared', reason: 'subject-retired' };
+		representation = { ...representation, sourceId: reference.subject.id, generationId: next.compileGeneration };
+	}
+	return { kind: 'requalified', entry: { reference, ...(representation ? { representation } : {}) } };
 }

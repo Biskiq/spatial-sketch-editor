@@ -1,11 +1,27 @@
 {
-  "files_scanned": 349,
-  "forbidden_strings": [
-    "STAGE_BROWSER_CONFORMANCE_WRITER",
-    "Replace conformance starter",
-    "Apply conformance height",
-    "conformance-wall-height",
-    "stage-browser-conformance-only"
+  "increment": "T1.P01.S07 AM-5 completion (uncommitted, on top of bbc1203a)",
+  "command": "production build (`npm run build`), then scan of every emitted output file",
+  "roots": [
+    ".svelte-kit/output",
+    ".vercel/output"
   ],
-  "matches": []
+  "scanned_files": 349,
+  "sentinels": [
+    "STAGE_BROWSER_CONFORMANCE_WRITER",
+    "STAGE_BROWSER_CONFORMANCE_PROBE_STATE",
+    "conformance-wall-height",
+    "conformance-scene-entity-create",
+    "conformance-scene-entity-shadow",
+    "stage-browser-conformance",
+    "entity-conformance",
+    "Replace conformance starter",
+    "stage-browser-conformance-only",
+    "Apply conformance height",
+    "Create conformance entity",
+    "Toggle conformance entity shadow",
+    "Select conformance entity",
+    "probe-state"
+  ],
+  "matches": {},
+  "result": "zero matches"
 }

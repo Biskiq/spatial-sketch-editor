@@ -1,0 +1,41 @@
+# T1.P01.S07 AM-5 completion — raw check summaries (2026-10-17)
+
+Working tree: T1-P01-S07, HEAD bbc1203a plus the uncommitted AM-5 increment.
+
+## check
+```
+svelte-check found 0 errors and 0 warnings
+```
+
+## fast
+```
+Failed to load texture for material "effective": /textures/injected-fail.png Error: binary-store refused
+ Test Files  127 passed (127)
+      Tests  1761 passed (1761)
+```
+
+## heavy
+```
+ Test Files  8 passed (8)
+      Tests  118 passed (118)
+```
+
+## arch
+```
+ Test Files  20 passed (20)
+      Tests  161 passed (161)
+```
+
+## full
+```
+Failed to load texture for material "effective": /textures/injected-fail.png Error: binary-store refused
+ Test Files  155 passed (155)
+      Tests  2040 passed (2040)
+```
+
+## build
+```
+✓ built in 2.57s
+.svelte-kit/output/server/entries/fallbacks/error.svelte.js                            0.35 kB
+✓ built in 4.87s
+```
