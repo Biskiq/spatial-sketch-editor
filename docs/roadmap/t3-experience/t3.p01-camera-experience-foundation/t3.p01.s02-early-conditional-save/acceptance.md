@@ -1,15 +1,26 @@
 # T3.P01.S02 — acceptance record: Early conditional Save
 
-**Slice:** T3.P01.S02 · **Status:** **implemented 2026-10-16 on PR #133 — awaiting independent
-review; not accepted** · **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this
-slice's acceptance criteria · **Phase:** [T3.P01](../README.md) · **Register:**
-[phase slice register](../README.md#slice-register)
+**Slice:** T3.P01.S02 · **Status:** **ACCEPTED 2026-10-16 at reviewed implementation revision
+`8dd53260` and shipped via PR #133** (owner-authorized combined acceptance-and-closeout) · **Plan:**
+[implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria ·
+**Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-This record holds implementation evidence for independent review. It is **not** acceptance:
+Acceptance adjudication (owner-authorized 2026-10-16). The owner authorized a combined
+acceptance-and-closeout. The already-recorded independent-review and verification evidence below was
+adjudicated against every approved exit criterion and prerequisite before acceptance; this record
+reuses that evidence and re-runs nothing:
 
-- `F4.intent-acceptance@1:conditional-save-current-v1` stays **unaccepted**, with no
-  Accepted-capabilities entry and no gate-register change.
-- The phase stays `in-progress`; no closeout, merge or phase event is claimed.
+- `F4.intent-acceptance@1:conditional-save-current-v1` is **accepted and active**, recorded in its
+  durable [capability record](./capability-conditional-save-current-v1.md) and the gate register.
+- Prerequisites `F1.reference@1:references-v1` (`ee463d0b`) and
+  `F4.intent-acceptance@1:local-single-domain-v1` with `acceptance-invariants-v1` (`8ec0c5f1`) are
+  accepted on this slice's trusted base and are ancestors of the reviewed revision.
+- Independent review — three reviewers (server concurrency, the framework-free state machine,
+  transport/draft integrity) plus two follow-up P1 rounds — recorded every substantiated in-scope
+  finding as fixed at the tested revision; no in-scope defect remains open.
+- The plan declares `architecture-integration`; its integration route is
+  [T3.P01.S04](../t3.p01.s04-live-ownership-cutover/implementation-plan.md), which still owes the
+  integrated result. That deferral does not narrow this slice's own exit-criteria evidence.
 - The T1 Head integration (`T1.P01.S04` by default) is **not** part of this slice: no Save control is
   mounted and no route or shell module was edited (decision 1,
   [record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)).
@@ -207,8 +218,9 @@ was touched.
 
 ## Explicit non-claims and review focus
 
-- **No acceptance.** The capability is not accepted, the gate register is unchanged, and no T1/T2
-  slice may enable Save from this evidence.
+- **Acceptance is this slice's, not a consumer's.** `F4.intent-acceptance@1:conditional-save-current-v1`
+  is accepted and active from this evidence; a T1/T2 consumer enables Save only through that recorded
+  capability and its prerequisite closure.
 - **The Save state is bound to the baseline it was constructed with.** It is not re-derived when a
   session is replaced: a Head that swaps in a *different* project must construct a new state, or it
   will send the old project's token with the new project's capture. The server refuses and writes
