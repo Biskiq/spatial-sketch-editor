@@ -22,7 +22,8 @@ import {
 	type AuthoringIntent,
 	type CorrespondenceEntry,
 	type DomainPlanner,
-	type ProjectDocument
+	type ProjectDocument,
+	type RegistrationOutcome
 } from '@portfolio/project-model';
 import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
 
@@ -112,6 +113,8 @@ export type StageAcceptanceHost = {
 	acceptedRevision(): AcceptedRevision;
 	/** The single bounded authoring history, with its own availability reasons. */
 	history(): StageHistoryState;
+	registerPlanner(planner: DomainPlanner<ProjectDocument>): RegistrationOutcome;
+	onChanged(listener: () => void): () => void;
 	accept(intent: AuthoringIntent): Promise<StageAcceptOutcome>;
 	undo(): Promise<StageHistoryCommandOutcome>;
 	redo(): Promise<StageHistoryCommandOutcome>;
@@ -152,6 +155,12 @@ export function createStageAcceptanceHost(options: {
 	});
 
 	let disposed = false;
+	const listeners = new Set<() => void>();
+	const changed = () => {
+		for (const listener of listeners) {
+			try { listener(); } catch { /* A view subscriber cannot abort acceptance. */ }
+		}
+	};
 	/** Accepts in flight: a live proposal is why Undo is temporarily unavailable. */
 	let inFlight = 0;
 	const LIVE_PROPOSAL_REASON = 'A proposal is live; Undo is available once it is accepted or refused.';
@@ -225,7 +234,7 @@ export function createStageAcceptanceHost(options: {
 				const outcome = requalifySelection(selection, correspondence, {
 					generationId: admission.snapshot.compileGeneration
 				});
-				return outcome.kind === 'requalified' ? outcome.selection : null;
+				return outcome.kind === 'requalified' ? outcome.selection : outcome;
 			}
 		});
 		if (installed.kind === 'unchanged') {
@@ -250,9 +259,6 @@ export function createStageAcceptanceHost(options: {
 	async function restore(direction: StageHistoryDirection): Promise<StageHistoryCommandOutcome> {
 		if (disposed) {
 			return { kind: 'refused', direction, code: 'superseded-epoch', message: 'the host lifetime has ended' };
-		}
-		if (inFlight > 0) {
-			return { kind: 'unavailable', direction, reason: 'live-proposal' };
 		}
 			// The restore below reports its own live-proposal window through the same
 			// reason, so a caller that races a second command gets one vocabulary.
@@ -291,9 +297,22 @@ export function createStageAcceptanceHost(options: {
 		};
 	}
 
+	async function runHistory(direction: StageHistoryDirection): Promise<StageHistoryCommandOutcome> {
+		if (inFlight > 0) return { kind: 'unavailable', direction, reason: 'live-proposal' };
+		inFlight += 1;
+		changed();
+		try { return await restore(direction); }
+		finally { inFlight -= 1; changed(); }
+	}
+
 	return {
 		sessionEpoch,
 		acceptedRevision: () => coordinator.acceptedRevision(),
+		registerPlanner: (planner) => coordinator.register(planner),
+		onChanged(listener) {
+			listeners.add(listener);
+			return () => { listeners.delete(listener); };
+		},
 		history() {
 			const state = coordinator.history();
 			// The reported state must agree with what the command will do: while a
@@ -318,7 +337,9 @@ export function createStageAcceptanceHost(options: {
 			if (disposed) {
 				return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
 			}
+			if (inFlight > 0) return { kind: 'refused', code: 'live-proposal', message: 'Another host command is live.' };
 			inFlight += 1;
+			changed();
 			try {
 				const result = await coordinator.accept(intent);
 				if (result.kind === 'no-op') return { kind: 'no-op', revision: result.revision };
@@ -330,45 +351,49 @@ export function createStageAcceptanceHost(options: {
 				return installed;
 			} finally {
 				inFlight -= 1;
+				changed();
 			}
 		},
-		undo: () => restore('undo'),
-		redo: () => restore('redo'),
+		undo: () => runHistory('undo'),
+		redo: () => runHistory('redo'),
 		async replace(input) {
 			if (disposed) {
 				return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
 			}
-			const replaced = await coordinator.replace({
-				revision: input.revision,
-				source: input.source,
-				sessionEpoch: input.sessionEpoch
+			let prepared: StageReadSnapshot | null = null;
+			const replaced = await coordinator.replace(input, async (source, nextEpoch) => {
+				const admission = await admitSource(source.source, {
+					sessionEpoch: nextEpoch,
+					acceptedRevision: source.revision
+				});
+				if (disposed) return { kind: 'refused', code: 'superseded-epoch', message: 'the host lifetime has ended' };
+				if (admission.kind !== 'admitted') return {
+					kind: 'refused', code: admission.kind === 'refused' ? admission.reason : 'diagnostics',
+					message: 'the replacement source was not admitted'
+				};
+				prepared = admission.snapshot;
+				return { kind: 'valid' };
 			});
 			if (replaced.kind === 'refused') {
 				return { kind: 'refused', code: replaced.code, message: replaced.message };
 			}
-			const admission = await admitSource(coordinator.current().source, {
-				sessionEpoch: input.sessionEpoch,
-				acceptedRevision: replaced.revision
-			});
-			if (admission.kind !== 'admitted') {
-				return {
-					kind: 'refused',
-					code: admission.kind === 'refused' ? admission.reason : 'diagnostics',
-					message: 'the replacement source was not admitted'
-				};
-			}
+			// The callback completed before F4 committed. No fallible Stage admission
+			// remains after that commit, and a competing replacement cannot publish it.
+			if (prepared === null) throw new Error('replacement committed without Stage admission');
 			// This host's lifetime ends with the replacement: a completion from the
 			// previous epoch can no longer install. The Stage for the old epoch is torn
 			// down here rather than left to the caller's remount, so nothing of the
 			// replaced lifetime keeps contributing; the route mounts a fresh facade for
 			// `snapshot` (disposing twice is idempotent).
 			disposed = true;
+			listeners.clear();
 			facade.dispose();
-			return { kind: 'replaced', snapshot: admission.snapshot };
+			return { kind: 'replaced', snapshot: prepared };
 		},
 		coordinator: () => coordinator,
 		dispose() {
 			disposed = true;
+			listeners.clear();
 		}
 	};
 }

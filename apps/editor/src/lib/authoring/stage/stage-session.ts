@@ -101,7 +101,7 @@ export type GestureReadingChange = {
  * correspondence knows whether a subject survived; the session validates nothing
  * about the mapping and never re-resolves a subject by coordinate or proximity.
  */
-export type SelectionRequalification = (selection: StageSelection) => StageSelection | null;
+export type SelectionRequalification = (selection: StageSelection) => StageSelection | null | Extract<SelectionRequalificationOutcome, { kind: 'cleared' }>;
 
 /** What happened to the previous selection when content changed. */
 export type SelectionRequalificationOutcome =
@@ -330,6 +330,8 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		},
 		closeTask() {
 			if (task === null) return false;
+			activeGesture?.lease.release();
+			activeGesture = null;
 			task = null;
 			return true;
 		},
@@ -424,7 +426,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 				// throws is a refusal to carry the selection, never a half-kept one.
 				let requalification: SelectionRequalificationOutcome = { kind: 'none' };
 				if (previousSelection !== null) {
-					let requalified: StageSelection | null = null;
+					let requalified: ReturnType<SelectionRequalification> = null;
 					try {
 						requalified = options?.requalify?.(previousSelection) ?? null;
 					} catch {
@@ -432,7 +434,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 					}
 					requalification = requalified === null
 						? { kind: 'cleared', reason: 'no-correspondence' }
-						: { kind: 'requalified', selection: requalified };
+						: 'kind' in requalified ? requalified : { kind: 'requalified', selection: requalified };
 				}
 				selection = requalification.kind === 'requalified' ? requalification.selection : null;
 				task = null;

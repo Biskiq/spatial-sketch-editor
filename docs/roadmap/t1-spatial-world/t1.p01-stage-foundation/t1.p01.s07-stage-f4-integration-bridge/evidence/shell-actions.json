@@ -1,0 +1,339 @@
+[
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e13]\n- button \"Experience\" [ref=e14]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e15]\n  - region \"WALL\" [ref=e16]\n    - heading \"WALL\" [level=3, ref=e20]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e29]\n    - button \"Open location\" [ref=e30]\n    - button \"Bring into view\" [ref=e31]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e32]\n    - button \"Open location\" [ref=e33]\n    - button \"Bring into view\" [ref=e34]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e35]\n    - button \"Open location\" [ref=e36]\n    - button \"Bring into view\" [ref=e37]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e38]\n    - button \"Open location\" [ref=e39]\n    - button \"Bring into view\" [ref=e40]\n  - region \"ROOM FLOOR\" [ref=e17]\n    - heading \"ROOM FLOOR\" [level=3, ref=e21]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e41]\n    - button \"Open location\" [ref=e42]\n    - button \"Bring into view\" [ref=e43]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e22]\n    - button \"TASK Conformance height\" [ref=e44]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e23]\n  - button \"3D\" [ref=e24]\n  - button \"Fit\" [ref=e25]\n  - button \"Open source JSON\" [ref=e26]\n- region \"Conformance height task\" [ref=e12]\n  - heading \"Conformance height\" [level=2, ref=e27]\n  - button \"Close Conformance height\" [ref=e28]\n  - button \"Apply conformance height\" [ref=e19]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Close Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "set",
+      "viewport",
+      "640",
+      "900"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e14]\n  - region \"WALL\" [ref=e15]\n    - heading \"WALL\" [level=3, ref=e18]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e25]\n    - button \"Open location\" [ref=e26]\n    - button \"Bring into view\" [ref=e27]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e28]\n    - button \"Open location\" [ref=e29]\n    - button \"Bring into view\" [ref=e30]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e31]\n    - button \"Open location\" [ref=e32]\n    - button \"Bring into view\" [ref=e33]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n  - region \"ROOM FLOOR\" [ref=e16]\n    - heading \"ROOM FLOOR\" [level=3, ref=e19]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e20]\n    - button \"TASK Conformance height\" [ref=e40]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e21]\n  - button \"3D\" [ref=e22]\n  - button \"Fit\" [ref=e23]\n  - button \"Open source JSON\" [ref=e24]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Reduced motion off",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion on\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e14]\n  - region \"WALL\" [ref=e15]\n    - heading \"WALL\" [level=3, ref=e18]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e25]\n    - button \"Open location\" [ref=e26]\n    - button \"Bring into view\" [ref=e27]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e28]\n    - button \"Open location\" [ref=e29]\n    - button \"Bring into view\" [ref=e30]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e31]\n    - button \"Open location\" [ref=e32]\n    - button \"Bring into view\" [ref=e33]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n  - region \"ROOM FLOOR\" [ref=e16]\n    - heading \"ROOM FLOOR\" [level=3, ref=e19]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e20]\n    - button \"TASK Conformance height\" [ref=e40]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e21]\n  - button \"3D\" [ref=e22]\n  - button \"Fit\" [ref=e23]\n  - button \"Open source JSON\" [ref=e24]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll('button')].some(b=>b.textContent==='Plan'&&b.getAttribute('aria-pressed')==='true')"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "document.querySelector('canvas').width === innerWidth && document.querySelector('canvas').height > 200"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({width:innerWidth,documentWidth:document.documentElement.scrollWidth,canvas:[...document.querySelectorAll('canvas')].map(c=>({width:c.width,height:c.height})),indexBody:{hidden:document.querySelector('.index-body').hidden,visible:document.querySelector('.index-body').offsetParent!==null,scrollTop:document.querySelector('.index-body').scrollTop,scrollHeight:document.querySelector('.index-body').scrollHeight,clientHeight:document.querySelector('.index-body').clientHeight},longLabels:[...document.querySelectorAll('.item-name')].filter(e=>(e.textContent||'').length>60).map(e=>({text:e.textContent,visibleWidth:e.clientWidth,contentWidth:e.scrollWidth,textOverflow:getComputedStyle(e).textOverflow})),reading:[...document.querySelectorAll('.stage-actions button')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.textContent),reducedMotion:[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Reduced motion'))?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"width\\\":640,\\\"documentWidth\\\":640,\\\"canvas\\\":[{\\\"width\\\":640,\\\"height\\\":398}],\\\"indexBody\\\":{\\\"hidden\\\":false,\\\"visible\\\":true,\\\"scrollTop\\\":0,\\\"scrollHeight\\\":638,\\\"clientHeight\\\":264},\\\"longLabels\\\":[{\\\"text\\\":\\\"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\\\",\\\"visibleWidth\\\":542,\\\"contentWidth\\\":573,\\\"textOverflow\\\":\\\"ellipsis\\\"}],\\\"reading\\\":[\\\"Plan\\\"],\\\"reducedMotion\\\":\\\"Reduced motion on\\\"}\"\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/narrow-plan-reduced.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/narrow-plan-reduced.png\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion on\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e14]\n  - region \"WALL\" [ref=e15]\n    - heading \"WALL\" [level=3, ref=e18]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e25]\n    - button \"Open location\" [ref=e26]\n    - button \"Bring into view\" [ref=e27]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e28]\n    - button \"Open location\" [ref=e29]\n    - button \"Bring into view\" [ref=e30]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e31]\n    - button \"Open location\" [ref=e32]\n    - button \"Bring into view\" [ref=e33]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n  - region \"ROOM FLOOR\" [ref=e16]\n    - heading \"ROOM FLOOR\" [level=3, ref=e19]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e20]\n    - button \"TASK Conformance height\" [ref=e40]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e21]\n  - button \"3D\" [ref=e22]\n  - button \"Fit\" [ref=e23]\n  - button \"Open source JSON\" [ref=e24]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "document.querySelector('canvas').width === innerWidth && document.querySelector('canvas').height > 200"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({width:innerWidth,documentWidth:document.documentElement.scrollWidth,canvas:[...document.querySelectorAll('canvas')].map(c=>({width:c.width,height:c.height})),indexBody:{hidden:document.querySelector('.index-body').hidden,visible:document.querySelector('.index-body').offsetParent!==null,scrollTop:document.querySelector('.index-body').scrollTop,scrollHeight:document.querySelector('.index-body').scrollHeight,clientHeight:document.querySelector('.index-body').clientHeight},longLabels:[...document.querySelectorAll('.item-name')].filter(e=>(e.textContent||'').length>60).map(e=>({text:e.textContent,visibleWidth:e.clientWidth,contentWidth:e.scrollWidth,textOverflow:getComputedStyle(e).textOverflow})),reading:[...document.querySelectorAll('.stage-actions button')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.textContent),reducedMotion:[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Reduced motion'))?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"width\\\":640,\\\"documentWidth\\\":640,\\\"canvas\\\":[{\\\"width\\\":640,\\\"height\\\":398}],\\\"indexBody\\\":{\\\"hidden\\\":false,\\\"visible\\\":true,\\\"scrollTop\\\":374,\\\"scrollHeight\\\":638,\\\"clientHeight\\\":264},\\\"longLabels\\\":[{\\\"text\\\":\\\"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\\\",\\\"visibleWidth\\\":542,\\\"contentWidth\\\":573,\\\"textOverflow\\\":\\\"ellipsis\\\"}],\\\"reading\\\":[\\\"Plan\\\"],\\\"reducedMotion\\\":\\\"Reduced motion on\\\"}\"\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/narrow-index-scrolled.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/narrow-index-scrolled.png\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e13]\n- button \"Experience\" [ref=e14]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion on\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e15]\n  - region \"WALL\" [ref=e16]\n    - heading \"WALL\" [level=3, ref=e19]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e29]\n    - button \"Open location\" [ref=e30]\n    - button \"Bring into view\" [ref=e31]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e32]\n    - button \"Open location\" [ref=e33]\n    - button \"Bring into view\" [ref=e34]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e35]\n    - button \"Open location\" [ref=e36]\n    - button \"Bring into view\" [ref=e37]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e38]\n    - button \"Open location\" [ref=e39]\n    - button \"Bring into view\" [ref=e40]\n  - region \"ROOM FLOOR\" [ref=e17]\n    - heading \"ROOM FLOOR\" [level=3, ref=e20]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e41]\n    - button \"Open location\" [ref=e42]\n    - button \"Bring into view\" [ref=e43]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e21]\n    - button \"TASK Conformance height\" [ref=e44]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e22]\n  - button \"3D\" [ref=e23]\n  - button \"Fit\" [ref=e24]\n  - button \"Open source JSON\" [ref=e25]\n- region \"Conformance height task\" [ref=e12]\n  - heading \"Conformance height\" [level=2, ref=e26]\n  - button \"Close Conformance height\" [ref=e27]\n  - button \"Apply conformance height\" [ref=e28]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Close Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion on\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e14]\n  - region \"WALL\" [ref=e15]\n    - heading \"WALL\" [level=3, ref=e18]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e25]\n    - button \"Open location\" [ref=e26]\n    - button \"Bring into view\" [ref=e27]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e28]\n    - button \"Open location\" [ref=e29]\n    - button \"Bring into view\" [ref=e30]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e31]\n    - button \"Open location\" [ref=e32]\n    - button \"Bring into view\" [ref=e33]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n  - region \"ROOM FLOOR\" [ref=e16]\n    - heading \"ROOM FLOOR\" [level=3, ref=e19]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e20]\n    - button \"TASK Conformance height\" [ref=e40]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e21]\n  - button \"3D\" [ref=e22]\n  - button \"Fit\" [ref=e23]\n  - button \"Open source JSON\" [ref=e24]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "INDEX",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "document.querySelector('.index-body').offsetParent===null"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "document.querySelector('canvas').width === innerWidth && document.querySelector('canvas').height > 200"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({width:innerWidth,documentWidth:document.documentElement.scrollWidth,canvas:[...document.querySelectorAll('canvas')].map(c=>({width:c.width,height:c.height})),indexBody:{hidden:document.querySelector('.index-body').hidden,visible:document.querySelector('.index-body').offsetParent!==null,scrollTop:document.querySelector('.index-body').scrollTop,scrollHeight:document.querySelector('.index-body').scrollHeight,clientHeight:document.querySelector('.index-body').clientHeight},longLabels:[...document.querySelectorAll('.item-name')].filter(e=>(e.textContent||'').length>60).map(e=>({text:e.textContent,visibleWidth:e.clientWidth,contentWidth:e.scrollWidth,textOverflow:getComputedStyle(e).textOverflow})),reading:[...document.querySelectorAll('.stage-actions button')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.textContent),reducedMotion:[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Reduced motion'))?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"width\\\":640,\\\"documentWidth\\\":640,\\\"canvas\\\":[{\\\"width\\\":640,\\\"height\\\":639}],\\\"indexBody\\\":{\\\"hidden\\\":true,\\\"visible\\\":false,\\\"scrollTop\\\":0,\\\"scrollHeight\\\":0,\\\"clientHeight\\\":0},\\\"longLabels\\\":[{\\\"text\\\":\\\"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\\\",\\\"visibleWidth\\\":0,\\\"contentWidth\\\":0,\\\"textOverflow\\\":\\\"ellipsis\\\"}],\\\"reading\\\":[\\\"Plan\\\"],\\\"reducedMotion\\\":\\\"Reduced motion on\\\"}\"\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/narrow-index-collapsed.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/narrow-index-collapsed.png\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "set",
+      "viewport",
+      "390",
+      "844"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion on\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=false, ref=e10]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e14]\n  - button \"3D\" [ref=e15]\n  - button \"Fit\" [ref=e16]\n  - button \"Open source JSON\" [ref=e17]\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "3D",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll('button')].some(b=>b.textContent==='3D'&&b.getAttribute('aria-pressed')==='true')"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "document.querySelector('canvas').width === innerWidth && document.querySelector('canvas').height > 200"
+    ],
+    "code": 0,
+    "output": "true\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({width:innerWidth,documentWidth:document.documentElement.scrollWidth,canvas:[...document.querySelectorAll('canvas')].map(c=>({width:c.width,height:c.height})),indexBody:{hidden:document.querySelector('.index-body').hidden,visible:document.querySelector('.index-body').offsetParent!==null,scrollTop:document.querySelector('.index-body').scrollTop,scrollHeight:document.querySelector('.index-body').scrollHeight,clientHeight:document.querySelector('.index-body').clientHeight},longLabels:[...document.querySelectorAll('.item-name')].filter(e=>(e.textContent||'').length>60).map(e=>({text:e.textContent,visibleWidth:e.clientWidth,contentWidth:e.scrollWidth,textOverflow:getComputedStyle(e).textOverflow})),reading:[...document.querySelectorAll('.stage-actions button')].filter(b=>b.getAttribute('aria-pressed')==='true').map(b=>b.textContent),reducedMotion:[...document.querySelectorAll('button')].find(b=>b.textContent.includes('Reduced motion'))?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"width\\\":390,\\\"documentWidth\\\":390,\\\"canvas\\\":[{\\\"width\\\":390,\\\"height\\\":493}],\\\"indexBody\\\":{\\\"hidden\\\":true,\\\"visible\\\":false,\\\"scrollTop\\\":0,\\\"scrollHeight\\\":0,\\\"clientHeight\\\":0},\\\"longLabels\\\":[{\\\"text\\\":\\\"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\\\",\\\"visibleWidth\\\":0,\\\"contentWidth\\\":0,\\\"textOverflow\\\":\\\"ellipsis\\\"}],\\\"reading\\\":[\\\"3D\\\"],\\\"reducedMotion\\\":\\\"Reduced motion on\\\"}\"\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/phone-3d-reduced.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/phone-3d-reduced.png\n",
+    "error": ""
+  },
+  {
+    "command": [
+      "errors"
+    ],
+    "code": 0,
+    "output": "",
+    "error": ""
+  }
+]

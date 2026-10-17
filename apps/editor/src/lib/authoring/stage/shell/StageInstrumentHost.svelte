@@ -15,6 +15,7 @@
 	 * its own beyond naming, hosting and closing.
 	 */
 	import type { Snippet } from 'svelte';
+	import type { StageInstrumentContent } from '../stage-facade';
 
 	let {
 		task,
@@ -29,7 +30,7 @@
 		 * instrument home, so a domain adapter's task appears without a shell edit; the
 		 * host's own snippet stays the default when no adapter contributed content.
 		 */
-		instrument?: { summary: string; facts?: readonly { label: string; value: string }[] } | null;
+		instrument?: StageInstrumentContent | null;
 		children?: Snippet;
 	} = $props();
 </script>
@@ -54,6 +55,9 @@
 		<div class="instrument-body">
 			{#if instrument}
 				<p class="contributed-summary">{instrument.summary}</p>
+				{#if instrument.view}
+					<instrument.view.component services={instrument.view.services} />
+				{/if}
 				{#if instrument.facts && instrument.facts.length > 0}
 					<dl class="contributed-facts">
 						{#each instrument.facts as fact (fact.label)}

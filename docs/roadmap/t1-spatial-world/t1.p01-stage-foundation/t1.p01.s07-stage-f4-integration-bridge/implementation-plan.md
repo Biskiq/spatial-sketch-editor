@@ -2,7 +2,7 @@
 
 **Slice:** T1.P01.S07 · **Status:** in-progress — owner-authorized 2026-10-17 (D1–D4,
 [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); implementation and focused
-tests written, verification and independent review pending ·
+tests written; fresh code review and bounded browser evidence recorded, full AM-5 acceptance withheld ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -155,9 +155,10 @@ proof, and M5's composed exposure stays S05's.
 This slice is **authorized** (owner, 2026-10-17) and **in progress**. Its prerequisites are accepted on
 `main`, and implementation started from `main` at `fcf1fbaa` through the T1 runbook's start step (the
 eligibility row is `in-progress` and the one-line cycle check opens nothing: S07 is not a listed
-exposure). The host wiring, adapter re-binding, contribution points and their focused tests are
-written and their typecheck, focused suites and editor lanes are recorded in
-[acceptance.md](./acceptance.md). Nothing here is **accepted, ready or evidenced** for gate purposes:
-the AM-5 probe-table rerun, the complete merge gate recorded against a merge revision and the
-browser edit → Undo/Redo → replacement evidence are still outstanding, and acceptance follows
-independent review and that evidence.
+exposure). The host wiring, adapter re-binding, contribution points, regression tests and fresh independent
+code review are recorded in [acceptance.md](./acceptance.md), with bounded browser evidence in both
+readings and a validation candidate on then-current main. S07 remains **unaccepted**: full AM-5
+source-independent read, ordered F.1/Scene selection and inactive-lens lifecycle requirements are
+unmet. The [bounded API/completion proposal](./am5-reconciliation.md) preserves those requirements
+and requests no acceptance exception. The actual merge-revision gate, independent slice acceptance
+and routine closeout remain required; the viewport capability stays ratified.

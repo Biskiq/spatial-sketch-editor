@@ -1,79 +1,99 @@
 # T1.P01.S07 — acceptance record: Stage↔F4 integration bridge
 
-**Slice:** T1.P01.S07 · **Status:** in-progress — **no acceptance recorded** · **Plan:**
-[implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:**
-[T1.P01](../README.md)
+**Status: in-progress; acceptance withheld; PR #137 remains unmerged.**
+[Plan](./implementation-plan.md) · [phase](../README.md) ·
+[AM-5 reconciliation/proposed completion](./am5-reconciliation.md).
+`T1.viewport-projection@1:viewport-projection-v1` remains **ratified**, not accepted.
+No capability or closeout is recorded here.
 
-This record claims **no result, no tested revision, no gate state, no capability, no commit and no
-readiness**. S07 is owner-authorized (2026-10-17,
-[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); implementation began
-from `main` at `fcf1fbaa`. The focused and lane results below were observed on this worktree before it
-was committed, so they name the commands rather than a commit; the plan's own merge-gate and browser
-evidence remain unproduced.
+## Reviewable implementation
 
-## Implementation under review (not evidence)
+- Factory registration disposal reads the current binding, disposes it once, and does not retain
+  power over a later same-ID registration. A throwing disposer cannot strand other bindings or
+  interrupt acceptance/Camera reacquisition.
+- Domain modules export `createAdapter` from the domain-owned `authoring/adapters/*.adapter.ts`
+  catalogue. The generic mount supplies public planner registration and F4 submission. No production
+  Layout/Scene writer is installed. Adapter-owned Svelte instruments render through the one home;
+  current bindings supply their facts/UI, and unregistration closes their owned task and gesture.
+- Find dispatch preserves adapter identity and resolves its declared task kind, independently of
+  Find/task IDs. Duplicate local IDs across adapters neither collide in the UI nor select another
+  adapter's instrument.
+- F4 replacement has an additive host-admission callback before baseline/history commit. It fences
+  pending accepts immediately, validates Stage admission, and supplies the actual fresh epoch.
+  A real project-identity refusal preserves source, revision, epoch, history, selection and claim.
+- Accepted changes notify the route: the canvas consumes the updated snapshot, with live history,
+  selection and task state. Host commands stay busy through Stage installation/compensation.
+  Retained facade/context mutations cannot reach a replacement session, and captured projection/rays
+  refuse after their evaluation expires.
+- Requalification preserves a retired-subject reason through the host, and component correspondence
+  is matched before a subject-level entry can decide its fate.
+- Narrow shell conformance restores the Index hidden state and reserves Stage space with scrollable
+  Index contents. Browser evidence covers expanded/collapsed Index, long identity, 640px/390px and
+  reduced-motion states.
+- The pre-existing invalid fourth Vitest argument was removed from Camera exhaustive conformance.
+  Its existing 60-second option and depth-5 traversal are preserved; the typecheck can now be green.
 
-| Plan output | Landed implementation |
+## Evidence identity
+
+Work continues on **T1-P01-S07**, based on `fcf1fbaa`. Verification was captured with HEAD
+`bdaf5721` plus the review-fix increment, before that increment was committed and pushed for PR
+review at the owner's request. The source-file manifest identifies the exact tested files; committing
+and pushing the increment does not constitute slice acceptance. The manifest and final check results
+are under [evidence](./evidence/verification.md).
+
+The integration candidate applies the complete PR delta cleanly onto then-current `main`
+`d2607caf85e35d9ae54241b5fb72fd2f45b31cbe` (including PR #138's T3 preparatory seams and PR #139's research documentation), including the additive F4
+coordinator changes. It is a detached validation tree, not a merge or an accepted capability.
+
+## Fresh independent review
+
+A separate reviewer inspected the complete original PR plus the pending increment, reported
+Find/ownership, task teardown, requalification, actual-epoch, stale-callback/evaluation and throwing-
+disposer findings, then re-reviewed the fixes. Final code verdict: **no remaining actionable
+implementation findings**; independently ran eight relevant suites, **105 tests passed**, and
+`git diff --check fcf1fbaa` passed. This code verdict explicitly withholds slice acceptance and merge
+readiness for the remaining contract/evidence requirements.
+
+## Browser evidence
+
+An explicit test-only Vite configuration injects the conformance adapter and a visible replacement
+button into the existing host guard. This is the approved plan's test-hook allowance, not an
+unapproved production hook. The normal production composition has no writer.
+
+[Browser actions and DOM observations](./evidence/browser-actions.json) record starter Wall height
+**3 → 4 → 3 → 4 → 3 metres** for baseline/edit/Undo/Redo/replacement in **both Plan and 3D**.
+Content identity returns exactly to the baseline on Undo/replacement and to the edited identity on
+Redo. Confirmed replacement leaves both history buttons disabled. An actual adapter-owned Svelte
+button submits the intent; the Head handles Undo/Redo. Screenshots are linked in
+[verification](./evidence/verification.md). No browser exceptions were observed in the recorded run.
+This proves the bounded Layout workflow; it does not prove Scene selection or inactive-lens Resume.
+
+## AM-5 probe table reconciliation
+
+| Probe | Evidence and limit |
 | --- | --- |
-| Host↔F4 wiring: one coordinator per project epoch, accepted install through the one slot, Undo/Redo host commands with visible reasons, replacement baseline | `apps/editor/src/lib/authoring/stage/host-acceptance.ts`; route wiring in `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte`; live Undo/Redo controls in `shell/EditorHead.svelte` |
-| Selection requalification through accepted correspondence | `apps/editor/src/lib/authoring/stage/selection-requalification.ts`; `installAccepted(next, { requalify })` in `stage-session.ts` and `stage-facade.ts` |
-| Camera output rebase and re-acquisition at the same pose | unchanged mechanism in `stage-facade.ts`, now reached from a real accept rather than an injected source |
-| Adapter re-binding across installs | `StageAdapter.bind` factory, host-owned `rebindAdapters()`, `StageContentInstall.reboundAdapters` |
-| AM-5 contribution points: task/instrument factory, Card facts, rail-family/Find entries | `StageAdapterBinding.tasks`, `.cardFacts`, `.findEntries`, `.instrument`; `StageFacade.tasks()`, `.openContributedTask()`, `.findEntries()`, `.cardFacts()`; generic shell consumption through `stage-contributions.ts` → `EditorIndex` groups, Card facts and the one `StageInstrumentHost` |
-| Requalification identity | `selection-requalification.ts` matches subject kind **and** id, refuses a changed owner/kind and a retired component sub-ref |
+| Projection/inverse | `camera-viewport-evaluation.test.ts`, `stage-facade.test.ts`, consumer probes: settled Plan/3D/intermediate projection/rays, stale evaluations and explicit frames. New retained factory-context regression refuses stale math after navigation. |
+| Layout | `layout-plan-representation.test.ts`, facade/content-change suites: canonical correspondence, eligible fragments, exclusion/Reveal, compiled surfaces. No second compiler or production writer. |
+| T2-style consumer | Consumer probes project a canonical Scene entity and resolve an explicit plane point. The external test-only domain module registers both Layout and Scene planners, submits both through the public services, contributes UI and traverses the single history. **Scene identity selection/Card conformance remains missing.** |
+| T3-style consumer | Existing read-only Camera projection/inspection probe and contributed instrument lifecycle tests. No Camera authoring, second output or Preview claim. |
+| Replacement/lifetime | Current-binding exact disposal; failure-path baseline preservation; actual epoch; late accept; retained callbacks; expired math; task-close gesture; throwing cleanup. **Lens exit/inactive-task Resume remains missing.** |
+| Shell/isolation | Contribution ordering/owner dispatch and Camera invariance; arch public/visitor/preview boundaries; browser workflow in both readings plus narrow/long-identity/reduced-motion states. **The generic accepted-read and F.1 ordered-selection requirements remain unresolved.** |
 
-## Verification status
+The integrated suites rerun the table's existing probes. **A passing suite is not full conformance**
+for a missing contract requirement. The narrow proposed API/completion amendment is in
+[AM-5 reconciliation](./am5-reconciliation.md); it is not approved or implemented.
 
-### Observed in this worktree (coordinator-run, not yet independent)
+## Exact acceptance and merge blockers
 
-- **Typecheck:** `npm run check` (editor, `svelte-check`) reports only the one **pre-existing** error in
-  `tests/lib/project-model/camera-output-conformance.test.ts:345` (identical on `main` at `fcf1fbaa`);
-  no error is introduced by this slice.
-- **Lanes, passed on this worktree:** `npm run test:arch` (161 tests), `npm run test:fast`
-  (~1,740 tests), `npm run test:heavy` (118 tests) and the whole `tests/lib/authoring/` directory,
-  each green with the slice's tests included. The counts move with added tests; the lane result, not
-  the number, is the claim.
-- **Focused suites, passed:** `tests/lib/authoring/stage-host-acceptance.test.ts` — real accept → one
-  install, unchanged pose, re-acquired claim, requalified selection, one rebind and one disposal;
-  Layout+Scene Undo/Redo; Undo-unavailable reason; replacement baseline; contributions appear and
-  disappear; contributed instrument content; requalified-selection echo exactly once; **live-proposal
-  history state agrees with the command** (`canUndo` false with the live reason, `undo` returns
-  `unavailable/live-proposal`, then the change installs); **an accept in flight across a replacement
-  is refused by the coordinator's generation guard** with no install and no revision move; **a
-  non-lifetime install refusal reverses the committed acceptance** so the coordinator's content and
-  cursor describe what is mounted; **the contribution-surface signal** fires on registration and
-  disposal and not on an identical-content install; **a static binding receives the surviving
-  selection once**; and **mutation controls** that run the real install path with requalification
-  disabled, showing the requalification assertion failing exactly there, and **a factory-rebinding
-  control that suppresses the rebuild through the symbol-keyed test seam and shows the rebind
-  assertion failing**, paired with the same install in force; and **navigation, reading changes,
-  selection and focus create no history** (depth, position and accepted revision unchanged). Also
-  `stage-content-change.test.ts`, `stage-facade.test.ts`, `stage-session.test.ts`,
-  `stage-consumer-probes.test.ts` — all green.
-- **Requalification unit cases:** surviving subject, retired subject, no correspondence, id collision
-  across subject kinds, changed kind/domain, retired component sub-ref, a subject-level entry that
-  must not keep a selected component, and an interval-qualified selection whose subject moved.
-- **Contribution-surface reactivity:** a rebuild discovered inside a read is notified on a microtask,
-  never synchronously, so a derived view never mutates state during its own evaluation.
-- **Compensation side effect, recorded:** a reversed acceptance restores the content and cursor but
-  mints a fresh revision and leaves the refused state reachable by Redo, because the coordinator owns
-  the one bounded stack. Later Save/revision reasoning must not assume the refused revision vanished.
+1. Complete source-independent accepted read and F.1 ordered/primary selection, including a real
+   Scene selection/Card consumer proof. Resolve the proposed public-API extension before changing it.
+2. Complete lens-exit writer cancellation, inactive task parking and explicit revalidated Resume.
+3. Rerun/record the complete gate at the actual proposed merge revision against then-current main.
+   The detached candidate results do not claim a merged-tree revision or slice acceptance.
+4. Obtain independent **slice acceptance** against all requirements, then routine closeout. Only that
+   process may accept the capability, with S02 remaining its sole provider. No merge is requested.
 
-### Still unobserved — not claimed
-
-- **AM-5 probe table** re-run on the integrated tree: not run.
-- **Complete merge gate on the then-current `main`**: the three editor lanes above ran on this
-  worktree, but the gate as the plan defines it is recorded at merge against then-current `main`, and
-  the DB lane does not apply to this slice. Not recorded.
-- **Browser evidence (edit → Undo/Redo → replacement in both readings):** not captured. No production
-  writer exists and no test-only route hook was added, so this plan item is **unmet and disclosed**.
-
-## What acceptance still requires
-
-1. The AM-5 probe table re-run on the merged tree, and the arch lane's visitor/public/preview
-   boundaries.
-2. The complete merge gate on the then-current `main`, recorded with its revision.
-3. The browser evidence above, in both readings, with the probe hook absent from production chunks.
-4. Independent review, then routine closeout — which alone writes the
-   `T1.viewport-projection@1:viewport-projection-v1` capability record and moves the gate to
-   `accepted` with `T1.P01.S02` as the unchanged provider.
+The browser criterion is now observed for its bounded test-only Layout workflow. It does not waive
+any blocker above. The exhaustive merge rule also requires API typechecks and DB-backed tests even for this
+editor-only increment. Their actual results and zero-skip requirement are recorded in the evidence;
+no affected-code exception is claimed.

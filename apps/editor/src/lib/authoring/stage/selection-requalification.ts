@@ -47,6 +47,7 @@ export function requalifySelection(
 	correspondence: readonly CorrespondenceEntry[],
 	context: { readonly generationId: string }
 ): SelectionRequalificationResult {
+	const componentId = selection.ref.subRef?.kind === 'component' ? selection.ref.subRef.componentId : null;
 	for (const entry of correspondence) {
 		const before = entry.before;
 		if (before === null) continue;
@@ -54,6 +55,7 @@ export function requalifySelection(
 		// subject that happens to share an opaque string.
 		if (before.subject.kind !== selection.sourceKind) continue;
 		if (before.subject.id !== selection.sourceId) continue;
+		if (before.componentId !== componentId) continue;
 		const after = entry.after;
 		if (after === null) {
 			return { kind: 'cleared', reason: 'subject-retired' };
@@ -89,5 +91,7 @@ export function requalifySelection(
 			}
 		};
 	}
-	return { kind: 'cleared', reason: 'no-correspondence' };
+	return { kind: 'cleared', reason: componentId !== null && correspondence.some((entry) =>
+		entry.before?.subject.kind === selection.sourceKind && entry.before.subject.id === selection.sourceId)
+		? 'subject-retired' : 'no-correspondence' };
 }

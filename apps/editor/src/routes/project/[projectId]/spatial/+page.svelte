@@ -56,6 +56,8 @@
 		type StageOverlayContribution,
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
+	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
+	import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
 	import {
 		createStageAcceptanceHost,
@@ -99,6 +101,8 @@
 	 */
 	let contributionsVersion = $state(0);
 	let unsubscribeContributions: (() => void) | null = null;
+	let unsubscribeAcceptance: (() => void) | null = null;
+	let contributedTaskId = $state<{ id: string; adapterId: string } | null>(null);
 	let historyState = $state<StageHistoryState>({
 		canUndo: false,
 		canRedo: false,
@@ -110,7 +114,10 @@
 	let selection = $state<StageSelection | null>(null);
 	let task = $state<StageTask | null>(null);
 	/** Instrument content contributed by the adapter whose task is open, if any. */
-	let contributedInstrument = $state<StageInstrumentContent | null>(null);
+	const contributedInstrument = $derived.by((): StageInstrumentContent | null => {
+		void contributionsVersion;
+		return contributedTaskId === null ? null : facade?.instrumentForTask(contributedTaskId.id, contributedTaskId.adapterId) ?? null;
+	});
 	let revealed = $state<string[]>([]);
 	let lens = $state<'world' | 'experience'>('world');
 	let indexOpen = $state(true);
@@ -180,9 +187,11 @@
 		unsubscribeContributions?.();
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
+			task = facade?.session.task() ?? null;
+			if (task === null) contributedTaskId = null;
 		});
 		task = null;
-		contributedInstrument = null;
+		contributedTaskId = null;
 		// The host owns one inspection output; every viewing intent below presents
 		// this claim's ticket, so a replaced or rebased output cannot keep writing.
 		facade.acquireInspection('exclusive');
@@ -201,7 +210,21 @@
 			},
 			facade
 		});
+		unsubscribeAcceptance?.();
 		acceptance = mounted;
+		unsubscribeAcceptance = mounted.onChanged(() => {
+			if (acceptance !== mounted || tornDown) return;
+			refreshHistory();
+			if (facade !== null && (boot.status === 'ready' || boot.status === 'empty')) {
+				boot = { ...boot, snapshot: facade.snapshot() };
+			}
+			task = facade?.session.task() ?? null;
+			if (task === null) contributedTaskId = null;
+			selection = facade?.selection() ?? null;
+			planKey = '';
+			refresh();
+		});
+		for (const factory of stageAdapterFactories) mountStageAdapter(facade, mounted, factory);
 		historyState = mounted.history();
 		resetViewContext();
 	}
@@ -439,6 +462,7 @@
 			// project-specific singleton — acceptance host, history or facade — survives
 			// the route.
 			unsubscribeContributions?.();
+			unsubscribeAcceptance?.();
 			unsubscribeContributions = null;
 			acceptance?.dispose();
 			facade?.dispose();
@@ -518,6 +542,7 @@
 		const host = acceptance;
 		if (host === null) return;
 		const outcome = await host.undo();
+		if (acceptance !== host || tornDown) return;
 		if (outcome.kind === 'installed') {
 			// The restored state installed through the same facade path an accept uses:
 			// the view stays, the selection was requalified against the restored
@@ -543,6 +568,7 @@
 		const host = acceptance;
 		if (host === null) return;
 		const outcome = await host.redo();
+		if (acceptance !== host || tornDown) return;
 		if (outcome.kind === 'installed') {
 			selection = facade?.selection() ?? null;
 			if (outcome.selectionClearedReason !== null) {
@@ -628,7 +654,7 @@
 		if (stage.openTask(next)) {
 			task = next;
 			// The host's own task: no adapter contributed this instrument.
-			contributedInstrument = null;
+			contributedTaskId = null;
 		}
 	}
 
@@ -637,22 +663,22 @@
 	 * content; this host only mirrors them into the one instrument home, so a new
 	 * domain adapter needs no change here.
 	 */
-	function invokeContribution(id: string): void {
+	function invokeContribution(adapterId: string, id: string): void {
 		const stage = facade;
 		if (stage === null) return;
-		const opened = stage.openContributedTask(id);
+		const opened = stage.openFindEntry(adapterId, id);
 		if (opened.kind !== 'opened') {
 			notice = opened.message;
 			return;
 		}
 		task = opened.task;
-		contributedInstrument = opened.instrument;
+		contributedTaskId = { id: opened.taskId, adapterId: opened.adapterId };
 	}
 
 	function closeTask(): void {
 		facade?.closeTask();
 		task = null;
-		contributedInstrument = null;
+		contributedTaskId = null;
 	}
 
 	function toggleReveal(sourceId: string): void {
@@ -977,6 +1003,7 @@
 		canDownloadSource={activeProject()}
 		onDownloadSource={downloadSourceJson}
 		historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
+		redoUnavailableReason={historyState.redoUnavailableReason ?? 'Nothing to redo.'}
 		canUndo={historyState.canUndo}
 		canRedo={historyState.canRedo}
 		onUndo={() => void undo()}
@@ -1186,12 +1213,13 @@
 	.editor-host {
 		display: flex;
 		flex-direction: column;
-		min-height: 100dvh;
+		height: 100dvh;
 	}
 	.editor-body {
 		display: flex;
 		min-height: 0;
 		flex: 1;
+		overflow: hidden;
 	}
 	.stage-frame {
 		position: relative;

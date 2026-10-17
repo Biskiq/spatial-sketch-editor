@@ -58,6 +58,11 @@ export type ReplaceOutcome =
 			readonly issues: readonly ShapeIssue[];
 	  };
 
+/** Optional host admission runs before replacement commits any source/history baseline. */
+export type ReplacementValidation<Source> = (source: AdmittedSource<Source>, sessionEpoch: SessionEpoch) => Promise<
+	{ readonly kind: 'valid' } | { readonly kind: 'refused'; readonly code: string; readonly message: string }
+>;
+
 /** What an Undo or Redo did: one restored state, or nothing to restore. */
 export type HistoryOutcome<Source> =
 	| {
@@ -103,7 +108,7 @@ export type AcceptanceCoordinator<Source> = {
 	 * path that moves the epoch, which is what invalidates in-flight completions
 	 * from the project being replaced.
 	 */
-	replace(next: { readonly revision: AcceptedRevision; readonly source: unknown; readonly sessionEpoch?: SessionEpoch }): Promise<ReplaceOutcome>;
+	replace(next: { readonly revision: AcceptedRevision; readonly source: unknown; readonly sessionEpoch?: SessionEpoch }, validate?: ReplacementValidation<Source>): Promise<ReplaceOutcome>;
 };
 
 /**
@@ -247,12 +252,14 @@ export function createAcceptanceCoordinator<Source>(
 		undo: () => restore('undo'), redo: () => restore('redo'),
 		history: () => ({ depth: history.depth, position: history.position, limit: history.limit }),
 		canUndo: () => history.canUndo(), canRedo: () => history.canRedo(),
-		async replace(input) {
+		async replace(input, validate) {
 			const requestGeneration = ++generation;
 			replacing = true;
 			const requestedEpoch = input.sessionEpoch;
-			epoch = requestedEpoch && !seenEpochs.has(requestedEpoch) ? requestedEpoch : crypto.randomUUID();
-			seenEpochs.add(epoch);
+			const nextEpoch = requestedEpoch && !seenEpochs.has(requestedEpoch) ? requestedEpoch : crypto.randomUUID();
+			// Legacy callers keep their existing epoch timing. A host that supplies
+			// admission commits its epoch only after that admission succeeds.
+			if (!validate) { epoch = nextEpoch; seenEpochs.add(epoch); }
 			try {
 				const next = immutableF4Data(input);
 				if (!validateAcceptedRevision(next.revision).success || seenRevisions.has(revisionKey(next.revision))) return { kind: 'refused', code: 'reused-revision', message: 'Replacement requires a fresh valid revision identity', issues: [] };
@@ -261,6 +268,13 @@ export function createAcceptanceCoordinator<Source>(
 				if (admission.kind === 'rejected') return { kind: 'refused', code: admission.code, message: admission.message, issues: admission.issues };
 				const state = immutableF4Data({ source: admission.source, canonicalJson: admission.canonicalJson, sourceContentId: admission.sourceContentId,
 					blockingIssues: admission.blockingIssues, operationId: 'project-replacement', correspondence: [] });
+				if (validate) {
+					const validation = await validate({ ...state, revision: next.revision }, nextEpoch);
+					if (generation !== requestGeneration) return { kind: 'refused', code: 'superseded-epoch', message: 'A newer replacement superseded this source', issues: [] };
+					if (validation.kind === 'refused') return { ...validation, issues: [] };
+					epoch = nextEpoch;
+					seenEpochs.add(epoch);
+				}
 				install(state, next.revision, false);
 				history.replaceBaseline(stateOf(current));
 				return { kind: 'replaced', revision: current.revision, sourceContentId: current.sourceContentId };

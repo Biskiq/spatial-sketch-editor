@@ -41,6 +41,8 @@ import {
 	type WorkingPlaneHit
 } from '@portfolio/camera-core';
 import type { Vec3 } from '@portfolio/camera-core';
+import type { Component } from 'svelte';
+import type { StageAdapterServices } from './stage-adapter-host';
 import {
 	evaluateLayoutPlan,
 	eligiblePlanFragments,
@@ -219,6 +221,8 @@ export type StageCardFactRecord = StageCardFact & { readonly adapterId: string }
 export type StageInstrumentContent = {
 	readonly summary: string;
 	readonly facts?: readonly StageCardFact[];
+	/** Editor-only UI; never serialized or imported by visitor surfaces. */
+	readonly view?: { readonly component: Component<{ services: StageAdapterServices }>; readonly services: StageAdapterServices };
 };
 
 /** The binding context: the live read access plus the adapter's own identity. */
@@ -400,9 +404,12 @@ export type StageFacade = {
 	 * the first in the deterministic order (explicit order, then adapter ID) wins,
 	 * and the returned `adapterId` names the owner that actually opened it.
 	 */
-	openContributedTask(id: string):
+	instrumentForTask(id: string, adapterId?: string): StageInstrumentContent | null;
+	openFindEntry(adapterId: string, id: string): ReturnType<StageFacade['openContributedTask']>;
+	openContributedTask(id: string, adapterId?: string):
 		| {
 				readonly kind: 'opened';
+				readonly taskId: string;
 				readonly task: StageTask;
 				readonly adapterId: string;
 				/** Content the owning adapter contributes for the mounted instrument. */
@@ -786,7 +793,10 @@ export function createStageFacade(input: {
 	>();
 	/** The host's own inspection run order, minted strictly newer than every accepted epoch. */
 	let inspectionRun = 0;
+	const lifetimeToken = session.token();
 	let disposed = false;
+	const isLive = () => !disposed && session.isCurrent(lifetimeToken);
+	let contributedTaskOwner: { adapterId: string; taskId: string } | null = null;
 
 	/**
 	 * The next host inspection run epoch. It is monotonic over this output's whole
@@ -816,34 +826,42 @@ export function createStageFacade(input: {
 
 	function adapterContext(): StageAdapterContext | null {
 		const evaluation = camera.evaluation();
-		if (evaluation === null) return null;
+		if (!isLive() || evaluation === null) return null;
+		const boundSnapshot = currentSnapshot;
+		const contextIsLive = () => isLive() && currentSnapshot === boundSnapshot;
 		const token = tokenOf(evaluation);
 		const id = evaluationIdOf(evaluation);
+		const hasLiveEvaluation = () => contextIsLive() && camera.evaluationId() === id;
 		return {
 			snapshot: currentSnapshot,
 			evaluation,
 			evaluationId: id,
 			project(point) {
+				if (!hasLiveEvaluation()) return null;
 				const result = projectWorld(point, evaluation, token);
 				return result.kind === 'projected' ? result.css : null;
 			},
 			ray(css) {
+				if (!hasLiveEvaluation()) return null;
 				const result = pointerRay(css, evaluation, token);
 				return result.kind === 'ray' ? result.ray : null;
 			},
 			intersect(ray, plane) {
+				if (!hasLiveEvaluation()) return { kind: 'failed', code: 'stale-evaluation', message: 'the adapter evaluation has ended' };
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
-			selection: () => session.selection(),
-			select: (selection) => select(selection),					// The adapter names the clock: an adapter-initiated transition starts at
+			selection: () => contextIsLive() ? session.selection() : null,
+			select: (selection) => { if (contextIsLive()) select(selection); },					// The adapter names the clock: an adapter-initiated transition starts at
 					// the caller's own time, never at a fabricated zero that would make every
 					// transition begin in the past and land instantly.
 					requestIntent: (intent, clockSeconds) =>
-						facade.requestViewingIntent(intent, camera.inspectionTicket(), clockSeconds)
+						contextIsLive() ? facade.requestViewingIntent(intent, camera.inspectionTicket(), clockSeconds)
+						: { kind: 'superseded', state: camera.state(), message: 'the adapter binding lifetime has ended' }
 		};
 	}
 
 	function select(selection: StageSelection | null): void {
+		if (!isLive()) return;
 		session.select(selection);
 		for (const entry of adapters.values()) entry.contributions.selectionEcho?.(selection);
 	}
@@ -861,7 +879,7 @@ export function createStageFacade(input: {
 		return () => {
 			if (ended) return;
 			ended = true;
-			dispose();
+			try { dispose(); } catch { /* Cleanup must continue for the other bindings. */ }
 		};
 	}
 
@@ -1037,6 +1055,7 @@ export function createStageFacade(input: {
 			return intersectWorkingPlane(ray, plane, evaluation, tokenOf(evaluation));
 		},
 		requestViewingIntent(intent, ticket, clockSeconds) {
+			if (!isLive()) return { kind: 'superseded', state: camera.state(), message: 'the Stage lifetime has ended' };
 			// Ownership is the landed ticket protocol's answer, never a field
 			// comparison: a ticket for another output, host session or source revision,
 			// or one whose run epoch this output already spent, cannot drive it. A run
@@ -1077,7 +1096,7 @@ export function createStageFacade(input: {
 		inspectionClaim: () => camera.output().claim,
 		inspectionTicket: () => camera.inspectionTicket(),
 		installAccepted(next, options) {
-			if (disposed) {
+			if (!isLive()) {
 				return { kind: 'refused', code: 'disposed', message: 'the stage is disposed and installs no source' };
 			}
 			const previous = currentSnapshot;
@@ -1223,10 +1242,10 @@ export function createStageFacade(input: {
 		},
 		selection: () => session.selection(),
 		select,
-		openTask: (task) => session.openTask(task),
-		closeTask: () => session.closeTask(),
+		openTask: (task) => { if (!isLive()) return false; contributedTaskOwner = null; return session.openTask(task); },
+		closeTask: () => { if (!isLive()) return false; contributedTaskOwner = null; return session.closeTask(); },
 		registerStageAdapter(adapter) {
-			if (disposed) {
+			if (!isLive()) {
 				return {
 					kind: 'refused',
 					code: 'unknown-required-capability',
@@ -1263,8 +1282,13 @@ export function createStageFacade(input: {
 			const dispose = () => {
 				if (ended) return;
 				ended = true;
+				const currentBinding = disposed ? undefined : adapters.get(adapter.id);
 				adapters.delete(adapter.id);
-				bindingDispose();
+				if (contributedTaskOwner?.adapterId === adapter.id) {
+					contributedTaskOwner = null;
+					session.closeTask();
+				}
+				currentBinding?.dispose();
 				notifyAdaptersChanged();
 			};
 			adapters.set(adapter.id, {
@@ -1301,12 +1325,31 @@ export function createStageFacade(input: {
 			ensureBindings();
 			return tasksOf();
 		},
-		openContributedTask(id) {
-			if (disposed) {
+		instrumentForTask(id, adapterId) {
+			if (disposed) return null;
+			ensureBindings();
+			const entry = tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
+			if (entry === undefined || session.task()?.kind !== entry.taskKind ||
+				contributedTaskOwner?.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) return null;
+			try {
+				return adapters.get(entry.adapterId)?.contributions.instrument?.({
+					kind: entry.taskKind, targetRef: entry.targetRef ?? null
+				}) ?? null;
+			} catch { return null; }
+		},
+		openFindEntry(adapterId, id) {
+			ensureBindings();
+			const entry = findEntriesOf().find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
+			const tasks = tasksOf().filter((candidate) => candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind);
+			if (tasks.length !== 1) return { kind: 'refused', code: 'unknown-task', message: 'Find requires one task of the declared kind in its owning adapter' };
+			return facade.openContributedTask(tasks[0]!.id, adapterId);
+		},
+		openContributedTask(id, adapterId) {
+			if (!isLive()) {
 				return { kind: 'refused', code: 'task-closed', message: 'the stage is disposed and opens no task' };
 			}
 			ensureBindings();
-			const entry = tasksOf().find((candidate) => candidate.id === id);
+			const entry = tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
 			if (entry === undefined) {
 				return { kind: 'refused', code: 'unknown-task', message: `no adapter contributes a task "${id}"` };
 			}
@@ -1318,14 +1361,9 @@ export function createStageFacade(input: {
 			if (!session.openTask(task)) {
 				return { kind: 'refused', code: 'task-closed', message: 'the session is disposed and opens no task' };
 			}
-			const owner = adapters.get(entry.adapterId);
-			let instrument: StageInstrumentContent | null = null;
-			try {
-				instrument = owner?.contributions.instrument?.({ kind: task.kind, targetRef: task.targetRef }) ?? null;
-			} catch {
-				instrument = null;
-			}
-			return { kind: 'opened', task, adapterId: entry.adapterId, instrument };
+			contributedTaskOwner = { adapterId: entry.adapterId, taskId: entry.id };
+			const instrument = facade.instrumentForTask(id, entry.adapterId);
+			return { kind: 'opened', taskId: entry.id, task, adapterId: entry.adapterId, instrument };
 		},
 		findEntries() {
 			ensureBindings();
@@ -1344,6 +1382,7 @@ export function createStageFacade(input: {
 			});
 		},
 		acquireGesture(request) {
+			if (!isLive()) return { kind: 'refused', code: 'stale-epoch', owner: request.owner };
 			return session.acquireGesture({
 				owner: request.owner,
 				evaluationId: request.evaluationId,
@@ -1354,6 +1393,8 @@ export function createStageFacade(input: {
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			if (session.isCurrent(lifetimeToken) && contributedTaskOwner !== null) session.closeTask();
+			contributedTaskOwner = null;
 			endAdapters();
 			// A consumer that keeps this facade must not show stale contribution rows,
 			// and no listener may outlive the facade it was registered on.

@@ -21,7 +21,10 @@
  * 6. contributed tasks, Find entries and Card facts appear and disappear with their
  *    adapter's registration, and opening an instrument moves nothing.
  */
+import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
+import { createDomainConsumer, consumerMove, consumerSceneEdit } from './__fixtures__/stage-domain-consumer';
 import { describe, expect, it } from 'vitest';
+import { planDeleteLayoutObject } from '@portfolio/layout-core';
 import type { PlanSourceRef } from '@portfolio/layout-core';
 import type { ProjectDocument } from '@portfolio/project-model';
 
@@ -31,7 +34,8 @@ import {
 	createStageFacade,
 	SKIP_REBIND_CONTROL,
 	type StageAdapterBinding,
-	type StageFacade
+	type StageFacade,
+	datumWorkingPlane
 } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { requalifySelection } from '$lib/authoring/stage/selection-requalification';
@@ -126,6 +130,128 @@ function settle(facade: StageFacade, clockSeconds = 3): void {
 }
 
 describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
+	it('mounts an external domain factory with planner registration, submission and live UI contributions', async () => {
+		const { facade, snapshot, objectId } = await mount();
+		const host = createStageAcceptanceHost({ facade, sessionEpoch: snapshot.sessionEpoch,
+			baseline: { revision: snapshot.acceptedRevision, source: snapshot.domain.project,
+				canonicalJson: snapshot.canonicalJson, sourceContentId: snapshot.sourceContentId } });
+		settle(facade);
+		const disposed: string[] = [];
+		let services: StageAdapterServices | undefined;
+		const registration = mountStageAdapter(facade, host, (port) => {
+			services = port;
+			return createDomainConsumer(objectId, disposed)(port);
+		});
+		if (registration.kind !== 'registered' || !services) throw new Error('consumer did not mount');
+		expect(host.coordinator().planners()).toHaveLength(2);
+		expect(stageContributionGroups(facade)[0]?.entries[0]?.label).toBe('Move probe');
+		expect(facade.openContributedTask('consumer-move')).toMatchObject({ kind: 'opened', instrument: { summary: snapshot.sourceContentId } });
+		const pose = facade.camera.state().pose;
+		expect((await consumerMove(services, objectId)).kind).toBe('installed');
+		settle(facade);
+		expect(facade.camera.state().pose).toEqual(pose);
+		expect(disposed).toEqual([snapshot.sourceContentId]);
+		facade.openContributedTask('consumer-move');
+		expect(facade.instrumentForTask('consumer-move')?.summary).toBe(facade.snapshot().sourceContentId);
+		expect((await consumerSceneEdit(services)).kind).toBe('installed');
+		expect(facade.snapshot().domain.project.scene.entities[0]).toMatchObject({ receiveShadow: true });
+		expect(host.history()).toMatchObject({ depth: 3, position: 2 });
+		expect((await host.undo()).kind).toBe('installed');
+		expect(facade.snapshot().domain.project.scene.entities[0]).toMatchObject({ receiveShadow: false });
+		expect((await host.redo()).kind).toBe('installed');
+		settle(facade);
+		facade.openContributedTask('consumer-move');
+		expect(facade.session.task()).not.toBeNull();
+		registration.dispose();
+		expect(stageContributionGroups(facade)).toEqual([]);
+		expect(facade.instrumentForTask('consumer-move')).toBeNull();
+		expect(facade.session.task()).toBeNull();
+		facade.dispose();
+	});
+
+	it('dispatches duplicate Find and task ids through the owning adapter', async () => {
+		const { facade } = await mount();
+		settle(facade);
+		for (const id of ['a', 'b']) facade.registerStageAdapter({ id,
+			tasks: [{ id: 'task', taskKind: 'work', label: id }],
+			findEntries: [{ id: 'find', taskKind: 'work', label: id, railFamily: 'place', capability: 'probe' }],
+			instrument: () => ({ summary: id }) });
+		expect(facade.openFindEntry('b', 'find')).toMatchObject({ kind: 'opened', adapterId: 'b', taskId: 'task', instrument: { summary: 'b' } });
+		expect(facade.instrumentForTask('task', 'b')).toEqual({ summary: 'b' });
+		expect(facade.openFindEntry('missing', 'find')).toMatchObject({ kind: 'refused' });
+		facade.dispose();
+	});
+
+	it('refuses retained adapter mutations after the shared session mounts a new epoch', async () => {
+		const { facade, snapshot, project, objectId } = await mount();
+		settle(facade);
+		let retained: import('$lib/authoring/stage/stage-facade').StageAdapterBindingContext | null = null;
+		facade.registerStageAdapter({ id: 'retained', bind(context) { retained = context; return {}; } });
+		if (!retained) throw new Error('no bound context');
+		const context = retained as import('$lib/authoring/stage/stage-facade').StageAdapterBindingContext;
+		const next = await admitSource(project, { sessionEpoch: 'next-shared-epoch',
+			acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'next-shared-revision' } });
+		if (next.kind !== 'admitted') throw new Error('replacement refused');
+		const session = facade.session;
+		facade.dispose();
+		session.replace(next.snapshot);
+		const current = createStageFacade({ snapshot: next.snapshot, session });
+		current.acquireInspection();
+		settle(current);
+		const selection = objectSelection(current, objectId);
+		current.select(selection);
+		current.openTask({ kind: 'current-task', label: 'Current', targetRef: null });
+		const lease = current.acquireGesture({ owner: 'current-owner', evaluationId: current.evaluationId()!, policy: 'cancel-on-reading-change' });
+		if (lease.kind !== 'granted') throw new Error('gesture refused');
+		context.select(null);
+		expect(context.requestIntent({ kind: 'set-reading', reading: 'plan' }, 5).kind).toBe('superseded');
+		expect(facade.openTask({ kind: 'stale', label: 'Stale', targetRef: null })).toBe(false);
+		expect(facade.closeTask()).toBe(false);
+		expect(facade.acquireGesture({ owner: 'stale', evaluationId: 'stale', policy: 'cancel-on-reading-change' })).toMatchObject({ kind: 'refused', code: 'stale-epoch' });
+		expect(current.selection()).toEqual(selection);
+		expect(session.task()?.kind).toBe('current-task');
+		expect(lease.lease.active).toBe(true);
+		current.closeTask();
+		expect(lease.lease.active).toBe(false);
+		current.dispose();
+	});
+
+	it('refuses captured factory projection after navigation changes the rendered evaluation', async () => {
+		const { facade } = await mount();
+		settle(facade);
+		let retained: import('$lib/authoring/stage/stage-facade').StageAdapterBindingContext | null = null;
+		facade.registerStageAdapter({ id: 'retained-math', bind(context) { retained = context; return {}; } });
+		if (!retained) throw new Error('binding missing');
+		const context = retained as import('$lib/authoring/stage/stage-facade').StageAdapterBindingContext;
+		const oldRay = context.ray([640, 360]);
+		if (oldRay === null) throw new Error('ray missing');
+		expect(context.requestIntent({ kind: 'zoom', scale: 1.2 }, 4).kind).toBe('accepted');
+		settle(facade, 5);
+		expect(context.project([0, 0, 0])).toBeNull();
+		expect(context.ray([640, 360])).toBeNull();
+		expect(context.intersect(oldRay, datumWorkingPlane(0))).toMatchObject({ kind: 'failed', code: 'stale-evaluation' });
+		expect(facade.pointerRay([640, 360], facade.evaluationId()!).kind).toBe('ray');
+		facade.dispose();
+	});
+
+	it('finishes accepted rebind and teardown when one binding disposer throws', async () => {
+		const { facade, host, snapshot, objectId } = await mount();
+		settle(facade);
+		const disposed: string[] = [];
+		for (const id of ['throws', 'continues']) facade.registerStageAdapter({ id,
+			bind(context) { return { tasks: [{ id, taskKind: id, label: context.snapshot.sourceContentId }],
+				dispose() { disposed.push(id); if (id === 'throws') throw new Error('cleanup failed'); } }; } });
+		expect((await host.accept(moveIntent(objectId, snapshot.acceptedRevision.revisionId,
+			snapshot.sourceContentId, 'throwing-cleanup', [2, 0, 1]))).kind).toBe('installed');
+		expect(disposed).toEqual(['throws', 'continues']);
+		expect(facade.inspectionTicket()).not.toBeNull();
+		settle(facade);
+		expect(facade.tasks().map((task) => task.label)).toEqual([facade.snapshot().sourceContentId, facade.snapshot().sourceContentId]);
+		facade.dispose();
+		facade.dispose();
+		expect(disposed).toEqual(['throws', 'continues', 'throws', 'continues']);
+	});
+
 	it('installs one real accepted change, keeps the pose, rebinds adapters once and requalifies the selection', async () => {
 		const { facade, snapshot, host, objectId } = await mount();
 		settle(facade);
@@ -291,6 +417,37 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		expect(outcome).toEqual({ kind: 'unavailable', direction: 'undo', reason: 'empty-stack' });
 	});
 
+	it('returns the actual fresh replacement epoch when the requested epoch was already used', async () => {
+		const { facade, host, project } = await mount();
+		const replaced = await host.replace({ source: project,
+			revision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'replacement-reused-epoch' }, sessionEpoch: host.sessionEpoch });
+		if (replaced.kind !== 'replaced') throw new Error('replacement refused');
+		expect(replaced.snapshot.sessionEpoch).not.toBe(host.sessionEpoch);
+		expect(replaced.snapshot.sessionEpoch).toBe(host.coordinator().sessionEpoch());
+		facade.dispose();
+	});
+
+	it('preserves the subject-retired reason through a real accepted deletion', async () => {
+		const { facade, host, objectId, snapshot } = await mount();
+		settle(facade);
+		facade.select(objectSelection(facade, objectId));
+		const proof = createProofLayoutPlanner(objectId);
+		host.registerPlanner({ ...proof, id: 'delete-probe', kind: 'delete-probe', prepare(input) {
+			const prepared = proof.prepare(input);
+			if (prepared.kind !== 'prepared') return prepared;
+			const deletion = planDeleteLayoutObject(input.snapshot.domain.source.layout, objectId);
+			if (deletion.kind !== 'success') throw new Error('deletion refused');
+			return { ...prepared, candidate: { ...prepared.candidate,
+				source: { ...input.snapshot.domain.source, layout: deletion.document },
+				correspondence: [{ relation: 'retired', before: layoutObjectReference(input.snapshot.sourceContentId, objectId), after: null }] } };
+		} });
+		const intent = moveIntent(objectId, snapshot.acceptedRevision.revisionId, snapshot.sourceContentId, 'delete-operation', [2, 0, 1]);
+		expect(await host.accept({ ...intent, kind: 'delete-probe' })).toMatchObject({ kind: 'installed', selectionClearedReason: 'subject-retired' });
+		expect(facade.selection()).toBeNull();
+		expect(facade.snapshot().domain.project.layout.objects).toEqual([]);
+		facade.dispose();
+	});
+
 	it('starts a new baseline on replacement and refuses a prior-epoch completion', async () => {
 		const { facade, host, objectId, project } = await mount();
 		settle(facade);
@@ -375,7 +532,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 			facade.cardFacts({ sourceId: objectId, sourceKind: 'object', ref: null }).map((fact) => fact.value)
 		).toEqual(['A', 'B']);
 
-		const opened = facade.openContributedTask('task-b');
+		const opened = facade.openFindEntry('z-adapter', 'find-b');
 		expect(opened.kind).toBe('opened');
 		if (opened.kind === 'opened') expect(opened.adapterId).toBe('z-adapter');
 		expect(facade.camera.state().pose).toEqual(before);
@@ -586,6 +743,16 @@ describe('T1.P01.S07 — selection requalification through accepted corresponden
 		expect(domainChanged).toEqual({ kind: 'cleared', reason: 'subject-retired' });
 	});
 
+	it('finds a matching component correspondence after a subject-level entry', () => {
+		const before = layoutObjectReference('before', selection.sourceId);
+		const component = { ...before, componentId: 'side' };
+		const selected = { ...selection, ref: { ...selection.ref, subRef: { kind: 'component' as const, componentId: 'side' } } };
+		expect(requalifySelection(selected, [
+			{ relation: 'preserved', before, after: before },
+			{ relation: 'preserved', before: component, after: component }
+		], { generationId: 'next' })).toMatchObject({ kind: 'requalified', selection: { generationId: 'next' } });
+	});
+
 	it('does not keep a selected component through a subject-level correspondence entry', () => {
 		const componentSelection: StageSelection = {
 			...selection,
@@ -735,6 +902,72 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 		// Redo, because the coordinator owns the one stack.)
 		expect(host.coordinator().acceptedSnapshot().sourceContentId).toBe(boot);
 		expect(host.coordinator().history().position).toBe(0);
+	});
+
+	it('unregisters the current factory binding exactly once after repeated rebinds', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		const disposed: number[] = [];
+		let generation = 0;
+		const registration = facade.registerStageAdapter({
+			id: 'lifecycle',
+			bind() {
+				const ownGeneration = ++generation;
+				return { dispose: () => disposed.push(ownGeneration) };
+			}
+		});
+		if (registration.kind !== 'registered') throw new Error('registration refused');
+		for (let step = 1; step <= 2; step += 1) {
+			expect((await host.accept(moveIntent(objectId, host.acceptedRevision().revisionId,
+				facade.snapshot().sourceContentId, `lifecycle-${step}`, [step, 0, 1]))).kind).toBe('installed');
+			settle(facade, step + 3);
+		}
+		expect(generation).toBe(3);
+		expect(disposed).toEqual([1, 2]);
+		registration.dispose();
+		registration.dispose();
+		expect(disposed).toEqual([1, 2, 3]);
+		// Reusing an id must not give an old registration power over the new one.
+		facade.registerStageAdapter({ id: 'lifecycle', dispose: () => disposed.push(4) });
+		registration.dispose();
+		expect(facade.adapters()).toHaveLength(1);
+		facade.dispose();
+		facade.dispose();
+		expect(disposed).toEqual([1, 2, 3, 4]);
+	});
+
+	it('preserves the exact F4 baseline and live Stage when replacement fails Stage admission', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		expect((await host.accept(moveIntent(objectId, host.acceptedRevision().revisionId,
+			facade.snapshot().sourceContentId, 'before-failed-replace', [1, 0, 2]))).kind).toBe('installed');
+		settle(facade);
+		facade.select(objectSelection(facade, objectId));
+		const snapshot = facade.snapshot();
+		const current = host.coordinator().current();
+		const epoch = host.coordinator().sessionEpoch();
+		const installs = host.coordinator().installs();
+		const history = host.history();
+		const selection = facade.selection();
+		const ticket = facade.inspectionTicket();
+		let disposed = 0;
+		facade.registerStageAdapter({ id: 'still-live', dispose: () => { disposed += 1; } });
+		// F4 validates the source, but Stage refuses the mismatched project identity.
+		// No fake admission function or host bypass is involved.
+		expect(await host.replace({ source: snapshot.domain.project,
+			revision: { projectId: 'wrong-project', revisionId: 'failed-replacement' },
+			sessionEpoch: 'failed-replacement-epoch' })).toMatchObject({ kind: 'refused', code: 'project-mismatch' });
+		expect(host.coordinator().current()).toBe(current);
+		expect(host.coordinator().sessionEpoch()).toBe(epoch);
+		expect(host.coordinator().installs()).toBe(installs);
+		expect(host.history()).toEqual(history);
+		expect(facade.snapshot()).toBe(snapshot);
+		expect(facade.selection()).toEqual(selection);
+		expect(facade.inspectionTicket()).toEqual(ticket);
+		expect(disposed).toBe(0);
+		expect((await host.undo()).kind).toBe('installed');
+		expect((await host.redo()).kind).toBe('installed');
+		facade.dispose();
 	});
 
 	it('creates no history for navigation, reading changes, selection or focus', async () => {

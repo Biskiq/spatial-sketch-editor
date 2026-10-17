@@ -1,0 +1,22 @@
+{
+  "apps/editor/src/lib/authoring/adapters/catalog.ts": "71fac87856ccae1207072b1c06582731f3f981868474b65fb629206ac3a66b0a",
+  "apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts": "a3535de9ef40f4a22af5a8d577d61d47afaa932ae1ab07ed4b4a8fe166ba579e",
+  "apps/editor/src/lib/authoring/stage/host-acceptance.ts": "2e87b3159cd57747d4187ab8c73ad54fc4222e0cf7a8c25ba2da33056c208d89",
+  "apps/editor/src/lib/authoring/stage/selection-requalification.ts": "72b772e0521e8709e61064ff71bf825a5bd96aa52cf5b16e7c47dd57581ae686",
+  "apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte": "31dd1573d67b20853fde52d6b2ceae84d85cfb7f2a8dcc48d4ed5bdd64b82713",
+  "apps/editor/src/lib/authoring/stage/shell/EditorIndex.svelte": "aa878c64ef0d30f89b1a74945fee4791060e9a075e93339bf9b5cfe884587489",
+  "apps/editor/src/lib/authoring/stage/shell/StageInstrumentHost.svelte": "81ed80e3306400af44219e59fdffc6f6a5a6b319b454b9225e1e3c6197c33ab5",
+  "apps/editor/src/lib/authoring/stage/source-admission.ts": "5e7f924338534c93764e8e0f908ccbefc39c9a9906a6deb7b4b7b010b9b3cf3b",
+  "apps/editor/src/lib/authoring/stage/stage-adapter-host.ts": "50cd167f429510e538e75e1ebc8cabae29ad382b6f517d8ee4b764b8a2af197c",
+  "apps/editor/src/lib/authoring/stage/stage-contributions.ts": "151cf0c21e201c41de0f232d99a42fde772fd3a1a6a99062772811633276c1ec",
+  "apps/editor/src/lib/authoring/stage/stage-facade.ts": "d381a16d04cdecb31bd24724b0c6d93df60203a207917624d4331cbd488dff1d",
+  "apps/editor/src/lib/authoring/stage/stage-session.ts": "8adc11c056740db4caddf7705e8fafecbeb18f81ec9ec9a7689e4938015fb595",
+  "apps/editor/src/routes/project/[projectId]/spatial/+page.svelte": "d7e92440a962fc8d1e033cd692ff50e188856fc7fd765c8413a562d9dc963ce2",
+  "apps/editor/tests/e2e/stage-conformance/ProbeInstrument.svelte": "055a06590bafc460d73cc19080b5379e70f40e6e69b2f5e5556b7b35bf19f076",
+  "apps/editor/tests/e2e/stage-conformance/probe-adapter.ts": "33cee7ba957442a785c750a2f480a1a1da2a3660cb5e84eb3a4fe3321d8a29b7",
+  "apps/editor/tests/lib/authoring/__fixtures__/stage-domain-consumer.ts": "95baafc51d3f3444392d3f019fe09942a3d0a8234a1c45fa14724c1db88f5230",
+  "apps/editor/tests/lib/authoring/stage-content-change.test.ts": "ec446d683ce44338c43380786a013ae8498ce1aff7527f33ddb34d6cec368167",
+  "apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts": "92f811a4633a3707f2b737134c26f9db1ed881dc4eba09884fbe3cd51b38feb6",
+  "apps/editor/tests/lib/project-model/camera-output-conformance.test.ts": "3df8c79ef5441d69f92e3a9d2a2e16720cf59ae4392e2e5c6957c90f55ee3d2f",
+  "apps/editor/vite.stage-conformance.config.ts": "836feea68b583a05ae09ad93c8af6350a514557039fec6404340b12dc1eda79d"
+}

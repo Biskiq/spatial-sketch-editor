@@ -20,6 +20,7 @@
 		canDownloadSource,
 		onDownloadSource,
 		historyUnavailableReason,
+		redoUnavailableReason = historyUnavailableReason,
 		canUndo = false,
 		canRedo = false,
 		onUndo = () => {},
@@ -37,6 +38,7 @@
 		onDownloadSource: () => void;
 		/** Why Undo/Redo cannot run; visible whenever both are unavailable. */
 		historyUnavailableReason: string;
+		redoUnavailableReason?: string;
 		/** Live host history commands (T1.P01.S07 wiring). */
 		canUndo?: boolean;
 		canRedo?: boolean;
@@ -123,7 +125,7 @@
 					class="action"
 					disabled={!canRedo}
 					aria-disabled={!canRedo}
-					title={canRedo ? 'Redo the last undone change' : historyUnavailableReason}
+					title={canRedo ? 'Redo the last undone change' : redoUnavailableReason}
 					onclick={onRedo}
 				>
 					Redo
