@@ -26,7 +26,7 @@
 import { resolveReference, type CorrespondenceEntry, type SemanticReference } from '@portfolio/project-model';
 
 import type { StageReadSnapshot } from './accepted-read';
-import { sameSubject, type StageSelectionEntry } from './semantic-selection';
+import { canonicalReference, sameSubject, type StageSelectionEntry } from './semantic-selection';
 import type { StageSelection } from './stage-session';
 
 export type SelectionRequalificationResult =
@@ -115,8 +115,14 @@ export function requalifySelectionEntry(entry: StageSelectionEntry, corresponden
 	if (!mapping) return { kind: 'cleared', reason: 'no-correspondence' };
 	const after = mapping.after;
 	if (!after || after.domain !== entry.reference.domain || after.subject.kind !== entry.reference.subject.kind) return { kind: 'cleared', reason: 'subject-retired' };
-	const reference: SemanticReference = { ...after, revision: { kind: 'exact', contentRevision: next.sourceContentId } };
-	if (resolveReference(reference, next.domain.references).kind !== 'resolved') return { kind: 'cleared', reason: 'subject-retired' };
+	const candidate: SemanticReference = { ...after, revision: { kind: 'exact', contentRevision: next.sourceContentId } };
+	const resolved = resolveReference(candidate, next.domain.references);
+	if (resolved.kind !== 'resolved') return { kind: 'cleared', reason: 'subject-retired' };
+	// The owner's answer is the stored identity, exactly as admission does it. A
+	// planner may state a valid but non-canonical `after` address (F.1 allows two
+	// qualifications of one subject); storing that alias would make the next
+	// accepted change fail to match its canonical `before` and drop a live subject.
+	const reference = canonicalReference(resolved.subject);
 	let representation = entry.representation;
 	if (representation) {
 		if (representation.subRef?.kind === 'component' && reference.componentId !== representation.subRef.componentId ||

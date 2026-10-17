@@ -35,6 +35,7 @@ import {
 import { admitSource, type StageReadSnapshot } from './source-admission';
 import type { StageContentInstall, StageFacade } from './stage-facade';
 import { requalifySelectionEntry, requalifySelection } from './selection-requalification';
+import { sameReference, sameSubject } from './semantic-selection';
 
 /** The baseline one host lifetime starts from; the route already admitted it. */
 export type StageAcceptanceBaseline = {
@@ -240,6 +241,9 @@ export function createStageAcceptanceHost(options: {
 		if (admission.snapshot.sessionEpoch !== sessionEpoch) {
 			return { kind: 'refused', code: 'stale-session', message: 'the snapshot belongs to another host lifetime' };
 		}
+		// The reason is about the *primary* the creator was working on, not about
+		// whether anything survived: losing the primary is what the notice describes.
+		const beforePrimary = facade.selectionState().primary;
 		const installed = facade.installAccepted(admission.snapshot, {
 			requalifyEntry: (entry) => requalifySelectionEntry(entry, correspondence, admission.snapshot),
 			requalify: (selection) => {
@@ -260,11 +264,19 @@ export function createStageAcceptanceHost(options: {
 			// and only the caller knows which committed step must be reversed.
 			return { kind: 'refused', code: installed.code, message: installed.message };
 		}
+		const after = facade.selectionState();
+		const primaryLost =
+			beforePrimary !== null && !after.ordered.some((entry) => sameSubject(entry.reference, beforePrimary));
 		return {
 			kind: 'installed',
 			install: installed,
-			selectionClearedReason:
-				installed.selectionRemovals[0]?.reason ?? null
+			// Reported only for the subject the creator was working on. A surviving
+			// entry that was promoted to primary is not "cleared", so its notice stays
+			// silent even when another entry was removed.
+			selectionClearedReason: primaryLost
+				? installed.selectionRemovals.find((removal) => sameReference(removal.reference, beforePrimary))?.reason ??
+					(installed.requalification.kind === 'cleared' ? installed.requalification.reason : 'no-correspondence')
+				: null
 		};
 	}
 
@@ -312,9 +324,12 @@ export function createStageAcceptanceHost(options: {
 	async function runHistory(direction: StageHistoryDirection): Promise<StageHistoryCommandOutcome> {
 		if (inFlight > 0) return { kind: 'unavailable', direction, reason: 'live-proposal' };
 		inFlight += 1;
+		// A restore is authoring work like an accept: a lens exit cancels it, and the
+		// coordinator's generation check makes the cancellation actually win.
+		const unregister = facade.session.writers().register('command', facade.session.token(), () => coordinator.cancelPending());
 		changed();
 		try { return await restore(direction); }
-		finally { inFlight -= 1; changed(); }
+		finally { unregister(); inFlight -= 1; changed(); }
 	}
 
 	return {

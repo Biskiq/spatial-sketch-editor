@@ -18,7 +18,15 @@ export const EMPTY_SELECTION: StageSelectionState = Object.freeze({ ordered: Obj
 export function sameReference(a: SemanticReference, b: SemanticReference): boolean {
 	return compareReferences(a, b) === 0;
 }
-/** Identity comparison across accepted revisions still includes every F.1 address qualifier. */
+/**
+ * Identity comparison across accepted revisions still includes every F.1 address
+ * qualifier.
+ *
+ * Only the revision is taken from `b`, so this compares two references as the same
+ * subject at different content revisions. It is not a revision-kind check: stored
+ * entries are always `exact` because admission canonicalises them, and a caller
+ * must not read this as "this revision kind is equivalent".
+ */
 export function sameSubject(a: SemanticReference, b: SemanticReference): boolean {
 	return sameReference({ ...a, revision: b.revision }, b);
 }
@@ -34,7 +42,7 @@ export function primaryEntry(selection: StageSelectionState): StageSelectionEntr
  * identity. Every address qualifier is preserved — this is not coordinate or
  * proximity matching.
  */
-function canonicalReference(subject: ResolvedSubject): SemanticReference {
+export function canonicalReference(subject: ResolvedSubject): SemanticReference {
 	return { version: 1, domain: subject.domain, subject: subject.subject,
 		revision: { kind: 'exact', contentRevision: subject.contentRevision },
 		instancePath: subject.instancePath, location: subject.location,

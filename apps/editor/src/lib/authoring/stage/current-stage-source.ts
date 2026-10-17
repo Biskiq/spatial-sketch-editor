@@ -17,7 +17,6 @@ export function currentStageSource(snapshot: StageReadSnapshot): CurrentDomainSo
 	return (snapshot as CurrentStageRead)[currentSource];
 }
 
-
 /** Current-format planner access is an explicit encoding adapter, never part of the common read port. */
 export function currentStagePlanner(planner: DomainPlanner<ProjectDocument>): DomainPlanner<unknown> {
 	return { ...planner, prepare(request) {

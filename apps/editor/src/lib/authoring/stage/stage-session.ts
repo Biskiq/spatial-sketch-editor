@@ -74,6 +74,8 @@ export type StageTask = {
 	readonly label: string;
 };
 
+/** One ordered entry the accepted change did not preserve, with the reason it went. */
+export type SelectionRemoval = { readonly reference: SemanticReference; readonly reason: 'subject-retired' | 'no-correspondence' };
 export type TaskResumeOutcome = { readonly kind: 'resumed' } | { readonly kind: 'refused'; readonly code: string; readonly message: string };
 export type TaskLifecycle = { readonly status: 'active' | 'inactive'; readonly task: StageTask };
 
@@ -140,7 +142,7 @@ export type AcceptedSlotInstall =
 			readonly releasedGestures: number;
 			/** What the host's requalification did with the live selection. */
 			readonly requalification: SelectionRequalificationOutcome;
-			readonly selectionRemovals: readonly { readonly reference: SemanticReference; readonly reason: 'subject-retired' | 'no-correspondence' }[];
+			readonly selectionRemovals: readonly SelectionRemoval[];
 	  }
 	| { readonly kind: 'unchanged'; readonly sourceContentId: string }
 	| {
@@ -335,13 +337,26 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		// Retained Layout helper shares the exact same owner and ordered value.
 		const reference = layoutSelectionReference(next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null }, current);
 		const admitted = admitSelection({ ordered: [{ reference, representation: next.ref ?? { sourceId: next.sourceId, sourceKind: next.sourceKind, generationId: next.generationId, stream: 'projected', subRef: null } }], primary: reference }, current);
-		if (!('kind' in admitted)) selectionValue = admitted;
+		// A refused convenience request clears rather than retaining a value that
+		// names the previous revision: the caller re-reads the projection, and a
+		// stale ref would otherwise be shown as the subject just clicked.
+		selectionValue = 'kind' in admitted ? EMPTY_SELECTION : admitted;
 	}
+	/**
+	 * Cancel the writers that belong to a task or gesture, never the command that is
+	 * changing the content. Opening or closing a task must not abort a concurrent
+	 * host accept.
+	 */
 	function cancelTaskWriters(): void {
 		writerGeneration += 1;
-		registry.cancelKinds(['gesture', 'task', 'command', 'camera']);
+		registry.cancelKinds(['gesture', 'task', 'camera']);
 		activeGesture?.lease.release();
 		activeGesture = null;
+	}
+	/** A lens transition ends every writer, including an in-flight acceptance. */
+	function cancelAllWriters(): void {
+		cancelTaskWriters();
+		registry.cancelKinds(['command']);
 	}
 
 	const session: StageSession = {
@@ -376,14 +391,17 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 		writerGeneration: () => writerGeneration,
 		changeLens(next) {
 			if (disposed || next === lens) return false;
-			cancelTaskWriters();
+			// Park before cancelling: a canceller then observes an inactive task, never
+			// an "active" one it could close and take the Resume path with it.
 			if (task !== null) taskStatus = 'inactive';
+			cancelAllWriters();
 			lens = next;
 			return true;
 		},
 		taskLifecycle: () => task === null ? null : { status: taskStatus, task },
 		resumeTask(validate) {
-			if (disposed || current === null || task === null || taskStatus !== 'inactive') return { kind: 'refused', code: 'no-inactive-task', message: 'Choose an inactive task to resume.' };
+			if (disposed || current === null) return { kind: 'refused', code: 'stale-session', message: 'Open a current source before resuming a task.' };
+			if (task === null || taskStatus !== 'inactive') return { kind: 'refused', code: 'no-inactive-task', message: 'Choose an inactive task to resume.' };
 			if ((task.lens ?? 'world') !== lens) return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${task.lens ?? 'world'} lens before resuming.` };
 			// Explicit identity requalification within this source; replacement clears tasks.
 			let target = task.target;
@@ -538,12 +556,15 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 					setLegacy(requalification.kind === 'requalified' ? requalification.selection : null);
 					for (const entry of previousOrdered.ordered) if (requalification.kind !== 'requalified') selectionRemovals.push({ reference: entry.reference, reason: requalification.kind === 'cleared' ? requalification.reason : 'no-correspondence' });
 				}
-				if (taskStatus === 'active') { task = null; writerGeneration += 1; }
+				// Accepted content closes an active task. Its writer callbacks are cancelled
+				// for real (not merely generation-invalidated), but the acceptance's own
+				// command writer must survive this install.
+				if (taskStatus === 'active') { task = null; cancelTaskWriters(); }
 				return {
 					kind: 'installed',
 					previousSourceContentId: active.sourceContentId,
 					sourceContentId: next.sourceContentId,
-					clearedSelection: selectionRemovals.length > 0,
+					clearedSelection: selectionValue.ordered.length === 0,
 					closedTask,
 					releasedGestures,
 					requalification,

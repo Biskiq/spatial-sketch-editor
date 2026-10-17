@@ -14,5 +14,5 @@ export function selectAccepted(stage: StageFacade, target: SemanticReference) {
 export function encodingIndependentRead(domain: StageReadSnapshot['domain']): StageReadSnapshot {
 	return { acceptedRevision: domain.references.snapshot.acceptedRevision, sourceContentId: domain.references.snapshot.sourceContentId,
 		canonicalJson: '{}', sourceKind: 'test-read-port', sourceVersion: 27,
-		sessionEpoch: domain.references.sessionEpoch, compileGeneration: domain.references.generationId!, domain };
+		sessionEpoch: domain.references.sessionEpoch, compileGeneration: domain.references.generationId ?? '', domain };
 }

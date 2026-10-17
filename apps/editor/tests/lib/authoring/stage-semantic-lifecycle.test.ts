@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { admitSource } from '$lib/authoring/stage/source-admission';
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageAdapterBindingContext } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
@@ -28,6 +28,10 @@ describe('Stage accepted read and ordered semantic selection', () => {
 	it('supports a source-independent consumer and explicitly refuses the wrong encoding adapter', async () => {
 		const { snapshot, scene } = await mount();
 		const alternate = encodingIndependentRead(snapshot.domain);
+		// A planner written against the current encoding refuses a foreign snapshot
+		// instead of decoding it, and the common port never hands it one unchecked.
+		expect(currentStagePlanner(createProofSceneScalarPlanner()).prepare({ snapshot: { sourceKind: 'test-read-port', sourceVersion: 27 } } as never))
+			.toMatchObject({ kind: 'rejected', code: 'incompatible-source' });
 		expect(readAccepted(alternate, scene())).toMatchObject({ kind: 'test-read-port', version: 27, resolution: { kind: 'resolved', subject: { owner: 'scene' } } });
 		expect(() => currentStageSource(alternate)).toThrow('test-read-port@27');
 		expect(snapshot.domain).not.toHaveProperty('project');
@@ -53,6 +57,9 @@ describe('Stage accepted read and ordered semantic selection', () => {
 		const before = stage.selectionState();
 		expect(stage.setSelection({ ordered: [{ reference: scene() }], primary: layout })).toMatchObject({ kind: 'refused', code: 'invalid-primary' });
 		expect(stage.setSelection({ ordered: [{ reference: { ...scene(), instancePath: ['not-root'] } }], primary: scene() })).toMatchObject({ kind: 'refused' });
+		// A Layout fragment from another compile is not a valid qualification.
+		expect(stage.setSelection({ ordered: [{ reference: layout, representation: { sourceId: objectId, sourceKind: 'object', generationId: 'compile:stale', stream: 'projected', subRef: null } }], primary: layout }))
+			.toMatchObject({ kind: 'refused', code: 'invalid-representation' });
 		expect(stage.selectionState()).toBe(before);
 	});
 	it('dedups one canonical subject addressed with two equivalent locations', async () => {
@@ -70,12 +77,12 @@ describe('Stage accepted read and ordered semantic selection', () => {
 		const layout = layoutObjectReference(snapshot.sourceContentId, objectId);
 		stage.setSelection({ ordered: [{ reference: layout }, { reference: scene() }], primary: scene() });
 		const edited = await edit();
-		expect(edited).toMatchObject({ kind: 'installed', install: { selectionRemovals: [{ reference: layout, reason: 'no-correspondence' }] } });
+		expect(edited).toMatchObject({ kind: 'installed', selectionClearedReason: null, install: { selectionRemovals: [{ reference: layout, reason: 'no-correspondence' }] } });
 		expect(stage.selectionState()).toEqual({ ordered: [{ reference: scene() }], primary: scene() });
 		expect((await host.undo()).kind).toBe('installed');
-		expect(stage.selectionState().primary).toEqual(scene());
+		expect(stage.selectionState()).toEqual({ ordered: [{ reference: scene() }], primary: scene() });
 		expect((await host.redo()).kind).toBe('installed');
-		expect(stage.selectionState().primary).toEqual(scene());
+		expect(stage.selectionState()).toEqual({ ordered: [{ reference: scene() }], primary: scene() });
 		const stale = stage.selectionState();
 		session.replace(snapshot);
 		expect(stage.setSelection(stale)).toMatchObject({ kind: 'refused', code: 'stale-session' });
@@ -100,6 +107,7 @@ describe('Stage lens exit and explicit task Resume', () => {
 		expect(stage.changeLens('experience')).toBe(true);
 		expect(stage.changeLens('experience')).toBe(false);
 		expect(cancelled).toBe(1);
+		expect(lease.kind).toBe('granted');
 		expect(lease.kind === 'granted' && lease.lease.active).toBe(false);
 		expect(stage.instrumentForTask('scene', 'scene-task')).toBeNull();
 		expect(session.task()).toBeNull();
@@ -119,6 +127,15 @@ describe('Stage lens exit and explicit task Resume', () => {
 		expect(stage.instrumentForTask('scene', 'scene-task')?.summary).toBe('active only');
 		stage.closeTask(); session.dispose(); expect(cancelled).toBe(1);
 	});
+	it('refuses a lens-bound contribution outside its lens with an actionable reason', async () => {
+		const { stage, session } = await mount();
+		stage.registerStageAdapter({ id: 'experience-only', tasks: [{ id: 'experience', taskKind: 'experience', label: 'Experience task', lens: 'experience' }] });
+		expect(stage.openContributedTask('experience', 'experience-only')).toMatchObject({ kind: 'refused', code: 'wrong-lens', message: 'Return to the experience lens before invoking Experience task.' });
+		expect(session.task()).toBeNull();
+		expect(stage.changeLens('experience')).toBe(true);
+		expect(stage.openContributedTask('experience', 'experience-only').kind).toBe('opened');
+		stage.closeTask();
+	});
 	it('cancels an in-flight F4 preparation at lens exit without adding content or history', async () => {
 		const { stage, host, edit } = await mount();
 		const before = stage.snapshot();
@@ -132,7 +149,7 @@ describe('Stage lens exit and explicit task Resume', () => {
 		const { stage, session, scene, edit } = await mount();
 		stage.registerStageAdapter({ id: 'invalid-task', tasks: [{ id: 'invalid', taskKind: 'invalid', label: 'Invalid task', target: scene(), configuration: { amount: -1 },
 			revalidate: () => ({ kind: 'refused', code: 'invalid-configuration', message: 'Choose a positive amount.' }) }] });
-		stage.openContributedTask('invalid'); stage.changeLens('experience');
+		stage.openContributedTask('invalid');		stage.changeLens('experience');
 		expect((await edit()).kind).toBe('installed');
 		stage.changeLens('world');
 		expect(stage.resumeTask()).toMatchObject({ kind: 'refused', code: 'invalid-configuration', message: 'Choose a positive amount.' });

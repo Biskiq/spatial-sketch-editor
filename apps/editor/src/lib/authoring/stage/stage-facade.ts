@@ -1,7 +1,7 @@
-import { primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
+import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
 import type { EntryRequalification } from './selection-requalification';
 import type { StageSelectionEntry } from './semantic-selection';
-import type { StageLens, TaskResumeOutcome } from './stage-session';
+import type { SelectionRemoval, StageLens, TaskResumeOutcome } from './stage-session';
 import type { SemanticReference, F4JsonValue } from '@portfolio/project-model';
 /**
  * The public editor host facade — the consumer boundary of
@@ -342,7 +342,7 @@ export type StageContentInstall =
 			readonly releasedGestures: number;
 			/** Whether the live selection survived through accepted correspondence. */
 			readonly requalification: SelectionRequalificationOutcome;
-			readonly selectionRemovals: Extract<import('./stage-session').AcceptedSlotInstall, {kind:'installed'}>['selectionRemovals'];
+			readonly selectionRemovals: readonly SelectionRemoval[];
 	  }
 	| { readonly kind: 'unchanged'; readonly sourceContentId: string; readonly claim: CameraOutputClaim | null }
 	| {
@@ -435,7 +435,7 @@ export type StageFacade = {
 				/** Content the owning adapter contributes for the mounted instrument. */
 				readonly instrument: StageInstrumentContent | null;
 		  }
-		| { readonly kind: 'refused'; readonly code: 'unknown-task' | 'task-closed'; readonly message: string };
+		| { readonly kind: 'refused'; readonly code: 'unknown-task' | 'task-closed' | 'wrong-lens'; readonly message: string };
 	/** Every contributed Find entry, ordered deterministically and stamped with its adapter. */
 	findEntries(): readonly StageFindEntryRecord[];
 	/** Card facts contributed for one subject, ordered by adapter ID then label. */
@@ -885,7 +885,7 @@ export function createStageFacade(input: {
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
 			selection: () => contextIsLive() ? session.selection() : null,
-			selectionState: () => session.selectionState(),
+			selectionState: () => contextIsLive() ? session.selectionState() : EMPTY_SELECTION,
 			setSelection: (value) => contextIsLive() ? setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
 			select: (selection) => { if (contextIsLive()) select(selection); },
 			// The adapter names the clock: an adapter-initiated transition starts at
@@ -1314,7 +1314,10 @@ export function createStageFacade(input: {
 			const owner = contributedTaskOwner;
 			const entry = owner ? tasksOf().find((candidate) => candidate.adapterId === owner.adapterId && candidate.id === owner.taskId) : null;
 			const result = session.resumeTask((task, snapshot) => {
-				if (owner && !entry) return { kind: 'refused', code: 'missing-task', message: 'This capability is no longer available. Close the inactive task and choose another.' };
+				// The owning adapter may simply not be bound right now (a lens whose view
+				// supplies no evaluation defers its bindings). Say so, instead of claiming
+				// the capability was removed from a live adapter.
+				if (owner && !entry) return { kind: 'refused', code: 'binding-unavailable', message: 'This capability is not bound in this lens. Return to its lens and resume again.' };
 				if (entry && !entry.revalidate) return { kind: 'refused', code: 'resume-unavailable', message: 'This adapter cannot revalidate its task. Close it and invoke it again.' };
 				return entry?.revalidate?.(task, snapshot) ?? { kind: 'resumed' };
 			});
@@ -1387,17 +1390,24 @@ export function createStageFacade(input: {
 				adapterListeners.delete(listener);
 			};
 		},
+		// An adapter is third-party code. A throwing contributor is skipped, exactly as
+		// an echo or a bind refusal is: the route calls these from its animation frame,
+		// so one exception would otherwise stop the Stage's own rendering for good.
 		overlays() {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return [];
-			return [...adapters.values()].flatMap((entry) => entry.contributions.overlay?.(handle.context) ?? []);
+			return [...adapters.values()].flatMap((entry) => {
+				try { return entry.contributions.overlay?.(handle.context) ?? []; } catch { return []; }
+			});
 		},
 		graphics() {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return [];
-			return [...adapters.values()].flatMap((entry) => entry.contributions.graphics?.(handle.context) ?? []);
+			return [...adapters.values()].flatMap((entry) => {
+				try { return entry.contributions.graphics?.(handle.context) ?? []; } catch { return []; }
+			});
 		},
 		tasks() {
 			ensureBindings();
@@ -1443,10 +1453,16 @@ export function createStageFacade(input: {
 			if (entry === undefined) {
 				return { kind: 'refused', code: 'unknown-task', message: `no adapter contributes a task "${id}"` };
 			}
+			const lens = entry.lens ?? 'world';
+			if (lens !== session.lens()) {
+				// A lens-bound operation is not a disposed session: name the lens, so the
+				// creator returns there instead of reading "disposed" for a live Stage.
+				return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${lens} lens before invoking ${entry.label}.` };
+			}
 			const task: StageTask = {
 				kind: entry.taskKind,
 				label: entry.label,
-				targetRef: entry.targetRef ?? null, target: entry.target ?? null, configuration: entry.configuration ?? null, lens: entry.lens ?? 'world'
+				targetRef: entry.targetRef ?? null, target: entry.target ?? null, configuration: entry.configuration ?? null, lens
 			};
 			if (!session.openTask(task)) {
 				return { kind: 'refused', code: 'task-closed', message: 'the session is disposed and opens no task' };
@@ -1464,7 +1480,8 @@ export function createStageFacade(input: {
 			ensureBindings();
 			const facts: StageCardFactRecord[] = [];
 			for (const [adapterId, entry] of adapters.entries()) {
-				const contributed = entry.contributions.cardFacts?.(subject) ?? [];
+				let contributed: readonly StageCardFact[] = [];
+				try { contributed = entry.contributions.cardFacts?.(subject) ?? []; } catch { contributed = []; }
 				for (const fact of contributed) facts.push({ ...fact, adapterId });
 			}
 			return facts.sort((a, b) => {

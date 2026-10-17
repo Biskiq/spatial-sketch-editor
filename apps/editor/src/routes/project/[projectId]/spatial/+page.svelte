@@ -123,10 +123,16 @@
 	const inactiveTask = $derived.by(() => {
 		void contributionsVersion;
 		const lifecycle = facade?.session.taskLifecycle();
-		return lifecycle?.status === 'inactive' ? lifecycle.task : null;
+		if (lifecycle?.status !== 'inactive') return null;
+		// Only where it can actually be resumed: a world task in the Experience lens
+		// refuses Resume, so showing its panel there would stack two controls that
+		// cannot act on each other.
+		return (lifecycle.task.lens ?? 'world') === lens ? lifecycle.task : null;
 	});
 	function changeLens(next: 'world' | 'experience'): void {
 		abortGesture();
+		// A notice describes the previous context; the lens is the new one.
+		notice = '';
 		if (facade?.changeLens(next)) {
 			lens = session.lens();
 			task = null;
@@ -202,10 +208,13 @@
 		// Replacement: validate first (the snapshot is already admitted), then the
 		// session atomically cancels writers, clears selection/task and swaps.
 		session.replace(snapshot);
+		// The previous facade's listeners are dropped before its replacement exists,
+		// so a disposal-time notification cannot write through the new facade.
+		unsubscribeContributions?.();
+		unsubscribeContributions = null;
 		facade?.dispose();
 		acceptance?.dispose();
 		facade = createStageFacade({ snapshot, session });
-		unsubscribeContributions?.();
 		unsubscribeContributions = facade.onAdaptersChanged(() => {
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
@@ -436,22 +445,28 @@
 		acceptRect(initial);
 		let frame = 0;
 		const tick = () => {
-			const stage = stageEl;
-			if (stage !== undefined) {
-				const next = measure();
-				if (
-					rect === null ||
-					next.width !== rect.width ||
-					next.height !== rect.height ||
-					next.left !== rect.left ||
-					next.top !== rect.top ||
-					next.devicePixelRatio !== rect.devicePixelRatio
-				) {
-					acceptRect(next);
+			// The next frame is scheduled in `finally`: one throwing adapter
+			// contribution must not stop the Stage's own rendering for the rest of
+			// the session.
+			try {
+				const stage = stageEl;
+				if (stage !== undefined) {
+					const next = measure();
+					if (
+						rect === null ||
+						next.width !== rect.width ||
+						next.height !== rect.height ||
+						next.left !== rect.left ||
+						next.top !== rect.top ||
+						next.devicePixelRatio !== rect.devicePixelRatio
+					) {
+						acceptRect(next);
+					}
 				}
+				refresh();
+			} finally {
+				frame = requestAnimationFrame(tick);
 			}
-			refresh();
-			frame = requestAnimationFrame(tick);
 		};
 		frame = requestAnimationFrame(tick);
 
@@ -668,6 +683,7 @@
 		const stage = facade;
 		const selected = selection;
 		if (stage === null || selected === null) return;
+		notice = '';
 		if (selected.reference.domain !== 'layout') {
 			// The host's own task is Plan membership, a Layout projection. A Scene or
 			// other-domain subject is worked through its adapter's contributed task.
@@ -948,7 +964,9 @@
 					sourceId: selection.reference.subject.id,
 					label: selection.reference.subject.id,
 					kind: selection.reference.subject.kind,
-					status: selectedMembership ?? selection.reference.domain
+					// Plan membership is the Layout status; a non-Layout subject names its
+					// own domain instead of claiming an "unknown" Layout membership.
+					status: selectedMembership ?? (selection.reference.domain === 'layout' ? 'unknown' : selection.reference.domain)
 				}
 	);
 
@@ -1146,14 +1164,15 @@
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 					<div
 						class="lens-unavailable"
-						role="status"
+						role="region"
+						aria-label="Experience lens unavailable"
 						onpointerdown={(event) => event.stopPropagation()}
 						onclick={(event) => event.stopPropagation()}
 					>
 						<h2>Experience is not available yet</h2>
-						<p>
+						<p aria-live="polite">
 							The Experience lens arrives with T3, which mounts its own adapter on this
-							Stage. Pending work is cancelled. Return to World for ordinary viewing or explicitly resume the inactive task.
+							Stage. Pending work is cancelled. Return to World for ordinary viewing; a parked task is resumed there.
 						</p>
 						<button type="button" onclick={() => changeLens('world')}>Back to World</button>
 					</div>
@@ -1180,11 +1199,12 @@
 				<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 				<div
 					class="inactive-task"
-					role="status"
+					role="region"
+					aria-label="Inactive task"
 					onpointerdown={(event) => event.stopPropagation()}
 					onclick={(event) => event.stopPropagation()}
 				>
-					<p>{inactiveTask.label} is inactive. Pending proposals were discarded.</p>
+					<p aria-live="polite">{inactiveTask.label} is inactive. Resume to continue, or close it.</p>
 					<button type="button" onclick={resumeTask}>Resume {inactiveTask.label}</button>
 					<button type="button" onclick={closeTask}>Close inactive task</button>
 				</div>
@@ -1359,6 +1379,10 @@
 		position: absolute;
 		left: 1rem;
 		bottom: 6rem;
+		/* A notice is information, never a control surface: it must not swallow a
+		   click meant for a panel or a button underneath it. */
+		pointer-events: none;
+		max-width: min(28rem, calc(100% - 2rem));
 		margin: 0;
 		padding: 0.4rem 0.6rem;
 		border-radius: 0.35rem;
@@ -1370,7 +1394,19 @@
 	 * belongs to the instrument and the selection Card, and it must never be covered
 	 * by another control: Resume is the only way back into a parked task.
 	 */
-	.inactive-task { position: absolute; top: 1rem; left: 1rem; z-index: 9; max-width: min(22rem, calc(100% - 2rem)); padding: 0.75rem; background: #19181f; border: 1px solid #635a6f; }
+	.inactive-task {
+		position: absolute;
+		/* Below the toolbar band: at a narrow width the two would overlap and this
+		   panel would cover the only reading controls. */
+		top: 3.5rem;
+		left: 1rem;
+		z-index: 9;
+		max-width: min(22rem, calc(100% - 2rem));
+		padding: 0.75rem;
+		box-sizing: border-box;
+		background: #19181f;
+		border: 1px solid #635a6f;
+	}
 	.instrument-body {
 		display: flex;
 		align-items: center;
@@ -1414,6 +1450,11 @@
 	@media (max-width: 720px) {
 		.editor-body {
 			flex-direction: column;
+		}
+		/* Below the centered lens panel in a narrow shell, so the notice never
+		   overlaps its buttons. */
+		.stage-note {
+			bottom: 0.5rem;
 		}
 	}
 </style>
