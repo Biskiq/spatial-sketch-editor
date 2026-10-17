@@ -24,3 +24,7 @@ export * from './intent';
 export * from './prepare';
 export * from './admission';
 export { immutableF4Data, freezeF4Data } from './immutable';
+// T3.P01.S03's additive `unit-acceptance-v1` extension is deliberately NOT in
+// this barrel: it reads the F.2 unit shapes, and the root barrel's import closure
+// must stay free of the F.2 entries until `T3.P01.S04` activates them. It is the
+// explicit `@portfolio/project-model/f4/unit-acceptance` subpath instead.
