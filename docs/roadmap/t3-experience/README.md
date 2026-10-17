@@ -1,7 +1,8 @@
 # T3 — Experience
 
 **Track:** T3 · **Status:** approved — T3.P01 registered 2026-10-16; `T3.P01.S01` shipped
-2026-10-16; `T3.P01.S02` owner-authorized 2026-10-16, not started; S03–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+2026-10-16 (PR #131); `T3.P01.S02` shipped 2026-10-16 (PR #133); S03 in progress as the umbrella for
+its authorized split `T3.P01.S05`/`T3.P01.S06`; S04 proposed and unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·

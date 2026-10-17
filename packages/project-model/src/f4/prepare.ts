@@ -49,6 +49,17 @@ export type RegistrationRefusal = {
 export type RegistrationOutcome = PlannerRegistration | RegistrationRefusal;
 
 export type PlannerRegistry<Source> = {
+	/**
+	 * The admission this registry grants, when it declares one. The dispatcher
+	 * reads it, so a planner admitted here cannot then be refused for the same
+	 * need at preparation time.
+	 *
+	 * **Additive and optional:** a registry built without a profile — every
+	 * landed caller, including a hand-built conformance registry — is treated as
+	 * the `local-single-domain-v1` profile, exactly as before this extension.
+	 * Only a registry that opts into a wider profile states one.
+	 */
+	readonly admission?: Readonly<PlannerAdmissionProfile>;
 	/** Registered planners, in registration order. */
 	planners(): readonly DomainPlanner<Source>[];
 	plannerFor(kind: string): DomainPlanner<Source> | null;
@@ -61,14 +72,79 @@ function registrationRefusal(reason: string, message: string): RegistrationRefus
 }
 
 /**
- * The registry, with the `local-single-domain-v1` admission rule built in: a
- * planner that needs compound acceptance, F.2 units or resource staging is
- * refused, and a kind can never be registered twice (two planners for one kind
- * would be two writable owners of the same operation).
+ * The admission a planner registry grants. The defaults **are** the landed
+ * `local-single-domain-v1` rule; a wider profile (T3.P01.S03's
+ * `unit-acceptance-v1`) is an explicit option on the one registry rather than a
+ * second registration loop, so the seam that admits a planner is single.
  */
-export function createPlannerRegistry<Source>(): PlannerRegistry<Source> {
+export type PlannerRegistryAdmission = {
+	/** Domains a planner may declare. Defaults to Layout and Scene only. */
+	readonly domains?: readonly SemanticDomain[];
+	/** Admit planners whose operation spans more than one domain. Default `false`. */
+	readonly compound?: boolean;
+	/** Admit planners that need F.2 unit acceptance. Default `false`. */
+	readonly units?: boolean;
+	/** Admit planners that stage typed resources. Default `false`. */
+	readonly resources?: boolean;
+};
+
+/** The concrete profile a registry grants and the dispatcher reads. */
+export type PlannerAdmissionProfile = {
+	readonly domains: readonly SemanticDomain[];
+	readonly compound: boolean;
+	readonly units: boolean;
+	readonly resources: boolean;
+};
+
+/** The landed `local-single-domain-v1` domain set. */
+const SINGLE_DOMAIN_DOMAINS = ['layout', 'scene'] as const satisfies readonly SemanticDomain[];
+
+/** `local-single-domain-v1`, as the profile a registry or dispatcher reads. */
+export const SINGLE_DOMAIN_ADMISSION: Readonly<PlannerAdmissionProfile> = Object.freeze({
+	domains: SINGLE_DOMAIN_DOMAINS,
+	compound: false,
+	units: false,
+	resources: false
+});
+
+/**
+ * The registry, with its admission profile built in: a planner that needs
+ * compound acceptance, F.2 units or resource staging is refused unless the
+ * caller configured that admission, and a kind can never be registered twice
+ * (two planners for one kind would be two writable owners of the same
+ * operation).
+ *
+ * With no options this is exactly `local-single-domain-v1`, including its refusal
+ * reasons, messages **and** its dispatcher profile: no `admission` member is
+ * declared, so `prepareIntent` cannot mistake the landed registry for a widened
+ * one. A caller that grants a wider profile declares it, and the dispatcher then
+ * reads that same profile, so registration and dispatch cannot disagree.
+ */
+export function createPlannerRegistry<Source>(
+	options: PlannerRegistryAdmission = {}
+): PlannerRegistry<Source> {
+	const admission: Readonly<PlannerAdmissionProfile> = Object.freeze({
+		// A frozen copy: a granted profile must not share a mutable array with its caller.
+		domains: Object.freeze([...(options.domains ?? SINGLE_DOMAIN_DOMAINS)]),
+		compound: options.compound === true,
+		units: options.units === true,
+		resources: options.resources === true
+	});
+	// `declared` is the one fact that separates the landed registry from a widened
+	// one: the profile is only published when the caller asked for one. It is
+	// key-presence based: `{ compound: false }` publishes the landed profile, so the
+	// dispatcher treats it as "widened" and uses the neutral wording even though
+	// nothing was granted. That is a wording choice, never an admission change.
+	const declared =
+		options.domains !== undefined ||
+		options.compound !== undefined ||
+		options.units !== undefined ||
+		options.resources !== undefined;
+	const wider =
+		options.domains !== undefined || admission.compound || admission.units || admission.resources;
 	const byKind = new Map<string, DomainPlanner<Source>>();
 	return {
+		...(declared ? { admission } : {}),
 		planners() {
 			return [...byKind.values()];
 		},
@@ -76,25 +152,36 @@ export function createPlannerRegistry<Source>(): PlannerRegistry<Source> {
 			return byKind.get(kind) ?? null;
 		},
 		register(planner) {
-			if (!['layout', 'scene'].includes(planner.admission.domain)) {
-				return registrationRefusal('unsupported-domain', 'local-single-domain-v1 admits Layout and Scene planners only');
+			if (!(admission.domains as readonly string[]).includes(planner.admission.domain)) {
+				return registrationRefusal(
+					'unsupported-domain',
+					wider
+						? `this admission profile admits ${admission.domains.join(', ')} planners; "${planner.admission.domain}" is not one`
+						: 'local-single-domain-v1 admits Layout and Scene planners only'
+				);
 			}
-			if (planner.admission.compound) {
+			if (planner.admission.compound && !admission.compound) {
 				return registrationRefusal(
 					'compound-acceptance',
-					`planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
+					wider
+						? `planner "${planner.id}" needs compound acceptance, which this admission profile does not provide`
+						: `planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
 				);
 			}
-			if (planner.admission.units) {
+			if (planner.admission.units && !admission.units) {
 				return registrationRefusal(
 					'unit-acceptance',
-					`planner "${planner.id}" needs F.2 unit acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
+					wider
+						? `planner "${planner.id}" needs F.2 unit acceptance, which this admission profile does not provide`
+						: `planner "${planner.id}" needs F.2 unit acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
 				);
 			}
-			if (planner.admission.resources) {
+			if (planner.admission.resources && !admission.resources) {
 				return registrationRefusal(
 					'resource-admission',
-					`planner "${planner.id}" needs resource staging, which this current-source adapter never performs (AM-4: no resource/lock mutation)`
+					wider
+						? `planner "${planner.id}" needs resource staging, which this admission profile does not provide`
+						: `planner "${planner.id}" needs resource staging, which this current-source adapter never performs (AM-4: no resource/lock mutation)`
 				);
 			}
 			if (planner.sourceVersions.length === 0 || planner.sourceKinds.length === 0) {
@@ -133,20 +220,45 @@ export type PrepareResult<Source> =
 	| PrepareFailure;
 
 /**
+ * Per-call preparation concerns that are not the registry's admission.
+ *
+ * The granted profile is the **registry's** (see `PlannerRegistry.admission`),
+ * never a per-call flag: a caller that could widen admission at dispatch time
+ * would reintroduce the second authority this seam exists to prevent. This type
+ * therefore carries only the extension point for the unit provider's own
+ * domain/reference/lock validation. It runs after the scope, planner and
+ * baseline checks and **before** the planner, so an unresolvable subject never
+ * reaches domain planning and never becomes a candidate.
+ */
+export type PrepareAdmission<Source> = {
+	inspectTargets?(
+		intent: AuthoringIntent,
+		snapshot: AcceptedSnapshot<Source>
+	): readonly ShapeIssue[];
+};
+
+/**
  * Dispatch one captured intent to its planner.
  *
  * Order matters and is deliberate: shape and determinism first, then the scope
  * refusals this provider owns (resource, compound), then the planner lookup, then
- * the baseline check, and only then the planner itself. A request that touches
- * two domains or a typed resource never reaches a planner, and a planner is never
+ * the planner's own declaration checks, then the baseline check, and only then the
+ * planner itself. A request that touches two domains or a typed resource never
+ * reaches a planner that did not declare that acceptance, and a planner is never
  * asked to plan against a revision the snapshot does not hold.
+ *
+ * Two admissions must both hold for a compound or resource-bearing intent: the
+ * registry's granted profile (what the host provides) **and** the planner's own
+ * declaration (what this operation can correctly accept). A widened registry is
+ * not a licence for a planner that never declared the need.
  */
 export function prepareIntent<Source>(
 	registry: PlannerRegistry<Source>,
 	snapshot: AcceptedSnapshot<Source>,
 	intent: AuthoringIntent,
 	capturedInputs?: readonly CapturedInput[],
-	options: IntentValidationOptions = {}
+	options: IntentValidationOptions = {},
+	admission: PrepareAdmission<Source> = {}
 ): PrepareResult<Source> {
 	const validated = validateAuthoringIntent(intent, options);
 	if (!validated.success) {
@@ -159,19 +271,28 @@ export function prepareIntent<Source>(
 		valid = captured.value;
 	}
 	const scope = intentScope(valid);
-	if (scope.resourceKinds.length > 0) {
+	const granted = registry.admission ?? SINGLE_DOMAIN_ADMISSION;
+	// A registry that declares no profile *is* `local-single-domain-v1`, and keeps
+	// its landed messages; a widened profile states its own, so a refusal never
+	// misnames the profile that produced it.
+	const widened = registry.admission !== undefined;
+	if (scope.resourceKinds.length > 0 && granted.resources !== true) {
 		return refusal(
 			'unsupported-resource',
 			null,
-			`local-single-domain-v1 admits no typed-resource operation (requested: ${scope.resourceKinds.join(', ')})`,
+			widened
+				? `this admission profile admits no typed-resource operation (requested: ${scope.resourceKinds.join(', ')})`
+				: `local-single-domain-v1 admits no typed-resource operation (requested: ${scope.resourceKinds.join(', ')})`,
 			[]
 		);
 	}
-	if (scope.domains.length > 1) {
+	if (scope.domains.length > 1 && granted.compound !== true) {
 		return refusal(
 			'unsupported-compound',
 			null,
-			`one accepted operation addresses one domain; this intent spans ${scope.domains.join(' + ')}`,
+			widened
+				? `this admission profile addresses one domain per accepted operation; this intent spans ${scope.domains.join(' + ')}`
+				: `one accepted operation addresses one domain; this intent spans ${scope.domains.join(' + ')}`,
 			[]
 		);
 	}
@@ -190,6 +311,43 @@ export function prepareIntent<Source>(
 			[]
 		);
 	}
+	// The planner's own declaration is the second, independent gate: a compound or
+	// resource-bearing intent must reach a planner that declared it can accept one,
+	// whatever the registry grants.
+	if (scope.domains.length > 1 && planner.admission.compound !== true) {
+		return refusal(
+			'unsupported-compound',
+			'compound-acceptance',
+			`planner "${planner.id}" does not declare compound acceptance, and the intent spans ${scope.domains.join(' + ')}`,
+			[]
+		);
+	}
+	if (scope.resourceKinds.length > 0 && planner.admission.resources !== true) {
+		return refusal(
+			'unsupported-resource',
+			'resource-admission',
+			`planner "${planner.id}" does not declare typed-resource acceptance (requested: ${scope.resourceKinds.join(', ')})`,
+			[]
+		);
+	}
+	// A planner that declares unit or resource acceptance is refused by a
+	// preparation that does not provide it, before it is ever asked to plan.
+	if (planner.admission.units && granted.units !== true) {
+		return refusal(
+			'unsupported-unit',
+			'unit-acceptance',
+			`planner "${planner.id}" needs F.2 unit acceptance, which this preparation does not provide`,
+			[]
+		);
+	}
+	if (planner.admission.resources && granted.resources !== true) {
+		return refusal(
+			'unsupported-resource',
+			'resource-admission',
+			`planner "${planner.id}" needs resource staging, which this preparation does not provide`,
+			[]
+		);
+	}
 	if (!planner.sourceKinds.includes(snapshot.sourceKind) || !planner.sourceVersions.includes(snapshot.sourceVersion)) {
 		return refusal(
 			'unsupported-operation',
@@ -204,6 +362,16 @@ export function prepareIntent<Source>(
 			null,
 			`the intent answers revision "${valid.expectedRevision.revisionId}" and the accepted revision is "${snapshot.acceptedRevision.revisionId}"`,
 			[]
+		);
+	}
+
+	const targetIssues = admission.inspectTargets?.(valid, snapshot) ?? [];
+	if (targetIssues.length > 0) {
+		return refusal(
+			'unsupported-operation',
+			'unresolved-target',
+			'The intent addresses subjects this snapshot does not resolve',
+			targetIssues
 		);
 	}
 

@@ -1,6 +1,6 @@
 # T3.P01.S03 — Compound and runtime preparation: implementation plan
 
-**Slice:** T3.P01.S03 · **Status:** approved — owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); not started · **Phase:** [T3.P01](../README.md) ·
+**Slice:** T3.P01.S03 · **Status:** in-progress umbrella — owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); its [split](./split-proposal.md) is registered and authorized as `T3.P01.S05` + `T3.P01.S06` ([record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)) · **Phase:** [T3.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T3](../../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md)
 
@@ -33,12 +33,13 @@ The owner authorized it on 2026-10-17 (D5). While it runs beside `T1.P01.S07`, t
 covers additive-only `f4`/Save/channel extensions, new `camera-core` modules only, and no editor
 route or host edits.
 
-**Size.** This is the largest remaining T3 slice: two F4 extension scopes with real-DB Save, plus the
-F3 `camera-handoff-v1` and runtime preparation. As with R1/R2 of the
-[2026-10-16 batch](../../../cross-track-execution.md#parallel-batch-2026-10-16), the implementer proposes
-a registered split to the owner rather than silently deferring a criterion. The natural seam is
-(a) unit acceptance/Save versus (b) runtime/handoff preparation. They touch disjoint modules, and
-`T4.P01.S03` needs only (b).
+**Size and registered split.** This was the largest remaining T3 slice: two F4 extension scopes with
+real-DB Save, plus the F3 `camera-handoff-v1` and runtime preparation. As with R1/R2 of the
+[2026-10-16 batch](../../../cross-track-execution.md#parallel-batch-2026-10-16), the implementer proposed
+a registered split rather than silently deferring a criterion. The seam is (a) unit acceptance/Save
+versus (b) runtime/handoff preparation: `T3.P01.S05` and `T3.P01.S06`. They touch disjoint modules.
+Every criterion below is owned by one of them; S03 closes only after both are accepted and the
+original obligations are reconciled.
 
 ## Scope
 
@@ -71,5 +72,9 @@ them. Never relabel T1's base acceptance as complete F4 readiness.
 
 ## Readiness declaration
 
-This slice is **authorized** (owner, 2026-10-17) and **not started**; it starts through the T3 runbook's
-start step once the authorizing PR has merged. Nothing here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).
+This slice is **authorized** (owner, 2026-10-17) and **in progress**. The declared scope does not fit one
+acceptance contract at the evidence tier it requires, so the implementer has written the
+[registered split proposal](./split-proposal.md) the Size section asks for rather than narrowing a
+criterion. The F4 admission seam and the F3 handoff protocol are implemented with conformance suites;
+everything else is neither implemented nor claimed. Evidence and its limits belong in
+[acceptance.md](./acceptance.md).
