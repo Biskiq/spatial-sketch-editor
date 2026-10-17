@@ -18,14 +18,15 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 owner-authorized
-        2026-10-16, approved and not started; S03–S04 proposed and unauthorized.
-BATON: The next authorized T2 work is T2.P01.S02 (Scene operations and shared history), running in
-       parallel with T3.P01.S02 under the pair protocol. It consumes the accepted
-       `local-single-domain-v1`, not T1.P01.S02 (PR #128) or any host.
-NEXT: Start T2.P01.S02 through this track's runbook start step: eligibility at the trusted base
-      (post-PR #129 `main` or later), the one-line cycle check (not an exposure), then the plan's
-      declared verification tier and integration route.
+SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 implemented
+        2026-10-16 at `d38594b3`, awaiting independent review; S03–S04 proposed and unauthorized.
+BATON: T2.P01.S02 (Scene operations and shared history) is implementation-complete on branch
+       `T2-P01-S02`, cut from `main` `74367936`, in parallel with T3.P01.S02 under the pair
+       protocol. It consumes the accepted `local-single-domain-v1`, not T1.P01.S02 (PR #128) or any
+       host.
+NEXT: Independent review of T2.P01.S02 against its plan criteria and the recorded evidence in
+      `docs/roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/acceptance.md`.
+      Acceptance, closeout and merge stay separate events; S03 is not authorized.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
