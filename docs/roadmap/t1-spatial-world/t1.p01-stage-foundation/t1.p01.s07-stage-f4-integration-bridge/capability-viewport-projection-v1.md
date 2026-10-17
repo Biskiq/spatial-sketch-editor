@@ -40,9 +40,9 @@ and the four review rounds are recorded in the
 
 ## Residuals
 
-- Merge of PR #137 is withheld at the owner's instruction; consumer eligibility starts at a trusted
-  base that contains that merge.
-- Closed-work compaction, the anchor tag and post-merge verification are deferred to the authorized
-  merge.
+- Consumer eligibility starts at a trusted base that contains PR #137's merge commit (the record's
+  required merge method is P1: merge commit, no squash or rebase).
+- Post-merge cleanup owed by the owner: verify every recorded anchor is an ancestor of `main` and
+  push the `closed/T1.P01.S07` tag.
 - Instrument services remain only partly narrowed; the task-lifecycle reentrancy asymmetries in
   `closeTask` and `installAccepted` are recorded limits, not accepted behaviour.

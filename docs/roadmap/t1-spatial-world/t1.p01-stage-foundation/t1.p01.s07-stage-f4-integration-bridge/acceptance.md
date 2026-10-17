@@ -1,53 +1,47 @@
-# T1.P01.S07 — acceptance record: Stage↔F4 integration bridge
+# T1.P01.S07 — accepted and closed record — CLOSED STUB
 
-**Status: ACCEPTED 2026-10-17. Merge withheld at the owner's instruction; PR #137 is unmerged, so the
-slice is not yet shipped.** [Plan](./implementation-plan.md) · [phase](../README.md) ·
-[AM-5 reconciliation](./am5-reconciliation.md) · [verification](./evidence/verification.md).
-`T1.viewport-projection@1` moves to **accepted** with `viewport-projection-v1` active; provider stays
-`T1.P01.S02`. The durable record is
-[capability-viewport-projection-v1.md](./capability-viewport-projection-v1.md).
+```text
+AUTHORITY: NONE — this is closed work. Current truth lives in the phase README's slice register,
+           the gate register and the accepted capability record linked below.
+STATUS:    ACCEPTED and SHIPPED 2026-10-17 via PR #137 (+ closeout complete; the record above was
+           written by the routine closeout on the same branch).
+           Owner-authorized 2026-10-17 ([record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md));
+           four review rounds, no remaining actionable implementation finding, and the complete gate
+           at the merge candidate. `T1.viewport-projection@1:viewport-projection-v1` is accepted with
+           `T1.P01.S02` as the unchanged sole provider. Routine `slice-closeout` compacted the plan,
+           the AM-5 reconciliation, the verification evidence and the browser archive into this
+           record and the recoverable anchors below; no criterion was inferred from skill invocation
+           or green tests alone.
+ROLE:      acceptance outcome and preservation route for T1.P01.S07.
+NOT:       product contract · plan · status store · authority for residual capabilities.
+```
 
-## Delivered
+## Delivered and accepted
 
-- **Host↔F4 wiring** (committed `bbc1203a`): one accepted install into the shared Stage, host
-  Undo/Redo commands, replacement baseline with additive admission, adapter re-binding and exact
-  disposal, contribution re-binding, and retained facade/context refusal after their lifetime ends.
+- **Host↔F4 wiring** (committed `bbc1203a`): one accepted install into the shared Stage per project
+  epoch, host Undo/Redo commands with visible reasons, replacement baseline with additive admission,
+  adapter re-binding and exact one-time disposal, contribution re-binding, and retained
+  facade/context refusal after their lifetime ends.
 - **AM-5 completion** (`a67793e4` plus review fixes through `ab8504aa`): encoding-neutral accepted
   read behind an explicit current adapter; ordered F.1 selection with one primary and canonical
   deduplication; lens/task parking with writer cancellation and explicit revalidated Resume.
 - **Reentrant lens exit** (`ab8504aa`, the approver's remaining P2): a cancellation callback that
-  opens a task for the departing lens no longer leaves it active in the destination lens. The
-  deliberate replacement is preserved, parked, and its writers are cancelled; a task that belongs to
-  the destination lens is left alone. Regression:
-  `tests/lib/authoring/stage-semantic-lifecycle.test.ts`.
+  opens a task for the departing lens no longer leaves it active in the destination lens. Regression:
+  `apps/editor/tests/lib/authoring/stage-semantic-lifecycle.test.ts`.
 
-## Acceptance criteria and adjudication
+The accepted capability is
+[`T1.viewport-projection@1:viewport-projection-v1`](./capability-viewport-projection-v1.md)
+with `T1.P01.S02` the unchanged, sole provider.
 
-| Plan criterion | Recorded outcome |
-| --- | --- |
-| Real accepted install | `stage-host-acceptance.test.ts` + conformance adapter: exactly one install, pose unchanged, claim re-acquired, selection requalified, one re-bind and one dispose of the previous binding, identical content leaves the claim. |
-| History | Mixed Layout/Scene conformance planners Undo/Redo exactly the latest accepted result; a live proposal refuses with a reason; navigation/reading/focus create no entry. Browser run confirms the buttons and content identities. |
-| Replacement | New baseline and empty stack; prior-epoch accepts, loads, gestures and Camera completions cannot install. Browser run confirms disabled history and restored baseline. |
-| Contributions | T3-style probe mount/unmount moves no Camera; Card fact and Find entry appear/disappear with registration; probes import no private Stage state. |
-| Mutation controls | The recorded mutation controls (cleared selection, skipped re-bind, prior-epoch install) fail the relevant suites. |
-| Seam conformance on the integrated tree | The AM-5 probe table re-ran on the merge candidate; arch lane 20 files/161 tests green; production exclusion scan clean. |
-| Complete merge gate on then-current `main` | Run at merge candidate `049e89f5` against `origin/main` `279e1340`; see the gate table below and [verification](./evidence/verification.md). |
-| Browser evidence | 267-command workflow in both readings, plus a 17-command 390 px spot check after the review fixes, plus a merge-candidate spot check (selection → lens park → explicit Resume at 1280×900; 390×844 layout measurement). |
-
-## Evidence identity
+## Evidence identity and tested revisions
 
 Merge candidate **`049e89f5a40d3ecf8c18214ca7fcd604265b8929`** — `origin/main`
-`279e1340` merged into `T1-P01-S07`, whose tested code head is **`ab8504aa`**
-(`a67793e4` + `4127b63f` + `4c831fc5` + `933bf285` + `ab8504aa`, base `bbc1203a`). The 22
-changed/added `src`/`tests` files are individually hashed in
-[am5-source-manifest.json](./evidence/am5-source-manifest.json); aggregate SHA-256
-**`1ecf8fc9e8cdd5974dfa9136d4935ae2a906a3fdcc1d8915773a3f110cdf8830`** over the sorted
-`<path>` TAB `<sha256>` newline lines that the manifest defines. Documentation, screenshots and
-transcripts are outside that manifest.
+`279e1340` merged into `T1-P01-S07`, tested code head **`ab8504aa`**. A rebuilt candidate against the
+then-moved `origin/main` is recorded below under the gate table. The 22 changed/added `src`/`tests`
+files are individually hashed in the archived `am5-source-manifest.json`; aggregate SHA-256
+**`1ecf8fc9e8cdd5974dfa9136d4935ae2a906a3fdcc1d8915773a3f110cdf8830`**.
 
-## Gate results at the merge candidate
-
-| Command | Observed result |
+| Command (gate at `049e89f5`) | Observed result |
 | --- | --- |
 | `npm run check` | 0 errors / 0 warnings |
 | `npm run test:arch` | 20 files / 161 tests passed |
@@ -55,49 +49,17 @@ transcripts are outside that manifest.
 | `npm run test:heavy` | 8 files / 118 tests passed |
 | `npm test` | 158 files / 2,091 tests passed |
 | `npm run build` | production build passed |
-| `npm run check:layout-core`, `check:project-model`, `check:camera-core`, `check:api` | all passed |
-| `npm run test:api` | **65 tests, 65 pass, 0 fail, 0 skipped** in 9 contract files on disposable PostgreSQL 14.19 database `biskiq_s07_merge_20261017` |
-| Production exclusion | 349 emitted files scanned for 15 probe sentinels: **0 matches** |
-| `git show --check` | clean on `ab8504aa` and the merge commit; the historical docs commit `95fff696` keeps its disclosed EOF blank line, fixed in `308c6659` |
+| `check:layout-core`, `check:project-model`, `check:camera-core`, `check:api` | all passed |
+| `npm run test:api` | 65 tests, 0 fail, **0 skipped** (disposable PostgreSQL 14.19, `biskiq_s07_merge_20261017`) |
+| Production exclusion | 349 emitted files, 15 probe sentinels, 0 matches |
+| `git show --check` | clean on `ab8504aa` and the merge commit |
 
-## Independent review
-
-Four rounds reviewed this PR. The committed host wiring was reviewed to **no remaining actionable
-implementation findings** at `bbc1203a`. The AM-5 increment had three rounds: four passes in round 1,
-a fix/record round, and a delta round, fixed in `4127b63f`, `4c831fc5` and `933bf285`.
-
-The approver then accepted the direction with one remaining P2: a cancellation callback opening a
-task for the departing lens left it active in the destination lens. That is fixed in `ab8504aa`, and
-a focused independent review of that delta returned **accept with nits**: the guard runs after the
-parked-restore block so the deliberate replacement survives and the old task is not resurrected; the
-condition agrees with `openTask`'s ownership rule (`lens ?? 'world'`); the late writer is cancelled
-exactly once; and the updated regression fails on the pre-change code. Its comment nit (the
-"always parks" wording ignored a canceller that changes lens itself) is fixed. No finding was
-argued away. The two sibling reentrancy asymmetries it reported are recorded under limits, not
-fixed here.
-
-## Browser evidence
-
-[Browser actions and DOM observations](./evidence/browser-actions.json) hold the 267-command
-workflow: Layout height 3 → 4 m with Undo/Redo, Scene entity selection with Card facts and
-`selectionChanged` echo, Scene shadow edit surviving Undo/Redo, lens parking with explicit Resume,
-and replacement restoring the baseline. Content identities `sha256-4525f51d…` at 3 m and
-`sha256-e5364103…` at 4 m were observed again on the merge candidate.
-
-Merge-candidate spot check (owned browser session against the conformance server, no console
-errors):
-
-1. Starter loaded, Conformance height applied (`wall height 4 m`, identity `sha256-e5364103…`).
-2. Scene entity created, Conformance Scene opened, entity selected (`receiveShadow true` after the
-   toggle), then **Experience**: instrument closed, selection Card and history retained.
-3. **Back to World**: parked notice naming the inactive task, **Resume Conformance Scene**
-   restored the instrument with `Scene entity entity-conformance`, `receiveShadow true` and the
-   selection echo intact.
-4. At 390 × 844: `scrollWidth` 390 (no horizontal overflow), instrument panel `x 11–379`,
-   `y 679–832`.
-
-The browser run does not exercise the reentrant cancellation callback; that path is covered by the
-regression test only, and is stated as such.
+Browser evidence (archived, below): the 267-command workflow in both readings, a 17-command 390 px
+spot check after the review fixes, and the merge-candidate spot check (selection → lens park →
+explicit Resume at 1280×900; 390×844 layout measurement). Content identities `sha256-4525f51d…` at
+3 m and `sha256-e5364103…` at 4 m were re-observed on the merge candidate. The browser run does not
+exercise the reentrant cancellation callback; that path is covered by the
+`stage-semantic-lifecycle` regression only.
 
 ## Known limits
 
@@ -105,32 +67,21 @@ regression test only, and is stated as such.
   `accept` are task-scoped; the rest of the facade remains reachable from a captured instrument
   closure and is session/epoch guarded. A narrower instrument-services type is the next step.
 - **Correspondence must state canonical addresses.** A planner emitting a valid non-canonical
-  qualification finds no entry and the subject is reported as `no-correspondence`; deliberate rule,
+  qualification finds no entry and the subject is reported as `no-correspondence`; deliberate,
   documented, no in-repo planner emits one.
-- **Resume of a retired target is not exercised end to end.** The negative test resumes a target
-  that no longer resolves; requalification retirement itself is covered in
-  `stage-host-acceptance.test.ts`.
-- **`closeTask` keeps its own reentrancy asymmetry.** A canceller that opens a task while
-  `closeTask` is cancelling has it cleared on return — the mirror of the lens case now fixed. Not a
-  defect of this acceptance; recorded for the next consumer of the task lifecycle.
-- **`installAccepted` ends the replaced task before cancelling its writers**, so a task opened from
-  a canceller during that sweep stays active while the result reports `closedTask: true`. The task
-  is opened against the new current source, so it is not generation-stale; the semantic decision is
-  owed.
-- **A world task is not resumable from the Experience lens**, so the parked panel appears only in
-  the lens whose Resume can succeed.
+- **Resume of a retired target is not exercised end to end.** The negative test resumes a target that
+  no longer resolves; requalification retirement itself is covered in `stage-host-acceptance.test.ts`.
+- **`closeTask` keeps its own reentrancy asymmetry.** A canceller that opens a task while `closeTask`
+  is cancelling has it cleared on return — the mirror of the lens case now fixed. Recorded for the
+  next consumer of the task lifecycle.
+- **`installAccepted` ends the replaced task before cancelling its writers**, so a task opened from a
+  canceller during that sweep stays active while the result reports `closedTask: true`. The task is
+  opened against the new current source, so it is not generation-stale; the semantic decision is owed.
+- **A world task is not resumable from the Experience lens**, so the parked panel appears only in the
+  lens whose Resume can succeed.
 - **Layout-only accepted changes clear a Scene selection** (the correspondence lists only Layout
   subjects).
-- This is bounded conformance evidence on a test-only Vite configuration, not production
-  authoring.
-
-## Closeout state and remaining step
-
-Routine closeout records acceptance, the capability, the phase register and the baton. **Closed-work
-compaction, the `closed/T1.P01.S07` anchor tag and the post-merge anchor verification are deferred to
-the authorized merge**, because a P1 anchor is only reachable after the merge commit and the merge is
-currently withheld. The full evidence therefore stays live at its own paths; nothing here claims it
-was archived.
+- This is bounded conformance evidence on a test-only Vite configuration, not production authoring.
 
 ## Entry points
 
@@ -145,6 +96,45 @@ validation      apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts
 regressions     apps/editor/tests/lib/authoring/stage-session.test.ts
                 apps/editor/tests/lib/authoring/stage-facade.test.ts
                 apps/editor/tests/lib/authoring/stage-content-change.test.ts
-evidence        apps/editor/tests/e2e/stage-conformance/ (test-only harness)
-recovery        merge candidate 049e89f5a40d3ecf8c18214ca7fcd604265b8929
+evidence (test-only harness)  apps/editor/tests/e2e/stage-conformance/
+```
+
+## Recovery
+
+```text
+git show 24671264110ba1a55864e0e63b6e91669bd2458c:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md          (this record, pre-compaction body)
+git show bfd6cc183b781e0fcc51b07032e5cd29f5e13365:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/am5-reconciliation.md   (full AM-5 reconciliation)
+git show d1c93d47d6da57bb1e370aecf1d5c7fff901877a:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/verification.md (full verification narrative)
+anchor                                                     d1c93d47d6da57bb1e370aecf1d5c7fff901877a
+tag                                                        closed/T1.P01.S07 at that anchor (local only — not pushed)
+REQUIRED MERGE METHOD — P1                                 merge commit via PR #137; no squash, no rebase
+POST-MERGE VERIFICATION OWED                               owner invokes:
+  git merge-base --is-ancestor d1c93d47d6da57bb1e370aecf1d5c7fff901877a main
+```
+
+## Closeout preservation
+
+```text
+CLOSEOUT PRESERVATION — T1.P01.S07 (2026-10-17)
+prose compacted:                 3   implementation-plan · am5-reconciliation · evidence/verification as stubs at their own paths
+reference promotions:            1   accepted capability T1.viewport-projection@1:viewport-projection-v1 into the gate register; durable limits and reconciliation conclusions kept in this record
+renderable evidence archived:    36 files / ~2.8 MB  → docs/archive/roadmap/T1.P01/t1.p01.s07-stage-f4-integration-bridge/
+evidence stubs / manifests:      1   evidence/verification.md sibling stub; manifest paths inside the archived copies:
+                                     am5-source-manifest.json · integrated-source-manifest.json · source-manifest.json · production-exclusion.json
+transient artifacts removed:     3   browser-actions-prior-increment.json · check-summaries.txt ·
+                                     check-summaries-am5.txt (superseded; the live paths at the anchor are recoverable by
+                                     git show closed/T1.P01.S07:<path>)
+historical anchor:               d1c93d47d6da57bb1e370aecf1d5c7fff901877a · tag closed/T1.P01.S07 (local only — not pushed; the skill that compacts does not push)
+new live → archive prose links:  0   only links into archived renderable evidence exist, which is the archive's purpose
+manual-owed verification rows:   0
+remaining deferred items:        0 in-scope; the recorded limits above and the S04-owned Head Save are named residuals
+permanent stubs added:           3   (the owner-ratified 2026-09-22 hybrid cost: one per closed prose artifact)
+```
+
+```text
+required merge method:  P1 merge commit on PR #137 (no squash, no rebase, no amend) — the P1
+                        anchors above are reachable on `main` only through a merge commit
+post-merge:             verify every recorded anchor is an ancestor of `main` (command under
+                        Recovery) and confirm consumers see `viewport-projection-v1` accepted at the
+                        new trusted base; then push the `closed/T1.P01.S07` tag
 ```
