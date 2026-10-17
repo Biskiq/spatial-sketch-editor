@@ -45,11 +45,12 @@ The earlier branch-only run at `933bf285` recorded check 0/0, arch 20/161, fast 
 8/118, full 155/2,044 and a passing build. It is superseded by the merge-candidate numbers above,
 which are the acceptance basis; `test:api` was not run there.
 
-The focused set that covers the increment directly, re-run at the merge candidate:
+The focused set that covers the increment directly (all contained in the full-suite run above):
 `tests/lib/authoring/stage-semantic-lifecycle.test.ts` (11), `stage-host-acceptance.test.ts` (33),
 `stage-session.test.ts` (7), `stage-facade.test.ts` (12), `stage-content-change.test.ts` (5),
 `stage-source-admission.test.ts` (9), `stage-consumer-probes.test.ts` (2), `stage-boot-states.test.ts`
-(11) — 8 files / 90 tests, all passing.
+(11) — 8 files / 90 tests. Raw output for every command above, including each exit status, is in
+[check-summaries-merge-candidate.txt](./check-summaries-merge-candidate.txt).
 
 ## AM-5 increment — independent review round
 
