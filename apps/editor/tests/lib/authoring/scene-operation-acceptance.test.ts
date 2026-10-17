@@ -543,9 +543,10 @@ describe('Scene operations through the F.4 coordinator', () => {
 	});
 
 	it('installs nothing when a caller writes and admits a Scene document directly', async () => {
-		// The bypass this fails on is a second install path: a caller that prepares
-		// and admits a changed document itself must still not reach the accepted
-		// source, its revision or its history. Only `accept` may install.
+		// A caller that prepares and admits a changed document itself must still not
+		// reach the accepted source, revision or history: there is no shared store a
+		// direct admission could write through, and the coordinator exposes no
+		// install API other than `accept`/`undo`/`redo`/`replace`.
 		const { coordinator } = await boot();
 		const before = coordinator.current();
 		const historyBefore = coordinator.history();
@@ -564,6 +565,49 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(coordinator.acceptedRevision()).toEqual(before.revision);
 		expect(coordinator.history()).toEqual(historyBefore);
 		expect(coordinator.installs()).toBe(installsBefore);
+	});
+
+	it('undoes a delete to the exact prior snapshot, restoring its cluster cleanup', async () => {
+		const { coordinator } = await boot();
+		const before = coordinator.current();
+		const state = now(coordinator);
+		const deleted = await coordinator.accept(
+			sceneIntent({
+				kind: 'delete-one',
+				operationId: 'op-delete-undo',
+				intentRevision: state.intentRevision,
+				contentId: state.contentId,
+				entityId: 'entity-b',
+				payload: { entityId: 'entity-b' }
+			})
+		);
+		expect(deleted.kind).toBe('accepted');
+		if (deleted.kind !== 'accepted') return;
+		expect(deleted.correspondence).toEqual([
+			{
+				relation: 'retired',
+				before: expect.objectContaining({ subject: { kind: 'entity', id: 'entity-b' } }),
+				after: null
+			}
+		]);
+		const afterDelete = coordinator.current();
+		expect(afterDelete.source.scene.entities.map((entity) => entity.id)).not.toContain('entity-b');
+		// The two-member cluster falls below the format minimum, so the accepted
+		// candidate drops it in the same operation.
+		expect(afterDelete.source.scene.clusters ?? []).toEqual([]);
+
+		const undo = await coordinator.undo();
+		expect(undo.kind).toBe('restored');
+		// Exact prior snapshot, not a re-derived equivalent: same bytes, same content.
+		expect(coordinator.current().canonicalJson).toBe(before.canonicalJson);
+		expect(coordinator.current().sourceContentId).toBe(before.sourceContentId);
+		expect(coordinator.current().source.scene.clusters).toEqual([
+			{ id: 'cluster-1', name: 'Group', memberIds: ['entity-b', 'entity-c'] }
+		]);
+
+		const redo = await coordinator.redo();
+		expect(redo.kind).toBe('restored');
+		expect(coordinator.current().canonicalJson).toBe(afterDelete.canonicalJson);
 	});
 
 	it('refuses a mutation-control candidate the adapter admits, through the T2 record-scope guard', async () => {

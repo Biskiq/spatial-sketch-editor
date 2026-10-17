@@ -20,19 +20,17 @@
  * once, before F.4 admission, on the same candidate the adapter will validate.
  * It is deliberately a **refusal**, not a repair: a planner that overreaches is
  * a defect to report, never a document to normalize.
+ *
+ * The guard is only as complete as its adoption, and F.4's planner contract has
+ * no hook that could require it: `createScenePlanners` is the sole registered
+ * producer (all seven operations funnel through `finalizeSceneCandidate`), and
+ * the raw `plan*` exports are test seams. A future planner built outside that
+ * registry must call this finalizer itself — the mutation-control acceptance
+ * test exists because such a candidate would otherwise be admitted.
  */
 import { validateSceneDocument } from '../scene-codec';
 import type { ShapeIssue } from '../strict-shape';
 import type { SceneDocument } from '../scene';
-
-/** The Scene fields that are not per-record data; all are compared exactly. */
-const NON_RECORD_FIELDS = [
-	'formatVersion',
-	'textures',
-	'materials',
-	'navigationNodes',
-	'connections'
-] as const;
 
 /**
  * The records one operation may touch. `changedEntityFields` is the field-level
@@ -113,8 +111,18 @@ export function checkSceneRecordScope(
 	const created = new Set(scope.createdEntityIds);
 	const removed = new Set(scope.removedEntityIds);
 
-	for (const field of NON_RECORD_FIELDS) {
-		if (stableJson(before[field]) !== stableJson(after[field])) {
+	// Every top-level field except the two record collections is carried state and
+	// compares exactly. Deriving this from the documents (rather than a list of
+	// known fields) means a future Scene field is protected the day it lands
+	// instead of the day someone remembers to add it here.
+	const carriedFields = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
+		(field) => field !== 'entities' && field !== 'clusters'
+	);
+	for (const field of carriedFields) {
+		if (
+			stableJson((before as Record<string, unknown>)[field]) !==
+			stableJson((after as Record<string, unknown>)[field])
+		) {
 			issues.push({
 				path: `$.scene.${field}`,
 				code: 'record-scope-violation',

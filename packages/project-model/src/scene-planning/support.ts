@@ -107,14 +107,23 @@ export function selectSceneSupport(input: {
 
 	if (choice !== undefined) {
 		const chosen = chooseFloorSupport(candidates, choice);
-		if (chosen.kind === 'choice-required') {
-			return { kind: 'choice-required', candidates, message: 'The captured support choice is ambiguous.' };
-		}
-		if (chosen.kind === 'invalid-choice') {
+		if (chosen.kind === 'choice-required' || chosen.kind === 'invalid-choice') {
+			// Only the contexts this operation could actually use are disclosed: a
+			// candidate at another elevation would refuse on selection.
+			if (eligible.length === 0) {
+				return {
+					kind: 'no-support',
+					message: `The captured support choice is no longer usable (${chosen.kind === 'choice-required' ? 'it is ambiguous' : chosen.message}) and no floor supports the required elevation ${requiredElevation} m.`,
+					availableElevations: elevationsOf(candidates)
+				};
+			}
 			return {
 				kind: 'choice-required',
-				candidates,
-				message: `The captured support choice is no longer yielded by this snapshot (${chosen.message})`
+				candidates: eligible,
+				message:
+					chosen.kind === 'choice-required'
+						? 'The captured support choice is ambiguous.'
+						: `The captured support choice is no longer yielded by this snapshot (${chosen.message})`
 			};
 		}
 		if (

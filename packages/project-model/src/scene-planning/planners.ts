@@ -51,12 +51,12 @@ import {
 import { resolveSceneSupport } from './support';
 import type { NormalizedPlacementDefinition } from './types';
 
-const SCENE_PLANNER_ADMISSION: PlannerAdmission = {
+const SCENE_PLANNER_ADMISSION: PlannerAdmission = Object.freeze({
 	domain: 'scene',
 	compound: false,
 	units: false,
 	resources: false
-};
+});
 
 export type ScenePlannerOptions = {
 	/**
@@ -120,6 +120,10 @@ function planPlaceObject(
 		scene: request.snapshot.domain.source.scene
 	});
 	if (subject === null || allocation === null) return invalidPayload(reader.issues);
+	// `ShapeReader` records a problem (an unknown key, a mismatched choice
+	// variant) and still returns the readable value, so the collected issues are
+	// checked here, not only when a reader gives up.
+	if (reader.issues.length > 0) return invalidPayload(reader.issues);
 	if (subject.kind !== 'none' || allocation.kind !== 'created') {
 		return rejected('invalid-value', 'A placement addresses no existing subject and captures one new id.', []);
 	}
@@ -203,6 +207,7 @@ function planExistingObject(
 		scene: request.snapshot.domain.source.scene
 	});
 	if (subject === null || allocation === null) return invalidPayload(reader.issues);
+	if (reader.issues.length > 0) return invalidPayload(reader.issues);
 	if (subject.kind !== 'entity') {
 		return rejected('invalid-value', `${kind} addresses exactly one existing Scene entity.`, []);
 	}

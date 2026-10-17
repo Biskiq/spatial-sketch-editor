@@ -167,9 +167,15 @@ export function planSetYaw(input: {
 	if (!upright(target.entity)) return unsupportedTransform(input.entityId, 'set-yaw');
 	if (!Number.isFinite(input.yaw) || !isFinitePlacementFrame(input.frame)) return invalidFrame();
 
+	// Owned: yaw. Any admitted sub-tolerance pitch/roll is preserved rather than
+	// rewritten, so `set-yaw` never changes a component it does not own.
 	const next: SceneEntity = {
 		...target.entity,
-		rotation: [0, frameYawToWorld(input.frame, input.yaw), 0]
+		rotation: [
+			target.entity.rotation[0],
+			frameYawToWorld(input.frame, input.yaw),
+			target.entity.rotation[2]
+		]
 	};
 	return finalize({
 		context: input.context,
@@ -214,7 +220,13 @@ export function planPlaceOnFloor(input: {
 	const scale = entityScale(target.entity);
 	const y = support.support.elevation - scale * contact.value;
 	const rotation: Vec3 =
-		input.yaw === undefined ? target.entity.rotation : [0, frameYawToWorld(input.frame, input.yaw), 0];
+		input.yaw === undefined
+			? target.entity.rotation
+			: [
+					target.entity.rotation[0],
+					frameYawToWorld(input.frame, input.yaw),
+					target.entity.rotation[2]
+				];
 	const next: SceneEntity = { ...target.entity, position: [point[0], y, point[1]], rotation };
 	const fields = input.yaw === undefined ? ['position'] : ['position', 'rotation'];
 	return finalize({

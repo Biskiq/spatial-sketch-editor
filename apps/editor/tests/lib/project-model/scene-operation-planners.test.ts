@@ -389,7 +389,11 @@ describe('scene operation planners — poses and ownership', () => {
 	});
 
 	it('sets yaw without touching position, scale or Camera bytes', async () => {
-		const entity = box('entity-a', [3, ELEVATION + 0.5, 2], { scale: 2 });
+		const entity = box('entity-a', [3, ELEVATION + 0.5, 2], {
+			scale: 2,
+			// Sub-tolerance pitch/roll are admitted as upright; yaw must not rewrite them.
+			rotation: [5e-10, 0.4, -5e-10]
+		});
 		const project = projectWith(sceneWith([entity]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
@@ -412,10 +416,42 @@ describe('scene operation planners — poses and ownership', () => {
 		if (result.kind !== 'prepared') return;
 		const yawed = result.candidate.source.scene.entities[0]!;
 		expect(yawed.position).toEqual([3, ELEVATION + 0.5, 2]);
-		expect(yawed.rotation[0]).toBe(0);
+		expect(yawed.rotation[0]).toBe(5e-10);
 		expect(yawed.rotation[1]).toBeCloseTo(1.2, 12);
-		expect(yawed.rotation[2]).toBe(0);
+		expect(yawed.rotation[2]).toBe(-5e-10);
 		expect(yawed.scale).toBe(2);
+	});
+
+	it('preserves sub-tolerance pitch and roll when place-on-floor owns only yaw', async () => {
+		const entity = box('entity-a', [3, ELEVATION + 0.5, 2], {
+			rotation: [5e-10, 0.4, -5e-10]
+		});
+		const project = projectWith(sceneWith([entity]), ELEVATION);
+		const snapshot = await snapshotOf(project);
+		const result = prepare(
+			'place-on-floor',
+			snapshot,
+			intent({
+				kind: 'place-on-floor',
+				operationId: 'op-seat-yaw',
+				snapshot,
+				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					worldXZ: [1, 1],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: -0.5,
+					yaw: 0.9
+				}
+			})
+		);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		const seated = result.candidate.source.scene.entities[0]!;
+		expect(seated.rotation[0]).toBe(5e-10);
+		expect(seated.rotation[1]).toBeCloseTo(0.9, 12);
+		expect(seated.rotation[2]).toBe(-5e-10);
 	});
 
 	it('reseats on the floor and owns the resulting Y, preserving scale and rotation', async () => {
@@ -731,7 +767,18 @@ describe('scene operation planners — support and refusals', () => {
 			])
 		);
 		const snapshot = await snapshotOf(project);
-		for (const newId of ['entity-copy', 'entity-b']) {
+		for (const [newId, code, isExpectedDiagnostic] of [
+			[
+				'entity-copy',
+				'unsupported-set',
+				(issue: { readonly message: string }) => issue.message.includes('cluster-1')
+			],
+			[
+				'entity-b',
+				'invalid-value',
+				(issue: { readonly code: string }) => issue.code === 'duplicate-entity-id'
+			]
+		] as const) {
 			const result = prepare(
 				'duplicate-one',
 				snapshot,
@@ -744,7 +791,72 @@ describe('scene operation planners — support and refusals', () => {
 					allocatedIds: [{ kind: 'scene-entity', id: newId }]
 				})
 			);
-			expect(result.kind).toBe('rejected');
+			expect(result, newId).toMatchObject({ kind: 'rejected', code });
+			if (result.kind !== 'rejected') continue;
+			expect(result.diagnostics.some(isExpectedDiagnostic), newId).toBe(true);
+		}
+	});
+
+	it('refuses unknown payload keys and a mismatched support-choice variant', async () => {
+		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const snapshot = await snapshotOf(project);
+		const source = snapshot.sourceContentId;
+		// An unknown key is a captured-data defect, not something to ignore: the
+		// reader records it and the planner must refuse before doing any work.
+		const unknownKey = prepare(
+			'set-yaw',
+			snapshot,
+			intent({
+				kind: 'set-yaw',
+				operationId: 'op-unknown-key',
+				snapshot,
+				targets: [entityTarget(source, 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					yaw: 0.5,
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					scale: 2
+				}
+			})
+		);
+		expect(unknownKey).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
+		if (unknownKey.kind === 'rejected') {
+			expect(
+				unknownKey.diagnostics.some(
+					(issue) => issue.code === 'unknown-key' && issue.path === '$.payload.scale'
+				)
+			).toBe(true);
+		}
+
+		const mixedChoice = prepare(
+			'move-horizontal',
+			snapshot,
+			intent({
+				kind: 'move-horizontal',
+				operationId: 'op-mixed-choice',
+				snapshot,
+				targets: [entityTarget(source, 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					worldXZ: [4, 3],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: -0.5,
+					supportChoice: {
+						kind: 'elevation',
+						elevation: 0,
+						orderKey: 'unused',
+						generationId: sceneSupportGenerationId(source)
+					}
+				}
+			})
+		);
+		expect(mixedChoice).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
+		if (mixedChoice.kind === 'rejected') {
+			expect(
+				mixedChoice.diagnostics.some((issue) => issue.path === '$.payload.supportChoice.orderKey')
+			).toBe(true);
 		}
 	});
 
@@ -849,8 +961,12 @@ describe('scene record-scope guard', () => {
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
-			}).length
-		).toBeGreaterThan(0);
+			})
+		).toContainEqual({
+			path: '$.scene.entities.entity-b',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('untargeted')
+		});
 
 		const rewrittenCluster = {
 			...before,
@@ -867,8 +983,12 @@ describe('scene record-scope guard', () => {
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
-			}).length
-		).toBeGreaterThan(0);
+			})
+		).toContainEqual({
+			path: '$.scene.clusters.cluster-1.memberIds',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('membership')
+		});
 
 		const renamed = {
 			...before,
@@ -882,8 +1002,32 @@ describe('scene record-scope guard', () => {
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
-			}).length
-		).toBeGreaterThan(0);
+			})
+		).toContainEqual({
+			path: '$.scene.entities.entity-a',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('does not own')
+		});
+	});
+
+	it('refuses a top-level field the Scene format does not define yet', () => {
+		// The comparison is derived from the documents, not a fixed list of known
+		// fields, so a new Scene field is protected the day it lands.
+		const withUnknownField = { ...before, storyboard: { frames: [] } } as unknown as SceneDocument;
+		expect(
+			checkSceneRecordScope(before, withUnknownField, {
+				operationKind: 'set-yaw',
+				changedEntityIds: ['entity-a'],
+				changedEntityFields: ['rotation'],
+				createdEntityIds: [],
+				removedEntityIds: [],
+				allowClusterCleanup: false
+			})
+		).toContainEqual({
+			path: '$.scene.storyboard',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('outside')
+		});
 	});
 
 	it('refuses a created entity that joins a cluster or an uncaptured new cluster', () => {
@@ -1033,6 +1177,28 @@ describe('snapshot-qualified support selection', () => {
 		).toBe('choice-required');
 	});
 
+	it('discloses only the contexts the operation could actually use', () => {
+		const mixed = [candidate(0, 'a'), candidate(2.5, 'b')];
+		const remains = selectSceneSupport({
+			candidates: mixed,
+			generationId: GENERATION,
+			requiredElevation: 2.5,
+			choice: { kind: 'order-key', orderKey: 'gone', generationId: GENERATION }
+		});
+		expect(remains.kind).toBe('choice-required');
+		if (remains.kind !== 'choice-required') return;
+		// A candidate at 0 m would refuse on selection, so it is not offered.
+		expect(remains.candidates.map((entry) => entry.orderKey)).toEqual(['b']);
+
+		const noneEligible = selectSceneSupport({
+			candidates: [candidate(0, 'a'), candidate(0, 'b')],
+			generationId: GENERATION,
+			requiredElevation: 9,
+			choice: { kind: 'order-key', orderKey: 'gone', generationId: GENERATION }
+		});
+		expect(noneEligible).toMatchObject({ kind: 'no-support', availableElevations: [0] });
+	});
+
 	it('derives a stable generation identity from the snapshot content', async () => {
 		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
@@ -1074,31 +1240,37 @@ describe('scene operation determinism and write ownership', () => {
 		}
 	});
 
-	it('prepares identical candidates from identical captured inputs and never mutates the source', async () => {
-		const entity = box('entity-a', [3, 0.5, 2]);
-		const project = projectWith(sceneWith([entity]));
+	it('replays every operation to an identical candidate and never mutates the source', async () => {
+		const project = projectWith(
+			sceneWith([box('entity-a', [3, ELEVATION + 0.5, 2]), box('entity-b', [1, ELEVATION + 0.5, 1])]),
+			ELEVATION
+		);
 		const snapshot = await snapshotOf(project);
 		const before = JSON.stringify(snapshot.domain.source);
-		const captured = intent({
-			kind: 'set-yaw',
-			operationId: 'op-replay',
-			snapshot,
-			targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
-			payload: {
-				entityId: 'entity-a',
-				yaw: 0.8,
-				frame: projectWorldFrame(),
-				frameReference: frameReference()
-			}
-		});
-		const first = prepare('set-yaw', snapshot, captured);
-		const second = prepare('set-yaw', snapshot, captured);
-		expect(second).toEqual(first);
-		expect(JSON.stringify(snapshot.domain.source)).toBe(before);
-		if (first.kind !== 'prepared') return;
-		// A prepared candidate is new data, never the accepted source rewritten.
-		expect(first.candidate.source).not.toBe(snapshot.domain.source);
-		expect(first.candidate.source.scene).not.toBe(snapshot.domain.source.scene);
-		expect(first.candidate.source.layout).toBe(snapshot.domain.source.layout);
+		const target = (entityId: string) => [entityTarget(snapshot.sourceContentId, entityId)];
+		// Every operation replays: the ones with support queries, allocations and
+		// array writes are where a hidden read of time, order or the catalogue would
+		// surface, so a yaw-only replay would prove the least.
+		const captured: Array<[string, AuthoringIntent]> = [
+			['place-object', intent({ kind: 'place-object', operationId: 'replay-place', snapshot, payload: placePayload(), allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }] })],
+			['move-horizontal', intent({ kind: 'move-horizontal', operationId: 'replay-move', snapshot, targets: target('entity-a'), payload: { entityId: 'entity-a', worldXZ: [4, 3], frame: projectWorldFrame(), frameReference: frameReference(), contactMinY: -0.5 } })],
+			['set-yaw', intent({ kind: 'set-yaw', operationId: 'replay-yaw', snapshot, targets: target('entity-a'), payload: { entityId: 'entity-a', yaw: 0.6, frame: projectWorldFrame(), frameReference: frameReference() } })],
+			['place-on-floor', intent({ kind: 'place-on-floor', operationId: 'replay-seat', snapshot, targets: target('entity-a'), payload: { entityId: 'entity-a', worldXZ: [1, 1], frame: projectWorldFrame(), frameReference: frameReference(), contactMinY: -0.5 } })],
+			['resize-on-floor', intent({ kind: 'resize-on-floor', operationId: 'replay-resize', snapshot, targets: target('entity-a'), payload: { entityId: 'entity-a', scale: 2, contactMinY: -0.5 } })],
+			['duplicate-one', intent({ kind: 'duplicate-one', operationId: 'replay-duplicate', snapshot, targets: target('entity-a'), payload: { entityId: 'entity-a', contactMinY: -0.5 }, allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }] })],
+			['delete-one', intent({ kind: 'delete-one', operationId: 'replay-delete', snapshot, targets: target('entity-b'), payload: { entityId: 'entity-b' } })]
+		];
+		for (const [kind, capturedIntent] of captured) {
+			const first = prepare(kind, snapshot, capturedIntent, [nativeBoxDefinition()]);
+			const second = prepare(kind, snapshot, capturedIntent, [nativeBoxDefinition()]);
+			expect(first.kind, kind).toBe('prepared');
+			expect(second, kind).toEqual(first);
+			expect(JSON.stringify(snapshot.domain.source), kind).toBe(before);
+			if (first.kind !== 'prepared') continue;
+			// A prepared candidate is new data, never the accepted source rewritten.
+			expect(first.candidate.source, kind).not.toBe(snapshot.domain.source);
+			expect(first.candidate.source.scene, kind).not.toBe(snapshot.domain.source.scene);
+			expect(first.candidate.source.layout, kind).toBe(snapshot.domain.source.layout);
+		}
 	});
 });
