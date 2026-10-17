@@ -40,7 +40,7 @@ import {
 	type RuntimeScene
 } from '@portfolio/project-model';
 import {
-	computeSourceContentId,
+	tryComputeSourceContentId,
 	type AcceptedRevision,
 	type CurrentDomainSource,
 	type SnapshotIdentity
@@ -79,6 +79,15 @@ export type StageDomainRead = {
 export type StageReadSnapshot = {
 	readonly acceptedRevision: AcceptedRevision;
 	readonly sourceContentId: string;
+	/**
+	 * The canonical source bytes the content identity describes.
+	 *
+	 * One canonicalization produces both fields, so a host that starts an acceptance
+	 * history from this snapshot records exactly the bytes the F4 adapter will
+	 * re-admit on Undo: a history state whose canonical JSON came from a different
+	 * serializer would be refused as "not the exact recorded source".
+	 */
+	readonly canonicalJson: string;
 	/** Host session lifetime guard; separate from the acceptance revision. */
 	readonly sessionEpoch: string;
 	readonly sourceKind: 'project-current';
@@ -130,12 +139,14 @@ function compileGenerationOf(sourceContentId: string): string {
 function snapshotOf(
 	project: ProjectDocument,
 	sourceContentId: string,
+	canonicalJson: string,
 	context: AdmissionContext,
 	domain: StageDomainRead
 ): StageReadSnapshot {
 	return {
 		acceptedRevision: context.acceptedRevision,
 		sourceContentId,
+		canonicalJson,
 		sessionEpoch: context.sessionEpoch,
 		sourceKind: 'project-current',
 		sourceVersion: CURRENT_PROJECT_FORMAT_VERSION,
@@ -196,7 +207,13 @@ export async function admitSource(
 		};
 	}
 
-	const sourceContentId = await computeSourceContentId(project);
+	// The canonical form is computed once here: its bytes are both what the content
+	// identity describes and what the host records as the accepted baseline.
+	const identity = await tryComputeSourceContentId(project, { scene: HOST_SCENE_OPTIONS });
+	if (identity.kind === 'rejected') {
+		return { kind: 'refused', reason: 'invalid-format', issues: identity.issues };
+	}
+	const sourceContentId = identity.sourceContentId;
 	const snapshotIdentity: SnapshotIdentity = { acceptedRevision: context.acceptedRevision, sourceContentId };
 	const current: CurrentDomainSource = { source: project, snapshot: snapshotIdentity };
 	const domain: StageDomainRead = {
@@ -209,7 +226,7 @@ export async function admitSource(
 		graph: prepared.graph,
 		warnings: compiled.issues.filter((issue) => issue.severity === 'warning')
 	};
-	return { kind: 'admitted', snapshot: snapshotOf(project, sourceContentId, context, domain) };
+	return { kind: 'admitted', snapshot: snapshotOf(project, sourceContentId, identity.canonicalJson, context, domain) };
 }
 
 /**

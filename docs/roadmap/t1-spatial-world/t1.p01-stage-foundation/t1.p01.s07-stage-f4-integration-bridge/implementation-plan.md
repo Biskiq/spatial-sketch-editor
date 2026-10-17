@@ -1,7 +1,8 @@
 # T1.P01.S07 — Stage↔F4 integration bridge: implementation plan
 
-**Slice:** T1.P01.S07 · **Status:** approved — owner-authorized 2026-10-17 (D1–D4,
-[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); not started ·
+**Slice:** T1.P01.S07 · **Status:** in-progress — owner-authorized 2026-10-17 (D1–D4,
+[record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); implementation and focused
+tests written, verification and independent review pending ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -151,6 +152,12 @@ proof, and M5's composed exposure stays S05's.
 
 ## Readiness declaration
 
-This slice is **authorized** (owner, 2026-10-17) and **not started**. Its prerequisites are accepted on
-`main`. It starts through the T1 runbook's start step once the authorizing PR has merged. Nothing here
-is implemented, accepted, ready or evidenced.
+This slice is **authorized** (owner, 2026-10-17) and **in progress**. Its prerequisites are accepted on
+`main`, and implementation started from `main` at `fcf1fbaa` through the T1 runbook's start step (the
+eligibility row is `in-progress` and the one-line cycle check opens nothing: S07 is not a listed
+exposure). The host wiring, adapter re-binding, contribution points and their focused tests are
+written and their typecheck, focused suites and editor lanes are recorded in
+[acceptance.md](./acceptance.md). Nothing here is **accepted, ready or evidenced** for gate purposes:
+the AM-5 probe-table rerun, the complete merge gate recorded against a merge revision and the
+browser edit → Undo/Redo → replacement evidence are still outstanding, and acceptance follows
+independent review and that evidence.

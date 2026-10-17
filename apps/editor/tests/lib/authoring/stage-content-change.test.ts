@@ -163,11 +163,15 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 		expect(install.releasedGestures).toBe(1);
 		expect(session.gesture()).toBeNull();
 
-		// A domain adapter binds to the source it was built from, so the change ends
-		// its registration rather than mutating it in place.
-		expect(install.endedAdapters).toEqual(['probe-adapter']);
-		expect(facade.adapters()).toEqual([]);
+		// A domain adapter's registration survives the change: a static adapter is not
+		// rebound, so it stays registered for the new snapshot. Its contribution needs a
+		// live evaluation, which the rebase ended — asserted below, after re-evaluation.
+		expect(install.reboundAdapters).toEqual([]);
+		expect(facade.adapters().map((entry) => entry.id)).toEqual(['probe-adapter']);
 		expect(facade.overlays()).toEqual([]);
+		// Without a host-supplied correspondence the selection cannot be requalified,
+		// and the reason is reported rather than silently guessed.
+		expect(install.requalification).toEqual({ kind: 'cleared', reason: 'no-correspondence' });
 
 		// The Plan and the read facade now describe the new content, under the new
 		// generation, and the output names the new source revision once evaluated.
@@ -181,6 +185,8 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 		const reevaluated = facade.camera.evaluate(RECT, 2);
 		expect(reevaluated.kind).toBe('evaluated');
 		expect(facade.evaluation()?.token.sourceRevision).toBe(next.sourceContentId);
+		// The surviving static adapter contributes again as soon as there is an evaluation.
+		expect(facade.overlays()).toEqual([{ id: 'probe-marker', css: [1, 2], label: 'probe' }]);
 
 		// The claim the rebase ended cannot install anything, while the re-acquired
 		// one drives the output as before.

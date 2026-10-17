@@ -95,12 +95,29 @@ export type GestureReadingChange = {
 };
 
 /**
+ * The host's decision about one live selection across an accepted content change.
+ *
+ * Requalification is supplied by the host because only the acceptance
+ * correspondence knows whether a subject survived; the session validates nothing
+ * about the mapping and never re-resolves a subject by coordinate or proximity.
+ */
+export type SelectionRequalification = (selection: StageSelection) => StageSelection | null;
+
+/** What happened to the previous selection when content changed. */
+export type SelectionRequalificationOutcome =
+	| { readonly kind: 'requalified'; readonly selection: StageSelection }
+	| { readonly kind: 'cleared'; readonly reason: 'subject-retired' | 'no-correspondence' }
+	| { readonly kind: 'none' };
+
+/**
  * The outcome of installing changed content into the one accepted-source slot.
  *
  * A **content change** is deliberately not a replacement: the project identity is
  * the same, so the host session epoch does not advance and no writer is cancelled
- * for content that still belongs to the same project — but the selection and task
- * that named a fragment of the previous compile generation cannot survive it.
+ * for content that still belongs to the same project — but the task, gesture and
+ * selection that named a fragment of the previous compile generation cannot
+ * survive it unchanged. Selection is requalified through accepted correspondence
+ * when the host supplies that mapping, and cleared with a reason otherwise.
  */
 export type AcceptedSlotInstall =
 	| {
@@ -111,6 +128,8 @@ export type AcceptedSlotInstall =
 			readonly closedTask: boolean;
 			/** The proposal bound to the replaced revision, released by the change. */
 			readonly releasedGestures: number;
+			/** What the host's requalification did with the live selection. */
+			readonly requalification: SelectionRequalificationOutcome;
 	  }
 	| { readonly kind: 'unchanged'; readonly sourceContentId: string }
 	| {
@@ -164,10 +183,11 @@ export type StageSession = {
 	/**
 	 * Install changed content for the **current** project into the one
 	 * accepted-source slot: same session epoch, no cancellation, generation-bound
-	 * selection/task cleared. A different project identity is refused — that is a
-	 * replacement.
+	 * task/gesture ended. A different project identity is refused — that is a
+	 * replacement. Selection is requalified through the host's correspondence
+	 * mapping, or cleared with a reason when it does not survive.
 	 */
-	installAccepted(next: StageReadSnapshot): AcceptedSlotInstall;
+	installAccepted(next: StageReadSnapshot, options?: { readonly requalify?: SelectionRequalification }): AcceptedSlotInstall;
 	/** Register a disposer run exactly once at session teardown. */
 	addDisposable(dispose: () => void): () => void;
 	/** Session teardown: cancel writers, release leases, run disposables exactly once. */
@@ -354,7 +374,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 			// proposal writer — reported rather than silently assumed.
 			return { cancelled: false, suspended: lease.policy === 'suspend-proposal', owner: lease.owner };
 		},
-		installAccepted(next) {
+		installAccepted(next, options) {
 				if (disposed) {
 					return { kind: 'refused', code: 'disposed', message: 'the session is disposed and accepts no source' };
 				}
@@ -390,7 +410,7 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 				// Same project, new content: the slot swaps in place. The epoch does not
 				// advance, so a load, gesture or Camera completion started under it stays
 				// current — the source revision, not the epoch, is what changed.
-				const clearedSelection = selection !== null;
+				const previousSelection = selection;
 				const closedTask = task !== null;
 				// S02 has no operation-parameter revalidation, so a gesture lease whose
 				// revision just expired cannot legitimately continue: it is released and
@@ -399,16 +419,32 @@ export function createStageSession(options: { sessionEpoch?: SessionEpoch; epoch
 				const releasedGestures = lease !== undefined && lease.active ? 1 : 0;
 				if (lease !== undefined) lease.release();
 				activeGesture = null;
-				selection = null;
+				// Selection is not cleared wholesale: the host asks the accepted
+				// correspondence whether the subject survived. A requalification that
+				// throws is a refusal to carry the selection, never a half-kept one.
+				let requalification: SelectionRequalificationOutcome = { kind: 'none' };
+				if (previousSelection !== null) {
+					let requalified: StageSelection | null = null;
+					try {
+						requalified = options?.requalify?.(previousSelection) ?? null;
+					} catch {
+						requalified = null;
+					}
+					requalification = requalified === null
+						? { kind: 'cleared', reason: 'no-correspondence' }
+						: { kind: 'requalified', selection: requalified };
+				}
+				selection = requalification.kind === 'requalified' ? requalification.selection : null;
 				task = null;
 				current = next;
 				return {
 					kind: 'installed',
 					previousSourceContentId: active.sourceContentId,
 					sourceContentId: next.sourceContentId,
-					clearedSelection,
+					clearedSelection: requalification.kind === 'cleared',
 					closedTask,
-					releasedGestures
+					releasedGestures,
+					requalification
 				};
 			},
 			replace(admitted) {

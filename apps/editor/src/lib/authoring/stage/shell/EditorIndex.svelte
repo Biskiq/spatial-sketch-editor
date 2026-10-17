@@ -25,12 +25,14 @@
 		open,
 		onToggle,
 		groups,
+		contributions = [],
 		selectionId,
 		query,
 		onQuery,
 		onSelect,
 		onBringIntoView,
-		onReveal
+		onReveal,
+		onInvokeContribution = () => {}
 	}: {
 		open: boolean;
 		onToggle: () => void;
@@ -47,12 +49,25 @@
 				membership: string;
 			}[];
 		}[];
+		/**
+			* Contributed rail-family / capability-Find entries, from whatever adapters
+			* are registered. The Index renders them generically: a domain adapter never
+			* edits this component to appear here.
+			*/
+		contributions?: readonly {
+			id: string;
+			label: string;
+			family: string;
+			capability: string;
+			entries: readonly { id: string; label: string; adapterId: string; taskKind: string }[];
+		}[];
 		selectionId: string | null;
 		query: string;
 		onQuery: (query: string) => void;
 		onSelect: (sourceId: string) => void;
 		onBringIntoView: (sourceId: string) => void;
 		onReveal: (sourceId: string) => void;
+		onInvokeContribution?: (id: string) => void;
 	} = $props();
 
 	/**
@@ -230,6 +245,35 @@
 				</section>
 			{/each}
 		{/if}
+
+		<!-- Contributed operations: whatever registered adapters offer, grouped by
+		     their declared rail family and capability. Nothing is listed when no adapter
+		     contributes, so the Index stays a locator rather than a menu of unknowns. -->
+		{#each contributions as group (group.id)}
+			<section
+				class="index-group contributed-group"
+				aria-labelledby={`plate-index-contributed-${group.id}`}
+				data-contributed-family={group.family}
+				data-contributed-capability={group.capability}
+			>
+				<h3 class="group-heading" id={`plate-index-contributed-${group.id}`}>{group.label}</h3>
+				<ul class="group-items">
+					{#each group.entries as entry (entry.id)}
+						<li class="item contributed-item" data-contributed-adapter={entry.adapterId}>
+							<button
+								type="button"
+								class="item-row"
+								title={`${entry.label} — contributed by ${entry.adapterId}`}
+								onclick={() => onInvokeContribution(entry.id)}
+							>
+								<span class="item-kind">Task</span>
+								<span class="item-name">{entry.label}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/each}
 	</div>
 </nav>
 

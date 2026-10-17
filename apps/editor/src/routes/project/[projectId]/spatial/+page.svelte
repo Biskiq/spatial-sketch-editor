@@ -52,9 +52,16 @@
 		createStageFacade,
 		type StageFacade,
 		type StageIntentResult,
+		type StageInstrumentContent,
 		type StageOverlayContribution,
 		type StageSourceHit
 	} from '$lib/authoring/stage/stage-facade';
+	import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
+	import {
+		createStageAcceptanceHost,
+		type StageAcceptanceHost,
+		type StageHistoryState
+	} from '$lib/authoring/stage/host-acceptance';
 	import type { PlanEvaluation, PlanMembershipReason } from '@portfolio/layout-core';
 	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 	import {
@@ -78,8 +85,32 @@
 
 	let boot = $state<BootState>(initialBootState(projectId, intent));
 	let facade = $state.raw<StageFacade | null>(null);
+	/**
+	 * The host↔F4 acceptance host for the current project epoch. There is exactly
+	 * one per epoch, recreated by `activate` on every replacement; it is the only
+	 * acceptance writer, and the Head's history controls are its commands.
+	 */
+	let acceptance = $state.raw<StageAcceptanceHost | null>(null);
+	/**
+	 * Bumped whenever the mounted facade's adapter registrations or bindings change.
+	 * The contribution views below read a `$state.raw` facade whose adapter map is
+	 * plain data, so this signal is what makes a registration after mount reach the
+	 * Index, the Card and the instrument host.
+	 */
+	let contributionsVersion = $state(0);
+	let unsubscribeContributions: (() => void) | null = null;
+	let historyState = $state<StageHistoryState>({
+		canUndo: false,
+		canRedo: false,
+		depth: 1,
+		position: 0,
+		undoUnavailableReason: 'Nothing to undo yet — no change has been accepted.',
+		redoUnavailableReason: 'Nothing to redo.'
+	});
 	let selection = $state<StageSelection | null>(null);
 	let task = $state<StageTask | null>(null);
+	/** Instrument content contributed by the adapter whose task is open, if any. */
+	let contributedInstrument = $state<StageInstrumentContent | null>(null);
 	let revealed = $state<string[]>([]);
 	let lens = $state<'world' | 'experience'>('world');
 	let indexOpen = $state(true);
@@ -144,10 +175,34 @@
 		// session atomically cancels writers, clears selection/task and swaps.
 		session.replace(snapshot);
 		facade?.dispose();
+		acceptance?.dispose();
 		facade = createStageFacade({ snapshot, session });
+		unsubscribeContributions?.();
+		unsubscribeContributions = facade.onAdaptersChanged(() => {
+			contributionsVersion += 1;
+		});
+		task = null;
+		contributedInstrument = null;
 		// The host owns one inspection output; every viewing intent below presents
 		// this claim's ticket, so a replaced or rebased output cannot keep writing.
 		facade.acquireInspection('exclusive');
+		// One acceptance coordinator per project epoch, starting from the admitted
+		// baseline. The coordinator's bounded history is the single history; this
+		// host never keeps a second one.
+		const mounted = createStageAcceptanceHost({
+			sessionEpoch: snapshot.sessionEpoch,
+			baseline: {
+				revision: snapshot.acceptedRevision,
+				source: snapshot.domain.project,
+				// The baseline's bytes must be the snapshot's own canonical form: the F4
+				// adapter re-admits them on Undo and refuses a different serialization.
+				canonicalJson: snapshot.canonicalJson,
+				sourceContentId: snapshot.sourceContentId
+			},
+			facade
+		});
+		acceptance = mounted;
+		historyState = mounted.history();
 		resetViewContext();
 	}
 
@@ -381,7 +436,11 @@
 			window.removeEventListener('keydown', onKey);
 			// Session teardown cancels every registered writer (including an in-flight
 			// project GET) and runs every registered disposer exactly once; no
-			// project-specific singleton survives the route.
+			// project-specific singleton — acceptance host, history or facade — survives
+			// the route.
+			unsubscribeContributions?.();
+			unsubscribeContributions = null;
+			acceptance?.dispose();
 			facade?.dispose();
 			session.dispose();
 		};
@@ -440,6 +499,66 @@
 
 	function orbit(dAzimuth: number, dElevation: number): void {
 		submit({ kind: 'orbit', deltaAzimuthRadians: dAzimuth, deltaElevationRadians: dElevation }, nowSeconds());
+	}
+
+	/* --- source history (host commands through the F4 boundary) -------------- */
+
+	function refreshHistory(): void {
+		historyState = acceptance?.history() ?? {
+			canUndo: false,
+			canRedo: false,
+			depth: 1,
+			position: 0,
+			undoUnavailableReason: 'History belongs to the mounted project.',
+			redoUnavailableReason: 'History belongs to the mounted project.'
+		};
+	}
+
+	async function undo(): Promise<void> {
+		const host = acceptance;
+		if (host === null) return;
+		const outcome = await host.undo();
+		if (outcome.kind === 'installed') {
+			// The restored state installed through the same facade path an accept uses:
+			// the view stays, the selection was requalified against the restored
+			// correspondence, and the plan/markers refresh below reads the new snapshot.
+			selection = facade?.selection() ?? null;
+			if (outcome.selectionClearedReason !== null) {
+				notice = 'The selected subject no longer exists in the restored source.';
+			}
+			planKey = '';
+		} else if (outcome.kind === 'unavailable') {
+			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Undo runs once it settles.' : 'Nothing to undo.';
+		} else if (outcome.kind === 'refused') {
+			notice =
+				outcome.compensation === 'failed'
+					? `${outcome.message} The history could not be rolled back to match what is shown.`
+					: outcome.message;
+		}
+		refreshHistory();
+		refresh();
+	}
+
+	async function redo(): Promise<void> {
+		const host = acceptance;
+		if (host === null) return;
+		const outcome = await host.redo();
+		if (outcome.kind === 'installed') {
+			selection = facade?.selection() ?? null;
+			if (outcome.selectionClearedReason !== null) {
+				notice = 'The selected subject no longer exists in the restored source.';
+			}
+			planKey = '';
+		} else if (outcome.kind === 'unavailable') {
+			notice = outcome.reason === 'live-proposal' ? 'A proposal is live; Redo runs once it settles.' : 'Nothing to redo.';
+		} else if (outcome.kind === 'refused') {
+			notice =
+				outcome.compensation === 'failed'
+					? `${outcome.message} The history could not be rolled back to match what is shown.`
+					: outcome.message;
+		}
+		refreshHistory();
+		refresh();
 	}
 
 	/* --- selection, tasks and Reveal ---------------------------------------- */
@@ -506,12 +625,34 @@
 			label: 'Plan membership',
 			targetRef: selected.ref
 		};
-		if (stage.openTask(next)) task = next;
+		if (stage.openTask(next)) {
+			task = next;
+			// The host's own task: no adapter contributed this instrument.
+			contributedInstrument = null;
+		}
+	}
+
+	/**
+	 * Invoke a contributed operation. The facade owns the task and its instrument
+	 * content; this host only mirrors them into the one instrument home, so a new
+	 * domain adapter needs no change here.
+	 */
+	function invokeContribution(id: string): void {
+		const stage = facade;
+		if (stage === null) return;
+		const opened = stage.openContributedTask(id);
+		if (opened.kind !== 'opened') {
+			notice = opened.message;
+			return;
+		}
+		task = opened.task;
+		contributedInstrument = opened.instrument;
 	}
 
 	function closeTask(): void {
 		facade?.closeTask();
 		task = null;
+		contributedInstrument = null;
 	}
 
 	function toggleReveal(sourceId: string): void {
@@ -760,11 +901,13 @@
 	 * The Card's owner/source/reach facts, read from the same Plan evaluation the
 	 * Stage draws: the Card can never disagree with the render about membership.
 	 */
-	const cardFacts = $derived.by((): { label: string; value: string }[] => {
+	const cardFacts = $derived.by((): readonly { readonly label: string; readonly value: string }[] => {
+		// Reading the version makes an adapter registration or disposal re-derive.
+		void contributionsVersion;
 		const selected = selection;
 		if (selected === null) return [];
 		const membership = planView?.membership.find((row) => row.sourceId === selected.sourceId);
-		return [
+		const own = [
 			{ label: 'Stream', value: selected.ref.stream },
 			{ label: 'Eligible', value: String(membership?.eligible ?? false) },
 			{ label: 'Revealed', value: String(revealed.includes(selected.sourceId)) },
@@ -773,6 +916,16 @@
 				value: `${boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain.datumMeters : 0} m`
 			}
 		];
+		// Whatever adapters registered for this subject appears here without this
+		// route knowing which domain contributed it.
+		return stageCardFacts(facade, { sourceId: selected.sourceId, sourceKind: selected.sourceKind, ref: selected.ref }, own);
+	});
+
+	/** Every contributed Find/rail entry from the adapters currently mounted. */
+	const contributionGroups = $derived.by(() => {
+		// Same signal: a newly registered adapter's Find entries appear at once.
+		void contributionsVersion;
+		return stageContributionGroups(facade);
 	});
 
 	/**
@@ -823,7 +976,11 @@
 		onLens={(next) => (lens = next)}
 		canDownloadSource={activeProject()}
 		onDownloadSource={downloadSourceJson}
-		historyUnavailableReason="Source history arrives with T1.P01.S04 local acceptance."
+		historyUnavailableReason={historyState.undoUnavailableReason ?? 'Nothing to undo yet.'}
+		canUndo={historyState.canUndo}
+		canRedo={historyState.canRedo}
+		onUndo={() => void undo()}
+		onRedo={() => void redo()}
 		saveUnavailableReason="Conditional Save arrives with T3.P01.S02; this host is read-only."
 		previewUnavailableReason="Visitor Preview arrives with T3."
 		{reducedMotion}
@@ -835,10 +992,12 @@
 			open={indexOpen}
 			onToggle={() => (indexOpen = !indexOpen)}
 			groups={indexGroups}
+			contributions={contributionGroups}
 			selectionId={selection?.sourceId ?? null}
 			{query}
 			onQuery={(next) => (query = next)}
 			onSelect={selectSource}
+			onInvokeContribution={invokeContribution}
 			onBringIntoView={(sourceId) => {
 				const plan = planView;
 				const fragment = plan?.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
@@ -945,7 +1104,7 @@
 				}}
 			/>
 
-			<StageInstrumentHost task={taskHost} onClose={closeTask}>
+			<StageInstrumentHost task={taskHost} onClose={closeTask} instrument={contributedInstrument}>
 				{#if selection !== null}
 					{@const selectedId = selection.sourceId}
 					<div class="instrument-body">
