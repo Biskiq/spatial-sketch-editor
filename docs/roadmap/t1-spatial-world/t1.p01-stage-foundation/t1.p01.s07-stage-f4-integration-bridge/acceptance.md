@@ -1,7 +1,7 @@
 # T1.P01.S07 — acceptance record: Stage↔F4 integration bridge
 
-**Status: ACCEPTED and SHIPPED 2026-10-17. Merge withheld at the owner's instruction; PR #137 is
-unmerged.** [Plan](./implementation-plan.md) · [phase](../README.md) ·
+**Status: ACCEPTED 2026-10-17. Merge withheld at the owner's instruction; PR #137 is unmerged, so the
+slice is not yet shipped.** [Plan](./implementation-plan.md) · [phase](../README.md) ·
 [AM-5 reconciliation](./am5-reconciliation.md) · [verification](./evidence/verification.md).
 `T1.viewport-projection@1` moves to **accepted** with `viewport-projection-v1` active; provider stays
 `T1.P01.S02`. The durable record is

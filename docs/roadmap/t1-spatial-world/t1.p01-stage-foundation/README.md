@@ -3,9 +3,9 @@
 **Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
 (F1/F3 shared providers and readiness enforcement); `T1.P01.S03` accepted and shipped 2026-10-16
 (F4 `acceptance-invariants-v1` and `local-single-domain-v1`); `T1.P01.S02` accepted and shipped
-2026-10-17 by owner-override (PR #128); S07 (Stage↔F4 integration bridge) accepted and shipped
-2026-10-17, recording `T1.viewport-projection@1:viewport-projection-v1` accepted (merge withheld at
-the owner's instruction); S04–S06 proposed and unauthorized ·
+2026-10-17 by owner-override (PR #128); S07 (Stage↔F4 integration bridge) accepted 2026-10-17,
+recording `T1.viewport-projection@1:viewport-projection-v1` accepted (merge withheld at the owner's
+instruction); S04–S06 proposed and unauthorized ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -143,7 +143,7 @@ capabilities `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` an
 `accepted`. **S02 and S03 were authorized** by the owner decision of 2026-10-16. S03 is accepted and
 shipped with its two F4 capability records; S02 is accepted and shipped under the owner-override
 documented in its row. Their prerequisites were accepted on the trusted base, where `ee463d0b` is
-an ancestor. **S07 was authorized** by the owner decision of 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)) and is **accepted and shipped**: its acceptance records
+an ancestor. **S07 was authorized** by the owner decision of 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)) and is **accepted**: its acceptance records
 `T1.viewport-projection@1:viewport-projection-v1` with `T1.P01.S02` unchanged as the sole provider,
 and PR #137's merge is withheld at the owner's instruction. S04–S06 are **proposed** and hold no
 implementation permission. Same-phase sequencing
@@ -155,7 +155,7 @@ accepted at the consumer's trusted base.
 | T1.P01.S01 | shipped | — | — | — | [Shared interface providers](./t1.p01.s01-shared-interface-providers/implementation-plan.md) | [record](./t1.p01.s01-shared-interface-providers/acceptance.md) | owner-authorized 2026-10-15 ([record](../../../reference/decisions/f-ratification-2026-10-15.md)); independently accepted at `ee463d0b`; closed 2026-10-16 by `slice-closeout` |
 | T1.P01.S02 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted and shipped 2026-10-17 by owner-override at PR #128 revision `567a17e7`; waived the current-main merge-gate rerun and S06 integration proof as prerequisites to S02 acceptance; `T1.viewport-projection@1` remains ratified, and its acceptance route is S07 (ruling D1, 2026-10-17) |
 | T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
-| T1.P01.S07 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); accepted 2026-10-17 at merge candidate `049e89f5` after four review rounds and the complete gate on then-current `main` (API suites 65 tests, zero skips); records `viewport-projection-v1` accepted with `T1.P01.S02` as unchanged sole provider; PR #137 merge withheld at the owner's instruction |
+| T1.P01.S07 | accepted | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); accepted 2026-10-17 at merge candidate `049e89f5` after four review rounds and the complete gate on then-current `main` (API suites 65 tests, zero skips); records `viewport-projection-v1` accepted with `T1.P01.S02` as unchanged sole provider; PR #137 merge withheld at the owner's instruction |
 | T1.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | — |
 | T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
 | T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
@@ -201,7 +201,8 @@ PHASE CLOSE
 Stage:        active
 ```
 
-`T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03` and `T1.P01.S07` are accepted and shipped. S02's acceptance
+`T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03` and `T1.P01.S07` are accepted; the first three are shipped,
+S07's merge is withheld at the owner's instruction. S02's acceptance
 uses the owner-override recorded in its acceptance stub; the viewport capability is accepted through
 S07's record, and consumer readiness starts at a trusted base containing PR #137's merge. S04–S06
 have no accepted result. The

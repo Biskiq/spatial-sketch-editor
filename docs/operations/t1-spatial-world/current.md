@@ -18,7 +18,7 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: none. T1.P01.S07 (Stage↔F4 integration bridge) is accepted and shipped 2026-10-17;
+ACTIVE: none. T1.P01.S07 (Stage↔F4 integration bridge) is accepted 2026-10-17; its merge is withheld;
         S04–S06 remain proposed and unauthorized.
 BATON: S02 was accepted under owner-override on 2026-10-17. By owner ruling D1 (2026-10-17), S07's
        acceptance is the viewport readiness route; it recorded `T1.viewport-projection@1`

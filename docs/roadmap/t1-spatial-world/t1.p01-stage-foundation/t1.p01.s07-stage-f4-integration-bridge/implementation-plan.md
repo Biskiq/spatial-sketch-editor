@@ -1,6 +1,6 @@
 # T1.P01.S07 — Stage↔F4 integration bridge: implementation plan
 
-**Slice:** T1.P01.S07 · **Status:** accepted and shipped 2026-10-17 — owner-authorized 2026-10-17
+**Slice:** T1.P01.S07 · **Status:** accepted 2026-10-17, merge withheld — owner-authorized 2026-10-17
 (D1–D4, [record](../../../../reference/decisions/next-batch-authorization-2026-10-17.md)); the host
 wiring and the owner-approved AM-5 completion passed four review rounds and the complete gate at
 merge candidate `049e89f5`; PR #137's merge is withheld at the owner's instruction ·
@@ -168,6 +168,6 @@ The AM-5 increment is committed at `a67793e4` with review and approver fixes thr
 was reviewed in four rounds. The complete gate ran at merge candidate `049e89f5` (`origin/main`
 `279e1340` merged): check 0/0, arch 20/161, fast 130/1812, heavy 8/118, full 158/2091, build green,
 the four kernel checks green, and the DB-backed API suites 65 tests with zero skips on disposable
-PostgreSQL. The production build excludes every probe sentinel. S07 is therefore **accepted and
-shipped** and `viewport-projection-v1` is accepted; merge is withheld at the owner's instruction. See
+PostgreSQL. The production build excludes every probe sentinel. S07 is therefore **accepted** and
+`viewport-projection-v1` is accepted; merge is withheld at the owner's instruction. See
 [acceptance.md](./acceptance.md) for the criteria adjudication and remaining closeout step.
