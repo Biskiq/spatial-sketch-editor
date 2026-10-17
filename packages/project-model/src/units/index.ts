@@ -28,3 +28,6 @@ export * from './save';
 // dispatcher entry) is re-exported here so a host that opts into F.2 reaches one
 // unit-acceptance entry. It imports no unit module, so this stays acyclic.
 export { createUnitPlannerRegistry, createUnitTargetInspector, prepareUnitIntent, validateUnitTargets } from '../f4/unit-acceptance';
+// T3.P01.S06 — the shared Experience lowering, interpreter and semantic
+// companion. Appended: they read the same inactive envelope and activate with it.
+export * from './experience';

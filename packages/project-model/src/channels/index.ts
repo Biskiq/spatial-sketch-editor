@@ -17,7 +17,7 @@ export * from './validate';
 export * from './families';
 export * from './negotiate';
 export * from './camera-output';
-// T3.P01.S03 — the Follow/Look-through/Preview role half of `camera-handoff-v1`
-// over that protocol; guided/free ownership and session semantics are S03b.
+// T3.P01.S06 — the complete `camera-handoff-v1` over that protocol: guided/free
+// ownership, Follow/Look-through/Preview, return and stale-run cleanup.
 // Appended: barrels are append-only for the batch.
 export * from './handoff';
