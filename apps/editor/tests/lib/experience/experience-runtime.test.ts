@@ -130,6 +130,32 @@ describe('Experience lowering', () => {
 			code: 'unknown-guide'
 		});
 	});
+
+	it('refuses an order borrowed from a different Guide than the selected one', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						guides: [...base.guides, { id: 'guide-2', label: 'Reverse', stopIds: ['stop-2', 'stop-1'], entryStopId: 'stop-2' }]
+					}
+				]
+			}
+		});
+		// guide-2's sequence is authored, but not by the selected guide-1: mixing one
+		// Guide's entry with another Guide's order is the same second-authority defect
+		// as a hand-written sequence.
+		expect(
+			lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, guideId: 'guide-1', order: ['stop-2', 'stop-1'] })
+		).toMatchObject({ kind: 'refused', code: 'invalid-order' });
+		// The same sequence is accepted when it is guide-2's own authored order (the
+		// assertion is about the order claim, not about guide-2's binding coverage).
+		expect(
+			lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, guideId: 'guide-2', order: ['stop-2', 'stop-1'] })
+		).not.toMatchObject({ code: 'invalid-order' });
+	});
 });
 
 describe('Experience interpreter — occurrence, holds and continuation', () => {
@@ -228,6 +254,11 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		state = reduceExperience(withState, state, event('reset', {}, options), options).state;
 		expect(state.values.seen).toBe(true); // reset value
 		expect(state.visited).toHaveLength(1); // re-entered once
+		// Reset rewinds the same run: identity and epoch are the host's run identity,
+		// so a pending event for this run is still this run, not a resurrected one.
+		expect(state.runId).toBe('run-1');
+		expect(state.runEpoch).toBe(1);
+		expect(state.occurrenceId).toBe('run-1:stop-1:1');
 	});
 
 	it('replays the same event list to the same state', async () => {
@@ -285,6 +316,26 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(returned.state).toMatchObject({ stopId: 'stop-3', returnToStopId: null });
 	});
 
+	it('keeps the outer return obligation when a detour starts inside an excursion', async () => {
+		const lowered = await program();
+		const options: ExperienceInterpreterOptions = {
+			...OPTIONS,
+			detours: [
+				{ fromStopId: 'stop-1', toStopId: 'stop-2', returnToStopId: 'stop-1' },
+				{ fromStopId: 'stop-2', toStopId: 'stop-1', returnToStopId: 'stop-2' }
+			]
+		};
+		let state = reduceExperience(lowered, createExperienceRun(lowered, options), event('enter', {}, options), options).state;
+		state = reduceExperience(lowered, state, event('tick', { milliseconds: 500 }, options), options).state;
+		state = reduceExperience(lowered, state, event('navigate', { stopId: 'stop-2' }, options), options).state;
+		expect(state.returnToStopId).toBe('stop-1');
+		// The inner policy would owe stop-2, but the outer excursion is still owed:
+		// overwriting it would strand the run at the inner origin.
+		const nested = reduceExperience(lowered, state, event('navigate', { stopId: 'stop-1' }, options), options);
+		expect(nested.state.stopId).toBe('stop-1');
+		expect(nested.state.returnToStopId).toBe('stop-1');
+	});
+
 	it('resolves an explicit nonadjacent Stop continuation', async () => {
 		const base = await program();
 		const third = { ...base.stops[0]!, id: 'stop-3', holdSeconds: 0, continuation: { kind: 'end' as const } };
@@ -315,6 +366,26 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		expect(state.pendingContent).toEqual([]);
 	});
 
+	it('reports a selection from another Presentation instead of showing an empty panel', async () => {
+		const envelope = await experienceEnvelope();
+		const lowered = lowerExperienceProgram(envelope, {
+			...LOWERING_OPTIONS,
+			content: [
+				...LOWERING_OPTIONS.content,
+				{ presentationId: 'presentation-2', records: [{ id: 'content-2', text: 'The gallery.' }] }
+			]
+		});
+		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
+		// content-2 belongs to presentation-2; the entry arrival is presentation-1.
+		const selected: ExecutionProgram = {
+			...lowered.program,
+			lifecycle: [{ event: 'enter', guard: null, action: { kind: 'show-content', contentId: 'content-2' } }]
+		};
+		const entered = reduceExperience(selected, createExperienceRun(selected, OPTIONS), event('enter'));
+		expect(entered.state.panel?.content).toEqual([]);
+		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('content-2'))).toBe(true);
+	});
+
 	it('resolves a lifecycle continue after arrival, but never through a hold or Gate', async () => {
 		const base = await program();
 		const auto: ExecutionProgram = {
@@ -324,6 +395,14 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		// The entry occurrence holds, so its arrival cannot be continued by the action.
 		const held = reduceExperience(auto, createExperienceRun(auto, OPTIONS), event('enter'));
 		expect(held.state).toMatchObject({ stopId: 'stop-1', phase: 'holding' });
+		// A Gate is a prompt too: the same arrival action must not skip it once the
+		// hold has elapsed, and only an explicit Continue may proceed.
+		const gateOptions: ExperienceInterpreterOptions = { ...OPTIONS, gates: ['presentation-1'] };
+		const gated = reduceExperience(auto, createExperienceRun(auto, gateOptions), event('enter', {}, gateOptions), gateOptions);
+		const blocked = reduceExperience(auto, gated.state, event('tick', { milliseconds: 500 }, gateOptions), gateOptions);
+		expect(blocked.state).toMatchObject({ stopId: 'stop-1', phase: 'blocked', gated: true });
+		expect(blocked.state.visited).toHaveLength(1);
+		expect(blocked.effects).not.toContainEqual({ kind: 'completed' });
 		// A ready occurrence continues once, and the action is not replayed later.
 		const advanced = reduceExperience(auto, held.state, event('navigate', { stopId: 'stop-2' }));
 		expect(advanced.state.phase).toBe('completed');
@@ -341,6 +420,9 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		};
 		let state = reduceExperience(guarded, createExperienceRun(guarded, OPTIONS), event('enter')).state;
 		expect(state.values.seen).toBe(false);
+		// The guard is false, so the guarded action must not fire at all.
+		const skipped = reduceExperience(guarded, state, event('navigate', { stopId: 'stop-2' }));
+		expect(skipped.effects).not.toContainEqual({ kind: 'open-url', url: 'https://example.test/tour' });
 		state = reduceExperience(guarded, state, event('set-state', { stateId: 'seen', value: true })).state;
 		const opened = reduceExperience(guarded, state, event('navigate', { stopId: 'stop-2' }));
 		expect(opened.effects).toContainEqual({ kind: 'open-url', url: 'https://example.test/tour' });

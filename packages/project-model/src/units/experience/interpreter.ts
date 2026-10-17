@@ -17,7 +17,11 @@
  *   is rejected (`stale`) and can neither advance, complete nor clear the newer
  *   run;
  * - state is initialized once per run and reset explicitly, never on every
- *   arrival.
+ *   arrival. A `reset` rewinds the **same** run (`runId`/`runEpoch` unchanged)
+ *   to a fresh entry; starting a new run is the host's new-run path, not reset.
+ *
+ * `traveling`/`arrived` are reserved host phases: the interpreter reports an
+ * arrival as `ready`/`holding`/`blocked` and the host owns realization state.
  *
  * The reducer owns no authored source: a run is session state and is never
  * written back to the envelope.
@@ -34,7 +38,9 @@ import type {
 
 export type ExperienceRunPhase =
 	| 'ready'
+	/** Reserved for a host that realizes travel; the reducer never produces it. */
 	| 'traveling'
+	/** Reserved for a host that stages arrival; the reducer never produces it. */
 	| 'arrived'
 	| 'holding'
 	| 'blocked'
@@ -82,7 +88,6 @@ export type ExperienceRunState = {
 	readonly invocation: ProgramInvocation | null;
 	/** The origin a covered detour must return to, or `null`. */
 	readonly returnToStopId: string | null;
-	readonly pendingOpenUrl: string | null;
 	readonly lastEvent: ProgramEvent | null;
 };
 
@@ -171,7 +176,6 @@ export function createExperienceRun(
 		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
-		pendingOpenUrl: null,
 		lastEvent: null
 	};
 }
@@ -350,6 +354,12 @@ function arrive(
 	const selected = state.pendingContent.length === 0
 		? presentation.content
 		: presentation.content.filter((record) => state.pendingContent.includes(record.id));
+	// A selection that belongs to another Presentation cannot silently narrow this
+	// panel to nothing: the arrival still happens and the unconsumed selection is
+	// reported as a typed gap for the host/companion to explain.
+	const outsideSelection = state.pendingContent.filter(
+		(contentId) => !presentation.content.some((record) => record.id === contentId)
+	);
 	const panel: ExperiencePanel = {
 		presentationId: presentation.id,
 		title: presentation.label,
@@ -375,6 +385,14 @@ function arrive(
 		{ kind: 'camera', stopId, invocation: stop.invocation },
 		{ kind: 'panel', panel }
 	];
+	for (const contentId of outsideSelection) {
+		nextEffects.push({
+			kind: 'gap',
+			fromStopId: state.stopId,
+			toStopId: stopId,
+			message: `show-content selected "${contentId}", which Presentation "${presentation.id}" does not carry`
+		});
+	}
 	const actioned = applyLifecycle(program, base, 'arrival', nextEffects);
 	if (actioned.navigateTo !== null && actioned.navigateTo !== stopId) {
 		return arrive(program, actioned.state, actioned.navigateTo, options, nextEffects, true, depth + 1);
@@ -500,6 +518,12 @@ function navigate(
 ): ExperienceReduceResult {
 	if (stopById(program, stopId) === undefined) return ignored(state);
 	if (state.phase === 'completed' || state.phase === 'cancelled') return ignored(state);
+	// A detour inside an excursion would overwrite the outer return obligation and
+	// strand the run at the inner origin. The outer excursion wins: navigate to the
+// target but keep the obligation that is already owed.
+	if (state.returnToStopId !== null) {
+		return arrive(program, state, stopId, options, []);
+	}
 	const detour = (options.detours ?? []).find(
 		(entry) => entry.fromStopId === state.stopId && entry.toStopId === stopId
 	);
@@ -551,7 +575,6 @@ function resetRun(
 		pendingContent: [],
 		invocation: null,
 		returnToStopId: null,
-		pendingOpenUrl: null,
 		lastEvent: null
 	};
 	return enter(program, reset, options);
@@ -646,8 +669,10 @@ function applyAction(
 		case 'navigate-to':
 			return { state, navigateTo: action.stopId, continueRequested: false };
 		case 'open-url':
+			// The effect is the contract; there is no second state field a host could
+			// read and fire the URL again.
 			effects.push({ kind: 'open-url', url: action.url });
-			return { state: { ...state, pendingOpenUrl: action.url }, navigateTo: null, continueRequested: false };
+			return { state, navigateTo: null, continueRequested: false };
 		case 'continue':
 			// `continue` is resolved by the arrival that applied this action; on any
 			// other event (enter/complete/cancel) there is no occurrence to advance and

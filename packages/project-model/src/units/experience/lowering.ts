@@ -172,14 +172,19 @@ export function lowerExperienceProgram(
 		return refuse('unknown-guide', `this Experience carries no Guide "${options.guideId}"`);
 	}
 	if (options.order !== undefined) {
-		// An explicit order is a claim about the authored Guide, never a second
-		// editable sequence: it must match one Guide's stopIds exactly.
-		const authored = experience.guides.some((guide) =>
-			guide.stopIds.length === options.order!.length &&
-			guide.stopIds.every((stopId, index) => stopId === options.order![index])
-		);
+		// An explicit order is a claim about the **selected** authored Guide, never a
+		// second editable sequence: it must match that Guide's stopIds exactly. A
+		// sequence from another Guide would mix one Guide's entry with another's order.
+		const authored = selectedGuide !== null &&
+			selectedGuide.stopIds.length === options.order.length &&
+			selectedGuide.stopIds.every((stopId, index) => stopId === options.order![index]);
 		if (!authored) {
-			return refuse('invalid-order', 'the lowering order must equal an authored Guide\'s stopIds exactly; Experience order is authored, not supplied');
+			return refuse(
+				'invalid-order',
+				`the lowering order must equal the selected Guide${
+					selectedGuide === null ? '' : ` "${selectedGuide.id}"`
+				}'s authored stopIds exactly; supply its guideId and authored order, never a supplied sequence`
+			);
 		}
 	}
 	const order = [...(options.order ?? selectedGuide?.stopIds ?? [])];

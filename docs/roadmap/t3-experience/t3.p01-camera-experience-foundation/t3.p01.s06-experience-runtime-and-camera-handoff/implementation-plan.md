@@ -104,9 +104,10 @@ Two further inputs follow from the same ratified minimum. `ExperiencePresentatio
 content field, so lowering takes a closed presentation-content record set; and `ExecutionProgram@1`
 has no Gate or detour slot, so the interpreter takes them as policy. Gate and detour policy is
 **derived from the authored Experience** (`deriveExperienceRuntimePolicy`) and refuses a dangling
-identity; only presentation text has no authored home at all. All three are disclosed activation
-gaps for S04/T3.P02, not new formats, and none of them changes F2, the program codec or the Camera
-authority.
+identity; it is not an activation gap. Presentation text and the invocation bindings are the two
+disclosed activation gaps for S04/T3.P02, not new formats, and neither changes F2, the program codec
+or the Camera authority. An explicit lowering `order` must equal the **selected** Guide's authored
+`stopIds`; a sequence borrowed from another Guide refuses, so no caller can supply editorial order.
 
 The remaining lowering inputs — `state` declarations, `lifecycle` actions, `channels`/`capabilities`
 and invocation bindings — are **closed-fixture declarations only**. They exist so the runtime can be
@@ -160,5 +161,12 @@ record exact results in [acceptance.md](./acceptance.md):
   capability policy have no authored F2 home; they remain closed-fixture inputs, must not be
   host-authored, and need an authored home (or a deliberate profiles-only decision) before S04
   activation.
+- `reset` is a rewind of the **same** run (`runId`/`runEpoch` unchanged, fresh occurrence ids from
+  visit order), not a new run; starting a new run is the host's new-run path. This is the stated
+  host contract and is pinned by a trace.
+- `traveling`/`arrived` remain reserved phase names for a host that realizes travel and staging; the
+  reducer reports `ready`/`holding`/`blocked` and never produces either. S04 owns that host contract.
+- A `show-content` selection that names another Presentation's content is not a refusal: the arrival
+  happens with the matching content only and a typed `gap` effect explains the unconsumed id.
 - `camera-handoff-v1` is recorded at acceptance only with the whole role/ownership meaning; the
   partial module landed in PR #138 is not acceptance evidence on its own.
