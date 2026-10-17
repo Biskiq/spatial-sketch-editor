@@ -182,12 +182,18 @@ describe('Stage shell composition', () => {
 		// The click that follows pointerup still has to know how far the pointer travelled,
 		// so a normal ending **ends** the press decision while an interruption aborts it.
 		// Collapsing the two is how every drag came to select what it was dropped on.
-		const pointerUp = route.slice(route.indexOf('function onPointerUp()'));
+		const pointerUp = route.slice(route.indexOf('function onPointerUp('));
 		const pointerUpBody = pointerUp.slice(0, pointerUp.indexOf('}'));
-		expect(pointerUpBody).toContain('press.end()');
-		expect(pointerUpBody).not.toContain('press.abort()');
+		expect(pointerUpBody).toContain('press.end(event.pointerId)');
+		expect(pointerUpBody).not.toContain('press.abort(');
 		expect(route).toContain('press.decide(');
 		expect(route).toContain('createStagePressTracker()');
+
+		// Pointer ownership: a refused second pointer cannot end the holder's press, and its
+		// own click is marked so it cannot select either.
+		expect(route).toContain('press.refuse(event.pointerId)');
+		expect(route).toContain('press.owner() !== event.pointerId');
+		expect(route).toContain('press.abort(event.pointerId)');
 	});
 
 	it('measures the viewport in one place and never scales the stage with CSS', () => {

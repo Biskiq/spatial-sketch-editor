@@ -81,12 +81,12 @@ green. Both findings were real defects, and each is now pinned by a test that fa
    with behavioural ones, decomposition counts handed back to the Layout suites, the unknown-asset
    refusal made to name the asset, the older-format refusal added, and the consumer probes written.
 
-## Independent architecture review — two rounds (`eb0d94a`, then `7c801808`)
+## Independent architecture review — three rounds (`eb0d94a`, `7c801808`, and the round-three fixes)
 
-Two independent reviews ran against pushed revisions. Every finding was traced end to end — AM-5, the
-S02 plan, the seam contract, the suites — before anything changed; one round-one finding described a
-claim the implementation never supported, and one round-two finding was a regression the round-one
-fix introduced.
+Three independent reviews ran against pushed revisions. Every finding was traced end to end — AM-5,
+the S02 plan, the seam contract, the suites — before anything changed; one round-one finding described
+a claim the implementation never supported, and two later findings were regressions the preceding
+fixes introduced.
 
 | Finding | Verdict | Disposition |
 | --- | --- | --- |
@@ -96,6 +96,8 @@ fix introduced.
 | 4. Gesture policies stored, not executed | real: refusal ignored, cancellation leaked the lease | fixed |
 | 5. Drag could select what it was dropped on (round two) | real **regression**: the round-one `endGesture` cleared the press origin before `click` | fixed; event-sequence regression added |
 | 6. 3D Wall picking still used the Plan cut height (round two) | real: the face was built from the cut fragment, so the Wall above 1.2 m was unpickable | fixed; upper-Wall regression added |
+| 7. A fragment could answer for a sibling Wall span (round three) | real: each fragment tested the whole Wall, so an earlier span claimed a later one and returned its own `subRef` | fixed; multi-span correspondence + eligibility regression |
+| 8. A refused second pointer could end the first gesture (round three) | real: end/cancel ignored pointer ownership, releasing the holder's lease | fixed; two-pointer regression |
 
 ### 1. Plan display and the Plan cut — owner decision: reduced S02 contract approved
 
@@ -243,18 +245,60 @@ higher, then clicks at 85 % and 98 % of the Wall's height must resolve that Wall
 at the clicked height, and put it on the Wall's own span line (perpendicular offset < 5 cm). Restoring
 the cut-extent pick makes this test fail.
 
+### 7. Fragment correspondence on a multi-span Wall — real, fixed
+
+Round two's `pickSurfacesOf` read every solid span of a Wall from every fragment of that Wall. A
+Wall split by an Opening (or, in this compiler, by any of its sampled solid spans) therefore had
+fragments that could claim a *different* span's surface and report their own `interval`: clicking the
+second span returned the first span's sub-ref, and a span the Plan excluded stayed reachable through
+an eligible sibling.
+
+Fixed by making correspondence the first rule: a Wall fragment's pick surfaces are the compiled
+solid spans whose `startDistance`/`endDistance` equal the fragment's own `interval` (within 1e-6 m),
+keeping that span's full drawn height, so a lintel starts at the door head rather than at the datum.
+A fragment whose interval the compiled snapshot no longer emits is tested at its **own** line and full
+Wall height, never at a neighbour's span. Identity, streams and eligibility still come from the Plan.
+
+Test: `stage-facade` — "picks only the span its own fragment names, on a Wall split by an Opening"
+builds the enclosure with a real door through the retained opening planner, then (a) clicks every Wall
+placement's own midpoint at its own compiled span's mid-height and requires the returned `subRef` to
+equal that fragment's interval, and (b) excludes the farthest span with a lateral span and requires
+that its midpoint resolves `no-fragment`, with the excluded interval absent from the eligible set.
+Restoring the whole-Wall surfaces makes it fail with `[0, 0.25]` returned for the `[0.25, 0.5]` span.
+
+### 8. Pointer ownership of the gesture — real, fixed
+
+A refused second `pointerdown` was reported and ignored, but `pointerup`/`pointercancel` ended
+whatever gesture was live without asking which pointer it belonged to, so a second pointer's release
+could release the first pointer's lease; its later `click` could also reach the press decision.
+
+Fixed by giving the press tracker ownership: `begin` records the pointer, `end`/`abort` answer only
+for their own pointer, `refuse` marks a pointer whose lease was refused, and `decide` neither selects
+for a refused pointer nor consumes the owner's decision when another pointer's click arrives. The
+route passes `event.pointerId` at every transition, marks the pointer on a lease refusal, and gates
+`onLostPointerCapture` on the owning pointer.
+
+Test: `stage-input` — "keeps one pointer’s press when a second pointer is refused" (second pointer's
+`end` changes nothing, its click is refused without consuming the owner's decision, and the
+lease-refusal mark is honoured); `stage-shell-composition` holds the call sites (`press.end(event.pointerId)`,
+`press.refuse(event.pointerId)`, the owner guard on lost capture). Dropping the ownership check from
+`end` makes the two-pointer test fail.
+
 ### Verification of this revision
 
 The §7.4 contract, run on the merged tree these results describe (after those runs, only this record
 changed; the positive-control adjustment described below is included in them). Round-one results were
 measured at `90aa6729`; round two after merging `origin/main` = `94283377` (T3.P01.S02), zero
-behind-commits, `apps/editor` unless noted:
+behind-commits; round three on that same tree with no further merges. All figures below are the
+round-three re-run, `apps/editor` unless noted, and were produced with the workspace `vitest` binary
+the npm scripts invoke (the package manager's dependency verification cannot resolve the `@portfolio/*`
+workspace links against the public registry here, so it was bypassed rather than the scripts changed):
 
 ```text
-npm test                 151 files / 1,955 tests passed
+npm test                 151 files / 1,957 tests passed   (includes the heavy lane below)
 npm run test:arch         20 files /   161 tests passed
-npm run test:fast        123 files / 1,676 tests passed
-npm run test:heavy         8 files /   118 tests passed
+npm run test:fast        123 files / 1,678 tests passed
+npm run test:heavy         8 files /   118 tests passed   (covered by the full run above)
 npm run check             0 errors, 0 warnings
 npm run build             completed (@sveltejs/adapter-vercel)
 npm run check:layout-core / check:project-model / check:camera-core / check:api   clean
@@ -278,6 +322,7 @@ Browser observation (Vite dev server on the S02 checkout, starter-gallery boot, 
 - Picking was measured in the page against the production facade with the live document and its own evaluation (the attached preview webview does not composite, so `requestAnimationFrame` — and with it the route's per-frame evaluation — is starved; this is an environment limit, not a host behaviour, and the probe is why it is disclosed rather than claimed as a full UI pass). 3D: a mid-band click resolves `wall`, a lower click resolves `room-floor`, frame corners resolve `no-fragment`, which the datum-plane pick could not do (it named the floor under a Wall and resolved no Wall at all). Plan: the same facade reports `projection-kind: plan-orthographic` and resolves `room-floor`; no second renderer or transform appears.
 - The round-two upper-Wall case in the same page, on the starter document (3 m Walls, 1.2 m cut): the Wall's Plan fragment is a `cut` fragment at 1.2 m, a click there resolves `wall` at `y = 1.2`, a click at 90 % of the Wall's height resolves the same Wall at `y = 2.7`, and a click at 99 % resolves it at `y = 2.97`. Before this round the two upper clicks resolved nothing: the face stopped at the cut.
 - The Plan presentation is the orthographic reading of the same geometry: 105 fragments, membership `included` for all five sources, and Reveal has nothing to restore in the starter document. What a cut drawing does with excluded sources is the owner decision above (reduced contract approved; renderer unassigned).
+- The two round-three cases were not re-observed in the browser, and are not claimed as if they were: `onLostPointerCapture` and a refused second pointer need real multi-pointer capture input the webview does not produce, and the multi-span Wall case needs a door authored in the page. Both are pinned in `stage-input`, `stage-facade` and `stage-shell-composition`, including that removing the correspondence filter or the pointer-ownership check fails them.
 
 Limitations of this pass, stated as such: no full keyboard/screen-reader pass; the drag-versus-click
 and gesture-lifecycle sequences are pinned by tests at the state machine and call-site level rather

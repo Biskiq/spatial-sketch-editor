@@ -526,7 +526,9 @@
 	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
-	 * travelled, and an interruption has to stop that click from selecting.
+	 * travelled, and an interruption has to stop that click from selecting. It also
+	 * owns which pointer the press belongs to, so a second pointer cannot end the
+	 * first one's lease or select through its refused press.
 	 */
 	const press = createStagePressTracker();
 
@@ -543,11 +545,18 @@
 			policy: 'continue-after-revalidation'
 		});
 		if (acquisition.kind !== 'granted') {
+			// This pointer is not ours: record it so its click cannot select, and leave the
+			// holder's press and lease untouched.
+			press.refuse(event.pointerId);
 			notice = `The ${acquisition.owner} gesture owns the pointer; finish or cancel it first.`;
 			return;
 		}
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		press.begin({ x: event.clientX, y: event.clientY });
+		if (press.begin({ x: event.clientX, y: event.clientY }, event.pointerId) === 'refused') {
+			// Defensive: the lease said yes but the tracker already has a live press.
+			session.gesture()?.release();
+			return;
+		}
 		drag = { x: event.clientX, y: event.clientY, mode: event.button === 0 && !event.shiftKey ? 'pan' : 'orbit' };
 	}
 
@@ -592,33 +601,42 @@
 		endGesture();
 	}
 
-	function onPointerUp(): void {
+	function onPointerUp(event: PointerEvent): void {
 		// A normal ending: the click that follows decides by distance, so the press is
-		// ended, not aborted.
-		press.end();
+		// ended, not aborted. Only the owning pointer may end it — a refused second
+		// pointer's release must not release the first pointer's lease.
+		if (!press.end(event.pointerId)) return;
 		endGesture();
 	}
 
-	function onPointerCancel(): void {
+	function onPointerCancel(event: PointerEvent): void {
 		// The browser took the pointer back (touch interruption, a system gesture, the
 		// window losing focus). Without this the lease would stay held and the next
 		// stray move would pan with samples from a gesture the creator never finished.
-		abortGesture();
+		if (!press.abort(event.pointerId)) return;
+		endGesture();
 	}
 
-	function onLostPointerCapture(): void {
+	function onLostPointerCapture(event: PointerEvent): void {
 		// Capture is also released implicitly *after* a normal pointer up, and that click
 		// is still owed its drag decision. Losing it while the press is live is an
-		// interruption instead.
+		// interruption instead. A non-owning pointer's capture is not this gesture.
+		if (press.owner() !== event.pointerId) return;
 		if (drag !== null) abortGesture();
 		else endGesture();
+	}
+
+	/** A click's pointer id, when the event carries one (a `PointerEvent` click does). */
+	function pointerIdOf(event: MouseEvent): number | null {
+		const candidate = (event as MouseEvent & { readonly pointerId?: unknown }).pointerId;
+		return typeof candidate === 'number' ? candidate : null;
 	}
 
 	function onClick(event: MouseEvent): void {
 		// A pan or orbit drag ends with a click too; it moved the view, so it must not
 		// also select (or report that nothing was selectable). The decision is consumed
-		// here, after the pointer sequence has ended.
-		if (!press.decide({ x: event.clientX, y: event.clientY })) return;
+		// here, after the pointer sequence has ended, and only by the pointer it belongs to.
+		if (!press.decide({ x: event.clientX, y: event.clientY }, pointerIdOf(event))) return;
 		const stage = facade;
 		const id = stage?.evaluationId() ?? null;
 		if (stage === null || id === null || rect === null) return;

@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import {
 	createEmptyWallFirstLayoutDocument,
+	planCreateWallFirstOpening,
 	planWallChain,
 	type LayoutVec2
 } from '@portfolio/layout-core';
@@ -57,6 +58,22 @@ function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID
 		layout: plan.document,
 		scene: createEmptyWorldLocalSceneDocument()
 	};
+}
+
+/** The enclosure with one door opening, so its first Wall has two solid spans. */
+function enclosureWithDoor(): ProjectDocument {
+	const base = enclosureProject(STARTER_ENCLOSURE_POINTS);
+	const wallId = base.layout.walls[0]!.id;
+	const door = planCreateWallFirstOpening(base.layout, {
+		wallId,
+		kind: 'door',
+		offset: 0.5,
+		width: 1,
+		height: 2.1,
+		sillHeight: 0
+	});
+	if (door.kind !== 'success') throw new Error(`the door fixture no longer plans: ${door.rejection.code}`);
+	return { ...base, layout: door.document };
 }
 
 let revisionCounter = 0;
@@ -646,5 +663,94 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 			const perpendicular = Math.abs(offsetX * dz - offsetZ * dx) / length;
 			expect(perpendicular).toBeLessThan(0.05);
 		}
+	});
+
+	it('picks only the span its own fragment names, on a Wall split by an Opening', async () => {
+		const document = enclosureWithDoor();
+		const { facade } = await mount(document);
+		facade.acquireInspection('exclusive');
+		const bounds = facade.snapshot().domain.geometry.bounds;
+		expect(bounds).not.toBeNull();
+		if (bounds === null) return;
+		expect(
+			facade.requestViewingIntent(
+				{ kind: 'fit', bounds: { min: bounds.min, max: bounds.max }, rect: RECT },
+				facade.inspectionTicket(),
+				1
+			).kind
+		).toBe('accepted');
+		const id = evaluate(facade);
+		const datum = facade.snapshot().domain.datumMeters;
+		// The Wall the fixture's door sits in: its compiled spans include a lintel that
+		// starts at the door head instead of at the datum.
+		const splitWall = facade
+			.snapshot()
+			.domain.geometry.walls.find((wall) => wall.solidSpans.some((span) => span.bottomY > 0));
+		expect(splitWall).toBeDefined();
+		if (splitWall === undefined) return;
+		const wallId = splitWall.wallId;
+
+		// Every Wall placement is its own fragment with its own `interval`, and a Wall split
+		// by an Opening has several. Testing the whole Wall from every fragment let the
+		// first fragment answer for any other span and report its own sub-ref.
+		const spans = facade.eligibleFragments().filter((fragment) => fragment.ref.sourceId === wallId);
+		expect(spans.length).toBeGreaterThan(1);
+
+		const intervalOf = (fragment: (typeof spans)[number]): readonly [number, number] => {
+			if (fragment.ref.subRef?.kind !== 'interval') throw new Error('a Wall placement lost its interval');
+			return [fragment.ref.subRef.start, fragment.ref.subRef.end];
+		};
+		const midpointOf = (fragment: (typeof spans)[number]): [number, number] => {
+			const geometry = fragment.geometry;
+			if (geometry.kind !== 'span') throw new Error('a Wall placement is not a span');
+			return [(geometry.start[0] + geometry.end[0]) / 2, (geometry.start[1] + geometry.end[1]) / 2];
+		};
+		const compiledSpanOf = (fragment: (typeof spans)[number]) => {
+			const [start, end] = intervalOf(fragment);
+			return splitWall.solidSpans.find(
+				(span) => Math.abs(span.startDistance - start) < 1e-6 && Math.abs(span.endDistance - end) < 1e-6
+			);
+		};
+		const resolveAt = (point: readonly [number, number], height: number) => {
+			const projected = facade.projectWorld([point[0], height, point[1]], id);
+			expect(projected.kind).toBe('projected');
+			if (projected.kind !== 'projected') throw new Error('the probe did not project');
+			return facade.resolveSourceHit({ evaluationId: id, css: projected.css });
+		};
+
+		for (const fragment of spans) {
+			const span = compiledSpanOf(fragment);
+			expect(span, 'every Wall fragment names a compiled span').toBeDefined();
+			if (span === undefined) return;
+			const [x, z] = midpointOf(fragment);
+			const hit = resolveAt([x, z], datum + (span.bottomY + span.topY) / 2);
+			expect(hit.kind === 'resolved' ? hit.hit.sourceId : null).toBe(wallId);
+			if (hit.kind !== 'resolved' || hit.hit.subRef?.kind !== 'interval') return;
+			// The picked span's own identity: start and end of the span the pointer is on.
+			expect([hit.hit.subRef.start, hit.hit.subRef.end]).toEqual(intervalOf(fragment));
+		}
+
+		// Eligibility is per placement, not per source: a span the Plan excludes has no
+		// fragment, and no sibling fragment may reach its surface on its behalf.
+		const target = facade.camera.state().pose.target;
+		const distanceOf = (fragment: (typeof spans)[number]): number => {
+			const [x, z] = midpointOf(fragment);
+			return Math.hypot(x - target[0], z - target[2]);
+		};
+		const ordered = [...spans].sort((left, right) => distanceOf(left) - distanceOf(right));
+		const far = ordered[ordered.length - 1]!;
+		const halfWidth = (distanceOf(ordered[0]!) + distanceOf(far)) / 2;
+		facade.setPlanParameters({ lateralSpanHalfWidthMeters: halfWidth });
+
+		const visible = facade.eligibleFragments().filter((fragment) => fragment.ref.sourceId === wallId);
+		expect(visible.length).toBeGreaterThan(0);
+		expect(visible.some((fragment) => intervalOf(fragment).join(':') === intervalOf(far).join(':'))).toBe(false);
+
+		// The excluded span's own midpoint is not reachable through an included sibling.
+		const farSpan = compiledSpanOf(far);
+		const [farX, farZ] = midpointOf(far);
+		const farHeight = datum + ((farSpan?.bottomY ?? 0) + (farSpan?.topY ?? 0)) / 2;
+		const excluded = resolveAt([farX, farZ], farHeight);
+		expect(excluded).toEqual({ kind: 'none', reason: 'no-fragment' });
 	});
 });

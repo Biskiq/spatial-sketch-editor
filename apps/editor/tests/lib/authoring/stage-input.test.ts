@@ -163,29 +163,55 @@ describe('Stage input policy', () => {
 		// (which is what a "release the gesture" helper naturally does) made every pan
 		// and orbit select whatever sat under the release point.
 		const press = createStagePressTracker();
-		press.begin({ x: 100, y: 100 });
-		press.end();
-		expect(press.decide({ x: 260, y: 240 })).toBe(false);
+		press.begin({ x: 100, y: 100 }, 1);
+		press.end(1);
+		expect(press.decide({ x: 260, y: 240 }, 1)).toBe(false);
 
 		// A plain click at the same place still selects: the tolerance is unchanged.
-		press.begin({ x: 100, y: 100 });
-		press.end();
-		expect(press.decide({ x: 103, y: 102 })).toBe(true);
+		press.begin({ x: 100, y: 100 }, 1);
+		press.end(1);
+		expect(press.decide({ x: 103, y: 102 }, 1)).toBe(true);
 
 		// One press authorizes at most one click; a second click is judged on its own.
-		press.begin({ x: 300, y: 300 });
-		press.end();
-		expect(press.decide({ x: 300, y: 300 })).toBe(true);
-		expect(press.decide({ x: 300, y: 300 })).toBe(true);
+		press.begin({ x: 300, y: 300 }, 1);
+		press.end(1);
+		expect(press.decide({ x: 300, y: 300 }, 1)).toBe(true);
+		expect(press.decide({ x: 300, y: 300 }, 1)).toBe(true);
 
 		// An interruption — pointer cancel, capture lost while down, Escape, a policy
 		// cancel — ends the press and refuses the click the browser may still dispatch.
-		press.begin({ x: 100, y: 100 });
+		press.begin({ x: 100, y: 100 }, 1);
 		press.abort();
-		expect(press.decide({ x: 100, y: 100 })).toBe(false);
+		expect(press.decide({ x: 100, y: 100 }, 1)).toBe(false);
 		// …and that refusal is spent, not sticky: the next press selects normally.
-		press.begin({ x: 100, y: 100 });
-		press.end();
-		expect(press.decide({ x: 100, y: 100 })).toBe(true);
+		press.begin({ x: 100, y: 100 }, 1);
+		press.end(1);
+		expect(press.decide({ x: 100, y: 100 }, 1)).toBe(true);
+	});
+
+	it('keeps one pointer\u2019s press when a second pointer is refused', () => {
+		// A second finger landing on the Stage is refused the gesture lease; before this it
+		// could still end the first pointer's press (releasing its lease) and its click
+		// could reach the same decision, selecting through a press it never owned.
+		const press = createStagePressTracker();
+		expect(press.begin({ x: 100, y: 100 }, 1)).toBe('owned');
+		expect(press.begin({ x: 400, y: 120 }, 2)).toBe('refused');
+		expect(press.owner()).toBe(1);
+
+		// The second pointer going up must not end the first one's press.
+		expect(press.end(2)).toBe(false);
+		expect(press.owner()).toBe(1);
+
+		// Its click is refused outright, and does not consume the first pointer's decision.
+		expect(press.decide({ x: 400, y: 120 }, 2)).toBe(false);
+		// The owner's own drag is still suppressed by distance.
+		expect(press.decide({ x: 400, y: 120 }, 1)).toBe(false);
+
+		// The lease-refusal path marks a pointer too, without ever granting it a press.
+		press.begin({ x: 10, y: 10 }, 3);
+		press.refuse(4);
+		expect(press.end(3)).toBe(true);
+		expect(press.decide({ x: 10, y: 10 }, 4)).toBe(false);
+		expect(press.decide({ x: 10, y: 10 }, 3)).toBe(true);
 	});
 });

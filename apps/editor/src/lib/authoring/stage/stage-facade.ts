@@ -333,6 +333,13 @@ function planSegments(geometry: PlanFragmentGeometry): (readonly [LayoutVec2, La
 	return segments;
 }
 
+/** Two compiled distances that name the same place, allowing for float round-off. */
+const SPAN_INTERVAL_EPSILON_METERS = 1e-6;
+
+function sameSpanDistance(left: number, right: number): boolean {
+	return Math.abs(left - right) <= SPAN_INTERVAL_EPSILON_METERS;
+}
+
 /**
  * The surfaces one fragment is **drawn** as.
  *
@@ -358,19 +365,36 @@ function pickSurfacesOf(
 	if (fragment.ref.sourceKind !== 'wall') return [flat];
 	const wall = geometry.walls.find((candidate) => candidate.wallId === fragment.ref.sourceId);
 	if (wall === undefined) return [flat];
-	const spans = [...wall.solidSpans].sort((left, right) => left.startDistance - right.startDistance);
-	if (spans.length === 0) {
-		// No compiled span to test: the Wall's own height over the fragment's line is the
-		// honest face, never a shorter one inferred from the cut.
-		return planSegments(fragment.geometry).map(([start, end]) => ({
+	const faceAtWallHeight = (): readonly StagePickSurface[] =>
+		planSegments(fragment.geometry).map(([start, end]) => ({
 			kind: 'face' as const,
 			start,
 			end,
 			bottomMeters: datumMeters,
 			topMeters: datumMeters + wall.height
 		}));
+
+	// **Correspondence first.** A Wall fragment names one compiled span through its
+	// `interval` subRef, and a Wall split by an Opening has several. Testing the whole
+	// Wall from every fragment let an earlier fragment answer for a later span and
+	// report *its* interval, and made a span the Plan excluded reachable through a
+	// sibling that was still eligible. Only the named span becomes this fragment's
+	// pick surface, at that span's own drawn height (a lintel starts where the Opening
+	// ends, not at the datum).
+	const interval = fragment.ref.subRef?.kind === 'interval' ? fragment.ref.subRef : null;
+	if (interval === null) return faceAtWallHeight();
+	const matching = wall.solidSpans.filter(
+		(span) =>
+			sameSpanDistance(span.startDistance, interval.start) &&
+			sameSpanDistance(span.endDistance, interval.end)
+	);
+	if (matching.length === 0) {
+		// A fragment whose interval the compiled snapshot no longer emits is tested at its
+		// own line and full Wall height — never at a neighbour's span, which would answer
+		// for a place this fragment does not name.
+		return faceAtWallHeight();
 	}
-	return spans.map((span) => ({
+	return matching.map((span) => ({
 		kind: 'face' as const,
 		start: span.start,
 		end: span.end,
