@@ -21,7 +21,7 @@ This record holds implementation evidence for independent review. It is **not** 
 | Branch | `T3-P01-S02` |
 | PR | [#133](https://github.com/Biskiq/spatial-sketch-editor/pull/133) |
 | Base | post-PR #132 `main` (`74367936ea0cb1754c45021c4f10ca69b17ca7b0`) |
-| Tested code revision | `fd3c55ec1e2e236259a7934222ca5257098012d2` (implementation + tests, including the review and P1 follow-up fixes) |
+| Tested code revision | `8dd53260d4ba1545ef2977612d78a00f80d8d393` (implementation + tests, including the review and both P1 follow-ups) |
 | Evidence docs | the commit after the tested revision: this record only, no product change |
 | Runtime | macOS (aarch64), Node `v26.7.0` |
 | Database | PostgreSQL `14.19` (Homebrew), local database `biskiq_s02`, migrations applied twice |
@@ -36,19 +36,19 @@ remote/production database. No production or preview environment was touched.
 | `npm run check:project-model` | pass (tsc, no errors) |
 | `npm run check:api` | pass (tsc, no errors) |
 | `npm run check` | pass (`svelte-check`, 0 errors / 0 warnings) |
-| `npx vitest run` on the six new editor suites | 6 files / **38 tests** pass |
+| `npx vitest run` on the six new editor suites | 6 files / **39 tests** pass |
 | `npm run test:arch` | 18 files / **151 tests pass** |
-| `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1855 tests pass** |
+| `npx vitest run --maxWorkers=1` (the complete default config) | 140 files / **1856 tests pass** |
+| `npm test` (the same complete config, default workers) | 140 files / **1856 tests pass** |
 | `DATABASE_URL=postgresql://localhost:5432/biskiq_s02 npm run test:api` | **53 tests pass, 0 failed, 0 skipped** |
 | `psql -f migrations/004-conditional-save.sql` twice on the migrated schema | both exit 0, one constraint |
 
 The full editor suite includes the heavy lane (`test:heavy` members run in the default config). At
-the tested revision, plain `npm test` reached **1854/1855** and failed only on the **pre-existing 5 s
-timeout** of `camera-output-conformance.test.ts` (10.5 s) — a file this slice does not touch —
-while the host was heavily loaded; an earlier run also caught `p23b11-conditional-gate.test.ts`
-(8.7 s) the same way. The same command was fully green earlier in the slice at `f2fe1650`
-(1844/1844). The complete suite was therefore run with one worker (`npx vitest run
---maxWorkers=1`, same config, assertions and timeouts) and passed **1855/1855**. No test was skipped, narrowed or given a longer timeout. The
+the tested revision, plain `npm test` passed **1856/1856**. Earlier in the slice the same command
+intermittently failed only on **pre-existing 5 s timeouts** in files this slice does not touch
+(`camera-output-conformance.test.ts`, 7.8–10.5 s; `p23b11-conditional-gate.test.ts`, 8.7 s) while
+the host was heavily loaded, which is why the gate is also run with one worker (`npx vitest run
+--maxWorkers=1`, same config, assertions and timeouts): **1856/1856**. No test was skipped, narrowed or given a longer timeout. The
 API command is the DB-backed `test:api` lane; its zero-skip output is the concurrency/failure
 evidence, not a mock.
 
@@ -78,7 +78,7 @@ evidence, not a mock.
 rows, owner isolation, additive `GET` metadata, stale-token conflict, malformed/invalid/mismatched/
 oversized request distinction, and a payload just under 2 MiB.
 
-### Client Save state — `apps/editor/tests/lib/authoring/save-state.test.ts` (15 tests)
+### Client Save state — `apps/editor/tests/lib/authoring/save-state.test.ts` (16 tests)
 
 Driven by a real `createAcceptanceCoordinator` and the current-source adapter:
 
@@ -100,8 +100,9 @@ Driven by a real `createAcceptanceCoordinator` and the current-source adapter:
   a non-retryable `server` error instead of being adopted;
 - a conflict load only ever fills the conflict that requested it, never a newer one that captured
   the same bytes;
-- a conflict's JSON offer is the **current** local source, so an edit made during the Save is what
-  the user can keep, and its digest describes the same bytes;
+- a conflict's JSON offer is the **current** local source at snapshot time — an edit made during the
+  Save *and* an edit made after the conflict was detected are both what the user can keep, with a
+  digest that describes the same bytes, while the remote offer and the conflict's lifetime stay put;
 - a new Save while a network-ambiguous capture is unresolved answers `unresolved`, sends nothing and
   keeps the capture; `retry()` then settles it through its receipt before newer contents save under
   a fresh operation ID.
@@ -185,6 +186,7 @@ regression tests failed on the reviewed head and pass at `fd3c55ec`.
 | --- | --- | --- |
 | A conflict's recovery offer captured the in-flight bytes while local work had moved on, so the JSON the Head would hand the user was stale and its digest described a different source | Edit during an in-flight Save, then answer `conflict`: `localJson` was the captured bytes, `localSourceContentId` the newer source's digest | Fixed: the offer reads the current source and pairs it with its own digest. AM-4's "conflicts preserve local work/history" now holds for edits made during the Save. History is untouched, reload stays explicit. |
 | After a network-ambiguous Save, a new Save with changed contents minted a fresh operation and overwrote the retained capture, discarding the receipt that could still decide whether the earlier write landed | Retryable error, edit, then `save()`: the transport was called with a new operation ID and `pending` was replaced | Fixed: `save()` answers `unresolved` while the retained capture no longer matches, so `retry()` resolves the ambiguity first; identical contents still reuse the operation and its receipt. An in-flight Save still answers `busy`. |
+| Edits made *after* the conflict was detected were absent from the recovery download: the offer was captured once at detection | Conflict, then `acceptEdit`, then `getSnapshot()`: `conflict.localJson` still returned the detection-time bytes | Fixed: the snapshot derives the local side from the current source on every read, so the download is the newest work. The remote side and the conflict's lifetime are unchanged — `reloadRemote()` returns the same offer and the conflict still ends only through reload or a new Save. |
 
 Both fixes are within the ratified contract: receipt idempotency, the conditional write, local
 history and explicit conflict resolution are unchanged, and no server, protocol or migration file
