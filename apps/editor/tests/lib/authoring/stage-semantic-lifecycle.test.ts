@@ -137,13 +137,24 @@ describe('Stage lens exit and explicit task Resume', () => {
 		expect(session.taskLifecycle()?.status).toBe('inactive');
 		expect(session.task()).toBeNull();
 	});
-	it('does not overwrite a task a canceller deliberately opened', async () => {
+	it('keeps a canceller\'s replacement task but parks it in the departing lens', async () => {
 		const { stage, session, scene } = await mount();
 		stage.registerStageAdapter({ id: 'scene-task', tasks: [{ id: 'scene', taskKind: 'scene', label: 'Scene task', target: scene() }] });
 		stage.openContributedTask('scene', 'scene-task');
-		session.writers().register('task', session.token(), () => { session.openTask({ kind: 'replacement', label: 'Replacement task', targetRef: null }); });
+		let lateWriters = 0;
+		session.writers().register('task', session.token(), () => {
+			// A reentrant canceller: opens a task and registers a writer for it while
+			// the transition is still running.
+			session.openTask({ kind: 'replacement', label: 'Replacement task', targetRef: null });
+			session.writers().register('task', session.token(), () => { lateWriters += 1; });
+		});
 		expect(stage.changeLens('experience')).toBe(true);
-		expect(session.taskLifecycle()).toMatchObject({ status: 'active', task: { kind: 'replacement' } });
+		// The deliberate replacement survives, owns the departing lens, and is parked
+		// instead of becoming an active task in the destination lens.
+		expect(session.taskLifecycle()).toMatchObject({ status: 'inactive', task: { kind: 'replacement' } });
+		expect(lateWriters).toBe(1);
+		expect(session.lens()).toBe('experience');
+		expect(stage.resumeTask()).toMatchObject({ kind: 'refused', code: 'wrong-lens' });
 	});
 	it('reports no cleared selection when nothing was selected', async () => {
 		const { stage, edit } = await mount();

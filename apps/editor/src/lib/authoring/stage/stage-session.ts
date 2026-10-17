@@ -415,6 +415,19 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 				task = parked;
 				taskStatus = 'inactive';
 			}
+			// Reentrancy: a cancellation callback may have opened a task while this
+			// transition was still departing the old lens. That replacement is kept,
+			// but a task belongs to the lens it was opened for — one opened for the
+			// departing lens is parked and its writers are cancelled here, so it can
+			// never be active (or keep writing) in the destination lens. `openTask`
+			// still sees the departing lens, so a canceller that has not itself
+			// completed the transition always lands here. The equality case is left
+			// alone for a canceller that changed lens itself first, so a future
+			// ordering change cannot silently leave an unowned task active.
+			if (task !== null && taskStatus === 'active' && (task.lens ?? 'world') !== next) {
+				taskStatus = 'inactive';
+				cancelTaskWriters();
+			}
 			lens = next;
 			return true;
 		},
