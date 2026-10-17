@@ -5,8 +5,9 @@ registered and owner-authorized the same day as `T3.P01.S05` and `T3.P01.S06`**
 ([record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)). This
 document records the decision to divide S03's remaining obligations into two registered slices; it
 does **not** accept any capability or close S03. The
-[implementation plan](./implementation-plan.md#scope) requires the implementer to propose a
-registered split rather than silently narrow a criterion.
+[implementation plan](./implementation-plan.md) required the implementer to propose a registered
+split rather than silently narrow a criterion; its original scope is preserved at the closeout anchor
+and reconciled in [the acceptance record](./acceptance.md#criterion-reconciliation).
 
 **Slice:** T3.P01.S03 · **Phase:** [T3.P01](../README.md) · **Track:** [T3](../../README.md)
 **Authorizing record:** [2026-10-17 next batch](../../../../reference/decisions/next-batch-authorization-2026-10-17.md) (D5)
@@ -130,8 +131,9 @@ registered with numeric ids in the [T3.P01 slice register](../README.md#slice-re
 handoff**, with plans and acceptance stubs written at registration. The authorization provenance is
 [the follow-up record](../../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md).
 The capability allocation moves `unit-acceptance-v1`/`conditional-save-units-v1` to S05 and
-`camera-handoff-v1` to S06; their prerequisite sets are unchanged. S03 stays the in-progress umbrella
-and closes only after both halves are accepted and its original exit criteria are reconciled.
+`camera-handoff-v1` to S06; their prerequisite sets are unchanged. S03 stayed the in-progress umbrella
+and closed on 2026-10-17, after both halves were accepted and shipped (PR #140 and PR #141) and its
+original exit criteria were [reconciled](./acceptance.md).
 
 ## Explicit non-implications
 
