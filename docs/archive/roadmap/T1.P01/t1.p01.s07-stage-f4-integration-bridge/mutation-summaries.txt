@@ -1,0 +1,200 @@
+factory
+
+ RUN  v3.2.7 /private/tmp/pr137-integration-20261017/apps/editor
+
+ ❯ tests/lib/authoring/stage-host-acceptance.test.ts (33 tests | 1 failed) 101ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > mounts an external domain factory with planner registration, submission and live UI contributions 26ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > dispatches duplicate Find and task ids through the owning adapter 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > refuses retained adapter mutations after the shared session mounts a new epoch 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > refuses captured factory projection after navigation changes the rendered evaluation 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > finishes accepted rebind and teardown when one binding disposer throws 3ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > installs one real accepted change, keeps the pose, rebinds adapters once and requalifies the selection 3ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > undoes and redoes across Layout and Scene accepts through host commands 7ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > reports Undo as unavailable with its reason before anything is accepted 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > returns the actual fresh replacement epoch when the requested epoch was already used 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > preserves the subject-retired reason through a real accepted deletion 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > starts a new baseline on replacement and refuses a prior-epoch completion 3ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > publishes contributed tasks, Find entries and Card facts with their registration 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > mounts a contributed instrument in the one host and echoes the requalified selection once 3ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > refuses an adapter that requires a capability this host does not provide 1ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > moves a surviving subject to the corresponding identity and generation 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears a retired subject with a reason instead of retargeting by proximity 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears when the change carries no correspondence for the subject 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > does not requalify onto a subject in another kind that shares the id 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears when the corresponding subject changed kind or owner 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > finds a matching component correspondence after a subject-level entry 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > does not keep a selected component through a subject-level correspondence entry 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears an interval-qualified selection when the subject moves to another identity 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears a component-qualified selection when the component does not survive 0ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > reports Undo as unavailable while a proposal is live, and the command agrees 3ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > refuses an accept that was in flight when the project was replaced 2ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > reverses a committed acceptance when the Stage refuses the install 6ms
+   × T1.P01.S07 — live-proposal state, epoch races and install refusal > unregisters the current factory binding exactly once after repeated rebinds 15ms
+     → expected [ 1, 2 ] to deeply equal [ 1, 2, 3 ]
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > preserves the exact F4 baseline and live Stage when replacement fails Stage admission 6ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > creates no history for navigation, reading changes, selection or focus 1ms
+   ✓ T1.P01.S07 — contribution surface signal > signals on registration and disposal, and not on an identical-content install 1ms
+   ✓ T1.P01.S07 — contribution surface signal > delivers the surviving selection to a static binding after an install 3ms
+   ✓ T1.P01.S07 — contribution surface signal > never notifies from the read that rebuilds a binding, and coalesces once 3ms
+   ✓ T1.P01.S07 — mutation controls > fails the acceptance assertions when the selection is cleared instead of requalified 6ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 32 passed (33)
+   Start at  14:39:44
+   Duration  1.20s (transform 607ms, setup 0ms, collect 840ms, tests 101ms, environment 0ms, prepare 69ms)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lib/authoring/stage-host-acceptance.test.ts > T1.P01.S07 — live-proposal state, epoch races and install refusal > unregisters the current factory binding exactly once after repeated rebinds
+AssertionError: expected [ 1, 2 ] to deeply equal [ 1, 2, 3 ]
+
+- Expected
++ Received
+
+  [
+    1,
+    2,
+-   3,
+  ]
+
+ ❯ tests/lib/authoring/stage-host-acceptance.test.ts:929:20
+    927|   registration.dispose();
+    928|   registration.dispose();
+    929|   expect(disposed).toEqual([1, 2, 3]);
+       |                    ^
+    930|   // Reusing an id must not give an old registration power over the ne…
+    931|   facade.registerStageAdapter({ id: 'lifecycle', dispose: () => dispos…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+
+replacement
+
+ RUN  v3.2.7 /private/tmp/pr137-integration-20261017/apps/editor
+
+ ❯ tests/lib/authoring/stage-host-acceptance.test.ts (33 tests | 1 failed) 69ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > mounts an external domain factory with planner registration, submission and live UI contributions 19ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > dispatches duplicate Find and task ids through the owning adapter 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > refuses retained adapter mutations after the shared session mounts a new epoch 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > refuses captured factory projection after navigation changes the rendered evaluation 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > finishes accepted rebind and teardown when one binding disposer throws 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > installs one real accepted change, keeps the pose, rebinds adapters once and requalifies the selection 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > undoes and redoes across Layout and Scene accepts through host commands 6ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > reports Undo as unavailable with its reason before anything is accepted 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > returns the actual fresh replacement epoch when the requested epoch was already used 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > preserves the subject-retired reason through a real accepted deletion 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > starts a new baseline on replacement and refuses a prior-epoch completion 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > publishes contributed tasks, Find entries and Card facts with their registration 1ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > mounts a contributed instrument in the one host and echoes the requalified selection once 2ms
+   ✓ T1.P01.S07 — host↔F4 acceptance wiring > refuses an adapter that requires a capability this host does not provide 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > moves a surviving subject to the corresponding identity and generation 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears a retired subject with a reason instead of retargeting by proximity 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears when the change carries no correspondence for the subject 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > does not requalify onto a subject in another kind that shares the id 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears when the corresponding subject changed kind or owner 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > finds a matching component correspondence after a subject-level entry 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > does not keep a selected component through a subject-level correspondence entry 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears an interval-qualified selection when the subject moves to another identity 0ms
+   ✓ T1.P01.S07 — selection requalification through accepted correspondence > clears a component-qualified selection when the component does not survive 0ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > reports Undo as unavailable while a proposal is live, and the command agrees 2ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > refuses an accept that was in flight when the project was replaced 1ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > reverses a committed acceptance when the Stage refuses the install 2ms
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > unregisters the current factory binding exactly once after repeated rebinds 2ms
+   × T1.P01.S07 — live-proposal state, epoch races and install refusal > preserves the exact F4 baseline and live Stage when replacement fails Stage admission 9ms
+     → expected { source: { …(4) }, …(6) } to be { source: { …(4) }, …(6) } // Object.is equality
+   ✓ T1.P01.S07 — live-proposal state, epoch races and install refusal > creates no history for navigation, reading changes, selection or focus 1ms
+   ✓ T1.P01.S07 — contribution surface signal > signals on registration and disposal, and not on an identical-content install 1ms
+   ✓ T1.P01.S07 — contribution surface signal > delivers the surviving selection to a static binding after an install 1ms
+   ✓ T1.P01.S07 — contribution surface signal > never notifies from the read that rebuilds a binding, and coalesces once 1ms
+   ✓ T1.P01.S07 — mutation controls > fails the acceptance assertions when the selection is cleared instead of requalified 5ms
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 32 passed (33)
+   Start at  14:39:46
+   Duration  1.18s (transform 640ms, setup 0ms, collect 877ms, tests 69ms, environment 0ms, prepare 55ms)
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/lib/authoring/stage-host-acceptance.test.ts > T1.P01.S07 — live-proposal state, epoch races and install refusal > preserves the exact F4 baseline and live Stage when replacement fails Stage admission
+AssertionError: expected { source: { …(4) }, …(6) } to be { source: { …(4) }, …(6) } // Object.is equality
+
+- Expected
++ Received
+
+@@ -128,59 +128,15 @@
+        }
+      ]
+    }
+  }
+  ",
+-   "correspondence": [
+-     {
+-       "after": {
+-         "capabilityId": null,
+-         "componentId": null,
+-         "domain": "layout",
+-         "instancePath": [],
+-         "location": {
+-           "kind": "layout-location",
+-           "levelId": "floor",
+-           "structureInstancePath": [],
+-         },
++   "correspondence": [],
++   "operationId": "project-replacement",
+    "revision": {
+-           "contentRevision": "sha256-23e15c0acc334c5e23a52fd3441e5b46aaa711f7254ef48e6d9ec0ac0fb002d3",
+-           "kind": "exact",
+-         },
+-         "subject": {
+-           "id": "layout-object-1",
+-           "kind": "object",
+-         },
+-         "version": 1,
+-       },
+-       "before": {
+-         "capabilityId": null,
+-         "componentId": null,
+-         "domain": "layout",
+-         "instancePath": [],
+-         "location": {
+-           "kind": "layout-location",
+-           "levelId": "floor",
+-           "structureInstancePath": [],
+-         },
+-         "revision": {
+-           "contentRevision": "sha256-0d368e8be87d57117cea8af17a944ae158743b76478c699b4c078fa81e4f3f6e",
+-           "kind": "exact",
+-         },
+-         "subject": {
+-           "id": "layout-object-1",
+-           "kind": "object",
+-         },
+-         "version": 1,
+-       },
+-       "relation": "preserved",
+-     },
+-   ],
+-   "operationId": "before-failed-replace",
+-   "revision": {
+-     "projectId": "project-conformance",
+-     "revisionId": "4afbc352-90a3-4d7e-b8bc-ea40e02ee883",
++     "projectId": "wrong-project",
++     "revisionId": "failed-replacement",
+    },
+    "source": {
+      "id": "project-conformance",
+      "layout": {
+        "floor": {
+
+ ❯ tests/lib/authoring/stage-host-acceptance.test.ts:960:40
+    958|    revision: { projectId: 'wrong-project', revisionId: 'failed-replace…
+    959|    sessionEpoch: 'failed-replacement-epoch' })).toMatchObject({ kind: …
+    960|   expect(host.coordinator().current()).toBe(current);
+       |                                        ^
+    961|   expect(host.coordinator().sessionEpoch()).toBe(epoch);
+    962|   expect(host.coordinator().installs()).toBe(installs);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯

@@ -1,0 +1,128 @@
+# T1.P01.S07 review rounds — raw check summaries (2026-10-17)
+
+Final code tree: `933bf285` on `T1-P01-S07` (`a67793e4` + `4127b63f` + `4c831fc5` + `933bf285`; base `bbc1203a`).
+Each command was run from the repository root, after the last source edit, in the order shown.
+
+```
+$ npm run check
+> @portfolio/editor@0.1.0 check
+> svelte-kit sync && svelte-check --tsconfig ./tsconfig.json
+Loading svelte-check in workspace: /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/apps/editor
+Getting Svelte diagnostics...
+svelte-check found 0 errors and 0 warnings
+```
+
+```
+$ npm run test:arch
+ ✓ tests/lib/visitor/visitor-runtime-state.test.ts (4 tests) 3ms
+ Test Files  20 passed (20)
+      Tests  161 passed (161)
+   Start at  16:48:27
+   Duration  2.46s (transform 2.01s, setup 0ms, collect 6.36s, tests 3.73s, environment 2ms, prepare 1.31s)
+```
+
+```
+$ npm run test:fast
+ ✓ tests/lib/authoring/save-admission-parity.test.ts (1 test) 2ms
+ Test Files  127 passed (127)
+      Tests  1765 passed (1765)
+   Start at  16:48:31
+   Duration  15.24s (transform 4.95s, setup 0ms, collect 38.11s, tests 34.34s, environment 19ms, prepare 8.59s)
+```
+
+```
+$ npm run test:heavy
+   ✓ normalize-asset.sh (P24A.1 pipeline fixture) > leaves a pre-existing destination unchanged when normalization fails  496ms
+ Test Files  8 passed (8)
+      Tests  118 passed (118)
+   Start at  16:48:47
+   Duration  13.32s (transform 1.23s, setup 0ms, collect 4.27s, tests 50.54s, environment 4ms, prepare 651ms)
+```
+
+```
+$ npm run test
+ ✓ tests/config/lane-membership.test.ts (3 tests) 6ms
+ Test Files  155 passed (155)
+      Tests  2044 passed (2044)
+   Start at  16:49:01
+   Duration  26.04s (transform 5.17s, setup 0ms, collect 41.53s, tests 94.45s, environment 30ms, prepare 10.83s)
+```
+
+```
+$ npm run build
+.svelte-kit/output/server/index.js                                                   130.97 kB
+✓ built in 5.92s
+Run npm run preview to preview your production build locally.
+> Using @sveltejs/adapter-vercel
+  ✔ done
+```
+
+```
+$ npm run check:layout-core
+> personal-portfolios@0.1.0 check:layout-core
+> npm run check -w @portfolio/layout-core
+> @portfolio/layout-core@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+```
+
+```
+$ npm run check:project-model
+> personal-portfolios@0.1.0 check:project-model
+> npm run check -w @portfolio/project-model
+> @portfolio/project-model@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+```
+
+```
+$ npm run check:camera-core
+> personal-portfolios@0.1.0 check:camera-core
+> npm run check -w @portfolio/camera-core
+> @portfolio/camera-core@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+```
+
+```
+$ npm run check:api
+> personal-portfolios@0.1.0 check:api
+> npm run check -w @biskiq/api
+> @biskiq/api@0.1.0 check
+> tsc -p tsconfig.json --noEmit
+```
+
+Whitespace, per commit of the increment (`git show --check --oneline <sha>`):
+
+```
+$ git show --check --oneline a67793e4
+a67793e4 feat(stage): complete the AM-5 accepted read, selection and lens lifecycle
+no whitespace errors
+```
+
+```
+$ git show --check --oneline 4127b63f
+4127b63f fix(stage): close the review findings on task lifetime, identity and overlap
+no whitespace errors
+```
+
+```
+$ git show --check --oneline 95fff696
+95fff696 docs(stage): record the AM-5 review round and re-scope its claims
+docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/check-summaries-review.txt:105: new blank line at EOF.
+```
+
+```
+$ git show --check --oneline 4c831fc5
+4c831fc5 fix(stage): hold the parked task and only report a real selection clear
+no whitespace errors
+```
+
+```
+$ git show --check --oneline 308c6659
+308c6659 docs(stage): reconcile the AM-5 records with the second review round
+no whitespace errors
+```
+
+```
+$ git show --check --oneline 933bf285
+933bf285 fix(stage): keep a replacement task when the parked one is held
+no whitespace errors
+```

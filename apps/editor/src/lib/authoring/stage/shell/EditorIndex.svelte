@@ -25,12 +25,14 @@
 		open,
 		onToggle,
 		groups,
+		contributions = [],
 		selectionId,
 		query,
 		onQuery,
 		onSelect,
 		onBringIntoView,
-		onReveal
+		onReveal,
+		onInvokeContribution = () => {}
 	}: {
 		open: boolean;
 		onToggle: () => void;
@@ -47,12 +49,25 @@
 				membership: string;
 			}[];
 		}[];
+		/**
+			* Contributed rail-family / capability-Find entries, from whatever adapters
+			* are registered. The Index renders them generically: a domain adapter never
+			* edits this component to appear here.
+			*/
+		contributions?: readonly {
+			id: string;
+			label: string;
+			family: string;
+			capability: string;
+			entries: readonly { id: string; label: string; adapterId: string; taskKind: string }[];
+		}[];
 		selectionId: string | null;
 		query: string;
 		onQuery: (query: string) => void;
 		onSelect: (sourceId: string) => void;
 		onBringIntoView: (sourceId: string) => void;
 		onReveal: (sourceId: string) => void;
+		onInvokeContribution?: (adapterId: string, id: string) => void;
 	} = $props();
 
 	/**
@@ -230,6 +245,35 @@
 				</section>
 			{/each}
 		{/if}
+
+		<!-- Contributed operations: whatever registered adapters offer, grouped by
+		     their declared rail family and capability. Nothing is listed when no adapter
+		     contributes, so the Index stays a locator rather than a menu of unknowns. -->
+		{#each contributions as group (group.id)}
+			<section
+				class="index-group contributed-group"
+				aria-labelledby={`plate-index-contributed-${group.id}`}
+				data-contributed-family={group.family}
+				data-contributed-capability={group.capability}
+			>
+				<h3 class="group-heading" id={`plate-index-contributed-${group.id}`}>{group.label}</h3>
+				<ul class="group-items">
+					{#each group.entries as entry (JSON.stringify([entry.adapterId, entry.id]))}
+						<li class="item contributed-item" data-contributed-adapter={entry.adapterId}>
+							<button
+								type="button"
+								class="item-row"
+								title={`${entry.label} — contributed by ${entry.adapterId}`}
+								onclick={() => onInvokeContribution(entry.adapterId, entry.id)}
+							>
+								<span class="item-kind">Task</span>
+								<span class="item-name">{entry.label}</span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/each}
 	</div>
 </nav>
 
@@ -237,6 +281,8 @@
 	/* Chassis (quiet neutral / pale stone). The Index locates identity; it never
 	   borrows the selection gold as its own surface. */
 	.plate-index {
+		box-sizing: border-box;
+		min-height: 0;
 		display: flex;
 		width: 100%;
 		min-width: 0;
@@ -250,6 +296,7 @@
 	}
 
 	.index-head {
+		flex-shrink: 0;
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
@@ -303,7 +350,13 @@
 		white-space: nowrap;
 	}
 
+	.index-body[hidden] {
+		display: none;
+	}
+
 	.index-body {
+		min-height: 0;
+		overflow: auto;
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
@@ -497,6 +550,7 @@
 	@media (max-width: 720px) {
 		.plate-index {
 			max-width: none;
+			max-height: 45%;
 		}
 	}
 </style>

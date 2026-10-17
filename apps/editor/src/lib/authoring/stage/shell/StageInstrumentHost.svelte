@@ -15,14 +15,22 @@
 	 * its own beyond naming, hosting and closing.
 	 */
 	import type { Snippet } from 'svelte';
+	import type { StageInstrumentContent } from '../stage-facade';
 
 	let {
 		task,
 		onClose,
+		instrument = null,
 		children
 	}: {
 		task: { kind: string; label: string; targetLabel: string | null } | null;
 		onClose: () => void;
+		/**
+		 * Content an owning adapter contributes for this task. It is mounted in this one
+		 * instrument home, so a domain adapter's task appears without a shell edit; the
+		 * host's own snippet stays the default when no adapter contributed content.
+		 */
+		instrument?: StageInstrumentContent | null;
 		children?: Snippet;
 	} = $props();
 </script>
@@ -45,7 +53,20 @@
 			</button>
 		</header>
 		<div class="instrument-body">
-			{#if children}
+			{#if instrument}
+				<p class="contributed-summary">{instrument.summary}</p>
+				{#if instrument.view}
+					<instrument.view.component services={instrument.view.services} />
+				{/if}
+				{#if instrument.facts && instrument.facts.length > 0}
+					<dl class="contributed-facts">
+						{#each instrument.facts as fact (fact.label)}
+							<dt>{fact.label}</dt>
+							<dd>{fact.value}</dd>
+						{/each}
+					</dl>
+				{/if}
+			{:else if children}
 				{@render children()}
 			{/if}
 		</div>
@@ -154,6 +175,27 @@
 		min-height: 0;
 		overflow: auto;
 		padding: 0.75rem;
+	}
+
+	.contributed-summary {
+		margin: 0;
+		font-size: 0.8rem;
+	}
+
+	.contributed-facts {
+		display: grid;
+		grid-template-columns: minmax(6rem, auto) 1fr;
+		gap: 0.15rem 0.7rem;
+		margin: 0.55rem 0 0;
+		font-size: 0.78rem;
+	}
+
+	.contributed-facts dt {
+		color: #8f8a99;
+	}
+
+	.contributed-facts dd {
+		margin: 0;
 	}
 
 	.instrument-body :global(:first-child) {

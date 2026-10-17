@@ -1,0 +1,2993 @@
+[
+  {
+    "command": [
+      "set",
+      "viewport",
+      "1280",
+      "900"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": "[agent-browser] launched browser"
+  },
+  {
+    "command": [
+      "open",
+      "http://127.0.0.1:5177/project/probe-s07/spatial?create=1"
+    ],
+    "code": 0,
+    "output": "\u2713 \n  http://127.0.0.1:5177/project/probe-s07/spatial?create=1",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Start this project"
+    ],
+    "code": 0,
+    "output": "Start this project",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Loading project\" [level=1, ref=e3]\n- button \"World\" [ref=e15]\n- button \"Experience\" [ref=e16]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [disabled, ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e17]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e18]\n  - button \"3D\" [ref=e19]\n  - button \"Fit\" [ref=e20]\n  - button \"Open source JSON\" [ref=e21]\n- heading \"Start this project\" [level=1, ref=e12]\n- button \"Enclosed room\" [ref=e13]\n- button \"Begin empty\" [ref=e14]",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Enclosed room",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Conformance height"
+    ],
+    "code": 0,
+    "output": "Conformance height",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e14]\n  - region \"WALL\" [ref=e15]\n    - heading \"WALL\" [level=3, ref=e18]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e25]\n    - button \"Open location\" [ref=e26]\n    - button \"Bring into view\" [ref=e27]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e28]\n    - button \"Open location\" [ref=e29]\n    - button \"Bring into view\" [ref=e30]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e31]\n    - button \"Open location\" [ref=e32]\n    - button \"Bring into view\" [ref=e33]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n  - region \"ROOM FLOOR\" [ref=e16]\n    - heading \"ROOM FLOOR\" [level=3, ref=e19]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e20]\n    - button \"TASK Conformance height\" [ref=e40]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e21]\n  - button \"3D\" [ref=e22]\n  - button \"Fit\" [ref=e23]\n  - button \"Open source JSON\" [ref=e24]",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e13]\n- button \"Experience\" [ref=e14]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e15]\n  - region \"WALL\" [ref=e16]\n    - heading \"WALL\" [level=3, ref=e19]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e32]\n    - button \"Open location\" [ref=e33]\n    - button \"Bring into view\" [ref=e34]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e35]\n    - button \"Open location\" [ref=e36]\n    - button \"Bring into view\" [ref=e37]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e38]\n    - button \"Open location\" [ref=e39]\n    - button \"Bring into view\" [ref=e40]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e41]\n    - button \"Open location\" [ref=e42]\n    - button \"Bring into view\" [ref=e43]\n  - region \"ROOM FLOOR\" [ref=e17]\n    - heading \"ROOM FLOOR\" [level=3, ref=e20]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e44]\n    - button \"Open location\" [ref=e45]\n    - button \"Bring into view\" [ref=e46]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e21]\n    - button \"TASK Conformance height\" [ref=e47]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e22]\n  - button \"3D\" [ref=e23]\n  - button \"Fit\" [ref=e24]\n  - button \"Open source JSON\" [ref=e25]\n- region \"Conformance height task\" [ref=e12]\n  - heading \"Conformance height\" [level=2, ref=e26]\n  - button \"Close Conformance height\" [ref=e27]\n  - button \"Apply conformance height\" [ref=e28]\n  - button \"Create conformance entity\" [ref=e29]\n  - button \"Toggle conformance entity shadow\" [ref=e30]\n  - button \"Select conformance entity\" [ref=e31]",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({before: document.querySelector('[data-probe=\"entity\"]')?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"before\\\":\\\"none\\\"}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Create conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({result: document.querySelector('.instrument-body [role=status]')?.textContent, entity: document.querySelector('[data-probe=entity]')?.textContent, shadow: document.querySelector('[data-probe=shadow]')?.textContent, echo: document.querySelector('[data-probe=echo]')?.textContent, changes: document.querySelector('[data-probe=changes]')?.textContent, history: [...document.querySelectorAll('button')].filter(b=>['Undo','Redo'].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})), groups: [...document.querySelectorAll('[data-contributed-family]')].map(g=>g.getAttribute('data-contributed-family')+':'+g.textContent.trim())})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"groups\\\":[\\\"measure:Measure \u00b7 Conformance Task Conformance height\\\",\\\"scene:Scene \u00b7 Conformance Task Conformance Scene\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e13]\n- button \"Experience\" [ref=e14]\n- button \"Undo\" [ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e15]\n  - region \"WALL\" [ref=e16]\n    - heading \"WALL\" [level=3, ref=e20]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e40]\n    - button \"Open location\" [ref=e41]\n    - button \"Bring into view\" [ref=e42]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e43]\n    - button \"Open location\" [ref=e44]\n    - button \"Bring into view\" [ref=e45]\n  - region \"ROOM FLOOR\" [ref=e17]\n    - heading \"ROOM FLOOR\" [level=3, ref=e21]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e46]\n    - button \"Open location\" [ref=e47]\n    - button \"Bring into view\" [ref=e48]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e22]\n    - button \"TASK Conformance height\" [ref=e49]\n  - region \"SCENE \u00b7 CONFORMANCE\" [ref=e19]\n    - heading \"SCENE \u00b7 CONFORMANCE\" [level=3, ref=e23]\n    - button \"TASK Conformance Scene\" [ref=e50]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e24]\n  - button \"3D\" [ref=e25]\n  - button \"Fit\" [ref=e26]\n  - button \"Open source JSON\" [ref=e27]\n- region \"Conformance Scene task\" [ref=e12]\n  - heading \"Conformance Scene\" [level=2, ref=e28]\n  - button \"Close Conformance Scene\" [ref=e29]\n  - button \"Apply conformance height\" [ref=e30]\n  - button \"Create conformance entity\" [ref=e31]\n  - button \"Toggle conformance entity shadow\" [ref=e32]\n  - button \"Select conformance entity\" [ref=e33]",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Select conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({result: document.querySelector('.instrument-body [role=status]')?.textContent, entity: document.querySelector('[data-probe=entity]')?.textContent, shadow: document.querySelector('[data-probe=shadow]')?.textContent, echo: document.querySelector('[data-probe=echo]')?.textContent, changes: document.querySelector('[data-probe=changes]')?.textContent, card: document.querySelector('.editor-card')?.textContent, cardFacts: [...document.querySelectorAll('.card-fact, .facts li, [data-card-facts] *')].map(n=>n.textContent).filter(Boolean).slice(0,12)})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"result\\\":\\\"selection: selected\\\",\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"3\\\",\\\"cardFacts\\\":[]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({card: !!document.querySelector('aside.card'), cardText: document.querySelector('aside.card')?.innerText, selectedRows: [...document.querySelectorAll('[aria-current=true]')].map(n=>n.textContent.trim())})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"card\\\":true,\\\"cardText\\\":\\\"ENTITY\\\\n\u00b7\\\\nUNKNOWN\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nStream\\\\ncanonical\\\\nEligible\\\\nfalse\\\\nRevealed\\\\nfalse\\\\nDatum\\\\n0 m\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"selectedRows\\\":[]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "set",
+      "viewport",
+      "1280",
+      "900"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "open",
+      "http://127.0.0.1:5177/project/probe-s07/spatial?create=1"
+    ],
+    "code": 0,
+    "output": "\u2713 \n  http://127.0.0.1:5177/project/probe-s07/spatial?create=1",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Start this project"
+    ],
+    "code": 0,
+    "output": "Start this project",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Enclosed room",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Conformance height"
+    ],
+    "code": 0,
+    "output": "Conformance height",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e13]\n- button \"Experience\" [ref=e14]\n- button \"Undo\" [disabled, ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e15]\n  - region \"WALL\" [ref=e16]\n    - heading \"WALL\" [level=3, ref=e19]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e32]\n    - button \"Open location\" [ref=e33]\n    - button \"Bring into view\" [ref=e34]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e35]\n    - button \"Open location\" [ref=e36]\n    - button \"Bring into view\" [ref=e37]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e38]\n    - button \"Open location\" [ref=e39]\n    - button \"Bring into view\" [ref=e40]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e41]\n    - button \"Open location\" [ref=e42]\n    - button \"Bring into view\" [ref=e43]\n  - region \"ROOM FLOOR\" [ref=e17]\n    - heading \"ROOM FLOOR\" [level=3, ref=e20]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e44]\n    - button \"Open location\" [ref=e45]\n    - button \"Bring into view\" [ref=e46]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e21]\n    - button \"TASK Conformance height\" [ref=e47]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e22]\n  - button \"3D\" [ref=e23]\n  - button \"Fit\" [ref=e24]\n  - button \"Open source JSON\" [ref=e25]\n- region \"Conformance height task\" [ref=e12]\n  - heading \"Conformance height\" [level=2, ref=e26]\n  - button \"Close Conformance height\" [ref=e27]\n  - button \"Apply conformance height\" [ref=e28]\n  - button \"Create conformance entity\" [ref=e29]\n  - button \"Toggle conformance entity shadow\" [ref=e30]\n  - button \"Select conformance entity\" [ref=e31]",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"1\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-baseline.png"
+    ],
+    "code": 1,
+    "output": "",
+    "error": "\u2717 Failed to save screenshot to docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-baseline.png: No such file or directory (os error 2)"
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"Plan\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"1\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-baseline.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-baseline.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Apply conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"2\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-edit.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-edit.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"3\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-undo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-undo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"4\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-redo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-redo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Create conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e13]\n- button \"Experience\" [ref=e14]\n- button \"Undo\" [ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e15]\n  - region \"WALL\" [ref=e16]\n    - heading \"WALL\" [level=3, ref=e20]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e40]\n    - button \"Open location\" [ref=e41]\n    - button \"Bring into view\" [ref=e42]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e43]\n    - button \"Open location\" [ref=e44]\n    - button \"Bring into view\" [ref=e45]\n  - region \"ROOM FLOOR\" [ref=e17]\n    - heading \"ROOM FLOOR\" [level=3, ref=e21]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e46]\n    - button \"Open location\" [ref=e47]\n    - button \"Bring into view\" [ref=e48]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e22]\n    - button \"TASK Conformance height\" [ref=e49]\n  - region \"SCENE \u00b7 CONFORMANCE\" [ref=e19]\n    - heading \"SCENE \u00b7 CONFORMANCE\" [level=3, ref=e23]\n    - button \"TASK Conformance Scene\" [ref=e50]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e24]\n  - button \"3D\" [ref=e25]\n  - button \"Fit\" [ref=e26]\n  - button \"Open source JSON\" [ref=e27]\n- region \"Conformance Scene task\" [ref=e12]\n  - heading \"Conformance Scene\" [level=2, ref=e28]\n  - button \"Close Conformance Scene\" [ref=e29]\n  - button \"Apply conformance height\" [ref=e30]\n  - button \"Create conformance entity\" [ref=e31]\n  - button \"Toggle conformance entity shadow\" [ref=e32]\n  - button \"Select conformance entity\" [ref=e33]",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Select conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"6\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-selection.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-selection.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Open task",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({notice: document.querySelector('.stage-note')?.textContent ?? null, task: document.querySelector('[data-stage-instrument]')?.getAttribute('data-stage-instrument') ?? null})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"notice\\\":\\\"This subject has no Plan membership task. Invoke a contributed operation from the Index.\\\",\\\"task\\\":\\\"conformance-scene\\\"}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Toggle conformance entity shadow",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"7\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-edit.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-edit.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"8\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-undo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-undo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"9\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-redo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-redo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Experience",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Resume Conformance Scene",
+      "--exact"
+    ],
+    "code": 1,
+    "output": "",
+    "error": "\u2717 Element '@e61' is covered by <summary.s-S3BLe7_ohvIQ> at its click point, so the input would land on that element instead. Dismiss or interact with the covering element first (it is often a dialog, banner, or sticky header)."
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Close selection card",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Resume Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({notice: document.querySelector('.stage-note')?.textContent ?? null, inactive: document.querySelector('.inactive-task')?.innerText ?? null, tasks: [...document.querySelectorAll('[data-contributed-family]')].map(g=>g.getAttribute('data-contributed-family'))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"notice\\\":\\\"Return to the world lens before resuming.\\\",\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"tasks\\\":[\\\"measure\\\",\\\"scene\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e12]\n- button \"Experience\" [ref=e13]\n- button \"Undo\" [ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e14]\n  - region \"WALL\" [ref=e15]\n    - heading \"WALL\" [level=3, ref=e21]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e31]\n    - button \"Open location\" [ref=e32]\n    - button \"Bring into view\" [ref=e33]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e34]\n    - button \"Open location\" [ref=e35]\n    - button \"Bring into view\" [ref=e36]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e40]\n    - button \"Open location\" [ref=e41]\n    - button \"Bring into view\" [ref=e42]\n  - region \"ROOM FLOOR\" [ref=e16]\n    - heading \"ROOM FLOOR\" [level=3, ref=e22]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e43]\n    - button \"Open location\" [ref=e44]\n    - button \"Bring into view\" [ref=e45]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e23]\n    - button \"TASK Conformance height\" [ref=e46]\n  - region \"SCENE \u00b7 CONFORMANCE\" [ref=e18]\n    - heading \"SCENE \u00b7 CONFORMANCE\" [level=3, ref=e24]\n    - button \"TASK Conformance Scene\" [ref=e47]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e25]\n  - button \"3D\" [ref=e26]\n  - button \"Fit\" [ref=e27]\n  - button \"Open source JSON\" [ref=e28]\n  - heading \"Experience is not available yet\" [level=2, ref=e29]\n  - button \"Back to World\" [ref=e30]\n- button \"Resume Conformance Scene\" [ref=e19]\n- button \"Close inactive task\" [ref=e20]",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({worldPressed: document.querySelector('button[aria-pressed]')?.outerHTML?.slice(0,120), lensButtons: [...document.querySelectorAll('button')].filter(b=>['World','Experience'].includes(b.textContent.trim())).map(b=>({name:b.textContent.trim(), pressed:b.getAttribute('aria-pressed'), cls:b.className}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"worldPressed\\\":\\\"<button type=\\\\\\\"button\\\\\\\" class=\\\\\\\"lens-button s-krfJIKU1qsLv\\\\\\\" aria-pressed=\\\\\\\"false\\\\\\\" tabindex=\\\\\\\"-1\\\\\\\">World</button>\\\",\\\"lensButtons\\\":[{\\\"name\\\":\\\"World\\\",\\\"pressed\\\":\\\"false\\\",\\\"cls\\\":\\\"lens-button s-krfJIKU1qsLv\\\"},{\\\"name\\\":\\\"Experience\\\",\\\"pressed\\\":\\\"true\\\",\\\"cls\\\":\\\"lens-button s-krfJIKU1qsLv active\\\"}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "errors"
+    ],
+    "code": 0,
+    "output": "",
+    "error": ""
+  },
+  {
+    "command": [
+      "console"
+    ],
+    "code": 0,
+    "output": "[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({lensButtons: [...document.querySelectorAll('button')].filter(b=>['World','Experience'].includes(b.textContent.trim())).map(b=>({name:b.textContent.trim(), pressed:b.getAttribute('aria-pressed')})), panel: !!document.querySelector('.lens-unavailable'), inactive: document.querySelector('.inactive-task')?.innerText ?? null, notice: document.querySelector('.stage-note')?.textContent ?? null})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"lensButtons\\\":[{\\\"name\\\":\\\"World\\\",\\\"pressed\\\":\\\"true\\\"},{\\\"name\\\":\\\"Experience\\\",\\\"pressed\\\":\\\"false\\\"}],\\\"panel\\\":false,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"notice\\\":\\\"Return to the world lens before resuming.\\\"}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Resume Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"12\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "3D",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"3D\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"12\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-scene-selection.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-scene-selection.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Apply conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 5 m"
+    ],
+    "code": 0,
+    "output": "wall height 5 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 5 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"13\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-edit.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-edit.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"14\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-undo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-undo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 5 m"
+    ],
+    "code": 0,
+    "output": "wall height 5 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 5 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"15\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-redo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-redo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Replace conformance starter",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "snapshot",
+      "-i"
+    ],
+    "code": 0,
+    "output": "- button \"Replace conformance starter\" [ref=e1]\n- heading \"Enclosed room\" [level=1, ref=e3]\n- button \"World\" [ref=e16]\n- button \"Experience\" [ref=e17]\n- button \"Undo\" [ref=e4]\n- button \"Redo\" [disabled, ref=e5]\n- button \"Save\" [disabled, ref=e6]\n- button \"Preview\" [disabled, ref=e7]\n- button \"Download source JSON\" [ref=e8]\n- button \"Reduced motion off\" [ref=e9]\n- navigation \"Project locator\" [ref=e2]\n  - button \"INDEX\" [expanded=true, ref=e10]\n  - searchbox \"FIND A SUBJECT\" [ref=e18]\n  - region \"WALL\" [ref=e19]\n    - heading \"WALL\" [level=3, ref=e23]\n    - button \"WALL wall \u00b7 wall-chain-1\" [ref=e37]\n    - button \"Open location\" [ref=e38]\n    - button \"Bring into view\" [ref=e39]\n    - button \"WALL wall \u00b7 wall-chain-2\" [ref=e40]\n    - button \"Open location\" [ref=e41]\n    - button \"Bring into view\" [ref=e42]\n    - button \"WALL wall \u00b7 wall-chain-3\" [ref=e43]\n    - button \"Open location\" [ref=e44]\n    - button \"Bring into view\" [ref=e45]\n    - button \"WALL wall \u00b7 wall-chain-4\" [ref=e46]\n    - button \"Open location\" [ref=e47]\n    - button \"Bring into view\" [ref=e48]\n  - region \"ROOM FLOOR\" [ref=e20]\n    - heading \"ROOM FLOOR\" [level=3, ref=e24]\n    - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e49]\n    - button \"Open location\" [ref=e50]\n    - button \"Bring into view\" [ref=e51]\n  - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e21]\n    - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e25]\n    - button \"TASK Conformance height\" [ref=e52]\n  - region \"SCENE \u00b7 CONFORMANCE\" [ref=e22]\n    - heading \"SCENE \u00b7 CONFORMANCE\" [level=3, ref=e26]\n    - button \"TASK Conformance Scene\" [ref=e53]\n- application \"Spatial stage\" [ref=e11] focusable [tabindex]\n  - button \"Plan\" [ref=e27]\n  - button \"3D\" [ref=e28]\n  - button \"Fit\" [ref=e29]\n  - button \"Open source JSON\" [ref=e30]\n- region \"Conformance height task\" [ref=e12]\n  - heading \"Conformance height\" [level=2, ref=e31]\n  - button \"Close Conformance height\" [ref=e32]\n  - button \"Apply conformance height\" [ref=e33]\n  - button \"Create conformance entity\" [ref=e34]\n  - button \"Toggle conformance entity shadow\" [ref=e35]\n  - button \"Select conformance entity\" [ref=e36]\n- heading \"Replace the current project?\" [level=1, ref=e13]\n- button \"Replace\" [ref=e14]\n- button \"Cancel\" [ref=e15]",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Replace",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({groups: [...document.querySelectorAll('[data-contributed-family]')].map(g=>g.getAttribute('data-contributed-family')), heading: document.querySelector('h1')?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"groups\\\":[\\\"measure\\\"],\\\"heading\\\":\\\"Enclosed room\\\"}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-replacement.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-replacement.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"Plan\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-replacement.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-replacement.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "WALL wall \u00b7 wall-chain-1",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Experience",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "(() => { const b=[...document.querySelectorAll('.lens-unavailable button')][0]; const r=b.getBoundingClientRect(); const hit=document.elementFromPoint(r.left+r.width/2, r.top+r.height/2); return JSON.stringify({lens:[...document.querySelectorAll('.lens-button')].map(x=>({n:x.textContent.trim(),p:x.getAttribute('aria-pressed')})), button:{x:r.x,y:r.y,w:r.width,h:r.height}, hit: hit ? hit.tagName+'.'+hit.className : null, card: !!document.querySelector('aside.card'), cardRect: (()=>{const c=document.querySelector('aside.card'); if(!c) return null; const q=c.getBoundingClientRect(); return {x:q.x,y:q.y,w:q.width,h:q.height};})()}); })()"
+    ],
+    "code": 0,
+    "output": "\"{\\\"lens\\\":[{\\\"n\\\":\\\"World\\\",\\\"p\\\":\\\"false\\\"},{\\\"n\\\":\\\"Experience\\\",\\\"p\\\":\\\"true\\\"}],\\\"button\\\":{\\\"x\\\":629,\\\"y\\\":561.6796875,\\\"w\\\":125.578125,\\\"h\\\":32.78125},\\\"hit\\\":\\\"BUTTON.s-vouYkPXPkCkC\\\",\\\"card\\\":false,\\\"cardRect\\\":null}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({lens:[...document.querySelectorAll('.lens-button')].map(x=>({n:x.textContent.trim(),p:x.getAttribute('aria-pressed')})), panel: !!document.querySelector('.lens-unavailable')})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"lens\\\":[{\\\"n\\\":\\\"World\\\",\\\"p\\\":\\\"false\\\"},{\\\"n\\\":\\\"Experience\\\",\\\"p\\\":\\\"true\\\"}],\\\"panel\\\":true}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "errors"
+    ],
+    "code": 0,
+    "output": "\u2717 ",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "(() => { window.__s07err = null; window.addEventListener('error', (e) => { window.__s07err = String(e.message || e.error); }, { once: true }); window.addEventListener('unhandledrejection', (e) => { window.__s07err = 'rejection: ' + String(e.reason); }, { once: true }); return 'armed'; })()"
+    ],
+    "code": 0,
+    "output": "\"armed\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({err: window.__s07err, lens:[...document.querySelectorAll('.lens-button')].map(x=>({n:x.textContent.trim(),p:x.getAttribute('aria-pressed')}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"err\\\":null,\\\"lens\\\":[{\\\"n\\\":\\\"World\\\",\\\"p\\\":\\\"false\\\"},{\\\"n\\\":\\\"Experience\\\",\\\"p\\\":\\\"true\\\"}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "console"
+    ],
+    "code": 0,
+    "output": "[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "(() => { window.__clicked = 0; document.querySelector('.lens-unavailable button').addEventListener('click', () => { window.__clicked += 1; }, true); return 'watching'; })()"
+    ],
+    "code": 0,
+    "output": "\"watching\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({clicked: window.__clicked, lens:[...document.querySelectorAll('.lens-button')].map(x=>({n:x.textContent.trim(),p:x.getAttribute('aria-pressed')})), panel: !!document.querySelector('.lens-unavailable')})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"clicked\\\":0,\\\"lens\\\":[{\\\"n\\\":\\\"World\\\",\\\"p\\\":\\\"false\\\"},{\\\"n\\\":\\\"Experience\\\",\\\"p\\\":\\\"true\\\"}],\\\"panel\\\":true}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "reload"
+    ],
+    "code": 0,
+    "output": "http://127.0.0.1:5177/project/probe-s07/spatial?create=1",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Start this project"
+    ],
+    "code": 0,
+    "output": "Start this project",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Enclosed room",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Conformance height"
+    ],
+    "code": 0,
+    "output": "Conformance height",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Create conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Select conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"3\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Experience",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({lens:[...document.querySelectorAll('.lens-button')].map(x=>({n:x.textContent.trim(),p:x.getAttribute('aria-pressed')})), panel: !!document.querySelector('.lens-unavailable'), inactive: document.querySelector('.inactive-task')?.innerText ?? null, task: document.querySelector('[data-stage-instrument]')?.getAttribute('data-stage-instrument') ?? null, card: !!document.querySelector('aside.card')})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"lens\\\":[{\\\"n\\\":\\\"World\\\",\\\"p\\\":\\\"true\\\"},{\\\"n\\\":\\\"Experience\\\",\\\"p\\\":\\\"false\\\"}],\\\"panel\\\":false,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"task\\\":null,\\\"card\\\":true}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Resume Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"6\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"Plan\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Experience",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Resume Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"9\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "set",
+      "viewport",
+      "1280",
+      "900"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "open",
+      "http://127.0.0.1:5177/project/probe-s07/spatial?create=1"
+    ],
+    "code": 0,
+    "output": "\u2713 \n  http://127.0.0.1:5177/project/probe-s07/spatial?create=1",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Start this project"
+    ],
+    "code": 0,
+    "output": "Start this project",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Enclosed room",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Conformance height"
+    ],
+    "code": 0,
+    "output": "Conformance height",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"Plan\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"1\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-baseline.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-baseline.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Apply conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"2\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-edit.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-edit.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"3\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-undo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-undo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-height\\\",\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":\\\"none\\\",\\\"shadow\\\":\\\"n/a\\\",\\\"echo\\\":\\\"none\\\",\\\"changes\\\":\\\"4\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-redo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-redo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Create conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Select conformance entity",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"6\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-selection.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-selection.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Toggle conformance entity shadow",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"7\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-edit.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-edit.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"8\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-undo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-undo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"9\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-redo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-redo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Experience",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-inactive.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Back to World",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":\\\"Conformance Scene is inactive. Pending proposals were discarded.\\\\n\\\\nResume Conformance Scene Close inactive task\\\",\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-lens-return.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Resume Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"12\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-scene-resume.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "3D",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"3D\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"12\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-scene-selection.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-scene-selection.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Toggle conformance entity shadow",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"13\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-edit.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-edit.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\ntrue\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"true\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"14\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-undo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-undo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance Scene",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"task\\\":\\\"conformance-scene\\\",\\\"inactive\\\":null,\\\"card\\\":\\\"ENTITY\\\\n\u00b7\\\\nSCENE\\\\n\\\\nentity-conformance\\\\n\u2715\\\\nDomain\\\\nscene\\\\nCanonical Scene entity\\\\nentity-conformance\\\\nEntity kind\\\\nprimitive\\\\nreceiveShadow\\\\nfalse\\\\nFocus\\\\nOpen task\\\\nBring into view\\\\nTechnical details\\\",\\\"probe\\\":{\\\"entity\\\":\\\"entity-conformance\\\",\\\"shadow\\\":\\\"false\\\",\\\"echo\\\":\\\"entity-conformance | entity-conformance\\\",\\\"changes\\\":\\\"15\\\"},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-redo.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-redo.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Replace conformance starter",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Replace",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"3D\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({groups: [...document.querySelectorAll('[data-contributed-family]')].map(g=>g.getAttribute('data-contributed-family')), heading: document.querySelector('h1')?.textContent})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"groups\\\":[\\\"measure\\\"],\\\"heading\\\":\\\"Enclosed room\\\"}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-replacement.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/3d-replacement.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--fn",
+      "[...document.querySelectorAll(\"button\")].some(b => b.textContent === \"Plan\" && b.getAttribute(\"aria-pressed\") === \"true\")"
+    ],
+    "code": 0,
+    "output": "true",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({reading:[...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent),instrument:document.querySelector(\".contributed-summary\")?.textContent??null,task:document.querySelector(\"[data-stage-instrument]\")?.getAttribute(\"data-stage-instrument\")??null,inactive:document.querySelector(\".inactive-task\")?.innerText??null,card:document.querySelector(\"aside.card\")?.innerText??null,probe:{entity:document.querySelector(\"[data-probe=entity]\")?.textContent??null,shadow:document.querySelector(\"[data-probe=shadow]\")?.textContent??null,echo:document.querySelector(\"[data-probe=echo]\")?.textContent??null,changes:document.querySelector(\"[data-probe=changes]\")?.textContent??null},history:[...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})),canvas:[...document.querySelectorAll(\"canvas\")].map(c=>({width:c.width,height:c.height}))})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"reading\\\":[\\\"Plan\\\"],\\\"instrument\\\":null,\\\"task\\\":null,\\\"inactive\\\":null,\\\"card\\\":null,\\\"probe\\\":{\\\"entity\\\":null,\\\"shadow\\\":null,\\\"echo\\\":null,\\\"changes\\\":null},\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"canvas\\\":[{\\\"width\\\":928,\\\"height\\\":760}]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "screenshot",
+      "--full",
+      "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-replacement.png"
+    ],
+    "code": 0,
+    "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-replacement.png",
+    "error": ""
+  },
+  {
+    "command": [
+      "errors"
+    ],
+    "code": 0,
+    "output": "\u2717 ",
+    "error": ""
+  },
+  {
+    "command": [
+      "console"
+    ],
+    "code": 0,
+    "output": "[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte?svelte&type=style&lang.css\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] hot updated: /src/routes/project/[projectId]/spatial/+page.svelte\n[debug] [vite] connecting...\n[debug] [vite] connected.\n[debug] [vite] connecting...\n[debug] [vite] connected.",
+    "error": ""
+  },
+  {
+    "command": [
+      "close"
+    ],
+    "code": 0,
+    "output": "\u2713 Browser closed",
+    "error": ""
+  },
+  {
+    "command": [
+      "open",
+      "http://127.0.0.1:5177/project/probe-s07/spatial?create=1"
+    ],
+    "code": 0,
+    "output": "\u2713 \n  http://127.0.0.1:5177/project/probe-s07/spatial?create=1",
+    "error": "[agent-browser] launched browser"
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Start this project"
+    ],
+    "code": 0,
+    "output": "Start this project",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Enclosed room",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "Conformance height"
+    ],
+    "code": 0,
+    "output": "Conformance height",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Plan",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({facts: document.querySelector(\".contributed-facts\")?.textContent ?? null, summary: document.querySelector(\".contributed-summary\")?.textContent ?? null, history: [...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})), reading: [...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent)})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"facts\\\":\\\"Content sha256-4525f51d10787400dce43d04131c9af36f8a8407db69889d9089dc7cea1d2754\\\",\\\"summary\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"reading\\\":[\\\"3D\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Apply conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({facts: document.querySelector(\".contributed-facts\")?.textContent ?? null, summary: document.querySelector(\".contributed-summary\")?.textContent ?? null, history: [...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})), reading: [...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent)})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"facts\\\":\\\"Content sha256-e5364103646a1559b0d9ee1aabee9754c7b175819a2f639ff512ea93a34d5f7b\\\",\\\"summary\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"reading\\\":[\\\"Plan\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Undo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({facts: document.querySelector(\".contributed-facts\")?.textContent ?? null, summary: document.querySelector(\".contributed-summary\")?.textContent ?? null, history: [...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})), reading: [...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent)})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"facts\\\":\\\"Content sha256-4525f51d10787400dce43d04131c9af36f8a8407db69889d9089dc7cea1d2754\\\",\\\"summary\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":false}],\\\"reading\\\":[\\\"Plan\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Redo",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 4 m"
+    ],
+    "code": 0,
+    "output": "wall height 4 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({facts: document.querySelector(\".contributed-facts\")?.textContent ?? null, summary: document.querySelector(\".contributed-summary\")?.textContent ?? null, history: [...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})), reading: [...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent)})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"facts\\\":\\\"Content sha256-e5364103646a1559b0d9ee1aabee9754c7b175819a2f639ff512ea93a34d5f7b\\\",\\\"summary\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 4 m\\\",\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":false},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"reading\\\":[\\\"Plan\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "3D",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Replace conformance starter",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "Replace",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "find",
+      "role",
+      "button",
+      "click",
+      "--name",
+      "TASK Conformance height",
+      "--exact"
+    ],
+    "code": 0,
+    "output": "\u2713 Done",
+    "error": ""
+  },
+  {
+    "command": [
+      "wait",
+      "--text",
+      "wall height 3 m"
+    ],
+    "code": 0,
+    "output": "wall height 3 m",
+    "error": ""
+  },
+  {
+    "command": [
+      "eval",
+      "JSON.stringify({facts: document.querySelector(\".contributed-facts\")?.textContent ?? null, summary: document.querySelector(\".contributed-summary\")?.textContent ?? null, history: [...document.querySelectorAll(\"button\")].filter(b=>[\"Undo\",\"Redo\"].includes(b.textContent?.trim())).map(b=>({name:b.textContent.trim(),disabled:b.disabled})), reading: [...document.querySelectorAll(\".stage-actions button\")].filter(b=>b.getAttribute(\"aria-pressed\")===\"true\").map(b=>b.textContent)})"
+    ],
+    "code": 0,
+    "output": "\"{\\\"facts\\\":\\\"Content sha256-4525f51d10787400dce43d04131c9af36f8a8407db69889d9089dc7cea1d2754\\\",\\\"summary\\\":\\\"STAGE_BROWSER_CONFORMANCE_WRITER: wall height 3 m\\\",\\\"history\\\":[{\\\"name\\\":\\\"Undo\\\",\\\"disabled\\\":true},{\\\"name\\\":\\\"Redo\\\",\\\"disabled\\\":true}],\\\"reading\\\":[\\\"3D\\\"]}\"",
+    "error": ""
+  },
+  {
+    "command": [
+      "close"
+    ],
+    "code": 0,
+    "output": "\u2713 Browser closed",
+    "error": ""
+  }
+]

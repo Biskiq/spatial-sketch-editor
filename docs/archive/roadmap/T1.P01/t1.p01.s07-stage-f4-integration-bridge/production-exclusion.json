@@ -1,0 +1,29 @@
+{
+  "increment": "T1.P01.S07 AM-5 completion plus review fixes through ab8504aa, scanned at merge candidate 049e89f5 (origin/main 279e1340 merged)",
+  "command": "production build (`npm run build`), then scan of every emitted output file",
+  "roots": [
+    ".svelte-kit/output",
+    ".vercel/output"
+  ],
+  "scanned_files": 349,
+  "scan_rule": "every emitted entry under both roots; directory symlinks are skipped, file symlinks are read through their target",
+  "sentinels": [
+    "STAGE_BROWSER_CONFORMANCE_WRITER",
+    "STAGE_BROWSER_CONFORMANCE_PROBE_STATE",
+    "conformance-wall-height",
+    "conformance-scene-scalar",
+    "conformance-entity-create",
+    "entity-conformance",
+    "stage-browser-conformance-only",
+    "Replace conformance starter",
+    "data-stage-conformance-replacement",
+    "Create conformance entity",
+    "Select conformance entity",
+    "Toggle conformance entity shadow",
+    "Resume Conformance Scene",
+    "Conformance height",
+    "conformance-adapter"
+  ],
+  "matches": 0,
+  "reading": "Zero probe sentinels in any emitted file: the test-only Vite hook, adapter, planners, instrument labels and replacement control exist only under the explicit conformance config. Re-scanned on the merge-candidate build; same 349 files and zero matches as the pre-merge run."
+}

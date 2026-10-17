@@ -1,0 +1,156 @@
+{
+ "increment": "T1.P01.S07 review round (4127b63f)",
+ "environment": "test-only conformance Vite config, 127.0.0.1:5179, viewport 390x844 after the desktop setup",
+ "commands": [
+  {
+   "command": [
+    "open",
+    "http://127.0.0.1:5179/project/probe-review/spatial?create=1"
+   ],
+   "code": 0,
+   "output": "\u2713 \n  http://127.0.0.1:5179/project/probe-review/spatial?create=1",
+   "error": ""
+  },
+  {
+   "command": [
+    "snapshot"
+   ],
+   "code": 0,
+   "output": "- generic\n  - button \"Replace conformance starter\" [ref=e1]\n  - banner\n    - paragraph\n      - StaticText \"MUSEUM EDITOR\"\n    - heading \"Loading project\" [level=1, ref=e3]\n    - group\n      - DisclosureTriangle \"Technical details\" [expanded=false]\n        - StaticText \"Technical details\"\n    - group \"Product lens\"\n      - button \"World\" [ref=e15]\n      - button \"Experience\" [ref=e16]\n    - button \"Undo\" [disabled, ref=e4]\n    - button \"Redo\" [disabled, ref=e5]\n    - StaticText \"Nothing to undo yet \u2014 no change has been accepted.\"\n    - button \"Save\" [disabled, ref=e6]\n    - StaticText \"Conditional Save arrives with T3.P01.S02; this host is read-only.\"\n    - button \"Preview\" [disabled, ref=e7]\n    - StaticText \"Visitor Preview arrives with T3.\"\n    - button \"Download source JSON\" [disabled, ref=e8]\n    - button \"Reduced motion off\" [ref=e9]\n  - navigation \"Project locator\" [ref=e2]\n    - button \"INDEX\" [expanded=true, ref=e10]\n      - StaticText \"INDEX\"\n    - generic\n      - LabelText\n        - StaticText \"FIND A SUBJECT\"\n      - searchbox \"FIND A SUBJECT\" [ref=e17]\n      - paragraph\n        - StaticText \"This project has no located subjects yet.\"\n  - application \"Spatial stage\" [ref=e11] focusable [tabindex]\n    - generic\n      - button \"Plan\" [ref=e18]\n      - button \"3D\" [ref=e19]\n      - button \"Fit\" [ref=e20]\n      - button \"Open source JSON\" [ref=e21]\n  - dialog \"Start a project\"\n    - heading \"Start this project\" [level=1, ref=e12]\n    - paragraph\n      - StaticText \"Choose the canonical starter gallery, or begin genuinely empty.\"\n    - button \"Enclosed room\" [ref=e13]\n    - button \"Begin empty\" [ref=e14]",
+   "error": ""
+  },
+  {
+   "command": [
+    "click",
+    "e13"
+   ],
+   "code": 0,
+   "output": "\u2713 Done",
+   "error": ""
+  },
+  {
+   "command": [
+    "snapshot"
+   ],
+   "code": 0,
+   "output": "- generic\n  - button \"Replace conformance starter\" [ref=e1]\n  - banner\n    - paragraph\n      - StaticText \"MUSEUM EDITOR\"\n    - heading \"Enclosed room\" [level=1, ref=e3]\n    - group\n      - DisclosureTriangle \"Technical details\" [expanded=false]\n        - StaticText \"Technical details\"\n    - group \"Product lens\"\n      - button \"World\" [ref=e12]\n      - button \"Experience\" [ref=e13]\n    - button \"Undo\" [disabled, ref=e4]\n    - button \"Redo\" [disabled, ref=e5]\n    - StaticText \"Nothing to undo yet \u2014 no change has been accepted.\"\n    - button \"Save\" [disabled, ref=e6]\n    - StaticText \"Conditional Save arrives with T3.P01.S02; this host is read-only.\"\n    - button \"Preview\" [disabled, ref=e7]\n    - StaticText \"Visitor Preview arrives with T3.\"\n    - button \"Download source JSON\" [ref=e8]\n    - button \"Reduced motion off\" [ref=e9]\n  - navigation \"Project locator\" [ref=e2]\n    - button \"INDEX\" [expanded=true, ref=e10]\n      - StaticText \"INDEX\"\n    - generic\n      - LabelText\n        - StaticText \"FIND A SUBJECT\"\n      - searchbox \"FIND A SUBJECT\" [ref=e14]\n      - region \"WALL\" [ref=e15]\n        - heading \"WALL\" [level=3, ref=e18]\n        - list\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-1\" [ref=e25]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-1\"\n            - button \"Open location\" [ref=e26]\n            - button \"Bring into view\" [ref=e27]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-2\" [ref=e28]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-2\"\n            - button \"Open location\" [ref=e29]\n            - button \"Bring into view\" [ref=e30]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-3\" [ref=e31]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-3\"\n            - button \"Open location\" [ref=e32]\n            - button \"Bring into view\" [ref=e33]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-4\" [ref=e34]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-4\"\n            - button \"Open location\" [ref=e35]\n            - button \"Bring into view\" [ref=e36]\n      - region \"ROOM FLOOR\" [ref=e16]\n        - heading \"ROOM FLOOR\" [level=3, ref=e19]\n        - list\n          - listitem [level=1]\n            - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e37]\n              - StaticText \"FLOOR\"\n              - StaticText \"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\"\n            - button \"Open location\" [ref=e38]\n            - button \"Bring into view\" [ref=e39]\n      - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n        - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e20]\n        - list\n          - listitem [level=1]\n            - button \"TASK Conformance height\" [ref=e40]\n              - StaticText \"TASK\"\n              - StaticText \"Conformance height\"\n  - application \"Spatial stage\" [ref=e11] focusable [tabindex]\n    - Canvas\n      - StaticText \"                                         \"\n    - generic\n      - button \"Plan\" [ref=e21]\n      - button \"3D\" [ref=e22]\n      - button \"Fit\" [ref=e23]\n      - button \"Open source JSON\" [ref=e24]",
+   "error": ""
+  },
+  {
+   "command": [
+    "click",
+    "e40"
+   ],
+   "code": 0,
+   "output": "\u2713 Done",
+   "error": ""
+  },
+  {
+   "command": [
+    "click",
+    "e13"
+   ],
+   "code": 0,
+   "output": "\u2713 Done",
+   "error": ""
+  },
+  {
+   "command": [
+    "set",
+    "viewport",
+    "390",
+    "844"
+   ],
+   "code": 0,
+   "output": "\u2713 Done",
+   "error": ""
+  },
+  {
+   "command": [
+    "screenshot",
+    "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-review-390-lens.png"
+   ],
+   "code": 0,
+   "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-review-390-lens.png",
+   "error": ""
+  },
+  {
+   "command": [
+    "eval",
+    "JSON.stringify({parked: !!document.querySelector('.inactive-task'), lensPanel: !!document.querySelector('.lens-unavailable'), sw: document.documentElement.scrollWidth})"
+   ],
+   "code": 0,
+   "output": "\"{\\\"parked\\\":false,\\\"lensPanel\\\":true,\\\"sw\\\":390}\"",
+   "error": ""
+  },
+  {
+   "command": [
+    "snapshot"
+   ],
+   "code": 0,
+   "output": "- generic\n  - button \"Replace conformance starter\" [ref=e1]\n  - banner\n    - paragraph\n      - StaticText \"MUSEUM EDITOR\"\n    - heading \"Enclosed room\" [level=1, ref=e3]\n    - group\n      - DisclosureTriangle \"Technical details\" [expanded=false]\n        - StaticText \"Technical details\"\n    - group \"Product lens\"\n      - button \"World\" [ref=e12]\n      - button \"Experience\" [ref=e13]\n    - button \"Undo\" [disabled, ref=e4]\n    - button \"Redo\" [disabled, ref=e5]\n    - StaticText \"Nothing to undo yet \u2014 no change has been accepted.\"\n    - button \"Save\" [disabled, ref=e6]\n    - StaticText \"Conditional Save arrives with T3.P01.S02; this host is read-only.\"\n    - button \"Preview\" [disabled, ref=e7]\n    - StaticText \"Visitor Preview arrives with T3.\"\n    - button \"Download source JSON\" [ref=e8]\n    - button \"Reduced motion off\" [ref=e9]\n  - navigation \"Project locator\" [ref=e2]\n    - button \"INDEX\" [expanded=true, ref=e10]\n      - StaticText \"INDEX\"\n    - generic\n      - LabelText\n        - StaticText \"FIND A SUBJECT\"\n      - searchbox \"FIND A SUBJECT\" [ref=e14]\n      - region \"WALL\" [ref=e15]\n        - heading \"WALL\" [level=3, ref=e19]\n        - list\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-1\" [ref=e28]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-1\"\n            - button \"Open location\" [ref=e29]\n            - button \"Bring into view\" [ref=e30]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-2\" [ref=e31]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-2\"\n            - button \"Open location\" [ref=e32]\n            - button \"Bring into view\" [ref=e33]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-3\" [ref=e34]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-3\"\n            - button \"Open location\" [ref=e35]\n            - button \"Bring into view\" [ref=e36]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-4\" [ref=e37]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-4\"\n            - button \"Open location\" [ref=e38]\n            - button \"Bring into view\" [ref=e39]\n      - region \"ROOM FLOOR\" [ref=e16]\n        - heading \"ROOM FLOOR\" [level=3, ref=e20]\n        - list\n          - listitem [level=1]\n            - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e40]\n              - StaticText \"FLOOR\"\n              - StaticText \"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\"\n            - button \"Open location\" [ref=e41]\n            - button \"Bring into view\" [ref=e42]\n      - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e17]\n        - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e21]\n        - list\n          - listitem [level=1]\n            - button \"TASK Conformance height\" [ref=e43]\n              - StaticText \"TASK\"\n              - StaticText \"Conformance height\"\n  - application \"Spatial stage\" [ref=e11] focusable [tabindex]\n    - Canvas\n      - StaticText \"                                         \"\n    - generic\n      - button \"Plan\" [ref=e22]\n      - button \"3D\" [ref=e23]\n      - button \"Fit\" [ref=e24]\n      - button \"Open source JSON\" [ref=e25]\n    - region \"Experience lens unavailable\" [ref=e18]\n      - heading \"Experience is not available yet\" [level=2, ref=e26]\n      - paragraph\n        - StaticText \"The Experience lens arrives with T3, which mounts its own adapter on this Stage. Pending work is cancelled. Return to World for ordinary viewing; a parked task is resumed there.\"\n      - button \"Back to World\" [ref=e27]",
+   "error": ""
+  },
+  {
+   "command": [
+    "click",
+    "e27"
+   ],
+   "code": 0,
+   "output": "\u2713 Done",
+   "error": ""
+  },
+  {
+   "command": [
+    "screenshot",
+    "/Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-review-390-parked.png"
+   ],
+   "code": 0,
+   "output": "\u2713 Screenshot saved to /Users/tony/Documents/Biskiq/batch-2026-10-17/T1.P01.S07/docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/evidence/plan-review-390-parked.png",
+   "error": ""
+  },
+  {
+   "command": [
+    "eval",
+    "JSON.stringify({parked: !!document.querySelector('.inactive-task'), panel: (() => { const r = document.querySelector('.inactive-task').getBoundingClientRect(); return {t:Math.round(r.top),l:Math.round(r.left),r:Math.round(r.right),b:Math.round(r.bottom)}; })()})"
+   ],
+   "code": 0,
+   "output": "\"{\\\"parked\\\":true,\\\"panel\\\":{\\\"t\\\":570,\\\"l\\\":16,\\\"r\\\":368,\\\"b\\\":685}}\"",
+   "error": ""
+  },
+  {
+   "command": [
+    "snapshot"
+   ],
+   "code": 0,
+   "output": "- generic\n  - button \"Replace conformance starter\" [ref=e1]\n  - banner\n    - paragraph\n      - StaticText \"MUSEUM EDITOR\"\n    - heading \"Enclosed room\" [level=1, ref=e3]\n    - group\n      - DisclosureTriangle \"Technical details\" [expanded=false]\n        - StaticText \"Technical details\"\n    - group \"Product lens\"\n      - button \"World\" [ref=e13]\n      - button \"Experience\" [ref=e14]\n    - button \"Undo\" [disabled, ref=e4]\n    - button \"Redo\" [disabled, ref=e5]\n    - StaticText \"Nothing to undo yet \u2014 no change has been accepted.\"\n    - button \"Save\" [disabled, ref=e6]\n    - StaticText \"Conditional Save arrives with T3.P01.S02; this host is read-only.\"\n    - button \"Preview\" [disabled, ref=e7]\n    - StaticText \"Visitor Preview arrives with T3.\"\n    - button \"Download source JSON\" [ref=e8]\n    - button \"Reduced motion off\" [ref=e9]\n  - navigation \"Project locator\" [ref=e2]\n    - button \"INDEX\" [expanded=true, ref=e10]\n      - StaticText \"INDEX\"\n    - generic\n      - LabelText\n        - StaticText \"FIND A SUBJECT\"\n      - searchbox \"FIND A SUBJECT\" [ref=e15]\n      - region \"WALL\" [ref=e16]\n        - heading \"WALL\" [level=3, ref=e21]\n        - list\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-1\" [ref=e28]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-1\"\n            - button \"Open location\" [ref=e29]\n            - button \"Bring into view\" [ref=e30]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-2\" [ref=e31]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-2\"\n            - button \"Open location\" [ref=e32]\n            - button \"Bring into view\" [ref=e33]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-3\" [ref=e34]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-3\"\n            - button \"Open location\" [ref=e35]\n            - button \"Bring into view\" [ref=e36]\n          - listitem [level=1]\n            - button \"WALL wall \u00b7 wall-chain-4\" [ref=e37]\n              - StaticText \"WALL\"\n              - StaticText \"wall \u00b7 wall-chain-4\"\n            - button \"Open location\" [ref=e38]\n            - button \"Bring into view\" [ref=e39]\n      - region \"ROOM FLOOR\" [ref=e17]\n        - heading \"ROOM FLOOR\" [level=3, ref=e22]\n        - list\n          - listitem [level=1]\n            - button \"FLOOR floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\" [ref=e40]\n              - StaticText \"FLOOR\"\n              - StaticText \"floor \u00b7 room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F\"\n            - button \"Open location\" [ref=e41]\n            - button \"Bring into view\" [ref=e42]\n      - region \"MEASURE \u00b7 CONFORMANCE\" [ref=e18]\n        - heading \"MEASURE \u00b7 CONFORMANCE\" [level=3, ref=e23]\n        - list\n          - listitem [level=1]\n            - button \"TASK Conformance height\" [ref=e43]\n              - StaticText \"TASK\"\n              - StaticText \"Conformance height\"\n  - generic\n    - application \"Spatial stage\" [ref=e11] focusable [tabindex]\n      - Canvas\n        - StaticText \"                                         \"\n      - generic\n        - button \"Plan\" [ref=e24]\n        - button \"3D\" [ref=e25]\n        - button \"Fit\" [ref=e26]\n        - button \"Open source JSON\" [ref=e27]\n    - region \"Inactive task\" [ref=e12]\n      - paragraph\n        - StaticText \"Conformance height is inactive. Resume to continue, or close it.\"\n      - button \"Resume Conformance height\" [ref=e19]\n      - button \"Close inactive task\" [ref=e20]",
+   "error": ""
+  },
+  {
+   "command": [
+    "click",
+    "e19"
+   ],
+   "code": 0,
+   "output": "\u2713 Done",
+   "error": ""
+  },
+  {
+   "command": [
+    "eval",
+    "document.querySelector('.stage-note')?.textContent?.trim() ?? null"
+   ],
+   "code": 0,
+   "output": "\"This adapter cannot revalidate its task. Close it and invoke it again.\"",
+   "error": ""
+  },
+  {
+   "command": [
+    "errors"
+   ],
+   "code": 0,
+   "output": "",
+   "error": ""
+  }
+ ]
+}

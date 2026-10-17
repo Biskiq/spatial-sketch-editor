@@ -20,6 +20,11 @@
 		canDownloadSource,
 		onDownloadSource,
 		historyUnavailableReason,
+		redoUnavailableReason = historyUnavailableReason,
+		canUndo = false,
+		canRedo = false,
+		onUndo = () => {},
+		onRedo = () => {},
 		saveUnavailableReason,
 		previewUnavailableReason,
 		reducedMotion,
@@ -31,7 +36,14 @@
 		onLens: (lens: 'world' | 'experience') => void;
 		canDownloadSource: boolean;
 		onDownloadSource: () => void;
+		/** Why Undo/Redo cannot run; visible whenever both are unavailable. */
 		historyUnavailableReason: string;
+		redoUnavailableReason?: string;
+		/** Live host history commands (T1.P01.S07 wiring). */
+		canUndo?: boolean;
+		canRedo?: boolean;
+		onUndo?: () => void;
+		onRedo?: () => void;
 		saveUnavailableReason: string;
 		previewUnavailableReason: string;
 		reducedMotion: boolean;
@@ -96,11 +108,32 @@
 	</div>
 
 	<div class="actions">
-		<div class="capability" data-unavailable-capability>
-			<button type="button" class="action" disabled aria-disabled="true" title={historyUnavailableReason}>
-				History
-			</button>
-			<span class="reason">{historyUnavailableReason}</span>
+		<div class="capability" data-editor-history data-unavailable-capability={!canUndo && !canRedo ? '' : undefined}>
+			<div class="history-actions">
+				<button
+					type="button"
+					class="action"
+					disabled={!canUndo}
+					aria-disabled={!canUndo}
+					title={canUndo ? 'Undo the latest accepted change' : historyUnavailableReason}
+					onclick={onUndo}
+				>
+					Undo
+				</button>
+				<button
+					type="button"
+					class="action"
+					disabled={!canRedo}
+					aria-disabled={!canRedo}
+					title={canRedo ? 'Redo the last undone change' : redoUnavailableReason}
+					onclick={onRedo}
+				>
+					Redo
+				</button>
+			</div>
+			{#if !canUndo && !canRedo}
+				<span class="reason">{historyUnavailableReason}</span>
+			{/if}
 		</div>
 
 		<div class="capability" data-unavailable-capability>
@@ -242,6 +275,11 @@
 		flex-direction: column;
 		gap: 0.1rem;
 		max-width: 11rem;
+	}
+
+	.history-actions {
+		display: flex;
+		gap: 0.3rem;
 	}
 
 	.reason {

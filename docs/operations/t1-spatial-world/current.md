@@ -18,18 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: T1.P01.S07 (Stage↔F4 integration bridge) is authorized (2026-10-17) and not started;
-        S04–S06 remain proposed.
-BATON: S02 was accepted under owner-override on 2026-10-17. Its `T1.viewport-projection@1`
-       capability remains ratified. By owner ruling D1 (2026-10-17), S07's acceptance, not S06's,
-       is the viewport readiness route; S07 also owns the host↔F4 wiring (D2), and Head Save stays
-       with S04 (D3).
-NEXT: Once the authorizing PR merges, start S07 through this runbook's eligibility, trusted-base and
-      one-line cycle check (S07 is not an exposure and opens nothing). Batch A: it runs beside
-      T3.P01.S03 under the authorized-batch shared-file protocol.
-ROUTE: ./README.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-2026-10-17 →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md
-BLOCKER: none for S07 once the authorizing PR merges. S04–S06 wait for S07's closeout.
+ACTIVE: none. T1.P01.S07 is accepted and closeout-complete (2026-10-17); S04–S06 remain proposed
+        and unauthorized.
+BATON: S02 was accepted under owner-override on 2026-10-17. By owner ruling D1 (2026-10-17), S07's
+       acceptance is the viewport readiness route; it recorded `T1.viewport-projection@1`
+       (`viewport-projection-v1`) accepted with S02 as the unchanged sole provider. S07's routine
+       closeout is complete: closed-work compaction, the preservation report, the
+       `closed/T1.P01.S07` anchor tag (local only) and the merge-stability reconciliation are done on
+       PR #137's branch; consumer eligibility starts at a base containing its merge.
+NEXT: The owner merges PR #137 as a merge commit (P1 — no squash, no rebase). Post-merge, verify the
+      recorded anchors are ancestors of `main` and push the `closed/T1.P01.S07` tag.
+ROUTE: ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md →
+       ../../roadmap/README.md#gate-register
+BLOCKER: the owner's merge decision on PR #137. S04–S06 stay unauthorized until the owner
+         authorizes them; their capability prerequisites are met once the merge is on `main`.
 ```

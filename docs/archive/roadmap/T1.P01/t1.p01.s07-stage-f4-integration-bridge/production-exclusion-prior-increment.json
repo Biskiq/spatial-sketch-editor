@@ -1,0 +1,11 @@
+{
+  "files_scanned": 349,
+  "forbidden_strings": [
+    "STAGE_BROWSER_CONFORMANCE_WRITER",
+    "Replace conformance starter",
+    "Apply conformance height",
+    "conformance-wall-height",
+    "stage-browser-conformance-only"
+  ],
+  "matches": []
+}

@@ -1,3 +1,8 @@
+import { EMPTY_SELECTION, primaryEntry, type StageSelectionState, type StageSelectionChange } from './semantic-selection';
+import type { EntryRequalification } from './selection-requalification';
+import type { StageSelectionEntry } from './semantic-selection';
+import type { SelectionRemoval, StageLens, TaskResumeOutcome } from './stage-session';
+import type { SemanticReference, F4JsonValue } from '@portfolio/project-model';
 /**
  * The public editor host facade — the consumer boundary of
  * `T1.viewport-projection@1`.
@@ -41,6 +46,8 @@ import {
 	type WorkingPlaneHit
 } from '@portfolio/camera-core';
 import type { Vec3 } from '@portfolio/camera-core';
+import type { Component } from 'svelte';
+import type { StageAdapterServices } from './stage-adapter-host';
 import {
 	evaluateLayoutPlan,
 	eligiblePlanFragments,
@@ -51,6 +58,7 @@ import {
 	type PlanFragment,
 	type PlanFragmentGeometry,
 	type PlanSourceKind,
+	type PlanSourceRef,
 	type PlanSubRef,
 	type PlanStream
 } from '@portfolio/layout-core';
@@ -65,9 +73,11 @@ import type {
 
 import { planParameters, type PlanParameterOverrides } from './plan-parameters';
 import { createCameraSession, evaluationIdOf, type CameraSession } from './camera-session';
-import type { StageReadSnapshot } from './source-admission';
+import type { StageReadSnapshot } from './accepted-read';
 import type {
 	GestureAcquisition,
+	SelectionRequalification,
+	SelectionRequalificationOutcome,
 	StageSelection,
 	StageSession,
 	StageTask
@@ -135,6 +145,16 @@ export type StageWorldGraphic = {
 	readonly world: Vec3;
 };
 
+/**
+ * The symbol key of the install-time mutation control.
+ *
+ * A conformance test uses it to run the real install with adapter re-binding
+ * suppressed, proving the rebind/disposal assertions are load-bearing. It is a
+ * symbol, not a string option, so no ordinary caller — and no serialized option
+ * object — can switch it on by accident.
+ */
+export const SKIP_REBIND_CONTROL: unique symbol = Symbol('stage-skip-rebind-control');
+
 export type StageAdapterContext = {
 	readonly snapshot: StageReadSnapshot;
 	readonly evaluation: ViewportEvaluation;
@@ -143,26 +163,124 @@ export type StageAdapterContext = {
 	ray(css: readonly [number, number]): PointerRay | null;
 	intersect(ray: PointerRay, plane: WorkingPlane): WorkingPlaneHit;
 	selection(): StageSelection | null;
+	selectionState(): StageSelectionState;
+	setSelection(value: StageSelectionState): StageSelectionChange;
 	select(selection: StageSelection | null): void;
 	requestIntent(intent: ViewingIntent, clockSeconds: number): StageIntentResult;
 };
 
-export type StageAdapter = {
+/** One task/instrument contribution an adapter offers for its own subjects. */
+export type StageTaskContribution = {
+	readonly id: string;
+	/** The registered task kind the instrument host renders. */
+	readonly taskKind: string;
+	readonly label: string;
+	readonly targetRef?: PlanSourceRef | null;
+	readonly target?: SemanticReference | null;
+	readonly configuration?: F4JsonValue;
+	readonly lens?: StageLens;
+	/** Called for explicit Resume against current content, never at lens return. */
+	readonly revalidate?: (task: StageTask, snapshot: StageReadSnapshot) => TaskResumeOutcome;
+	/** Explicit deterministic order; ties break by adapter ID, then contribution ID. */
+	readonly order?: number;
+};
+
+/** A task contribution as the host publishes it, stamped with its owning adapter. */
+export type StageTaskEntry = StageTaskContribution & {
+	readonly adapterId: string;
+	readonly order: number;
+};
+
+/** One PLATE rail-family / capability-Find entry that invokes this adapter's task. */
+export type StageFindEntry = {
+	readonly id: string;
+	/** The PLATE rail family this entry belongs to. */
+	readonly railFamily: string;
+	/** The capability-Find key the entry appears under. */
+	readonly capability: string;
+	readonly label: string;
+	/** The contributed task this entry invokes. */
+	readonly taskKind: string;
+	readonly order?: number;
+};
+
+/** A Find entry as the host publishes it, stamped with its owning adapter. */
+export type StageFindEntryRecord = StageFindEntry & {
+	readonly adapterId: string;
+	readonly order: number;
+};
+
+/** One Card fact for a subject the adapter owns. */
+export type StageCardFact = { readonly label: string; readonly value: string };
+
+/** The Card's subject identity, supplied by the host (never private Stage state). */
+export type StageCardSubject = {
+	readonly sourceId: string;
+	readonly sourceKind: string;
+	readonly reference?: SemanticReference;
+	readonly ref: PlanSourceRef | null;
+};
+
+/** A Card fact as the host publishes it, stamped with its owning adapter. */
+export type StageCardFactRecord = StageCardFact & { readonly adapterId: string };
+
+/**
+ * What an adapter's instrument contribution shows for one invoked task.
+ *
+ * The host mounts it in the one `StageInstrumentHost`; the adapter supplies the
+ * content, so a domain adapter never edits shell or route modules to bring its own
+ * instrument to the Stage.
+ */
+export type StageInstrumentContent = {
+	readonly summary: string;
+	readonly facts?: readonly StageCardFact[];
+	/** Editor-only UI; never serialized or imported by visitor surfaces. */
+	readonly view?: { readonly component: Component<{ services: StageAdapterServices }>; readonly services: StageAdapterServices };
+};
+
+/** The binding context: the live read access plus the adapter's own identity. */
+export type StageAdapterBindingContext = StageAdapterContext & { readonly adapterId: string };
+
+/**
+ * What one adapter contributes for one accepted snapshot.
+ *
+ * The host rebuilds this binding for every accepted source and disposes the
+ * previous one exactly once, so a domain adapter keeps its registration across
+ * live editing without ever reading a snapshot it was not built from.
+ */
+export type StageAdapterBinding = {
+	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
+	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
+	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
+	readonly selectionChanged?: (selection: StageSelectionState) => void;
+	readonly selectionEcho?: (selection: StageSelection | null) => void;
+	readonly tasks?: readonly StageTaskContribution[];
+	readonly cardFacts?: (subject: StageCardSubject) => readonly StageCardFact[];
+	readonly findEntries?: readonly StageFindEntry[];
+	/** The instrument this adapter's invoked task shows, or `null` for none. */
+	readonly instrument?: (task: {
+		readonly kind: string;
+		readonly targetRef: PlanSourceRef | null;
+	}) => StageInstrumentContent | null;
+	/** Ends this binding (listeners, buffers, callbacks). Run exactly once. */
+	readonly dispose?: () => void;
+};
+
+export type StageAdapter = StageAdapterBinding & {
 	readonly id: string;
 	/** Capabilities this adapter requires the host to provide. Unknown ones refuse mounting. */
 	readonly requiredCapabilities?: readonly string[];
-	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
-	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
 	/**
-	 * Claim a hit for this candidate, or `null` to leave it to the next claimant.
+	 * Host-owned re-binding: built for each accepted snapshot and disposed exactly
+	 * once when the next binding replaces it. An adapter without a factory keeps
+	 * its static binding for the whole mount.
 	 *
-	 * Consulted in registration order **before** the built-in Layout Plan
-	 * resolution, with the same live evaluation the meshes were drawn from, so a
-	 * domain adapter can pick its own 3D subjects (a Scene object on a Wall). The
-	 * host arbitrates eligible candidates, never one global priority among domains.
+	 * When `bind` is present the binding it returns is the adapter's **only**
+	 * contribution: top-level `overlay`/`graphics`/`tasks`/`cardFacts`/
+	 * `findEntries`/`instrument` on this object are ignored, because a factory
+	 * exists precisely so that none of them can outlive the source they read.
 	 */
-	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
-	readonly selectionEcho?: (selection: StageSelection | null) => void;
+	readonly bind?: (context: StageAdapterBindingContext) => StageAdapterBinding;
 };
 
 export type StageAdapterRegistration =
@@ -194,9 +312,10 @@ export type StageIntentResult =
  * The outcome of installing changed content for the already-mounted project.
  *
  * `installed` is the whole post-edit transition: the accepted slot swapped, every
- * adapter registration ended (a domain adapter binds to the source it was built
- * from), the live claim rebased onto the new source revision, and a fresh
- * inspection claim acquired at the **same** pose. `unchanged` is the identical
+ * factory-bound adapter's previous binding disposed exactly once at install and
+ * its replacement built on the next live evaluation, the live claim rebased onto
+ * the new source revision, and a fresh inspection claim acquired at the **same**
+ * pose. `unchanged` is the identical
  * content case: nothing is rebased and the live claim stays in place. `refused`
  * means the caller is looking at a different project identity (a replacement) or
  * has nothing mounted yet, and the host must mount it instead.
@@ -212,10 +331,22 @@ export type StageContentInstall =
 			readonly endedClaim: CameraOutputClaim | null;
 			/** The fresh claim re-acquired for the new source revision. */
 			readonly claim: CameraOutputClaim | null;
-			readonly endedAdapters: readonly string[];
+			/**
+			 * Adapters whose factory binding was retired for this snapshot. The binding
+			 * itself is disposed here and rebuilt on the next live evaluation, so this
+			 * names the retirement, not a completed rebuild.
+			 */
+			readonly reboundAdapters: readonly string[];
 			readonly clearedSelection: boolean;
 			readonly closedTask: boolean;
 			readonly releasedGestures: number;
+			/**
+			 * The retained Layout helper's report for its primary projection. The canonical
+			 * record of what survived is `selectionRemovals`, which also covers domains the
+			 * Layout helper never described.
+			 */
+			readonly requalification: SelectionRequalificationOutcome;
+			readonly selectionRemovals: readonly SelectionRemoval[];
 	  }
 	| { readonly kind: 'unchanged'; readonly sourceContentId: string; readonly claim: CameraOutputClaim | null }
 	| {
@@ -242,8 +373,26 @@ export type StageFacade = {
 	inspectionClaim(): CameraOutputClaim | null;
 	/** The live inspection ticket a run must present for a viewing intent. */
 	inspectionTicket(): CameraOutputTicket | null;
-	/** A same-project content change: the view stays, the output is re-acquired. */
-	installAccepted(next: StageReadSnapshot): StageContentInstall;
+	/**
+	 * A same-project content change: the view stays, factory-bound adapters are
+	 * rebuilt, the output is re-acquired, and the selection is requalified through
+	 * the supplied accepted correspondence (or cleared with a reason).
+	 */
+	installAccepted(
+		next: StageReadSnapshot,
+		options?: {
+			readonly requalify?: SelectionRequalification;
+			readonly requalifyEntry?: (entry: StageSelectionEntry) => EntryRequalification;
+			/**
+			 * Mutation-control seam for the adapter-lifetime criterion, keyed by a
+			 * symbol this module exports so no ordinary option can trigger it. Only the
+			 * conformance suite passes it; production omits it, and rebinding always
+			 * happens. It exists so the rebind/disposal assertions can be shown to fail
+			 * when the host does not rebuild factory bindings.
+			 */
+			readonly [SKIP_REBIND_CONTROL]?: true;
+		}
+	): StageContentInstall;
 	plan(overrides?: PlanParameterOverrides): PlanEvaluationResult;
 	/**
 	 * The host's current Plan parameters. Reveal is creator intent that must widen
@@ -254,11 +403,47 @@ export type StageFacade = {
 	eligibleFragments(): readonly PlanFragment[];
 	resolveSourceHit(candidate: StageHitCandidate): ResolvedStageHit;
 	selection(): StageSelection | null;
+	selectionState(): StageSelectionState;
+	setSelection(value: StageSelectionState): StageSelectionChange;
 	select(selection: StageSelection | null): void;
 	openTask(task: StageTask): boolean;
 	closeTask(): boolean;
+	changeLens(next: StageLens): boolean;
+	resumeTask(): TaskResumeOutcome;
 	registerStageAdapter(adapter: StageAdapter): StageAdapterRegistration;
 	adapters(): readonly StageAdapter[];
+	/**
+	 * Subscribe to registration and binding changes (register, dispose, rebuild).
+	 * A UI's derived contribution views read this signal so an adapter mounted after
+	 * the fact reaches the Index, the Card and the instrument host without a shell
+	 * edit and without an unrelated state change to shake it loose.
+	 */
+	onAdaptersChanged(listener: () => void): () => void;
+	/** Every contributed task, ordered deterministically and stamped with its adapter. */
+	tasks(): readonly StageTaskEntry[];
+	/**
+	 * Open one contributed task by its contribution ID.
+	 *
+	 * Contribution IDs are per-adapter: when two adapters contribute the same ID,
+	 * the first in the deterministic order (explicit order, then adapter ID) wins,
+	 * and the returned `adapterId` names the owner that actually opened it.
+	 */
+	instrumentForTask(id: string, adapterId?: string): StageInstrumentContent | null;
+	openFindEntry(adapterId: string, id: string): ReturnType<StageFacade['openContributedTask']>;
+	openContributedTask(id: string, adapterId?: string):
+		| {
+				readonly kind: 'opened';
+				readonly taskId: string;
+				readonly task: StageTask;
+				readonly adapterId: string;
+				/** Content the owning adapter contributes for the mounted instrument. */
+				readonly instrument: StageInstrumentContent | null;
+		  }
+		| { readonly kind: 'refused'; readonly code: 'unknown-task' | 'task-closed' | 'wrong-lens'; readonly message: string };
+	/** Every contributed Find entry, ordered deterministically and stamped with its adapter. */
+	findEntries(): readonly StageFindEntryRecord[];
+	/** Card facts contributed for one subject, ordered by adapter ID then label. */
+	cardFacts(subject: StageCardSubject): readonly StageCardFactRecord[];
 	overlays(): readonly StageOverlayContribution[];
 	graphics(): readonly StageWorldGraphic[];
 	acquireGesture(request: {
@@ -592,11 +777,50 @@ export function createStageFacade(input: {
 		// so a retained ticket from the previous project cannot qualify against it.
 		outputId: input.outputId ?? `output:${currentSnapshot.sessionEpoch}:${session.token().epoch}`
 	});
-	/** Registration id → adapter and the disposer that ends it. */
-	const adapters = new Map<string, { adapter: StageAdapter; dispose: () => void }>();
+	/** Live listeners for the contribution surface; see `onAdaptersChanged`. */
+	const adapterListeners = new Set<() => void>();
+	let adaptersChangeQueued = false;
+	function notifyAdaptersChanged(): void {
+		for (const listener of [...adapterListeners]) {
+			try {
+				listener();
+			} catch {
+				// A listener that throws must not strand the rest or the facade.
+			}
+		}
+	}
+	/** Coalesce rebuild notifications out of the read path that discovered them. */
+	function scheduleAdaptersChanged(): void {
+		if (adaptersChangeQueued) return;
+		adaptersChangeQueued = true;
+		queueMicrotask(() => {
+			adaptersChangeQueued = false;
+			notifyAdaptersChanged();
+		});
+	}
+	/**
+	 * Registration id → the adapter, its current binding and the disposer that ends
+	 * that binding exactly once. A factory-bound adapter is rebuilt per accepted
+	 * snapshot; a static one keeps one binding for the mount.
+	 */
+	const adapters = new Map<
+		string,
+		{
+			adapter: StageAdapter;
+			contributions: StageAdapterBinding;
+			/** `true` when the adapter builds a binding per accepted snapshot. */
+			factory: boolean;
+			/** A factory binding waiting for the next live evaluation. */
+			pending: boolean;
+			dispose: () => void;
+		}
+	>();
 	/** The host's own inspection run order, minted strictly newer than every accepted epoch. */
 	let inspectionRun = 0;
+	const lifetimeToken = session.token();
 	let disposed = false;
+	const isLive = () => !disposed && session.isCurrent(lifetimeToken);
+	let contributedTaskOwner: { adapterId: string; taskId: string } | null = null;
 
 	/**
 	 * The next host inspection run epoch. It is monotonic over this output's whole
@@ -624,46 +848,228 @@ export function createStageFacade(input: {
 		});
 	}
 
-	function adapterContext(): StageAdapterContext | null {
+	/**
+	 * One adapter context plus the handle that ends it.
+	 *
+	 * A context is bounded by **its binding**, not by the session's writer
+	 * generation: opening or closing a task must not invalidate an adapter's
+	 * selection capability, because the binding is still built from live content and
+	 * the adapter is still registered. `end()` is what makes a rebuilt, replaced or
+	 * disposed binding's old callbacks inert — the same lifetime the disposer already
+	 * ends. Task-scoped callbacks are the ones that expire with a writer generation,
+	 * and the instrument services guard them with it separately.
+	 */
+	type AdapterContextHandle = { readonly context: StageAdapterContext; end(): void };
+
+	function adapterContext(): AdapterContextHandle | null {
 		const evaluation = camera.evaluation();
-		if (evaluation === null) return null;
+		if (!isLive() || evaluation === null) return null;
+		const boundSnapshot = currentSnapshot;
+		let ended = false;
+		const contextIsLive = () => !ended && isLive() && currentSnapshot === boundSnapshot;
 		const token = tokenOf(evaluation);
 		const id = evaluationIdOf(evaluation);
-		return {
+		const hasLiveEvaluation = () => contextIsLive() && camera.evaluationId() === id;
+		const context: StageAdapterContext = {
 			snapshot: currentSnapshot,
 			evaluation,
 			evaluationId: id,
 			project(point) {
+				if (!hasLiveEvaluation()) return null;
 				const result = projectWorld(point, evaluation, token);
 				return result.kind === 'projected' ? result.css : null;
 			},
 			ray(css) {
+				if (!hasLiveEvaluation()) return null;
 				const result = pointerRay(css, evaluation, token);
 				return result.kind === 'ray' ? result.ray : null;
 			},
 			intersect(ray, plane) {
+				if (!hasLiveEvaluation()) return { kind: 'failed', code: 'stale-evaluation', message: 'the adapter evaluation has ended' };
 				return intersectWorkingPlane(ray, plane, evaluation, token);
 			},
-			selection: () => session.selection(),
-			select: (selection) => select(selection),					// The adapter names the clock: an adapter-initiated transition starts at
-					// the caller's own time, never at a fabricated zero that would make every
-					// transition begin in the past and land instantly.
-					requestIntent: (intent, clockSeconds) =>
-						facade.requestViewingIntent(intent, camera.inspectionTicket(), clockSeconds)
+			selection: () => contextIsLive() ? session.selection() : null,
+			selectionState: () => contextIsLive() ? session.selectionState() : EMPTY_SELECTION,
+			setSelection: (value) => contextIsLive() ? setSelection(value) : { kind: 'refused', code: 'stale-binding', message: 'Reacquire the active adapter binding.' },
+			select: (selection) => { if (contextIsLive()) select(selection); },
+			// The adapter names the clock: an adapter-initiated transition starts at
+			// the caller's own time, never at a fabricated zero that would make every
+			// transition begin in the past and land instantly.
+			requestIntent: (intent, clockSeconds) =>
+				contextIsLive() ? facade.requestViewingIntent(intent, camera.inspectionTicket(), clockSeconds)
+				: { kind: 'superseded', state: camera.state(), message: 'the adapter binding lifetime has ended' }
 		};
+		return { context, end: () => { ended = true; } };
 	}
 
 	function select(selection: StageSelection | null): void {
+		if (!isLive()) return;
 		session.select(selection);
-		for (const entry of adapters.values()) entry.adapter.selectionEcho?.(selection);
+		echoSelection();
+		notifyAdaptersChanged();
 	}
 
-	/** End every adapter registration: a domain adapter binds to the source it was built from. */
+	function echoSelection(): void {
+		for (const entry of adapters.values()) {
+			try { entry.contributions.selectionEcho?.(session.selection()); entry.contributions.selectionChanged?.(session.selectionState()); } catch { /* Subscriber isolation. */ }
+		}
+	}
+	function setSelection(value: StageSelectionState): StageSelectionChange {
+		if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+		const result = session.setSelection(value);
+		if (result.kind === 'selected') { echoSelection(); notifyAdaptersChanged(); }
+		return result;
+	}
+
+	/** End every binding and registration: used by dispose, never by a content change. */
 	function endAdapters(): readonly string[] {
 		const ids = [...adapters.keys()];
 		for (const entry of [...adapters.values()]) entry.dispose();
 		adapters.clear();
 		return ids;
+	}
+
+	function once(dispose: () => void): () => void {
+		let ended = false;
+		return () => {
+			if (ended) return;
+			ended = true;
+			try { dispose(); } catch { /* Cleanup must continue for the other bindings. */ }
+		};
+	}
+
+	/**
+	 * Build one factory binding for the current snapshot.
+	 *
+	 * A factory that throws yields an empty binding rather than taking the host
+	 * down: the adapter stays registered (so its failure is visible and repairable)
+	 * but contributes nothing until the next accepted snapshot rebuilds it. A
+	 * factory needs a live viewport output, so a build with no evaluation defers to
+	 * `ensureBindings` rather than projecting against a viewport that no longer
+	 * exists.
+	 */
+	function buildBinding(adapter: StageAdapter):
+		| { readonly kind: 'built'; readonly contributions: StageAdapterBinding; readonly dispose: () => void }
+		| { readonly kind: 'deferred' } {
+		const handle = adapterContext();
+		if (adapter.bind === undefined || handle === null) return { kind: 'deferred' };
+		const { context, end } = handle;
+		let binding: StageAdapterBinding = {};
+		try {
+			binding = adapter.bind({ ...context, adapterId: adapter.id });
+		} catch {
+			binding = {};
+		}
+		// A freshly built binding starts from the live selection, delivered once.
+		// The install requalified it before any rebuild, so the adapter observes the
+		// surviving selection — never a cleared-then-restored pair.
+		const live = session.selection();
+		{
+			try {
+				if (live !== null) binding.selectionEcho?.(live);
+				binding.selectionChanged?.(session.selectionState());
+			} catch {
+				// An echo that throws must not discard a binding that was built.
+			}
+		}
+		return { kind: 'built', contributions: binding, dispose: once(() => { end(); binding.dispose?.(); }) };
+	}
+
+	/**
+	 * Rebuild every pending factory binding once a live evaluation exists again.
+	 *
+	 * A source rebase ends the old evaluation, so a rebuild waits for the host's
+	 * next frame instead of being built against a viewport that no longer exists.
+	 * The pending flag is cleared before the build, so exactly one rebuild happens
+	 * per accepted snapshot.
+	 */
+	function ensureBindings(): void {
+		if (camera.evaluation() === null) return;
+		let rebuilt = false;
+		for (const [id, entry] of [...adapters.entries()]) {
+			if (!entry.factory || !entry.pending) continue;
+			const built = buildBinding(entry.adapter);
+			if (built.kind === 'deferred') continue;
+			adapters.set(id, {
+				adapter: entry.adapter,
+				contributions: built.contributions,
+				factory: true,
+				pending: false,
+				dispose: built.dispose
+			});
+			rebuilt = true;
+		}
+		// A rebuild is discovered **inside a read** (`overlays()`, `tasks()`, …), and the
+		// host reads those from derived values. Notifying synchronously here would let a
+		// subscriber write reactive state while a derivation is being evaluated, which
+		// Svelte refuses. The rebuild invalidates the contribution surface on a
+		// microtask instead; register/dispose keep notifying synchronously because they
+		// originate from events.
+		if (rebuilt) scheduleAdaptersChanged();
+	}
+
+	/**
+	 * Host-owned re-binding across installs.
+	 *
+	 * The previous binding is disposed **exactly once, at install time** — it was
+	 * built from content that no longer exists — and the next one is built against
+	 * the newly installed snapshot on the next live evaluation. Live editing
+	 * therefore never tears a domain adapter's registration down. Adapters without a
+	 * factory are static and are left alone; replacement still ends everything
+	 * through `endAdapters`.
+	 */
+	function rebindAdapters(): readonly string[] {
+		const rebound = [...adapters.entries()]
+			.filter(([, entry]) => entry.factory)
+			.map(([id]) => id);
+		for (const id of rebound) {
+			const entry = adapters.get(id)!;
+			entry.dispose();
+			adapters.set(id, {
+				adapter: entry.adapter,
+				contributions: {},
+				factory: true,
+				pending: true,
+				dispose: () => {}
+			});
+		}
+		if (rebound.length === 0) return rebound;
+		ensureBindings();
+		return rebound;
+	}
+
+	/** Deterministic order: explicit `order`, then owning adapter ID, then entry ID. */
+	function compareEntries(
+		a: { readonly adapterId: string; readonly order: number; readonly id: string },
+		b: { readonly adapterId: string; readonly order: number; readonly id: string }
+	): number {
+		if (a.order !== b.order) return a.order - b.order;
+		if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;
+		return a.id === b.id ? 0 : a.id < b.id ? -1 : 1;
+	}
+
+	function tasksOf(): readonly StageTaskEntry[] {
+		return [...adapters.entries()]
+			.flatMap(([adapterId, entry]) =>
+				(entry.contributions.tasks ?? []).map((task) => ({
+					...task,
+					adapterId,
+					order: task.order ?? 0
+				}))
+			)
+			.sort(compareEntries);
+	}
+
+	function findEntriesOf(): readonly StageFindEntryRecord[] {
+		return [...adapters.entries()]
+			.flatMap(([adapterId, entry]) =>
+				(entry.contributions.findEntries ?? []).map((findEntry) => ({
+					...findEntry,
+					adapterId,
+					order: findEntry.order ?? 0
+				}))
+			)
+			.sort(compareEntries);
 	}
 
 	const facade: StageFacade = {
@@ -706,6 +1112,7 @@ export function createStageFacade(input: {
 			return intersectWorkingPlane(ray, plane, evaluation, tokenOf(evaluation));
 		},
 		requestViewingIntent(intent, ticket, clockSeconds) {
+			if (!isLive()) return { kind: 'superseded', state: camera.state(), message: 'the Stage lifetime has ended' };
 			// Ownership is the landed ticket protocol's answer, never a field
 			// comparison: a ticket for another output, host session or source revision,
 			// or one whose run epoch this output already spent, cannot drive it. A run
@@ -745,8 +1152,8 @@ export function createStageFacade(input: {
 		},
 		inspectionClaim: () => camera.output().claim,
 		inspectionTicket: () => camera.inspectionTicket(),
-		installAccepted(next) {
-			if (disposed) {
+		installAccepted(next, options) {
+			if (!isLive()) {
 				return { kind: 'refused', code: 'disposed', message: 'the stage is disposed and installs no source' };
 			}
 			const previous = currentSnapshot;
@@ -762,7 +1169,8 @@ export function createStageFacade(input: {
 				// what they meant, so nothing is rebased and nothing is re-acquired.
 				return { kind: 'unchanged', sourceContentId: next.sourceContentId, claim: camera.output().claim };
 			}
-			const installed = session.installAccepted(next);
+			const requalify = options?.requalify;
+			const installed = session.installAccepted(next, { requalify, requalifyEntry: options?.requalifyEntry });
 			if (installed.kind !== 'installed') {
 				// The session holds one accepted-source slot, so this is the "nothing
 				// mounted yet" case; a disposed or divergent session is named as such.
@@ -782,11 +1190,29 @@ export function createStageFacade(input: {
 			}
 			const endedClaim = camera.output().claim;
 			const pose = camera.state().pose;
-			const endedAdapters = endAdapters();
 			// The source rebase ends the live claim (its intent was evaluated against the
 			// old content) without touching the pose, and the host re-acquires at once.
 			camera.rebaseSource(next.sourceContentId);
 			currentSnapshot = next;
+			// Every factory-bound adapter is rebuilt for *this* snapshot: the registration
+			// survives the edit, each previous binding is disposed exactly once, and its
+			// replacements were built from the source that is now mounted.
+			const reboundAdapters = options?.[SKIP_REBIND_CONTROL] === true ? [] : rebindAdapters();
+			// A static binding keeps its registration across the change, so it never saw
+			// the requalified selection: it is delivered exactly once, the same way a
+			// rebuilt factory binding receives the live selection when it is built.
+			if (installed.requalification.kind === 'requalified') {
+				const surviving = installed.requalification.selection;
+				for (const entry of adapters.values()) {
+					if (entry.factory) continue;
+					try {
+						entry.contributions.selectionEcho?.(surviving);
+					} catch {
+						// An echo that throws must not fail the install.
+					}
+				}
+			}
+			for (const entry of adapters.values()) if (!entry.factory) { try { entry.contributions.selectionChanged?.(session.selectionState()); } catch { /* Subscriber isolation. */ } }
 			const acquired = camera.acquireInspection('exclusive', nextInspectionRun());
 			return {
 				kind: 'installed',
@@ -795,10 +1221,12 @@ export function createStageFacade(input: {
 				pose: camera.state().pose,
 				endedClaim,
 				claim: acquired.kind === 'acquired' ? acquired.claim : null,
-				endedAdapters,
+				reboundAdapters,
 				clearedSelection: installed.clearedSelection,
 				closedTask: installed.closedTask,
-				releasedGestures: installed.releasedGestures
+				releasedGestures: installed.releasedGestures,
+				requalification: installed.requalification,
+				selectionRemovals: installed.selectionRemovals
 			};
 		},
 		plan: (overrides) => planFor(overrides),
@@ -821,12 +1249,13 @@ export function createStageFacade(input: {
 			// on a Wall is reachable even though the Wall's Plan fragment is nearer the
 			// datum-plane point. Layout's own Plan resolution is the built-in fallback
 			// when no adapter claims, which keeps its priority deterministic within Layout.
-			const context = adapterContext();
-			if (context !== null) {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle !== null) {
 				for (const entry of adapters.values()) {
-					const provider = entry.adapter.hitProvider;
+					const provider = entry.contributions.hitProvider;
 					if (provider === undefined) continue;
-					const claimed = provider(candidate, context);
+					const claimed = provider(candidate, handle.context);
 					if (claimed !== null) return { kind: 'resolved', hit: claimed };
 				}
 			}
@@ -871,11 +1300,37 @@ export function createStageFacade(input: {
 			return { kind: 'none', reason: 'no-fragment' };
 		},
 		selection: () => session.selection(),
+		selectionState: () => session.selectionState(),
+		setSelection,
 		select,
-		openTask: (task) => session.openTask(task),
-		closeTask: () => session.closeTask(),
+		openTask: (task) => { if (!isLive()) return false; contributedTaskOwner = null; return session.openTask(task); },
+		closeTask: () => { if (!isLive()) return false; contributedTaskOwner = null; const closed = session.closeTask(); notifyAdaptersChanged(); return closed; },
+		changeLens(next) {
+			if (!isLive() || !session.changeLens(next)) return false;
+			// A lens exit ends bindings as well as writers. Old callbacks cannot become live on return.
+			rebindAdapters();
+			notifyAdaptersChanged();
+			return true;
+		},
+		resumeTask() {
+			if (!isLive()) return { kind: 'refused', code: 'stale-session', message: 'This Stage lifetime has ended.' };
+			ensureBindings();
+			const owner = contributedTaskOwner;
+			const entry = owner ? tasksOf().find((candidate) => candidate.adapterId === owner.adapterId && candidate.id === owner.taskId) : null;
+			const result = session.resumeTask((task, snapshot) => {
+				// The owning adapter may simply not be bound right now (a lens whose view
+				// supplies no evaluation defers its bindings). Say so, instead of claiming
+				// the capability was removed from a live adapter.
+				if (owner && !entry) return { kind: 'refused', code: 'binding-unavailable', message: 'This capability is not bound in this lens. Return to its lens and resume again.' };
+				if (entry && !entry.revalidate) return { kind: 'refused', code: 'resume-unavailable', message: 'This adapter cannot revalidate its task. Close it and invoke it again.' };
+				return entry?.revalidate?.(task, snapshot) ?? { kind: 'resumed' };
+			});
+			if (result.kind === 'resumed') rebindAdapters();
+			notifyAdaptersChanged();
+			return result;
+		},
 		registerStageAdapter(adapter) {
-			if (disposed) {
+			if (!isLive()) {
 				return {
 					kind: 'refused',
 					code: 'unknown-required-capability',
@@ -901,25 +1356,145 @@ export function createStageFacade(input: {
 					message: `this host does not provide ${missing.join(', ')}; refusing to mount "${adapter.id}"`
 				};
 			}
+			let ended = false;
+			const factory = adapter.bind !== undefined;
+			const built = factory
+				? buildBinding(adapter)
+				: { kind: 'built' as const, contributions: adapter, dispose: once(() => adapter.dispose?.()) };
+			// The map entry owns the *binding* disposer; the registration disposer also
+			// removes the entry, so a content change never ends a registration.
+			const bindingDispose = built.kind === 'built' ? built.dispose : () => {};
 			const dispose = () => {
+				if (ended) return;
+				ended = true;
+				const currentBinding = disposed ? undefined : adapters.get(adapter.id);
 				adapters.delete(adapter.id);
+				if (contributedTaskOwner?.adapterId === adapter.id) {
+					contributedTaskOwner = null;
+					session.closeTask();
+				}
+				currentBinding?.dispose();
+				notifyAdaptersChanged();
 			};
-			adapters.set(adapter.id, { adapter, dispose });
+			adapters.set(adapter.id, {
+				adapter,
+				contributions: built.kind === 'built' ? built.contributions : {},
+				factory,
+				pending: factory && built.kind === 'deferred',
+				dispose: bindingDispose
+			});
 			session.addDisposable(dispose);
+			notifyAdaptersChanged();
 			return { kind: 'registered', id: adapter.id, dispose };
 		},
 		adapters: () => [...adapters.values()].map((entry) => entry.adapter),
+		onAdaptersChanged(listener) {
+			adapterListeners.add(listener);
+			return () => {
+				adapterListeners.delete(listener);
+			};
+		},
+		// An adapter is third-party code. A throwing contributor is skipped, exactly as
+		// an echo or a bind refusal is: the route calls these from its animation frame,
+		// so one exception would otherwise stop the Stage's own rendering for good.
 		overlays() {
-			const context = adapterContext();
-			if (context === null) return [];
-			return [...adapters.values()].flatMap((entry) => entry.adapter.overlay?.(context) ?? []);
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			return [...adapters.values()].flatMap((entry) => {
+				try { return entry.contributions.overlay?.(handle.context) ?? []; } catch { return []; }
+			});
 		},
 		graphics() {
-			const context = adapterContext();
-			if (context === null) return [];
-			return [...adapters.values()].flatMap((entry) => entry.adapter.graphics?.(context) ?? []);
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			return [...adapters.values()].flatMap((entry) => {
+				try { return entry.contributions.graphics?.(handle.context) ?? []; } catch { return []; }
+			});
+		},
+		tasks() {
+			ensureBindings();
+			return tasksOf();
+		},
+		instrumentForTask(id, adapterId) {
+			if (!isLive() || session.task() === null) return null;
+			ensureBindings();
+			const entry = tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
+			if (entry === undefined || session.task()?.kind !== entry.taskKind ||
+				contributedTaskOwner?.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id) return null;
+			try {
+				const content = adapters.get(entry.adapterId)?.contributions.instrument?.({
+					kind: entry.taskKind, targetRef: entry.targetRef ?? null
+				}) ?? null;
+				if (!content?.view) return content;
+				const services = content.view.services;
+				const generation = session.writerGeneration();
+				const active = () => isLive() && generation === session.writerGeneration() && session.task() !== null;
+				return { ...content, view: { ...content.view, services: {
+					stage: { ...services.stage,
+						setSelection: (value) => active() ? setSelection(value) : { kind: 'refused', code: 'inactive-task', message: 'Resume the task before selecting.' },
+						select: (value) => { if (active()) select(value); },
+						acquireGesture: (request) => active() ? facade.acquireGesture(request) : { kind: 'refused', code: 'stale-epoch', owner: request.owner }
+					},
+					authoring: { ...services.authoring, accept: (intent) => active() ? services.authoring.accept(intent) : Promise.resolve({ kind: 'refused', code: 'inactive-task', message: 'Resume the task before applying a proposal.' }) }
+				} } };
+			} catch { return null; }
+		},
+		openFindEntry(adapterId, id) {
+			ensureBindings();
+			const entry = findEntriesOf().find((candidate) => candidate.id === id && candidate.adapterId === adapterId);
+			const tasks = tasksOf().filter((candidate) => candidate.adapterId === adapterId && candidate.taskKind === entry?.taskKind);
+			if (tasks.length !== 1) return { kind: 'refused', code: 'unknown-task', message: 'Find requires one task of the declared kind in its owning adapter' };
+			return facade.openContributedTask(tasks[0]!.id, adapterId);
+		},
+		openContributedTask(id, adapterId) {
+			if (!isLive()) {
+				return { kind: 'refused', code: 'task-closed', message: 'the stage is disposed and opens no task' };
+			}
+			ensureBindings();
+			const entry = tasksOf().find((candidate) => candidate.id === id && (adapterId === undefined || candidate.adapterId === adapterId));
+			if (entry === undefined) {
+				return { kind: 'refused', code: 'unknown-task', message: `no adapter contributes a task "${id}"` };
+			}
+			const lens = entry.lens ?? 'world';
+			if (lens !== session.lens()) {
+				// A lens-bound operation is not a disposed session: name the lens, so the
+				// creator returns there instead of reading "disposed" for a live Stage.
+				return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${lens} lens before invoking ${entry.label}.` };
+			}
+			const task: StageTask = {
+				kind: entry.taskKind,
+				label: entry.label,
+				targetRef: entry.targetRef ?? null, target: entry.target ?? null, configuration: entry.configuration ?? null, lens
+			};
+			if (!session.openTask(task)) {
+				return { kind: 'refused', code: 'task-closed', message: 'the session is disposed and opens no task' };
+			}
+			contributedTaskOwner = { adapterId: entry.adapterId, taskId: entry.id };
+			notifyAdaptersChanged();
+			const instrument = facade.instrumentForTask(id, entry.adapterId);
+			return { kind: 'opened', taskId: entry.id, task, adapterId: entry.adapterId, instrument };
+		},
+		findEntries() {
+			ensureBindings();
+			return findEntriesOf();
+		},
+		cardFacts(subject) {
+			ensureBindings();
+			const facts: StageCardFactRecord[] = [];
+			for (const [adapterId, entry] of adapters.entries()) {
+				let contributed: readonly StageCardFact[] = [];
+				try { contributed = entry.contributions.cardFacts?.(subject) ?? []; } catch { contributed = []; }
+				for (const fact of contributed) facts.push({ ...fact, adapterId });
+			}
+			return facts.sort((a, b) => {
+				if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;
+				return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
+			});
 		},
 		acquireGesture(request) {
+			if (!isLive()) return { kind: 'refused', code: 'stale-epoch', owner: request.owner };
 			return session.acquireGesture({
 				owner: request.owner,
 				evaluationId: request.evaluationId,
@@ -930,7 +1505,13 @@ export function createStageFacade(input: {
 		dispose() {
 			if (disposed) return;
 			disposed = true;
+			if (session.isCurrent(lifetimeToken) && contributedTaskOwner !== null) session.closeTask();
+			contributedTaskOwner = null;
 			endAdapters();
+			// A consumer that keeps this facade must not show stale contribution rows,
+			// and no listener may outlive the facade it was registered on.
+			notifyAdaptersChanged();
+			adapterListeners.clear();
 		}
 	};
 

@@ -34,60 +34,23 @@ import {
 } from '@portfolio/layout-core';
 import {
 	prepareRuntime,
-	type NavigationGraph,
 	type ProjectDocument,
-	type ProjectIssue,
-	type RuntimeScene
+	type ProjectIssue
 } from '@portfolio/project-model';
 import {
-	computeSourceContentId,
+	tryComputeSourceContentId,
+	createCurrentDomainReadAdapters,
+	freezeF4Data,
 	type AcceptedRevision,
-	type CurrentDomainSource,
 	type SnapshotIdentity
 } from '@portfolio/project-model';
-import type { LayoutRoomRegistry } from '@portfolio/project-model';
 
 import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
 import { parseProjectJson, validateProject } from '$lib/project/project-codec';
 
-/** The domain read access a Stage snapshot publishes. Immutable by construction. */
-export type StageDomainRead = {
-	/** The strict current source itself, for domain adapters. */
-	readonly project: ProjectDocument;
-	/** The F.1 read adapters bound to this exact accepted source. */
-	readonly current: CurrentDomainSource;
-	/** Canonical compiled Layout through the one shared geometry core. */
-	readonly geometry: CompiledLayoutGeometry;
-	/** The evaluated level datum in project-world meters. */
-	readonly datumMeters: number;
-	/** The resolved runtime Scene. */
-	readonly scene: RuntimeScene;
-	/** The current-format (empty) Room registry. */
-	readonly rooms: LayoutRoomRegistry;
-	/** The visitor-equivalent navigation graph. */
-	readonly graph: NavigationGraph;
-	/** Non-blocking compiler warnings, retained for diagnostics disclosure. */
-	readonly warnings: readonly LayoutGeometryIssue[];
-};
-
-/**
- * `StageReadSnapshot` — the source-independent validated read facade the Stage
- * mounts. Field names follow AM-4's `AcceptedSnapshot@1` (accepted revision,
- * source-content identity, admitted source kind/version, domain read access) so
- * the later host↔F4 wiring can swap in S03's export without renaming a consumer.
- */
-export type StageReadSnapshot = {
-	readonly acceptedRevision: AcceptedRevision;
-	readonly sourceContentId: string;
-	/** Host session lifetime guard; separate from the acceptance revision. */
-	readonly sessionEpoch: string;
-	readonly sourceKind: 'project-current';
-	readonly sourceVersion: number;
-	/** Opaque compile/representation generation every fragment carries. */
-	readonly compileGeneration: string;
-	readonly domain: StageDomainRead;
-};
-
+import type { StageDomainRead, StageReadSnapshot } from './accepted-read';
+export type { StageDomainRead, StageReadSnapshot } from './accepted-read';
+import { attachCurrentStageSource, CURRENT_STAGE_SOURCE_VERSION } from './current-stage-source';
 export type AdmissionRefusalReason = 'invalid-json' | 'invalid-format' | 'project-mismatch';
 
 export type AdmissionOutcome =
@@ -110,7 +73,7 @@ export type AdmissionContext = {
 };
 
 /** The current-format version of the one supported project document pair. */
-const CURRENT_PROJECT_FORMAT_VERSION = 5;
+const CURRENT_PROJECT_FORMAT_VERSION = CURRENT_STAGE_SOURCE_VERSION;
 
 /**
  * The level datum of one compiled Layout, in project-world meters.
@@ -130,18 +93,20 @@ function compileGenerationOf(sourceContentId: string): string {
 function snapshotOf(
 	project: ProjectDocument,
 	sourceContentId: string,
+	canonicalJson: string,
 	context: AdmissionContext,
 	domain: StageDomainRead
 ): StageReadSnapshot {
-	return {
+	return attachCurrentStageSource({
 		acceptedRevision: context.acceptedRevision,
 		sourceContentId,
+		canonicalJson,
 		sessionEpoch: context.sessionEpoch,
 		sourceKind: 'project-current',
 		sourceVersion: CURRENT_PROJECT_FORMAT_VERSION,
 		compileGeneration: compileGenerationOf(sourceContentId),
 		domain
-	};
+	}, { source: project, snapshot: { acceptedRevision: context.acceptedRevision, sourceContentId } });
 }
 
 const HOST_SCENE_OPTIONS = MUSEUM_SCENE_VALIDATION_OPTIONS;
@@ -196,20 +161,29 @@ export async function admitSource(
 		};
 	}
 
-	const sourceContentId = await computeSourceContentId(project);
+	// The canonical form is computed once here: its bytes are both what the content
+	// identity describes and what the host records as the accepted baseline.
+	const identity = await tryComputeSourceContentId(project, { scene: HOST_SCENE_OPTIONS });
+	if (identity.kind === 'rejected') {
+		return { kind: 'refused', reason: 'invalid-format', issues: identity.issues };
+	}
+	const sourceContentId = identity.sourceContentId;
 	const snapshotIdentity: SnapshotIdentity = { acceptedRevision: context.acceptedRevision, sourceContentId };
-	const current: CurrentDomainSource = { source: project, snapshot: snapshotIdentity };
 	const domain: StageDomainRead = {
-		project,
-		current,
+		name: project.name,
+		references: { snapshot: snapshotIdentity, sessionEpoch: context.sessionEpoch, generationId: compileGenerationOf(sourceContentId),
+			supportedExtensions: [], lock: null, ...createCurrentDomainReadAdapters(project, snapshotIdentity) },
 		geometry: compiled.geometry,
+		layoutLevelId: project.layout.floor.id,
 		datumMeters: layoutDatumMeters(compiled.geometry),
 		scene: prepared.runtimeScene,
 		rooms: prepared.rooms,
 		graph: prepared.graph,
 		warnings: compiled.issues.filter((issue) => issue.severity === 'warning')
 	};
-	return { kind: 'admitted', snapshot: snapshotOf(project, sourceContentId, context, domain) };
+	freezeF4Data(project);
+	freezeF4Data(domain);
+	return { kind: 'admitted', snapshot: snapshotOf(project, sourceContentId, identity.canonicalJson, context, domain) };
 }
 
 /**

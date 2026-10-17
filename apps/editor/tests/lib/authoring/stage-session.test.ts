@@ -1,3 +1,4 @@
+import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * The session host owns the facts that must not survive a project replacement.
  *
@@ -95,7 +96,7 @@ describe('stage session — one replacement epoch and one teardown', () => {
 			policy: 'continue-after-revalidation'
 		});
 		expect(lease.kind).toBe('granted');
-		session.select({ sourceId: 'wall-1', sourceKind: 'wall', generationId: 'compile:1', ref: null as never });
+		session.select({ sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, ref: { sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, stream: 'projected', subRef: null } });
 		session.openTask({ kind: 'subject-membership', label: 'Plan membership', targetRef: null });
 
 		const second = await admit(enclosureProject(OTHER_PROJECT_ID, 0.5), OTHER_PROJECT_ID);
@@ -129,7 +130,7 @@ describe('stage session — one replacement epoch and one teardown', () => {
 		session.writers().register('load', token, () => {
 			cancelled += 1;
 		});
-		session.select({ sourceId: 'wall-1', sourceKind: 'wall', generationId: 'compile:1', ref: null as never });
+		session.select({ sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, ref: { sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, stream: 'projected', subRef: null } });
 
 		// A content change is admitted under the session's own epoch: it is the same
 		// host lifetime, and the session refuses a snapshot from another one.

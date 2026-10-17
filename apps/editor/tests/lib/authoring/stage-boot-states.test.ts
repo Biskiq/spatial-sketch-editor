@@ -1,3 +1,4 @@
+import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S02 — the editor host's explicit boot states.
  *
@@ -153,11 +154,11 @@ describe('the editor host boots into exactly one named state', () => {
 		// visitor-equivalent navigation graph.
 		// The read adapters bind to the one admitted source, and admitting it does not
 		// mutate or re-spell the payload the caller supplied.
-		expect(snapshot.domain.current.source).toBe(snapshot.domain.project);
-		expect(snapshot.domain.project.id).toBe(document.id);
-		expect(snapshot.domain.project.layout).toEqual(document.layout);
+		expect(snapshot.domain.references.snapshot).toEqual(currentStageSource(snapshot).snapshot);
+		expect(currentStageSource(snapshot).source.id).toBe(document.id);
+		expect(currentStageSource(snapshot).source.layout).toEqual(document.layout);
 		expect(JSON.stringify(document)).toBe(before);
-		expect(snapshot.domain.current.snapshot).toEqual({
+		expect(currentStageSource(snapshot).snapshot).toEqual({
 			acceptedRevision: context.acceptedRevision,
 			sourceContentId: snapshot.sourceContentId
 		});
@@ -235,7 +236,7 @@ describe('the editor host boots into exactly one named state', () => {
 		const state = await bootStarterGallery(PROJECT_ID, context);
 		expect(state.status).toBe('ready');
 		if (state.status !== 'ready') return;
-		expect(state.snapshot.domain.project.name).toBe(STARTER_TEMPLATES[0]!.label);
+		expect(currentStageSource(state.snapshot).source.name).toBe(STARTER_TEMPLATES[0]!.label);
 		expect(state.snapshot.domain.geometry.floors).toHaveLength(1);
 		expect(state.snapshot.domain.geometry.walls).toHaveLength(4);
 		// No Scene objects and no Camera content: the starter is architecture.
@@ -260,7 +261,7 @@ describe('the editor host boots into exactly one named state', () => {
 		expect(state.snapshot.domain.geometry.walls).toEqual([]);
 		expect(state.snapshot.domain.geometry.floors.every((floor) => floor.roomIds.length === 0)).toBe(true);
 		expect(state.snapshot.domain.datumMeters).toBe(0);
-		expect(state.snapshot.domain.project.name).toBe('Untitled project');
+		expect(currentStageSource(state.snapshot).source.name).toBe('Untitled project');
 	});
 
 	it('opens explicit source JSON through the one admission path', async () => {

@@ -1,3 +1,4 @@
+import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S02 — source admission: **admission equals runtime preparation**.
  *
@@ -90,7 +91,7 @@ describe('source admission', () => {
 		// physical Walls. The exact Wall count is the compiler's topology, which the
 		// Layout suites own; admission only has to have compiled something to draw.
 		const domain = snapshot.domain;
-		expect(domain.project.id).toBe(PROJECT_ID);
+		expect(currentStageSource(snapshot).source.id).toBe(PROJECT_ID);
 		expect(domain.geometry.floors).toHaveLength(1);
 		expect(domain.geometry.walls.length).toBeGreaterThan(0);
 		expect(domain.datumMeters).toBe(domain.geometry.floors[0]!.elevation);
@@ -105,7 +106,7 @@ describe('source admission', () => {
 		// warnings, so asserting only "they are warnings" would hold on an empty list,
 		// and the blocking half of the partition is pinned non-vacuously by the
 		// `diagnostics` case below.
-		const independent = compileWallFirstLayoutGeometry(domain.project.layout);
+		const independent = compileWallFirstLayoutGeometry(currentStageSource(snapshot).source.layout);
 		const expectedWarnings = independent.issues.filter((issue) => issue.severity === 'warning');
 		expect(domain.warnings.map((issue) => issue.code).sort()).toEqual(
 			expectedWarnings.map((issue) => issue.code).sort()
