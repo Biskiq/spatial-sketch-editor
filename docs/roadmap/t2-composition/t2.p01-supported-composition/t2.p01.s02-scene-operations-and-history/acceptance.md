@@ -2,32 +2,41 @@
 
 AUTHORITY: NONE — accepted evidence, review rounds and residuals are preserved in Git.
 
-**Accepted:** 2026-10-17 by the slice owner **under an explicit owner override**. Independent review
-covered `af39acd1` and withdrew its verdict when a third round reproduced two substantive findings;
-both were repaired at `62d4d5b0` by the same coordinator that ran the review, so no independent
-verdict covered that revision and re-review was pending. The owner waived that re-review rather than
-obtain it. This is an **owner override of a gating prerequisite**, not a passed independent review of
-`62d4d5b0`. Acceptance covers the approved S02 criteria at the declared `architecture-integration`
-tier. The declared integrated route remains
-[T2.P01.S04](../t2.p01.s04-bounded-composition-loop/implementation-plan.md).
+**Owner acceptance:** 2026-10-17, recorded from the slice owner's deliberate invocation of
+`slice-closeout`. The invocation was the owner acceptance event; it did not waive or replace
+independent review. The earlier verdict on `af39acd1` was withdrawn after round 3 found two substantive
+issues, both repaired at `62d4d5b0`; no independent verdict covered that repair at the time. That
+review prerequisite was later resolved by a fresh independent review of the reconciled implementation
+and its subsequent fix (see the [review record](./independent-review.md)). Acceptance covers the
+approved S02 criteria at the declared `architecture-integration` tier. The declared integrated route
+remains [T2.P01.S04](../t2.p01.s04-bounded-composition-loop/implementation-plan.md).
 
 **Delivered:** seven pure single-domain Scene `DomainPlanner`s over the landed F.4 contracts
 (`place-object`, `move-horizontal`, `set-yaw`, `place-on-floor`, `resize-on-floor`, `duplicate-one`,
 `delete-one`), each `compound`/`units`/`resources` false, in `packages/project-model/src/scene-planning/`:
 a strict captured-intent reader, snapshot-qualified floor support derived from the canonical Layout
 compile, a record-scope guard derived from the documents, honest poses (yaw owns only `rotation[1]`;
-an unresolvable `owner-frame` refuses `unsupported-frame`), and conformance against the landed F.4
-coordinator. No F4 capability, no history, no installer, no adapter variant and no host registration.
+horizontal move owns only position X/Z; floor resize owns only position Y and scale; an unresolvable
+`owner-frame` refuses `unsupported-frame`), and conformance against the landed F.4 coordinator. No F4
+capability, no history, no installer, no adapter variant and no host registration.
 
-**Verification recorded at `62d4d5b0` (author-recorded; not independently re-verified, because the
-override waives re-review):** fast lane `npm run test:fast` 112 files / 1,596 tests; architecture lane
-`npm run test:arch` 17 files / 148 tests; heavy lane `npm run test:heavy` 8 files / 118 tests;
-complete suite `npm run test:full -w @portfolio/editor -- --maxWorkers=2` 137 files / 1,862 tests,
-zero skips; `npm run check` 0 errors / 0 warnings; `npm run check:project-model` clean; production
-build passes. Focused contracts, each run whole: `scene-operation-planners.test.ts` 33 tests and
-`scene-operation-acceptance.test.ts` 9 tests. Only documentation changed after `62d4d5b0`
-(`4945e926`), so the recorded rows stand. Manual-owed rows: 0; browser journeys and API/DB suites are
-not required at this tier.
+**Separate implementation-PR merge gate:** after merging `origin/main` into the PR branch and
+resolving the independently reviewed component-scope issue, the repository's §7.4 gate passed at
+implementation/test commit `189757375ccb6b20e9661686170f19f147aa4cb6` (tree
+`67bdd21bab76ea1760939f3faa301adc02ed051b`), before the documentation-only closeout edits below.
+The full editor suite (`npm run test:full -w @portfolio/editor -- --maxWorkers=2`, the same full
+Vitest config as `npm test`) passed 142 files / 1,899 tests; the explicit arch lane passed 18 files /
+151 tests. `npm run check` reported 0 errors / 0 warnings; `check:layout-core`, `check:project-model`,
+`check:camera-core` and `check:api` passed; the editor production build passed. The DB-backed
+`npm run test:api` ran against local PostgreSQL 14.19, database `biskiq_s02`, and passed 53 tests with
+zero skips. Browser smoke checks of `/`, `/projects`, `/project/x/spatial` and `/p/x` had no console
+errors; `/project/x/spatial` rendered “Spatial authoring is paused” and `/p/x` rendered “This link is
+unavailable”. The §7.4 integration merge gate is separate from routine slice closeout and does not
+replace the declared T2.P01.S04 final phase gate. Manual-owed rows: 0.
+
+The earlier verification recorded at `62d4d5b0` remains historical evidence recoverable from the
+anchor. Its recorded counts are not used as evidence for the later component-scope correction; the
+full merge gate above covers the reconciled implementation.
 
 **Entry points:** implementation
 `packages/project-model/src/scene-planning/{support,record-scope,operations,intent-payload,planners}.ts`;
@@ -56,9 +65,11 @@ remaining deferred items:        0 slice-owned defects; integration residuals re
 permanent stubs added:            3 (owner-ratified cost)
 ```
 
-Accepted 2026-10-17 under an owner override of the pending independent re-review of `62d4d5b0`. The
-required merge method is a merge commit so the historical anchor stays reachable; post-merge anchor
-verification is pending because this task stops before merge.
+Owner acceptance was recorded on 2026-10-17 from the deliberate `slice-closeout` invocation; the
+independent-review prerequisite was resolved separately and is recorded in
+[independent-review.md](./independent-review.md). The required merge method is a merge commit so the
+historical anchor stays reachable. Post-merge verification follows the
+[preservation procedure](../../../../../.agents/skills/slice-closeout/references/preservation.md#anchor-mechanics).
 
 Recovery of the full acceptance record:
 

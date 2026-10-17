@@ -18,13 +18,9 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 shipped 2026-10-17
-        under an owner override of the pending re-review of `62d4d5b0`; S03–S04 proposed and
-        unauthorized.
-BATON: T2.P01.S02 (Scene operations and shared history) is accepted and shipped on PR #134 from
-       post-PR #132 `main`, in parallel with `T3.P01.S02` under the pair protocol. It supplies the
-       Scene planner set and its conformance against the landed F.4 coordinator, owns no history and
-       registered no live host (host↔F4 wiring and S03 own that). No T2 slice is in progress.
+SLICES: T2.P01's slice register is authoritative — S01/S02 shipped; S03–S04 proposed and unauthorized.
+BATON: No T2 slice is in progress. The phase README and closed slice records own shipped status and
+       completed evidence.
 NEXT: The next T2 authorization is S03 (first coherent editing surface). Its prerequisites — T1's
       `viewport-projection-v1` and the host↔F4 wiring (`T1.P01.S04` by default) — are not complete,
       so S03 stays proposed until the owner authorizes it. Phase/track closure is not available: S04,

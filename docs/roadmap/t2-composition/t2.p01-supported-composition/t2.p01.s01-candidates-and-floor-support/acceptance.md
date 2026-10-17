@@ -46,9 +46,10 @@ remaining deferred items:        0 slice-owned defects; integration residuals re
 permanent stubs added:            3 (owner-ratified cost)
 ```
 
-The implementation was accepted on 2026-10-16. The required merge method is a merge commit so the
-historical anchor remains reachable; post-merge anchor verification is pending because this task
-stops before merge.
+The implementation was accepted on 2026-10-16 and merged by PR #130 with merge commit
+`37f89dc7aff8e26af5da3a0ac316812909c68dee`. Post-merge verification confirmed that anchor
+`4cbe296834288a4b1c86c83134cd81c7ea007204` is an ancestor of `origin/main`, and tag
+`closed/T2.P01.S01` resolves to that anchor.
 
 Recovery of the full acceptance record:
 
