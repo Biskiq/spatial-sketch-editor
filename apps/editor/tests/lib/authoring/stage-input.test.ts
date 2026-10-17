@@ -194,9 +194,17 @@ describe('Stage input policy', () => {
 		// could still end the first pointer's press (releasing its lease) and its click
 		// could reach the same decision, selecting through a press it never owned.
 		const press = createStagePressTracker();
+		expect(press.ownsPointer(1)).toBe(false);
 		expect(press.begin({ x: 100, y: 100 }, 1)).toBe('owned');
 		expect(press.begin({ x: 400, y: 120 }, 2)).toBe('refused');
 		expect(press.owner()).toBe(1);
+
+		// Movement is the third event a refused pointer still produces. Its samples sit at
+		// its own position, so consuming them against the owner's drag origin panned by the
+		// distance between the two fingers (here 300 px) while the owner held the gesture.
+		expect(press.ownsPointer(2)).toBe(false);
+		expect(press.ownsPointer(99)).toBe(false);
+		expect(press.ownsPointer(1)).toBe(true);
 
 		// The second pointer going up must not end the first one's press.
 		expect(press.end(2)).toBe(false);

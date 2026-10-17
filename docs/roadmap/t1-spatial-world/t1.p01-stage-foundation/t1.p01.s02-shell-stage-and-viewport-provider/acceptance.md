@@ -81,12 +81,13 @@ green. Both findings were real defects, and each is now pinned by a test that fa
    with behavioural ones, decomposition counts handed back to the Layout suites, the unknown-asset
    refusal made to name the asset, the older-format refusal added, and the consumer probes written.
 
-## Independent architecture review — three rounds (`eb0d94a`, `7c801808`, and the round-three fixes)
+## Independent architecture review — four rounds (`eb0d94a`, `7c801808`, `1d7e8da2`, then the
+movement guard)
 
-Three independent reviews ran against pushed revisions. Every finding was traced end to end — AM-5,
-the S02 plan, the seam contract, the suites — before anything changed; one round-one finding described
-a claim the implementation never supported, and two later findings were regressions the preceding
-fixes introduced.
+Four independent reviews ran against pushed revisions. Every finding was traced end to end — AM-5, the
+S02 plan, the seam contract, the suites — before anything changed; one round-one finding described a
+claim the implementation never supported, and three later findings were regressions or gaps the
+preceding fixes left.
 
 | Finding | Verdict | Disposition |
 | --- | --- | --- |
@@ -284,13 +285,31 @@ lease-refusal mark is honoured); `stage-shell-composition` holds the call sites 
 `press.refuse(event.pointerId)`, the owner guard on lost capture). Dropping the ownership check from
 `end` makes the two-pointer test fail.
 
+### 9. A refused pointer's **movement** still panned the Camera — real, fixed
+
+Round three covered the endings and the click, but movement is the one event a refused pointer keeps
+producing. `onPointerMove` only asked whether a drag existed, then took the event's coordinates as
+successive samples against the **owner's** origin: with the owner at `(100, 100)` and a second finger
+moving at `(400, 120)`, that finger's first move panned 300 px although it had been refused the lease.
+
+Fixed by naming ownership in the tracker (`ownsPointer(pointerId)`, true only for the live press
+owner) and gating `onPointerMove` on it **before** any sample is consumed; `onLostPointerCapture` uses
+the same predicate instead of comparing `owner()` itself. Nothing else moved: the lease, the endings
+and the click decisions are as round three left them.
+
+Test: `stage-input` extends the two-pointer case — nothing owns a pointer before a press, `ownsPointer(1)`
+is true while `ownsPointer(2)` (refused) and `ownsPointer(99)` (never seen) are false; `stage-shell-composition`
+asserts the move handler gates on `press.ownsPointer(event.pointerId)` and that the gate precedes its
+`pan(` call. Deleting that line from the route fails the composition test (verified); removing the
+tracker method fails the input test.
+
 ### Verification of this revision
 
 The §7.4 contract, run on the merged tree these results describe (after those runs, only this record
 changed; the positive-control adjustment described below is included in them). Round-one results were
 measured at `90aa6729`; round two after merging `origin/main` = `94283377` (T3.P01.S02), zero
-behind-commits; round three on that same tree with no further merges. All figures below are the
-round-three re-run, `apps/editor` unless noted, and were produced with the workspace `vitest` binary
+behind-commits; rounds three and four on that same tree with no further merges. All figures below are
+the round-four re-run, `apps/editor` unless noted, and were produced with the workspace `vitest` binary
 the npm scripts invoke (the package manager's dependency verification cannot resolve the `@portfolio/*`
 workspace links against the public registry here, so it was bypassed rather than the scripts changed):
 
@@ -322,7 +341,7 @@ Browser observation (Vite dev server on the S02 checkout, starter-gallery boot, 
 - Picking was measured in the page against the production facade with the live document and its own evaluation (the attached preview webview does not composite, so `requestAnimationFrame` — and with it the route's per-frame evaluation — is starved; this is an environment limit, not a host behaviour, and the probe is why it is disclosed rather than claimed as a full UI pass). 3D: a mid-band click resolves `wall`, a lower click resolves `room-floor`, frame corners resolve `no-fragment`, which the datum-plane pick could not do (it named the floor under a Wall and resolved no Wall at all). Plan: the same facade reports `projection-kind: plan-orthographic` and resolves `room-floor`; no second renderer or transform appears.
 - The round-two upper-Wall case in the same page, on the starter document (3 m Walls, 1.2 m cut): the Wall's Plan fragment is a `cut` fragment at 1.2 m, a click there resolves `wall` at `y = 1.2`, a click at 90 % of the Wall's height resolves the same Wall at `y = 2.7`, and a click at 99 % resolves it at `y = 2.97`. Before this round the two upper clicks resolved nothing: the face stopped at the cut.
 - The Plan presentation is the orthographic reading of the same geometry: 105 fragments, membership `included` for all five sources, and Reveal has nothing to restore in the starter document. What a cut drawing does with excluded sources is the owner decision above (reduced contract approved; renderer unassigned).
-- The two round-three cases were not re-observed in the browser, and are not claimed as if they were: `onLostPointerCapture` and a refused second pointer need real multi-pointer capture input the webview does not produce, and the multi-span Wall case needs a door authored in the page. Both are pinned in `stage-input`, `stage-facade` and `stage-shell-composition`, including that removing the correspondence filter or the pointer-ownership check fails them.
+- The later multi-pointer cases were not re-observed in the browser, and are not claimed as if they were: capture loss, a refused second pointer and that pointer's movement all need real multi-pointer input the webview does not produce, and the multi-span Wall case needs a door authored in the page. They are pinned in `stage-input`, `stage-facade` and `stage-shell-composition`, including that removing the correspondence filter, the pointer-ownership check or the movement gate fails them.
 
 Limitations of this pass, stated as such: no full keyboard/screen-reader pass; the drag-versus-click
 and gesture-lifecycle sequences are pinned by tests at the state machine and call-site level rather

@@ -192,8 +192,18 @@ describe('Stage shell composition', () => {
 		// Pointer ownership: a refused second pointer cannot end the holder's press, and its
 		// own click is marked so it cannot select either.
 		expect(route).toContain('press.refuse(event.pointerId)');
-		expect(route).toContain('press.owner() !== event.pointerId');
 		expect(route).toContain('press.abort(event.pointerId)');
+
+		// …and its **movement** is refused too, before any sample is consumed. Movement is
+		// the one event a refused pointer keeps producing, and the owner's drag origin is
+		// not where that pointer is, so taking its coordinates pans by the distance between
+		// two fingers.
+		const pointerMove = route.slice(route.indexOf('function onPointerMove('));
+		const pointerMoveBody = pointerMove.slice(0, pointerMove.indexOf('function onPointerUp('));
+		expect(pointerMoveBody).toContain('if (!press.ownsPointer(event.pointerId)) return;');
+		expect(pointerMoveBody.indexOf('press.ownsPointer(event.pointerId)')).toBeLessThan(
+			pointerMoveBody.indexOf('pan(')
+		);
 	});
 
 	it('measures the viewport in one place and never scales the stage with CSS', () => {

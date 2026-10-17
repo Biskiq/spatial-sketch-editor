@@ -138,6 +138,8 @@ export type StagePressTracker = {
 		point: { readonly x: number; readonly y: number },
 		pointerId?: number | null
 	) => boolean;
+	/** Whether this pointer owns the live press (and so may move, end or select). */
+	readonly ownsPointer: (pointerId: number) => boolean;
 	/** The pointer that currently owns the press, or `null`. */
 	readonly owner: () => number | null;
 };
@@ -197,6 +199,11 @@ export function createStagePressTracker(): StagePressTracker {
 			if (start === null) return true;
 			return !isStageDrag(start, point);
 		},
-		owner: () => owner
+		owner: () => owner,
+		ownsPointer(pointerId) {
+			// Movement is the one transition a refused pointer still generates: its samples
+			// sit at its own position, not the owner's, so they must not pan or orbit.
+			return owner !== null && owner === pointerId;
+		}
 	};
 }

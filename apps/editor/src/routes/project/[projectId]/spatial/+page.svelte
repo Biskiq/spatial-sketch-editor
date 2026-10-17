@@ -562,6 +562,10 @@
 
 	function onPointerMove(event: PointerEvent): void {
 		if (drag === null) return;
+		// Movement is the one thing a refused pointer still produces. Its samples are at
+		// its own position, not the owner's, so taking them would pan by the distance
+		// between two fingers — the camera would jump while the owner held the gesture.
+		if (!press.ownsPointer(event.pointerId)) return;
 		// The lease can end underneath us (a cancel-on-reading-change policy, a task
 		// exit, an adapter taking the pointer). Samples taken under a lease we no
 		// longer hold must not keep moving the view.
@@ -621,7 +625,7 @@
 		// Capture is also released implicitly *after* a normal pointer up, and that click
 		// is still owed its drag decision. Losing it while the press is live is an
 		// interruption instead. A non-owning pointer's capture is not this gesture.
-		if (press.owner() !== event.pointerId) return;
+		if (!press.ownsPointer(event.pointerId)) return;
 		if (drag !== null) abortGesture();
 		else endGesture();
 	}
