@@ -1,0 +1,84 @@
+# Local development backend: PostgreSQL + @biskiq/api.
+#
+#   npm run stack:up      # build, migrate, start; returns once the API is ready
+#   npm run dev           # editor stays native (Vite + HMR) on http://localhost:5173
+#
+# The SvelteKit editor is deliberately not containerized. Production deployment
+# (render.yaml, vercel.json) is unaffected by this file.
+# Secrets (Google OAuth, SESSION_KEY, R2_*) come from the developer's .env; the
+# database and origins are overridden here so the container never targets the
+# database named in .env.
+name: biskiq
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: biskiq
+      POSTGRES_PASSWORD: biskiq
+      POSTGRES_DB: biskiq
+    ports:
+      - '127.0.0.1:${BISKIQ_DB_PORT:-5433}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U biskiq -d biskiq']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: biskiq-api-dev
+    command: ['node', 'dist/migrate.js']
+    env_file:
+      - path: .env
+        required: true
+    environment: &api-overrides
+      DATABASE_URL: postgresql://biskiq:biskiq@db:5432/biskiq
+      PORT: '8787'
+      API_ORIGIN: http://localhost:${BISKIQ_API_PORT:-8787}
+      EDITOR_ORIGIN: http://localhost:5173
+    volumes:
+      - ./apps/api/migrations:/repo/apps/api/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    image: biskiq-api-dev
+    env_file:
+      - path: .env
+        required: true
+    environment: *api-overrides
+    ports:
+      - '127.0.0.1:${BISKIQ_API_PORT:-8787}:8787'
+    # Source mounts give API hot reload (node --watch-path restarts the process);
+    # node_modules stays in the image.
+    volumes:
+      - ./apps/api/src:/repo/apps/api/src:ro
+      - ./packages/camera-core/src:/repo/packages/camera-core/src:ro
+      - ./packages/layout-core/src:/repo/packages/layout-core/src:ro
+      - ./packages/project-model/src:/repo/packages/project-model/src:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/health/ready').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: biskiq-pgdata

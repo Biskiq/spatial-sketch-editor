@@ -1,0 +1,14 @@
+# docker-compose.yml builds only the API dev image; keep the context to what it copies.
+**/node_modules
+**/dist
+**/build
+**/.svelte-kit
+.git
+.env
+.env.*
+docs
+prototypes
+apps/editor/*
+!apps/editor/package.json
+**/*.log
+.DS_Store

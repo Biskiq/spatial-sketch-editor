@@ -263,7 +263,7 @@ concrete for this tree; it adds no workflow, runner or CI job.
 | Production code a heavy correctness invariant exercises | The relevant heavy contract during verification, alongside the affected fast contract |
 | Shared test setup (`tests/helpers/**`, `tests/docs/**`), `test-lanes.ts`, `vitest.shared.ts` or a `vitest.*.config.ts` | Every lane the change reaches **and** the full suite at acceptance (`npm test`) |
 | Production code (ordinary) | The affected contract, then the §7.7 escalation for its subsystem, call sites and package type checks |
-| `apps/api` code, its tests or fixtures | `npm run check:api` and the DB-backed `npm run test:api` with **zero skips** (a reachable `DATABASE_URL`; the run's DB target is recorded at a checkpoint). Root `check`, `build` and `test` cover the editor only and never sub for an API run |
+| `apps/api` code, its tests or fixtures | `npm run check:api` and the DB-backed `npm run test:api` with **zero skips** (a reachable `DATABASE_URL`; the run's DB target is recorded at a checkpoint — `npm run test:api:stack` targets the local Compose database that `npm run stack:up` starts). Root `check`, `build` and `test` cover the editor only and never sub for an API run |
 
 Every #115 checkpoint and every future implementation-PR merge gate keeps the
 declared complete verification contract — the §7.4 contract **including

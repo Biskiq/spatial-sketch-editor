@@ -53,6 +53,58 @@ values in [`.env`](.env) (do not commit it):
 cp .env.example .env
 ```
 
+Keep valid local Google OAuth credentials, a 32-byte `SESSION_KEY` and the
+`R2_*` values in `.env`, with the editor's API origin:
+
+```env
+PUBLIC_API_ORIGIN=http://localhost:8787
+```
+
+Google must allow:
+
+```text
+Authorized JavaScript origin: http://localhost:5173
+Authorized redirect URI:     http://localhost:8787/auth/callback
+```
+
+### Backend in Docker (recommended)
+
+Needs Docker with Compose v2. One command builds the API image, starts
+PostgreSQL 16, applies every migration and returns once the API reports ready
+(`/health/ready` reaches the database):
+
+```bash
+npm run stack:up
+```
+
+Then run the editor natively, with Vite hot reload:
+
+```bash
+npm run dev
+```
+
+Open <http://localhost:5173>. The Compose stack ([`docker-compose.yml`](docker-compose.yml))
+reads the secrets from `.env` but always uses its own database and origins:
+the API serves `http://localhost:8787` and restarts when `apps/api/src` or
+`packages/*/src` change. Data lives in the `biskiq-pgdata` volume and survives
+restarts; the database is also reachable from the host at
+`postgresql://biskiq:biskiq@localhost:5433/biskiq`. `BISKIQ_DB_PORT` and
+`BISKIQ_API_PORT` change the host ports; with a different API port, set
+`PUBLIC_API_ORIGIN` and the Google redirect URI to match.
+
+```bash
+npm run stack:logs      # follow API, migration and database logs
+npm run stack:migrate   # re-apply migrations after adding one (idempotent)
+npm run stack:down      # stop; data is kept
+npm run stack:reset     # stop and delete the database volume
+npm run test:api:stack  # API suite against the Compose database
+```
+
+The image is for local development only; deployment (`render.yaml`,
+`vercel.json`) does not use it.
+
+### Backend on a host Postgres
+
 Use a local Postgres database:
 
 ```bash
@@ -68,14 +120,6 @@ PORT=8787
 EDITOR_ORIGIN=http://localhost:5173
 API_ORIGIN=http://localhost:8787
 PUBLIC_API_ORIGIN=http://localhost:8787
-```
-
-Keep valid local Google OAuth credentials and a 32-byte `SESSION_KEY` in the
-same file. Google must allow:
-
-```text
-Authorized JavaScript origin: http://localhost:5173
-Authorized redirect URI:     http://localhost:8787/auth/callback
 ```
 
 Apply the database schema once:
@@ -117,6 +161,7 @@ npm test        # the complete editor suite (all lanes)
 ```
 
 The API has its own gates: `npm run check:api` and `npm run test:api` (build plus
-every API contract; publication and the auth seam need a reachable Postgres).
+every API contract; the persistence, Save, publication and auth-seam contracts
+need a reachable Postgres — `npm run test:api:stack` uses the Compose database).
 Kernel packages have `check:layout-core`, `check:project-model` and
 `check:camera-core`.
