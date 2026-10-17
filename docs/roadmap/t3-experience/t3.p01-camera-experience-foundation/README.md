@@ -2,8 +2,9 @@
 
 **Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
 `T3.P01.S02` shipped 2026-10-16 (PR #133), accepted with `conditional-save-current-v1`;
-S03 owner-authorized 2026-10-17, in progress with a
-[registered split proposal](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md); S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
+S03 owner-authorized 2026-10-17, in progress; its [S03a/S03b split direction](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md)
+is approved under delegated owner authority, but follow-up rows are not registered or authorized;
+S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
@@ -136,7 +137,7 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T3.P01.S01 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shared unit and program codecs](./t3.p01.s01-unit-and-program-codecs/implementation-plan.md) | [record](./t3.p01.s01-unit-and-program-codecs/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) — accepted, closed in PR #131 |
 | T3.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Early conditional Save](./t3.p01.s02-early-conditional-save/implementation-plan.md) | [record](./t3.p01.s02-early-conditional-save/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); accepted 2026-10-16 from recorded independent-review evidence; output `F4.intent-acceptance@1:conditional-save-current-v1` accepted |
-| T3.P01.S03 | in-progress | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); in progress with a [registered split proposal](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) |
+| T3.P01.S03 | in-progress | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); in progress with an [approved split direction](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) (S03a/S03b unregistered and unauthorized) |
 | T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 and S02 are now shipped
