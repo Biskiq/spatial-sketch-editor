@@ -250,6 +250,18 @@ export function createUnitAcceptanceAdapter(
 			if (before.acceptedRevision.projectId !== after.acceptedRevision.projectId) {
 				issues.push(issue('$.acceptedRevision.projectId', 'project-mismatch', 'an accepted operation cannot change the accepted project'));
 			}
+			// The embedded revision is source provenance, not an operator-editable
+			// fact: the coordinator mints revision identity. A candidate that rewrites
+			// it is not the operation's baseline source.
+			if (before.acceptedRevision.revisionId !== after.acceptedRevision.revisionId) {
+				issues.push(
+					issue(
+						'$.acceptedRevision.revisionId',
+						'baseline-revision-mismatch',
+						'an accepted operation cannot rewrite the baseline accepted revision'
+					)
+				);
+			}
 			const changed = changedDomains(before, after);
 			if (!compound && changed.some((changedDomain) => changedDomain !== domain)) {
 				issues.push(

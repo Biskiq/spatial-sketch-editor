@@ -582,6 +582,44 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 		expect(coordinator.acceptedSnapshot().domain.source).toEqual(source);
 	});
 
+	it('refuses a structurally malformed pin before any install', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true, resourceStaging: true });
+		// Negative size is not a pin shape the strict reader admits; it is distinct
+		// from the well-formed pin whose bytes disagree with the capture.
+		const malformed = { hash: PIN.hash, mime: 'image/png', size: -1, locator: 'r2://paper.png' };
+		const refused = await coordinator.accept(
+			compoundIntent(source, {
+				targets: [experienceReference(source), resourceReference()],
+				payload: {
+					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
+					presentationLabel: 'New presentation',
+					resource: { contentRevision: 'rev-paper-2', pin: malformed }
+				},
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }])
+					}
+				]
+			})
+		);
+		expect(refused.kind).toBe('rejected');
+		expect(coordinator.installs()).toBe(1);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(source);
+	});
+
+	it('refuses a candidate that rewrites the baseline accepted revision', async () => {
+		const source = await envelope();
+		const adapter = createUnitAcceptanceAdapter({ compound: true });
+		const forged: ProjectEnvelope = {
+			...source,
+			acceptedRevision: { ...source.acceptedRevision, revisionId: 'revision-forged' }
+		};
+		const issues = adapter.validateChange?.(source, forged, 'experience') ?? [];
+		expect(issues.some((entry) => entry.code === 'baseline-revision-mismatch')).toBe(true);
+	});
+
 	it('preserves an existing resource lock entry’s required capabilities', async () => {
 		const base = await envelope();
 		const capabilities = [{ id: 'cap.texture', version: '1' }];

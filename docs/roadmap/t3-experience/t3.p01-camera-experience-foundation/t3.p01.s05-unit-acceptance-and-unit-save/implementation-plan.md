@@ -45,8 +45,11 @@ activation and no live unit writer.
    envelope, and refuses duplicate/conflicting IDs before constructing anything.
 2. **One envelope for validation.** Apply domain validation (`validateProjectEnvelope`, which owns
    per-unit and cross-unit structural validation), the F.1 dependency-lock reader and resource
-   staging to the **same** candidate envelope. No caller-supplied pin or resolver set may disagree
-   with that envelope: the adapter re-derives unit headers and lock identities from it. Revision
+   staging to the **same** candidate envelope. No caller-supplied pin or resolver set is trusted:
+   the adapter re-derives unit headers and lock identities from that envelope, and a changed resource
+   is staged through the same F.1 resolver so its record and lock cannot disagree with the candidate.
+   The captured staging set proves the host staged the identity the candidate names; it is not
+   byte-level verification of uploaded content (that belongs to S04 storage). Revision
    *authority* is the coordinator's `AcceptedSnapshot.acceptedRevision`; the embedded
    `acceptedRevision` in an F.2 envelope is the baseline the candidate was prepared from, because
    the landed coordinator installs source bytes unchanged and history restoration is byte-exact.
@@ -90,7 +93,7 @@ activation and no live unit writer.
 | Original S03 obligation | This slice's evidence |
 | --- | --- |
 | Actual Camera View + Presentation + optional Stop candidates | Planner conformance: single-domain View update; compound View+Presentation+Stop in one candidate; optional Stop omitted changes nothing else; unknown keys/IDs refuse. |
-| Complete domain/reference/resource identity and lock validation | Adapter conformance: invalid unit version, unresolved reference, a stale or dangling dependency lock and a malformed pin all refuse before install; validation reads only the candidate envelope. A declared unit header that disagrees with its bytes is **re-derived**, never trusted, and the installed envelope carries the recomputed revision (a revision is a derived fact); Save separately refuses a captured byte string whose declared headers disagree with its data. |
+| Complete domain/reference/resource identity and lock validation | Adapter conformance: invalid unit version, unresolved reference, a stale or dangling dependency lock, a structurally malformed pin (its own case) and a well-formed pin whose bytes disagree with the capture all refuse before install; validation reads only the candidate envelope. A declared unit header that disagrees with its bytes is **re-derived**, never trusted, and the installed envelope carries the recomputed revision (a revision is a derived fact); Save separately refuses a captured byte string whose declared headers disagree with its data. |
 | Locks and the complete F2 envelope | Lock verification over the same envelope: a changed resource's content revision/pin and the unit bytes install in one operation, the entry's existing `requiredCapabilities` are preserved, unrelated entries stay byte-identical, and external pins keep hash/MIME/size/locator. This slice derives no new capability requirements. |
 | Staged admitted resources and resource rollback | Staging derivation from the candidate's registry through the F.1 resolver equals the captured staging (revision-only, pin-only and both-identity resources); a staging mismatch, unresolved resource or fake pin refuses; failed operation leaves the previous envelope, lock and staging untouched. |
 | Single/compound acceptance, atomic installation, whole-operation history | One accepted result and one undo payload for the compound operation; a failure after partial candidate construction installs nothing and adds no history; undo/redo restore every affected unit/resource/lock with a fresh revision and truncate redo. |
