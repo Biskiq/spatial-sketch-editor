@@ -533,37 +533,39 @@ export function createPresentationStopCreatePlanner(
 				if (capturedStaging === null) {
 					return refuse('invalid-payload', 'The captured staging set is not a valid staging record', reader.issues);
 				}
-				// A changed resource stages the identity the payload names; the intent's
-				// target still pins the accepted baseline it addresses, so it is
-				// re-pointed at the candidate's new identity. The derivation then runs
-				// through the candidate's own registry and the F.1 resolver, exactly as
-				// every other resource target does, instead of being synthesized from
-				// the payload. A payload identity the candidate registry does not carry
-				// therefore refuses here rather than at install.
-				const stagingTargets: readonly SemanticReference[] = resourceUpdate !== null && resourceTarget !== null
-					? [
-							{
-								...resourceTarget,
-								revision: {
-									kind: 'exact' as const,
-									contentRevision: resourceUpdate.contentRevision ?? resourceUpdate.pin!.hash
-								}
-							}
-						]
-					: resourceTargets;
+				// The targets were captured against the **accepted** snapshot, so F.1
+				// resolution reads that source, its accepted revision and its digest —
+				// never the changed candidate carrying the previous snapshot's digest.
+				// A changed resource's *new* identity has no source to resolve against
+				// before acceptance: it is the intent's authored identity, carried on the
+				// candidate registry record, and the captured staging must name exactly
+				// it. That binding is host-asserted until a byte store exists.
 				const context = createUnitReadContext({
-					envelope: candidate,
+					envelope: request.snapshot.domain.source,
+					acceptedRevision: request.snapshot.acceptedRevision,
 					sourceContentId: request.snapshot.sourceContentId,
 					sessionEpoch: 'unit-planning'
 				});
-				const derived = stageUnitResources(candidate, stagingTargets, context);
-				if (derived.kind === 'refused') {
-					return refuse('unresolved-resource', 'The candidate does not stage every requested resource', derived.issues);
+				const acceptedStaging = stageUnitResources(request.snapshot.domain.source, resourceTargets, context);
+				if (acceptedStaging.kind === 'refused') {
+					return refuse('unresolved-resource', 'The accepted snapshot does not stage every requested resource', acceptedStaging.issues);
 				}
+				const changedKind = resourceTarget === null ? null : resourceTarget.domain.slice('resource:'.length);
+				const derived = {
+					resources: acceptedStaging.resources.map((item) =>
+						resourceUpdate !== null && resourceTarget !== null && changedKind === item.kind && item.id === resourceTarget.subject.id
+							? {
+									...item,
+									contentRevision: resourceUpdate.contentRevision ?? resourceUpdate.pin!.hash,
+									pin: resourceUpdate.pin
+								}
+							: item
+					)
+				};
 				if (!sameStaging(derived.resources, capturedStaging)) {
 					return refuse(
 						'invalid-staging',
-						'the captured resource staging does not match the staging derived from the candidate envelope'
+						'the captured resource staging does not match the accepted staging plus the intent\'s new resource identity'
 					);
 				}
 			} else if (request.intent.capturedInputs.some((input) => input.name === STAGED_RESOURCES_INPUT)) {

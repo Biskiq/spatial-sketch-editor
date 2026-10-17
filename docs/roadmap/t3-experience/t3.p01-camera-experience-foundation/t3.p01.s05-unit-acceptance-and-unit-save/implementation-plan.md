@@ -53,12 +53,16 @@ activation and no live unit writer.
    *authority* is the coordinator's `AcceptedSnapshot.acceptedRevision`; the embedded
    `acceptedRevision` in an F.2 envelope is the baseline the candidate was prepared from, because
    the landed coordinator installs source bytes unchanged and history restoration is byte-exact.
-   The Save capture stamps the accepted revision into the persisted bytes.
-3. **Resource staging and locks.** Extend `stageUnitResources` into the acceptance path: the
-   candidate's resource registry and dependency lock are the only inputs; a resource stages by its
-   concrete revision or external-byte pin, never by a fabricated one, and a changed resource is
-   re-pointed at the candidate registry's new identity and staged through the same F.1 resolver as
-   every other target. A captured staging set (in the intent's `capturedInputs`) must equal that
+   F.1 read contexts are built with that accepted revision and the snapshot's content digest, so
+   resolution names the accepted snapshot rather than the embedded baseline; candidate admission,
+   which runs before the revision is minted, uses the preparation (baseline) identity. The Save
+   capture stamps the accepted revision into the persisted bytes.
+3. **Resource staging and locks.** Extend `stageUnitResources` into the acceptance path: targets are
+   resolved against the **accepted snapshot** (its revision, digest and lock), so a resource stages by
+   its concrete accepted revision or external-byte pin, never by a fabricated one. A changed
+   resource's new identity is the intent's authored identity on the **candidate** registry record,
+   and the candidate's registry and dependency lock are what the operation installs.
+   A captured staging set (in the intent's `capturedInputs`) must equal that
    derivation — including pin MIME, size and locator, not just its hash — so a candidate can never
    install resource bytes or pins that the admitted envelope does not name.
 4. **Atomic install and whole-operation history.** Reuse the landed `acceptance-invariants-v1`
@@ -131,7 +135,9 @@ Tier: **architecture-integration** (the plan's declared tier; integration route 
 - The envelope's embedded `acceptedRevision` is the baseline revision, not the installed one. A future
   consumer must read revision authority from the accepted snapshot (or the Save capture's stamped
   bytes), never from the source's embedded field; `T3.P01.S04` should state that explicitly when it
-  activates the envelope.
+  activates the envelope. F.1 resolution receives the accepted revision explicitly for this reason;
+  a raw-envelope read still defaults to the embedded baseline, which is a preparation identity and
+  not a second revision mint.
 - The capability records for `unit-acceptance-v1` and `conditional-save-units-v1` are written at
   acceptance and must name F.2 plus the enduring `acceptance-invariants-v1` as prerequisites — never
   the retiring `local-single-domain-v1` or `conditional-save-current-v1`.

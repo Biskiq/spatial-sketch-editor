@@ -134,6 +134,11 @@ function lockReference(entry: ProjectEnvelope['dependencyLock']['entries'][numbe
  * Resolve every dependency-lock entry against the envelope and require the
  * revision it answered to be the revision the entry pins. A missing subject is a
  * lock failure, never a skipped entry.
+ *
+ * This runs **before** an accepted revision exists (adapter admission) and after
+ * persistence stamped it (Save). The read context therefore uses the envelope's
+ * embedded revision, which is the preparation/baseline identity in the first case
+ * and the saved revision in the second; neither is a second revision authority.
  */
 export async function verifyUnitDependencyLocks(envelope: ProjectEnvelope): Promise<ShapeIssue[]> {
 	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
@@ -297,8 +302,11 @@ export function createUnitAcceptancePreparation(options: UnitAcceptancePreparati
 	return {
 		registry,
 		prepare(snapshot, intent, capturedInputs) {
+			// The context names the **accepted** snapshot: its digest and the
+			// coordinator's revision, not the envelope's embedded baseline revision.
 			const context = createUnitReadContext({
 				envelope: snapshot.domain.source,
+				acceptedRevision: snapshot.acceptedRevision,
 				sourceContentId: snapshot.sourceContentId,
 				sessionEpoch: options.sessionEpoch ?? 'unit-acceptance'
 			});

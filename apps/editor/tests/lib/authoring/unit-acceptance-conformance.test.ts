@@ -14,6 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
 	createEmptyWallFirstProject,
+	resolveReference,
 	validateProject,
 	type AcceptedRevision,
 	type AuthoringIntent,
@@ -528,7 +529,7 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 		expect(await computeEnvelopeSourceContentId(admission.source)).toBe(admission.sourceContentId);
 	});
 
-	it('stages a changed pin-only resource through the candidate registry and resolver', async () => {
+	it('stages a changed pin-only resource from the accepted snapshot and the authored identity', async () => {
 		const source = await pinOnlyEnvelope();
 		const coordinator = await boot(source, { compound: true, resourceStaging: true });
 		const accepted = await coordinator.accept(
@@ -719,5 +720,137 @@ describe('F.2 unit Save capture', () => {
 		});
 		expect(sameContentOtherRevision).toBe(captured.capture.sourceContentId);
 		expect(captured.capture.sourceKind).toBe(UNIT_ENVELOPE_SOURCE_KIND);
+	});
+});
+
+describe('F.1 accepted-read identity over an accepted unit source', () => {
+	function viewIntent(source: ProjectEnvelope, revision: AcceptedRevision, operationId: string): AuthoringIntent {
+		return {
+			version: 1,
+			kind: 'camera-view-update',
+			operationId,
+			expectedRevision: revision,
+			targets: [viewReference(source)],
+			payload: { label: `Entry ${operationId}`, eye: [0, 1.6, 0], target: [0, 1.6, -1], fov: 60 },
+			capturedInputs: [],
+			allocatedIds: []
+		};
+	}
+
+	it('names the accepted revision, not the envelope baseline, across accept, undo and redo', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true });
+		const profile = createUnitAcceptanceProfile({ compound: true, sessionEpoch: 'session-s05' });
+		const first = await coordinator.accept(compoundIntent(source));
+		expect(first.kind).toBe('accepted');
+
+		const acceptedSnapshot = coordinator.acceptedSnapshot();
+		const context = createUnitReadContext({
+			envelope: acceptedSnapshot.domain.source,
+			acceptedRevision: acceptedSnapshot.acceptedRevision,
+			sourceContentId: acceptedSnapshot.sourceContentId,
+			sessionEpoch: 'session-s05'
+		});
+		// The envelope keeps the baseline revision for byte-exact restoration; the
+		// read context names the snapshot that is actually accepted.
+		expect(context.snapshot.acceptedRevision).toEqual(acceptedSnapshot.acceptedRevision);
+		expect(context.snapshot.acceptedRevision.revisionId).not.toBe(
+			acceptedSnapshot.domain.source.acceptedRevision.revisionId
+		);
+		expect(context.snapshot.sourceContentId).toBe(acceptedSnapshot.sourceContentId);
+		expect(resolveReference(viewReference(acceptedSnapshot.domain.source), context).kind).toBe('resolved');
+		expect(
+			profile.prepare(
+				acceptedSnapshot,
+				viewIntent(acceptedSnapshot.domain.source, acceptedSnapshot.acceptedRevision, 'op-second')
+			).kind
+		).toBe('prepared');
+
+		const second = await coordinator.accept(
+			viewIntent(acceptedSnapshot.domain.source, acceptedSnapshot.acceptedRevision, 'op-second')
+		);
+		expect(second.kind).toBe('accepted');
+
+		// Undo mints a fresh revision over the baseline bytes; preparation must name
+		// that fresh identity, not the revision the bytes were installed under.
+		const undone = await coordinator.undo();
+		expect(undone.kind).toBe('restored');
+		const afterUndo = coordinator.acceptedSnapshot();
+		expect(afterUndo.acceptedRevision).not.toEqual(acceptedSnapshot.acceptedRevision);
+		expect(
+			profile.prepare(afterUndo, viewIntent(afterUndo.domain.source, afterUndo.acceptedRevision, 'op-undo')).kind
+		).toBe('prepared');
+
+		const redone = await coordinator.redo();
+		expect(redone.kind).toBe('restored');
+		const afterRedo = coordinator.acceptedSnapshot();
+		expect(
+			profile.prepare(afterRedo, viewIntent(afterRedo.domain.source, afterRedo.acceptedRevision, 'op-redo')).kind
+		).toBe('prepared');
+	});
+
+	it('refuses a read context whose accepted project is not the envelope project', async () => {
+		const source = await envelope();
+		const context = createUnitReadContext({
+			envelope: source,
+			acceptedRevision: { projectId: 'project-other', revisionId: 'revision-1' },
+			sourceContentId: 'digest-other',
+			sessionEpoch: 'session-s05'
+		});
+		const resolution = resolveReference(viewReference(source), context);
+		expect(resolution.kind).toBe('failed');
+		if (resolution.kind === 'failed') expect(resolution.message).toContain('same accepted project');
+	});
+
+	it('stages a second resource revision from the accepted snapshot it was pinned to', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true, resourceStaging: true });
+		const first = await coordinator.accept(
+			compoundIntent(source, {
+				targets: [experienceReference(source), resourceReference()],
+				payload: {
+					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
+					presentationLabel: 'New presentation',
+					resource: { contentRevision: 'rev-paper-2' }
+				},
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }])
+					}
+				]
+			})
+		);
+		expect(first.kind).toBe('accepted');
+		const afterFirst = coordinator.acceptedSnapshot();
+		const acceptedSource = afterFirst.domain.source;
+		const pinned = {
+			...resourceReference(),
+			revision: { kind: 'exact' as const, contentRevision: 'rev-paper-2' }
+		};
+		const second = await coordinator.accept(
+			compoundIntent(afterFirst.domain.source, {
+				expectedRevision: afterFirst.acceptedRevision,
+				targets: [experienceReference(acceptedSource), pinned],
+				payload: {
+					view: { label: 'Second view', eye: [2, 1.6, 0], target: [2, 1.6, -1], fov: 50 },
+					presentationLabel: 'Second presentation',
+					resource: { contentRevision: 'rev-paper-3' }
+				},
+				allocatedIds: [
+					{ kind: 'view', id: 'view-second' },
+					{ kind: 'presentation', id: 'presentation-second' }
+				],
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-3', pin: null }])
+					}
+				]
+			})
+		);
+		expect(second.kind).toBe('accepted');
+		const installed = coordinator.acceptedSnapshot().domain.source;
+		expect(installed.units.resources.data.resources[0]).toMatchObject({ id: 'paper', contentRevision: 'rev-paper-3' });
 	});
 });
