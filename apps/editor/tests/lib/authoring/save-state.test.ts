@@ -49,7 +49,7 @@ function deferred<T>(): Deferred<T> {
 	return { promise, resolve };
 }
 
-async function boot(overrides: { baselineToken?: string | null } = {}) {
+async function boot(overrides: { baselineToken?: string | null; legacyTokenOnly?: boolean } = {}) {
 	const fixture = buildCurrentSourceFixture();
 	const revision: AcceptedRevision = { projectId: fixture.project.id, revisionId: 'revision-1' };
 	const admitted = await admitCurrentSource(fixture.project, {
@@ -86,9 +86,9 @@ async function boot(overrides: { baselineToken?: string | null } = {}) {
 		save: transport,
 		baseline: {
 			savedBaseToken: baselineToken,
-			savedRevision: baselineToken ? revision : null,
-			savedCanonicalJson: baselineToken ? admitted.canonicalJson : null,
-			savedSourceContentId: baselineToken ? admitted.sourceContentId : null
+			savedRevision: baselineToken && !overrides.legacyTokenOnly ? revision : null,
+			savedCanonicalJson: baselineToken && !overrides.legacyTokenOnly ? admitted.canonicalJson : null,
+			savedSourceContentId: baselineToken && !overrides.legacyTokenOnly ? admitted.sourceContentId : null
 		},
 		mintOperationId: (() => {
 			let counter = 0;
@@ -137,7 +137,9 @@ async function acceptEdit(coordinator: AcceptanceCoordinator<ProjectDocument>, f
 			payload: { objectId: fixture.objectId, position: [2, 0.5, 0] }
 		})
 	);
-	if (result.kind !== 'accepted') throw new Error(`edit was not accepted: ${result.code}`);
+	if (result.kind !== 'accepted') {
+		throw new Error(`edit was not accepted: ${result.kind === 'rejected' ? result.code : result.kind}`);
+	}
 	return result;
 }
 
@@ -295,6 +297,16 @@ describe('framework-free Save state', () => {
 		const snapshot = state.refresh();
 		expect(snapshot.dirty).toBe(true);
 		expect(snapshot.status).toBe('dirty');
+	});
+
+	it('a pre-migration token-only baseline starts dirty and uses the token as its precondition', async () => {
+		const { state, calls, setBehaviour } = await boot({ legacyTokenOnly: true });
+		expect(state.getSnapshot().status).toBe('dirty');
+		expect(state.getSnapshot().savedCanonicalJson).toBeNull();
+		setBehaviour(async (request) => acknowledgement(request));
+		await state.save();
+		expect(calls[0].capture.precondition).toEqual({ kind: 'expected-saved-base', token: TOKEN_ONE });
+		expect(state.getSnapshot().status).toBe('saved');
 	});
 
 	it('Save adds no history entry and no-op saves are not commands', async () => {

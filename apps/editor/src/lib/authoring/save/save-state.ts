@@ -213,6 +213,10 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		return isDirty() ? 'dirty' : 'saved';
 	}
 
+	// A pre-migration row has a token but no captured contents to compare, so it
+	// starts dirty rather than claiming saved. The token alone is its precondition.
+	status = derivedStatus();
+
 	function snapshot(): SaveSnapshot {
 		const currentDirty = isDirty();
 		return {
