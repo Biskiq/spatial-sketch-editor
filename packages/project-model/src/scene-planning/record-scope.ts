@@ -247,8 +247,16 @@ function checkClusterScope(
 			});
 			continue;
 		}
-		for (const field of ['name', 'roomId'] as const) {
-			if (stableJson(previous[field]) !== stableJson(cluster[field])) {
+		// Derived like the top-level fields: a cluster field added to the format is
+		// compared the day it lands, not the day someone extends this list.
+		const clusterFields = [...new Set([...Object.keys(previous), ...Object.keys(cluster)])].filter(
+			(field) => field !== 'id' && field !== 'memberIds'
+		);
+		for (const field of clusterFields) {
+			if (
+				stableJson((previous as Record<string, unknown>)[field]) !==
+				stableJson((cluster as Record<string, unknown>)[field])
+			) {
 				issues.push({
 					path: `$.scene.clusters.${cluster.id}.${field}`,
 					code: 'record-scope-violation',
@@ -302,6 +310,14 @@ function omitFields(entity: object, fields: readonly string[]): Record<string, u
 	const copy = { ...(entity as Record<string, unknown>) };
 	for (const field of fields) delete copy[field];
 	return copy;
+}
+
+/**
+ * Value equality for Scene data, independent of key order. The guard and the
+ * no-op check share it so "unchanged" means the same thing in both places.
+ */
+export function sameSceneValues(left: unknown, right: unknown): boolean {
+	return stableJson(left) === stableJson(right);
 }
 
 /** Key-order-independent comparison: the guard compares values, never insertion order. */

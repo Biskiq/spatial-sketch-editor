@@ -669,6 +669,40 @@ describe('scene operation planners — support and refusals', () => {
 		}
 	});
 
+	it('resolves a valid captured support choice instead of refusing every choice', async () => {
+		// The strict-issue check must not turn a legitimate captured choice into a
+		// refusal: this is the positive half of the stale/unknown choice cases.
+		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const snapshot = await snapshotOf(project);
+		const source = snapshot.sourceContentId;
+		const orderKey = supportCandidates(snapshot)[0]!.orderKey;
+		const result = prepare(
+			'move-horizontal',
+			snapshot,
+			intent({
+				kind: 'move-horizontal',
+				operationId: 'op-choice-valid',
+				snapshot,
+				targets: [entityTarget(source, 'entity-a')],
+				payload: {
+					entityId: 'entity-a',
+					worldXZ: [4, 3],
+					frame: projectWorldFrame(),
+					frameReference: frameReference(),
+					contactMinY: -0.5,
+					supportChoice: {
+						kind: 'order-key',
+						orderKey,
+						generationId: sceneSupportGenerationId(source)
+					}
+				}
+			})
+		);
+		expect(result.kind).toBe('prepared');
+		if (result.kind !== 'prepared') return;
+		expect(result.candidate.source.scene.entities[0]!.position).toEqual([4, 0.5, 3]);
+	});
+
 	it('refuses a captured contact that disagrees with the primitive dimensions', async () => {
 		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
@@ -880,6 +914,28 @@ describe('scene operation planners — support and refusals', () => {
 			})
 		);
 		expect(result).toMatchObject({ kind: 'rejected', code: 'no_op' });
+
+		// The same rotation stored in another representation is still no change: a
+		// canonicalized equivalent must not install a history entry.
+		const wrapped = projectWith(sceneWith([box('entity-wrapped', [3, 0.5, 2], { rotation: [0, 4, 0] })]));
+		const wrappedSnapshot = await snapshotOf(wrapped);
+		const wrappedResult = prepare(
+			'set-yaw',
+			wrappedSnapshot,
+			intent({
+				kind: 'set-yaw',
+				operationId: 'op-noop-wrapped',
+				snapshot: wrappedSnapshot,
+				targets: [entityTarget(wrappedSnapshot.sourceContentId, 'entity-wrapped')],
+				payload: {
+					entityId: 'entity-wrapped',
+					yaw: 4,
+					frame: projectWorldFrame(),
+					frameReference: frameReference()
+				}
+			})
+		);
+		expect(wrappedResult).toMatchObject({ kind: 'rejected', code: 'no_op' });
 	});
 
 	it('refuses a captured identity, target or frame that does not answer this snapshot', async () => {
@@ -1045,8 +1101,12 @@ describe('scene record-scope guard', () => {
 				createdEntityIds: ['entity-new'],
 				removedEntityIds: [],
 				allowClusterCleanup: false
-			}).length
-		).toBeGreaterThan(0);
+			})
+		).toContainEqual({
+			path: '$.scene.clusters.cluster-1.memberIds',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('cannot join')
+		});
 
 		const newCluster = {
 			...before,
@@ -1061,8 +1121,36 @@ describe('scene record-scope guard', () => {
 				createdEntityIds: ['entity-new'],
 				removedEntityIds: [],
 				allowClusterCleanup: false
-			}).length
-		).toBeGreaterThan(0);
+			})
+		).toContainEqual({
+			path: '$.scene.clusters.cluster-new',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('is new')
+		});
+	});
+
+	it('refuses a cluster field the Scene format does not define yet', () => {
+		const withClusterField = {
+			...before,
+			clusters: [
+				{ ...before.clusters![0]!, tint: '#ffffff' },
+				before.clusters![1]!
+			]
+		} as unknown as SceneDocument;
+		expect(
+			checkSceneRecordScope(before, withClusterField, {
+				operationKind: 'set-yaw',
+				changedEntityIds: ['entity-a'],
+				changedEntityFields: ['rotation'],
+				createdEntityIds: [],
+				removedEntityIds: [],
+				allowClusterCleanup: false
+			})
+		).toContainEqual({
+			path: '$.scene.clusters.cluster-1.tint',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('outside')
+		});
 	});
 
 	it('admits exactly the delete cleanup: removed id out of membership, below-minimum cluster dropped', () => {
@@ -1082,8 +1170,12 @@ describe('scene record-scope guard', () => {
 				createdEntityIds: [],
 				removedEntityIds: ['entity-b'],
 				allowClusterCleanup: true
-			}).length
-		).toBeGreaterThan(0);
+			})
+		).toContainEqual({
+			path: '$.scene.clusters.cluster-1.memberIds',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('two-member minimum')
+		});
 
 		const cleaned: SceneDocument = { ...before, entities: [before.entities[0]!], clusters: [] };
 		expect(
@@ -1260,6 +1352,17 @@ describe('scene operation determinism and write ownership', () => {
 			['duplicate-one', intent({ kind: 'duplicate-one', operationId: 'replay-duplicate', snapshot, targets: target('entity-a'), payload: { entityId: 'entity-a', contactMinY: -0.5 }, allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }] })],
 			['delete-one', intent({ kind: 'delete-one', operationId: 'replay-delete', snapshot, targets: target('entity-b'), payload: { entityId: 'entity-b' } })]
 		];
+		expect(captured.map(([kind]) => kind).sort()).toEqual(
+			[
+				'place-object',
+				'move-horizontal',
+				'set-yaw',
+				'place-on-floor',
+				'resize-on-floor',
+				'duplicate-one',
+				'delete-one'
+			].sort()
+		);
 		for (const [kind, capturedIntent] of captured) {
 			const first = prepare(kind, snapshot, capturedIntent, [nativeBoxDefinition()]);
 			const second = prepare(kind, snapshot, capturedIntent, [nativeBoxDefinition()]);

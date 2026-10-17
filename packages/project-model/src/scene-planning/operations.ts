@@ -31,7 +31,7 @@ import type { ShapeIssue } from '../strict-shape';
 import type { ProjectDocument } from '../project-types';
 import type { SceneDocument, SceneEntity, ScenePrimitiveEntity, Vec3 } from '../scene';
 import { framePointToWorld, frameYawToWorld, isFinitePlacementFrame } from './frame';
-import { finalizeSceneCandidate, type SceneRecordScope } from './record-scope';
+import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import { resolveSceneSupport, type SceneSupportChoice } from './support';
 import type { LocalInputFrame } from './types';
 
@@ -111,6 +111,9 @@ export type SceneOperationContext = {
 /** Pitch/roll this close to zero is upright; the comparison never rewrites them. */
 const UPRIGHT_TOLERANCE = 1e-9;
 
+/** A captured contact may be computed by another owner; agreement is metric. */
+const CONTACT_TOLERANCE_METERS = 1e-9;
+
 /** `duplicate-one`'s fixed world offset, in meters. */
 export const DUPLICATE_OFFSET_METERS = 0.5;
 
@@ -173,7 +176,7 @@ export function planSetYaw(input: {
 		...target.entity,
 		rotation: [
 			target.entity.rotation[0],
-			frameYawToWorld(input.frame, input.yaw),
+			ownedYaw(target.entity.rotation[1], input.frame, input.yaw),
 			target.entity.rotation[2]
 		]
 	};
@@ -220,11 +223,10 @@ export function planPlaceOnFloor(input: {
 	const scale = entityScale(target.entity);
 	const y = support.support.elevation - scale * contact.value;
 	const rotation: Vec3 =
-		input.yaw === undefined
-			? target.entity.rotation
-			: [
+		input.yaw === undefined				? target.entity.rotation
+				: [
 					target.entity.rotation[0],
-					frameYawToWorld(input.frame, input.yaw),
+					ownedYaw(target.entity.rotation[1], input.frame, input.yaw),
 					target.entity.rotation[2]
 				];
 	const next: SceneEntity = { ...target.entity, position: [point[0], y, point[1]], rotation };
@@ -408,7 +410,7 @@ export function planDeleteOne(input: {
 			allowClusterCleanup: true
 		}
 	});
-	const clustersChanged = JSON.stringify(scene.clusters ?? []) !== JSON.stringify(clusters ?? []);
+	const clustersChanged = !sameSceneValues(scene.clusters ?? [], clusters ?? []);
 	const fields = clusters === undefined || scene.clusters === undefined || !clustersChanged
 		? ['entities']
 		: ['entities', 'clusters'];
@@ -474,7 +476,7 @@ function finalize(input: {
 		...before,
 		entities: before.entities.map((entity) => (entity.id === input.next.id ? input.next : entity))
 	};
-	if (JSON.stringify(after) === JSON.stringify(before)) {
+	if (sameSceneValues(after, before)) {
 		return refusal('no_op', `The ${input.operationKind} operation leaves the accepted source unchanged.`, []);
 	}
 	const finalized = finalizeSceneCandidate({
@@ -578,7 +580,7 @@ function readContactMinY(
 	if (entity.kind === 'primitive') {
 		const analytical = analyticalContactMinY(entity);
 		if (analytical === null) return unsupportedTransform(entity.id, 'support');
-		if (captured !== analytical) {
+		if (Math.abs(captured - analytical) > CONTACT_TOLERANCE_METERS) {
 			return refusal(
 				'missing-contact-metadata',
 				`Entity "${entity.id}" declares contact ${captured} m but its ${entity.primitive} dimensions give ${analytical} m.`,
@@ -614,8 +616,21 @@ function upright(entity: SceneEntity): boolean {
 }
 
 function entityScale(entity: SceneEntity): number {
+	// Admission guarantees a finite positive scale (the codec refuses anything
+	// else), so this is a defensive default for a corrupt source, not a repair.
 	const scale = entity.scale ?? 1;
 	return Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+/**
+ * The stored yaw when the captured angle is the same rotation, so a
+ * canonicalized equivalent (e.g. 4.0 rad stored, -2.283… composed) does not
+ * install a history entry for a change nobody can see.
+ */
+function ownedYaw(existing: number, frame: LocalInputFrame, yaw: number): number {
+	const next = frameYawToWorld(frame, yaw);
+	const delta = Math.abs(Math.atan2(Math.sin(next - existing), Math.cos(next - existing)));
+	return delta <= UPRIGHT_TOLERANCE ? existing : next;
 }
 
 function restingElevation(entity: SceneEntity, contactMinY: number): number {
