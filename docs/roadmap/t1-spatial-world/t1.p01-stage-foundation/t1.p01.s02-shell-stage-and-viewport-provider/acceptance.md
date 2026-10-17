@@ -240,23 +240,31 @@ the cut-extent pick makes this test fail.
 ### Verification of this revision
 
 The §7.4 contract, run on the tree this record ships on (the only file changed after the runs is
-this record). Round-one results were measured at `90aa6729`; round two at the head of this branch,
-with `origin/main` = `74367936` and zero behind-commits (`apps/editor` unless noted):
+this record and the positive control named below). Round-one results were measured at `90aa6729`;
+round two after merging `origin/main` = `94283377` (T3.P01.S02), zero behind-commits, `apps/editor`
+unless noted:
 
 ```text
-npm test                 146 files / 1,919 tests passed
-npm run test:arch         19 files /   158 tests passed
-npm run test:fast        119 files / 1,643 tests passed
+npm test                 151 files / 1,955 tests passed
+npm run test:arch         20 files /   161 tests passed
+npm run test:fast        123 files / 1,676 tests passed
 npm run test:heavy         8 files /   118 tests passed
 npm run check             0 errors, 0 warnings
 npm run build             completed (@sveltejs/adapter-vercel)
-git diff --check <base>..<head>   clean
+npm run check:layout-core / check:project-model / check:camera-core / check:api   clean
+npm run test:api          39 tests / 0 failed / 0 skipped
 ```
 
-`check:layout-core`, `check:project-model` and `check:camera-core` were clean at `90aa6729`; no file
-in those packages changed in round two, so the run still covers them. `check:api`/`test:api` are not
-re-run for either revision: no `apps/api` file, project-model reader, schema or contract changed here,
-and this pass adds no DB-backed behaviour to the slice.
+`test:api` ran without a `DATABASE_URL` in this environment; the five API suites reported zero
+skips, so no DB-backed case was silently dropped.
+
+**Reconciliation with `main`.** The merge brought T3.P01.S02's conditional Save. One S02 arch
+positive control pinned the writer symbols in `project-persistence.ts`, and `saveProject` has moved
+out of that module with T3's transport. The control now asserts the two pending-cloud-save writers
+this module still carries and that `saveProject` is no longer called there; the guarantee it exists
+for is unchanged and still tested — the spatial host reaches **no** write path, and the predicate is
+still shown to flag a real writer module and a synthetic call site. No S02 production file changed
+for the merge.
 
 Browser observation (Vite dev server on the S02 checkout, starter-gallery boot, 1086×826 CSS stage):
 

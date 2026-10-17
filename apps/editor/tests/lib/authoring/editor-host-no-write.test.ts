@@ -93,12 +93,14 @@ describe('the editor host reaches no write path', () => {
 
 	it('would flag a write call, and does flag the writer module the walk reaches', () => {
 		// The predicate detects real writer code in a module this walk reaches, so the
-		// host exclusion above is a scope decision rather than a hole.
+		// host exclusion above is a scope decision rather than a hole. `saveProject`
+		// moved out of this module with T3's conditional Save; the pending-cloud-save
+		// writers are still here, and both must be detected.
 		expect(callsIn(sourceOf(PLATFORM_PERSISTENCE_MEMBER))).toEqual([
-			'saveProject',
 			'writePendingCloudSave',
 			'clearPendingCloudSave'
 		]);
+		expect(sourceOf(PLATFORM_PERSISTENCE_MEMBER)).not.toMatch(/\bsaveProject\s*\(/);
 		// And it flags a call site, which is the defect this suite exists to catch.
 		expect(callsIn('await api.saveProject(project, signal)')).toEqual(['saveProject']);
 		expect(callsIn('clearPendingCloudSave();')).toEqual(['clearPendingCloudSave']);
