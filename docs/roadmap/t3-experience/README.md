@@ -1,7 +1,7 @@
 # T3 — Experience
 
-**Track:** T3 · **Status:** approved — T3.P01 registered 2026-10-16; `T3.P01.S01` owner-authorized,
-not started; S02–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T3 · **Status:** approved — T3.P01 registered 2026-10-16; `T3.P01.S01` shipped
+2026-10-16; `T3.P01.S02` owner-authorized 2026-10-16, not started; S03–S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -72,7 +72,9 @@ T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
 source/runtime cutover phase (S01–S04, final gate S04), with its
 [F amendment drafts](./t3.p01-camera-experience-foundation/f-amendment-proposals.md) as planning
-evidence. Only **`T3.P01.S01`** is authorized (`approved`, not started). `Depends on` lists the
+evidence. **`T3.P01.S01`** shipped 2026-10-16 (PR #131); **`T3.P01.S02`** is owner-authorized
+([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md); `approved`, not started).
+`Depends on` lists the
 external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
 
 **Candidate next phase (not registered):**

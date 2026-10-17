@@ -28,6 +28,17 @@ through accepted correspondence; and the inspection Camera output rebases on eve
 re-acquiring without moving the view. If the owner authorizes `T2.P01.S03` before this slice, the
 owner assigns this wiring explicitly to one of them; it is never built twice.
 
+**Head Save integration (assigned 2026-10-16,
+[record](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)).** The slice that owns
+this wiring also owns mounting `T3.P01.S02`'s framework-free client Save state and commands in the
+PLATE Head. That includes unsaved-work signalling at project exit and replacement, resuming a pending
+sign-in draft, and routing *Reload remote* through the host's replacement guard. T3 owns the protocol,
+the server and the state machine; this slice builds none of them. Save is enabled only if
+`F4.intent-acceptance@1:conditional-save-current-v1` is accepted at this slice's trusted base. In
+that case the pair is added to `Requires` when this slice is authorized. Otherwise the Head keeps
+S02's "Save unavailable" posture, and the owner names the T1 slice that mounts Save before
+`T2.P01.S04` starts.
+
 ## Scope
 
 Card name, where the current kind supports one, is its sole writable fact, delegated through
@@ -62,7 +73,7 @@ non-finite and invalid step-base input never become zero or false `:invalid` sta
 Precision preserves full typed values rather than saving rounded display values. Enter accepts,
 Esc cancels and blur does not commit. Document Undo is unavailable during a live proposal with
 a reason. Call-site proof fails if a UI writer bypasses the Layout planner or shared acceptance.
-Cloud Save is enabled only with the separately accepted conditional-save capability; downloaded JSON round-trips through the current strict codec and
+Cloud Save is enabled only under the Head Save integration above; downloaded JSON round-trips through the current strict codec and
 contains no generated geometry, selection, tool, history or renderer state.
 Empty boot → plinth placement → dimension edit → Undo/Redo → source reopen must work in both
 readings with the same captured identity and floor-resolved Y. Invalid/stale placement creates

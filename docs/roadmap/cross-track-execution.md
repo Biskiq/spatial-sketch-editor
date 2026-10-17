@@ -286,12 +286,39 @@ and open nothing; an open window and its pending verdicts block none of them.
 | R2 | `T3.P01.S01` is large, and Experience 1 / `ExecutionProgram@1` freeze before the interpreter and authoring UI exist. | Codec-level fixtures for every AM-6 case now; a later required-meaning change is a versioned F amendment. A split (converter as its own slice) is the owner's option. |
 | R3 | `T2.P01.S03` authorized before `T1.P01.S04` would leave host↔F4 wiring unowned. | Owner assigns it explicitly at that authorization. |
 | R4 | Contact-metadata verification may exclude the non-unit-normalization model. | `T2.P01.S01` records the exclusion; the phase proceeds with analytical primitives and verified models. |
-| R5 | `T3.P01.S02`'s Save control needs a home in the T1 shell Head. | Settled by the owner before S02 is authorized; `T1.P01.S02` never calls the unconditional `PUT`. |
+| R5 | `T3.P01.S02`'s Save control needs a home in the T1 shell Head. | **Settled 2026-10-16** ([record](../reference/decisions/s02-pair-authorization-2026-10-16.md)): T3 owns persistence and client Save state; T1's host↔F4 wiring slice owns the Head integration. `T1.P01.S02` never calls the unconditional `PUT`. |
 | R6 | T3.P02 cannot register until `T3.camera-experience-cutover@1` is drafted and ratified. | T3 drafts it with `T3.P01.S04`'s authorization request. |
 | R7 | Per-accept validation, serialization and hashing may be costly on dense projects. | `T1.P01.S03` records a measured observation on the densest fixture (TD-5's lesson). |
-| R8 | Client/server canonical-byte or digest-version skew would make equal contents compare unequal. | `T3.P01.S02` refuses explicitly on version mismatch. |
+| R8 | Client/server canonical-byte or digest-version skew would make equal contents compare unequal. | `T3.P01.S02` carries the declared content-identity scheme and refuses a mismatch explicitly (`identity-scheme-mismatch` / `content-identity-mismatch`), never as a conflict. |
 | R9 | Barrel and lane-list merge conflicts. | Append-only rule; second merger resolves. |
 | R10 | The window `T1.P01.S02` opens may stay open for a long time. | Pending verdicts block no other track (cycle disposition below). |
+
+## Parallel pair 2026-10-16
+
+The owner authorized `T2.P01.S02` and `T3.P01.S02` to run in parallel
+([decision](../reference/decisions/s02-pair-authorization-2026-10-16.md)) on post-PR #129 `main`
+(`1315b1a2`), while `T1.P01.S02` (PR #128) is still open under the batch above. Each slice consumes
+only accepted `references-v1` and `local-single-domain-v1`. Neither consumes the other or #128, so
+neither may wire, import or depend on their unmerged output. A slice that finds it needs to stops
+and reports instead.
+
+**Shared-file ownership** (in addition to #128's batch rows, which stand until it merges):
+
+| Area | Writer | Rule for everyone else |
+| --- | --- | --- |
+| `project-model` `src/scene-planning/` | `T2.P01.S02` | read-only |
+| `project-model` Save protocol subpath module and its `package.json` `exports` entry | `T3.P01.S02` | appending another subpath is fine |
+| `content-identity.ts` | `T3.P01.S02` adds one additive scheme constant, under T1 review | nobody changes the digest's meaning |
+| `project-model` `src/f4/**`, the current-source adapter and `apps/editor/src/lib/authoring/f4/**` (T1-owned, shipped) | none | read-only; a needed change is a stop-and-report to T1 |
+| `apps/api/**`, migrations, `apps/editor/src/lib/platform/project-persistence.ts` and the editor client Save state | `T3.P01.S02` | read-only; T1's read-only boot relies on the additive `GET` shape |
+| Editor routes, host, Stage and shell modules | `T1.P01.S02` (#128) | read-only for both slices: no route, Head or host edit |
+| Root barrels and [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the textual conflict |
+| Boundary tests (public surface, project-model) | additive assertions per slice | no slice weakens an existing assertion |
+
+**Merge protocol.** As for the batch: each slice merges on its own after independent acceptance and
+routine closeout. Every merge reruns the complete merge gate on the then-current `main`;
+`T3.P01.S02` also runs the DB-backed API suite with zero skips. The Head Save integration is T1's
+and starts only after `conditional-save-current-v1` is accepted. Neither slice is a cycle exposure.
 
 ## Owner ratifications and cycle disposition
 
