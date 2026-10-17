@@ -140,7 +140,9 @@ POST-MERGE VERIFICATION OWED                               owner invokes:
 CLOSEOUT PRESERVATION — T1.P01.S07 (2026-10-17)
 prose compacted:                 3   implementation-plan · am5-reconciliation · evidence/verification as stubs at their own paths
 reference promotions:            1   accepted capability T1.viewport-projection@1:viewport-projection-v1 into the gate register; durable limits and reconciliation conclusions kept in this record
-renderable evidence archived:    36 files / ~2.8 MB  → docs/archive/roadmap/T1.P01/t1.p01.s07-stage-f4-integration-bridge/
+renderable evidence archived:    35 files / ~2.7 MB  → docs/archive/roadmap/T1.P01/t1.p01.s07-stage-f4-integration-bridge/
+                                     (the archived verification.md prose copy of that rule was
+                                     removed — prose stays stub + Git anchor only)
 evidence stubs / manifests:      1   evidence/verification.md sibling stub; manifest paths inside the archived copies:
                                      am5-source-manifest.json · integrated-source-manifest.json · source-manifest.json · production-exclusion.json
 transient artifacts removed:     3   browser-actions-prior-increment.json · check-summaries.txt ·
