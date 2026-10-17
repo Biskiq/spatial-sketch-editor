@@ -26,12 +26,20 @@ apps/editor (product)            frozen Chopin project (separate)
   → cold public release /p/:id
 ```
 
-- **PR #115 removed the authoring shell.** The product today has no Plan/3D
-  workspace, no placement or transform editing, no Camera authoring, no preview
-  takeover, no publish surface and no import/export. The surviving product
-  capability is sign-in, the project hub, cloud Save/Load, the API and the cold
-  public visitor runtime. Capability returns through the T1–T4 tracks; the loss is
-  recorded in the #115 plan's capability-loss list, not hidden behind a flag.
+- **PR #115 removed the authoring shell.** The product today has no placement or
+  transform editing, no Camera authoring, no preview takeover, no publish surface
+  and no import/export. The surviving product capability is sign-in, the project
+  hub, cloud Save/Load, the API and the cold public visitor runtime. Capability
+  returns through the T1–T4 tracks; the loss is recorded in the #115 plan's
+  capability-loss list, not hidden behind a flag.
+- **T1.P01.S02 restored a read-only Stage, not authoring.** The spatial route boots
+  a stored current-format source (or the starter gallery for a minted id, or an
+  explicit source JSON) and renders it through one persistent Canvas with the
+  visitor's own renderers; it writes nothing back. The Stage's host half
+  (`apps/editor/src/lib/authoring/stage/`) owns admission, boot outcomes, the
+  session and the seam surface; the shell (`stage/shell/`) composes Head, Index,
+  Stage, Card and instrument chrome. Editing, Save, history and Camera authoring
+  remain with S04/T3/T4, so "the shell exists again" is not a capability claim.
 - **Frozen, separate projects are outside product scope.** No product file
   imports, aliases or references them; no Chopin project/editor state or history
   migrates into the product, and no product export is promoted into the frozen
@@ -50,8 +58,8 @@ apps/editor (product)            frozen Chopin project (separate)
 |---|---|
 | `/` | Public entry (guest start, or continue with Google) |
 | `/projects` | Project hub (owned cloud project list for authenticated creators) |
-| `/editor` | Compatibility redirect → `/project/:id/spatial` |
-| `/project/:id/spatial` | Static notice: authoring is unavailable during the foundation reset. No project load, no session |
+| `/editor` | Compatibility redirect → `/project/<fresh id>/spatial?create=1` (the mint marks a new identity, so a 404 is read as `new`, not `missing`) |
+| `/project/:id/spatial` | Authoring Stage (T1.P01.S02): read-only boot of a stored current-format source, the starter gallery for a minted id, an empty project, or an explicitly opened source JSON. One Canvas, one viewport evaluation, no write path — Save and editing intents belong to S04/T3 |
 | `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth). Strict current-format reader; there are currently no releases (owner statement) |
 | `/dev/materials` · `/dev/assets` | Development previews retained inside the reduced foundation |
 

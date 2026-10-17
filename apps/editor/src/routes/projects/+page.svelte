@@ -20,12 +20,23 @@
 	let notice = $state('');
 	let busy = $state(false);
 
-	function projectUrl(projectId: string, load = false): string {
-		return `/project/${encodeURIComponent(projectId)}/spatial${load ? '?load=1' : ''}`;
+	/**
+	 * The spatial route for one project, with its explicit entry flags.
+	 *
+	 * `create` is the boot intent the route reads (`?create=1`): only a freshly minted
+	 * identity carries it, so an absent row answers with the starter gallery instead
+	 * of "not found". `load` asks the host to read the owned cloud project.
+	 */
+	function projectUrl(projectId: string, flags: { load?: boolean; create?: boolean } = {}): string {
+		const query = [
+			flags.create === true ? 'create=1' : '',
+			flags.load === true ? 'load=1' : ''
+		].filter((part) => part !== '');
+		return `/project/${encodeURIComponent(projectId)}/spatial${query.length > 0 ? `?${query.join('&')}` : ''}`;
 	}
 
 	async function startCreating(): Promise<void> {
-		await goto(projectUrl(createProjectId()));
+		await goto(projectUrl(createProjectId(), { create: true }));
 	}
 
 	async function signIn(): Promise<void> {
@@ -124,7 +135,7 @@
 						})()}
 						<li>
 							<span><strong>{project.name}</strong><small>v{project.version} · {modified} · Cloud</small></span>
-							<a href={projectUrl(project.id, true)}>Open</a>
+							<a href={projectUrl(project.id, { load: true })}>Open</a>
 						</li>
 					{/each}
 				</ul>

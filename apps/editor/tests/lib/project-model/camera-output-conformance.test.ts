@@ -322,7 +322,10 @@ describe('F.3 Camera output — bounded exhaustive invariants', () => {
 		return { state: after, history, retired, sources };
 	}
 
-	it('holds every invariant over all action sequences up to depth 5', () => {
+	// CPU-bound (an exhaustive walk of every action sequence, >10k of them): 2.3s
+	// alone, but the fast lane runs 119 files in parallel, so the default 5s budget
+	// measures machine load rather than the invariants this test asserts.
+	it('holds every invariant over all action sequences up to depth 5', { timeout: 60_000 }, () => {
 		let explored = 0;
 		const visit = (world: World, trace: readonly string[], depth: number) => {
 			if (depth === 0) return;
