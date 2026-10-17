@@ -5,7 +5,8 @@
     ".svelte-kit/output",
     ".vercel/output"
   ],
-  "scanned_files": 363,
+  "scanned_files": 349,
+  "scan_rule": "every emitted entry under both roots; directory symlinks are skipped, file symlinks are read through their target",
   "sentinels": [
     "STAGE_BROWSER_CONFORMANCE_WRITER",
     "STAGE_BROWSER_CONFORMANCE_PROBE_STATE",

@@ -77,22 +77,23 @@ No capability or closeout is recorded here.
   replacement still ends the previous contexts through re-binding. Task-scoped instrument services
   keep the writer-generation guard.
 - **Route facts.** A non-Layout subject's Card shows its domain and its adapter's contributed facts
-  instead of Layout eligibility/datum rows, and the host's Plan-membership task refuses a
-  non-Layout subject with a visible reason.
-- **Two UI defects found by the browser run and fixed.** The Experience panel and the inactive-task
+  instead of Layout eligibility/datum rows, and the route's Plan-membership task refuses a
+  non-Layout subject with a visible reason (the refusal belongs to the route that owns that task
+  kind, not to the session).
+- **Two panel/pointer defects found by the browser run and fixed.** The Experience panel and the inactive-task
   banner now stop their own pointer/click events (the pointer-driven Stage captured the press and
   the buttons never received a click), and the parked-task notice moved to the Stage's top-left
   where the selection Card cannot cover Resume.
 
 ## Evidence identity
 
-Work continues on **T1-P01-S07**, based on `fcf1fbaa`. HEAD is **`4127b63f`** (parent `a67793e4`,
-base `bbc1203a`), the pushed AM-5 increment after its review round. Its 22 changed/added
-implementation and test files are individually hashed in
-[am5-source-manifest.json](./evidence/am5-source-manifest.json), aggregate SHA-256
-`b1a69d74f9fb48d22eef9d3647bf8d0e86fe5d1fc89ed4d921e2044f7ac9f983` over the sorted
+Work continues on **T1-P01-S07**, based on `fcf1fbaa`. The code head is **`4c831fc5`**
+(`a67793e4` + review fixes `4127b63f` + second-round fixes `4c831fc5`; base `bbc1203a`), the pushed
+AM-5 increment after both review rounds. Its 22 changed/added `src`/`tests` files are individually
+hashed in [am5-source-manifest.json](./evidence/am5-source-manifest.json), aggregate SHA-256
+`91316523bbbd790133221be3e0963bad8e793ee8fded1cf1ecb258afc4d304c7` over the sorted
 `<path>` TAB `<sha256>` newline lines that the manifest itself defines. All lanes were re-run on
-`4127b63f`; see [verification](./evidence/verification.md). `npm run test:api` was **not** run and
+`4c831fc5`; see [verification](./evidence/verification.md). `npm run test:api` was **not** run and
 no gate has run against a merge revision.
 
 The committed increment's own identity (HEAD `bdaf5721` plus its review fixes at `bbc1203a`, and the
@@ -115,8 +116,9 @@ name what happened, adapter isolation in the render loop, and the narrow-shell p
 [Verification](./evidence/verification.md) lists the findings and their fixes.
 
 That is a review of the implementation, not acceptance: neither pass evaluated a merge revision, and
-no pass may accept the capability. The AM-5 rows and the limits below are what a fresh reviewer of
-the final head should still check.
+no pass may accept the capability. A second round then checked the fixes and the records themselves
+and found the residual items now recorded under [known limits](#known-limits-a-reviewer-should-check-not-re-derive);
+a fresh reviewer of the final code head is still owed.
 
 ## Browser evidence
 
@@ -189,6 +191,12 @@ These are recorded as limits of this increment, not as hidden defects:
   still reachable from a captured instrument closure; those calls are themselves session- and
   epoch-guarded, but the "old closure is inert" claim covers only the four guarded methods. A
   narrower instrument-services type is the next step, not a silent assumption.
+- **Correspondence must state canonical addresses.** Requalification matches a correspondence
+  `before` by full address against the canonical identity admission stored, and stores the
+  canonicalised `after`. A planner that emits a valid *second* qualification of the same subject
+  (for example `project-root` for a Layout subject whose canonical location is its level) finds no
+  entry and the subject is reported as `no-correspondence` instead of being retargeted. This is a
+  deliberate, documented matching rule; no in-repo planner emits a non-canonical address today.
 - **Resume of a retired target is not exercised end to end.** The negative test resumes a target that
   no longer resolves, not a subject a real accepted change retired. The requalification logic that
   retires subjects is covered in `stage-host-acceptance.test.ts`; resuming through it is the gap.
@@ -200,8 +208,8 @@ These are recorded as limits of this increment, not as hidden defects:
 
 ## Exact acceptance and merge blockers
 
-1. **A fresh independent review of the final head** (`4127b63f`, `b1a69d74…` manifest). The
-   2026-10-17 round fixed what it found, but it reviewed the increment before those fixes.
+1. **A fresh independent review of the final code head** (`4c831fc5`, `91316523…` manifest). The
+   2026-10-17 rounds fixed what they found, but each reviewed the increment before its own fixes.
 2. **The complete gate at the actual proposed merge revision** against then-current `main`:
    `npm test`, `npm run test:arch`, `npm run check`, `npm run build`, the three kernel checks, and
    the API typecheck plus DB-backed API tests with **zero skips** on a disposable database. The
