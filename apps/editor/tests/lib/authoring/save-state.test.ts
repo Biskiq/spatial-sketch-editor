@@ -408,6 +408,50 @@ describe('framework-free Save state', () => {
 		expect(snapshot.pending).toBe(false);
 	});
 
+	it('offers the current local source on a conflict, not the bytes that were in flight', async () => {
+		const { state, coordinator, fixture, admitted, setBehaviour } = await boot();
+		const reply = deferred<SaveTransportResult>();
+		setBehaviour(() => reply.promise);
+
+		const saving = state.save();
+		// The user keeps working while the Save is in flight, then the base has moved.
+		await acceptEdit(coordinator, fixture);
+		reply.resolve({ kind: 'conflict' });
+		await expect(saving).resolves.toEqual({ kind: 'conflict' });
+
+		const current = coordinator.current();
+		expect(current.canonicalJson).not.toBe(admitted.canonicalJson);
+		const snapshot = state.getSnapshot();
+		// The JSON download offer is the newest local work, not the half-saved bytes,
+		// and the digest belongs to the same source it hands over.
+		expect(snapshot.conflict?.localJson).toBe(current.canonicalJson);
+		expect(snapshot.conflict?.localSourceContentId).toBe(current.sourceContentId);
+	});
+
+	it('keeps an unresolved capture instead of replacing it with a newer Save', async () => {
+		const { state, coordinator, fixture, calls, setBehaviour } = await boot();
+		setBehaviour(async () => ({ kind: 'error', message: 'Cloud request failed', retryable: true }));
+		await expect(state.save()).resolves.toMatchObject({ kind: 'error' });
+		const ambiguous = calls[0].capture.operationId;
+		expect(state.getSnapshot().pending).toBe(true);
+
+		// A new Save with changed contents must not mint a fresh operation and
+		// discard the receipt that could still resolve the ambiguous one.
+		await acceptEdit(coordinator, fixture);
+		await expect(state.save()).resolves.toEqual({ kind: 'unresolved' });
+		expect(calls).toHaveLength(1);
+		expect(state.getSnapshot().pending).toBe(true);
+
+		setBehaviour(async (request) => acknowledgement(request));
+		await expect(state.retry()).resolves.toMatchObject({ kind: 'dirty' });
+		expect(calls[1].capture.operationId).toBe(ambiguous);
+
+		// Once resolved, the newer contents save under a new operation.
+		await expect(state.save()).resolves.toMatchObject({ kind: 'saved' });
+		expect(calls[2].capture.operationId).not.toBe(ambiguous);
+		expect(calls[2].capture.canonicalJson).toBe(coordinator.current().canonicalJson);
+	});
+
 	it('never installs a conflict load into a newer conflict that captured the same bytes', async () => {
 		const { coordinator, admitted, revision } = await boot();
 		const stale = deferred<SaveRemoteProject>();

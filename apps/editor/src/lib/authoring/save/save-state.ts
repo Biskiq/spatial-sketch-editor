@@ -17,9 +17,10 @@
  * - **an old session epoch's response is dropped**: it neither marks saved nor
  *   installs anything, and its capture is discarded with it — the state now
  *   describes another project, so retrying it would write the previous one.
- * - **a conflict preserves local source/history**: reload is an explicit offer,
- *   never an automatic merge or overwrite, and a load is installed only into the
- *   conflict that requested it.
+ * - **a conflict preserves local source/history**: the offer carries the
+ *   *current* local source (edits made during the Save included), reload is an
+ *   explicit offer, never an automatic merge or overwrite, and a load is
+ *   installed only into the conflict that requested it.
  * - **a snapshot is self-consistent**: a steady-state `status` is derived from
  *   the same full-source comparison as `dirty`, so it can never read `saved`
  *   over unsaved edits. An acknowledgement that does not describe the captured
@@ -35,7 +36,12 @@
 
 import type { AcceptedRevision, ProjectDocument } from '@portfolio/project-model';
 import { CURRENT_SOURCE_KIND, CURRENT_SOURCE_VERSION } from '@portfolio/project-model';
-import type { SaveAcknowledgement, SaveRefusalCode, SaveRequest } from '@portfolio/project-model/save';
+import type {
+	SaveAcknowledgement,
+	SavePrecondition,
+	SaveRefusalCode,
+	SaveRequest
+} from '@portfolio/project-model/save';
 import { SAVE_CONTENT_IDENTITY_SCHEME, sameAcceptedRevision } from '@portfolio/project-model/save';
 
 /** The exact source a Save captures, read from the coordinator. */
@@ -137,6 +143,8 @@ export type SaveOutcome =
 	| { readonly kind: 'busy' }
 	| { readonly kind: 'stale-epoch' }
 	| { readonly kind: 'unavailable' }
+	/** A prior Save is unresolved; `retry()` must settle it through its receipt. */
+	| { readonly kind: 'unresolved' }
 	| { readonly kind: 'refused'; readonly code: SaveError['code']; readonly message: string }
 	| { readonly kind: 'error'; readonly message: string };
 
@@ -281,32 +289,42 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		return next;
 	}
 
+	function currentPrecondition(): SavePrecondition {
+		return baseline.savedBaseToken === null
+			? { kind: 'create-only' }
+			: { kind: 'expected-saved-base', token: baseline.savedBaseToken };
+	}
+
+	/**
+	 * The retained capture, but only when it describes exactly this source and
+	 * this precondition. A changed payload under the retained operation ID would be
+	 * refused by the server, so it never qualifies.
+	 */
+	function retainedCapture(current: SaveSourceState): SaveRequest | null {
+		if (!pending) return null;
+		const precondition = currentPrecondition();
+		const sameCondition =
+			precondition.kind === 'create-only'
+				? pending.capture.precondition.kind === 'create-only'
+				: pending.capture.precondition.kind === 'expected-saved-base' &&
+					pending.capture.precondition.token === precondition.token;
+		const sameSource =
+			pending.capture.canonicalJson === current.canonicalJson &&
+			sameAcceptedRevision(pending.capture.acceptedRevision, current.revision) &&
+			sameCondition;
+		return sameSource ? pending : null;
+	}
+
 	function prepareRequest(current: SaveSourceState): SaveRequest {
-		// Reuse a retained capture only when it describes exactly this source and
-		// the same precondition. Otherwise a fresh operation ID is minted; a
-		// changed payload under the old ID would be refused by the server.
-		const precondition = baseline.savedBaseToken === null
-			? ({ kind: 'create-only' } as const)
-			: ({ kind: 'expected-saved-base', token: baseline.savedBaseToken } as const);
-		if (pending) {
-			const sameCondition =
-				precondition.kind === 'create-only'
-					? pending.capture.precondition.kind === 'create-only'
-					: pending.capture.precondition.kind === 'expected-saved-base' &&
-						pending.capture.precondition.token === precondition.token;
-			const sameSource =
-				pending.capture.canonicalJson === current.canonicalJson &&
-				sameAcceptedRevision(pending.capture.acceptedRevision, current.revision) &&
-				sameCondition;
-			if (sameSource) return pending;
-		}
+		const retained = retainedCapture(current);
+		if (retained) return retained;
 		return {
 			contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
 			capture: {
 				protocol: 'SaveAcceptedSource@1',
 				projectId: current.revision.projectId,
 				operationId: mintOperationId(),
-				precondition,
+				precondition: currentPrecondition(),
 				sourceKind: CURRENT_SOURCE_KIND,
 				sourceVersion: CURRENT_SOURCE_VERSION,
 				acceptedRevision: current.revision,
@@ -392,9 +410,13 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 			}
 			case 'conflict': {
 				pending = null;
+				// Offer the *current* local source, not the bytes this Save captured:
+				// edits made while it was in flight are newer unsaved work, and a
+				// conflict is exactly when the user must be able to keep them. The
+				// digest travels with the bytes it describes.
 				const local = readCurrent();
 				const offer: SaveConflict = {
-					localJson: capturedJson,
+					localJson: local?.canonicalJson ?? capturedJson,
 					localSourceContentId: local?.sourceContentId ?? request.capture.sourceContentId,
 					remote: null
 				};
@@ -453,6 +475,15 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	function saveCommand(signal?: AbortSignal): Promise<SaveOutcome> {
 		const current = readCurrent();
 		if (!current) return Promise.resolve({ kind: 'unavailable' });
+		// An in-flight Save is busy, not unresolved: its own response is still the
+		// answer, and `retry()` must not race it either.
+		if (inFlight) return Promise.resolve({ kind: 'busy' });
+		// A retained capture is an unresolved Save: it may still have committed,
+		// and only its receipt can say. Minting a new operation from newer bytes
+		// would drop that recovery and send a precondition the server may already
+		// have moved, so the ambiguity is settled first (`retry()`). Once it is, the
+		// newer contents save normally under a fresh operation ID.
+		if (pending && retainedCapture(current) === null) return Promise.resolve({ kind: 'unresolved' });
 		return run(prepareRequest(current), signal);
 	}
 
