@@ -1113,7 +1113,7 @@ describe('scene record-scope guard', () => {
 			checkSceneRecordScope(before, rewrittenEntity, {
 				operationKind: 'move-horizontal',
 				changedEntityIds: ['entity-a'],
-				changedEntityFields: ['position'],
+				changedEntityFields: ['position[0]', 'position[2]'],
 				createdEntityIds: [],
 				removedEntityIds: [],
 				allowClusterCleanup: false
@@ -1164,6 +1164,72 @@ describe('scene record-scope guard', () => {
 			code: 'record-scope-violation',
 			message: expect.stringContaining('does not own')
 		});
+	});
+
+	it('grants only the position components each horizontal operation owns', () => {
+		const withEntity = (patch: Partial<ScenePrimitiveEntity>): SceneDocument => ({
+			...before,
+			entities: [{ ...before.entities[0]!, ...patch }, before.entities[1]!]
+		});
+		const moveScope = {
+			operationKind: 'move-horizontal',
+			changedEntityIds: ['entity-a'],
+			changedEntityFields: ['position[0]', 'position[2]'],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		};
+		const resizeScope = {
+			operationKind: 'resize-on-floor',
+			changedEntityIds: ['entity-a'],
+			changedEntityFields: ['position[1]', 'scale'],
+			createdEntityIds: [],
+			removedEntityIds: [],
+			allowClusterCleanup: false
+		};
+
+		expect(
+			checkSceneRecordScope(
+				before,
+				withEntity({ position: [4, 0.5, 3] }),
+				moveScope
+			)
+		).toEqual([]);
+		expect(
+			checkSceneRecordScope(
+				before,
+				withEntity({ position: [4, 0.75, 3] }),
+				moveScope
+			)
+		).toContainEqual({
+			path: '$.scene.entities.entity-a',
+			code: 'record-scope-violation',
+			message: expect.stringContaining('does not own')
+		});
+
+		expect(
+			checkSceneRecordScope(
+				before,
+				withEntity({ position: [3, 1, 2], scale: 2 }),
+				resizeScope
+			)
+		).toEqual([]);
+		for (const position of [
+			[3.25, 1, 2],
+			[3, 1, 2.25]
+		] as const) {
+			expect(
+				checkSceneRecordScope(
+					before,
+					withEntity({ position, scale: 2 }),
+					resizeScope
+				)
+			).toContainEqual({
+				path: '$.scene.entities.entity-a',
+				code: 'record-scope-violation',
+				message: expect.stringContaining('does not own')
+			});
+		}
 	});
 
 	it('admits a yaw change but refuses one that rewrites the pitch or roll it does not own', () => {

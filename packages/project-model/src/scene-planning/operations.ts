@@ -158,7 +158,7 @@ export function planMoveHorizontal(input: {
 		fields: ['position'],
 		scope: {
 			changedEntityIds: [target.entity.id],
-			changedEntityFields: ['position'],
+			changedEntityFields: ['position[0]', 'position[2]'],
 			createdEntityIds: [],
 			removedEntityIds: [],
 			allowClusterCleanup: false
@@ -301,7 +301,7 @@ export function planResizeOnFloor(input: {
 		fields: ['position', 'scale'],
 		scope: {
 			changedEntityIds: [target.entity.id],
-			changedEntityFields: ['position', 'scale'],
+			changedEntityFields: ['position[1]', 'scale'],
 			createdEntityIds: [],
 			removedEntityIds: [],
 			allowClusterCleanup: false

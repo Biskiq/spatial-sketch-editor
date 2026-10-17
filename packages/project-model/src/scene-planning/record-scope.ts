@@ -312,13 +312,15 @@ function checkClusterScope(
 }
 
 /**
- * Remove the granted values so everything else compares exactly. A
- * `field[index]` grant drops that one component of an array field; a value that
- * is not an array stays in the comparison, so a malformed grant can only make
- * the guard stricter, never looser.
+ * Mask the granted values so everything else compares exactly. A
+ * `field[index]` grant masks that component in place, preserving array shape
+ * and the indexes of every ungranted component. A value that is not an array
+ * stays in the comparison, so a malformed grant can only make the guard
+ * stricter, never looser.
  */
 function omitGrants(entity: object, grants: readonly string[]): Record<string, unknown> {
 	const copy = { ...(entity as Record<string, unknown>) };
+	const componentGrants = new Map<string, Set<number>>();
 	for (const grant of grants) {
 		const component = /^([^[\]]+)\[(\d+)\]$/.exec(grant);
 		if (component === null) {
@@ -326,10 +328,13 @@ function omitGrants(entity: object, grants: readonly string[]): Record<string, u
 			continue;
 		}
 		const field = component[1]!;
+		const indexes = componentGrants.get(field) ?? new Set<number>();
+		indexes.add(Number(component[2]));
+		componentGrants.set(field, indexes);
+	}
+	for (const [field, indexes] of componentGrants) {
 		const value = copy[field];
-		if (Array.isArray(value)) {
-			copy[field] = value.filter((_, index) => index !== Number(component[2]));
-		}
+		if (Array.isArray(value)) copy[field] = value.map((item, index) => (indexes.has(index) ? null : item));
 	}
 	return copy;
 }
