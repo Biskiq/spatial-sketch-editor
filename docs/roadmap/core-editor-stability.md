@@ -3,9 +3,10 @@
 **Status:** the milestone was set by owner ruling R1-D on 2026-10-17
 ([record](../reference/decisions/next-batch-authorization-2026-10-17.md#ruling-r1-d-t4-deferral-2026-10-17)).
 The owner approved its direction and ruled on K1–K4 on 2026-10-17 ([rulings](../reference/decisions/next-batch-authorization-2026-10-17.md#core-editor-stability-rulings-2026-10-17)).
-The criteria below include those rulings and are confirmed at this PR's independent re-review. This page is a milestone definition. It is not a gate, phase,
-slice or authorization, and it changes no register. All T4 work waits for this milestone's recorded
-acceptance.
+The criteria below implement those rulings but remain **proposed pending explicit owner
+confirmation**. Independent re-review does not itself ratify the exact milestone criteria. This
+page is a milestone definition, not a gate, phase, slice or authorization; it changes no register.
+All T4 work waits for this milestone's recorded acceptance.
 
 **What it means.** A creator can build, compose (including one of their own models), author, preview,
 save and reopen a real project in the editor, safely, responsively and repeatably, with no publication.
