@@ -19,6 +19,14 @@
  *   pin that disagrees with the registry) refuses acceptance; a repairable
  *   authored diagnostic (`unresolved-view`, `unresolved-presentation`) stays a
  *   diagnostic, exactly as F.2 defines it.
+ * - **`acceptedRevision` is the baseline revision, not the installed one.** The
+ *   landed coordinator installs the admitted source bytes unchanged and keeps
+ *   the accepted revision as the snapshot identity; history restoration requires
+ *   byte-exact source, so rewriting the embedded field on every install would
+ *   break that invariant. The embedded value therefore names the revision the
+ *   candidate was prepared from. Consumers take revision authority from
+ *   `AcceptedSnapshot.acceptedRevision`; the Save capture stamps that revision
+ *   into the persisted bytes at the persistence boundary.
  *
  * The adapter is constructed with the profile the host grants: a compound host
  * may change more than the planner's primary domain; a resource-staging host may
@@ -217,6 +225,10 @@ export function createUnitAcceptanceAdapter(
 		// Repairable authored diagnostics stay diagnostics: F.2 admits an explicit
 		// unresolved binding, and refusing it here would be a stricter contract than
 		// the ratified one. Executable closure above is the blocking half.
+		//
+		// The returned source is the coordinator's immutable install payload. Its
+		// embedded `acceptedRevision` is deliberately not rewritten here: the
+		// coordinator owns revision minting (see the module header).
 		const canonicalJson = serializeProjectEnvelope(normalized);
 		const sourceContentId = await computeEnvelopeSourceContentId(normalized);
 		return {

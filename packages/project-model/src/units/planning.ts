@@ -28,12 +28,22 @@ import { ShapeReader, type ShapeIssue } from '../strict-shape';
 import type { SemanticReference } from '../references/types';
 import { createUnitReadContext } from '../references/unit-resolution';
 import type {
+	AcceptanceSourceAdapter,
+	AcceptedSnapshot,
+	AuthoringIntent,
+	CapturedInput,
 	DomainPlanner,
 	PlannerOutcome,
 	PlannerRequest,
 	OperationChange,
 	CorrespondenceEntry
 } from '../f4/types';
+import type { PlannerRegistry, PrepareResult } from '../f4/prepare';
+import { createUnitPlannerRegistry } from '../f4/unit-acceptance';
+import {
+	createUnitAcceptanceAdapter,
+	createUnitAcceptancePreparation
+} from './acceptance';
 import { stageUnitResources, type StagedUnitResource } from './acceptance-staging';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -523,32 +533,34 @@ export function createPresentationStopCreatePlanner(
 				if (capturedStaging === null) {
 					return refuse('invalid-payload', 'The captured staging set is not a valid staging record', reader.issues);
 				}
-				// A changed resource stages the **new** identity the payload names; the
-				// target reference still pins the accepted baseline it addresses, so
-				// resolving it against the candidate would answer the old revision.
-				// Every other resource target is staged from the candidate itself.
-				const derivedResources: readonly StagedUnitResource[] | null = resourceUpdate !== null && resourceTarget !== null
+				// A changed resource stages the identity the payload names; the intent's
+				// target still pins the accepted baseline it addresses, so it is
+				// re-pointed at the candidate's new identity. The derivation then runs
+				// through the candidate's own registry and the F.1 resolver, exactly as
+				// every other resource target does, instead of being synthesized from
+				// the payload. A payload identity the candidate registry does not carry
+				// therefore refuses here rather than at install.
+				const stagingTargets: readonly SemanticReference[] = resourceUpdate !== null && resourceTarget !== null
 					? [
 							{
-								kind: resourceTarget.domain.slice('resource:'.length),
-								id: resourceTarget.subject.id,
-								contentRevision: resourceUpdate.contentRevision ?? resourceUpdate.pin!.hash,
-								pin: resourceUpdate.pin
+								...resourceTarget,
+								revision: {
+									kind: 'exact' as const,
+									contentRevision: resourceUpdate.contentRevision ?? resourceUpdate.pin!.hash
+								}
 							}
 						]
-					: (() => {
-							const context = createUnitReadContext({
-								envelope: candidate,
-								sourceContentId: request.snapshot.sourceContentId,
-								sessionEpoch: 'unit-planning'
-							});
-							const derived = stageUnitResources(candidate, resourceTargets, context);
-							return derived.kind === 'staged' ? derived.resources : null;
-						})();
-				if (derivedResources === null) {
-					return refuse('unresolved-resource', 'The candidate does not stage every requested resource');
+					: resourceTargets;
+				const context = createUnitReadContext({
+					envelope: candidate,
+					sourceContentId: request.snapshot.sourceContentId,
+					sessionEpoch: 'unit-planning'
+				});
+				const derived = stageUnitResources(candidate, stagingTargets, context);
+				if (derived.kind === 'refused') {
+					return refuse('unresolved-resource', 'The candidate does not stage every requested resource', derived.issues);
 				}
-				if (!sameStaging(derivedResources, capturedStaging)) {
+				if (!sameStaging(derived.resources, capturedStaging)) {
 					return refuse(
 						'invalid-staging',
 						'the captured resource staging does not match the staging derived from the candidate envelope'
@@ -621,6 +633,55 @@ export function createPresentationStopCreatePlanner(
 /** The two planners a host registers for this slice's authored operations. */
 export function createUnitCandidatePlanners(options: PresentationStopCreateOptions = {}): DomainPlanner<ProjectEnvelope>[] {
 	return [createCameraViewUpdatePlanner(), createPresentationStopCreatePlanner(options)];
+}
+
+/** One admission profile for both the planner registry and the source adapter. */
+export type UnitAcceptanceProfileOptions = {
+	readonly compound?: boolean;
+	readonly resourceStaging?: boolean;
+	readonly sessionEpoch?: string;
+};
+
+export type UnitAcceptanceProfile = {
+	readonly registry: PlannerRegistry<ProjectEnvelope>;
+	readonly planners: readonly DomainPlanner<ProjectEnvelope>[];
+	readonly adapter: AcceptanceSourceAdapter<ProjectEnvelope>;
+	prepare(
+		snapshot: AcceptedSnapshot<ProjectEnvelope>,
+		intent: AuthoringIntent,
+		capturedInputs?: readonly CapturedInput[]
+	): PrepareResult<ProjectEnvelope>;
+};
+
+/**
+ * Construct the registry, its planners, the source adapter and the preparation
+ * seam from **one** options object.
+ *
+ * Registering a resource-staging planner against a non-staging adapter (or the
+ * reverse) is the wiring defect this factory removes: the profile a host grants
+ * is the profile every admission layer reads, so one flag cannot be set in two
+ * places and disagree.
+ */
+export function createUnitAcceptanceProfile(
+	options: UnitAcceptanceProfileOptions = {}
+): UnitAcceptanceProfile {
+	const compound = options.compound === true;
+	const resourceStaging = options.resourceStaging === true;
+	const planners = createUnitCandidatePlanners({ resourceStaging });
+	const registry = createUnitPlannerRegistry<ProjectEnvelope>({ resourceStaging });
+	for (const planner of planners) registry.register(planner);
+	const preparation = createUnitAcceptancePreparation({
+		registry,
+		compound,
+		resourceStaging,
+		...(options.sessionEpoch === undefined ? {} : { sessionEpoch: options.sessionEpoch })
+	});
+	return {
+		registry,
+		planners,
+		adapter: createUnitAcceptanceAdapter({ compound, resourceStaging }),
+		prepare: preparation.prepare
+	};
 }
 
 /** Read-only helper for tests and hosts: the typed resources a captured staging names. */

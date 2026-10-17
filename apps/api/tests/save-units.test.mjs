@@ -9,16 +9,18 @@
  */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { readFile, readdir } from 'node:fs/promises';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
 import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
-import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
+import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
 	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
+	UNIT_ENVELOPE_SOURCE_KIND,
 	UNIT_ENVELOPE_SOURCE_VERSION,
 	captureUnitSave,
 	computeEnvelopeSourceContentId,
@@ -29,7 +31,11 @@ import {
 } from '@portfolio/project-model/units';
 
 import { runMigrations } from '../dist/migrate.js';
-import { saveAcceptedSource, saveAcceptedSourceWithHandler } from '../dist/save-persistence.js';
+import {
+	CURRENT_SOURCE_SAVE_HANDLER,
+	saveAcceptedSource,
+	saveAcceptedSourceWithHandler
+} from '../dist/save-persistence.js';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 
@@ -48,15 +54,15 @@ async function cleanupProject(projectId) {
 	await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
 }
 
-async function unitEnvelope(projectId, label = 'S05 unit') {
-	const revision = { projectId, revisionId: `revision-${randomUUID()}` };
+async function unitEnvelope(projectId, label = 'S05 unit', options = {}) {
+	const revision = options.acceptedRevision ?? { projectId, revisionId: `revision-${randomUUID()}` };
 	const source = validateProject(createEmptyWallFirstProject({ id: projectId, name: label }));
 	assert.equal(source.success, true);
 	return createProjectEnvelope({
 		id: projectId,
 		name: label,
 		acceptedRevision: revision,
-		dependencyLock: { formatVersion: 1, entries: [] },
+		dependencyLock: { formatVersion: 1, entries: options.lockEntries ?? [] },
 		layout: { unitId: 'unit-layout', data: source.project.layout },
 		scene: {
 			unitId: 'unit-scene',
@@ -76,9 +82,22 @@ async function unitEnvelope(projectId, label = 'S05 unit') {
 		},
 		resources: {
 			unitId: 'unit-resources',
-			data: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [] }
+			data: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: options.resources ?? [] }
 		}
 	});
+}
+
+async function sourceFiles(directory) {
+	const entries = await readdir(directory, { withFileTypes: true });
+	const files = [];
+	for (const entry of entries) {
+		if (entry.isDirectory()) {
+			files.push(...(await sourceFiles(new URL(`${entry.name}/`, directory))));
+		} else if (entry.name.endsWith('.ts')) {
+			files.push(new URL(entry.name, directory));
+		}
+	}
+	return files;
 }
 
 async function requestFor(envelope, { operationId, precondition, acceptedRevision = envelope.acceptedRevision } = {}) {
@@ -239,6 +258,119 @@ test('a tampered unit revision and an unresolvable lock entry refuse before any 
 	assert.equal(refused.code, 'invalid-project');
 	const exists = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
 	assert.equal(exists.rows.length, 0);
+});
+
+test('no API source selects the unit handler and the route list stays current-source only', async () => {
+	const files = await sourceFiles(new URL('../src/', import.meta.url));
+	assert.ok(files.length > 0, 'the source scan found no API TypeScript files');
+	const offenders = [];
+	for (const file of files) {
+		// The handler exists here and nowhere else: this file defines the seam, it
+		// does not select it on a request.
+		if (file.pathname.endsWith('/save-persistence.ts')) continue;
+		const text = await readFile(file, 'utf8');
+		if (/createUnitSaveHandler|UNIT_SAVE_SOURCE_KIND|saveAcceptedSourceWithHandler|@portfolio\/project-model\/units/.test(text)) {
+			offenders.push(file.pathname);
+		}
+	}
+	assert.deepEqual(offenders, [], 'no API source may reach the inactive unit admission');
+	const app = await readFile(new URL('../src/app.ts', import.meta.url), 'utf8');
+	assert.match(app, /saveAcceptedSource\b/);
+	assert.doesNotMatch(app, /saveAcceptedSourceWithHandler|saveAcceptedSourceWithHandlers/);
+	// The route's only handler is the current source; the unit pair is different.
+	assert.equal(CURRENT_SOURCE_SAVE_HANDLER.sourceKind, 'current-source');
+	assert.notEqual(CURRENT_SOURCE_SAVE_HANDLER.sourceKind, UNIT_ENVELOPE_SOURCE_KIND);
+});
+
+test('a capture with no precondition is refused by the request reader', async () => {
+	const projectId = nextProjectId();
+	const request = await requestFor(await unitEnvelope(projectId));
+	const capture = JSON.parse(JSON.stringify(request.capture));
+	delete capture.precondition;
+	const validation = readSaveRequest({ ...request, capture });
+	assert.equal(validation.kind, 'invalid');
+	assert.ok(validation.issues.some((issue) => issue.path === '$.capture.precondition'));
+});
+
+test('a resource lock whose pin disagrees with the registry refuses before any write', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const pin = { hash: `sha256-${'b'.repeat(64)}`, mime: 'image/png', size: 10, locator: 'r2://paper.png' };
+	const envelope = await unitEnvelope(projectId, 'Mismatched pin', {
+		resources: [{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper', pin, unresolved: null }],
+		lockEntries: [
+			{
+				domain: 'resource:texture',
+				subjectKind: 'resource',
+				subjectId: 'paper',
+				instancePath: [],
+				contentRevision: 'rev-paper',
+				requiredCapabilities: [],
+				pin: { ...pin, size: 11 }
+			}
+		]
+	});
+	const read = await readUnitEnvelopeForSave(serializeProjectEnvelope(envelope));
+	assert.equal(read.kind, 'refused');
+	assert.equal(read.code, 'invalid-project');
+	const exists = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
+	assert.equal(exists.rows.length, 0);
+});
+
+test('a resource carrying both a revision and a pin round-trips with both identities', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const pin = { hash: `sha256-${'c'.repeat(64)}`, mime: 'image/png', size: 12, locator: 'r2://both.png' };
+	const envelope = await unitEnvelope(projectId, 'Both identities', {
+		resources: [{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper', pin, unresolved: null }],
+		lockEntries: [
+			{
+				domain: 'resource:texture',
+				subjectKind: 'resource',
+				subjectId: 'paper',
+				instancePath: [],
+				contentRevision: 'rev-paper',
+				requiredCapabilities: [{ id: 'cap.texture', version: '1' }],
+				pin
+			}
+		]
+	});
+	const request = await requestFor(envelope);
+	const acknowledgement = await save(pool, owner, request);
+	assert.equal(acknowledgement.version, 1);
+	const stored = await pool.query('SELECT document FROM project_versions WHERE project_id = $1 AND version = 1', [projectId]);
+	const document = stored.rows[0].document;
+	assert.deepEqual(document.units.resources.data.resources[0], {
+		kind: 'texture',
+		id: 'paper',
+		contentRevision: 'rev-paper',
+		pin,
+		unresolved: null
+	});
+	assert.deepEqual(document.dependencyLock.entries[0].pin, pin);
+	assert.deepEqual(document.dependencyLock.entries[0].requiredCapabilities, [{ id: 'cap.texture', version: '1' }]);
+});
+
+test('a captured envelope whose accepted revision belongs to another project refuses', async () => {
+	const projectId = nextProjectId();
+	const envelope = await unitEnvelope(projectId, 'Wrong project', {
+		acceptedRevision: { projectId: 'some-other-project', revisionId: 'revision-other' }
+	});
+	const sourceContentId = await computeEnvelopeSourceContentId(envelope);
+	const captured = await captureUnitSave({
+		snapshot: {
+			acceptedRevision: envelope.acceptedRevision,
+			sourceContentId,
+			sourceKind: 'unit-envelope',
+			sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
+			domain: { identity: { acceptedRevision: envelope.acceptedRevision, sourceContentId }, source: envelope }
+		},
+		operationId: 'op-wrong-project',
+		precondition: { kind: 'create-only' }
+	});
+	assert.equal(captured.kind, 'refused');
+	assert.equal(captured.code, 'invalid-project');
 });
 
 test('a failure after version staging but before the pointer update leaves the prior version and base intact', async () => {

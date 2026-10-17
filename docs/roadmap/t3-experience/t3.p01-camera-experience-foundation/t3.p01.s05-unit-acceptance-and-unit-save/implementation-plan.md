@@ -45,13 +45,19 @@ activation and no live unit writer.
    envelope, and refuses duplicate/conflicting IDs before constructing anything.
 2. **One envelope for validation.** Apply domain validation (`validateProjectEnvelope`, which owns
    per-unit and cross-unit structural validation), the F.1 dependency-lock reader and resource
-   staging to the **same** candidate envelope. No caller-supplied revision, pin or resolver set may
-   disagree with that envelope: the adapter re-derives all three from it.
+   staging to the **same** candidate envelope. No caller-supplied pin or resolver set may disagree
+   with that envelope: the adapter re-derives unit headers and lock identities from it. Revision
+   *authority* is the coordinator's `AcceptedSnapshot.acceptedRevision`; the embedded
+   `acceptedRevision` in an F.2 envelope is the baseline the candidate was prepared from, because
+   the landed coordinator installs source bytes unchanged and history restoration is byte-exact.
+   The Save capture stamps the accepted revision into the persisted bytes.
 3. **Resource staging and locks.** Extend `stageUnitResources` into the acceptance path: the
    candidate's resource registry and dependency lock are the only inputs; a resource stages by its
-   concrete revision or external-byte pin, never by a fabricated one. A captured staging set (in the
-   intent's `capturedInputs`) must equal the staging derived from the candidate envelope, so a
-   candidate can never install resource bytes or pins that the admitted envelope does not name.
+   concrete revision or external-byte pin, never by a fabricated one, and a changed resource is
+   re-pointed at the candidate registry's new identity and staged through the same F.1 resolver as
+   every other target. A captured staging set (in the intent's `capturedInputs`) must equal that
+   derivation — including pin MIME, size and locator, not just its hash — so a candidate can never
+   install resource bytes or pins that the admitted envelope does not name.
 4. **Atomic install and whole-operation history.** Reuse the landed `acceptance-invariants-v1`
    coordinator and its bounded chronological history: one intent produces one candidate, one
    admitted envelope, one install, one undo result. A refused planner, unresolved reference, lock
@@ -84,13 +90,13 @@ activation and no live unit writer.
 | Original S03 obligation | This slice's evidence |
 | --- | --- |
 | Actual Camera View + Presentation + optional Stop candidates | Planner conformance: single-domain View update; compound View+Presentation+Stop in one candidate; optional Stop omitted changes nothing else; unknown keys/IDs refuse. |
-| Complete domain/reference/resource identity and lock validation | Adapter conformance: invalid unit version, unresolved reference, stale dependency lock, mismatched unit revision and malformed pin all refuse before install; validation reads only the candidate envelope. |
-| Locks and the complete F2 envelope | Lock verification over the same envelope: changed unit's content revision and required capabilities updated atomically; unchanged entries preserved; external pins keep hash/MIME/size/locator. |
-| Staged admitted resources and resource rollback | Staging derivation from the candidate equals the captured staging; a staging mismatch, unresolved resource or fake pin refuses; failed operation leaves the previous envelope, lock and staging untouched. |
+| Complete domain/reference/resource identity and lock validation | Adapter conformance: invalid unit version, unresolved reference, a stale or dangling dependency lock and a malformed pin all refuse before install; validation reads only the candidate envelope. A declared unit header that disagrees with its bytes is **re-derived**, never trusted, and the installed envelope carries the recomputed revision (a revision is a derived fact); Save separately refuses a captured byte string whose declared headers disagree with its data. |
+| Locks and the complete F2 envelope | Lock verification over the same envelope: a changed resource's content revision/pin and the unit bytes install in one operation, the entry's existing `requiredCapabilities` are preserved, unrelated entries stay byte-identical, and external pins keep hash/MIME/size/locator. This slice derives no new capability requirements. |
+| Staged admitted resources and resource rollback | Staging derivation from the candidate's registry through the F.1 resolver equals the captured staging (revision-only, pin-only and both-identity resources); a staging mismatch, unresolved resource or fake pin refuses; failed operation leaves the previous envelope, lock and staging untouched. |
 | Single/compound acceptance, atomic installation, whole-operation history | One accepted result and one undo payload for the compound operation; a failure after partial candidate construction installs nothing and adds no history; undo/redo restore every affected unit/resource/lock with a fresh revision and truncate redo. |
 | `unit-acceptance-v1` | Exported admission module behind `./units`/`./f4/unit-acceptance`, with no live consumer; capability record written only when independent acceptance passes. |
 | `conditional-save-units-v1` over F2 with real-DB conformance at zero skips | Save conformance on real Postgres: two Saves with one base → exactly one wins; missing precondition refuses; identical retry replays the receipt; changed payload under the same operation ID refuses; re-validation failure and transaction failure after staging but before the pointer update leave the prior version and saved base intact; unit content revisions and lock cannot diverge from the saved bytes. |
-| Current-source Save stays the only live route until S04 | Call-site proof: no route/client/host entry reaches the unit admission; the existing current-source route behavior is unchanged and its suite still passes. |
+| Current-source Save stays the only live route until S04 | Call-site proof: an API source scan proves no route/client module references the unit handler or the F.2 subpath, `app.ts` imports only `saveAcceptedSource`, its handler list is the current source, and the existing current-source route behavior and suite are unchanged. |
 
 Tests protect behavior, not implementation structure: they assert refused installs leave accepted
 state and history untouched, that undo restores the whole operation, and that Save compares the
@@ -115,6 +121,14 @@ Tier: **architecture-integration** (the plan's declared tier; integration route 
 
 - The unit admission and unit Save remain **inactive** at acceptance. `T3.P01.S04` owns enabling
   them, migrating callers, the live inventory, quiescence/recovery and the publication disposition.
+- The captured staging set is **host-asserted**: it proves the host staged the identity the candidate
+  names and that the payload, registry and lock agree, not that uploaded bytes match that hash.
+  Byte-level verification of uploaded resource content is `T3.P01.S04`/storage work; this slice adds
+  no byte store and no second content-addressing path.
+- The envelope's embedded `acceptedRevision` is the baseline revision, not the installed one. A future
+  consumer must read revision authority from the accepted snapshot (or the Save capture's stamped
+  bytes), never from the source's embedded field; `T3.P01.S04` should state that explicitly when it
+  activates the envelope.
 - The capability records for `unit-acceptance-v1` and `conditional-save-units-v1` are written at
   acceptance and must name F.2 plus the enduring `acceptance-invariants-v1` as prerequisites — never
   the retiring `local-single-domain-v1` or `conditional-save-current-v1`.

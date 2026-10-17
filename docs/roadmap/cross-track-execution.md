@@ -10,8 +10,9 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 registers no gate, phase or slice, and each provider is wired through its own authorized track
 phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
 T1.P01 (`T1.P01.S01` and S03 shipped; S02 authorized 2026-10-16), T2.P01 (S01 shipped; S02
-authorized) and T3.P01 (S01–S04; S01 shipped; S02 authorized); the proposal's T3 S05/S06 are the
-unregistered candidate T3.P02. The four slices authorized first on 2026-10-16 run under the
+authorized) and T3.P01 (S01–S06; S01/S02 shipped, S03 the in-progress umbrella, S05/S06 owner-
+authorized 2026-10-17 under the approved split, S04 proposed and unauthorized). T3.P02 remains
+unregistered candidate work. The four slices authorized first on 2026-10-16 run under the
 [parallel batch protocol](#parallel-batch-2026-10-16); `T2.P01.S02` and `T3.P01.S02` run under the
 [parallel pair protocol](#parallel-pair-2026-10-16).
 Cross-PR links identify proposals, never accepted prerequisites.
@@ -153,13 +154,15 @@ proposal. No private transition, projection, selection or navigation infrastruct
 
 ## Source-first migration and activation ownership
 
-T3 S01 prepares the **sole** old-source conversion candidate and mapping report. T3 S03 prepares
-new-source planners/runtime/controllers/Save adapters without live activation. T3 S04 inventories
+T3 S01 prepares the **sole** old-source conversion candidate and mapping report. T3 S05 prepares the
+new-source unit planners, acceptance and Save adapters, and T3 S06 the Experience runtime, Camera
+handoff and profile controllers, both without live activation; S03 remains the umbrella that
+reconciles the original scope once both close. T3 S04 inventories
 local/source packages, cloud projects/versions, pending saves, releases/publications and retained
 bytes; obtains the covered-data exception and owner disposition; quiesces writers and CAS-installs
 Camera extraction, Experience order, Scene removal and locks together. It migrates every existing
 T1/T2 caller and replaces the current-source Stage/F4/Save/starter adapters. In-progress consumer
-plans re-declare the already accepted F2/unit capabilities from S03 before activation. This is
+plans re-declare the already accepted F2/unit capabilities from S05/S06 before activation. This is
 caller integration, not Camera authoring, and it does not consume its own T3 gate. T2 definition
 inputs then come from immutable project pins; Scene-only placement admits pinned/procedural entries.
 The F2 starter/migration may install an explicitly captured bounded palette once; absent pins are
@@ -203,8 +206,11 @@ flowchart TD
   O --> C
   C --> UI["T2 S03: Place/Move/Yaw/Undo"]
   V --> UI
-  U --> X["T3 S03: unit/compound/runtime preparation"]
-  S --> X
+  U --> X5["T3 S05: unit acceptance + Save"]
+  S --> X5
+  U --> X6["T3 S06: Experience runtime + Camera handoff"]
+  X5 --> X["T3 S03: umbrella reconciliation"]
+  X6 --> X
   U --> F["T4 S02: F5 codec"]
   X --> CUT["T3 S04: source/runtime cutover"]
   X --> OFF["T4 S03/S04: offline delivery + storage"]

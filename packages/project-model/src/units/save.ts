@@ -10,11 +10,16 @@
  *
  * **Accepted revision stamping.** An F.2 envelope embeds `acceptedRevision`, but
  * the landed coordinator keeps the accepted revision as its own token and does
- * not rewrite the source it installs. The capture therefore stamps the
- * **snapshot's** accepted revision onto the envelope before serializing. The
- * envelope source digest excludes that field (AM-2), so two captures of identical
- * authored content under different revisions share one content identity — while
- * the saved bytes name the revision they were saved under.
+ * not rewrite the source it installs: that embedded value is the **baseline**
+ * revision the candidate was prepared from, and byte-exact history restoration
+ * depends on it staying untouched. Revision authority is
+ * `AcceptedSnapshot.acceptedRevision`, so this persistence boundary stamps that
+ * revision onto the envelope before serializing. The envelope source digest
+ * excludes the field (AM-2), so two captures of identical authored content under
+ * different revisions share one content identity — while the saved bytes name
+ * the revision they were saved under. `readUnitEnvelopeForSave` and the server
+ * handler still require the captured bytes to carry the captured revision, so a
+ * Save that would persist a different revision refuses.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
@@ -31,6 +36,9 @@ import type { ProjectEnvelope } from './types';
 
 export const UNIT_SAVE_SOURCE_KIND = UNIT_ENVELOPE_SOURCE_KIND;
 export const UNIT_SAVE_SOURCE_VERSION = UNIT_ENVELOPE_SOURCE_VERSION;
+
+/** The exact capability scope this module provides. */
+export const UNIT_SAVE_SCOPE = 'conditional-save-units-v1' as const;
 
 export type UnitSaveRefusal = {
 	readonly kind: 'refused';

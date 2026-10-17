@@ -30,15 +30,13 @@ import {
 	UNIT_SAVE_SOURCE_KIND,
 	captureUnitSave,
 	computeEnvelopeSourceContentId,
-	createPresentationStopCreatePlanner,
-	createCameraViewUpdatePlanner,
 	createUnitAcceptanceAdapter,
-	createUnitAcceptancePreparation,
-	createUnitPlannerRegistry,
+	createUnitAcceptanceProfile,
 	normalizeUnitEnvelope,
 	serializeProjectEnvelope,
 	stageUnitResources,
-	type ProjectEnvelope
+	type ProjectEnvelope,
+	type StagedUnitResource
 } from '@portfolio/project-model/units';
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 
@@ -157,13 +155,15 @@ function resourceReference(): SemanticReference {
 	};
 }
 
+/** The one profile both the registry and the adapter read; no second wiring flag. */
 async function boot(source: ProjectEnvelope, options: { readonly compound: boolean; readonly resourceStaging?: boolean }) {
-	const registry = createUnitPlannerRegistry<ProjectEnvelope>({ resourceStaging: options.resourceStaging === true });
-	registry.register(createCameraViewUpdatePlanner());
-	registry.register(createPresentationStopCreatePlanner({ resourceStaging: options.resourceStaging === true }));
-	const adapter = createUnitAcceptanceAdapter({ compound: options.compound, resourceStaging: options.resourceStaging === true });
+	const profile = createUnitAcceptanceProfile({
+		compound: options.compound,
+		resourceStaging: options.resourceStaging === true,
+		sessionEpoch: 'session-s05'
+	});
 	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
-		adapter,
+		adapter: profile.adapter,
 		sessionEpoch: 'session-s05',
 		baseline: {
 			revision: source.acceptedRevision,
@@ -172,13 +172,13 @@ async function boot(source: ProjectEnvelope, options: { readonly compound: boole
 			sourceContentId: await computeEnvelopeSourceContentId(source)
 		},
 		mintRevisionId: (ordinal) => `revision-${ordinal + 1}`,
-		preparation: createUnitAcceptancePreparation({
-			registry,
-			compound: options.compound,
-			resourceStaging: options.resourceStaging === true
-		})
+		preparation: { registry: profile.registry, prepare: profile.prepare }
 	});
 	return coordinator;
+}
+
+function staged(resources: readonly StagedUnitResource[]): readonly StagedUnitResource[] {
+	return resources.map((resource) => ({ ...resource }));
 }
 
 function compoundIntent(source: ProjectEnvelope, overrides: Partial<AuthoringIntent> = {}): AuthoringIntent {
@@ -216,9 +216,13 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 		expect(installed.units.camera.data.views.map((view) => view.id)).toEqual(['view-entry', 'view-new']);
 		expect(installed.units.experience.data.experiences[0]!.stops.map((stop) => stop.id)).toEqual(['stop-entry', 'stop-new']);
 		expect(installed.units.experience.data.experiences[0]!.guides[0]!.stopIds).toEqual(['stop-entry', 'stop-new']);
-		// The coordinator mints a fresh accepted revision for the one install; the
-		// Save capture is what stamps that revision onto the persisted envelope.
+		// Revision authority is the snapshot identity. The installed bytes keep the
+		// baseline revision the candidate was prepared from, because the coordinator
+		// installs source unchanged and history restoration is byte-exact; the Save
+		// capture stamps the snapshot revision at the persistence boundary.
 		expect(coordinator.acceptedRevision().revisionId).toBe('revision-2');
+		expect(accepted.afterRevision.revisionId).toBe('revision-2');
+		expect(installed.acceptedRevision).toEqual(REVISION);
 
 		const undone = await coordinator.undo();
 		expect(undone.kind).toBe('restored');
@@ -261,7 +265,8 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 					{ kind: 'view', id: 'view-new' },
 					{ kind: 'presentation', id: 'presentation-new' }
 				]
-			})		);
+			})
+		);
 		expect(accepted.kind).toBe('accepted');
 		const installed = coordinator.acceptedSnapshot().domain.source;
 		expect(installed.units.experience.data.experiences[0]!.presentations.map((item) => item.id)).toEqual([
@@ -344,7 +349,7 @@ describe('F.2 unit acceptance — staged resources and the dependency lock', () 
 				capturedInputs: [
 					{
 						name: STAGED_RESOURCES_INPUT,
-						value: [{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }] as never
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }])
 					}
 				]
 			})
@@ -376,7 +381,7 @@ describe('F.2 unit acceptance — staged resources and the dependency lock', () 
 				capturedInputs: [
 					{
 						name: STAGED_RESOURCES_INPUT,
-						value: [{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }] as never
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }])
 					}
 				]
 			})
@@ -398,7 +403,7 @@ describe('F.2 unit acceptance — staged resources and the dependency lock', () 
 			compoundIntent(source, {
 				targets: [experienceReference(source), resourceReference()],
 				capturedInputs: [
-					{ name: STAGED_RESOURCES_INPUT, value: JSON.parse(JSON.stringify(derived.resources)) as never }
+					{ name: STAGED_RESOURCES_INPUT, value: staged(derived.resources) }
 				]
 			})
 		);
@@ -457,6 +462,196 @@ describe('F.2 unit acceptance — staged resources and the dependency lock', () 
 			expect(admission.code).toBe('lock-closure');
 			expect(admission.issues.some((entry) => entry.code === 'missing')).toBe(true);
 		}
+	});
+});
+
+describe('F.2 unit acceptance — derived identity and one admission profile', () => {
+	const PIN = {
+		hash: `sha256-${'a'.repeat(64)}`,
+		mime: 'image/png',
+		size: 32,
+		locator: 'r2://paper.png'
+	} as const;
+
+	async function pinOnlyEnvelope(): Promise<ProjectEnvelope> {
+		const base = await envelope();
+		return normalizeUnitEnvelope({
+			...base,
+			units: {
+				...base.units,
+				resources: {
+					header: { ...base.units.resources.header },
+					data: {
+						formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+						resources: [{ kind: 'texture', id: 'paper', contentRevision: null, pin: PIN, unresolved: null }]
+					}
+				}
+			}
+		});
+	}
+
+	function pinReference(): SemanticReference {
+		return {
+			version: 1,
+			domain: 'resource:texture',
+			revision: { kind: 'exact', contentRevision: PIN.hash },
+			subject: { kind: 'resource', id: 'paper' },
+			instancePath: [],
+			location: { kind: 'project-root' },
+			componentId: null,
+			capabilityId: null
+		};
+	}
+
+	it('re-derives a stale declared unit header instead of trusting it', async () => {
+		const source = await envelope();
+		const stale: ProjectEnvelope = {
+			...source,
+			units: {
+				...source.units,
+				camera: {
+					header: { ...source.units.camera.header, contentRevision: 'rev-camera-declared-stale' },
+					data: {
+						...source.units.camera.data,
+						views: source.units.camera.data.views.map((view) => ({ ...view, label: 'Moved' }))
+					}
+				}
+			}
+		};
+		const admission = await createUnitAcceptanceAdapter({ compound: true }).admit(stale, []);
+		expect(admission.kind).toBe('admitted');
+		if (admission.kind !== 'admitted') return;
+		// A revision is a derived fact: the declared header is recomputed from the
+		// bytes that are actually installed, never carried through verbatim.
+		expect(admission.source.units.camera.header.contentRevision).not.toBe('rev-camera-declared-stale');
+		expect(admission.source.units.camera.data.views[0]!.label).toBe('Moved');
+		expect(await computeEnvelopeSourceContentId(admission.source)).toBe(admission.sourceContentId);
+	});
+
+	it('stages a changed pin-only resource through the candidate registry and resolver', async () => {
+		const source = await pinOnlyEnvelope();
+		const coordinator = await boot(source, { compound: true, resourceStaging: true });
+		const accepted = await coordinator.accept(
+			compoundIntent(source, {
+				targets: [experienceReference(source), pinReference()],
+				payload: {
+					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
+					presentationLabel: 'New presentation',
+					resource: { pin: PIN }
+				},
+				allocatedIds: [
+					{ kind: 'view', id: 'view-new' },
+					{ kind: 'presentation', id: 'presentation-new' }
+				],
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: PIN.hash, pin: PIN }])
+					}
+				]
+			})
+		);
+		expect(accepted.kind).toBe('accepted');
+		const installed = coordinator.acceptedSnapshot().domain.source;
+		expect(installed.units.resources.data.resources[0]).toMatchObject({ contentRevision: null, pin: PIN });
+		const lock = installed.dependencyLock.entries.find((entry) => entry.domain === 'resource:texture');
+		expect(lock).toMatchObject({ subjectId: 'paper', contentRevision: PIN.hash, pin: PIN });
+	});
+
+	it('refuses a captured pin whose size or locator differs from the candidate bytes', async () => {
+		const source = await pinOnlyEnvelope();
+		const coordinator = await boot(source, { compound: true, resourceStaging: true });
+		const refused = await coordinator.accept(
+			compoundIntent(source, {
+				targets: [experienceReference(source), pinReference()],
+				payload: {
+					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
+					presentationLabel: 'New presentation',
+					resource: { pin: PIN }
+				},
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: PIN.hash, pin: { ...PIN, size: 33 } }])
+					}
+				]
+			})
+		);
+		expect(refused).toMatchObject({ kind: 'rejected', reason: 'invalid-staging' });
+		expect(coordinator.installs()).toBe(1);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(source);
+	});
+
+	it('preserves an existing resource lock entry’s required capabilities', async () => {
+		const base = await envelope();
+		const capabilities = [{ id: 'cap.texture', version: '1' }];
+		const source: ProjectEnvelope = {
+			...base,
+			dependencyLock: {
+				formatVersion: 1,
+				entries: [
+					{
+						domain: 'resource:texture',
+						subjectKind: 'resource',
+						subjectId: 'paper',
+						instancePath: [],
+						contentRevision: 'rev-paper',
+						requiredCapabilities: capabilities,
+						pin: null
+					}
+				]
+			}
+		};
+		const coordinator = await boot(source, { compound: true, resourceStaging: true });
+		const accepted = await coordinator.accept(
+			compoundIntent(source, {
+				targets: [experienceReference(source), resourceReference()],
+				payload: {
+					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
+					presentationLabel: 'New presentation',
+					resource: { contentRevision: 'rev-paper-2' }
+				},
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }])
+					}
+				]
+			})
+		);
+		expect(accepted.kind).toBe('accepted');
+		const lock = coordinator.acceptedSnapshot().domain.source.dependencyLock.entries;
+		expect(lock).toHaveLength(1);
+		expect(lock[0]).toMatchObject({ contentRevision: 'rev-paper-2', requiredCapabilities: capabilities });
+	});
+
+	it('refuses a resource-bearing intent under a profile that does not grant staging', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true });
+		const refused = await coordinator.accept(
+			compoundIntent(source, {
+				targets: [experienceReference(source), resourceReference()],
+				capturedInputs: [
+					{
+						name: STAGED_RESOURCES_INPUT,
+						value: staged([{ kind: 'texture', id: 'paper', contentRevision: 'rev-paper-2', pin: null }])
+					}
+				]
+			})
+		);
+		expect(refused.kind).toBe('rejected');
+		expect(coordinator.installs()).toBe(1);
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(source);
+	});
+
+	it('single-sources the admission profile for the registry and the adapter', () => {
+		const staging = createUnitAcceptanceProfile({ compound: true, resourceStaging: true });
+		expect(staging.registry.admission).toMatchObject({ compound: true, units: true, resources: true });
+		expect(staging.adapter.sourceKind).toBe(UNIT_ENVELOPE_SOURCE_KIND);
+		expect(staging.planners[1]!.admission.resources).toBe(true);
+		const plain = createUnitAcceptanceProfile({ compound: true });
+		expect(plain.registry.admission).toMatchObject({ compound: true, units: true, resources: false });
+		expect(plain.planners[1]!.admission.resources).toBe(false);
 	});
 });
 

@@ -1,6 +1,6 @@
 /**
  * `F4.intent-acceptance@1:unit-acceptance-v1` — the **F.2-dependent half** of the
- * additive unit admission (T3.P01.S03).
+ * additive unit admission (T3.P01.S05).
  *
  * Why this file lives under `units/` and not under `f4/`: the architecture gate
  * (`apps/editor/tests/lib/project-model/program-entry-closure.test.ts`) forbids
