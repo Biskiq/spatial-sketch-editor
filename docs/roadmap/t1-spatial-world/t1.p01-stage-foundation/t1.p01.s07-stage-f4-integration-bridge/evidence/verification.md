@@ -118,7 +118,7 @@ retired (it resumes a target that no longer resolves).
 
 ## AM-5 increment — production exclusion
 
-[production-exclusion.json](./production-exclusion.json): after `npm run build` on `4127b63f`, all
+[production-exclusion.json](./production-exclusion.json): after `npm run build` on `933bf285`, all
 **349** emitted files under `.svelte-kit/output` and `.vercel/output` were scanned for 15 probe
 sentinels (writer, probe state, the three planner kinds, adapter id, entity id, replacement hook
 text *and its data attribute*, plugin name, the four instrument labels, the module name).
@@ -193,7 +193,7 @@ the behavioural evidence, and the two new panels' text and stacking are what cha
 
 ### Limits of this evidence
 
-- No independent reviewer has seen the head **after** the second review round's fixes, and no
+- No independent reviewer has seen the head **after** the third review round's fixes, and no
   merge-revision gate exists.
 - The browser session used the test-only Vite configuration; it is not production authoring.
 - A **Layout-only** accepted edit clears a Scene selection, because the accepted correspondence for

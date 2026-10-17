@@ -13,18 +13,20 @@ remain the acceptance contract. Passing a probe does not waive an unimplemented 
 | Lens/task exit lifetime | The route's lens setter only changed `lens`; no cancellation, no inactive task, no Resume. | The session owns lens, task status and a writer generation: `changeLens` parks the task and then cancels registered task/gesture/command/Camera writers exactly once; `resumeTask` requalifies the target against current content, refuses the wrong lens and an invalid configuration, and requires the owning adapter's `revalidate` **for a contributed task** (a directly opened host task carries no adapter configuration and resumes on target requalification alone). It never restores selection, view or proposals. The facade rebinds factory bindings on a lens transition and on a successful Resume, the coordinator gains an additive `cancelPending()`, the host registers pending accepts **and restores** as command writers (so work cancelled at lens exit cannot commit), and the route shows the inactive task with explicit Resume/Close in the lens where Resume can succeed. |
 
 The three rows are implemented, exercised and reviewed: focused suites, the arch/full lanes, a
-recorded browser session and four independent review passes whose findings were fixed in `4127b63f`
-(see [verification](./evidence/verification.md) and the [review section](./acceptance.md#independent-review)). Nothing here is a new gate
+recorded browser session and three independent review rounds whose findings were fixed across
+`4127b63f`, `4c831fc5` and `933bf285` (see [verification](./evidence/verification.md) and the
+[review section](./acceptance.md#independent-review)). Nothing here is a new gate
 version, waiver, storage migration, second source/selection/history/Camera authority or production
 Layout/Scene writer.
 
 ## What the review round changed
 
-Four independent passes over the increment raised lifetime, identity, refusal-message, robustness and
-narrow-shell findings; all were fixed in `4127b63f` (requalified identities are canonical, accepted
-content cancels real task writers, task open/close no longer aborts a concurrent accept, contributor
-throws are isolated, refusal messages name the actual condition, and the parked panel no longer
-covers the toolbar or the notice). The findings and their dispositions are listed in
+Independent passes over the increment raised lifetime, identity, refusal-message, robustness and
+narrow-shell findings; all were fixed across `4127b63f`, `4c831fc5` and `933bf285` (requalified
+identities are canonical, accepted content cancels real task writers, task open/close no longer
+aborts a concurrent accept, contributor throws are isolated, refusal messages name the actual
+condition, the parked panel no longer covers the toolbar or the notice, and only a genuinely cleared
+task is restored across a lens transition). The findings and their dispositions are listed in
 [verification](./evidence/verification.md#am-5-increment--independent-review-round), and the scope
 limits they clarified are in the [acceptance record](./acceptance.md#known-limits-a-reviewer-should-check-not-re-derive).
 

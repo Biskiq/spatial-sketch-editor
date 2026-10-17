@@ -35,7 +35,7 @@ No capability or closeout is recorded here.
 - The pre-existing invalid fourth Vitest argument was removed from Camera exhaustive conformance.
   Its existing 60-second option and depth-5 traversal are preserved; the typecheck can now be green.
 
-### AM-5 completion (committed `a67793e4` + review fixes `4127b63f`, on top of `bbc1203a`)
+### AM-5 completion (committed `a67793e4` plus review fixes through `933bf285`, on top of `bbc1203a`)
 
 - **Encoding-neutral accepted read.** `accepted-read.ts` owns the common snapshot; the current
   encoding lives behind the explicit adapter in `current-stage-source.ts`. `StageDomainRead` no
@@ -115,10 +115,12 @@ cancellation of task writers, task open/close no longer aborting an accept, refu
 name what happened, adapter isolation in the render loop, and the narrow-shell panel/notice layout.
 [Verification](./evidence/verification.md) lists the findings and their fixes.
 
-That is a review of the implementation, not acceptance: neither pass evaluated a merge revision, and
-no pass may accept the capability. A second round then checked the fixes and the records themselves
-and found the residual items now recorded under [known limits](#known-limits-a-reviewer-should-check-not-re-derive);
-a fresh reviewer of the final code head is still owed.
+That is a review of the implementation, not acceptance: no round evaluated a merge revision, and none
+may accept the capability. A second round checked the fixes and the records themselves; a third
+reviewed the code the second round changed and found one lifetime defect (the parked-task hold could
+overwrite a task a canceller deliberately opened), fixed in `933bf285`. What remains is the
+[fresh review of the final code head](#exact-acceptance-and-merge-blockers) named below — the rounds
+fixed what they found, but each reviewed the revision before its own fixes.
 
 ## Browser evidence
 
@@ -157,8 +159,8 @@ Screenshots: [Plan baseline](./evidence/plan-baseline.png), [edit](./evidence/pl
 
 Two commands in the transcript exited non-zero: one screenshot path given relative to the wrong
 directory (re-run with the absolute path; no product effect), and one real defect — the Resume
-button covered by the selection Card, which is the second UI defect above. The fixed run follows it
-in the same transcript.
+button covered by the selection Card, fixed with the two panel/pointer defects above. The fixed run
+follows it in the same transcript.
 
 After the review fixes, one 390 × 844 spot check re-measured the two new panels (no horizontal
 overflow, the parked panel clear of the reading toolbar, the Experience panel's button reachable) and

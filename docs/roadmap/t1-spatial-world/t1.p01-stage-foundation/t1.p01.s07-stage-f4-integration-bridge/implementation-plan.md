@@ -164,7 +164,7 @@ full editor suite and a browser session in both readings cover it, and the produ
 every probe sentinel — all recorded in [acceptance.md](./acceptance.md) with
 [browser evidence](./evidence/browser-actions.json).
 
-The AM-5 increment is committed at `a67793e4` and `4127b63f` (the review fixes) and was reviewed in
-round, but the complete gate has not run at a merge revision (API suites included). S07 therefore remains **unaccepted**: the actual
+The AM-5 increment is committed at `a67793e4` with review fixes through `933bf285` and was reviewed
+in three rounds, but the complete gate has not run at a merge revision (API suites included). S07 therefore remains **unaccepted**: the actual
 merge-revision gate, fresh independent review of the increment and of the PR head, independent slice
 acceptance and routine closeout remain required; the viewport capability stays ratified.
