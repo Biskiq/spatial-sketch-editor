@@ -18,18 +18,17 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01 shipped 2026-10-16; S02 owner-authorized
-        2026-10-16, approved and not started; S03–S04 proposed and unauthorized.
-BATON: The next authorized T2 work is T2.P01.S02 (Scene operations and shared history), running in
-       parallel with T3.P01.S02 under the pair protocol. It consumes the accepted
-       `local-single-domain-v1`, not T1.P01.S02 (PR #128) or any host.
-NEXT: Start T2.P01.S02 through this track's runbook start step: eligibility at the trusted base
-      (post-PR #129 `main` or later), the one-line cycle check (not an exposure), then the plan's
-      declared verification tier and integration route.
+SLICES: T2.P01's slice register is authoritative — S01/S02 shipped; S03–S04 proposed and unauthorized.
+BATON: No T2 slice is in progress. The phase README and closed slice records own shipped status and
+       completed evidence.
+NEXT: The next T2 authorization is S03 (first coherent editing surface). Its prerequisites — T1's
+      `viewport-projection-v1` and the host↔F4 wiring (`T1.P01.S04` by default) — are not complete,
+      so S03 stays proposed until the owner authorizes it. Phase/track closure is not available: S04,
+      the declared final gate, is neither accepted nor shipped.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s02-scene-operations-and-history/implementation-plan.md
-       (pair protocol: ../../roadmap/cross-track-execution.md#parallel-pair-2026-10-16)
-BLOCKER: none.
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/implementation-plan.md
+BLOCKER: none (S03 authorization is an owner decision; its prerequisites are tracked in the phase's
+         minimum-dependencies table).
 ```

@@ -84,9 +84,10 @@ A=$(git log -1 --format=%H -- <path>)
 ```
 
 ```text
-P1 default    implement → accept → closeout commit on the same branch → review → merge commit →
+P1 default    implement → independent PR review/fix/re-review until implementation accepted →
+              owner acceptance and routine closeout on the same branch → merge commit →
               post-merge anchor verification. Record A and the merge method: P1 anchors are reachable
-              only if the PR lands as a merge commit.
+              only if the PR lands as a merge commit. Routine closeout does not require a second review.
 P2 exception  the accepted full body already landed on `main` in an earlier PR: verify A, then compact
               in a later commit or PR.
 ```
