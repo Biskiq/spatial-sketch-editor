@@ -125,6 +125,25 @@ test('same-base writers: exactly one winner, the loser gets a conflict and no ve
 	assert.notEqual(state.savedBaseToken, token);
 });
 
+test('concurrent identical retries both replay the winner receipt without a second version', async () => {
+	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const { projectId, acknowledgement } = await createProject(
+		cookie,
+		projectDocument('Retry race', { id: nextProjectId() })
+	);
+	const request = await saveRequestBody(projectDocument('Retry race updated', { id: projectId }), {
+		precondition: { kind: 'expected-saved-base', token: acknowledgement.savedBaseToken }
+	});
+	const [left, right] = await Promise.all([save(projectId, cookie, request), save(projectId, cookie, request)]);
+	assert.equal(left.statusCode, 200, JSON.stringify(left.json()));
+	assert.equal(right.statusCode, 200, JSON.stringify(right.json()));
+	assert.deepEqual(left.json(), right.json());
+	assert.equal(left.json().version, 2);
+	const state = await counts(projectId);
+	assert.equal(state.versions, 2);
+	assert.equal(state.receipts, 2);
+});
+
 test('concurrent create-only: exactly one winner and one collision', async () => {
 	const cookie = await sessionCookie(app, 'google:s02-save-1');
 	const projectId = track(nextProjectId());

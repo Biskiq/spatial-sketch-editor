@@ -138,15 +138,6 @@ ON CONFLICT (id) DO NOTHING`,
 			[ownerId]
 		);
 
-		// Receipt first: an identical retry must replay even after the project's
-		// saved base has moved on. This query is owner-scoped, so it reveals
-		// nothing about another owner's operation.
-		const receipt = await readReceipt(db, ownerId, capture.projectId, capture.operationId);
-		if (receipt) {
-			assertReceiptMatches(receipt, capture.precondition, capture.acceptedRevision, digest, capturedFullSourceHash);
-			return receiptAcknowledgement(receipt);
-		}
-
 		const locked = await queryRows<ProjectRow>(
 			db,
 			`SELECT id, owner_id AS "ownerId", name, latest_version AS version,
@@ -159,6 +150,17 @@ FOR UPDATE`,
 			[capture.projectId]
 		);
 		const row = locked[0] ?? null;
+
+		// Receipt lookup happens after the row lock (where a row exists), so a
+		// concurrent identical retry that waited on that lock replays the receipt
+		// the winner committed instead of misreading the moved token as a
+		// conflict. The query is owner-scoped and reveals nothing about another
+		// owner's operation.
+		const receipt = await readReceipt(db, ownerId, capture.projectId, capture.operationId);
+		if (receipt) {
+			assertReceiptMatches(receipt, capture.precondition, capture.acceptedRevision, digest, capturedFullSourceHash);
+			return receiptAcknowledgement(receipt);
+		}
 
 		let latestVersion: number;
 		if (capture.precondition.kind === 'create-only') {
