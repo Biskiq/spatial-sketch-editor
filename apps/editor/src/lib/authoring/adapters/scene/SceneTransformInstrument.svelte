@@ -98,6 +98,13 @@
 				message = `${outcome.code}: ${outcome.message}`;
 				services.stage.notifySurfaceChange();
 				break;
+			case 'failed':
+				// The transport failed, not the proposal's domain validity; the session
+				// has withdrawn the lease and the pose, so Commit must not stay armed.
+				candidate = null;
+				message = `Acceptance failed: ${outcome.message}`;
+				services.stage.notifySurfaceChange();
+				break;
 			case 'invalid':
 				candidate = null;
 				message = `Not accepted: ${outcome.message}`;

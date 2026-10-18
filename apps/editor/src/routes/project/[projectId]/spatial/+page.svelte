@@ -55,9 +55,10 @@
 		type StageFacade,
 		type StageIntentResult,
 		type StageInstrumentContent,
-		type StageOverlayContribution,
-		type StageSourceHit
-	} from '$lib/authoring/stage/stage-facade';
+	type StageGhostMesh,
+	type StageOverlayContribution,
+	type StageSourceHit
+} from '$lib/authoring/stage/stage-facade';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
 	import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 	import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
@@ -154,6 +155,7 @@
 	let planView = $state<PlanEvaluation | null>(null);
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
+	let ghosts = $state<readonly StageGhostMesh[]>([]);
 	let selectionMarker = $state<{ css: readonly [number, number]; label: string } | null>(null);
 	let notice = $state('');
 	let pendingReplacement = $state<null | 'starter' | 'empty' | 'source'>(null);
@@ -415,6 +417,7 @@
 		// the selection echo are CSS points from `projectWorld`, never a second
 		// projection.
 		markers = stage.overlays();
+		ghosts = stage.ghosts();
 		const selected = selection;
 		selectionMarker = selected === null ? null : selectionEcho(selected);
 	}
@@ -1177,6 +1180,7 @@
 						scene={boot.snapshot.domain.scene}
 						rooms={boot.snapshot.domain.rooms}
 						{evaluation}
+						{ghosts}
 					/>
 				{/if}
 				<div class="overlay-layer">

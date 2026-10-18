@@ -456,7 +456,7 @@ unaccepted at activation (K6). That is S04's obligation, not a batch B prerequis
 | Layout adapter modules (Dimensions instrument, Card name writer, capability-Find entries, Place → Layout plinth) | `T1.P01.S04` | read-only for `T2.P01.S03` |
 | Scene adapter modules (Place/Move/Yaw/Undo surface) | `T2.P01.S03` | read-only for `T1.P01.S04` |
 | Place/Find/Card/instrument registration | each slice, only through S07's contribution points | append-only registration; the second merger resolves |
-| Host core, routes and shell modules | `T1.P01.S04` (Save mount, Card-name contribution, Layout proposal lease) and `T2.P01.S03` (only the additive pointer/surface/task-close seams named in the [T2 host-seam exception](../reference/decisions/t2-s03-host-seams-2026-10-17.md)) | any other change is a stop-and-report; the second merger resolves the shared files; no second selection, navigation or acceptance authority |
+| Host core, routes and shell modules | `T1.P01.S04` (Save mount, Card-name contribution, Layout proposal lease) and `T2.P01.S03` (only the additive pointer/surface/task-close seams named in the [T2 host-seam exception](../reference/decisions/t2-s03-host-seams-2026-10-17.md), plus the one candidate-mesh contribution and `StageCanvas` render block named in the [renderer exception](../reference/decisions/t2-s03-renderer-exception-2026-10-17.md)) | any other change is a stop-and-report; the second merger resolves the shared files; no second renderer, selection, navigation or acceptance authority |
 | `layout-core` and `project-model` | new modules only | nobody changes the compiler, an existing query or `src/scene-planning/` semantics |
 | `apps/api/**`, migrations and the Save subpath | none (T3-owned) | read-only; the local [Compose backend](../../README.md#backend-in-docker-recommended) runs it unchanged |
 | `docs/roadmap/t4-release/**` | none (T4 deferred, R1-D) | frozen |
@@ -464,7 +464,8 @@ unaccepted at activation (K6). That is S04's obligation, not a batch B prerequis
 | Gate register | none | batch B accepts no capability and edits no gate row |
 
 **Shared files after the two host exceptions.** The batch no longer has disjoint diffs: both
-slices write `stage/stage-facade.ts` and the spatial route. The combined tree was tested before
+slices write `stage/stage-facade.ts` and the spatial route, and T2 additionally writes
+`stage/shell/StageCanvas.svelte` under the renderer exception. The combined tree was tested before
 either merge (check clean, `test:fast` 1894/1894, `test:arch` 163/163), so the additions compose;
 each merge still reruns the full gate on the then-current `main`.
 

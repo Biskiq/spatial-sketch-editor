@@ -146,6 +146,22 @@ export type StageWorldGraphic = {
 };
 
 /**
+ * One candidate mesh the Stage draws in the shared Canvas at a proposed pose.
+ *
+ * It carries a pose and an extent, never a geometry or material: the one Canvas
+ * owns rendering, so an adapter's preview cannot become a second renderer.
+ */
+export type StageGhostMesh = {
+	readonly id: string;
+	readonly center: Vec3;
+	readonly yaw: number;
+	readonly shape:
+		| { readonly kind: 'box'; readonly size: Vec3 }
+		| { readonly kind: 'cylinder'; readonly radius: number; readonly height: number }
+		| { readonly kind: 'sphere'; readonly radius: number };
+};
+
+/**
  * One pointer phase a contributed task may claim before the host's own
  * navigation gesture takes the press.
  *
@@ -268,6 +284,8 @@ export type StageAdapterBindingContext = StageAdapterContext & { readonly adapte
 export type StageAdapterBinding = {
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
+	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
+	readonly ghosts?: (context: StageAdapterContext) => readonly StageGhostMesh[];
 	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
 	/**
 	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
@@ -471,6 +489,8 @@ export type StageFacade = {
 	cardFacts(subject: StageCardSubject): readonly StageCardFactRecord[];
 	overlays(): readonly StageOverlayContribution[];
 	graphics(): readonly StageWorldGraphic[];
+	/** Every adapter's proposed-pose mesh for the live evaluation. */
+	ghosts(): readonly StageGhostMesh[];
 	/**
 	 * Offer a press to the binding that owns the open task. Returns the adapter
 	 * that claimed it, or `null` when the host's navigation gesture keeps it.
@@ -1467,6 +1487,14 @@ export function createStageFacade(input: {
 			if (handle === null) return [];
 			return [...adapters.values()].flatMap((entry) => {
 				try { return entry.contributions.graphics?.(handle.context) ?? []; } catch { return []; }
+			});
+		},
+		ghosts() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			return [...adapters.values()].flatMap((entry) => {
+				try { return entry.contributions.ghosts?.(handle.context) ?? []; } catch { return []; }
 			});
 		},
 		tasks() {

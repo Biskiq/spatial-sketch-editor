@@ -13,7 +13,7 @@
  *
  * No test here writes Layout: every accepted intent is a Scene operation.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
 	admitCurrentSource,
 	createEmptyWallFirstProject,
@@ -271,6 +271,52 @@ describe('Scene placement session', () => {
 		expect(port.intents).toEqual([]);
 	});
 
+	it('releases the lease when a commit is refused, invalid or throws', async () => {
+		const refused = await sessionFor(
+			[boxEntity()],
+			writePort({
+				accept: async () => ({ kind: 'refused', code: 'support-unresolved', message: 'No floor.' })
+			})
+		);
+		refused.session.begin(ENTITY_ID);
+		refused.session.previewMove(3, 4);
+		await expect(refused.session.commit()).resolves.toMatchObject({
+			kind: 'refused',
+			code: 'support-unresolved'
+		});
+		// A refused commit is not a live proposal: the lease is gone and so is the
+		// pose that could no longer be installed.
+		expect(refused.port.releases()).toBe(1);
+		expect(refused.session.candidate()).toBeNull();
+
+		const thrown = await sessionFor(
+			[boxEntity()],
+			writePort({
+				accept: async () => {
+					throw new Error('the acceptance transport closed');
+				}
+			})
+		);
+		thrown.session.begin(ENTITY_ID);
+		thrown.session.previewMove(3, 4);
+		await expect(thrown.session.commit()).resolves.toEqual({
+			kind: 'failed',
+			code: 'accept-failed',
+			message: 'the acceptance transport closed'
+		});
+		expect(thrown.port.releases()).toBe(1);
+		expect(thrown.session.candidate()).toBeNull();
+
+		const malformed = await sessionFor([boxEntity()]);
+		malformed.session.begin(ENTITY_ID);
+		malformed.session.previewMove(3, 4);
+		malformed.session.setEntry('x', '  ');
+		// The invalid entry withdrew the candidate, so the commit is refused before
+		// any transport call; the lease must still not survive it.
+		await expect(malformed.session.commit()).resolves.toMatchObject({ kind: 'refused', code: 'no-candidate' });
+		expect(malformed.port.releases()).toBe(1);
+	});
+
 	it('refuses a second live gesture and a subject with no contact metadata', async () => {
 		const held = await sessionFor([boxEntity()], writePort({ gesture: 'held' }));
 		expect(held.session.begin(ENTITY_ID)).toMatchObject({ kind: 'refused', code: 'gesture-held' });
@@ -327,6 +373,8 @@ describe('Scene placement session', () => {
 });
 
 describe('Scene adapter registration', () => {
+	afterEach(() => publishSceneSurface(null));
+
 	async function mounted() {
 		const { project } = buildCurrentSourceFixture();
 		const admitted = await admitSource(project, {
@@ -371,7 +419,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	/** A mounted adapter with the instrument's one published session for this evaluation. */
-	async function withSceneSurface() {
+	async function withSceneSurface(accept?: SceneWritePort['accept']) {
 		const { facade, host } = await mounted();
 		mountStageAdapter(facade, host, createAdapter);
 		const evaluationId = facade.evaluationId();
@@ -387,10 +435,12 @@ describe('Scene adapter registration', () => {
 				evaluationId
 			},
 			port: {
-				accept: async (intent) => {
-					intents.push(intent);
-					return { kind: 'installed' };
-				},
+				accept:
+					accept ??
+					(async (intent) => {
+						intents.push(intent);
+						return { kind: 'installed' };
+					}),
 				acceptedRevision: () => ({ revisionId: snapshot.acceptedRevision.revisionId }),
 				acquireGesture: (request) => facade.acquireGesture(request)
 			}
@@ -402,6 +452,81 @@ describe('Scene adapter registration', () => {
 		return { facade, session, evaluationId, intents };
 	}
 
+
+	it('publishes the candidate as a ghost mesh in the shared Canvas and withdraws it', async () => {
+		const { facade, session, evaluationId } = await withSceneSurface();
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId });
+		facade.pointerIntent({ phase: 'move', css: [140, 100], evaluationId, shift: true });
+		const candidate = session.candidate();
+		expect(candidate?.kind).toBe('yaw');
+		const ghosts = facade.ghosts();
+		expect(ghosts).toHaveLength(1);
+		expect(ghosts[0]).toMatchObject({
+			id: 'scene-candidate',
+			shape: { kind: 'box', size: [1, 1, 1] }
+		});
+		// The ghost is the object's own body at the captured pose, not a marker.
+		expect(ghosts[0]!.center[0]).toBeCloseTo(candidate!.position[0], 9);
+		expect(ghosts[0]!.center[1]).toBeCloseTo(candidate!.position[1], 9);
+		expect(ghosts[0]!.yaw).toBeCloseTo(candidate!.yaw, 9);
+
+		// Cancel withdraws the pose, so the Canvas draws no stale body.
+		facade.pointerIntent({ phase: 'cancel', css: [140, 100], evaluationId });
+		expect(session.candidate()).toBeNull();
+		expect(facade.ghosts()).toEqual([]);
+	});
+
+	it('does not claim through a surface published for another evaluation', async () => {
+		const { facade } = await withSceneSurface();
+		const evaluationId = facade.evaluationId()!;
+		// A session from a previous evaluation is not this Stage's surface: a press
+		// is refused rather than answered by a session built from another snapshot.
+		publishSceneSurface({
+			evaluationId: 'evaluation-stale',
+			session: createSceneSession({
+				snapshot: {
+					projectId: 'project-stale',
+					contentRevision: 'stale-content',
+					source: currentStageSource(facade.snapshot()).source,
+					compileGeneration: 'stale-generation',
+					evaluationId: 'evaluation-stale'
+				},
+				port: {
+					accept: async () => ({ kind: 'installed' }),
+					acceptedRevision: () => ({ revisionId: 'stale-revision' }),
+					acquireGesture: (request) => facade.acquireGesture(request)
+				}
+			})
+		});
+		expect(facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId })).toEqual({
+			claimed: false,
+			adapterId: null
+		});
+		// And with no published surface at all, the press is still refused.
+		publishSceneSurface(null);
+		expect(facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId }).claimed).toBe(false);
+	});
+
+	it('releases the lease when the pointer commit is refused', async () => {
+		const { facade, session, evaluationId } = await withSceneSurface(async () => ({
+			kind: 'refused',
+			code: 'support-unresolved',
+			message: 'No floor.'
+		}));
+		facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId });
+		facade.pointerIntent({ phase: 'move', css: [140, 100], evaluationId, shift: true });
+		expect(session.candidate()).not.toBeNull();
+
+		facade.pointerIntent({ phase: 'up', css: [140, 100], evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(session.candidate()).toBeNull();
+		// The refused commit must not leave the surface holding the gesture: a
+		// different owner is granted at once.
+		expect(
+			facade.acquireGesture({ owner: 'probe', evaluationId, policy: 'cancel-on-reading-change' }).kind
+		).toBe('granted');
+	});
 
 	it('refuses a press before any task owns the surface', async () => {
 		const { facade, host } = await mounted();

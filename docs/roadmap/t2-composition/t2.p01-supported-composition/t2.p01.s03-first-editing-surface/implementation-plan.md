@@ -31,9 +31,11 @@ base:
    at `ab8504aa` through S07.
 3. `T1.P01.S07` is shipped on that base. The host↔F4 wiring, adapter re-binding across installs and
    the AM-5 contribution points (task/instrument factory, Card facts, Place/Find entries) are then on
-   `main`. This slice registers through them; its only host edits are the additive pointer, surface
+   `main`.   This slice registers through them; its only host edits are the additive pointer, surface
    invalidation and task-close seams authorized by the
-   [T2 host-seam exception](../../../../reference/decisions/t2-s03-host-seams-2026-10-17.md).
+   [T2 host-seam exception](../../../../reference/decisions/t2-s03-host-seams-2026-10-17.md), plus the
+   one candidate-mesh contribution and render block authorized by the later
+   [renderer exception](../../../../reference/decisions/t2-s03-renderer-exception-2026-10-17.md).
    **Met on `main`:** PR #137 (merge `a0026cf4`).
 4. `local-single-domain-v1` stays `active`, and `T2.P01.S02` stays shipped. Both hold today.
 5. If it runs alongside `T1.P01.S04`, the [batch B shared-file protocol](../../../cross-track-execution.md#authorized-batch-b-2026-10-17)
@@ -78,5 +80,7 @@ equals its committed pose within 1e-6 meters/radians; no post-preview Y fix.
 
 This slice is **approved** (owner-authorized 2026-10-17 as batch B, [record](../../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and
 in implementation on its isolated worktree, started through the T2 runbook start step after the
-authorizing PR (#145) merged. Nothing here claims acceptance, completion or readiness; the
-verification gates run at review, and evidence belongs in [acceptance.md](./acceptance.md).
+authorizing PR (#145) merged. Its candidate mesh and drawn-geometry support test run under the
+[narrowly scoped renderer exception](../../../../reference/decisions/t2-s03-renderer-exception-2026-10-17.md).
+Nothing here claims acceptance, completion or readiness; the verification gates run at review, and
+evidence belongs in [acceptance.md](./acceptance.md).

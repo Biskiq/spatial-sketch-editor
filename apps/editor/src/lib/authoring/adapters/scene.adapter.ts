@@ -18,6 +18,7 @@ import type {
 	StageAdapterBinding,
 	StageCardFact,
 	StageCardSubject,
+	StageGhostMesh,
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
 import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
@@ -28,7 +29,9 @@ import {
 import { createScenePlanners } from '@portfolio/project-model';
 
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
+import { candidateGhost } from './scene/candidate-ghost';
 import { activeSceneSurface } from './scene/placement';
+import { floorSupport, supportOccluders } from './scene/support-occlusion';
 
 const SCENE_ARRANGE_TASK = 'scene-arrange';
 
@@ -157,21 +160,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						session.previewYaw(dragOrigin.yaw + (intent.css[0] - dragOrigin.x) * 0.01);
 						return true;
 					}
-					// move: the pointer is intersected with the level datum through the
-					// adapter's own evaluation, so the pose is the same one typed entry
-					// would plan; a ray that misses keeps the previous candidate.
+					// move: the pointer ray is resolved against the geometry the Stage
+					// draws. A Wall, plinth or other object nearer than the datum is
+					// support the creator cannot see, so it keeps the previous candidate
+					// rather than placing a pose behind it.
 					const ray = adapterContext.ray(intent.css);
 					if (ray === null) return true;
-					const datum = adapterContext.snapshot.domain.datumMeters;
-					const hit = adapterContext.intersect(ray, {
-						originMeters: [0, datum, 0],
-						normal: [0, 1, 0],
-						yawRadians: 0,
-						datumMeters: datum,
-						supportedLocalExtent: null
-					});
-					if (hit.kind !== 'intersected') return true;
-					session.previewMove(hit.worldPoint[0], hit.worldPoint[2]);
+					const domain = adapterContext.snapshot.domain;
+					const support = floorSupport(
+						ray,
+						domain.datumMeters,
+						supportOccluders(domain.geometry, domain.scene, session.subjectEntityId())
+					);
+					if (support.kind !== 'floor') return true;
+					session.previewMove(support.worldPoint[0], support.worldPoint[2]);
 					return true;
 				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
@@ -196,6 +198,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							label: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${snap}`
 						}
 					];
+				},
+				// The candidate is drawn as the object's own body at the captured pose,
+				// in the one Canvas, so Plan and 3D show what Commit will install.
+				ghosts(context): readonly StageGhostMesh[] {
+					const surface = activeSceneSurface();
+					if (surface === null || surface.evaluationId !== context.evaluationId) return [];
+					const candidate = surface.session.candidate();
+					if (candidate === null) return [];
+					const entity = source.scene.entities.find((entry) => entry.id === candidate.entityId);
+					if (entity === undefined) return [];
+					const ghost = candidateGhost(entity, candidate);
+					return ghost === null ? [] : [ghost];
 				},
 				cardFacts(cardSubject: StageCardSubject) {
 					// Only a Scene entity subject claims Scene facts; a Layout subject keeps

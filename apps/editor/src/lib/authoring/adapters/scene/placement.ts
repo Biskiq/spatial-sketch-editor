@@ -74,6 +74,8 @@ export type SceneSessionOutcome =
 	| { readonly kind: 'committed' }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string }
 	| { readonly kind: 'invalid'; readonly code: 'blank' | 'non-finite' | 'malformed'; readonly message: string }
+	/** The acceptance transport itself failed; the proposal is withdrawn. */
+	| { readonly kind: 'failed'; readonly code: 'accept-failed'; readonly message: string }
 	| { readonly kind: 'idle' };
 
 export type ScenePlacementSession = {
@@ -93,6 +95,8 @@ export type ScenePlacementSession = {
 	baseline(): { readonly position: Vec3; readonly rotation: Vec3 } | null;
 	/** The entity the last successful Place allocated, for the host's selection. */
 	placedEntityId(): string | null;
+	/** The entity this proposal reads, or `null` when nothing is being edited. */
+	subjectEntityId(): string | null;
 	/** The captured pose currently shown, or `null` when no proposal is displayed. */
 	candidate(): SceneCandidate | null;
 };
@@ -295,6 +299,17 @@ export function createSceneSession(input: {
 		lease = null;
 	}
 
+	/**
+	 * End a proposal that did not install: release the lease and stop showing a
+	 * pose that can no longer be committed. The subject stays editable, so the
+	 * creator can preview again or cancel explicitly.
+	 */
+	function withdraw(): void {
+		release();
+		candidate = null;
+		entryError = null;
+	}
+
 	return {
 		armed: () => mode,
 		arm(next) {
@@ -352,15 +367,25 @@ export function createSceneSession(input: {
 		},
 		async commit() {
 			if (entityId === null || candidate === null) {
+				// Nothing is committable, so nothing may keep the gesture lease: a
+				// withdrawn candidate must not leave Undo reporting a live proposal.
+				release();
 				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid pose before committing.' };
 			}
 			const entity = entityOf(entityId);
-			if (entity === null) return { kind: 'refused', code: 'missing-target', message: 'The entity no longer exists.' };
+			if (entity === null) {
+				withdraw();
+				return { kind: 'refused', code: 'missing-target', message: 'The entity no longer exists.' };
+			}
 			const contactMinY = localContactMinY(entity);
 			if (contactMinY === null) {
+				withdraw();
 				return { kind: 'refused', code: 'missing-contact-metadata', message: 'The entity has no verified contact.' };
 			}
-			if (entryError !== null) return { kind: 'invalid', code: 'malformed', message: entryError };
+			if (entryError !== null) {
+				withdraw();
+				return { kind: 'invalid', code: 'malformed', message: entryError };
+			}
 			const intentToAccept =
 				candidate.kind === 'yaw'
 					? intent('set-yaw', {
@@ -376,8 +401,26 @@ export function createSceneSession(input: {
 							frameReference: PROJECT_WORLD,
 							contactMinY
 						});
-			const outcome = await input.port.accept(intentToAccept);
-			if (outcome.kind === 'refused') return outcome;
+			// A commit that does not install ends the proposal: whether acceptance
+			// refuses it, the transport throws, or the shown pose stopped being
+			// committable, the gesture lease is released here rather than held until
+			// the task closes. Otherwise Undo would report a live proposal for a
+			// proposal the creator can no longer see.
+			let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
+			try {
+				outcome = await input.port.accept(intentToAccept);
+			} catch (error) {
+				withdraw();
+				return {
+					kind: 'failed',
+					code: 'accept-failed',
+					message: error instanceof Error ? error.message : 'The accepted install failed.'
+				};
+			}
+			if (outcome.kind === 'refused') {
+				withdraw();
+				return { kind: 'refused', code: outcome.code, message: outcome.message };
+			}
 			// The committed pose is exactly the displayed candidate; the lease ends and
 			// the accepted baseline is the new pose.
 			release();
@@ -422,6 +465,7 @@ export function createSceneSession(input: {
 			return { kind: 'committed' };
 		},
 		placedEntityId: () => lastPlacedEntityId,
+		subjectEntityId: () => entityId,
 		candidate: () => candidate,
 		cancel() {
 			release();
