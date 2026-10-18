@@ -33,7 +33,11 @@ import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 
-import { nativePlacementDefinition, type NativePlacementPrimitive } from '../../scene/object-definition-policy';
+import {
+	nativePlacementContactMinY,
+	nativePlacementDefinition,
+	type NativePlacementPrimitive
+} from '../../scene/object-definition-policy';
 
 export type SceneWriteOutcome =
 	| { readonly kind: 'installed' | 'unchanged' | 'no-op' }
@@ -58,8 +62,11 @@ export type SceneEditingSnapshot = {
 };
 
 export type SceneCandidate = {
-	readonly kind: 'move' | 'yaw';
-	readonly entityId: string;
+	/** `place` proposes a new entity; `move`/`yaw` propose an existing one. */
+	readonly kind: 'move' | 'yaw' | 'place';
+	readonly entityId: string | null;
+	/** The placed primitive, or `null` for an existing entity. */
+	readonly primitive: NativePlacementPrimitive | null;
 	/** The exact world pose the planner would commit. */
 	readonly position: Vec3;
 	readonly rotation: Vec3;
@@ -85,10 +92,38 @@ export type ScenePlacementSession = {
 	snapStep(): number | null;
 	setSnapStep(step: number | null): void;
 	begin(entityId: string): SceneSessionOutcome;
+	/**
+	 * Arm and begin one pointer placement: no document change, one gesture lease,
+	 * and a candidate built by `previewPlace` until release.
+	 */
+	beginPlace(primitive: NativePlacementPrimitive): SceneSessionOutcome;
+	/** The primitive pointer Place will propose; explicit, defaulting to `box`. */
+	placePrimitive(): NativePlacementPrimitive;
+	setPlacePrimitive(primitive: NativePlacementPrimitive): void;
 	previewMove(x: number, z: number): SceneSessionOutcome;
 	previewYaw(radians: number): SceneSessionOutcome;
+	/**
+	 * Preview one placement at a resolved floor elevation. The displayed candidate
+	 * carries the exact X/Z and the contact-resolved Y the planner installs.
+	 */
+	previewPlace(
+		primitive: NativePlacementPrimitive,
+		x: number,
+		z: number,
+		supportElevation: number
+	): SceneSessionOutcome;
+	/**
+	 * Withdraw the displayed candidate without ending the subject or the lease: a
+	 * pointer move that no longer has valid support must not leave an obsolete pose
+	 * committable on release.
+	 */
+	invalidatePreview(): void;
+	/** End a pointer interruption without disarming an armed Place tool. */
+	abortGesture(): void;
 	setEntry(kind: 'x' | 'z' | 'yaw', text: string): SceneSessionOutcome;
 	commit(): Promise<SceneSessionOutcome>;
+	/** Commit the displayed placement candidate; Place stays armed on success. */
+	commitPlace(): Promise<SceneSessionOutcome>;
 	place(primitive: NativePlacementPrimitive, x: number, z: number): Promise<SceneSessionOutcome>;
 	cancel(): void;
 	/** The accepted baseline the cancel path restores. */
@@ -102,23 +137,64 @@ export type ScenePlacementSession = {
 };
 
 /**
- * The one live Scene surface for one evaluation, published by the instrument so
- * the adapter's pointer claim and overlay read the same session and candidate.
- * It is a handle to the session, not a second candidate store.
+ * The one live Scene surface for one evaluation of one accepted source.
+ *
+ * The handle is keyed by the **accepted source read** it belongs to, not by a
+ * module-global "current" slot. A replacement mounts a different snapshot, a
+ * content change installs a new snapshot object, and two concurrent Stage
+ * sessions hold different snapshots, so none of them can publish over, read, or
+ * retire another's surface. Entries are weakly held: a replaced snapshot becomes
+ * unreachable and its surface goes with it.
  */
 export type SceneSurface = {
 	readonly evaluationId: string;
 	readonly session: ScenePlacementSession;
 };
 
-let activeSurface: SceneSurface | null = null;
+const surfaces = new WeakMap<object, SceneSurface>();
 
-export function publishSceneSurface(surface: SceneSurface | null): void {
-	activeSurface = surface;
+export function activeSceneSurface(snapshot: object): SceneSurface | null {
+	return surfaces.get(snapshot) ?? null;
 }
 
-export function activeSceneSurface(): SceneSurface | null {
-	return activeSurface;
+/**
+ * Publish the surface for one accepted snapshot and evaluation.
+ *
+ * A newer evaluation for the same snapshot replaces the previous surface after
+ * cancelling it, so a stale candidate or lease cannot survive a reading change.
+ * A previous publisher's release is identity-checked and therefore cannot remove
+ * the replacement.
+ */
+export function publishSceneSurface(snapshot: object, surface: SceneSurface): () => void {
+	const previous = surfaces.get(snapshot);
+	if (previous !== undefined && previous !== surface) {
+		if (previous.evaluationId !== surface.evaluationId) {
+			// A new reading invalidates the old proposal entirely.
+			previous.session.cancel();
+		} else {
+			// Same reading, a second publisher: end any gesture it holds so the
+			// replaced session cannot keep a lease the registry no longer names.
+			previous.session.abortGesture();
+		}
+	}
+	surfaces.set(snapshot, surface);
+	return () => {
+		if (surfaces.get(snapshot) === surface) surfaces.delete(snapshot);
+	};
+}
+
+/** Remove the surface only if it is still the one this caller published. */
+export function retireSceneSurface(snapshot: object, surface: SceneSurface): void {
+	if (surfaces.get(snapshot) === surface) surfaces.delete(snapshot);
+}
+
+/** The live surface for this exact accepted snapshot and evaluation, or `null`. */
+export function sceneSurfaceFor(
+	snapshot: object,
+	evaluationId: string
+): SceneSurface | null {
+	const surface = surfaces.get(snapshot) ?? null;
+	return surface !== null && surface.evaluationId === evaluationId ? surface : null;
 }
 
 const PROJECT_WORLD: FrameReference = { version: 1, kind: 'project-world' };
@@ -181,6 +257,7 @@ export function createSceneSession(input: {
 	let entry = { x: '0', z: '0', yaw: '0' };
 	let entryError: string | null = null;
 	let lastPlacedEntityId: string | null = null;
+	let placePrimitive: NativePlacementPrimitive = 'box';
 
 	function context(): SceneOperationContext {
 		return { project: input.snapshot.source, sourceContentId: input.snapshot.contentRevision };
@@ -211,6 +288,7 @@ export function createSceneSession(input: {
 			candidate: {
 				kind: result.operationKind === 'set-yaw' ? 'yaw' : 'move',
 				entityId: next.id,
+				primitive: null,
 				position: [...next.position] as Vec3,
 				rotation: [...next.rotation] as Vec3,
 				worldXZ: [next.position[0], next.position[2]],
@@ -294,6 +372,11 @@ export function createSceneSession(input: {
 		};
 	}
 
+	/** The host's reading-change policy can end the lease underneath a preview. */
+	function leaseIsLive(): boolean {
+		return lease !== null && lease.kind === 'granted' && lease.lease.active;
+	}
+
 	function release(): void {
 		if (lease !== null && lease.kind === 'granted') lease.lease.release();
 		lease = null;
@@ -308,6 +391,79 @@ export function createSceneSession(input: {
 		release();
 		candidate = null;
 		entryError = null;
+	}
+
+	/** One placement preview and commit path share this captured proposal. */
+	function placeCandidate(
+		primitive: NativePlacementPrimitive,
+		x: number,
+		z: number,
+		supportElevation: number
+	): SceneSessionOutcome {
+		if (!Number.isFinite(x) || !Number.isFinite(z) || !Number.isFinite(supportElevation)) {
+			candidate = null;
+			return { kind: 'invalid', code: 'non-finite', message: 'X/Z and the support elevation must be finite meters.' };
+		}
+		const step = snap === null || !(snap > 0) ? null : snap;
+		const worldXZ: [number, number] = [step === null ? x : snapped(x), step === null ? z : snapped(z)];
+		const contactMinY = nativePlacementContactMinY(primitive);
+		const next: SceneCandidate = {
+			kind: 'place',
+			entityId: null,
+			primitive,
+			position: [worldXZ[0], supportElevation - contactMinY, worldXZ[1]],
+			rotation: [0, 0, 0],
+			worldXZ,
+			yaw: 0,
+			snappedStep: step
+		};
+		candidate = next;
+		return { kind: 'candidate', candidate: next };
+	}
+
+	/** The one F4 placement intent, captured from an exact world X/Z and definition. */
+	async function acceptPlacement(
+		primitive: NativePlacementPrimitive,
+		worldXZ: readonly [number, number]
+	): Promise<SceneSessionOutcome> {
+		const definition = await nativePlacementDefinition(primitive).catch(() => null);
+		if (definition === null) {
+			return { kind: 'refused', code: 'missing-definition', message: 'That object definition is not admitted.' };
+		}
+		const allocatedId = `entity-${mint()}`;
+		const intentToAccept: AuthoringIntent = {
+			version: 1,
+			kind: 'place-object',
+			operationId: mint(),
+			expectedRevision: {
+				projectId: input.snapshot.projectId,
+				revisionId: input.port.acceptedRevision().revisionId
+			},
+			targets: [],
+			payload: {
+				definitionKey: definition.definitionKey,
+				metadataContentId: definition.metadataContentId,
+				worldXZ: [worldXZ[0], worldXZ[1]],
+				yaw: 0,
+				frame: FRAME,
+				frameReference: PROJECT_WORLD
+			},
+			capturedInputs: [],
+			allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+		};
+		let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
+		try {
+			outcome = await input.port.accept(intentToAccept);
+		} catch (error) {
+			return {
+				kind: 'failed',
+				code: 'accept-failed',
+				message: error instanceof Error ? error.message : 'The accepted install failed.'
+			};
+		}
+		if (outcome.kind === 'refused') return outcome;
+		lastPlacedEntityId = allocatedId;
+		return { kind: 'committed' };
 	}
 
 	return {
@@ -343,11 +499,57 @@ export function createSceneSession(input: {
 			candidate = null;
 			return { kind: 'idle' };
 		},
+		beginPlace(primitive) {
+			release();
+			lease = input.port.acquireGesture({
+				owner: 'scene-transform',
+				evaluationId: input.snapshot.evaluationId,
+				policy: 'cancel-on-reading-change'
+			});
+			if (lease.kind === 'refused') {
+				return {
+					kind: 'refused',
+					code: lease.code,
+					message: lease.code === 'gesture-held' ? `Another ${lease.owner} gesture is live.` : 'This editing session is stale.'
+				};
+			}
+			mode = 'place';
+			placePrimitive = primitive;
+			entityId = null;
+			baseline = null;
+			candidate = null;
+			entryError = null;
+			return { kind: 'idle' };
+		},
+		placePrimitive: () => placePrimitive,
+		setPlacePrimitive(primitive) {
+			placePrimitive = primitive;
+		},
 		previewMove(x, z) {
 			return moveCandidate(x, z, snap !== null);
 		},
 		previewYaw(radians) {
 			return yawCandidate(radians);
+		},
+		previewPlace(primitive, x, z, supportElevation) {
+			mode = 'place';
+			placePrimitive = primitive;
+			return placeCandidate(primitive, x, z, supportElevation);
+		},
+		invalidatePreview() {
+			// The expression the creator is now pointing at has no valid support. The
+			// previous pose is no longer what a release would install, so it must stop
+			// being committable; the lease and the armed tool stay as they are.
+			candidate = null;
+			entryError = null;
+		},
+		abortGesture() {
+			// Interruption (capture loss, blur, a reading change) ends this proposal
+			// without disarming Place: only Esc/Select does that.
+			release();
+			entityId = null;
+			candidate = null;
+			entryError = null;
 		},
 		setEntry(kind, text) {
 			const parsed = parseNumber(text);
@@ -366,11 +568,17 @@ export function createSceneSession(input: {
 			return moveCandidate(Number(entry.x), Number(entry.z), false);
 		},
 		async commit() {
-			if (entityId === null || candidate === null) {
+			if (entityId === null || candidate === null || candidate.kind === 'place') {
 				// Nothing is committable, so nothing may keep the gesture lease: a
 				// withdrawn candidate must not leave Undo reporting a live proposal.
 				release();
 				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid pose before committing.' };
+			}
+			if (!leaseIsLive()) {
+				// The host ended the lease (a reading change): the shown pose is no longer
+				// this gesture's operation, so withdraw it rather than install it.
+				withdraw();
+				return { kind: 'refused', code: 'no-candidate', message: 'The preview was cancelled by a reading change.' };
 			}
 			const entity = entityOf(entityId);
 			if (entity === null) {
@@ -429,40 +637,37 @@ export function createSceneSession(input: {
 			candidate = null;
 			return { kind: 'committed' };
 		},
+		async commitPlace() {
+			if (candidate === null || candidate.kind !== 'place' || candidate.primitive === null) {
+				release();
+				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid placement before committing.' };
+			}
+			if (!leaseIsLive()) {
+				// The host ended the lease under the preview; the pose must stop being
+				// committable rather than installing behind a reading the creator left.
+				withdraw();
+				return { kind: 'refused', code: 'no-candidate', message: 'The preview was cancelled by a reading change.' };
+			}
+			lastPlacedEntityId = null;
+			const outcome = await acceptPlacement(candidate.primitive, candidate.worldXZ);
+			if (outcome.kind !== 'committed') {
+				withdraw();
+				return outcome;
+			}
+			// The committed pose is exactly the displayed candidate, and Place stays
+			// armed: a release never disarms the tool, only Esc/Select does.
+			release();
+			candidate = null;
+			return { kind: 'committed' };
+		},
 		async place(primitive, x, z) {
 			lastPlacedEntityId = null;
 			if (!Number.isFinite(x) || !Number.isFinite(z)) {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
-			const definition = await nativePlacementDefinition(primitive).catch(() => null);
-			if (definition === null) {
-				return { kind: 'refused', code: 'missing-definition', message: 'That object definition is not admitted.' };
-			}
-			const allocatedId = `entity-${mint()}`;
-			const intentToAccept: AuthoringIntent = {
-				version: 1,
-				kind: 'place-object',
-				operationId: mint(),
-				expectedRevision: {
-					projectId: input.snapshot.projectId,
-					revisionId: input.port.acceptedRevision().revisionId
-				},
-				targets: [],
-				payload: {
-					definitionKey: definition.definitionKey,
-					metadataContentId: definition.metadataContentId,
-					worldXZ: [snapped(x), snapped(z)],
-					yaw: 0,
-					frame: FRAME,
-					frameReference: PROJECT_WORLD
-				},
-				capturedInputs: [],
-				allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
-			};
-			const outcome = await input.port.accept(intentToAccept);
-			if (outcome.kind === 'refused') return outcome;
-			lastPlacedEntityId = allocatedId;
-			return { kind: 'committed' };
+			const outcome = await acceptPlacement(primitive, [snapped(x), snapped(z)]);
+			if (outcome.kind === 'committed') candidate = null;
+			return outcome;
 		},
 		placedEntityId: () => lastPlacedEntityId,
 		subjectEntityId: () => entityId,

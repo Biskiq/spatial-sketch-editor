@@ -13,7 +13,7 @@
  *
  * No test here writes Layout: every accepted intent is a Scene operation.
  */
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	admitCurrentSource,
 	createEmptyWallFirstProject,
@@ -28,7 +28,9 @@ import {
 	createSceneSession,
 	localContactMinY,
 	publishSceneSurface,
+	retireSceneSurface,
 	sceneEntityReference,
+	sceneSurfaceFor,
 	type ScenePlacementSession,
 	type SceneWritePort
 } from '$lib/authoring/adapters/scene/placement';
@@ -44,6 +46,7 @@ import { buildCurrentSourceFixture, FIXTURE_ENTITY_ID, FIXTURE_PROJECT_ID } from
 const ENTITY_ID = 'entity-scene-box';
 const PROJECT_ID = 'project-scene-editing';
 const BASELINE: Vec3 = [2, 0.5, 2];
+const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
 function supportedProject(entities: readonly SceneEntity[]): ProjectDocument {
 	const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Scene editing' });
@@ -352,6 +355,58 @@ describe('Scene placement session', () => {
 		});
 	});
 
+	it('previews an armed placement, commits that exact candidate and stays armed', async () => {
+		const { session, port } = await sessionFor([boxEntity()]);
+		expect(session.beginPlace('box')).toEqual({ kind: 'idle' });
+		expect(session.armed()).toBe('place');
+		const preview = session.previewPlace('box', 3.25, 4.5, 0);
+		expect(preview.kind).toBe('candidate');
+		if (preview.kind !== 'candidate') return;
+		expect(preview.candidate.kind).toBe('place');
+		expect(preview.candidate.primitive).toBe('box');
+		// The displayed Y is the contact-resolved pose, not the pointer elevation.
+		expect(preview.candidate.position[1]).toBeCloseTo(0.5, 9);
+
+		expect(await session.commitPlace()).toEqual({ kind: 'committed' });
+		expect(port.intents).toHaveLength(1);
+		const intent = port.intents[0]!;
+		expect(intent.kind).toBe('place-object');
+		const payload = intent.payload as { worldXZ: readonly [number, number] };
+		expect(payload.worldXZ).toEqual([3.25, 4.5]);
+		expect(session.placedEntityId()).not.toBeNull();
+		// A success does not disarm Place; only Esc/Select does.
+		expect(session.armed()).toBe('place');
+		expect(session.candidate()).toBeNull();
+
+		// A second placement in the same armed session works the same way.
+		expect(session.beginPlace('cylinder')).toEqual({ kind: 'idle' });
+		session.previewPlace('cylinder', 1, 1, 0);
+		expect(await session.commitPlace()).toEqual({ kind: 'committed' });
+		expect(port.intents).toHaveLength(2);
+		expect(session.armed()).toBe('place');
+	});
+
+	it('withdraws an invalidated preview and keeps Place armed on interruption', async () => {
+		const { session, port } = await sessionFor([boxEntity()]);
+		session.beginPlace('box');
+		expect(session.previewPlace('box', 3, 4, 0).kind).toBe('candidate');
+		session.invalidatePreview();
+		expect(session.candidate()).toBeNull();
+		await expect(session.commitPlace()).resolves.toMatchObject({ kind: 'refused', code: 'no-candidate' });
+		expect(port.intents).toEqual([]);
+
+		// A pointer interruption ends the lease but does not disarm the tool.
+		expect(session.beginPlace('box')).toEqual({ kind: 'idle' });
+		session.previewPlace('box', 2, 2, 0);
+		session.abortGesture();
+		expect(session.candidate()).toBeNull();
+		expect(session.armed()).toBe('place');
+		expect(port.releases()).toBe(2);
+		// Esc/Select is the disarm path.
+		session.cancel();
+		expect(session.armed()).toBe('select');
+	});
+
 	it('accepts and refuses a placement without writing Layout', async () => {
 		const accepted = await sessionFor([boxEntity()]);
 		expect(await accepted.session.place('box', 4, 3)).toEqual({ kind: 'committed' });
@@ -373,13 +428,11 @@ describe('Scene placement session', () => {
 });
 
 describe('Scene adapter registration', () => {
-	afterEach(() => publishSceneSurface(null));
 
-	async function mounted() {
-		const { project } = buildCurrentSourceFixture();
+	async function mounted(project = buildCurrentSourceFixture().project) {
 		const admitted = await admitSource(project, {
 			sessionEpoch: 'session-scene-adapter',
-			acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'revision-boot' }
+			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
 		});
 		if (admitted.kind !== 'admitted') throw new Error('the adapter fixture was not admitted');
 		const stageSession = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
@@ -419,8 +472,12 @@ describe('Scene adapter registration', () => {
 	});
 
 	/** A mounted adapter with the instrument's one published session for this evaluation. */
-	async function withSceneSurface(accept?: SceneWritePort['accept']) {
-		const { facade, host } = await mounted();
+	async function withSceneSurface(
+		accept?: SceneWritePort['accept'],
+		taskId: 'scene-arrange' | 'scene-place' = 'scene-arrange',
+		project?: ProjectDocument
+	) {
+		const { facade, host } = await mounted(project);
 		mountStageAdapter(facade, host, createAdapter);
 		const evaluationId = facade.evaluationId();
 		if (evaluationId === null) throw new Error('the adapter fixture has no evaluation');
@@ -445,11 +502,60 @@ describe('Scene adapter registration', () => {
 				acquireGesture: (request) => facade.acquireGesture(request)
 			}
 		});
-		publishSceneSurface({ evaluationId, session });
+		publishSceneSurface(snapshot, { evaluationId, session });
 		const reference = sceneEntityReference(FIXTURE_ENTITY_ID, snapshot.sourceContentId);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
-		facade.openContributedTask('scene-arrange', 'scene');
-		return { facade, session, evaluationId, intents };
+		facade.openContributedTask(taskId, 'scene');
+		return { facade, session, evaluationId, intents, snapshot };
+	}
+
+	function cssOf(facade: ReturnType<typeof createStageFacade>, point: Vec3): [number, number] {
+		const evaluationId = facade.evaluationId();
+		if (evaluationId === null) throw new Error('the adapter fixture has no evaluation');
+		const projected = facade.projectWorld(point, evaluationId);
+		if (projected.kind !== 'projected') throw new Error('the fixture point did not project');
+		return [projected.css[0], projected.css[1]];
+	}
+
+	async function eventually(predicate: () => boolean): Promise<void> {
+		for (let attempt = 0; attempt < 40; attempt += 1) {
+			if (predicate()) return;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		throw new Error('the fixture did not settle');
+	}
+
+	/** A mounted adapter over a real acceptance host, with the Place task open. */
+	async function acceptedPlaceSurface() {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const admitted = await admitSource(project, {
+			sessionEpoch: 'session-scene-accepted',
+			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
+		});
+		if (admitted.kind !== 'admitted') throw new Error('the accepted fixture was not admitted');
+		const stageSession = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
+		stageSession.replace(admitted.snapshot);
+		const facade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession });
+		const evaluated = facade.camera.evaluate(RECT, 1);
+		if (evaluated.kind !== 'evaluated') throw new Error('the accepted fixture did not evaluate');
+		facade.acquireInspection('exclusive');
+		const host = createStageAcceptanceHost({
+			facade,
+			sessionEpoch: admitted.snapshot.sessionEpoch,
+			baseline: {
+				revision: admitted.snapshot.acceptedRevision,
+				source: project,
+				canonicalJson: admitted.snapshot.canonicalJson,
+				sourceContentId: admitted.snapshot.sourceContentId
+			},
+			planners: []
+		});
+		mountStageAdapter(facade, host, createAdapter);
+		// The placement planner is registered once its metadata identity exists.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const opened = facade.openContributedTask('scene-place', 'scene');
+		if (opened.kind !== 'opened') throw new Error(`Place was not opened: ${opened.message}`);
+		return { facade };
 	}
 
 
@@ -477,35 +583,325 @@ describe('Scene adapter registration', () => {
 		expect(facade.ghosts()).toEqual([]);
 	});
 
-	it('does not claim through a surface published for another evaluation', async () => {
-		const { facade } = await withSceneSurface();
-		const evaluationId = facade.evaluationId()!;
-		// A session from a previous evaluation is not this Stage's surface: a press
-		// is refused rather than answered by a session built from another snapshot.
-		publishSceneSurface({
-			evaluationId: 'evaluation-stale',
-			session: createSceneSession({
-				snapshot: {
-					projectId: 'project-stale',
-					contentRevision: 'stale-content',
-					source: currentStageSource(facade.snapshot()).source,
-					compileGeneration: 'stale-generation',
-					evaluationId: 'evaluation-stale'
-				},
-				port: {
-					accept: async () => ({ kind: 'installed' }),
-					acceptedRevision: () => ({ revisionId: 'stale-revision' }),
-					acquireGesture: (request) => facade.acquireGesture(request)
-				}
-			})
+	it('withdraws a candidate when the pointer moves to occluded support, so release installs nothing', async () => {
+		// A closed, floor-bearing enclosure with the selected box, plus a large
+		// occluder inside it. The pointer can reach the floor around the occluder
+		// but not through it.
+		const withScreen: SceneEntity = {
+			kind: 'primitive',
+			primitive: 'box',
+			id: 'entity-occluder',
+			name: 'Screen',
+			dimensions: { width: 4, height: 3, depth: 4 },
+			materialId: 'plaster-warm',
+			castShadow: true,
+			receiveShadow: true,
+			position: [5, 1.5, 3],
+			rotation: [0, 0, 0]
+		};
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2]), withScreen]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-arrange',
+			project
+		);
+		const clear = cssOf(facade, [2.5, 0, 2.5]);
+		const blocked = cssOf(facade, [5, 1.5, 3]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: clear, evaluationId }).claimed).toBe(true);
+		expect(facade.pointerIntent({ phase: 'move', css: clear, evaluationId }).claimed).toBe(true);
+		const shown = session.candidate();
+		expect(shown).not.toBeNull();
+		if (shown === null) return;
+
+		// The same drag now aims at the occluder. The previous pose is not what a
+		// release here would install, so it must stop being committable.
+		facade.pointerIntent({ phase: 'move', css: blocked, evaluationId });
+		expect(session.candidate()).toBeNull();
+		expect(facade.ghosts()).toEqual([]);
+
+		facade.pointerIntent({ phase: 'up', css: blocked, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(intents).toEqual([]);
+		// The refused press did not leave its lease behind.
+		expect(
+			facade.acquireGesture({ owner: 'probe', evaluationId, policy: 'cancel-on-reading-change' }).kind
+		).toBe('granted');
+	});
+
+	it('places from an armed pointer, selects the new entity and stays armed until Esc', async () => {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		const first = cssOf(facade, [3, 0, 3]);
+		const moved = cssOf(facade, [3.5, 0, 3]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: first, evaluationId })).toEqual({
+			claimed: true,
+			adapterId: 'scene'
 		});
+		const preview = session.candidate();
+		expect(preview?.kind).toBe('place');
+		expect(preview?.primitive).toBe('box');
+		// The preview is the object's own body, drawn by the one Canvas.
+		expect(facade.ghosts()).toHaveLength(1);
+		expect(facade.ghosts()[0]!.shape).toEqual({ kind: 'box', size: [1, 1, 1] });
+
+		facade.pointerIntent({ phase: 'move', css: moved, evaluationId });
+		const movedPreview = session.candidate();
+		expect(movedPreview?.kind).toBe('place');
+		if (movedPreview === null) return;
+		expect(movedPreview.worldXZ[0]).toBeCloseTo(3.5, 6);
+		expect(movedPreview.worldXZ[1]).toBeCloseTo(3, 6);
+
+		facade.pointerIntent({ phase: 'up', css: moved, evaluationId });
+		await eventually(() => intents.length === 1);
+		expect(intents).toHaveLength(1);
+		const payload = intents[0]!.payload as { worldXZ: readonly [number, number] };
+		expect(payload.worldXZ[0]).toBeCloseTo(movedPreview.worldXZ[0], 6);
+		expect(payload.worldXZ[1]).toBeCloseTo(movedPreview.worldXZ[1], 6);
+		// A successful placement leaves Place armed and the task open.
+		expect(session.armed()).toBe('place');
+		expect(facade.session.task()?.kind).toBe('place-object');
+
+		// A second pointer placement works without re-invoking the tool.
+		const second = cssOf(facade, [4.5, 0, 1.5]);
+		facade.pointerIntent({ phase: 'down', css: second, evaluationId });
+		facade.pointerIntent({ phase: 'up', css: second, evaluationId });
+		await eventually(() => intents.length === 2);
+		expect(intents).toHaveLength(2);
+
+		// Esc/Select is the one disarm path.
+		expect(facade.closeTask()).toBe(true);
+		expect(session.armed()).toBe('select');
+		expect(facade.pointerIntent({ phase: 'down', css: second, evaluationId }).claimed).toBe(false);
+	});
+
+	it('releases the pose the press claimed even when the viewport is re-evaluated mid-press', async () => {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		const first = cssOf(facade, [3, 0, 3]);
+		expect(facade.pointerIntent({ phase: 'down', css: first, evaluationId }).claimed).toBe(true);
+		const claimed = session.candidate();
+		expect(claimed?.kind).toBe('place');
+
+		// A second viewport evaluation arrives while the press is still held. A
+		// release that resolved the surface again would read a fresh, empty session
+		// and silently drop the pose the creator is dragging.
+		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
+		expect(facade.evaluationId()).not.toBe(evaluationId);
+		facade.pointerIntent({ phase: 'up', css: first, evaluationId });
+		await eventually(() => intents.length === 1);
+		expect(intents).toHaveLength(1);
+		const payload = intents[0]!.payload as { worldXZ: readonly [number, number] };
+		expect(payload.worldXZ[0]).toBeCloseTo(claimed!.worldXZ[0], 6);
+		expect(payload.worldXZ[1]).toBeCloseTo(claimed!.worldXZ[1], 6);
+	});
+
+	it('does not install a pointer pose whose lease a reading change ended', async () => {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		const first = cssOf(facade, [3, 0, 3]);
+		expect(facade.pointerIntent({ phase: 'down', css: first, evaluationId }).claimed).toBe(true);
+		expect(session.candidate()?.kind).toBe('place');
+
+		// The host's cancel-on-reading-change policy ends the lease under the
+		// proposal; the obsolete pose must not be installed on release.
+		expect(facade.session.applyReadingChange()).toMatchObject({ cancelled: true });
+		facade.pointerIntent({ phase: 'up', css: first, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(intents).toEqual([]);
+		expect(session.candidate()).toBeNull();
+		// The interruption did not disarm Place.
+		expect(session.armed()).toBe('place');
+	});
+
+	it('keeps Place armed across its own accepted install, then disarms on Esc', async () => {
+		const { facade } = await acceptedPlaceSurface();
+		const first = cssOf(facade, [3, 0, 3]);
+		const evaluationId = facade.evaluationId()!;
+		const firstSurface = sceneSurfaceFor(facade.snapshot(), evaluationId);
+		expect(firstSurface?.session.armed()).toBe('place');
+
+		expect(facade.pointerIntent({ phase: 'down', css: first, evaluationId }).claimed).toBe(true);
+		expect(firstSurface?.session.candidate()?.kind).toBe('place');
+		facade.pointerIntent({ phase: 'up', css: first, evaluationId });
+
+		// The accepted install adds exactly one entity and selects it canonically at
+		// the post-accept revision.
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+		const installed = facade.snapshot();
+		const primary = facade.selectionState().primary;
+		expect(primary?.domain).toBe('scene');
+		expect(primary?.subject.kind).toBe('entity');
+		if (primary === null || primary.subject.kind !== 'entity') return;
+		expect(installed.domain.scene.entities.some((entity) => entity.id === primary.subject.id)).toBe(true);
+
+		// The host's install-close ends the task; Place is a persistent tool and its
+		// own install reopens the same contributed task for the next placement.
+		const nextEvaluation = facade.camera.evaluate(RECT, 2);
+		expect(nextEvaluation.kind).toBe('evaluated');
+		facade.overlays();
+		await eventually(() => facade.session.task() !== null);
+		expect(facade.session.task()?.kind).toBe('place-object');
+		const reopened = sceneSurfaceFor(facade.snapshot(), facade.evaluationId()!);
+		expect(reopened?.session.armed()).toBe('place');
+
+		// A second placement needs no re-invocation of the tool.
+		const second = cssOf(facade, [4.5, 0, 1.5]);
+		const secondEvaluationId = facade.evaluationId()!;
+		expect(facade.pointerIntent({ phase: 'down', css: second, evaluationId: secondEvaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'up', css: second, evaluationId: secondEvaluationId });
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 3);
+		// The second install closes and reopens the task just like the first.
+		const thirdEvaluation = facade.camera.evaluate(RECT, 3);
+		if (thirdEvaluation.kind === 'evaluated') facade.overlays();
+		await eventually(() => facade.session.task() !== null);
+
+		// Esc is the one path that ends the armed tool, and no deferred reopen may
+		// resurrect it afterwards.
+		expect(facade.closeTask()).toBe(true);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(facade.session.task()).toBeNull();
+		const afterEsc = facade.camera.evaluate(RECT, 4);
+		if (afterEsc.kind === 'evaluated') facade.overlays();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(facade.session.task()).toBeNull();
+	});
+
+	it('reads only the surface published for its own accepted snapshot', async () => {
+		const { facade, session, evaluationId, snapshot } = await withSceneSurface();
+		// A second Stage session (another accepted snapshot) publishes its own
+		// surface. The two surfaces are scoped by snapshot and cannot collide.
+		const otherProject = { ...currentStageSource(snapshot).source, id: 'project-other-stage' };
+		const otherAdmitted = await admitSource(otherProject, {
+			sessionEpoch: 'session-other-stage',
+			acceptedRevision: { projectId: 'project-other-stage', revisionId: 'revision-other' }
+		});
+		if (otherAdmitted.kind !== 'admitted') throw new Error('the other Stage fixture was not admitted');
+		const otherSession = createSceneSession({
+			snapshot: {
+				projectId: otherAdmitted.snapshot.acceptedRevision.projectId,
+				contentRevision: otherAdmitted.snapshot.sourceContentId,
+				source: currentStageSource(otherAdmitted.snapshot).source,
+				compileGeneration: otherAdmitted.snapshot.compileGeneration,
+				evaluationId: 'evaluation-other-stage'
+			},
+			port: {
+				accept: async () => ({ kind: 'installed' }),
+				acceptedRevision: () => ({ revisionId: 'revision-other' }),
+				acquireGesture: (request) => facade.acquireGesture(request)
+			}
+		});
+		publishSceneSurface(otherAdmitted.snapshot, {
+			evaluationId: 'evaluation-other-stage',
+			session: otherSession
+		});
+
 		expect(facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId })).toEqual({
+			claimed: true,
+			adapterId: 'scene'
+		});
+		// The claim used this Stage's session, not the concurrent one.
+		expect(session.baseline()).not.toBeNull();
+		expect(otherSession.baseline()).toBeNull();
+		expect(otherSession.candidate()).toBeNull();
+		expect(sceneSurfaceFor(snapshot, evaluationId)?.session).toBe(session);
+		expect(
+			sceneSurfaceFor(otherAdmitted.snapshot, 'evaluation-other-stage')?.session
+		).toBe(otherSession);
+	});
+
+	it('does not retire another publisher\'s surface on unmount and no late phase can act', async () => {
+		const { facade, snapshot, evaluationId } = await withSceneSurface();
+		// The fixture's instrument published this surface; the binding found it and
+		// does not own it, so teardown must neither cancel nor remove it.
+		expect(sceneSurfaceFor(snapshot, evaluationId)).not.toBeNull();
+		facade.dispose();
+		expect(sceneSurfaceFor(snapshot, evaluationId)).not.toBeNull();
+		expect(facade.pointerIntent({ phase: 'up', css: [100, 100], evaluationId })).toEqual({
 			claimed: false,
 			adapterId: null
 		});
-		// And with no published surface at all, the press is still refused.
-		publishSceneSurface(null);
-		expect(facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId }).claimed).toBe(false);
+	});
+
+	it('aborts the replaced session when a second publisher claims the same evaluation', async () => {
+		const { facade, session, snapshot, evaluationId } = await withSceneSurface();
+		expect(facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: [140, 100], evaluationId, shift: true });
+		expect(session.candidate()).not.toBeNull();
+		const second = createSceneSession({
+			snapshot: {
+				projectId: snapshot.acceptedRevision.projectId,
+				contentRevision: snapshot.sourceContentId,
+				source: currentStageSource(snapshot).source,
+				compileGeneration: snapshot.compileGeneration,
+				evaluationId
+			},
+			port: {
+				accept: async () => ({ kind: 'installed' }),
+				acceptedRevision: () => ({ revisionId: 'revision-second' }),
+				acquireGesture: (request) => facade.acquireGesture(request)
+			}
+		});
+		publishSceneSurface(snapshot, { evaluationId, session: second });
+		// The replaced session may not keep the candidate or its lease; the new one
+		// must be able to claim the same press.
+		expect(session.candidate()).toBeNull();
+		expect(
+			facade.acquireGesture({ owner: 'probe', evaluationId, policy: 'cancel-on-reading-change' }).kind
+		).toBe('granted');
+	});
+
+	it('arms Place on the live reading, not the evaluation captured at bind time', async () => {
+		const { facade, evaluationId } = await withSceneSurface();
+		expect(facade.closeTask()).toBe(true);
+		// A reading change does not rebuild the binding; the next instrument must
+		// still arm the surface for the evaluation the instrument will read.
+		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
+		const current = facade.evaluationId();
+		expect(current).not.toBe(evaluationId);
+		if (current === null) return;
+		expect(facade.openContributedTask('scene-place', 'scene').kind).toBe('opened');
+		expect(sceneSurfaceFor(facade.snapshot(), current)?.session.armed()).toBe('place');
+	});
+
+	it('keeps a replacement surface when the previous publisher retires', async () => {
+		const { facade, session, evaluationId, snapshot } = await withSceneSurface();
+		const replacement = createSceneSession({
+			snapshot: {
+				projectId: snapshot.acceptedRevision.projectId,
+				contentRevision: snapshot.sourceContentId,
+				source: currentStageSource(snapshot).source,
+				compileGeneration: snapshot.compileGeneration,
+				evaluationId: 'evaluation-replacement'
+			},
+			port: {
+				accept: async () => ({ kind: 'installed' }),
+				acceptedRevision: () => ({ revisionId: 'revision-replacement' }),
+				acquireGesture: (request) => facade.acquireGesture(request)
+			}
+		});
+		const release = publishSceneSurface(snapshot, {
+			evaluationId: 'evaluation-replacement',
+			session: replacement
+		});
+		// Retiring the *previous* evaluation's surface must not remove this one.
+		retireSceneSurface(snapshot, { evaluationId, session });
+		expect(sceneSurfaceFor(snapshot, 'evaluation-replacement')?.session).toBe(replacement);
+		release();
+		expect(sceneSurfaceFor(snapshot, 'evaluation-replacement')).toBeNull();
 	});
 
 	it('releases the lease when the pointer commit is refused', async () => {

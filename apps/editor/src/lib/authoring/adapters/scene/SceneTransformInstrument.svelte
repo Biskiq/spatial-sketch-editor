@@ -18,10 +18,13 @@
 	} from '../../scene/object-definition-policy';
 	import {
 		publishSceneSurface,
+		retireSceneSurface,
 		sceneEntityReference,
 		sceneSessionFromServices,
+		sceneSurfaceFor,
 		type SceneCandidate,
 		type ScenePlacementSession,
+		type SceneSurface,
 		type SceneSessionOutcome
 	} from './placement';
 
@@ -39,6 +42,8 @@
 
 	let session: ScenePlacementSession | null = null;
 	let sessionEvaluationId: string | null = null;
+	let surface: SceneSurface | null = null;
+	let surfaceSnapshot: object | null = null;
 
 	const entities = $derived(services.stage.snapshot().domain.scene.entities);
 
@@ -56,10 +61,21 @@
 		}
 		if (session === null || sessionEvaluationId !== evaluationId) {
 			session?.cancel();
-			session = sceneSessionFromServices({ services, evaluationId });
+			// The adapter publishes the surface when its task opens; a reading change
+			// (which does not rebuild the binding) is refreshed here. The registry is
+			// keyed by this accepted snapshot, so only this Stage's surface is read.
+			const snapshot = services.stage.snapshot();
+			const existing = sceneSurfaceFor(snapshot, evaluationId);
+			if (existing !== null) {
+				session = existing.session;
+				surface = existing;
+			} else {
+				session = sceneSessionFromServices({ services, evaluationId });
+				surface = { evaluationId, session };
+				publishSceneSurface(snapshot, surface);
+			}
 			sessionEvaluationId = evaluationId;
-			// The adapter's pointer claim and overlay read this same session.
-			publishSceneSurface({ evaluationId, session });
+			surfaceSnapshot = snapshot;
 			applySnap();
 		}
 		return session;
@@ -217,11 +233,19 @@
 		applyOutcome(outcome);
 	}
 
-	// One cancel path: unmount releases the lease and restores the accepted baseline.
+	// The task's instrument mounts with a live session so the adapter's pointer
+	// claim, the overlay and typed entry read the same candidate. Unmount releases
+	// this evaluation's surface; the identity-checked retirement cannot delete a
+	// replacement published for a newer evaluation.
 	$effect(() => {
+		ensureSession();
 		return () => {
 			session?.cancel();
-			publishSceneSurface(null);
+			if (surface !== null && surfaceSnapshot !== null) {
+				retireSceneSurface(surfaceSnapshot, surface);
+			}
+			surface = null;
+			surfaceSnapshot = null;
 		};
 	});
 </script>
@@ -287,7 +311,10 @@
 				<span>Place</span>
 				<select
 					value={primitive}
-					onchange={(event) => (primitive = event.currentTarget.value as NativePlacementPrimitive)}
+					onchange={(event) => {
+						primitive = event.currentTarget.value as NativePlacementPrimitive;
+						session?.setPlacePrimitive(primitive);
+					}}
 				>
 					{#each NATIVE_PLACEMENT_PRIMITIVES as option (option)}
 						<option value={option}>{option}</option>
