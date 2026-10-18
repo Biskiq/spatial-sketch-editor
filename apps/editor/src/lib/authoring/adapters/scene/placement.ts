@@ -136,12 +136,16 @@ export type ScenePlacementSession = {
 	candidate(): SceneCandidate | null;
 	/**
 	 * The one listener notified synchronously after this session commits a
-	 * placement. The adapter uses it to keep its persistent Place task open after
-	 * its own install closed it; both pointer and typed entry share this path.
-	 * Setting `null` clears it; a reading-change replacement carries it over.
+	 * placement. The adapter uses it to select the new entity and to keep its
+	 * persistent Place task open after its own install closed it; both pointer and
+	 * typed entry share this path. It receives the entity the commit installed
+	 * rather than closing over one session, so a reading change — which replaces
+	 * the session without rebuilding the adapter binding — can carry it to
+	 * whichever session carries the creator's next commit. Setting `null` clears
+	 * it.
 	 */
-	setPlacementCommittedListener(listener: (() => void) | null): void;
-	placementCommittedListener(): (() => void) | null;
+	setPlacementCommittedListener(listener: ((placedEntityId: string | null) => void) | null): void;
+	placementCommittedListener(): ((placedEntityId: string | null) => void) | null;
 };
 
 /**
@@ -266,7 +270,7 @@ export function createSceneSession(input: {
 	let entryError: string | null = null;
 	let lastPlacedEntityId: string | null = null;
 	let placePrimitive: NativePlacementPrimitive = 'box';
-	let placementCommitted: (() => void) | null = null;
+	let placementCommitted: ((placedEntityId: string | null) => void) | null = null;
 
 	/**
 	 * One committed placement, one notification. The listener is consumed so a
@@ -275,7 +279,9 @@ export function createSceneSession(input: {
 	function notifyPlacementCommitted(): void {
 		const listener = placementCommitted;
 		placementCommitted = null;
-		listener?.();
+		// The committing session names the entity; the listener never captures a
+		// session, so the same listener stays correct after a reading-change carry-over.
+		listener?.(lastPlacedEntityId);
 	}
 
 	function context(): SceneOperationContext {

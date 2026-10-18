@@ -215,18 +215,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * binding's own live facade services — the same authorised completion the
 			 * pointer path has always used — not the task-scoped instrument guard an
 			 * accepted install has already retired, so a typed commit cannot be refused
-			 * as an inactive task. Esc/Select is the one path that ends the tool. The
-			 * captured epoch makes an explicit close win the race against an acceptance
-			 * still in flight: a close that is not this install bumps it, so the deferred
-			 * reopen is dropped instead of resurrecting a tool the creator ended.
+			 * as an inactive task. The listener takes the installed entity from the
+			 * committing session; it captures no session, so a reading-change replacement
+			 * can carry it to the creator's next commit. Esc/Select is the one path that
+			 * ends the tool. The captured epoch makes an explicit close win the race
+			 * against an acceptance still in flight: a close that is not this install
+			 * bumps it, so the deferred reopen is dropped instead of resurrecting a tool
+			 * the creator ended.
 			 */
 			function attachPlaceCompletion(session: ScenePlacementSession): void {
 				const epoch = taskEpoch;
-				session.setPlacementCommittedListener(() => {
-					const placedId = session.placedEntityId();
+				session.setPlacementCommittedListener((placedId) => {
 					if (placedId !== null) {
-						// Canonical selection of the new entity; no Plan fragment is
-						// fabricated for a Scene-only subject.
+						// Canonical selection of the new entity at the post-accept
+						// revision; no Plan fragment is fabricated for a Scene-only
+						// subject.
 						const reference = sceneEntityReference(
 							placedId,
 							services.stage.snapshot().sourceContentId

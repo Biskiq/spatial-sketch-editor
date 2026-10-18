@@ -300,7 +300,7 @@
 			contributionsVersion += 1;
 			task = facade?.session.task() ?? null;
 			selection = facade ? primaryEntry(facade.selectionState()) : null;
-			if (facade?.session.taskLifecycle() === null) contributedTaskId = null;
+			syncContributedTask();
 		});
 		task = null;
 		contributedTaskId = null;
@@ -337,7 +337,7 @@
 			}
 			task = facade?.session.task() ?? null;
 			selection = facade ? primaryEntry(facade.selectionState()) : null;
-			if (facade?.session.taskLifecycle() === null) contributedTaskId = null;
+			syncContributedTask();
 			planKey = '';
 			refresh();
 		});
@@ -876,6 +876,36 @@
 			// The host's own task: no adapter contributed this instrument.
 			contributedTaskId = null;
 		}
+	}
+
+	/**
+	 * Keep the instrument home's mirror of the facade's contributed task in step.
+	 *
+	 * The facade owns the task and its instrument content: an adapter can reopen its
+	 * own persistent task after an accepted install closed it, so this host cannot
+	 * rely on its own invocation alone. `instrumentForTask` carries the facade-side
+	 * owner check, so probing the contributed entries re-identifies the one live
+	 * task — and yields the very content the home renders. A parked (inactive) task
+	 * keeps whatever mirror it had, as before.
+	 */
+	function syncContributedTask(): void {
+		const stage = facade;
+		if (stage === null) return;
+		const lifecycle = stage.session.taskLifecycle();
+		if (lifecycle === null) {
+			contributedTaskId = null;
+			return;
+		}
+		if (lifecycle.status !== 'active') return;
+		const current = contributedTaskId;
+		if (current !== null && stage.instrumentForTask(current.id, current.adapterId) !== null) return;
+		for (const entry of stage.tasks()) {
+			if (stage.instrumentForTask(entry.id, entry.adapterId) !== null) {
+				contributedTaskId = { id: entry.id, adapterId: entry.adapterId };
+				return;
+			}
+		}
+		contributedTaskId = null;
 	}
 
 	/**

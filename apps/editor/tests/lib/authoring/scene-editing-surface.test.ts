@@ -425,6 +425,27 @@ describe('Scene placement session', () => {
 			code: 'support-unresolved'
 		});
 	});
+
+	it('names the committing session to a completion listener carried across a replacement', async () => {
+		// A reading change replaces the session without rebuilding the adapter
+		// binding, so the instrument carries the adapter's one completion listener to
+		// the replacement. The listener must be told which entity *that* session
+		// installed; a listener that named a captured session reported `null` here.
+		const first = await sessionFor([boxEntity()]);
+		const second = await sessionFor([boxEntity()]);
+		const reported: (string | null)[] = [];
+		first.session.setPlacementCommittedListener((placedEntityId) => reported.push(placedEntityId));
+		const carried = first.session.placementCommittedListener();
+		expect(carried).not.toBeNull();
+		// Carrying reads the listener without consuming it, then installs it on the
+		// replacement exactly as `ensureSession` does.
+		expect(first.session.placementCommittedListener()).not.toBeNull();
+		second.session.setPlacementCommittedListener(carried);
+
+		expect(await second.session.place('box', 3, 3)).toEqual({ kind: 'committed' });
+		expect(reported).toEqual([second.session.placedEntityId()]);
+		expect(reported[0]).not.toBeNull();
+	});
 });
 
 describe('Scene adapter registration', () => {
