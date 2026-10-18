@@ -11,7 +11,9 @@ STATUS:    ACCEPTED and SHIPPED 2026-10-18 via PR #148 (owner accepted the imple
            [narrow host-integration exception](../../../../reference/decisions/t1-s04-host-integration-2026-10-17.md).
            Three review rounds; the last blocking finding was fixed and its delta re-confirmed.
            `slice-closeout` compacted the plan body into a stub and wrote this record; no criterion
-           was inferred from skill invocation or green tests alone.
+           was inferred from skill invocation or green tests alone. A post-acceptance review fix
+           (`aa26e04a`) removed leftover selection diagnostics found at closeout (see the resolution
+           below); PR #148 carries it.
 ROLE:      acceptance outcome and preservation route for T1.P01.S04.
 NOT:       product contract · plan · status store · authority for residual capabilities.
 ```
@@ -125,11 +127,24 @@ The diagnostics are not mentioned in the plan, the acceptance evidence above, or
 `stage.session.select(diagSelection)` call inside a `console.debug` argument, so the diagnostic is
 not inert. `slice-closeout` is forbidden to edit production code, so this record only reports it:
 
-- **Disposition owed before/with the merge commit.** Either remove the three lines in a follow-up
+- **Disposition owed before/with the merge commit.** Either remove the lines in a follow-up
   review-fix commit on PR #148 (preferred; then re-run the affected contract and the full gate at the
   new revision), or the owner explicitly waives it in a ruling. This is the skill's
   "return to review" trigger (an unresolved implementation issue discovered at closeout), not something
   closeout may silently accept.
+
+### Resolution — owner-authorized review fix
+
+The owner directed the removal. Review-fix commit `aa26e04a` drops both `console.debug` calls and
+restores the reviewed body of `selectSource()`: a single `stage.select({ … })`, which already selects
+through the session and echoes adapters. The redundant direct `session.select` that sat inside the
+debug argument is gone, and `[s04-diag]` now appears nowhere in `src/` or in a fresh production build.
+
+The complete merge gate was re-run at `aa26e04a` on the then-current `main` (`a351c4bf`): `check` 0/0 ·
+`test:arch` 20 files/163 tests · `test:fast` 134/1,883 · `test:heavy` 8/118 · `npm test` 162/2,164 ·
+`build` pass · `check:layout-core`, `check:project-model`, `check:camera-core` and `check:api` pass ·
+`git diff --check` clean. The restored body is the reviewed baseline the acceptance evidence above was
+gathered against; no suite keys on `selectSource()`, and no lane regressed.
 
 ## Entry points
 
@@ -174,7 +189,8 @@ transient artifacts removed:     0
 historical anchor:               2d37adef151a097e96b8bae9f9a8d8fcd9948556 · tag closed/T1.P01.S04 (local only — not pushed)
 new live → archive prose links:  0
 manual-owed verification rows:   0
-remaining deferred items:        3   S06 integration gate (route above) · the known limits · the debug
-                                     instrumentation residual above (owner action)
+remaining deferred items:        2   S06 integration gate (route above) · the known limits
+                                     (the debug instrumentation residual was cleared by review-fix
+                                     commit `aa26e04a` — see the resolution above)
 permanent stubs added:           1   (the owner-ratified 2026-09-22 hybrid cost: one per closed prose artifact)
 ```

@@ -22,20 +22,22 @@ ACTIVE: none in progress. T1.P01.S04 is accepted and shipped (2026-10-18, PR #14
         proposed and unauthorized.
 BATON: S04 (existing Layout precision with the Head Save mount) shipped in the batch B pairing with
        `T2.P01.S03`; its accepted head is `2d37adef` and its closeout anchor `closed/T1.P01.S04`
-       points there (local only — the owner pushes). S07's anchors, including `ab8504aa`
+       points there (local only — the owner pushes). The single residual found at closeout was cleared
+       by review-fix commit `aa26e04a`, which removed leftover `[s04-diag]` selection diagnostics from
+       the spatial route. S07's anchors, including `ab8504aa`
        (`viewport-projection-v1` accepted) and `d1c93d47`, are ancestors of `main`; the
        `closed/T1.P01.S07` tag is likewise local only. The architecture-cycle exposure window stays
        **open**: S02 and S04 exposure rows are recorded (M1/M2 re-armed), the terminal S05 is pending.
 NEXT: The owner merges PR #148 as a merge commit (P1 — no squash, no rebase). Post-merge, verify
-      `2d37adef` is an ancestor of `main` and push the `closed/T1.P01.S04` tag. One residual is owed
-      before/with the merge: the accepted revision carries leftover `[s04-diag]` debug instrumentation
-      in the spatial route (see the S04 acceptance record). After S04 merges, T1.P01.S05 (which waits
-      for S04) becomes eligible on owner authorization; S06 stays the phase's final gate and
-      T2.P01.S04 stays blocked on this slice's Head Save.
+      `2d37adef` is an ancestor of `main` and push the `closed/T1.P01.S04` tag. The one residual owed
+      before the merge is discharged: review-fix commit `aa26e04a` removed the leftover `[s04-diag]`
+      debug instrumentation in the spatial route and the full merge gate was re-run there (see the S04
+      acceptance record). After S04 merges, T1.P01.S05 (which waits for S04) becomes eligible on owner
+      authorization; S06 stays the phase's final gate and T2.P01.S04 stays blocked on this slice's
+      Head Save.
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-b-2026-10-17
-BLOCKER: the owner's merge decision on PR #148 and the residual debug instrumentation above; S05–S06
-         stay unauthorized.
+BLOCKER: the owner's merge decision on PR #148; S05–S06 stay unauthorized.
 ```

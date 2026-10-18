@@ -41,9 +41,9 @@ version, capability scope, F amendment or authored format.
 ```text
 integration   the declared integration route stays ../t1.p01.s06-integrated-final-gate/;
               S05–S06 remain proposed and unauthorized
-open finding  the accepted revision carries leftover `[s04-diag]` console.debug instrumentation in
-              the spatial route — see the residual section of acceptance.md; removal owed before/with
-              the merge commit (or an explicit owner waiver)
+resolved      leftover `[s04-diag]` debug instrumentation in the spatial route: found at closeout on
+              the accepted revision (`2d37adef`), removed by review-fix commit `aa26e04a`, with the
+              full merge gate re-run there — see the resolution in acceptance.md
 later scope   T2.P01.S04 depends on this slice's Head Save; T3.P01.S04 later migrates this slice's
               current-source adapters (K6)
 ```
