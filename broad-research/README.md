@@ -3,7 +3,7 @@
 Research input for future design work. **Not** a product contract or routed authority —
 `docs/README.md` and the `docs/reference/` contracts govern product truth.
 
-Each topic is a pair of files:
+Each of the five domain studies is a pair of files:
 
 | Topic | Interactive synthesis | Verbatim report |
 | --- | --- | --- |
@@ -34,3 +34,7 @@ Each topic is a pair of files:
 Panels marked *reconstruction* are rebuilt from flattened widget snapshots. Panels marked
 *illustrative* act out a mechanism the report describes, using sample content that is not in
 the source. Each page's Source notes say which is which.
+
+## Cross-domain synthesis
+
+- **Research 6:** [`biskiq-integrated-product-synthesis.md`](./biskiq-integrated-product-synthesis.md) — integrated product direction, reviewed creator journeys, cross-domain revision principles, capability seams, and UX/architecture handoffs. This **Markdown-only editorially reconciled synthesis** is research input, not a ratified product contract. No interactive companion is added by this PR; the five domain-study HTML companions remain available above.
