@@ -185,12 +185,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			function surfaceFor(evaluationId: string, snapshot = services.stage.snapshot()): SceneSurface {
 				const existing = activeSceneSurface(snapshot);
 				if (existing !== null && existing.evaluationId === evaluationId) {
-					if (openTaskKind === 'place-object') attachPlacePersistence(existing.session);
+					if (openTaskKind === 'place-object') attachPlaceCompletion(existing.session);
 					return existing;
 				}
 				const session = sceneSessionFromServices({ services, evaluationId });
 				const next: SceneSurface = { evaluationId, session };
-				if (openTaskKind === 'place-object') attachPlacePersistence(session);
+				if (openTaskKind === 'place-object') attachPlaceCompletion(session);
 				// Publishing a different evaluation cancels the old proposal. The old
 				// release is identity-checked, so it cannot remove this replacement.
 				publishSceneSurface(snapshot, next);
@@ -204,20 +204,35 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			/**
-			 * Keep the persistent Place tool armed after its own accepted install.
+			 * Complete a committed placement, then keep the persistent Place tool armed.
 			 *
 			 * A placement commit — typed or pointer, they share this session — is
 			 * accepted through the host's one install path, which closes the contributed
 			 * task and retires this binding. The session reports that one commit, and this
-			 * binding reopens its own Place task for the next placement; Esc/Select is the
-			 * one path that ends the tool. The captured epoch makes an explicit close win
-			 * the race against an acceptance still in flight: a close that is not this
-			 * install bumps it, so the deferred reopen is dropped instead of resurrecting
-			 * a tool the creator ended.
+			 * binding performs the completion: the newly created entity becomes the
+			 * selection canonically, at the post-accept revision, and this binding reopens
+			 * its own Place task for the next placement. Selection runs through this
+			 * binding's own live facade services — the same authorised completion the
+			 * pointer path has always used — not the task-scoped instrument guard an
+			 * accepted install has already retired, so a typed commit cannot be refused
+			 * as an inactive task. Esc/Select is the one path that ends the tool. The
+			 * captured epoch makes an explicit close win the race against an acceptance
+			 * still in flight: a close that is not this install bumps it, so the deferred
+			 * reopen is dropped instead of resurrecting a tool the creator ended.
 			 */
-			function attachPlacePersistence(session: ScenePlacementSession): void {
+			function attachPlaceCompletion(session: ScenePlacementSession): void {
 				const epoch = taskEpoch;
 				session.setPlacementCommittedListener(() => {
+					const placedId = session.placedEntityId();
+					if (placedId !== null) {
+						// Canonical selection of the new entity; no Plan fragment is
+						// fabricated for a Scene-only subject.
+						const reference = sceneEntityReference(
+							placedId,
+							services.stage.snapshot().sourceContentId
+						);
+						services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+					}
 					if (epoch !== taskEpoch) return;
 					reopenPlace();
 				});
@@ -260,24 +275,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 
 			async function commitPointerPlace(session: ScenePlacementSession): Promise<void> {
-				const outcome = await session.commitPlace();
-				if (outcome.kind !== 'committed') {
-					services.stage.notifySurfaceChange();
-					return;
-				}
-				const placedId = session.placedEntityId();
-				if (placedId !== null) {
-					// Canonical selection of the new entity at the post-accept revision;
-					// no Plan fragment is fabricated for a Scene-only subject.
-					const reference = sceneEntityReference(
-						placedId,
-						services.stage.snapshot().sourceContentId
-					);
-					services.stage.setSelection({ ordered: [{ reference }], primary: reference });
-				}
+				// The session reports a committed placement to the binding that attached
+				// completion, which selects the new entity and reopens this persistent task
+				// through the host's one install path. Re-read the surface either way, so a
+				// refused release withdraws any shown pose.
+				await session.commitPlace();
 				services.stage.notifySurfaceChange();
-				// The session reports the commit to the binding that attached persistence,
-				// which reopens this persistent task through the host's one install path.
 			}
 
 			return {
@@ -480,9 +483,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (task.kind === 'place-object' && evaluationId !== null) {
 					taskSurface = surfaceFor(evaluationId, services.stage.snapshot());
 					taskSurface.session.arm('place');
-					// Typed and pointer Place commit through this session; listening here is
-					// what keeps the tool persistent for a typed commit too.
-					attachPlacePersistence(taskSurface.session);
+					// Typed and pointer Place commit through this session; completing here
+					// is what keeps the tool persistent and selects the new entity for a
+					// typed commit too.
+					attachPlaceCompletion(taskSurface.session);
 				} else {
 					taskSurface = liveSurface();
 				}

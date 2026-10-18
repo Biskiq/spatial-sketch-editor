@@ -815,6 +815,34 @@ describe('Scene adapter registration', () => {
 		expect(facade.session.task()).toBeNull();
 	});
 
+	it('selects the entity a typed Place installed, canonically at the post-accept revision', async () => {
+		const { facade } = await acceptedPlaceSurface();
+		const evaluationId = facade.evaluationId()!;
+		const surface = sceneSurfaceFor(facade.snapshot(), evaluationId);
+		expect(surface?.session.armed()).toBe('place');
+		// Nothing is selected before the typed commit.
+		expect(facade.selectionState().primary).toBeNull();
+
+		// The instrument's pointer-free Place commits through this same session. Its
+		// completion selects the new entity through the adapter's own services, not the
+		// task-scoped instrument guard an accepted install retires.
+		await expect(surface!.session.place('box', 3, 3)).resolves.toEqual({ kind: 'committed' });
+		const installed = facade.snapshot();
+		expect(installed.domain.scene.entities).toHaveLength(2);
+		const primary = facade.selectionState().primary;
+		expect(primary?.domain).toBe('scene');
+		expect(primary?.subject.kind).toBe('entity');
+		if (primary === null || primary.subject.kind !== 'entity') return;
+		// The selected subject is the entity the acceptance installed, not the
+		// pre-existing fixture entity, and its reference names the installed revision.
+		expect(primary.subject.id).not.toBe(FIXTURE_ENTITY_ID);
+		expect(installed.domain.scene.entities.some((entity) => entity.id === primary.subject.id)).toBe(true);
+		expect(primary.revision).toMatchObject({
+			kind: 'exact',
+			contentRevision: installed.sourceContentId
+		});
+	});
+
 	it('does not reopen Place when Esc closes the tool during an in-flight acceptance', async () => {
 		// A gate the test holds open keeps the accepted install in flight, so an
 		// explicit close can race the placement that would otherwise reopen it.

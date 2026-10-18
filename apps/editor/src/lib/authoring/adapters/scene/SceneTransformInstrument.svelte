@@ -19,7 +19,6 @@
 	import {
 		publishSceneSurface,
 		retireSceneSurface,
-		sceneEntityReference,
 		sceneSessionFromServices,
 		sceneSurfaceFor,
 		type SceneCandidate,
@@ -223,19 +222,12 @@
 		const outcome = await current.place(primitive, Number(x), Number(z));
 		if (outcome.kind === 'committed') {
 			candidate = null;
-			// Snap is never silent: a Place that applied a step says so.
+			// Snap is never silent: a Place that applied a step says so. The adapter's
+			// completion selects the new entity and keeps the tool armed; the instrument
+			// does not select through its task-scoped services, which the accepted
+			// install has already retired.
 			const snapNote = appliedSnap === null ? '' : ` · snap ${appliedSnap} m applied`;
-			// The newly accepted entity becomes the selection through canonical
-			// selection (no Plan fragment is required) at the post-accept revision.
-			const placedId = current.placedEntityId();
-			let selectionNote = '';
-			if (placedId !== null) {
-				const reference = sceneEntityReference(placedId, services.stage.snapshot().sourceContentId);
-				const selected = services.stage.setSelection({ ordered: [{ reference }], primary: reference });
-				selectionNote =
-					selected.kind === 'selected' ? ' Selected.' : ` Selection refused: ${selected.message}`;
-			}
-			message = `Placed one ${primitive}${snapNote}.${selectionNote}`;
+			message = `Placed one ${primitive}${snapNote}.`;
 			return;
 		}
 		applyOutcome(outcome);
