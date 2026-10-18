@@ -104,6 +104,11 @@ describe('the editor host reaches only authorized write paths', () => {
 		expect(/\bcreateSaveState\s*\(/.test(route)).toBe(true);
 		expect(/\bcreateHeadSave\s*\(/.test(route)).toBe(true);
 		expect(/save=\{headSave\}/.test(route)).toBe(true);
+		// An accepted edit is what makes the project dirty, and the Head re-reads its
+		// Save state only when that controller refreshes. The refresh must sit in the
+		// acceptance subscription: without it the Head keeps reporting the pre-edit
+		// status, so the unsaved-work exit and replacement guards never fire.
+		expect(/mounted\.onChanged\(\(\) => \{[\s\S]{0,800}?headSave\?\.refresh\(\)/.test(route)).toBe(true);
 	});
 
 	it('reaches the authorized Save writer only through its transport module', () => {

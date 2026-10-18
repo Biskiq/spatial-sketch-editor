@@ -1540,10 +1540,12 @@ export function createStageFacade(input: {
 				acceptedRevision: currentSnapshot.acceptedRevision,
 				policy: request.policy
 			});
-			// A held proposal changes what the host can command (Undo/Redo report
-			// `live-proposal`), so the shell's derived history state must refresh now,
-			// not only when the next acceptance happens.
-			if (outcome.kind === 'granted') notifyAdaptersChanged();
+			// **Never notify adapter listeners here.** A lease is not a registration or
+			// a binding change: a granted proposal changes what Undo reports, but the
+			// host reads that on its own refresh frame. Notifying invalidated every
+			// contribution view, which rebuilt the instrument that had just acquired
+			// the lease, disposing it and releasing the proposal on the same keystroke —
+			// so Undo could never actually observe `live-proposal`.
 			return outcome;
 		},
 		dispose() {

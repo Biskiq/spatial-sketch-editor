@@ -325,6 +325,11 @@
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			if (acceptance !== mounted || tornDown) return;
 			refreshHistory();
+			// The Save state derives its status from the accepted source, so an
+			// accepted edit is what makes the project dirty. Without this refresh
+			// the Head keeps reporting the pre-edit status and the exit/replacement
+			// guards never see unsaved work.
+			headSave?.refresh();
 			if (facade !== null && (boot.status === 'ready' || boot.status === 'empty')) {
 				boot = { ...boot, snapshot: facade.snapshot() };
 			}
@@ -389,8 +394,9 @@
 		// answer: a replacement or teardown that happened during it still wins.
 		if (!session.isCurrent(token)) return;
 		// Only now, with the currency check passed, does this load's base become the
-		// epoch's base: the save state built by `activate` reads it once.
-		pendingSavedBase = captured.base;
+		// epoch's base: the save state built by `activate` reads it once, and only a
+		// source that actually admitted gets a base to pair with.
+		if (next.status === 'ready' || next.status === 'empty') pendingSavedBase = captured.base;
 		applyState(next);
 	}
 
@@ -449,12 +455,18 @@
 		) {
 			return;
 		}
-		pendingSavedBase = {
-			token: offer.savedBaseToken,
-			revision: offer.savedRevision,
-			contentId: offer.savedSourceContentId
-		};
-		applyState(await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext()));
+		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
+		// Only a source that actually admitted becomes this epoch's saved base: a
+		// failed reload must not leave a remote base for a later activation to pair
+		// with the locally shown source.
+		if (next.status === 'ready' || next.status === 'empty') {
+			pendingSavedBase = {
+				token: offer.savedBaseToken,
+				revision: offer.savedRevision,
+				contentId: offer.savedSourceContentId
+			};
+		}
+		applyState(next);
 	}
 
 	function requestReplacement(action: 'starter' | 'empty' | 'source'): void {
@@ -831,12 +843,15 @@
 		cardOpen = true;
 		const fragment = plan.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
 		if (fragment === undefined) return;
-		stage.select({
+		const diagSelection = {
 			sourceId,
 			sourceKind: fragment.ref.sourceKind,
 			generationId: fragment.ref.generationId,
 			ref: fragment.ref
-		});
+		};
+		console.debug('[s04-diag] pre-select', fragment.ref.generationId === stage.snapshot().compileGeneration, fragment.ref.sourceKind, fragment.ref.stream, stage.evaluationId(), stage.session.select(diagSelection));
+		stage.select(diagSelection);
+		console.debug('[s04-diag] post-select', stage.selectionState().primary !== null, stage.selectionState().ordered.length);
 		selection = primaryEntry(stage.selectionState());
 	}
 

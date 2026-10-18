@@ -27,7 +27,7 @@ import {
 import type { ProjectDocument } from '@portfolio/project-model';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
-import { createStageSession } from '$lib/authoring/stage/stage-session';
+import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, datumWorkingPlane, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
@@ -36,7 +36,7 @@ import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
-import { createDimensionsInstrument } from '$lib/authoring/adapters/layout/adapter-support';
+import { createDimensionsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-s04';
@@ -44,6 +44,7 @@ const ELEVATION = 0.5;
 
 type Mounted = {
 	readonly facade: StageFacade;
+	readonly session: StageSession;
 	readonly host: StageAcceptanceHost;
 	readonly services: StageAdapterServices;
 	readonly document: LayoutDocumentWallFirst;
@@ -114,7 +115,7 @@ async function mount(): Promise<Mounted> {
 		return createAdapter(port);
 	});
 	if (registration.kind !== 'registered' || services === undefined) throw new Error('Layout adapter did not mount');
-	return { facade, host, services, document, wallId, openingId };
+	return { facade, session, host, services, document, wallId, openingId };
 }
 
 describe('T1.P01.S04 — Layout precision', () => {
@@ -235,6 +236,55 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(host.history()).toMatchObject({ depth: 2, position: 1 });
 		expect((await host.undo()).kind).toBe('installed');
 		expect(currentStageSource(facade.snapshot()).source.layout.objects).toHaveLength(before);
+	});
+
+	it('holds the host gesture lease for typed X/Z and releases it when the placement settles', async () => {
+		const { facade, host, services } = await mount();
+		const instrument = createPlacementInstrument(services);
+		expect(instrument.proposalLive()).toBe(false);
+
+		// Esc from the placement panel releases a lease that never placed anything.
+		instrument.setPlacement('3', '3');
+		expect(instrument.proposalLive()).toBe(true);
+		instrument.cancelPlacement();
+		expect(instrument.proposalLive()).toBe(false);
+
+		// Typed working-plane X/Z is a settled-fact proposal exactly as a measure is:
+		// Undo must not move the document out from under a value about to be placed.
+		instrument.setPlacement('0.75', '-0.75');
+		expect(instrument.proposalLive()).toBe(true);
+		expect(host.history().undoUnavailableReason).toContain('proposal is live');
+		expect(await host.undo()).toMatchObject({ kind: 'unavailable', reason: 'live-proposal' });
+
+		// The attempt settles the proposal whether it places or not; here it places.
+		expect((await instrument.place()).kind).toBe('accepted');
+		expect(instrument.proposalLive()).toBe(false);
+		expect(host.history().canUndo).toBe(true);
+		expect(
+			currentStageSource(facade.snapshot()).source.layout.objects.some(
+				(object) => object.position[0] === 0.75 && object.position[2] === -0.75
+			)
+		).toBe(true);
+	});
+
+	it('re-takes the host lease after a reading change ends it mid-proposal', async () => {
+		const { session, host, services } = await mount();
+		const instrument = createPlacementInstrument(services);
+		instrument.setPlacement('1', '1');
+		expect(instrument.proposalLive()).toBe(true);
+
+		// The Plan/3D toggle is a reading change: the host runs the live lease's
+		// `cancel-on-reading-change` policy, so the grant is gone while the typed
+		// value stays in the panel.
+		expect(session.applyReadingChange()).toMatchObject({ cancelled: true });
+		expect(host.history().undoUnavailableReason ?? '').not.toContain('proposal is live');
+
+		// The next keystroke must ask the host again rather than trust its own flag;
+		// otherwise the draft sits unguarded and Undo reports it available.
+		instrument.setPlacement('1.25', '1');
+		expect(instrument.proposalLive()).toBe(true);
+		expect(host.history().undoUnavailableReason).toContain('proposal is live');
+		expect(await host.undo()).toMatchObject({ kind: 'unavailable', reason: 'live-proposal' });
 	});
 
 	it('refuses a stale floor datum and a mismatched captured object id', async () => {

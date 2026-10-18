@@ -10,6 +10,7 @@
 	 * persistence function — downloading source JSON is a pure serialization of
 	 * the admitted source the caller already holds.
 	 */
+	import { untrack } from 'svelte';
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
@@ -71,13 +72,15 @@
 	const lensButtons: HTMLButtonElement[] = [];
 
 	// The Save state notifies on every settled command; this counter is the
-	// component's read signal, not a second copy of the state.
+	// component's read signal, not a second copy of the state. `subscribe`
+	// notifies synchronously on subscription, so the subscription is untracked:
+	// otherwise the effect would depend on the counter it writes and Svelte would
+	// abort it before the Head ever re-rendered.
 	let saveVersion = $state(0);
 	$effect(() => {
-		if (save === null) return;
-		const unsubscribe = save.subscribe(() => (saveVersion += 1));
-		saveVersion += 1;
-		return unsubscribe;
+		const current = save;
+		if (current === null) return;
+		return untrack(() => current.subscribe(() => (saveVersion += 1)));
 	});
 	const saveControl = $derived.by(() => {
 		void saveVersion;

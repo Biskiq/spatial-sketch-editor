@@ -63,13 +63,18 @@
 		}
 		nameBusy = true;
 		nameError = null;
-		const outcome = await nameWriter.commit(name);
-		nameBusy = false;
-		if (outcome.kind !== 'accepted') {
-			nameError = outcome.message ?? 'The name was not accepted.';
-			return;
+		try {
+			const outcome = await nameWriter.commit(name);
+			if (outcome.kind !== 'accepted') {
+				nameError = outcome.message ?? 'The name was not accepted.';
+				return;
+			}
+			nameDraft = name;
+		} finally {
+			// A throwing writer ends the attempt too; leaving `nameBusy` true would
+			// disable the rename affordance for the rest of the selection.
+			nameBusy = false;
 		}
-		nameDraft = name;
 	}
 </script>
 

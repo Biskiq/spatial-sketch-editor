@@ -5,6 +5,10 @@
 	 * Typed working-plane X/Z plus the selected floor datum. The controller
 	 * captures the new object id before evaluation; the retained preset planner
 	 * must agree with it, so a failed placement creates no object and no history.
+	 *
+	 * Typing X/Z takes the host gesture lease (a value about to be placed must not
+	 * be moved out from under by Undo); Place and Esc end it, and unmount is the
+	 * last release path.
 	 */
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import { createPlacementInstrument } from './adapter-support';
@@ -18,6 +22,23 @@
 
 	const instrument = $derived.by(() => createPlacementInstrument(services));
 
+	// Unmount is the last cancel path: a typed placement's host gesture lease must
+	// be released exactly once, and leaving never places anything.
+	$effect(() => {
+		const current = instrument;
+		return () => current?.dispose();
+	});
+
+	function setX(value: string): void {
+		x = value;
+		instrument.setPlacement(x, z);
+	}
+
+	function setZ(value: string): void {
+		z = value;
+		instrument.setPlacement(x, z);
+	}
+
 	async function place(): Promise<void> {
 		if (instrument === null || busy) return;
 		busy = true;
@@ -27,13 +48,38 @@
 		if (outcome.kind === 'invalid' || outcome.kind === 'refused') error = outcome.message;
 		busy = false;
 	}
+
+	function onKeydown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape') return;
+		event.preventDefault();
+		error = null;
+		instrument?.cancelPlacement();
+	}
 </script>
 
 <div class="placement" data-layout-placement>
 	<p class="hint">Place a plinth at working-plane X/Z on the current floor datum.</p>
 	<div class="fields">
-		<label><span>X</span><input type="text" inputmode="decimal" bind:value={x} /></label>
-		<label><span>Z</span><input type="text" inputmode="decimal" bind:value={z} /></label>
+		<label>
+			<span>X</span>
+			<input
+				type="text"
+				inputmode="decimal"
+				value={x}
+				oninput={(event) => setX(event.currentTarget.value)}
+				onkeydown={onKeydown}
+			/>
+		</label>
+		<label>
+			<span>Z</span>
+			<input
+				type="text"
+				inputmode="decimal"
+				value={z}
+				oninput={(event) => setZ(event.currentTarget.value)}
+				onkeydown={onKeydown}
+			/>
+		</label>
 	</div>
 	<button type="button" disabled={busy} onclick={() => void place()}>Place plinth</button>
 	{#if error !== null}<p class="error" role="alert">{error}</p>{/if}

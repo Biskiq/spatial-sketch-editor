@@ -79,7 +79,20 @@ function gesturePort(services: StageAdapterServices): LayoutGesturePort {
 	};
 }
 
-/** The Card's name writer for one Layout subject, delegated to the same planner. */
+/**
+ * The Card's name writer for one Layout subject, delegated to the same planner.
+ *
+ * It deliberately takes **no host gesture lease**: the uncommitted text in the Card
+ * is transient UI state, not a document proposal. A *draft* builds no intent, so a
+ * draft can never enter history. Both its value and the writer it commits through
+ * are rebuilt from the current accepted snapshot, so a draft can only rename the
+ * current subject against the current revision, never write against the one it was
+ * typed under — and the committed rename is one ordinary `layout-entity-name`
+ * history entry, refused rather than applied against a stale revision. Holding the
+ * lease for the draft would disable Undo on a shell keystroke while protecting no
+ * history. The Dimensions/placement instruments are different: their typed values
+ * are settled-fact proposals, so they do hold the lease.
+ */
 export function layoutNameTarget(
 	services: StageAdapterServices,
 	subject: LayoutSubject

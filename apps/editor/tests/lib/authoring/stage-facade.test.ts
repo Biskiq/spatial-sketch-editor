@@ -306,6 +306,32 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		expect(second.kind).toBe('granted');
 	});
 
+	it('does not notify adapter listeners when a gesture lease is granted', async () => {
+		const { facade } = await mount();
+		const id = evaluate(facade);
+		let notifications = 0;
+		const unsubscribe = facade.onAdaptersChanged(() => {
+			notifications += 1;
+		});
+
+		const outcome = facade.acquireGesture({
+			owner: 'layout-dimensions',
+			evaluationId: id,
+			policy: 'suspend-proposal'
+		});
+		expect(outcome.kind).toBe('granted');
+		if (outcome.kind !== 'granted') return;
+
+		// A lease is not a contribution change. Notifying here would rebuild the
+		// factory adapters and dispose the instrument that just took the lease, so
+		// Undo could never actually observe `live-proposal`.
+		expect(notifications).toBe(0);
+
+		outcome.lease.release();
+		expect(notifications).toBe(0);
+		unsubscribe();
+	});
+
 	it('refuses an adapter that requires a capability this host does not provide', async () => {
 		const { facade } = await mount();
 

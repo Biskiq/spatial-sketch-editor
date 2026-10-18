@@ -160,10 +160,18 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	let inFlight = false;
 	let proposal = false;
 
-	/** The first keystroke of a proposal takes the host lease; it is not history. */
+	/**
+	 * The first keystroke of a proposal takes the host lease; it is not history.
+	 *
+	 * Every keystroke asks the port, never this instance's own flag: the host can
+	 * end the lease underneath a mounted instrument (a reading change releases a
+	 * `cancel-on-reading-change` proposal), and a stale `true` would leave a typed
+	 * value unguarded while Undo reported it available. The port answers `true`
+	 * while its own grant is still alive and re-acquires a spent one.
+	 */
 	function beginProposal(): void {
-		if (proposal || options.gesture === undefined) return;
-		if (options.gesture.acquire()) proposal = true;
+		if (options.gesture === undefined) return;
+		proposal = options.gesture.acquire();
 	}
 
 	function releaseProposal(): void {
@@ -223,6 +231,10 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		},
 		placement: () => ({ ...placement }),
 		setPlacement(x, z) {
+			// Typed working-plane input is a live placement proposal exactly as a
+			// settled measure is: it takes the host lease on the first keystroke, so
+			// Undo cannot move the document out from under a value about to be placed.
+			beginProposal();
 			placement = { x, z, error: null };
 		},
 		edit(id, next) {
@@ -236,7 +248,12 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		async commit(id) {
 			const current = fieldState(id);
 			if (current === null) return { kind: 'unknown-field' };
-			if (inFlight) return { kind: 'busy' };
+			if (inFlight) {
+				// A busy return commits nothing, so it must not leave a lease behind for
+				// the value that was just typed.
+				releaseProposal();
+				return { kind: 'busy' };
+			}
 			errors.delete(id);
 			try {
 
@@ -353,35 +370,45 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 			return fieldState(id);
 		},
 		async place() {
-			if (inFlight) return { kind: 'busy' };
-			const parsed = parsePlacementXZ(placement.x, placement.z);
-			if (!parsed.ok) {
-				placement = { ...placement, error: parsed.reason };
-				return { kind: 'invalid', code: parsed.code, message: parsed.reason };
+			if (inFlight) {
+				releaseProposal();
+				return { kind: 'busy' };
 			}
-			const objectId = nextLayoutPresetObjectId(options.document);
-			const point: LayoutVec2 = parsed.point;
-			const outcome = await submit(
-				buildLayoutIntent({
-					kind: LAYOUT_PLINTH_PLACE_KIND,
-					operationId: mint(),
-					projectId: options.projectId,
-					revisionId: options.port.acceptedRevision().revisionId,
-					contentRevision: options.contentRevision,
-					targets: [],
-					payload: {
-						point: [point[0], point[1]],
-						floorElevation: options.document.floor.elevation,
-						objectId
-					},
-					allocatedIds: [{ kind: 'layout-object', id: objectId }]
-				})
-			);
-			if (outcome.kind === 'refused') placement = { ...placement, error: outcome.message };
-			return outcome;
+			try {
+				const parsed = parsePlacementXZ(placement.x, placement.z);
+				if (!parsed.ok) {
+					placement = { ...placement, error: parsed.reason };
+					return { kind: 'invalid', code: parsed.code, message: parsed.reason };
+				}
+				const objectId = nextLayoutPresetObjectId(options.document);
+				const point: LayoutVec2 = parsed.point;
+				const outcome = await submit(
+					buildLayoutIntent({
+						kind: LAYOUT_PLINTH_PLACE_KIND,
+						operationId: mint(),
+						projectId: options.projectId,
+						revisionId: options.port.acceptedRevision().revisionId,
+						contentRevision: options.contentRevision,
+						targets: [],
+						payload: {
+							point: [point[0], point[1]],
+							floorElevation: options.document.floor.elevation,
+							objectId
+						},
+						allocatedIds: [{ kind: 'layout-object', id: objectId }]
+					})
+				);
+				if (outcome.kind === 'refused') placement = { ...placement, error: outcome.message };
+				return outcome;
+			} finally {
+				// A placement attempt — accepted, refused, invalid or thrown — ends the
+				// proposal; the lease must never outlive the value it was opened for.
+				releaseProposal();
+			}
 		},
 		cancelPlacement() {
 			placement = { x: placement.x, z: placement.z, error: null };
+			releaseProposal();
 		},
 		proposalLive: () => proposal,
 		dispose: () => releaseProposal()

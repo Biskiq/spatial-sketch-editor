@@ -58,10 +58,24 @@
 		refresh();
 	}
 
-	function discard(id: string): void {
+	/**
+	 * Restore the field's accepted text after a cancel/blur.
+	 *
+	 * The input is not a bound value: while the creator types, the DOM holds text
+	 * the controller has not accepted, and `value={field.text}` only writes when
+	 * the rendered expression *changes*. Restoring "3" over a typed "32.8" is
+	 * therefore no change to Svelte, which leaves the rejected draft visible after
+	 * Esc or blur. The element is synced from the controller explicitly.
+	 */
+	function restoreText(id: string, input: HTMLInputElement): void {
+		input.value = instrument?.fields().find((field) => field.id === id)?.text ?? '';
+	}
+
+	function discard(id: string, input?: HTMLInputElement): void {
 		error = null;
 		instrument?.cancel(id);
 		refresh();
+		if (input !== undefined) restoreText(id, input);
 	}
 
 	function onInput(id: string, event: Event): void {
@@ -93,12 +107,13 @@
 							void commit(field.id);
 						} else if (event.key === 'Escape') {
 							event.preventDefault();
-							discard(field.id);
+							discard(field.id, event.currentTarget as HTMLInputElement);
 						}
 					}}
-					onblur={() => {
+					onblur={(event) => {
 						instrument?.blur(field.id);
 						refresh();
+						restoreText(field.id, event.currentTarget as HTMLInputElement);
 					}}
 				/>
 				<span class="unit">{field.unit === 'm' ? 'm' : ''}</span>
