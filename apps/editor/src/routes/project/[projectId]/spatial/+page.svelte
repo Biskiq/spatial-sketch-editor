@@ -22,6 +22,7 @@
 	 * target can never intercept input.
 	 */
 	import { onMount } from 'svelte';
+	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import {
@@ -66,6 +67,13 @@
 		type StageAcceptanceHost,
 		type StageHistoryState
 	} from '$lib/authoring/stage/host-acceptance';
+	import {
+		createApiSaveTransport,
+		createHeadSave,
+		createSaveState,
+		type HeadSave,
+		type ReloadOffer
+	} from '$lib/authoring/save';
 	import type { PlanEvaluation, PlanMembershipReason } from '@portfolio/layout-core';
 	import type { ViewingIntent, ViewportEvaluation, ViewportRect } from '@portfolio/camera-core';
 	import {
@@ -105,6 +113,27 @@
 	let unsubscribeContributions: (() => void) | null = null;
 	let unsubscribeAcceptance: (() => void) | null = null;
 	let contributedTaskId = $state<{ id: string; adapterId: string } | null>(null);
+	/**
+	 * The saved-base metadata of the project this host last loaded from the cloud.
+	 *
+	 * It is `null` for a baseline the host itself minted (starter, empty, opened
+	 * source), so a Save there is a create rather than an update of someone else's
+	 * version. It is read once, when the save state for that epoch is built.
+	 */
+	let pendingSavedBase = $state.raw<{
+		readonly token: string | null;
+		readonly revision: { readonly projectId: string; readonly revisionId: string } | null;
+		readonly contentId: string | null;
+	} | null>(null);
+	/**
+	 * The PLATE Head's conditional-Save controller for the current epoch.
+	 *
+	 * T3.P01.S02 owns the state machine, the protocol and the server; this host only
+	 * constructs it per epoch, mounts it, and keeps the replacement guard the only
+	 * path that can install a remote document.
+	 */
+	let headSave = $state.raw<HeadSave | null>(null);
+
 	let historyState = $state<StageHistoryState>({
 		canUndo: false,
 		canRedo: false,
@@ -170,6 +199,20 @@
 	let epochCounter = 0;
 	let revisionCounter = 0;
 
+	/**
+	 * Leaving the route is an exit like any other: unsaved work asks first.
+	 *
+	 * The signal is explicit (`unsavedWork`), not inferred from a counter, and a
+	 * declined confirmation cancels the navigation. A clean project never sees a
+	 * prompt, and this guard never saves anything by itself.
+	 */
+	beforeNavigate(({ cancel }) => {
+		const unsaved = headSave?.unsavedWork();
+		if (unsaved?.kind !== 'confirm') return;
+		if (typeof window === 'undefined' || window.confirm(unsaved.message)) return;
+		cancel();
+	});
+
 	function admissionContext(): AdmissionContext {
 		epochCounter += 1;
 		revisionCounter += 1;
@@ -198,6 +241,42 @@
 		planKey = '';
 		markers = [];
 		selectionMarker = null;
+	}
+
+	/**
+	 * Build the epoch's conditional-Save controller over T3.P01.S02's state machine.
+	 *
+	 * The saved base is what the cloud row reported when this project was loaded;
+	 * a locally minted baseline has none. `loadRemote` is the conflict reader: it
+	 * returns data to the Head, which hands the replacement offer to this host's
+	 * guard — the state machine never installs a remote document itself.
+	 */
+	function buildHeadSave(mounted: StageAcceptanceHost, snapshot: StageReadSnapshot): HeadSave | null {
+		if (api === null) return null;
+		const saved = pendingSavedBase;
+		const state = createSaveState({
+			coordinator: mounted.coordinator(),
+			save: createApiSaveTransport(api),
+			baseline: {
+				savedBaseToken: saved?.token ?? null,
+				// Only the cloud row knows the saved revision; a minted baseline and a
+				// legacy row both report none rather than a locally invented one.
+				savedRevision: saved?.revision ?? null,
+				savedCanonicalJson: snapshot.canonicalJson,
+				savedSourceContentId: saved?.contentId ?? snapshot.sourceContentId
+			},
+			loadRemote: async (id) => {
+				const loaded = await api!.loadProject(id);
+				return {
+					projectId: id,
+					document: loaded.document,
+					savedBaseToken: loaded.savedBaseToken,
+					savedRevision: loaded.savedRevision,
+					savedSourceContentId: loaded.savedSourceContentId
+				};
+			}
+		});
+		return createHeadSave(state);
 	}
 
 	function activate(snapshot: StageReadSnapshot): void {
@@ -246,6 +325,11 @@
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			if (acceptance !== mounted || tornDown) return;
 			refreshHistory();
+			// The Save state derives its status from the accepted source, so an
+			// accepted edit is what makes the project dirty. Without this refresh
+			// the Head keeps reporting the pre-edit status and the exit/replacement
+			// guards never see unsaved work.
+			headSave?.refresh();
 			if (facade !== null && (boot.status === 'ready' || boot.status === 'empty')) {
 				boot = { ...boot, snapshot: facade.snapshot() };
 			}
@@ -256,6 +340,9 @@
 			refresh();
 		});
 		for (const factory of stageAdapterFactories) mountStageAdapter(facade, mounted, factory);
+		// The previous epoch's controller belongs to its disposed coordinator; this
+		// epoch gets exactly one state machine over the new one.
+		headSave = buildHeadSave(mounted, snapshot);
 		historyState = mounted.history();
 		resetViewContext();
 	}
@@ -274,6 +361,10 @@
 	/* --- boot -------------------------------------------------------------- */
 
 	async function load(projectIdToLoad: string, requestedIntent: BootIntent): Promise<void> {
+		// A read is a new epoch's source: no previous saved base and no previous
+		// epoch's Save controller may survive into it.
+		pendingSavedBase = null;
+		headSave = null;
 		boot = initialBootState(projectIdToLoad, requestedIntent);
 		if (api === null) {
 			boot =
@@ -283,13 +374,16 @@
 			return;
 		}
 		const token = session.token();
+		// The cloud row's saved base is held per attempt, never in route state: a load
+		// that a replacement or a local open supersedes must not leave its token behind.
+		const captured: { base: typeof pendingSavedBase } = { base: null };
 		let outcome: BootLoadOutcome | null;
 		try {
 			// The host performs only the project GET, as a load bound to this session
 			// epoch: a replacement or teardown aborts it exactly once, and a completion
 			// that lands after either is dropped instead of installing itself over the
 			// newer source.
-			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal));
+			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal, captured));
 		} catch {
 			// The GET was cancelled: the replacement that cancelled it owns the stage now.
 			return;
@@ -299,12 +393,28 @@
 		// Admission is asynchronous too, so the same question is asked again with its
 		// answer: a replacement or teardown that happened during it still wins.
 		if (!session.isCurrent(token)) return;
+		// Only now, with the currency check passed, does this load's base become the
+		// epoch's base: the save state built by `activate` reads it once, and only a
+		// source that actually admitted gets a base to pair with.
+		if (next.status === 'ready' || next.status === 'empty') pendingSavedBase = captured.base;
 		applyState(next);
 	}
 
-	async function fetchOutcome(projectIdToLoad: string, signal: AbortSignal): Promise<BootLoadOutcome> {
+	async function fetchOutcome(
+		projectIdToLoad: string,
+		signal: AbortSignal,
+		captured: { base: typeof pendingSavedBase }
+	): Promise<BootLoadOutcome> {
 		try {
 			const loaded = await api!.loadProject(projectIdToLoad, signal);
+			// Capture the cloud row's saved base with the document it describes: the
+			// save state is built from this pair, never from the admitted snapshot
+			// alone (which cannot know the server's version token).
+			captured.base = {
+				token: loaded.savedBaseToken,
+				revision: loaded.savedRevision,
+				contentId: loaded.savedSourceContentId
+			};
 			return { kind: 'loaded', document: loaded.document };
 		} catch (error) {
 			// An abort is not a cloud answer, so it must not become one: rethrow so the
@@ -328,8 +438,50 @@
 		return boot.status === 'ready' || boot.status === 'empty';
 	}
 
+	/**
+	 * A conflict's explicit *Reload remote*: the offer is data, and this host's
+	 * replacement path is the only thing that installs it.
+	 */
+	async function applyReloadOffer(offer: ReloadOffer): Promise<void> {
+		if (offer.kind === 'unavailable') {
+			notice = 'The remote copy could not be loaded; your local work is unchanged.';
+			return;
+		}
+		const unsaved = headSave?.unsavedWork();
+		if (
+			unsaved?.kind === 'confirm' &&
+			typeof window !== 'undefined' &&
+			!window.confirm(unsaved.message)
+		) {
+			return;
+		}
+		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
+		// Only a source that actually admitted becomes this epoch's saved base: a
+		// failed reload must not leave a remote base for a later activation to pair
+		// with the locally shown source.
+		if (next.status === 'ready' || next.status === 'empty') {
+			pendingSavedBase = {
+				token: offer.savedBaseToken,
+				revision: offer.savedRevision,
+				contentId: offer.savedSourceContentId
+			};
+		}
+		applyState(next);
+	}
+
 	function requestReplacement(action: 'starter' | 'empty' | 'source'): void {
 		if (activeProject()) {
+			// Unsaved work is signalled explicitly and confirmed before the guard even
+			// opens: a replacement would discard the local source, so no path may skip
+			// this question.
+			const unsaved = headSave?.unsavedWork();
+			if (
+				unsaved?.kind === 'confirm' &&
+				typeof window !== 'undefined' &&
+				!window.confirm(unsaved.message)
+			) {
+				return;
+			}
 			// Explicit project-replacement guard: nothing is swapped until the creator
 			// confirms, and the guard is the same host path for every entry.
 			pendingReplacement = action;
@@ -341,10 +493,13 @@
 	async function runReplacement(action: 'starter' | 'empty' | 'source'): Promise<void> {
 		pendingReplacement = null;
 		if (action === 'starter') {
+			// A minted baseline has no cloud saved base: its first Save is a create.
+			pendingSavedBase = null;
 			applyState(await bootStarterGallery(projectId, admissionContext()));
 			return;
 		}
 		if (action === 'empty') {
+			pendingSavedBase = null;
 			applyState(await bootEmpty(projectId, admissionContext()));
 			return;
 		}
@@ -354,6 +509,7 @@
 	}
 
 	async function openSourceJson(): Promise<void> {
+		pendingSavedBase = null;
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.accept = 'application/json,.json';
@@ -389,6 +545,10 @@
 	function refresh(): void {
 		const stage = facade;
 		if (stage === null) return;
+		// The gesture lease is host state that changes what Undo can do without an
+		// acceptance, so the Head's reported history follows it on the same frame as
+		// the render rather than only on the next accepted change.
+		refreshHistory();
 		const currentRect = rect ?? measure();
 		const result = stage.camera.evaluate(currentRect, nowSeconds());
 		evaluation = result.kind === 'evaluated' ? result.evaluation : null;
@@ -565,7 +725,7 @@
 	/* --- source history (host commands through the F4 boundary) -------------- */
 
 	function refreshHistory(): void {
-		historyState = acceptance?.history() ?? {
+		const next = acceptance?.history() ?? {
 			canUndo: false,
 			canRedo: false,
 			depth: 1,
@@ -573,6 +733,19 @@
 			undoUnavailableReason: 'History belongs to the mounted project.',
 			redoUnavailableReason: 'History belongs to the mounted project.'
 		};
+		// Assigned only when something changed: this runs on the animation frame, so
+		// an unconditional assignment would re-render the Head 60 times a second.
+		if (
+			next.canUndo === historyState.canUndo &&
+			next.canRedo === historyState.canRedo &&
+			next.depth === historyState.depth &&
+			next.position === historyState.position &&
+			next.undoUnavailableReason === historyState.undoUnavailableReason &&
+			next.redoUnavailableReason === historyState.redoUnavailableReason
+		) {
+			return;
+		}
+		historyState = next;
 	}
 
 	async function undo(): Promise<void> {
@@ -998,6 +1171,22 @@
 		return stageCardFacts(facade, { sourceId: selected.reference.subject.id, sourceKind: selected.reference.subject.kind, ref: selected.representation ?? null, reference: selected.reference }, own);
 	});
 
+	/**
+	 * The Card's name writer: the adapter that owns the selected subject delegates
+	 * to its canonical planner. A non-Layout or read-only subject contributes none.
+	 */
+	const cardNameWriter = $derived.by(() => {
+		void contributionsVersion;
+		const selected = selection;
+		if (selected === null || facade === null) return null;
+		return facade.cardNameWriter({
+			sourceId: selected.reference.subject.id,
+			sourceKind: selected.reference.subject.kind,
+			reference: selected.reference,
+			ref: selected.representation ?? null
+		});
+	});
+
 	/** Every contributed Find/rail entry from the adapters currently mounted. */
 	const contributionGroups = $derived.by(() => {
 		// Same signal: a newly registered adapter's Find entries appear at once.
@@ -1059,7 +1248,9 @@
 		canRedo={historyState.canRedo}
 		onUndo={() => void undo()}
 		onRedo={() => void redo()}
-		saveUnavailableReason="Conditional Save arrives with T3.P01.S02; this host is read-only."
+		save={headSave}
+		onReloadRemote={(offer) => void applyReloadOffer(offer)}
+		saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
 		previewUnavailableReason="Visitor Preview arrives with T3."
 		{reducedMotion}
 		onToggleReducedMotion={() => (reducedMotion = !reducedMotion)}
@@ -1184,6 +1375,7 @@
 			<EditorCard
 				identity={cardOpen ? cardIdentity : null}
 				facts={cardFacts}
+				nameWriter={cardNameWriter}
 				onClose={closeCard}
 				onFocusTask={() => {
 					notice = 'Focus deepens the current task; task depth arrives with T1.P01.S04.';

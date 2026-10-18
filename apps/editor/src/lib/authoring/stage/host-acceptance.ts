@@ -321,8 +321,19 @@ export function createStageAcceptanceHost(options: {
 		};
 	}
 
+	/**
+	 * Whether an authoring instrument currently owns a pre-commit proposal. A
+	 * camera drag is a gesture too and deliberately does not block history.
+	 */
+	function authoringProposalLive(): boolean {
+		const gesture = facade.session.gesture();
+		return gesture !== null && (gesture.owner === 'layout-precision' || gesture.owner === 'scene-transform');
+	}
+
 	async function runHistory(direction: StageHistoryDirection): Promise<StageHistoryCommandOutcome> {
-		if (inFlight > 0) return { kind: 'unavailable', direction, reason: 'live-proposal' };
+		if (inFlight > 0 || authoringProposalLive()) {
+			return { kind: 'unavailable', direction, reason: 'live-proposal' };
+		}
 		inFlight += 1;
 		// A restore is authoring work like an accept: a lens exit cancels it, and the
 		// coordinator's generation check makes the cancellation actually win.
@@ -344,7 +355,7 @@ export function createStageAcceptanceHost(options: {
 			const state = coordinator.history();
 			// The reported state must agree with what the command will do: while a
 			// proposal is live, neither direction can run, whatever the stack holds.
-			const live = inFlight > 0;
+			const live = inFlight > 0 || authoringProposalLive();
 			const canUndo = !live && coordinator.canUndo();
 			const canRedo = !live && coordinator.canRedo();
 			return {

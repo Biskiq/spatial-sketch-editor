@@ -29,8 +29,9 @@ registered with `T1.P01.S01` authorized) listed three exposure slices; readiness
 window is **open** — a listed slice's first authorized implementation opened it through the track
 runbook's start step (`open-window`). `T1.P01.S02` started, so the stage moved
 `PHASE_1 → PHASE_2_VALIDATING` and `Opened by` is `T1.P01.S02`. Its shipped exposure is recorded
-below; S04/S05 rows, `Closed by` and the mechanism verdicts remain empty until real work earns them.
-M5 stays `dormant` until the replacement wiring it names is actually proved.
+below; S04's row is recorded at its 2026-10-18 closeout, while S05's row, `Closed by` and the mechanism
+verdicts remain empty until real work earns them. M5 stays `dormant` until the
+replacement wiring it names is actually proved.
 The JSON state fence, the transition evaluator and the CLI action codes are gone: the tables below,
 five short action headings and three one-line hooks replace them.
 
@@ -38,7 +39,7 @@ five short action headings and three one-line hooks replace them.
 
 | Stage | Readiness | Window | Exposure slices (≤3) | Opener (expected) | Terminal | Opened by | Exposure rows | Closed by |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `PHASE_2_VALIDATING` | `open` | T1.P01 spatial foundation — **open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S02` | — |
+| `PHASE_2_VALIDATING` | `open` | T1.P01 spatial foundation — **open** | `T1.P01.S02`, `T1.P01.S04`, `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S05` | `T1.P01.S02` | `T1.P01.S02`, `T1.P01.S04` | — |
 
 - **`<phase> — selected, not open`** is the configured-but-unopened state: the bounded window is
   listed with its terminal, and no listed exposure slice has started authorized implementation yet.
@@ -54,8 +55,8 @@ five short action headings and three one-line hooks replace them.
 
 | Mechanism | Status | Proof route | Verdict |
 | --- | --- | --- | --- |
-| **M1** Layout semantic mutation boundary | `dormant` | the editor mutation runner and its call-site test were removed with the editor shell; core planner tests remain. Re-armed by the first T1 slice that introduces Layout mutation wiring, which supplies the call-site proof | — |
-| **M2** Wall/Floor vertical authority | `dormant` (editor half) | core proofs remain (`layout-wall-height`, `layout-wall-birth-height`); re-armed by the T1 slice that re-wires vertical authoring | — |
+| **M1** Layout semantic mutation boundary | `installed` | re-armed by `T1.P01.S04` (2026-10-18): the Layout precision adapter submits through the shared Stage acceptance (`adapters/layout/`), and `apps/editor/tests/lib/authoring/editor-host-no-write.test.ts` supplies the bypass-sensitive call-site proof; core planner tests remain | — |
+| **M2** Wall/Floor vertical authority | `installed` | re-armed by `T1.P01.S04` (2026-10-18): Wall height/thickness authoring through the retained precision planners; core proofs (`layout-wall-height`, `layout-wall-birth-height`) remain | — |
 | **M3** Persisted canonical curve model | `installed` | kernel suite (`layout-curve-schema`, `layout-curve-read-path`, `layout-curve-planners`) | — |
 | **M4** Junction commit-time identity | `dormant` (editor half) | core proofs remain (`layout-junction-identity`, `layout-wall-chain`, `layout-room-reconciliation`); re-armed by the T1 slice that re-wires junction commits | — |
 | **M5** Project replacement / Navigator guard | `dormant` | the hierarchy and replacement wiring were removed; re-armed by the first T1 or T3 slice that introduces project/session replacement | — |
