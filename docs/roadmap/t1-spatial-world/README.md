@@ -1,8 +1,8 @@
 # T1 — Spatial world
 
 **Track:** T1 · **Status:** approved — T1.P01 registered; `T1.P01.S01` shipped (shared F1/F3
-providers accepted); S02, S03 and S07 shipped (S07 accepted `viewport-projection-v1`); S04
-authorized 2026-10-17 as batch B; S05–S06 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05–S06
+unauthorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
@@ -85,9 +85,9 @@ capability-readiness enforcement. **T1.P01.S02 and T1.P01.S03 are owner-authoriz
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) to run in parallel
 with `T2.P01.S01` and `T3.P01.S01`; both shipped, S02 by owner-override. **T1.P01.S07** (the
 Stage↔F4 bridge, owner-authorized 2026-10-17) shipped in PR #137 and recorded
-`T1.viewport-projection@1:viewport-projection-v1` accepted. **T1.P01.S04** is owner-authorized
+`T1.viewport-projection@1:viewport-projection-v1` accepted. **T1.P01.S04** was owner-authorized
 2026-10-17 as batch B with `T2.P01.S03` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in
-scope. S05–S06 stay `proposed`, and no authorization extends to another phase, slice or track.
+scope, and shipped 2026-10-18 (PR #148). S05–S06 stay `proposed`, and no authorization extends to another phase, slice or track.
 
 ## Starting foundation
 

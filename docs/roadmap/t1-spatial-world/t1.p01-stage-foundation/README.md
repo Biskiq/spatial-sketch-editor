@@ -5,7 +5,8 @@
 (F4 `acceptance-invariants-v1` and `local-single-domain-v1`); `T1.P01.S02` accepted and shipped
 2026-10-17 by owner-override (PR #128); `T1.P01.S07` accepted and shipped 2026-10-17 (PR #137,
 recording `T1.viewport-projection@1:viewport-projection-v1` accepted); `T1.P01.S04` authorized
-2026-10-17 (batch B, [record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); S05–S06 proposed and unauthorized ·
+2026-10-17 as batch B ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and
+accepted and shipped 2026-10-18 (PR #148); S05–S06 proposed and unauthorized ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -159,7 +160,7 @@ accepted at the consumer's trusted base.
 | T1.P01.S02 | shipped | F1.reference@1, F3.channels@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1 | — | [Shell, Stage and viewport provider](./t1.p01.s02-shell-stage-and-viewport-provider/implementation-plan.md) | [record](./t1.p01.s02-shell-stage-and-viewport-provider/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted and shipped 2026-10-17 by owner-override at PR #128 revision `567a17e7`; waived the current-main merge-gate rerun and S06 integration proof as prerequisites to S02 acceptance; `T1.viewport-projection@1` remains ratified, and its acceptance route is S07 (ruling D1, 2026-10-17) |
 | T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
 | T1.P01.S07 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); accepted 2026-10-17 after four review rounds and the complete gate at its merge candidates (API suites 65 tests, zero skips); records `viewport-projection-v1` accepted with `T1.P01.S02` as unchanged sole provider; shipped via PR #137, which must land as a merge commit so the recorded P1 anchors stay reachable |
-| T1.P01.S04 | approved | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record](./t1.p01.s04-existing-layout-precision/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T2.P01.S03` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); Head Save integration in scope (ruling D3), so `conditional-save-current-v1` joined `Requires` at authorization; not started |
+| T1.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision (closed stub)](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record (closed stub)](./t1.p01.s04-existing-layout-precision/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T2.P01.S03` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); Head Save integration in scope (ruling D3), so `conditional-save-current-v1` joined `Requires` at authorization; composition-root gaps closed under the [host-integration exception](../../../reference/decisions/t1-s04-host-integration-2026-10-17.md); accepted 2026-10-18 at `2d37adef`; closed 2026-10-18 by `slice-closeout` |
 | T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
 | T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
 
@@ -186,7 +187,7 @@ wiring, adapter re-binding and the AM-5 adapter contribution points, and it reru
 and the complete merge gate on then-current `main`. Its acceptance records `viewport-projection-v1`,
 with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
 the viewport readiness route. S02's acceptance record is unchanged. S07's acceptance now records the
-capability as `accepted`. S04 is authorized as batch B (2026-10-17); S05–S06 remain proposed and
+capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S05–S06 remain proposed and
 hold no implementation permission until the owner authorizes them.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
@@ -205,10 +206,10 @@ PHASE CLOSE
 Stage:        active
 ```
 
-`T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03` and `T1.P01.S07` are accepted and shipped. S02's acceptance
-uses the owner-override recorded in its acceptance stub; the viewport capability is accepted through
-S07's record, and consumer readiness starts at a trusted base containing PR #137's merge. S04–S06
-have no accepted result. The
+`T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03`, `T1.P01.S04` and `T1.P01.S07` are accepted and shipped.
+S02's acceptance uses the owner-override recorded in its acceptance stub; the viewport capability is
+accepted through S07's record, and consumer readiness starts at a trusted base containing PR #137's
+merge. S05–S06 have no accepted result. The
 final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
 stage marker is written, and closure stays an explicit owner request.
 
@@ -230,9 +231,9 @@ through ordinary start/closeout routing, not an additional audit slice.
 This configuration is live ([state](../../../operations/architecture-cycle.md)):
 `PHASE_2_VALIDATING`, readiness `open`, this phase's window **open**, with these three IDs.
 S02's first authorized implementation opened it on 2026-10-16 through the runbook's start step, and
-`Opened by` names S02. The exposure rows, `Closed by` and the mechanism verdicts stay empty until
-real work earns them. S01 is not a listed exposure, so registering the phase and authorizing S01 did
-**not** open the window; a planning change is never `open-window`.
+`Opened by` names S02. The S02 and S04 exposure rows are recorded; `Closed by` and the mechanism
+verdicts stay empty until real work earns them. S01 is not a listed exposure, so registering the
+phase and authorizing S01 did **not** open the window; a planning change is never `open-window`.
 
 Any listed slice starting authorized implementation opens the window, even if it is not S02.
 Close only when S05 is accepted and S02/S04 are accepted or explicitly discharged in their
@@ -257,8 +258,9 @@ alongside viewport work after F1. Conditional Save waits only for local F4 plus 
 current-source Save conformance.
 
 The S02/S04/S05 exposure window above is configured and open: S02 opened it on 2026-10-16, and its
-shipped exposure is recorded in the live cycle table. S04/S05 exposure rows and mechanism verdicts
-remain owed. Capability implementation uses the landed r186 base (`74efb98b`, three 0.186.1). This
+shipped exposure is recorded in the live cycle table. S04's shipped exposure is recorded at its
+closeout (re-arming M1/M2); S05's exposure row and the mechanism verdicts remain owed. Capability
+implementation uses the landed r186 base (`74efb98b`, three 0.186.1). This
 registration changed no ratified contract, no gate state, no other phase registration and no
 Baseline.
 

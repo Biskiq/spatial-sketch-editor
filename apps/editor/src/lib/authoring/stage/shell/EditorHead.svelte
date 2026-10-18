@@ -10,7 +10,10 @@
 	 * persistence function — downloading source JSON is a pure serialization of
 	 * the admitted source the caller already holds.
 	 */
+	import { untrack } from 'svelte';
 	import { resolveRovingIndex, tablistTabIndex } from '$lib/authoring/a11y/roving-focus';
+	import type { HeadSave } from '$lib/authoring/save/head-save';
+	import type { ReloadOffer } from '$lib/authoring/save/save-state';
 
 	let {
 		projectId,
@@ -26,6 +29,13 @@
 		onUndo = () => {},
 		onRedo = () => {},
 		saveUnavailableReason,
+		/**
+		 * T1.P01.S04's Head Save integration. Present only when the composition root
+		 * mounts T3.P01.S02's state machine; absent keeps the previous read-only
+		 * posture and its visible reason.
+		 */
+		save = null,
+		onReloadRemote = () => {},
 		previewUnavailableReason,
 		reducedMotion,
 		onToggleReducedMotion
@@ -45,6 +55,9 @@
 		onUndo?: () => void;
 		onRedo?: () => void;
 		saveUnavailableReason: string;
+		save?: HeadSave | null;
+		/** The host's replacement guard receives a conflict reload; Head never installs it. */
+		onReloadRemote?: (offer: ReloadOffer) => void;
 		previewUnavailableReason: string;
 		reducedMotion: boolean;
 		onToggleReducedMotion: () => void;
@@ -57,6 +70,42 @@
 
 	let selectedLensIndex = $derived(LENSES.findIndex((entry) => entry.id === lens));
 	const lensButtons: HTMLButtonElement[] = [];
+
+	// The Save state notifies on every settled command; this counter is the
+	// component's read signal, not a second copy of the state. `subscribe`
+	// notifies synchronously on subscription, so the subscription is untracked:
+	// otherwise the effect would depend on the counter it writes and Svelte would
+	// abort it before the Head ever re-rendered.
+	let saveVersion = $state(0);
+	$effect(() => {
+		const current = save;
+		if (current === null) return;
+		return untrack(() => current.subscribe(() => (saveVersion += 1)));
+	});
+	const saveControl = $derived.by(() => {
+		void saveVersion;
+		return save?.control() ?? null;
+	});
+	const saveStatus = $derived.by(() => {
+		void saveVersion;
+		return save?.snapshot().status ?? null;
+	});
+	const unsaved = $derived.by(() => {
+		void saveVersion;
+		return save?.isDirty() ?? false;
+	});
+
+	async function runSave(): Promise<void> {
+		if (save === null || saveControl === null) return;
+		const status = save.snapshot().status;
+		if (status === 'refused' || status === 'error' || status === 'auth-required') await save.retry();
+		else await save.save();
+	}
+
+	function reloadRemote(): void {
+		if (save === null) return;
+		onReloadRemote(save.reloadRemote());
+	}
 
 	/** One tab stop plus arrow keys; DOM order is the roving order. */
 	function lensButtonRef(node: HTMLButtonElement) {
@@ -136,18 +185,47 @@
 			{/if}
 		</div>
 
-		<div class="capability" data-unavailable-capability>
-			<button
-				type="button"
-				class="action"
-				disabled
-				aria-disabled="true"
-				title={saveUnavailableReason}
+		{#if saveControl === null}
+			<div class="capability" data-unavailable-capability>
+				<button
+					type="button"
+					class="action"
+					disabled
+					aria-disabled="true"
+					title={saveUnavailableReason}
+				>
+					Save
+				</button>
+				<span class="reason">{saveUnavailableReason}</span>
+			</div>
+		{:else}
+			<div
+				class="capability"
+				data-head-save
+				data-save-status={saveStatus}
+				data-unsaved={unsaved ? '' : undefined}
 			>
-				Save
-			</button>
-			<span class="reason">{saveUnavailableReason}</span>
-		</div>
+				<button
+					type="button"
+					class="action"
+					disabled={saveControl.disabled}
+					aria-disabled={saveControl.disabled}
+					title={saveControl.reason ?? saveControl.label}
+					onclick={() => void runSave()}
+				>
+					{saveControl.label}
+				</button>
+				{#if saveControl.reason !== null}
+					<span class="reason">{saveControl.reason}</span>
+				{/if}
+				{#if unsaved}
+					<span class="reason" data-unsaved-work>Unsaved changes</span>
+				{/if}
+				{#if saveControl.conflict}
+					<button type="button" class="action" onclick={reloadRemote}>Reload remote</button>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="capability" data-unavailable-capability>
 			<button
