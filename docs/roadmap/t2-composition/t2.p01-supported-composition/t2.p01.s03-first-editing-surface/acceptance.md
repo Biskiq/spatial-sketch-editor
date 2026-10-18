@@ -33,8 +33,8 @@ The first coherent Scene editing surface over the landed F4/host contracts:
 
 ## Verification — recorded at the tested revision
 
-The tested revision is the working tree that carries the implementation and its tests, before the
-documentation-only closeout edits below. The full contract is the editor suite: `test:fast`,
+The tested revision is implementation commit `8381dc54`, which carries the production change and the
+tests recorded here; the closeout edits after it are documentation only. The full contract is the editor suite: `test:fast`,
 `test:arch` and `test:heavy` were all run, and nothing was path-gated.
 
 | Check | Command | Result |
