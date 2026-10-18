@@ -18,22 +18,22 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01/S02 shipped; S03 authorized (batch B,
-        2026-10-17) and not started; S04 proposed and unauthorized.
-BATON: No T2 slice is in progress. The owner authorized S03 as batch B with `T1.P01.S04` on
-       2026-10-17 ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)). Its launch
-       conditions 1–4 were verified against `main` `a8e4d45e`: S07 shipped in PR #137, and
-       `viewport-projection-v1` was accepted at `ab8504aa`.
-NEXT: After the authorizing PR merges, start S03 through the runbook start step (eligibility at its
-      own trusted base). It runs under the batch B protocol: it is the sole writer of its Scene
-      adapters, it registers only through S07's contribution points, and it makes no host core,
-      route or shell edits. S04 additionally waits for T1.P01.S04's accepted Head Save integration.
-      Phase/track closure is not available: S04, the declared final gate, is neither accepted nor
-      shipped.
+SLICES: T2.P01's slice register is authoritative — S01, S02 and S03 shipped; S04 proposed and
+        unauthorized.
+BATON: S03 (first coherent editing surface) was accepted 2026-10-18 from the owner's deliberate
+       closeout invocation; its record is
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md.
+       The implementation is on branch `T2-P01-S03` (PR #147); merging it is the owner's decision,
+       and closeout preservation (compaction, historical anchor, preservation report, link sweep)
+       runs after that merge commit. No T2 slice is in implementation.
+NEXT: Owner merge decision on PR #147 → post-merge preservation step. S04, the declared final phase
+      gate, stays unauthorized; it waits on `T3.P01.S02`'s `conditional-save-current-v1` and on
+      T1.P01.S04's accepted Head Save integration (ruling D3). Phase/track closure is not available
+      until S04 is accepted and shipped.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-b-2026-10-17
-BLOCKER: none, once the authorizing PR merges.
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md →
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md
+BLOCKER: none for S03. S04 waits on its prerequisites and its own authorization.
 ```
