@@ -23,13 +23,13 @@ follows from facts. **Judgment:** my weighing. **Hypothesis:** needs the evidenc
 | Question | Answer |
 | --- | --- |
 | What should Biskiq deliberately preserve? | The ratified North Star, the five semantic authorities, one Camera authority, F.1–F.5, World \| Experience, Conservatory, visitor isolation, and every current authorization, gate state, K1–K4 ruling and R1-D. No evidence here justifies an architectural amendment (§4.1). |
-| What should change, and why? | Emphasis and sequence inside existing authority. Close the two places where code contradicts "no mandatory Room or tour". Give creators' flat content (images, text) a path in. Design tools as *intent in, ordinary state out*. Stop elaborating research machinery (§1, §3). |
-| Which creator capabilities are most valuable next? | In order: Guide-free Presentation access in Preview; still images as content; authored Presentation text; surface placement; one shared visual default; then intent tools such as Frame this and Light this (§3.1). |
-| Which overlooked opportunities warrant deeper investigation? | The presented piece as the unit of creative work (§5.1), and the scroll-first page (§5.2). Conditions, alternatives and new geometry wait for named planning events (§5.3). |
-| What does the code support, and what is missing? | A large accepted-but-inactive foundation, three verified contradictions, and five separable hosting obligations from E2 (§2). |
-| What should be prototyped, not designed abstractly? | The scroll-first page. Also observing real creators on the stability build before T4 planning renews (§6.3). |
+| What should change, and why? | Emphasis and sequence inside existing authority. Close the two places where code contradicts "no mandatory Room or tour". Give creators' flat content (images, text) a path in. Design tools as *intent in, ordinary state out* with explicit provenance where revision diagnostics matter. Stop elaborating research machinery (§1, §3). |
+| Which creator capabilities are most valuable next? | In order: Guide-free Presentation access in Preview; shared baseline lighting/fog parity between Stage and Preview/visitor; still images as content; authored Presentation text; surface placement (with optional placement provenance); then intent tools such as Frame this, Present this and Light this (§3.1). |
+| Which overlooked opportunities warrant deeper investigation? | The *Present this* compound workflow (`Subject(s) or Space → View → Presentation → optional Stop`) as the fastest novice entry (§5.1), and the scroll-first page (§5.2). Conditions, alternatives and new geometry wait for named planning events (§5.3). |
+| What does the code support, and what is missing? | A large accepted-but-inactive foundation, four verified implementation/contract gaps, and five separable hosting obligations from E2 (§2). |
+| What should be prototyped, not designed abstractly? | The scroll-first page (comparing auto-laid Guide sections against a bounded invoked reading-layout instrument, including held choice branching). Also observing real creators on the stability build before T4 planning renews (§6.3). |
 | What stays deferred or refused? | §6.5. |
-| What needs a new owner decision? | Two scope choices at planning events that must happen anyway: T3.P02 registration and K1 registration. Also confirming the pending Core Editor Stability criteria (§6.4). |
+| What needs a new owner decision? | Two scope choices at planning events that must happen anyway (T3.P02 registration and K1 registration) plus confirming the pending Core Editor Stability criteria, kept strictly separate from verified bug/drift fixes and post-stability triggers (§6.4). |
 
 ## 1. Verdict
 
@@ -43,28 +43,51 @@ to change it, and neither did this one. The real problems sit closer to the crea
 - **Creators' most common content has no path in (Fact).** No editor code calls the image upload API,
   the Scene has no image or text kind beyond a hand-built textured plane, and Presentation text has no
   authored home yet (a disclosed residual that T3.P02 plans to close).
-- **The ordinary tools that make output credible are the thinnest (Fact).** Lighting is hard-coded and
-  differs between editor and visitor, and no assisted framing, surface placement, alignment or replace operation
-  is planned before the milestone. The decision record warns that semantic structure "will not compensate
-  for weak direct manipulation or unattractive output"
+- **The ordinary tools that make output credible are the thinnest (Fact).** Unauthored lighting and fog
+  are hard-coded and differ materially between editor and visitor, and no assisted framing, surface
+  placement, alignment or replace operation is planned before the milestone. The decision record warns
+  that semantic structure "will not compensate for weak direct manipulation or unattractive output"
   ([decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md#a-focused-entry-without-a-narrow-ontology)).
 
-**Preferred direction (Judgment).**
+**Preferred direction — avoiding another narrow convergence (Judgment).**
 
-- **Every entry reaches a previewable result without requiring another entry.** A space, a folder of
-  content and an Experience idea are each a complete starting point.
+Each earlier synthesis converged on a useful idea that also risked narrowing the product:
+Research 6 centred on *architectural seams and capabilities*; PR #153's original brief centred on
+*hosted wall staging* (gallery bias); its addendum centred on *directed relationships* (constraint
+bias); and centering the whole product on *"the presented piece (one object + placement + View +
+placard)"* would repeat the mistake by biasing Biskiq toward an annotated exhibit/placard viewer at
+the expense of **space-as-subject architecture** (zero-object atmospheric or threshold Views),
+**multi-subject process/mechanism explanations** ("How power reaches the generator"), and
+**free-exploration / interaction-led spaces** that use no placards at all
+([North Star](../docs/reference/north-star.md#composition-behavior-and-direction-model)).
+
+The durable organizing loop across all of those creative modes is **directed spatial composition**:
+
+```text
+Subject(s), Space, or Relationship (Layout / Scene)
+  ↔ Framed View(s) (Camera)
+  ↔ Visitor Meaning, Entry & Pacing (Experience: Presentation, optional Guide, or free exploration)
+```
+
+Within that loop:
+
+- **Every entry reaches a previewable result without requiring another entry.** An architectural space,
+  an imported 3D assembly, a folder of flat images, or an Experience outline is each a complete starting
+  point.
+- **The *presented piece* (`Content + Placement + View + Words`) is the fastest novice compound workflow
+  (*Present this*), not a mandatory ontology.** A Presentation may equally frame zero Scene objects (an
+  architectural sightline), one piece, or a multi-subject spatial relationship, and an Experience may run
+  with or without Guides.
 - **Every step is an ordinary operation owned by one domain.** The creator states the result; the
-  domain produces inspectable state.
+  domain produces inspectable state, retaining explicit provenance only where revision diagnostics or
+  declared relationships need it.
 - **Tours, relationships and architecture deepen a result. They do not gate it.**
-
-In one line: **make the presented piece (content, placement, View and words) the unit of creative work,
-and make it work without Rooms or Guides.**
 
 **What this overturns in PR #153's earlier brief and addendum.**
 
 | Earlier conclusion | Now | Why |
 | --- | --- | --- |
-| Hosted staging is the most consequential new opportunity, built first. | **Demoted.** Surface placement ships first as a solve-once operation; live hosting waits for evidence (§4.3). | Hosting is a revision-time differentiator. Creators first need their content in and shown. A placement-time relationship can be added later through an explicit attach. |
+| Hosted staging is the most consequential new opportunity, built first. | **Demoted.** Surface placement ships first as a solve-once operation with optional placement provenance; live parametric hosting waits for evidence (§4.3). | Hosting is a revision-time differentiator. Creators first need their content in and shown. Retaining lightweight placement provenance (`placedOn`) gives revision diagnostics without blocking placement on full parametric correspondence. |
 | "Directed relationships" are a new creative primitive. | **Already ratified.** It is the decision record's relationship-specific revision policy (§4.2). | The addendum re-derived ratified text: locked versus assisted framing, a four-state report and a reverse dependency index. |
 | Hosting is the substrate every other relationship targets. | **Wrong.** | Lights, Views and conditions target *subjects*, and subjects exist without hosting. |
 | Hosted image placement could substitute for K3 Wall creation. | **Withdrawn.** | The substitution was not scope-neutral, and K3 is an owner ruling that serves space-first creators. |
@@ -78,13 +101,17 @@ creators revise most. If live hosting waits, early projects are composed in coor
 tools make coordinates the habit. Biskiq would then start as one more content stager: the table-stakes
 category it set out to transcend.
 
-**Why this direction still holds.**
+**Why this direction still holds — provided solve-once placement does not erase provenance.**
 
-1. **Stranding stays visible.** A read-only geometric check can report content that no longer touches a
-   surface. That is a validity fact, not a claim of ownership.
-2. **Upgrading stays explicit.** An explicit "attach to this wall" remains possible later. The ratified
-   prohibition is on *implied* ownership ("proximity and grouping never imply ownership"), not on a
-   creator's choice.
+1. **Stranding requires lightweight placement provenance, not proximity guessing.** A pure pose-only
+   solve-once tool that writes only world `[x, y, z]` *cannot* later distinguish a wall-placed item
+   whose wall moved from an item intentionally placed in free space, and proximity-based guessing is
+   forbidden ("proximity and grouping never imply ownership"). Retaining an optional, non-rebasing
+   `placedOn` provenance record (`wallId`/face or `roomId`) alongside the world-local pose lets a
+   read-only revision check flag `Needs Review` and offer one-click `Re-seat` or `Detach` without
+   requiring cross-domain F.4 writes or full parametric live hosting (§4.3).
+2. **Upgrading to live hosting stays explicit.** An explicit live attachment remains an opt-in
+   upgrade once T1 publishes split/dissolve correspondence.
 3. **Upgrading stays cheap.** Before a baseline, schemas may break without migration layers
    ([North Star](../docs/reference/north-star.md#development-stage-schema-compatibility-pre-baseline)).
 4. **Live hosting is feasible when needed.** E2 shows this, once T1 meets the identity and correspondence obligations in §2.3.
@@ -92,7 +119,7 @@ category it set out to transcend.
    their content in and show it.
 
 **What would change my mind:** creators observed in X2 who repeatedly revise walls under placed content
-and then fail to notice or repair the result.
+and find one-click `Re-seat` over `placedOn` provenance insufficient compared to automatic live hosting.
 
 ## 2. What the code supports
 
@@ -154,59 +181,104 @@ capabilities are mostly wiring over tested kernels, plus a few small, missing se
   - The [T3.P02 proposal](../docs/roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md) repeats
     "optional Guide Stop".
   - So as planned, P02 would let creators author Presentations that its own Preview silently drops.
-- **The fix is small.** The program codec already admits Presentations that no Stop uses
-  ([validate.ts](../packages/project-model/src/program/validate.ts)). The fix belongs in lowering, in an
-  interpreter activation path for a Presentation without a Stop, in the companion's destinations, and in
-  an Experience entry policy for zero Guides. It must not manufacture invisible Stops.
+- **The fix is small.** `validateExecutionProgram` ([validate.ts](../packages/project-model/src/program/validate.ts))
+  already admits non-empty `presentations` when `stops` is empty (`entryStopId: null`) and checks only
+  that each `stop` references a valid Presentation, never the reverse. No `ExecutionProgram@1` validator
+  or schema change is needed: the fix belongs in `lowerExperienceProgram` (preserving all
+  `unit.presentations`), in an interpreter activation path for a Presentation without a Stop, in the
+  companion's destinations, and in an Experience entry policy for zero Guides. It must not manufacture
+  invisible Stops.
 
 **Composition requires a Room (Fact).**
 
 - [`layout-floor-support.ts`](../packages/layout-core/src/layout-floor-support.ts) considers only
-  derived `room-floor` polygons. Outside one, the result is `none`.
-- `place-object` then refuses with `no-support`.
+  derived `room-floor` polygons (`polygon.kind !== 'room-floor'` is skipped). Outside one, the result
+  is `none`.
+- `place-object` in [`operations.ts`](../packages/project-model/src/scene-planning/operations.ts) then
+  refuses `'floor-supported'` placement and movement with `no-support`.
 - T2.P01 chose this boundary deliberately: "Genuinely empty Layout … Place refuses and offers Start
   gallery … Neither a datum nor T1's plinth is support"
   ([T2.P01](../docs/roadmap/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
-- **Inside the milestone it is coherent**, because K3 supplies Rooms.
+- **Inside the milestone it is coherent**, because Starter Gallery and K3 supply Rooms.
 - **Beyond the milestone it contradicts the ratified destination.** That destination says a creator
   importing one model "should reach composition and direction immediately"
   ([decision record](../docs/reference/decisions/northstar-ratification-2026-09-27.md#a-focused-entry-without-a-narrow-ontology)).
-- It also blocks two cases: objects on plinths, and object-only creators (product, education).
+  It also blocks objects placed on T1 plinths and object-only creators (product, education).
+- **Post-stability solution options compared:**
+  1. **Option R1 · Explicit `floor-datum` support (recommended with R2):** when no derived `room-floor`
+     polygon covers `(x, z)`, `queryFloorSupports` resolves the canonical `layout.floor.elevation` datum
+     as a distinct support kind (`kind: 'floor-datum'`). Preserves grounded Y-elevation placement in
+     empty Layouts without inventing fake Rooms.
+  2. **Option R2 · Plinth / `LayoutObject` top-face support (recommended with R1):** admit T1 `box`
+     plinth top faces in `queryFloorSupports` so Scene objects can rest on plinths with or without a Room.
+  3. **Option R3 · Unconstrained `'free'` 3D placement only outside Rooms (rejected as sole answer):**
+     forcing novice creators out of grounded floor placement into unconstrained 3D coordinates when
+     Layout is empty degrades direct manipulation.
 
-**The editor and the visitor render different, unauthored light (Fact).**
+**The editor and the visitor render different, unauthored light and fog (Fact).**
 
-- The Stage uses ambient 0.35 plus directional lights of 1.1 and 0.35
+- The Stage renders background `0x111117`, linear fog `40..120`, ambient `0.35`, plus directional lights
+  of `1.1` (shadow-casting) and `0.35`
   ([StageCanvas.svelte](../apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte)).
-- The visitor surface that `/p/` uses has ambient 0.2 plus one directional light of 0.7
+- The visitor surface that `/p/[publicationId]` uses renders background `0x050508`, linear fog `22..54`,
+  ambient `0.2`, plus one directional light of `0.7` (`#c9d1df`)
   ([VisitorPreviewSurface.svelte](../apps/editor/src/lib/visitor/VisitorPreviewSurface.svelte)).
 - Authored Scene lights add to both.
-- **Consequence.** What a creator judges in the editor is not what the visitor sees. No inspectable
-  default exists for a creator to adjust.
+- **Consequence and urgency split.** Two distinct concerns must not be conflated:
+  1. **Unauthored baseline rig and fog parity (`T3.P02` / `T4.P01` View-capture fidelity):** because
+     `VisitorPreviewSurface` starts fogging at `22 m` and clips by `54 m` (versus `40..120 m` in
+     `StageCanvas`) with half the total light (`0.90` vs `1.80`), a View framed in the Stage across a
+     `25–50 m` space renders dark or fogged-out in the visitor surface. Conservatory §0.8.1 requires that
+     "what the creator sees through the Camera is what the captured View represents"
+     ([shell contract](../docs/reference/design-system/editor-shell-and-visual-system.md#visitor-preview)).
+     Extracting **one shared runtime-safe baseline lighting/fog constant set** for `StageCanvas`, editor
+     Preview (`T3.P02`) and the visitor surface requires no new schema and should happen with Preview/visitor
+     wiring, not wait for post-stability lighting tools.
+  2. **Authored world-presentation lighting and atmosphere (`T2.P02` / `K2`):** making the baseline
+     environment an inspectable, editable Scene-owned channel remains `T2.P02` scope.
 
-**Drift reported by PR #153 still stands (Fact). Report it through the router's triage; do not fix it
-here.**
+**Drift reported by PR #153 still stands, with a verified nuance on sign-in Save (Fact). Report it
+through the router's triage; do not fix product code here.**
 
-- **The sign-in draft resume path is dead.**
-  - The T1.P01.S04 acceptance record says "pending sign-in drafts resume".
-  - `writePendingCloudSave` in [project-persistence.ts](../apps/editor/src/lib/platform/project-persistence.ts)
-    has no caller, so `/` reads a draft that nothing writes.
-  - This matters to the milestone: "resume of the sign-in Save draft" is a *required* Core Editor
-    Stability criterion.
-- **The README is stale.** The repository README still calls the spatial route "no write path".
+- **Sign-in draft recovery works only in-memory across tabs, not across same-tab `/auth` navigation.**
+  - The [T1.P01.S04 acceptance record](../docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md)
+    states "pending sign-in drafts resume".
+  - Inspection of [`save-state.ts`](../apps/editor/src/lib/authoring/save/save-state.ts),
+    [`head-save.ts`](../apps/editor/src/lib/authoring/save/head-save.ts) and
+    [`EditorHead.svelte`](../apps/editor/src/lib/authoring/stage/shell/EditorHead.svelte) shows what
+    S04 actually implemented: when Save fails with `auth-required`, `SaveState` retains `pending:
+    SaveRequest` **in memory** and switches the Head button to `Resume pending save` (`save.retry()`),
+    covered by [`head-save.test.ts`](../apps/editor/tests/lib/authoring/head-save.test.ts).
+  - **Why the gap remains material:** `EditorHead.svelte` provides no sign-in link or popup trigger, and
+    if the creator navigates the same tab to `/auth`, the in-memory `SaveState` is destroyed on route
+    unload. Meanwhile, the cross-navigation `sessionStorage` handoff documented in
+    [`persistence.md`](../docs/reference/components/persistence.md) (`writePendingCloudSave` in
+    [`project-persistence.ts`](../apps/editor/src/lib/platform/project-persistence.ts) → `/auth` →
+    `readPendingCloudSave` in [`+page.svelte`](../apps/editor/src/routes/+page.svelte)) has **zero
+    production callers** for `writePendingCloudSave` (and [`editor-host-no-write.test.ts`](../apps/editor/tests/lib/authoring/editor-host-no-write.test.ts)
+    forbids calling it from the spatial route).
+  - Because "resume of the sign-in Save draft" is a required Core Editor Stability criterion, `T1.P01.S06`
+    (the phase final gate) must either wire cross-navigation draft persistence / an in-place sign-in
+    trigger or explicitly reconcile [`persistence.md`](../docs/reference/components/persistence.md) and
+    [`+page.svelte`](../apps/editor/src/routes/+page.svelte) with the in-memory retry contract.
+- **Read-only Stage wording is stale in three docs.** Following PR #148 (`T1.P01.S04`),
+  [`README.md`](../README.md), [`north-star.md`](../docs/reference/north-star.md) ("Current shell") and
+  [`architecture.md`](../docs/reference/architecture.md) still describe `/project/:id/spatial` as
+  read-only with "no write path".
 
 ### 2.3 E2: what the hosting spike did and did not establish
 
 E2 was a throwaway, test-only spike against the real `@portfolio/layout-core` planners and compiler.
-Its provenance and limits are in §7.3. **Result:** 25/25 tests, and none of the three falsifiers fired.
-It covered 19 single-step edits and 2 composed chains, on reversed, curved, shared and two-Room
-fixtures.
+Its provenance and limits are in §7.3. **Result:** 25/25 tests (independently re-executed in this
+review), and none of the three falsifiers fired. It covered 19 single-step edits and 2 composed chains,
+on reversed, curved, shared and two-Room fixtures.
 
 As the owner's review asked, the five obligations are kept separate, because existing F.4 entries do not
 discharge them automatically.
 
 | Obligation | What E2 showed | What exists in code | Status |
 | --- | --- | --- | --- |
-| **1. Identity integrity** | Canonical wall IDs **can be re-minted**. The default chain allocator avoids collisions only against the *current* document, so after `wS-b` is deleted, a later split mints `wS-b` again for an unrelated span. Both ID-only readings then silently re-hosted content. | No rule forbids reuse. The P23.12 ledger protects presentation references only. | **A T1 finding independent of hosting.** It affects any future persisted cross-domain reference to a Layout subject. |
+| **1. Identity integrity** | Canonical wall IDs **can be re-minted**. `defaultChainAllocator` in [`layout-wall-chain.ts`](../packages/layout-core/src/layout-wall-chain.ts) avoids collisions only against `document.walls` in the *current* document, so after `wS-b` is deleted, a later split mints `wS-b` again for an unrelated span. Both ID-only readings then silently re-hosted content. | No rule forbids canonical ID reuse. `LayoutIdentityLedger` ([`layout-wall-first-types.ts`](../packages/layout-core/src/layout-wall-first-types.ts)) uses a monotonic `cursor` for presentation references (`W1`, `W2`) only, not canonical `wall.id`. | **A T1 finding independent of hosting.** It affects any future persisted cross-domain reference to a Layout subject. |
 | **2. Parametric correspondence** (split, reversal, merge) | Arc length is exact (within 4.6e-13 m on curves). A dissolve can keep the survivor's ID while flipping its orientation, and only the dissolve's traversal data maps it. Room merges need the lineage that `reconcileRooms` already computes. | Computed inside the planners; published only as IDs. | Feasible; not exposed |
 | **3. Availability across revisions and Save/reload** | An `inferred` resolver matched 19/19 adjacent pairs, but only by re-implementing Layout's rules, which would make it a second authority. | Correspondence is held for each in-session history state, never across Save/reload, and never for non-adjacent revisions. | Missing |
 | **4. Domain relationship evaluation** | A test-only face classifier. It needs a face-intrinsic frame (or a reversed survivor mirrors content), centerline (not face) arc length, the exact evaluator rather than compiled samples (which drift 6.4e-4 m), and out-of-range errors instead of clamping. | No Scene host schema, evaluator or F.1 face component. | Missing; design inputs known |
@@ -234,11 +306,11 @@ exhibition designer, and storyteller.
 | 1 | Show Presentations without authoring a tour | Everyone who wants free exploration; every unbound Presentation | Codec admits it; Conservatory's "Empty / ordinary Experience" assumes no active Guide | Lowering, interpreter activation, companion destinations, entry policy | Small | **Build in T3.P02** (owner decision 1) |
 | 2 | Bring still images in as content | Photographer, educator, product, editorial | Upload API, image sniffing, storage and release pinning; textured plane schema | Editor upload, an image resource with physical size and aspect, a placeable definition | Small to medium | **Decide at K1 registration** (owner decision 2) |
 | 3 | Write words that visitors read | Everyone | Program text records; P02 plans "edit labels/text" | An authored home at the cutover | Small | Already planned (T3.P02); keep |
-| 4 | Put content on a surface (wall, plinth or object top), and compose without a Room | Photographer, exhibition, product, object-only | Floor support; a read-only compiled face geometry | Surface-placement operation; Room-free support decision | Medium | **First post-stability T2 candidate** (§4.3) |
-| 5 | Credible lighting with no setup, the same in editor and visitor | Everyone | Scene lights | One inspectable world-presentation default (Scene-owned) used by both | Small | Post-stability T2 candidate. Until then, Preview must render as the visitor does. |
-| 6 | Make one presented piece in one gesture | Everyone | Compound acceptance lands with the cutover; "Present this" | Items 1–4 plus Frame this (§5.1) | Medium | **Post-stability T2/T3 target** |
+| 4 | Put content on a surface (wall, plinth or object top), compose without a Room, and detect stranding on wall edits | Photographer, exhibition, product, object-only | Floor support; read-only compiled face geometry | Surface-placement operation + optional `placedOn` provenance (§4.3); Room-free `floor-datum` / plinth support (§2.2) | Medium | **First post-stability T2 candidate** (§4.3) |
+| 5 | Credible lighting and fog with no setup, identical in Stage, Preview and visitor | Everyone | Scene lights; hard-coded canvas rigs | Shared unauthored baseline rig/fog constants now; Scene-owned world-presentation default in T2.P02 | Trivial (shared constants) / Small (authored default) | **Share baseline constants with T3.P02/T4**; authored default in T2.P02 |
+| 6 | *Present this*: frame a subject, space or piece into a Presentation (and optional Stop) in one gesture | Everyone | Compound acceptance lands with the cutover; Conservatory's "Present this" | Items 1–4 plus Frame this (§5.1) | Medium | **Post-stability T2/T3 target** |
 | 7 | Walk or click-to-move freely | Explorers, venues | Camera authority; free-controller ownership | A movement profile controller | Medium | Post-stability T3; not needed for item 1 |
-| 8 | Content follows a revised wall | Exhibition, architect | E2 | §2.3 obligations 1–5 | Large | **Evidence-gated** (X2) |
+| 8 | Content automatically follows a revised wall | Exhibition, architect | E2 | §2.3 obligations 1–5 | Large | **Evidence-gated** (X2) |
 | 9 | Scroll-first page | Product, portfolio, editorial | Scroll driver ratified; Guides | Seek, rich content, a delivery profile | Medium to large | **Prototype first** (X1) |
 
 ### 3.2 PR #152's product findings, judged on product merit
@@ -307,30 +379,42 @@ texts already contain each part of it:
 - **Domain-owned semantics suffice.** Each kind belongs to the *dependent's* domain (Scene: attachment,
   light aim; Camera: framing provenance; Experience: conditions) and reads its host's published facts
   through a runtime-safe evaluator.
-- **Default mode is solved-once ordinary state, with provenance where useful.** A kind is *live* only
-  where declared, matching "assisted direction resolves into the same inspectable project state".
+- **Default mode is solved-once ordinary state, with explicit provenance where revision diagnostics or
+  recomputation are promised.** A kind is *live* only where declared, matching "assisted direction
+  resolves into the same inspectable project state".
 - **World-local free composition stays valid on its own,** as the default rather than a fallback.
 - **Kinds are independent.** Lights, Views and conditions target subjects whether or not anything is
   hosted.
 - **Ordering is not a failure.** A chain (wall, image, light, View) needs deterministic evaluation order,
   which the ratified dependency rules already require.
 
-### 4.3 Surface placement and hosting
+### 4.3 Surface placement and hosting: why pure solve-once needs provenance
 
-| Option | What a wall edit does | Cost | When |
-| --- | --- | --- | --- |
-| **A · Solve-once surface placement.** A runtime-safe, read-only Layout face query proposes the transform, and Scene commits a world-local result. | Content stays put. A read-only check can flag content that no longer touches a surface. | Medium: one Scene operation and one Layout query. No cross-domain contract. Fits T2.P01's "support is transient evidence". | **First** (outcome 4) |
-| **B · Live hosting, evaluated.** Scene stores host and parameters; Layout publishes correspondence. | Content follows. Classification is a read-only query, and Layout acceptance stays single-domain. | Large: all five §2.3 obligations, plus a Scene host schema and an evaluator | When X2 shows creators revising walls under content |
-| **C · Compound rebase.** Every Layout edit rewrites the dependent Scene data in one acceptance. | Content follows. | Every Layout edit becomes cross-domain. | Not preferred; E2 shows B suffices |
+Comparing solve-once surface placement, provenance-backed placement, live hosting and compound rebasing
+exposes a critical distinction: **if a solve-once placement tool stores only a world-local `[x, y, z]`
+pose and discards all host provenance, the system cannot later distinguish a broken wall attachment from
+an intentional free placement.** Under the ratified rule that "proximity and grouping never imply
+ownership", a revision check cannot guess that a floating object *used* to belong to a wall that moved
+or was deleted.
 
-**Not preferred: PR #152's `SceneSurfaceAnchor` plus an authoritative cached world transform.** It
-stores two authorities for one pose. A visitor that must not evaluate host frames can instead read a
-compiled delivery derivative, which hard rule 3 permits.
+| Option | What Scene persists | What a wall edit does | Revision diagnostics & limitations | Cost & when |
+| --- | --- | --- | --- | --- |
+| **A0 · Pure pose-only solve-once** | World-local `position` and `rotation` only (no provenance). | Content stays at its world coordinates. | **Cannot report stranding.** Without provenance, a wall move or deletion leaves the item floating silently; flagging it by proximity would false-flag intentional free placements. Acceptable only as a transient gesture when revision diagnostics are not claimed. | Small (zero schema change). |
+| **A1 · Solve-once pose + lightweight `placedOn` provenance (recommended first step)** | Authoritative world-local `position` and `rotation` **plus** an optional, non-rebasing `placedOn` provenance record (`wallId` + side/offset or `roomId`, requiring T1 ID non-reuse). | Content stays at its world coordinates; Layout edit remains single-domain F.4. Never silently mirrors on `G2`/`C2` dissolve. | **Deterministic `Needs Review` without live hosting.** A pure editor read checks whether the stored world pose still lies on the referenced `placedOn` surface; if the wall moved, shortened or was deleted, it flags `Needs Review` with one-click **`Re-seat on Wall`** (single-domain Scene F.4 commit) or **`Detach (keep free pose)`**. | Medium: one read-only Layout face query, one Scene operation, one optional provenance field, plus T1 ID non-reuse. **First post-stability T2 candidate.** |
+| **B · Live parametric hosting, evaluated** | Host `(wallId, side, s, h)` is the authoritative pose source; world frame is evaluated on read. | Content follows automatically on wall move, lengthen or split; flags `Needs Review` / `Unresolved` on shorten or delete. | Requires all five §2.3 E2 obligations (monotonic wall IDs, published split/dissolve/merge correspondence, face-intrinsic frame, exact curve evaluator). | Large. **Evidence-gated on X2.** |
+| **C · Compound rebase** | World-local pose or host parameters rewritten inside every Layout edit. | Content follows by mutating Scene inside every Layout F.4 acceptance. | Couples every Layout edit to Scene validation/history; rejected because E2 proves single-domain Layout acceptance (A1 or B) suffices. | **Rejected.** |
 
-**Independent of the choice: T1 should decide never to reuse canonical Layout IDs within a project**,
-for example through a ledger or tombstones. That decision should come before any persisted
-cross-domain reference to a Layout subject ships. It is cheap, it closes E2's identity hazard, and it
-does not commit T1 to publishing parametric correspondence.
+**Not preferred: PR #152's `SceneSurfaceAnchor` with both parametric host coordinates and an
+authoritative cached world transform.** Storing two writable pose authorities creates reconciliation
+ambiguity. In **Option A1**, the world-local transform is the *sole* pose authority and `placedOn` is
+audit provenance for diagnostics and explicit `Re-seat`; in **Option B**, the host parameters are the
+*sole* pose authority and visitor packages may carry a compiled delivery derivative under hard rule 3.
+
+**Independent of the choice: T1 must never reuse canonical Layout IDs within a project**, for example
+through a monotonic entity-ID cursor alongside `LayoutIdentityLedger` ([`layout-wall-first-types.ts`](../packages/layout-core/src/layout-wall-first-types.ts)).
+That rule must land before **either** Option A1 (`placedOn` provenance) **or** Option B (live hosting)
+ships. It is cheap, closes E2's identity hazard, and does not commit T1 to publishing parametric
+correspondence.
 
 **E2b (a light and a View chained through a hosted image) is withdrawn.** It was meant to decide whether
 T1's obligation is relationship-generic. It is not needed for that:
@@ -345,10 +429,10 @@ T1's obligation is relationship-generic. It is not needed for that:
 | --- | --- | --- | --- |
 | Guide-free activation: lowering, interpreter, companion and an entry policy for zero Guides | T3 (Experience), ratified alongside the consumer | T3.P02 Preview | P02 registration |
 | An authored home for Presentation text and invocation bindings | T3 | T3.P02 | Cutover (already a pre-S04 decision) |
+| Shared unauthored baseline lighting/fog constants (`StageCanvas` ↔ Preview ↔ visitor); later Scene-owned world-presentation default | Shared render helper now; T2 (Scene) for authored default | T3.P02 Preview / visitor surface; T2 lighting | Baseline constants at P02; authored default in T2.P02 |
 | A still-image resource with physical size, aspect and provenance | T2 and resources | K1, or the next T2 phase | K1 registration |
-| A read-only face query and a surface-placement operation; deciding what supports an object without a Room | T1 (query), T2 (operation) | T2 surface placement | After stability |
-| An inspectable world-presentation default | T2 (Scene) | Stage and visitor | When T2 plans lighting |
-| Canonical Layout ID non-reuse | T1 | Any persisted Layout reference | Before that reference ships |
+| A read-only face query, a surface-placement operation with optional `placedOn` provenance, and `floor-datum` / plinth support without a Room | T1 (query), T2 (operation) | T2 surface placement (Option A1) | After stability |
+| Canonical Layout ID non-reuse (monotonic wall/junction ID allocation) | T1 | Any persisted Layout reference (`placedOn`, F.1, or Option B) | In K3 / T1.P02, before persisted Layout references ship |
 | A movement profile controller (walk, click-to-move) | T3 (Camera authority) | Free exploration | After stability |
 | Impact-report classifiers over the reverse dependency index | Each domain | The first relationship that persists | With that relationship |
 | Seek and progress mapping for scroll-driven Guides | T3, and T4 profiles | Scroll delivery | After X1 |
@@ -359,7 +443,7 @@ T1's obligation is relationship-generic. It is not needed for that:
 | --- | --- | --- | --- |
 | A new `CompositionalAdvisory` / `Needs Review` tier via **AM-9** | #152 | The four-state report is already ratified. **AM-9 is taken:** the merged S04 preflight proposes it as "Shared Camera and Experience cutover" ([gate draft](../docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/preflight/gate-draft.md)). | Implement the ratified states with the first persisted relationship. |
 | `Needs Review` as a general rule ("acknowledge and publish") | #152 | Whether release is blocked depends on the selected program and profile, and a warning cannot waive an executable failure (#151) | Keep it per profile at T4 |
-| `SceneSurfaceAnchor` with a cached authoritative transform; Room-floor and wall-face `FrameResolver`s | #152 | Two pose authorities. AM-1: "a Room without an authored frame cannot qualify". E2: Room hosts carry membership only. | Option A, then B (§4.3) |
+| `SceneSurfaceAnchor` with a cached authoritative transform; Room-floor and wall-face `FrameResolver`s | #152 | Two pose authorities. AM-1: "a Room without an authored frame cannot qualify". E2: Room hosts carry membership only. | Option A1, then B if X2 warrants (§4.3) |
 | `floorOffset` on derived Rooms | #152 | Conflicts with P23.6H/I, where Wall height is measured from the Floor elevation ([persistence](../docs/reference/components/persistence.md)) | A question for T1 levels planning |
 | F.3 families `scene.environment@1`, `scene.light@1` and others | #152 | Invented. Only `layout.plan@1` and `camera.session-inspection@1` exist. | Mint families with their first consumer |
 | Drafting F5 and a three-tier gate "for T4.P01" in parallel now | #152 | R1-D defers all T4 planning; T4.P01 is unregistered | Nothing until R1-D resumes |
@@ -372,40 +456,42 @@ T1's obligation is relationship-generic. It is not needed for that:
 
 ## 5. Opportunities and open UX questions
 
-### 5.1 The presented piece: the unit of creative work
+### 5.1 *Present this*: the fastest compound workflow (without a piece-only ontology)
 
-**The opportunity (Judgment; none of the reviews identified it).** Creators think in *pieces shown with
-meaning*: a work, where it sits, how it is seen and what it says. Biskiq rightly splits these across
-Scene, Camera and Experience. The largest UX risk of that architecture is that one exhibit then needs
-three places. The ratified bridge already exists:
+**The opportunity (Judgment).** Many novice and intermediate creators think in *subjects shown with
+meaning*: a space, object or mechanism, how it is framed, and what the visitor reads or hears. Biskiq
+rightly splits these across Layout/Scene, Camera and Experience. The UX risk of that separation is that
+creating one presented moment can require visiting three surfaces. The ratified bridge already exists:
 
 - **Compound acceptance.** The decision record's own example is "insert kit, attach to Wall, capture a
   View, bind it to a Presentation, optionally create a Stop". Its first implementation lands with the
   cutover.
-- **Conservatory's "Present this".** Creation starts from a subject.
+- **Conservatory's "Present this".** Creation starts from any selected subject or current viewpoint.
 
 **The flow.**
 
-1. The creator drops an image, a model or a text card, or selects a subject.
-2. Biskiq proposes four things:
-   - a placement on the surface under the cursor, or beside the subject;
-   - a framed View (Frame this);
-   - a Presentation with title and caption fields;
-   - optionally, a Stop in the open Guide.
-3. All of it is one acceptance with one Undo.
-4. Each part is then ordinary state, editable in its own domain.
-5. Once Guide-free access exists, the piece is reachable in Preview immediately. A Guide is simply an
-   order over pieces.
+1. The creator drops an image or model, selects an existing subject (an object, a Wall/Room, or a
+   multi-object group), or frames an architectural sightline with zero selected objects.
+2. Invoking **Present this** proposes up to four domain-owned steps:
+   - if new content was dropped, a placement on the surface under the cursor (with `placedOn` provenance);
+   - a framed Camera View (*Frame this*, or the current Look-through view for a zero-object sightline);
+   - a Presentation with title and caption fields bound to that View and optional subject reference(s);
+   - optionally, a Stop in the active Guide.
+3. Accepting commits one atomic F.4 entry with one Undo.
+4. Each part remains ordinary state, independently editable in its own domain.
+5. Once Guide-free access exists (§2.2), the Presentation is reachable in Preview immediately. When a
+   Guide is used, it sequences **Stops** (editorial occurrences with their own entry invocation, hold and
+   continuation, allowing repeat visits such as `Intro → Piano → Paris → Piano → Exit`), never a flat
+   1:1 list of objects.
 
-**The same flow serves every creator type.**
+**Why this avoids narrowing the product.**
 
-| Creator | A presented piece is |
+| Creative mode | How the workflow applies without forcing a "single piece + placard" mold |
 | --- | --- |
-| Photographer | An image on a wall, with its caption |
-| Product explainer | A part of a model, with its spec text and View |
-| Educator | Equipment, with a step label |
-| Architect | A room, with a design note and its View |
-| Storyteller | A clue, with narration |
+| **Space-first / architectural** | Frames a threshold, Room proportion or daylight sightline with **zero Scene objects** (`subjectRefs: []`), binding a View and optional architectural note |
+| **Piece-first / showcase & portfolio** | Places an image panel or 3D model on a surface, frames its View, and binds its caption |
+| **Process / mechanism explainer** | References **multiple subjects** or a component relationship in one Presentation ("How power reaches the generator") |
+| **Curated tour / narrative** | Reuses one Presentation across multiple Guide Stops with different entry framing or state guards |
 
 **What it needs.** Nothing beyond §4.4's items and the cutover. **Smallest test:** in the first slice
 that ships it, observe whether creators keep the proposed placement and View or redo them. **Owner
@@ -413,8 +499,8 @@ decision:** none now; it is a post-stability target for T2 and T3.
 
 ### 5.2 A · Spatial web and scroll-first Experiences
 
-This is the most consequential unresolved UX question. **A scroll-driven Camera controller is not an
-authored scroll-first Experience.** The ratified texts admit both:
+This is the most consequential unresolved UX question. **A scroll-driven Camera controller is not by
+itself an authored scroll-first Experience.** The ratified texts admit both:
 
 - **The decision record.** "A scroll driver maps progress to supported direction", and drivers "share
   evaluation, not necessarily identical session state"
@@ -424,19 +510,24 @@ authored scroll-first Experience.** The ratified texts admit both:
   Webflow-like website builder"
   ([web layer](../docs/reference/north-star.md#web-experience-layer)).
 
-The three forms compare as follows.
+The three forms compare as follows (preserving Guide/Stop as the sole ordering authority — never a
+second "ordered Presentation list" on `presentations[]`):
 
 | Form | Mechanism | Fit with Conservatory | Missing |
 | --- | --- | --- | --- |
 | **1 · A Guide driven by scroll** | Stops become sections. Scroll progress maps to Stop index and Travel fraction, evaluated by Camera. | **Natural.** It is the same Guide instrument with a scroll Preview profile. | Seek and scrub (the interpreter is forward-only), and a section layout for Presentation content |
-| **2 · Guide-free progression** | Free exploration plus a Presentation index. This is the "escape hatch" the interface study finds even expressive portfolios keep ([navigation](./spatial-interface-authoring-ux.md#1-1-visitor-navigation-and-wayfinding-p3)). | **Natural.** Conservatory's "Empty / ordinary Experience" already assumes no active Guide. | §2.2's fix; a movement controller for free roam |
-| **3 · A rich page** | DOM sections with typographic content, media and HTML interactions bound to Presentations, with a pinned or embedded canvas | **Open.** It may need one *invoked* Experience instrument for reading layout. It is not a lens. | Rich content records; layout hints; embed delivery |
+| **2 · Guide-free progression** | Unordered free exploration plus a Presentation destination index and spatial markers. This is the "escape hatch" the interface study finds even expressive portfolios keep ([navigation](./spatial-interface-authoring-ux.md#1-1-visitor-navigation-and-wayfinding-p3)). | **Natural.** Conservatory's "Empty / ordinary Experience" already assumes no active Guide. | §2.2's fix; a movement controller for free roam |
+| **3 · A rich reading page** | DOM sections with typographic content, media and HTML interactions bound to Presentations and Guide Stops, with a pinned or embedded canvas | **Open.** It may justify one bounded *invoked* Experience instrument for reading layout over the same `Presentation` and `Guide` records. Never a new lens. | Rich content records; layout hints; embed delivery |
 
 **Two findings shape the answer.**
 
-- **Scroll is linear.** A scroll spine cannot cross a Gate or branch without an explicit choice point.
-  So scroll-first Experiences are linear Guides with inline, non-branching interactions. Branching
-  stories belong to forms 2 or 3.
+- **Scroll is locally linear, but can still support authored choices at Stop holds without a competing
+  Camera system.** While continuous scroll maps progress along the currently active Stop chain, a held
+  Stop in `ExecutionProgram@1` can expose inline choice actions (`set-state` or guarded `navigate-to`).
+  When a visitor reaches a choice Stop, forward scroll pauses at the hold until a choice is selected (or
+  the choice updates session state / branches to the chosen Stop), and every resulting Cut or Travel
+  continues to evaluate through the single Camera authority. Free-roam hub-and-spoke exploration belongs
+  to Form 2.
 - **There is a real opening (Fact, from the interface study).** Spline "lacks a native, accessible 2D
   typographic layout and multi-stop curatorial storytelling engine"
   ([web design](./spatial-interface-authoring-ux.md#2-1-web-design-and-stateful-p2)). Biskiq's
@@ -444,11 +535,13 @@ The three forms compare as follows.
 
 **Disposition.**
 
-- **Keep:** one Camera authority, one Experience domain and the existing lenses. No Website lens and no
-  second Camera timeline.
+- **Keep:** one Camera authority, one Experience domain and the existing lenses. No Website lens, no
+  second Camera timeline, and no ordered sequence on `presentations[]` outside a Guide.
 - **Do not declare the question solved** because scroll can drive Camera.
-- **Run X1** (§6.3). It decides whether form 3 needs an invoked page instrument and a richer content
-  model, or whether automatic section layout of form 1 is enough.
+- **Run X1 as a head-to-head comparison** (§6.3). Rather than testing auto-laid Guide sections in
+  isolation, X1 compares **(Variant A)** auto-laid scroll sections derived directly from Conservatory's
+  existing `Guide` Stops + `Presentation` cards (including one held choice branch) against **(Variant B)**
+  a bounded invoked *Reading / Page Layout* instrument over the same `Presentation` and `Guide` records.
 
 ### 5.3 The other four directions
 
@@ -489,16 +582,18 @@ The creator states a result, and the owning domain's planner solves its own narr
 ordinary, inspectable F.4 intent.
 
 - **Candidate tools, by owning domain:** Frame this (Camera: fit the subject's bounds to the frustum);
-  Place on this surface (Scene, with the Layout query); Light this (Scene: aim at the subject at a chosen
-  incidence); Align and distribute (Scene); Centre an Opening (Layout).
+  Place on this surface (Scene, with the Layout query and optional `placedOn` provenance); Light this
+  (Scene: aim at the subject at a chosen incidence); Align and distribute (Scene); Centre an Opening
+  (Layout).
 - **When to apply directly, and when to suggest.** Use a **smart default** when the solution is unique,
   cheap to undo and low in taste content. Offer an **explicit suggestion with alternatives** when taste
   or ambiguity is involved. **Disclose uncertainty** where the solve is approximate, for example
   view-dependent highlights ([direction 3](./creative-scene-composition-ux.md#direction-3-p3)) or
   occluded framing.
-- **Provenance** is kept only where the ratified revision policy recomputes (assisted framing). **No
-  universal solver.** The study's top-priority prototype, effect-first lighting, becomes a UX check when
-  T2 plans lights ([experiment 1](./creative-scene-composition-ux.md#priority-experiment-1)).
+- **Provenance** is kept where revision diagnostics or recomputation require it (`placedOn` for surface
+  stranding in Option A1; assisted framing in Camera). **No universal solver.** The study's top-priority
+  prototype, effect-first lighting, becomes a UX check when T2 plans lights
+  ([experiment 1](./creative-scene-composition-ux.md#priority-experiment-1)).
 - **First candidates:** Frame this as an inverse capture verb in T3.P02, which proposes and lets the
   creator confirm through Look through (Conservatory forbids silently capturing a drafting reading); and
   Place on this surface in T2 surface placement.
@@ -520,11 +615,11 @@ ordinary, inspectable F.4 intent.
 
 | Track | Verified state | Implication | Kind |
 | --- | --- | --- | --- |
-| **T1** | P01: S01–S04 and S07 shipped; S05 and S06 proposed. K3 bounded straight-Wall creation is ruled for after the F2 cutover, and unplanned. | No change to P01 or K3. Inputs for later planning: canonical ID non-reuse (§4.3); a runtime-safe, read-only face query with face extents in canonical arc parameter and an exact evaluator that errors rather than clamps; correspondence publication only if live hosting is registered. Levels and overhead geometry stay future decisions. | Planning input |
-| **T2** | P01: S01–S02 shipped; S03 authorized, in review as PR #147; S04 proposed. K1 bounded GLB import is ruled for after T3.P01.S04, and unplanned. | No change to P01, whose floor support stays transient. K1 registration: owner decision 2. Post-stability candidates: surface placement with the Room-free support decision; the shared world-presentation default; Light this; the presented piece with T3. | Owner decision 2; candidates |
-| **T3** | P01: S01–S03, S05 and S06 shipped; S04 proposed, with its preflight merged (inventory "not executed"). Cutover gate undrafted. P02 is a candidate and unregistered. | The S04 path is unchanged. Input to the cutover gate draft: the Guide-free drop is not among S06's residuals. P02 registration: owner decision 1, plus Frame this as an optional verb. The authored text home stays as planned. A movement controller comes after stability. | Owner decision 1; input |
-| **T4** | Planning; no registered phase. F5 and the prepared reader are undrafted. R1-D defers all T4 work. | No change. When planning renews: Guide-free execution, the scroll and embed profile informed by X1, and image resource closure. | Trigger |
-| **Core Editor Stability** | Direction and K1–K4 approved; criteria still "proposed pending explicit owner confirmation". | Confirm with no Research 6 criteria added. Decisions 1 and 2 are scope of contributing phases, not new criteria. The acceptance plan should include a Guide-free journey if P02 includes one, and may adopt #151's continuity specimen. The sign-in draft resume criterion needs its dead path triaged (§2.2). | Owner decision 3 |
+| **T1** | P01: S01–S04 and S07 shipped; S05 and S06 proposed. K3 bounded straight-Wall creation is ruled for after the F2 cutover, and unplanned. | No change to P01 or K3. At S06: reconcile sign-in draft Save recovery across same-tab `/auth` vs in-memory retry (§2.2). Inputs for K3 / T1.P02 planning: canonical ID non-reuse (§4.3); a runtime-safe, read-only face query with face extents in canonical arc parameter and an exact evaluator that errors rather than clamps; correspondence publication only if live hosting is registered. Levels and overhead geometry stay future decisions. | S06 drift reconciliation; T1.P02 planning input |
+| **T2** | P01: S01–S02 shipped; S03 authorized, in review as PR #147; S04 proposed. K1 bounded GLB import is ruled for after T3.P01.S04, and unplanned. | No change to P01, whose floor support stays transient. K1 registration: owner decision 2. Post-stability candidates: surface placement with optional `placedOn` provenance (Option A1) and `floor-datum` / plinth support (§2.2, §4.3); the Scene-owned world-presentation default; Light this; *Present this* with T3. | Owner decision 2; candidates |
+| **T3** | P01: S01–S03, S05 and S06 shipped; S04 proposed, with its preflight merged (inventory "not executed"). Cutover gate undrafted. P02 is a candidate and unregistered. | The S04 path is unchanged. Input to the cutover gate draft: the Guide-free drop is not among S06's residuals. P02 registration: owner decision 1, shared baseline lighting/fog constants with StageCanvas (§2.2), plus Frame this as an optional verb. The authored text home stays as planned. A movement controller comes after stability. | Owner decision 1; input |
+| **T4** | Planning; no registered phase. F5 and the prepared reader are undrafted. R1-D defers all T4 work. | No change. When planning renews: Guide-free execution, the scroll and embed profile informed by X1, shared baseline lighting/fog parity, and image resource closure. | Trigger |
+| **Core Editor Stability** | Direction and K1–K4 approved; criteria still "proposed pending explicit owner confirmation". | Confirm with no Research 6 criteria added. Decisions 1 and 2 are scope of contributing phases, not new milestone criteria. The acceptance plan should include a Guide-free journey if P02 includes one, and may adopt #151's continuity specimen. The sign-in draft resume criterion needs its cross-navigation vs in-memory split reconciled at T1.P01.S06 (§2.2). | Owner decision 3 |
 
 ### 6.2 Sequence
 
@@ -532,24 +627,25 @@ ordinary, inspectable F.4 intent.
    - finish the authorized T2.P01.S03 (PR #147);
    - continue T3.P01.S04's existing route to authorization: the actual inventory, migration and refusal
      coverage, recovery and publication disposition that its owner decisions require;
-   - triage the two drift items.
+   - triage the verified drift items (sign-in Save cross-navigation vs in-memory retry for T1.P01.S06;
+     stale read-only Stage text in `README.md`, `north-star.md` and `architecture.md`).
 2. **At planning events that must happen anyway:**
-   - T3.P02 registration (decision 1);
+   - T3.P02 registration (decision 1 + shared baseline lighting/fog constants);
    - K1 registration (decision 2);
-   - K3 and K4 as ruled;
-   - confirming the criteria (decision 3).
+   - K3 and K4 as ruled (including canonical Layout ID non-reuse in T1.P02);
+   - confirming the Core Editor Stability criteria (decision 3).
 3. **After stability acceptance:**
    - run X2;
    - renew T4 planning under R1-D, because sharing is the ratified activation event;
-   - in parallel, T2 surface placement and the presented piece;
+   - in parallel, T2 surface placement (Option A1) + Room-free `floor-datum`/plinth support and *Present this*;
    - in parallel, T3's movement controller.
 
 ### 6.3 Experiments
 
 | ID | Question | Minimum | Falsifier | Decision it settles | When |
 | --- | --- | --- | --- | --- | --- |
-| **X1 · Scroll-first page** (disposable, no product code) | Is a scroll page a Guide with auto-laid sections, or does it need an invoked page instrument and richer content? | Render a 5-Stop Guide fixture as a scroll page. Use the real interpreter and camera-core sampling, a pinned canvas and Presentation text and images as sections. Then have 3–5 creators (or an owner review) rebuild two reference pages. | Auto-layout is rejected in at least half the tasks, or typical content needs branching mid-spine. | The Experience content model; whether Conservatory gains an invoked reading-layout instrument; the T4 scroll and embed profile | Any time; before T4 planning renews |
-| **X2 · Creators on the stability build** | What do creators do with their own content and a real audience? Do they revise walls under content? | 3–5 creators in at least 3 non-gallery categories, using their own material. Each shows the result to an audience in Preview, because publication may be unavailable between the cutover and T4 (K2). | — (observational) | The post-stability order (T4 against T2 and T3 depth); whether to register live hosting (§4.3) | Between stability acceptance and T4 planning |
+| **X1 · Scroll-first page** (disposable, no product code) | Is a scroll-first Experience well-served by auto-laid sections from Conservatory's `Guide` + `Presentation` cards, or does it justify a bounded invoked *Reading / Page Layout* instrument? | Over the same 5-Stop fixture (including one held Stop with an inline choice that branches via `set-state` / `navigate-to`), compare **(Variant A)** auto-laid scroll sections from `Guide` + `Presentation` cards against **(Variant B)** a bounded invoked reading-layout sheet over the same records, using the real interpreter and camera-core sampling. Have 3–5 creators (or an owner review) rebuild two reference pages. | Variant A is rejected in at least half the tasks for layout/rhythm control, or Variant B tempts creators to author state that cannot lower to `Presentation` + `Guide`/`Stop`. | The Experience content model; whether Conservatory gains a bounded invoked reading-layout instrument; how held choice branches behave in `scroll-progress@1` | Any time; before T4 planning renews |
+| **X2 · Creators on the stability build** | What do creators do with their own content and a real audience? When they revise walls under surface-placed content, is `Needs Review` + one-click `Re-seat` (Option A1) sufficient or is live hosting (Option B) required? | 3–5 creators in at least 3 non-gallery categories, using their own material. Each shows the result to an audience in Preview, because publication may be unavailable between the cutover and T4 (K2). | — (observational) | The post-stability order (T4 against T2 and T3 depth); whether Option A1 suffices or Option B live hosting should register (§4.3) | Between stability acceptance and T4 planning |
 
 **Dormant, each with a trigger.**
 
@@ -562,13 +658,24 @@ ordinary, inspectable F.4 intent.
 **Do not build to answer these:** a production share route, a release format, an ingest pipeline, a
 relationship engine or agent infrastructure.
 
-### 6.4 Owner decisions
+### 6.4 Owner decisions and governance classification
 
-| # | Decision | Recommendation | If nothing is decided |
-| --- | --- | --- | --- |
-| 1 | **At T3.P02 registration:** include Guide-free Presentation reach? | **Include the minimum.** No Presentation is silently dropped. Presentations outside the active Guide are reachable through semantic navigation, with a Cut to their View. Zero Guides gets an Experience entry policy. The interpreter and companion change is ratified alongside P02. No free movement, and no invisible Stops. | P02 ships authoring that creates Presentations its own Preview drops, inside a capability the milestone already proposes. |
-| 2 | **At K1 registration:** does the bounded import admit still images alongside GLB? | **Admit them,** if T2 planning confirms that images reuse the existing upload, sniffing and storage path and the same staging, readiness and provenance flow. Placement stays within existing support (for example a framed panel), until surface placement follows. Otherwise make images the first post-stability T2 phase. | The milestone's creators (and X2) have no way to use the most common content they own. |
-| 3 | **Confirm the Core Editor Stability criteria** (pending since 2026-10-17) | Confirm them with no Research 6 additions. Treat 1 and 2 as contributing-phase scope. | No settled acceptance definition exists for lifting the T4 deferral. |
+To avoid conflating bug fixes, phase-registration scope choices, milestone expansions and future
+triggers, every action item from this reconciliation is classified by its exact governance kind:
+
+| Governance kind | Items | Owner action required |
+| --- | --- | --- |
+| **1. Correcting a verified behavioral or contract inconsistency** | *(a)* Guide-free Presentations dropped by `lowerExperienceProgram` and `enter()` completing on `entryStopId === null` (§2.2); *(b)* sign-in Save draft recovery working only in-memory (`head-save.ts`) while `writePendingCloudSave` (`project-persistence.ts`) is uncalled across `/auth` navigation (§2.2); *(c)* unauthored fog/light mismatch (`40..120` vs `22..54`) between `StageCanvas` and `VisitorPreviewSurface` (§2.2); *(d)* stale read-only Stage text in `README.md`, `north-star.md` and `architecture.md`. | **(a)** is folded into **Owner Decision 1** at `T3.P02` registration; **(b)** is reconciled in `T1.P01.S06` (already a required stability criterion); **(c)** shares one baseline constant set during `T3.P02`/`T4.P01` Preview/visitor wiring; **(d)** is routine doc-triage cleanup. |
+| **2. Changing a future phase's proposed scope at registration** | *(a)* Including `lowering.ts` / `interpreter.ts` / `companion.ts` Guide-free Presentation reachability in `T3.P02`; *(b)* optionally admitting still-image (`PNG`/`JPG`/`WebP`) import onto a canonical textured plane alongside `.glb` when `K1` (`T2.P02`) registers. | **Owner Decisions 1 and 2** below (taken when `T3.P02` and `T2.P02` register). |
+| **3. Confirming vs expanding milestone acceptance criteria** | Core Editor Stability ([`core-editor-stability.md`](../docs/roadmap/core-editor-stability.md)) pending confirmation since 2026-10-17. | **Owner Decision 3** below: confirm the existing 8 criteria **without expansion**. Still-image import (Decision 2), even if admitted into `T2.P02`, does not become a new gate blocking stability acceptance. |
+| **4. Registering a future capability or bounded prototype** | `X1` scroll-page comparison prototype; `X2` post-stability creator observation; post-stability T2 surface placement with `placedOn` provenance (Option A1) and `floor-datum`/plinth support; T1 canonical ID non-reuse in `T1.P02`. | No immediate authorization needed; scheduled at their named phase registrations or post-stability checkpoints. |
+| **5. Deferring with an explicit trigger or refusing** | Live hosting Option B (gated on X2); narrative conditions (before T3 Gates); session A/B and Light this (with T2 lighting); multi-level P2 (before T1 levels); refused second authorities (§6.5). | None unless the named trigger fires. |
+
+| # | Decision | Governance kind | Recommendation | If nothing is decided |
+| --- | --- | --- | --- | --- |
+| 1 | **At T3.P02 registration:** include minimum Guide-free Presentation reach? | Behavioral inconsistency fix + `T3.P02` phase-registration scope (does not expand milestone criteria) | **Include the minimum.** `lowerExperienceProgram` preserves all `unit.presentations` (`validateExecutionProgram` already admits them); Presentations outside the active Guide are reachable through semantic companion navigation with a Cut to their View; zero Guides gets an explicit Experience entry policy. Ratified alongside P02. No free movement and no invisible Stops. | P02 ships authoring that creates Presentations its own Preview silently drops, inside a capability ("bind a Presentation plus an optional Stop") the milestone already proposes. |
+| 2 | **At K1 (`T2.P02`) registration:** admit still images (`PNG`/`JPG`/`WebP`) alongside bounded `.glb`? | Future phase-registration scope beyond ruling `K1` (kept out of milestone gate criteria) | **Option 2A (low-risk):** keep `T2.P02` strictly `.glb`-only per `K1` and make still-image panels the first post-stability T2 slice. **Option 2B (recommended if T2 planning confirms low cost):** admit still images in `T2.P02` reusing the existing `asset-persistence.ts` upload/sniffing/storage path and textured-plane primitive, without adding a new milestone criterion. | If neither is planned promptly, creators in X2 have no way to use the most common flat content they own. |
+| 3 | **Confirm the Core Editor Stability criteria** (pending since 2026-10-17) | Milestone acceptance criteria confirmation | **Confirm the existing 8 criteria with zero Research 6 additions.** Reconcile the sign-in Save cross-navigation vs in-memory split under existing criterion 2 (`T1.P01.S06`), and include a Guide-free Presentation check under existing criterion 7 if Decision 1 is approved. | No settled acceptance definition exists for lifting the R1-D T4 deferral. |
 
 No new ruling is needed to keep authorities separate, keep one executor and one Camera authority,
 forbid silent retargeting, require honest import capabilities, or keep R1-D. Those are already ratified
@@ -590,13 +697,14 @@ or ruled.
 - puppeteering and physics bake (a need that a GLB clip cannot meet);
 - transcript pinning and a component-studio drawer (when their consumers are planned);
 - agent scaffolding (once typed intents are wired);
-- kits (after the presented piece).
+- kits (after *Present this*).
 
 **Refuse:**
 
 - **Second authorities:** a generic relationship engine, constraint solver or node graph; a second Camera
   timeline, or recorded camera trajectories replayed outside Camera evaluation; two authorities for one
-  pose; implicit runtime visit memory; a standalone Cue stack.
+  pose; an ordered sequence on `presentations[]` outside a Guide; implicit runtime visit memory; a
+  standalone Cue stack.
 - **Ownership leaks:** ownership implied by proximity; Room-local coordinate frames; poses, clips or looks
   stored in Scene; authoring alternatives folded into runtime Looks; view-dependent highlights persisted
   as live relationships; invisible Stops to make Guide-free work.
@@ -620,33 +728,39 @@ or ruled.
 
 ### 7.2 Verification run for this document
 
-All runs were on `26290839`, on 2026-10-18.
+All runs were on `26290839`, on 2026-10-18 (including an independent takeover review pass that
+re-executed the test suites and verified the source claims below).
 
 - **Isolation lane.** `test:arch`: 20 files, **163/163**, including the 25 documentation-reference tests.
-- **Experience and units suites.** `experience-runtime.test.ts` and `units-conformance.test.ts`:
-  **63/63**. This reproduces PR #151's run.
+- **Experience and units suites.** `experience-runtime.test.ts` (42/42) and `units-conformance.test.ts`
+  (21/21): **63/63**. This independently reproduces PR #151's run.
 - **The Guide-free probe.** One temporary test using the canonical fixture writer, with two cases. Its
-  output is quoted in §2.2. It was run once and deleted, and changed no source.
-- **E2 re-run.** **25/25** (§7.3).
-- **Source reads.** Lowering, interpreter, companion, program codec, Camera controllers, the live visitor
-  director, F.1 adapters, F.4 history, F.3 families, Scene schema and planners, floor support, the asset
-  API, and the Stage and visitor lighting.
-- **Registers and records.** Phase registers, the gate register, the S06 residuals, the S04 preflight and
-  the T3.P02 proposal.
+  output is quoted in §2.2. It was run once and deleted, and changed no source; the takeover pass
+  additionally verified `validateExecutionProgram` in [`validate.ts`](../packages/project-model/src/program/validate.ts)
+  (lines 321–348) and `lowerExperienceProgram` in [`lowering.ts`](../packages/project-model/src/units/experience/lowering.ts)
+  (line 231) directly in source.
+- **E2 re-run.** **25/25** (§7.3), re-executed in both the initial synthesis and the independent
+  takeover review pass.
+- **Source reads.** Lowering, interpreter, companion, program codec and validator, Camera controllers,
+  the live visitor director, F.1 adapters, F.4 history, F.3 families, Scene schema and planners, floor
+  support, `layout-wall-chain.ts` and `layout-wall-first-types.ts`, the asset API, `save-state.ts`,
+  `head-save.ts`, `EditorHead.svelte`, `project-persistence.ts`, and the Stage and visitor lighting/fog.
+- **Registers and records.** Phase registers, the gate register, the S06 residuals, the T1.P01.S04
+  acceptance record, the S04 preflight and the T3.P02 proposal.
 
 ### 7.3 E2 provenance and limits
 
 - **Where it lives.** A throwaway test file, its findings and its output. They sit uncommitted under
   `tests/spikes/` in another session's worktree, on branch `claude/practical-grothendieck-119f1c` at
   base `26290839`. They are not part of this PR and are not to be merged.
-- **How it was checked.** Another session wrote it. I re-ran it twice, getting 25/25 both times, and
-  read its findings.
+- **How it was checked.** Another session wrote it. The synthesis pass re-ran it twice (25/25), and the
+  independent takeover pass inspected its implementation (`hosting-e2.test.ts`) and re-ran it again
+  (**25/25** in 114 ms).
 - **Limits:**
   - Four synthetic fixtures, 19 single-step edits and 2 chains.
   - Real Layout planners and compiler, but no Scene schema, F.1 face component, UI or creator.
   - Classification thresholds (1e-6 m) were the spike's own choice.
   - Not exercised: plinth or object hosts, T-junctions, and overlap with Openings.
-  - It has not been independently reviewed.
 - **Treat it as a feasibility result,** not as a contract or a value result.
 
 ### 7.4 Research 6 evidence corrections (carried from PR #153, spot-checked against the studies' citations)
