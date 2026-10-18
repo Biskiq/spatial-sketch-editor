@@ -116,7 +116,8 @@ recorded. The slice's plan asks for them at review; they remain owed to the S04 
 - **Intermittent `stale-epoch` on Begin after an accepted install** was observed once during this
   acceptance run when the task panel's services had not been rebuilt; closing and reopening the task
   recovered it, and it did not reproduce on demand in this revision. It belongs to the task-scoped
-  service generation (`stage-facade.ts` `active()`), not to this slice's adapter, and remains open.
+  service generation (`stage-facade.ts` `active()`), not to this slice's adapter, and is tracked as
+  [TD-8](../../../../operations/tech-debt/README.md#td-8--a-tasks-scoped-services-go-stale-after-an-accepted-install-refusing-begin).
 - Save, Preview, resize, duplicate and delete are outside S03; they stay with T2.P01.S04.
 
 No active checkpoint existed for this slice.
