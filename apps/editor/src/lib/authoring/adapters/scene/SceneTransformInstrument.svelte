@@ -60,7 +60,12 @@
 			return null;
 		}
 		if (session === null || sessionEvaluationId !== evaluationId) {
-			session?.cancel();
+			const previous = session;
+			// A reading change replaces the session without rebuilding the adapter
+			// binding, so the persistent-Place listener the adapter installed is carried
+			// to whichever session carries the creator's next typed commit.
+			const persistentPlace = previous?.placementCommittedListener() ?? null;
+			previous?.cancel();
 			// The adapter publishes the surface when its task opens; a reading change
 			// (which does not rebuild the binding) is refreshed here. The registry is
 			// keyed by this accepted snapshot, so only this Stage's surface is read.
@@ -73,6 +78,9 @@
 				session = sceneSessionFromServices({ services, evaluationId });
 				surface = { evaluationId, session };
 				publishSceneSurface(snapshot, surface);
+			}
+			if (session !== null && persistentPlace !== null && session.placementCommittedListener() === null) {
+				session.setPlacementCommittedListener(persistentPlace);
 			}
 			sessionEvaluationId = evaluationId;
 			surfaceSnapshot = snapshot;

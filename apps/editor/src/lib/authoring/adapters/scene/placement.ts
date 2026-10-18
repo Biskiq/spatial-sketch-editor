@@ -134,6 +134,14 @@ export type ScenePlacementSession = {
 	subjectEntityId(): string | null;
 	/** The captured pose currently shown, or `null` when no proposal is displayed. */
 	candidate(): SceneCandidate | null;
+	/**
+	 * The one listener notified synchronously after this session commits a
+	 * placement. The adapter uses it to keep its persistent Place task open after
+	 * its own install closed it; both pointer and typed entry share this path.
+	 * Setting `null` clears it; a reading-change replacement carries it over.
+	 */
+	setPlacementCommittedListener(listener: (() => void) | null): void;
+	placementCommittedListener(): (() => void) | null;
 };
 
 /**
@@ -258,6 +266,17 @@ export function createSceneSession(input: {
 	let entryError: string | null = null;
 	let lastPlacedEntityId: string | null = null;
 	let placePrimitive: NativePlacementPrimitive = 'box';
+	let placementCommitted: (() => void) | null = null;
+
+	/**
+	 * One committed placement, one notification. The listener is consumed so a
+	 * second read cannot reopen twice; the adapter owns the reap-open policy.
+	 */
+	function notifyPlacementCommitted(): void {
+		const listener = placementCommitted;
+		placementCommitted = null;
+		listener?.();
+	}
 
 	function context(): SceneOperationContext {
 		return { project: input.snapshot.source, sourceContentId: input.snapshot.contentRevision };
@@ -658,6 +677,7 @@ export function createSceneSession(input: {
 			// armed: a release never disarms the tool, only Esc/Select does.
 			release();
 			candidate = null;
+			notifyPlacementCommitted();
 			return { kind: 'committed' };
 		},
 		async place(primitive, x, z) {
@@ -666,12 +686,19 @@ export function createSceneSession(input: {
 				return { kind: 'invalid', code: 'non-finite', message: 'X/Z must be finite meters.' };
 			}
 			const outcome = await acceptPlacement(primitive, [snapped(x), snapped(z)]);
-			if (outcome.kind === 'committed') candidate = null;
+			if (outcome.kind === 'committed') {
+				candidate = null;
+				notifyPlacementCommitted();
+			}
 			return outcome;
 		},
 		placedEntityId: () => lastPlacedEntityId,
 		subjectEntityId: () => entityId,
 		candidate: () => candidate,
+		setPlacementCommittedListener(listener) {
+			placementCommitted = listener;
+		},
+		placementCommittedListener: () => placementCommitted,
 		cancel() {
 			release();
 			entityId = null;

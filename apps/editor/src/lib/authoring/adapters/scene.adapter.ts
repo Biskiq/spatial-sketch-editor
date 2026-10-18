@@ -27,7 +27,12 @@ import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	nativePlacementDefinition
 } from '$lib/authoring/scene/object-definition-policy';
-import { createScenePlanners } from '@portfolio/project-model';
+import {
+	chooseFloorSupport,
+	floorSupportSnapshotOf,
+	queryFloorSupports
+} from '@portfolio/layout-core';
+import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/project-model';
 
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import { candidateGhost } from './scene/candidate-ghost';
@@ -83,6 +88,41 @@ function pointerFloorSupport(
 	);
 }
 
+/**
+ * The floor support a pointer Place may show, or `null`.
+ *
+ * A visible datum hit is not enough: the point must also be covered by exactly
+ * one eligible compiled Room floor, so preview and the retained planner (which
+ * re-derives the same support at commit) agree. The query is the Layout-owned
+ * canonical resolution, reused here rather than a second membership test, and
+ * `chooseFloorSupport` refuses `none` and `choice-required` exactly as commit
+ * does. The point is the **snapped** X/Z the candidate will commit at, so an
+ * enabled snap cannot move a shown pose off its floor. The drawn-geometry
+ * occluder test still runs first so a Wall or plinth can never be mistaken for
+ * floor.
+ */
+function pointerPlaceSupport(
+	context: StageAdapterContext,
+	css: readonly [number, number],
+	snapStep: number | null
+): { readonly x: number; readonly z: number; readonly elevation: number } | null {
+	const visible = pointerFloorSupport(context, css, null);
+	if (visible.kind !== 'floor') return null;
+	const step = snapStep !== null && snapStep > 0 ? snapStep : null;
+	const x = step === null ? visible.worldPoint[0] : Math.round(visible.worldPoint[0] / step) * step;
+	const z = step === null ? visible.worldPoint[2] : Math.round(visible.worldPoint[2] / step) * step;
+	const domain = context.snapshot.domain;
+	const queried = queryFloorSupports(floorSupportSnapshotOf(domain.geometry), {
+		generationId: sceneSupportGenerationId(context.snapshot.sourceContentId),
+		x,
+		z
+	});
+	if (queried.kind !== 'candidates') return null;
+	const chosen = chooseFloorSupport(queried.candidates);
+	if (chosen.kind !== 'resolved') return null;
+	return { x, z, elevation: chosen.support.elevation };
+}
+
 export const createAdapter: StageAdapterFactory = (services) => {
 	const planners = createScenePlanners();
 	for (const planner of planners) {
@@ -121,9 +161,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let dragOrigin: { readonly x: number; readonly yaw: number } | null = null;
 			/** The task this binding is showing; pointer behavior follows the invoked task. */
 			let openTaskKind: string | null = null;
-			/** True while this binding's own placement acceptance is installing. */
-			let committingPlace = false;
-			/** Bumped by a close that is not this placement's install-close. */
+			/** Bumped by any close, so an in-flight install cannot reopen a closed tool. */
 			let taskEpoch = 0;
 			let abortReopen: (() => void) | null = null;
 			/**
@@ -146,9 +184,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 */
 			function surfaceFor(evaluationId: string, snapshot = services.stage.snapshot()): SceneSurface {
 				const existing = activeSceneSurface(snapshot);
-				if (existing !== null && existing.evaluationId === evaluationId) return existing;
+				if (existing !== null && existing.evaluationId === evaluationId) {
+					if (openTaskKind === 'place-object') attachPlacePersistence(existing.session);
+					return existing;
+				}
 				const session = sceneSessionFromServices({ services, evaluationId });
 				const next: SceneSurface = { evaluationId, session };
+				if (openTaskKind === 'place-object') attachPlacePersistence(session);
 				// Publishing a different evaluation cancels the old proposal. The old
 				// release is identity-checked, so it cannot remove this replacement.
 				publishSceneSurface(snapshot, next);
@@ -161,8 +203,28 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				return gestureSurface ?? ownedSurface?.surface ?? null;
 			}
 
-			/** Keep Place armed after its accepted install closes the task. */
-			function reopenPlace(epoch: number): void {
+			/**
+			 * Keep the persistent Place tool armed after its own accepted install.
+			 *
+			 * A placement commit — typed or pointer, they share this session — is
+			 * accepted through the host's one install path, which closes the contributed
+			 * task and retires this binding. The session reports that one commit, and this
+			 * binding reopens its own Place task for the next placement; Esc/Select is the
+			 * one path that ends the tool. The captured epoch makes an explicit close win
+			 * the race against an acceptance still in flight: a close that is not this
+			 * install bumps it, so the deferred reopen is dropped instead of resurrecting
+			 * a tool the creator ended.
+			 */
+			function attachPlacePersistence(session: ScenePlacementSession): void {
+				const epoch = taskEpoch;
+				session.setPlacementCommittedListener(() => {
+					if (epoch !== taskEpoch) return;
+					reopenPlace();
+				});
+			}
+
+			/** Reopen this binding's Place task once the rebuild makes it invocable. */
+			function reopenPlace(): void {
 				const stage = services.stage;
 				let off: (() => void) | null = null;
 				let settled = false;
@@ -176,9 +238,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				let opening = false;
 				const attempt = (): void => {
 					if (settled || opening) return;
-					// A close that was not this placement's install (Esc, task
-					// replacement) ends the armed tool instead of reopening it.
-					if (epoch !== taskEpoch || stage.session.task() !== null) {
+					// The install already closed the task; if something else reopened it,
+					// the tool is armed and this deferred reopen is done.
+					if (stage.session.task() !== null) {
 						finish();
 						return;
 					}
@@ -191,22 +253,14 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					}
 					if (opened) finish();
 				};
-				const abort = (): void => finish();
 				off = stage.onAdaptersChanged(attempt);
-				abortReopen = abort;
+				abortReopen = () => finish();
 				// The rebuild that follows the install may already be live.
 				attempt();
 			}
 
 			async function commitPointerPlace(session: ScenePlacementSession): Promise<void> {
-				committingPlace = true;
-				const epoch = taskEpoch;
-				let outcome;
-				try {
-					outcome = await session.commitPlace();
-				} finally {
-					committingPlace = false;
-				}
+				const outcome = await session.commitPlace();
 				if (outcome.kind !== 'committed') {
 					services.stage.notifySurfaceChange();
 					return;
@@ -222,10 +276,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 				}
 				services.stage.notifySurfaceChange();
-				// Accepted content closes the task through the host's one install path.
-				// Place is a persistent tool, so its own install reopens the same task;
-				// Esc, a task replacement or a different operation does not.
-				reopenPlace(epoch);
+				// The session reports the commit to the binding that attached persistence,
+				// which reopens this persistent task through the host's one install path.
 			}
 
 			return {
@@ -287,20 +339,15 @@ export const createAdapter: StageAdapterFactory = (services) => {
 								gestureSurface = null;
 								return false;
 							}
-							const support = pointerFloorSupport(adapterContext, intent.css, null);
-							if (support.kind !== 'floor') {
-								// No visible floor under the press: refuse the claim rather than
-								// leaving a proposal behind a Wall or plinth.
+							const support = pointerPlaceSupport(adapterContext, intent.css, session.snapStep());
+							if (support === null) {
+								// No visible, compiled Room-floor support under the press: refuse
+								// the claim rather than showing a pose commit would reject.
 								session.abortGesture();
 								gestureSurface = null;
 								return false;
 							}
-							session.previewPlace(
-								primitive,
-								support.worldPoint[0],
-								support.worldPoint[2],
-								support.worldPoint[1]
-							);
+							session.previewPlace(primitive, support.x, support.z, support.elevation);
 							return true;
 						}
 						const primary = adapterContext.selectionState().primary;
@@ -339,18 +386,19 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						return true;
 					}
 					if (openTaskKind === 'place-object') {
-						// Place follows the pointer on the floor; an occluded or degenerate
-						// move withdraws the displayed pose so release cannot install it.
-						const support = pointerFloorSupport(adapterContext, intent.css, null);
-						if (support.kind !== 'floor') {
+						// Place follows the pointer on the floor; a move without visible
+						// compiled Room-floor support withdraws the displayed pose so release
+						// cannot install it.
+						const support = pointerPlaceSupport(adapterContext, intent.css, session.snapStep());
+						if (support === null) {
 							session.invalidatePreview();
 							return true;
 						}
 						session.previewPlace(
 							session.placePrimitive(),
-							support.worldPoint[0],
-							support.worldPoint[2],
-							support.worldPoint[1]
+							support.x,
+							support.z,
+							support.elevation
 						);
 						return true;
 					}
@@ -380,13 +428,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					openTaskKind = null;
 					taskSurface = null;
 					closing?.session.cancel();
-					if (!committingPlace) {
-						// A close that is not this binding's own placement install ends the
-						// tool for good: no deferred reopen may resurrect it.
-						taskEpoch += 1;
-						abortReopen?.();
-						abortReopen = null;
-					}
+					// Any close ends the armed tool for good: bumping the epoch makes an
+					// acceptance still in flight drop its deferred reopen, and the pending
+					// reopen (if any) is aborted here rather than resurrecting the tool.
+					taskEpoch += 1;
+					abortReopen?.();
+					abortReopen = null;
 				},
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
@@ -433,6 +480,9 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (task.kind === 'place-object' && evaluationId !== null) {
 					taskSurface = surfaceFor(evaluationId, services.stage.snapshot());
 					taskSurface.session.arm('place');
+					// Typed and pointer Place commit through this session; listening here is
+					// what keeps the tool persistent for a typed commit too.
+					attachPlacePersistence(taskSurface.session);
 				} else {
 					taskSurface = liveSurface();
 				}

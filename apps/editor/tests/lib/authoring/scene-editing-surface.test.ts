@@ -526,7 +526,7 @@ describe('Scene adapter registration', () => {
 	}
 
 	/** A mounted adapter over a real acceptance host, with the Place task open. */
-	async function acceptedPlaceSurface() {
+	async function acceptedPlaceSurface(beforeAccept?: () => Promise<void>) {
 		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const admitted = await admitSource(project, {
 			sessionEpoch: 'session-scene-accepted',
@@ -550,7 +550,15 @@ describe('Scene adapter registration', () => {
 			},
 			planners: []
 		});
-		mountStageAdapter(facade, host, createAdapter);
+		// `beforeAccept` lets a test hold the accepted install open, so a close can
+		// arrive while the placement's acceptance is still in flight.
+		mountStageAdapter(
+			facade,
+			beforeAccept === undefined
+				? host
+				: { ...host, accept: async (intent) => { await beforeAccept(); return host.accept(intent); } },
+			createAdapter
+		);
 		// The placement planner is registered once its metadata identity exists.
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		const opened = facade.openContributedTask('scene-place', 'scene');
@@ -778,6 +786,130 @@ describe('Scene adapter registration', () => {
 		if (afterEsc.kind === 'evaluated') facade.overlays();
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(facade.session.task()).toBeNull();
+	});
+
+	it('keeps typed Place armed across its own accepted install, then disarms on Esc', async () => {
+		const { facade } = await acceptedPlaceSurface();
+		const evaluationId = facade.evaluationId()!;
+		const surface = sceneSurfaceFor(facade.snapshot(), evaluationId);
+		expect(surface?.session.armed()).toBe('place');
+
+		// The instrument's pointer-free Place commits through this same session; it
+		// must leave the tool armed exactly like the pointer path does.
+		await surface!.session.place('box', 3, 3);
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+
+		const nextEvaluation = facade.camera.evaluate(RECT, 2);
+		if (nextEvaluation.kind === 'evaluated') facade.overlays();
+		await eventually(() => facade.session.task() !== null);
+		expect(facade.session.task()?.kind).toBe('place-object');
+		const reopened = sceneSurfaceFor(facade.snapshot(), facade.evaluationId()!);
+		expect(reopened?.session.armed()).toBe('place');
+
+		// Esc still ends the armed tool, and no deferred reopen resurrects it.
+		expect(facade.closeTask()).toBe(true);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		const afterEsc = facade.camera.evaluate(RECT, 3);
+		if (afterEsc.kind === 'evaluated') facade.overlays();
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(facade.session.task()).toBeNull();
+	});
+
+	it('does not reopen Place when Esc closes the tool during an in-flight acceptance', async () => {
+		// A gate the test holds open keeps the accepted install in flight, so an
+		// explicit close can race the placement that would otherwise reopen it.
+		let releaseAccept!: () => void;
+		const acceptGate = new Promise<void>((resolve) => {
+			releaseAccept = resolve;
+		});
+		let acceptReached = false;
+		const { facade } = await acceptedPlaceSurface(async () => {
+			acceptReached = true;
+			await acceptGate;
+		});
+		const evaluationId = facade.evaluationId()!;
+		const point = cssOf(facade, [3, 0, 3]);
+		expect(facade.pointerIntent({ phase: 'down', css: point, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'up', css: point, evaluationId });
+		await eventually(() => acceptReached);
+
+		// Esc closes the armed tool while its acceptance is still installing.
+		expect(facade.closeTask()).toBe(true);
+
+		// The acceptance completes now. It installs the object, but the explicitly
+		// closed tool must not be reopened by the deferred reopen.
+		releaseAccept();
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+		const nextEvaluation = facade.camera.evaluate(RECT, 2);
+		if (nextEvaluation.kind === 'evaluated') facade.overlays();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(facade.session.task()).toBeNull();
+	});
+
+	it('refuses a pointer Place whose datum hit is outside every compiled Room floor', async () => {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		// Both points lie on the floor plane the pointer ray reaches; only the first
+		// is covered by the compiled Room floor, so only it may show a candidate.
+		const inside = cssOf(facade, [3, 0, 3]);
+		const outside = cssOf(facade, [3.5, 0, 7.5]);
+
+		expect(facade.pointerIntent({ phase: 'down', css: outside, evaluationId })).toEqual({
+			claimed: false,
+			adapterId: null
+		});
+		expect(session.candidate()).toBeNull();
+		expect(facade.ghosts()).toEqual([]);
+		facade.pointerIntent({ phase: 'up', css: outside, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(intents).toEqual([]);
+
+		// The point inside the Room floor is still claimable, so the refusal above was
+		// membership, not a degenerate ray.
+		expect(facade.pointerIntent({ phase: 'down', css: inside, evaluationId }).claimed).toBe(true);
+		expect(session.candidate()?.kind).toBe('place');
+		facade.pointerIntent({ phase: 'cancel', css: inside, evaluationId });
+	});
+
+	it('does not show a snapped pointer Place that lands off the compiled Room floor', async () => {
+		// A Room whose far wall sits at a non-integer bound, so a snap step can move an
+		// interior pointer point past the floor. Support must be resolved at the snapped
+		// point commit will use, not the raw pointer point.
+		const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Snap floor' });
+		const planned = planWallChain({
+			baseline: base.layout,
+			points: [
+				[0, 0],
+				[6.9, 0],
+				[6.9, 5.9],
+				[0, 5.9]
+			],
+			close: true,
+			role: 'boundary'
+		});
+		if (planned.kind !== 'success') throw new Error('the snap fixture was refused');
+		const project: ProjectDocument = {
+			...base,
+			layout: planned.document,
+			scene: { ...base.scene, entities: [boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])] }
+		};
+		const { facade, session, evaluationId } = await withSceneSurface(
+			undefined,
+			'scene-place',
+			project
+		);
+		session.setSnapStep(1);
+		// Raw x = 6.6 is inside the Room floor (max 6.9); snapped x = 7 is outside.
+		const raw = cssOf(facade, [6.6, 0, 3]);
+		expect(facade.pointerIntent({ phase: 'down', css: raw, evaluationId })).toEqual({
+			claimed: false,
+			adapterId: null
+		});
+		expect(session.candidate()).toBeNull();
 	});
 
 	it('reads only the surface published for its own accepted snapshot', async () => {
