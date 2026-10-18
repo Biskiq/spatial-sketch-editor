@@ -843,15 +843,12 @@
 		cardOpen = true;
 		const fragment = plan.fragments.find((candidate) => candidate.ref.sourceId === sourceId);
 		if (fragment === undefined) return;
-		const diagSelection = {
+		stage.select({
 			sourceId,
 			sourceKind: fragment.ref.sourceKind,
 			generationId: fragment.ref.generationId,
 			ref: fragment.ref
-		};
-		console.debug('[s04-diag] pre-select', fragment.ref.generationId === stage.snapshot().compileGeneration, fragment.ref.sourceKind, fragment.ref.stream, stage.evaluationId(), stage.session.select(diagSelection));
-		stage.select(diagSelection);
-		console.debug('[s04-diag] post-select', stage.selectionState().primary !== null, stage.selectionState().ordered.length);
+		});
 		selection = primaryEntry(stage.selectionState());
 	}
 
