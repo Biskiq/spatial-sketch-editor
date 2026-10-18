@@ -13,20 +13,31 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
+import type { ViewportEvaluation } from '@portfolio/camera-core';
 
 import SceneTransformInstrument from '$lib/authoring/adapters/scene/SceneTransformInstrument.svelte';
 import {
 	publishSceneSurface,
-	type ScenePlacementSession,
-	type SceneSurface
+	sceneReadingKey,
+	type ScenePlacementSession
 } from '$lib/authoring/adapters/scene/placement';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 
 const ENTITY_ID = 'entity-focus-fixture';
-const EVALUATION_ID = 'evaluation-focus';
+const SOURCE_ID = `sha256-${'a'.repeat(64)}`;
+const EVALUATION = {
+	token: {
+		outputId: 'output-focus',
+		sessionEpoch: 'session-focus',
+		sourceRevision: SOURCE_ID,
+		evaluationGeneration: 1
+	},
+	settledReading: '3d'
+} as unknown as ViewportEvaluation;
+const EVALUATION_ID = 'output-focus::session-focus::1';
 const SNAPSHOT = {
 	acceptedRevision: { projectId: 'project-focus', revisionId: 'revision-focus' },
-	sourceContentId: `sha256-${'a'.repeat(64)}`,
+	sourceContentId: SOURCE_ID,
 	compileGeneration: 'generation-focus',
 	domain: {
 		scene: {
@@ -80,6 +91,7 @@ function sessionSpies(): SessionSpies {
 		placedEntityId: () => null,
 		subjectEntityId: () => null,
 		candidate: () => null,
+		proposalLive: () => true,
 		setPlacementCommittedListener: vi.fn(),
 		placementCommittedListener: () => null
 	} as unknown as ScenePlacementSession;
@@ -93,6 +105,7 @@ function servicesFor(session: ScenePlacementSession): StageAdapterServices {
 			selectionState: () => ({
 				primary: { domain: 'scene', subject: { kind: 'entity', id: ENTITY_ID } }
 			}),
+			evaluation: () => EVALUATION,
 			evaluationId: () => EVALUATION_ID,
 			notifySurfaceChange: vi.fn()
 		}
@@ -127,8 +140,9 @@ async function mountInstrument(): Promise<{
 	readonly spies: SessionSpies;
 }> {
 	const spies = sessionSpies();
-	const surface: SceneSurface = { evaluationId: EVALUATION_ID, session: spies.session };
-	publishSceneSurface(SNAPSHOT, surface);
+	// The adapter publishes the task's surface; the instrument adopts it instead
+	// of building a second session.
+	publishSceneSurface(SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: spies.session });
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const component = mount(SceneTransformInstrument, {

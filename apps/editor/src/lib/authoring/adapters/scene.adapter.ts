@@ -12,7 +12,9 @@
  * public Stage services.
  */
 
+import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';
+import { evaluationIdOf } from '$lib/authoring/stage/camera-session';
 import type {
 	StageAdapter,
 	StageAdapterBinding,
@@ -37,10 +39,10 @@ import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/projec
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import { candidateGhost } from './scene/candidate-ghost';
 import {
-	activeSceneSurface,
 	publishSceneSurface,
 	retireSceneSurface,
 	sceneEntityReference,
+	sceneReadingKey,
 	sceneSessionFromServices,
 	sceneSurfaceFor,
 	type SceneCandidate,
@@ -177,21 +179,21 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			let taskSurface: SceneSurface | null = null;
 
 			/**
-			 * Publish/read the surface for the **live** accepted snapshot and evaluation.
+			 * Publish/read the surface for the **live** accepted snapshot and reading.
 			 * A binding can outlive a reading change, so the bind-time snapshot is not
 			 * used here: the surface must be keyed exactly as the instrument and the
 			 * overlay read it.
 			 */
-			function surfaceFor(evaluationId: string, snapshot = services.stage.snapshot()): SceneSurface {
-				const existing = activeSceneSurface(snapshot);
-				if (existing !== null && existing.evaluationId === evaluationId) {
+			function surfaceFor(evaluation: ViewportEvaluation, snapshot = services.stage.snapshot()): SceneSurface {
+				const existing = sceneSurfaceFor(snapshot, evaluation);
+				if (existing !== null) {
 					if (openTaskKind === 'place-object') attachPlaceCompletion(existing.session);
 					return existing;
 				}
-				const session = sceneSessionFromServices({ services, evaluationId });
-				const next: SceneSurface = { evaluationId, session };
+				const session = sceneSessionFromServices({ services, evaluationId: evaluationIdOf(evaluation) });
+				const next: SceneSurface = { reading: sceneReadingKey(evaluation), session };
 				if (openTaskKind === 'place-object') attachPlaceCompletion(session);
-				// Publishing a different evaluation cancels the old proposal. The old
+				// Publishing a different reading cancels the old proposal. The old
 				// release is identity-checked, so it cannot remove this replacement.
 				publishSceneSurface(snapshot, next);
 				ownedSurface = { snapshot, surface: next };
@@ -327,8 +329,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				pointerIntent(intent: StagePointerIntent, adapterContext) {
 					// Claim the surface once, on the press. Every later phase of this
 					// gesture reads the same session even if the viewport is re-evaluated.
-					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluationId);
-					const surface = gestureSurface ?? surfaceFor(adapterContext.evaluationId);
+					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluation);
+					const surface = gestureSurface ?? surfaceFor(adapterContext.evaluation);
 					const session = surface.session;
 					if (intent.phase === 'cancel') {
 						dragOrigin = null;
@@ -444,7 +446,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// The captured candidate is shown through the existing overlay surface,
 				// so Plan and 3D present the same pose the planner would commit.
 				overlay(adapterContext) {
-					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluationId);
+					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate = surface?.session.candidate() ?? null;
 					if (candidate === null) return [];
 					const css = adapterContext.project(candidate.position);
@@ -461,7 +463,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				// The candidate is drawn as the object's own body at the captured pose,
 				// in the one Canvas, so Plan and 3D show what Commit will install.
 				ghosts(adapterContext): readonly StageGhostMesh[] {
-					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluationId);
+					const surface = sceneSurfaceFor(adapterContext.snapshot, adapterContext.evaluation);
 					const candidate: SceneCandidate | null = surface?.session.candidate() ?? null;
 					if (candidate === null) return [];
 					const entity =
@@ -480,11 +482,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				},
 				instrument(task) {
 					openTaskKind = task.kind;
-					// Arm the surface for the evaluation the instrument will actually read,
+					// Arm the surface for the reading the instrument will actually read,
 					// not the bind-time one: a reading change does not rebuild the binding.
-				const evaluationId = services.stage.evaluationId();
-				if (task.kind === 'place-object' && evaluationId !== null) {
-					taskSurface = surfaceFor(evaluationId, services.stage.snapshot());
+					const evaluation = services.stage.evaluation();
+					if (task.kind === 'place-object' && evaluation !== null) {
+						taskSurface = surfaceFor(evaluation, services.stage.snapshot());
 					taskSurface.session.arm('place');
 					// Typed and pointer Place commit through this session; completing here
 					// is what keeps the tool persistent and selects the new entity for a

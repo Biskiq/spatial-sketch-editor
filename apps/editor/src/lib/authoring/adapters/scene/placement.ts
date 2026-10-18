@@ -29,6 +29,7 @@ import {
 } from '@portfolio/project-model';
 import type { AuthoringIntent, ProjectDocument, SceneEntity, Vec3 } from '@portfolio/project-model';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
+import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
@@ -59,6 +60,16 @@ export type SceneEditingSnapshot = {
 	readonly source: ProjectDocument;
 	readonly compileGeneration: string;
 	readonly evaluationId: string;
+	/**
+	 * The live evaluation id, when the host can answer it.
+	 *
+	 * A proposal survives the redraws that follow it, so the id captured when the
+	 * session was built is not the id the lease must name: a lease is acquired at
+	 * `begin`, against whatever evaluation is live then. Without this the session
+	 * would report the frame it was created in, which is a weaker claim than the
+	 * token it actually ran against.
+	 */
+	readonly currentEvaluationId?: () => string | null;
 };
 
 export type SceneCandidate = {
@@ -135,6 +146,16 @@ export type ScenePlacementSession = {
 	/** The captured pose currently shown, or `null` when no proposal is displayed. */
 	candidate(): SceneCandidate | null;
 	/**
+	 * Whether a granted gesture lease is still active, i.e. the host has not ended
+	 * it with a reading change.
+	 *
+	 * This is the one authority on whether a proposal may outlive the frame it was
+	 * prepared in: a redraw keeps the lease, while a reading change
+	 * (`applyReadingChange`), a content install, a task close or teardown release
+	 * it.
+	 */
+	proposalLive(): boolean;
+	/**
 	 * The one listener notified synchronously after this session commits a
 	 * placement. The adapter uses it to select the new entity and to keep its
 	 * persistent Place task open after its own install closed it; both pointer and
@@ -149,7 +170,7 @@ export type ScenePlacementSession = {
 };
 
 /**
- * The one live Scene surface for one evaluation of one accepted source.
+ * The one live Scene surface for one reading of one accepted source.
  *
  * The handle is keyed by the **accepted source read** it belongs to, not by a
  * module-global "current" slot. A replacement mounts a different snapshot, a
@@ -159,28 +180,44 @@ export type ScenePlacementSession = {
  * unreachable and its surface goes with it.
  */
 export type SceneSurface = {
-	readonly evaluationId: string;
+	/** The reading this surface's candidate was prepared for. */
+	readonly reading: string;
 	readonly session: ScenePlacementSession;
 };
 
-const surfaces = new WeakMap<object, SceneSurface>();
-
-export function activeSceneSurface(snapshot: object): SceneSurface | null {
-	return surfaces.get(snapshot) ?? null;
+/**
+ * The stable identity of one **reading**.
+ *
+ * The evaluation token's `evaluationGeneration` advances on every frame the
+ * Stage draws, so an id that carries it names one frame, not one reading. A
+ * proposal spans many frames — it is prepared, redrawn and redrawn again before
+ * it is committed — so surfaces, and the sessions that hold proposals, are keyed
+ * by this: the output, the host session, the accepted source revision and the
+ * settled reading. A genuine reading change (Plan↔3D, a replaced source or a new
+ * host session) changes the key; a redraw of the same reading does not.
+ */
+export function sceneReadingKey(evaluation: ViewportEvaluation): string {
+	const token = evaluation.token;
+	return `${token.outputId}::${token.sessionEpoch}::${token.sourceRevision}::${evaluation.settledReading}`;
 }
 
+const surfaces = new WeakMap<object, SceneSurface>();
+
 /**
- * Publish the surface for one accepted snapshot and evaluation.
+ * Publish the surface for one accepted snapshot and reading.
  *
- * A newer evaluation for the same snapshot replaces the previous surface after
- * cancelling it, so a stale candidate or lease cannot survive a reading change.
+ * A different **reading** for the same snapshot replaces the previous surface
+ * after cancelling it, so a candidate or lease prepared for the reading that is
+ * ending cannot survive it. A second publisher of the *same* reading only ends
+ * any gesture the replaced session holds, so it cannot keep a lease the registry
+ * no longer names. A redraw is neither: the same surface is simply re-registered.
  * A previous publisher's release is identity-checked and therefore cannot remove
  * the replacement.
  */
 export function publishSceneSurface(snapshot: object, surface: SceneSurface): () => void {
 	const previous = surfaces.get(snapshot);
 	if (previous !== undefined && previous !== surface) {
-		if (previous.evaluationId !== surface.evaluationId) {
+		if (previous.reading !== surface.reading) {
 			// A new reading invalidates the old proposal entirely.
 			previous.session.cancel();
 		} else {
@@ -200,13 +237,19 @@ export function retireSceneSurface(snapshot: object, surface: SceneSurface): voi
 	if (surfaces.get(snapshot) === surface) surfaces.delete(snapshot);
 }
 
-/** The live surface for this exact accepted snapshot and evaluation, or `null`. */
+/**
+ * The live surface for this exact accepted snapshot and reading, or `null`.
+ *
+ * Reads happen on every rendered frame, so this compares readings, not frame
+ * ids: a candidate published once stays visible through the redraws that follow
+ * it.
+ */
 export function sceneSurfaceFor(
 	snapshot: object,
-	evaluationId: string
+	evaluation: ViewportEvaluation
 ): SceneSurface | null {
 	const surface = surfaces.get(snapshot) ?? null;
-	return surface !== null && surface.evaluationId === evaluationId ? surface : null;
+	return surface !== null && surface.reading === sceneReadingKey(evaluation) ? surface : null;
 }
 
 const PROJECT_WORLD: FrameReference = { version: 1, kind: 'project-world' };
@@ -260,6 +303,11 @@ export function createSceneSession(input: {
 	readonly mintOperationId?: () => string;
 }): ScenePlacementSession {
 	const mint = input.mintOperationId ?? (() => globalThis.crypto.randomUUID());
+	// The lease names the evaluation that is live when the gesture starts, not the
+	// frame this session happened to be built in: a proposal survives the redraws
+	// that follow it.
+	const evaluationIdNow = (): string =>
+		input.snapshot.currentEvaluationId?.() ?? input.snapshot.evaluationId;
 	let mode: 'select' | 'place' | 'move' | 'yaw' = 'select';
 	let snap: number | null = null;
 	let lease: GestureAcquisition | null = null;
@@ -508,7 +556,7 @@ export function createSceneSession(input: {
 			release();
 			lease = input.port.acquireGesture({
 				owner: 'scene-transform',
-				evaluationId: input.snapshot.evaluationId,
+				evaluationId: evaluationIdNow(),
 				policy: 'cancel-on-reading-change'
 			});
 			if (lease.kind === 'refused') {
@@ -528,7 +576,7 @@ export function createSceneSession(input: {
 			release();
 			lease = input.port.acquireGesture({
 				owner: 'scene-transform',
-				evaluationId: input.snapshot.evaluationId,
+				evaluationId: evaluationIdNow(),
 				policy: 'cancel-on-reading-change'
 			});
 			if (lease.kind === 'refused') {
@@ -589,8 +637,24 @@ export function createSceneSession(input: {
 			entry = { ...entry, [kind]: String(parsed.value) };
 			// Exact entry is the retained exact access: it never inherits the gesture's
 			// snap step. The captured candidate carries these exact numbers.
-			if (kind === 'yaw') return yawCandidate(parsed.value);
-			return moveCandidate(Number(entry.x), Number(entry.z), false);
+			const outcome =
+				kind === 'yaw'
+					? yawCandidate(parsed.value)
+					: moveCandidate(Number(entry.x), Number(entry.z), false);
+			// One proposal is one pose. A yaw entry is planned from the accepted X/Z
+			// and a move entry keeps the accepted yaw, so the entry record is
+			// renormalised from the candidate it just produced: otherwise the next
+			// entry would plan from text the creator never saw as the candidate, and
+			// the pose it installed would not be the one on screen.
+			if (outcome.kind === 'candidate') {
+				const captured = outcome.candidate;
+				entry = {
+					x: String(captured.position[0]),
+					z: String(captured.position[2]),
+					yaw: String(captured.yaw)
+				};
+			}
+			return outcome;
 		},
 		async commit() {
 			if (entityId === null || candidate === null || candidate.kind === 'place') {
@@ -701,6 +765,7 @@ export function createSceneSession(input: {
 		placedEntityId: () => lastPlacedEntityId,
 		subjectEntityId: () => entityId,
 		candidate: () => candidate,
+		proposalLive: leaseIsLive,
 		setPlacementCommittedListener(listener) {
 			placementCommitted = listener;
 		},
@@ -730,7 +795,8 @@ export function sceneSessionFromServices(input: {
 			contentRevision: snapshot.sourceContentId,
 			source,
 			compileGeneration: snapshot.compileGeneration,
-			evaluationId: input.evaluationId
+			evaluationId: input.evaluationId,
+			currentEvaluationId: () => input.services.stage.evaluationId()
 		},
 		port: {
 			accept: async (intent) => {

@@ -23,6 +23,7 @@ import {
 	type Vec3
 } from '@portfolio/project-model';
 import { planWallChain } from '@portfolio/layout-core';
+import type { ViewportEvaluation } from '@portfolio/camera-core';
 
 import {
 	createSceneSession,
@@ -30,6 +31,7 @@ import {
 	publishSceneSurface,
 	retireSceneSurface,
 	sceneEntityReference,
+	sceneReadingKey,
 	sceneSurfaceFor,
 	type ScenePlacementSession,
 	type SceneWritePort
@@ -523,11 +525,13 @@ describe('Scene adapter registration', () => {
 				acquireGesture: (request) => facade.acquireGesture(request)
 			}
 		});
-		publishSceneSurface(snapshot, { evaluationId, session });
+		const evaluation = facade.evaluation();
+		if (evaluation === null) throw new Error('the adapter fixture has no evaluation');
+		publishSceneSurface(snapshot, { reading: sceneReadingKey(evaluation), session });
 		const reference = sceneEntityReference(FIXTURE_ENTITY_ID, snapshot.sourceContentId);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
 		facade.openContributedTask(taskId, 'scene');
-		return { facade, session, evaluationId, intents, snapshot };
+		return { facade, session, evaluationId, evaluation, intents, snapshot };
 	}
 
 	function cssOf(facade: ReturnType<typeof createStageFacade>, point: Vec3): [number, number] {
@@ -610,6 +614,67 @@ describe('Scene adapter registration', () => {
 		facade.pointerIntent({ phase: 'cancel', css: [140, 100], evaluationId });
 		expect(session.candidate()).toBeNull();
 		expect(facade.ghosts()).toEqual([]);
+	});
+
+	it('keeps a typed candidate, its surface and its drawn pose across an ordinary re-evaluation', async () => {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-arrange',
+			project
+		);
+		expect(session.begin(FIXTURE_ENTITY_ID).kind).toBe('idle');
+		// Exact typed values, in the order a creator enters them.
+		expect(session.setEntry('z', '3').kind).toBe('candidate');
+		expect(session.setEntry('x', '3.25').kind).toBe('candidate');
+		const candidate = session.candidate();
+		if (candidate === null) throw new Error('typing an exact value produced no candidate');
+
+		// The candidate asks the host to redraw it, and every frame raises the
+		// evaluation generation. The reading has not changed, so nothing about the
+		// proposal has.
+		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
+		expect(facade.evaluationId()).not.toBe(evaluationId);
+		expect(session.proposalLive()).toBe(true);
+
+		// Both readings still resolve the surface for the new frame, so what they
+		// draw is the pose this session would commit.
+		const surface = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
+		expect(surface?.session).toBe(session);
+		const label = `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad`;
+		expect(facade.overlays().map((marker) => marker.label)).toContain(label);
+		const ghosts = facade.ghosts();
+		expect(ghosts).toHaveLength(1);
+		expect(ghosts[0]!.center[0]).toBeCloseTo(candidate.position[0], 9);
+		expect(ghosts[0]!.center[1]).toBeCloseTo(candidate.position[1], 9);
+		expect(ghosts[0]!.center[2]).toBeCloseTo(candidate.position[2], 9);
+		expect(ghosts[0]!.yaw).toBeCloseTo(candidate.yaw, 9);
+
+		// The displayed pose is committable, and it is the one that installs.
+		await expect(session.commit()).resolves.toEqual({ kind: 'committed' });
+		expect(intents).toHaveLength(1);
+		const payload = intents[0]!.payload as { worldXZ: readonly [number, number] };
+		expect(payload.worldXZ[0]).toBeCloseTo(candidate.worldXZ[0], 6);
+		expect(payload.worldXZ[1]).toBeCloseTo(candidate.worldXZ[1], 6);
+	});
+
+	it('plans each exact entry from the pose the previous entry captured', async () => {
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { session } = await withSceneSurface(undefined, 'scene-arrange', project);
+		expect(session.begin(FIXTURE_ENTITY_ID).kind).toBe('idle');
+
+		// Z is typed, then replaced by a yaw proposal, which is the accepted X/Z.
+		expect(session.setEntry('z', '5').kind).toBe('candidate');
+		expect(session.setEntry('yaw', '1.25').kind).toBe('candidate');
+		expect(session.candidate()!.worldXZ[1]).toBeCloseTo(2, 9);
+
+		// The next move entry plans from the displayed pose, not from the Z the yaw
+		// proposal replaced: what commits stays what the ghost shows.
+		const move = session.setEntry('x', '4');
+		expect(move.kind).toBe('candidate');
+		const candidate = session.candidate()!;
+		expect(candidate.worldXZ[0]).toBeCloseTo(4, 9);
+		expect(candidate.worldXZ[1]).toBeCloseTo(2, 9);
 	});
 
 	it('withdraws a candidate when the pointer moves to occluded support, so release installs nothing', async () => {
@@ -760,7 +825,7 @@ describe('Scene adapter registration', () => {
 		const { facade } = await acceptedPlaceSurface();
 		const first = cssOf(facade, [3, 0, 3]);
 		const evaluationId = facade.evaluationId()!;
-		const firstSurface = sceneSurfaceFor(facade.snapshot(), evaluationId);
+		const firstSurface = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
 		expect(firstSurface?.session.armed()).toBe('place');
 
 		expect(facade.pointerIntent({ phase: 'down', css: first, evaluationId }).claimed).toBe(true);
@@ -784,7 +849,7 @@ describe('Scene adapter registration', () => {
 		facade.overlays();
 		await eventually(() => facade.session.task() !== null);
 		expect(facade.session.task()?.kind).toBe('place-object');
-		const reopened = sceneSurfaceFor(facade.snapshot(), facade.evaluationId()!);
+		const reopened = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
 		expect(reopened?.session.armed()).toBe('place');
 
 		// A second placement needs no re-invocation of the tool.
@@ -812,7 +877,7 @@ describe('Scene adapter registration', () => {
 	it('keeps typed Place armed across its own accepted install, then disarms on Esc', async () => {
 		const { facade } = await acceptedPlaceSurface();
 		const evaluationId = facade.evaluationId()!;
-		const surface = sceneSurfaceFor(facade.snapshot(), evaluationId);
+		const surface = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
 		expect(surface?.session.armed()).toBe('place');
 
 		// The instrument's pointer-free Place commits through this same session; it
@@ -824,7 +889,7 @@ describe('Scene adapter registration', () => {
 		if (nextEvaluation.kind === 'evaluated') facade.overlays();
 		await eventually(() => facade.session.task() !== null);
 		expect(facade.session.task()?.kind).toBe('place-object');
-		const reopened = sceneSurfaceFor(facade.snapshot(), facade.evaluationId()!);
+		const reopened = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
 		expect(reopened?.session.armed()).toBe('place');
 
 		// Esc still ends the armed tool, and no deferred reopen resurrects it.
@@ -839,7 +904,7 @@ describe('Scene adapter registration', () => {
 	it('selects the entity a typed Place installed, canonically at the post-accept revision', async () => {
 		const { facade } = await acceptedPlaceSurface();
 		const evaluationId = facade.evaluationId()!;
-		const surface = sceneSurfaceFor(facade.snapshot(), evaluationId);
+		const surface = sceneSurfaceFor(facade.snapshot(), facade.evaluation()!);
 		expect(surface?.session.armed()).toBe('place');
 		// Nothing is selected before the typed commit.
 		expect(facade.selectionState().primary).toBeNull();
@@ -962,7 +1027,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('reads only the surface published for its own accepted snapshot', async () => {
-		const { facade, session, evaluationId, snapshot } = await withSceneSurface();
+		const { facade, session, evaluationId, evaluation, snapshot } = await withSceneSurface();
 		// A second Stage session (another accepted snapshot) publishes its own
 		// surface. The two surfaces are scoped by snapshot and cannot collide.
 		const otherProject = { ...currentStageSource(snapshot).source, id: 'project-other-stage' };
@@ -985,8 +1050,17 @@ describe('Scene adapter registration', () => {
 				acquireGesture: (request) => facade.acquireGesture(request)
 			}
 		});
+		const otherEvaluation = {
+			token: {
+				outputId: 'output-other-stage',
+				sessionEpoch: otherAdmitted.snapshot.sessionEpoch,
+				sourceRevision: otherAdmitted.snapshot.sourceContentId,
+				evaluationGeneration: 1
+			},
+			settledReading: '3d'
+		} as unknown as ViewportEvaluation;
 		publishSceneSurface(otherAdmitted.snapshot, {
-			evaluationId: 'evaluation-other-stage',
+			reading: sceneReadingKey(otherEvaluation),
 			session: otherSession
 		});
 
@@ -998,19 +1072,17 @@ describe('Scene adapter registration', () => {
 		expect(session.baseline()).not.toBeNull();
 		expect(otherSession.baseline()).toBeNull();
 		expect(otherSession.candidate()).toBeNull();
-		expect(sceneSurfaceFor(snapshot, evaluationId)?.session).toBe(session);
-		expect(
-			sceneSurfaceFor(otherAdmitted.snapshot, 'evaluation-other-stage')?.session
-		).toBe(otherSession);
+		expect(sceneSurfaceFor(snapshot, evaluation)?.session).toBe(session);
+		expect(sceneSurfaceFor(otherAdmitted.snapshot, otherEvaluation)?.session).toBe(otherSession);
 	});
 
 	it('does not retire another publisher\'s surface on unmount and no late phase can act', async () => {
-		const { facade, snapshot, evaluationId } = await withSceneSurface();
+		const { facade, snapshot, evaluationId, evaluation } = await withSceneSurface();
 		// The fixture's instrument published this surface; the binding found it and
 		// does not own it, so teardown must neither cancel nor remove it.
-		expect(sceneSurfaceFor(snapshot, evaluationId)).not.toBeNull();
+		expect(sceneSurfaceFor(snapshot, evaluation)).not.toBeNull();
 		facade.dispose();
-		expect(sceneSurfaceFor(snapshot, evaluationId)).not.toBeNull();
+		expect(sceneSurfaceFor(snapshot, evaluation)).not.toBeNull();
 		expect(facade.pointerIntent({ phase: 'up', css: [100, 100], evaluationId })).toEqual({
 			claimed: false,
 			adapterId: null
@@ -1018,7 +1090,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('aborts the replaced session when a second publisher claims the same evaluation', async () => {
-		const { facade, session, snapshot, evaluationId } = await withSceneSurface();
+		const { facade, session, snapshot, evaluationId, evaluation } = await withSceneSurface();
 		expect(facade.pointerIntent({ phase: 'down', css: [100, 100], evaluationId }).claimed).toBe(true);
 		facade.pointerIntent({ phase: 'move', css: [140, 100], evaluationId, shift: true });
 		expect(session.candidate()).not.toBeNull();
@@ -1036,7 +1108,7 @@ describe('Scene adapter registration', () => {
 				acquireGesture: (request) => facade.acquireGesture(request)
 			}
 		});
-		publishSceneSurface(snapshot, { evaluationId, session: second });
+		publishSceneSurface(snapshot, { reading: sceneReadingKey(evaluation), session: second });
 		// The replaced session may not keep the candidate or its lease; the new one
 		// must be able to claim the same press.
 		expect(session.candidate()).toBeNull();
@@ -1055,11 +1127,11 @@ describe('Scene adapter registration', () => {
 		expect(current).not.toBe(evaluationId);
 		if (current === null) return;
 		expect(facade.openContributedTask('scene-place', 'scene').kind).toBe('opened');
-		expect(sceneSurfaceFor(facade.snapshot(), current)?.session.armed()).toBe('place');
+		expect(sceneSurfaceFor(facade.snapshot(), facade.evaluation()!)?.session.armed()).toBe('place');
 	});
 
 	it('keeps a replacement surface when the previous publisher retires', async () => {
-		const { facade, session, evaluationId, snapshot } = await withSceneSurface();
+		const { facade, session, snapshot, evaluation } = await withSceneSurface();
 		const replacement = createSceneSession({
 			snapshot: {
 				projectId: snapshot.acceptedRevision.projectId,
@@ -1075,14 +1147,14 @@ describe('Scene adapter registration', () => {
 			}
 		});
 		const release = publishSceneSurface(snapshot, {
-			evaluationId: 'evaluation-replacement',
+			reading: sceneReadingKey(evaluation),
 			session: replacement
 		});
-		// Retiring the *previous* evaluation's surface must not remove this one.
-		retireSceneSurface(snapshot, { evaluationId, session });
-		expect(sceneSurfaceFor(snapshot, 'evaluation-replacement')?.session).toBe(replacement);
+		// Retiring the *previous* publisher's surface must not remove this one.
+		retireSceneSurface(snapshot, { reading: sceneReadingKey(evaluation), session });
+		expect(sceneSurfaceFor(snapshot, evaluation)?.session).toBe(replacement);
 		release();
-		expect(sceneSurfaceFor(snapshot, 'evaluation-replacement')).toBeNull();
+		expect(sceneSurfaceFor(snapshot, evaluation)).toBeNull();
 	});
 
 	it('releases the lease when the pointer commit is refused', async () => {
