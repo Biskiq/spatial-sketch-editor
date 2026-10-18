@@ -203,7 +203,15 @@
 		}
 	}
 
-	/** Blur out of the instrument is the same cancel path; focus inside it is not. */
+	/**
+	 * Blur out of the active editing subtree is the same cancel path; focus inside
+	 * it is not.
+	 *
+	 * The handler is bound to the editing subtree, not the instrument root. Opening
+	 * a proposal removes the focused Begin control through the Svelte branch
+	 * transition, and the browser delivers that removal's `focusout` at the root;
+	 * binding here keeps it from cancelling the proposal it just opened.
+	 */
 	function onFocusOut(event: FocusEvent): void {
 		if (!editing) return;
 		const next = event.relatedTarget;
@@ -250,47 +258,68 @@
 	});
 </script>
 
-<section class="scene-instrument" aria-label="Scene transform" onfocusout={onFocusOut}>
+{#snippet snapRow()}
+	<div class="row">
+		<label>
+			<span>Snap (m, optional)</span>
+			<input
+				type="text"
+				inputmode="decimal"
+				value={snapText}
+				oninput={(event) => {
+					snapText = event.currentTarget.value;
+					applySnap();
+				}}
+			/>
+		</label>
+		<span class="hint">Snap is explicit and off by default.</span>
+	</div>
+{/snippet}
+
+<section class="scene-instrument" aria-label="Scene transform">
 	{#if editing}
-		<div class="row">
-			<span class="subject">Editing <code>{entityId}</code></span>
-			<button type="button" class="quiet" onclick={cancel}>Cancel</button>
-		</div>
-		<div class="fields">
-			<label>
-				<span>X (m)</span>
-				<input
-					type="text"
-					inputmode="decimal"
-					value={x}
-					onkeydown={onKeydown}
-					oninput={(event) => updateEntry('x', event.currentTarget.value)}
-				/>
-			</label>
-			<label>
-				<span>Z (m)</span>
-				<input
-					type="text"
-					inputmode="decimal"
-					value={z}
-					onkeydown={onKeydown}
-					oninput={(event) => updateEntry('z', event.currentTarget.value)}
-				/>
-			</label>
-			<label>
-				<span>Yaw (rad)</span>
-				<input
-					type="text"
-					inputmode="decimal"
-					value={yaw}
-					onkeydown={onKeydown}
-					oninput={(event) => updateEntry('yaw', event.currentTarget.value)}
-				/>
-			</label>
-		</div>
-		<div class="row">
-			<button type="button" onclick={commit} disabled={candidate === null}>Commit</button>
-			<span class="hint">Enter commits exact values; Esc or leaving the instrument cancels.</span>
+		<div class="editing" onfocusout={onFocusOut}>
+			<div class="row">
+				<span class="subject">Editing <code>{entityId}</code></span>
+				<button type="button" class="quiet" onclick={cancel}>Cancel</button>
+			</div>
+			<div class="fields">
+				<label>
+					<span>X (m)</span>
+					<input
+						type="text"
+						inputmode="decimal"
+						value={x}
+						onkeydown={onKeydown}
+						oninput={(event) => updateEntry('x', event.currentTarget.value)}
+					/>
+				</label>
+				<label>
+					<span>Z (m)</span>
+					<input
+						type="text"
+						inputmode="decimal"
+						value={z}
+						onkeydown={onKeydown}
+						oninput={(event) => updateEntry('z', event.currentTarget.value)}
+					/>
+				</label>
+				<label>
+					<span>Yaw (rad)</span>
+					<input
+						type="text"
+						inputmode="decimal"
+						value={yaw}
+						onkeydown={onKeydown}
+						oninput={(event) => updateEntry('yaw', event.currentTarget.value)}
+					/>
+				</label>
+			</div>
+			<div class="row">
+				<button type="button" onclick={commit} disabled={candidate === null}>Commit</button>
+				<span class="hint">Enter commits exact values; Esc or leaving the instrument cancels.</span>
+			</div>
+			{@render snapRow()}
 		</div>
 	{:else}
 		<div class="row">
@@ -331,23 +360,8 @@
 			</label>
 			<button type="button" onclick={place}>Place</button>
 		</div>
+		{@render snapRow()}
 	{/if}
-
-	<div class="row">
-		<label>
-			<span>Snap (m, optional)</span>
-			<input
-				type="text"
-				inputmode="decimal"
-				value={snapText}
-				oninput={(event) => {
-					snapText = event.currentTarget.value;
-					applySnap();
-				}}
-			/>
-		</label>
-		<span class="hint">Snap is explicit and off by default.</span>
-	</div>
 
 	<p class="feedback" aria-live="polite">{message}</p>
 </section>
@@ -371,6 +385,12 @@
 		display: flex;
 		gap: 0.5rem;
 		flex-wrap: wrap;
+	}
+
+	.editing {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
 	}
 
 	label {
