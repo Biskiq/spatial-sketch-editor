@@ -18,24 +18,24 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: T1.P01.S04 in progress on its own branch after PR #145 merged. S05–S06 remain proposed and
-        unauthorized.
-BATON: S07 shipped in PR #137 (merge `a0026cf4`, a merge commit as P1 required). Its recorded anchors,
-       including `ab8504aa` (`viewport-projection-v1` accepted) and the closeout anchor `d1c93d47`, are
-       ancestors of `main`. The owner authorized batch B (`T1.P01.S04` ∥ `T2.P01.S03`) on 2026-10-17
-       ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04's scope includes
-       the Head Save integration, so `conditional-save-current-v1` joined its `Requires` (ruling D3).
-       Housekeeping: the `closed/T1.P01.S07` tag points at `d1c93d47` locally and is not yet on the
-       remote; the owner pushes it.
-NEXT: Finish S04's implementation review: the Layout adapter, the Card's delegated name writer,
-      the host proposal lease and the Head Save mount now exist under the owner's [narrow
-      host-integration exception](../../reference/decisions/t1-s04-host-integration-2026-10-17.md).
-      The window has been open since S02, so no new opening is recorded. S04 still runs alongside
-      T2.P01.S03 under the batch B protocol, and it must be accepted before T2.P01.S04 starts.
-      Nothing here is accepted, and no capability is recorded.
+ACTIVE: none in progress. T1.P01.S04 is accepted and shipped (2026-10-18, PR #148); S05–S06 remain
+        proposed and unauthorized.
+BATON: S04 (existing Layout precision with the Head Save mount) shipped in the batch B pairing with
+       `T2.P01.S03`; its accepted head is `2d37adef` and its closeout anchor `closed/T1.P01.S04`
+       points there (local only — the owner pushes). S07's anchors, including `ab8504aa`
+       (`viewport-projection-v1` accepted) and `d1c93d47`, are ancestors of `main`; the
+       `closed/T1.P01.S07` tag is likewise local only. The architecture-cycle exposure window stays
+       **open**: S02 and S04 exposure rows are recorded (M1/M2 re-armed), the terminal S05 is pending.
+NEXT: The owner merges PR #148 as a merge commit (P1 — no squash, no rebase). Post-merge, verify
+      `2d37adef` is an ancestor of `main` and push the `closed/T1.P01.S04` tag. One residual is owed
+      before/with the merge: the accepted revision carries leftover `[s04-diag]` debug instrumentation
+      in the spatial route (see the S04 acceptance record). After S04 merges, T1.P01.S05 (which waits
+      for S04) becomes eligible on owner authorization; S06 stays the phase's final gate and
+      T2.P01.S04 stays blocked on this slice's Head Save.
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/implementation-plan.md →
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-b-2026-10-17
-BLOCKER: none; S04 awaits independent review and owner acceptance. S05–S06 stay unauthorized.
+BLOCKER: the owner's merge decision on PR #148 and the residual debug instrumentation above; S05–S06
+         stay unauthorized.
 ```
