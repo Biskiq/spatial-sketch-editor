@@ -38,3 +38,4 @@ the source. Each page's Source notes say which is which.
 ## Cross-domain synthesis
 
 - **Research 6:** [`biskiq-integrated-product-synthesis.md`](./biskiq-integrated-product-synthesis.md) — integrated product direction, reviewed creator journeys, cross-domain revision principles, capability seams, and UX/architecture handoffs. This **Markdown-only editorially reconciled synthesis** is research input, not a ratified product contract. No interactive companion is added by this PR; the five domain-study HTML companions remain available above.
+- **Research 6 unified reconciliation:** [`research-6-unified-reconciliation.md`](./research-6-unified-reconciliation.md) — one reconciled judgment on Research 6 across three independent reviews (PRs #151, #152 and #153): verified implementation gaps, creator priorities, rejected mechanisms, experiments and owner decisions. Research input for owner review, not a contract, roadmap change or authorization.
