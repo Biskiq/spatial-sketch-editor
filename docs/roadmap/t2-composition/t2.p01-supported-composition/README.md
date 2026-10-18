@@ -158,8 +158,9 @@ lifecycle and prerequisites only.
 of post-PR #129 `main`, so S02 was eligible. S03 also needed `viewport-projection-v1` **and** the
 host↔F4 wiring. By owner rulings D1/D2 of 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), both come from `T1.P01.S07`:
 it owns the wiring, and its acceptance records the viewport capability, with `T1.P01.S02` as provider.
-S03's [exact launch conditions](./t2.p01.s03-first-editing-surface/implementation-plan.md#prerequisite)
-are in its plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
+S03's exact launch conditions were verified at authorization
+([batch B record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and are kept in
+its now-closed plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
 owner authorized S03 as batch B on 2026-10-17 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04 additionally needs `T3.P01.S02`'s
 `conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
 is judged at the slice's own trusted base.
@@ -184,7 +185,7 @@ repair. See the [acceptance record](./t2.p01.s02-scene-operations-and-history/ac
 distinct owner-acceptance and reviewer-authored evidence. S03's owner acceptance was recorded
 2026-10-18 from the same deliberate invocation, on an independent-review verdict that covers its
 implementation revision; its [record](./t2.p01.s03-first-editing-surface/acceptance.md) names the
-tier, the declared integration route and the journeys still owed there. The final gate
+tier, the declared integration route, the four recorded journeys and the remaining residuals. The final gate
 (`T2.P01.S04`) is declared, not closeable; acceptance would make the phase closable, and phase/track
 closure remains a separate owner event.
 

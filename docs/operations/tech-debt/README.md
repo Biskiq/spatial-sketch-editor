@@ -43,6 +43,11 @@ Symptom       After a typed commit, Undo and Redo, the Scene instrument's `Use s
               reopening the task recovered it, and the same sequence then worked.
 Reproduce     Observed once: commit a typed yaw, Undo, Redo, reopen `Arrange`, `Use selection`,
               `Begin`. It did not reproduce on demand afterwards, so the recipe is not yet reliable.
+Recheck       S03's completed acceptance journeys (2026-10-18) ran `Use selection` + `Begin` after
+              three accepted installs — two typed `Place`s and one typed `Commit` — at 1280×900 with
+              reduced motion on and off. Every `Begin` was accepted; the refusal did not recur. The
+              entry stays open: one clean session is not a reproduction, and the generation capture
+              it describes is still in the code.
 Root cause    The task-scoped services capture `generation = session.writerGeneration()` and gate
               every call on `generation === session.writerGeneration()`. An accepted install or a
               history command bumps the writer generation; if the panel that holds the instrument is

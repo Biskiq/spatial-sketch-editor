@@ -21,15 +21,15 @@ PHASE: T2.P01 Supported object composition (in-progress) →
 SLICES: T2.P01's slice register is authoritative — S01, S02 and S03 shipped; S04 proposed and
         unauthorized.
 BATON: S03 (first coherent editing surface) was accepted 2026-10-18 from the owner's deliberate
-       closeout invocation; its record is
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md.
-       The implementation is on branch `T2-P01-S03` (PR #147); merging it is the owner's decision,
-       and closeout preservation (compaction, historical anchor, preservation report, link sweep)
-       runs after that merge commit. No T2 slice is in implementation.
-NEXT: Owner merge decision on PR #147 → post-merge preservation step. S04, the declared final phase
-      gate, stays unauthorized; it waits on `T3.P01.S02`'s `conditional-save-current-v1` and on
-      T1.P01.S04's accepted Head Save integration (ruling D3). Phase/track closure is not available
-      until S04 is accepted and shipped.
+       closeout invocation, and its closeout is COMPLETE and merge-ready on branch `T2-P01-S03`
+       (PR #147): acceptance record and preservation report at
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md,
+       full bodies recoverable from the anchor `8194b64e` / tag `closed/T2.P01.S03` (local only —
+       not pushed). No T2 slice is in implementation.
+NEXT: Owner merge decision on PR #147. Merge it as a **merge commit**, then verify the anchor is an
+      ancestor of `main` and push the tag. S04, the declared final phase gate, stays unauthorized; it
+      waits on `T3.P01.S02`'s `conditional-save-current-v1` and on T1.P01.S04's accepted Head Save
+      integration (ruling D3). Phase/track closure is not available until S04 is accepted and shipped.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
