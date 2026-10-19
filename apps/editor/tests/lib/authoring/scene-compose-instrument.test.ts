@@ -113,8 +113,14 @@ function composeSpies(): ComposeSpies {
 function servicesFor(
 	session: ScenePlacementSession,
 	selectedId: string
-): { readonly services: StageAdapterServices; select(id: string): void } {
+): {
+	readonly services: StageAdapterServices;
+	select(id: string): void;
+	/** Simulate the host retiring this panel when an accepted install closes its task. */
+	readonly notify: ReturnType<typeof vi.fn>;
+} {
 	let selected = selectedId;
+	const notify = vi.fn();
 	const services = {
 		stage: {
 			snapshot: () => SNAPSHOT,
@@ -122,11 +128,11 @@ function servicesFor(
 			evaluation: () => EVALUATION,
 			evaluationId: () => EVALUATION_ID,
 			session: { task: () => ({ kind: 'scene-compose' }) },
-			notifySurfaceChange: vi.fn(),
+			notifySurfaceChange: notify,
 			setSelection: vi.fn()
 		}
 	} as unknown as StageAdapterServices;
-	return { services, select: (id) => { selected = id; } };
+	return { services, select: (id) => { selected = id; }, notify };
 }
 
 function buttonNamed(target: HTMLElement, name: string): HTMLButtonElement {
@@ -149,16 +155,17 @@ async function mountCompose(selectedId: string): Promise<{
 	readonly spies: ComposeSpies;
 	readonly services: StageAdapterServices;
 	select(id: string): void;
+	readonly notify: ReturnType<typeof vi.fn>;
 }> {
 	const spies = composeSpies();
 	publishSceneSurface(SNAPSHOT, { reading: sceneReadingKey(EVALUATION), session: spies.session });
-	const { services, select } = servicesFor(spies.session, selectedId);
+	const { services, select, notify } = servicesFor(spies.session, selectedId);
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const component = mount(SceneTransformInstrument, { target, props: { services } });
 	cleanup = () => unmount(component);
 	await tick();
-	return { target, spies, services, select };
+	return { target, spies, services, select, notify };
 }
 
 describe('Scene Compose — truthful capability and captured subject', () => {
@@ -193,5 +200,39 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		expect(spies.cancel).toHaveBeenCalledTimes(1);
 		await tick();
 		expect(target.textContent).toContain('Resize cancelled; the selection changed.');
+	});
+
+	it('does not report through task services after an accepted Resize retires them', async () => {
+		const { target, spies, notify } = await mountCompose(BOX_ID);
+		buttonNamed(target, 'Resize…').click();
+		await tick();
+		const input = target.querySelector<HTMLInputElement>('input[inputmode="decimal"]');
+		if (input === null) throw new Error('the Resize entry did not open');
+		input.value = '2';
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		await tick();
+		notify.mockClear();
+
+		// The accepted install closes the open task before the commit continuation
+		// runs, so the host has retired this panel's services. It must not be asked
+		// to notify a surface that no longer has this instrument.
+		spies.session.commitResize = vi.fn(async () => ({ kind: 'committed' as const }));
+		buttonNamed(target, 'Resize').click();
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(notify).not.toHaveBeenCalled();
+		// The accepted install owns the post-commit state; the retired panel does
+		// not get to report a "Committed." result of its own.
+		expect(target.textContent).not.toContain('Committed.');
+	});
+
+	it('does not report through task services after an accepted Duplicate retires them', async () => {
+		const { target, spies, notify } = await mountCompose(BOX_ID);
+		notify.mockClear();
+		spies.session.duplicate = vi.fn(async () => ({ kind: 'committed' as const }));
+		buttonNamed(target, 'Duplicate').click();
+		await tick();
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(notify).not.toHaveBeenCalled();
 	});
 });

@@ -278,7 +278,17 @@
 
 	async function commit(): Promise<void> {
 		if (session === null) return;
-		applyOutcome(await session.commit());
+		const outcome = await session.commit();
+		// An accepted install closes the open task synchronously (the host retires
+		// this panel's task-scoped services before this continuation runs).
+		// Reporting the result through those services would read a retired
+		// instrument, so the accepted branch only clears local form state.
+		if (outcome.kind === 'committed') {
+			editing = false;
+			candidate = null;
+			return;
+		}
+		applyOutcome(outcome);
 	}
 
 	function cancel(): void {
@@ -322,11 +332,15 @@
 	async function commitResize(): Promise<void> {
 		if (session === null || !composeActive) return;
 		const outcome = await session.commitResize();
-		applyOutcome(outcome);
 		if (outcome.kind === 'committed') {
+			// The accepted install retired this panel's task services; there is no
+			// surface left to notify from here.
 			composeActive = false;
 			composeSubjectId = null;
+			candidate = null;
+			return;
 		}
+		applyOutcome(outcome);
 	}
 
 	/**
@@ -342,7 +356,10 @@
 			message = 'Select one Scene entity first.';
 			return;
 		}
-		applyOutcome(await current.duplicate(entity.id));
+		const outcome = await current.duplicate(entity.id);
+		// The accepted install closes this task; the host's adapter completion owns
+		// the post-accept notification and selection, not this retired panel.
+		if (outcome.kind !== 'committed') applyOutcome(outcome);
 	}
 	/** Delete removes exactly the selected entity; membership cleanup is atomic. */
 	async function deleteSelected(): Promise<void> {
@@ -353,7 +370,8 @@
 			message = 'Select one Scene entity first.';
 			return;
 		}
-		applyOutcome(await current.remove(entity.id));
+		const outcome = await current.remove(entity.id);
+		if (outcome.kind !== 'committed') applyOutcome(outcome);
 	}
 
 	/**
