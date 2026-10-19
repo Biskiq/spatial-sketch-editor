@@ -194,6 +194,26 @@ describe('spatial route source replacement', () => {
 		expect(head().dataset.saveStatus).toBe('saved');
 	});
 
+	it('reports the typed project-mismatch refusal without replacing the mounted project', async () => {
+		await mountReady();
+		const originalCanvas = stageCanvas();
+
+		nextFile = new File(
+			[serializeProject(createEmptyWallFirstProject({ id: 'project-2', name: 'Another project' }))],
+			'other.json',
+			{ type: 'application/json' }
+		);
+		await requestOpen();
+		await vi.waitFor(() => {
+			expect(target.textContent).toContain('The source was not opened: it belongs to another project.');
+		});
+
+		expect(stageCanvas()).toBe(originalCanvas);
+		expect(head().dataset.project).toBe('Mounted project');
+		expect(head().dataset.saveBase).toBe('token-1');
+		expect(head().dataset.saveStatus).toBe('saved');
+	});
+
 	it('keeps the mounted project when a conflict Reload cannot admit the remote copy', async () => {
 		await mountReady();
 		const originalCanvas = stageCanvas();

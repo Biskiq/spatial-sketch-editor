@@ -25,7 +25,7 @@ ACTIVE: none in implementation. S01–S05 and S07 are shipped. S05 was accepted 
         `Closed by` is S05, and the cycle is `PHASE_3_EVALUATE` with readiness
         `owner-verdict-owed`. The per-mechanism verdicts are the owner's event. The separate host
         follow-up below is not a slice and does not reopen S05.
-BATON: **PR #159** (`T1-host-refused-open`, head `1953f275`, base `06a27854`) implements the owed
+BATON: **PR #159** (`T1-host-refused-open`, implementation `1953f275`, base `06a27854`) implements the owed
        refused-Open follow-up and awaits independent review. A refused Source JSON Open or failed
        conflict Reload remote now reports a typed notice and keeps the mounted source, selection,
        history and saved-base metadata; a cancelled dialog is a no-op; an admitted Open still
