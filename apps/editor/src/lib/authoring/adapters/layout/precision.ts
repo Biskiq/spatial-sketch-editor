@@ -574,11 +574,15 @@ export function wallLengthFromPointer(
 	point: readonly [number, number]
 ): number {
 	const fixedPoint = fixed === 'start' ? frame.start : frame.end;
-	// Distance along the authored direction is the parameter the planner solves
-	// for; both endpoints reverse their sign convention, so take the magnitude.
+	// Signed distance **from the fixed endpoint toward the moving one**. The
+	// planner always places the moved endpoint on the side of the fixed point the
+	// Wall already extends to, so a pointer on the other side is not a length: a
+	// magnitude here would mirror the preview across the fixed endpoint (and
+	// install a Wall the pointer never named). Negative means the pointer crossed
+	// the fixed endpoint; the adapter refuses it instead of clamping.
 	const along =
 		(point[0] - fixedPoint[0]) * frame.direction[0] + (point[1] - fixedPoint[1]) * frame.direction[1];
-	return Math.abs(along);
+	return fixed === 'start' ? along : -along;
 }
 
 export function wallAngleFromPointer(
@@ -600,9 +604,58 @@ export type WallManipulationRequest =
 	| { readonly kind: 'angle'; readonly angleRadians: number }
 	| { readonly kind: 'move'; readonly delta: LayoutVec2 };
 
+/** One Wall reshaped by a shared-Junction edit, at its candidate endpoint. */
+export type WallNeighbourPreview = {
+	readonly wallId: string;
+	/** The point the edited junction moved this neighbour to. */
+	readonly point: LayoutVec2;
+};
+
 export type WallManipulationPlan =
-	| { readonly kind: 'planned'; readonly wall: WallFrame }
+	| {
+			readonly kind: 'planned';
+			readonly wall: WallFrame;
+			/** Neighbours the canonical candidate reshaped, never a second solve. */
+			readonly neighbours: readonly WallNeighbourPreview[];
+	  }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
+
+/**
+ * The neighbours a canonical candidate actually reshaped.
+ *
+ * A length/angle edit moves one junction; every other Wall incident to it is
+ * re-derived by the retained planner. This read reports those Walls and the
+ * candidate point the junction moved them to, so the overlay can show the
+ * reach instead of claiming the planner's validation is a preview.
+ */
+function wallNeighbourPreviews(
+	baseline: LayoutDocumentWallFirst,
+	candidate: LayoutDocumentWallFirst,
+	wallId: string,
+	fixed: FixedWallEndpoint
+): readonly WallNeighbourPreview[] {
+	const wall = baseline.walls.find((entry) => entry.id === wallId);
+	if (wall === undefined) return [];
+	const movedJunctionId = fixed === 'start' ? wall.endJunctionId : wall.startJunctionId;
+	const previews: WallNeighbourPreview[] = [];
+	for (const neighbour of candidate.walls) {
+		if (neighbour.id === wallId) continue;
+		if (neighbour.startJunctionId !== movedJunctionId && neighbour.endJunctionId !== movedJunctionId) continue;
+		const after = wallFrame(candidate, neighbour.id);
+		const before = wallFrame(baseline, neighbour.id);
+		if (after === null) continue;
+		const changed =
+			before === null ||
+			Math.hypot(before.start[0] - after.start[0], before.start[1] - after.start[1]) > 1e-12 ||
+			Math.hypot(before.end[0] - after.end[0], before.end[1] - after.end[1]) > 1e-12;
+		if (!changed) continue;
+		previews.push({
+			wallId: neighbour.id,
+			point: neighbour.startJunctionId === movedJunctionId ? after.start : after.end
+		});
+	}
+	return previews;
+}
 
 /**
  * The one preview/commit solve for a Wall gesture or typed value.
@@ -636,7 +689,7 @@ export function planWallManipulation(
 			message: 'The candidate Wall has no straight frame to preview.'
 		};
 	}
-	return { kind: 'planned', wall };
+	return { kind: 'planned', wall, neighbours: wallNeighbourPreviews(baseline, plan.document, wallId, fixed) };
 }
 
 /**

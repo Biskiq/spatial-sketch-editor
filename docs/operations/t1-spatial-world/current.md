@@ -24,12 +24,17 @@ ACTIVE: none in progress. S01–S04 and S07 are shipped (PR #148 anchors verifie
 BATON: Batch C: S05 ∥ T2.P01.S04 under the batch C protocol; S05 owns the host core, and TD-8 is its
        first increment (it may land standalone first if T2 S04 needs it). S05's implementation is on
        branch `T1-P01-S05` (base `919c2904`), with TD-8 fixed host-side and Wall length/angle/rigid
-       handles landed; it is **not merged, not accepted**, and its record claims no acceptance. After
-       both batch C slices merge, the current-source freeze holds until T3.P01.S04 merges. The cycle
-       window stays open; S05 is the terminal, and its closeout records the exposure row. TD-9 is
-       owned by the Head integration and verified at S06.
-NEXT: S05 is implemented on its branch and awaits the coordinator's full gate, independent review
-      and the batch C merge protocol. Owner follow-up: push the local `closed/T1.P01.S07` tag.
+       handles landed. Review follow-ups are in: a length dragged across the fixed endpoint is
+       refused (no mirrored preview), a paused reading-flip proposal has an exact Resume/Discard in
+       Dimensions, and a shared-Junction edit marks the neighbours the candidate reshaped. It is
+       **not merged, not accepted**, and its record claims no acceptance. After both batch C slices
+       merge, the current-source freeze holds until T3.P01.S04 merges. The cycle window stays open;
+       S05 is the terminal, and its closeout records the exposure row. TD-9 is owned by the Head
+       integration and verified at S06.
+NEXT: S05 is implemented on its branch and awaits the batch C merge protocol. T2's final gate still
+      needs T1-owned route/Head proofs (preview cancel on replace, invalid-open preservation, Save
+      creator journey); that is a host follow-up, not a Scene change. Owner follow-up: push the
+      local `closed/T1.P01.S07` tag.
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md →

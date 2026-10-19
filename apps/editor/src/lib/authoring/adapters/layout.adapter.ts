@@ -57,18 +57,26 @@ import {
 	wallManipulationIntent,
 	type LayoutSubject,
 	type WallFrame,
-	type WallManipulationRequest
+	type WallManipulationRequest,
+	type WallNeighbourPreview
 } from './layout/precision';
 import { layoutNameTarget } from './layout/adapter-support';
 import {
 	pickWallHandle,
 	pointerWallRequest,
 	wallHandleFixedEndpoint,
+	wallRequestExactLabel,
 	wallRequestLabel,
 	type WallHandle,
 	type WallHandlePoints,
 	type WallPointerMode
 } from './layout/wall-gesture';
+import {
+	clearPausedProposal,
+	clearPausedProposalsForSource,
+	publishPausedProposal,
+	type PausedWallProposal
+} from './layout/paused-proposal';
 
 const LAYOUT_DIMENSIONS_TASK = 'layout-dimensions';
 
@@ -147,13 +155,8 @@ type WallGesture = {
 	request: WallManipulationRequest | null;
 	/** The planner's candidate frame for the overlay, or `null`. */
 	preview: WallFrame | null;
-};
-
-/** A preserved proposal whose reading changed under it: never committed by a stale up. */
-type PausedWallProposal = {
-	readonly request: WallManipulationRequest;
-	readonly fixed: FixedWallEndpoint;
-	readonly label: string;
+	/** Neighbours the candidate reshaped at the edited junction. */
+	neighbours: readonly WallNeighbourPreview[];
 };
 
 export const createAdapter: StageAdapterFactory = (services) => {
@@ -192,17 +195,23 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			 * committed by the pointer-up that follows, which is what "no silent commit"
 			 * means mechanically.
 			 */
-			function preservePausedProposal(): void {
+			function preservePausedProposal(sourceContentId: string): void {
 				const current = gesture;
 				if (current === null || current.request === null) {
 					pausedProposal = null;
 					return;
 				}
-				pausedProposal = {
+				const proposal = {
+					sourceContentId,
+					wallId: current.frame.wallId,
 					request: current.request,
 					fixed: current.fixed,
-					label: wallRequestLabel(current.request, current.fixed)
+					label: wallRequestExactLabel(current.request, current.fixed)
 				};
+				pausedProposal = proposal;
+				// The instrument offers an explicit Resume from this store; it is not a
+				// document and the retained planner revalidates the request on apply.
+				publishPausedProposal(proposal);
 			}
 
 			/** The straight Wall the canonical selection names, or `null`. */
@@ -308,6 +317,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					if (intent.phase === 'down') {
 						if (gesture !== null) endGesture();
 						pausedProposal = null;
+						// A new gesture supersedes the previous paused value for this source.
+						clearPausedProposalsForSource(adapterContext.snapshot.sourceContentId);
 						refusal = null;
 						const selected = selectedWall(adapterContext);
 						if (selected === null) return false;
@@ -335,7 +346,8 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							startPoint: point,
 							lease: acquisition,
 							request: null,
-							preview: null
+							preview: null,
+							neighbours: []
 						};
 						services.stage.notifySurfaceChange();
 						return true;
@@ -354,7 +366,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// Preserve the last explicit parameter, end the writer and let the
 					// creator apply it deliberately from Dimensions or cancel it.
 					if (intent.evaluationId !== gesture.evaluationId) {
-						preservePausedProposal();
+						preservePausedProposal(adapterContext.snapshot.sourceContentId);
 						endGesture();
 						services.stage.notifySurfaceChange();
 						return true;
@@ -378,6 +390,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							startPoint: gesture.startPoint,
 							point
 						});
+						// A pointer dragged across the fixed endpoint names no length on this
+						// Wall: the planner would place the moved endpoint on the existing side,
+						// mirroring the preview away from the hand. Withdraw the candidate and
+						// name the refusal instead of committing a mirrored Wall.
+						if (request.kind === 'length' && request.length <= 0) {
+							gesture.request = null;
+							gesture.preview = null;
+							gesture.neighbours = [];
+							refusal = 'Drag the endpoint back across the fixed endpoint to name a length.';
+							services.stage.notifySurfaceChange();
+							return true;
+						}
 						const planned = planWallManipulation(
 							gesture.baseline,
 							gesture.frame.wallId,
@@ -389,10 +413,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							// later release cannot install the last valid pose on its behalf.
 							gesture.request = null;
 							gesture.preview = null;
+							gesture.neighbours = [];
 							refusal = planned.message;
 						} else {
 							gesture.request = request;
 							gesture.preview = planned.wall;
+							gesture.neighbours = planned.neighbours;
 							refusal = null;
 						}
 						services.stage.notifySurfaceChange();
@@ -434,7 +460,25 @@ export const createAdapter: StageAdapterFactory = (services) => {
 											css,
 											label: wallRequestLabel(activeGesture.request, activeGesture.fixed)
 										}
-									])
+									]),
+							// Neighbours the canonical candidate reshaped: the junction this edit
+							// moved is shown at each affected Wall's candidate endpoint.
+							...activeGesture.neighbours.flatMap((neighbour) => {
+								const marker = adapterContext.project([
+									neighbour.point[0],
+									adapterContext.snapshot.domain.datumMeters,
+									neighbour.point[1]
+								]);
+								return marker === null
+									? []
+									: [
+											{
+												id: `layout-wall-neighbour-${neighbour.wallId}`,
+												css: marker,
+												label: `Neighbour ${neighbour.wallId} reshaped by this edit`
+											}
+										]
+							})
 						];
 					}
 					const paused = pausedProposal;
@@ -482,12 +526,18 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				/** Esc, task replacement and install all end the gesture with no commit. */
 				taskClosed() {
 					openTaskKind = null;
+					if (pausedProposal !== null) {
+						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
+					}
 					pausedProposal = null;
 					refusal = null;
 					endGesture();
 				},
 				dispose() {
 					openTaskKind = null;
+					if (pausedProposal !== null) {
+						clearPausedProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
+					}
 					pausedProposal = null;
 					refusal = null;
 					endGesture();

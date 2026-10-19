@@ -29,6 +29,11 @@ import {
 import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
 
 import {
+	clearPausedProposal,
+	pausedWallProposal,
+	type PausedWallProposal
+} from './paused-proposal';
+import {
 	LAYOUT_ENTITY_NAME_KIND,
 	LAYOUT_OPENING_MEASURE_KIND,
 	LAYOUT_PLINTH_PLACE_KIND,
@@ -121,6 +126,17 @@ export type LayoutInstrument = {
 	cancelPlacement(): void;
 	/** True while this instrument holds the host's gesture lease for a proposal. */
 	proposalLive(): boolean;
+	/**
+	 * The exact Wall parameter preserved by a reading change, or `null`.
+	 *
+	 * The value lives in the adapter-owned store; the instrument only reads it,
+	 * so a paused proposal is never a second document.
+	 */
+	pausedProposal(): PausedWallProposal | null;
+	/** Apply the paused parameter exactly, revalidated against this accepted source. */
+	resumePaused(): Promise<LayoutInstrumentOutcome>;
+	/** Drop the paused parameter without applying it. */
+	discardPaused(): void;
 	/** Unmount: release the lease exactly once, without committing anything. */
 	dispose(): void;
 };
@@ -186,6 +202,12 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		if (!proposal) return;
 		options.gesture?.release();
 		proposal = false;
+	}
+
+	function pausedFor(): PausedWallProposal | null {
+		return options.subject.kind === 'wall'
+			? pausedWallProposal(options.contentRevision, options.subject.id)
+			: null;
 	}
 
 	function fieldState(id: string): LayoutFieldState | null {
@@ -488,6 +510,35 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		cancelPlacement() {
 			placement = { x: placement.x, z: placement.z, error: null };
 			releaseProposal();
+		},
+		pausedProposal: pausedFor,
+		async resumePaused() {
+			if (inFlight) return { kind: 'busy' };
+			const paused = pausedFor();
+			if (paused === null || options.subject.kind !== 'wall') {
+				return { kind: 'refused', code: 'no-paused-proposal', message: 'There is no paused Wall proposal to resume.' };
+			}
+			// The captured parameter is applied as-is: no display text is parsed and
+			// nothing is rounded. The F.4 planner revalidates it against the current
+			// accepted source, exactly as the typed path does.
+			const outcome = await submit(
+				wallManipulationIntent({
+					request: paused.request,
+					wallId: options.subject.id,
+					fixed: paused.fixed,
+					operationId: mint(),
+					projectId: options.projectId,
+					revisionId: options.port.acceptedRevision().revisionId,
+					contentRevision: options.contentRevision,
+					levelId
+				})
+			);
+			if (outcome.kind === 'accepted') clearPausedProposal(options.contentRevision, options.subject.id);
+			return outcome;
+		},
+		discardPaused() {
+			if (options.subject.kind !== 'wall') return;
+			clearPausedProposal(options.contentRevision, options.subject.id);
 		},
 		proposalLive: () => proposal,
 		dispose: () => releaseProposal()

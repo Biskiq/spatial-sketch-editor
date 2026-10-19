@@ -408,6 +408,12 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		mounted.facade.pointerIntent({ phase: 'move', css: lengthCss, evaluationId });
 		// The preview is the planner's candidate, not a second interpolation.
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.000 m'))).toBe(true);
+		// The edited junction also reshapes the neighbour that shares it; the overlay
+		// names that reach instead of leaving canonical validation as the only evidence.
+		const neighbour = mounted.document.walls.find((wall) => wall.id !== mounted.wallId)!;
+		expect(
+			mounted.facade.overlays().some((marker) => marker.label.includes(`Neighbour ${neighbour.id}`))
+		).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'up', css: lengthCss, evaluationId });
 		// Undo left the same depth at position 0; the pointer commit must move the
 		// position, not merely preserve a depth that was already there. The
@@ -476,6 +482,55 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		// One gesture, one history result.
 		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
 		expect(mounted.session.gesture()).toBeNull();
+	});
+
+	it('refuses a length dragged across the fixed start endpoint and commits nothing', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const endCss = stageCss(mounted.facade, [6, 0]);
+		// Beyond the fixed start: a magnitude would preview/commit a 1 m Wall on the
+		// opposite side of the hand, which the pointer never named.
+		const crossedCss = stageCss(mounted.facade, [-1, 0]);
+
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: crossedCss, evaluationId });
+		expect(
+			mounted.facade.overlays().some((marker) => marker.label.includes('Drag the endpoint back'))
+		).toBe(true);
+		expect(mounted.facade.overlays().some((marker) => marker.label.startsWith('Length'))).toBe(false);
+		mounted.facade.pointerIntent({ phase: 'up', css: crossedCss, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId)).toEqual(
+			wallPoints(mounted.document, mounted.wallId)
+		);
+	});
+
+	it('refuses a length dragged across the fixed end endpoint and commits nothing', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		const evaluationId = mounted.facade.evaluationId()!;
+		// Dragging the start fixes the **end**; the pointer beyond the end is the
+		// same crossing in the opposite fixed-endpoint case.
+		const startCss = stageCss(mounted.facade, [0, 0]);
+		const crossedCss = stageCss(mounted.facade, [7, 0]);
+
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: startCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: crossedCss, evaluationId });
+		expect(
+			mounted.facade.overlays().some((marker) => marker.label.includes('Drag the endpoint back'))
+		).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: crossedCss, evaluationId });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(wallPoints(acceptedLayout(mounted.facade), mounted.wallId)).toEqual(
+			wallPoints(mounted.document, mounted.wallId)
+		);
 	});
 
 	it('translates the body rigidly from the pointer delta', async () => {
@@ -547,6 +602,47 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Paused after a reading change'))).toBe(true);
 	});
 
+	it('resumes a paused angle proposal at the exact captured value and adds one history entry', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		const firstId = mounted.facade.evaluationId()!;
+		// A value the overlay's display rounding would lose; Resume must use the
+		// captured request, not re-parse the label.
+		const degrees = 5.123456;
+		const radians = (degrees * Math.PI) / 180;
+		const frame = wallFrame(mounted.document, mounted.wallId)!;
+		const target: readonly [number, number] = [
+			frame.length * Math.cos(radians),
+			frame.length * Math.sin(radians)
+		];
+		const endCss = stageCss(mounted.facade, frame.end);
+		const targetCss = stageCss(mounted.facade, target);
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId: firstId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: targetCss, evaluationId: firstId, shift: true });
+
+		// A reading flip ends the writer and preserves the exact parameter. The
+		// stale release cannot commit it.
+		settle(mounted.facade, 4);
+		const secondId = mounted.facade.evaluationId()!;
+		mounted.facade.pointerIntent({ phase: 'move', css: targetCss, evaluationId: secondId, shift: true });
+		mounted.facade.pointerIntent({ phase: 'up', css: targetCss, evaluationId: secondId, shift: true });
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		expect(mounted.host.history()).toMatchObject({ depth: 1, position: 0 });
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Paused after a reading change'))).toBe(true);
+
+		const instrument = createDimensionsInstrument(mounted.services)!;
+		expect(instrument.pausedProposal()).not.toBeNull();
+		expect(await instrument.resumePaused()).toEqual({ kind: 'accepted' });
+		await eventually(() => mounted.host.history().position === 1);
+		const resumed = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
+		expect((resumed.angleRadians * 180) / Math.PI).toBeCloseTo(degrees, 5);
+		expect(resumed.length).toBeCloseTo(frame.length, 9);
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect(instrument.pausedProposal()).toBeNull();
+	});
+
 	it('cannot pick through an inactive helper', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
@@ -593,6 +689,29 @@ describe('T1.P01.S05 — handle hit-testing and inverse mapping', () => {
 				point: [0, 0]
 			})
 		).toEqual({ kind: 'length', length: 0 });
+		// Crossing the fixed endpoint keeps its sign, so the preview cannot mirror.
+		expect(
+			pointerWallRequest({
+				handle: 'end',
+				mode: 'length',
+				frame,
+				fixed: 'start',
+				startPoint: frame.end,
+				point: [-1, 0]
+			})
+		).toEqual({ kind: 'length', length: -1 });
+		// With the end fixed, the moving start must stay on the end's negative side;
+		// a pointer beyond the end is the same negative length.
+		expect(
+			pointerWallRequest({
+				handle: 'start',
+				mode: 'length',
+				frame,
+				fixed: 'end',
+				startPoint: frame.start,
+				point: [7, 0]
+			})
+		).toEqual({ kind: 'length', length: -1 });
 	});
 
 	it('builds the canonical payload for each operation, with the captured fixed endpoint', async () => {

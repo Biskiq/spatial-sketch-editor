@@ -134,3 +134,22 @@ export function wallRequestLabel(
 	}
 	return `Move ΔX ${request.delta[0].toFixed(3)} · ΔZ ${request.delta[1].toFixed(3)} m`;
 }
+
+/**
+ * A paused proposal's label, at full precision.
+ *
+ * Resume uses the captured request, never this text, but the displayed value
+ * still must not round away a number the creator is about to apply.
+ */
+export function wallRequestExactLabel(
+	request: WallManipulationRequest,
+	fixed: FixedWallEndpoint
+): string {
+	if (request.kind === 'length') {
+		return `${request.length} m · fixed ${fixed}`;
+	}
+	if (request.kind === 'angle') {
+		return `${(request.angleRadians * 180) / Math.PI}° · fixed ${fixed}`;
+	}
+	return `ΔX ${request.delta[0]} · ΔZ ${request.delta[1]} m`;
+}
