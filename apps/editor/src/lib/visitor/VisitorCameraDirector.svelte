@@ -141,18 +141,33 @@
 			frameFor(targetViewId);
 			return;
 		}
-		if (targetViewId === cameraViewId) return;
+		// A target equal to the settled View is a duplicate hold tick only when no
+		// Travel is in flight. With one in flight it is a real new invocation —
+		// for example an authored Travel back to the View the Camera left — and the
+		// handoff below must realize it rather than letting the stale motion run on.
+		if (targetViewId === cameraViewId && activeTargetViewId === null) return;
 		// A hold tick or any other interpreter state write re-runs this effect
 		// while the Camera is still travelling: `cameraViewId` stays at the origin
 		// until the motion completes. Starting the same route again would reset
 		// progress from the current mid-flight pose on every frame. The in-flight
 		// target is the guard; a different target still re-routes from here.
 		if (activeTargetViewId === targetViewId) return;
+		// A Travel can overtake the one still in flight: the previous Stop's
+		// authored hold expires on editorial time, not when the Camera physically
+		// arrives. The interpreter has already left that Stop, so the next
+		// connection's declared origin is authoritative. Accept the handoff from
+		// the live pose; never finish the stale Travel first (that would reorder
+		// the authored motion) and never substitute pathfinding.
+		const handoffFromViewId =
+			activeTargetViewId !== null && activeTargetViewId !== targetViewId
+				? activeTargetViewId
+				: null;
 		const resolved = resolveVisitorCameraRoute({
 			fromViewId: cameraViewId,
 			toViewId: targetViewId,
 			invocation,
-			graph
+			graph,
+			handoffFromViewId
 		});
 		if (resolved.kind === 'gap') {
 			// Camera owns how; it cannot invent a different connection. Settle on the
@@ -170,6 +185,10 @@
 			target: currentTarget,
 			fov: motionSample.fov
 		});
+		// A handoff overtook a Travel to `originViewId`: that View is now the
+		// logical origin the Experience left, even though the Camera never
+		// finished reaching it. The next connection is evaluated from there.
+		cameraViewId = resolved.originViewId;
 		activeTargetViewId = targetViewId;
 		transitionProgress = 0;
 	});

@@ -14,6 +14,10 @@
  * 3. An explicit Cut to the in-flight destination, a Cut back to the origin, or
  *    a reduced-motion toggle must settle immediately instead of being mistaken
  *    for another hold tick.
+ * 4. An authored hold can expire before its Travel reaches the Stop it belongs
+ *    to. The next Travel then overtakes the unfinished one; the Camera must
+ *    realize the new authored connection from its live pose (a declared
+ *    handoff), not mistake it for an endpoint mismatch and Cut.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -189,12 +193,16 @@ async function mountProbe(visitor: VisitorRuntimeState): Promise<HTMLElement> {
 	return target;
 }
 
-async function mountDirector(visitor: VisitorRuntimeState): Promise<void> {
+async function mountDirector(
+	visitor: VisitorRuntimeState,
+	onCameraGap?: (message: string | null) => void,
+	navigationGraph: NavigationGraph = graph()
+): Promise<void> {
 	const target = document.createElement('div');
 	document.body.appendChild(target);
 	const component = mount(VisitorCameraDirector, {
 		target,
-		props: { graph: graph(), visitor }
+		props: { graph: navigationGraph, visitor, onCameraGap }
 	});
 	cleanup = () => unmount(component);
 	await tick();
@@ -309,6 +317,188 @@ describe('mounted visitor Camera handoff', () => {
 		await frame(0);
 		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
 		expect(harness.starts).toHaveLength(1);
+	});
+
+	it('realizes the next authored Travel as a declared handoff when a hold expires mid-flight', async () => {
+		const THREE_NODES: NavigationNodeData[] = [
+			{
+				id: 'view-a',
+				label: 'Entrance',
+				position: [0, 1.6, 0],
+				cameraTarget: [0, 1.6, -1],
+				fov: 54,
+				connectedNodeIds: ['view-b']
+			},
+			{
+				id: 'view-b',
+				label: 'Gallery',
+				position: [4, 1.6, 0],
+				cameraTarget: [4, 1.6, -1],
+				fov: 54,
+				connectedNodeIds: ['view-a', 'view-c']
+			},
+			{
+				id: 'view-c',
+				label: 'Study',
+				position: [8, 1.6, 0],
+				cameraTarget: [8, 1.6, -1],
+				fov: 54,
+				connectedNodeIds: ['view-b']
+			}
+		];
+		const authored = (id: string, from: string, to: string, start: number, end: number, durationSeconds: number) => ({
+			id,
+			fromNodeId: from,
+			toNodeId: to,
+			positionPath: {
+				kind: 'rounded-polyline' as const,
+				anchors: [
+					{ id: `${id}-start`, position: [start, 1.6, 0] as [number, number, number] },
+					{ id: `${id}-end`, position: [end, 1.6, 0] as [number, number, number] }
+				]
+			},
+			clearance: 1.2,
+			timing: { forward: { durationSeconds } }
+		});
+		const navigation: NavigationGraph = {
+			navigationNodes: THREE_NODES,
+			connections: [
+				authored('connection-ab', 'view-a', 'view-b', 0, 4, 5),
+				authored('connection-bc', 'view-b', 'view-c', 4, 8, 2)
+			],
+			nodeById: new Map(THREE_NODES.map((node) => [node.id, node]))
+		};
+		const threeStops = program({
+			entryStopId: 'stop-a',
+			presentations: [
+				{ id: 'presentation-a', label: 'Entrance', viewId: 'view-a', content: [] },
+				{ id: 'presentation-b', label: 'Gallery', viewId: 'view-b', content: [] },
+				{ id: 'presentation-c', label: 'Study', viewId: 'view-c', content: [] }
+			],
+			stops: [
+				{
+					id: 'stop-a',
+					presentationId: 'presentation-a',
+					invocation: { kind: 'cut', viewId: 'view-a' },
+					holdSeconds: null,
+					continuation: { kind: 'sequence-next' }
+				},
+				{
+					id: 'stop-b',
+					presentationId: 'presentation-b',
+					invocation: { kind: 'travel', connectionId: 'connection-ab' },
+					// Editorial time, not Camera arrival: this expires while the five-second
+					// Travel to B is still in flight.
+					holdSeconds: 0.5,
+					continuation: { kind: 'sequence-next' }
+				},
+				{
+					id: 'stop-c',
+					presentationId: 'presentation-c',
+					invocation: { kind: 'travel', connectionId: 'connection-bc' },
+					holdSeconds: null,
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		const visitor = createVisitorRuntimeState({ program: threeStops, options: OPTIONS });
+		const gaps: (string | null)[] = [];
+		visitor.enter();
+		await mountDirector(visitor, (message) => gaps.push(message), navigation);
+
+		visitor.continue();
+		await tick();
+		expect(harness.starts).toHaveLength(1);
+
+		// 40 frames (≈0.67 s): B's 0.5 s hold expires while the 5 s A→B Travel is
+		// still short of B, so the Experience advances to C first.
+		for (let index = 0; index < 40; index += 1) await frame();
+		expect(visitor.currentViewId).toBe('view-c');
+		expect(visitor.state.stopId).toBe('stop-c');
+		expect(gaps.filter((message) => message !== null)).toEqual([]);
+
+		// The B→C connection is realized exactly, as a handoff from the live
+		// A→B pose. The unfinished Travel is not restarted or finished first.
+		expect(harness.starts).toHaveLength(2);
+		const handoff = harness.starts[1] as { edges?: Array<{ connectionId?: string; direction?: string }> };
+		expect(handoff.edges?.[0]).toEqual(
+			expect.objectContaining({ connectionId: 'connection-bc', direction: 'forward' })
+		);
+		const handoffPose = mockCamera().lastPoint;
+		expect(handoffPose.x).toBeGreaterThan(0);
+		expect(handoffPose.x).toBeLessThan(4);
+
+		// The two-second authored motion finishes at C.
+		for (let index = 0; index < 200; index += 1) await frame();
+		const finished = mockCamera().lastPoint;
+		expect(finished.x).toBeCloseTo(8, 5);
+		expect(finished.y).toBeCloseTo(1.6, 5);
+		expect(finished.z).toBeCloseTo(0, 5);
+	});
+
+	it('accepts a declared Travel back to the settled View when it overtakes an in-flight one', async () => {
+		// Two Stops share the same connection in opposite directions: A→B with a
+		// short B hold, then B→A. The second Travel's destination equals the View
+		// the Camera last settled on, but the A→B motion is still in flight, so it
+		// is a new authored Travel, not a duplicate hold tick.
+		const visitor = createVisitorRuntimeState({
+			program: program({
+				presentations: [
+					{ id: 'presentation-1', label: 'Entrance', viewId: 'view-1', content: [] },
+					{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] }
+				],
+				stops: [
+					{
+						id: 'stop-1',
+						presentationId: 'presentation-1',
+						invocation: { kind: 'cut', viewId: 'view-1' },
+						holdSeconds: null,
+						continuation: { kind: 'sequence-next' }
+					},
+					{
+						id: 'stop-2',
+						presentationId: 'presentation-2',
+						invocation: { kind: 'travel', connectionId: 'connection-1' },
+						holdSeconds: 0.5,
+						continuation: { kind: 'sequence-next' }
+					},
+					{
+						id: 'stop-3',
+						presentationId: 'presentation-1',
+						invocation: { kind: 'travel', connectionId: 'connection-1' },
+						holdSeconds: null,
+						continuation: { kind: 'end' }
+					}
+				]
+			}),
+			options: OPTIONS
+		});
+		const gaps: (string | null)[] = [];
+		visitor.enter();
+		await mountDirector(visitor, (message) => gaps.push(message));
+
+		visitor.continue();
+		await tick();
+		for (let index = 0; index < 40; index += 1) await frame();
+		expect(visitor.currentViewId).toBe('view-1');
+		expect(visitor.state.stopId).toBe('stop-3');
+		expect(gaps.filter((message) => message !== null)).toEqual([]);
+
+		expect(harness.starts).toHaveLength(2);
+		const handoff = harness.starts[1] as { edges?: Array<{ connectionId?: string; direction?: string }> };
+		expect(handoff.edges?.[0]).toEqual(
+			expect.objectContaining({ connectionId: 'connection-1', direction: 'reverse' })
+		);
+		const handoffPose = mockCamera().lastPoint;
+		expect(handoffPose.x).toBeGreaterThan(0);
+		expect(handoffPose.x).toBeLessThan(4);
+
+		// The reverse motion is five seconds; let it finish at the origin View.
+		for (let index = 0; index < 360; index += 1) await frame();
+		const finished = mockCamera().lastPoint;
+		expect(finished.x).toBeCloseTo(0, 5);
+		expect(finished.y).toBeCloseTo(1.6, 5);
+		expect(finished.z).toBeCloseTo(0, 5);
 	});
 
 	it('cancels an in-flight Travel when an explicit Cut returns to the origin View', async () => {

@@ -7,6 +7,15 @@
  * which could pick a different connection between the same two Views. A missing
  * or mismatched connection is a typed gap the caller can surface, not a silent
  * re-route.
+ *
+ * A Travel can also overtake the motion that is still realizing the previous
+ * Stop: an authored hold is editorial time and may expire before the Camera has
+ * physically reached that Stop's View. The Experience has then left the View it
+ * was travelling to, so the next connection's declared origin is authoritative.
+ * The caller names that in-flight View explicitly (`handoffFromViewId`); this
+ * resolver accepts the connection only when it joins **that** View to the
+ * requested destination, and reports the origin it actually used. It never
+ * accepts an arbitrary endpoint, finishes the stale Travel first, or pathfinds.
  */
 import {
 	getCameraConnectionRoute,
@@ -23,6 +32,11 @@ export type VisitorCameraRoute =
 			readonly route: ResolvedCameraRoute;
 			/** The exact connection a Travel realized, or `null` for a Cut/route fallback. */
 			readonly connectionId: string | null;
+			/**
+			 * The View the route actually starts from: the settled View, or the
+			 * in-flight View a declared handoff overtook.
+			 */
+			readonly originViewId: string;
 	  }
 	| { readonly kind: 'gap'; readonly reason: string };
 
@@ -30,12 +44,15 @@ export function resolveVisitorCameraRoute({
 	fromViewId,
 	toViewId,
 	invocation,
-	graph
+	graph,
+	handoffFromViewId = null
 }: {
 	readonly fromViewId: string;
 	readonly toViewId: string;
 	readonly invocation: ProgramInvocation;
 	readonly graph: CameraGraph;
+	/** The View a still-in-flight Travel was realizing, when one is in flight. */
+	readonly handoffFromViewId?: string | null;
 }): VisitorCameraRoute {
 	try {
 		if (invocation.kind === 'travel') {
@@ -46,27 +63,39 @@ export function resolveVisitorCameraRoute({
 					reason: `The program requested Camera connection "${invocation.connectionId}", which this graph does not carry.`
 				};
 			}
-			let direction: CameraConnectionDirection;
-			if (connection.fromNodeId === fromViewId && connection.toNodeId === toViewId) {
-				direction = 'forward';
-			} else if (connection.fromNodeId === toViewId && connection.toNodeId === fromViewId) {
-				direction = 'reverse';
-			} else {
+			// The normal case: the authored connection leaves the Camera's settled
+			// View. The handoff case: it leaves the View an unfinished Travel was
+			// realizing, which the Experience has already left. Any other endpoint
+			// pairing is a genuine gap, not a handoff.
+			const origins = handoffFromViewId !== null && handoffFromViewId !== fromViewId
+				? [fromViewId, handoffFromViewId]
+				: [fromViewId];
+			for (const origin of origins) {
+				let direction: CameraConnectionDirection;
+				if (connection.fromNodeId === origin && connection.toNodeId === toViewId) {
+					direction = 'forward';
+				} else if (connection.fromNodeId === toViewId && connection.toNodeId === origin) {
+					direction = 'reverse';
+				} else {
+					continue;
+				}
 				return {
-					kind: 'gap',
-					reason: `Camera connection "${connection.id}" does not join "${fromViewId}" to "${toViewId}".`
+					kind: 'route',
+					route: getCameraConnectionRoute(connection.id, direction, graph),
+					connectionId: connection.id,
+					originViewId: origin
 				};
 			}
 			return {
-				kind: 'route',
-				route: getCameraConnectionRoute(connection.id, direction, graph),
-				connectionId: connection.id
+				kind: 'gap',
+				reason: `Camera connection "${connection.id}" does not join "${fromViewId}" to "${toViewId}".`
 			};
 		}
 		return {
 			kind: 'route',
 			route: getCameraRoute(fromViewId, toViewId, graph),
-			connectionId: null
+			connectionId: null,
+			originViewId: fromViewId
 		};
 	} catch (error) {
 		return {
