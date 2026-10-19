@@ -173,6 +173,34 @@ Fix options   Test ownership before taking the write lock where the collision pa
 Then add      A concurrency test: a foreign `expected-saved-base` Save does not block the row owner's
               own Save, and still answers `not-found` with no write.
 
+## TD-10 — a late successful source Open applies after a newer session epoch
+
+Status        open — disclosed by the PR #159 review; pre-existing, not introduced by that fix
+Found         2026-10-19, while reviewing the refused-Open host follow-up
+Owner         T1 Stage host (the spatial route); closed before or with `T1.P01.S06`, which verifies
+              the host journeys end to end
+Symptom       Expected from the code, not reproduced in a browser: an Open that was admitted before
+              a newer project replacement (or reload) finishes can still install its source after
+              the newer epoch is mounted, overwriting the newer project and its saved base.
+Reproduce     Admit a Source JSON Open, supersede the project before its result resolves (for
+              example by an admitted replacement), then let the first result arrive. A route-level
+              harness can delay the admission port instead of racing a real file dialog.
+Root cause    `openSourceJson` and `applyReloadOffer` in
+              `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` capture the
+              admission context but never capture/re-check `session.isCurrent(token)` after the
+              awaited admission, unlike `load`. The refused-source contract does not depend on it,
+              so PR #159 deliberately did not broaden its scope.
+Why green     `spatial-route-source-replacement.test.ts` exercises refusals and one admitted Open
+              within a single epoch. No test supersedes the session while an admission is in flight.
+Fix options   1) Capture the session token before admission and abandon the result when
+              `!session.isCurrent(token)`, mirroring `load`; report nothing for the stale action.
+              2) Re-check the boot state after admission — weaker: it still races a replacement that
+              starts after the check. Do NOT install a late result as a new baseline, and do NOT
+              clear the newer saved base.
+Then add      A route-level regression: a delayed admitted Open superseded by a newer replacement
+              must leave the newer project, its history and saved base intact and must not show a
+              stale success or refusal notice.
+
 No other entry is open.
 
 ---
