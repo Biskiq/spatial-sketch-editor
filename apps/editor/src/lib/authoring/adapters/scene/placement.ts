@@ -155,6 +155,9 @@ export type ScenePlacementSession = {
 	 * it.
 	 */
 	proposalLive(): boolean;
+	/** Let the pointer adapter report its planner outcome through the open instrument. */
+	setPointerOutcomeListener(listener: ((outcome: SceneSessionOutcome) => void) | null): void;
+	reportPointerOutcome(outcome: SceneSessionOutcome): void;
 	/**
 	 * The one listener notified synchronously after this session commits a
 	 * placement. The adapter uses it to select the new entity and to keep its
@@ -313,6 +316,7 @@ export function createSceneSession(input: {
 	let lease: GestureAcquisition | null = null;
 	let entityId: string | null = null;
 	let candidate: SceneCandidate | null = null;
+	let pointerOutcomeListener: ((outcome: SceneSessionOutcome) => void) | null = null;
 	let baseline: { position: Vec3; rotation: Vec3 } | null = null;
 	let entry = { x: '0', z: '0', yaw: '0' };
 	let entryError: string | null = null;
@@ -766,6 +770,12 @@ export function createSceneSession(input: {
 		subjectEntityId: () => entityId,
 		candidate: () => candidate,
 		proposalLive: leaseIsLive,
+		setPointerOutcomeListener(listener) {
+			pointerOutcomeListener = listener;
+		},
+		reportPointerOutcome(outcome) {
+			pointerOutcomeListener?.(outcome);
+		},
 		setPlacementCommittedListener(listener) {
 			placementCommitted = listener;
 		},

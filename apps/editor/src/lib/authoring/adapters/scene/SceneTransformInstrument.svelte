@@ -98,6 +98,7 @@
 			// (which does not rebuild the binding) is refreshed here. The registry is
 			// keyed by this accepted snapshot, so only this Stage's surface is read.
 			const existing = registered;
+			if (previous !== null && previous !== existing?.session) previous.setPointerOutcomeListener?.(null);
 			if (existing !== null) {
 				session = existing.session;
 				surface = existing;
@@ -109,6 +110,7 @@
 			if (session !== null && persistentPlace !== null && session.placementCommittedListener() === null) {
 				session.setPlacementCommittedListener(persistentPlace);
 			}
+			session?.setPointerOutcomeListener?.(applyOutcome);
 			sessionReading = reading;
 			surfaceSnapshot = snapshot;
 			// The proposal belonged to the reading that just ended; the session it named
@@ -366,6 +368,7 @@
 	// release cannot live in an effect cleanup. The identity-checked retirement
 	// cannot delete a replacement published for a newer reading.
 	onDestroy(() => {
+		session?.setPointerOutcomeListener?.(null);
 		session?.cancel();
 		if (surface !== null && surfaceSnapshot !== null) {
 			retireSceneSurface(surfaceSnapshot, surface);

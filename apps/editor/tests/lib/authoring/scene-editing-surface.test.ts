@@ -452,7 +452,10 @@ describe('Scene placement session', () => {
 
 describe('Scene adapter registration', () => {
 
-	async function mounted(project = buildCurrentSourceFixture().project) {
+	async function mounted(
+		project = buildCurrentSourceFixture().project,
+		rect: typeof RECT = RECT
+	) {
 		const admitted = await admitSource(project, {
 			sessionEpoch: 'session-scene-adapter',
 			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
@@ -462,10 +465,7 @@ describe('Scene adapter registration', () => {
 		stageSession.replace(admitted.snapshot);
 		const facade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession });
 		// A factory-bound adapter only binds against a live evaluation.
-		const evaluated = facade.camera.evaluate(
-			{ left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 },
-			1
-		);
+		const evaluated = facade.camera.evaluate(rect, 1);
 		if (evaluated.kind !== 'evaluated') throw new Error('the adapter fixture did not evaluate');
 		facade.acquireInspection('exclusive');
 		const host = createStageAcceptanceHost({
@@ -498,9 +498,10 @@ describe('Scene adapter registration', () => {
 	async function withSceneSurface(
 		accept?: SceneWritePort['accept'],
 		taskId: 'scene-arrange' | 'scene-place' = 'scene-arrange',
-		project?: ProjectDocument
+		project?: ProjectDocument,
+		rect: typeof RECT = RECT
 	) {
-		const { facade, host } = await mounted(project);
+		const { facade, host } = await mounted(project, rect);
 		mountStageAdapter(facade, host, createAdapter);
 		const evaluationId = facade.evaluationId();
 		if (evaluationId === null) throw new Error('the adapter fixture has no evaluation');
@@ -614,6 +615,38 @@ describe('Scene adapter registration', () => {
 		facade.pointerIntent({ phase: 'cancel', css: [140, 100], evaluationId });
 		expect(session.candidate()).toBeNull();
 		expect(facade.ghosts()).toEqual([]);
+	});
+
+	it('moves from Stage-local pointer CSS through an offset viewport and commits the ghost pose', async () => {
+		const rect = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
+		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const { facade, session, evaluationId, intents } = await withSceneSurface(
+			undefined,
+			'scene-arrange',
+			project,
+			rect
+		);
+		const projected = facade.projectWorld([2.5, 0, 2.5], evaluationId);
+		expect(projected.kind).toBe('projected');
+		if (projected.kind !== 'projected') return;
+		// +page.svelte sends Stage-local CSS, while projectWorld returns viewport CSS.
+		const local: [number, number] = [projected.css[0] - rect.left, projected.css[1] - rect.top];
+
+		expect(facade.pointerIntent({ phase: 'down', css: local, evaluationId }).claimed).toBe(true);
+		facade.pointerIntent({ phase: 'move', css: local, evaluationId });
+		const candidate = session.candidate();
+		expect(candidate?.kind).toBe('move');
+		expect(candidate?.worldXZ[0]).toBeCloseTo(2.5, 5);
+		expect(candidate?.worldXZ[1]).toBeCloseTo(2.5, 5);
+		expect(facade.ghosts()).toHaveLength(1);
+
+		facade.pointerIntent({ phase: 'up', css: local, evaluationId });
+		await eventually(() => intents.length === 1);
+		expect(intents[0]).toMatchObject({ kind: 'move-horizontal' });
+		const payload = intents[0]!.payload as { worldXZ: readonly [number, number] };
+		expect(payload.worldXZ[0]).toBeCloseTo(candidate!.worldXZ[0], 6);
+		expect(payload.worldXZ[1]).toBeCloseTo(candidate!.worldXZ[1], 6);
+		expect(session.proposalLive()).toBe(false);
 	});
 
 	it('keeps a typed candidate, its surface and its drawn pose across an ordinary re-evaluation', async () => {

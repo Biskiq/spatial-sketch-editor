@@ -18,22 +18,27 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01, S02 and S03 shipped; S04 proposed and
-        unauthorized.
-BATON: S03 (first coherent editing surface) was accepted 2026-10-18 from the owner's deliberate
-       closeout invocation, and its closeout is COMPLETE and merge-ready on branch `T2-P01-S03`
-       (PR #147): acceptance record and preservation report at
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md,
-       full bodies recoverable from the anchor `8194b64e` / tag `closed/T2.P01.S03` (local only —
-       not pushed). No T2 slice is in implementation.
-NEXT: Owner merge decision on PR #147. Merge it as a **merge commit**, then verify the anchor is an
-      ancestor of `main` and push the tag. S04, the declared final phase gate, stays unauthorized; it
-      waits on `T3.P01.S02`'s `conditional-save-current-v1` and on T1.P01.S04's accepted Head Save
-      integration (ruling D3). Phase/track closure is not available until S04 is accepted and shipped.
+SLICES: T2.P01's slice register is authoritative — S01/S02 shipped; S03 accepted after repair;
+        S04 proposed and unauthorized.
+BATON: Manual browser acceptance found S03 pointer Move did not publish a candidate. The coordinate
+       mapping and refusal feedback are repaired, independently reviewed with no findings, and
+       accepted with real-browser Move/Yaw commit and Undo/Redo evidence. Current full acceptance
+       record and archived screenshots are routed here:
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
+       Code/evidence and refreshed docs remain uncommitted on `T2-P01-S03` / PR #147; the current full
+       record stays in the working tree because the previous anchor `5dca5459` only preserves the
+       superseded acceptance. No commit, push or merge was made.
+NEXT: Preserve the refreshed code, evidence and acceptance record in an owner-authorized commit on
+      the existing PR branch. The documentation-reference gate passed (55 tests). The P1 merge
+      method is a merge commit; post-merge anchor verification and tag push follow only after the
+      owner decides to merge. S04 remains proposed and unauthorized; it also waits for its
+      registered prerequisites.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md
-BLOCKER: none for S03. S04 waits on its prerequisites and its own authorization.
+BLOCKER: S03 has no open correctness finding; preservation anchor and PR update need a commit, which
+         the repository's no-commit rule does not authorize without an explicit user request. S04
+         waits on its prerequisites and authorization.
 ```

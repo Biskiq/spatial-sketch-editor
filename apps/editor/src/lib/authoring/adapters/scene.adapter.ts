@@ -47,6 +47,7 @@ import {
 	sceneSurfaceFor,
 	type SceneCandidate,
 	type ScenePlacementSession,
+	type SceneSessionOutcome,
 	type SceneSurface
 } from './scene/placement';
 import { floorSupport, supportOccluders } from './scene/support-occlusion';
@@ -80,7 +81,9 @@ function pointerFloorSupport(
 	css: readonly [number, number],
 	exceptEntityId: string | null
 ) {
-	const ray = context.ray(css);
+	// Stage pointer intents are local to the Stage surface; Camera rays use the
+	// viewport's CSS coordinate space, whose origin includes the surface offset.
+	const ray = context.ray([css[0] + context.evaluation.rect.left, css[1] + context.evaluation.rect.top]);
 	if (ray === null) return { kind: 'none' as const, reason: 'degenerate' as const };
 	const domain = context.snapshot.domain;
 	return floorSupport(
@@ -88,6 +91,21 @@ function pointerFloorSupport(
 		domain.datumMeters,
 		supportOccluders(domain.geometry, domain.scene, exceptEntityId)
 	);
+}
+
+function moveSupportRefusal(
+	support: Exclude<ReturnType<typeof floorSupport>, { readonly kind: 'floor' }>
+): SceneSessionOutcome {
+	if (support.kind === 'occluded') {
+		return { kind: 'refused', code: 'occluded', message: `Floor support is obscured by ${support.occluderId}.` };
+	}
+	return {
+		kind: 'refused',
+		code: 'no-floor-support',
+		message: support.reason === 'degenerate'
+			? 'The pointer ray is unavailable for this reading.'
+			: `No visible Room floor supports this pointer position (${support.reason}).`
+	};
 }
 
 /**
@@ -381,16 +399,20 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							else session.cancel();
 							return true;
 						}
-						if (proposed !== null) void session.commit();
+						if (proposed !== null) {
+							void session.commit().then((outcome) => session.reportPointerOutcome(outcome));
+						} else {
+							session.cancel();
+						}
 						// A click, or a drag whose last move had no support, is not a
 						// proposal: release the lease instead of holding it until task close.
-						else session.cancel();
 						return true;
 					}
 					// Shift-drag rotates around the declared pivot; the same planner the typed
 					// yaw field uses receives the captured baseline plus the drag delta.
 					if (intent.shift === true && dragOrigin !== null && openTaskKind !== 'place-object') {
-						session.previewYaw(dragOrigin.yaw + (intent.css[0] - dragOrigin.x) * 0.01);
+						const outcome = session.previewYaw(dragOrigin.yaw + (intent.css[0] - dragOrigin.x) * 0.01);
+						session.reportPointerOutcome(outcome);
 						return true;
 					}
 					if (openTaskKind === 'place-object') {
@@ -421,9 +443,11 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					);
 					if (support.kind !== 'floor') {
 						session.invalidatePreview();
+						session.reportPointerOutcome(moveSupportRefusal(support));
 						return true;
 					}
-					session.previewMove(support.worldPoint[0], support.worldPoint[2]);
+					const outcome = session.previewMove(support.worldPoint[0], support.worldPoint[2]);
+					session.reportPointerOutcome(outcome);
 					return true;
 				},
 				// Closing the task (Esc at the shell, replacement) uses the one cancel path.
