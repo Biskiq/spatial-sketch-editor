@@ -30,16 +30,20 @@ BATON: S04 is implemented on branch `T2-P01-S04` (base `919c2904`, batch C) and 
        without verified contact are refused before taking a lease and show no Scale fact. An open
        Resize is cancelled when the canonical selection moves. Numeric Resize is the guaranteed
        route; no direct handle was added.
-       **The phase final gate is not passed:** the persistence row still lacks active-preview
-       cancellation on replace, previous-source preservation after a refused open, and the Save
-       creator journey through the mounted Head. Proving those journeys is this slice's work — a
-       test-only harness that drives the route/Head modules is not a host edit. A host behaviour
-       change they expose would be T1-owned and need a T1 follow-up. Nothing is accepted and no
-       gate state is written. TD-8 is absent from this base; the Compose journeys reopen the task
+       **The phase final gate is not passed.** Three proofs are now written: replacement cancels an
+       open Resize (task closed, gesture released, no commit, baseline kept) and the mounted Head
+       proves dirty/saved, an in-flight older Save that leaves newer edits dirty, and a conflict
+       held until Reload (`head-save-journey.test.ts`). The fourth fails against the current T1
+       route: `openSourceJson` applies a refused boot, so an invalid file replaces the visible
+       project with the error panel and disables Download. That is a confirmed T1 host defect; the
+       fix is a host edit this slice may not make, and a page-level harness needs shared vitest
+       aliases and a non-WebGL canvas. **Owner decision requested:** authorize a T1 follow-up
+       (route fix plus page harness) or amend the gate scope. Nothing is accepted and no gate
+       state is written. TD-8 is absent from this base; the Compose journeys reopen the task
        after each install and do not rely on a reused task panel.
-NEXT:   Batch C merge protocol for the two slice PRs; then the outstanding gate proofs through a
-        T2 test-only harness (or an owner amendment) and a browser creator journey with
-        reduced-motion evidence.
+NEXT:   Batch C merge protocol for the two slice PRs; the owner decision on the refused-Open
+        defect (T1 fix plus page harness, or a gate-scope amendment); then a browser creator
+        journey with reduced-motion evidence.
        Owner follow-up: push the local `closed/T2.P01.S03` tag.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →

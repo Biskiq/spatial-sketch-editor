@@ -31,8 +31,10 @@ another entity, so the label, the candidate and the write cannot name different 
 **Primary new evidence:** `apps/editor/tests/lib/authoring/scene-composition-loop.test.ts`
 (session parity/refusal tests, capability gating, duplicate/delete intents, an accepted-host
 journey with exact-source undo/redo, and the downloaded canonical JSON reloaded through
-`bootFromSourceJson`), plus `scene-compose-instrument.test.ts` (the mounted Compose panel's
-disabled commands and selection-change cancel).
+`bootFromSourceJson`), `scene-compose-instrument.test.ts` (the mounted Compose panel's
+disabled commands and selection-change cancel), and `head-save-journey.test.ts` (the mounted
+`EditorHead` over the real Save state and F.4 host: dirty/saved, an in-flight older Save, a
+conflict held until Reload, and replacement cancelling an open Resize).
 
 ## Phase evidence matrix
 
@@ -48,8 +50,8 @@ named; **Not run** = no evidence was produced. No row is claimed as accepted.
 | Owned transforms | **Written** (primitive subjects) | Resize is one finite positive scalar; zero/negative/non-finite/blank are refused without averaging, the planner refuses a no-op, and X/Z/yaw are preserved by the planner — the intent itself carries only `scale` and `contactMinY`. Duplicate keeps pose/rotation/scale and adds exactly the planner's +0.5 m world X/Z. Delete removes only the named entity. |
 | Preview/commit/lifetime | **Partial** | Resize preview and commit call the same retained planner with the same captured inputs; the lease is `cancel-on-reading-change` and a refused/invalid commit releases it. The panel cancels an open Resize when the canonical selection moves (`scene-compose-instrument.test.ts`). Duplicate/delete are immediate commands with no candidate to leave stale. Lost-capture and a direct pointer Resize handle are not implemented (numeric route only). |
 | Selection and actions | **Written** (scoped actions) | Duplicate's completion selects the created entity at the post-accept revision; delete retires the subject and the host clears the selection. The planners (unchanged) refuse cluster-member duplication with `unsupported-set` and clean cluster membership on delete; those planner contracts are S02 coverage. |
-| History and concurrency | **Partial** | The journey asserts the one host stack advances by exactly one entry per Resize/Duplicate/Delete and that Undo/Redo restore the **exact canonical source** (whole `snapshot.canonicalJson`, not just the tested fields). The Save half — dirty versus saved, an in-flight older Save not marking newer edits saved, a conflict preserving work until Reload — is cited from `save-state.test.ts`, not proven through the mounted Head, so this row is not Written. |
-| Source persistence | **Partial overall — gate blocker** | Download writes `snapshot.canonicalJson`; `scene-composition-loop.test.ts` feeds exactly those bytes to `bootFromSourceJson` (the route's one open path), asserts the edited pose survives and the new host starts at depth 1 with no synthetic edit, and asserts an invalid source is `refused` rather than accepted. **Not proven:** cancellation of an active preview on replace, preservation of the previously mounted source after a refused open, and the Save creator journey through the mounted Head. The UI is T1's (PR #148) and was not re-driven in a browser here. |
+| History and concurrency | **Written** | The journey asserts the one host stack advances by exactly one entry per Resize/Duplicate/Delete and that Undo/Redo restore the **exact canonical source** (whole `snapshot.canonicalJson`, not just the tested fields). The Save half is now proven through the **mounted `EditorHead`** over the real T3.P01.S02 state machine, the real F.4 host and the production Scene adapter (`head-save-journey.test.ts`): an accepted Resize makes the Head read `dirty` with `Unsaved changes`; a Save that captured the 2× source is acknowledged after a 3× edit and the Head stays dirty (the acknowledgement marks only its capture); a conflict keeps the local canonical source and offers `Reload remote`, which hands the offer to the host without installing it. |
+| Source persistence | **Partial — one gate blocker** | Download writes `snapshot.canonicalJson`; `scene-composition-loop.test.ts` feeds exactly those bytes to `bootFromSourceJson` (the route's one open path), asserts the edited pose survives and the new host starts at depth 1 with no synthetic edit, and asserts an invalid source is `refused` rather than accepted. `head-save-journey.test.ts` now proves the route's replacement sequence cancels an open Resize proposal: `session.replace` closes the task, releases its gesture, commits nothing, keeps the accepted bytes and history baseline, and the replaced session owns the new snapshot. The Save journey is proven through the mounted Head (see *History and concurrency*). **Not proven — and currently a T1 host defect:** preservation of the visible source after a refused Open. `openSourceJson` calls `applyState(next)` for every boot result, so a refused parse replaces `boot` with `refused`; the template then unmounts `StageCanvas` and renders the error panel with no way back to the still-mounted project. See *Final gate*. |
 | Wiring and isolation | **Partial** | Compose reaches the Stage only through AM-5 task/Find/instrument contributions and the existing `pointerIntent` seam (which it refuses). No host, route, shell, Layout or visitor file is edited. `test:arch` passed 163/163 (20 files, documentation gate included), but this slice adds no dedicated mutation control of its own. |
 | Creator experience | **Partial** | Typed Resize → Duplicate → Delete → Undo → Reload is proven through the accepted host and real planners, not through a browser route. Place → select → arrange → resize → duplicate → undo → reload in both readings, keyboard focus order and reduced motion were **not run**; they remain the residual evidence gap for this gate. |
 
@@ -61,10 +63,10 @@ lane results on a branch, **not** a merge gate against a merge revision.
 | Check | Result |
 | --- | --- |
 | `npm run check` | **0 errors, 0 warnings** |
-| `npm run test:fast` | **1954 / 1954**, 140 files, exit 0 |
-| `npm run test:arch` | **163 / 163**, 20 files, exit 0 (documentation gate included) |
+| `npm run test:fast` | **1958 / 1958**, 141 files, exit 0 |
+| `npm run test:arch` | **163 / 163**, 20 files, exit 0 (documentation gate included; the scan timed out twice under load averages above 20 and passed on rerun and alone) |
 | `npm run test:heavy` | **118 / 118**, 8 files, exit 0 |
-| Focused | `scene-composition-loop` 11/11, `scene-compose-instrument` 3/3, `scene-editing-surface` 41/41, `scene-operation-acceptance` 9/9, `save-state` 16/16, `scene-instrument-focus` 3/3 |
+| Focused | `head-save-journey` 4/4, `scene-composition-loop` 11/11, `scene-compose-instrument` 3/3, `scene-editing-surface` 41/41, `scene-operation-acceptance` 9/9, `save-state` 16/16, `scene-instrument-focus` 3/3 |
 
 The full contract required by
 [`apps/editor/tests/README.md`](../../../../../apps/editor/tests/README.md#what-a-change-requires)
@@ -72,22 +74,31 @@ is therefore satisfied on the branch; the merge gate still has to be re-run at t
 
 ## Final gate
 
-**The phase final gate is NOT passed on this revision.** S04's implementation is coherent and the
-lanes are green, but the persistence row still lacks the route-level proofs the plan names:
-active-preview cancellation on replace, previous-source preservation after a refused open, and the
-Save creator journey through the mounted Head.
+**The phase final gate is NOT passed on this revision.** Three of the four named proofs are now
+written: active-preview cancellation on replace, and the Save creator journey through the mounted
+Head (dirty versus saved, in-flight older Save, conflict until Reload). The fourth — preservation of
+the visible source after a refused Open — **fails against the current T1 route**, and the failure is
+a real host defect rather than missing evidence.
 
-**Unproduced work, with a named host boundary.** The behaviours exercised live in
-`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` and the Head Save mount, which
-are T1 host files, but the plan makes *proving the journey* this slice's job ("This slice reuses
-them and proves the journey"). A test-only harness that mounts and drives those modules is not a
-host source edit, so these proofs are **outstanding in T2**, not blocked from being attempted. What
-is genuinely cross-track is a behaviour change those tests might expose — for example, a refused
-invalid-JSON Open that replaces the visible source would be a T1 host defect and would need a T1
-follow-up or an explicit owner amendment, because the S04 plan forbids this slice from editing host,
-Head, persistence or Save UI (`Scope correction, batch C ruling C4`). The review's capability defect
-(plane/tilted eligibility) and the exact-source history proof are fixed on this branch; they do not
-close the gate.
+**Confirmed host defect: a refused Open replaces the mounted project.**
+`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` runs
+`applyState(await bootFromSourceJson(...))` in `openSourceJson`. `applyState` activates only for
+`ready`/`empty`, but it assigns `boot = next` for every result, so `refused` (invalid JSON, non-current
+format, project mismatch) reaches the template. The template renders `StageCanvas` only for
+`ready`/`empty` and shows the `refused` boot panel otherwise, and the panel offers only a message —
+no return to the mounted project. The session/facade still hold the creator's source, but it is no
+longer visible and `activeProject()` is false (Download disabled). The plan requires the current
+source to survive an invalid Open; this route does not.
+
+**Ownership.** The proof is this slice's work; the fix is not. Correcting the route (keep the
+current `boot` and report the refusal as a notice, and stop clearing `pendingSavedBase` before the
+parse succeeds) is a T1 host edit, which the S04 scope correction forbids here (batch C ruling C4).
+A page-level harness would also need shared test infrastructure this slice does not own: aliases for
+`$app/state`, `$app/navigation` and `$env/dynamic/public`, plus a non-WebGL `StageCanvas` mock in the
+shared vitest setup. **Owner decision requested:** either authorize a T1 follow-up (route fix plus a
+page-level harness) before this gate is claimed, or amend the final-gate scope to accept the
+host-level replacement proof and record the invalid-Open behaviour as a T1 defect. Until one of
+those happens, the gate stays unpassed; nothing here is accepted.
 
 ## Residuals
 
@@ -97,6 +108,10 @@ close the gate.
 3. Resize and Duplicate are primitive-only and exclude vertical planes and tilted primitives. The
    docs now say so; verified model-contact capture is a separate capability, not something this
    slice quietly approximates.
-4. S04 is the phase **final gate**. This record does not declare the phase closable or closed; the
-   missing proofs above are the reason. They are unproduced T2 work, not a Scene-code blocker; any
-   host behaviour they expose is T1-owned.
+4. S04 is the phase **final gate**. This record does not declare the phase closable or closed. The
+   Save and replacement proofs are now written; the blocker is the refused-Open defect in the T1
+   route, which needs either an authorized T1 fix with a page-level harness or an owner amendment
+   to the gate scope.
+5. The route-level harness was not built. Mounting the page would require shared test-infra
+   changes (virtual `$app`/`$env` aliases and a non-WebGL `StageCanvas`) that this slice does not
+   own; the evidence above drives the route's own calls instead.
