@@ -19,28 +19,29 @@ prerequisites instead.
 PHASE: T1.P01 Stage and authoring foundation (in-progress; S06 unaccepted) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
 ACTIVE: none in implementation. S01–S05 and S07 are shipped. S05 was accepted at `3d432836` and
-        closed by `slice-closeout` on 2026-10-19 (PR #156; merge commit required); its plan is a
+        closed by `slice-closeout` on 2026-10-19 (PR #156, merged at `06a27854`); its plan is a
         closed stub and TD-8 is fixed. S06 is proposed and routed after T3.P01.S04 (ruling C3).
         The T1.P01 architecture-cycle window is CLOSED: S02/S04/S05 exposure rows are recorded,
         `Closed by` is S05, and the cycle is `PHASE_3_EVALUATE` with readiness
-        `owner-verdict-owed`. The per-mechanism verdicts are the owner's event.
-BATON: Merge queue starts with #156 (accepted + closeout complete; awaiting owner hygiene review
-       and merge). A **separate T1 host follow-up** is owed after #156 merges: a refused Source
-       JSON Open (invalid JSON, wrong format, project mismatch, compile refusal) currently replaces
-       the mounted project because the spatial route applies the refused boot state. Contract:
-       preserve the mounted source, selection/history and saved-base metadata, show a typed
-       refusal, commit a baseline only after admission, and apply the same rule to failed Reload
-       remote. It is not S05 scope and must not be folded into #156. T2.P01.S04's final gate is
-       blocked on that follow-up. TD-9 stays owned by the Head integration and is verified at S06.
-NEXT: Owner hygiene/merge review for #156 → merge commit → post-merge anchor check
-      (`git merge-base --is-ancestor 3d432836 main`). Then branch the refused-Open follow-up from
-      updated `main`, accept and merge it, and only then rebase #157 for its final-gate proof.
+        `owner-verdict-owed`. The per-mechanism verdicts are the owner's event. The separate host
+        follow-up below is not a slice and does not reopen S05.
+BATON: **PR #159** (`T1-host-refused-open`, implementation `1953f275`, base `06a27854`) implements the owed
+       refused-Open follow-up and is **accepted by independent review** (head `f02353dd`); it awaits
+       the owner's hygiene/merge review. A refused Source JSON Open or failed
+       conflict Reload remote now reports a typed notice and keeps the mounted source, selection,
+       history and saved-base metadata; a cancelled dialog is a no-op; an admitted Open still
+       replaces the project with a locally minted baseline. Route-level evidence mounts the real
+       spatial page. T2.P01.S04's final gate remains blocked until #159 is merged.
+       TD-9 stays owned by the Head integration and is verified at S06.
+NEXT: Owner hygiene/merge review of #159 → merge #159 → rebase #157 onto updated `main` for its
+      refused-Open preservation proof and bounded browser/reduced-motion journey, then its final
+      gate. #158 waits for T1/T2 to freeze before Phase B.
       Owner follow-ups: push the local `closed/T1.P01.S04` and `closed/T1.P01.S05` tags (neither is
       pushed).
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/acceptance.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19
-BLOCKER: the refused-Open host follow-up blocks T2.P01.S04's final gate; S06 waits for
-         T3.P01.S04's acceptance and its own authorization.
+BLOCKER: #159's merge review blocks T2.P01.S04's final gate; S06 waits for T3.P01.S04's
+         acceptance and its own authorization.
 ```

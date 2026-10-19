@@ -360,6 +360,44 @@
 		boot = next;
 	}
 
+	/**
+	 * A refused **local** source action keeps the mounted project.
+	 *
+	 * An explicit Open or a conflict *Reload remote* is an attempt to replace the
+	 * source on screen, not a fresh boot. The session, facade, acceptance history,
+	 * selection and saved base all still describe the mounted project, so a
+	 * refused parse, format or compile must be reported as a typed notice rather
+	 * than assigned to `boot`: the template unmounts the Stage for a non-mounted
+	 * state and offers no way back. Only an admitted replacement may reach
+	 * `applyState`.
+	 */
+	function reportSourceRefusal(next: BootState, action: 'open' | 'reload'): void {
+		const outcome = action === 'open' ? 'The source was not opened' : 'The remote copy was not installed';
+		if (next.status === 'refused') {
+			const reason =
+				next.reason === 'invalid-json'
+					? 'the JSON did not parse'
+					: next.reason === 'project-mismatch'
+						? 'it belongs to another project'
+						: 'it is not the current document format';
+			const issue = next.issues[0];
+			notice = `${outcome}: ${reason}. The current project is unchanged.${
+				issue === undefined ? '' : ` (${issue.path}: ${issue.message})`
+			}`;
+			return;
+		}
+		if (next.status === 'diagnostics') {
+			const issue = next.issues[0];
+			notice = `${outcome}: its canonical compile is blocked. The current project is unchanged.${
+				issue === undefined ? '' : ` (${issue.path}: ${issue.message})`
+			}`;
+			return;
+		}
+		notice = `${outcome}: ${
+			next.status === 'error' ? next.message : 'the source is unavailable'
+		}. The current project is unchanged.`;
+	}
+
 	/* --- boot -------------------------------------------------------------- */
 
 	async function load(projectIdToLoad: string, requestedIntent: BootIntent): Promise<void> {
@@ -458,16 +496,18 @@
 			return;
 		}
 		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
-		// Only a source that actually admitted becomes this epoch's saved base: a
-		// failed reload must not leave a remote base for a later activation to pair
-		// with the locally shown source.
-		if (next.status === 'ready' || next.status === 'empty') {
-			pendingSavedBase = {
-				token: offer.savedBaseToken,
-				revision: offer.savedRevision,
-				contentId: offer.savedSourceContentId
-			};
+		// Only a source that actually admitted replaces the mounted project and
+		// becomes this epoch's saved base. A failed reload keeps the local source,
+		// its history/selection and the saved base the Head is still saving against.
+		if (next.status !== 'ready' && next.status !== 'empty') {
+			reportSourceRefusal(next, 'reload');
+			return;
 		}
+		pendingSavedBase = {
+			token: offer.savedBaseToken,
+			revision: offer.savedRevision,
+			contentId: offer.savedSourceContentId
+		};
 		applyState(next);
 	}
 
@@ -511,7 +551,6 @@
 	}
 
 	async function openSourceJson(): Promise<void> {
-		pendingSavedBase = null;
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.accept = 'application/json,.json';
@@ -519,8 +558,19 @@
 			input.onchange = () => resolve(input.files?.[0] ?? null);
 			input.click();
 		});
+		// A cancelled dialog changes nothing — including the saved base the current
+		// Head is still saving against.
 		if (file === null) return;
-		applyState(await bootFromSourceJson(await file.text(), projectId, admissionContext()));
+		const next = await bootFromSourceJson(await file.text(), projectId, admissionContext());
+		if (next.status !== 'ready' && next.status !== 'empty') {
+			reportSourceRefusal(next, 'open');
+			return;
+		}
+		// A successfully opened source is a locally minted baseline with no cloud
+		// row behind it, so its first Save is a create. Set this only once the
+		// source has actually admitted; a refused open must not clear it.
+		pendingSavedBase = null;
+		applyState(next);
 	}
 
 	/* --- viewport measurement and evaluation -------------------------------- */
