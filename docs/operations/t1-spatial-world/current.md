@@ -26,21 +26,22 @@ ACTIVE: none in implementation. S01–S05 and S07 are shipped. S05 was accepted 
         `owner-verdict-owed`. The per-mechanism verdicts are the owner's event. The separate host
         follow-up below is not a slice and does not reopen S05.
 BATON: **PR #159** (`T1-host-refused-open`, implementation `1953f275`, base `06a27854`) implements the owed
-       refused-Open follow-up and awaits independent review. A refused Source JSON Open or failed
+       refused-Open follow-up and is **accepted by independent review** (head `f02353dd`); it awaits
+       the owner's hygiene/merge review. A refused Source JSON Open or failed
        conflict Reload remote now reports a typed notice and keeps the mounted source, selection,
        history and saved-base metadata; a cancelled dialog is a no-op; an admitted Open still
        replaces the project with a locally minted baseline. Route-level evidence mounts the real
-       spatial page. T2.P01.S04's final gate remains blocked until #159 is accepted and merged.
+       spatial page. T2.P01.S04's final gate remains blocked until #159 is merged.
        TD-9 stays owned by the Head integration and is verified at S06.
-NEXT: Independent implementation acceptance for #159 → owner hygiene/merge review → merge #159 →
-      rebase #157 onto updated `main` for its refused-Open preservation proof and bounded browser/
-      reduced-motion journey, then its final gate. #158 waits for T1/T2 to freeze before Phase B.
+NEXT: Owner hygiene/merge review of #159 → merge #159 → rebase #157 onto updated `main` for its
+      refused-Open preservation proof and bounded browser/reduced-motion journey, then its final
+      gate. #158 waits for T1/T2 to freeze before Phase B.
       Owner follow-ups: push the local `closed/T1.P01.S04` and `closed/T1.P01.S05` tags (neither is
       pushed).
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/acceptance.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19
-BLOCKER: #159's review and merge block T2.P01.S04's final gate; S06 waits for T3.P01.S04's
+BLOCKER: #159's merge review blocks T2.P01.S04's final gate; S06 waits for T3.P01.S04's
          acceptance and its own authorization.
 ```
