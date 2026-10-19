@@ -1,14 +1,15 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation accepted at `dcc23bd2`, with the interrupted-Travel correction at `b9cb5ed1` awaiting re-review; Phase B not implemented; the slice is not accepted, merged, activated or closeable**
+**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4); Phase B not implemented; the slice is not accepted, merged, activated or closeable**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 This record now holds Phase A implementation evidence. It does **not** claim slice acceptance,
 Phase B completion, activation or the cutover gate. Independent review accepted the **Phase A
 implementation** at `dcc23bd2` (round 3, no blocking findings); the interrupted-Travel correction
-at `b9cb5ed1` is a further Phase A increment and is pending re-review. The review that closes S04
-is a separate event after Phase B, and the owner-run activation runbook has not been executed.
+at `b9cb5ed1` was re-reviewed and **accepted** (round 4, no blocking findings). The review that
+closes S04 is a separate event after Phase B, and the owner-run activation runbook has not been
+executed.
 
 ## Base and evidence lane
 
@@ -202,7 +203,7 @@ toggle; all three fail against `f5147aca` and pass at `dcc23bd2`.
 | `npm run test:arch` | pass — 20 files, 164 tests |
 | `npm run test:heavy` | pass — 8 files, 118 tests |
 
-#### Interrupted-Travel declared handoff (2026-10-19, `b9cb5ed1`)
+#### Interrupted-Travel declared handoff (2026-10-19, `b9cb5ed1`) — accepted
 
 A new targeted finding was reachable under AM-9's own time contract. Holds start at **editorial**
 arrival, not when the Camera physically finishes a Travel. With an authored A→B Travel of five
@@ -228,8 +229,11 @@ and `visitor-camera-director.test.ts` (forward three-Stop handoff and the return
 Both mounted cases fail at `e0bc7eed`: the forward one reports the false gap above, and the return
 case starts only the stale Travel. Exact connection identity and direction are asserted from the
 motion's own edges; reduced motion, explicit Cut, look-around and visitor isolation are unchanged.
+Independent re-review accepted this correction (round 4). Its one non-blocking observation is that a
+**genuine** handoff gap's message still names only the settled View, not the in-flight View it also
+tried; that is a diagnostic wording limit, not a routing or contract defect.
 
-| Check at `b9cb5ed1` | Result |
+| Check at `b9cb5ed1` (re-review at `e1ffebc6`) | Result |
 | --- | --- |
 | `npx vitest run tests/lib/visitor` | pass — 7 files, 62 tests (director 7/7, route 6/6) |
 | `npm run check` (editor) | pass — 0 errors, 0 warnings |
@@ -254,15 +258,15 @@ motion's own edges; reduced motion, explicit Cut, look-around and visitor isolat
 6. The visitor's Camera graph is still Scene-derived while the program names Camera-unit Views. The
    director degrades to the neutral frame instead of throwing, but building that graph from the
    Camera unit is Phase B wiring, not a Phase A claim.
-7. **Phase A accepted at `dcc23bd2`; the interrupted-Travel correction is pending re-review.** The
-   slice is not. Phase B remains unimplemented on the same PR, so #158 is **not** merge-eligible,
-   the cutover gate is unaccepted, and no data reset, deploy or activation has occurred.
+7. **Phase A accepted at `b9cb5ed1` (round 4); the slice is not.** Phase B remains unimplemented on
+   the same PR, so #158 is **not** merge-eligible, the cutover gate is unaccepted, and no data
+   reset, deploy or activation has occurred.
 
 ## Acceptance status
 
-**Phase A implementation: ACCEPTED at `dcc23bd2`** (independent review round 3, no blocking findings,
-covering the unit Save live switch, epoch admission, retirement, the runtime blockers and the
-Travel-settling fix). The interrupted-Travel correction at `b9cb5ed1` extends that evidence and is
-**pending re-review**; it does not change this verdict until that review returns. This is **not** slice
-acceptance: Phase B, the final review, the cutover gate and the owner-run activation remain. No
-criterion is marked accepted for the slice, and #158 stays open on the same PR.
+**Phase A implementation: ACCEPTED at `b9cb5ed1`** (independent re-review round 4, no blocking
+findings, covering the interrupted-Travel declared handoff; the round-3 acceptance at `dcc23bd2`
+covered the unit Save live switch, epoch admission, retirement, the runtime blockers and the
+Travel-settling fix). This is **not** slice acceptance: Phase B, the final review, the cutover gate
+and the owner-run activation remain. No criterion is marked accepted for the slice, and #158 stays
+open on the same PR.
