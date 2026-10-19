@@ -71,7 +71,7 @@ on the F1 row — plus the F2 gate evidence. This slice provides no F4 scope and
   decisions (cycle entry, `lockInteraction` mapping, View-key hold mapping and the other matrix
   choices), staged pins and the captured migration baseline (project ID, source-content identity,
   stored version). Output is every unit candidate plus the mapping report, or a typed refusal such as
-  requires-policy-mapping, per the [conversion matrix](../README.md#conversion-and-refusal-matrix).
+  requires-policy-mapping, per the [conversion matrix](../README.md#admission-and-refusal-matrix) (legacy rows now withdrawn; recoverable at `5fee2a2d`).
   No IO, clock or randomness; replay is exact. S01 decides no policy and is wired to no route;
   `T3.P01.S04` activates it. It lives behind its own migration-only entry and retires with it.
 - **Closed minimum formats.** Experience 1 and `ExecutionProgram@1` carry exactly the AM-2/AM-6

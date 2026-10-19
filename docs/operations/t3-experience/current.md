@@ -18,32 +18,27 @@ prerequisites instead.
 ```text
 PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
-SLICES: S01 and S02 shipped 2026-10-16. S05 (unit acceptance + unit Save, PR #140) and S06
-        (Experience runtime + Camera handoff, PR #141) shipped 2026-10-17; S03 shipped the same day
-        with every original obligation reconciled to their accepted evidence. Accepted:
+SLICES: S01, S02, S05 and S06 are shipped, and S03 is shipped by reconciliation. Accepted:
         `F4.intent-acceptance@1:unit-acceptance-v1`, `conditional-save-units-v1` and
-        `F3.channels@1:camera-handoff-v1`. S04 proposed and unauthorized.
-BATON: S03 closed on `main` — plan stub, umbrella acceptance and criterion reconciliation; the
-       F3/F4 gate rows name all three capabilities active. T3.P01's only open child is S04, which is
-       still unauthorized.
-NEXT: (1) do not authorize S04. Work its authorization path in order (plan §Authorization path):
-      AM-7 remote/local inventory and retained-bytes census → migration/refusal coverage →
-      quiescence and recovery plan → publication compatibility disposition and the owner's K2 gap
-      decision → draft `T3.camera-experience-cutover@1` with the authorization request (R6) for
-      owner ratification at version 1 → the owner's own authorization record. Every item is open.
-      (2) Once authorized, S04 consumes the three accepted inactive capabilities at its trusted base
-      and owns activation, caller migration and the live writer switch. All three stay inactive
-      until then. Project rename/delete (K4) is a separate small slice, not S04's.
+        `F3.channels@1:camera-handoff-v1`. S04 is proposed and unauthorized.
+BATON: Batch C reconciled S04's authorization path, pending owner ratification. The owner ruled
+       saved data disposable, so the AM-7 inventory, migration and quiescence ceremony is
+       withdrawn (four preflight drafts removed; recoverable at `5fee2a2d`). AM-9 (clean source
+       epoch: transactional reset, structural F2-only fence, typed refusals, atomic retirement) and
+       `T3.camera-experience-cutover@1` are drafted for ratification. S04 would run in two phases:
+       A on T3-owned files, in parallel with batch C; B as the caller migration after the
+       current-source freeze. S04 is proposed to own TD-6, TD-7, TD-9's draft rewire or removal,
+       and the Guide-free Presentation lowering fix.
+NEXT: The owner signs R1–R5 of the T3 cutover record and its approval patch is applied (AM-9
+      appended, gate row ratified, S04 row approved). Then S04 phase A starts through the runbook
+      start step. No data is reset before S04 merges and the owner runs activation.
 ROUTE: ./README.md →
-       ../../roadmap/README.md#gate-register →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
-       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md
-BLOCKER: none for the shipped slices. S04 remains unauthorized, its gate is undrafted and its six
-         authorization-path items are open. Batch B (T1.P01.S04 ∥ T2.P01.S03, authorized
-         2026-10-17) adds no T3 dependency. Disclosed residuals owned by S04/T4: no authored Cut/Travel invocation selector in Experience@1
-         (lowering takes closed bindings and a preparation-only transition table); presentation
-         text, state, lifecycle and channel policy have no authored F2 home; holds/Gates start at
-         editorial arrival, not Camera-confirmed arrival; uploaded resource bytes are host-asserted
-         until storage verifies them; the envelope's embedded acceptedRevision is baseline
-         provenance, not revision authority.
+       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →
+       ../../reference/decisions/t3-cutover-ratification-2026-10-19.md
+BLOCKER: owner ratification (R1–R4) and authorization (R5). Disclosed residuals that move to
+         T3.P02/T4: the authored Cut/Travel selector, presentation text, state and lifecycle homes
+         (T3.P02 F2 amendments; @1 defaults are fixed in AM-9); resource bytes host-asserted until
+         storage verifies them; the envelope's acceptedRevision is baseline provenance, not
+         revision authority.
 ```

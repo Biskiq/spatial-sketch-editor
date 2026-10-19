@@ -11,75 +11,130 @@ VERIFICATION: exhaustive
 ```
 
 This is the phase's **FINAL PHASE GATE** and the intended sole provider of
-`T3.camera-experience-cutover@1`, which must be drafted and owner-ratified at version 1 before this
-slice is authorized.
+`T3.camera-experience-cutover@1`. The gate must be owner-ratified at version 1 before this slice is
+authorized.
+
+> **Revised 2026-10-19 (Batch C), conditional on owner ratification.** This plan follows the
+> clean-reset path prepared in the [T3 cutover record](../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md):
+> disposable saved data (R1), AM-7 superseded by AM-9 (R2–R3), an empty publication gap (R4) and a
+> two-phase authorization (R5). Until the owner ratifies it, AM-7 governs and this slice cannot be
+> authorized. If the owner rejects the reset, the AM-7 preflight drafts from PR #149 are restored
+> from `5fee2a2d`.
 
 ## Prerequisite
 
-S01, S02, S05 and S06 accepted and S03 reconciled at this slice's trusted base; the AM-7 inventory, migration/refusal coverage,
-quiescence and recovery plan, and any owner-accepted publication gap. The T4 deferral (ruling R1-D,
-2026-10-17) leaves these obligations unchanged. It means any accepted gap runs until T4's
-prepared-reader cutover, which follows [Core Editor Stability](../../../core-editor-stability.md) (K2).
+- S01, S02, S05 and S06 accepted, and S03 reconciled, at this slice's trusted base. All hold.
+- The owner's R1–R5 signatures.
+- For phase B only: the current-source freeze. `T1.P01.S05` and `T2.P01.S04` have merged, or the
+  owner has explicitly re-sequenced them (batch C ruling C2).
+
+The T4 deferral (R1-D) means the approved publication gap runs until T4's prepared-reader cutover
+(K2).
 
 ## Scope
 
-After the source/release inventory, approved migration/refusal coverage, quiescence/recovery plan and
-any owner-accepted publication gap, activate the already accepted unit/acceptance/runtime/Save
-adapters together. Migrate project boot/import/export, validation/runtime composition, platform/API
-persistence, Stage read facade, starter boot, and every existing T1/T2 operation/history caller.
-Review the integrated callers against new `main`. Rebind Scene definition inputs to immutable project
-pins. The F2 starter/migration may install an explicitly captured bounded verified palette;
-Scene-only placement otherwise admits only already pinned/procedural definitions and reports missing
-pins unavailable. New resource admission remains a staged T2 follow-on. Update unfinished consumer
-requirements to preaccepted F2/unit F4 scopes; they cannot continue to claim a retired current
-adapter. No whole-track completion prerequisite and no second live writer.
+Activate the already accepted unit, acceptance, runtime and Save adapters together, on a clean source
+epoch. AM-9 is the contract; the phase's [cutover mechanics](../README.md#cutover-mechanics-and-retirement)
+and [admission matrix](../README.md#admission-and-refusal-matrix) govern acceptance.
 
-Remove Scene Camera fields, legacy flow-order exports/callers and node-keyed visitor orchestration.
-One source revision/lock and new history baseline installs atomically. Re-arm/conform to M5 where
-replacement actually occurs. This slice migrates model/runtime callers, not Camera authoring UI, so
-it does not declare camera-authoring-migration or consume its own output gate.
+**Phase A: T3-owned files** (may start at authorization, in parallel with batch C, per the
+[batch C protocol](../../../cross-track-execution.md#proposed-batch-c-2026-10-19)).
 
-The phase's [migration/refusal matrix](../README.md#conversion-and-refusal-matrix) and
-[cutover mechanics](../README.md#cutover-mechanics-and-retirement) govern acceptance. T3 owns source
-conversion and visitor semantics; T4 subsequently owns prepared delivery activation. Preserve a real
-public route and honest unavailable/not-found behavior during an explicitly approved empty-release
-gap. If covered releases exist without an approved compatibility disposition, activation is blocked.
+- **Reset migration `005`.** Take the advisory lock first; that closes TD-6 for every migration.
+  Then, in one transaction, remove all authored rows and install the F2-only schema fence. Rerun is
+  a no-op. Keep `users` and `schema_migrations`. Add an idempotent purge of unreferenced R2 objects.
+- **API.** Admit only declared F2 versions on every path: read, Save, assets and publication status.
+  Publish/Update return `prepared-reader-required`. Every public read is an honest
+  not-found/unavailable. Fix or explicitly disposition TD-7 on the unit Save path.
+- **Project-model.** Make the unit Save adapter live server-side. Retire the `./migration` subpath:
+  delete the converter and its conformance test, and rebuild `program-entry-closure` fixtures as
+  direct F2 units. Remove Scene Camera fields and the legacy flow-order exports with their
+  package-level callers.
+- **Lowering and visitor.** Lowering keeps Guide-free Presentations reachable; the North Star
+  promise is restored before activation (R5). The visitor runtime switches to Experience-unit
+  orchestration, and node-keyed orchestration is removed.
+
+**Phase B: caller migration** (after the freeze).
+
+- **Callers.** Migrate project boot, import and export (the package boundary declares F2 admission),
+  validation and runtime composition, the Stage read facade, the starter boot (F2-backed, keeping
+  AM-5's public host seam) and every existing T1/T2 operation and history caller onto unit
+  admission.
+- **Save.** Mount the unit Save state in T1's Head through the existing integration, and switch the
+  Head to it. For the session-draft path (TD-9), either rewire it to F2 captures or remove it. No
+  old-format draft path survives.
+- **Requirements.** Update unfinished consumer requirements to the unit scopes; none may keep a
+  retired current-source admission.
+- **Scene definitions.** Rebind Scene definition inputs to immutable project pins. The starter may
+  install an explicitly captured, bounded, verified palette. Scene-only placement otherwise admits
+  only already pinned or procedural definitions, and reports missing pins as unavailable. New
+  resource admission remains a staged T2 follow-on (K1).
+- **History.** Install one new history baseline, and re-arm or conform to M5 where replacement
+  actually occurs.
+- **Final review.** Review the integrated callers against frozen `main`.
+
+This slice migrates model and runtime callers, not Camera authoring UI. It does not declare
+camera-authoring-migration, and it does not consume its own output gate. Authored homes for the
+Cut/Travel selector, presentation text, state and lifecycle are T3.P02's F2 amendments (AM-9
+runtime defaults), not this slice's.
 
 ## Exit criteria
 
 Run the phase's [verification and acceptance criteria](../README.md#verification-and-acceptance-criteria)
-on the integrated tree: record independent acceptance of early conditional Save and source migration,
-including source Undo/Save/reload across the new baseline. No unowned current-source adapter, old
-order caller or second interpreter remains. Reconcile landed references only after the actual
-cutover. Passing makes the phase closable; closure, track completion, T4 reader acceptance and either
-Baseline remain separate owner events.
+on the integrated tree:
+
+- the exhaustive tier;
+- root check/build and the relevant package checks;
+- `check:api` and a DB-backed `test:api` with **zero skips**;
+- a reset-migration rehearsal on the Compose stack, covering one transaction, rerun, two runners and
+  a pre-epoch writer refused;
+- the integrated T1/T2 journeys on unit admission (Place, edit, Undo, Save, reload).
+
+Record independent acceptance of the unit Save live switch and the epoch admission. No unowned
+current-source adapter, old-order caller, converter or second interpreter may remain. Reconcile
+landed references (persistence, scene-content, camera-tour, architecture) only after the actual
+cutover. Passing makes the phase closable. Closure, track completion, T4 reader acceptance and
+either Baseline remain separate owner events.
+
+## Activation runbook (owner-run, after merge)
+
+The merge is the code cutover. Activation on the deployed environment is an owner action outside any
+PR:
+
+1. Optionally take a private snapshot (R1: prudence, not an obligation).
+2. Run `npm run migrate` against the deployed database to apply `005`.
+3. Deploy the API (Render) and the editor (Vercel).
+4. Run the R2 purge.
+5. Smoke-test: empty and starter boot, one Save, a prior `/p/` ID → not-found, and Publish →
+   `prepared-reader-required`.
+
+Any deployment order is safe: a pre-epoch build fails against the fenced schema, and a new build
+refuses pre-epoch data.
 
 ## Authorization path
 
-Reconciled 2026-10-17 against `main` `a8e4d45e`, after S03 shipped through S05/S06. This path
-**authorizes nothing**. It orders what must exist before the owner can authorize this slice. The
-capability side is met: all five `Requires` scopes are `active` at ancestors of `main` (S01 at
-`6dcb6d6d`; `unit-acceptance-v1` and `conditional-save-units-v1` at `d7ab6984`; `camera-handoff-v1` at
-`ff5a14da`), and S01, S02, S05 and S06 are accepted with S03 reconciled. Every item below is
-**open**. Draft preflight artifacts now exist in this slice workspace under `preflight/`; they are
-planning documents, not evidence. No item is evidence until its procedure has been executed against
-the deployed environment where required, and the owner has reviewed the result. Every status below
-stays `open`.
+Revised 2026-10-19 against `main` `5fee2a2d`. This path **authorizes nothing**. The capability side
+is met: all five `Requires` scopes are `active` at ancestors of `main` (S01 at `6dcb6d6d`;
+`unit-acceptance-v1` and `conditional-save-units-v1` at `d7ab6984`; `camera-handoff-v1` at
+`ff5a14da`). S01, S02, S05 and S06 are accepted, and S03 is reconciled. The AM-7 items that were on
+this path (deployed inventory, migration coverage, quiescence/recovery, per-publication disposition)
+are withdrawn, because the owner's disposability ruling leaves them nothing to cover (proposal C-1).
+Every item below is **open**.
 
-| # | Pre-authorization item | Owner | Evidence (draft) | Status |
+| # | Pre-authorization item | Owner | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| 1 | **AM-7 inventory.** Actual source/project/version/publication counts, format coverage and the retained-bytes census, taken from the deployed database and object storage (the local Compose stack is explicitly excluded, not a second target). A clean local database is not evidence that no saved projects exist. | T3 executes; owner reviews | [preflight/inventory.md](./preflight/inventory.md) — procedure and results table; **all values unmeasured** | open |
-| 2 | **Migration/refusal coverage.** Each inventoried format and source kind is mapped to a row of the [conversion and refusal matrix](../README.md#conversion-and-refusal-matrix), with fixtures for every convert and refuse outcome. | T3 | [preflight/migration-coverage.md](./preflight/migration-coverage.md) — ledger planned against the unmeasured inventory; no fixture executed | open |
-| 3 | **Quiescence and recovery plan.** The writer fence, backups taken before activation, a restore rehearsal and rollback criteria, per the [cutover mechanics](../README.md#cutover-mechanics-and-retirement). The local Compose stack (`npm run stack:up`) can host a rehearsal against a restored backup copy, but it is never inventory evidence. | T3 | [preflight/quiescence-recovery.md](./preflight/quiescence-recovery.md) — plan only; no backup taken or rehearsal run | open |
-| 4 | **Publication compatibility disposition (AM-7, K2).** A concrete disposition for every existing publication, and the owner's decision on any temporary publication gap, which runs until T4's prepared-reader cutover under R1-D. Public and owner routes must report honest unavailability throughout. There is no blanket approval. | Owner, on T3's review | [preflight/publication-disposition.md](./preflight/publication-disposition.md) — disposition table unmeasured; **awaiting owner approval** | open |
-| 5 | **Draft and ratify `T3.camera-experience-cutover@1`.** The cutover gate is drafted with this slice's authorization request (cross-track R6) and owner-ratified at version 1. Its register row moves `undrafted` → `ratified`, with this slice as sole provider. | T3 drafts; owner ratifies | [preflight/gate-draft.md](./preflight/gate-draft.md) — drafted for ratification, **not ratified**; register row unchanged (`undrafted`) | open |
-| 6 | **Owner authorization** of this slice, after 1–5, in its own decision record. The register row moves `proposed` → `approved`. | Owner | [preflight/owner-decisions.md](./preflight/owner-decisions.md) — decisions 1–5 open; `docs/reference/decisions/` holds no S04 authorization | open |
+| 1 | **Disposability ruling** with its exact scope (R1) | Owner | [T3 cutover record](../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md#r1--saved-data-is-disposable-owner-confirmation) | open — awaiting signature |
+| 2 | **AM-7 superseded by AM-9** (R2), with the AM-9 text reviewed | Owner, on T3's draft | same record, R2–R3 | open — awaiting ratification |
+| 3 | **Ratify `T3.camera-experience-cutover@1`** with the AM-9 anchor; the register row moves `undrafted` → `ratified` | Owner | same record, R3; [preflight/gate-draft.md](./preflight/gate-draft.md) | open — awaiting ratification |
+| 4 | **Publication gap** approved as empty by construction (R4, K2) | Owner | same record, R4 | open — awaiting signature |
+| 5 | **Owner authorization** of this slice, with the two-phase start condition (R5); the register row moves `proposed` → `approved` | Owner | same record, R5 | open — awaiting signature |
 
-Not on this path: project rename/delete (ruling K4) is a separate small T3 persistence/API slice, with
-T1 owning the shell. Neither batch B nor any T1/T2 slice is a prerequisite of this one. T1/T2 slices
-still unaccepted at activation have their current-source adapters migrated here (K6).
+Not on this path: project rename/delete (ruling K4) is a separate small T3 persistence/API slice,
+with T1 owning the shell. Under the batch C protocol it follows this slice, because it touches the
+same API files. T1/T2 slices still unaccepted at the freeze re-declare unit scopes (K6).
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**; it holds no implementation permission, and nothing
-here claims implementation, acceptance or readiness. Evidence belongs in [acceptance.md](./acceptance.md).
+This slice is **proposed and not authorized**. It holds no implementation permission, and nothing
+here claims implementation, acceptance, readiness or a data reset. Evidence belongs in
+[acceptance.md](./acceptance.md).
