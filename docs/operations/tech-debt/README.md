@@ -67,8 +67,8 @@ Then add      A facade/instrument test that bumps the writer generation under a 
 Status        open — found by source inspection; not yet reproduced in a browser
 Found         2026-10-19, during Batch C coordination (also noted in the unmerged research of PR #154)
 Owner         T1 Head integration (the spatial route and Head Save mount). Under batch C ruling C6
-              (approved 2026-10-19), `T3.P01.S04` rewires or removes the old-format session draft when it
-              migrates Save callers, and `T1.P01.S06` verifies the journey end to end.
+              (approved 2026-10-19), `T3.P01.S04` must deliver working F2 recovery when it migrates Save
+              callers (deleting the old path does not close this entry), and `T1.P01.S06` verifies the journey end to end.
 Symptom       Expected from the code, not yet observed: a Save that needs sign-in can resume only
               while the same editor session stays mounted (*Resume pending save* in the Head). If
               sign-in navigates away, nothing restores the captured Save. T1.P01.S04's acceptance
@@ -84,7 +84,8 @@ Why green     The persistence tests cover the draft codec in isolation. No route
 Fix options   1) Write the captured `SaveAcceptedSource` draft before the sign-in redirect, and have
               the spatial route consume `resume-save` by offering, never auto-running, the resumed
               Save through the Head. 2) Delete the dead draft path and state that only same-session
-              resume is supported. Do NOT resume by installing the draft's document as a new
+              resume is supported — **not acceptable** without an owner-recorded product gap,
+              because Core Editor Stability requires sign-in Save recovery. Do NOT resume by installing the draft's document as a new
               baseline without the user's action, and do NOT keep an old-format draft path alive
               past the F2 cutover.
 Then add      A route-level test, Save → sign-in → return, that offers exactly the captured Save with

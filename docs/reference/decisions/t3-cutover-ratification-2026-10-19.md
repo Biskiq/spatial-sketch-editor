@@ -83,7 +83,7 @@ with these conditions:
   `T2.P01.S04` merged, or explicitly re-sequenced by the owner.
 - **The merge is the code cutover.** Activation on the deployed environment (migration 005 and the
   deploys) is a separate owner-run step that follows the merged runbook.
-- **Assigned defects.** S04 owns TD-6, TD-7, the TD-9 session-draft rewire or removal, and the
+- **Assigned defects.** S04 owns TD-6, TD-7, a working F2 sign-in Save recovery that closes TD-9 (removing the old path alone does not count), and the
   Guide-free Presentation lowering fix. *Alternative for the last:* the first T3.P02 slice, before any
   capture without a Stop.
 

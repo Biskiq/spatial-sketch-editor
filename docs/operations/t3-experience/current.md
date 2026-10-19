@@ -26,7 +26,7 @@ BATON: The owner ratified the clean source epoch (R1–R4): saved data is dispos
        phases (R5). Phase A covers T3-owned files (reset migration 005 with an advisory lock, API
        admission, the unit Save live path, converter retirement, lowering and visitor) and runs in
        parallel with batch C. Phase B is the caller migration, after the current-source freeze
-       (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7, TD-9's draft rewire or removal, and
+       (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7, working F2 sign-in Save recovery (TD-9; deletion does not count), the S06 requirement rewrite, and
        the Guide-free Presentation fix.
 NEXT: After PR #155 merges, start S04 phase A through the runbook start step. No data is reset
       until S04 merges and the owner runs the activation runbook.

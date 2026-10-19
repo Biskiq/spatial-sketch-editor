@@ -25,16 +25,22 @@ evidence would go stale when T3 replaces the current-source adapter and the star
 boot seam, K6). It would also put an exhaustive run on the cutover's critical path, and T1's next
 phase (K3) waits for the F2 cutover anyway.
 
-Under this route, S06's own authorization record re-declares the slice:
+**Requirement handoff (exact).** `T3.P01.S04` phase B rewrites this slice's register row, the header
+above and its `parallel-track-gates.test.ts` pin in the same commit that retires
+`local-single-domain-v1` (S04 plan, phase B "Requirements"):
 
-- `Consumes` adds `F2.unit-envelope@1` and `T3.camera-experience-cutover@1`;
-- `Requires` replaces the retiring `local-single-domain-v1` with the unit scopes that S04 makes live
-  (`unit-resolution-v1`, `unit-acceptance-v1`, and `conditional-save-units-v1` for the Save/reload
-  journey).
+- `Consumes` becomes `F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1,
+  T1.viewport-projection@1, T3.camera-experience-cutover@1`;
+- `Requires` becomes `unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`,
+  `conditional-save-units-v1` (for the Save/reload journey) and `viewport-projection-v1`.
 
-The register row and the `Requires` pin stay unchanged until that record exists. The checker refuses
-an unregistered gate version, and the cutover gate is still `undrafted`. On the post-cutover tree,
-the journey below also verifies the sign-in Save resume
+Until then the row is inert: it is `proposed`, holds no permission, and the header above still
+names the current-source scopes only because S04 has not yet retired them. S06 **cannot start**
+with a retired scope: its own later authorization record requires the rewritten row, every scope
+`active` and `T3.camera-experience-cutover@1` `accepted` at its trusted base, and the runbook start
+step checks this explicitly because the current checker does not evaluate proposed-row readiness.
+The cutover gate is `ratified` at version 1 (2026-10-19), not yet accepted. On the post-cutover
+tree, the journey below also verifies the working F2 sign-in Save resume
 ([TD-9](../../../../operations/tech-debt/README.md#td-9--the-sign-in-save-resume-is-half-wired)).
 The pre-cutover alternative was declined.
 

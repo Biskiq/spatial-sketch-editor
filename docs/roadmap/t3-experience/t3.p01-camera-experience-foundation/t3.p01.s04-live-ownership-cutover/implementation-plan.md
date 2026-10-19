@@ -41,7 +41,7 @@ and [admission matrix](../README.md#admission-and-refusal-matrix) govern accepta
 
 - **Reset migration `005`.** Take the advisory lock first; that closes TD-6 for every migration.
   Then, in one transaction, remove all authored rows and install the F2-only schema fence. Rerun is
-  a no-op. Keep `users` and `schema_migrations`. Add an idempotent purge of unreferenced R2 objects.
+  a no-op. Keep `users` and `schema_migrations`. Add an idempotent purge of unreferenced R2 objects behind an ownership check: Before any purge, verify that the bucket/prefix is application-owned (configured, and holding only keys this API writes); purge only keys under that verified prefix that no remaining row references, and never delete an object outside it or of unknown provenance.
 - **API.** Admit only declared F2 versions on every path: read, Save, assets and publication status.
   Publish/Update return `prepared-reader-required`. Every public read is an honest
   not-found/unavailable. Fix or explicitly disposition TD-7 on the unit Save path.
@@ -60,10 +60,22 @@ and [admission matrix](../README.md#admission-and-refusal-matrix) govern accepta
   AM-5's public host seam) and every existing T1/T2 operation and history caller onto unit
   admission.
 - **Save.** Mount the unit Save state in T1's Head through the existing integration, and switch the
-  Head to it. For the session-draft path (TD-9), either rewire it to F2 captures or remove it. No
-  old-format draft path survives.
+  Head to it. **Sign-in Save recovery (TD-9) must work on F2.** Core Editor Stability requires it, so S04
+  rewires the draft to F2 captures: write the captured unit Save before the sign-in redirect, and
+  have the spatial route consume `resume-save` by *offering*, never auto-running, that exact Save
+  with its precondition and operation ID. Deleting the old path alone does not close TD-9. If this
+  cannot ship in S04, S04 stops and the owner records the product gap and amends S06's obligation
+  explicitly; it is never silently dropped. No old-format draft path survives. S04's acceptance
+  includes the route-level Save → sign-in → return test that TD-9 owes.
 - **Requirements.** Update unfinished consumer requirements to the unit scopes; none may keep a
-  retired current-source admission.
+  retired current-source admission. This explicitly includes the proposed `T1.P01.S06` row: in the
+  same commit that retires `local-single-domain-v1`, S04 rewrites S06's register row, plan header
+  and `parallel-track-gates.test.ts` pin to `Consumes` `F1.reference@1, F2.unit-envelope@1,
+  F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1` and `Requires`
+  `F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1,
+  F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1,
+  T1.viewport-projection@1:viewport-projection-v1`. The row stays `proposed`; S04 changes
+  requirements, never S06's authorization or status.
 - **Scene definitions.** Rebind Scene definition inputs to immutable project pins. The starter may
   install an explicitly captured, bounded, verified palette. Scene-only placement otherwise admits
   only already pinned or procedural definitions, and reports missing pins as unavailable. New
@@ -103,7 +115,7 @@ PR:
 1. Optionally take a private snapshot (R1: prudence, not an obligation).
 2. Run `npm run migrate` against the deployed database to apply `005`.
 3. Deploy the API (Render) and the editor (Vercel).
-4. Run the R2 purge.
+4. Run the R2 purge. It refuses unless the configured bucket/prefix is verified application-owned, and it touches only unreferenced keys under that prefix.
 5. Smoke-test: empty and starter boot, one Save, a prior `/p/` ID → not-found, and Publish →
    `prepared-reader-required`.
 

@@ -47,12 +47,12 @@ own trusted base.
 | C3 | **`T1.P01.S06` route.** S06 runs once, after `T3.P01.S04` is accepted. Its own authorization re-declares unit scopes and consumes `T3.camera-experience-cutover@1`. It is not authorized here. *Alternative:* S06 on current source right after S05, with `T3.P01.S04` phase B then waiting for S06 as well. | Post-cutover |
 | C4 | **T2 S04 scope correction.** Reuse T1's shipped *Download/Open source JSON*, replacement guard and *Reload remote*. T2 builds no Head, persistence or Save UI. Numeric Resize is the guaranteed route. A direct Resize handle is admitted only through S07's contribution points and the existing T2 seams; a new host seam is a stop-and-report to T1. | Approve |
 | C5 | **TD-8 ownership.** TD-8 is S05's first increment, because T1 owns the host. T1 may land it as a standalone tech-debt fix PR before S05 if T2 S04's journeys need it first. T2 records the base its journeys ran on. | Approve |
-| C6 | **TD-9 triage.** The sign-in Save resume that T1 S04's acceptance describes is not wired in source. It is recorded as TD-9 with owner T1 (Head integration) and is not in S05's scope. `T3.P01.S04` rewires or removes the old-format session draft, and `T1.P01.S06` verifies the journey end to end. | Approve |
+| C6 | **TD-9 triage.** The sign-in Save resume that T1 S04's acceptance describes is not wired in source. It is recorded as TD-9 with owner T1 (Head integration) and is not in S05's scope. `T3.P01.S04` delivers working F2 sign-in Save recovery (removal alone does not count; any shortfall needs an owner-recorded gap and an amended S06 obligation), and `T1.P01.S06` verifies the journey end to end. *Corrected 2026-10-19 after review.* | Approve |
 | C7 | **Cycle.** S05 is the configured terminal exposure, and its start opens nothing new. At its closeout the S05 exposure row is recorded. With S02 and S04 already recorded, the window becomes closable, and the owner then owes the mechanism verdicts as a separate event. That event blocks no batch C, T2 or T3 work. | Approve |
 
 ## Explicit non-implications
 
-- `T1.P01.S06`, `T3.P01.S04`, T3.P02, K1/K3/K4 work and all T4 work stay unauthorized (R1-D stands).
+- This record authorizes neither `T1.P01.S06`, T3.P02, K1/K3/K4 work nor any T4 work (R1-D stands). `T3.P01.S04` is authorized separately by the [T3 cutover record](./t3-cutover-ratification-2026-10-19.md), not by this one.
 - Neither slice accepts a capability or edits a gate row.
 - Approving this record does not ratify anything in the
   [T3 cutover ratification](./t3-cutover-ratification-2026-10-19.md), and the reverse is also true.
