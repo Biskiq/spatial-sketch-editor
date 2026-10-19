@@ -1,12 +1,13 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implemented, not accepted**
+**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `dcc23bd2`; Phase B not implemented; the slice is not accepted, merged, activated or closeable**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 This record now holds Phase A implementation evidence. It does **not** claim slice acceptance,
-Phase B completion, activation or the cutover gate. The independent review that closes S04 is a
-separate event, and the owner-run activation runbook has not been executed.
+Phase B completion, activation or the cutover gate. Independent review accepted the **Phase A
+implementation** at `dcc23bd2` (round 3, no blocking findings); the review that closes S04 is a
+separate event after Phase B, and the owner-run activation runbook has not been executed.
 
 ## Base and evidence lane
 
@@ -180,12 +181,25 @@ evidence rather than assumed:
 - **Legacy R2 keys.** A pre-namespace key refuses the purge; the activation disposition is recorded
   under the purge boundary above.
 
-| Check | Result |
+#### Travel-settling follow-up (2026-10-19, `dcc23bd2`)
+
+Targeted verification found one more consequence of the in-flight guard: because it ran **before** the
+Cut/reduced-motion branch, the director would not settle an explicit Cut to the View it was already
+travelling to, a Cut back to the origin View, or a reduced-motion toggle mid-Travel. All three are
+commands to settle now, not duplicate hold ticks, and the animated Travel ran on instead.
+`VisitorCameraDirector` now decides the instant path first and applies it only when there is something
+to settle; the hold-tick guard still applies to actual Travels, and a hold at a Cut Stop does not
+reframe (so look-around survives). Three mounted regressions in
+`visitor-camera-director.test.ts` cover the destination Cut, the origin Cut and the reduced-motion
+toggle; all three fail against `f5147aca` and pass at `dcc23bd2`.
+
+| Check at `dcc23bd2` | Result |
 | --- | --- |
-| `npx vitest run tests/lib/visitor` | pass — 55 tests, including the mounted director and reactive store probe |
+| `npx vitest run tests/lib/visitor` | pass — 7 files, 58 tests (director 5/5) |
 | `npm run check` (editor) | pass — 0 errors, 0 warnings |
-| `npm run test:fast` | pass — 139 files, 1915 tests |
-| `npm run build:api` + `r2-purge.test.mjs` | pass — 10 purge tests, 0 failures |
+| `npm run test:fast` | pass — 139 files, 1,918 tests |
+| `npm run test:arch` | pass — 20 files, 164 tests |
+| `npm run test:heavy` | pass — 8 files, 118 tests |
 
 ## Outstanding — Phase B and review handoff
 
@@ -204,11 +218,15 @@ evidence rather than assumed:
 6. The visitor's Camera graph is still Scene-derived while the program names Camera-unit Views. The
    director degrades to the neutral frame instead of throwing, but building that graph from the
    Camera unit is Phase B wiring, not a Phase A claim.
-7. **Not accepted and not activated.** The three substantive review corrections are implemented and
-   verified above; a fresh independent review of #158 is still required. No data reset, no deploy,
-   no gate acceptance.
+7. **Phase A accepted; the slice is not.** Independent review accepted the Phase A implementation at
+   `dcc23bd2` with no blocking findings. Phase B remains unimplemented on the same PR, so #158 is
+   **not** merge-eligible, the cutover gate is unaccepted, and no data reset, deploy or activation
+   has occurred.
 
 ## Acceptance status
 
-No criterion is marked accepted. Phase A is implemented and green on the checks above; independent
-review of the unit Save live switch, epoch admission and retirement is required before S04 can close.
+**Phase A implementation: ACCEPTED at `dcc23bd2`** (independent review round 3, no blocking findings,
+covering the unit Save live switch, epoch admission, retirement, the runtime blockers and the
+Travel-settling fix). This is **not** slice acceptance: Phase B, the final review, the cutover gate and
+the owner-run activation remain. No criterion is marked accepted for the slice, and #158 stays open on
+the same PR.

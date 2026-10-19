@@ -2,15 +2,18 @@
 /**
  * Mounted Camera-handoff evidence (T3.P01.S04 review follow-up).
  *
- * Two runtime blockers are exercised against the real `VisitorCameraDirector`
- * and the real `VisitorRuntimeState`, with Threlte's canvas/camera replaced by
- * test doubles because jsdom has no WebGL:
+ * Runtime blockers are exercised against the real `VisitorCameraDirector` and
+ * the real `VisitorRuntimeState`, with Threlte's canvas/camera replaced by test
+ * doubles because jsdom has no WebGL:
  *
  * 1. `VisitorRuntimeState.state` must be reactive, or a Stop/phase change never
  *    reaches the Camera and the visitor surface freezes on its first frame.
  * 2. A hold tick replaces the interpreter state. While a Travel is in flight the
  *    Camera-view target and the realized view differ, so a reactive re-run must
  *    not start the same Travel again from mid-flight.
+ * 3. An explicit Cut to the in-flight destination, a Cut back to the origin, or
+ *    a reduced-motion toggle must settle immediately instead of being mistaken
+ *    for another hold tick.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
