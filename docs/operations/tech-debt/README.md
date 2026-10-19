@@ -34,7 +34,8 @@ below, not the entry.
 
 ## TD-8 — a task's scoped services go stale after an accepted install, refusing `Begin`
 
-Status        fixed — slice branch `T1-P01-S05` on base `919c2904`, commits `1fb51ed8` and `7ab64ebf`; the PR merge revision is where it becomes mainline
+Status        fixed — shipped in `T1.P01.S05` (PR #156), accepted at `3d432836` on base `919c2904`;
+              the merge revision becomes the mainline anchor once #156 lands as a merge commit
 Found         2026-10-18, during T2.P01.S03's browser acceptance run
 Owner         Stage host task-scoped services (`apps/editor/src/lib/authoring/stage/stage-facade.ts`,
               `taskServices`/`active()`), not the Scene adapter that surfaced it

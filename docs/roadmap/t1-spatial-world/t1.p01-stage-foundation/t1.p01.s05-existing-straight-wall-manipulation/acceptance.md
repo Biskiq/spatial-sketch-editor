@@ -1,17 +1,34 @@
 # T1.P01.S05 — acceptance record: Existing straight-Wall manipulation
 
-**Slice:** T1.P01.S05 · **Status:** implemented on the slice branch, **not accepted** — independent
-review and the merge gate are outstanding ·
-**Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) ·
+**Slice:** T1.P01.S05 · **Status:** ACCEPTED and SHIPPED 2026-10-19 — independent review accepted
+`3d432836`; routine `slice-closeout` ran on the same branch ·
+**Plan:** [closed stub](./implementation-plan.md) ·
 **Phase:** [T1.P01](../README.md)
 
 **Tested revision:** `982bbe20` on branch `T1-P01-S05`, base `919c2904` (batch C coordination, PR
 #155). The lane results below ran on the working tree committed as `982bbe20`, which includes the
 round-2 fixes (signed pointer parameter, exact paused resume, full neighbour reach). The commits
 `1fb51ed8`, `7ab64ebf` and `4730fd1b` are the earlier increments, not the tested tree; this record's
-own documentation-only commit follows the tested tree and was checked with `test:arch` only. No merge
-gate has been run on a merge revision, no capability or gate state is written, and nothing here
-claims readiness or acceptance.
+own documentation-only commit follows the tested tree and was checked with `test:arch` only.
+
+## Acceptance
+
+Independent review round 4 accepted the implementation at `3d432836` — the head of PR #156 — with
+**no blocking findings**, after three earlier rounds fixed the signed length parameter, the exact
+paused-resume path and the full shared-Junction neighbour reach. The owner's `slice-closeout`
+invocation on 2026-10-19 is the acceptance act; the verdict covers the current head, and no finding
+is open, withdrawn or unadjudicated. This slice introduces no gate, gate version, capability scope or
+authored format.
+
+**Required merge method — P1:** a **merge commit** via PR #156; no squash, no rebase and no amend, so
+the recorded anchors stay reachable. **Post-merge verification owed** after the PR lands:
+
+```text
+git merge-base --is-ancestor 3d4328361658494523ab7652dd8043ae10fa638a main
+```
+
+The complete merge gate runs at the merge revision; the lane numbers below are branch results and
+are reused, not re-produced, by this close.
 
 ## What landed
 
@@ -38,7 +55,7 @@ claims readiness or acceptance.
 | Plan and 3D handles/highlights resolve the same source | **Partial.** Handles and affected-neighbour markers are projected through the one live evaluation, and the press is refused unless the canonical selection names a straight Wall. Highlight parity beyond the shared projection is not separately measured. |
 | Inactive helpers do not pick | **Verified** (no contributed task open → the press is not claimed). |
 | Navigation, reading changes, grid/snap and Esc generate no document-history entries | **Partial.** Reading change and Esc/cancel are verified with zero history entries. No grid/snap configuration exists in this host, so that clause is vacuous rather than exercised; navigation itself is the host's own gesture path and is unchanged by this slice. |
-| M1/M2/M5 real composed-path exposure | **Verified through composition**: M1 by the F4 planner/intent path (not a direct document write), M2 by the sibling S04 scalar authority being untouched, M5 by the facade/factory rebuild and the gesture cancellation paths. The exposure-row mechanism verdicts remain the owner's separate closeout event. |
+| M1/M2/M5 real composed-path exposure | **Verified through composition**: M1 by the F4 planner/intent path (not a direct document write), M2 by the sibling S04 scalar authority being untouched, M5 by the facade/factory rebuild and the gesture cancellation paths. The exposure row is recorded at this closeout; the per-mechanism keep/simplify/delete verdicts remain the owner's separate event. |
 | M4 Wall-birth/noding identity | **Dormant and unexposed**, as the S04 record states; this slice creates no Wall. |
 
 ## Known gaps and risks
@@ -54,8 +71,8 @@ claims readiness or acceptance.
 4. **Neighbour preview is one marker per reshaped Wall**, at the moved junction's candidate point.
    It does not draw the neighbour's full candidate body or its other endpoints; the canonical
    candidate remains the authority.
-5. The **architecture-integration** tier's integration route (`T1.P01.S06`) and the full lane gate
-   are outstanding. Lane results belong to the coordinator/merge gate, not to this record.
+5. The **architecture-integration** tier's integration route (`T1.P01.S06`) remains outstanding;
+   this close does not stand in for it. The merge gate runs at the merge revision.
 6. Browser evidence for the pointer journey is not recorded here.
 7. **TD-8 followed option 2, not the plan's option 1.** The plan says “fix it host-side (TD-8
    option 1)” — rebuild the panel's services on `onAdaptersChanged`. The implementation instead
@@ -87,3 +104,61 @@ The suites this slice adds or changes are:
 - `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` (TD-8 block)
 - `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts` (capture-loss → adapter cancel)
 - `apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts` (planner list)
+
+## Closeout — 2026-10-19
+
+**Tier and route.** `architecture-integration`, with the integration route
+[`T1.P01.S06`](../t1.p01.s06-integrated-final-gate/implementation-plan.md) still owed. This close
+reuses the recorded branch evidence; it runs no product gate and edits no product code.
+
+**TD-8 disposition.** Fixed in this slice as its first increment (ruling C5), following the ledger's
+**option 2 plus a close notification**, not the plan's prescribed option 1. The rationale, lifetime
+contract and owed tests are recorded in
+[`docs/operations/tech-debt/README.md`](../../../../operations/tech-debt/README.md#td-8--a-tasks-scoped-services-go-stale-after-an-accepted-install-refusing-begin);
+the ledger entry's status now reads fixed and names PR #156. The deviation is disclosed in *Known
+gaps* above and is not presented as the prescribed fix.
+
+**Cycle exposure.** The T1.P01 window lists this slice as its terminal exposure. `slice-closeout`
+recorded the exposure row and closed the window: S02 and S04 are accepted, so the closure predicate
+holds. The cycle moved to `PHASE_3_EVALUATE` with readiness `owner-verdict-owed`; the per-mechanism
+keep / simplify / delete / not-exposed verdicts remain the **owner's** separate event.
+
+**Entry points.**
+
+```text
+implementation  apps/editor/src/lib/authoring/adapters/layout/{precision.ts,instrument.ts,adapter-support.ts,layout.adapter.ts}
+                apps/editor/src/lib/authoring/adapters/layout/{paused-proposal.ts,wall-gesture.ts,LayoutDimensionsInstrument.svelte}
+                apps/editor/src/lib/authoring/stage/stage-facade.ts (TD-8 task-scoped services)
+validation      apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
+                apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts
+                apps/editor/tests/lib/authoring/stage-shell-composition.test.ts
+regressions     apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts
+```
+
+**Separate follow-up, not part of this slice.** A refused Source JSON Open currently replaces the
+visible mounted project because the T1 route applies a refused boot result. That is a route/host
+defect discovered during T2.P01.S04's final-gate work; it is **not** in this slice's accepted scope
+and must not be folded into PR #156. It is owned by a narrowly scoped T1 host follow-up branched from
+`main` after #156 merges, with the preservation contract and regression evidence recorded there.
+
+## Closeout preservation
+
+```text
+CLOSEOUT PRESERVATION — T1.P01.S05 (2026-10-19)
+prose compacted:                 1   implementation plan → stub at its own path
+reference promotions:            0   TD-8's durable lifetime contract already lives in
+                                     operations/tech-debt; no reference/* claim changed
+renderable evidence archived:    0   no PNG/HTML evidence existed in the slice tree
+historical anchor:               3d4328361658494523ab7652dd8043ae10fa638a · tag closed/T1.P01.S05
+                                     (local only — not pushed; plan anchor ca516743 is an ancestor)
+new live → archive prose links:  0
+transient artifacts removed:     0
+permanent stubs added:           1   (owner-ratified 2026-09-22 hybrid cost)
+```
+
+```text
+git show ca5167435a7accabd00b0135435753c25cb8639f:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md   (full plan)
+git show 3d4328361658494523ab7652dd8043ae10fa638a:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/acceptance.md   (this record, pre-close body)
+REQUIRED MERGE METHOD — P1    merge commit via PR #156; no squash, no rebase, no amend
+POST-MERGE VERIFICATION OWED   git merge-base --is-ancestor 3d4328361658494523ab7652dd8043ae10fa638a main
+```
