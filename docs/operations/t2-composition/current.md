@@ -18,23 +18,22 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01, S02 and S03 shipped; S04 proposed and
-        unauthorized.
-BATON: S03 pointer Move was repaired after manual browser acceptance found its ray used the wrong
-       CSS origin. The delta review found no issues; real-browser Move/Yaw, F4 commit, Undo/Redo and
-       refusal evidence passed. PR #147 has the refreshed code and acceptance. The compact record and
-       archived screenshots are routed here:
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
-       Full acceptance body anchor `2747f1691551296e21b17aa04dfd9de76cb08f59` is tagged
-       `closed/T2.P01.S03` (local only — not pushed). PR #147 is owner-accepted and open. The
-       documentation-reference gate passed (55 tests).
-NEXT: Final merge of PR #147 as a merge commit. After merge, verify the anchor is an ancestor of
-      `main` and push the tag. S04 remains proposed and unauthorized; it also waits for its
-      registered prerequisites.
+SLICES: the phase README's slice register is authoritative — S01, S02 and S03 shipped; S04, the
+        phase's declared FINAL PHASE GATE, is proposed and unauthorized.
+BATON: S03 closed 2026-10-18 at implementation `2747f1691551296e21b17aa04dfd9de76cb08f59`
+        (tag `closed/T2.P01.S03`); its record, verification tier, residuals and closed-work
+        recovery:
+        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
+        The closed work merges through PR #147, whose required merge method is a merge commit; the
+        tag stays local until the post-merge anchor check.
+NEXT:   merge PR #147 (merge commit) → verify the anchor is an ancestor of `main` → push the tag.
+        S04 then needs owner authorization only: its registered prerequisites are already satisfied
+        on `main` (`conditional-save-current-v1` accepted; T1's Head Save integration landed via
+        `T1.P01.S04`, PR #148, merged 2026-10-18).
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md
-BLOCKER: none for S03. S04 waits on its prerequisites and authorization.
+BLOCKER: S04 authorization. PR #147's merge does not wait on anything else.
 ```

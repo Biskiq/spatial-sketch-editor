@@ -14,8 +14,11 @@ Scope boundaries that stay live: Save, Preview, resize, duplicate and delete bel
 pointer/reading/acceptance rules are owned by
 [composition-execution.md](../../../../reference/composition-execution.md).
 
-Provenance: implementation PR #147; tested revision `8381dc54`; owner acceptance 2026-10-18 from the
-deliberate `slice-closeout` invocation, on an independent-review verdict covering that revision. The
+Provenance: implementation PR #147; final accepted implementation
+`2747f1691551296e21b17aa04dfd9de76cb08f59` — the pointer Move repair, covered by the independent
+delta review and the refreshed acceptance of 2026-10-18 (the first, invalidated acceptance tested
+`8381dc54`). Owner acceptance 2026-10-18 from the deliberate `slice-closeout` invocation, on an
+independent-review verdict covering that revision. The
 host edits were authorized by the
 [host-seam exception](../../../../reference/decisions/t2-s03-host-seams-2026-10-17.md) and the
 [renderer exception](../../../../reference/decisions/t2-s03-renderer-exception-2026-10-17.md).
