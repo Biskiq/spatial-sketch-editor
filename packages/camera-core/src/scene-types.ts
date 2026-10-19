@@ -39,11 +39,6 @@ export type CameraGraphNode = {
   cameraTarget: Vec3;
   fov: number;
   connectedNodeIds: string[];
-  nextNodeId?: string;
-  previousNodeId?: string;
-  detourOfNodeId?: string;
-  lockInteraction?: boolean;
-  holdSeconds?: number;
 };
 
 export type CameraViewKeyframe = {

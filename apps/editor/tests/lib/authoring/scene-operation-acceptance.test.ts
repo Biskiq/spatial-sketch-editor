@@ -88,7 +88,6 @@ function sceneWith(
 				cameraTarget: [1, 1.25, -2],
 				fov: 54,
 				connectedNodeIds: ['tour-b'],
-				nextNodeId: 'tour-b'
 			},
 			{
 				id: 'tour-b',
@@ -97,7 +96,6 @@ function sceneWith(
 				cameraTarget: [4, 1.25, 0],
 				fov: 54,
 				connectedNodeIds: ['tour-a'],
-				previousNodeId: 'tour-a'
 			}
 		],
 		connections: [

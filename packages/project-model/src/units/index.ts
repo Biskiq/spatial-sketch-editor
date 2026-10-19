@@ -31,3 +31,6 @@ export { createUnitPlannerRegistry, createUnitTargetInspector, prepareUnitIntent
 // T3.P01.S06 — the shared Experience lowering, interpreter and semantic
 // companion. Appended: they read the same inactive envelope and activate with it.
 export * from './experience';
+// Type-only: an editor that executes a lowered program names its type without
+// pulling the program's validation closure into a source module.
+export type { ExecutionProgram, ProgramInvocation } from '../program/types';

@@ -64,6 +64,13 @@ export const UNIT_ACCEPTANCE_SCOPE = 'unit-acceptance-v1' as const;
 export const UNIT_ENVELOPE_SOURCE_KIND = 'unit-envelope';
 export const UNIT_ENVELOPE_SOURCE_VERSION = 1;
 
+/**
+ * The durable database fence value for the clean source epoch. The migration
+ * writes this exact literal; the Save path reads it from here so the schema and
+ * the writer cannot drift.
+ */
+export const UNIT_ENVELOPE_SOURCE_FORMAT = 'unit-envelope-v1';
+
 export type UnitAcceptanceAdapterOptions = {
 	/** The registry grant: compound changes are admitted and checked as one operation. */
 	readonly compound?: boolean;

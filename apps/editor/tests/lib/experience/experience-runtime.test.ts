@@ -124,6 +124,39 @@ describe('Experience lowering', () => {
 		expect(lowered.profile).toEqual({ reducedMotion: 'required', semanticDomNavigation: 'required' });
 	});
 
+	it('keeps a Guide-free Presentation reachable instead of dropping it', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		// `presentation-study` has no Stop in this Guide. AM-9 says a Presentation
+		// may exist without a Guide; lowering emits it and the companion exposes it
+		// as a destination, rather than silently dropping the authored record.
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							...base.presentations,
+							{ id: 'presentation-study', label: 'Study', viewId: 'view-2' }
+						]
+					}
+				]
+			}
+		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		expect(lowered.kind).toBe('lowered');
+		if (lowered.kind !== 'lowered') return;
+		expect(lowered.program.presentations.map((presentation) => presentation.id)).toContain('presentation-study');
+		const entered = reduceExperience(lowered.program, createExperienceRun(lowered.program, OPTIONS), event('enter'));
+		const companion = buildExperienceCompanion(lowered.program, entered.state);
+		expect(companion.presentations).toContainEqual({
+			presentationId: 'presentation-study',
+			label: 'Study',
+			viewId: 'view-2',
+			stopIds: []
+		});
+	});
+
 	it('refuses a non-entry occurrence without an invocation binding instead of inferring a Cut', async () => {
 		const envelope = await experienceEnvelope();
 		const lowered = lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, bindings: [] });

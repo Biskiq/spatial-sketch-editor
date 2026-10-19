@@ -227,13 +227,13 @@ export function lowerExperienceProgram(
 
 	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
 	const contentByPresentation = new Map(options.content?.map((entry) => [entry.presentationId, entry.records]) ?? []);
+	// A Presentation may exist without a Guide (AM-9). Lowering emits every
+	// Presentation this Experience carries, not only those a selected Guide's
+	// Stops use, so a guide-free Presentation stays reachable to DOM navigation
+	// and camera handoff. Each View still has to resolve; an unreachable View is
+	// refused rather than dropped.
 	const presentations: ProgramPresentation[] = [];
-	const usedPresentationIds = new Set(order.map((stopId) => stopById.get(stopId)!.presentationId));
-	for (const presentationId of usedPresentationIds) {
-		const presentation = presentationById.get(presentationId);
-		if (presentation === undefined) {
-			return refuse('unknown-presentation', `the lowered order uses Presentation "${presentationId}", which this Experience does not carry`);
-		}
+	for (const presentation of experience.presentations) {
 		if (!resolves(context, reference('camera', 'view', presentation.viewId, cameraRevision, []))) {
 			return refuse(
 				'unknown-view',

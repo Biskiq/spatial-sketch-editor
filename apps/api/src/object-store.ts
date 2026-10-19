@@ -1,4 +1,10 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+	DeleteObjectCommand,
+	GetObjectCommand,
+	ListObjectsV2Command,
+	PutObjectCommand,
+	S3Client
+} from '@aws-sdk/client-s3';
 import type { Readable } from 'node:stream';
 
 export type ObjectStore = {
@@ -8,6 +14,9 @@ export type ObjectStore = {
 		options: { contentType: string; contentLength: number }
 	): Promise<void>;
 	get(key: string): Promise<{ body: Readable; contentLength: number } | null>;
+	/** List every key this application can see. Used only by the epoch purge. */
+	list?(): Promise<string[]>;
+	delete?(key: string): Promise<void>;
 	close?(): void | Promise<void>;
 };
 
@@ -54,6 +63,26 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
 				if (isMissingObjectError(error)) return null;
 				throw error;
 			}
+		},
+		async list() {
+			const keys: string[] = [];
+			let continuationToken: string | undefined;
+			do {
+				const page = await client.send(
+					new ListObjectsV2Command({
+						Bucket: config.r2Bucket,
+						ContinuationToken: continuationToken
+					})
+				);
+				for (const object of page.Contents ?? []) {
+					if (typeof object.Key === 'string') keys.push(object.Key);
+				}
+				continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+			} while (continuationToken !== undefined);
+			return keys;
+		},
+		async delete(key) {
+			await client.send(new DeleteObjectCommand({ Bucket: config.r2Bucket, Key: key }));
 		},
 		close() {
 			client.destroy();

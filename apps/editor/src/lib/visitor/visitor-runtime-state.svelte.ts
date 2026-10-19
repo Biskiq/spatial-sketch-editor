@@ -1,213 +1,100 @@
 /**
- * P21.4 — explicit-graph visitor runtime core.
+ * Visitor runtime — Experience-unit orchestration (AM-9, T3.P01.S04).
  *
- * Generic navigation semantics with no Chopin defaults. The caller supplies
- * the navigation graph and the initial node explicitly; zero nodes is a valid
- * state (neutral orbit branch). The legacy wrapper under `lib/state` keeps its
- * entrance defaults and is never imported here.
+ * The visitor executes one lowered `ExecutionProgram@1` through the single
+ * Experience interpreter. There is no node-keyed order, no main-flow walk and no
+ * Scene `nextNodeId`/`previousNodeId` traversal: Guide order is authored in the
+ * Experience unit, lowering produces the program, and this store only dispatches
+ * explicit events at editorial arrival. Camera framing is read from the current
+ * Stop's Presentation view; motion remains the Camera authority's.
  */
-import { getNode } from '@portfolio/camera-core';
-import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-model';
+import {
+	buildExperienceCompanion,
+	createExperienceInterpreter,
+	type ExecutionProgram,
+	type ExperienceInterpreterOptions,
+	type ExperienceRunState,
+	type ProgramInvocation
+} from '@portfolio/project-model/units';
 
-export type VisitorTourMode = 'guided' | 'free';
+export type VisitorRuntimeInput = {
+	readonly program: ExecutionProgram;
+	readonly options: ExperienceInterpreterOptions;
+};
 
 export class VisitorRuntimeState {
-	currentRoomId = $state<string>('');
-	activeNodeId = $state<string>('');
-	targetNodeId = $state<string | null>(null);
-	isTransitioning = $state(false);
-	tourMode = $state<VisitorTourMode>('guided');
+	readonly program: ExecutionProgram;
+	readonly options: ExperienceInterpreterOptions;
+	/** Set by the host from `prefers-reduced-motion`; affects camera motion only. */
 	reducedMotion = $state(false);
-	visitedRoomIds = $state(new Set<string>());
+	state: ExperienceRunState;
 
-	constructor(
-		readonly graph: NavigationGraph,
-		initialNodeId: string | null
-	) {
-		const initialNode =
-			initialNodeId === null ? undefined : graph.nodeById.get(initialNodeId);
-		if (initialNode) {
-			this.activeNodeId = initialNode.id;
-			// P23.0b: world-local nodes carry no roomId — room tracking stays
-			// unchanged (empty here, the visitor FSM has no room context). Legacy
-			// room-owned nodes behave exactly as before.
-			this.currentRoomId = initialNode.roomId ?? '';
-			this.visitedRoomIds =
-				initialNode.roomId === undefined
-					? new Set<string>()
-					: new Set([initialNode.roomId]);
-		} else {
-			// Zero-node / no-valid-start policy: empty active id, inert FSM.
-			// The surface takes the neutral orbit branch; never `getNode('')`.
-			this.activeNodeId = '';
-			this.currentRoomId = '';
-			this.visitedRoomIds = new Set();
-		}
+	private readonly interpreter: ReturnType<typeof createExperienceInterpreter>;
+
+	constructor({ program, options }: VisitorRuntimeInput) {
+		this.program = program;
+		this.options = options;
+		this.interpreter = createExperienceInterpreter(program, options);
+		this.state = $state(this.interpreter.state());
 	}
 
-	get activeNode() {
-		return getNode(this.activeNodeId, this.graph);
+	/** Enter the Experience at its authored entry Stop. Idempotent. */
+	enter() {
+		this.state = this.interpreter.enter().state;
 	}
 
-	get targetNode() {
-		return this.targetNodeId ? getNode(this.targetNodeId, this.graph) : null;
+	/** The explicit Continue control. A Gate or a finished hold advances once. */
+	continue() {
+		this.state = this.interpreter.continue().state;
 	}
 
-	get currentRoom() {
-		return this.activeNode.roomId;
+	/** An explicit authored destination; the Guide is never bypassed by this. */
+	navigate(stopId: string) {
+		this.state = this.interpreter.navigate(stopId).state;
 	}
 
-	get connectedNodes() {
-		return this.activeNode.connectedNodeIds
-			.filter((id) => this.canNavigateTo(id))
-			.map((id) => getNode(id, this.graph));
+	/** Advance the explicit integer clock; holds auto-continue on expiry. */
+	tick(milliseconds: number) {
+		if (!Number.isFinite(milliseconds) || milliseconds <= 0) return;
+		const wasHolding = this.state.phase === 'holding';
+		this.state = this.interpreter.tick(milliseconds).state;
+		// A hold is time, not a prompt: when the authored hold expires the run
+		// continues itself. A Gate is different and stays blocked until the
+		// visitor's explicit Continue.
+		if (wasHolding && this.state.phase === 'ready' && !this.state.gated) this.continue();
 	}
 
-	canNavigateTo(nodeId: string) {
-		if (!this.activeNodeId || nodeId === this.activeNodeId || this.isTransitioning)
-			return false;
-		if (this.tourMode === 'free') return true;
-		let active;
-		try {
-			active = getNode(this.activeNodeId, this.graph);
-		} catch {
-			return false;
-		}
-		if (nodeId === active.nextNodeId) return true;
-		if (nodeId !== active.previousNodeId) return false;
-		try {
-			// P23.0b: world-local nodes carry no room gate — back navigation is
-			// allowed; legacy visited-room gating is unchanged.
-			const nextRoomId = getNode(nodeId, this.graph).roomId;
-			return nextRoomId === undefined || this.visitedRoomIds.has(nextRoomId);
-		} catch {
-			return false;
-		}
+	get currentStop() {
+		return this.state.stopId === null
+			? null
+			: this.program.stops.find((stop) => stop.id === this.state.stopId) ?? null;
 	}
 
-	requestNode(nodeId: string) {
-		if (!this.activeNodeId) return;
-		let next;
-		try {
-			next = getNode(nodeId, this.graph);
-		} catch {
-			return;
-		}
-		if (!this.canNavigateTo(nodeId)) return;
-		if (nodeId === this.activeNodeId || next.lockInteraction || this.isTransitioning)
-			return;
-		this.targetNodeId = nodeId;
-		this.isTransitioning = true;
+	get currentPresentation() {
+		const stop = this.currentStop;
+		return stop === null
+			? null
+			: this.program.presentations.find((presentation) => presentation.id === stop.presentationId) ?? null;
 	}
 
-	completeTransition(nodeId: string) {
-		const next = getNode(nodeId, this.graph);
-		this.activeNodeId = nodeId;
-		this.currentRoomId = next.roomId ?? this.currentRoomId;
-		this.targetNodeId = null;
-		this.isTransitioning = false;
-		this.visitedRoomIds =
-			next.roomId === undefined
-				? this.visitedRoomIds
-				: new Set([...this.visitedRoomIds, next.roomId]);
+	/** The Camera view the current Stop's Presentation names, or `null`. */
+	get currentViewId(): string | null {
+		return this.currentPresentation?.viewId ?? null;
 	}
 
-	goNext() {
-		if (!this.activeNodeId) return;
-		let active;
-		try {
-			active = getNode(this.activeNodeId, this.graph);
-		} catch {
-			return;
-		}
-		const nextNodeId = active.nextNodeId;
-		if (nextNodeId) this.requestNode(nextNodeId);
+	get currentInvocation(): ProgramInvocation | null {
+		return this.state.invocation;
 	}
 
-	goBack() {
-		if (!this.activeNodeId) return;
-		let active;
-		try {
-			active = getNode(this.activeNodeId, this.graph);
-		} catch {
-			return;
-		}
-		const previousNodeId = active.previousNodeId;
-		if (previousNodeId) this.requestNode(previousNodeId);
+	get ended() {
+		return this.state.phase === 'completed' || this.state.phase === 'cancelled';
+	}
+
+	get companion() {
+		return buildExperienceCompanion(this.program, this.state);
 	}
 }
 
-export function createVisitorRuntimeState(
-	graph: NavigationGraph,
-	initialNodeId: string | null
-) {
-	return new VisitorRuntimeState(graph, initialNodeId);
-}
-
-/**
- * Generic Sequence helpers with no Chopin pin. Flow nodes are those with
- * next/previous links; the head is found by walking `previousNodeId` from the
- * first on-flow node in document order.
- */
-export function visitorMainFlowNodeIds(graph: NavigationGraph): string[] | null {
-	const nodes = graph.navigationNodes;
-	const isFlow = (id: string) => {
-		const node = graph.nodeById.get(id);
-		return !!node && (node.nextNodeId !== undefined || node.previousNodeId !== undefined);
-	};
-	const flowNodes = nodes.filter((node: NavigationNodeData) => isFlow(node.id));
-	if (flowNodes.length === 0) return null;
-	const nodeById = graph.nodeById;
-	const seed = flowNodes[0]!;
-	// Walk to the head via previous links.
-	const seen = new Set([seed.id]);
-	let cursor = seed;
-	while (cursor.previousNodeId !== undefined) {
-		const previous = nodeById.get(cursor.previousNodeId);
-		if (!previous || !isFlow(previous.id)) break;
-		if (previous.id === seed.id) return [seed.id];
-		if (seen.has(previous.id)) break;
-		seen.add(previous.id);
-		cursor = previous;
-	}
-	// Walk forward from the head.
-	const ordered: string[] = [];
-	const visited = new Set<string>();
-	let current: typeof cursor | undefined = cursor;
-	while (current) {
-		if (visited.has(current.id)) break;
-		visited.add(current.id);
-		ordered.push(current.id);
-		const nextId = current.nextNodeId;
-		if (nextId === undefined) break;
-		const next = nodeById.get(nextId);
-		if (!next || next.previousNodeId !== current.id) break;
-		if (next.id === cursor.id) break;
-		current = next;
-	}
-	return ordered.length > 0 ? ordered : null;
-}
-
-/** First valid camera in document order (unlocked preferred). Never ''. */
-export function visitorFirstValidNodeId(graph: NavigationGraph): string | null {
-	const nodes = graph.navigationNodes;
-	if (nodes.length === 0) return null;
-	const unlocked = nodes.find((node: NavigationNodeData) => !node.lockInteraction);
-	return (unlocked ?? nodes[0]!)!.id;
-}
-
-/** Authored Sequence entry when present, else first valid camera, else null. */
-export function visitorStartNodeId(graph: NavigationGraph): string | null {
-	const flow = visitorMainFlowNodeIds(graph);
-	if (flow && flow.length > 0) {
-		const head = graph.nodeById.get(flow[0]!);
-		if (head && !head.lockInteraction) return head.id;
-		const unlockedInFlow = flow.find((id) => {
-			const node = graph.nodeById.get(id);
-			return node && !node.lockInteraction;
-		});
-		if (unlockedInFlow) return unlockedInFlow;
-		return flow[0]!;
-	}
-	return visitorFirstValidNodeId(graph);
+export function createVisitorRuntimeState(input: VisitorRuntimeInput) {
+	return new VisitorRuntimeState(input);
 }

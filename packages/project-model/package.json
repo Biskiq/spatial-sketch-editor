@@ -16,10 +16,6 @@
       "types": "./src/program/index.ts",
       "default": "./src/program/index.ts"
     },
-    "./migration": {
-      "types": "./src/migration/index.ts",
-      "default": "./src/migration/index.ts"
-    },
     "./references/unit-resolution": {
       "types": "./src/references/unit-resolution.ts",
       "default": "./src/references/unit-resolution.ts"
@@ -33,7 +29,9 @@
       "default": "./src/f4/unit-acceptance.ts"
     }
   },
-  "files": ["src"],
+  "files": [
+    "src"
+  ],
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit"
   },

@@ -1,4 +1,5 @@
 import type { AcceptedRevision, ProjectValidationResult } from '@portfolio/project-model';
+import { UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 
 import type { DatabaseClient, DatabasePool, DatabaseQueryResult } from './database.js';
 
@@ -15,6 +16,8 @@ export type SavedProject = Omit<ProjectSummary, 'id'> & {
 
 export type LoadedProject = SavedProject & {
 	document: unknown;
+	/** The epoch fence value this row carries (`unit-envelope-v1`). */
+	sourceFormat: string;
 	/**
 	 * Durable saved-base metadata, additive beside the document. Pre-migration
 	 * rows have a token but no revision/digest; the token alone is then the
@@ -42,6 +45,7 @@ type ProjectRow = {
 type LoadedProjectRow = ProjectRow & {
 	projectId: unknown;
 	document: unknown;
+	sourceFormat: unknown;
 	savedBaseToken: unknown;
 	savedRevision: unknown;
 	savedSourceContentId: unknown;
@@ -53,11 +57,15 @@ export async function listProjects(
 ): Promise<ProjectSummary[]> {
 	const result = await queryRows<ProjectRow>(
 		db,
-		`SELECT id, name, latest_version AS version, updated_at AS "updatedAt"
-FROM projects
-WHERE owner_id = $1
-ORDER BY updated_at DESC, id ASC`,
-		[ownerId]
+		`SELECT p.id, p.name, p.latest_version AS version, p.updated_at AS "updatedAt"
+FROM projects p
+WHERE p.owner_id = $1
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $2
+	)
+ORDER BY p.updated_at DESC, p.id ASC`,
+		[ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
 	);
 	return result.map(readProjectSummary);
 }
@@ -72,12 +80,12 @@ export async function loadProject(
 		`SELECT p.id AS "projectId", p.name, p.latest_version AS version,
 	p.updated_at AS "updatedAt", p.saved_base_token AS "savedBaseToken",
 	p.saved_revision AS "savedRevision", p.saved_source_content_id AS "savedSourceContentId",
-	v.document
+	v.document, v.source_format AS "sourceFormat"
 FROM projects p
 JOIN project_versions v
 	ON v.project_id = p.id AND v.version = p.latest_version
-WHERE p.id = $1 AND p.owner_id = $2`,
-		[projectId, ownerId]
+WHERE p.id = $1 AND p.owner_id = $2 AND v.source_format = $3`,
+		[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
 	);
 	const row = result[0];
 	if (!row) throw new ProjectNotFoundError();
@@ -93,6 +101,7 @@ WHERE p.id = $1 AND p.owner_id = $2`,
 		version: summary.version,
 		updatedAt: summary.updatedAt,
 		document: parseJsonb(row.document),
+		sourceFormat: readString(row.sourceFormat),
 		savedBaseToken: readNullableString(row.savedBaseToken),
 		savedRevision: readNullableRevision(row.savedRevision),
 		savedSourceContentId: readNullableString(row.savedSourceContentId)

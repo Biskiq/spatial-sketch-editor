@@ -14,11 +14,6 @@ import {
 	isForbiddenPreviewSurfaceModule,
 	validatePreviewSurfaceGraph
 } from '$lib/visitor/preview-surface-boundary';
-import {
-	createVisitorRuntimeState,
-	visitorMainFlowNodeIds,
-	visitorStartNodeId
-} from '$lib/visitor/visitor-runtime-state.svelte';
 
 const PUB_A = '11111111-1111-4111-8111-111111111111';
 const PUB_B = '22222222-2222-4222-8222-222222222222';
@@ -254,92 +249,6 @@ describe('P22.3 public release client', () => {
 		).rejects.toMatchObject({ code: 'asset-failed' });
 		expect(PublicVisitorError).toBeDefined();
 	});
-
-	it('loads a connected two-node Sequence tour through the public loader (fixture 4)', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-tour', name: 'Tour Public' });
-		// PR #115 (WP3): the released document is a current-format project. The tour
-		// below used to be room-local (a legacy Room-owned Layout plus nodes that
-		// named a room); a current-format Scene carries no `roomId` and its values are
-		// project/world coordinates, so the tour is expressed directly. Every
-		// assertion below is unchanged — this fixture asserts the Sequence tour, not
-		// any Room frame resolution.
-		const document = {
-			...project,
-			scene: {
-				...project.scene,
-				navigationNodes: [
-					{
-						id: 'tour-a',
-						label: 'Tour A',
-						position: [1, 1.65, 1],
-						cameraTarget: [1, 1.25, -2],
-						fov: 54,
-						connectedNodeIds: ['tour-b'],
-						nextNodeId: 'tour-b'
-					},
-					{
-						id: 'tour-b',
-						label: 'Tour B',
-						position: [4, 1.65, 3],
-						cameraTarget: [4, 1.25, 0],
-						fov: 54,
-						connectedNodeIds: ['tour-a'],
-						previousNodeId: 'tour-a',
-						holdSeconds: 1.5
-					}
-				],
-				connections: [
-					{
-						id: 'tour-a-b',
-						fromNodeId: 'tour-a',
-						toNodeId: 'tour-b',
-						clearance: 0.35,
-						positionPath: { kind: 'auto-bezier', anchors: [] }
-					}
-				]
-			}
-		};
-		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(document)));
-		const { bundle } = await loadPublicReleaseBundle({
-			publicationId: PUB_A,
-			apiOrigin: 'https://api.test',
-			fetchImpl
-		});
-		try {
-			expect(bundle.graph.navigationNodes.map((node) => node.id)).toEqual(['tour-a', 'tour-b']);
-			expect(bundle.graph.connections.map((connection) => connection.id)).toEqual(['tour-a-b']);
-			// Sequence order survives the public loader; entry is the tour head.
-			expect(visitorMainFlowNodeIds(bundle.graph)).toEqual(['tour-a', 'tour-b']);
-			expect(visitorStartNodeId(bundle.graph)).toBe('tour-a');
-			// View key survives the public loader.
-			expect(bundle.graph.nodeById.get('tour-b')?.holdSeconds).toBe(1.5);
-		} finally {
-			bundle.dispose();
-		}
-	});
-
-	it('keeps reduced-motion behavior on the public runtime state', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-rm', name: 'Reduced Motion' });
-		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(project)));
-		const { bundle } = await loadPublicReleaseBundle({
-			publicationId: PUB_A,
-			apiOrigin: 'https://api.test',
-			fetchImpl
-		});
-		try {
-			const visitor = createVisitorRuntimeState(bundle.graph, visitorStartNodeId(bundle.graph));
-			visitor.reducedMotion = true;
-			expect(visitor.reducedMotion).toBe(true);
-			expect(visitor.activeNodeId).toBe('');
-		} finally {
-			bundle.dispose();
-		}
-	});
-});
-
-describe('P22.3 public closure', () => {
-	beforeEach(() => vi.unstubAllGlobals());
-	afterEach(() => vi.unstubAllGlobals());
 
 	it('public modules are self-contained: no editor/session/store imports', () => {
 		const testDir = dirname(fileURLToPath(import.meta.url));

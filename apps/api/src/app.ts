@@ -35,13 +35,8 @@ import { listProjects, loadProject, ProjectNotFoundError } from './project-persi
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
 import {
 	getPublicationStatus,
-	isValidPublicationId,
 	PublicationConflictError,
 	PublicationNotFoundError,
-	PublicationValidationError,
-	publishVersion,
-	readPublicRelease,
-	readPublicReleaseAsset,
 	unpublishVersion
 } from './publication-persistence.js';
 import {
@@ -51,8 +46,8 @@ import {
 	resolveTestAuthUserId,
 	type TestAuthOptions
 } from './test-auth.js';
-import { validateProject } from '@portfolio/project-model';
 import { readSaveRequest } from '@portfolio/project-model/save';
+import { validateProjectEnvelope } from '@portfolio/project-model/units';
 
 export type ApiAppOptions = {
 	pool: DatabasePool;
@@ -379,11 +374,11 @@ export function createApp({
 		}
 		try {
 			const loaded = await loadProject(pool, userId, projectId);
-			const validation = validateProject(loaded.document);
-			if (!validation.success || validation.project.id !== projectId) {
+			const validation = validateProjectEnvelope(loaded.document);
+			if (!validation.success || validation.envelope.id !== projectId) {
 				return databaseFailure(app, reply, new Error('Stored project failed validation'), 'Stored project failed validation');
 			}
-			return { ...loaded, document: validation.project };
+			return { ...loaded, document: validation.envelope };
 		} catch (error) {
 			if (error instanceof ProjectNotFoundError) return notFound(reply);
 			return databaseFailure(app, reply, error, 'Project load failed');
@@ -425,18 +420,12 @@ export function createApp({
 		if (typeof projectId !== 'string' || !projectId) {
 			return reply.code(400).send(errorBody('invalid_project_id', 'Invalid project ID'));
 		}
-		const target = readPublicationTarget(request.body);
-		if (!target) return reply.code(400).send(errorBody('invalid_body', 'Expected a publication body'));
-		try {
-			return await publishVersion(pool, userId, projectId, target.version, target.expectedPublicationRevision, objectStore);
-		} catch (error) {
-			if (error instanceof ProjectNotFoundError) return notFound(reply);
-			if (error instanceof PublicationValidationError) {
-				return reply.code(400).send(errorBody('invalid_publication', error.message));
-			}
-			if (error instanceof PublicationConflictError) return publicationConflict(reply, error);
-			return databaseFailure(app, reply, error, 'Project publish failed');
-		}
+		// AM-9 publication gap (R4): every authored publication row is removed at
+		// activation and prepared delivery is T4's. The request is understood and
+		// refused with the ratified code, never read as an old release.
+		return reply
+			.code(501)
+			.send(errorBody('prepared-reader-required', 'Publishing requires the prepared reader'));
 	});
 
 	app.delete('/projects/:projectId/publication', async (request, reply) => {
@@ -459,41 +448,17 @@ export function createApp({
 		}
 	});
 
-	app.get('/publications/:publicationId', async (request, reply) => {
-		const publicationId = (request.params as { publicationId?: unknown }).publicationId;
-		if (!isValidPublicationId(publicationId)) return notFound(reply);
-		try {
-			const release = await readPublicRelease(pool, publicationId);
-			reply.header('Cache-Control', 'no-store');
-			return release;
-		} catch (error) {
-			if (error instanceof PublicationNotFoundError) return notFound(reply);
-			return databaseFailure(app, reply, error, 'Public release read failed');
-		}
+	// AM-9's publication gap: prepared delivery is T4's, and no public document
+	// or asset read is served from an authored row. Both routes answer an
+	// honest not-found for every ID, including a prior `/p/` link.
+	app.get('/publications/:publicationId', async (_request, reply) => {
+		reply.header('Cache-Control', 'no-store');
+		return notFound(reply);
 	});
 
-	app.get('/publications/:publicationId/versions/:version/assets/:assetId/content', async (request, reply) => {
-		const params = request.params as { publicationId?: unknown; version?: unknown; assetId?: unknown };
-		if (!isValidPublicationId(params.publicationId)) return notFound(reply);
-		const version = readReleaseVersionParam(params.version);
-		if (version === null || !isValidAssetId(params.assetId)) return notFound(reply);
-		try {
-			const { entry } = await readPublicReleaseAsset(pool, params.publicationId, version, params.assetId);
-			if (!objectStore) throw new Error('Object storage is unavailable');
-			const stored = await objectStore.get(entry.objectKey);
-			if (!stored || stored.contentLength !== entry.byteSize) {
-				return reply.code(503).send(errorBody('service_unavailable', 'Service Unavailable'));
-			}
-			reply
-				.header('Content-Type', entry.mime)
-				.header('Content-Length', String(entry.byteSize))
-				.header('Cache-Control', 'no-store')
-				.header('X-Content-Type-Options', 'nosniff');
-			return reply.send(stored.body);
-		} catch (error) {
-			if (error instanceof PublicationNotFoundError) return notFound(reply);
-			return databaseFailure(app, reply, error, 'Public asset bytes failed');
-		}
+	app.get('/publications/:publicationId/versions/:version/assets/:assetId/content', async (_request, reply) => {
+		reply.header('Cache-Control', 'no-store');
+		return notFound(reply);
 	});
 
 	app.get('/projects/:projectId/assets', { onRequest: requireAssetSession }, async (request, reply) => {
@@ -734,29 +699,11 @@ function boundedRedirect(origin: string | undefined, path: string): string {
 	return origin ? new URL(path, origin).toString() : path;
 }
 
-function readPublicationTarget(value: unknown): { version: number; expectedPublicationRevision: number } | null {
-	if (!isRecord(value) || Object.keys(value).length !== 2) return null;
-	const version = value.version;
-	const expectedPublicationRevision = value.expectedPublicationRevision;
-	if (!Number.isSafeInteger(version) || (version as number) < 1) return null;
-	if (!Number.isSafeInteger(expectedPublicationRevision) || (expectedPublicationRevision as number) < 0) {
-		return null;
-	}
-	return { version: version as number, expectedPublicationRevision: expectedPublicationRevision as number };
-}
-
 function readExpectedPublicationRevision(value: unknown): number | null {
 	if (!isRecord(value) || Object.keys(value).length !== 1) return null;
 	const revision = value.expectedPublicationRevision;
 	if (!Number.isSafeInteger(revision) || (revision as number) < 0) return null;
 	return revision as number;
-}
-
-function readReleaseVersionParam(value: unknown): number | null {
-	if (typeof value !== 'string' || !/^\d+$/.test(value)) return null;
-	const version = Number(value);
-	if (!Number.isSafeInteger(version) || version < 1) return null;
-	return version;
 }
 
 function publicationConflict(

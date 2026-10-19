@@ -7,11 +7,20 @@
  * test builds its own pool/store and gets fresh data.
  */
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
-import { canonicalSourceJson, sourceContentIdForCanonicalJson } from '@portfolio/project-model';
+import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
 import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
+import {
+	CAMERA_UNIT_FORMAT_VERSION,
+	EXPERIENCE_UNIT_FORMAT_VERSION,
+	RESOURCE_UNIT_FORMAT_VERSION,
+	SCENE_UNIT_FORMAT_VERSION,
+	UNIT_ENVELOPE_SOURCE_VERSION,
+	canonicalUnitJson,
+	captureUnitSave
+} from '@portfolio/project-model/units';
 
 export const SESSION_KEY = Buffer.alloc(32, 7);
 export const SESSION_COOKIE = 'museum-editor-session';
@@ -27,69 +36,75 @@ export function stubPool({ query = async () => undefined, end = async () => unde
 }
 
 /**
- * PR #115 (WP3): the API accepts the current document format only — a
- * wall-first Layout (`formatVersion: 5`, carrying its `identity` record) plus a
- * world-local Scene (`formatVersion: 1`). This is the canonical empty project,
- * so a saved-then-loaded document deep-equals the fixture it was built from.
- *
- * Every API contract file that constructs a project document builds it here, so
- * there is exactly one place that pins the current format. The common case is a
- * stable id (`project:test`) and no textures; a contract that needs its own id
- * or staged textures passes them in the second argument, so the scenario input
- * stays visible at the call site rather than implied by a second builder.
+ * The API admits only the F.2 `unit-envelope-v1` source (AM-9). Every API
+ * contract file that constructs a project builds it here, so there is exactly
+ * one place that pins the admitted format. Headers are derived synchronously
+ * from the canonical domain bytes; a Save recaptures and normalizes them again,
+ * so a test may mutate a payload before sending it.
  */
-export function projectDocument(name = 'Cloud project', { id = 'project:test', textures = [] } = {}) {
+function contentRevision(data) {
+	return `sha256-${createHash('sha256').update(canonicalUnitJson(data)).digest('hex')}`;
+}
+
+function unit(domain, unitId, formatVersion, data) {
 	return {
+		header: { domain, unitId, formatVersion, contentRevision: contentRevision(data) },
+		data
+	};
+}
+
+export function projectDocument(name = 'Cloud project', { id = 'project:test', textures = [] } = {}) {
+	const source = validateProject(createEmptyWallFirstProject({ id, name }));
+	assert.equal(source.success, true);
+	const scene = { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures, materials: [], entities: [] };
+	const camera = {
+		formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+		views: [{ id: 'view-entry', label: 'Entry', eye: [0, 1.6, 0], target: [0, 1.6, -1], fov: 60, connectedViewIds: [] }],
+		connections: []
+	};
+	const experience = { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [] };
+	const resources = { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [] };
+	return {
+		formatVersion: 1,
 		id,
 		name,
-		layout: {
-			units: 'meters',
-			formatVersion: 5,
-			floor: { id: 'floor', name: 'Floor', elevation: 0 },
-			junctions: [],
-			walls: [],
-			rooms: [],
-			openings: [],
-			objects: [],
-			identity: { cursor: 0, rooms: {}, junctions: {}, walls: {}, openings: {} }
-		},
-		scene: {
-			formatVersion: 1,
-			textures,
-			materials: [],
-			entities: [],
-			navigationNodes: [],
-			connections: []
+		acceptedRevision: { projectId: id, revisionId: `revision-${randomUUID()}` },
+		dependencyLock: { formatVersion: 1, entries: [] },
+		units: {
+			layout: unit('layout', 'unit-layout', source.project.layout.formatVersion, source.project.layout),
+			scene: unit('scene', 'unit-scene', SCENE_UNIT_FORMAT_VERSION, scene),
+			camera: unit('camera', 'unit-camera', CAMERA_UNIT_FORMAT_VERSION, camera),
+			experience: unit('experience', 'unit-experience', EXPERIENCE_UNIT_FORMAT_VERSION, experience),
+			resources: unit('resources', 'unit-resources', RESOURCE_UNIT_FORMAT_VERSION, resources)
 		}
 	};
 }
 
 /**
- * Build one `SaveAcceptedSource@1` wire request from a current-format document.
- * The capture carries the canonical bytes and their digest, exactly as the
- * editor client does; the server recomputes both and refuses a mismatch.
+ * Build one `SaveAcceptedSource@1` wire request from an F.2 envelope. The
+ * capture carries the canonical bytes and their digest, exactly as the editor
+ * client does; the server recomputes both and refuses a mismatch.
  */
 export async function saveRequestBody(
-	document,
+	envelope,
 	{ precondition = { kind: 'create-only' }, revisionId = `revision-${randomUUID()}`, operationId = randomUUID() } = {}
 ) {
-	const canonical = canonicalSourceJson(document);
-	if (canonical.kind === 'rejected') throw new Error(`fixture was not canonical: ${canonical.issues[0]?.message}`);
-	const sourceContentId = await sourceContentIdForCanonicalJson(canonical.canonicalJson);
-	return {
-		contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
-		capture: {
-			protocol: 'SaveAcceptedSource@1',
-			projectId: canonical.project.id,
-			operationId,
-			precondition,
-			sourceKind: 'current-source',
-			sourceVersion: 5,
-			acceptedRevision: { projectId: canonical.project.id, revisionId },
-			sourceContentId,
-			canonicalJson: canonical.canonicalJson
-		}
-	};
+	const acceptedRevision = { projectId: envelope.id, revisionId };
+	const captured = await captureUnitSave({
+		snapshot: {
+			acceptedRevision,
+			sourceContentId: `sha256-${'0'.repeat(64)}`,
+			sourceKind: 'unit-envelope',
+			sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
+			domain: { identity: { acceptedRevision, sourceContentId: `sha256-${'0'.repeat(64)}` }, source: envelope }
+		},
+		operationId,
+		precondition
+	});
+	if (captured.kind !== 'captured') {
+		throw new Error(`fixture was not a valid F.2 envelope: ${captured.message}`);
+	}
+	return { contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME, capture: captured.capture };
 }
 
 export function memoryPool() {

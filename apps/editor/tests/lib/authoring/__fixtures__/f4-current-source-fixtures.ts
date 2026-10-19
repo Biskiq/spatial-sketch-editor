@@ -164,7 +164,6 @@ export function buildScene(entityCount: number, extraEntity?: SceneEntity): Scen
 				cameraTarget: [1, 1.25, -2],
 				fov: 54,
 				connectedNodeIds: ['tour-b'],
-				nextNodeId: 'tour-b'
 			},
 			{
 				id: 'tour-b',
@@ -173,8 +172,6 @@ export function buildScene(entityCount: number, extraEntity?: SceneEntity): Scen
 				cameraTarget: [4, 1.25, 0],
 				fov: 54,
 				connectedNodeIds: ['tour-a'],
-				previousNodeId: 'tour-a',
-				holdSeconds: 1.5
 			}
 		],
 		connections: [

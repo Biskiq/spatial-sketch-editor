@@ -7,10 +7,8 @@ import { PCFShadowMap } from 'three';
 	import type { NavigationGraph } from '@portfolio/project-model';
 	import type { CompiledLayoutGeometry } from '@portfolio/layout-core';
 	import type { LayoutRoomRegistry } from '@portfolio/project-model';
-	import {
-		createVisitorRuntimeState,
-		visitorStartNodeId
-	} from './visitor-runtime-state.svelte';
+	import type { ExecutionProgram, ExperienceInterpreterOptions } from '@portfolio/project-model/units';
+	import { createVisitorRuntimeState } from './visitor-runtime-state.svelte';
 	import type { TextureLoadScope } from '$lib/museum/materials/texture-cache';
 	import { neutralVisitorRoomPresentation } from './room-presentation';
 	import VisitorCameraDirector from './VisitorCameraDirector.svelte';
@@ -22,6 +20,8 @@ import { PCFShadowMap } from 'three';
 		geometry,
 		rooms,
 		graph,
+		program = null,
+		experienceOptions = null,
 		resolveTexture,
 		textureScope = null,
 		reducedMotion = false,
@@ -33,6 +33,9 @@ import { PCFShadowMap } from 'three';
 		geometry: CompiledLayoutGeometry;
 		rooms: LayoutRoomRegistry;
 		graph: NavigationGraph;
+		/** The lowered Experience program. Absent means no guided Experience. */
+		program?: ExecutionProgram | null;
+		experienceOptions?: ExperienceInterpreterOptions | null;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
 		reducedMotion?: boolean;
@@ -41,12 +44,15 @@ import { PCFShadowMap } from 'three';
 		onExit?: () => void;
 	} = $props();
 
-	// svelte-ignore state_referenced_locally
-	const startNodeId = visitorStartNodeId(graph);
-	// svelte-ignore state_referenced_locally
-	const visitorState = createVisitorRuntimeState(graph, startNodeId);
-	// svelte-ignore state_referenced_locally
-	visitorState.reducedMotion = reducedMotion;
+	const visitorState = $derived.by(() =>
+		program === null || experienceOptions === null
+			? null
+			: createVisitorRuntimeState({ program, options: experienceOptions })
+	);
+	$effect(() => {
+		if (visitorState === null) return;
+		visitorState.reducedMotion = reducedMotion;
+	});
 
 	const presentation = $derived.by(() => {
 		const record: Record<string, typeof neutralVisitorRoomPresentation> = {};
@@ -56,19 +62,20 @@ import { PCFShadowMap } from 'three';
 		return record;
 	});
 
-	const isZeroNode = $derived(startNodeId === null);
+	const isZeroNode = $derived(visitorState === null || visitorState.program.stops.length === 0);
 	const canvasDescription = $derived(
 		mode === 'public'
 			? isZeroNode
-				? 'Published project. No cameras: drag to orbit, wheel to zoom, right-drag to pan.'
-				: 'Published project. Use Left and Right arrows to move along the tour, W A S D or drag to look around.'
+				? 'Published project. No guided Experience: drag to orbit, wheel to zoom, right-drag to pan.'
+				: 'Published project. Press Right Arrow or Enter to continue, W A S D or drag to look around.'
 			: isZeroNode
-				? 'Visitor preview. No cameras: drag to orbit, wheel to zoom, right-drag to pan. Press Escape to exit preview.'
-				: 'Visitor preview. Use Left and Right arrows to move along the tour, W A S D or drag to look around. Press Escape to exit preview.'
+				? 'Visitor preview. No guided Experience: drag to orbit, wheel to zoom, right-drag to pan. Press Escape to exit preview.'
+				: 'Visitor preview. Press Right Arrow or Enter to continue, W A S D or drag to look around. Press Escape to exit preview.'
 	);
 	const publicTitle = $derived((title ?? '').trim() || 'Published project');
 
 	onMount(() => {
+		visitorState?.enter();
 		// Exercise the detached read-only resolver so preview-local URLs stay
 		// alive through the surface lifetime. When a release `textureScope`
 		// is supplied, 3D material loading uses that scoped resolver with
@@ -97,7 +104,9 @@ import { PCFShadowMap } from 'three';
 			<T.Fog attach="fog" args={[0x050508, 22, 54]} />
 			<T.AmbientLight intensity={0.2} />
 			<T.DirectionalLight position={[2, 8, 5]} color="#c9d1df" intensity={0.7} />
-			<VisitorCameraDirector graph={graph} visitor={visitorState} bounds={geometry.bounds ?? null} />
+			{#if visitorState}
+				<VisitorCameraDirector graph={graph} visitor={visitorState} bounds={geometry.bounds ?? null} />
+			{/if}
 			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
 			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} />
 		</Canvas>

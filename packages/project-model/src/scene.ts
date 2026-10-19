@@ -60,11 +60,6 @@ export type NavigationNodeData = {
   cameraTarget: Vec3;
   fov: number;
   connectedNodeIds: string[];
-  nextNodeId?: string;
-  previousNodeId?: string;
-  detourOfNodeId?: string;
-  lockInteraction?: boolean;
-  holdSeconds?: number;
 };
 
 export type RuntimeCameraViewKeyframe = {
@@ -291,18 +286,6 @@ export type SceneNavigationNode = Omit<
   /** Room-local look target (legacy) or world target (absent roomId). */
   cameraTarget: Vec3;
 };
-
-/**
- * S10.2 — shared on-flow predicate. A node is on a Camera Flow when it
- * carries at least one order link: chain heads/tails have exactly one,
- * interior nodes both. Redefined once here so the codec, route, timeline,
- * and mutator never diverge on "what counts as ordered".
- */
-export function isFlowNode(
-	node: Readonly<Pick<NavigationNodeData, 'nextNodeId' | 'previousNodeId'>>
-) {
-	return node.nextNodeId !== undefined || node.previousNodeId !== undefined;
-}
 
 export type SceneCameraViewKeyframe = {
   /** Stable within both directional tracks of this connection. */
@@ -586,8 +569,7 @@ export function resolveSceneDocument(
     ...node,
     position: cloneVec3(node.position),
     cameraTarget: cloneVec3(node.cameraTarget),
-    connectedNodeIds: [...node.connectedNodeIds],
-    ...(node.holdSeconds === undefined ? {} : { holdSeconds: node.holdSeconds })
+    connectedNodeIds: [...node.connectedNodeIds]
   }));
   const resolvedNodeById = new Map(navigationNodes.map((node) => [node.id, node]));
 

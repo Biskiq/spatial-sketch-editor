@@ -41,6 +41,17 @@ export type ExperienceCompanion = {
 		readonly occurrences: readonly string[];
 	};
 	readonly destinations: readonly CompanionDestination[];
+	/**
+	 * Every lowered Presentation, including one no Guide reaches. DOM navigation
+	 * exposes these as first-class destinations, so a Presentation without a Stop
+	 * is still reachable rather than silently dropped by lowering.
+	 */
+	readonly presentations: readonly {
+		readonly presentationId: string;
+		readonly label: string;
+		readonly viewId: string;
+		readonly stopIds: readonly string[];
+	}[];
 	readonly panel: {
 		readonly title: string;
 		readonly content: readonly { readonly id: string; readonly text: string }[];
@@ -135,6 +146,14 @@ export function buildExperienceCompanion(
 					occurrenceId: current.occurrenceId
 				},
 		destinations,
+		presentations: program.presentations.map((presentation) => ({
+			presentationId: presentation.id,
+			label: presentation.label,
+			viewId: presentation.viewId,
+			stopIds: program.stops
+				.filter((stop) => stop.presentationId === presentation.id)
+				.map((stop) => stop.id)
+		})),
 		panel,
 		instructions: {
 			activate: 'Open this Stop',

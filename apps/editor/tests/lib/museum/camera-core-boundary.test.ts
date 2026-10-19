@@ -49,7 +49,10 @@ function sourceFiles(root: string): string[] {
  * asserted that `lib/editor/editor-navigation-graph.ts` was the single owner of
  * flow/ordering semantics, and that module is gone with the editor shell (§5.1).
  * Editorial order is now a T3 obligation (`t3-experience` planning evidence), so
- * there is no in-repo owner left to pin — the kernel half below is unchanged.
+ * there is no in-repo owner left to pin. T3.P01.S04 retired the node-keyed
+ * flow-order exports (`resolveFlowRoute`, `getFlowRoute`,
+ * `getFlowLoopConnectionId`) with the Scene order fields; the Camera evaluator
+ * below is the surviving route authority.
  */
 describe('one navigation system — single route evaluator', () => {
   const repoRoot = resolve(appSrc, '../../..');
@@ -62,17 +65,17 @@ describe('one navigation system — single route evaluator', () => {
       .map((file) => relative(repoRoot, file));
   }
 
-  it('defines each route/flow evaluator exactly once, under camera-core', () => {
-    for (const symbol of [
-      'getCameraRoute',
-      'getCameraConnectionRoute',
-      'resolveFlowRoute',
-      'getFlowRoute',
-      'getFlowLoopConnectionId'
-    ]) {
+  it('defines each Camera route evaluator exactly once, under camera-core', () => {
+    for (const symbol of ['getCameraRoute', 'getCameraConnectionRoute']) {
       expect(packageExportingOwners(symbol), symbol).toEqual([
         'packages/camera-core/src/camera-route.ts'
       ]);
+    }
+  });
+
+  it('has no node-keyed flow-order evaluator left', () => {
+    for (const symbol of ['resolveFlowRoute', 'getFlowRoute', 'getFlowLoopConnectionId']) {
+      expect(packageExportingOwners(symbol), symbol).toEqual([]);
     }
   });
 });

@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { runMigrations } from '../dist/migrate.js';
+import { MIGRATION_LOCK_KEY, runMigrations } from '../dist/migrate.js';
 
 test('migration runner records a migration once and reapplying is a no-op', async () => {
 	const applied = new Set();
@@ -15,6 +15,7 @@ test('migration runner records a migration once and reapplying is a no-op', asyn
 	const client = {
 		async query(text, values = []) {
 			transactions.push({ text, values });
+			if (text.startsWith('SELECT pg_try_advisory_lock')) return { rows: [{ locked: true }] };
 			if (text.startsWith('SELECT version')) return { rows: applied.has(values[0]) ? [{ version: values[0] }] : [] };
 			if (text.startsWith('INSERT INTO schema_migrations')) applied.add(values[0]);
 			return { rows: [] };
@@ -30,4 +31,37 @@ test('migration runner records a migration once and reapplying is a no-op', asyn
 	assert.equal(firstAssetSqlCount, 1);
 	assert.equal(transactions.filter(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS users')).length, 1);
 	assert.equal(transactions.filter(({ text }) => text.includes('CREATE TABLE IF NOT EXISTS assets')).length, 1);
+	// TD-6: the advisory lock is taken before `schema_migrations` is read and
+	// released on the same session, so two runners cannot race.
+	const lockIndex = transactions.findIndex(({ text }) => text.startsWith('SELECT pg_try_advisory_lock'));
+	const readIndex = transactions.findIndex(({ text }) => text.startsWith('SELECT version'));
+	assert.ok(lockIndex >= 0 && lockIndex < readIndex);
+	assert.deepEqual(transactions[lockIndex].values, [MIGRATION_LOCK_KEY]);
+	assert.ok(transactions.some(({ text }) => text.startsWith('SELECT pg_advisory_unlock')));
+});
+
+test('a second runner waits for the lock before touching the migration table', async () => {
+	const events = [];
+	let lockHeld = false;
+	const client = {
+		async query(text, values = []) {
+			events.push(text.split('\n', 1)[0]);
+			if (text.startsWith('SELECT pg_try_advisory_lock')) {
+				if (lockHeld) return { rows: [{ locked: false }] };
+				lockHeld = true;
+				return { rows: [{ locked: true }] };
+			}
+			if (text.startsWith('SELECT pg_advisory_unlock')) {
+				lockHeld = false;
+				return { rows: [] };
+			}
+			if (text.startsWith('SELECT version')) return { rows: [] };
+			return { rows: [] };
+		},
+		release() {}
+	};
+	const pool = { connect: async () => client, end: async () => {} };
+	await runMigrations(pool);
+	assert.equal(events[0], 'SELECT pg_try_advisory_lock($1) AS locked');
+	assert.equal(lockHeld, false);
 });
