@@ -166,7 +166,9 @@ async function mountHead(
 		},
 		loadRemote: async (id) => ({
 			projectId: id,
-			document: document_,
+			// A **distinct** remote copy: the Head must hand this document to the host,
+			// not echo the local source back as an offer.
+			document: project([5, 0.5, 5]),
 			savedBaseToken: NEXT_TOKEN,
 			savedRevision: { projectId: id, revisionId: 'revision-remote' },
 			savedSourceContentId: admitted.snapshot.sourceContentId
@@ -299,7 +301,13 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 		reload!.click();
 		expect(onReloadRemote).toHaveBeenCalledTimes(1);
 		const offer = onReloadRemote.mock.calls[0]![0];
-		expect(offer.kind).toBe('reload');
+		if (offer.kind !== 'reload') throw new Error('the Head offered no reload');
+		// The offer carries the **remote** document and its saved base, and the local
+		// work is still what is mounted: the host guard, not the Head, installs it.
+		const remote = offer.document as ProjectDocument;
+		expect(remote.scene.entities[0]).toMatchObject({ id: ENTITY_ID, position: [5, 0.5, 5] });
+		expect(offer.savedBaseToken).toBe(NEXT_TOKEN);
+		expect(offer.savedRevision?.revisionId).toBe('revision-remote');
 		expect(mounted.facade.snapshot().canonicalJson).toBe(localJson);
 	});
 

@@ -74,11 +74,12 @@ is therefore satisfied on the branch; the merge gate still has to be re-run at t
 
 ## Final gate
 
-**The phase final gate is NOT passed on this revision.** Three of the four named proofs are now
-written: active-preview cancellation on replace, and the Save creator journey through the mounted
-Head (dirty versus saved, in-flight older Save, conflict until Reload). The fourth — preservation of
-the visible source after a refused Open — **fails against the current T1 route**, and the failure is
-a real host defect rather than missing evidence.
+**The phase final gate is NOT passed on this revision.** The persistence row names four proofs:
+(1) the downloaded canonical source reparsed through the route's open path, (2) an active preview
+cancelled on replacement, (3) the Save creator journey — dirty versus saved, an in-flight older
+Save, a conflict held until Reload — and (4) the current source preserved after an invalid Open.
+Proofs 1–3 are written; proof 4 **fails against the current T1 route**, and the failure is a real
+host defect rather than missing evidence.
 
 **Confirmed host defect: a refused Open replaces the mounted project.**
 `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` runs
