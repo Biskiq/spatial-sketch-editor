@@ -14,6 +14,8 @@
 
 	let fields = $state<readonly LayoutFieldState[]>([]);
 	let error = $state<string | null>(null);
+	/** The explicit endpoint an exact length/angle edit keeps fixed. */
+	let fixedEndpoint = $state<'start' | 'end'>('start');
 
 	// The instrument follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
@@ -42,12 +44,25 @@
 		refresh();
 	});
 
+	// A new subject rebuilds the controller, and the controller's default fixed
+	// endpoint is explicit: the control follows it instead of keeping the previous
+	// subject's choice.
+	$effect(() => {
+		void selectionKey;
+		fixedEndpoint = instrument?.fixedEndpoint() ?? 'start';
+	});
+
 	// Unmount is the last cancel path: a proposal's host gesture lease must be
 	// released exactly once, and nothing may be committed by leaving.
 	$effect(() => {
 		const current = instrument;
 		return () => current?.dispose();
 	});
+
+	function chooseFixedEndpoint(next: 'start' | 'end'): void {
+		fixedEndpoint = next;
+		instrument?.setFixedEndpoint(next);
+	}
 
 	async function commit(id: string): Promise<void> {
 		error = null;
@@ -92,12 +107,34 @@
 				<div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
 			{/each}
 		</dl>
+		{#if instrument.subject.kind === 'wall' && fields.some((field) => field.id === 'length')}
+			<fieldset class="fixed-endpoint" data-layout-fixed-endpoint>
+				<legend>Fixed endpoint</legend>
+				<label>
+					<input
+						type="radio"
+						name="layout-fixed-endpoint"
+						checked={fixedEndpoint === 'start'}
+						onchange={() => chooseFixedEndpoint('start')}
+					/>Start
+				</label>
+				<label>
+					<input
+						type="radio"
+						name="layout-fixed-endpoint"
+						checked={fixedEndpoint === 'end'}
+						onchange={() => chooseFixedEndpoint('end')}
+					/>End
+				</label>
+			</fieldset>
+		{/if}
 		{#each fields as field (field.id)}
 			<label class="field">
 				<span>{field.label}</span>
 				<input
 					type="text"
 					inputmode="decimal"
+					data-field={field.id}
 					value={field.text}
 					aria-invalid={field.error === null ? undefined : 'true'}
 					oninput={(event) => onInput(field.id, event)}
@@ -116,7 +153,7 @@
 						restoreText(field.id, event.currentTarget as HTMLInputElement);
 					}}
 				/>
-				<span class="unit">{field.unit === 'm' ? 'm' : ''}</span>
+				<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
 			</label>
 		{/each}
 		{#if error !== null}
@@ -182,5 +219,27 @@
 		margin: 0;
 		font-size: 0.68rem;
 		color: var(--head-ink-quiet, #98a89c);
+	}
+	.fixed-endpoint {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0;
+		padding: 0.15rem 0.35rem;
+		border: 1px solid var(--chassis-hairline, #2f4a3d);
+		border-radius: 0.25rem;
+		font-size: 0.72rem;
+	}
+	.fixed-endpoint legend {
+		padding: 0 0.25rem;
+		color: var(--head-ink-quiet, #98a89c);
+	}
+	.fixed-endpoint label {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.fixed-endpoint input {
+		min-height: auto;
 	}
 </style>

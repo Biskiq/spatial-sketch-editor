@@ -1304,6 +1304,17 @@ export function createStageFacade(input: {
 			}
 			for (const entry of adapters.values()) if (!entry.factory) { try { entry.contributions.selectionChanged?.(session.selectionState()); } catch { /* Subscriber isolation. */ } }
 			const acquired = camera.acquireInspection('exclusive', nextInspectionRun());
+			// End the closed task's adapters before telling the surface, so a listener
+			// that rebuilds its contribution views sees one settled state. Only a closed
+			// task forces a synchronous signal: a plain content change keeps the
+			// deferred, read-discovered rebuild (the surface must not be notified from
+			// inside a derivation). A panel that was showing the task has to learn now
+			// that it is gone, or it keeps rendering an instrument whose services can
+			// no longer act.
+			if (installed.closedTask) {
+				notifyTaskClosed();
+				notifyAdaptersChanged();
+			}
 			return {
 				kind: 'installed',
 				previousSourceContentId: previous.sourceContentId,
@@ -1314,7 +1325,6 @@ export function createStageFacade(input: {
 				reboundAdapters,
 				clearedSelection: installed.clearedSelection,
 				closedTask: installed.closedTask,
-				...(installed.closedTask ? (notifyTaskClosed(), {}) : {}),
 				releasedGestures: installed.releasedGestures,
 				requalification: installed.requalification,
 				selectionRemovals: installed.selectionRemovals
@@ -1537,8 +1547,23 @@ export function createStageFacade(input: {
 				}) ?? null;
 				if (!content?.view) return content;
 				const services = content.view.services;
-				const generation = session.writerGeneration();
-				const active = () => isLive() && generation === session.writerGeneration() && session.task() !== null;
+				// **TD-8.** These services belong to the *contributed task instance*, not to
+				// a writer generation. A generation is deliberately bumped by every
+				// accepted install, history command, lens change and task replacement, so
+				// capturing it here made a mounted panel keep a value that was stale by
+				// design: after Undo/Redo the next `Begin` refused `stale-epoch` until the
+				// panel happened to rebuild. Liveness is the contract the instrument
+				// actually needs — this contributed task is still the session's open task
+				// and this binding still owns it — and the facade already refuses each
+				// operation after close, replacement or disposal. Nothing here re-acquires
+				// host internals; the panel keeps the services it was handed.
+				const taskOwner = { adapterId: entry.adapterId, taskId: entry.id, kind: entry.taskKind };
+				const active = () =>
+					isLive() &&
+					contributedTaskOwner?.adapterId === taskOwner.adapterId &&
+					contributedTaskOwner.taskId === taskOwner.taskId &&
+					session.task() !== null &&
+					session.task()?.kind === taskOwner.kind;
 				return { ...content, view: { ...content.view, services: {
 					stage: { ...services.stage,
 						setSelection: (value) => active() ? setSelection(value) : { kind: 'refused', code: 'inactive-task', message: 'Resume the task before selecting.' },

@@ -25,6 +25,7 @@ import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/cu
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { createDomainConsumer, consumerMove, consumerSceneEdit } from './__fixtures__/stage-domain-consumer';
 import { describe, expect, it } from 'vitest';
+import type { Component } from 'svelte';
 import { planDeleteLayoutObject } from '@portfolio/layout-core';
 import type { PlanSourceRef } from '@portfolio/layout-core';
 import type { ProjectDocument } from '@portfolio/project-model';
@@ -629,6 +630,143 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		expect(disposals).toBe(1);
 		expect(echoes).toEqual([objectId, objectId]);
 		expect(echoes.filter((value) => value === null)).toEqual([]);
+	});
+
+	/**
+	 * TD-8 — a task's scoped services must not go stale when a writer generation is
+	 * bumped underneath a mounted panel.
+	 *
+	 * The probe contributes a real `view` so the facade wraps its services exactly as
+	 * it does for the Scene and Layout instruments. `session.openTask` is the
+	 * generation bump the defect named (it cancels task writers and replaces the
+	 * open task with the same contributed task); the contribution owner is unchanged,
+	 * so the panel is still the mounted panel. The old code guarded on the captured
+	 * generation and refused `Begin`; liveness plus task identity must accept it.
+	 */
+	it('accepts Begin after a writer-generation bump while a contributed instrument stays mounted', async () => {
+		const { facade, snapshot, host, objectId } = await mount();
+		settle(facade);
+		const probe = () => null;
+		const registration = mountStageAdapter(facade, host, (port) => ({
+			id: 'td8-probe',
+			bind: () => ({
+				tasks: [{ id: 'td8-task', taskKind: 'td8-task', label: 'TD-8 probe' }],
+				instrument: () => ({
+					summary: 'TD-8 probe',
+					view: {
+						component: probe as unknown as Component<{ services: StageAdapterServices }>,
+						services: port
+					}
+				})
+			})
+		}));
+		if (registration.kind !== 'registered') throw new Error('TD-8 probe did not mount');
+		const opened = facade.openContributedTask('td8-task');
+		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
+			throw new Error('TD-8 probe contributed no instrument services');
+		}
+		const services = opened.instrument.view.services;
+		const before = facade.session.writerGeneration();
+		expect(
+			facade.session.openTask({ kind: 'td8-task', label: 'TD-8 probe', targetRef: null })
+		).toBe(true);
+		expect(facade.session.writerGeneration()).toBeGreaterThan(before);
+
+		// Begin is the same writer the panel's button invokes. It must be accepted
+		// with the services it already holds — no panel rebuild, no re-acquisition.
+		const outcome = await services.authoring.accept(
+			proofIntent({
+				kind: PROOF_LAYOUT_TRANSFORM_KIND,
+				operationId: 'op-td8',
+				expectedRevision: snapshot.acceptedRevision.revisionId,
+				projectId: FIXTURE_PROJECT_ID,
+				contentRevision: snapshot.sourceContentId,
+				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				payload: { objectId, position: [2, 0, 1] }
+			})
+		);
+		expect(outcome.kind).toBe('installed');
+		registration.dispose();
+		facade.dispose();
+	});
+
+	/** The other half of TD-8: a genuinely ended task still refuses, not accepts. */
+	it('refuses the same task-scoped services after the contributed task has ended', async () => {
+		const { facade, snapshot, host, objectId } = await mount();
+		settle(facade);
+		const probe = () => null;
+		const registration = mountStageAdapter(facade, host, (port) => ({
+			id: 'td8-ended-probe',
+			bind: () => ({
+				tasks: [{ id: 'td8-ended', taskKind: 'td8-ended', label: 'TD-8 ended probe' }],
+				instrument: () => ({
+					summary: 'TD-8 ended probe',
+					view: {
+						component: probe as unknown as Component<{ services: StageAdapterServices }>,
+						services: port
+					}
+				})
+			})
+		}));
+		if (registration.kind !== 'registered') throw new Error('TD-8 ended probe did not mount');
+		const opened = facade.openContributedTask('td8-ended');
+		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
+			throw new Error('TD-8 ended probe contributed no instrument services');
+		}
+		const services = opened.instrument.view.services;
+		const historyBefore = host.history();
+		expect(facade.closeTask()).toBe(true);
+
+		const refused = await services.authoring.accept(
+			proofIntent({
+				kind: PROOF_LAYOUT_TRANSFORM_KIND,
+				operationId: 'op-td8-ended',
+				expectedRevision: snapshot.acceptedRevision.revisionId,
+				projectId: FIXTURE_PROJECT_ID,
+				contentRevision: snapshot.sourceContentId,
+				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				payload: { objectId, position: [3, 0, 1] }
+			})
+		);
+		expect(refused).toMatchObject({ kind: 'refused', code: 'inactive-task' });
+		// The ended task wrote nothing: no history entry and no content change.
+		expect(host.history()).toEqual(historyBefore);
+		expect(facade.snapshot().sourceContentId).toBe(snapshot.sourceContentId);
+		registration.dispose();
+		facade.dispose();
+	});
+
+	/**
+	 * TD-8's other host half: when an accepted install closes the open contributed
+	 * task, the panel must learn it synchronously. Waiting for the next contribution
+	 * read would leave the instrument mounted on services whose task has ended.
+	 */
+	it('notifies the contribution surface synchronously when an accepted install closes the open task', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		facade.registerStageAdapter({
+			id: 'td8-install-probe',
+			tasks: [{ id: 'td8-install-task', taskKind: 'td8-install-task', label: 'TD-8 install probe' }]
+		});
+		expect(facade.openContributedTask('td8-install-task').kind).toBe('opened');
+		let signals = 0;
+		facade.onAdaptersChanged(() => {
+			signals += 1;
+		});
+		const outcome = await host.accept(
+			moveIntent(
+				objectId,
+				host.coordinator().acceptedRevision().revisionId,
+				facade.snapshot().sourceContentId,
+				'op-td8-install',
+				[3, 0, 1]
+			)
+		);
+		expect(outcome.kind).toBe('installed');
+		expect(facade.session.task()).toBeNull();
+		// Not after a microtask: the signal is part of completing the command.
+		expect(signals).toBe(1);
+		facade.dispose();
 	});
 
 	it('refuses an adapter that requires a capability this host does not provide', async () => {

@@ -13,6 +13,9 @@
  * | --- | --- | --- |
  * | Wall height | `layout-wall-height` | `planExactWallHeight` |
  * | Wall thickness | `layout-wall-thickness` | `planExactWallThickness` |
+ * | Wall length (fixed endpoint) | `layout-wall-length` | `planExactWallLength` |
+ * | Wall angle (fixed endpoint) | `layout-wall-angle` | `planExactWallAngle` |
+ * | Rigid Wall translation | `layout-wall-move` | `planRigidWallMove` |
  * | Opening offset/width/height/sill | `layout-opening-measure` | `planUpdateWallFirstOpening` |
  * | Wall/Opening name | `layout-entity-name` | `planWallMetadataUpdate` / `planOpeningMetadataUpdate` |
  * | Place → Layout plinth | `layout-plinth-place` | `planCommitLayoutObjectPresetWithId` |
@@ -25,13 +28,18 @@
 
 import {
 	planCommitLayoutObjectPresetWithId,
+	planExactWallAngle,
 	planExactWallHeight,
+	planExactWallLength,
 	planExactWallThickness,
 	planOpeningMetadataUpdate,
+	planRigidWallMove,
 	planUpdateWallFirstOpening,
 	planWallMetadataUpdate,
+	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
-	type LayoutVec2
+	type LayoutVec2,
+	type PrecisionPlan
 } from '@portfolio/layout-core';
 import {
 	CURRENT_SOURCE_KIND,
@@ -50,6 +58,16 @@ export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
 export const LAYOUT_OPENING_MEASURE_KIND = 'layout-opening-measure';
 export const LAYOUT_ENTITY_NAME_KIND = 'layout-entity-name';
 export const LAYOUT_PLINTH_PLACE_KIND = 'layout-plinth-place';
+/** T1.P01.S05 — exact straight-Wall length, keeping one explicit endpoint fixed. */
+export const LAYOUT_WALL_LENGTH_KIND = 'layout-wall-length';
+/**
+ * T1.P01.S05 — exact straight-Wall angle. The payload carries **radians**, the
+ * canonical `atan2(z, x)` unit `planExactWallAngle` solves in; the instrument
+ * converts the degrees it displays, so no intent ever carries a display unit.
+ */
+export const LAYOUT_WALL_ANGLE_KIND = 'layout-wall-angle';
+/** T1.P01.S05 — rigid straight-Wall translation: both endpoints move by one delta. */
+export const LAYOUT_WALL_MOVE_KIND = 'layout-wall-move';
 
 /** The one opening field each edit owns; the UI never sends a combined patch. */
 export type LayoutOpeningField = 'offset' | 'width' | 'height' | 'sillHeight';
@@ -66,6 +84,9 @@ export type LayoutFact = { readonly label: string; readonly value: string };
 const PAYLOAD_KEYS: Readonly<Record<string, readonly string[]>> = {
 	[LAYOUT_WALL_HEIGHT_KIND]: ['wallId', 'height'],
 	[LAYOUT_WALL_THICKNESS_KIND]: ['wallId', 'thickness'],
+	[LAYOUT_WALL_LENGTH_KIND]: ['wallId', 'length', 'fixed'],
+	[LAYOUT_WALL_ANGLE_KIND]: ['wallId', 'angleRadians', 'fixed'],
+	[LAYOUT_WALL_MOVE_KIND]: ['wallId', 'deltaX', 'deltaZ'],
 	[LAYOUT_OPENING_MEASURE_KIND]: ['openingId', 'field', 'value'],
 	[LAYOUT_ENTITY_NAME_KIND]: ['subjectKind', 'subjectId', 'name'],
 	[LAYOUT_PLINTH_PLACE_KIND]: ['point', 'floorElevation', 'objectId']
@@ -105,6 +126,14 @@ function finiteNonNegative(value: unknown): value is number {
 
 function opaqueId(value: unknown): value is string {
 	return typeof value === 'string' && value.length > 0;
+}
+
+function isFixedEndpoint(value: unknown): value is FixedWallEndpoint {
+	return value === 'start' || value === 'end';
+}
+
+function finiteNumber(value: unknown): value is number {
+	return typeof value === 'number' && Number.isFinite(value);
 }
 
 export function isLayoutOpeningField(value: unknown): value is LayoutOpeningField {
@@ -251,6 +280,87 @@ function wallThicknessPlanner(): DomainPlanner<ProjectDocument> {
 	});
 }
 
+/**
+ * Exact straight-Wall length with one explicit fixed endpoint.
+ *
+ * The endpoint is part of the intent, not inferred from whichever end happens to
+ * be nearer the pointer: `start` keeps the canonical start Junction and moves the
+ * end, `end` keeps the end and moves the start. The retained planner owns the
+ * solve, the shared-Junction consequences and every identity/Opening/Room gate.
+ */
+function wallLengthPlanner(): DomainPlanner<ProjectDocument> {
+	return layoutPlanner(LAYOUT_WALL_LENGTH_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_LENGTH_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, length, fixed } = payload.value;
+		if (!opaqueId(wallId) || !finitePositive(length) || !isFixedEndpoint(fixed)) {
+			return rejected(
+				'invalid-value',
+				'A Wall length needs one wall id, one finite positive length in meters and a start or end fixed endpoint.'
+			);
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planExactWallLength(request.snapshot.domain.source.layout, {
+			wallId,
+			length,
+			fixedEndpoint: fixed
+		});
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return prepared(request, 'layout-wall-length', { kind: 'wall', id: wallId }, plan.document, [
+			'length'
+		]);
+	});
+}
+
+/** Exact straight-Wall angle, in canonical `atan2(z, x)` radians, one fixed endpoint. */
+function wallAnglePlanner(): DomainPlanner<ProjectDocument> {
+	return layoutPlanner(LAYOUT_WALL_ANGLE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_ANGLE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, angleRadians, fixed } = payload.value;
+		if (!opaqueId(wallId) || !finiteNumber(angleRadians) || !isFixedEndpoint(fixed)) {
+			return rejected(
+				'invalid-value',
+				'A Wall angle needs one wall id, one finite angle in radians and a start or end fixed endpoint.'
+			);
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planExactWallAngle(request.snapshot.domain.source.layout, {
+			wallId,
+			angle: angleRadians,
+			fixedEndpoint: fixed
+		});
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return prepared(request, 'layout-wall-angle', { kind: 'wall', id: wallId }, plan.document, [
+			'angle'
+		]);
+	});
+}
+
+/** Rigid straight-Wall translation: one delta, both endpoints, no shape change. */
+function wallMovePlanner(): DomainPlanner<ProjectDocument> {
+	return layoutPlanner(LAYOUT_WALL_MOVE_KIND, (request) => {
+		const payload = readPayload(LAYOUT_WALL_MOVE_KIND, request.intent.payload);
+		if ('message' in payload) return rejected('invalid-value', payload.message);
+		const { wallId, deltaX, deltaZ } = payload.value;
+		if (!opaqueId(wallId) || !finiteNumber(deltaX) || !finiteNumber(deltaZ)) {
+			return rejected(
+				'invalid-value',
+				'A rigid Wall move needs one wall id and finite X and Z deltas in meters.'
+			);
+		}
+		const addressed = addressedSubject(request, 'wall', wallId);
+		if (!addressed.ok) return rejected('invalid-value', addressed.message);
+		const plan = planRigidWallMove(request.snapshot.domain.source.layout, wallId, [deltaX, deltaZ]);
+		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
+		return prepared(request, 'layout-wall-move', { kind: 'wall', id: wallId }, plan.document, [
+			'position'
+		]);
+	});
+}
+
 function openingMeasurePlanner(): DomainPlanner<ProjectDocument> {
 	return layoutPlanner(LAYOUT_OPENING_MEASURE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_OPENING_MEASURE_KIND, request.intent.payload);
@@ -392,6 +502,9 @@ export function createLayoutPlanners(): readonly DomainPlanner<ProjectDocument>[
 	return [
 		wallHeightPlanner(),
 		wallThicknessPlanner(),
+		wallLengthPlanner(),
+		wallAnglePlanner(),
+		wallMovePlanner(),
 		openingMeasurePlanner(),
 		entityNamePlanner(),
 		plinthPlanner()
@@ -407,6 +520,183 @@ export function layoutSubjectOf(
 	if (selection.sourceKind === 'opening') return { kind: 'opening', id: selection.sourceId };
 	if (selection.sourceKind === 'object') return { kind: 'object', id: selection.sourceId };
 	return null;
+}
+
+/**
+ * The canonical frame of a **straight** Wall, read from the authored document.
+ *
+ * `null` for a curved Wall: exact length and exact angle are straight-Wall
+ * solves (the retained planners refuse a curve with `curved_wall_unsupported`),
+ * so this slice offers no such handle for one and its S04 scalar edits remain.
+ * Direction is canonical start → end; the angle is the same `atan2(z, x)` the
+ * planner solves in.
+ */
+export type WallFrame = {
+	readonly wallId: string;
+	readonly start: LayoutVec2;
+	readonly end: LayoutVec2;
+	readonly direction: LayoutVec2;
+	readonly length: number;
+	readonly angleRadians: number;
+};
+
+export function wallFrame(document: LayoutDocumentWallFirst, wallId: string): WallFrame | null {
+	const wall = document.walls.find((candidate) => candidate.id === wallId);
+	if (wall === undefined || wall.centerline.kind !== 'line') return null;
+	const start = document.junctions.find((junction) => junction.id === wall.startJunctionId)?.point;
+	const end = document.junctions.find((junction) => junction.id === wall.endJunctionId)?.point;
+	if (start === undefined || end === undefined) return null;
+	const dx = end[0] - start[0];
+	const dz = end[1] - start[1];
+	const length = Math.hypot(dx, dz);
+	if (!(length > 0)) return null;
+	return {
+		wallId,
+		start: [start[0], start[1]],
+		end: [end[0], end[1]],
+		direction: [dx / length, dz / length],
+		length,
+		angleRadians: Math.atan2(dz, dx)
+	};
+}
+
+/**
+ * The explicit parameter one pointer position names, given the endpoint that
+ * **stays fixed**. This is the inverse the pointer path uses; it never builds a
+ * document and never decides validity — the canonical planner does both.
+ *
+ * Dragging the start keeps the end fixed (`fixed: 'end'`), so each helper takes
+ * the fixed endpoint explicitly rather than assuming which end is held.
+ */
+export function wallLengthFromPointer(
+	frame: WallFrame,
+	fixed: FixedWallEndpoint,
+	point: readonly [number, number]
+): number {
+	const fixedPoint = fixed === 'start' ? frame.start : frame.end;
+	// Distance along the authored direction is the parameter the planner solves
+	// for; both endpoints reverse their sign convention, so take the magnitude.
+	const along =
+		(point[0] - fixedPoint[0]) * frame.direction[0] + (point[1] - fixedPoint[1]) * frame.direction[1];
+	return Math.abs(along);
+}
+
+export function wallAngleFromPointer(
+	fixedPoint: readonly [number, number],
+	point: readonly [number, number],
+	fixed: FixedWallEndpoint
+): number {
+	// The planner's angle is always the Wall's canonical **start → end**
+	// direction. With `start` fixed, the pointer names that direction directly.
+	// With `end` fixed it names the opposite ray, so the vector is reversed here —
+	// otherwise dragging the start would rotate the Wall 180° away from the hand.
+	const x = fixed === 'start' ? point[0] - fixedPoint[0] : fixedPoint[0] - point[0];
+	const z = fixed === 'start' ? point[1] - fixedPoint[1] : fixedPoint[1] - point[1];
+	return Math.atan2(z, x);
+}
+
+export type WallManipulationRequest =
+	| { readonly kind: 'length'; readonly length: number }
+	| { readonly kind: 'angle'; readonly angleRadians: number }
+	| { readonly kind: 'move'; readonly delta: LayoutVec2 };
+
+export type WallManipulationPlan =
+	| { readonly kind: 'planned'; readonly wall: WallFrame }
+	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
+
+/**
+ * The one preview/commit solve for a Wall gesture or typed value.
+ *
+ * It calls the retained planner on the immutable baseline and returns the
+ * candidate's own frame. Preview and commit therefore cannot disagree: both are
+ * the planner's output, never a second interpolation of the pointer.
+ */
+export function planWallManipulation(
+	baseline: LayoutDocumentWallFirst,
+	wallId: string,
+	request: WallManipulationRequest,
+	fixed: FixedWallEndpoint
+): WallManipulationPlan {
+	let plan: PrecisionPlan;
+	if (request.kind === 'length') {
+		plan = planExactWallLength(baseline, { wallId, length: request.length, fixedEndpoint: fixed });
+	} else if (request.kind === 'angle') {
+		plan = planExactWallAngle(baseline, { wallId, angle: request.angleRadians, fixedEndpoint: fixed });
+	} else {
+		plan = planRigidWallMove(baseline, wallId, request.delta);
+	}
+	if (plan.kind === 'rejected') {
+		return { kind: 'refused', code: plan.rejection.code, message: plan.rejection.message };
+	}
+	const wall = wallFrame(plan.document, wallId);
+	if (wall === null) {
+		return {
+			kind: 'refused',
+			code: 'unsupported-geometry',
+			message: 'The candidate Wall has no straight frame to preview.'
+		};
+	}
+	return { kind: 'planned', wall };
+}
+
+/**
+ * One F.4 intent for a Wall manipulation, with captured identity and revision.
+ *
+ * The reference names the level the accepted source owns, exactly as the S04
+ * precision instrument does, so the target cannot name another level.
+ */
+export function wallManipulationIntent(input: {
+	readonly request: WallManipulationRequest;
+	readonly wallId: string;
+	readonly fixed: FixedWallEndpoint;
+	readonly operationId: string;
+	readonly projectId: string;
+	readonly revisionId: string;
+	readonly contentRevision: string;
+	readonly levelId: string;
+}): AuthoringIntent {
+	const reference: SemanticReference = {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: input.contentRevision },
+		subject: { kind: 'wall', id: input.wallId },
+		instancePath: [],
+		location: { kind: 'layout-location', levelId: input.levelId, structureInstancePath: [] },
+		componentId: null,
+		capabilityId: null
+	};
+	const base = {
+		operationId: input.operationId,
+		projectId: input.projectId,
+		revisionId: input.revisionId,
+		contentRevision: input.contentRevision,
+		targets: [reference]
+	};
+	// One literal per operation: a shared conditional object would widen its
+	// unselected keys to `undefined`, which is not an F.4 JSON value.
+	if (input.request.kind === 'length') {
+		return buildLayoutIntent({
+			...base,
+			kind: LAYOUT_WALL_LENGTH_KIND,
+			payload: { wallId: input.wallId, length: input.request.length, fixed: input.fixed }
+		});
+	}
+	if (input.request.kind === 'angle') {
+		return buildLayoutIntent({
+			...base,
+			kind: LAYOUT_WALL_ANGLE_KIND,
+			payload: { wallId: input.wallId, angleRadians: input.request.angleRadians, fixed: input.fixed }
+		});
+	}
+	return buildLayoutIntent({
+		...base,
+		kind: LAYOUT_WALL_MOVE_KIND,
+		payload: {
+			wallId: input.wallId,
+			deltaX: input.request.delta[0],
+			deltaZ: input.request.delta[1]
+		}
+	});
 }
 
 /**
@@ -462,6 +752,7 @@ export function layoutFacts(
  */
 export type LayoutWritableFact =
 	| { readonly id: string; readonly label: string; readonly value: number; readonly unit: 'm' }
+	| { readonly id: string; readonly label: string; readonly value: number; readonly unit: 'deg' }
 	| { readonly id: string; readonly label: string; readonly value: string; readonly unit: 'text' };
 
 export function layoutWritableFacts(
@@ -471,10 +762,25 @@ export function layoutWritableFacts(
 	if (subject.kind === 'wall') {
 		const wall = document.walls.find((candidate) => candidate.id === subject.id);
 		if (wall === undefined) return [];
+		const frame = wallFrame(document, subject.id);
+		// A curved Wall keeps every S04 scalar edit and gains no length/angle/rigid
+		// field: those are straight-Wall solves and offering them would be an
+		// invitation the canonical planner has to refuse.
+		if (frame === null) {
+			return [
+				{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
+				{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
+				{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' }
+			];
+		}
 		return [
 			{ id: 'name', label: 'Name', value: wall.name ?? '', unit: 'text' },
 			{ id: 'height', label: 'Height', value: wall.height, unit: 'm' },
-			{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' }
+			{ id: 'thickness', label: 'Thickness', value: wall.thickness, unit: 'm' },
+			{ id: 'length', label: 'Length', value: frame.length, unit: 'm' },
+			{ id: 'angle', label: 'Angle', value: (frame.angleRadians * 180) / Math.PI, unit: 'deg' },
+			{ id: 'deltaX', label: 'Move ΔX', value: 0, unit: 'm' },
+			{ id: 'deltaZ', label: 'Move ΔZ', value: 0, unit: 'm' }
 		];
 	}
 	if (subject.kind === 'opening') {

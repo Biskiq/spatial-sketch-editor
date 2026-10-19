@@ -30,11 +30,11 @@ below, not the entry.
 
 ---
 
-## Open
+## Fixed
 
 ## TD-8 — a task's scoped services go stale after an accepted install, refusing `Begin`
 
-Status        open — intermittent; root cause located
+Status        fixed — slice branch `T1-P01-S05` on base `919c2904`; the commit that records it is the slice commit, so the SHA is filled in at merge
 Found         2026-10-18, during T2.P01.S03's browser acceptance run
 Owner         Stage host task-scoped services (`apps/editor/src/lib/authoring/stage/stage-facade.ts`,
               `taskServices`/`active()`), not the Scene adapter that surfaced it
@@ -58,9 +58,26 @@ Fix options   1) Have the panel rebuild its task services on `onAdaptersChanged`
               cheapest); 2) make `active()` compare liveness rather than a captured generation and
               let the facade refuse per operation (wider blast radius). Do **not** let the instrument
               re-acquire services from internals — that would give the adapter a second authority.
-Then add      A facade/instrument test that bumps the writer generation under a mounted task and
-              asserts the next `Begin` is accepted, plus one that asserts a genuinely ended task
-              still refuses.
+Fix          Both halves, host-side, in `stage-facade.ts`:
+             1) the guard no longer captures `writerGeneration()`. It names the contributed task
+                (`adapterId` + contribution id + task kind) and answers live only while that task is
+                still the session's open task and this binding still owns it; close, task replacement,
+                replacement and disposal refuse per operation as before;
+             2) an accepted install that **closes the open task** notifies the contribution surface
+                synchronously (an install is a command, not a derivation), so a panel showing that
+                task learns it is gone and rebuilds; a content change with no closed task keeps the
+                deferred, read-discovered rebuild. The instrument still holds only the services it
+                was handed.
+Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
+             - “accepts Begin after a writer-generation bump while a contributed instrument stays
+               mounted” (real adapter view services; `session.openTask` is the bump; the accept
+               installs);
+             - “notifies the contribution surface synchronously when an accepted install closes the
+               open task” (asserts the signal and the closed task immediately after the command);
+             - “refuses the same task-scoped services after the contributed task has ended”
+               (`closeTask`, then `inactive-task`, no history, no content change).
+
+## Open
 
 ## TD-9 — the sign-in Save resume is half-wired
 

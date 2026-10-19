@@ -22,12 +22,14 @@ ACTIVE: none in progress. S01–S04 and S07 are shipped (PR #148 anchors verifie
         `main`; `closed/T1.P01.S04` pushed). S05 is authorized as batch C (2026-10-19), effective
         when PR #155 merges. S06 is proposed and routed after T3.P01.S04 (ruling C3).
 BATON: Batch C: S05 ∥ T2.P01.S04 under the batch C protocol; S05 owns the host core, and TD-8 is its
-       first increment (it may land standalone first if T2 S04 needs it). After both merge, the
-       current-source freeze holds until T3.P01.S04 merges. The cycle window stays open; S05 is the
-       terminal, and its closeout records the exposure row. TD-9 is owned by the Head integration
-       and verified at S06.
-NEXT: After PR #155 merges, start S05 through the runbook start step at its own trusted base (the
-      row is `approved`). Owner follow-up: push the local `closed/T1.P01.S07` tag.
+       first increment (it may land standalone first if T2 S04 needs it). S05's implementation is on
+       branch `T1-P01-S05` (base `919c2904`), with TD-8 fixed host-side and Wall length/angle/rigid
+       handles landed; it is **not merged, not accepted**, and its record claims no acceptance. After
+       both batch C slices merge, the current-source freeze holds until T3.P01.S04 merges. The cycle
+       window stays open; S05 is the terminal, and its closeout records the exposure row. TD-9 is
+       owned by the Head integration and verified at S06.
+NEXT: S05 is implemented on its branch and awaits the coordinator's full gate, independent review
+      and the batch C merge protocol. Owner follow-up: push the local `closed/T1.P01.S07` tag.
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md →
