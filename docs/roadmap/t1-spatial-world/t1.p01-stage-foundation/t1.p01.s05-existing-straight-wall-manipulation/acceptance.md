@@ -7,7 +7,8 @@ review and the merge gate are outstanding ·
 
 **Tested revision:** branch `T1-P01-S05`, commits `1fb51ed8`, `7ab64ebf` and the doc-only
 `4730fd1b` on base `919c2904` (batch C coordination, PR #155). The lane results below ran at
-`7ab64ebf`; `test:arch` (including the documentation gate) was re-run at `4730fd1b`. No merge gate
+`7ab64ebf`; `test:arch` (including the documentation gate) was re-run after the
+documentation-only commits. No merge gate
 has been run on a merge revision, no capability or gate state is written, and nothing here claims
 readiness or acceptance.
 
