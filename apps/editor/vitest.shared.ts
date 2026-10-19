@@ -29,7 +29,15 @@ export const svelteTestSetup = {
 		// keep working because `browser` is additive to the default conditions.
 		conditions: ['browser'],
 		alias: {
-			$lib: path.resolve(here, 'src/lib')
+			$lib: path.resolve(here, 'src/lib'),
+			// Route components import SvelteKit's virtual modules, which plain Vitest
+			// does not provide. The mounted-route harness (`spatial-route-source-
+			// replacement.test.ts`) needs the real route graph, so these three ids
+			// resolve to explicit test doubles instead of failing to resolve. No
+			// non-test module imports them.
+			'$app/navigation': path.resolve(here, 'tests/lib/authoring/fixtures/app-navigation.ts'),
+			'$app/state': path.resolve(here, 'tests/lib/authoring/fixtures/app-state.ts'),
+			'$env/dynamic/public': path.resolve(here, 'tests/lib/authoring/fixtures/env-public.ts')
 		}
 	}
 };

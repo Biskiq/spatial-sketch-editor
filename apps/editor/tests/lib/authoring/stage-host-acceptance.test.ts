@@ -25,6 +25,7 @@ import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/cu
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { createDomainConsumer, consumerMove, consumerSceneEdit } from './__fixtures__/stage-domain-consumer';
 import { describe, expect, it } from 'vitest';
+import type { Component } from 'svelte';
 import { planDeleteLayoutObject } from '@portfolio/layout-core';
 import type { PlanSourceRef } from '@portfolio/layout-core';
 import type { ProjectDocument } from '@portfolio/project-model';
@@ -629,6 +630,224 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		expect(disposals).toBe(1);
 		expect(echoes).toEqual([objectId, objectId]);
 		expect(echoes.filter((value) => value === null)).toEqual([]);
+	});
+
+	/**
+	 * TD-8 — the panel's services belong to one task instance. An accepted install
+	 * closes that task, so the services it handed out must refuse, and reopening the
+	 * contributed task must hand out services that work again. Before the fix the
+	 * panel kept a captured writer generation and refused `Begin` after Undo/Redo;
+	 * now the closed task is announced synchronously and the reopened task is a new
+	 * lifetime.
+	 */
+	it('re-provisions usable services after an accepted install closed the task', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		const probe = () => null;
+		const registration = mountStageAdapter(facade, host, (port) => ({
+			id: 'td8-probe',
+			bind: () => ({
+				tasks: [{ id: 'td8-task', taskKind: 'td8-task', label: 'TD-8 probe' }],
+				instrument: () => ({
+					summary: 'TD-8 probe',
+					view: {
+						component: probe as unknown as Component<{ services: StageAdapterServices }>,
+						services: port
+					}
+				})
+			})
+		}));
+		if (registration.kind !== 'registered') throw new Error('TD-8 probe did not mount');
+		const opened = facade.openContributedTask('td8-task');
+		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
+			throw new Error('TD-8 probe contributed no instrument services');
+		}
+		const before = opened.instrument.view.services;
+		const accepted = await host.accept(
+			moveIntent(objectId, host.acceptedRevision().revisionId, facade.snapshot().sourceContentId, 'op-td8-close', [2, 0, 1])
+		);
+		expect(accepted.kind).toBe('installed');
+		expect(facade.session.task()).toBeNull();
+
+		// The services the old panel holds are not a live task's authority.
+		const stale = await before.authoring.accept(
+			proofIntent({
+				kind: PROOF_LAYOUT_TRANSFORM_KIND,
+				operationId: 'op-td8-stale',
+				expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+				projectId: FIXTURE_PROJECT_ID,
+				contentRevision: facade.snapshot().sourceContentId,
+				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				payload: { objectId, position: [3, 0, 1] }
+			})
+		);
+		expect(stale).toMatchObject({ kind: 'refused', code: 'inactive-task' });
+
+		// Reopening the contributed task is the recovery the creator actually takes:
+		// it must hand out services for the new task instance, and Begin must install.
+		// The install disposed the probe's binding, so the next frame rebuilds it.
+		settle(facade);
+		const reopened = facade.openContributedTask('td8-task');
+		if (reopened.kind !== 'opened' || reopened.instrument?.view === undefined) {
+			throw new Error(`TD-8 probe did not reopen: ${JSON.stringify(reopened)}`);
+		}
+		const after = await reopened.instrument.view.services.authoring.accept(
+			proofIntent({
+				kind: PROOF_LAYOUT_TRANSFORM_KIND,
+				operationId: 'op-td8-reopened',
+				expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+				projectId: FIXTURE_PROJECT_ID,
+				contentRevision: facade.snapshot().sourceContentId,
+				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				payload: { objectId, position: [4, 0, 1] }
+			})
+		);
+		expect(after.kind).toBe('installed');
+		registration.dispose();
+		facade.dispose();
+	});
+
+	/**
+	 * Replacement is not a generation bump to ignore: the old task object is gone, so
+	 * the services handed to the previous panel must refuse, while the services the
+	 * facade provides for the new task instance accept.
+	 */
+	it('invalidates the previous services when the contributed task is replaced', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		const probe = () => null;
+		const registration = mountStageAdapter(facade, host, (port) => ({
+			id: 'td8-replace-probe',
+			bind: () => ({
+				tasks: [{ id: 'td8-replace', taskKind: 'td8-replace', label: 'TD-8 replacement probe' }],
+				instrument: () => ({
+					summary: 'TD-8 replacement probe',
+					view: {
+						component: probe as unknown as Component<{ services: StageAdapterServices }>,
+						services: port
+					}
+				})
+			})
+		}));
+		if (registration.kind !== 'registered') throw new Error('TD-8 replacement probe did not mount');
+		const opened = facade.openContributedTask('td8-replace');
+		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
+			throw new Error('TD-8 replacement probe contributed no instrument services');
+		}
+		const previous = opened.instrument.view.services;
+		// A same-contribution re-open replaces the task object and bumps the generation.
+		expect(
+			facade.session.openTask({ kind: 'td8-replace', label: 'TD-8 replacement probe', targetRef: null })
+		).toBe(true);
+		expect(
+			await previous.authoring.accept(
+				proofIntent({
+					kind: PROOF_LAYOUT_TRANSFORM_KIND,
+					operationId: 'op-td8-replaced-stale',
+					expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+					projectId: FIXTURE_PROJECT_ID,
+					contentRevision: facade.snapshot().sourceContentId,
+					targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+					payload: { objectId, position: [5, 0, 1] }
+				})
+			)
+		).toMatchObject({ kind: 'refused', code: 'inactive-task' });
+		const current = facade.instrumentForTask('td8-replace');
+		if (current?.view === undefined) throw new Error('TD-8 replacement probe has no current services');
+		expect(
+			await current.view.services.authoring.accept(
+				proofIntent({
+					kind: PROOF_LAYOUT_TRANSFORM_KIND,
+					operationId: 'op-td8-replaced-current',
+					expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+					projectId: FIXTURE_PROJECT_ID,
+					contentRevision: facade.snapshot().sourceContentId,
+					targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+					payload: { objectId, position: [6, 0, 1] }
+				})
+			)
+		).toMatchObject({ kind: 'installed' });
+		registration.dispose();
+		facade.dispose();
+	});
+
+	/** The other half of TD-8: a genuinely ended task still refuses, not accepts. */
+	it('refuses the same task-scoped services after the contributed task has ended', async () => {
+		const { facade, snapshot, host, objectId } = await mount();
+		settle(facade);
+		const probe = () => null;
+		const registration = mountStageAdapter(facade, host, (port) => ({
+			id: 'td8-ended-probe',
+			bind: () => ({
+				tasks: [{ id: 'td8-ended', taskKind: 'td8-ended', label: 'TD-8 ended probe' }],
+				instrument: () => ({
+					summary: 'TD-8 ended probe',
+					view: {
+						component: probe as unknown as Component<{ services: StageAdapterServices }>,
+						services: port
+					}
+				})
+			})
+		}));
+		if (registration.kind !== 'registered') throw new Error('TD-8 ended probe did not mount');
+		const opened = facade.openContributedTask('td8-ended');
+		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
+			throw new Error('TD-8 ended probe contributed no instrument services');
+		}
+		const services = opened.instrument.view.services;
+		const historyBefore = host.history();
+		expect(facade.closeTask()).toBe(true);
+
+		const refused = await services.authoring.accept(
+			proofIntent({
+				kind: PROOF_LAYOUT_TRANSFORM_KIND,
+				operationId: 'op-td8-ended',
+				expectedRevision: snapshot.acceptedRevision.revisionId,
+				projectId: FIXTURE_PROJECT_ID,
+				contentRevision: snapshot.sourceContentId,
+				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				payload: { objectId, position: [3, 0, 1] }
+			})
+		);
+		expect(refused).toMatchObject({ kind: 'refused', code: 'inactive-task' });
+		// The ended task wrote nothing: no history entry and no content change.
+		expect(host.history()).toEqual(historyBefore);
+		expect(facade.snapshot().sourceContentId).toBe(snapshot.sourceContentId);
+		registration.dispose();
+		facade.dispose();
+	});
+
+	/**
+	 * TD-8's other host half: when an accepted install closes the open contributed
+	 * task, the panel must learn it synchronously. Waiting for the next contribution
+	 * read would leave the instrument mounted on services whose task has ended.
+	 */
+	it('notifies the contribution surface synchronously when an accepted install closes the open task', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		facade.registerStageAdapter({
+			id: 'td8-install-probe',
+			tasks: [{ id: 'td8-install-task', taskKind: 'td8-install-task', label: 'TD-8 install probe' }]
+		});
+		expect(facade.openContributedTask('td8-install-task').kind).toBe('opened');
+		let signals = 0;
+		facade.onAdaptersChanged(() => {
+			signals += 1;
+		});
+		const outcome = await host.accept(
+			moveIntent(
+				objectId,
+				host.coordinator().acceptedRevision().revisionId,
+				facade.snapshot().sourceContentId,
+				'op-td8-install',
+				[3, 0, 1]
+			)
+		);
+		expect(outcome.kind).toBe('installed');
+		expect(facade.session.task()).toBeNull();
+		// Not after a microtask: the signal is part of completing the command.
+		expect(signals).toBe(1);
+		facade.dispose();
 	});
 
 	it('refuses an adapter that requires a capability this host does not provide', async () => {

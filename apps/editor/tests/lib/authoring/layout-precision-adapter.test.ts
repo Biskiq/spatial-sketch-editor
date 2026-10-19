@@ -5,8 +5,8 @@
  * production adapter factory: no injected source and no test-only install path.
  * The properties pinned here are the slice's acceptance criteria:
  *
- * 1. the five production planners register through the adapter and an exact
- *    Wall height/thickness or Opening measure edit installs once with one undo;
+ * 1. the production planners register through the adapter and an exact Wall
+ *    height/thickness or Opening measure edit installs once with one undo;
  * 2. an invalid measure and a Wall shortened below its Opening
  *    reject with the retained planner's own message, and the accepted source,
  *    revision and history are unchanged;
@@ -126,7 +126,10 @@ describe('T1.P01.S04 — Layout precision', () => {
 			'layout-entity-name',
 			'layout-opening-measure',
 			'layout-plinth-place',
+			'layout-wall-angle',
 			'layout-wall-height',
+			'layout-wall-length',
+			'layout-wall-move',
 			'layout-wall-thickness'
 		]);
 		const groups = stageContributionGroups(facade);

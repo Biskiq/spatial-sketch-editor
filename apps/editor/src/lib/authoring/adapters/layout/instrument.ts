@@ -22,11 +22,17 @@
 
 import {
 	nextLayoutPresetObjectId,
+	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
 import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
 
+import {
+	clearPausedProposal,
+	pausedWallProposal,
+	type PausedWallProposal
+} from './paused-proposal';
 import {
 	LAYOUT_ENTITY_NAME_KIND,
 	LAYOUT_OPENING_MEASURE_KIND,
@@ -39,8 +45,10 @@ import {
 	layoutWritableFacts,
 	parseMeasureInput,
 	parsePlacementXZ,
+	wallManipulationIntent,
 	type LayoutSubject,
-	type LayoutWritableFact
+	type LayoutWritableFact,
+	type WallManipulationRequest
 } from './precision';
 
 export type LayoutWriteOutcome =
@@ -79,7 +87,7 @@ export type LayoutInstrumentOptions = {
 export type LayoutFieldState = {
 	readonly id: string;
 	readonly label: string;
-	readonly unit: 'm' | 'text';
+	readonly unit: 'm' | 'deg' | 'text';
 	/** The accepted value as display text (full precision, never rounded). */
 	readonly value: string;
 	/** The current edit buffer; equals `value` until the creator types. */
@@ -100,6 +108,9 @@ export type LayoutInstrument = {
 	/** Every settled fact, including the read-only ones. */
 	facts(): ReturnType<typeof layoutFacts>;
 	fields(): readonly LayoutFieldState[];
+	/** The endpoint an exact length/angle edit keeps fixed. Explicit, never inferred. */
+	fixedEndpoint(): FixedWallEndpoint;
+	setFixedEndpoint(endpoint: FixedWallEndpoint): void;
 	/** The current raw placement inputs (working-plane X/Z). */
 	placement(): { readonly x: string; readonly z: string; readonly error: string | null };
 	setPlacement(x: string, z: string): void;
@@ -115,6 +126,17 @@ export type LayoutInstrument = {
 	cancelPlacement(): void;
 	/** True while this instrument holds the host's gesture lease for a proposal. */
 	proposalLive(): boolean;
+	/**
+	 * The exact Wall parameter preserved by a reading change, or `null`.
+	 *
+	 * The value lives in the adapter-owned store; the instrument only reads it,
+	 * so a paused proposal is never a second document.
+	 */
+	pausedProposal(): PausedWallProposal | null;
+	/** Apply the paused parameter exactly, revalidated against this accepted source. */
+	resumePaused(): Promise<LayoutInstrumentOutcome>;
+	/** Drop the paused parameter without applying it. */
+	discardPaused(): void;
 	/** Unmount: release the lease exactly once, without committing anything. */
 	dispose(): void;
 };
@@ -159,6 +181,8 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	let placement = { x: '0', z: '0', error: null as string | null };
 	let inFlight = false;
 	let proposal = false;
+	/** The explicit fixed endpoint for the next exact length/angle edit. */
+	let fixedEndpoint: FixedWallEndpoint = 'start';
 
 	/**
 	 * The first keystroke of a proposal takes the host lease; it is not history.
@@ -178,6 +202,12 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		if (!proposal) return;
 		options.gesture?.release();
 		proposal = false;
+	}
+
+	function pausedFor(): PausedWallProposal | null {
+		return options.subject.kind === 'wall'
+			? pausedWallProposal(options.contentRevision, options.subject.id)
+			: null;
 	}
 
 	function fieldState(id: string): LayoutFieldState | null {
@@ -224,6 +254,10 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	return {
 		subject: options.subject,
 		facts: () => layoutFacts(options.document, options.subject),
+		fixedEndpoint: () => fixedEndpoint,
+		setFixedEndpoint(endpoint) {
+			if (endpoint === 'start' || endpoint === 'end') fixedEndpoint = endpoint;
+		},
 		fields() {
 			return layoutWritableFacts(options.document, options.subject)
 				.map((fact) => fieldState(fact.id))
@@ -294,6 +328,73 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 				errors.set(id, parsed.reason);
 				return { kind: 'invalid', code: parsed.code, message: parsed.reason };
 			}
+
+			// **T1.P01.S05 — existing straight-Wall manipulation.** Length and angle are
+			// exact solves with one explicit fixed endpoint; the rigid move takes both
+			// deltas so it is one intent and one history result. All three build the
+			// canonical planner's payload through one helper, so the typed path and the
+			// pointer path cannot disagree about identity, units or captured revision.
+			if (options.subject.kind === 'wall' && (id === 'length' || id === 'angle')) {
+				if (id === 'length' && parsed.value <= 0) {
+					const reason = 'Enter a length greater than zero.';
+					errors.set(id, reason);
+					return { kind: 'invalid', code: 'malformed', message: reason };
+				}
+				const request: WallManipulationRequest =
+					id === 'length'
+						? { kind: 'length', length: parsed.value }
+						: { kind: 'angle', angleRadians: (parsed.value * Math.PI) / 180 };
+				const outcome = await submit(
+					wallManipulationIntent({
+						request,
+						wallId: options.subject.id,
+						fixed: fixedEndpoint,
+						operationId: mint(),
+						projectId: options.projectId,
+						revisionId: options.port.acceptedRevision().revisionId,
+						contentRevision: options.contentRevision,
+						levelId
+					})
+				);
+				if (outcome.kind === 'refused') errors.set(id, outcome.message);
+				else if (outcome.kind === 'accepted') updateAccepted(id, parsed.value);
+				return outcome;
+			}
+			if (options.subject.kind === 'wall' && (id === 'deltaX' || id === 'deltaZ')) {
+				const dx = parseMeasureInput(text.get('deltaX') ?? '0');
+				const dz = parseMeasureInput(text.get('deltaZ') ?? '0');
+				if (!dx.ok || !dz.ok) {
+					const failure = !dx.ok ? dx : dz;
+					const reason = failure.ok ? '' : failure.reason;
+					errors.set(id, reason);
+					return { kind: 'invalid', code: failure.ok ? 'malformed' : failure.code, message: reason };
+				}
+				const outcome = await submit(
+					wallManipulationIntent({
+						request: { kind: 'move', delta: [dx.value, dz.value] },
+						wallId: options.subject.id,
+						fixed: fixedEndpoint,
+						operationId: mint(),
+						projectId: options.projectId,
+						revisionId: options.port.acceptedRevision().revisionId,
+						contentRevision: options.contentRevision,
+						levelId
+					})
+				);
+				if (outcome.kind === 'refused') errors.set(id, outcome.message);
+				else if (outcome.kind === 'accepted') {
+					// A rigid move consumes its deltas: the fields return to zero so the
+					// next Enter cannot silently move the Wall a second time.
+					errors.delete('deltaX');
+					errors.delete('deltaZ');
+					accepted.set('deltaX', '0');
+					accepted.set('deltaZ', '0');
+					text.set('deltaX', '0');
+					text.set('deltaZ', '0');
+				}
+				return outcome;
+			}
+
 			if (parsed.value < 0 || (parsed.value === 0 && id !== 'offset' && id !== 'sillHeight')) {
 				const reason =
 					id === 'offset' || id === 'sillHeight'
@@ -409,6 +510,35 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 		cancelPlacement() {
 			placement = { x: placement.x, z: placement.z, error: null };
 			releaseProposal();
+		},
+		pausedProposal: pausedFor,
+		async resumePaused() {
+			if (inFlight) return { kind: 'busy' };
+			const paused = pausedFor();
+			if (paused === null || options.subject.kind !== 'wall') {
+				return { kind: 'refused', code: 'no-paused-proposal', message: 'There is no paused Wall proposal to resume.' };
+			}
+			// The captured parameter is applied as-is: no display text is parsed and
+			// nothing is rounded. The F.4 planner revalidates it against the current
+			// accepted source, exactly as the typed path does.
+			const outcome = await submit(
+				wallManipulationIntent({
+					request: paused.request,
+					wallId: options.subject.id,
+					fixed: paused.fixed,
+					operationId: mint(),
+					projectId: options.projectId,
+					revisionId: options.port.acceptedRevision().revisionId,
+					contentRevision: options.contentRevision,
+					levelId
+				})
+			);
+			if (outcome.kind === 'accepted') clearPausedProposal(options.contentRevision, options.subject.id);
+			return outcome;
+		},
+		discardPaused() {
+			if (options.subject.kind !== 'wall') return;
+			clearPausedProposal(options.contentRevision, options.subject.id);
 		},
 		proposalLive: () => proposal,
 		dispose: () => releaseProposal()
