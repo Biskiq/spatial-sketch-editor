@@ -30,11 +30,12 @@ below, not the entry.
 
 ---
 
-## Open
+## Fixed
 
 ## TD-8 — a task's scoped services go stale after an accepted install, refusing `Begin`
 
-Status        open — intermittent; root cause located
+Status        fixed — shipped in `T1.P01.S05` (PR #156), accepted at `3d432836` on base `919c2904`;
+              the merge revision becomes the mainline anchor once #156 lands as a merge commit
 Found         2026-10-18, during T2.P01.S03's browser acceptance run
 Owner         Stage host task-scoped services (`apps/editor/src/lib/authoring/stage/stage-facade.ts`,
               `taskServices`/`active()`), not the Scene adapter that surfaced it
@@ -58,9 +59,44 @@ Fix options   1) Have the panel rebuild its task services on `onAdaptersChanged`
               cheapest); 2) make `active()` compare liveness rather than a captured generation and
               let the facade refuse per operation (wider blast radius). Do **not** let the instrument
               re-acquire services from internals — that would give the adapter a second authority.
-Then add      A facade/instrument test that bumps the writer generation under a mounted task and
-              asserts the next `Begin` is accepted, plus one that asserts a genuinely ended task
-              still refuses.
+Fix          Host-side, in `stage-facade.ts` — **option 2 plus a close notification**, not the
+             plan's prescribed option 1. Option 1 (rebuild the panel's services on every
+             `onAdaptersChanged`) was rejected because that signal also fires for registration,
+             selection and re-binds: the panel would re-acquire services on events that do not end
+             its authority, and it would still need to distinguish “task gone” from “content
+             changed”. The implementation:
+             1) the guard no longer captures `writerGeneration()`. It captures the **task object**
+                it was opened for and answers live only while `session.task()` is that same object
+                and this binding still owns the contributed task (`adapterId` + contribution id).
+                The task object is the real lifetime: every path that bumps the generation
+                (`openTask`, `resumeTask`, `closeTask`/`cancelTaskWriters`) also replaces or clears
+                it, so an accepted install, `Resume`, same-contribution re-open, close or disposal
+                revokes the old services. The generation guard's protection is preserved;
+             2) an accepted install that **closes the open task** notifies the contribution surface
+                synchronously (an install is a command, not a derivation), so a panel showing that
+                task learns immediately that it is inactive and can offer `Resume`/reopen instead
+                of holding services that silently refuse. The instrument still holds only the
+                services it was handed.
+             Consequence: **every accepted install closes the open task** — the session has no
+             keep-open install path — so a panel never keeps acting across one. The defect was that
+             the closed services refused with `stale-epoch` and nothing told the panel, so `Begin`
+             looked live but broken. The fix makes the refusal truthful (`inactive-task`) and the
+             recovery reachable (the synchronous signal plus fresh services on Resume/reopen); it
+             does not pretend a closed task's services still work.
+Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
+             - “re-provisions usable services after an accepted install closed the task” (a real
+               adapter view; an accepted install closes the task, the old services refuse
+               `inactive-task`, and reopening the contributed task hands out services whose
+               `Begin` installs);
+             - “invalidates the previous services when the contributed task is replaced”
+               (`session.openTask` replaces the task object; the old services refuse and the
+               facade's current services install);
+             - “notifies the contribution surface synchronously when an accepted install closes the
+               open task” (asserts the signal and the closed task immediately after the command);
+             - “refuses the same task-scoped services after the contributed task has ended”
+               (`closeTask`, then `inactive-task`, no history, no content change).
+
+## Open
 
 ## TD-9 — the sign-in Save resume is half-wired
 

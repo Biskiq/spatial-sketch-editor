@@ -8,12 +8,17 @@
 	 */
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 	import type { LayoutFieldState } from './instrument';
+	import type { PausedWallProposal } from './paused-proposal';
 	import { createDimensionsInstrument } from './adapter-support';
 
 	let { services }: { services: StageAdapterServices } = $props();
 
 	let fields = $state<readonly LayoutFieldState[]>([]);
 	let error = $state<string | null>(null);
+	/** A parameter a reading change preserved; Resume applies the captured value exactly. */
+	let paused = $state<PausedWallProposal | null>(null);
+	/** The explicit endpoint an exact length/angle edit keeps fixed. */
+	let fixedEndpoint = $state<'start' | 'end'>('start');
 
 	// The instrument follows the one canonical selection: a new subject rebuilds the
 	// controller from the accepted source, so a stale selection can never keep
@@ -36,10 +41,40 @@
 
 	function refresh(): void {
 		fields = instrument?.fields() ?? [];
+		paused = instrument?.pausedProposal() ?? null;
 	}
 
 	$effect(() => {
 		refresh();
+	});
+
+	/**
+	 * The pause is created by a pointer gesture, which does not re-render this
+	 * panel. One frame loop reads the adapter-owned store and only writes state
+	 * when the proposal itself changes.
+	 */
+	$effect(() => {
+		let frame = 0;
+		let seen: string | null = null;
+		const watch = () => {
+			frame = requestAnimationFrame(watch);
+			const next = instrument?.pausedProposal() ?? null;
+			const key = next === null ? null : `${next.wallId}\u0000${next.label}`;
+			if (key !== seen) {
+				seen = key;
+				paused = next;
+			}
+		};
+		frame = requestAnimationFrame(watch);
+		return () => cancelAnimationFrame(frame);
+	});
+
+	// A new subject rebuilds the controller, and the controller's default fixed
+	// endpoint is explicit: the control follows it instead of keeping the previous
+	// subject's choice.
+	$effect(() => {
+		void selectionKey;
+		fixedEndpoint = instrument?.fixedEndpoint() ?? 'start';
 	});
 
 	// Unmount is the last cancel path: a proposal's host gesture lease must be
@@ -49,12 +84,32 @@
 		return () => current?.dispose();
 	});
 
+	function chooseFixedEndpoint(next: 'start' | 'end'): void {
+		fixedEndpoint = next;
+		instrument?.setFixedEndpoint(next);
+	}
+
 	async function commit(id: string): Promise<void> {
 		error = null;
 		const outcome = await instrument?.commit(id);
 		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
 			error = outcome.message;
 		}
+		refresh();
+	}
+
+	async function resumePaused(): Promise<void> {
+		error = null;
+		const outcome = await instrument?.resumePaused();
+		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
+			error = outcome.message;
+		}
+		refresh();
+	}
+
+	function discardPaused(): void {
+		error = null;
+		instrument?.discardPaused();
 		refresh();
 	}
 
@@ -92,12 +147,43 @@
 				<div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
 			{/each}
 		</dl>
+		{#if paused !== null}
+			<div class="paused" data-layout-paused>
+				<p>Paused after a reading change — {paused.label}</p>
+				<div class="paused-actions">
+					<button type="button" data-resume-paused onclick={resumePaused}>Resume</button>
+					<button type="button" onclick={discardPaused}>Discard</button>
+				</div>
+			</div>
+		{/if}
+		{#if instrument.subject.kind === 'wall' && fields.some((field) => field.id === 'length')}
+			<fieldset class="fixed-endpoint" data-layout-fixed-endpoint>
+				<legend>Fixed endpoint</legend>
+				<label>
+					<input
+						type="radio"
+						name="layout-fixed-endpoint"
+						checked={fixedEndpoint === 'start'}
+						onchange={() => chooseFixedEndpoint('start')}
+					/>Start
+				</label>
+				<label>
+					<input
+						type="radio"
+						name="layout-fixed-endpoint"
+						checked={fixedEndpoint === 'end'}
+						onchange={() => chooseFixedEndpoint('end')}
+					/>End
+				</label>
+			</fieldset>
+		{/if}
 		{#each fields as field (field.id)}
 			<label class="field">
 				<span>{field.label}</span>
 				<input
 					type="text"
 					inputmode="decimal"
+					data-field={field.id}
 					value={field.text}
 					aria-invalid={field.error === null ? undefined : 'true'}
 					oninput={(event) => onInput(field.id, event)}
@@ -116,7 +202,7 @@
 						restoreText(field.id, event.currentTarget as HTMLInputElement);
 					}}
 				/>
-				<span class="unit">{field.unit === 'm' ? 'm' : ''}</span>
+				<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>
 			</label>
 		{/each}
 		{#if error !== null}
@@ -182,5 +268,53 @@
 		margin: 0;
 		font-size: 0.68rem;
 		color: var(--head-ink-quiet, #98a89c);
+	}
+	.fixed-endpoint {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0;
+		padding: 0.15rem 0.35rem;
+		border: 1px solid var(--chassis-hairline, #2f4a3d);
+		border-radius: 0.25rem;
+		font-size: 0.72rem;
+	}
+	.fixed-endpoint legend {
+		padding: 0 0.25rem;
+		color: var(--head-ink-quiet, #98a89c);
+	}
+	.fixed-endpoint label {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+	.fixed-endpoint input {
+		min-height: auto;
+	}
+	.paused {
+		display: grid;
+		gap: 0.25rem;
+		padding: 0.3rem 0.4rem;
+		border: 1px dashed var(--chassis-hairline, #2f4a3d);
+		border-radius: 0.25rem;
+		font-size: 0.72rem;
+	}
+	.paused p {
+		margin: 0;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	}
+	.paused-actions {
+		display: flex;
+		gap: 0.4rem;
+	}
+	.paused button {
+		min-height: 1.7rem;
+		padding: 0.1rem 0.5rem;
+		border: 1px solid var(--chassis-hairline, #2f4a3d);
+		border-radius: 0.25rem;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
 	}
 </style>

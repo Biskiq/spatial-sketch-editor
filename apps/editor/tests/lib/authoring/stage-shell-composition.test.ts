@@ -186,6 +186,19 @@ describe('Stage shell composition', () => {
 		const pointerUpBody = pointerUp.slice(0, pointerUp.indexOf('}'));
 		expect(pointerUpBody).toContain('press.end(event.pointerId)');
 		expect(pointerUpBody).not.toContain('press.abort(');
+
+		// An interrupted adapter drag must reach the adapter, not just the host's
+		// lease: the adapter owns its candidate, so capture loss has to take the same
+		// explicit `cancel` a real pointer cancel sends. One helper serves both
+		// endings, so the two cannot drift apart.
+		expect((route.match(/function cancelAdapterDrag\(/g) ?? []).length).toBe(1);
+		const pointerCancel = route.slice(route.indexOf('function onPointerCancel('));
+		const pointerCancelBody = pointerCancel.slice(0, pointerCancel.indexOf('function onLostPointerCapture('));
+		expect(pointerCancelBody).toContain('cancelAdapterDrag(event)');
+		const lostCapture = route.slice(route.indexOf('function onLostPointerCapture('));
+		const lostCaptureBody = lostCapture.slice(0, lostCapture.indexOf('function pointerIdOf('));
+		expect(lostCaptureBody).toContain('cancelAdapterDrag(event)');
+		expect(lostCaptureBody).toContain('press.abort(event.pointerId)');
 		expect(route).toContain('press.decide(');
 		expect(route).toContain('createStagePressTracker()');
 
