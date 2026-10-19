@@ -5,11 +5,11 @@ review and the merge gate are outstanding ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) ·
 **Phase:** [T1.P01](../README.md)
 
-**Tested revision:** branch `T1-P01-S05` on base `919c2904` (batch C coordination, PR #155). The
-lane results below ran on the working tree committed as the head of that branch, including the
-round-2 fixes (signed pointer parameter, exact paused resume, neighbour reach); the commit hashes
-`1fb51ed8`, `7ab64ebf` and `4730fd1b` are the earlier increments, not the tested tree. The
-documentation-only commits that follow the tested tree were checked with `test:arch` only. No merge
+**Tested revision:** `982bbe20` on branch `T1-P01-S05`, base `919c2904` (batch C coordination, PR
+#155). The lane results below ran on the working tree committed as `982bbe20`, which includes the
+round-2 fixes (signed pointer parameter, exact paused resume, full neighbour reach). The commits
+`1fb51ed8`, `7ab64ebf` and `4730fd1b` are the earlier increments, not the tested tree; this record's
+own documentation-only commit follows the tested tree and was checked with `test:arch` only. No merge
 gate has been run on a merge revision, no capability or gate state is written, and nothing here
 claims readiness or acceptance.
 
