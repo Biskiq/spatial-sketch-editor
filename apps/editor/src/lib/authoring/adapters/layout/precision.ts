@@ -620,39 +620,59 @@ export type WallManipulationPlan =
 	  }
 	| { readonly kind: 'refused'; readonly code: string; readonly message: string };
 
+/** The authored point of one Junction, or `null` when the document has none. */
+function junctionPoint(document: LayoutDocumentWallFirst, junctionId: string): LayoutVec2 | null {
+	const junction = document.junctions.find((entry) => entry.id === junctionId);
+	return junction === undefined ? null : [junction.point[0], junction.point[1]];
+}
+
+/**
+ * The junction points a request moves, named from the baseline's own identity.
+ *
+ * A length/angle edit moves the endpoint opposite the fixed one; a rigid
+ * translation moves **both**. The planner applies exactly that set, so this
+ * names the reach without re-deriving connectivity or a second motion.
+ */
+function movedJunctionIds(
+	baseline: LayoutDocumentWallFirst,
+	wallId: string,
+	request: WallManipulationRequest,
+	fixed: FixedWallEndpoint
+): readonly string[] {
+	const wall = baseline.walls.find((entry) => entry.id === wallId);
+	if (wall === undefined) return [];
+	if (request.kind === 'move') return [wall.startJunctionId, wall.endJunctionId];
+	return [fixed === 'start' ? wall.endJunctionId : wall.startJunctionId];
+}
+
 /**
  * The neighbours a canonical candidate actually reshaped.
  *
- * A length/angle edit moves one junction; every other Wall incident to it is
- * re-derived by the retained planner. This read reports those Walls and the
- * candidate point the junction moved them to, so the overlay can show the
- * reach instead of claiming the planner's validation is a preview.
+ * Every Wall incident to a moved junction is re-derived by the retained
+ * planner. This read reports those Walls and the candidate point the junction
+ * moved them to, so the overlay can show the reach instead of claiming the
+ * planner's validation is a preview. It reads Junction points rather than
+ * Wall frames, so a curved neighbour — which has no straight frame — is still
+ * named at the point the edit moved it to.
  */
 function wallNeighbourPreviews(
 	baseline: LayoutDocumentWallFirst,
 	candidate: LayoutDocumentWallFirst,
 	wallId: string,
-	fixed: FixedWallEndpoint
+	moved: readonly string[]
 ): readonly WallNeighbourPreview[] {
-	const wall = baseline.walls.find((entry) => entry.id === wallId);
-	if (wall === undefined) return [];
-	const movedJunctionId = fixed === 'start' ? wall.endJunctionId : wall.startJunctionId;
 	const previews: WallNeighbourPreview[] = [];
 	for (const neighbour of candidate.walls) {
 		if (neighbour.id === wallId) continue;
-		if (neighbour.startJunctionId !== movedJunctionId && neighbour.endJunctionId !== movedJunctionId) continue;
-		const after = wallFrame(candidate, neighbour.id);
-		const before = wallFrame(baseline, neighbour.id);
-		if (after === null) continue;
-		const changed =
-			before === null ||
-			Math.hypot(before.start[0] - after.start[0], before.start[1] - after.start[1]) > 1e-12 ||
-			Math.hypot(before.end[0] - after.end[0], before.end[1] - after.end[1]) > 1e-12;
-		if (!changed) continue;
-		previews.push({
-			wallId: neighbour.id,
-			point: neighbour.startJunctionId === movedJunctionId ? after.start : after.end
-		});
+		for (const junctionId of moved) {
+			if (neighbour.startJunctionId !== junctionId && neighbour.endJunctionId !== junctionId) continue;
+			const after = junctionPoint(candidate, junctionId);
+			const before = junctionPoint(baseline, junctionId);
+			if (after === null || before === null) continue;
+			if (Math.hypot(after[0] - before[0], after[1] - before[1]) <= 1e-12) continue;
+			previews.push({ wallId: neighbour.id, point: after });
+			break;
+		}
 	}
 	return previews;
 }
@@ -689,7 +709,16 @@ export function planWallManipulation(
 			message: 'The candidate Wall has no straight frame to preview.'
 		};
 	}
-	return { kind: 'planned', wall, neighbours: wallNeighbourPreviews(baseline, plan.document, wallId, fixed) };
+	return {
+		kind: 'planned',
+		wall,
+		neighbours: wallNeighbourPreviews(
+			baseline,
+			plan.document,
+			wallId,
+			movedJunctionIds(baseline, wallId, request, fixed)
+		)
+	};
 }
 
 /**

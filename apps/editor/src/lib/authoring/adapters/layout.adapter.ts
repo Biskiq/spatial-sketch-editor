@@ -74,6 +74,7 @@ import {
 import {
 	clearPausedProposal,
 	clearPausedProposalsForSource,
+	pausedWallProposal,
 	publishPausedProposal,
 	type PausedWallProposal
 } from './layout/paused-proposal';
@@ -481,7 +482,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							})
 						];
 					}
-					const paused = pausedProposal;
+					// The adapter-owned store is the one source: Discard (or any other
+					// clear) removes the overlay marker too, rather than leaving a paused
+					// value the panel no longer offers to apply.
+					const paused =
+						pausedProposal === null
+							? null
+							: pausedWallProposal(pausedProposal.sourceContentId, pausedProposal.wallId);
 					return [
 						{ id: 'layout-wall-start', css: points.start, label: 'Wall start: drag for length, shift-drag for angle' },
 						{ id: 'layout-wall-end', css: points.end, label: 'Wall end: drag for length, shift-drag for angle' },
@@ -492,7 +499,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 									{
 										id: 'layout-wall-paused',
 										css: points.middle,
-										label: `Paused after a reading change — ${paused.label}. Enter it in Dimensions or Escape to cancel.`
+										label: `Paused after a reading change — ${paused.label}. Resume or Discard in Dimensions, or Escape to cancel.`
 									}
 								]),
 						...(refusal === null

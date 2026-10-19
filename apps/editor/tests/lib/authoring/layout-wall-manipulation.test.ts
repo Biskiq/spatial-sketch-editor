@@ -16,7 +16,7 @@
  *    supported operations;
  * 5. inactive helpers cannot pick.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
 	planCreateWallFirstOpening,
@@ -546,6 +546,23 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.facade.pointerIntent({ phase: 'down', css: middle, evaluationId }).claimed).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move ΔX'))).toBe(true);
+		// A body drag moves **both** junctions, so every Wall sharing either endpoint
+		// is reshaped. The overlay must name the full reach, not only the neighbour
+		// of the endpoint the length path would have moved.
+		const edited = mounted.document.walls.find((wall) => wall.id === mounted.wallId)!;
+		const shared = mounted.document.walls.filter(
+			(wall) =>
+				wall.id !== mounted.wallId &&
+				[wall.startJunctionId, wall.endJunctionId].some((junctionId) =>
+					[edited.startJunctionId, edited.endJunctionId].includes(junctionId)
+				)
+		);
+		expect(shared.length).toBe(2);
+		for (const neighbour of shared) {
+			expect(mounted.facade.overlays().some((marker) => marker.label.includes(`Neighbour ${neighbour.id}`))).toBe(
+				true
+			);
+		}
 		mounted.facade.pointerIntent({ phase: 'up', css: shifted, evaluationId });
 		await eventually(() => {
 			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
@@ -633,8 +650,25 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Paused after a reading change'))).toBe(true);
 
 		const instrument = createDimensionsInstrument(mounted.services)!;
-		expect(instrument.pausedProposal()).not.toBeNull();
+		const paused = instrument.pausedProposal();
+		if (paused === null) throw new Error('the reading flip preserved no proposal');
+		// The captured request is what Resume submits: an exact float, not the
+		// degrees label a re-parse would have to round-trip through.
+		if (paused.request.kind !== 'angle') throw new Error('the paused proposal is not an angle');
+		const accept = vi.spyOn(mounted.services.authoring, 'accept');
 		expect(await instrument.resumePaused()).toEqual({ kind: 'accepted' });
+		expect(accept).toHaveBeenCalledTimes(1);
+		expect(accept.mock.calls[0]![0]).toMatchObject({
+			kind: LAYOUT_WALL_ANGLE_KIND,
+			payload: {
+				wallId: mounted.wallId,
+				angleRadians: paused.request.angleRadians,
+				fixed: paused.fixed
+			}
+		});
+		expect(
+			(accept.mock.calls[0]![0] as unknown as { payload: { angleRadians: number } }).payload.angleRadians
+		).toBe(paused.request.angleRadians);
 		await eventually(() => mounted.host.history().position === 1);
 		const resumed = wallFrame(acceptedLayout(mounted.facade), mounted.wallId)!;
 		expect((resumed.angleRadians * 180) / Math.PI).toBeCloseTo(degrees, 5);

@@ -5,12 +5,13 @@ review and the merge gate are outstanding ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) ·
 **Phase:** [T1.P01](../README.md)
 
-**Tested revision:** branch `T1-P01-S05`, commits `1fb51ed8`, `7ab64ebf` and the doc-only
-`4730fd1b` on base `919c2904` (batch C coordination, PR #155). The lane results below ran at
-`7ab64ebf`; `test:arch` (including the documentation gate) was re-run after the
-documentation-only commits. No merge gate
-has been run on a merge revision, no capability or gate state is written, and nothing here claims
-readiness or acceptance.
+**Tested revision:** branch `T1-P01-S05` on base `919c2904` (batch C coordination, PR #155). The
+lane results below ran on the working tree committed as the head of that branch, including the
+round-2 fixes (signed pointer parameter, exact paused resume, neighbour reach); the commit hashes
+`1fb51ed8`, `7ab64ebf` and `4730fd1b` are the earlier increments, not the tested tree. The
+documentation-only commits that follow the tested tree were checked with `test:arch` only. No merge
+gate has been run on a merge revision, no capability or gate state is written, and nothing here
+claims readiness or acceptance.
 
 ## What landed
 
@@ -22,8 +23,8 @@ readiness or acceptance.
 | Rigid translation | `layout-wall-move` wraps `planRigidWallMove`; both deltas are one intent and one history entry, and the typed deltas return to zero after acceptance. | “translates rigidly from both deltas as one intent, then clears the deltas” |
 | Dimensions surface | A selected straight Wall gains Length, Angle (degrees), Move ΔX and Move ΔZ alongside the S04 fields, plus an explicit Start/End fixed-endpoint choice. A curved Wall keeps its S04 scalar fields and gains none of the straight-only ones. | “offers the Dimensions instrument with the Wall manipulation fields only for a straight Wall” |
 | Pointer handles | The Layout adapter claims a press only while its Dimensions task owns it: endpoint drag = length (opposite endpoint fixed), shift-drag = angle, body drag = rigid translation. Preview is the retained planner's candidate from an immutable baseline; release commits once through the same `wallManipulationIntent`; Esc, an adapter `cancel`, task close, replacement, pointer cancel and capture loss cancel with no change. The route sends captured-loss adapter drags through the same explicit `cancel` as a pointer cancel (`cancelAdapterDrag`), not only through the host lease release. A length dragged **across** the fixed endpoint is refused: the parameter keeps its sign, so the preview cannot mirror to the opposite side the pointer never named. | “commits the same document as the typed length, with one history entry”; “shift-drags an endpoint to an exact angle and commits it once”; “refuses a length dragged across the fixed start endpoint and commits nothing”; “refuses a length dragged across the fixed end endpoint and commits nothing”; “translates the body rigidly from the pointer delta”; “cancels with no document change and releases the gesture lease”; “cannot pick through an inactive helper”; `stage-shell-composition.test.ts`: “holds the gesture contract at the route: refusals and every ending release once” (capture loss reaches the adapter cancel) |
-| Reading flip | A changed evaluation id mid-gesture ends the writer **without a commit**, publishes the last explicit parameter as a paused proposal named in the overlay, and refuses the stale pointer-up. Dimensions offers **Resume** (apply the captured request exactly, revalidated by the retained planner) and **Discard**; the overlay label is full precision, and Resume never re-parses display text. | “pauses on a reading flip, keeps the proposal, and never commits on the stale up”; “resumes a paused angle proposal at the exact captured value and adds one history entry” |
-| Affected neighbours | A shared-Junction edit previews the reach: every other Wall the canonical candidate reshaped is marked at its moved endpoint, from the candidate document — not a second solve. | “commits the same document as the typed length, with one history entry” (neighbour marker assertion) |
+| Reading flip | A changed evaluation id mid-gesture ends the writer **without a commit**, publishes the last explicit parameter as a paused proposal named in the overlay, and refuses the stale pointer-up. Dimensions offers **Resume** (apply the captured request exactly, revalidated by the retained planner) and **Discard**; the overlay label is full precision, and Resume never re-parses display text — the test asserts the submitted intent carries the captured radian value by strict equality. The overlay marker reads the same proposal store as the panel, so Discard removes it immediately. | “pauses on a reading flip, keeps the proposal, and never commits on the stale up”; “resumes a paused angle proposal at the exact captured value and adds one history entry” |
+| Affected neighbours | A shared-Junction edit previews the reach: every Wall incident to a junction the request moved is marked at that junction's candidate point, read from the candidate document — not a second solve. A length/angle edit moves one junction; a rigid body move moves both, so both shared neighbours are marked. The marker reads Junction points, so a curved neighbour (which has no straight frame) is named too. | “commits the same document as the typed length, with one history entry” (length case) and “translates the body rigidly from the pointer delta” (both-junction case) |
 | Shared-Junction invalidity | A candidate that folds the Wall onto its shared boundary is refused by the retained planner; every Wall/Junction/Opening identity and the accepted content are unchanged, and no history entry is added. | “rejects a shared-Junction-invalid angle atomically and keeps every identity” |
 
 ## Criteria status
@@ -50,9 +51,9 @@ readiness or acceptance.
    is therefore not exercised by this increment.
 3. **Room identity** is protected only by the retained planner's reconciliation; no test pins a
    Room id across a supported edit.
-4. **Neighbour preview is one marker per reshaped Wall**, at the moved junction endpoint. It does
-   not draw the neighbour's full candidate body or its other endpoints; the canonical candidate
-   remains the authority.
+4. **Neighbour preview is one marker per reshaped Wall**, at the moved junction's candidate point.
+   It does not draw the neighbour's full candidate body or its other endpoints; the canonical
+   candidate remains the authority.
 5. The **architecture-integration** tier's integration route (`T1.P01.S06`) and the full lane gate
    are outstanding. Lane results belong to the coordinator/merge gate, not to this record.
 6. Browser evidence for the pointer journey is not recorded here.
@@ -81,7 +82,7 @@ lane results on a branch, **not** a merge gate against a merge revision.
 
 The suites this slice adds or changes are:
 
-- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` (new; pointer shift-drag angle, endpoint crossing, paused resume and neighbour preview added)
+- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` (new; pointer shift-drag angle, endpoint crossing, exact paused resume with intent-payload assertion, and neighbour preview for both one-junction and rigid-move edits added)
 - `apps/editor/src/lib/authoring/adapters/layout/paused-proposal.ts` (new; the paused parameter store)
 - `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` (TD-8 block)
 - `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts` (capture-loss → adapter cancel)
