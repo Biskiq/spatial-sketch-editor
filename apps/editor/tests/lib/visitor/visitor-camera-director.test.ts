@@ -264,4 +264,66 @@ describe('mounted visitor Camera handoff', () => {
 		expect(finished.y).toBeCloseTo(1.6, 5);
 		expect(finished.z).toBeCloseTo(0, 5);
 	});
+
+	it('settles an explicit Cut to the in-flight destination immediately', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor);
+		visitor.continue();
+		await tick();
+		expect(harness.starts).toHaveLength(1);
+		for (let index = 0; index < 10; index += 1) await frame();
+		const midFlight = mockCamera().lastPoint;
+		expect(midFlight.x).toBeGreaterThan(0);
+		expect(midFlight.x).toBeLessThan(4);
+
+		// A Stop-free selection of the same Presentation is an explicit Cut to the
+		// View the Camera is already travelling to. It must settle now rather than
+		// be mistaken for a duplicate hold-tick and let the five-second Travel run.
+		visitor.selectPresentation('presentation-2');
+		await tick();
+		await frame(0);
+		const settled = mockCamera().lastPoint;
+		expect(settled.x).toBeCloseTo(4, 5);
+		expect(settled.y).toBeCloseTo(1.6, 5);
+		// The in-flight motion was ended, not replaced with a second route.
+		expect(harness.starts).toHaveLength(1);
+	});
+
+	it('snaps an in-flight Travel to its destination when reduced motion turns on', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor);
+		visitor.continue();
+		await tick();
+		for (let index = 0; index < 10; index += 1) await frame();
+		expect(mockCamera().lastPoint.x).toBeLessThan(4);
+
+		// The host sets this from `prefers-reduced-motion`; an in-flight Travel must
+		// stop animating at the moment the preference applies.
+		visitor.reducedMotion = true;
+		await tick();
+		await frame(0);
+		expect(mockCamera().lastPoint.x).toBeCloseTo(4, 5);
+		expect(harness.starts).toHaveLength(1);
+	});
+
+	it('cancels an in-flight Travel when an explicit Cut returns to the origin View', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor);
+		visitor.continue();
+		await tick();
+		for (let index = 0; index < 10; index += 1) await frame();
+		expect(mockCamera().lastPoint.x).toBeGreaterThan(0);
+
+		// The Cut target equals the View the Camera left, so the settled-at-target
+		// early return must not swallow it while motion is still in flight.
+		visitor.selectPresentation('presentation-1');
+		await tick();
+		await frame(0);
+		const settled = mockCamera().lastPoint;
+		expect(settled.x).toBeCloseTo(0, 5);
+		expect(settled.z).toBeCloseTo(0, 5);
+	});
 });

@@ -116,13 +116,6 @@
 		// there. A Cut (or reduced motion) is instant; a Travel animates the
 		// Camera route the unit already validated.
 		const targetViewId = currentViewId;
-		if (targetViewId === cameraViewId) return;
-		// A hold tick or any other interpreter state write re-runs this effect
-		// while the Camera is still travelling: `cameraViewId` stays at the origin
-		// until the motion completes. Starting the same route again would reset
-		// progress from the current mid-flight pose on every frame. The in-flight
-		// target is the guard; a different target still re-routes from here.
-		if (targetViewId !== null && activeTargetViewId === targetViewId) return;
 		if (targetViewId === null) {
 			cameraViewId = null;
 			activeMotion = null;
@@ -131,7 +124,16 @@
 			frameFor(null);
 			return;
 		}
-		if (cameraViewId === null || visitor.reducedMotion || visitor.currentInvocation?.kind === 'cut') {
+		// An explicit Cut, reduced motion, or the first framing settles instantly.
+		// This decision comes **before** the in-flight guard: a Cut to the View the
+		// Camera is already travelling to — or a reduced-motion toggle mid-travel —
+		// is a command to settle now, not a duplicate hold-tick re-run. Only an
+		// actual change is applied, so a hold at a Cut Stop does not reframe (and so
+		// does not cancel look-around) on every interpreter tick.
+		const invocation = visitor.currentInvocation ?? { kind: 'cut' as const, viewId: targetViewId };
+		if (cameraViewId === null || visitor.reducedMotion || invocation.kind === 'cut') {
+			const settling = cameraViewId !== targetViewId || activeTargetViewId !== null || activeMotion !== null;
+			if (!settling) return;
 			cameraViewId = targetViewId;
 			activeMotion = null;
 			activeTargetViewId = null;
@@ -139,10 +141,17 @@
 			frameFor(targetViewId);
 			return;
 		}
+		if (targetViewId === cameraViewId) return;
+		// A hold tick or any other interpreter state write re-runs this effect
+		// while the Camera is still travelling: `cameraViewId` stays at the origin
+		// until the motion completes. Starting the same route again would reset
+		// progress from the current mid-flight pose on every frame. The in-flight
+		// target is the guard; a different target still re-routes from here.
+		if (activeTargetViewId === targetViewId) return;
 		const resolved = resolveVisitorCameraRoute({
 			fromViewId: cameraViewId,
 			toViewId: targetViewId,
-			invocation: visitor.currentInvocation ?? { kind: 'cut', viewId: targetViewId },
+			invocation,
 			graph
 		});
 		if (resolved.kind === 'gap') {
