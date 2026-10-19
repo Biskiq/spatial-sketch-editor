@@ -39,3 +39,7 @@ the source. Each page's Source notes say which is which.
 
 - **Research 6:** [`biskiq-integrated-product-synthesis.md`](./biskiq-integrated-product-synthesis.md) — integrated product direction, reviewed creator journeys, cross-domain revision principles, capability seams, and UX/architecture handoffs. This **Markdown-only editorially reconciled synthesis** is research input, not a ratified product contract. No interactive companion is added by this PR; the five domain-study HTML companions remain available above.
 - **Research 6 unified reconciliation:** [`research-6-unified-reconciliation.md`](./research-6-unified-reconciliation.md) — one reconciled judgment on Research 6 across three independent reviews (PRs #151, #152 and #153): verified implementation gaps, creator priorities, rejected mechanisms, experiments and owner decisions. Research input for owner review, not a contract, roadmap change or authorization.
+
+## After P01
+
+- **Post-P01 roadmaps:** [`post-p01-roadmaps/`](./post-p01-roadmaps/README.md) — two coordinated planning proposals built on Research 6 and the reconciliation: an [engineering authorization roadmap](./post-p01-roadmaps/engineering-authorization-roadmap.md) (what T1–T3 can build now and next, as owner authorization candidates) and an owner-judged [prototype roadmap](./post-p01-roadmaps/prototype-roadmap.md), joined by one build / prototype / research further / defer ledger. For owner review; it registers, authorizes and ratifies nothing.
