@@ -21,12 +21,16 @@ PHASE: T2.P01 Supported object composition (in-progress) →
 SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are shipped. S04, the
         phase's declared FINAL PHASE GATE, is authorized as batch C (2026-10-19), effective when
         PR #155 merges.
-BATON: S04 runs alongside T1.P01.S05 under the batch C protocol. Scope correction C4: reuse T1's
-       shipped Download/Open source JSON and Reload remote, build no persistence UI, keep numeric
-       Resize as the guaranteed route, and stop-and-report for any new host seam. TD-8 is T1's to
-       fix; record the base the journeys ran on.
-NEXT:   After PR #155 merges, start S04 through the runbook start step at its own trusted base.
-        Owner follow-up: push the local `closed/T2.P01.S03` tag.
+BATON: S04 is implemented on branch `T2-P01-S04` (base `919c2904`, batch C) and awaits the
+       coordinator's full gate and independent review. It adds the `scene-compose` task (uniform
+       Resize, duplicate, delete) through AM-5 only, reusing T1's shipped source-JSON/Reload paths
+       and extending no host seam. Numeric Resize is the guaranteed route; no direct handle was
+       added. The acceptance record lists each phase-matrix row as Written/Partial/Not run; nothing
+       is accepted, no gate state is written, and TD-8 is absent from this base.
+NEXT:   Coordinator runs `check`, `test:fast`, `test:arch`, `test:heavy` and the focused Scene/Save
+        files; independent review; then the batch C merge protocol. A browser creator journey and
+        reduced-motion evidence remain unproduced.
+       Owner follow-up: push the local `closed/T2.P01.S03` tag.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md →

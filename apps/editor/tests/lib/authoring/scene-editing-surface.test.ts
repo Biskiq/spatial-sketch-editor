@@ -1292,21 +1292,32 @@ describe('Scene adapter registration', () => {
 		expect(registration.kind).toBe('registered');
 
 		const tasks = facade.tasks().filter((task) => task.adapterId === 'scene');
-		expect(tasks.map((task) => task.taskKind)).toEqual(['scene-arrange', 'place-object']);
+		expect(tasks.map((task) => task.taskKind)).toEqual(['scene-compose', 'scene-arrange', 'place-object']);
 
 		const findEntries = facade.findEntries().filter((entry) => entry.adapterId === 'scene');
 		expect(findEntries.map((entry) => [entry.railFamily, entry.capability, entry.taskKind])).toEqual([
+			['arrange', 'scene', 'scene-compose'],
+			['arrange', 'scene', 'scene-compose'],
+			['arrange', 'scene', 'scene-compose'],
 			['arrange', 'scene', 'scene-arrange'],
 			['place', 'scene', 'place-object']
 		]);
 
 		const facts = facade.cardFacts({ sourceId: FIXTURE_ENTITY_ID, sourceKind: 'entity', ref: null });
-		expect(facts.map((fact) => fact.label)).toEqual(['Kind', 'Name', 'Position', 'Yaw']);
+		// The host publishes Card facts sorted by adapter then label, so Scale sits
+		// between Position and Yaw regardless of contribution order.
+		expect(facts.map((fact) => fact.label)).toEqual(['Kind', 'Name', 'Position', 'Scale', 'Yaw']);
 
 		const opened = facade.openContributedTask('scene-arrange', 'scene');
 		expect(opened.kind).toBe('opened');
 		if (opened.kind !== 'opened') return;
 		expect(opened.instrument?.view).toBeDefined();
 		expect(opened.instrument?.summary).toBe('Arrange');
+
+		const compose = facade.openContributedTask('scene-compose', 'scene');
+		expect(compose.kind).toBe('opened');
+		if (compose.kind !== 'opened') return;
+		expect(compose.instrument?.summary).toBe('Compose');
+		expect(compose.instrument?.view).toBeDefined();
 	});
 });
