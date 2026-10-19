@@ -163,7 +163,10 @@ S03's exact launch conditions were verified at authorization
 its now-closed plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
 owner authorized S03 as batch B on 2026-10-17 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04 additionally needs `T3.P01.S02`'s
 `conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
-is judged at the slice's own trusted base.
+is judged at the slice's own trusted base. Both hold on `main` `5fee2a2d` (T1.P01.S04 shipped in PR
+#148). S04's authorization is proposed as batch C with `T1.P01.S05`
+([prepared record](../../../reference/decisions/batch-c-authorization-2026-10-19.md), awaiting owner
+approval), with a scope correction that reuses T1's shipped source JSON and *Reload remote* controls.
 
 The requirements above describe the pre-cutover source adapter. `T3.P01.S04` migrates existing
 callers and unfinished plans to accepted F2 `unit-envelope-v1`, F1 `unit-resolution-v1` and F4

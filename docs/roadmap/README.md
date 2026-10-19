@@ -191,6 +191,18 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
   T3.P01.S04 keeps its own [authorization path](./t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path),
   and T4 stays deferred under R1-D.
 
+- **Batch C (2026-10-19), proposed — awaiting owner approval.** The [coordination proposal](./batch-c-2026-10-19.md)
+  covers three things:
+  - `T1.P01.S05` ∥ `T2.P01.S04` ([prepared record](../reference/decisions/batch-c-authorization-2026-10-19.md));
+  - a current-source freeze before `T3.P01.S04`'s caller migration, with `T1.P01.S06` moved after the
+    cutover;
+  - the T3 cutover reconciliation ([prepared record](../reference/decisions/t3-cutover-ratification-2026-10-19.md)):
+    owner-ruled disposable saved data, AM-7 superseded by a clean-reset AM-9, and
+    `T3.camera-experience-cutover@1` drafted for ratification.
+
+  Rules: [batch C protocol](./cross-track-execution.md#proposed-batch-c-2026-10-19). No gate, row or
+  contract changes state until the owner signs.
+
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,
   independently reviewed and accepted, merged into `main` as `74efb98b`

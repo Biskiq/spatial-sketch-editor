@@ -18,18 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: the phase README's slice register is authoritative — S01, S02 and S03 shipped; S04, the
+SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are shipped. S04, the
         phase's declared FINAL PHASE GATE, is proposed and unauthorized.
-BATON: S03 shipped (accepted 2026-10-18, anchor `2747f1691551296e21b17aa04dfd9de76cb08f59`,
-        tag `closed/T2.P01.S03`). Its accepted evidence, residuals and recovery are routed through:
-        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
-NEXT:   Owner authorization of S04, the final phase gate. Its registered prerequisites are satisfied
-        on `main`: `conditional-save-current-v1` accepted; T1 Head Save integration shipped through
-        `T1.P01.S04` in PR #148.
+BATON: S04's prerequisites hold on `main` `5fee2a2d`: `conditional-save-current-v1` is accepted,
+       and T1's Head Save integration shipped through `T1.P01.S04` (PR #148). Batch C (prepared, not
+       approved) pairs S04 with `T1.P01.S05` and corrects its scope: it reuses T1's shipped
+       Download/Open source JSON and Reload remote, and builds no persistence UI. TD-8 is T1's to
+       fix. S04 records the base its journeys ran on.
+NEXT:   The owner signs the batch C record and its approval patch is applied; then S04 starts
+        through the runbook start step. Owner follow-up: push the local `closed/T2.P01.S03` tag.
 ROUTE: ./README.md →
-       ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md
-BLOCKER: S04 owner authorization.
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md →
+       ../../roadmap/cross-track-execution.md#proposed-batch-c-2026-10-19
+BLOCKER: owner approval of batch C.
 ```

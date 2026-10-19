@@ -62,11 +62,42 @@ Then add      A facade/instrument test that bumps the writer generation under a 
               asserts the next `Begin` is accepted, plus one that asserts a genuinely ended task
               still refuses.
 
+## TD-9 — the sign-in Save resume is half-wired
+
+Status        open — found by source inspection; not yet reproduced in a browser
+Found         2026-10-19, during Batch C coordination (also noted in the unmerged research of PR #154)
+Owner         T1 Head integration (the spatial route and Head Save mount). Under the proposed batch C
+              ruling C6, `T3.P01.S04` rewires or removes the old-format session draft when it
+              migrates Save callers, and `T1.P01.S06` verifies the journey end to end.
+Symptom       Expected from the code, not yet observed: a Save that needs sign-in can resume only
+              while the same editor session stays mounted (*Resume pending save* in the Head). If
+              sign-in navigates away, nothing restores the captured Save. T1.P01.S04's acceptance
+              text says "pending sign-in drafts resume", which overstates the shipped behaviour.
+Reproduce     Signed out, edit a project, then Save; sign in through the redirect flow and return.
+              Expected: the capture is not offered again. A browser run must confirm this.
+Root cause    `writePendingCloudSave` (`apps/editor/src/lib/platform/project-persistence.ts`) has no
+              production caller; only tests call it. The root route reads the draft and redirects
+              with `?resume-save=1`, but the spatial route never reads that parameter. The
+              same-session retry in `authoring/save/head-save.ts` is the only live path.
+Why green     The persistence tests cover the draft codec in isolation. No route-level test drives
+              Save → sign-in redirect → return.
+Fix options   1) Write the captured `SaveAcceptedSource` draft before the sign-in redirect, and have
+              the spatial route consume `resume-save` by offering, never auto-running, the resumed
+              Save through the Head. 2) Delete the dead draft path and state that only same-session
+              resume is supported. Do NOT resume by installing the draft's document as a new
+              baseline without the user's action, and do NOT keep an old-format draft path alive
+              past the F2 cutover.
+Then add      A route-level test, Save → sign-in → return, that offers exactly the captured Save with
+              its precondition and operation ID; and, after the cutover, a test that refuses an
+              old-format draft with a notice.
+
 ## TD-6 — the migration runner races between two concurrent processes
 
 Status        open
 Found         2026-10-16, reproduced while verifying T3.P01.S02 on a fresh database
-Owner         `apps/api` persistence/migration (`apps/api/src/migrate.ts`) — no slice currently owns it
+Owner         `apps/api` persistence/migration (`apps/api/src/migrate.ts`). Proposed owner:
+              `T3.P01.S04`, whose destructive reset migration must be single-runner (T3 cutover
+              record R5, awaiting owner ratification)
 Symptom       Two migration processes started at once against one fresh database: one exits 0, the
               other exits 1 although the schema ends complete (`pg_type` duplicate-object and a
               duplicate version insert are the observed failures).
@@ -87,7 +118,9 @@ Then add      A two-runner integration test: at most one process exits non-zero,
 
 Status        open
 Found         2026-10-16, noted during the T3.P01.S02 server-concurrency review
-Owner         `apps/api` Save persistence (`apps/api/src/save-persistence.ts`) — identified by T3.P01.S02
+Owner         `apps/api` Save persistence (`apps/api/src/save-persistence.ts`) — identified by T3.P01.S02.
+              Proposed owner: `T3.P01.S04`, which switches the live writer to the unit Save path
+              (T3 cutover record R5, awaiting owner ratification)
 Symptom       An `expected-saved-base` Save naming another owner's project takes `SELECT … FOR UPDATE`
               on that foreign row and only then answers `not-found`.
 Reproduce     Call the conditional Save route with a well-formed saved-base precondition for a project

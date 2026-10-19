@@ -197,7 +197,11 @@ Neither consumed the other. The host↔F4 wiring (accepted install into the Stag
 replacement baseline, selection requalification, Camera-output rebase) is **S07's** by ruling D2
 (2026-10-17), and the Head Save integration is **S04's** by ruling D3. The [batch A protocol](../../cross-track-execution.md#authorized-batch-2026-10-17) governed S07
 alongside `T3.P01.S03` (both shipped). The [batch B protocol](../../cross-track-execution.md#authorized-batch-b-2026-10-17)
-governs S04 alongside `T2.P01.S03` (authorized 2026-10-17).
+governed S04 alongside `T2.P01.S03` (both shipped). Batch C proposes S05 alongside `T2.P01.S04`, and
+moves S06 after `T3.P01.S04` with re-declared unit scopes
+([prepared record](../../../reference/decisions/batch-c-authorization-2026-10-19.md), awaiting owner
+approval; [protocol](../../cross-track-execution.md#proposed-batch-c-2026-10-19)). Until the owner
+approves it, S05–S06 hold no implementation permission and their rows are unchanged.
 
 ```text
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md

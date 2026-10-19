@@ -13,7 +13,11 @@ INTEGRATION ROUTE: ../t1.p01.s06-integrated-final-gate/implementation-plan.md
 
 ## Prerequisite
 
-S04 complete and listed gates accepted.
+S04 complete and listed gates accepted. Both hold on `main` `5fee2a2d`: S04 is accepted at
+`2d37adef` (PR #148), and every `Requires` scope is active. The slice still needs owner
+authorization, which is proposed as batch C with `T2.P01.S04`
+([prepared record](../../../../reference/decisions/batch-c-authorization-2026-10-19.md), not yet
+approved).
 
 ## Produces
 
@@ -37,6 +41,14 @@ reading flip continues a gesture only while its parameter mapping remains valid;
 pause that writer with an explanation, preserve the proposal, and offer explicit resume or
 cancel. It must not silently commit, reinterpret a delta, or discard work on a flip.
 
+**First increment (proposed, batch C ruling C5): TD-8.** The Stage host's task-scoped services
+capture a writer generation and refuse `Begin` after an accepted install while the panel stays
+mounted ([TD-8](../../../../operations/tech-debt/README.md#td-8--a-tasks-scoped-services-go-stale-after-an-accepted-install-refusing-begin)).
+S05's Wall handles are new task instruments that would inherit the defect, and T1 owns the host. Fix
+it host-side (TD-8 option 1) with the tests the entry owes. T1 may land this as a standalone
+tech-debt PR ahead of the slice if `T2.P01.S04` needs it first. The instrument never re-acquires
+services from host internals.
+
 ## Acceptance criteria
 
 Pointer and numeric paths yield the same document for the same explicit
@@ -49,8 +61,9 @@ composed-path exposure; M4 Wall-birth/noding identity remains dormant, honestly 
 ## Readiness declaration
 
 This slice is **proposed and not authorized**. Its `Consumes` gates must exist and be
-`accepted` at the consumer's trusted base before it may start, and S04 must complete first;
-nothing here is ready today. T1.P01.S05 is the phase's configured architecture-cycle window
+`accepted` at the consumer's trusted base before it may start, and S04 must complete first. Both
+conditions hold on `main`; only the owner's authorization is missing. It is current-source work:
+under the proposed current-source freeze (K6), `T3.P01.S04` migrates its callers after it merges. T1.P01.S05 is the phase's configured architecture-cycle window
 **terminal** exposure ([window](../README.md#bounded-architecture-cycle-window)), and closing
 that window is a separate owner event, not a consequence of this plan. No implementation,
 acceptance, readiness, evidence, commit or gate state is claimed by this document.

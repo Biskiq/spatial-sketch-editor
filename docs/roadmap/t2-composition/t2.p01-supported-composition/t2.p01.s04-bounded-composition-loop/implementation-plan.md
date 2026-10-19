@@ -28,8 +28,16 @@ legible. Admit every finite positive scalar the operation can represent; do not 
 helper's silent minimum/reset policy. Non-finite, zero, negative or unequal-axis input refuses without
 averaging. Expose no independent-scale mode or misleading light scale control.
 
-Add duplicate/delete through the common scoped actions/Find list and the S02 operations. Complete
-canonical source JSON download/parse/reload through the shared project replacement guard. Reload
+Add duplicate/delete through the common scoped actions/Find list and the S02 operations
+(`resize-on-floor`, `duplicate-one` and `delete-one` already exist in `scene-planning/operations.ts`).
+Prove canonical source JSON download/parse/reload through the shared project replacement guard.
+
+**Scope correction (proposed, batch C ruling C4).** T1 already ships *Download source JSON*, *Open
+source JSON* through the replacement guard, and *Reload remote* (Head and spatial route, PR #148).
+This slice reuses them and proves the journey. It adds no Head, persistence or Save UI. A direct
+Resize handle is admitted only through S07's contribution points and the existing T2 host/renderer
+seams, without extending them; any new host seam is a stop-and-report to T1. Record the base the
+journeys ran on, and whether it contains T1's TD-8 fix. Reload
 validates everything before installation, cancels one active preview, starts a new session/history
 baseline and never creates a synthetic source edit. It is source JSON with existing static
 references, not a portable asset package. Cloud reads use retained validated paths. Save and reload
@@ -49,5 +57,8 @@ decisions with their scope and evidence.
 ## Readiness declaration
 
 This slice is **proposed and not authorized**; it holds no implementation permission, and nothing
-here claims implementation, acceptance or readiness. A passed final gate makes the phase closable,
+here claims implementation, acceptance or readiness. Its prerequisites hold on `main` `5fee2a2d`,
+including T1's Head Save integration accepted through `T1.P01.S04`. Authorization is proposed as
+batch C with `T1.P01.S05` ([prepared record](../../../../reference/decisions/batch-c-authorization-2026-10-19.md),
+not yet approved). A passed final gate makes the phase closable,
 not closed. Evidence belongs in [acceptance.md](./acceptance.md).

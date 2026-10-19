@@ -1,7 +1,7 @@
 # T2 — Composition
 
 **Track:** T2 · **Status:** approved — T2.P01 registered 2026-10-16; `T2.P01.S01` shipped
-2026-10-16; `T2.P01.S02` shipped 2026-10-17; S03 authorized 2026-10-17 as batch B; S04 unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+2026-10-16; `T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (batch B); S04 unauthorized, proposed as batch C ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
@@ -73,10 +73,11 @@ T2.P01 is registered by the owner decision of 2026-10-16
 `F1.reference@1` alone. **`T2.P01.S02`** shipped 2026-10-17, consuming `F1.reference@1` and
 `F4.intent-acceptance@1`; its authorization is the owner decision of 2026-10-16
 ([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md)).
-`Depends on` lists the external gates the phase's later slices consume. **`T2.P01.S03`** is
+`Depends on` lists the external gates the phase's later slices consume. **`T2.P01.S03`** was
 owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), after
-`T1.viewport-projection@1` was accepted through `T1.P01.S07`. S04 stays `proposed`; it also needs
-T1.P01.S04's accepted Head Save integration.
+`T1.viewport-projection@1` was accepted through `T1.P01.S07`, and shipped 2026-10-18 (PR #147). S04
+stays `proposed`. Its T1 Head Save prerequisite shipped through `T1.P01.S04` (PR #148), and its
+authorization is proposed as batch C ([prepared record](../../reference/decisions/batch-c-authorization-2026-10-19.md)).
 
 ## Starting foundation
 
