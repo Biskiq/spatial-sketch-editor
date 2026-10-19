@@ -32,7 +32,9 @@ separate event, and the owner-run activation runbook has not been executed.
   document missing `id` or `units` would have passed, and without the type predicate a null or
   string `formatVersion` would have passed too; a rehearsal caught both and
   `migration-fence.test.mjs` now pins them.
-- The column's presence is the epoch marker, so replaying the file is a no-op.
+- The column's presence is the epoch marker, so replaying the file is a no-op. A local database that
+  applied an earlier draft of this unmerged file must be recreated; the rehearsals used fresh
+  disposable databases.
 
 ### TD-6 — single-runner migrations
 
@@ -111,7 +113,7 @@ separate event, and the owner-run activation runbook has not been executed.
 | Migration replay on `biskiq_s04_rehearsal` | pass — first run removed all six authored tables' rows and retained `users`; rerun no-op |
 | Fence refusals | `23502` (missing `source_format`); `23514` for wrong fence value, old document, missing `units`, and missing/null/string `formatVersion`; a valid F2 envelope inserts |
 | TD-7 concurrency | a foreign `expected-saved-base` Save answers not-found while the owner row is locked, writes nothing, and the owner's next Save succeeds |
-| Two concurrent `runMigrations` | automated in `migration-fence.test.mjs` and rehearsed on `biskiq_s04_race`: both exited 0; `schema_migrations` = 1,2,3,4,5 once each; fence `NOT NULL` |
+| Two concurrent `runMigrations` | automated in `migration-fence.test.mjs` (both fulfilled); manual rehearsal on `biskiq_s04_race` (both exited 0); `schema_migrations` = 1,2,3,4,5 once each; fence `NOT NULL` |
 | Revision history | A → B → A with new contents refuses `revision-reuse` and keeps two versions |
 
 The API lane was run against disposable databases created for this rehearsal. No production or

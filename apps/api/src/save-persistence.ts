@@ -247,9 +247,9 @@ LIMIT 1`,
 			}
 		}
 
-		// The baseline is the expected saved base's own blocking issues. Only the
-		// current-source handler reads one; a whole-envelope format validates every
-		// attempt from scratch and returns an empty baseline.
+		// The baseline is the expected saved base's own blocking issues. The unit
+		// handler validates every attempt from scratch and declares an empty
+		// baseline; the seam stays for any handler that needs history.
 		const baseline = row
 			? handler.baseline
 				? await handler.baseline(saveDatabase(db), readString(row.id), readSafeInteger(row.version))

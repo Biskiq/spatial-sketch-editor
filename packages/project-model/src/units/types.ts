@@ -10,7 +10,7 @@
  * This module is vocabulary only. Strict validation lives in `./validate`,
  * canonical bytes and content revisions in `./canonical`. Nothing here is
  * imported by the project-model root barrel: an F.2 envelope is reached through
- * its own package subpath and is inactive until `T3.P01.S04` activates it.
+ * its own package subpath, which `T3.P01.S04` activated.
  *
  * The Scene unit is Camera-free Scene 2: the landed Scene 1 record grammar
  * (textures, materials, entities, clusters) unchanged, with the navigation graph

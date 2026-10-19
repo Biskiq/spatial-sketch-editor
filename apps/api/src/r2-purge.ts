@@ -2,7 +2,7 @@
  * Idempotent epoch cleanup for unreferenced R2 object bytes (AM-9, T3.P01.S04).
  *
  * The reset migration removes every authored row, including `assets`. This
- * module then removes the bytes those rows pointed at, under three guards:
+ * module then removes the bytes those rows pointed at, under four guards:
  *
  * 1. the store must expose listing and deletion (a read-only store refuses);
  * 2. the configured bucket must hold **only** keys this API writes

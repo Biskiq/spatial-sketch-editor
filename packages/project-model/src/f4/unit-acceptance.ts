@@ -22,16 +22,15 @@
  *   never retargets by proximity and never fabricates a lock entry.
  * - resource staging is the **F.2-dependent** half and lives in
  *   `../units/acceptance-staging.ts`, behind the inactive `./units` subpath: the
- *   architecture gate forbids this module from reaching the unit envelope before
- *   `T3.P01.S04`. Nothing here imports it, and a caller stages only by knowingly
- *   crossing the F.2 subpath.
+ *   architecture gate keeps this module from reaching the unit envelope through
+ *   a root-barrel import. Nothing here imports it, and a caller stages only by
+ *   knowingly crossing the F.2 subpath.
  *
  * What this module deliberately does not do: it does not read or write a source
  * (the adapter admits), it does not mint revisions or keep history (the
- * coordinator owns both), and it exposes no live unit writer. The live
- * `conditional-save-current-v1` path is untouched; `conditional-save-units-v1`
- * reuses the landed Save protocol over these candidates and stays inactive until
- * `T3.P01.S04`.
+ * coordinator owns both), and it exposes no writer. `conditional-save-units-v1`
+ * reuses the landed Save protocol over these candidates and is the live Save
+ * path since `T3.P01.S04`.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */

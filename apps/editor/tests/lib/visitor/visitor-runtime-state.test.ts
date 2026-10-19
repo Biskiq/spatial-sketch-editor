@@ -136,8 +136,8 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		});
 		visitor.enter();
 		expect(visitor.state.phase).toBe('holding');
-		// 60 fps deltas are fractional; each call alone is below one millisecond of
-		// integer clock and used to be discarded.
+		// 60 fps deltas are fractional; the integer-only interpreter used to reject
+		// every frame, so a hold never expired.
 		for (let frame = 0; frame < 31; frame += 1) visitor.tick(1000 / 60);
 		expect(visitor.state.stopId).toBe('stop-2');
 		expect(visitor.state.phase).toBe('ready');

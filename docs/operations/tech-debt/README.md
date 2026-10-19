@@ -92,7 +92,7 @@ Then add      A route-level test, Save → sign-in → return, that offers exact
               its precondition and operation ID; and, after the cutover, a test that refuses an
               old-format draft with a notice.
 
-No other entry is open.
+TD-8 above is the other open entry.
 
 ## Closed by T3.P01.S04
 
@@ -101,8 +101,8 @@ No other entry is open.
 | **TD-6** | Two migration runners raced on one database: one exited 0, the loser exited 1 although the schema finished complete | **fixed.** `apps/api/src/migrate.ts` takes `pg_try_advisory_lock(MIGRATION_LOCK_KEY)` on the session before reading `schema_migrations`, polls with a bounded 30 s wait and releases in `finally`; a dropped connection releases the session lock too. | None. `apps/api/tests/migration.test.mjs` pins lock-before-read and the unlock; `apps/api/tests/migration-fence.test.mjs` runs two concurrent runners in one throwaway schema — both fulfil and `schema_migrations` records 1–5 once each. |
 | **TD-7** | An `expected-saved-base` Save locked a foreign project row before the owner test | **fixed.** The unit Save path proves ownership with a non-locking owner/F2 query before `SELECT … FOR UPDATE`; a foreign project answers not-found without locking its row. The create-only collision path stays intentionally owner-blind and never reveals owner, name or contents. | None. `apps/api/tests/save-units.test.mjs` asserts the foreign refusal and that no lock precedes the owner test; the live Save lane is the unit handler only. |
 
-TD-9 remains open below. A new deferred defect is added under `## Open` using the template, with the
-track or file that owns the remaining obligation named in `Owner`.
+TD-8 and TD-9 above remain open. A new deferred defect is added under `## Open` using the template,
+with the track or file that owns the remaining obligation named in `Owner`.
 
 ---
 
@@ -124,6 +124,6 @@ git show e90a58224443bdbf44114d7285d55c983b79cc84:docs/operations/tech-debt/READ
 | **TD-4** | Curved-fixture release-cost increases that did not reproduce across sessions | **retired with the benchmark.** Every number in that family was advisory by design — no threshold, budget or regression guard was ever set — and the harness that produced them (the PERF lane, `lib/bench/**`, the checked-in baseline and the reuse ratchet) was removed by #115. | Recorded as **unresolved**, never as fixed. A future measurement re-derives a same-session before/after arm under a separately authorized benchmark scope. |
 | **TD-5** | Reuse and comparison over `$state`-proxied compiled geometry paid a ~12× per-read penalty, and a measured candidate optimization was proven output-identical yet slower | **retired with the benchmark.** No test measured per-access proxy cost, and the reuse counters were counts, not durations. | Its **lesson** — do not deep-proxy compiled geometry, and measure against the input the editor actually hands in — is carried in [`docs/roadmap/t1-spatial-world/planning-evidence.md`](../../roadmap/t1-spatial-world/planning-evidence.md) §15. |
 
-TD-9 is the open entry. TD-6 and TD-7 were fixed by `T3.P01.S04` (see the closure table above). A new
-deferred defect is added under `## Open` using the template, with the track or file that owns the
-remaining obligation named in `Owner`.
+TD-8 and TD-9 are the open entries. TD-6 and TD-7 were fixed by `T3.P01.S04` (see the closure table
+above). A new deferred defect is added under `## Open` using the template, with the track or file that
+owns the remaining obligation named in `Owner`.

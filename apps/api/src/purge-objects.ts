@@ -31,8 +31,13 @@ export async function main(): Promise<void> {
 		}
 		process.exitCode = 1;
 	} finally {
-		await store?.close?.();
-		await pool?.end();
+		// Cleanup must never mask the logged purge result.
+		try {
+			await store?.close?.();
+		} catch {}
+		try {
+			await pool?.end();
+		} catch {}
 	}
 }
 

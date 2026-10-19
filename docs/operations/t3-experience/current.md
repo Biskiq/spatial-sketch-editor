@@ -19,17 +19,18 @@ prerequisites instead.
 PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
 SLICES: S01, S02, S05 and S06 are shipped, and S03 is shipped by reconciliation. S04 is authorized
-        (2026-10-19), effective when PR #155 merges. `T3.camera-experience-cutover@1` is `ratified`,
-        with AM-9 as its contract.
+        (2026-10-19), effective from PR #155. Phase A is implemented on PR #158 and awaits review.
+        `T3.camera-experience-cutover@1` is `ratified`, with AM-9 as its contract.
 BATON: The owner ratified the clean source epoch (R1–R4): saved data is disposable, AM-9
        supersedes AM-7, and the publication gap is empty by construction. S04 is authorized in two
-       phases (R5). Phase A covers T3-owned files (reset migration 005 with an advisory lock, API
-       admission, the unit Save live path, converter retirement, lowering and visitor) and runs in
-       parallel with batch C. Phase B is the caller migration, after the current-source freeze
-       (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7, working F2 sign-in Save recovery (TD-9; deletion does not count), the S06 requirement rewrite, and
-       the Guide-free Presentation fix.
-NEXT: After PR #155 merges, start S04 phase A through the runbook start step. No data is reset
-      until S04 merges and the owner runs the activation runbook.
+       phases (R5). Phase A (T3-owned files: reset migration 005 with an advisory lock, API
+       admission, the unit Save live path, converter retirement, lowering and visitor) is on PR #158
+       and is not accepted. Phase B is the caller migration, after the current-source freeze
+       (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7, working F2 sign-in Save recovery
+       (TD-9; deletion does not count), the S06 requirement rewrite, and the Guide-free
+       Presentation fix.
+NEXT: Review Phase A on PR #158. After the batch C freeze, rebase the branch and implement Phase B;
+      no data is reset until S04 merges and the owner runs the activation runbook.
 ROUTE: ./README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →
