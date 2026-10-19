@@ -20,6 +20,30 @@ ready or evidenced.
 S01–S05 and S07 accepted with routine closeout. The seam provider remains independently accepted:
 under owner ruling D1 (2026-10-17) the viewport capability is accepted through S07, not through this gate.
 
+**Route (batch C ruling C3, owner-approved 2026-10-19, [record](../../../../reference/decisions/batch-c-authorization-2026-10-19.md)).** S06 runs once, **after `T3.P01.S04` is accepted**. Run before the cutover, its
+evidence would go stale when T3 replaces the current-source adapter and the starter boot (AM-5's
+boot seam, K6). It would also put an exhaustive run on the cutover's critical path, and T1's next
+phase (K3) waits for the F2 cutover anyway.
+
+**Requirement handoff (exact).** `T3.P01.S04` phase B rewrites this slice's register row, the header
+above and its `parallel-track-gates.test.ts` pin in the same commit that retires
+`local-single-domain-v1` (S04 plan, phase B "Requirements"):
+
+- `Consumes` becomes `F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1,
+  T1.viewport-projection@1, T3.camera-experience-cutover@1`;
+- `Requires` becomes `unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`,
+  `conditional-save-units-v1` (for the Save/reload journey) and `viewport-projection-v1`.
+
+Until then the row is inert: it is `proposed`, holds no permission, and the header above still
+names the current-source scopes only because S04 has not yet retired them. S06 **cannot start**
+with a retired scope: its own later authorization record requires the rewritten row, every scope
+`active` and `T3.camera-experience-cutover@1` `accepted` at its trusted base, and the runbook start
+step checks this explicitly because the current checker does not evaluate proposed-row readiness.
+The cutover gate is `ratified` at version 1 (2026-10-19), not yet accepted. On the post-cutover
+tree, the journey below also verifies the working F2 sign-in Save resume
+([TD-9](../../../../operations/tech-debt/README.md#td-9--the-sign-in-save-resume-is-half-wired)).
+The pre-cutover alternative was declined.
+
 ## Produces
 
 Recorded phase integration acceptance only.

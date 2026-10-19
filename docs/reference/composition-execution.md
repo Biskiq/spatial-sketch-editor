@@ -11,7 +11,9 @@ to the common foundation.
 written 2026-09-27 and **owner-ratified 2026-09-27 with amendments (Camera
 cutover timing, interface ownership, required/optional extensions).** The exact interfaces
 AM-1–AM-8 below were **owner-ratified 2026-10-15**
-([decision record](./decisions/f-ratification-2026-10-15.md)).
+([decision record](./decisions/f-ratification-2026-10-15.md)). AM-9 (the Camera/Experience cutover)
+was **owner-ratified 2026-10-19** ([decision record](./decisions/t3-cutover-ratification-2026-10-19.md))
+and supersedes AM-7, which is retained as superseded provenance.
 
 **Owner-directed [reconciliation amendment](./decisions/world-experience-reconciliation-2026-09-29.md), 2026-09-29:** F.1 distinguishes
 Presentation/Stop/visit identity and repairable authored bindings; F.2 names
@@ -471,7 +473,7 @@ conformance parameters unless an amendment states otherwise.
 Sole providers (planning assignment; register provider column wires at phase registration):
 F1/F3 → T1.P01.S01 · F4 → T1.P01.S03 (Save/unit extensions T3.P01.S02/S03) · F2 and the
 ExecutionProgram codec → T3.P01.S01 · F5 → T4.P01.S02 · viewport seam → T1.P01.S02 ·
-source/runtime cutover → T3.P01.S04 · prepared reader → T4.P01.S05. Behavioral-gate owners are
+source/runtime cutover → T3.P01.S04 (contract AM-9) · prepared reader → T4.P01.S05. Behavioral-gate owners are
 unchanged: viewport T1, cutover T3, reader T4.
 
 ## AM-1 F1 references v1
@@ -674,6 +676,12 @@ directed Travel/gap, Cut and stale handoff cleanup.
 
 ## AM-7 Source migration v1
 
+**Status: superseded by [AM-9](#am-9-shared-camera-and-experience-cutover) (ratified 2026-10-19,
+[record](./decisions/t3-cutover-ratification-2026-10-19.md)) — not invoked.** The owner ruled every
+saved source, version, publication and resource disposable before the Source Baseline, so the F.2
+migration exception has no covered data. No converter, inventory or reverse path exists. The cutover
+is AM-9's clean source epoch. The bullets below are retained as superseded provenance.
+
 Single source-conversion policy for the Camera/Experience transition (future T3.P01.S04).
 Conversion is a named pre-baseline exception, not a multi-format decoder.
 
@@ -734,3 +742,63 @@ authored reader. Post-barrier rollback prefers a prior compatible prepared runti
 - **API first.** Owner prepare/activate/update/unpublish flows precede the T4-owned thin
   publication UI; bounded T2 single-model ingest follows with accepted F.1/F.2 resource identity,
   staged F.4 acceptance and T4 resource delivery.
+
+## AM-9 Shared Camera and Experience cutover
+
+**Status:** **owner-ratified 2026-10-19** ([decision record](./decisions/t3-cutover-ratification-2026-10-19.md), R3); it
+supersedes AM-7 for the T3 cutover. Register: `T3.camera-experience-cutover@1`, `ratified`.
+
+Behavioral contract of `T3.camera-experience-cutover@1`. Sole provider `T3.P01.S04`. Consumers:
+T3.P02, `T1.P01.S06` and later T1/T2 phases on F2 units (K1, K3), and `T4.prepared-reader@1`.
+Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelope-v1`,
+`camera-handoff-v1`, `unit-acceptance-v1` and `conditional-save-units-v1`, plus the enduring
+`acceptance-invariants-v1`.
+
+- **Authorities after activation.** Camera owns View identity, framing, projection, connectivity,
+  route geometry and intrinsic directed motion/evaluation. Experience owns Presentations, Stop
+  identity, Guide order, holds, continuation, Gates and invocation time mapping. Scene and Camera
+  structural types carry no editorial order, hold, detour or lock field. Each source/session has
+  exactly one Experience order writer and one Camera output owner. A Presentation may exist without
+  a Guide: lowering and DOM navigation keep it reachable.
+- **Clean source epoch (no migration).** No saved source is covered (owner ruling 2026-10-19, [record](./decisions/t3-cutover-ratification-2026-10-19.md)), so
+  F.2's migration exception is not invoked and no converter exists. Activation is one forward schema
+  migration, serialized against concurrent runners. In one transaction it removes all authored
+  project data (sources, versions, receipts, resources, publications, releases) and installs a schema
+  that structurally admits only the F2 envelope, so a writer that predates it fails. Unreferenced
+  object bytes are then purged, only under a verified application-owned bucket/prefix and only for
+  keys the API wrote; objects outside it or of unknown provenance are never deleted. New bootstrap and the starter emit only F2.
+- **Current-format-only admission.** API admission, editor boot, import, session drafts and Save
+  accept only declared F2 versions. Old clients, old files, old drafts, mixed roots and unknown
+  versions fail with typed version diagnostics. There is no format sniffing, transparent fallback,
+  dual write or writable feature flag. Skew between independently deployed API and editor builds
+  refuses; it never misreads.
+- **Retirement.** `local-single-domain-v1` and `conditional-save-current-v1` retire, with every
+  caller, under AM-4's per-scope retirement rule. `acceptance-invariants-v1` persists. Also removed:
+  the Scene Camera fields, legacy flow-order exports and their callers, node-keyed visitor
+  orchestration, and the inactive converter module.
+- **Acceptance and history.** Every project starts at a new-format baseline, and no Undo crosses the
+  format boundary. AM-4's unit acceptance and Save semantics apply unchanged: one validated install
+  with one undo result, fresh revisions, a saved-base CAS with one winner, receipts, and conflict
+  preservation.
+- **Runtime defaults at @1.** Holds and Gates start at editorial arrival. Lowering takes closed
+  invocation bindings. Authored homes for the Cut/Travel selector, presentation text, state and
+  lifecycle are later F2 unit amendments, owned by their first authoring consumer (T3.P02). They are
+  not part of this version.
+- **Publication gap.** Until `T4.P01.S05`, Publish and Update return `prepared-reader-required`.
+  Every public read returns an honest not-found or unavailable result, status and Unpublish stay
+  truthful, and `/p/` plus visitor isolation stay real. Prepared delivery remains T4's.
+- **Recovery.** A failed migration transaction changes nothing. After activation, recovery rolls
+  forward. There is no reverse serializer or old-format reader.
+
+**Conformance.**
+
+- Admission refusals: old-format document, old-client Save, old file, old draft, mixed roots and
+  unknown version.
+- Reset migration: one transaction, idempotent rerun, and a single winner under two runners.
+- Structural refusal of a pre-epoch writer after the reset.
+- `/p/` not-found for prior IDs, and Publish returning `prepared-reader-required`.
+- Atomic compound acceptance and Undo/Redo.
+- Real-Postgres Save contention with zero skips.
+- Motion/continuation parity, session/handoff independence and accessibility parity.
+- One evaluation authority and one order writer.
+- No retired-scope caller, and no editor machinery in public chunks.

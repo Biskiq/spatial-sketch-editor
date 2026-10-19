@@ -1,56 +1,67 @@
-# T1.P01.S05 — Existing straight-Wall manipulation: implementation plan
-
-**Slice:** T1.P01.S05 · **Status:** proposed — not authorized · **Phase:** [T1.P01](../README.md) ·
-[slice register](../README.md#slice-register) · **Track:** [T1](../../README.md) ·
-**Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
+# T1.P01.S05 — implementation plan — CLOSED STUB
 
 ```text
-CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
-VERIFICATION: architecture-integration
-INTEGRATION ROUTE: ../t1.p01.s06-integrated-final-gate/implementation-plan.md
+AUTHORITY: NONE — this is closed work. Current truth lives in the phase README's slice register,
+           the architecture-cycle state, the owning track's baton and the acceptance record.
+STATUS:    APPROVED and DELIVERED. Owner-authorized 2026-10-19 as batch C with `T2.P01.S04`
+           (ruling C5 made TD-8 its first increment); independently accepted at `3d432836`
+           (round 4, no blockers); routine `slice-closeout` ran on the same branch 2026-10-19 and
+           this plan body was compacted after that acceptance.
+ROLE:      recovery route for the approved scope and its exact tier.
+NOT:       product contract · status store · acceptance evidence · authority for residual scope.
 ```
 
-## Prerequisite
+## Delivered
 
-S04 complete and listed gates accepted.
+Bounded editing of an **existing straight Wall** on the shared Stage: exact length and angle with
+an explicit fixed endpoint, and rigid translation — all through the retained Layout planners and
+the one F.4 intent/acceptance path, never a direct document write. Pointer handles exist only while
+the Dimensions task owns them; a reading flip pauses the writer with an exact proposal that Resume
+or Discard settles. Shared-Junction edits preview their reach and refuse what the canonical planner
+cannot preserve. TD-8's stale task-scoped services were fixed host-side as the first increment.
 
-## Produces
+## Accepted contract
 
-Bounded direct editing in the shared Stage; this is the cycle terminal, not the phase final gate.
+- Consumes `F1.reference@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1`; requires
+  `references-v1`, `local-single-domain-v1`, `viewport-projection-v1`.
+- Verification tier `architecture-integration`; the integrated route is the phase final gate,
+  [`../t1.p01.s06-integrated-final-gate/implementation-plan.md`](../t1.p01.s06-integrated-final-gate/implementation-plan.md),
+  which remains owed.
+- Curved-Wall shape/translation handles stay deferred; its S04 scalar edits remained available.
+- The architecture-cycle window's **terminal** exposure; this plan did not close the window — the
+  closeout did (2026-10-19), and the mechanism verdicts remain the owner's.
 
-## Scope
+## Evidence
 
-Expose existing straight-Wall length/angle with explicit fixed endpoint, and rigid translation
-through `planExactWallLength`, `planExactWallAngle`, `planRigidWallMove`. Shared Junctions
-remain shared: preview affected neighbours/reach, and refuse candidates the canonical planner
-cannot preserve. Do not author Room geometry or join coincident independent structures.
-Restrict controls to supported, legible axes; numeric Dimensions remains available when an
-axis cannot be picked precisely in 3D. Curved-Wall shape/translation handles are deferred;
-their scalar edits from S04 remain available.
+- Acceptance record: [acceptance.md](./acceptance.md) — round-4 verdict at `3d432836`, branch lanes
+  `check` 0/0 · `test:fast` 1962/1962 · `test:arch` 163/163 · `test:heavy` 118/118, focused rows and
+  the known limits.
+- The merge gate runs at the merge revision; the PR must land as a **merge commit** (P1).
 
-Pointer capture owns the gesture. Preview from its immutable baseline; evaluate inverse and
-snap against the rendered projection and compiled query records. Snap is an explicit
-transient suggestion, never a coordinate-to-connectivity shortcut. Release commits once via
-the same planner/intent as typed input; Esc/lost capture/replacement cancels with none. A
-reading flip continues a gesture only while its parameter mapping remains valid; otherwise
-pause that writer with an explanation, preserve the proposal, and offer explicit resume or
-cancel. It must not silently commit, reinterpret a delta, or discard work on a flip.
+## Entry points
 
-## Acceptance criteria
+```text
+implementation  apps/editor/src/lib/authoring/adapters/layout/{precision.ts,instrument.ts,adapter-support.ts,layout.adapter.ts}
+                apps/editor/src/lib/authoring/adapters/layout/{paused-proposal.ts,wall-gesture.ts,LayoutDimensionsInstrument.svelte}
+                apps/editor/src/lib/authoring/stage/stage-facade.ts
+validation      apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts
+                apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts
+                apps/editor/tests/lib/authoring/stage-shell-composition.test.ts
+regressions     apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts
+```
 
-Pointer and numeric paths yield the same document for the same explicit
-intent; one gesture has one history result; shared-neighbour invalidity rejects atomically;
-Wall/Opening/Room identities and curve data are preserved by supported operations. Plan and
-3D handles/highlights resolve the same source; inactive helpers do not pick. Navigation,
-reading changes, grid/snap and Esc generate no document-history entries. M1/M2/M5 get real
-composed-path exposure; M4 Wall-birth/noding identity remains dormant, honestly unexposed.
+## Residuals
 
-## Readiness declaration
+- The phase final gate (`T1.P01.S06`) is unaccepted and unshipped.
+- No browser evidence for the pointer journey is recorded by this slice.
+- Room identity is protected by the planner's reconciliation, not a pinned id.
+- A refused **Source JSON Open** replacing the mounted project is a separate T1 host follow-up, not
+  this slice's scope (see the acceptance record).
 
-This slice is **proposed and not authorized**. Its `Consumes` gates must exist and be
-`accepted` at the consumer's trusted base before it may start, and S04 must complete first;
-nothing here is ready today. T1.P01.S05 is the phase's configured architecture-cycle window
-**terminal** exposure ([window](../README.md#bounded-architecture-cycle-window)), and closing
-that window is a separate owner event, not a consequence of this plan. No implementation,
-acceptance, readiness, evidence, commit or gate state is claimed by this document.
+## Recovery
+
+```text
+git show ca5167435a7accabd00b0135435753c25cb8639f:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md
+anchor   ca5167435a7accabd00b0135435753c25cb8639f (full plan, reachable from main)
+tag      closed/T1.P01.S05 at 3d432836 (local only — not pushed)
+```

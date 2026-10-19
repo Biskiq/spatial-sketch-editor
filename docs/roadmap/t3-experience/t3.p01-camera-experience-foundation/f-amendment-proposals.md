@@ -134,7 +134,7 @@ their support is removed. Cut needs a resolved target View but no Connection. Re
 change prepares a composed candidate and recomputes support for all admitted origin Views.
 
 Existing-data conversion is a named pre-baseline exception, not a common multi-format decoder.
-The [phase conversion matrix](./README.md#conversion-and-refusal-matrix) owns coverage/refusal;
+The [phase admission matrix](./README.md#admission-and-refusal-matrix) (its legacy-conversion rows were withdrawn with the proposed AM-7 supersession) owns coverage/refusal;
 the original input, mappings, policy choices, staged pins and exact legacy migration baseline
 are captured inputs to one administrative conversion request. The baseline carries project ID,
 canonical source-content identity and stored version when cloud-backed; the old document has

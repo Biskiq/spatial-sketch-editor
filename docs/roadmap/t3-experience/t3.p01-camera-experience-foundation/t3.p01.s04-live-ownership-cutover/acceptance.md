@@ -1,10 +1,10 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** proposed, not authorized — no acceptance recorded
+**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19, not implemented — no acceptance recorded
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-No evidence is recorded against this slice. `T3.P01.S04` is a proposed, unauthorized child of
+No evidence is recorded against this slice. `T3.P01.S04` is an authorized (2026-10-19), not yet implemented child of
 T3.P01: it has not been implemented, reviewed or accepted, so this record claims no result, no tested
 revision, no gate state, no conformance fixture and no commit.
 
