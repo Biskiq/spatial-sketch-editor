@@ -91,7 +91,7 @@ ratified amendments.
 | F4.intent-acceptance | 1 | foundation | composition-execution.md | [F.4 + AM-4](../reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | accepted | T1.P01.S03 | `packages/project-model/src/f4`, `packages/project-model/src/content-identity.ts` | `apps/editor/tests/lib/authoring/f4-acceptance.test.ts`, `apps/editor/tests/lib/authoring/f4-current-source-admission.test.ts`, `apps/editor/tests/lib/authoring/f4-public-isolation.test.ts`, `apps/editor/tests/lib/project-model/content-identity.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md` | `8ec0c5f1` | `F4.intent-acceptance@1:acceptance-invariants-v1 active — docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/capability-acceptance-invariants-v1.md, F4.intent-acceptance@1:local-single-domain-v1 active — docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s03-local-acceptance-and-history-foundation/capability-local-single-domain-v1.md, F4.intent-acceptance@1:conditional-save-current-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s02-early-conditional-save/capability-conditional-save-current-v1.md, F4.intent-acceptance@1:unit-acceptance-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/capability-unit-acceptance-v1.md, F4.intent-acceptance@1:conditional-save-units-v1 active — docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s05-unit-acceptance-and-unit-save/capability-conditional-save-units-v1.md |
 | F5.release-envelope | — | foundation | composition-execution.md | [F.5](../reference/composition-execution.md#f5-release-envelope-and-program-slots) | undrafted | — | — | — | — | — | — |
 | T1.viewport-projection | 1 | capability | T1 | [AM-5](../reference/composition-execution.md#am-5-shared-stage-and-starter-gallery-v1) | accepted | T1.P01.S02 | `apps/editor/src/lib/authoring/stage`, `packages/camera-core/src/viewport.ts`, `packages/layout-core/src/layout-plan-representation.ts` | `apps/editor/tests/lib/authoring/stage-consumer-probes.test.ts`, `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` | `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/acceptance.md` | `ab8504aa` | `T1.viewport-projection@1:viewport-projection-v1` active — `docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s07-stage-f4-integration-bridge/capability-viewport-projection-v1.md` |
-| T3.camera-experience-cutover | — | capability | T3 | — | undrafted | — | — | — | — | — | — |
+| T3.camera-experience-cutover | 1 | capability | T3 | [AM-9](../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover) | ratified | T3.P01.S04 | — | — | — | — | — |
 | T4.prepared-reader | — | capability | T4 | — | undrafted | — | — | — | — | — | — |
 
 **Legend (enforced by `apps/editor/tests/docs/parallel-track-gates.test.ts`):**
@@ -190,6 +190,18 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
   [batch B protocol](./cross-track-execution.md#authorized-batch-b-2026-10-17). No gate changes state;
   T3.P01.S04 keeps its own [authorization path](./t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path),
   and T4 stays deferred under R1-D.
+
+- **Batch C (2026-10-19), owner-authorized and ratified.** The [coordination proposal](./batch-c-2026-10-19.md)
+  covers three things:
+  - `T1.P01.S05` ∥ `T2.P01.S04` ([record](../reference/decisions/batch-c-authorization-2026-10-19.md));
+  - a current-source freeze before `T3.P01.S04`'s caller migration, with `T1.P01.S06` moved after the
+    cutover;
+  - the T3 cutover reconciliation ([record](../reference/decisions/t3-cutover-ratification-2026-10-19.md)):
+    owner-ruled disposable saved data, AM-7 superseded by a clean-reset AM-9, and
+    `T3.camera-experience-cutover@1` ratified at version 1, with `T3.P01.S04` authorized in two phases.
+
+  Rules: [batch C protocol](./cross-track-execution.md#authorized-batch-c-2026-10-19). The gate row is
+  `ratified`; no capability is accepted.
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,

@@ -18,18 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: the phase README's slice register is authoritative — S01, S02 and S03 shipped; S04, the
-        phase's declared FINAL PHASE GATE, is proposed and unauthorized.
-BATON: S03 shipped (accepted 2026-10-18, anchor `2747f1691551296e21b17aa04dfd9de76cb08f59`,
-        tag `closed/T2.P01.S03`). Its accepted evidence, residuals and recovery are routed through:
-        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
-NEXT:   Owner authorization of S04, the final phase gate. Its registered prerequisites are satisfied
-        on `main`: `conditional-save-current-v1` accepted; T1 Head Save integration shipped through
-        `T1.P01.S04` in PR #148.
+SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are shipped. S04, the
+        phase's declared FINAL PHASE GATE, is authorized as batch C (2026-10-19), effective when
+        PR #155 merges.
+BATON: S04 runs alongside T1.P01.S05 under the batch C protocol. Scope correction C4: reuse T1's
+       shipped Download/Open source JSON and Reload remote, build no persistence UI, keep numeric
+       Resize as the guaranteed route, and stop-and-report for any new host seam. TD-8 is T1's to
+       fix; record the base the journeys ran on.
+NEXT:   After PR #155 merges, start S04 through the runbook start step at its own trusted base.
+        Owner follow-up: push the local `closed/T2.P01.S03` tag.
 ROUTE: ./README.md →
-       ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md
-BLOCKER: S04 owner authorization.
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md →
+       ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19
+BLOCKER: none once PR #155 merges.
 ```

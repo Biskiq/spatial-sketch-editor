@@ -2,7 +2,7 @@
 
 **Phase:** T2.P01 · **Status:** registered 2026-10-16 — `T2.P01.S01` shipped 2026-10-16;
 `T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (authorized 2026-10-17 as batch B, [record](../../../reference/decisions/batch-b-authorization-2026-10-17.md));
-S04 proposed and unauthorized · **Track:** [T2](../README.md) · **Roadmap:**
+S04 authorized 2026-10-19 as batch C ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) · **Track:** [T2](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) ·
 **Contracts:** [contract drafts](./contracts.md),
@@ -14,8 +14,8 @@ first slice, `T2.P01.S01`, can run in parallel with `T1.P01.S02`, `T1.P01.S03` a
 S02 was authorized by the later owner decision of 2026-10-16
 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel with
 `T3.P01.S02`. S03 was authorized by the owner decision of 2026-10-17
-([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)), in parallel with `T1.P01.S04` as batch B; S04 stays `proposed`
-and holds no implementation permission.
+([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)), in parallel with `T1.P01.S04` as batch B; S04 was authorized on 2026-10-19 as batch C
+([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)).
 
 **Phase outcome.** Rebuild a small, complete object-arranging experience over the current Scene
 format: upright floor-supported objects, one canonical placement, Plan/3D selection, horizontal
@@ -151,7 +151,7 @@ lifecycle and prerequisites only.
 | T2.P01.S01 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Deterministic candidates and canonical floor support](./t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | [record](./t2.p01.s01-candidates-and-floor-support/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 with independent implementation review and focused T1/Layout sign-off |
 | T2.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](./t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](./t2.p01.s02-scene-operations-and-history/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); owner acceptance via deliberate closeout invocation on 2026-10-17; independent review resolved separately (see record) |
 | T2.P01.S03 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](./t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](./t2.p01.s03-first-editing-surface/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); acceptance refreshed 2026-10-18 after pointer Move repair and independent delta review; anchor `2747f169` / tag `closed/T2.P01.S03` (local only) |
-| T2.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](./t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record](./t2.p01.s04-bounded-composition-loop/acceptance.md) | — |
+| T2.P01.S04 | approved | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](./t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record](./t2.p01.s04-bounded-composition-loop/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T1.P01.S05` ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); scope correction C4 |
 
 `F1.reference@1:references-v1` was accepted at `ee463d0b` and S01 shipped in PR #130. S02's
 `local-single-domain-v1` (with `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor
@@ -163,7 +163,9 @@ S03's exact launch conditions were verified at authorization
 its now-closed plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
 owner authorized S03 as batch B on 2026-10-17 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04 additionally needs `T3.P01.S02`'s
 `conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
-is judged at the slice's own trusted base.
+is judged at the slice's own trusted base. Both hold on `main` `5fee2a2d` (T1.P01.S04 shipped in PR
+#148). S04 is owner-authorized 2026-10-19 as batch C with `T1.P01.S05`
+([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)), with a scope correction that reuses T1's shipped source JSON and *Reload remote* controls.
 
 The requirements above describe the pre-cutover source adapter. `T3.P01.S04` migrates existing
 callers and unfinished plans to accepted F2 `unit-envelope-v1`, F1 `unit-resolution-v1` and F4

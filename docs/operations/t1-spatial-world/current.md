@@ -18,26 +18,20 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: none in progress. T1.P01.S04 is accepted and shipped (2026-10-18, PR #148); S05–S06 remain
-        proposed and unauthorized.
-BATON: S04 (existing Layout precision with the Head Save mount) shipped in the batch B pairing with
-       `T2.P01.S03`; its accepted head is `2d37adef` and its closeout anchor `closed/T1.P01.S04`
-       points there (local only — the owner pushes). The single residual found at closeout was cleared
-       by review-fix commit `aa26e04a`, which removed leftover `[s04-diag]` selection diagnostics from
-       the spatial route. S07's anchors, including `ab8504aa`
-       (`viewport-projection-v1` accepted) and `d1c93d47`, are ancestors of `main`; the
-       `closed/T1.P01.S07` tag is likewise local only. The architecture-cycle exposure window stays
-       **open**: S02 and S04 exposure rows are recorded (M1/M2 re-armed), the terminal S05 is pending.
-NEXT: The owner merges PR #148 as a merge commit (P1 — no squash, no rebase). Post-merge, verify
-      `2d37adef` is an ancestor of `main` and push the `closed/T1.P01.S04` tag. The one residual owed
-      before the merge is discharged: review-fix commit `aa26e04a` removed the leftover `[s04-diag]`
-      debug instrumentation in the spatial route and the full merge gate was re-run there (see the S04
-      acceptance record). After S04 merges, T1.P01.S05 (which waits for S04) becomes eligible on owner
-      authorization; S06 stays the phase's final gate and T2.P01.S04 stays blocked on this slice's
-      Head Save.
+ACTIVE: none in progress. S01–S04 and S07 are shipped (PR #148 anchors verified ancestors of
+        `main`; `closed/T1.P01.S04` pushed). S05 is authorized as batch C (2026-10-19), effective
+        when PR #155 merges. S06 is proposed and routed after T3.P01.S04 (ruling C3).
+BATON: Batch C: S05 ∥ T2.P01.S04 under the batch C protocol; S05 owns the host core, and TD-8 is its
+       first increment (it may land standalone first if T2 S04 needs it). After both merge, the
+       current-source freeze holds until T3.P01.S04 merges. The cycle window stays open; S05 is the
+       terminal, and its closeout records the exposure row. TD-9 is owned by the Head integration
+       and verified at S06.
+NEXT: After PR #155 merges, start S05 through the runbook start step at its own trusted base (the
+      row is `approved`). Owner follow-up: push the local `closed/T1.P01.S07` tag.
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
-       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s04-existing-layout-precision/acceptance.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-b-2026-10-17
-BLOCKER: the owner's merge decision on PR #148; S05–S06 stay unauthorized.
+       ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md →
+       ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19 →
+       ../../reference/decisions/batch-c-authorization-2026-10-19.md
+BLOCKER: none once PR #155 merges. S06 waits for T3.P01.S04's acceptance and its own authorization.
 ```

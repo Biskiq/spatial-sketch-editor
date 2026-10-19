@@ -9,11 +9,13 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
 registers no gate, phase or slice, and each provider is wired through its own authorized track
 phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
-T1.P01 (S01, S02, S03 and S07 shipped; S04 authorized 2026-10-17 as batch B; S05–S06 proposed),
-T2.P01 (S01 and S02 shipped; S03 authorized 2026-10-17 as batch B; S04 proposed) and T3.P01
-(S01–S06; S01/S02/S03/S05/S06 shipped, with S03 reconciled through its owner-authorized split halves,
-S04 proposed and unauthorized). T3.P02 remains unregistered candidate work, and all T4 work is
-deferred by ruling R1-D. Batch B runs under the [batch B protocol](#authorized-batch-b-2026-10-17). The four slices authorized first on 2026-10-16 run under the
+T1.P01 (S01, S02, S03, S07 and S04 shipped, S04 through batch B; S05 authorized 2026-10-19 as batch
+C; S06 proposed), T2.P01 (S01, S02 and S03 shipped, S03 through batch B; S04 authorized 2026-10-19 as
+batch C) and T3.P01 (S01–S06; S01/S02/S03/S05/S06 shipped, with S03 reconciled through its
+owner-authorized split halves; S04 authorized 2026-10-19). T3.P02 remains unregistered candidate work, and all T4 work is
+deferred by ruling R1-D. Batch B shipped under the [batch B protocol](#authorized-batch-b-2026-10-17); batch C
+(`T1.P01.S05` ∥ `T2.P01.S04`, authorized 2026-10-19) and the two-phase T3.P01.S04 (authorized
+2026-10-19 under AM-9) run under the [batch C protocol](#authorized-batch-c-2026-10-19). The four slices authorized first on 2026-10-16 run under the
 [parallel batch protocol](#parallel-batch-2026-10-16); `T2.P01.S02` and `T3.P01.S02` run under the
 [parallel pair protocol](#parallel-pair-2026-10-16).
 Cross-PR links identify proposals, never accepted prerequisites.
@@ -77,8 +79,7 @@ adapter admission (`local-single-domain-v1` current-source planning/validation a
 that point no new or in-progress consumer may Require either retiring scope, while shipped slices keep
 their evidence. The checker records retirement as a terminal state on the retiring scope's own entry
 — no parallel registry, no permanent legacy admission — and fails any new or in-progress Requires
-naming a retired scope. The read-only converter still retires with the covered inventory before the
-Source Baseline.
+naming a retired scope. The inactive converter retires in T3 S04 without running (AM-9).
 Acceptance of an interface is distinct from
 ratification, implementation and consumer eligibility. `T1.P01.S01` installs the two-field
 validation and controls for missing/unimplemented scope, consumer self-satisfaction, retired scope
@@ -155,25 +156,29 @@ proposal. No private transition, projection, selection or navigation infrastruct
 
 ## Source-first migration and activation ownership
 
-T3 S01 prepares the **sole** old-source conversion candidate and mapping report. T3 S05 prepares the
-new-source unit planners, acceptance and Save adapters, and T3 S06 the Experience runtime, Camera
-handoff and profile controllers, both without live activation; S03's umbrella reconciled the
-original scope once both closed. T3 S04 inventories
-local/source packages, cloud projects/versions, pending saves, releases/publications and retained
-bytes; obtains the covered-data exception and owner disposition; quiesces writers and CAS-installs
-Camera extraction, Experience order, Scene removal and locks together. It migrates every existing
-T1/T2 caller and replaces the current-source Stage/F4/Save/starter adapters. In-progress consumer
-plans re-declare the already accepted F2/unit capabilities from S05/S06 before activation. This is
-caller integration, not Camera authoring, and it does not consume its own T3 gate. T2 definition
-inputs then come from immutable project pins; Scene-only placement admits pinned/procedural entries.
-The F2 starter/migration may install an explicitly captured bounded palette once; absent pins are
-unavailable, and further resource admission remains staged T2 follow-on work.
+> **Rewritten 2026-10-19 on ratification of [AM-9](../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover)**
+> ([T3 cutover record](../reference/decisions/t3-cutover-ratification-2026-10-19.md)). The owner
+> ruled saved data disposable, so AM-7's inventory, covered-data exception, quiescence/CAS
+> conversion and converter retirement no longer apply. The earlier text is recoverable at `5fee2a2d`.
 
-No ordinary Undo crosses the administrative source-format transition. Retain original bytes and
-a coordinated source/deployment recovery handle; invalidate old callbacks/history, and establish
-one new source baseline. Old clients fail explicitly. Normal readers/writers accept only the new
-format. T3 removes legacy node-order orchestration; its read-only converter retires when the
-covered inventory is completed/discharged and recovery verified, before Source Baseline.
+T3 S01 prepared an old-source conversion candidate, which stays inactive and test-only and retires in
+S04 without ever running. T3 S05 prepared the new-source unit planners, acceptance and Save adapters,
+and T3 S06 the Experience runtime, Camera handoff and profile controllers, both without live
+activation; S03's umbrella reconciled the original scope once both closed. T3 S04 installs AM-9's
+clean source epoch: one transactional reset migration under an advisory lock that removes all
+authored rows and fences the schema to the F2 envelope, current-format-only admission with typed
+refusals, and atomic retirement of the current-source Stage/F4/Save/starter adapters with every
+existing T1/T2 caller. In-progress consumer plans re-declare the already accepted F2/unit
+capabilities from S05/S06. This is caller integration, not Camera authoring, and it does not consume
+its own T3 gate. T2 definition inputs then come from immutable project pins; Scene-only placement
+admits pinned/procedural entries. The F2 starter may install an explicitly captured bounded palette;
+absent pins are unavailable, and further resource admission remains staged T2 follow-on work.
+
+No ordinary Undo crosses the source-format transition: every project starts at a new-format
+baseline. Old clients, files and drafts fail explicitly. Normal readers/writers accept only the new
+format, and skew between the independently deployed API and editor refuses rather than misreads.
+T3 removes legacy node-order orchestration. No converter, reverse serializer or old-format reader
+survives.
 
 T4 has no default legacy Experience converter or retained selection map. It lowers F2 units and
 T3's authored identities into the **same T3 execution program** used by Preview. T4 S03/S04 may
@@ -181,13 +186,11 @@ exercise closed F2 candidate fixtures and inactive storage before T3 activation.
 the accepted T3 cutover, then owns prepared publication/API/resource/browser activation and source
 snapshot delivery retirement. One Camera engine and one Experience interpreter serve both paths.
 
-A temporary publication gap is allowed only after actual release/publication inventory and owner
-acceptance. During an approved empty-release gap, new source publication returns typed
+The publication gap is approved (2026-10-19, K2/R4) and is empty by construction, because the reset
+removes every publication and release row. During an approved empty-release gap, new source publication returns typed
 prepared-reader-required, cold public reads return their explicit unavailable/not-found outcome,
-and status/Unpublish remain honest; the real /p/ route and isolation checks remain. If any covered
-release exists, T3 activation stops for a concrete T4/owner compatibility disposition, including
-bounded conversion and a coordinated delivery barrier where necessary. Do not presume emptiness,
-discard data, silently reinterpret old bytes or keep a competing old visitor engine. T4's barrier
+and status/Unpublish remain honest; the real /p/ route and isolation checks remain. Never silently reinterpret old bytes or keep a competing old visitor
+engine. T4's barrier
 fences mutations, switches prepared metadata/artifacts/resources and cold reader together, and
 retires all authored delivery callers. Recovery after new-format edits rolls forward or explicitly
 restores disclosed backups; prepared activations roll back to a compatible prepared runtime/pointer
@@ -212,6 +215,9 @@ flowchart TD
   B --> P["T1 S04: Layout precision + Head Save"]
   S --> P
   P --> W["T1 S05: Wall manipulation"] --> G["T1 S06: T1.P01 final gate"]
+  W --> CUT
+  T2F --> CUT
+  CUT --> G
   P --> T2F["T2 S04: bounded loop + T2.P01 final gate"]
   UI --> T2F
   U --> X5["T3 S05: unit acceptance + Save"]
@@ -232,12 +238,14 @@ flowchart TD
   classDef shipped fill:#d8ecd8,stroke:#3c7a3c,color:#1e3d1e
   classDef authorized fill:#d6e4f5,stroke:#2f5f99,color:#17304d
   classDef deferred fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3
-  class A,V,L,U,O,B,S,C,X5,X6,X shipped
-  class P,UI authorized
+  class A,V,L,U,O,B,S,C,X5,X6,X,P,UI shipped
+  class W,T2F,CUT authorized
   class F,OFF,PUB,UX deferred
 ```
 
-Status key (2026-10-17): green nodes are shipped and blue nodes are authorized (batch B). Unstyled
+Status key (2026-10-19): green nodes are shipped; batch B (`P`, `UI`) shipped in PRs #148 and #147.
+Blue nodes are authorized: batch C (`W`, `T2F`) and `CUT` (T3 S04, two-phase). The `W → CUT`,
+`T2F → CUT` and `CUT → G` edges are the batch C current-source freeze and S06's post-cutover route. Unstyled
 nodes are proposed, or are candidate work that is not yet registered (T3.P02). Grey dashed nodes are
 T4 work deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted.
 The status key restates the phase registers; it never overrides them. Every edge is a real
@@ -479,6 +487,68 @@ target. `T1.P01.S04` must be accepted before `T2.P01.S04` starts. `T1.P01.S05` w
 **Cycle.** `T1.P01.S04` is the only exposure. Its start records no new opening, because the window has
 been open since S02, and its exposure row and mechanism verdicts are recorded at its closeout.
 `T2.P01.S03` is not an exposure.
+
+## Authorized batch C 2026-10-19
+
+**Owner-authorized 2026-10-19.** Two records carry the decisions:
+
+- the [batch C record](../reference/decisions/batch-c-authorization-2026-10-19.md):
+  `T1.P01.S05` ∥ `T2.P01.S04`, the current-source freeze and the `T1.P01.S06` route;
+- the [T3 cutover record](../reference/decisions/t3-cutover-ratification-2026-10-19.md): the AM-9
+  clean source epoch and `T3.P01.S04` in two phases.
+
+Both were approved as written (C3 post-cutover; Guide-free fix in S04). The evidence and reasoning are in the
+[batch C proposal](./batch-c-2026-10-19.md). Prerequisites were verified against `main` `5fee2a2d`.
+
+```mermaid
+flowchart LR
+  P["T1 S04 (shipped)"] --> W["T1 S05 + TD-8 (authorized)"]
+  UI["T2 S03 (shipped)"] --> T2F["T2 S04 final gate (authorized)"]
+  P --> T2F
+  W --> FRZ{{"current-source freeze"}}
+  T2F --> FRZ
+  RAT["owner ratification (AM-9)"] --> CA["T3 S04 phase A: T3-owned files"]
+  CA --> CB["T3 S04 phase B: caller migration"]
+  FRZ --> CB
+  CB --> ACT["owner-run activation"]
+  ACT --> G["T1 S06 final gate, on units"]
+  ACT --> PRE["T3.P02 registration"]
+```
+
+`W → FRZ` and `T2F → FRZ` are K6 made explicit: T3.P01.S04 migrates landed callers once. `ACT → G`
+moves the T1 final gate after the cutover (ruling C3). The main DAG carries these edges.
+
+**Shared-file ownership** (for batch C and S04 phase A; phase B takes over after the freeze):
+
+| Area | Writer | Rule for everyone else |
+| --- | --- | --- |
+| Host core: `stage/stage-facade.ts`, `stage-session.ts`, `stage-input.ts`, `stage-contributions.ts`, `stage-adapter-host.ts`, `host-acceptance.ts`, `stage/shell/**` and the spatial route | `T1.P01.S05` (Wall handles, pointer capture, the TD-8 fix) | `T2.P01.S04`: additive registration only, through S07's contribution points and the existing [T2 host seams](../reference/decisions/t2-s03-host-seams-2026-10-17.md) and [renderer exception](../reference/decisions/t2-s03-renderer-exception-2026-10-17.md), unextended. A new seam is a stop-and-report to T1. S04 phase A: read-only. |
+| Layout adapters (`authoring/adapters/layout*`, `authoring/layout/**`) and `@portfolio/layout-core` | `T1.P01.S05` | read-only; nobody changes the compiler or its tolerances |
+| Scene adapters (`authoring/adapters/scene*`, `authoring/scene/**`) and project-model `src/scene-planning/**` (additive only) | `T2.P01.S04` | read-only |
+| Current-source F4/Save: project-model `src/f4/**`, `content-identity.ts`, `src/save/**`, editor `authoring/f4/**` and `authoring/save/**`, `platform/project-persistence.ts` | none until the freeze; then S04 phase B | read-only; a needed change is a stop-and-report |
+| `apps/api/**` and migrations; project-model `src/units/**`, `src/program/**` and `src/migration/**`; `lib/visitor/**`; legacy flow-order exports in camera-core and project-model | `T3.P01.S04` phase A | read-only for batch C |
+| Root barrels, `package.json` exports and [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the conflict |
+| Boundary tests | additive assertions per slice | no slice weakens an existing assertion |
+| Gate register | batch C: none; S04: its cutover row and the F4 retirement entries at its own closeout | — |
+| `docs/roadmap/t4-release/**` | none (R1-D) | frozen |
+
+**Merge protocol.**
+
+1. `T1.P01.S05` and `T2.P01.S04` merge in either order after independent acceptance and routine
+   closeout. If both are ready together, S05 merges first. Every merge reruns the complete merge gate
+   on then-current `main`.
+2. **The freeze.** After both have merged, no current-source caller lands until S04 merges.
+3. `T3.P01.S04` is one implementation PR. Phase B rebases onto the frozen `main` and merges last. On
+   top of the exhaustive tier it runs `check:api`, a DB-backed `test:api` with zero skips, and a
+   reset-migration rehearsal on the Compose stack (`npm run test:api:stack`). Its merge is a merge
+   commit (P1).
+4. Activation on the deployed environment is a separate owner-run step. Both deployment orders refuse
+   rather than misread: AM-9 relies on a schema fence and strict version refusal, not on deploy
+   timing.
+
+**Cycle.** `T1.P01.S05` is the configured terminal exposure. Its start opens nothing new. Its
+closeout records the S05 exposure row, which makes the window closable; the owner's mechanism
+verdicts are a separate event. `T2.P01.S04` and `T3.P01.S04` are not exposures.
 
 ## Owner ratifications and cycle disposition
 
