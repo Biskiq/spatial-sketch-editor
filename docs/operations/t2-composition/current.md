@@ -22,7 +22,8 @@ SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are
         phase's declared FINAL PHASE GATE, is authorized as batch C (2026-10-19), effective when
         PR #155 merges.
 BATON: S04 is implemented on branch `T2-P01-S04` (base `919c2904`, batch C) and has passed the
-       slice lanes and one independent review round. It adds the `scene-compose` task (uniform
+       slice lanes and two independent review rounds (the second accepted with no blocking
+       findings). It adds the `scene-compose` task (uniform
        Resize, duplicate, delete) through AM-5 only, reusing T1's shipped source-JSON/Reload paths
        and extending no host seam. Resize and Duplicate are **primitive-only**: the panel disables
        them (with the reason) and the session refuses before taking a lease for a light or model;
