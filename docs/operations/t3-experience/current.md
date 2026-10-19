@@ -19,22 +19,22 @@ prerequisites instead.
 PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
 SLICES: S01, S02, S05 and S06 are shipped, and S03 is shipped by reconciliation. S04 is authorized
-        (2026-10-19), effective from PR #155. Phase A is implemented on PR #158; independent review
-        requested changes, and the three substantive corrections are implemented and verified
-        pending re-review. `T3.camera-experience-cutover@1` is `ratified`, with AM-9 as its contract.
+        (2026-10-19), effective from PR #155. Phase A is implemented and **accepted at `b9cb5ed1`**
+        (independent round 4, no blocking findings). `T3.camera-experience-cutover@1` is `ratified`,
+        with AM-9 as its contract.
 BATON: The owner ratified the clean source epoch (R1–R4): saved data is disposable, AM-9
        supersedes AM-7, and the publication gap is empty by construction. S04 is authorized in two
        phases (R5). Phase A (T3-owned files: reset migration 005 with an advisory lock, API
-       admission, the unit Save live path, converter retirement, lowering and visitor) is on PR #158
-       and is not accepted. Phase B is the caller migration, after the current-source freeze
-       (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7,       working F2 sign-in Save recovery (TD-9; deletion does not count), the S06 requirement rewrite,
+       admission, the unit Save live path, converter retirement, lowering and visitor) is accepted
+       at `b9cb5ed1` on PR #158; the slice is not accepted and `#158` is not merge-eligible until
+       Phase B. Phase B is the caller migration, after the current-source freeze (T1.P01.S05 and
+       T2.P01.S04 merged). S04 owns TD-6, TD-7, working F2 sign-in Save recovery (TD-9; deletion
+       does not count), the S06 requirement rewrite,
        and the Guide-free Presentation fix (shipped in Phase A as a visitor Presentation control).
-NEXT: Re-review Phase A on PR #158: Travel now resolves the authored connection, the R2 purge is
-      namespace-scoped and epoch-gated, and a Stop-free Presentation is selectable and clears on a
-      real advance. Mounted tests pin the camera handoff; activation uses a dedicated bucket per
-      environment because the purge refuses pre-namespace legacy keys. #158 is the continuing S04
-      PR, not a Phase A merge. After the batch C freeze, rebase and implement Phase B on the same
-      PR; no data is reset until S04 merges and the owner runs the activation runbook.
+NEXT: Phase A needs no further review. After the batch C freeze, rebase and implement Phase B
+      (caller migration, TD-9 on F2, the S06 requirement rewrite) on PR #158. Activation uses a
+      dedicated bucket per environment because the purge refuses pre-namespace legacy keys; no data
+      is reset until S04 merges and the owner runs the activation runbook.
 ROUTE: ./README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →
