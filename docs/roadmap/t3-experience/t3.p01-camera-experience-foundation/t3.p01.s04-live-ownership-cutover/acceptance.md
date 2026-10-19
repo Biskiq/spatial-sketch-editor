@@ -16,6 +16,7 @@ separate event, and the owner-run activation runbook has not been executed.
 | Base | `origin/main` `919c2904` (PR #155 merge) |
 | Phase A scope | T3-owned files only: `apps/api/**` and migrations, project-model units/program/save, `lib/visitor/**`, camera-core flow exports |
 | Phase B | **not implemented**; waits for the current-source freeze |
+| PR lifecycle | PR #158 is the continuing S04 implementation PR. Phase A is reviewed there but is **not** merged on its own; Phase B lands on the same PR after the freeze, followed by final review and closeout. |
 
 ## Implemented in Phase A
 
@@ -44,13 +45,19 @@ separate event, and the owner-run activation runbook has not been executed.
 
 ### R2 purge boundary (`apps/api/src/r2-purge.ts`, `purge-objects.ts`)
 
-- Refuses without list and delete, refuses when **any** visible key falls outside the API's
-  `projects/<project>/assets/<uuid>/<hex32>` shape, and re-checks the prefix at every delete.
+- Ownership is a configured namespace, not a key shape. `R2_OBJECT_NAMESPACE` is required and
+  every asset key is `projects/<namespace>/<project>/assets/<uuid>/<hex32>`. The purge refuses
+  when **any** visible key falls outside that namespace and shape, so a bucket shared with another
+  deployment refuses instead of treating the other deployment's app-shaped keys as unreferenced.
+  A missing or malformed namespace refuses rather than widening the match.
+- Requires the active epoch: `schema_migrations` must record migration 5 before anything is listed
+  for deletion.
 - Refuses while any `releases` row remains: a release manifest also pins object keys, so a purge
   before migration 005 cannot delete live published bytes.
-- Ownership is proven per bucket, not per environment. Preview and production must not share one
-  bucket; if they did, each purge would treat the other environment's app-shaped keys as
-  unreferenced.
+- Refuses when a remaining `assets` row references an object outside the namespace (a storage
+  configuration mismatch), rather than skipping it and deleting the rest.
+- Refuses without list and delete, and re-checks the namespace prefix and key shape at every
+  delete.
 - Deletes only keys no remaining `assets` row references; rerun is a no-op.
 - Owner-run entry point: `npm run purge:objects -w @biskiq/api`. No deployment or live purge was
   performed.
@@ -87,14 +94,19 @@ separate event, and the owner-run activation runbook has not been executed.
 - `lowerExperienceProgram` now emits **every** Presentation the selected Experience carries, not
   only those used by the Guide's Stops, while still refusing an unresolved View.
 - `buildExperienceCompanion` exposes `presentations` (including ones with no Stop) as
-  destinations. S04 ships the lowering/companion data, not a presentation-selection control;
-  the authored DOM navigation home for a Stop-free Presentation is T3.P02.
+  destinations.
+- `VisitorPreviewSurface` renders an accessible `Presentations` navigation for every Presentation no
+  Stop uses. Selecting one realizes its View through the same Camera authority as a Cut and never
+  fabricates a Stop; `visitor.selectPresentation()` is separate from `navigate(stopId)` and is
+  cleared by `enter()`/`navigate()`.
 - `apps/editor/src/lib/visitor/visitor-runtime-state.svelte.ts` is now an Experience-program store
   over the one interpreter: enter, Continue, explicit navigate, explicit clock, hold auto-continue
   (Gates stay blocked). `visitorMainFlowNodeIds`, `visitorFirstValidNodeId`, `visitorStartNodeId` and
   all node-keyed traversal are gone.
-- `VisitorCameraDirector` reacts to the current Presentation View and uses the Camera route
-  authority for travel; Cut, reduced motion and first framing are instant. `VisitorPreviewSurface`
+- `VisitorCameraDirector` reacts to the current Presentation View. A Travel resolves the exact
+  authored `connectionId` and direction through `getCameraConnectionRoute`; it never substitutes
+  general graph pathfinding, and a missing or mismatched connection surfaces a typed gap and settles
+  as a Cut. Cut, reduced motion and first framing are instant. `VisitorPreviewSurface`
   takes a lowered `program` and is neutral when none is supplied, rather than falling back to node
   order.
 
@@ -119,6 +131,30 @@ separate event, and the owner-run activation runbook has not been executed.
 The API lane was run against disposable databases created for this rehearsal. No production or
 shared development database was reset, no deployment was made and no object was purged.
 
+### Review-fix verification (2026-10-19)
+
+Independent review requested three substantive corrections:
+
+1. **Travel** resolves the interpreter's exact `connectionId` and direction through
+   `getCameraConnectionRoute`, with a typed gap instead of general pathfinding.
+2. **R2 purge** proves ownership with the required `R2_OBJECT_NAMESPACE` (asset keys are
+   `projects/<namespace>/…`) and requires migration `005` to be recorded before listing or deleting.
+   A bucket shared with another namespace refuses.
+3. **Stop-free Presentations** are selectable from an accessible visitor `Presentations` navigation
+   and realize their View as a Cut through the same Camera authority, with no fabricated Stop.
+
+| Check | Result |
+| --- | --- |
+| `npm run check:api` and `npm run build:api` | pass |
+| `npm run test:api` | pass — 79 tests, 0 failures, 0 skips, including namespace purge refusals and namespaced asset keys |
+| `npm run check` (editor) | pass — 0 errors, 0 warnings |
+| `npx vitest run tests/lib/visitor` | pass — 52 tests |
+| `npm run test:fast` | pass — 138 files, 1913 tests |
+| `npm run test:arch` | pass — 20 files, 163 tests |
+
+The rerun covers the three review corrections: connection-exact Travel, the namespace/epoch purge
+boundary, and visitor selection of a Stop-free Presentation.
+
 ## Outstanding — Phase B and review handoff
 
 1. **Callers are still pre-epoch.** Editor boot/import/export, the Stage read facade, the starter
@@ -136,8 +172,9 @@ shared development database was reset, no deployment was made and no object was 
 6. The visitor's Camera graph is still Scene-derived while the program names Camera-unit Views. The
    director degrades to the neutral frame instead of throwing, but building that graph from the
    Camera unit is Phase B wiring, not a Phase A claim.
-7. **Not reviewed, not accepted, not activated.** No data reset, no deploy, no gate acceptance. The
-   merge remains the code cutover only after review.
+7. **Not accepted and not activated.** The three substantive review corrections are implemented and
+   verified above; a fresh independent review of #158 is still required. No data reset, no deploy,
+   no gate acceptance.
 
 ## Acceptance status
 

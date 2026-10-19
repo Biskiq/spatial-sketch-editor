@@ -8,6 +8,12 @@ export type ApiConfig = {
 	sessionKey?: Buffer;
 	r2Endpoint: string;
 	r2Bucket: string;
+	/**
+	 * Deployment-owned object-key namespace. Every asset key starts with
+	 * `projects/<namespace>/`, so a purge can refuse a bucket that also holds
+	 * another deployment's app-shaped keys.
+	 */
+	r2ObjectNamespace: string;
 	r2AccessKeyId: string;
 	r2SecretAccessKey: string;
 	/**
@@ -125,6 +131,16 @@ function readSessionKey(value: string | undefined): Buffer {
 	return key;
 }
 
+function readObjectNamespace(value: string | undefined): string {
+	const namespace = readRequired(value, 'R2_OBJECT_NAMESPACE');
+	if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(namespace)) {
+		throw new ConfigError(
+			'R2_OBJECT_NAMESPACE must be 1-32 lowercase letters, digits or hyphens and start with a letter or digit'
+		);
+	}
+	return namespace;
+}
+
 export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 	const databaseUrl = readDatabaseUrl(env.DATABASE_URL);
 	const port = readPort(env.PORT);
@@ -140,6 +156,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
 		sessionKey: readSessionKey(env.SESSION_KEY),
 		r2Endpoint: readR2Endpoint(env.R2_ENDPOINT),
 		r2Bucket: readRequired(env.R2_BUCKET, 'R2_BUCKET'),
+		r2ObjectNamespace: readObjectNamespace(env.R2_OBJECT_NAMESPACE),
 		r2AccessKeyId: readRequired(env.R2_ACCESS_KEY_ID, 'R2_ACCESS_KEY_ID'),
 		r2SecretAccessKey: readRequired(env.R2_SECRET_ACCESS_KEY, 'R2_SECRET_ACCESS_KEY'),
 		testAuthSecret: readTestAuthSecret(env.E2E_TEST_AUTH_SECRET)

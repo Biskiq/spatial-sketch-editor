@@ -27,6 +27,7 @@ export const SESSION_COOKIE = 'museum-editor-session';
 export const R2_ENV = {
 	R2_ENDPOINT: 'https://account.r2.cloudflarestorage.com',
 	R2_BUCKET: 'museum-assets',
+	R2_OBJECT_NAMESPACE: 'test',
 	R2_ACCESS_KEY_ID: 'access-key',
 	R2_SECRET_ACCESS_KEY: 'secret-key'
 };

@@ -115,6 +115,28 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.state.stopId).toBe('stop-2');
 	});
 
+	it('selects a Stop-free Presentation as a real Camera destination', () => {
+		const visitor = runtime();
+		visitor.enter();
+		expect(visitor.selectPresentation('presentation-guide-free')).toBe(true);
+		expect(visitor.currentPresentation?.id).toBe('presentation-guide-free');
+		expect(visitor.currentViewId).toBe('view-3');
+		// The detached Presentation is a Cut. Replaying the entry Stop's invocation
+		// here would ask Camera for a connection the visitor never travelled.
+		expect(visitor.currentInvocation).toEqual({ kind: 'cut', viewId: 'view-3' });
+		expect(visitor.selectPresentation('presentation-absent')).toBe(false);
+		// An explicit Stop navigation leaves the Stop-free selection behind.
+		visitor.navigate('stop-2');
+		expect(visitor.currentPresentation?.id).toBe('presentation-2');
+		expect(visitor.currentViewId).toBe('view-2');
+		// Re-entering clears the detached selection. `enter()` is idempotent, so the
+		// run stays where the explicit Stop navigation put it.
+		visitor.selectPresentation('presentation-guide-free');
+		visitor.enter();
+		expect(visitor.currentPresentation?.id).toBe('presentation-2');
+		expect(visitor.currentViewId).toBe('view-2');
+	});
+
 	it('accumulates fractional frame milliseconds so a hold actually expires', () => {
 		const visitor = runtime({
 			stops: [

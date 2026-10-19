@@ -95,6 +95,7 @@ test('configuration validates deployment auth values without exposing secrets', 
 	assert.deepEqual(config.sessionKey, key);
 	assert.equal(config.r2Endpoint, R2_ENV.R2_ENDPOINT);
 	assert.equal(config.r2Bucket, R2_ENV.R2_BUCKET);
+	assert.equal(config.r2ObjectNamespace, R2_ENV.R2_OBJECT_NAMESPACE);
 	assert.equal(config.r2AccessKeyId, R2_ENV.R2_ACCESS_KEY_ID);
 	assert.equal(config.r2SecretAccessKey, R2_ENV.R2_SECRET_ACCESS_KEY);
 	assert.throws(
@@ -120,6 +121,19 @@ test('configuration validates deployment auth values without exposing secrets', 
 			R2_ENDPOINT: 'https://user:secret@r2.example.test'
 		}),
 		(error) => error instanceof ConfigError && error.message === 'R2_ENDPOINT must be a credential-free HTTPS URL' && !error.message.includes('secret')
+	);
+	assert.throws(
+		() => readConfig({
+			DATABASE_URL: 'postgres://user@db.example.test/app',
+			PORT: '3000',
+			EDITOR_ORIGIN: 'https://editor.example.test',
+			GOOGLE_CLIENT_ID: 'client-id',
+			GOOGLE_CLIENT_SECRET: 'client-secret',
+			SESSION_KEY: key.toString('base64'),
+			...R2_ENV,
+			R2_OBJECT_NAMESPACE: 'Preview/Bucket'
+		}),
+		(error) => error instanceof ConfigError && error.message.includes('R2_OBJECT_NAMESPACE')
 	);
 });
 

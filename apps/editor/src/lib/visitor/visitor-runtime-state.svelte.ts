@@ -27,6 +27,8 @@ export class VisitorRuntimeState {
 	readonly options: ExperienceInterpreterOptions;
 	/** Set by the host from `prefers-reduced-motion`; affects camera motion only. */
 	reducedMotion = $state(false);
+	/** A Stop-free Presentation selected through the visitor's DOM navigation. */
+	selectedPresentationId = $state<string | null>(null);
 	state: ExperienceRunState;
 
 	private readonly interpreter: ReturnType<typeof createExperienceInterpreter>;
@@ -42,6 +44,7 @@ export class VisitorRuntimeState {
 
 	/** Enter the Experience at its authored entry Stop. Idempotent. */
 	enter() {
+		this.selectedPresentationId = null;
 		this.state = this.interpreter.enter().state;
 	}
 
@@ -52,7 +55,20 @@ export class VisitorRuntimeState {
 
 	/** An explicit authored destination; the Guide is never bypassed by this. */
 	navigate(stopId: string) {
+		this.selectedPresentationId = null;
 		this.state = this.interpreter.navigate(stopId).state;
+	}
+
+	/**
+	 * Select a Presentation that carries no Stop. It realizes the Presentation's
+	 * View through the same Camera authority and never fabricates a Stop.
+	 */
+	selectPresentation(presentationId: string): boolean {
+		if (!this.program.presentations.some((presentation) => presentation.id === presentationId)) {
+			return false;
+		}
+		this.selectedPresentationId = presentationId;
+		return true;
 	}
 
 	/** Advance the explicit clock; holds auto-continue on expiry. */
@@ -80,6 +96,11 @@ export class VisitorRuntimeState {
 	}
 
 	get currentPresentation() {
+		if (this.selectedPresentationId !== null) {
+			return this.program.presentations.find(
+				(presentation) => presentation.id === this.selectedPresentationId
+			) ?? null;
+		}
 		const stop = this.currentStop;
 		return stop === null
 			? null
@@ -92,6 +113,13 @@ export class VisitorRuntimeState {
 	}
 
 	get currentInvocation(): ProgramInvocation | null {
+		// A Stop-free Presentation has no authored connection: selecting it is a
+		// Cut through the same Camera authority. The interpreter's last invocation
+		// belongs to the Stop the visitor left, so it must not be replayed here.
+		if (this.selectedPresentationId !== null) {
+			const viewId = this.currentViewId;
+			return viewId === null ? null : { kind: 'cut', viewId };
+		}
 		return this.state.invocation;
 	}
 

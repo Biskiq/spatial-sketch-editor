@@ -8,8 +8,8 @@ import { purgeUnreferencedObjects, R2PurgeRefusal } from './r2-purge.js';
 
 /**
  * Owner-run activation step: purge object bytes left unreferenced by migration
- * 005. It refuses unless the bucket is application-owned, no release row remains
- * and every key sits outside the API's own prefix.
+ * 005. It refuses unless migration 005 is active, every listed key sits inside
+ * this deployment's `R2_OBJECT_NAMESPACE`, and no release row remains.
  */
 export async function main(): Promise<void> {
 	let pool: DatabasePool | undefined;
@@ -18,7 +18,9 @@ export async function main(): Promise<void> {
 		const config = readConfig();
 		pool = createPool(config);
 		store = createR2ObjectStore(config);
-		const result = await purgeUnreferencedObjects(pool, store);
+		const result = await purgeUnreferencedObjects(pool, store, {
+			namespace: config.r2ObjectNamespace
+		});
 		console.log(
 			`[api] r2 purge complete (listed ${result.listed}, referenced ${result.referenced}, deleted ${result.deleted})`
 		);

@@ -138,10 +138,11 @@ export async function registerAsset(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
 	projectId: string,
-	name: string
+	name: string,
+	objectNamespace: string
 ): Promise<AssetMetadata> {
 	const assetId = randomUUID();
-	const objectKey = createObjectKey(projectId, assetId);
+	const objectKey = createObjectKey(projectId, assetId, objectNamespace);
 	const rows = await queryRows<AssetRow>(			db,
 			`INSERT INTO assets (
 	id, project_id, name, kind, storage_kind, source_kind, object_key, import_state
@@ -216,14 +217,15 @@ export async function uploadAsset(
 	assetId: string,
 	contentLength: number,
 	body: Readable,
-	objectStore: ObjectStore | undefined
+	objectStore: ObjectStore | undefined,
+	objectNamespace: string
 ): Promise<AssetMetadata> {
 	const asset = await readAsset(pool, ownerId, projectId, assetId);
 	if (asset.importState === 'ready') throw new AssetNotReadyError();
 	if (!objectStore) throw new Error('Object storage is unavailable');
 
 	// ponytail: object key doubles as upload claim; superseded bytes stay orphaned until GC ships.
-	const objectKey = createObjectKey(projectId, assetId);
+	const objectKey = createObjectKey(projectId, assetId, objectNamespace);
 	const claimed = await queryRows<AssetRow>(
 		pool,
 		`UPDATE assets a
@@ -473,8 +475,8 @@ function readStoredAsset(row: AssetRow): StoredAsset {
 	return { ...readAssetMetadata(row), objectKey: readNullableString(row.objectKey) };
 }
 
-function createObjectKey(projectId: string, assetId: string): string {
-	return `projects/${projectId}/assets/${assetId}/${randomBytes(16).toString('hex')}`;
+function createObjectKey(projectId: string, assetId: string, objectNamespace: string): string {
+	return `projects/${objectNamespace}/${projectId}/assets/${assetId}/${randomBytes(16).toString('hex')}`;
 }
 
 function readString(value: unknown): string {

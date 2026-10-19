@@ -41,7 +41,7 @@ and [admission matrix](../README.md#admission-and-refusal-matrix) govern accepta
 
 - **Reset migration `005`.** Take the advisory lock first; that closes TD-6 for every migration.
   Then, in one transaction, remove all authored rows and install the F2-only schema fence. Rerun is
-  a no-op. Keep `users` and `schema_migrations`. Add an idempotent purge of unreferenced R2 objects behind an ownership check: Before any purge, verify that the bucket/prefix is application-owned (configured, and holding only keys this API writes); purge only keys under that verified prefix that no remaining row references, and never delete an object outside it or of unknown provenance.
+  a no-op. Keep `users` and `schema_migrations`. Add an idempotent purge of unreferenced R2 objects behind an ownership check: require the active `005` epoch and a configured deployment namespace, verify that every visible key sits under `projects/<namespace>/` and only uses the shape this API writes, purge only unreferenced keys under it, and never delete an object outside it or of unknown provenance. A shared bucket holding another deployment's keys refuses.
 - **API.** Admit only declared F2 versions on every path: read, Save, assets and publication status.
   Publish/Update return `prepared-reader-required`. Every public read is an honest
   not-found/unavailable. Fix or explicitly disposition TD-7 on the unit Save path.
@@ -115,7 +115,7 @@ PR:
 1. Optionally take a private snapshot (R1: prudence, not an obligation).
 2. Run `npm run migrate` against the deployed database to apply `005`.
 3. Deploy the API (Render) and the editor (Vercel).
-4. Run the R2 purge. It refuses unless the configured bucket/prefix is verified application-owned, and it touches only unreferenced keys under that prefix.
+4. Run the R2 purge. It refuses unless migration `005` is active, the deployment namespace owns every visible key, and no release row remains; it touches only unreferenced keys under that namespace.
 5. Smoke-test: empty and starter boot, one Save, a prior `/p/` ID → not-found, and Publish →
    `prepared-reader-required`.
 

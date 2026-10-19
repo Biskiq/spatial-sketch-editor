@@ -56,6 +56,8 @@ export type ApiAppOptions = {
 	oidc?: OidcClient;
 	sessionKey?: Buffer;
 	objectStore?: ObjectStore;
+	/** Deployment-owned key namespace; production passes `R2_OBJECT_NAMESPACE`. */
+	objectNamespace?: string;
 	logger?: FastifyServerOptions['logger'];
 	/**
 	 * Test-only authentication issuer. When present (and sessions are
@@ -79,6 +81,7 @@ export function createApp({
 	oidc,
 	sessionKey,
 	objectStore,
+	objectNamespace = 'default',
 	testAuth,
 	logger = true
 }: ApiAppOptions): FastifyInstance {
@@ -483,7 +486,7 @@ export function createApp({
 				return assetInputFailure(reply, new AssetInputError('unsupported_media_type', 415, 'Unsupported Media Type'));
 			}
 			const name = readAssetNameBody(request.body);
-			const asset = await registerAsset(pool, userId, projectId, name);
+			const asset = await registerAsset(pool, userId, projectId, name, objectNamespace);
 			return reply.code(201).send(asset);
 		} catch (error) {
 			return assetFailure(app, reply, error, 'Asset registration failed');
@@ -517,7 +520,16 @@ export function createApp({
 			return assetInputFailure(reply, new AssetInputError('invalid_upload', 400, 'Invalid upload body'));
 		}
 		try {
-			return await uploadAsset(pool, userId, projectId, assetId, contentLength, request.body, objectStore);
+			return await uploadAsset(
+				pool,
+				userId,
+				projectId,
+				assetId,
+				contentLength,
+				request.body,
+				objectStore,
+				objectNamespace
+			);
 		} catch (error) {
 			return assetFailure(app, reply, error, 'Asset upload failed');
 		}

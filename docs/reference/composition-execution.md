@@ -765,8 +765,9 @@ Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelo
   migration, serialized against concurrent runners. In one transaction it removes all authored
   project data (sources, versions, receipts, resources, publications, releases) and installs a schema
   that structurally admits only the F2 envelope, so a writer that predates it fails. Unreferenced
-  object bytes are then purged, only under a verified application-owned bucket/prefix and only for
-  keys the API wrote; objects outside it or of unknown provenance are never deleted. New bootstrap and the starter emit only F2.
+  object bytes are then purged, only after the epoch is recorded, only under the deployment's
+  configured namespace, and only for keys the API wrote; a shared bucket, a foreign namespace or an
+  object of unknown provenance refuses the purge instead of being deleted. New bootstrap and the starter emit only F2.
 - **Current-format-only admission.** API admission, editor boot, import, session drafts and Save
   accept only declared F2 versions. Old clients, old files, old drafts, mixed roots and unknown
   versions fail with typed version diagnostics. There is no format sniffing, transparent fallback,

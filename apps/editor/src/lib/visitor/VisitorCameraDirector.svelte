@@ -5,7 +5,6 @@
 	import { MathUtils, Spherical, Vector3 } from 'three';
 	import type { PerspectiveCamera } from 'three';
 	import {
-		getCameraRoute,
 		getNode,
 		createCameraMotion,
 		createCameraMotionSample,
@@ -16,16 +15,20 @@
 	} from '@portfolio/camera-core';
 	import type { NavigationGraph } from '@portfolio/project-model';
 	import type { VisitorRuntimeState } from './visitor-runtime-state.svelte';
+	import { resolveVisitorCameraRoute } from './visitor-camera-route';
 	import type { LayoutBounds3 } from '@portfolio/layout-core';
 
 	let {
 		graph,
 		visitor,
-		bounds = null
+		bounds = null,
+		onCameraGap
 	}: {
 		graph: NavigationGraph;
 		visitor: VisitorRuntimeState;
 		bounds?: LayoutBounds3 | null;
+		/** Surfaces a typed handoff gap instead of silently re-routing. */
+		onCameraGap?: (message: string | null) => void;
 	} = $props();
 
 	const currentViewId = $derived(visitor.currentViewId);
@@ -118,6 +121,7 @@
 			cameraViewId = null;
 			activeMotion = null;
 			activeTargetViewId = null;
+			onCameraGap?.(null);
 			frameFor(null);
 			return;
 		}
@@ -125,16 +129,28 @@
 			cameraViewId = targetViewId;
 			activeMotion = null;
 			activeTargetViewId = null;
+			onCameraGap?.(null);
 			frameFor(targetViewId);
 			return;
 		}
-		let route;
-		try {
-			route = getCameraRoute(cameraViewId, targetViewId, graph);
-		} catch {
+		const resolved = resolveVisitorCameraRoute({
+			fromViewId: cameraViewId,
+			toViewId: targetViewId,
+			invocation: visitor.currentInvocation ?? { kind: 'cut', viewId: targetViewId },
+			graph
+		});
+		if (resolved.kind === 'gap') {
+			// Camera owns how; it cannot invent a different connection. Settle on the
+			// requested View as a Cut and surface the gap rather than pathfinding.
+			cameraViewId = targetViewId;
+			activeMotion = null;
+			activeTargetViewId = null;
+			onCameraGap?.(resolved.reason);
+			frameFor(targetViewId);
 			return;
 		}
-		activeMotion = createCameraMotion(route, {
+		onCameraGap?.(null);
+		activeMotion = createCameraMotion(resolved.route, {
 			position: currentPosition,
 			target: currentTarget,
 			fov: motionSample.fov

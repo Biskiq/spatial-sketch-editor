@@ -49,6 +49,12 @@ import { PCFShadowMap } from 'three';
 			? null
 			: createVisitorRuntimeState({ program, options: experienceOptions })
 	);
+	let cameraGap = $state<string | null>(null);
+	const guideFreePresentations = $derived.by(() => {
+		if (visitorState === null) return [];
+		const stopPresentations = new Set(visitorState.program.stops.map((stop) => stop.presentationId));
+		return visitorState.program.presentations.filter((entry) => !stopPresentations.has(entry.id));
+	});
 	$effect(() => {
 		if (visitorState === null) return;
 		visitorState.reducedMotion = reducedMotion;
@@ -109,12 +115,29 @@ import { PCFShadowMap } from 'three';
 			<T.AmbientLight intensity={0.2} />
 			<T.DirectionalLight position={[2, 8, 5]} color="#c9d1df" intensity={0.7} />
 			{#if visitorState}
-				<VisitorCameraDirector graph={graph} visitor={visitorState} bounds={geometry.bounds ?? null} />
+				<VisitorCameraDirector
+					graph={graph}
+					visitor={visitorState}
+					bounds={geometry.bounds ?? null}
+					onCameraGap={(message) => (cameraGap = message)}
+				/>
 			{/if}
 			<VisitorLayoutShell {geometry} {presentation} textureScope={textureScope} />
 			<VisitorEntities scene={scene} {rooms} textureScope={textureScope} />
 		</Canvas>
 	</div>
+	{#if guideFreePresentations.length > 0}
+		<nav class="visitor-presentations" aria-label="Presentations">
+			{#each guideFreePresentations as entry (entry.id)}
+				<button type="button" onclick={() => visitorState?.selectPresentation(entry.id)}>
+					{entry.label}
+				</button>
+			{/each}
+		</nav>
+	{/if}
+	{#if cameraGap}
+		<p class="visitor-camera-gap" role="status">{cameraGap}</p>
+	{/if}
 	<div class="visitor-pill" role="status">
 		{#if mode === 'public'}
 			<span class="pill-label">PUBLISHED · {publicTitle}</span>
@@ -178,6 +201,41 @@ import { PCFShadowMap } from 'three';
 	}
 	.pill-exit:hover {
 		border-color: #c9a9ff;
+	}
+	.visitor-presentations {
+		position: absolute;
+		left: 0.75rem;
+		bottom: 0.75rem;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		z-index: 5;
+	}
+	.visitor-presentations button {
+		padding: 0.35rem 0.6rem;
+		border: 1px solid #635a6f;
+		border-radius: 999px;
+		background: rgb(5 5 8 / 82%);
+		color: #f4f0e9;
+		font: 600 0.72rem/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+		cursor: pointer;
+	}
+	.visitor-presentations button:hover {
+		border-color: #c9a9ff;
+	}
+	.visitor-camera-gap {
+		position: absolute;
+		left: 0.75rem;
+		bottom: 3rem;
+		max-width: 32rem;
+		margin: 0;
+		padding: 0.4rem 0.6rem;
+		border: 1px solid #a86b2a;
+		border-radius: 6px;
+		background: rgb(5 5 8 / 88%);
+		color: #f4d7a8;
+		font: 500 0.72rem/1.35 Inter, ui-sans-serif, system-ui, sans-serif;
+		z-index: 5;
 	}
 	.visitor-help {
 		position: absolute;

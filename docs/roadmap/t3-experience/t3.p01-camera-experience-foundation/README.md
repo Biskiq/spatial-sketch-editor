@@ -204,7 +204,10 @@ event. The first authoring surface does not wait for this phase's closure.
    removes all authored rows (`projects`, `project_versions`, `save_receipts`, `assets`,
    `publications`, `releases`) and installs a schema that structurally admits only the F2 envelope,
    so a pre-epoch writer fails. `users` and `schema_migrations` are kept. Unreferenced R2 bytes are
-   purged afterwards, idempotently. Before any purge, verify that the bucket/prefix is application-owned (configured, and holding only keys this API writes); purge only keys under that verified prefix that no remaining row references, and never delete an object outside it or of unknown provenance.
+   purged afterwards, idempotently. A purge requires the active `005` epoch and a configured
+   deployment namespace, verifies that every visible key sits under `projects/<namespace>/` and
+   only uses the shape this API writes, and deletes only unreferenced keys under it. A shared
+   bucket, a foreign namespace or an object of unknown provenance refuses the purge.
 3. **One source epoch.** API admission, editor boot, import, session drafts and Save accept only
    declared F2 versions. Old clients, files and drafts, mixed roots and unknown versions fail with
    typed version diagnostics. There is no sniffing, fallback, dual write or writable flag. New
