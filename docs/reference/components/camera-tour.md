@@ -90,19 +90,17 @@ owns their disclosure, information homes and Outside/Through/Plan postures. The
 owns truthful observer/target/framing representation, grips and precision feedback;
 it introduces no orbit constraint or additional Camera operation.
 
-### Order: current encoding, and the cutover that retires it
+### Order: Experience Guide order only
 
 Camera owns Views, connectivity/routes, framing/projection and movement
 evaluation. Experience owns Presentations, Stops, Guide editorial
 order/continuation/Gates and Camera invocation context. Legacy node
-`nextNodeId`/`previousNodeId` order, `holdSeconds`, `detourOfNodeId` and
-`lockInteraction` remain **current Scene-encoded behavior only** — the new product
-has no writer for them after #115, and they are **RETIRE AT T3** in the Camera/Experience
-cutover (implementation-plan §5.1), whose concrete dependency is the retained
-visitor guided runtime consuming that order. A read-only compatibility adapter may
-serve migration, but no new writable node order may coexist with Experience Guide
-order. Exploration releases guided Camera control; rejoin evaluates from the
-current pose and leaves autoplay paused. The exact detour explanation lifecycle is
+`nextNodeId`/`previousNodeId` order, node `holdSeconds`, `detourOfNodeId` and
+`lockInteraction` were **retired by `T3.P01.S04`**: the Scene/Camera types and
+codec no longer admit them, their flow-order exports are gone and the converter
+was removed. No writable node order coexists with Experience Guide order.
+Exploration releases guided Camera control; rejoin evaluates from the current
+pose and leaves autoplay paused. The exact detour explanation lifecycle is
 reserved for Prototype V2.
 
 ### Envelope, guards and framing (current kernel behavior)

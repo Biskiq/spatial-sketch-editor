@@ -1,4 +1,4 @@
-import type { AcceptedRevision, ProjectValidationResult } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model';
 import { UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 
 import type { DatabaseClient, DatabasePool, DatabaseQueryResult } from './database.js';
@@ -197,12 +197,4 @@ function parseJsonb(value: unknown): unknown {
 	} catch {
 		throw new Error('Database row contained invalid JSON');
 	}
-}
-
-export function projectValidationError(result: ProjectValidationResult): string {
-	return result.success
-		? ''
-		: result.issues[0]
-			? `${result.issues[0].path}: ${result.issues[0].message}`
-			: 'Invalid project document';
 }

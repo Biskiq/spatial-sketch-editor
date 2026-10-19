@@ -25,9 +25,10 @@ function store(keys) {
 	};
 }
 
-function pool(referenced) {
+function pool(referenced, { releases = [] } = {}) {
 	return {
-		async query() {
+		async query(text) {
+			if (text.includes('FROM releases')) return { rows: releases };
 			return { rows: referenced.map((objectKey) => ({ objectKey })) };
 		}
 	};
@@ -42,6 +43,15 @@ test('deletes only unreferenced application-owned keys and is idempotent', async
 	const second = await purgeUnreferencedObjects(pool([KEY_A]), r2);
 	assert.deepEqual(second, { listed: 1, referenced: 1, deleted: 0 });
 	assert.deepEqual(r2.deleted, [KEY_B]);
+});
+
+test('refuses while a release still pins object bytes and deletes nothing', async () => {
+	const r2 = store([KEY_A, KEY_B]);
+	await assert.rejects(
+		() => purgeUnreferencedObjects(pool([], { releases: [{ exists: true }] }), r2),
+		(error) => error instanceof R2PurgeRefusal && /releases still reference/.test(error.message)
+	);
+	assert.deepEqual(r2.deleted, []);
 });
 
 test('refuses a bucket holding any foreign object and deletes nothing', async () => {

@@ -29,7 +29,6 @@
 	} = $props();
 
 	const currentViewId = $derived(visitor.currentViewId);
-	const hasAuthoredStart = $derived(currentViewId !== null);
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
 
 	const motionSample = createCameraMotionSample();
@@ -37,14 +36,27 @@
 	const currentTarget = motionSample.target;
 	let cameraViewId: string | null = null;
 
+	function setNeutralFrame() {
+		currentPosition.set(0, 8, 12);
+		currentTarget.set(0, 1, 0);
+		motionSample.fov = VISITOR_CAMERA_PROJECTION.fov;
+	}
+
 	function frameFor(viewId: string | null) {
 		if (viewId === null) {
-			currentPosition.set(0, 8, 12);
-			currentTarget.set(0, 1, 0);
-			motionSample.fov = VISITOR_CAMERA_PROJECTION.fov;
+			setNeutralFrame();
 			return;
 		}
-		const node = getNode(viewId, graph);
+		// The Scene-derived graph and the F.2 Camera unit are different sources
+		// during the cutover. A missing View must degrade to the neutral frame, not
+		// throw inside a reactive effect and blank the whole surface.
+		let node;
+		try {
+			node = getNode(viewId, graph);
+		} catch {
+			setNeutralFrame();
+			return;
+		}
 		currentPosition.set(...node.position);
 		currentTarget.set(...node.cameraTarget);
 		motionSample.fov = node.fov;
@@ -195,7 +207,8 @@
 	}
 
 	onMount(() => {
-		if (!isAuthoredMode()) return;
+		// Register unconditionally: the surface starts neutral and enters after a
+		// parent mount, so an authored-mode guard here would never attach.
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.defaultPrevented) return;
 			const canvasEl = canvas as HTMLCanvasElement;

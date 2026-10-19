@@ -2,20 +2,22 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
 import { ConfigError, readConfig } from './config.js';
-import { createPool, sanitizeDatabaseError } from './database.js';
-import { createR2ObjectStore } from './object-store.js';
+import { createPool, sanitizeDatabaseError, type DatabasePool } from './database.js';
+import { createR2ObjectStore, type ObjectStore } from './object-store.js';
 import { purgeUnreferencedObjects, R2PurgeRefusal } from './r2-purge.js';
 
 /**
  * Owner-run activation step: purge object bytes left unreferenced by migration
- * 005. It refuses unless the bucket is application-owned and never touches a
- * key outside the API's own prefix.
+ * 005. It refuses unless the bucket is application-owned, no release row remains
+ * and every key sits outside the API's own prefix.
  */
 export async function main(): Promise<void> {
-	const config = readConfig();
-	const pool = createPool(config);
-	const store = createR2ObjectStore(config);
+	let pool: DatabasePool | undefined;
+	let store: ObjectStore | undefined;
 	try {
+		const config = readConfig();
+		pool = createPool(config);
+		store = createR2ObjectStore(config);
 		const result = await purgeUnreferencedObjects(pool, store);
 		console.log(
 			`[api] r2 purge complete (listed ${result.listed}, referenced ${result.referenced}, deleted ${result.deleted})`
@@ -29,8 +31,8 @@ export async function main(): Promise<void> {
 		}
 		process.exitCode = 1;
 	} finally {
-		await store.close?.();
-		await pool.end();
+		await store?.close?.();
+		await pool?.end();
 	}
 }
 

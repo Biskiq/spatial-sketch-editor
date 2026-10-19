@@ -43,6 +43,8 @@ BEGIN
 			ADD CONSTRAINT project_versions_unit_envelope_document
 			CHECK (
 				jsonb_typeof(document) = 'object'
+				AND document ? 'formatVersion'
+				AND jsonb_typeof(document -> 'formatVersion') = 'number'
 				AND document ->> 'formatVersion' = '1'
 				-- Key presence is explicit: a missing key makes `jsonb_typeof` NULL, and a
 				-- CHECK constraint accepts NULL. Without these predicates a pre-epoch

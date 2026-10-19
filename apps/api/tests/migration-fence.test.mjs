@@ -95,6 +95,48 @@ test('a pre-epoch document is refused even under the F.2 fence value', async () 
 	);
 });
 
+test('a missing, null, or non-number formatVersion is refused', async () => {
+	for (const [version, document] of [
+		[6, { ...envelope, formatVersion: undefined }],
+		[7, { ...envelope, formatVersion: null }],
+		[8, { ...envelope, formatVersion: '1' }]
+	]) {
+		await assert.rejects(
+			pool.query(
+				'INSERT INTO project_versions (project_id, version, source_format, document) VALUES ($1, $2, $3, $4)',
+				['fence-project', version, 'unit-envelope-v1', document]
+			),
+			{ code: '23514' }
+		);
+	}
+});
+
+test('two concurrent migration runners serialize and both finish cleanly', async () => {
+	const schema = `s04_race_${randomUUID().replaceAll('-', '')}`;
+	await admin.query(`CREATE SCHEMA ${schema}`);
+	const options = { connectionString: DATABASE_URL, connectionTimeoutMillis: 3000, options: `-c search_path=${schema}` };
+	const left = new Pool(options);
+	const right = new Pool(options);
+	try {
+		const results = await Promise.allSettled([runMigrations(left), runMigrations(right)]);
+		assert.deepEqual(
+			results.map((result) => (result.status === 'rejected' ? result.reason : 'fulfilled')),
+			['fulfilled', 'fulfilled']
+		);
+		const versions = await left.query('SELECT version FROM schema_migrations ORDER BY version');
+		assert.deepEqual(versions.rows.map((row) => row.version), [1, 2, 3, 4, 5]);
+		const fence = await left.query(
+			"SELECT is_nullable FROM information_schema.columns WHERE table_schema = $1 AND table_name = 'project_versions' AND column_name = 'source_format'",
+			[schema]
+		);
+		assert.deepEqual(fence.rows, [{ is_nullable: 'NO' }]);
+	} finally {
+		await left.end();
+		await right.end();
+		await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
+	}
+});
+
 test('a declared F.2 envelope is admitted', async () => {
 	await pool.query(
 		'INSERT INTO project_versions (project_id, version, source_format, document) VALUES ($1, $2, $3, $4)',

@@ -40,7 +40,7 @@ test('migration runner records a migration once and reapplying is a no-op', asyn
 	assert.ok(transactions.some(({ text }) => text.startsWith('SELECT pg_advisory_unlock')));
 });
 
-test('a second runner waits for the lock before touching the migration table', async () => {
+test('the lock is the runner\'s first query and is released on the same session', async () => {
 	const events = [];
 	let lockHeld = false;
 	const client = {

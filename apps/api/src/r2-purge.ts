@@ -8,7 +8,10 @@
  * 2. the configured bucket must hold **only** keys this API writes
  *    (`projects/<project>/assets/<uuid>/<hex32>`), so a shared or foreign bucket
  *    refuses instead of deleting someone else's object;
- * 3. only keys no remaining `assets` row references are deleted, and only under
+ * 3. no `releases` row may remain: a release manifest also pins object keys, so
+ *    a purge before migration 005 refuses rather than deleting live published
+ *    bytes that only `releases` references;
+ * 4. only keys no remaining `assets` row references are deleted, and only under
  *    the verified application prefix.
  *
  * A purge that cannot prove (1) and (2) deletes nothing.
@@ -65,6 +68,15 @@ export async function purgeUnreferencedObjects(
 	store: ObjectStore
 ): Promise<R2PurgeResult> {
 	const { keys } = await verifyApplicationOwnedObjects(store);
+	// AM-9 activation order: migration 005 removes every release row before this
+	// runs. A release manifest also pins object keys, so refusing here keeps the
+	// command safe when an operator runs it before the reset.
+	const releases = (await pool.query('SELECT 1 FROM releases LIMIT 1')) as { rows?: unknown[] };
+	if ((releases.rows ?? []).length > 0) {
+		throw new R2PurgeRefusal(
+			'R2 purge requires the clean-source reset: releases still reference object bytes'
+		);
+	}
 	const result = (await pool.query(
 		'SELECT object_key AS "objectKey" FROM assets WHERE object_key IS NOT NULL'
 	)) as { rows?: Array<{ objectKey?: unknown }> };

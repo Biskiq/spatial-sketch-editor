@@ -115,6 +115,34 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.state.stopId).toBe('stop-2');
 	});
 
+	it('accumulates fractional frame milliseconds so a hold actually expires', () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					holdSeconds: 0.5,
+					continuation: { kind: 'sequence-next' }
+				},
+				{
+					id: 'stop-2',
+					presentationId: 'presentation-2',
+					invocation: { kind: 'cut', viewId: 'view-2' },
+					holdSeconds: null,
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		expect(visitor.state.phase).toBe('holding');
+		// 60 fps deltas are fractional; each call alone is below one millisecond of
+		// integer clock and used to be discarded.
+		for (let frame = 0; frame < 31; frame += 1) visitor.tick(1000 / 60);
+		expect(visitor.state.stopId).toBe('stop-2');
+		expect(visitor.state.phase).toBe('ready');
+	});
+
 	it('treats an empty program as an explicit neutral state', () => {
 		const visitor = runtime({ entryStopId: null, stops: [] });
 		visitor.enter();

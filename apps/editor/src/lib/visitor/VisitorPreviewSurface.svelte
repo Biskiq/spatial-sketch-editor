@@ -53,6 +53,11 @@ import { PCFShadowMap } from 'three';
 		if (visitorState === null) return;
 		visitorState.reducedMotion = reducedMotion;
 	});
+	// A program may arrive after the surface mounts, and a changed program creates
+	// a fresh neutral runtime. Enter every instance, not only the first.
+	$effect(() => {
+		visitorState?.enter();
+	});
 
 	const presentation = $derived.by(() => {
 		const record: Record<string, typeof neutralVisitorRoomPresentation> = {};
@@ -75,7 +80,6 @@ import { PCFShadowMap } from 'three';
 	const publicTitle = $derived((title ?? '').trim() || 'Published project');
 
 	onMount(() => {
-		visitorState?.enter();
 		// Exercise the detached read-only resolver so preview-local URLs stay
 		// alive through the surface lifetime. When a release `textureScope`
 		// is supplied, 3D material loading uses that scoped resolver with

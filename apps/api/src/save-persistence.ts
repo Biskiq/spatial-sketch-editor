@@ -98,7 +98,7 @@ export async function saveAcceptedSource(
  *
  * This is the seam the F.2 unit Save contract uses. It is never called by a
  * route: the route imports `saveAcceptedSource` alone, whose handler list is the
- * current source.
+ * one admitted unit source.
  */
 export async function saveAcceptedSourceWithHandler(
 	pool: DatabasePool,
@@ -220,6 +220,29 @@ RETURNING id`,
 				(readNullableString(row.savedSourceContentId) !== prepared.sourceContentId ||
 					readNullableString(row.savedFullSourceHash) !== prepared.fullSourceHash)
 			) {
+				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
+			}
+			// The saved base is only the latest revision. Revision identity is durable,
+			// so reuse against an older receipt must refuse too: A -> B -> A with new
+			// contents would otherwise store revision A twice with different bytes.
+			const reused = await queryRows<{ id: unknown }>(
+				db,
+				`SELECT 1 AS id
+FROM save_receipts
+WHERE project_id = $1
+	AND accepted_revision ->> 'projectId' = $2
+	AND accepted_revision ->> 'revisionId' = $3
+	AND (source_content_id <> $4 OR full_source_hash <> $5)
+LIMIT 1`,
+				[
+					capture.projectId,
+					capture.acceptedRevision.projectId,
+					capture.acceptedRevision.revisionId,
+					prepared.sourceContentId,
+					prepared.fullSourceHash
+				]
+			);
+			if (reused[0]) {
 				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
 			}
 		}

@@ -198,7 +198,16 @@ test('Unpublish of a never-published project is an honest not-found', async () =
 });
 
 test('every public read is an honest not-found, including a prior /p/ ID', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-pub-public');
+	const projectId = track(nextProjectId());
+	await saveDoc(projectId, cookie);
 	const publicationId = randomUUID();
+	// A retained publication row is exactly the shape a prior `/p/` link names;
+	// the gap must not serve it from authored data.
+	await pool.query(
+		'INSERT INTO publications (project_id, public_id, active_version) VALUES ($1, $2, 1)',
+		[projectId, publicationId]
+	);
 	const document = await app.inject({ method: 'GET', url: `/publications/${publicationId}` });
 	assert.equal(document.statusCode, 404);
 	assert.equal(document.headers['cache-control'], 'no-store');

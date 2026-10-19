@@ -215,6 +215,44 @@ test('project body parsing keeps malformed, invalid, mismatched and oversized re
 	assert.equal(count.rows[0].count, 0);
 });
 
+test('asset routes require an F.2 project version, not merely an owned row', async () => {
+	const owner = 'google:s04-asset-f2';
+	await pool.query('INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [owner]);
+	const bareId = track(nextProjectId());
+	await pool.query('INSERT INTO projects (id, owner_id, name) VALUES ($1, $2, $3)', [
+		bareId,
+		owner,
+		'Pre-epoch asset project'
+	]);
+	const cookie = await sessionCookie(app, owner);
+	const requests = [
+		{ method: 'POST', url: `/projects/${bareId}/assets`, payload: { name: 'blocked.png' } },
+		{ method: 'GET', url: `/projects/${bareId}/assets` },
+		{ method: 'GET', url: `/projects/${bareId}/assets/${randomUUID()}` }
+	];
+	for (const request of requests) {
+		const response = await app.inject({ ...request, headers: { cookie } });
+		assert.equal(response.statusCode, 404, `${request.method} ${request.url}`);
+	}
+
+	// The same queries admit a project that actually carries an F.2 version.
+	const f2Id = track(nextProjectId());
+	const saved = await save(f2Id, cookie, await saveRequestBody(projectDocument('F2 assets', { id: f2Id })));
+	assert.equal(saved.statusCode, 200, JSON.stringify(saved.json()));
+	const registered = await app.inject({
+		method: 'POST',
+		url: `/projects/${f2Id}/assets`,
+		headers: { cookie },
+		payload: { name: 'texture.png' }
+	});
+	assert.equal(registered.statusCode, 201, JSON.stringify(registered.json()));
+	assert.equal(registered.json().importState, 'pending');
+	const listed = await app.inject({ method: 'GET', url: `/projects/${f2Id}/assets`, headers: { cookie } });
+	assert.equal(listed.statusCode, 200);
+	assert.deepEqual(listed.json().assets.map((asset) => asset.id), [registered.json().id]);
+	assert.equal(listed.json().assets[0].importState, 'pending');
+});
+
 test('project payload just under 2 MiB is accepted', async () => {
 	const projectId = track(nextProjectId());
 	const cookie = await sessionCookie(app, 'google:s02-owner-1');

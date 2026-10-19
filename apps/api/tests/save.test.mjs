@@ -408,6 +408,37 @@ test('a saved revision identity cannot be reused for different contents', async 
 	assert.equal((await counts(projectId)).versions, 1);
 });
 
+test('an older saved revision identity also cannot be reused for different contents', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
+	const { projectId, request, acknowledgement } = await createProject(
+		cookie,
+		projectDocument('Revision A', { id: nextProjectId() })
+	);
+	const revisionA = request.capture.acceptedRevision.revisionId;
+	const revisionB = `revision-${randomUUID()}`;
+	const second = await save(
+		projectId,
+		cookie,
+		await saveRequestBody(projectDocument('Revision B', { id: projectId }), {
+			precondition: { kind: 'expected-saved-base', token: acknowledgement.savedBaseToken },
+			revisionId: revisionB
+		})
+	);
+	assert.equal(second.statusCode, 200, JSON.stringify(second.json()));
+
+	const reused = await save(
+		projectId,
+		cookie,
+		await saveRequestBody(projectDocument('Revision A with new contents', { id: projectId }), {
+			precondition: { kind: 'expected-saved-base', token: second.json().savedBaseToken },
+			revisionId: revisionA
+		})
+	);
+	assert.equal(reused.statusCode, 400);
+	assert.equal(reused.json().error.code, 'revision-reuse');
+	assert.equal((await counts(projectId)).versions, 2);
+});
+
 test('a pre-epoch writer is refused structurally by the schema fence', async () => {
 	const owner = 'google:s04-save-pre-epoch';
 	await pool.query('INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [owner]);
@@ -425,13 +456,18 @@ test('a pre-epoch writer is refused structurally by the schema fence', async () 
 			]),
 		(error) => error.code === '23502'
 	);
-	await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
 
-	// An old reader also fails: the same row cannot express the epoch, so the
-	// project is not listed or loaded rather than misread.
+	// The owned row still exists and carries no F.2 version. An old reader must
+	// not fall back to it: the project is absent from the list and the load is a
+	// 404 because the version join finds nothing, not because the row was deleted.
 	const cookie = await sessionCookie(app, owner);
+	const existing = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
+	assert.equal(existing.rows.length, 1);
 	const missing = await app.inject({ method: 'GET', url: `/projects/${projectId}`, headers: { cookie } });
 	assert.equal(missing.statusCode, 404);
+	const listed = await app.inject({ method: 'GET', url: '/projects', headers: { cookie } });
+	assert.equal(listed.statusCode, 200);
+	assert.equal(listed.json().projects.some((project) => project.id === projectId), false);
 });
 
 test('the unconditioned old-client body refuses with no write', async () => {

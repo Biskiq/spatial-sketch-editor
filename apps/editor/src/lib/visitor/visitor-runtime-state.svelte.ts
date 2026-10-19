@@ -30,6 +30,8 @@ export class VisitorRuntimeState {
 	state: ExperienceRunState;
 
 	private readonly interpreter: ReturnType<typeof createExperienceInterpreter>;
+	/** Fractional frame milliseconds carried until they form one interpreter tick. */
+	private pendingMilliseconds = 0;
 
 	constructor({ program, options }: VisitorRuntimeInput) {
 		this.program = program;
@@ -53,11 +55,18 @@ export class VisitorRuntimeState {
 		this.state = this.interpreter.navigate(stopId).state;
 	}
 
-	/** Advance the explicit integer clock; holds auto-continue on expiry. */
+	/** Advance the explicit clock; holds auto-continue on expiry. */
 	tick(milliseconds: number) {
 		if (!Number.isFinite(milliseconds) || milliseconds <= 0) return;
+		// The interpreter's clock is integer milliseconds. A renderer supplies
+		// `delta * 1000` (≈16.67 at 60 fps), so accumulate and dispatch whole
+		// milliseconds rather than dropping every fractional frame.
+		this.pendingMilliseconds += milliseconds;
+		const wholeMilliseconds = Math.floor(this.pendingMilliseconds);
+		if (wholeMilliseconds <= 0) return;
+		this.pendingMilliseconds -= wholeMilliseconds;
 		const wasHolding = this.state.phase === 'holding';
-		this.state = this.interpreter.tick(milliseconds).state;
+		this.state = this.interpreter.tick(wholeMilliseconds).state;
 		// A hold is time, not a prompt: when the authored hold expires the run
 		// continues itself. A Gate is different and stays blocked until the
 		// visitor's explicit Continue.
