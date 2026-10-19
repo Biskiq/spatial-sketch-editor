@@ -58,20 +58,36 @@ Fix options   1) Have the panel rebuild its task services on `onAdaptersChanged`
               cheapest); 2) make `active()` compare liveness rather than a captured generation and
               let the facade refuse per operation (wider blast radius). Do **not** let the instrument
               re-acquire services from internals — that would give the adapter a second authority.
-Fix          Both halves, host-side, in `stage-facade.ts`:
-             1) the guard no longer captures `writerGeneration()`. It names the contributed task
-                (`adapterId` + contribution id + task kind) and answers live only while that task is
-                still the session's open task and this binding still owns it; close, task replacement,
-                replacement and disposal refuse per operation as before;
+Fix          Host-side, in `stage-facade.ts` — **option 2 plus a close notification**, not the
+             plan's prescribed option 1. Option 1 (rebuild the panel's services on every
+             `onAdaptersChanged`) cannot fix this alone: the same signal also fires for
+             registration, selection and re-binds, so the panel would re-acquire services on
+             events that do not end its authority, and an install that closes the task would still
+             need the panel to distinguish “task gone” from “content changed”. The lifetime named
+             below is the narrower, truthful condition:
+             1) the guard no longer captures `writerGeneration()`. It captures the **task object**
+                it was opened for and answers live only while `session.task()` is that same object
+                and this binding still owns the contributed task (`adapterId` + contribution id).
+                A replacement, `Resume`, same-contribution re-open, close or disposal is a
+                different (or absent) task and refuses per operation as before — the generation
+                guard's protection is preserved, not weakened;
              2) an accepted install that **closes the open task** notifies the contribution surface
                 synchronously (an install is a command, not a derivation), so a panel showing that
                 task learns it is gone and rebuilds; a content change with no closed task keeps the
                 deferred, read-discovered rebuild. The instrument still holds only the services it
                 was handed.
+             Consequence: a content change that keeps the task open preserves the panel's authority
+             (its `Begin` is accepted); a task replacement revokes it and the adapter reopens its
+             task. The consuming panel must therefore treat the synchronous close signal as
+             “reopen or leave”, which is what the route's `syncContributedTask` mirror does.
 Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
-             - “accepts Begin after a writer-generation bump while a contributed instrument stays
-               mounted” (real adapter view services; `session.openTask` is the bump; the accept
-               installs);
+             - “re-provisions usable services after an accepted install closed the task” (a real
+               adapter view; an accepted install closes the task, the old services refuse
+               `inactive-task`, and reopening the contributed task hands out services whose
+               `Begin` installs);
+             - “invalidates the previous services when the contributed task is replaced”
+               (`session.openTask` replaces the task object; the old services refuse and the
+               facade's current services install);
              - “notifies the contribution surface synchronously when an accepted install closes the
                open task” (asserts the signal and the closed task immediately after the command);
              - “refuses the same task-scoped services after the contributed task has ended”

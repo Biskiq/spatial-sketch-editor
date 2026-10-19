@@ -633,18 +633,15 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 	});
 
 	/**
-	 * TD-8 — a task's scoped services must not go stale when a writer generation is
-	 * bumped underneath a mounted panel.
-	 *
-	 * The probe contributes a real `view` so the facade wraps its services exactly as
-	 * it does for the Scene and Layout instruments. `session.openTask` is the
-	 * generation bump the defect named (it cancels task writers and replaces the
-	 * open task with the same contributed task); the contribution owner is unchanged,
-	 * so the panel is still the mounted panel. The old code guarded on the captured
-	 * generation and refused `Begin`; liveness plus task identity must accept it.
+	 * TD-8 — the panel's services belong to one task instance. An accepted install
+	 * closes that task, so the services it handed out must refuse, and reopening the
+	 * contributed task must hand out services that work again. Before the fix the
+	 * panel kept a captured writer generation and refused `Begin` after Undo/Redo;
+	 * now the closed task is announced synchronously and the reopened task is a new
+	 * lifetime.
 	 */
-	it('accepts Begin after a writer-generation bump while a contributed instrument stays mounted', async () => {
-		const { facade, snapshot, host, objectId } = await mount();
+	it('re-provisions usable services after an accepted install closed the task', async () => {
+		const { facade, host, objectId } = await mount();
 		settle(facade);
 		const probe = () => null;
 		const registration = mountStageAdapter(facade, host, (port) => ({
@@ -665,27 +662,111 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
 			throw new Error('TD-8 probe contributed no instrument services');
 		}
-		const services = opened.instrument.view.services;
-		const before = facade.session.writerGeneration();
-		expect(
-			facade.session.openTask({ kind: 'td8-task', label: 'TD-8 probe', targetRef: null })
-		).toBe(true);
-		expect(facade.session.writerGeneration()).toBeGreaterThan(before);
+		const before = opened.instrument.view.services;
+		const accepted = await host.accept(
+			moveIntent(objectId, host.acceptedRevision().revisionId, facade.snapshot().sourceContentId, 'op-td8-close', [2, 0, 1])
+		);
+		expect(accepted.kind).toBe('installed');
+		expect(facade.session.task()).toBeNull();
 
-		// Begin is the same writer the panel's button invokes. It must be accepted
-		// with the services it already holds — no panel rebuild, no re-acquisition.
-		const outcome = await services.authoring.accept(
+		// The services the old panel holds are not a live task's authority.
+		const stale = await before.authoring.accept(
 			proofIntent({
 				kind: PROOF_LAYOUT_TRANSFORM_KIND,
-				operationId: 'op-td8',
-				expectedRevision: snapshot.acceptedRevision.revisionId,
+				operationId: 'op-td8-stale',
+				expectedRevision: facade.snapshot().acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: snapshot.sourceContentId,
-				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
-				payload: { objectId, position: [2, 0, 1] }
+				contentRevision: facade.snapshot().sourceContentId,
+				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				payload: { objectId, position: [3, 0, 1] }
 			})
 		);
-		expect(outcome.kind).toBe('installed');
+		expect(stale).toMatchObject({ kind: 'refused', code: 'inactive-task' });
+
+		// Reopening the contributed task is the recovery the creator actually takes:
+		// it must hand out services for the new task instance, and Begin must install.
+		// The install disposed the probe's binding, so the next frame rebuilds it.
+		settle(facade);
+		const reopened = facade.openContributedTask('td8-task');
+		if (reopened.kind !== 'opened' || reopened.instrument?.view === undefined) {
+			throw new Error(`TD-8 probe did not reopen: ${JSON.stringify(reopened)}`);
+		}
+		const after = await reopened.instrument.view.services.authoring.accept(
+			proofIntent({
+				kind: PROOF_LAYOUT_TRANSFORM_KIND,
+				operationId: 'op-td8-reopened',
+				expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+				projectId: FIXTURE_PROJECT_ID,
+				contentRevision: facade.snapshot().sourceContentId,
+				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				payload: { objectId, position: [4, 0, 1] }
+			})
+		);
+		expect(after.kind).toBe('installed');
+		registration.dispose();
+		facade.dispose();
+	});
+
+	/**
+	 * Replacement is not a generation bump to ignore: the old task object is gone, so
+	 * the services handed to the previous panel must refuse, while the services the
+	 * facade provides for the new task instance accept.
+	 */
+	it('invalidates the previous services when the contributed task is replaced', async () => {
+		const { facade, host, objectId } = await mount();
+		settle(facade);
+		const probe = () => null;
+		const registration = mountStageAdapter(facade, host, (port) => ({
+			id: 'td8-replace-probe',
+			bind: () => ({
+				tasks: [{ id: 'td8-replace', taskKind: 'td8-replace', label: 'TD-8 replacement probe' }],
+				instrument: () => ({
+					summary: 'TD-8 replacement probe',
+					view: {
+						component: probe as unknown as Component<{ services: StageAdapterServices }>,
+						services: port
+					}
+				})
+			})
+		}));
+		if (registration.kind !== 'registered') throw new Error('TD-8 replacement probe did not mount');
+		const opened = facade.openContributedTask('td8-replace');
+		if (opened.kind !== 'opened' || opened.instrument?.view === undefined) {
+			throw new Error('TD-8 replacement probe contributed no instrument services');
+		}
+		const previous = opened.instrument.view.services;
+		// A same-contribution re-open replaces the task object and bumps the generation.
+		expect(
+			facade.session.openTask({ kind: 'td8-replace', label: 'TD-8 replacement probe', targetRef: null })
+		).toBe(true);
+		expect(
+			await previous.authoring.accept(
+				proofIntent({
+					kind: PROOF_LAYOUT_TRANSFORM_KIND,
+					operationId: 'op-td8-replaced-stale',
+					expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+					projectId: FIXTURE_PROJECT_ID,
+					contentRevision: facade.snapshot().sourceContentId,
+					targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+					payload: { objectId, position: [5, 0, 1] }
+				})
+			)
+		).toMatchObject({ kind: 'refused', code: 'inactive-task' });
+		const current = facade.instrumentForTask('td8-replace');
+		if (current?.view === undefined) throw new Error('TD-8 replacement probe has no current services');
+		expect(
+			await current.view.services.authoring.accept(
+				proofIntent({
+					kind: PROOF_LAYOUT_TRANSFORM_KIND,
+					operationId: 'op-td8-replaced-current',
+					expectedRevision: facade.snapshot().acceptedRevision.revisionId,
+					projectId: FIXTURE_PROJECT_ID,
+					contentRevision: facade.snapshot().sourceContentId,
+					targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+					payload: { objectId, position: [6, 0, 1] }
+				})
+			)
+		).toMatchObject({ kind: 'installed' });
 		registration.dispose();
 		facade.dispose();
 	});

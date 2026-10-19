@@ -410,8 +410,14 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Length 5.000 m'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'up', css: lengthCss, evaluationId });
 		// Undo left the same depth at position 0; the pointer commit must move the
-		// position, not merely preserve a depth that was already there.
-		await eventually(() => mounted.host.history().position === 1);
+		// position, not merely preserve a depth that was already there. The
+		// coordinator bumps history *before* the Stage install, so wait for the
+		// installed geometry, not the cursor: a heavy parallel run otherwise reads
+		// the previous snapshot.
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs(frame.length - 5) < 1e-6;
+		});
 
 		const pointerLayout = acceptedLayout(mounted.facade);
 		// Same document within the contract's numeric tolerance. The pointer inverse
@@ -431,6 +437,47 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.session.gesture()).toBeNull();
 	});
 
+	it('shift-drags an endpoint to an exact angle and commits it once', async () => {
+		const mounted = await mount();
+		settle(mounted.facade, 2);
+		selectWall(mounted.facade, mounted.wallId);
+		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		const before = wallPoints(mounted.document, mounted.wallId);
+		const evaluationId = mounted.facade.evaluationId()!;
+		// A shift-drag on the end handle keeps the start fixed and names the angle
+		// of the line from that fixed endpoint, at the Wall's existing length.
+		const radians = (5 * Math.PI) / 180;
+		const target: readonly [number, number] = [
+			before.length * Math.cos(radians),
+			before.length * Math.sin(radians)
+		];
+		const endCss = stageCss(mounted.facade, before.end);
+		const angleCss = stageCss(mounted.facade, target);
+
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'move', css: angleCss, evaluationId, shift: true });
+		// The preview names the exact angle the planner solved, not a raw drag.
+		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Angle 5.0°'))).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'up', css: angleCss, evaluationId, shift: true });
+		await eventually(() => {
+			const frame = wallFrame(acceptedLayout(mounted.facade), mounted.wallId);
+			return frame !== null && Math.abs((frame.angleRadians * 180) / Math.PI - 5) < 1e-6;
+		});
+
+		const layout = acceptedLayout(mounted.facade);
+		const frame = wallFrame(layout, mounted.wallId);
+		if (frame === null) throw new Error('the accepted Wall lost its frame');
+		expect((frame.angleRadians * 180) / Math.PI).toBeCloseTo(5, 6);
+		expect(frame.length).toBeCloseTo(before.length, 9);
+		// The fixed endpoint did not move.
+		expect(frame.start[0]).toBeCloseTo(before.start[0], 9);
+		expect(frame.start[1]).toBeCloseTo(before.start[1], 9);
+		expect(layout.openings.some((opening) => opening.id === mounted.openingId)).toBe(true);
+		// One gesture, one history result.
+		expect(mounted.host.history()).toMatchObject({ depth: 2, position: 1 });
+		expect(mounted.session.gesture()).toBeNull();
+	});
+
 	it('translates the body rigidly from the pointer delta', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);
@@ -445,7 +492,10 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		mounted.facade.pointerIntent({ phase: 'move', css: shifted, evaluationId });
 		expect(mounted.facade.overlays().some((marker) => marker.label.includes('Move ΔX'))).toBe(true);
 		mounted.facade.pointerIntent({ phase: 'up', css: shifted, evaluationId });
-		await eventually(() => mounted.host.history().depth === 2);
+		await eventually(() => {
+			const points = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
+			return Math.abs(points.start[0] - (before.start[0] + 0.5)) < 1e-5;
+		});
 		const after = wallPoints(acceptedLayout(mounted.facade), mounted.wallId);
 		expect(after.start[0]).toBeCloseTo(before.start[0] + 0.5, 5);
 		expect(after.start[1]).toBeCloseTo(before.start[1] + 0.5, 5);

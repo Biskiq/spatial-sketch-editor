@@ -1074,18 +1074,31 @@
 		endGesture();
 	}
 
+	/**
+	 * Tell an adapter drag the press was interrupted, then drop it.
+	 *
+	 * The adapter owns its own candidate and baseline; ending only the host's
+	 * gesture would leave it showing (and able to commit) a proposal from a press
+	 * the creator never finished. The explicit `cancel` is the same one a real
+	 * pointer cancel sends, so Escape, cancel-on-reading-change and capture loss
+	 * all converge on one adapter path.
+	 */
+	function cancelAdapterDrag(event: PointerEvent): void {
+		const stage = facade;
+		const id = stage?.evaluationId() ?? null;
+		drag = null;
+		if (stage !== null && id !== null) {
+			stage.pointerIntent({ phase: 'cancel', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+		}
+	}
+
 	function onPointerCancel(event: PointerEvent): void {
 		// The browser took the pointer back (touch interruption, a system gesture, the
 		// window losing focus). Without this the lease would stay held and the next
 		// stray move would pan with samples from a gesture the creator never finished.
 		if (!press.abort(event.pointerId)) return;
 		if (drag?.mode === 'adapter') {
-			const stage = facade;
-			const id = stage?.evaluationId() ?? null;
-			drag = null;
-			if (stage !== null && id !== null) {
-				stage.pointerIntent({ phase: 'cancel', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
-			}
+			cancelAdapterDrag(event);
 			return;
 		}
 		endGesture();
@@ -1096,6 +1109,11 @@
 		// is still owed its drag decision. Losing it while the press is live is an
 		// interruption instead. A non-owning pointer's capture is not this gesture.
 		if (!press.ownsPointer(event.pointerId)) return;
+		if (drag?.mode === 'adapter') {
+			cancelAdapterDrag(event);
+			press.abort(event.pointerId);
+			return;
+		}
 		if (drag !== null) abortGesture();
 		else endGesture();
 	}

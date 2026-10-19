@@ -1548,22 +1548,26 @@ export function createStageFacade(input: {
 				if (!content?.view) return content;
 				const services = content.view.services;
 				// **TD-8.** These services belong to the *contributed task instance*, not to
-				// a writer generation. A generation is deliberately bumped by every
-				// accepted install, history command, lens change and task replacement, so
+				// a writer generation. A generation is bumped by every task lifecycle
+				// change (open, close, resume, lens change, accepted install), so
 				// capturing it here made a mounted panel keep a value that was stale by
-				// design: after Undo/Redo the next `Begin` refused `stale-epoch` until the
-				// panel happened to rebuild. Liveness is the contract the instrument
-				// actually needs — this contributed task is still the session's open task
-				// and this binding still owns it — and the facade already refuses each
-				// operation after close, replacement or disposal. Nothing here re-acquires
-				// host internals; the panel keeps the services it was handed.
-				const taskOwner = { adapterId: entry.adapterId, taskId: entry.id, kind: entry.taskKind };
+				// design: after Undo/Redo the next `Begin` refused `stale-epoch`. The
+				// lifetime the instrument actually needs is the task object it was opened
+				// for: the same open task means the same authority, a replacement, reopen,
+				// Resume, close or install is a different (or absent) task and refuses.
+				// The facade already refuses each operation after those transitions, and a
+				// closed task is announced synchronously (see `installAccepted`), so the
+				// panel rebuilds instead of holding services that can no longer act.
+				// Nothing here re-acquires host internals; the panel keeps what it was
+				// handed.
+				const openedFor = session.task();
+				const taskOwner = { adapterId: entry.adapterId, taskId: entry.id };
 				const active = () =>
+					openedFor !== null &&
 					isLive() &&
+					session.task() === openedFor &&
 					contributedTaskOwner?.adapterId === taskOwner.adapterId &&
-					contributedTaskOwner.taskId === taskOwner.taskId &&
-					session.task() !== null &&
-					session.task()?.kind === taskOwner.kind;
+					contributedTaskOwner.taskId === taskOwner.taskId;
 				return { ...content, view: { ...content.view, services: {
 					stage: { ...services.stage,
 						setSelection: (value) => active() ? setSelection(value) : { kind: 'refused', code: 'inactive-task', message: 'Resume the task before selecting.' },

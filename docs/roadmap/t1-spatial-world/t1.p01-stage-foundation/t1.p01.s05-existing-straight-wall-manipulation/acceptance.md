@@ -13,12 +13,12 @@ nothing here claims readiness or acceptance.
 
 | Area | Change | Evidence |
 | --- | --- | --- |
-| TD-8 (first increment, ruling C5) | The task-scoped instrument services no longer capture a writer generation. `instrumentForTask` guards on **live task identity** (the contributed task is still the session's open task and this binding still owns it), so an accepted install/history command cannot make a mounted panel refuse `Begin`. An install that closes the open task also notifies the contribution surface synchronously, so a panel showing that task learns it is gone. Close, replacement, task replacement and disposal still refuse per operation. | `tests/lib/authoring/stage-host-acceptance.test.ts`: “accepts Begin after a writer-generation bump while a contributed instrument stays mounted”; “refuses the same task-scoped services after the contributed task has ended”; “notifies the contribution surface synchronously when an accepted install closes the open task” |
+| TD-8 (first increment, ruling C5) | The task-scoped instrument services no longer capture a writer generation; they capture the **task object** they were opened for. `instrumentForTask` answers live only while `session.task()` is that same object and the binding still owns the contributed task, so a content install that keeps the task open cannot make a mounted panel refuse `Begin`, while replacement, `Resume`, same-contribution re-open, close and disposal revoke the old services (`inactive-task`). An install that closes the open task notifies the contribution surface synchronously, so a panel showing that task learns it is gone; reopening the contributed task provides fresh services. | `tests/lib/authoring/stage-host-acceptance.test.ts`: “re-provisions usable services after an accepted install closed the task”; “invalidates the previous services when the contributed task is replaced”; “refuses the same task-scoped services after the contributed task has ended”; “notifies the contribution surface synchronously when an accepted install closes the open task” |
 | Exact length | `layout-wall-length` wraps the retained `planExactWallLength`; the payload carries one explicit `fixed: 'start' | 'end'`. | `tests/lib/authoring/layout-wall-manipulation.test.ts`: “honours the explicit fixed endpoint and writes exactly one history entry”; “registers one planner per Wall operation and refuses bad payloads and wrong addressees” |
 | Exact angle | `layout-wall-angle` wraps `planExactWallAngle`; the intent carries canonical `atan2(z, x)` **radians**, the Dimensions field displays and accepts degrees. | “sets an exact angle in degrees and preserves the Wall length and identity” |
 | Rigid translation | `layout-wall-move` wraps `planRigidWallMove`; both deltas are one intent and one history entry, and the typed deltas return to zero after acceptance. | “translates rigidly from both deltas as one intent, then clears the deltas” |
 | Dimensions surface | A selected straight Wall gains Length, Angle (degrees), Move ΔX and Move ΔZ alongside the S04 fields, plus an explicit Start/End fixed-endpoint choice. A curved Wall keeps its S04 scalar fields and gains none of the straight-only ones. | “offers the Dimensions instrument with the Wall manipulation fields only for a straight Wall” |
-| Pointer handles | The Layout adapter claims a press only while its Dimensions task owns it: endpoint drag = length (opposite endpoint fixed), shift-drag = angle, body drag = rigid translation. Preview is the retained planner's candidate from an immutable baseline; release commits once through the same `wallManipulationIntent`; Esc, `cancel`, task close, replacement and capture loss cancel with none. | “commits the same document as the typed length, with one history entry”; “translates the body rigidly from the pointer delta”; “cancels with no document change and releases the gesture lease”; “cannot pick through an inactive helper”; “prefers a nearby endpoint over the body and keeps the other endpoint fixed” |
+| Pointer handles | The Layout adapter claims a press only while its Dimensions task owns it: endpoint drag = length (opposite endpoint fixed), shift-drag = angle, body drag = rigid translation. Preview is the retained planner's candidate from an immutable baseline; release commits once through the same `wallManipulationIntent`; Esc, an adapter `cancel`, task close, replacement, pointer cancel and capture loss cancel with no change. The route sends captured-loss adapter drags through the same explicit `cancel` as a pointer cancel (`cancelAdapterDrag`), not only through the host lease release. | “commits the same document as the typed length, with one history entry”; “shift-drags an endpoint to an exact angle and commits it once”; “translates the body rigidly from the pointer delta”; “cancels with no document change and releases the gesture lease”; “cannot pick through an inactive helper”; `stage-shell-composition.test.ts`: “holds the gesture contract at the route: refusals and every ending release once” (capture loss reaches the adapter cancel) |
 | Reading flip | A changed evaluation id mid-gesture ends the writer **without a commit**, preserves the last explicit parameter as a paused proposal named in the overlay, and refuses the stale pointer-up. | “pauses on a reading flip, keeps the proposal, and never commits on the stale up” |
 | Shared-Junction invalidity | A candidate that folds the Wall onto its shared boundary is refused by the retained planner; every Wall/Junction/Opening identity and the accepted content are unchanged, and no history entry is added. | “rejects a shared-Junction-invalid angle atomically and keeps every identity” |
 
@@ -26,8 +26,8 @@ nothing here claims readiness or acceptance.
 
 | Plan criterion | Status |
 | --- | --- |
-| Pointer and numeric paths yield the same document for the same explicit intent | **Verified** for exact length through the real adapter/facade: the Wall frame agrees at 1e-9 and the Wall and Opening id lists are equal. Angle and rigid move are verified on the typed path and the pointer path separately; a comparison for those two is not claimed. |
-| One gesture has one history result | **Verified** for length, angle and rigid move (depth +1 per accepted operation). |
+| Pointer and numeric paths yield the same document for the same explicit intent | **Verified** for exact length through the real adapter/facade: the Wall frame agrees at 1e-9 and the Wall and Opening id lists are equal. Pointer angle is now exercised separately (shift-drag → exact 5° with the fixed endpoint unmoved) and pointer body translation is exercised separately; a *same-document* comparison for angle and move is still not claimed. |
+| One gesture has one history result | **Verified** on both paths for length, angle and rigid move (depth +1 per accepted operation, one entry per gesture). |
 | Shared-neighbour invalidity rejects atomically | **Verified** for the 90° fold; no partial write and no identity churn. |
 | Wall/Opening/Room identities and curve data preserved by supported operations | **Partial.** Wall and Opening ids are asserted for length and angle; curve data is preserved by construction because the retained planners refuse a curve (`curved_wall_unsupported`) and this slice exposes no straight-only field for one. Room identity is the planner's own reconciliation gate; the suite does not separately pin a Room id. |
 | Plan and 3D handles/highlights resolve the same source | **Partial.** Handles are projected through the one live evaluation and the press is refused unless the canonical selection names a straight Wall. Highlight parity beyond the shared projection is not separately measured. |
@@ -53,6 +53,15 @@ nothing here claims readiness or acceptance.
 5. The **architecture-integration** tier's integration route (`T1.P01.S06`) and the full lane gate
    are outstanding. Lane results belong to the coordinator/merge gate, not to this record.
 6. Browser evidence for the pointer journey is not recorded here.
+7. **TD-8 followed option 2, not the plan's option 1.** The plan says “fix it host-side (TD-8
+   option 1)” — rebuild the panel's services on `onAdaptersChanged`. The implementation instead
+   makes the services' authority the task instance plus a synchronous close notification, because
+   the same signal also fires for selection and re-binds and would have the panel re-acquire
+   services on events that do not end its authority. The option, its rationale and the resulting
+   lifetime contract (a content change keeps authority; a task replacement revokes it) are
+   recorded in `docs/operations/tech-debt/README.md` TD-8. Ruling C5 asked for the increment, not
+   for a named option; the deviation is recorded here for the reviewer rather than presented as
+   the prescribed fix.
 
 ## Verification run at this revision
 
@@ -62,13 +71,14 @@ lane results on a branch, **not** a merge gate against a merge revision.
 | Check | Result |
 | --- | --- |
 | `npm run check` | **0 errors, 0 warnings** |
-| `npm run test:fast` | **1957 / 1957**, 139 files, exit 0 |
+| `npm run test:fast` | **1959 / 1959**, 139 files, exit 0 |
 | `npm run test:arch` | **163 / 163**, 20 files, exit 0 (documentation gate included) |
 | `npm run test:heavy` | **118 / 118**, 8 files, exit 0 |
-| Focused | `layout-wall-manipulation` 14/14, `stage-host-acceptance` 36/36, `layout-precision-adapter` 13/13 |
+| Focused | `layout-wall-manipulation` 15/15, `stage-host-acceptance` 37/37, `stage-shell-composition` 7/7, `layout-precision-adapter` 13/13 |
 
 The suites this slice adds or changes are:
 
-- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` (new)
+- `apps/editor/tests/lib/authoring/layout-wall-manipulation.test.ts` (new; pointer shift-drag angle added)
 - `apps/editor/tests/lib/authoring/stage-host-acceptance.test.ts` (TD-8 block)
+- `apps/editor/tests/lib/authoring/stage-shell-composition.test.ts` (capture-loss → adapter cancel)
 - `apps/editor/tests/lib/authoring/layout-precision-adapter.test.ts` (planner list)
