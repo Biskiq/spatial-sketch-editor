@@ -64,11 +64,15 @@ export function resolveVisitorCameraRoute({
 				};
 			}
 			// The normal case: the authored connection leaves the Camera's settled
-			// View. The handoff case: it leaves the View an unfinished Travel was
-			// realizing, which the Experience has already left. Any other endpoint
-			// pairing is a genuine gap, not a handoff.
+			// View. The handoff case: the Experience has already left that View and
+			// declared the View its unfinished Travel was realizing as the
+			// predecessor, so only that declared origin is admissible. A connection
+			// that still leaves the earlier settled View is not the declared
+			// handoff: accepting it would realize an editorial transition the
+			// Experience never requested. Any other endpoint pairing is a genuine
+			// gap.
 			const origins = handoffFromViewId !== null && handoffFromViewId !== fromViewId
-				? [fromViewId, handoffFromViewId]
+				? [handoffFromViewId]
 				: [fromViewId];
 			for (const origin of origins) {
 				let direction: CameraConnectionDirection;
@@ -86,9 +90,10 @@ export function resolveVisitorCameraRoute({
 					originViewId: origin
 				};
 			}
+			const expectedOrigin = origins[0];
 			return {
 				kind: 'gap',
-				reason: `Camera connection "${connection.id}" does not join "${fromViewId}" to "${toViewId}".`
+				reason: `Camera connection "${connection.id}" does not join "${expectedOrigin}" to "${toViewId}".`
 			};
 		}
 		return {

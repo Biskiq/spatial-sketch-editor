@@ -137,6 +137,41 @@ describe('visitor Camera handoff', () => {
 		if (resolved.kind === 'gap') expect(resolved.reason).toContain('does not join');
 	});
 
+	it('refuses a connection from the earlier settled View during a declared handoff', () => {
+		// The Camera was settled at A and is travelling to B when the interpreter
+		// invokes C. The authored connection joins A to C, but not the declared
+		// in-flight predecessor B to C. It must be a typed gap: the settled View is
+		// no longer the Experience's predecessor, so its connection is unrelated
+		// to this handoff.
+		const withSettledConnection = {
+			...graph(),
+			connections: [
+				...graph().connections,
+				connection('connection-4', 'view-a', 'view-c', [0, 1.6, 0], [8, 1.6, 0])
+			]
+		};
+		const handoff = resolveVisitorCameraRoute({
+			fromViewId: 'view-a',
+			toViewId: 'view-c',
+			handoffFromViewId: 'view-b',
+			invocation: { kind: 'travel', connectionId: 'connection-4' },
+			graph: withSettledConnection
+		});
+		expect(handoff.kind).toBe('gap');
+		if (handoff.kind === 'gap') expect(handoff.reason).toContain('"view-b"');
+
+		// Without an in-flight handoff the same connection is ordinary Travel from
+		// the settled View and stays admissible.
+		const ordinary = resolveVisitorCameraRoute({
+			fromViewId: 'view-a',
+			toViewId: 'view-c',
+			invocation: { kind: 'travel', connectionId: 'connection-4' },
+			graph: withSettledConnection
+		});
+		expect(ordinary.kind).toBe('route');
+		if (ordinary.kind === 'route') expect(ordinary.originViewId).toBe('view-a');
+	});
+
 	it('returns a typed gap for a missing connection or a mismatched endpoint', () => {
 		const missing = resolveVisitorCameraRoute({
 			fromViewId: 'view-a',
