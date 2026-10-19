@@ -115,7 +115,7 @@ PR:
 1. Optionally take a private snapshot (R1: prudence, not an obligation).
 2. Run `npm run migrate` against the deployed database to apply `005`.
 3. Deploy the API (Render) and the editor (Vercel).
-4. Run the R2 purge. It refuses unless migration `005` is active, the deployment namespace owns every visible key, and no release row remains; it touches only unreferenced keys under that namespace.
+4. Run the R2 purge. It refuses unless migration `005` is active, the deployment namespace owns every visible key, and no release row remains; it touches only unreferenced keys under that namespace. If the bucket still holds pre-namespace legacy keys from earlier builds, the purge refuses the whole bucket: use a dedicated bucket per environment, or remove those legacy keys from a separately verified inventory first. The purge itself never deletes a legacy key.
 5. Smoke-test: empty and starter boot, one Save, a prior `/p/` ID → not-found, and Publish →
    `prepared-reader-required`.
 

@@ -137,6 +137,50 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(visitor.currentViewId).toBe('view-2');
 	});
 
+	it('clears a Stop-free selection only when the run actually advances', () => {
+		const visitor = runtime({
+			stops: [
+				{
+					id: 'stop-1',
+					presentationId: 'presentation-1',
+					invocation: { kind: 'cut', viewId: 'view-1' },
+					holdSeconds: 0.5,
+					continuation: { kind: 'sequence-next' }
+				},
+				{
+					id: 'stop-2',
+					presentationId: 'presentation-2',
+					invocation: { kind: 'cut', viewId: 'view-2' },
+					holdSeconds: null,
+					continuation: { kind: 'end' }
+				}
+			]
+		});
+		visitor.enter();
+		expect(visitor.state.phase).toBe('holding');
+		visitor.selectPresentation('presentation-guide-free');
+		expect(visitor.currentViewId).toBe('view-3');
+
+		// Continue during a hold is ignored, so the detached View survives it.
+		visitor.continue();
+		expect(visitor.currentViewId).toBe('view-3');
+		expect(visitor.state.stopId).toBe('stop-1');
+
+		// When the hold expires, the auto-advance returns to the Guide; the overlay
+		// must not keep the Camera on the detached Presentation.
+		visitor.tick(600);
+		expect(visitor.state.stopId).toBe('stop-2');
+		expect(visitor.selectedPresentationId).toBeNull();
+		expect(visitor.currentViewId).toBe('view-2');
+
+		// An explicit Continue that advances clears the selection the same way.
+		visitor.selectPresentation('presentation-guide-free');
+		expect(visitor.currentViewId).toBe('view-3');
+		visitor.continue();
+		expect(visitor.state.phase).toBe('completed');
+		expect(visitor.selectedPresentationId).toBeNull();
+	});
+
 	it('accumulates fractional frame milliseconds so a hold actually expires', () => {
 		const visitor = runtime({
 			stops: [

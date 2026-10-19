@@ -79,6 +79,19 @@ test('refuses a shared bucket holding another deployment namespace and deletes n
 	assert.deepEqual(r2.deleted, []);
 });
 
+test('refuses pre-namespace legacy keys and deletes nothing', async () => {
+	// Keys written before the namespace cutover keep the old shape. Migration 005
+	// clears the rows that named them, but the purge still cannot prove the bucket
+	// belongs to this deployment, so it must refuse the whole bucket.
+	const legacyKey = `projects/project:one/assets/33333333-3333-4333-8333-333333333333/${'d'.repeat(32)}`;
+	const r2 = store([legacyKey]);
+	await assert.rejects(
+		() => purgeUnreferencedObjects(pool([]), r2, options),
+		(error) => error instanceof R2PurgeRefusal && /not owned by namespace "preview"/.test(error.message)
+	);
+	assert.deepEqual(r2.deleted, []);
+});
+
 test('refuses a bucket holding any foreign object and deletes nothing', async () => {
 	const r2 = store([KEY_A, 'other-app/secret.bin']);
 	await assert.rejects(

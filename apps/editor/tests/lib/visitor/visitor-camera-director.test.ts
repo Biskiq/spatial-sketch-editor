@@ -1,0 +1,267 @@
+// @vitest-environment jsdom
+/**
+ * Mounted Camera-handoff evidence (T3.P01.S04 review follow-up).
+ *
+ * Two runtime blockers are exercised against the real `VisitorCameraDirector`
+ * and the real `VisitorRuntimeState`, with Threlte's canvas/camera replaced by
+ * test doubles because jsdom has no WebGL:
+ *
+ * 1. `VisitorRuntimeState.state` must be reactive, or a Stop/phase change never
+ *    reaches the Camera and the visitor surface freezes on its first frame.
+ * 2. A hold tick replaces the interpreter state. While a Travel is in flight the
+ *    Camera-view target and the realized view differ, so a reactive re-run must
+ *    not start the same Travel again from mid-flight.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const harness = vi.hoisted(() => ({
+	tasks: [] as Array<(delta: number) => void>,
+	starts: [] as unknown[]
+}));
+
+vi.mock('@threlte/core', async () => {
+	const { default: PerspectiveCamera } = await import('./fixtures/MockPerspectiveCamera.svelte');
+	return {
+		T: { PerspectiveCamera },
+		useTask: (callback: (delta: number) => void) => {
+			harness.tasks.push(callback);
+			return { stop() {} };
+		},
+		useThrelte: () => ({ canvas: document.createElement('canvas') })
+	};
+});
+
+vi.mock('@threlte/extras', async () => {
+	const { default: OrbitControls } = await import('./fixtures/MockOrbitControls.svelte');
+	return { OrbitControls };
+});
+
+vi.mock('@portfolio/camera-core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@portfolio/camera-core')>();
+	return {
+		...actual,
+		createCameraMotion: (...args: Parameters<typeof actual.createCameraMotion>) => {
+			harness.starts.push(args[0]);
+			return actual.createCameraMotion(...args);
+		}
+	};
+});
+
+import { mount, tick, unmount } from 'svelte';
+import type {
+	ExecutionProgram,
+	ExperienceInterpreterOptions
+} from '@portfolio/project-model/units';
+import type { NavigationGraph, NavigationNodeData } from '@portfolio/project-model';
+import VisitorCameraDirector from '$lib/visitor/VisitorCameraDirector.svelte';
+import { createVisitorRuntimeState, type VisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.svelte';
+import VisitorRuntimeProbe from './fixtures/VisitorRuntimeProbe.svelte';
+
+const OPTIONS: ExperienceInterpreterOptions = {
+	runId: 'run-director',
+	runEpoch: 1,
+	sourceContentId: 'sha256-director'
+};
+
+const NODES: NavigationNodeData[] = [
+	{
+		id: 'view-1',
+		label: 'Entrance',
+		position: [0, 1.6, 0],
+		cameraTarget: [0, 1.6, -1],
+		fov: 54,
+		connectedNodeIds: ['view-2']
+	},
+	{
+		id: 'view-2',
+		label: 'Gallery',
+		position: [4, 1.6, 0],
+		cameraTarget: [4, 1.6, -1],
+		fov: 54,
+		connectedNodeIds: ['view-1']
+	}
+];
+
+function connection(id: string, durationSeconds: number) {
+	return {
+		id,
+		fromNodeId: 'view-1',
+		toNodeId: 'view-2',
+		positionPath: {
+			kind: 'rounded-polyline' as const,
+			anchors: [
+				{ id: `${id}-start`, position: [0, 1.6, 0] as [number, number, number] },
+				{ id: `${id}-end`, position: [4, 1.6, 0] as [number, number, number] }
+			]
+		},
+		clearance: 1.2,
+		timing: { forward: { durationSeconds } }
+	};
+}
+
+function graph(): NavigationGraph {
+	return {
+		navigationNodes: NODES,
+		connections: [connection('connection-1', 5), connection('connection-2', 5)],
+		nodeById: new Map(NODES.map((node) => [node.id, node]))
+	};
+}
+
+/**
+ * Two authored Stops. The second is reached by an explicit Travel on
+ * `connection-2`, with a hold long enough that hold ticks run while the Camera
+ * is still traveling (the motion is authored at five seconds).
+ */
+function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
+	return {
+		kind: 'execution-program',
+		formatVersion: 1,
+		capabilities: [],
+		experienceId: 'experience-director',
+		entryStopId: 'stop-1',
+		presentations: [
+			{ id: 'presentation-1', label: 'Entrance', viewId: 'view-1', content: [] },
+			{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] },
+			{ id: 'presentation-guide-free', label: 'Study', viewId: 'view-1', content: [] }
+		],
+		stops: [
+			{
+				id: 'stop-1',
+				presentationId: 'presentation-1',
+				invocation: { kind: 'cut', viewId: 'view-1' },
+				holdSeconds: null,
+				continuation: { kind: 'sequence-next' }
+			},
+			{
+				id: 'stop-2',
+				presentationId: 'presentation-2',
+				invocation: { kind: 'travel', connectionId: 'connection-2' },
+				holdSeconds: 1,
+				continuation: { kind: 'end' }
+			}
+		],
+		state: [],
+		localTime: [],
+		channels: [],
+		lifecycle: [],
+		profile: { reducedMotion: 'required', semanticDomNavigation: 'required' },
+		...overrides
+	};
+}
+
+function runtime(overrides: Partial<ExecutionProgram> = {}): VisitorRuntimeState {
+	return createVisitorRuntimeState({ program: program(overrides), options: OPTIONS });
+}
+
+type MockCamera = {
+	readonly copies: number;
+	readonly lastPoint: { x: number; y: number; z: number };
+};
+
+function mockCamera(): MockCamera {
+	const camera = (globalThis as { __visitorMockCamera?: MockCamera }).__visitorMockCamera;
+	if (camera === undefined) throw new Error('the mocked Camera is not mounted');
+	return camera;
+}
+
+let cleanup: (() => void) | null = null;
+
+beforeEach(() => {
+	harness.tasks.length = 0;
+	harness.starts.length = 0;
+});
+
+afterEach(() => {
+	cleanup?.();
+	cleanup = null;
+	document.body.replaceChildren();
+});
+
+async function mountProbe(visitor: VisitorRuntimeState): Promise<HTMLElement> {
+	const target = document.createElement('div');
+	document.body.appendChild(target);
+	const component = mount(VisitorRuntimeProbe, { target, props: { visitor } });
+	cleanup = () => unmount(component);
+	await tick();
+	return target;
+}
+
+async function mountDirector(visitor: VisitorRuntimeState): Promise<void> {
+	const target = document.createElement('div');
+	document.body.appendChild(target);
+	const component = mount(VisitorCameraDirector, {
+		target,
+		props: { graph: graph(), visitor }
+	});
+	cleanup = () => unmount(component);
+	await tick();
+}
+
+async function frame(delta = 1 / 60): Promise<void> {
+	for (const task of harness.tasks) task(delta);
+	await tick();
+}
+
+describe('mounted visitor Camera handoff', () => {
+	it('renders runtime progress, proving the interpreter state is reactive', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		const target = await mountProbe(visitor);
+		expect(target.querySelector('[data-testid="view"]')?.textContent).toBe('view-1');
+
+		visitor.continue();
+		await tick();
+		expect(target.querySelector('[data-testid="view"]')?.textContent).toBe('view-2');
+		expect(target.querySelector('[data-testid="phase"]')?.textContent).toBe('holding');
+
+		// A Stop-free selection is reactive too, and an advancing Continue clears it.
+		visitor.selectPresentation('presentation-guide-free');
+		await tick();
+		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('presentation-guide-free');
+		visitor.tick(1100);
+		await tick();
+		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('none');
+	});
+
+	it('does not restart an in-flight Travel when hold ticks change interpreter state', async () => {
+		const visitor = runtime();
+		visitor.enter();
+		await mountDirector(visitor);
+		// First framing is a Cut; no motion yet.
+		expect(harness.starts).toHaveLength(0);
+
+		visitor.continue();
+		await tick();
+		expect(harness.starts).toHaveLength(1);
+		const route = harness.starts[0] as { edges?: Array<{ connectionId?: string; direction?: string }> };
+		expect(route.edges?.[0]).toEqual(
+			expect.objectContaining({ connectionId: 'connection-2', direction: 'forward' })
+		);
+
+		// The destination holds for one second while the authored motion runs for
+		// five. Each tick replaces the interpreter state; the effect must not
+		// restart the same Travel from the current mid-flight pose.
+		for (let index = 0; index < 10; index += 1) await frame();
+		expect(visitor.state.holdRemainingMs).toBeLessThan(1000);
+		expect(harness.starts).toHaveLength(1);
+		// The Camera is already moving toward the destination, so the motion is not
+		// pinned at the origin by a per-frame restart.
+		const midFlight = mockCamera().lastPoint;
+		expect(midFlight.x).toBeGreaterThan(0);
+		expect(midFlight.x).toBeLessThan(4);
+
+		// Finish the hold (auto-Continue advances the run) and keep framing. The
+		// completion state change must not start a second motion either.
+		for (let index = 0; index < 60; index += 1) await frame();
+		expect(visitor.state.phase).toBe('completed');
+		expect(harness.starts).toHaveLength(1);
+
+		// The authored motion is five seconds. Let it finish; the sampled Camera
+		// pose reaches the destination node rather than being pinned at the origin.
+		for (let index = 0; index < 260; index += 1) await frame();
+		const finished = mockCamera().lastPoint;
+		expect(finished.x).toBeCloseTo(4, 5);
+		expect(finished.y).toBeCloseTo(1.6, 5);
+		expect(finished.z).toBeCloseTo(0, 5);
+	});
+});

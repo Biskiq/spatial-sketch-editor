@@ -30,9 +30,11 @@ BATON: The owner ratified the clean source epoch (R1–R4): saved data is dispos
        (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7,       working F2 sign-in Save recovery (TD-9; deletion does not count), the S06 requirement rewrite,
        and the Guide-free Presentation fix (shipped in Phase A as a visitor Presentation control).
 NEXT: Re-review Phase A on PR #158: Travel now resolves the authored connection, the R2 purge is
-      namespace-scoped and epoch-gated, and a Stop-free Presentation is selectable. #158 is the
-      continuing S04 PR, not a Phase A merge. After the batch C freeze, rebase and implement Phase B
-      on the same PR; no data is reset until S04 merges and the owner runs the activation runbook.
+      namespace-scoped and epoch-gated, and a Stop-free Presentation is selectable and clears on a
+      real advance. Mounted tests pin the camera handoff; activation uses a dedicated bucket per
+      environment because the purge refuses pre-namespace legacy keys. #158 is the continuing S04
+      PR, not a Phase A merge. After the batch C freeze, rebase and implement Phase B on the same
+      PR; no data is reset until S04 merges and the owner runs the activation runbook.
 ROUTE: ./README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →

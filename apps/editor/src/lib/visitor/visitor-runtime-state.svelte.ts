@@ -50,7 +50,13 @@ export class VisitorRuntimeState {
 
 	/** The explicit Continue control. A Gate or a finished hold advances once. */
 	continue() {
-		this.state = this.interpreter.continue().state;
+		const before = this.state;
+		const next = this.interpreter.continue().state;
+		this.state = next;
+		// Continue during a hold is ignored by the interpreter. Only an actual
+		// advance returns the visitor from a detached Presentation to the Guide;
+		// a no-op keypress must not yank the selected View away.
+		if (next !== before) this.selectedPresentationId = null;
 	}
 
 	/** An explicit authored destination; the Guide is never bypassed by this. */

@@ -59,6 +59,14 @@ separate event, and the owner-run activation runbook has not been executed.
 - Refuses without list and delete, and re-checks the namespace prefix and key shape at every
   delete.
 - Deletes only keys no remaining `assets` row references; rerun is a no-op.
+- **Legacy-key disposition.** The namespace is new in this cutover, so keys written by earlier
+  builds keep the pre-namespace shape (`projects/<project>/assets/<uuid>/<hex32>`). Migration 005
+  removes the database rows that named them, but their ownership still cannot be proven: a bucket
+  shared with another deployment could hold that deployment's old-shape keys too. The purge
+  therefore refuses the whole bucket while any such key remains (`r2-purge.test.mjs` pins this).
+  Activation uses a dedicated bucket per environment; if an existing bucket is reused, the owner
+  must first remove the legacy keys from an independently verified inventory. This command never
+  deletes a legacy key.
 - Owner-run entry point: `npm run purge:objects -w @biskiq/api`. No deployment or live purge was
   performed.
 
@@ -154,6 +162,30 @@ Independent review requested three substantive corrections:
 
 The rerun covers the three review corrections: connection-exact Travel, the namespace/epoch purge
 boundary, and visitor selection of a Stop-free Presentation.
+
+### Runtime-blocker follow-up (2026-10-19)
+
+Two potential runtime blockers and the legacy-key activation disposition were checked with focused
+evidence rather than assumed:
+
+- **Detached Presentation outliving an advance.** `continue()` now clears the Stop-free selection
+  only when the interpreter returns a new state. The store test shows an ignored Continue during a
+  hold keeps the selected View, while an explicit Continue that advances and a hold auto-advance
+  both return the Camera to the Guide's Presentation.
+- **Hold ticks restarting an in-flight Travel.** The destination Stop's hold replaces
+  `ExperienceRunState` every frame while the Camera is still travelling; before the fix the mounted
+  director started the same Travel 11 times in 10 frames, resetting progress from the mid-flight
+  pose. The in-flight-target guard makes it one start across the hold ticks and the run completion.
+  The same mount proves the Travel realizes `connection-2` in the `forward` direction.
+- **Legacy R2 keys.** A pre-namespace key refuses the purge; the activation disposition is recorded
+  under the purge boundary above.
+
+| Check | Result |
+| --- | --- |
+| `npx vitest run tests/lib/visitor` | pass — 55 tests, including the mounted director and reactive store probe |
+| `npm run check` (editor) | pass — 0 errors, 0 warnings |
+| `npm run test:fast` | pass — 139 files, 1915 tests |
+| `npm run build:api` + `r2-purge.test.mjs` | pass — 10 purge tests, 0 failures |
 
 ## Outstanding — Phase B and review handoff
 

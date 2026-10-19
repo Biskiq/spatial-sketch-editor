@@ -117,6 +117,12 @@
 		// Camera route the unit already validated.
 		const targetViewId = currentViewId;
 		if (targetViewId === cameraViewId) return;
+		// A hold tick or any other interpreter state write re-runs this effect
+		// while the Camera is still travelling: `cameraViewId` stays at the origin
+		// until the motion completes. Starting the same route again would reset
+		// progress from the current mid-flight pose on every frame. The in-flight
+		// target is the guard; a different target still re-routes from here.
+		if (targetViewId !== null && activeTargetViewId === targetViewId) return;
 		if (targetViewId === null) {
 			cameraViewId = null;
 			activeMotion = null;
