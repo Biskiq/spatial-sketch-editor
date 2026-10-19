@@ -54,8 +54,8 @@ remaining deferred items:        1   TD-8
 permanent stubs added:           0   existing acceptance stub refreshed in place
 ```
 
-P1 requires a **merge commit**. No merge was performed. After merge, verify the anchor is an ancestor
-of `main`, then push the local-only tag.
+P1 merge method: **merge commit**. After merge, verify the anchor is an ancestor of `main`, then push
+the local-only tag.
 
 Recovery:
 

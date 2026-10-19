@@ -26,10 +26,11 @@ BATON: S03 pointer Move was repaired after manual browser acceptance found its r
        archived screenshots are routed here:
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
        Full acceptance body anchor `2747f1691551296e21b17aa04dfd9de76cb08f59` is tagged
-       `closed/T2.P01.S03` (local only — not pushed). Documentation-reference gate passed (55 tests).
-NEXT: Owner review and merge decision on PR #147. The required merge method is a merge commit; after
-      merge, verify the anchor is an ancestor of `main` and push the tag. S04 remains proposed and
-      unauthorized; it also waits for its registered prerequisites.
+       `closed/T2.P01.S03` (local only — not pushed). PR #147 is owner-accepted and open. The
+       documentation-reference gate passed (55 tests).
+NEXT: Final merge of PR #147 as a merge commit. After merge, verify the anchor is an ancestor of
+      `main` and push the tag. S04 remains proposed and unauthorized; it also waits for its
+      registered prerequisites.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
