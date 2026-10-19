@@ -5,15 +5,16 @@ review and the merge gate are outstanding ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) ·
 **Phase:** [T1.P01](../README.md)
 
-**Tested revision:** branch `T1-P01-S05`, one commit on base `919c2904` (batch C coordination, PR
-#155). No merge gate has been run on a merge revision, no capability or gate state is written, and
-nothing here claims readiness or acceptance.
+**Tested revision:** branch `T1-P01-S05`, commits `1fb51ed8` and `7ab64ebf` on base `919c2904`
+(batch C coordination, PR #155); the lane results below are from `7ab64ebf`. No merge gate has been
+run on a merge revision, no capability or gate state is written, and nothing here claims readiness
+or acceptance.
 
 ## What landed
 
 | Area | Change | Evidence |
 | --- | --- | --- |
-| TD-8 (first increment, ruling C5) | The task-scoped instrument services no longer capture a writer generation; they capture the **task object** they were opened for. `instrumentForTask` answers live only while `session.task()` is that same object and the binding still owns the contributed task, so a content install that keeps the task open cannot make a mounted panel refuse `Begin`, while replacement, `Resume`, same-contribution re-open, close and disposal revoke the old services (`inactive-task`). An install that closes the open task notifies the contribution surface synchronously, so a panel showing that task learns it is gone; reopening the contributed task provides fresh services. | `tests/lib/authoring/stage-host-acceptance.test.ts`: “re-provisions usable services after an accepted install closed the task”; “invalidates the previous services when the contributed task is replaced”; “refuses the same task-scoped services after the contributed task has ended”; “notifies the contribution surface synchronously when an accepted install closes the open task” |
+| TD-8 (first increment, ruling C5) | The task-scoped instrument services no longer capture a writer generation; they capture the **task object** they were opened for. `instrumentForTask` answers live only while `session.task()` is that same object and the binding still owns the contributed task. Every accepted install closes the open task (there is no keep-open install path), so the old services refuse truthfully with `inactive-task` instead of the opaque `stale-epoch`; the install notifies the contribution surface synchronously so the panel learns immediately and can resume/reopen, which hands out fresh services. `Resume`, same-contribution re-open, close and disposal revoke the old services the same way. | `tests/lib/authoring/stage-host-acceptance.test.ts`: “re-provisions usable services after an accepted install closed the task”; “invalidates the previous services when the contributed task is replaced”; “refuses the same task-scoped services after the contributed task has ended”; “notifies the contribution surface synchronously when an accepted install closes the open task” |
 | Exact length | `layout-wall-length` wraps the retained `planExactWallLength`; the payload carries one explicit `fixed: 'start' | 'end'`. | `tests/lib/authoring/layout-wall-manipulation.test.ts`: “honours the explicit fixed endpoint and writes exactly one history entry”; “registers one planner per Wall operation and refuses bad payloads and wrong addressees” |
 | Exact angle | `layout-wall-angle` wraps `planExactWallAngle`; the intent carries canonical `atan2(z, x)` **radians**, the Dimensions field displays and accepts degrees. | “sets an exact angle in degrees and preserves the Wall length and identity” |
 | Rigid translation | `layout-wall-move` wraps `planRigidWallMove`; both deltas are one intent and one history entry, and the typed deltas return to zero after acceptance. | “translates rigidly from both deltas as one intent, then clears the deltas” |
@@ -57,11 +58,11 @@ nothing here claims readiness or acceptance.
    option 1)” — rebuild the panel's services on `onAdaptersChanged`. The implementation instead
    makes the services' authority the task instance plus a synchronous close notification, because
    the same signal also fires for selection and re-binds and would have the panel re-acquire
-   services on events that do not end its authority. The option, its rationale and the resulting
-   lifetime contract (a content change keeps authority; a task replacement revokes it) are
-   recorded in `docs/operations/tech-debt/README.md` TD-8. Ruling C5 asked for the increment, not
-   for a named option; the deviation is recorded here for the reviewer rather than presented as
-   the prescribed fix.
+   services on events that do not end its authority. This is a deliberate deviation from the named
+   option; its rationale and the resulting lifetime contract (every accepted install closes the
+   task, so the panel resumes/reopens; replacement and close revoke) are recorded in
+   `docs/operations/tech-debt/README.md` TD-8. The record does not present it as the prescribed
+   fix.
 
 ## Verification run at this revision
 
