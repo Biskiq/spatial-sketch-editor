@@ -21,15 +21,21 @@ PHASE: T2.P01 Supported object composition (in-progress) →
 SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are shipped. S04, the
         phase's declared FINAL PHASE GATE, is authorized as batch C (2026-10-19), effective when
         PR #155 merges.
-BATON: S04 is implemented on branch `T2-P01-S04` (base `919c2904`, batch C) and awaits the
-       coordinator's full gate and independent review. It adds the `scene-compose` task (uniform
+BATON: S04 is implemented on branch `T2-P01-S04` (base `919c2904`, batch C) and has passed the
+       slice lanes and one independent review round. It adds the `scene-compose` task (uniform
        Resize, duplicate, delete) through AM-5 only, reusing T1's shipped source-JSON/Reload paths
-       and extending no host seam. Numeric Resize is the guaranteed route; no direct handle was
-       added. The acceptance record lists each phase-matrix row as Written/Partial/Not run; nothing
-       is accepted, no gate state is written, and TD-8 is absent from this base.
-NEXT:   Coordinator runs `check`, `test:fast`, `test:arch`, `test:heavy` and the focused Scene/Save
-        files; independent review; then the batch C merge protocol. A browser creator journey and
-        reduced-motion evidence remain unproduced.
+       and extending no host seam. Resize and Duplicate are **primitive-only**: the panel disables
+       them (with the reason) and the session refuses before taking a lease for a light or model;
+       no Scale fact is advertised for a subject that cannot be written. An open Resize is
+       cancelled when the canonical selection moves. Numeric Resize is the guaranteed route; no
+       direct handle was added.
+       **The phase final gate is not passed:** the persistence row still lacks active-preview
+       cancellation on replace, previous-source preservation after a refused open, and the Save
+       creator journey through the mounted Head. Nothing is accepted and no gate state is written.
+       TD-8 is absent from this base; the Compose journeys reopen the task after each install and
+       do not rely on a reused task panel.
+NEXT:   Batch C merge protocol for the two slice PRs; then the remaining gate proofs (or an owner
+        amendment) and a browser creator journey with reduced-motion evidence.
        Owner follow-up: push the local `closed/T2.P01.S03` tag.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →

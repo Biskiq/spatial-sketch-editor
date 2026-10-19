@@ -331,6 +331,34 @@ export function localContactMinY(entity: SceneEntity): number | null {
 	}
 }
 
+export type SceneComposeSupport = {
+	readonly resize: boolean;
+	readonly duplicate: boolean;
+	/** Why Resize/Duplicate are unavailable, or `null` when both are. */
+	readonly reason: string | null;
+};
+
+/**
+ * What Compose can truthfully do with one entity.
+ *
+ * Resize and Duplicate need a floor contact the retained planner can re-seat.
+ * Only the admitted analytic primitives have one today: a light or a model has
+ * no verified contact here, so offering the command would only take the gesture
+ * lease and then refuse (and the adapter would advertise a `Scale` fact that
+ * cannot be written). Delete needs no contact.
+ */
+export function sceneComposeSupport(entity: SceneEntity): SceneComposeSupport {
+	if (localContactMinY(entity) !== null) return { resize: true, duplicate: true, reason: null };
+	return {
+		resize: false,
+		duplicate: false,
+		reason:
+			entity.kind === 'light'
+				? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
+				: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+	};
+}
+
 export function createSceneSession(input: {
 	readonly snapshot: SceneEditingSnapshot;
 	readonly port: SceneWritePort;
@@ -677,6 +705,12 @@ export function createSceneSession(input: {
 			const entity = entityOf(id);
 			if (entity === null) {
 				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
+			}
+			// Refuse before taking the lease: a command that cannot produce a
+			// candidate must not make Undo report a live proposal.
+			const support = sceneComposeSupport(entity);
+			if (!support.resize) {
+				return { kind: 'refused', code: 'missing-contact-metadata', message: support.reason ?? 'Resize is unavailable.' };
 			}
 			release();
 			lease = input.port.acquireGesture({

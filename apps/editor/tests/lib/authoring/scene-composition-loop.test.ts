@@ -16,19 +16,17 @@ import { describe, expect, it } from 'vitest';
 import {
 	admitCurrentSource,
 	createEmptyWallFirstProject,
-	parseProjectJson,
-	serializeProject,
 	type AuthoringIntent,
 	type ProjectDocument,
 	type SceneEntity,
 	type Vec3
 } from '@portfolio/project-model';
 import { planWallChain } from '@portfolio/layout-core';
-import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
 
 import {
 	createSceneSession,
 	localContactMinY,
+	sceneComposeSupport,
 	sceneEntityReference,
 	sceneReadingKey,
 	sceneSurfaceFor,
@@ -41,6 +39,7 @@ import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance'
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { admitSource } from '$lib/authoring/stage/source-admission';
+import { bootFromSourceJson } from '$lib/authoring/stage/boot-state';
 import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 
 const ENTITY_ID = 'entity-composition-box';
@@ -63,6 +62,22 @@ function supportedProject(entities: readonly SceneEntity[]): ProjectDocument {
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return { ...base, layout: planned.document, scene: { ...base.scene, entities: [...entities] } };
+}
+
+const LIGHT_ID = 'entity-composition-light';
+
+function lightEntity(id = LIGHT_ID, position: Vec3 = [3, 2.4, 3]): SceneEntity {
+	return {
+		kind: 'light',
+		light: 'point',
+		id,
+		name: 'Fill light',
+		color: '#ffffff',
+		intensity: 1,
+		castShadow: false,
+		position,
+		rotation: [0, 0, 0]
+	};
 }
 
 function boxEntity(id = ENTITY_ID, position: Vec3 = BASELINE): SceneEntity {
@@ -179,6 +194,28 @@ describe('Scene Resize — one planner, one contact result', () => {
 		expect(port.releases()).toBe(1);
 	});
 
+	it('refuses a light with no verified contact before taking a gesture lease', async () => {
+		const light = lightEntity();
+		expect(sceneComposeSupport(light)).toEqual({
+			resize: false,
+			duplicate: false,
+			reason: expect.stringContaining('light')
+		});
+		const { session, port } = await sessionFor([light]);
+		// No contact means no candidate: the refusal happens before the lease, so
+		// Undo is never blocked for a proposal that cannot exist.
+		expect(session.beginResize(light.id)).toMatchObject({
+			kind: 'refused',
+			code: 'missing-contact-metadata'
+		});
+		expect(port.releases()).toBe(0);
+		await expect(session.duplicate(light.id)).resolves.toMatchObject({
+			kind: 'refused',
+			code: 'missing-contact-metadata'
+		});
+		expect(port.intents).toEqual([]);
+	});
+
 	it('refuses a curved/unsupported scale on a model with no contact metadata', async () => {
 		const model: SceneEntity = {
 			kind: 'model',
@@ -191,8 +228,14 @@ describe('Scene Resize — one planner, one contact result', () => {
 		};
 		expect(localContactMinY(model)).toBeNull();
 		const { session, port } = await sessionFor([model]);
-		session.beginResize('entity-model');
-		expect(session.previewResize(2)).toMatchObject({ kind: 'refused', code: 'missing-contact-metadata' });
+		// The refusal is the begin: a model has no contact to re-seat, so no
+		// proposal (and no gesture lease) is ever opened for it.
+		expect(session.beginResize('entity-model')).toMatchObject({
+			kind: 'refused',
+			code: 'missing-contact-metadata'
+		});
+		expect(session.armed()).toBe('select');
+		expect(port.releases()).toBe(0);
 		await expect(session.commitResize()).resolves.toMatchObject({ kind: 'refused', code: 'no-candidate' });
 		expect(port.intents).toEqual([]);
 	});
@@ -241,8 +284,8 @@ describe('Scene duplicate and delete — captured identity, exact subject', () =
 });
 
 describe('Scene composition journey — one host, one history stack', () => {
-	async function mounted() {
-		const project = supportedProject([boxEntity()]);
+	async function mounted(entities: readonly SceneEntity[] = [boxEntity()]) {
+		const project = supportedProject(entities);
 		const admitted = await admitSource(project, {
 			sessionEpoch: 'session-compose-host',
 			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
@@ -293,9 +336,21 @@ describe('Scene composition journey — one host, one history stack', () => {
 		return facade.snapshot().domain.scene.entities.find((entity) => entity.id === id) ?? null;
 	}
 
+	it('advertises Scale and Compose only for a subject the planner can resize', async () => {
+		const { facade } = await mounted([boxEntity(), lightEntity()]);
+		const boxFacts = facade.cardFacts({ sourceId: ENTITY_ID, sourceKind: 'entity', ref: null });
+		expect(boxFacts.map((fact) => fact.label)).toContain('Scale');
+		// A light has no verified contact, so it advertises no Scale row and no
+		// Resize/Duplicate: the panel's disabled controls read the same predicate.
+		const lightFacts = facade.cardFacts({ sourceId: LIGHT_ID, sourceKind: 'entity', ref: null });
+		expect(lightFacts.map((fact) => fact.label)).not.toContain('Scale');
+		expect(sceneComposeSupport(lightEntity()).resize).toBe(false);
+	});
+
 	it('resizes, undoes, redoes, duplicates and deletes through the accepted host', async () => {
 		const { facade, host } = await mounted();
 		expect(host.history().depth).toBe(1);
+		const beforeResizeJson = facade.snapshot().canonicalJson;
 
 		const resized = openCompose(facade);
 		// Compose is a typed command surface: a Stage press is navigation, never an
@@ -309,11 +364,17 @@ describe('Scene composition journey — one host, one history stack', () => {
 		await eventually(() => entityOf(facade, ENTITY_ID)?.scale === 2);
 		expect(entityOf(facade, ENTITY_ID)).toMatchObject({ position: [2, 1, 2], scale: 2 });
 		expect(host.history().depth).toBe(2);
+		const resizedJson = facade.snapshot().canonicalJson;
 
 		await host.undo();
 		expect(entityOf(facade, ENTITY_ID)?.scale ?? 1).toBe(1);
+		// The whole canonical source returns, not just the field the test read.
+		await eventually(() => facade.snapshot().canonicalJson === beforeResizeJson);
+		expect(facade.snapshot().canonicalJson).toBe(beforeResizeJson);
 		await host.redo();
 		expect(entityOf(facade, ENTITY_ID)?.scale).toBe(2);
+		await eventually(() => facade.snapshot().canonicalJson === resizedJson);
+		expect(facade.snapshot().canonicalJson).toBe(resizedJson);
 
 		// An accepted install ends the live evaluation; the route's next frame
 		// rebuilds the pending adapter binding. The test supplies that frame
@@ -348,7 +409,7 @@ describe('Scene composition journey — one host, one history stack', () => {
 		expect(facade.selectionState().primary).toBeNull();
 	});
 
-	it('round-trips canonical source JSON and starts a fresh history baseline', async () => {
+	it('reloads the downloaded canonical JSON through the route open path and refuses an invalid source', async () => {
 		const { facade } = await mounted();
 		const compose = openCompose(facade);
 		compose.session.beginResize(ENTITY_ID);
@@ -356,33 +417,32 @@ describe('Scene composition journey — one host, one history stack', () => {
 		await compose.session.commitResize();
 		await eventually(() => entityOf(facade, ENTITY_ID)?.scale === 2);
 
-		const options = { scene: MUSEUM_SCENE_VALIDATION_OPTIONS };
-		const json = serializeProject(currentStageSource(facade.snapshot()).source, options);
-		const parsed = parseProjectJson(json, options);
-		expect(parsed.success).toBe(true);
-		if (!parsed.success) return;
-		expect(parsed.canonicalJson).toBe(json);
-		const reloadedEntity = parsed.project.scene.entities.find((entity) => entity.id === ENTITY_ID);
+		// Download writes `snapshot.canonicalJson`; Open/Reload parse exactly those
+		// bytes through `bootFromSourceJson` (the route's one open path), not a
+		// second serialization the test happened to produce.
+		const json = facade.snapshot().canonicalJson;
+		const reloaded = await bootFromSourceJson(json, PROJECT_ID, {
+			sessionEpoch: 'session-reloaded',
+			acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-reloaded' }
+		});
+		expect(reloaded.status).toBe('ready');
+		if (reloaded.status !== 'ready') return;
+		const reloadedEntity = reloaded.snapshot.domain.scene.entities.find((entity) => entity.id === ENTITY_ID);
 		expect(reloadedEntity).toMatchObject({ position: [2, 1, 2], scale: 2 });
+		expect(reloaded.snapshot.canonicalJson).toBe(json);
 
 		// Reload is a new session and history baseline, not a synthetic source edit.
-		const admitted = await admitSource(parsed.project, {
-			sessionEpoch: 'session-reloaded',
-			acceptedRevision: { projectId: parsed.project.id, revisionId: 'revision-reloaded' }
-		});
-		expect(admitted.kind).toBe('admitted');
-		if (admitted.kind !== 'admitted') return;
-		const stageSession = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
-		stageSession.replace(admitted.snapshot);
-		const reloadedFacade = createStageFacade({ snapshot: admitted.snapshot, session: stageSession });
+		const stageSession = createStageSession({ sessionEpoch: reloaded.snapshot.sessionEpoch });
+		stageSession.replace(reloaded.snapshot);
+		const reloadedFacade = createStageFacade({ snapshot: reloaded.snapshot, session: stageSession });
 		const host = createStageAcceptanceHost({
 			facade: reloadedFacade,
-			sessionEpoch: admitted.snapshot.sessionEpoch,
+			sessionEpoch: reloaded.snapshot.sessionEpoch,
 			baseline: {
-				revision: admitted.snapshot.acceptedRevision,
-				source: parsed.project,
-				canonicalJson: admitted.snapshot.canonicalJson,
-				sourceContentId: admitted.snapshot.sourceContentId
+				revision: reloaded.snapshot.acceptedRevision,
+				source: currentStageSource(reloaded.snapshot).source,
+				canonicalJson: reloaded.snapshot.canonicalJson,
+				sourceContentId: reloaded.snapshot.sourceContentId
 			},
 			planners: []
 		});
@@ -391,5 +451,13 @@ describe('Scene composition journey — one host, one history stack', () => {
 			position: [2, 1, 2],
 			scale: 2
 		});
+
+		// A source that does not admit is a refused state, never a silent empty
+		// Stage and never a replaced baseline.
+		const refused = await bootFromSourceJson('{"formatVersion": 1}', PROJECT_ID, {
+			sessionEpoch: 'session-invalid',
+			acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-invalid' }
+		});
+		expect(refused.status).toBe('refused');
 	});
 });

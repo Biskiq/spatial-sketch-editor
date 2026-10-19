@@ -45,6 +45,7 @@ import {
 	sceneReadingKey,
 	sceneSessionFromServices,
 	sceneSurfaceFor,
+	sceneComposeSupport,
 	type SceneCandidate,
 	type ScenePlacementSession,
 	type SceneSessionOutcome,
@@ -78,10 +79,17 @@ function entityFacts(
 			label: 'Yaw',
 			value: `${entity.rotation[1]} rad`
 		},
-		{
-			label: 'Scale',
-			value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`
-		}
+		// Only a subject Compose can actually resize advertises a Scale fact: a light
+		// or model has no verified contact, so a Scale row would name a writer that
+		// never exists.
+		...(sceneComposeSupport(entity).resize
+			? [
+					{
+						label: 'Scale',
+						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`
+					}
+				]
+			: [])
 	];
 }
 

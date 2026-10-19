@@ -22,6 +22,7 @@
 		publishSceneSurface,
 		retireSceneSurface,
 		sceneReadingKey,
+		sceneComposeSupport,
 		sceneSessionFromServices,
 		sceneSurfaceFor,
 		type SceneCandidate,
@@ -40,6 +41,8 @@
 	/** S04's uniform Resize entry; blank/non-finite/non-positive never commits. */
 	let composeScaleText = $state('');
 	let composeActive = $state(false);
+	/** The entity the active Resize proposal was opened for, never a live guess. */
+	let composeSubjectId = $state<string | null>(null);
 	let primitive = $state<NativePlacementPrimitive>('box');
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
@@ -74,6 +77,17 @@
 		const id = selectionEntityId();
 		return id === null ? null : entities.find((entity) => entity.id === id) ?? null;
 	}
+
+	/**
+	 * What Compose may offer for the selected subject, from the same capability
+	 * the session enforces. A light or model has no verified contact, so Resize
+	 * and Duplicate stay disabled with the reason shown instead of taking a lease
+	 * and refusing after the fact.
+	 */
+	const composeSubject = $derived(composeEntity());
+	const composeSupport = $derived(
+		composeSubject === null ? null : sceneComposeSupport(composeSubject)
+	);
 
 	/**
 	 * The session for the live reading, created or replaced only when the **reading**
@@ -272,6 +286,7 @@
 		session?.cancel();
 		editing = false;
 		composeActive = false;
+		composeSubjectId = null;
 		candidate = null;
 		message = 'Cancelled; the accepted pose is unchanged.';
 	}
@@ -291,6 +306,7 @@
 			return;
 		}
 		composeActive = true;
+		composeSubjectId = entity.id;
 		candidate = null;
 		proposalRefused = false;
 		composeScaleText = String(typeof entity.scale === 'number' ? entity.scale : 1);
@@ -307,7 +323,10 @@
 		if (session === null || !composeActive) return;
 		const outcome = await session.commitResize();
 		applyOutcome(outcome);
-		if (outcome.kind === 'committed') composeActive = false;
+		if (outcome.kind === 'committed') {
+			composeActive = false;
+			composeSubjectId = null;
+		}
 	}
 
 	/**
@@ -452,6 +471,17 @@
 				untrack(() => ensureSession());
 				return;
 			}
+			// A Resize proposal is bound to the subject it was opened for. The panel's
+			// label and the eventual install must never name different entities, so a
+			// canonical selection change ends the proposal before it can commit the
+			// previous subject. This loop is the one observer that runs even when the
+			// panel is not re-rendered by the selection change.
+			if (composeActive && composeSubjectId !== null && selectionEntityId() !== composeSubjectId) {
+				untrack(() => {
+					cancel();
+					message = 'Resize cancelled; the selection changed.';
+				});
+			}
 			// A redraw keeps the lease; a host that ends it while the reading stays
 			// put has ended the proposal all the same, and this frame loop is the one
 			// observer that runs even when the panel is not re-rendered.
@@ -498,7 +528,9 @@
 	{#if composeTask}
 		<div class="editing" onfocusout={onFocusOut}>
 			<div class="row">
-				<span class="subject">Compose <code>{composeEntity()?.id ?? 'no entity'}</code></span>
+				<span class="subject"
+					>Compose <code>{composeActive ? composeSubjectId ?? 'no entity' : composeSubject?.id ?? 'no entity'}</code></span
+				>
 				{#if composeActive}<button type="button" class="quiet" onclick={cancel}>Cancel</button>{/if}
 			</div>
 			{#if composeActive}
@@ -517,14 +549,17 @@
 				</div>
 			{:else}
 				<div class="row">
-					<button type="button" onclick={beginResize} disabled={composeEntity() === null}>Resize…</button>
+					<button type="button" onclick={beginResize} disabled={composeSupport === null || !composeSupport.resize}>Resize…</button>
 				</div>
 			{/if}
 			<div class="row">
-				<button type="button" onclick={duplicateSelected} disabled={composeEntity() === null}>Duplicate</button>
-				<button type="button" onclick={deleteSelected} disabled={composeEntity() === null}>Delete</button>
+				<button type="button" onclick={duplicateSelected} disabled={composeSupport === null || !composeSupport.duplicate}>Duplicate</button>
+				<button type="button" onclick={deleteSelected} disabled={composeSubject === null}>Delete</button>
 			</div>
 			<p class="hint">Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.</p>
+			{#if composeSupport?.reason}
+				<p class="hint">{composeSupport.reason}</p>
+			{/if}
 		</div>
 	{:else if editing}
 		<div class="editing" onfocusout={onFocusOut}>
