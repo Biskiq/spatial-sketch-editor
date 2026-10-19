@@ -20,6 +20,7 @@
 	import type { ViewportEvaluation } from '@portfolio/camera-core';
 	import VisitorLayoutShell from '$lib/visitor/VisitorLayoutShell.svelte';
 	import VisitorEntities from '$lib/visitor/VisitorEntities.svelte';
+	import type { StageGhostMesh } from '$lib/authoring/stage/stage-facade';
 	import {
 		neutralVisitorRoomPresentation,
 		type VisitorRoomPresentation
@@ -30,12 +31,15 @@
 		geometry,
 		scene,
 		rooms,
-		evaluation
+		evaluation,
+		ghosts = []
 	}: {
 		geometry: CompiledLayoutGeometry;
 		scene: RuntimeScene;
 		rooms: LayoutRoomRegistry;
 		evaluation: ViewportEvaluation | null;
+		/** Adapter-proposed poses, drawn here by the one Canvas. */
+		ghosts?: readonly StageGhostMesh[];
 	} = $props();
 
 	const presentation = $derived.by(() => {
@@ -54,4 +58,21 @@
 	<StageCamera {evaluation} />
 	<VisitorLayoutShell {geometry} {presentation} />
 	<VisitorEntities {scene} {rooms} />
+	<!--
+		Proposed-pose ghosts: the object's own shape at the captured pose, translucent
+		and depth-write-free so the accepted body stays readable underneath. They are
+		one more child of the same Canvas — never a second renderer or scene.
+	-->
+	{#each ghosts as ghost (ghost.id)}
+		<T.Mesh position={ghost.center} rotation={[0, ghost.yaw, 0]} renderOrder={2}>
+			{#if ghost.shape.kind === 'box'}
+				<T.BoxGeometry args={ghost.shape.size} />
+			{:else if ghost.shape.kind === 'cylinder'}
+				<T.CylinderGeometry args={[ghost.shape.radius, ghost.shape.radius, ghost.shape.height, 24]} />
+			{:else}
+				<T.SphereGeometry args={[ghost.shape.radius, 24, 16]} />
+			{/if}
+			<T.MeshStandardMaterial color={0xc9a9ff} transparent opacity={0.38} depthWrite={false} />
+		</T.Mesh>
+	{/each}
 </Canvas>

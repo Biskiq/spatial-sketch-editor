@@ -18,22 +18,18 @@ prerequisites instead.
 ```text
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P01's slice register is authoritative — S01/S02 shipped; S03 authorized (batch B,
-        2026-10-17) and not started; S04 proposed and unauthorized.
-BATON: No T2 slice is in progress. The owner authorized S03 as batch B with `T1.P01.S04` on
-       2026-10-17 ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)). Its launch
-       conditions 1–4 were verified against `main` `a8e4d45e`: S07 shipped in PR #137, and
-       `viewport-projection-v1` was accepted at `ab8504aa`.
-NEXT: After the authorizing PR merges, start S03 through the runbook start step (eligibility at its
-      own trusted base). It runs under the batch B protocol: it is the sole writer of its Scene
-      adapters, it registers only through S07's contribution points, and it makes no host core,
-      route or shell edits. S04 additionally waits for T1.P01.S04's accepted Head Save integration.
-      Phase/track closure is not available: S04, the declared final gate, is neither accepted nor
-      shipped.
+SLICES: the phase README's slice register is authoritative — S01, S02 and S03 shipped; S04, the
+        phase's declared FINAL PHASE GATE, is proposed and unauthorized.
+BATON: S03 shipped (accepted 2026-10-18, anchor `2747f1691551296e21b17aa04dfd9de76cb08f59`,
+        tag `closed/T2.P01.S03`). Its accepted evidence, residuals and recovery are routed through:
+        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md
+NEXT:   Owner authorization of S04, the final phase gate. Its registered prerequisites are satisfied
+        on `main`: `conditional-save-current-v1` accepted; T1 Head Save integration shipped through
+        `T1.P01.S04` in PR #148.
 ROUTE: ./README.md →
        ../../roadmap/README.md#gate-register →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-b-2026-10-17
-BLOCKER: none, once the authorizing PR merges.
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s03-first-editing-surface/acceptance.md →
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md
+BLOCKER: S04 owner authorization.
 ```

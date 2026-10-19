@@ -146,6 +146,39 @@ export type StageWorldGraphic = {
 };
 
 /**
+ * One candidate mesh the Stage draws in the shared Canvas at a proposed pose.
+ *
+ * It carries a pose and an extent, never a geometry or material: the one Canvas
+ * owns rendering, so an adapter's preview cannot become a second renderer.
+ */
+export type StageGhostMesh = {
+	readonly id: string;
+	readonly center: Vec3;
+	readonly yaw: number;
+	readonly shape:
+		| { readonly kind: 'box'; readonly size: Vec3 }
+		| { readonly kind: 'cylinder'; readonly radius: number; readonly height: number }
+		| { readonly kind: 'sphere'; readonly radius: number };
+};
+
+/**
+ * One pointer phase a contributed task may claim before the host's own
+ * navigation gesture takes the press.
+ *
+ * The host asks the bindings only while a contributed task is open, and only the
+ * binding that claimed the down phase receives the following move/up/cancel
+ * phases. Coordinates are CSS pixels relative to the Stage surface, the same
+ * space `StageHitCandidate.css` uses.
+ */
+export type StagePointerIntent = {
+	readonly phase: 'down' | 'move' | 'up' | 'cancel';
+	readonly css: readonly [number, number];
+	readonly evaluationId: string;
+	/** Modifier state at the press; a drag may use it for a second mode (yaw). */
+	readonly shift?: boolean;
+};
+
+/**
  * The symbol key of the install-time mutation control.
  *
  * A conformance test uses it to run the real install with adapter re-binding
@@ -271,7 +304,17 @@ export type StageAdapterBindingContext = StageAdapterContext & { readonly adapte
 export type StageAdapterBinding = {
 	readonly overlay?: (context: StageAdapterContext) => readonly StageOverlayContribution[];
 	readonly graphics?: (context: StageAdapterContext) => readonly StageWorldGraphic[];
+	/** Proposed-pose meshes the shared Canvas draws; empty when nothing is proposed. */
+	readonly ghosts?: (context: StageAdapterContext) => readonly StageGhostMesh[];
 	readonly hitProvider?: (candidate: StageHitCandidate, context: StageAdapterContext) => StageSourceHit | null;
+	/**
+	 * Claim a press for this adapter's open task. Returning `true` on `down` takes
+	 * the press from the host's navigation gesture; the same binding then receives
+	 * `move`, `up` and `cancel`. A binding that returns `false` never sees the rest.
+	 */
+	readonly pointerIntent?: (intent: StagePointerIntent, context: StageAdapterContext) => boolean;
+	/** The host closed the contributed task (Esc, task replacement, or install). */
+	readonly taskClosed?: () => void;
 	readonly selectionChanged?: (selection: StageSelectionState) => void;
 	readonly selectionEcho?: (selection: StageSelection | null) => void;
 	readonly tasks?: readonly StageTaskContribution[];
@@ -470,6 +513,19 @@ export type StageFacade = {
 	cardNameWriter(subject: StageCardSubject): StageCardNameWriterRecord | null;
 	overlays(): readonly StageOverlayContribution[];
 	graphics(): readonly StageWorldGraphic[];
+	/** Every adapter's proposed-pose mesh for the live evaluation. */
+	ghosts(): readonly StageGhostMesh[];
+	/**
+	 * Offer a press to the binding that owns the open task. Returns the adapter
+	 * that claimed it, or `null` when the host's navigation gesture keeps it.
+	 */
+	pointerIntent(intent: StagePointerIntent): { readonly claimed: boolean; readonly adapterId: string | null };
+	/**
+	 * Ask the shell to re-read contributions now. An adapter that changes preview
+	 * state (a candidate pose) calls this so the overlay reflects it without a
+	 * document change.
+	 */
+	notifySurfaceChange(): void;
 	acquireGesture(request: {
 		owner: string;
 		evaluationId: string;
@@ -845,6 +901,8 @@ export function createStageFacade(input: {
 	let disposed = false;
 	const isLive = () => !disposed && session.isCurrent(lifetimeToken);
 	let contributedTaskOwner: { adapterId: string; taskId: string } | null = null;
+	/** The adapter that claimed the live press, if any. Cleared on up/cancel/close. */
+	let pointerOwner: string | null = null;
 
 	/**
 	 * The next host inspection run epoch. It is monotonic over this output's whole
@@ -943,6 +1001,14 @@ export function createStageFacade(input: {
 		const result = session.setSelection(value);
 		if (result.kind === 'selected') { echoSelection(); notifyAdaptersChanged(); }
 		return result;
+	}
+
+	/** Tell every binding its contributed task is gone, exactly once per close. */
+	function notifyTaskClosed(): void {
+		pointerOwner = null;
+		for (const entry of adapters.values()) {
+			try { entry.contributions.taskClosed?.(); } catch { /* Subscriber isolation. */ }
+		}
 	}
 
 	/** End every binding and registration: used by dispose, never by a content change. */
@@ -1248,6 +1314,7 @@ export function createStageFacade(input: {
 				reboundAdapters,
 				clearedSelection: installed.clearedSelection,
 				closedTask: installed.closedTask,
+				...(installed.closedTask ? (notifyTaskClosed(), {}) : {}),
 				releasedGestures: installed.releasedGestures,
 				requalification: installed.requalification,
 				selectionRemovals: installed.selectionRemovals
@@ -1328,7 +1395,16 @@ export function createStageFacade(input: {
 		setSelection,
 		select,
 		openTask: (task) => { if (!isLive()) return false; contributedTaskOwner = null; return session.openTask(task); },
-		closeTask: () => { if (!isLive()) return false; contributedTaskOwner = null; const closed = session.closeTask(); notifyAdaptersChanged(); return closed; },
+		closeTask: () => {
+			if (!isLive()) return false;
+			contributedTaskOwner = null;
+			const closed = session.closeTask();
+			// A closed task owns no press and no proposal: tell its adapter now, so the
+			// session's one cancel path runs here rather than at unmount.
+			if (closed) notifyTaskClosed();
+			notifyAdaptersChanged();
+			return closed;
+		},
 		changeLens(next) {
 			if (!isLive() || !session.changeLens(next)) return false;
 			// A lens exit ends bindings as well as writers. Old callbacks cannot become live on return.
@@ -1437,6 +1513,14 @@ export function createStageFacade(input: {
 				try { return entry.contributions.graphics?.(handle.context) ?? []; } catch { return []; }
 			});
 		},
+		ghosts() {
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return [];
+			return [...adapters.values()].flatMap((entry) => {
+				try { return entry.contributions.ghosts?.(handle.context) ?? []; } catch { return []; }
+			});
+		},
 		tasks() {
 			ensureBindings();
 			return tasksOf();
@@ -1487,6 +1571,12 @@ export function createStageFacade(input: {
 				// creator returns there instead of reading "disposed" for a live Stage.
 				return { kind: 'refused', code: 'wrong-lens', message: `Return to the ${lens} lens before invoking ${entry.label}.` };
 			}
+			// A replacement closes the previous contributed task first: its adapter gets
+			// the same taskClosed path as Esc, so no lease survives into the new task.
+			if (contributedTaskOwner !== null &&
+				(contributedTaskOwner.adapterId !== entry.adapterId || contributedTaskOwner.taskId !== entry.id)) {
+				notifyTaskClosed();
+			}
 			const task: StageTask = {
 				kind: entry.taskKind,
 				label: entry.label,
@@ -1516,6 +1606,43 @@ export function createStageFacade(input: {
 				if (a.adapterId !== b.adapterId) return a.adapterId < b.adapterId ? -1 : 1;
 				return a.label === b.label ? 0 : a.label < b.label ? -1 : 1;
 			});
+		},
+		pointerIntent(intent) {
+			if (!isLive() || session.task() === null) return { claimed: false, adapterId: null };
+			ensureBindings();
+			const handle = adapterContext();
+			if (handle === null) return { claimed: false, adapterId: null };
+			if (intent.phase === 'down') {
+				// Only the binding whose task owns the surface may claim the press: a
+				// different adapter's pointer hook cannot take another task's gesture.
+				const taskOwner = contributedTaskOwner;
+				if (taskOwner === null) return { claimed: false, adapterId: null };
+				const entry = adapters.get(taskOwner.adapterId);
+				const claim = entry?.contributions.pointerIntent;
+				if (claim === undefined) return { claimed: false, adapterId: null };
+				try {
+					if (claim(intent, handle.context)) {
+						pointerOwner = taskOwner.adapterId;
+						return { claimed: true, adapterId: taskOwner.adapterId };
+					}
+				} catch {
+					// A throwing claim is a refusal, not a stolen press.
+				}
+				return { claimed: false, adapterId: null };
+			}
+			const owner = pointerOwner;
+			if (owner === null) return { claimed: false, adapterId: null };
+			const entry = adapters.get(owner);
+			if (entry === undefined) {
+				pointerOwner = null;
+				return { claimed: false, adapterId: null };
+			}
+			try { entry.contributions.pointerIntent?.(intent, handle.context); } catch { /* Subscriber isolation. */ }
+			if (intent.phase !== 'move') pointerOwner = null;
+			return { claimed: true, adapterId: owner };
+		},
+		notifySurfaceChange() {
+			if (isLive()) notifyAdaptersChanged();
 		},
 		cardNameWriter(subject) {
 			if (!isLive()) return null;

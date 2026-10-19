@@ -226,7 +226,7 @@ export async function nativePlacementDefinition(
 		definitionKey: nativeDefinitionKey(primitive),
 		admission: nativeAdmission(primitive),
 		footprintMeters: nativeFootprint(primitive),
-		contactMinY: nativeContactMinY(primitive),
+		contactMinY: nativePlacementContactMinY(primitive),
 		creationDefaults: nativeCreationDefaults(primitive),
 		renderNormalization: { defaultScale: 1 }
 	};
@@ -353,7 +353,8 @@ function nativeAdmission(primitive: NativePlacementPrimitive): ObjectDefinitionA
 	};
 }
 
-function nativeContactMinY(primitive: NativePlacementPrimitive): number {
+/** The declared floor contact of one native primitive, in placement-local meters. */
+export function nativePlacementContactMinY(primitive: NativePlacementPrimitive): number {
 	if (primitive === 'sphere') return -NATIVE_PLACEMENT_DIMENSIONS.sphere.radius;
 	if (primitive === 'cylinder') return -NATIVE_PLACEMENT_DIMENSIONS.cylinder.height / 2;
 	return -NATIVE_PLACEMENT_DIMENSIONS.box.height / 2;
