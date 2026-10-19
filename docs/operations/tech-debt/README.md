@@ -32,6 +32,36 @@ below, not the entry.
 
 ## Open
 
+## TD-8 — a task's scoped services go stale after an accepted install, refusing `Begin`
+
+Status        open — intermittent; root cause located
+Found         2026-10-18, during T2.P01.S03's browser acceptance run
+Owner         Stage host task-scoped services (`apps/editor/src/lib/authoring/stage/stage-facade.ts`,
+              `taskServices`/`active()`), not the Scene adapter that surfaced it
+Symptom       After a typed commit, Undo and Redo, the Scene instrument's `Use selection` + `Begin`
+              refused `stale-epoch: This editing session is stale.` and no form opened. Closing and
+              reopening the task recovered it, and the same sequence then worked.
+Reproduce     Observed once: commit a typed yaw, Undo, Redo, reopen `Arrange`, `Use selection`,
+              `Begin`. It did not reproduce on demand afterwards, so the recipe is not yet reliable.
+Recheck       S03's completed acceptance journeys (2026-10-18) ran `Use selection` + `Begin` after
+              three accepted installs — two typed `Place`s and one typed `Commit` — at 1280×900 with
+              reduced motion on and off. Every `Begin` was accepted; the refusal did not recur. The
+              entry stays open: one clean session is not a reproduction, and the generation capture
+              it describes is still in the code.
+Root cause    The task-scoped services capture `generation = session.writerGeneration()` and gate
+              every call on `generation === session.writerGeneration()`. An accepted install or a
+              history command bumps the writer generation; if the panel that holds the instrument is
+              not rebuilt, its services keep the old generation and every later call refuses.
+Why green     No test drives a writer-generation bump while a task panel stays mounted: the
+              task-services tests build services after the bump, so they never see a stale copy.
+Fix options   1) Have the panel rebuild its task services on `onAdaptersChanged`/install (host-side,
+              cheapest); 2) make `active()` compare liveness rather than a captured generation and
+              let the facade refuse per operation (wider blast radius). Do **not** let the instrument
+              re-acquire services from internals — that would give the adapter a second authority.
+Then add      A facade/instrument test that bumps the writer generation under a mounted task and
+              asserts the next `Begin` is accepted, plus one that asserts a genuinely ended task
+              still refuses.
+
 ## TD-6 — the migration runner races between two concurrent processes
 
 Status        open

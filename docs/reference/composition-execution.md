@@ -626,6 +626,11 @@ inverses, Scene support resolution and Camera authoring are excluded.
 | Replacement and lifetime | Validate first, then atomically cancel writers, clear selection/task/return context and swap project/session under a new epoch. Stale loads and Camera completions cannot affect the replacement; no project-specific singleton survives. Adapters, buffers, listeners, leases and pending callbacks dispose exactly once. |
 | Starter gallery | Canonical current-format source template: one rectangular enclosure, real reconciled Room/floor polygon and floor datum, no Scene objects and no Camera/Experience content. Validated boot with explicit project-replacement guard. General Wall drawing and the derived-role/schema cutover are deferred and are not prerequisites for compiled-floor support. |
 
+An evaluation's **generation advances on every drawn frame**, so it names a frame, not a reading: a
+proposal spans frames and is identified by the output, host session, accepted source revision and
+settled reading, while exact projection work still validates the evaluation token it was computed
+against. Keying a proposal by the generation cancels live work on any redraw.
+
 One persistent Threlte Canvas/Stage serves all readings and lenses; renderer Camera objects
 realize evaluated output only. Editor mounting contracts stay editor-only and must not pull
 selection/history/runes/DOM into shared packages.

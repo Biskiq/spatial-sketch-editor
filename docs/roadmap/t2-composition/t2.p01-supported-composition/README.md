@@ -1,7 +1,7 @@
 # T2.P01 — Supported object composition
 
 **Phase:** T2.P01 · **Status:** registered 2026-10-16 — `T2.P01.S01` shipped 2026-10-16;
-`T2.P01.S02` shipped 2026-10-17; S03 authorized 2026-10-17 (batch B, [record](../../../reference/decisions/batch-b-authorization-2026-10-17.md));
+`T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (authorized 2026-10-17 as batch B, [record](../../../reference/decisions/batch-b-authorization-2026-10-17.md));
 S04 proposed and unauthorized · **Track:** [T2](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) ·
@@ -150,7 +150,7 @@ lifecycle and prerequisites only.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | T2.P01.S01 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Deterministic candidates and canonical floor support](./t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | [record](./t2.p01.s01-candidates-and-floor-support/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 with independent implementation review and focused T1/Layout sign-off |
 | T2.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](./t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](./t2.p01.s02-scene-operations-and-history/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); owner acceptance via deliberate closeout invocation on 2026-10-17; independent review resolved separately (see record) |
-| T2.P01.S03 | approved | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](./t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](./t2.p01.s03-first-editing-surface/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); not started |
+| T2.P01.S03 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](./t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](./t2.p01.s03-first-editing-surface/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); acceptance refreshed 2026-10-18 after pointer Move repair and independent delta review; anchor `2747f169` / tag `closed/T2.P01.S03` (local only) |
 | T2.P01.S04 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](./t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record](./t2.p01.s04-bounded-composition-loop/acceptance.md) | — |
 
 `F1.reference@1:references-v1` was accepted at `ee463d0b` and S01 shipped in PR #130. S02's
@@ -158,8 +158,9 @@ lifecycle and prerequisites only.
 of post-PR #129 `main`, so S02 was eligible. S03 also needed `viewport-projection-v1` **and** the
 host↔F4 wiring. By owner rulings D1/D2 of 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), both come from `T1.P01.S07`:
 it owns the wiring, and its acceptance records the viewport capability, with `T1.P01.S02` as provider.
-S03's [exact launch conditions](./t2.p01.s03-first-editing-surface/implementation-plan.md#prerequisite)
-are in its plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
+S03's exact launch conditions were verified at authorization
+([batch B record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and are kept in
+its now-closed plan. S07 shipped in PR #137 with `viewport-projection-v1` accepted at `ab8504aa`, and the
 owner authorized S03 as batch B on 2026-10-17 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)). S04 additionally needs `T3.P01.S02`'s
 `conditional-save-current-v1` (accepted) **and** T1's Head Save integration, which is `T1.P01.S04`'s by ruling D3 (assignment origin: decision 1 of the [S02 pair record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). Every prerequisite
 is judged at the slice's own trusted base.
@@ -177,13 +178,16 @@ PHASE CLOSE
 Stage:        active
 ```
 
-S01 and S02 have acceptance evidence. S02's owner acceptance was recorded 2026-10-17 from the
+S01, S02 and S03 have acceptance evidence. S02's owner acceptance was recorded 2026-10-17 from the
 deliberate `slice-closeout` invocation. That event did not waive independent review; the earlier
 review gap was separately resolved after review of the reconciled implementation and a component-scope
 repair. See the [acceptance record](./t2.p01.s02-scene-operations-and-history/acceptance.md) for the
-distinct owner-acceptance and reviewer-authored evidence. The final gate (`T2.P01.S04`) is declared,
-not closeable; acceptance would make the phase closable, and phase/track closure remains a separate
-owner event.
+distinct owner-acceptance and reviewer-authored evidence. S03's owner acceptance was recorded
+2026-10-18 from the same deliberate invocation, on an independent-review verdict that covers its
+implementation revision; its [record](./t2.p01.s03-first-editing-surface/acceptance.md) names the
+tier, the declared integration route, the four recorded journeys and the remaining residuals. The final gate
+(`T2.P01.S04`) is declared, not closeable; acceptance would make the phase closable, and phase/track
+closure remains a separate owner event.
 
 ## Minimum dependencies
 

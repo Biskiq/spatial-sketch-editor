@@ -24,6 +24,10 @@ export const svelteTestSetup = {
 		svelte({ hot: false })
 	],
 	resolve: {
+		// A component test mounts the browser build of Svelte; without this the
+		// SSR entry is resolved and `mount(...)` is unavailable. Node-only modules
+		// keep working because `browser` is additive to the default conditions.
+		conditions: ['browser'],
 		alias: {
 			$lib: path.resolve(here, 'src/lib')
 		}
