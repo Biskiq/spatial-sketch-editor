@@ -167,7 +167,7 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		expect(buttonNamed(target, 'Resize…').disabled).toBe(true);
 		expect(buttonNamed(target, 'Duplicate').disabled).toBe(true);
 		expect(buttonNamed(target, 'Delete').disabled).toBe(false);
-		expect(target.textContent).toContain('A light has no verified floor contact');
+		expect(target.textContent).toContain('lights have no object footprint');
 	});
 
 	it('offers Resize and Duplicate for a primitive with a known contact', async () => {

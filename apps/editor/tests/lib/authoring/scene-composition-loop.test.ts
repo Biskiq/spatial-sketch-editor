@@ -80,6 +80,28 @@ function lightEntity(id = LIGHT_ID, position: Vec3 = [3, 2.4, 3]): SceneEntity {
 	};
 }
 
+const PLANE_ID = 'entity-composition-plane';
+const TILTED_ID = 'entity-composition-tilted';
+
+function planeEntity(): SceneEntity {
+	return {
+		kind: 'primitive',
+		primitive: 'plane',
+		id: PLANE_ID,
+		name: 'Screen',
+		dimensions: { width: 2, height: 2 },
+		materialId: 'plaster-warm',
+		castShadow: false,
+		receiveShadow: true,
+		position: [2, 1, 2],
+		rotation: [0, 0, 0]
+	};
+}
+
+function tiltedBox(): SceneEntity {
+	return { ...boxEntity(TILTED_ID), rotation: [0.3, 0, 0] };
+}
+
 function boxEntity(id = ENTITY_ID, position: Vec3 = BASELINE): SceneEntity {
 	return {
 		kind: 'primitive',
@@ -199,6 +221,7 @@ describe('Scene Resize — one planner, one contact result', () => {
 		expect(sceneComposeSupport(light)).toEqual({
 			resize: false,
 			duplicate: false,
+			code: 'unsupported-transform',
 			reason: expect.stringContaining('light')
 		});
 		const { session, port } = await sessionFor([light]);
@@ -206,13 +229,48 @@ describe('Scene Resize — one planner, one contact result', () => {
 		// Undo is never blocked for a proposal that cannot exist.
 		expect(session.beginResize(light.id)).toMatchObject({
 			kind: 'refused',
-			code: 'missing-contact-metadata'
+			code: 'unsupported-transform'
 		});
 		expect(port.releases()).toBe(0);
 		await expect(session.duplicate(light.id)).resolves.toMatchObject({
 			kind: 'refused',
-			code: 'missing-contact-metadata'
+			code: 'unsupported-transform'
 		});
+		expect(port.intents).toEqual([]);
+	});
+
+	it('refuses a vertical plane and a tilted primitive exactly as the planner does', async () => {
+		// The planner's own gate rejects a vertical plane (no honest footprint) and a
+		// tilted primitive (not upright). Compose must not enable either command.
+		const plane = planeEntity();
+		expect(sceneComposeSupport(plane)).toMatchObject({
+			resize: false,
+			duplicate: false,
+			code: 'unsupported-transform'
+		});
+		expect(sceneComposeSupport(tiltedBox())).toMatchObject({
+			resize: false,
+			duplicate: false,
+			code: 'unsupported-transform'
+		});
+		const { session, port } = await sessionFor([plane, tiltedBox()]);
+		expect(session.beginResize(PLANE_ID)).toMatchObject({
+			kind: 'refused',
+			code: 'unsupported-transform'
+		});
+		expect(session.beginResize(TILTED_ID)).toMatchObject({
+			kind: 'refused',
+			code: 'unsupported-transform'
+		});
+		await expect(session.duplicate(PLANE_ID)).resolves.toMatchObject({
+			kind: 'refused',
+			code: 'unsupported-transform'
+		});
+		await expect(session.duplicate(TILTED_ID)).resolves.toMatchObject({
+			kind: 'refused',
+			code: 'unsupported-transform'
+		});
+		expect(port.releases()).toBe(0);
 		expect(port.intents).toEqual([]);
 	});
 
@@ -337,14 +395,17 @@ describe('Scene composition journey — one host, one history stack', () => {
 	}
 
 	it('advertises Scale and Compose only for a subject the planner can resize', async () => {
-		const { facade } = await mounted([boxEntity(), lightEntity()]);
+		const { facade } = await mounted([boxEntity(), lightEntity(), planeEntity(), tiltedBox()]);
 		const boxFacts = facade.cardFacts({ sourceId: ENTITY_ID, sourceKind: 'entity', ref: null });
 		expect(boxFacts.map((fact) => fact.label)).toContain('Scale');
-		// A light has no verified contact, so it advertises no Scale row and no
-		// Resize/Duplicate: the panel's disabled controls read the same predicate.
-		const lightFacts = facade.cardFacts({ sourceId: LIGHT_ID, sourceKind: 'entity', ref: null });
-		expect(lightFacts.map((fact) => fact.label)).not.toContain('Scale');
+		// A light, a vertical plane and a tilted primitive advertise no Scale row and
+		// no Resize/Duplicate: the panel's disabled controls read the same predicate.
+		for (const id of [LIGHT_ID, PLANE_ID, TILTED_ID]) {
+			const facts = facade.cardFacts({ sourceId: id, sourceKind: 'entity', ref: null });
+			expect(facts.map((fact) => fact.label)).not.toContain('Scale');
+		}
 		expect(sceneComposeSupport(lightEntity()).resize).toBe(false);
+		expect(sceneComposeSupport(planeEntity()).resize).toBe(false);
 	});
 
 	it('resizes, undoes, redoes, duplicates and deletes through the accepted host', async () => {

@@ -25,16 +25,17 @@ BATON: S04 is implemented on branch `T2-P01-S04` (base `919c2904`, batch C) and 
        slice lanes and two independent review rounds (the second accepted with no blocking
        findings). It adds the `scene-compose` task (uniform
        Resize, duplicate, delete) through AM-5 only, reusing T1's shipped source-JSON/Reload paths
-       and extending no host seam. Resize and Duplicate are **primitive-only**: the panel disables
-       them (with the reason) and the session refuses before taking a lease for a light or model;
-       no Scale fact is advertised for a subject that cannot be written. An open Resize is
-       cancelled when the canonical selection moves. Numeric Resize is the guaranteed route; no
-       direct handle was added.
+       and extending no host seam. Resize and Duplicate are **primitive-only** and read the
+       planner's own `floorTransformSupport`: lights, vertical planes, tilted primitives and models
+       without verified contact are refused before taking a lease and show no Scale fact. An open
+       Resize is cancelled when the canonical selection moves. Numeric Resize is the guaranteed
+       route; no direct handle was added.
        **The phase final gate is not passed:** the persistence row still lacks active-preview
        cancellation on replace, previous-source preservation after a refused open, and the Save
-       creator journey through the mounted Head. Nothing is accepted and no gate state is written.
-       TD-8 is absent from this base; the Compose journeys reopen the task after each install and
-       do not rely on a reused task panel.
+       creator journey through the mounted Head. Those live in T1-owned route/Head files this slice
+       may not edit, so the gate needs a T1-owned harness or an owner amendment. Nothing is
+       accepted and no gate state is written. TD-8 is absent from this base; the Compose journeys
+       reopen the task after each install and do not rely on a reused task panel.
 NEXT:   Batch C merge protocol for the two slice PRs; then the remaining gate proofs (or an owner
         amendment) and a browser creator journey with reduced-motion evidence.
        Owner follow-up: push the local `closed/T2.P01.S03` tag.

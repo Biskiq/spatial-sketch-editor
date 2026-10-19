@@ -19,12 +19,14 @@ host seam was added. It reuses T1's shipped source-JSON download/open, replaceme
 Reload remote.
 
 **Capability truth.** Resize and Duplicate are offered only for a subject the planner can
-re-seat: an admitted analytic primitive with a known contact. A light or model shows no `Scale`
-Card fact and both commands are disabled with the reason shown; `beginResize` refuses before
-taking the gesture lease, so a command that cannot produce a candidate never blocks Undo. Delete
-needs no contact and stays available. A Resize proposal is bound to the entity it was opened for:
-the panel cancels it when the canonical selection moves to another entity, so the label, the
-candidate and the write cannot name different subjects.
+re-seat: an admitted analytic primitive with a known contact, upright, and not a vertical plane.
+The check is `floorTransformSupport` from the Scene planner module — the planner's own gate, not a
+second capability model — so lights, planes, tilted primitives and models without verified
+contact show no `Scale` Card fact and both commands are disabled with the reason shown.
+`beginResize` refuses before taking the gesture lease, so a command that cannot produce a
+candidate never blocks Undo. Delete needs no contact and stays available. A Resize proposal is
+bound to the entity it was opened for: the panel cancels it when the canonical selection moves to
+another entity, so the label, the candidate and the write cannot name different subjects.
 
 **Primary new evidence:** `apps/editor/tests/lib/authoring/scene-composition-loop.test.ts`
 (session parity/refusal tests, capability gating, duplicate/delete intents, an accepted-host
@@ -42,7 +44,7 @@ named; **Not run** = no evidence was produced. No row is claimed as accepted.
 | --- | --- | --- |
 | Canonical boot → place → commit (Scene successor to TD-1) | **Partial** | S03's `scene-editing-surface.test.ts` already covers place/commit from an admitted wall-first project, including empty/no-floor refusal. S04 changes neither boot nor placement; the new journey starts from the same admitted fixture. A production-route browser boot was not run. |
 | Support parity | **Written** (numeric Resize) | `scene-composition-loop.test.ts` "previews the planner re-seat and commits that exact scale and Y": the shown candidate Y is the planner's `elevation − scale × contactMinY` and commit sends that same scale/contact pair. Plan/3D pointer parity for resize is not added: numeric scale is the guaranteed route and no direct resize handle was added. Nonzero elevation, boundary and choice-required cases remain S02/S03 coverage. |
-| Truthful geometry | **Partial, with a named limit** | Resize preserves the entity's authored dimensions and changes only the uniform `scale` plus the compensating Y. **Resize and Duplicate are primitive-only**: `localContactMinY` answers `null` for every non-primitive, so a light or model is refused by the session and disabled in the panel, and no `Scale` fact is advertised for it. A verified model-contact path is not implemented and no new native contact or footprint math was introduced. |
+| Truthful geometry | **Partial, with a named limit** | Resize preserves the entity's authored dimensions and changes only the uniform `scale` plus the compensating Y. **Resize and Duplicate are primitive-only** and exclude vertical planes and tilted primitives: eligibility reads the planner's own `floorTransformSupport`, so the disabled control, the session refusal and the planner cannot disagree. A light, plane, tilted primitive or a model without verified contact is refused by the session and disabled in the panel, and no `Scale` fact is advertised. A verified model-contact path is not implemented and no new native contact or footprint math was introduced. |
 | Owned transforms | **Written** (primitive subjects) | Resize is one finite positive scalar; zero/negative/non-finite/blank are refused without averaging, the planner refuses a no-op, and X/Z/yaw are preserved by the planner — the intent itself carries only `scale` and `contactMinY`. Duplicate keeps pose/rotation/scale and adds exactly the planner's +0.5 m world X/Z. Delete removes only the named entity. |
 | Preview/commit/lifetime | **Partial** | Resize preview and commit call the same retained planner with the same captured inputs; the lease is `cancel-on-reading-change` and a refused/invalid commit releases it. The panel cancels an open Resize when the canonical selection moves (`scene-compose-instrument.test.ts`). Duplicate/delete are immediate commands with no candidate to leave stale. Lost-capture and a direct pointer Resize handle are not implemented (numeric route only). |
 | Selection and actions | **Written** (scoped actions) | Duplicate's completion selects the created entity at the post-accept revision; delete retires the subject and the host clears the selection. The planners (unchanged) refuse cluster-member duplication with `unsupported-set` and clean cluster membership on delete; those planner contracts are S02 coverage. |
@@ -59,10 +61,10 @@ lane results on a branch, **not** a merge gate against a merge revision.
 | Check | Result |
 | --- | --- |
 | `npm run check` | **0 errors, 0 warnings** |
-| `npm run test:fast` | **1953 / 1953**, 140 files, exit 0 |
+| `npm run test:fast` | **1954 / 1954**, 140 files, exit 0 |
 | `npm run test:arch` | **163 / 163**, 20 files, exit 0 (documentation gate included) |
 | `npm run test:heavy` | **118 / 118**, 8 files, exit 0 |
-| Focused | `scene-composition-loop` 10/10, `scene-compose-instrument` 3/3, `scene-editing-surface` 41/41, `scene-operation-acceptance` 9/9, `save-state` 16/16, `scene-instrument-focus` 3/3 |
+| Focused | `scene-composition-loop` 11/11, `scene-compose-instrument` 3/3, `scene-editing-surface` 41/41, `scene-operation-acceptance` 9/9, `save-state` 16/16, `scene-instrument-focus` 3/3 |
 
 The full contract required by
 [`apps/editor/tests/README.md`](../../../../../apps/editor/tests/README.md#what-a-change-requires)
@@ -71,18 +73,27 @@ is therefore satisfied on the branch; the merge gate still has to be re-run at t
 ## Final gate
 
 **The phase final gate is NOT passed on this revision.** S04's implementation is coherent and the
-lanes are green, but the phase evidence matrix has rows that are Partial by design (primitive-only
-Resize/Duplicate), and the persistence row still lacks the route-level proofs the plan names:
+lanes are green, but the persistence row still lacks the route-level proofs the plan names:
 active-preview cancellation on replace, previous-source preservation after a refused open, and the
-Save creator journey through the mounted Head. The bounded loop itself is demonstrable; the gate
-needs those proofs or an owner amendment before it can be called passed.
+Save creator journey through the mounted Head.
+
+**Ownership blocker, not a hidden omission.** Those behaviours live in
+`apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` and the Head Save mount, which
+are T1 host files. The S04 plan forbids this slice from adding host, Head, persistence or Save UI
+(`Scope correction, batch C ruling C4`), so the missing proofs cannot be produced here without a
+cross-track edit. The gate needs either a T1-owned integration test/harness for those paths or an
+explicit owner amendment to the final-gate scope. The review's capability defect (plane/tilted
+eligibility) and the exact-source history proof are fixed on this branch; they do not close the
+gate.
 
 ## Residuals
 
 1. No direct Resize handle or pointer preview: the plan makes numeric scale the guaranteed route,
    so this is an admitted omission, not a defect.
 2. No browser journey or reduced-motion evidence for the creator loop.
-3. Resize and Duplicate are primitive-only. The docs now say so; verified model-contact capture
-   is a separate capability, not something this slice quietly approximates.
+3. Resize and Duplicate are primitive-only and exclude vertical planes and tilted primitives. The
+   docs now say so; verified model-contact capture is a separate capability, not something this
+   slice quietly approximates.
 4. S04 is the phase **final gate**. This record does not declare the phase closable or closed; the
-   blockers above are the reason.
+   blockers above are the reason. The persistence proofs are blocked on T1-owned host files, not
+   on Scene code.

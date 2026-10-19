@@ -28,6 +28,7 @@
  */
 
 import {
+	floorTransformSupport,
 	planMoveHorizontal,
 	planResizeOnFloor,
 	planSetYaw,
@@ -334,6 +335,8 @@ export function localContactMinY(entity: SceneEntity): number | null {
 export type SceneComposeSupport = {
 	readonly resize: boolean;
 	readonly duplicate: boolean;
+	/** The refusal code a command reports, or `null` when both are available. */
+	readonly code: 'missing-contact-metadata' | 'unsupported-transform' | null;
 	/** Why Resize/Duplicate are unavailable, or `null` when both are. */
 	readonly reason: string | null;
 };
@@ -348,15 +351,25 @@ export type SceneComposeSupport = {
  * cannot be written). Delete needs no contact.
  */
 export function sceneComposeSupport(entity: SceneEntity): SceneComposeSupport {
-	if (localContactMinY(entity) !== null) return { resize: true, duplicate: true, reason: null };
-	return {
-		resize: false,
-		duplicate: false,
-		reason:
-			entity.kind === 'light'
-				? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
-				: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
-	};
+	// The planner's own gate first: lights, vertical planes, tilted primitives and
+	// primitives with no analytic contact are unsupported there, so the UI must not
+	// offer them either.
+	const planner = floorTransformSupport(entity);
+	if (!planner.supported) {
+		return { resize: false, duplicate: false, code: 'unsupported-transform', reason: planner.message };
+	}
+	if (localContactMinY(entity) === null) {
+		return {
+			resize: false,
+			duplicate: false,
+			code: 'missing-contact-metadata',
+			reason:
+				entity.kind === 'light'
+					? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
+					: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+		};
+	}
+	return { resize: true, duplicate: true, code: null, reason: null };
 }
 
 export function createSceneSession(input: {
@@ -706,11 +719,15 @@ export function createSceneSession(input: {
 			if (entity === null) {
 				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
 			}
-			// Refuse before taking the lease: a command that cannot produce a
-			// candidate must not make Undo report a live proposal.
+			// The refusal is the begin: a subject the planner cannot transform must
+			// never take the lease, so Undo never reports a proposal that cannot exist.
 			const support = sceneComposeSupport(entity);
 			if (!support.resize) {
-				return { kind: 'refused', code: 'missing-contact-metadata', message: support.reason ?? 'Resize is unavailable.' };
+				return {
+					kind: 'refused',
+					code: support.code ?? 'unsupported-transform',
+					message: support.reason ?? 'Resize is unavailable.'
+				};
 			}
 			release();
 			lease = input.port.acquireGesture({
@@ -756,6 +773,14 @@ export function createSceneSession(input: {
 			const entity = entityOf(id);
 			if (entity === null) {
 				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
+			}
+			const support = sceneComposeSupport(entity);
+			if (!support.duplicate) {
+				return {
+					kind: 'refused',
+					code: support.code ?? 'unsupported-transform',
+					message: support.reason ?? 'Duplicate is unavailable.'
+				};
 			}
 			const contactMinY = localContactMinY(entity);
 			if (contactMinY === null) {
