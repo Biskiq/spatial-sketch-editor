@@ -77,14 +77,17 @@ lanes are green, but the persistence row still lacks the route-level proofs the 
 active-preview cancellation on replace, previous-source preservation after a refused open, and the
 Save creator journey through the mounted Head.
 
-**Ownership blocker, not a hidden omission.** Those behaviours live in
+**Unproduced work, with a named host boundary.** The behaviours exercised live in
 `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` and the Head Save mount, which
-are T1 host files. The S04 plan forbids this slice from adding host, Head, persistence or Save UI
-(`Scope correction, batch C ruling C4`), so the missing proofs cannot be produced here without a
-cross-track edit. The gate needs either a T1-owned integration test/harness for those paths or an
-explicit owner amendment to the final-gate scope. The review's capability defect (plane/tilted
-eligibility) and the exact-source history proof are fixed on this branch; they do not close the
-gate.
+are T1 host files, but the plan makes *proving the journey* this slice's job ("This slice reuses
+them and proves the journey"). A test-only harness that mounts and drives those modules is not a
+host source edit, so these proofs are **outstanding in T2**, not blocked from being attempted. What
+is genuinely cross-track is a behaviour change those tests might expose — for example, a refused
+invalid-JSON Open that replaces the visible source would be a T1 host defect and would need a T1
+follow-up or an explicit owner amendment, because the S04 plan forbids this slice from editing host,
+Head, persistence or Save UI (`Scope correction, batch C ruling C4`). The review's capability defect
+(plane/tilted eligibility) and the exact-source history proof are fixed on this branch; they do not
+close the gate.
 
 ## Residuals
 
@@ -95,5 +98,5 @@ gate.
    docs now say so; verified model-contact capture is a separate capability, not something this
    slice quietly approximates.
 4. S04 is the phase **final gate**. This record does not declare the phase closable or closed; the
-   blockers above are the reason. The persistence proofs are blocked on T1-owned host files, not
-   on Scene code.
+   missing proofs above are the reason. They are unproduced T2 work, not a Scene-code blocker; any
+   host behaviour they expose is T1-owned.
