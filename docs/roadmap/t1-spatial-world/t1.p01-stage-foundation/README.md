@@ -6,7 +6,8 @@
 2026-10-17 by owner-override (PR #128); `T1.P01.S07` accepted and shipped 2026-10-17 (PR #137,
 recording `T1.viewport-projection@1:viewport-projection-v1` accepted); `T1.P01.S04` authorized
 2026-10-17 as batch B ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and
-accepted and shipped 2026-10-18 (PR #148); S05–S06 proposed and unauthorized ·
+accepted and shipped 2026-10-18 (PR #148); S05 authorized 2026-10-19 as batch C
+([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); S06 proposed and unauthorized, routed after `T3.P01.S04` (ruling C3) ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -150,7 +151,7 @@ an ancestor. **S07 was authorized** by the owner decision of 2026-10-17 ([record
 `T1.viewport-projection@1:viewport-projection-v1` with `T1.P01.S02` unchanged as the sole provider.
 **S04 is authorized** with T2.P01.S03 as batch B by the owner decision of 2026-10-17
 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in scope (ruling D3).
-S05–S06 are **proposed** and hold no implementation permission. Same-phase sequencing
+**S05 is authorized** as batch C by the owner decision of 2026-10-19 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)). S06 is **proposed** and holds no implementation permission. Same-phase sequencing
 never bypasses the trusted-base rule: each consumed gate and each required capability must be
 accepted at the consumer's trusted base.
 
@@ -161,7 +162,7 @@ accepted at the consumer's trusted base.
 | T1.P01.S03 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Local acceptance and history foundation](./t1.p01.s03-local-acceptance-and-history-foundation/implementation-plan.md) | [record](./t1.p01.s03-local-acceptance-and-history-foundation/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 from independent review evidence; F4 outputs `acceptance-invariants-v1` and `local-single-domain-v1` accepted |
 | T1.P01.S07 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); accepted 2026-10-17 after four review rounds and the complete gate at its merge candidates (API suites 65 tests, zero skips); records `viewport-projection-v1` accepted with `T1.P01.S02` as unchanged sole provider; shipped via PR #137, which must land as a merge commit so the recorded P1 anchors stay reachable |
 | T1.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision (closed stub)](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record (closed stub)](./t1.p01.s04-existing-layout-precision/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T2.P01.S03` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); Head Save integration in scope (ruling D3), so `conditional-save-current-v1` joined `Requires` at authorization; composition-root gaps closed under the [host-integration exception](../../../reference/decisions/t1-s04-host-integration-2026-10-17.md); accepted 2026-10-18 at `2d37adef`; closed 2026-10-18 by `slice-closeout` |
-| T1.P01.S05 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | — |
+| T1.P01.S05 | approved | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T2.P01.S04` ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); TD-8 is its first increment (ruling C5) |
 | T1.P01.S06 | proposed | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
 
 Every slice also declares the specific capabilities it requires (`Requires`) in its own plan, and the
@@ -187,8 +188,8 @@ wiring, adapter re-binding and the AM-5 adapter contribution points, and it reru
 and the complete merge gate on then-current `main`. Its acceptance records `viewport-projection-v1`,
 with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
 the viewport readiness route. S02's acceptance record is unchanged. S07's acceptance now records the
-capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S05–S06 remain proposed and
-hold no implementation permission until the owner authorizes them.
+capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S05 is authorized as batch C
+(2026-10-19); S06 remains proposed and holds no implementation permission until its own authorization.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
@@ -197,11 +198,11 @@ Neither consumed the other. The host↔F4 wiring (accepted install into the Stag
 replacement baseline, selection requalification, Camera-output rebase) is **S07's** by ruling D2
 (2026-10-17), and the Head Save integration is **S04's** by ruling D3. The [batch A protocol](../../cross-track-execution.md#authorized-batch-2026-10-17) governed S07
 alongside `T3.P01.S03` (both shipped). The [batch B protocol](../../cross-track-execution.md#authorized-batch-b-2026-10-17)
-governed S04 alongside `T2.P01.S03` (both shipped). Batch C proposes S05 alongside `T2.P01.S04`, and
-moves S06 after `T3.P01.S04` with re-declared unit scopes
-([prepared record](../../../reference/decisions/batch-c-authorization-2026-10-19.md), awaiting owner
-approval; [protocol](../../cross-track-execution.md#proposed-batch-c-2026-10-19)). Until the owner
-approves it, S05–S06 hold no implementation permission and their rows are unchanged.
+governed S04 alongside `T2.P01.S03` (both shipped). Batch C (owner-authorized 2026-10-19,
+[record](../../../reference/decisions/batch-c-authorization-2026-10-19.md);
+[protocol](../../cross-track-execution.md#authorized-batch-c-2026-10-19)) authorizes S05 alongside
+`T2.P01.S04` and moves S06 after `T3.P01.S04` with re-declared unit scopes (ruling C3). S06 holds no
+implementation permission until its own authorization record.
 
 ```text
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md

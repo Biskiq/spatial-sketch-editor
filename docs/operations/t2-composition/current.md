@@ -19,17 +19,17 @@ prerequisites instead.
 PHASE: T2.P01 Supported object composition (in-progress) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
 SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are shipped. S04, the
-        phase's declared FINAL PHASE GATE, is proposed and unauthorized.
-BATON: S04's prerequisites hold on `main` `5fee2a2d`: `conditional-save-current-v1` is accepted,
-       and T1's Head Save integration shipped through `T1.P01.S04` (PR #148). Batch C (prepared, not
-       approved) pairs S04 with `T1.P01.S05` and corrects its scope: it reuses T1's shipped
-       Download/Open source JSON and Reload remote, and builds no persistence UI. TD-8 is T1's to
-       fix. S04 records the base its journeys ran on.
-NEXT:   The owner signs the batch C record and its approval patch is applied; then S04 starts
-        through the runbook start step. Owner follow-up: push the local `closed/T2.P01.S03` tag.
+        phase's declared FINAL PHASE GATE, is authorized as batch C (2026-10-19), effective when
+        PR #155 merges.
+BATON: S04 runs alongside T1.P01.S05 under the batch C protocol. Scope correction C4: reuse T1's
+       shipped Download/Open source JSON and Reload remote, build no persistence UI, keep numeric
+       Resize as the guaranteed route, and stop-and-report for any new host seam. TD-8 is T1's to
+       fix; record the base the journeys ran on.
+NEXT:   After PR #155 merges, start S04 through the runbook start step at its own trusted base.
+        Owner follow-up: push the local `closed/T2.P01.S03` tag.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#proposed-batch-c-2026-10-19
-BLOCKER: owner approval of batch C.
+       ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19
+BLOCKER: none once PR #155 merges.
 ```

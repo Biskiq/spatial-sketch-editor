@@ -18,21 +18,20 @@ prerequisites instead.
 ```text
 PHASE: T1.P01 Stage and authoring foundation (in-progress) →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
-ACTIVE: none in progress. S01–S04 and S07 are shipped. S04 merged in PR #148: its accepted head
-        `2d37adef` and review fix `aa26e04a` are ancestors of `main`, and `closed/T1.P01.S04` is
-        pushed (verified 2026-10-19). S05–S06 are proposed and unauthorized.
-BATON: Batch C is prepared, not approved: S05 ∥ T2.P01.S04, with TD-8 as S05's first increment,
-       then a current-source freeze before T3.P01.S04's caller migration, and S06 moved after the T3
-       cutover with re-declared unit scopes. The cycle window stays open: the S02 and S04 rows are
-       recorded, and the terminal S05 is pending. TD-9 (sign-in Save resume half-wired) is
-       recorded, owned by the Head integration and verified at S06.
-NEXT: The owner signs the batch C record (C1–C7) and its approval patch is applied. S05 then
-      starts through the runbook start step at its own trusted base. Owner follow-up: push the
-      local `closed/T1.P01.S07` tag.
+ACTIVE: none in progress. S01–S04 and S07 are shipped (PR #148 anchors verified ancestors of
+        `main`; `closed/T1.P01.S04` pushed). S05 is authorized as batch C (2026-10-19), effective
+        when PR #155 merges. S06 is proposed and routed after T3.P01.S04 (ruling C3).
+BATON: Batch C: S05 ∥ T2.P01.S04 under the batch C protocol; S05 owns the host core, and TD-8 is its
+       first increment (it may land standalone first if T2 S04 needs it). After both merge, the
+       current-source freeze holds until T3.P01.S04 merges. The cycle window stays open; S05 is the
+       terminal, and its closeout records the exposure row. TD-9 is owned by the Head integration
+       and verified at S06.
+NEXT: After PR #155 merges, start S05 through the runbook start step at its own trusted base (the
+      row is `approved`). Owner follow-up: push the local `closed/T1.P01.S07` tag.
 ROUTE: ./README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#proposed-batch-c-2026-10-19 →
+       ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19 →
        ../../reference/decisions/batch-c-authorization-2026-10-19.md
-BLOCKER: owner approval of batch C; S05–S06 stay unauthorized until then.
+BLOCKER: none once PR #155 merges. S06 waits for T3.P01.S04's acceptance and its own authorization.
 ```

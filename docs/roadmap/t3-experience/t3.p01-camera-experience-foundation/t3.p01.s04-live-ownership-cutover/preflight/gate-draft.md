@@ -1,10 +1,10 @@
-# `T3.camera-experience-cutover@1` — DRAFT for owner ratification
+# `T3.camera-experience-cutover@1` — ratification draft (ratified 2026-10-19)
 
-**Status:** drafted, **not ratified, not registered, not authorized**. Drafting this text changes no
-register row, authorizes no work and creates no version. Only the owner's ratification act, R3 of
-the [T3 cutover record](../../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), can
-move the gate to `ratified`. This draft was revised on 2026-10-19 for the clean-reset path, and it
-supersedes the AM-7-based draft of PR #149, which is recoverable at `5fee2a2d`.
+**Status:** **ratified 2026-10-19** at version 1 by R3 of the
+[T3 cutover record](../../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md). The
+contract is AM-9 in `composition-execution.md`, and the register row is `ratified`. This file is now
+the ratification provenance; it claims no implementation or acceptance. It superseded the AM-7-based
+draft of PR #149, which is recoverable at `5fee2a2d`.
 
 **Drafting slice:** T3.P01.S04 (intended sole provider) · **Owning track:** T3 ·
 **Kind:** capability (a declared cutover, not a foundation interface) ·
@@ -29,8 +29,8 @@ It does **not** deliver Camera authoring UI, Preview UX, publication UX or prepa
 
 ## 2. Contract
 
-The exact text is **AM-9 Shared Camera and Experience cutover**, prepared in R3 of the T3 cutover
-record for appending to `docs/reference/composition-execution.md`. The heading slug is
+The exact text is **AM-9 Shared Camera and Experience cutover** in
+`docs/reference/composition-execution.md`, appended on ratification. The heading slug is
 `am-9-shared-camera-and-experience-cutover`. It is not repeated here, so that only one copy can
 drift. Relative to the PR #149 draft:
 
@@ -57,7 +57,7 @@ gate at version 1.
 | Later F2 phases: T2 single-model ingest (K1), T1 Wall authoring/schema cutover (K3), T3 rename/delete (K4) | Work on the F2 source | This gate `accepted`; each declares it at its own registration |
 | `T4.prepared-reader@1` (T4.P01.S05, deferred by R1-D) | Prepared publication/API/resource/browser activation | This gate `accepted`; T4 stays deferred until Core Editor Stability is accepted |
 
-No consumer may self-satisfy the gate. No consumer is authorized by this draft.
+No consumer may self-satisfy the gate. Ratification authorizes no consumer.
 
 ## 5. Preconditions
 
@@ -89,29 +89,22 @@ The gate is not `accepted` until evidence exists for:
 | Architecture | One evaluation authority, one order writer; no legacy flow callers, converter or retired-scope caller; editor machinery absent from public chunks |
 | Integrated tree | Full merge gate, root check/build, relevant package checks, full editor lanes and `check:api`/`test:api` on a reachable DB with zero skips; recorded revision |
 
-## 7. Register row (proposal, not applied)
+## 7. Register row (applied on ratification)
 
-Current row:
-
-```text
-| T3.camera-experience-cutover | — | capability | T3 | — | undrafted | — | — | — | — | — | — |
-```
-
-On **owner ratification only**, it becomes the row given in R3 of the T3 cutover record: version
-`1`, `ratified`, provider `T3.P01.S04`, and the AM-9 anchor
-`../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover`. The anchor
-resolves only once AM-9 is appended, so both changes land in one approval commit. The evidence
-columns stay empty until `implemented`/`accepted`.
+Before 2026-10-19 the row was `undrafted` with version `—`. The ratification commit set it to
+version `1`, `ratified`, provider `T3.P01.S04`, with the AM-9 anchor
+`../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover`, in the same
+commit that appended AM-9. The evidence columns stay empty until `implemented`/`accepted`.
 
 The enforced lifecycle vocabulary is `undrafted | ratified | implemented | accepted | superseded`
-(validated by `apps/editor/tests/docs/parallel-track-gates.test.ts`). Drafting therefore changes no
-row; the single legal transition is `undrafted → ratified`.
+(validated by `apps/editor/tests/docs/parallel-track-gates.test.ts`). Drafting changed no row; the single
+legal transition was `undrafted → ratified`.
 
 ## 8. Ratification checklist
 
-- [ ] Owner signs R1 (disposability scope) and R2 (AM-7 supersession).
-- [ ] Owner approves the AM-9 text and its anchor (R3), and ratifies version 1 with a date.
-- [ ] One approval commit appends AM-9 and moves the register row `undrafted → ratified`.
-- [ ] Provider stays `T3.P01.S04`, sole.
+- [x] Owner signed R1 (disposability scope) and R2 (AM-7 supersession) on 2026-10-19.
+- [x] Owner approved the AM-9 text and its anchor (R3), and ratified version 1 on 2026-10-19.
+- [x] One approval commit appended AM-9 and moved the register row `undrafted → ratified`.
+- [x] Provider stays `T3.P01.S04`, sole.
 - [ ] Consumers re-declare the gate only in their own authorization records.
-- [ ] No capability, acceptance or implementation state is claimed by this draft.
+- [x] No capability, acceptance or implementation state is claimed here.

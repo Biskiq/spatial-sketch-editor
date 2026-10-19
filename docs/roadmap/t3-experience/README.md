@@ -2,8 +2,8 @@
 
 **Track:** T3 · **Status:** approved — T3.P01 registered 2026-10-16; `T3.P01.S01` shipped
 2026-10-16 (PR #131); `T3.P01.S02` shipped 2026-10-16 (PR #133); S03 shipped 2026-10-17 after
-reconciling its split halves `T3.P01.S05` (PR #140) and `T3.P01.S06` (PR #141); S04 proposed and
-unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+reconciling its split halves `T3.P01.S05` (PR #140) and `T3.P01.S06` (PR #141); S04 authorized
+2026-10-19 ([record](../../reference/decisions/t3-cutover-ratification-2026-10-19.md)) ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -77,9 +77,10 @@ source/runtime cutover phase (S01–S06, final gate S04), with its
 evidence. **`T3.P01.S01`** shipped 2026-10-16 (PR #131) and **`T3.P01.S02`** shipped 2026-10-16 (PR
 #133). **`T3.P01.S03`** shipped 2026-10-17 through its registered split, **`T3.P01.S05`** (PR #140)
 and **`T3.P01.S06`** (PR #141), which accepted `unit-acceptance-v1`, `conditional-save-units-v1` and
-`camera-handoff-v1`. The final gate **`T3.P01.S04`** is the only open child. It stays `proposed`, and
+`camera-handoff-v1`. The final gate **`T3.P01.S04`** is the only open child. It was owner-authorized on 2026-10-19
+([record](../../reference/decisions/t3-cutover-ratification-2026-10-19.md)), after AM-9 replaced AM-7 with a clean source epoch;
 its [authorization path](./t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path)
-lists what must exist before the owner can authorize it.
+is closed.
 `Depends on` lists the
 external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
 

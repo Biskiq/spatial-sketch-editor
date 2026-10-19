@@ -87,7 +87,7 @@ with `T2.P01.S01` and `T3.P01.S01`; both shipped, S02 by owner-override. **T1.P0
 Stage↔F4 bridge, owner-authorized 2026-10-17) shipped in PR #137 and recorded
 `T1.viewport-projection@1:viewport-projection-v1` accepted. **T1.P01.S04** was owner-authorized
 2026-10-17 as batch B with `T2.P01.S03` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in
-scope, and shipped 2026-10-18 (PR #148). S05–S06 stay `proposed`; batch C proposes S05 now and S06 after the T3 cutover ([prepared record](../../reference/decisions/batch-c-authorization-2026-10-19.md)). No authorization extends to another phase, slice or track.
+scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); S06 stays `proposed`, routed after the T3 cutover (ruling C3). No authorization extends to another phase, slice or track.
 
 ## Starting foundation
 

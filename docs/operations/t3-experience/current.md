@@ -18,27 +18,25 @@ prerequisites instead.
 ```text
 PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
-SLICES: S01, S02, S05 and S06 are shipped, and S03 is shipped by reconciliation. Accepted:
-        `F4.intent-acceptance@1:unit-acceptance-v1`, `conditional-save-units-v1` and
-        `F3.channels@1:camera-handoff-v1`. S04 is proposed and unauthorized.
-BATON: Batch C reconciled S04's authorization path, pending owner ratification. The owner ruled
-       saved data disposable, so the AM-7 inventory, migration and quiescence ceremony is
-       withdrawn (four preflight drafts removed; recoverable at `5fee2a2d`). AM-9 (clean source
-       epoch: transactional reset, structural F2-only fence, typed refusals, atomic retirement) and
-       `T3.camera-experience-cutover@1` are drafted for ratification. S04 would run in two phases:
-       A on T3-owned files, in parallel with batch C; B as the caller migration after the
-       current-source freeze. S04 is proposed to own TD-6, TD-7, TD-9's draft rewire or removal,
-       and the Guide-free Presentation lowering fix.
-NEXT: The owner signs R1–R5 of the T3 cutover record and its approval patch is applied (AM-9
-      appended, gate row ratified, S04 row approved). Then S04 phase A starts through the runbook
-      start step. No data is reset before S04 merges and the owner runs activation.
+SLICES: S01, S02, S05 and S06 are shipped, and S03 is shipped by reconciliation. S04 is authorized
+        (2026-10-19), effective when PR #155 merges. `T3.camera-experience-cutover@1` is `ratified`,
+        with AM-9 as its contract.
+BATON: The owner ratified the clean source epoch (R1–R4): saved data is disposable, AM-9
+       supersedes AM-7, and the publication gap is empty by construction. S04 is authorized in two
+       phases (R5). Phase A covers T3-owned files (reset migration 005 with an advisory lock, API
+       admission, the unit Save live path, converter retirement, lowering and visitor) and runs in
+       parallel with batch C. Phase B is the caller migration, after the current-source freeze
+       (T1.P01.S05 and T2.P01.S04 merged). S04 owns TD-6, TD-7, TD-9's draft rewire or removal, and
+       the Guide-free Presentation fix.
+NEXT: After PR #155 merges, start S04 phase A through the runbook start step. No data is reset
+      until S04 merges and the owner runs the activation runbook.
 ROUTE: ./README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →
-       ../../reference/decisions/t3-cutover-ratification-2026-10-19.md
-BLOCKER: owner ratification (R1–R4) and authorization (R5). Disclosed residuals that move to
-         T3.P02/T4: the authored Cut/Travel selector, presentation text, state and lifecycle homes
-         (T3.P02 F2 amendments; @1 defaults are fixed in AM-9); resource bytes host-asserted until
-         storage verifies them; the envelope's acceptedRevision is baseline provenance, not
-         revision authority.
+       ../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover
+BLOCKER: phase B waits for the batch C freeze. Disclosed residuals that move to T3.P02/T4: the
+         authored Cut/Travel selector, presentation text, state and lifecycle homes (T3.P02 F2
+         amendments; @1 defaults are fixed in AM-9); resource bytes host-asserted until storage
+         verifies them; the envelope's acceptedRevision is baseline provenance, not revision
+         authority.
 ```

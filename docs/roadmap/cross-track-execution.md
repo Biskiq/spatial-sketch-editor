@@ -9,13 +9,13 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
 registers no gate, phase or slice, and each provider is wired through its own authorized track
 phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
-T1.P01 (S01, S02, S03, S07 and S04 shipped, S04 through batch B; S05–S06 proposed),
-T2.P01 (S01, S02 and S03 shipped, S03 through batch B; S04 proposed) and T3.P01
-(S01–S06; S01/S02/S03/S05/S06 shipped, with S03 reconciled through its owner-authorized split halves,
-S04 proposed and unauthorized). T3.P02 remains unregistered candidate work, and all T4 work is
+T1.P01 (S01, S02, S03, S07 and S04 shipped, S04 through batch B; S05 authorized 2026-10-19 as batch
+C; S06 proposed), T2.P01 (S01, S02 and S03 shipped, S03 through batch B; S04 authorized 2026-10-19 as
+batch C) and T3.P01 (S01–S06; S01/S02/S03/S05/S06 shipped, with S03 reconciled through its
+owner-authorized split halves; S04 authorized 2026-10-19). T3.P02 remains unregistered candidate work, and all T4 work is
 deferred by ruling R1-D. Batch B shipped under the [batch B protocol](#authorized-batch-b-2026-10-17); batch C
-(`T1.P01.S05` ∥ `T2.P01.S04`) and the T3.P01.S04 sequencing are proposed under the
-[batch C protocol](#proposed-batch-c-2026-10-19), pending owner approval. The four slices authorized first on 2026-10-16 run under the
+(`T1.P01.S05` ∥ `T2.P01.S04`, authorized 2026-10-19) and the two-phase T3.P01.S04 (authorized
+2026-10-19 under AM-9) run under the [batch C protocol](#authorized-batch-c-2026-10-19). The four slices authorized first on 2026-10-16 run under the
 [parallel batch protocol](#parallel-batch-2026-10-16); `T2.P01.S02` and `T3.P01.S02` run under the
 [parallel pair protocol](#parallel-pair-2026-10-16).
 Cross-PR links identify proposals, never accepted prerequisites.
@@ -79,8 +79,7 @@ adapter admission (`local-single-domain-v1` current-source planning/validation a
 that point no new or in-progress consumer may Require either retiring scope, while shipped slices keep
 their evidence. The checker records retirement as a terminal state on the retiring scope's own entry
 — no parallel registry, no permanent legacy admission — and fails any new or in-progress Requires
-naming a retired scope. The read-only converter still retires with the covered inventory before the
-Source Baseline.
+naming a retired scope. The inactive converter retires in T3 S04 without running (AM-9).
 Acceptance of an interface is distinct from
 ratification, implementation and consumer eligibility. `T1.P01.S01` installs the two-field
 validation and controls for missing/unimplemented scope, consumer self-satisfaction, retired scope
@@ -157,31 +156,29 @@ proposal. No private transition, projection, selection or navigation infrastruct
 
 ## Source-first migration and activation ownership
 
-> **Proposed change — awaiting owner ratification.** The [T3 cutover record](../reference/decisions/t3-cutover-ratification-2026-10-19.md)
-> proposes that AM-9's clean source epoch supersede AM-7. Once it is ratified, the inventory,
-> covered-data exception, quiescence/CAS conversion, converter retirement and publication-inventory
-> sentences below no longer apply, and its approval patch rewrites them. Until then they stand
-> as written.
+> **Rewritten 2026-10-19 on ratification of [AM-9](../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover)**
+> ([T3 cutover record](../reference/decisions/t3-cutover-ratification-2026-10-19.md)). The owner
+> ruled saved data disposable, so AM-7's inventory, covered-data exception, quiescence/CAS
+> conversion and converter retirement no longer apply. The earlier text is recoverable at `5fee2a2d`.
 
-T3 S01 prepares the **sole** old-source conversion candidate and mapping report. T3 S05 prepares the
-new-source unit planners, acceptance and Save adapters, and T3 S06 the Experience runtime, Camera
-handoff and profile controllers, both without live activation; S03's umbrella reconciled the
-original scope once both closed. T3 S04 inventories
-local/source packages, cloud projects/versions, pending saves, releases/publications and retained
-bytes; obtains the covered-data exception and owner disposition; quiesces writers and CAS-installs
-Camera extraction, Experience order, Scene removal and locks together. It migrates every existing
-T1/T2 caller and replaces the current-source Stage/F4/Save/starter adapters. In-progress consumer
-plans re-declare the already accepted F2/unit capabilities from S05/S06 before activation. This is
-caller integration, not Camera authoring, and it does not consume its own T3 gate. T2 definition
-inputs then come from immutable project pins; Scene-only placement admits pinned/procedural entries.
-The F2 starter/migration may install an explicitly captured bounded palette once; absent pins are
-unavailable, and further resource admission remains staged T2 follow-on work.
+T3 S01 prepared an old-source conversion candidate, which stays inactive and test-only and retires in
+S04 without ever running. T3 S05 prepared the new-source unit planners, acceptance and Save adapters,
+and T3 S06 the Experience runtime, Camera handoff and profile controllers, both without live
+activation; S03's umbrella reconciled the original scope once both closed. T3 S04 installs AM-9's
+clean source epoch: one transactional reset migration under an advisory lock that removes all
+authored rows and fences the schema to the F2 envelope, current-format-only admission with typed
+refusals, and atomic retirement of the current-source Stage/F4/Save/starter adapters with every
+existing T1/T2 caller. In-progress consumer plans re-declare the already accepted F2/unit
+capabilities from S05/S06. This is caller integration, not Camera authoring, and it does not consume
+its own T3 gate. T2 definition inputs then come from immutable project pins; Scene-only placement
+admits pinned/procedural entries. The F2 starter may install an explicitly captured bounded palette;
+absent pins are unavailable, and further resource admission remains staged T2 follow-on work.
 
-No ordinary Undo crosses the administrative source-format transition. Retain original bytes and
-a coordinated source/deployment recovery handle; invalidate old callbacks/history, and establish
-one new source baseline. Old clients fail explicitly. Normal readers/writers accept only the new
-format. T3 removes legacy node-order orchestration; its read-only converter retires when the
-covered inventory is completed/discharged and recovery verified, before Source Baseline.
+No ordinary Undo crosses the source-format transition: every project starts at a new-format
+baseline. Old clients, files and drafts fail explicitly. Normal readers/writers accept only the new
+format, and skew between the independently deployed API and editor refuses rather than misreads.
+T3 removes legacy node-order orchestration. No converter, reverse serializer or old-format reader
+survives.
 
 T4 has no default legacy Experience converter or retained selection map. It lowers F2 units and
 T3's authored identities into the **same T3 execution program** used by Preview. T4 S03/S04 may
@@ -189,13 +186,11 @@ exercise closed F2 candidate fixtures and inactive storage before T3 activation.
 the accepted T3 cutover, then owns prepared publication/API/resource/browser activation and source
 snapshot delivery retirement. One Camera engine and one Experience interpreter serve both paths.
 
-A temporary publication gap is allowed only after actual release/publication inventory and owner
-acceptance. During an approved empty-release gap, new source publication returns typed
+The publication gap is approved (2026-10-19, K2/R4) and is empty by construction, because the reset
+removes every publication and release row. During an approved empty-release gap, new source publication returns typed
 prepared-reader-required, cold public reads return their explicit unavailable/not-found outcome,
-and status/Unpublish remain honest; the real /p/ route and isolation checks remain. If any covered
-release exists, T3 activation stops for a concrete T4/owner compatibility disposition, including
-bounded conversion and a coordinated delivery barrier where necessary. Do not presume emptiness,
-discard data, silently reinterpret old bytes or keep a competing old visitor engine. T4's barrier
+and status/Unpublish remain honest; the real /p/ route and isolation checks remain. Never silently reinterpret old bytes or keep a competing old visitor
+engine. T4's barrier
 fences mutations, switches prepared metadata/artifacts/resources and cold reader together, and
 retires all authored delivery callers. Recovery after new-format edits rolls forward or explicitly
 restores disclosed backups; prepared activations roll back to a compatible prepared runtime/pointer
@@ -220,6 +215,9 @@ flowchart TD
   B --> P["T1 S04: Layout precision + Head Save"]
   S --> P
   P --> W["T1 S05: Wall manipulation"] --> G["T1 S06: T1.P01 final gate"]
+  W --> CUT
+  T2F --> CUT
+  CUT --> G
   P --> T2F["T2 S04: bounded loop + T2.P01 final gate"]
   UI --> T2F
   U --> X5["T3 S05: unit acceptance + Save"]
@@ -241,11 +239,13 @@ flowchart TD
   classDef authorized fill:#d6e4f5,stroke:#2f5f99,color:#17304d
   classDef deferred fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3
   class A,V,L,U,O,B,S,C,X5,X6,X,P,UI shipped
+  class W,T2F,CUT authorized
   class F,OFF,PUB,UX deferred
 ```
 
-Status key (2026-10-19): green nodes are shipped; batch B (`P`, `UI`) shipped in PRs #148 and #147,
-and nothing is currently authorized (the `authorized` class is kept for the next batch). Unstyled
+Status key (2026-10-19): green nodes are shipped; batch B (`P`, `UI`) shipped in PRs #148 and #147.
+Blue nodes are authorized: batch C (`W`, `T2F`) and `CUT` (T3 S04, two-phase). The `W → CUT`,
+`T2F → CUT` and `CUT → G` edges are the batch C current-source freeze and S06's post-cutover route. Unstyled
 nodes are proposed, or are candidate work that is not yet registered (T3.P02). Grey dashed nodes are
 T4 work deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted.
 The status key restates the phase registers; it never overrides them. Every edge is a real
@@ -488,22 +488,22 @@ target. `T1.P01.S04` must be accepted before `T2.P01.S04` starts. `T1.P01.S05` w
 been open since S02, and its exposure row and mechanism verdicts are recorded at its closeout.
 `T2.P01.S03` is not an exposure.
 
-## Proposed batch C 2026-10-19
+## Authorized batch C 2026-10-19
 
-**Proposed, not authorized.** Two records carry the decisions:
+**Owner-authorized 2026-10-19.** Two records carry the decisions:
 
 - the [batch C record](../reference/decisions/batch-c-authorization-2026-10-19.md):
   `T1.P01.S05` ∥ `T2.P01.S04`, the current-source freeze and the `T1.P01.S06` route;
 - the [T3 cutover record](../reference/decisions/t3-cutover-ratification-2026-10-19.md): the AM-9
   clean source epoch and `T3.P01.S04` in two phases.
 
-Each takes effect only on owner approval. The evidence and reasoning are in the
+Both were approved as written (C3 post-cutover; Guide-free fix in S04). The evidence and reasoning are in the
 [batch C proposal](./batch-c-2026-10-19.md). Prerequisites were verified against `main` `5fee2a2d`.
 
 ```mermaid
 flowchart LR
-  P["T1 S04 (shipped)"] --> W["T1 S05 + TD-8 (proposed)"]
-  UI["T2 S03 (shipped)"] --> T2F["T2 S04 final gate (proposed)"]
+  P["T1 S04 (shipped)"] --> W["T1 S05 + TD-8 (authorized)"]
+  UI["T2 S03 (shipped)"] --> T2F["T2 S04 final gate (authorized)"]
   P --> T2F
   W --> FRZ{{"current-source freeze"}}
   T2F --> FRZ
@@ -516,8 +516,7 @@ flowchart LR
 ```
 
 `W → FRZ` and `T2F → FRZ` are K6 made explicit: T3.P01.S04 migrates landed callers once. `ACT → G`
-moves the T1 final gate after the cutover (record C3; the owner may keep the pre-cutover order
-instead). On approval, the main DAG gains these edges.
+moves the T1 final gate after the cutover (ruling C3). The main DAG carries these edges.
 
 **Shared-file ownership** (for batch C and S04 phase A; phase B takes over after the freeze):
 

@@ -1,6 +1,6 @@
 # T3.P01.S04 — Live ownership cutover: implementation plan
 
-**Slice:** T3.P01.S04 · **Status:** proposed — not authorized · **Phase:** [T3.P01](../README.md) ·
+**Slice:** T3.P01.S04 · **Status:** approved — owner-authorized 2026-10-19 · **Phase:** [T3.P01](../README.md) ·
 [slice register](../README.md#slice-register) · **Track:** [T3](../../README.md) · **Runbook:**
 [T3 operations](../../../../operations/t3-experience/README.md)
 
@@ -11,20 +11,19 @@ VERIFICATION: exhaustive
 ```
 
 This is the phase's **FINAL PHASE GATE** and the intended sole provider of
-`T3.camera-experience-cutover@1`. The gate must be owner-ratified at version 1 before this slice is
-authorized.
+`T3.camera-experience-cutover@1`, ratified at version 1 on 2026-10-19 with
+[AM-9](../../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover) as its contract.
 
-> **Revised 2026-10-19 (Batch C), conditional on owner ratification.** This plan follows the
-> clean-reset path prepared in the [T3 cutover record](../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md):
+> **Revised 2026-10-19 (Batch C), owner-ratified the same day.** This plan follows the
+> clean-reset path of the [T3 cutover record](../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md):
 > disposable saved data (R1), AM-7 superseded by AM-9 (R2–R3), an empty publication gap (R4) and a
-> two-phase authorization (R5). Until the owner ratifies it, AM-7 governs and this slice cannot be
-> authorized. If the owner rejects the reset, the AM-7 preflight drafts from PR #149 are restored
-> from `5fee2a2d`.
+> two-phase authorization (R5). The withdrawn AM-7 preflight drafts of PR #149 are recoverable at
+> `5fee2a2d`.
 
 ## Prerequisite
 
 - S01, S02, S05 and S06 accepted, and S03 reconciled, at this slice's trusted base. All hold.
-- The owner's R1–R5 signatures.
+- The owner's R1–R5 signatures (given 2026-10-19).
 - For phase B only: the current-source freeze. `T1.P01.S05` and `T2.P01.S04` have merged, or the
   owner has explicitly re-sequenced them (batch C ruling C2).
 
@@ -38,7 +37,7 @@ epoch. AM-9 is the contract; the phase's [cutover mechanics](../README.md#cutove
 and [admission matrix](../README.md#admission-and-refusal-matrix) govern acceptance.
 
 **Phase A: T3-owned files** (may start at authorization, in parallel with batch C, per the
-[batch C protocol](../../../cross-track-execution.md#proposed-batch-c-2026-10-19)).
+[batch C protocol](../../../cross-track-execution.md#authorized-batch-c-2026-10-19)).
 
 - **Reset migration `005`.** Take the advisory lock first; that closes TD-6 for every migration.
   Then, in one transaction, remove all authored rows and install the F2-only schema fence. Rerun is
@@ -113,21 +112,22 @@ refuses pre-epoch data.
 
 ## Authorization path
 
-Revised 2026-10-19 against `main` `5fee2a2d`. This path **authorizes nothing**. The capability side
+Revised and closed 2026-10-19 against `main` `5fee2a2d`; the owner's signatures on the T3 cutover
+record are the authorization. The capability side
 is met: all five `Requires` scopes are `active` at ancestors of `main` (S01 at `6dcb6d6d`;
 `unit-acceptance-v1` and `conditional-save-units-v1` at `d7ab6984`; `camera-handoff-v1` at
 `ff5a14da`). S01, S02, S05 and S06 are accepted, and S03 is reconciled. The AM-7 items that were on
 this path (deployed inventory, migration coverage, quiescence/recovery, per-publication disposition)
 are withdrawn, because the owner's disposability ruling leaves them nothing to cover (proposal C-1).
-Every item below is **open**.
+Every item below is **closed**.
 
 | # | Pre-authorization item | Owner | Evidence | Status |
 | --- | --- | --- | --- | --- |
-| 1 | **Disposability ruling** with its exact scope (R1) | Owner | [T3 cutover record](../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md#r1--saved-data-is-disposable-owner-confirmation) | open — awaiting signature |
-| 2 | **AM-7 superseded by AM-9** (R2), with the AM-9 text reviewed | Owner, on T3's draft | same record, R2–R3 | open — awaiting ratification |
-| 3 | **Ratify `T3.camera-experience-cutover@1`** with the AM-9 anchor; the register row moves `undrafted` → `ratified` | Owner | same record, R3; [preflight/gate-draft.md](./preflight/gate-draft.md) | open — awaiting ratification |
-| 4 | **Publication gap** approved as empty by construction (R4, K2) | Owner | same record, R4 | open — awaiting signature |
-| 5 | **Owner authorization** of this slice, with the two-phase start condition (R5); the register row moves `proposed` → `approved` | Owner | same record, R5 | open — awaiting signature |
+| 1 | **Disposability ruling** with its exact scope (R1) | Owner | [T3 cutover record](../../../../reference/decisions/t3-cutover-ratification-2026-10-19.md#r1--saved-data-is-disposable-owner-confirmation) | closed — signed 2026-10-19 |
+| 2 | **AM-7 superseded by AM-9** (R2), with the AM-9 text reviewed | Owner, on T3's draft | same record, R2–R3 | closed — ratified 2026-10-19 |
+| 3 | **Ratify `T3.camera-experience-cutover@1`** with the AM-9 anchor; the register row moves `undrafted` → `ratified` | Owner | same record, R3; [preflight/gate-draft.md](./preflight/gate-draft.md) | closed — ratified 2026-10-19; register row `ratified` |
+| 4 | **Publication gap** approved as empty by construction (R4, K2) | Owner | same record, R4 | closed — approved 2026-10-19 |
+| 5 | **Owner authorization** of this slice, with the two-phase start condition (R5); the register row moves `proposed` → `approved` | Owner | same record, R5 | closed — authorized 2026-10-19; register row `approved` |
 
 Not on this path: project rename/delete (ruling K4) is a separate small T3 persistence/API slice,
 with T1 owning the shell. Under the batch C protocol it follows this slice, because it touches the
@@ -135,6 +135,7 @@ same API files. T1/T2 slices still unaccepted at the freeze re-declare unit scop
 
 ## Readiness declaration
 
-This slice is **proposed and not authorized**. It holds no implementation permission, and nothing
-here claims implementation, acceptance, readiness or a data reset. Evidence belongs in
+This slice is **owner-authorized** (2026-10-19). Phase A may start on T3-owned files through the
+runbook start step; phase B waits for the batch C current-source freeze. Nothing here claims
+implementation, acceptance, readiness or a data reset. Evidence belongs in
 [acceptance.md](./acceptance.md).

@@ -4,7 +4,7 @@
 `T3.P01.S02` shipped 2026-10-16 (PR #133), accepted with `conditional-save-current-v1`;
 `T3.P01.S03` shipped 2026-10-17 (PRs #140/#141) through its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md),
 with its original obligations reconciled; `T3.P01.S05` shipped with both unit capabilities accepted
-and `T3.P01.S06` with `camera-handoff-v1` accepted; S04 proposed and unauthorized · **Track:** [T3](../README.md) · **Roadmap:**
+and `T3.P01.S06` with `camera-handoff-v1` accepted; S04 authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md)) · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-2, AM-4, AM-6, AM-7](../../../reference/composition-execution.md#ratified-amendments),
@@ -17,7 +17,7 @@ the phase's first implementation permission. S02 was authorized by the later own
 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)), in parallel
 with `T2.P01.S02`. S03 was authorized on 2026-10-17
 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)), in parallel with
-`T1.P01.S07`; S04 stays `proposed` and holds none. On the same day the owner authorized S03's two
+`T1.P01.S07`; S04 was later authorized on 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md)). On the same day the owner authorized S03's two
 follow-ups, `T3.P01.S05` and `T3.P01.S06`, after PR #138's preparatory increment and its approved
 split direction ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)).
 The split moved execution ownership only; every original S03 obligation stayed registered. S05 was
@@ -30,7 +30,8 @@ compound acceptance and runtime preparation (S03) and the live ownership cutover
 the provider of `T3.camera-experience-cutover@1` and this phase's final gate. The proposal's first
 capture/Cut Preview slice and its integrated gate become the candidate next phase,
 [T3.P02 — First capture and Cut Preview](../t3.p02-capture-and-cut-preview/README.md): they consume a
-cutover gate that is still `undrafted` with no version, so they could not be registered truthfully,
+cutover gate that was then `undrafted` (ratified at version 1 on 2026-10-19, not yet accepted), so they
+could not be registered truthfully,
 and the activation slice is already the exhaustive integration point. Capture/Cut Preview remains the
 first T3 authoring milestone and does not wait for advanced path, transport or media authoring.
 
@@ -145,7 +146,7 @@ lifecycle and prerequisites only.
 | T3.P01.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); umbrella for its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) — accepted and shipped 2026-10-17 (PRs #140/#141); every original criterion reconciled to the half slices |
 | T3.P01.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:acceptance-invariants-v1 | — | [Unit acceptance and unit Save](./t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md) | [record](./t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #140) — `unit-acceptance-v1` and `conditional-save-units-v1` accepted; first half of the S03 split |
 | T3.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1 | — | [Experience runtime and Camera handoff](./t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md) | [record](./t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #141) — `camera-handoff-v1` accepted; second half of the S03 split |
-| T3.P01.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | — |
+| T3.P01.S04 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | owner-authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), R5) — phase A on T3-owned files now; phase B after the batch C current-source freeze |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 and S02 are now shipped
 with their accepted capabilities; their exact records, prerequisites, exports and conformance are in
@@ -168,11 +169,11 @@ obligations. Their `Requires` therefore name only accepted scopes (F2 and the en
 `acceptance-invariants-v1`; `inspection-v1` and the F2 program codec), never S03's retiring
 current-source admissions and never each other's unaccepted output. The split changes no ratified F
 contract, no capability prerequisite and no part of S04's scope. Both halves are accepted and S03's
-original exit criteria are [reconciled](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md);
-S04 stays `proposed`.
+original exit criteria are [reconciled](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md).
+S04 was authorized on 2026-10-19.
 
-`T3.camera-experience-cutover` is `undrafted`. S04 is its intended sole provider, so the gate must be
-drafted and owner-ratified at version 1 before S04 is authorized; the T3.P02 registration follows.
+`T3.camera-experience-cutover@1` is `ratified` (2026-10-19) with AM-9 as its contract and S04 as sole
+provider; T3.P02 registers only once the gate is `accepted`.
 
 ```text
 FINAL PHASE GATE: T3.P01.S04 → ./t3.p01.s04-live-ownership-cutover/acceptance.md
@@ -188,10 +189,9 @@ event. The first authoring surface does not wait for this phase's closure.
 
 ## Cutover mechanics and retirement
 
-> **Proposed clean-reset path — conditional on owner ratification.** This section restates the AM-9
-> clean source epoch prepared in the [T3 cutover record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md)
-> (R1–R3). Until the owner ratifies it, AM-7 remains the governing ratified text and S04 cannot be
-> authorized. The AM-7 inventory/conversion procedure this section replaces is recoverable at
+> **Clean-reset path — owner-ratified 2026-10-19** ([T3 cutover record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md),
+> R1–R3). This section restates [AM-9](../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover),
+> which supersedes AM-7. The AM-7 inventory/conversion procedure this section replaces is recoverable at
 > `git show 5fee2a2d:docs/roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md`.
 
 1. **No covered data, no conversion.** The owner rules every saved source, version, receipt,
@@ -230,7 +230,7 @@ project reader behind import.
 
 ## Admission and refusal matrix
 
-> **Proposed with the clean-reset path (conditional, as above).** The legacy-conversion rows (empty,
+> **Ratified with the clean-reset path (2026-10-19).** The legacy-conversion rows (empty,
 > free-only, open chain, components, cycle, detour, `lockInteraction`, View-key hold) served AM-7's
 > covered data and are withdrawn with it. They are recoverable at the `git show` reference above.
 > The rows below govern the new format.
@@ -289,7 +289,7 @@ failed validation/revision/resource checks leave prior source/lock intact and st
 
 S02 activates only the current-source protocol. S05 (the first half of the S03 split) proved the
 new unit adapter inactive. S04 fences old writers structurally, resets the disposable stored
-sources (proposed clean-reset path) and switches all callers to the unit adapter atomically. It
+sources (the ratified clean-reset path) and switches all callers to the unit adapter atomically. It
 retires current-source normal admission and scope. No ordinary Undo crosses that format boundary.
 
 ## Minimum T1/T2/T4 dependencies
@@ -320,7 +320,7 @@ offline lowering/storage can use closed candidate fixtures and S03 runtime primi
 public activation waits for accepted T3 S04, not T3 authoring or phase completion. Preview uses the
 same lowering/evaluation in an isolated in-memory session; it does not need a prepared reader live.
 
-Before S04, the owner rules on the publication gap. Under the proposed clean-reset path (R1/R4),
+The owner approved the publication gap on 2026-10-19 (R4). Under the ratified clean-reset path (R1/R4),
 every publication and release row is removed at activation, so the covered set is empty by
 construction. The gap is then *no publishing from activation until T4 S05*: new source
 Publish/Update returns prepared-reader-required, public cold boot stays explicitly
@@ -343,7 +343,7 @@ consumer returns. No snapshot of implementation text substitutes for acceptance.
 
 | Probe | Observable evidence required |
 | --- | --- |
-| Epoch/admission (proposed clean reset) | Every row of the admission matrix: pre-epoch file/client/draft, mixed roots and unknown versions refuse with typed diagnostics and unchanged state. The reset migration removes all authored rows in one transaction, is a no-op on rerun and has a single winner under two runners (TD-6). A pre-epoch writer fails structurally after it. Prior `/p/` IDs are not-found, and Publish returns `prepared-reader-required`. The starter and empty boot emit only F2. |
+| Epoch/admission (clean reset) | Every row of the admission matrix: pre-epoch file/client/draft, mixed roots and unknown versions refuse with typed diagnostics and unchanged state. The reset migration removes all authored rows in one transaction, is a no-op on rerun and has a single winner under two runners (TD-6). A pre-epoch writer fails structurally after it. Prior `/p/` IDs are not-found, and Publish returns `prepared-reader-required`. The starter and empty boot emit only F2. |
 | Shared reuse | Guide visits Piano, Gallery, Piano using two Stop IDs but one Presentation/View. Different holds/entry roles persist after reorder/insert/delete elsewhere; repeated visit to one Stop gets a fresh invocation. A second Experience sees shared Camera updates with explicit reach while retaining its own order. |
 | Atomic acceptance/undo | Capture+Presentation+Stop installs one result and one undo payload. Invalid last binding, whole-group duplicate collision, lock mismatch or upload failure installs nothing. No-op adds no history. Undo/redo restores all affected authored data/locks once, preserves unrelated source, uses fresh revision, truncates redo and respects the cap. |
 | Cloud contention | Two Saves with the same expected saved-base token: exactly one wins; loser gets typed conflict and no new version. Missing precondition rejects; retry returns original receipt; changed-payload retry refuses. Test transaction failure after version staging and before pointer update on real Postgres with zero skips. Distinguish publication/source revision and create-only collisions. |
@@ -393,13 +393,10 @@ hold. Refusals must be reviewable results with unchanged accepted state, not sil
   `conditional-save-current-v1` accepted at its own trusted base. S02 builds no shell control, and
   `T1.P01.S02` boots read-only, so no unsafe writer exists meanwhile.
 - **Before S03 is authorized:** S01 and S02 accepted on `main`.
-- **Before S04 is authorized** (proposed clean-reset path, awaiting ratification): the owner's
-  disposability ruling, AM-7's supersession by AM-9, a ratified `T3.camera-experience-cutover@1`
-  and the publication-gap approval, all prepared in the
-  [T3 cutover record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md). The
-  ordered checklist is in S04's
+- **S04 authorized 2026-10-19** ([T3 cutover record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md)):
+  the owner signed the disposability ruling (R1), AM-7's supersession by AM-9 (R2), the
+  `T3.camera-experience-cutover@1` ratification (R3), the empty publication gap (R4) and the
+  two-phase authorization (R5). The closed checklist is S04's
   [authorization path](./t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path).
-  Under the existing AM-7 text (until ratification), the inventory, coverage, quiescence/recovery
-  and disposition items would still apply.
 - **No architecture-cycle window.** T3 slices are not exposures of the configured T1 window and do
   not open it.

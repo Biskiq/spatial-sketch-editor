@@ -20,8 +20,7 @@ ready or evidenced.
 S01–S05 and S07 accepted with routine closeout. The seam provider remains independently accepted:
 under owner ruling D1 (2026-10-17) the viewport capability is accepted through S07, not through this gate.
 
-**Proposed route (batch C ruling C3, [prepared record](../../../../reference/decisions/batch-c-authorization-2026-10-19.md),
-not yet approved).** S06 runs once, **after `T3.P01.S04` is accepted**. Run before the cutover, its
+**Route (batch C ruling C3, owner-approved 2026-10-19, [record](../../../../reference/decisions/batch-c-authorization-2026-10-19.md)).** S06 runs once, **after `T3.P01.S04` is accepted**. Run before the cutover, its
 evidence would go stale when T3 replaces the current-source adapter and the starter boot (AM-5's
 boot seam, K6). It would also put an exhaustive run on the cutover's critical path, and T1's next
 phase (K3) waits for the F2 cutover anyway.
@@ -37,8 +36,7 @@ The register row and the `Requires` pin stay unchanged until that record exists.
 an unregistered gate version, and the cutover gate is still `undrafted`. On the post-cutover tree,
 the journey below also verifies the sign-in Save resume
 ([TD-9](../../../../operations/tech-debt/README.md#td-9--the-sign-in-save-resume-is-half-wired)).
-The owner's alternative is to run S06 on current source right after S05; `T3.P01.S04` phase B then
-waits for S06 as well.
+The pre-cutover alternative was declined.
 
 ## Produces
 

@@ -1,19 +1,18 @@
 # Batch C authorization: T1.P01.S05 ∥ T2.P01.S04
 
-**Date:** prepared October 19, 2026. **Status:** **prepared for owner approval — not authorized.**
-Nothing here is claimable work until the owner approves it. To approve, the owner fills in the
-signature block below and the [approval patch](#approval-patch) is applied before the coordination PR
-merges. Until then both slices stay `proposed`, and every register row, plan status and test pin is
-unchanged.
+**Date:** October 19, 2026. **Status:** **owner-authorized 2026-10-19.** The owner approved rulings
+C1–C7 as written, with C3 on the post-cutover route, in the Batch C coordination session on
+2026-10-19. The [approval patch](#approval-patch) is applied on the coordination PR (#155), and the
+authorization takes effect when that PR merges.
 
 This record is decision provenance, like the
 [batch B record](./batch-b-authorization-2026-10-17.md). It changes no ratified contract: AM-1–AM-8
 and PLATE are unchanged, lifecycle and gate identity stay in the
 [roadmap register](../../roadmap/README.md#gate-register), and each slice's scope stays in its plan.
 The reasoning is in the [batch C proposal](../../roadmap/batch-c-2026-10-19.md). The rules are in the
-[batch C protocol](../../roadmap/cross-track-execution.md#proposed-batch-c-2026-10-19).
+[batch C protocol](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19).
 
-## Proposed authorization
+## Authorization
 
 | Slice | Phase | Plan | Consumes / Requires (unchanged) |
 | --- | --- | --- | --- |
@@ -39,7 +38,7 @@ All four are ancestors of `5fee2a2d`. The in-phase prerequisites also hold:
 Neither slice consumes the other. Each slice's runbook start step still re-checks eligibility at its
 own trusted base.
 
-## Proposed rulings
+## Rulings
 
 | # | Ruling | Recommendation |
 | --- | --- | --- |
@@ -60,22 +59,22 @@ own trusted base.
 
 ## Approval patch
 
-Applied only after the owner's signature, in one commit on the coordination PR:
+Applied 2026-10-19 on PR #155, after the owner's approval:
 
-1. In the [T1.P01 slice register](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#slice-register),
-   the S05 row moves to `approved` and its Authorization cell links this record. Do the same for the
-   S04 row in the [T2.P01 slice register](../../roadmap/t2-composition/t2.p01-supported-composition/README.md#slice-register).
-2. Update the phase status lines, the track READMEs, the two plans' status and readiness lines and
-   the cross-track header to say "authorized 2026-10-xx as batch C".
-3. This record's status becomes **owner-authorized** with the date. The batch C protocol heading
-   changes from "Proposed" to "Authorized", and every link to it is updated.
+1. The S05 row in the [T1.P01 slice register](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#slice-register)
+   and the S04 row in the [T2.P01 slice register](../../roadmap/t2-composition/t2.p01-supported-composition/README.md#slice-register)
+   moved to `approved`, and each Authorization cell links this record.
+2. The phase and track status lines, both plans' status and readiness lines and the cross-track
+   header now say "authorized 2026-10-19 as batch C".
+3. The [batch C protocol](../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19)
+   heading reads "Authorized", and its links were updated.
 4. The T1/T2 batons name the authorized slice as NEXT.
 
-`Requires` is unchanged, so no `parallel-track-gates.test.ts` pin changes.
+`Requires` is unchanged, so no `parallel-track-gates.test.ts` pin changed.
 
 ## Owner signature
 
 ```text
-C1 ____  C2 ____  C3 ____ (post-cutover | pre-cutover)  C4 ____  C5 ____  C6 ____  C7 ____
-Owner: ______________________   Date: __________
+C1 approved  C2 approved  C3 approved (post-cutover)  C4 approved  C5 approved  C6 approved  C7 approved
+Owner: repository owner (approved in the coordination session)   Date: 2026-10-19
 ```
