@@ -22,6 +22,7 @@
 		publishSceneSurface,
 		retireSceneSurface,
 		sceneReadingKey,
+		sceneComposeSupport,
 		sceneSessionFromServices,
 		sceneSurfaceFor,
 		type SceneCandidate,
@@ -37,6 +38,11 @@
 	let z = $state('0');
 	let yaw = $state('0');
 	let snapText = $state('');
+	/** S04's uniform Resize entry; blank/non-finite/non-positive never commits. */
+	let composeScaleText = $state('');
+	let composeActive = $state(false);
+	/** The entity the active Resize proposal was opened for, never a live guess. */
+	let composeSubjectId = $state<string | null>(null);
 	let primitive = $state<NativePlacementPrimitive>('box');
 	let candidate = $state<SceneCandidate | null>(null);
 	let message = $state('');
@@ -51,12 +57,37 @@
 	let surfaceSnapshot: object | null = null;
 
 	const entities = $derived(services.stage.snapshot().domain.scene.entities);
+	/**
+	 * Whether this mount is S04's bounded Compose surface. The adapter contributes
+	 * the same instrument for all three tasks, and a new task re-provides services,
+	 * so this follows the live task rather than a captured bind-time kind.
+	 */
+	const composeTask = $derived.by(() => {
+		void services;
+		return services.stage.session?.task?.()?.kind === 'scene-compose';
+	});
 
 	function selectionEntityId(): string | null {
 		const primary = services.stage.selectionState().primary;
 		if (primary === null || primary.domain !== 'scene' || primary.subject.kind !== 'entity') return null;
 		return primary.subject.id;
 	}
+
+	function composeEntity() {
+		const id = selectionEntityId();
+		return id === null ? null : entities.find((entity) => entity.id === id) ?? null;
+	}
+
+	/**
+	 * What Compose may offer for the selected subject, from the same capability
+	 * the session enforces. A light or model has no verified contact, so Resize
+	 * and Duplicate stay disabled with the reason shown instead of taking a lease
+	 * and refusing after the fact.
+	 */
+	const composeSubject = $derived(composeEntity());
+	const composeSupport = $derived(
+		composeSubject === null ? null : sceneComposeSupport(composeSubject)
+	);
 
 	/**
 	 * The session for the live reading, created or replaced only when the **reading**
@@ -110,7 +141,7 @@
 			if (session !== null && persistentPlace !== null && session.placementCommittedListener() === null) {
 				session.setPlacementCommittedListener(persistentPlace);
 			}
-			session?.setPointerOutcomeListener?.(applyOutcome);
+			session?.setPointerOutcomeListener?.(applyPointerOutcome);
 			sessionReading = reading;
 			surfaceSnapshot = snapshot;
 			// The proposal belonged to the reading that just ended; the session it named
@@ -141,11 +172,27 @@
 			: `Candidate ${pose} · snap ${next.snappedStep} m applied.`;
 	}
 
+	/**
+	 * A pointer commit is an accepted install too: the host closes the task and
+	 * retires this panel before the adapter reports the outcome. Only a
+	 * non-accepted outcome has anything for the visible panel to say.
+	 */
+	function applyPointerOutcome(outcome: SceneSessionOutcome): void {
+		if (outcome.kind !== 'committed') applyOutcome(outcome);
+	}
+
 	function applyOutcome(outcome: SceneSessionOutcome): void {
 		switch (outcome.kind) {
 			case 'candidate':
 				candidate = outcome.candidate;
 				proposalRefused = false;
+				if (outcome.candidate.kind === 'resize') {
+					// Scale is the proposal; the shown Y is the planner's contact result, so
+					// the creator sees exactly the re-seat commit will install.
+					message = `Candidate scale ${outcome.candidate.scale} · Y ${outcome.candidate.position[1].toFixed(3)} m.`;
+					services.stage.notifySurfaceChange();
+					break;
+				}
 				// The fields show the pose the planner captured, not text it replaced.
 				// A proposal is one exact group: a yaw proposal is the accepted X/Z plus
 				// the new angle, and a move proposal keeps the accepted yaw. Rewriting
@@ -240,15 +287,100 @@
 
 	async function commit(): Promise<void> {
 		if (session === null) return;
-		applyOutcome(await session.commit());
+		const outcome = await session.commit();
+		// An accepted install closes the open task synchronously (the host retires
+		// this panel's task-scoped services before this continuation runs).
+		// Reporting the result through those services would read a retired
+		// instrument, so the accepted branch only clears local form state.
+		if (outcome.kind === 'committed') {
+			editing = false;
+			candidate = null;
+			return;
+		}
+		applyOutcome(outcome);
 	}
 
 	function cancel(): void {
-		if (!editing) return;
+		if (!editing && !composeActive) return;
 		session?.cancel();
 		editing = false;
+		composeActive = false;
+		composeSubjectId = null;
 		candidate = null;
 		message = 'Cancelled; the accepted pose is unchanged.';
+	}
+
+	/** Seed a Resize proposal from the selected entity's accepted scale. */
+	function beginResize(): void {
+		const current = ensureSession();
+		if (current === null) return;
+		const entity = composeEntity();
+		if (entity === null) {
+			message = 'Select one Scene entity first.';
+			return;
+		}
+		const outcome = current.beginResize(entity.id);
+		if (outcome.kind === 'refused') {
+			message = `${outcome.code}: ${outcome.message}`;
+			return;
+		}
+		composeActive = true;
+		composeSubjectId = entity.id;
+		candidate = null;
+		proposalRefused = false;
+		composeScaleText = String(typeof entity.scale === 'number' ? entity.scale : 1);
+		message = `Editing scale of ${entity.id}; no document change until Resize.`;
+	}
+
+	function updateScale(value: string): void {
+		composeScaleText = value;
+		if (!composeActive || session === null) return;
+		applyOutcome(session.setResizeEntry(value));
+	}
+
+	async function commitResize(): Promise<void> {
+		if (session === null || !composeActive) return;
+		const outcome = await session.commitResize();
+		if (outcome.kind === 'committed') {
+			// The accepted install retired this panel's task services; there is no
+			// surface left to notify from here.
+			composeActive = false;
+			composeSubjectId = null;
+			candidate = null;
+			return;
+		}
+		applyOutcome(outcome);
+	}
+
+	/**
+	 * Duplicate is one immediate command with a captured id. The adapter's
+	 * completion selects the copy at the post-accept revision; the planner refuses
+	 * a cluster member instead of silently regrouping it.
+	 */
+	async function duplicateSelected(): Promise<void> {
+		const current = ensureSession();
+		if (current === null) return;
+		const entity = composeEntity();
+		if (entity === null) {
+			message = 'Select one Scene entity first.';
+			return;
+		}
+		const outcome = await current.duplicate(entity.id);
+		// The accepted install closes this task; the host's adapter completion owns
+		// the post-accept notification and selection, not this retired panel.
+		if (outcome.kind !== 'committed') applyOutcome(outcome);
+	}
+	/** Delete removes exactly the selected entity; membership cleanup is atomic. */
+	async function deleteSelected(): Promise<void> {
+		const current = ensureSession();
+		if (current === null) return;
+		const entity = composeEntity();
+		if (entity === null) {
+			message = 'Select one Scene entity first.';
+			return;
+		}
+		const outcome = await current.remove(entity.id);
+		if (outcome.kind !== 'committed') applyOutcome(outcome);
 	}
 
 	/**
@@ -262,7 +394,7 @@
 	 * through the one release path the creator also reaches with Esc.
 	 */
 	function dropDeadProposal(): void {
-		if (!editing || session === null || session.proposalLive()) return;
+		if ((!editing && !composeActive) || session === null || session.proposalLive()) return;
 		// A refusal or failure reason outlives the form: it is why the proposal ended,
 		// and the creator still needs it.
 		const reason = proposalRefused ? message : null;
@@ -272,6 +404,18 @@
 	}
 
 	function onKeydown(event: KeyboardEvent): void {
+		if (composeActive) {
+			if (event.key === 'Enter') {
+				event.preventDefault();
+				if (candidate?.kind === 'resize') void commitResize();
+				return;
+			}
+			if (event.key === 'Escape') {
+				event.preventDefault();
+				cancel();
+			}
+			return;
+		}
 		if (!editing) return;
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -294,7 +438,7 @@
 	 * binding here keeps it from cancelling the proposal it just opened.
 	 */
 	function onFocusOut(event: FocusEvent): void {
-		if (!editing) return;
+		if (!editing && !composeActive) return;
 		const next = event.relatedTarget;
 		if (next instanceof Node && event.currentTarget instanceof Node && event.currentTarget.contains(next)) return;
 		cancel();
@@ -354,6 +498,17 @@
 				untrack(() => ensureSession());
 				return;
 			}
+			// A Resize proposal is bound to the subject it was opened for. The panel's
+			// label and the eventual install must never name different entities, so a
+			// canonical selection change ends the proposal before it can commit the
+			// previous subject. This loop is the one observer that runs even when the
+			// panel is not re-rendered by the selection change.
+			if (composeActive && composeSubjectId !== null && selectionEntityId() !== composeSubjectId) {
+				untrack(() => {
+					cancel();
+					message = 'Resize cancelled; the selection changed.';
+				});
+			}
 			// A redraw keeps the lease; a host that ends it while the reading stays
 			// put has ended the proposal all the same, and this frame loop is the one
 			// observer that runs even when the panel is not re-rendered.
@@ -397,7 +552,43 @@
 {/snippet}
 
 <section class="scene-instrument" aria-label="Scene transform">
-	{#if editing}
+	{#if composeTask}
+		<div class="editing" onfocusout={onFocusOut}>
+			<div class="row">
+				<span class="subject"
+					>Compose <code>{composeActive ? composeSubjectId ?? 'no entity' : composeSubject?.id ?? 'no entity'}</code></span
+				>
+				{#if composeActive}<button type="button" class="quiet" onclick={cancel}>Cancel</button>{/if}
+			</div>
+			{#if composeActive}
+				<div class="fields">
+					<label>
+						<span>Scale (uniform)</span>
+						<input
+							type="text"
+							inputmode="decimal"
+							value={composeScaleText}
+							onkeydown={onKeydown}
+							oninput={(event) => updateScale(event.currentTarget.value)}
+						/>
+					</label>
+					<button type="button" onclick={commitResize} disabled={candidate?.kind !== 'resize'}>Resize</button>
+				</div>
+			{:else}
+				<div class="row">
+					<button type="button" onclick={beginResize} disabled={composeSupport === null || !composeSupport.resize}>Resize…</button>
+				</div>
+			{/if}
+			<div class="row">
+				<button type="button" onclick={duplicateSelected} disabled={composeSupport === null || !composeSupport.duplicate}>Duplicate</button>
+				<button type="button" onclick={deleteSelected} disabled={composeSubject === null}>Delete</button>
+			</div>
+			<p class="hint">Uniform scale only; X, Z and yaw are preserved. Duplicate adds one copy at +0.5 m X/Z. Delete removes exactly one entity. Each is one history entry.</p>
+			{#if composeSupport?.reason}
+				<p class="hint">{composeSupport.reason}</p>
+			{/if}
+		</div>
+	{:else if editing}
 		<div class="editing" onfocusout={onFocusOut}>
 			<div class="row">
 				<span class="subject">Editing <code>{entityId}</code></span>

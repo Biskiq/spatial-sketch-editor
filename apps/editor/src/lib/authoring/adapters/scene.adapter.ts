@@ -45,6 +45,7 @@ import {
 	sceneReadingKey,
 	sceneSessionFromServices,
 	sceneSurfaceFor,
+	sceneComposeSupport,
 	type SceneCandidate,
 	type ScenePlacementSession,
 	type SceneSessionOutcome,
@@ -54,6 +55,12 @@ import { floorSupport, supportOccluders } from './scene/support-occlusion';
 
 const SCENE_ARRANGE_TASK = 'scene-arrange';
 const SCENE_PLACE_TASK = 'scene-place';
+/**
+ * T2.P01.S04's bounded composition surface: uniform Resize, duplicate and
+ * delete of the selected entity. One task, three scoped commands; the three
+ * Find entries below all open it so each command is discoverable by name.
+ */
+const SCENE_COMPOSE_TASK = 'scene-compose';
 
 function entityFacts(
 	source: ReturnType<typeof currentStageSource>['source'],
@@ -71,7 +78,18 @@ function entityFacts(
 		{
 			label: 'Yaw',
 			value: `${entity.rotation[1]} rad`
-		}
+		},
+		// Only a subject Compose can actually resize advertises a Scale fact: a light
+		// or model has no verified contact, so a Scale row would name a writer that
+		// never exists.
+		...(sceneComposeSupport(entity).resize
+			? [
+					{
+						label: 'Scale',
+						value: `${typeof entity.scale === 'number' ? entity.scale : 1} (uniform)`
+					}
+				]
+			: [])
 	];
 }
 
@@ -321,6 +339,13 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						label: 'Arrange',
 						targetRef: context.selection()?.ref ?? null,
 						order: 10
+					},
+					{
+						id: SCENE_COMPOSE_TASK,
+						taskKind: SCENE_COMPOSE_TASK,
+						label: 'Compose',
+						targetRef: context.selection()?.ref ?? null,
+						order: 5
 					}
 				],
 				findEntries: [
@@ -339,12 +364,40 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						railFamily: 'arrange',
 						capability: 'scene',
 						order: 10
+					},
+					{
+						id: 'scene-resize',
+						taskKind: SCENE_COMPOSE_TASK,
+						label: 'Resize',
+						railFamily: 'arrange',
+						capability: 'scene',
+						order: 5
+					},
+					{
+						id: 'scene-duplicate',
+						taskKind: SCENE_COMPOSE_TASK,
+						label: 'Duplicate',
+						railFamily: 'arrange',
+						capability: 'scene',
+						order: 6
+					},
+					{
+						id: 'scene-delete',
+						taskKind: SCENE_COMPOSE_TASK,
+						label: 'Delete',
+						railFamily: 'arrange',
+						capability: 'scene',
+						order: 7
 					}
 				],
 				// The pointer claim is offered before the host's navigation gesture and
 				// only while this adapter's task owns the press. A refused clamp or a
 				// missing selection refuses the claim rather than starting a drag.
 				pointerIntent(intent: StagePointerIntent, adapterContext) {
+					// Compose is a typed command surface. It claims no pointer: a press over
+					// the Stage during Compose is ordinary navigation, never an accidental
+					// move/yaw of the selected entity.
+					if (openTaskKind === SCENE_COMPOSE_TASK) return false;
 					// Claim the surface once, on the press. Every later phase of this
 					// gesture reads the same session even if the viewport is re-evaluated.
 					if (intent.phase === 'down') gestureSurface = surfaceFor(adapterContext.evaluation);
@@ -476,11 +529,12 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const css = adapterContext.project(candidate.position);
 					if (css === null) return [];
 					const snap = candidate.snappedStep === null ? '' : ` · snap ${candidate.snappedStep} m`;
+					const scale = candidate.kind === 'resize' ? ` · scale ${candidate.scale}` : '';
 					return [
 						{
 							id: 'scene-candidate',
 							css,
-							label: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${snap}`
+							label: `${candidate.worldXZ[0].toFixed(3)}, ${candidate.worldXZ[1].toFixed(3)} m · ${candidate.yaw.toFixed(3)} rad${scale}${snap}`
 						}
 					];
 				},
@@ -511,16 +565,35 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					const evaluation = services.stage.evaluation();
 					if (task.kind === 'place-object' && evaluation !== null) {
 						taskSurface = surfaceFor(evaluation, services.stage.snapshot());
-					taskSurface.session.arm('place');
-					// Typed and pointer Place commit through this session; completing here
-					// is what keeps the tool persistent and selects the new entity for a
-					// typed commit too.
-					attachPlaceCompletion(taskSurface.session);
-				} else {
-					taskSurface = liveSurface();
-				}
+						taskSurface.session.arm('place');
+						// Typed and pointer Place commit through this session; completing here
+						// is what keeps the tool persistent and selects the new entity for a
+						// typed commit too.
+						attachPlaceCompletion(taskSurface.session);
+					} else if (task.kind === SCENE_COMPOSE_TASK) {
+						// Publish the surface before the panel mounts, so the duplicate
+						// completion below is installed on the session the panel will use.
+						taskSurface = evaluation === null ? liveSurface() : surfaceFor(evaluation, services.stage.snapshot());
+						// Duplicate is one immediate command: the copy it creates becomes the
+						// canonical selection through the same completion path Place uses.
+						taskSurface?.session.setPlacementCommittedListener((createdId) => {
+							if (createdId === null) return;
+							const reference = sceneEntityReference(
+								createdId,
+								services.stage.snapshot().sourceContentId
+							);
+							services.stage.setSelection({ ordered: [{ reference }], primary: reference });
+						});
+					} else {
+						taskSurface = liveSurface();
+					}
 					return {
-						summary: task.kind === 'place-object' ? 'Place object' : 'Arrange',
+						summary:
+							task.kind === 'place-object'
+								? 'Place object'
+								: task.kind === SCENE_COMPOSE_TASK
+									? 'Compose'
+									: 'Arrange',
 						view: { component: SceneTransformInstrument, services }
 					};
 				},

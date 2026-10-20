@@ -30,11 +30,12 @@ below, not the entry.
 
 ---
 
-## Open
+## Fixed
 
 ## TD-8 — a task's scoped services go stale after an accepted install, refusing `Begin`
 
-Status        open — intermittent; root cause located
+Status        fixed — shipped in `T1.P01.S05` (PR #156), accepted at `3d432836` on base `919c2904`;
+              the merge revision becomes the mainline anchor once #156 lands as a merge commit
 Found         2026-10-18, during T2.P01.S03's browser acceptance run
 Owner         Stage host task-scoped services (`apps/editor/src/lib/authoring/stage/stage-facade.ts`,
               `taskServices`/`active()`), not the Scene adapter that surfaced it
@@ -58,9 +59,51 @@ Fix options   1) Have the panel rebuild its task services on `onAdaptersChanged`
               cheapest); 2) make `active()` compare liveness rather than a captured generation and
               let the facade refuse per operation (wider blast radius). Do **not** let the instrument
               re-acquire services from internals — that would give the adapter a second authority.
-Then add      A facade/instrument test that bumps the writer generation under a mounted task and
-              asserts the next `Begin` is accepted, plus one that asserts a genuinely ended task
-              still refuses.
+Fix          Host-side, in `stage-facade.ts` — **option 2 plus a close notification**, not the
+             plan's prescribed option 1. Option 1 (rebuild the panel's services on every
+             `onAdaptersChanged`) was rejected because that signal also fires for registration,
+             selection and re-binds: the panel would re-acquire services on events that do not end
+             its authority, and it would still need to distinguish “task gone” from “content
+             changed”. The implementation:
+             1) the guard no longer captures `writerGeneration()`. It captures the **task object**
+                it was opened for and answers live only while `session.task()` is that same object
+                and this binding still owns the contributed task (`adapterId` + contribution id).
+                The task object is the real lifetime: every path that bumps the generation
+                (`openTask`, `resumeTask`, `closeTask`/`cancelTaskWriters`) also replaces or clears
+                it, so an accepted install, `Resume`, same-contribution re-open, close or disposal
+                revokes the old services. The generation guard's protection is preserved;
+             2) an accepted install that **closes the open task** notifies the contribution surface
+                synchronously (an install is a command, not a derivation), so a panel showing that
+                task learns immediately that it is inactive and can offer `Resume`/reopen instead
+                of holding services that silently refuse. The instrument still holds only the
+                services it was handed.
+             Consequence: **every accepted install closes the open task** — the session has no
+             keep-open install path — so a panel never keeps acting across one. The defect was that
+             the closed services refused with `stale-epoch` and nothing told the panel, so `Begin`
+             looked live but broken. The fix makes the refusal truthful (`inactive-task`) and the
+             recovery reachable (the synchronous signal plus fresh services on Resume/reopen); it
+             does not pretend a closed task's services still work.
+Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
+             - “re-provisions usable services after an accepted install closed the task” (a real
+               adapter view; an accepted install closes the task, the old services refuse
+               `inactive-task`, and reopening the contributed task hands out services whose
+               `Begin` installs);
+             - “invalidates the previous services when the contributed task is replaced”
+               (`session.openTask` replaces the task object; the old services refuse and the
+               facade's current services install);
+             - “notifies the contribution surface synchronously when an accepted install closes the
+               open task” (asserts the signal and the closed task immediately after the command);
+             - “refuses the same task-scoped services after the contributed task has ended”
+               (`closeTask`, then `inactive-task`, no history, no content change).
+
+## Closed by T3.P01.S04
+
+| TD | Subject | Disposition | Surviving obligation |
+| --- | --- | --- | --- |
+| **TD-6** | Two migration runners raced on one database: one exited 0, the loser exited 1 although the schema finished complete | **fixed.** `apps/api/src/migrate.ts` takes `pg_try_advisory_lock(MIGRATION_LOCK_KEY)` on the session before reading `schema_migrations`, polls with a bounded 30 s wait and releases in `finally`; a dropped connection releases the session lock too. | None. `apps/api/tests/migration.test.mjs` pins lock-before-read and the unlock; `apps/api/tests/migration-fence.test.mjs` runs two concurrent runners in one throwaway schema — both fulfil and `schema_migrations` records 1–5 once each. |
+| **TD-7** | An `expected-saved-base` Save locked a foreign project row before the owner test | **fixed.** The unit Save path proves ownership with a non-locking owner/F2 query before `SELECT … FOR UPDATE`; a foreign project answers not-found without locking its row. The create-only collision path stays intentionally owner-blind and never reveals owner, name or contents. | None. `apps/api/tests/save-units.test.mjs` asserts the foreign refusal and that no lock precedes the owner test; the live Save lane is the unit handler only. |
+
+## Open
 
 ## TD-9 — the sign-in Save resume is half-wired
 
@@ -92,17 +135,35 @@ Then add      A route-level test, Save → sign-in → return, that offers exact
               its precondition and operation ID; and, after the cutover, a test that refuses an
               old-format draft with a notice.
 
-TD-8 above is the other open entry.
+## TD-10 — a late successful source Open applies after a newer session epoch
 
-## Closed by T3.P01.S04
+Status        open — disclosed by the PR #159 review; pre-existing, not introduced by that fix
+Found         2026-10-19, while reviewing the refused-Open host follow-up
+Owner         T1 Stage host (the spatial route); closed before or with `T1.P01.S06`, which verifies
+              the host journeys end to end
+Symptom       Expected from the code, not reproduced in a browser: an Open that was admitted before
+              a newer project replacement (or reload) finishes can still install its source after
+              the newer epoch is mounted, overwriting the newer project and its saved base.
+Reproduce     Admit a Source JSON Open, supersede the project before its result resolves (for
+              example by an admitted replacement), then let the first result arrive. A route-level
+              harness can delay the admission port instead of racing a real file dialog.
+Root cause    `openSourceJson` and `applyReloadOffer` in
+              `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` capture the
+              admission context but never capture/re-check `session.isCurrent(token)` after the
+              awaited admission, unlike `load`. The refused-source contract does not depend on it,
+              so PR #159 deliberately did not broaden its scope.
+Why green     `spatial-route-source-replacement.test.ts` exercises refusals and one admitted Open
+              within a single epoch. No test supersedes the session while an admission is in flight.
+Fix options   1) Capture the session token before admission and abandon the result when
+              `!session.isCurrent(token)`, mirroring `load`; report nothing for the stale action.
+              2) Re-check the boot state after admission — weaker: it still races a replacement that
+              starts after the check. Do NOT install a late result as a new baseline, and do NOT
+              clear the newer saved base.
+Then add      A route-level regression: a delayed admitted Open superseded by a newer replacement
+              must leave the newer project, its history and saved base intact and must not show a
+              stale success or refusal notice.
 
-| TD | Subject | Disposition | Surviving obligation |
-| --- | --- | --- | --- |
-| **TD-6** | Two migration runners raced on one database: one exited 0, the loser exited 1 although the schema finished complete | **fixed.** `apps/api/src/migrate.ts` takes `pg_try_advisory_lock(MIGRATION_LOCK_KEY)` on the session before reading `schema_migrations`, polls with a bounded 30 s wait and releases in `finally`; a dropped connection releases the session lock too. | None. `apps/api/tests/migration.test.mjs` pins lock-before-read and the unlock; `apps/api/tests/migration-fence.test.mjs` runs two concurrent runners in one throwaway schema — both fulfil and `schema_migrations` records 1–5 once each. |
-| **TD-7** | An `expected-saved-base` Save locked a foreign project row before the owner test | **fixed.** The unit Save path proves ownership with a non-locking owner/F2 query before `SELECT … FOR UPDATE`; a foreign project answers not-found without locking its row. The create-only collision path stays intentionally owner-blind and never reveals owner, name or contents. | None. `apps/api/tests/save-units.test.mjs` asserts the foreign refusal and that no lock precedes the owner test; the live Save lane is the unit handler only. |
-
-TD-8 and TD-9 above remain open. A new deferred defect is added under `## Open` using the template,
-with the track or file that owns the remaining obligation named in `Owner`.
+No other entry is open.
 
 ---
 
@@ -124,6 +185,6 @@ git show e90a58224443bdbf44114d7285d55c983b79cc84:docs/operations/tech-debt/READ
 | **TD-4** | Curved-fixture release-cost increases that did not reproduce across sessions | **retired with the benchmark.** Every number in that family was advisory by design — no threshold, budget or regression guard was ever set — and the harness that produced them (the PERF lane, `lib/bench/**`, the checked-in baseline and the reuse ratchet) was removed by #115. | Recorded as **unresolved**, never as fixed. A future measurement re-derives a same-session before/after arm under a separately authorized benchmark scope. |
 | **TD-5** | Reuse and comparison over `$state`-proxied compiled geometry paid a ~12× per-read penalty, and a measured candidate optimization was proven output-identical yet slower | **retired with the benchmark.** No test measured per-access proxy cost, and the reuse counters were counts, not durations. | Its **lesson** — do not deep-proxy compiled geometry, and measure against the input the editor actually hands in — is carried in [`docs/roadmap/t1-spatial-world/planning-evidence.md`](../../roadmap/t1-spatial-world/planning-evidence.md) §15. |
 
-TD-8 and TD-9 are the open entries. TD-6 and TD-7 were fixed by `T3.P01.S04` (see the closure table
-above). A new deferred defect is added under `## Open` using the template, with the track or file that
-owns the remaining obligation named in `Owner`.
+TD-9 and TD-10 are the open entries. TD-6 and TD-7 were fixed by `T3.P01.S04` (see the closure
+table above). A new deferred defect is added under `## Open` using the template, with the track or
+file that owns the remaining obligation named in `Owner`.

@@ -1,5 +1,6 @@
 /**
- * T2.P01.S03 — the first coherent Scene editing surface.
+ * T2.P01.S03/S04 — the first coherent Scene editing surface, bounded by S04's
+ * uniform Resize, duplicate and delete commands.
  *
  * A framework-free placement session over `T2.P01.S02`'s pure planners and
  * `T1.P01.S07`'s one gesture lease:
@@ -19,10 +20,17 @@
  *   which restores the accepted baseline and releases the lease exactly once.
  * - **Scene mutates Scene only.** Support is resolved by the retained planner
  *   from compiled Layout; this session never writes Layout.
+ * - **S04 adds no second writer.** Resize, duplicate and delete all build the
+ *   same F.4 intent shape the move/yaw paths use, and each previews through the
+ *   same retained planner that commit calls. Resize resolves its contact on the
+ *   entity's own accepted X/Z inside the planner, so the shown Y and the
+ *   installed Y cannot disagree.
  */
 
 import {
+	floorTransformSupport,
 	planMoveHorizontal,
+	planResizeOnFloor,
 	planSetYaw,
 	type SceneOperationContext,
 	type SceneOperationResult
@@ -73,8 +81,12 @@ export type SceneEditingSnapshot = {
 };
 
 export type SceneCandidate = {
-	/** `place` proposes a new entity; `move`/`yaw` propose an existing one. */
-	readonly kind: 'move' | 'yaw' | 'place';
+	/**
+	 * `place` proposes a new entity; `move`/`yaw`/`resize` propose an existing one.
+	 * `resize` is uniform and keeps the entity's X/Z and yaw; its Y is the
+	 * contact-resolved value the planner computed.
+	 */
+	readonly kind: 'move' | 'yaw' | 'resize' | 'place';
 	readonly entityId: string | null;
 	/** The placed primitive, or `null` for an existing entity. */
 	readonly primitive: NativePlacementPrimitive | null;
@@ -83,6 +95,8 @@ export type SceneCandidate = {
 	readonly rotation: Vec3;
 	readonly worldXZ: readonly [number, number];
 	readonly yaw: number;
+	/** The uniform scale the candidate would install (`1` when unset). */
+	readonly scale: number;
 	/** Present only when snap was applied; feedback must show it. */
 	readonly snappedStep: number | null;
 };
@@ -98,8 +112,8 @@ export type SceneSessionOutcome =
 
 export type ScenePlacementSession = {
 	/** Arm/disarm is session state; no intent, no history. */
-	armed(): 'select' | 'place' | 'move' | 'yaw';
-	arm(mode: 'select' | 'place' | 'move' | 'yaw'): void;
+	armed(): 'select' | 'place' | 'move' | 'yaw' | 'resize';
+	arm(mode: 'select' | 'place' | 'move' | 'yaw' | 'resize'): void;
 	snapStep(): number | null;
 	setSnapStep(step: number | null): void;
 	begin(entityId: string): SceneSessionOutcome;
@@ -113,6 +127,24 @@ export type ScenePlacementSession = {
 	setPlacePrimitive(primitive: NativePlacementPrimitive): void;
 	previewMove(x: number, z: number): SceneSessionOutcome;
 	previewYaw(radians: number): SceneSessionOutcome;
+	/** Begin one uniform Resize of the selected entity under the host lease. */
+	beginResize(entityId: string): SceneSessionOutcome;
+	/**
+	 * Preview a uniform scale. The planner owns the support/contact result, so the
+	 * shown Y is the Y commit installs; X/Z and yaw are preserved.
+	 */
+	previewResize(scale: number): SceneSessionOutcome;
+	/** Exact typed scale entry; blank/non-finite/non-positive never become a scale. */
+	setResizeEntry(text: string): SceneSessionOutcome;
+	/** Commit the shown Resize candidate once, through the same planner. */
+	commitResize(): Promise<SceneSessionOutcome>;
+	/**
+	 * Duplicate one entity at the planner's fixed +0.5 m world offset, with a
+	 * captured new id. A cluster member is refused by the planner, never regrouped.
+	 */
+	duplicate(entityId: string): Promise<SceneSessionOutcome>;
+	/** Delete exactly one entity; membership cleanup belongs to the planner. */
+	remove(entityId: string): Promise<SceneSessionOutcome>;
 	/**
 	 * Preview one placement at a resolved floor elevation. The displayed candidate
 	 * carries the exact X/Z and the contact-resolved Y the planner installs.
@@ -300,6 +332,46 @@ export function localContactMinY(entity: SceneEntity): number | null {
 	}
 }
 
+export type SceneComposeSupport = {
+	readonly resize: boolean;
+	readonly duplicate: boolean;
+	/** The refusal code a command reports, or `null` when both are available. */
+	readonly code: 'missing-contact-metadata' | 'unsupported-transform' | null;
+	/** Why Resize/Duplicate are unavailable, or `null` when both are. */
+	readonly reason: string | null;
+};
+
+/**
+ * What Compose can truthfully do with one entity.
+ *
+ * Resize and Duplicate need a floor contact the retained planner can re-seat.
+ * Only the admitted analytic primitives have one today: a light or a model has
+ * no verified contact here, so offering the command would only take the gesture
+ * lease and then refuse (and the adapter would advertise a `Scale` fact that
+ * cannot be written). Delete needs no contact.
+ */
+export function sceneComposeSupport(entity: SceneEntity): SceneComposeSupport {
+	// The planner's own gate first: lights, vertical planes, tilted primitives and
+	// primitives with no analytic contact are unsupported there, so the UI must not
+	// offer them either.
+	const planner = floorTransformSupport(entity);
+	if (!planner.supported) {
+		return { resize: false, duplicate: false, code: 'unsupported-transform', reason: planner.message };
+	}
+	if (localContactMinY(entity) === null) {
+		return {
+			resize: false,
+			duplicate: false,
+			code: 'missing-contact-metadata',
+			reason:
+				entity.kind === 'light'
+					? 'A light has no verified floor contact; Resize and Duplicate are unavailable.'
+					: 'A model needs a verified contact before it can be resized or duplicated on the floor.'
+		};
+	}
+	return { resize: true, duplicate: true, code: null, reason: null };
+}
+
 export function createSceneSession(input: {
 	readonly snapshot: SceneEditingSnapshot;
 	readonly port: SceneWritePort;
@@ -311,7 +383,7 @@ export function createSceneSession(input: {
 	// that follow it.
 	const evaluationIdNow = (): string =>
 		input.snapshot.currentEvaluationId?.() ?? input.snapshot.evaluationId;
-	let mode: 'select' | 'place' | 'move' | 'yaw' = 'select';
+	let mode: 'select' | 'place' | 'move' | 'yaw' | 'resize' = 'select';
 	let snap: number | null = null;
 	let lease: GestureAcquisition | null = null;
 	let entityId: string | null = null;
@@ -344,6 +416,11 @@ export function createSceneSession(input: {
 		return input.snapshot.source.scene.entities.find((entity) => entity.id === id) ?? null;
 	}
 
+	/** The canonical uniform scale of an entity; an absent value is the identity. */
+	function scaleOf(entity: SceneEntity): number {
+		return typeof entity.scale === 'number' && Number.isFinite(entity.scale) ? entity.scale : 1;
+	}
+
 	function snapped(value: number): number {
 		if (snap === null || !(snap > 0)) return value;
 		return Math.round(value / snap) * snap;
@@ -363,13 +440,19 @@ export function createSceneSession(input: {
 		return {
 			kind: 'candidate',
 			candidate: {
-				kind: result.operationKind === 'set-yaw' ? 'yaw' : 'move',
+				kind:
+					result.operationKind === 'set-yaw'
+						? 'yaw'
+						: result.operationKind === 'resize-on-floor'
+							? 'resize'
+							: 'move',
 				entityId: next.id,
 				primitive: null,
 				position: [...next.position] as Vec3,
 				rotation: [...next.rotation] as Vec3,
 				worldXZ: [next.position[0], next.position[2]],
 				yaw: next.rotation[1],
+				scale: scaleOf(next),
 				snappedStep: step
 			}
 		};
@@ -406,6 +489,46 @@ export function createSceneSession(input: {
 		return outcome;
 	}
 
+	/**
+	 * One uniform Resize proposal.
+	 *
+	 * The retained planner resolves support at the entity's own accepted X/Z and
+	 * re-seats Y from `elevation - scale * contactMinY`. That single result is what
+	 * this candidate shows and what commit evaluates again, so a preview can never
+	 * display a Y the install would correct.
+	 */
+	function resizeCandidate(scale: number): SceneSessionOutcome {
+		if (entityId === null) return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
+		if (!Number.isFinite(scale)) {
+			candidate = null;
+			return { kind: 'invalid', code: 'non-finite', message: 'Scale must be a finite number.' };
+		}
+		if (scale <= 0) {
+			candidate = null;
+			return { kind: 'invalid', code: 'malformed', message: 'Scale must be greater than zero.' };
+		}
+		const entity = entityOf(entityId);
+		if (entity === null) {
+			candidate = null;
+			return { kind: 'refused', code: 'missing-target', message: 'The entity no longer exists.' };
+		}
+		const contactMinY = localContactMinY(entity);
+		if (contactMinY === null) {
+			candidate = null;
+			return {
+				kind: 'refused',
+				code: 'missing-contact-metadata',
+				message: 'A model needs a verified contact before it can be resized on the floor.'
+			};
+		}
+		const outcome = candidateFrom(
+			planResizeOnFloor({ context: context(), entityId, scale, contactMinY }),
+			null
+		);
+		if (outcome.kind === 'candidate') candidate = outcome.candidate;
+		return outcome;
+	}
+
 	function yawCandidate(radians: number): SceneSessionOutcome {
 		if (entityId === null) return { kind: 'refused', code: 'no-subject', message: 'Choose a Scene entity first.' };
 		if (!Number.isFinite(radians)) {
@@ -420,8 +543,16 @@ export function createSceneSession(input: {
 		return outcome;
 	}
 
-	function intent(kind: string, payload: AuthoringIntent['payload']): AuthoringIntent {
-		const entity = entityId === null ? null : entityOf(entityId);
+	function intent(
+		kind: string,
+		payload: AuthoringIntent['payload'],
+		options: {
+			readonly entityId?: string;
+			readonly allocatedIds?: AuthoringIntent['allocatedIds'];
+		} = {}
+	): AuthoringIntent {
+		const addressedId = options.entityId ?? entityId;
+		const entity = addressedId === null ? null : entityOf(addressedId);
 		const reference = entity === null ? [] : [
 			{
 				version: 1 as const,
@@ -445,7 +576,7 @@ export function createSceneSession(input: {
 			targets: reference,
 			payload,
 			capturedInputs: [],
-			allocatedIds: []
+			allocatedIds: [...(options.allocatedIds ?? [])]
 		};
 	}
 
@@ -492,10 +623,41 @@ export function createSceneSession(input: {
 			rotation: [0, 0, 0],
 			worldXZ,
 			yaw: 0,
+			scale: 1,
 			snappedStep: step
 		};
 		candidate = next;
 		return { kind: 'candidate', candidate: next };
+	}
+
+	/**
+	 * Accept one immediate command (duplicate/delete) without a preview or a lease.
+	 *
+	 * Duplicate reports the entity it created through the same completion listener
+	 * Place uses, so the adapter can select the copy exactly as it selects a placed
+	 * object. Delete reports nothing: the accepted correspondence retires the
+	 * subject, and the host's own requalification clears the selection.
+	 */
+	async function acceptOne(
+		intentToAccept: AuthoringIntent,
+		createdEntityId: string | null
+	): Promise<SceneSessionOutcome> {
+		let outcome: Awaited<ReturnType<SceneWritePort['accept']>>;
+		try {
+			outcome = await input.port.accept(intentToAccept);
+		} catch (error) {
+			return {
+				kind: 'failed',
+				code: 'accept-failed',
+				message: error instanceof Error ? error.message : 'The accepted install failed.'
+			};
+		}
+		if (outcome.kind === 'refused') return outcome;
+		if (createdEntityId !== null) {
+			lastPlacedEntityId = createdEntityId;
+			notifyPlacementCommitted();
+		}
+		return { kind: 'committed' };
 	}
 
 	/** The one F4 placement intent, captured from an exact world X/Z and definition. */
@@ -543,7 +705,7 @@ export function createSceneSession(input: {
 		return { kind: 'committed' };
 	}
 
-	return {
+	const session: ScenePlacementSession = {
 		armed: () => mode,
 		arm(next) {
 			mode = next;
@@ -551,6 +713,93 @@ export function createSceneSession(input: {
 		snapStep: () => snap,
 		setSnapStep(step) {
 			snap = step === null || !Number.isFinite(step) || step <= 0 ? null : step;
+		},
+		beginResize(id) {
+			const entity = entityOf(id);
+			if (entity === null) {
+				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
+			}
+			// The refusal is the begin: a subject the planner cannot transform must
+			// never take the lease, so Undo never reports a proposal that cannot exist.
+			const support = sceneComposeSupport(entity);
+			if (!support.resize) {
+				return {
+					kind: 'refused',
+					code: support.code ?? 'unsupported-transform',
+					message: support.reason ?? 'Resize is unavailable.'
+				};
+			}
+			release();
+			lease = input.port.acquireGesture({
+				owner: 'scene-compose',
+				evaluationId: evaluationIdNow(),
+				policy: 'cancel-on-reading-change'
+			});
+			if (lease.kind === 'refused') {
+				return {
+					kind: 'refused',
+					code: lease.code,
+					message: lease.code === 'gesture-held' ? `Another ${lease.owner} gesture is live.` : 'This editing session is stale.'
+				};
+			}
+			mode = 'resize';
+			entityId = id;
+			baseline = { position: [...entity.position] as Vec3, rotation: [...entity.rotation] as Vec3 };
+			entry = { x: String(entity.position[0]), z: String(entity.position[2]), yaw: String(entity.rotation[1]) };
+			candidate = null;
+			return { kind: 'idle' };
+		},
+		previewResize(scale) {
+			return resizeCandidate(scale);
+		},
+		setResizeEntry(text) {
+			const parsed = parseNumber(text);
+			if (!parsed.ok) {
+				entryError = parsed.reason;
+				candidate = null;
+				return { kind: 'invalid', code: parsed.code, message: parsed.reason };
+			}
+			entryError = null;
+			return resizeCandidate(parsed.value);
+		},
+		async commitResize() {
+			if (candidate === null || candidate.kind !== 'resize') {
+				release();
+				return { kind: 'refused', code: 'no-candidate', message: 'Preview a valid scale before committing.' };
+			}
+			return session.commit();
+		},
+		async duplicate(id) {
+			const entity = entityOf(id);
+			if (entity === null) {
+				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
+			}
+			const support = sceneComposeSupport(entity);
+			if (!support.duplicate) {
+				return {
+					kind: 'refused',
+					code: support.code ?? 'unsupported-transform',
+					message: support.reason ?? 'Duplicate is unavailable.'
+				};
+			}
+			const contactMinY = localContactMinY(entity);
+			if (contactMinY === null) {
+				return { kind: 'refused', code: 'missing-contact-metadata', message: 'The entity has no verified contact.' };
+			}
+			const allocatedId = `entity-${mint()}`;
+			return acceptOne(
+				intent('duplicate-one', { entityId: id, contactMinY }, {
+					entityId: id,
+					allocatedIds: [{ kind: 'scene-entity', id: allocatedId }]
+				}),
+				allocatedId
+			);
+		},
+		async remove(id) {
+			if (entityOf(id) === null) {
+				return { kind: 'refused', code: 'missing-target', message: `No Scene entity "${id}".` };
+			}
+			return acceptOne(intent('delete-one', { entityId: id }, { entityId: id }), null);
 		},
 		begin(id) {
 			const entity = entityOf(id);
@@ -687,21 +936,32 @@ export function createSceneSession(input: {
 				withdraw();
 				return { kind: 'invalid', code: 'malformed', message: entryError };
 			}
+			// Capture the shown proposal before awaiting acceptance. An accepted
+			// install closes the task and the adapter disposes this session, so the
+			// live `candidate` may already be null when the transport resolves; the
+			// pose that was installed is the one captured here.
+			const committed = candidate;
 			const intentToAccept =
-				candidate.kind === 'yaw'
+				committed.kind === 'yaw'
 					? intent('set-yaw', {
 							entityId,
-							yaw: candidate.yaw,
+							yaw: committed.yaw,
 							frame: FRAME,
 							frameReference: PROJECT_WORLD
 						})
-					: intent('move-horizontal', {
-							entityId,
-							worldXZ: [candidate.worldXZ[0], candidate.worldXZ[1]],
-							frame: FRAME,
-							frameReference: PROJECT_WORLD,
-							contactMinY
-						});
+					: committed.kind === 'resize'
+						? intent('resize-on-floor', {
+								entityId,
+								scale: committed.scale,
+								contactMinY
+							})
+						: intent('move-horizontal', {
+								entityId,
+								worldXZ: [committed.worldXZ[0], committed.worldXZ[1]],
+								frame: FRAME,
+								frameReference: PROJECT_WORLD,
+								contactMinY
+							});
 			// A commit that does not install ends the proposal: whether acceptance
 			// refuses it, the transport throws, or the shown pose stopped being
 			// committable, the gesture lease is released here rather than held until
@@ -725,7 +985,7 @@ export function createSceneSession(input: {
 			// The committed pose is exactly the displayed candidate; the lease ends and
 			// the accepted baseline is the new pose.
 			release();
-			baseline = { position: [...candidate.position] as Vec3, rotation: [...candidate.rotation] as Vec3 };
+			baseline = { position: [...committed.position] as Vec3, rotation: [...committed.rotation] as Vec3 };
 			entityId = null;
 			candidate = null;
 			return { kind: 'committed' };
@@ -790,6 +1050,7 @@ export function createSceneSession(input: {
 		},
 		baseline: () => (baseline === null ? null : { position: [...baseline.position] as Vec3, rotation: [...baseline.rotation] as Vec3 })
 	};
+	return session;
 }
 
 /** Build the session from the public adapter services. */

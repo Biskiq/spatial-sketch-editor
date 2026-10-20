@@ -278,7 +278,10 @@ describe('Scene proposal lifetime', () => {
 		await tick();
 		await tick();
 		expect(spies.commit).toHaveBeenCalledTimes(1);
-		expect(target.textContent).toContain('Committed.');
+		// An accepted install closes the open task, so this panel's services are
+		// retired; it must not report a result of its own through them.
+		expect(target.textContent).not.toContain('Committed.');
+		expect(target.textContent).toContain('Begin');
 	});
 
 	it('shows the captured candidate in the fields the entry did not come from', async () => {
