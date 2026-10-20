@@ -68,7 +68,7 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T3.P01 | approved | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
+| T3.P01 | closable | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
@@ -85,8 +85,7 @@ is closed.
 external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
 
 **Candidate next phase (not registered):**
-[T3.P02 — First capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md), which registers
-once `T3.camera-experience-cutover@1` is drafted and owner-ratified.
+[T3.P02 — First capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md), which registers only after `T3.camera-experience-cutover@1` is accepted on its trusted base.
 
 ## Starting foundation
 

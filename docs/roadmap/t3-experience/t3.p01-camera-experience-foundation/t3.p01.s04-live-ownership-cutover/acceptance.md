@@ -1,15 +1,17 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4) with the declared-origin correction at `ce6678da`; the branch is merged with frozen `main` at `fd3cf67e`; Phase B implemented on PR #158 with the A/B/C corrections; independent PR review deferred by owner on 2026-10-20; verification passed at `e0a39838`; the slice is not yet accepted, merged, activated or closeable**
-**Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
+**Slice:** T3.P01.S04 · **Status:** accepted and shipped 2026-10-20 by routine slice-closeout on PR #158; independent implementation review **ACCEPT** at `06a8aac8fa601de6c808c4d7014b6f360516e648`; PR #158 remains open for merge review; not merged or activated · **Phase:** final gate accepted; T3.P01 is closable, not closed
+**Plan:** [closed stub](./implementation-plan.md) — original approved criteria recovered from the preservation anchor below
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-This record holds Phase A and Phase B implementation evidence. It does **not** claim slice
-acceptance, activation or the cutover gate. Independent review accepted the **Phase A
-implementation** at `dcc23bd2` (round 3, no blocking findings); the interrupted-Travel correction
-at `b9cb5ed1` was re-reviewed and **accepted** (round 4, no blocking findings). Phase B is
-implemented in `0d2f6ceb` and the A/B/C corrections below; its independent final review is the
-remaining acceptance event. The owner-run activation runbook has not been executed.
+This record holds Phase A and Phase B implementation evidence. The independent implementation
+review returned **ACCEPT** at exact revision
+`06a8aac8fa601de6c808c4d7014b6f360516e648`, covering the integrated S04 Phase A + Phase B
+implementation and its declared acceptance scope, with no blocking findings. The verdict and
+revision were supplied in the owner's closeout instruction; no GitHub review submission is claimed.
+Routine closeout reuses the recorded verification below and does not claim that implementation tests
+were independently rerun. Earlier Phase A review history remains recorded below. The owner-run
+activation runbook has not been executed.
 
 ## Base and evidence lane
 
@@ -19,7 +21,7 @@ remaining acceptance event. The owner-run activation runbook has not been execut
 | Base | `origin/main` `919c2904` (PR #155 merge) |
 | Phase A scope | T3-owned files only: `apps/api/**` and migrations, project-model units/program/save, `lib/visitor/**`, camera-core flow exports |
 | Phase B | implemented in `0d2f6ceb`; A/B/C and guest-boot corrections at `75c59264`; integrated with current `main` at `420dc2f3`, link reconciliation at `e0a39838` |
-| PR lifecycle | PR #158 is the continuing S04 implementation PR. Phase A is reviewed there but is **not** merged on its own; Phase B lands on the same PR, followed by final review and closeout. |
+| PR lifecycle | PR #158 is the continuing S04 PR. Phase A and Phase B are accepted together at `06a8aac8fa601de6c808c4d7014b6f360516e648`; documentation-only closeout follows on the same branch. P1 merge-commit and post-merge anchor verification remain. |
 
 ## Implemented in Phase A
 
@@ -436,35 +438,33 @@ required Compose-backed evidence was completed. No environment gate is skipped.
 No shared or production data was reset, no deployment was made, no object was purged. Only the
 isolated rehearsal schemas/databases and task-owned Compose project were used.
 
-## Review scheduling and closeout preflight
+## Independent review and closeout preflight
 
-On 2026-10-20 the owner instructed: “no need independent review, pr will be reviewed later once you
-pushed”. This defers independent review to PR review; it is **not** a per-revision acceptance waiver.
-No new independent verdict is claimed. Reviewed Phase B revision: **none**. The implementation and
-verification are ready for PR review.
-
-The `slice-closeout` skill was read and its acceptance guard applied: “A missing, stale, withdrawn
-or pending verdict still stops (step 1).” Formal acceptance, shipped status, gate activation,
-compaction and final-gate closeout therefore remain pending the later review. No owner override is
-inferred. Preflight hygiene: no checkpoint exists for this slice; all source callers use F2, no
-unowned compatibility writer remains, S06 stays proposed, references and baton are reconciled,
-and P1 merge-commit / post-merge anchor verification remain the eventual merger's obligations.
-No implementation edit is made as routine closeout. The plan and this final-gate evidence stay live.
+The owner supplied the independent implementation verdict **ACCEPT** at
+`06a8aac8fa601de6c808c4d7014b6f360516e648`. Its scope is the integrated Phase A + Phase B
+implementation against this slice's declared acceptance criteria; the recorded final verification
+below is its verification provenance. No GitHub review submission is claimed, and no implementation
+test was independently rerun during closeout. No owner override is used. Closeout confirmed that the
+PR head matched the accepted revision and `origin/main` was its ancestor. No active S04 checkpoint
+exists; S06 remains proposed. P1 merge-commit and post-merge anchor verification remain the eventual
+merger's obligations. No implementation, test, production configuration or migration file changed in
+closeout.
 
 ## Outstanding and declared limits
 
-1. **Independent final review of Phase B is pending.** This record does not accept the slice, the
-   cutover gate or #158 until that review returns without blocking findings.
-2. **Public reader remains T4.** The editor still contains the unreachable public route/cold
+1. **Public reader remains T4.** The editor still contains the unreachable public route/cold
    reader/client; every public read answers not-found while T4 owns the prepared reader. This is not
    a live delivery path and is not Phase B scope.
-3. **Catalogue model placement awaits r186 contact verification** (T2 follow-on K1). Existing
+2. **Catalogue model placement awaits r186 contact verification** (T2 follow-on K1). Existing
    documents may reference those assets; new placement does not admit them until a verified record
    exists. The native primitives are analytical and admitted.
-4. **Resource bytes remain host-asserted until storage verification**; new typed-resource admission
+3. **Resource bytes remain host-asserted until storage verification**; new typed-resource admission
    is the staged T2 follow-on, not part of this cutover.
-5. The envelope's `acceptedRevision` is baseline provenance, not revision authority; Save receipts
+4. The envelope's `acceptedRevision` is baseline provenance, not revision authority; Save receipts
    and the API own revision identity.
+5. **Activation is owner-run after merge.** Migration 005, API/editor deploys, namespace-scoped
+   purge and smoke checks have not been run; no shared/production database or object store was
+   touched.
 6. `T3.P01.S04` is the phase's declared final gate. Slice closeout makes the phase **closable**, not
    closed; phase closure remains an owner event.
 
@@ -476,9 +476,42 @@ covered the unit Save live switch, epoch admission, retirement, the runtime bloc
 Travel-settling fix). The declared-origin correction at `ce6678da` is the only Phase A change after
 that verdict and is recorded above with its coordinator review limitation.
 
-**Phase B implementation: complete, independent final review pending.** The A/B/C corrections are
-implemented and covered by the mounted route, Save and source-admission suites. This is **not**
-slice acceptance: the final review, closeout, the cutover gate and the owner-run activation remain.
-No criterion is marked accepted for the slice, and #158 stays open on the same PR. All prescribed
-automated and disposable-Compose gates pass; review and formal closeout remain pending by the
-owner’s scheduling instruction. Merge eligibility is not claimed before those events.
+**Phase B implementation: ACCEPTED** as part of the integrated independent implementation verdict
+at `06a8aac8fa601de6c808c4d7014b6f360516e648`; no blocking findings. The reviewed scope includes
+Phase A + B and the A/B/C corrections. Verification provenance is the integrated run at
+`e0a39838` on the tree tested from implementation `75c59264` integrated with main at `420dc2f3`,
+with only documentation-link repairs afterward. The exact final-gate results and bounded browser
+evidence remain above. Formal slice acceptance and shipped status are recorded by this closeout;
+activation remains owner-run after merge.
+
+## Closeout preservation and handoff — 2026-10-20
+
+```text
+CLOSEOUT PRESERVATION — T3.P01.S04 (2026-10-20)
+prose compacted:                 2  plan and superseded ratification draft stubs at their paths
+reference promotions:            0
+renderable evidence archived:    2 PNG files / 188 KiB (archive copies; live evidence paths retained)
+evidence stubs / manifests:      0
+transient artifacts removed:     0
+historical anchor:               f5147acad03ef5f856e12187666276ccd2de61ed · tag closed/T3.P01.S04 (pushed with closeout)
+new live → archive prose links:  0
+manual-owed verification rows:   0 (bounded browser omissions are recorded as limitations/deferred owner actions)
+remaining deferred items:        6 product/owner limitations listed above
+permanent stubs added:           2 (plan and superseded ratification draft)
+```
+
+The complete acceptance artifact remains live because it is the declared final-gate evidence. The
+plan and superseded ratification draft bodies are recoverable from the anchor above. Ratified AM-9 and
+owner rulings remain authoritative in the decision record and `composition-execution.md`. Screenshot
+originals remain at the linked live evidence paths and byte-for-byte copies are in
+`docs/archive/roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/evidence/`.
+
+**P1 merge requirement:** merge PR #158 with a merge commit (no squash, no rebase, no amend) so the
+plan anchor remains reachable. After merge, verify
+`git merge-base --is-ancestor f5147acad03ef5f856e12187666276ccd2de61ed main` and
+`git show f5147acad03ef5f856e12187666276ccd2de61ed:<plan-path> | head -3`. These checks are
+owner/merger obligations; this closeout stops before merge.
+
+**Closeout result:** T3.P01.S04 shipped/closed; its final gate is accepted and T3.P01 is **closable,
+not closed**. Phase-closeout, activation and post-merge anchor verification remain separate owner
+actions.
