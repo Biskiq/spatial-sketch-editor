@@ -28,10 +28,12 @@ and the write cannot name different subjects.
 
 **Accepted-install lifetime.** TD-8's fix closes the open task on every accepted install and retires
 the panel's task-scoped services. The instrument therefore stops reporting through those services
-after a committed Resize, Duplicate, Delete or pose Commit; only a refusal or failure keeps using
-them. `scene-compose-instrument.test.ts` and `scene-proposal-lifetime.test.ts` pin that rule, and a
-real browser run showed no page errors on Resize and Duplicate after the correction. This is a
-T2-owned adapter fix, not a host change.
+after a committed Resize, Duplicate, Delete, pose Commit or **pointer commit**; only a refusal or
+failure keeps using them. The pointer path is the session's outcome listener, which the adapter calls
+only after its commit resolves, so it needs the same guard as the typed commands.
+`scene-compose-instrument.test.ts` and `scene-proposal-lifetime.test.ts` pin that rule, and a real
+browser run showed no page errors on Resize and Duplicate after the correction. This is a T2-owned
+adapter fix, not a host change.
 
 ## Phase evidence matrix
 
@@ -42,15 +44,15 @@ hold. No row is claimed beyond its evidence.
 | Contract/failure | Status | Evidence |
 | --- | --- | --- |
 | Canonical boot → place → commit (Scene successor to TD-1) | **Proved** | `scene-editing-surface.test.ts` (41) covers place/commit from an admitted wall-first project, including empty/no-floor refusal. The browser journey below starts from the canonical starter gallery, places one box and commits it as exactly one history result. |
-| Support parity | **Proved** (numeric Resize) | `scene-composition-loop.test.ts` previews the planner re-seat and commits that exact scale and Y; the browser journey showed `Candidate scale 2 · Y 1.000 m` and `scale 1.2 · Y 0.6 m` after commit. Numeric scale is the guaranteed route; no direct resize handle was added. Nonzero elevation, coincident/overlapping candidates and no-support cases remain S02/S03 coverage. |
+| Support parity | **Proved** (numeric Resize) | `scene-composition-loop.test.ts` previews the planner re-seat and commits that exact scale and Y; the browser journeys showed `Candidate scale 2 · Y 1.000 m` in both readings and `scale 1.2 · Y 0.6 m` after a keyboard commit. Numeric scale is the guaranteed route; no direct resize handle was added. Nonzero elevation and contact-preserving re-seat are pinned by `scene-operation-planners.test.ts` ("resizes uniformly and compensates Y to keep the same contact elevation") and `place-object-candidate.test.ts` (2.5 m support elevation); coincident equivalent supports and elevation ambiguity by `layout-floor-support.test.ts`; no-support refusal by the session and panel suites. |
 | Truthful geometry | **Proved, with a declared boundary** | Resize changes only the uniform `scale` plus the compensating Y. Eligibility reads the planner's own `floorTransformSupport`; a light, vertical plane, tilted primitive or model without verified contact is refused by the session and disabled in the panel, with no `Scale` fact advertised. The canonical model-footprint path is S01/S03 placement coverage, unchanged here. |
 | Owned transforms | **Proved** (primitive subjects) | One finite positive scalar; zero/negative/non-finite/blank refuse without averaging; the intent carries only `scale` and `contactMinY`, preserving X/Z/yaw. Duplicate keeps pose/rotation/scale and adds the planner's +0.5 m world X/Z; delete removes only the named entity. |
 | Preview/commit/lifetime | **Proved** | Preview and commit call the same retained planner with the same captured inputs; the lease is `cancel-on-reading-change`, a refused/invalid commit releases it, and the panel cancels when the canonical selection moves. An accepted install retires the panel without touching its services (new regression). Browser Resize/Duplicate produced no page errors. |
-| Selection and actions | **Proved** (scoped actions) | Duplicate's completion selects the created entity at the post-accept revision (observed: the Compose panel named the new id); delete retires the subject and the host clears selection. Cluster-member refusal and membership cleanup are S02 planner contracts. |
+| Selection and actions | **Proved** (scoped actions) | Duplicate's completion selects the created entity at the post-accept revision; `scene-composition-loop.test.ts` asserts the new id is the canonical selection. The accepted install closes the panel, so the browser run observes the new subject through the selection card rather than a panel label. Delete retires the subject and the host clears selection. Cluster-member refusal and membership cleanup are S02 planner contracts. |
 | History and concurrency | **Proved** | The browser journey downloaded the canonical source, then Undo ×2 and Redo ×2 restored **byte-identical** source (`equal: true`, 3,790 bytes): duplicate removal, scale 1→2 restoration, two entities with scale 2 at `[3,1,-1]` and `[3.5,1,-0.5]`. The Save half is proved through the mounted `EditorHead` over the real T3.P01.S02 state machine, the real F.4 host and the production Scene adapter (`head-save-journey.test.ts`): dirty versus saved, an in-flight older Save leaving newer edits dirty, and a conflict held until Reload. |
 | Source persistence | **Proved** | `scene-composition-loop.test.ts` feeds the exact download bytes to `bootFromSourceJson`, asserts the edited pose survives and the new host starts at depth 1, and refuses invalid source. In the browser, the downloaded bytes were re-opened through the real `Open source JSON` replacement guard: both entities, scale 2 and positions survived into a new baseline; an invalid Open reported `The source was not opened: the JSON did not parse. The current project is unchanged.` with the mounted project and Undo still intact. T1's route regression (`spatial-route-source-replacement.test.ts`, 5/5 on this tree) proves the failed Reload keeps the local source and the `token-1` saved base. Replacement cancels an open Resize without committing it (`head-save-journey.test.ts`). |
-| Wiring and isolation | **Proved** | Compose reaches the Stage only through AM-5 task/Find/instrument contributions and the existing `pointerIntent` seam (which it refuses). No host, route, shell, Layout or visitor file is edited by this slice. `test:arch` 163/163; boundary suites unchanged and green. |
-| Creator experience | **Proved** | Real browser run at 1440×900 and 900×700: starter gallery → Place object → Resize (numeric candidate and commit) → Duplicate → Undo/Redo → Download/Open source JSON, with the Plan/3D readings available and no page or console errors after the lifetime fix. Reduced motion was on for the final narrow-viewport run; a Resize committed by keyboard `Enter` produced `scale 1.2 · Y 0.6 m`, Undo enabled. The one unexercised permutation is a numeric Resize while the Plan reading is active: the panel is reading-independent and a reading change cancels a live proposal by design, so the typed route was proven in 3D and reading parity remains S03 coverage. |
+| Wiring and isolation | **Proved** | Compose reaches the Stage only through AM-5 task/Find/instrument contributions and the existing `pointerIntent` seam (which it refuses); this slice adds no other wiring path. The mutation controls that make the relevant successor fail are S03's — `stage-host-acceptance.test.ts` (selection cleared instead of requalified, factory rebinding suppressed) and `scene-operation-acceptance.test.ts` (a mutation-control candidate the adapter admits but the record-scope guard refuses) — and remain green here. No host, route, shell, Layout or visitor file is edited by this slice. `test:arch` 163/163; boundary suites unchanged and green. |
+| Creator experience | **Proved** | Real browser runs: starter gallery → Place object → Resize (numeric candidate and commit) → Duplicate → Undo/Redo → Download/Open source JSON at 1440×900 and 900×700, no page or console errors after the lifetime fix. Reduced motion was on for the final narrow-viewport run; a Resize committed by keyboard `Enter` produced `scale 1.2 · Y 0.6 m`, Undo enabled. The Plan-reading permutation is proved separately on the corrected tree: switch to Plan, open Compose → Resize…, enter scale 2 → `Candidate scale 2 · Y 1.000 m`, commit; the selection card showed `2 (uniform)` at Y 1 m, Undo enabled, and the downloaded canonical source held the same Block at `[2, 1, 2]`, `rotation [0, 0, 0]`, `scale 2` (3,294 bytes), with only Vite's connection messages in the console. |
 
 ## Repository verification
 
@@ -60,11 +62,11 @@ suite; the lanes are reported separately because the merge gate names each one.
 | Check | Result |
 | --- | --- |
 | `npm run check` | **0 errors, 0 warnings** |
-| `npm test` (complete suite) | **2,268 / 2,268**, 171 files, exit 0 |
+| `npm test` (complete suite) | **2,269 / 2,269**, 171 files, exit 0 |
 | `npm run test:arch` | **163 / 163**, 20 files, exit 0 (documentation gate included) |
 | `npm run test:heavy` | **118 / 118**, 8 files, exit 0 |
-| Focused | `scene-composition-loop` 11/11, `scene-compose-instrument` 5/5, `scene-proposal-lifetime` 9/9, `scene-editing-surface` 41/41, `scene-operation-acceptance` 9/9, `head-save-journey` 4/4, `spatial-route-source-replacement` 5/5, `save-state` 16/16, `scene-instrument-focus` 3/3 |
-| Browser | starter → place → resize (2, then 1.2 by Enter) → duplicate → undo ×2 → redo ×2 → download/open source JSON; 1440×900 and 900×700; reduced motion on; `errors` empty after the lifetime fix |
+| Focused | `scene-composition-loop` 11/11, `scene-compose-instrument` 6/6, `scene-proposal-lifetime` 9/9, `scene-editing-surface` 41/41, `scene-operation-acceptance` 9/9, `head-save-journey` 4/4, `spatial-route-source-replacement` 5/5, `save-state` 16/16, `scene-instrument-focus` 3/3 |
+| Browser | starter → place → resize (2, then 1.2 by Enter) → duplicate → undo ×2 → redo ×2 → download/open source JSON; 1440×900 and 900×700; reduced motion on; `errors` empty after the lifetime fix. Plan reading: place → Plan → Compose → Resize 2 → commit → selection card `2 (uniform)` at Y 1 m, source `[2, 1, 2]` `scale 2`, no console errors. |
 
 The merge gate must be re-run at the merge revision; this table is the branch gate.
 
@@ -83,6 +85,10 @@ The merge gate must be re-run at the merge revision; this table is the branch ga
    exact-source journey; it is not part of the plan's named creator-loop sequence.
 5. **No 3D candidate mesh or renderer-level support test.** That is the disclosed S03 residual and is
    not reopened by this slice; the numeric candidate is the S04 presentation.
+6. **The pointer commit path is guarded, not browser-dragged, in this round.** The typed commands
+   were exercised in the browser; a pointer-originated commit is covered by the instrument
+   regression that invokes the session's registered outcome listener with a committed outcome and
+   asserts no task-service notification. The drag adapter itself is unchanged S03 code.
 
 No criterion is marked **Failed** on this tree, and no acceptance criterion was weakened to reach the
 result.
