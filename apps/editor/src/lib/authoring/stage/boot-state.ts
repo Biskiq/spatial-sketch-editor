@@ -29,8 +29,8 @@
  */
 import type { LayoutGeometryIssue } from '@portfolio/layout-core';
 import type { ProjectIssue } from '@portfolio/project-model';
+import { createEmptyUnitEnvelope } from '@portfolio/project-model/units';
 
-import { createEmptyWallFirstProject } from '$lib/project/project-codec';
 import {
 	admitSource,
 	admitSourceJson,
@@ -86,17 +86,14 @@ export function initialBootState(projectId: string, intent: BootIntent): BootSta
 	return { status: 'loading', projectId, intent };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** The strict current source inside a loaded cloud payload, or the payload itself. */
+/**
+ * The F.2 envelope inside a loaded cloud payload, or the payload itself.
+ *
+ * The persistence reader already exposes `document`; a raw source JSON open has
+ * no wrapper. Both are handed to the same admission. A pre-epoch payload is not
+ * unwrapped or sniffed: it is refused by the envelope validator.
+ */
 export function documentOf(document: unknown): unknown {
-	// The persistence reader exposes `{ document }`; a raw source JSON open has no
-	// wrapper. Both are handed to the same admission, which validates either.
-	if (isRecord(document) && isRecord(document.project) && typeof document.project.id === 'string') {
-		return document.project;
-	}
 	return document;
 }
 
@@ -179,7 +176,8 @@ export async function bootStarterGallery(
 	if (template === null) {
 		return { status: 'error', projectId, message: `Unknown starter template "${templateId}"` };
 	}
-	return stateFromAdmission(projectId, await admitSource(template.build(projectId, template.label), context), 'ready');
+	const envelope = await template.build(projectId, template.label, context.acceptedRevision);
+	return stateFromAdmission(projectId, await admitSource(envelope, context), 'ready');
 }
 
 /**
@@ -187,8 +185,12 @@ export async function bootStarterGallery(
  * enclosure (Wall, Room or floor polygon) is derived from it.
  */
 export async function bootEmpty(projectId: string, context: AdmissionContext): Promise<BootState> {
-	const document = createEmptyWallFirstProject({ id: projectId, name: 'Untitled project' });
-	return stateFromAdmission(projectId, await admitSource(document, context), 'empty');
+	const envelope = await createEmptyUnitEnvelope({
+		id: projectId,
+		name: 'Untitled project',
+		acceptedRevision: context.acceptedRevision
+	});
+	return stateFromAdmission(projectId, await admitSource(envelope, context), 'empty');
 }
 
 /** `true` when the state has an admitted source mounted on the Stage. */

@@ -16,7 +16,6 @@
  * Every admitted operation is single-domain Scene with `compound`, `units` and
  * `resources` false; the landed registry refuses anything wider.
  */
-import { CURRENT_SOURCE_KIND, CURRENT_SOURCE_VERSION } from '../f4/admission';
 import type {
 	DomainPlanner,
 	PlannerAdmission,
@@ -25,7 +24,9 @@ import type {
 	PreparedCandidate
 } from '../f4';
 import { ShapeReader, type ShapeIssue } from '../strict-shape';
-import type { ProjectDocument } from '../project-types';
+import { replaceUnitData } from '../units/envelope';
+import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from '../units/source';
+import type { ProjectEnvelope } from '../units/types';
 import type { SemanticReference } from '../references/types';
 import { framePointToWorld } from './frame';
 import { preparePlaceObjectCandidate } from './place-object';
@@ -72,7 +73,7 @@ export type ScenePlannerOptions = {
  */
 export function createScenePlanners(
 	options: ScenePlannerOptions = {}
-): readonly DomainPlanner<ProjectDocument>[] {
+): readonly DomainPlanner<ProjectEnvelope>[] {
 	const definitions = new Map(
 		(options.definitions ?? []).map((definition) => [definition.definitionKey, definition])
 	);
@@ -87,22 +88,22 @@ export function createScenePlanners(
 
 function scenePlanner(
 	kind: SceneOperationKind,
-	prepare: (request: PlannerRequest<ProjectDocument>) => PlannerOutcome<ProjectDocument>
-): DomainPlanner<ProjectDocument> {
+	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
+): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: `scene.${kind}`,
 		kind,
 		admission: SCENE_PLANNER_ADMISSION,
-		sourceKinds: [CURRENT_SOURCE_KIND],
-		sourceVersions: [CURRENT_SOURCE_VERSION],
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare
 	};
 }
 
 function planPlaceObject(
-	request: PlannerRequest<ProjectDocument>,
+	request: PlannerRequest<ProjectEnvelope>,
 	definitions: ReadonlyMap<string, NormalizedPlacementDefinition>
-): PlannerOutcome<ProjectDocument> {
+): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
 	const payload = readSceneOperationPayload(reader, 'place-object', request.intent.payload);
 	if (payload === null || payload.kind !== 'place-object') return invalidPayload(reader.issues);
@@ -111,13 +112,13 @@ function planPlaceObject(
 		kind: 'place-object',
 		targets: request.intent.targets,
 		payload,
-		sourceContentId: request.snapshot.sourceContentId
+		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision
 	});
 	const allocation = readSceneOperationAllocation({
 		reader,
 		kind: 'place-object',
 		allocations: request.intent.allocatedIds,
-		scene: request.snapshot.domain.source.scene
+		scene: request.snapshot.domain.source.units.scene.data
 	});
 	if (subject === null || allocation === null) return invalidPayload(reader.issues);
 	// `ShapeReader` records a problem (an unknown key, a mismatched choice
@@ -147,7 +148,7 @@ function planPlaceObject(
 	const point = composedPoint(payload.worldXZ, payload.frame);
 	if (point === null) return rejected('invalid-value', 'The placement X/Z is not finite.', ['worldXZ']);
 	const support = resolveSceneSupport({
-		layout: request.snapshot.domain.source.layout,
+		layout: request.snapshot.domain.source.units.layout.data,
 		sourceContentId: request.snapshot.sourceContentId,
 		point,
 		requiredElevation: null,
@@ -158,7 +159,7 @@ function planPlaceObject(
 	}
 
 	const prepared = preparePlaceObjectCandidate({
-		document: request.snapshot.domain.source.scene,
+		document: request.snapshot.domain.source.units.scene.data,
 		snapshot: request.snapshot.domain.identity,
 		supportSnapshot: request.snapshot.domain.identity,
 		frameSnapshot: request.snapshot.domain.identity,
@@ -177,7 +178,8 @@ function planPlaceObject(
 
 	const result = finalizePlacedEntity({
 		context: {
-			project: request.snapshot.domain.source,
+			layout: request.snapshot.domain.source.units.layout.data,
+			scene: request.snapshot.domain.source.units.scene.data,
 			sourceContentId: request.snapshot.sourceContentId
 		},
 		entityId: allocation.entityId,
@@ -187,9 +189,9 @@ function planPlaceObject(
 }
 
 function planExistingObject(
-	request: PlannerRequest<ProjectDocument>,
+	request: PlannerRequest<ProjectEnvelope>,
 	kind: Exclude<SceneOperationKind, 'place-object'>
-): PlannerOutcome<ProjectDocument> {
+): PlannerOutcome<ProjectEnvelope> {
 	const reader = new ShapeReader();
 	const payload = readSceneOperationPayload(reader, kind, request.intent.payload);
 	if (payload === null || payload.kind === 'place-object') return invalidPayload(reader.issues);
@@ -198,13 +200,13 @@ function planExistingObject(
 		kind,
 		targets: request.intent.targets,
 		payload,
-		sourceContentId: request.snapshot.sourceContentId
+		sourceContentId: request.snapshot.domain.source.units.scene.header.contentRevision
 	});
 	const allocation = readSceneOperationAllocation({
 		reader,
 		kind,
 		allocations: request.intent.allocatedIds,
-		scene: request.snapshot.domain.source.scene
+		scene: request.snapshot.domain.source.units.scene.data
 	});
 	if (subject === null || allocation === null) return invalidPayload(reader.issues);
 	if (reader.issues.length > 0) return invalidPayload(reader.issues);
@@ -222,7 +224,8 @@ function planExistingObject(
 	}
 
 	const context: SceneOperationContext = {
-		project: request.snapshot.domain.source,
+		layout: request.snapshot.domain.source.units.layout.data,
+		scene: request.snapshot.domain.source.units.scene.data,
 		sourceContentId: request.snapshot.sourceContentId
 	};
 	let result: SceneOperationResult;
@@ -298,18 +301,18 @@ function planOperation(
 }
 
 function toOutcome(
-	request: PlannerRequest<ProjectDocument>,
+	request: PlannerRequest<ProjectEnvelope>,
 	kind: SceneOperationKind,
 	result: SceneOperationResult
-): PlannerOutcome<ProjectDocument> {
+): PlannerOutcome<ProjectEnvelope> {
 	if (result.kind === 'rejected') {
 		return rejected(result.code, result.message, result.diagnostics.map((issue) => issue.message));
 	}
-	const candidate: PreparedCandidate<ProjectDocument> = {
+	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
 		sourceKind: request.snapshot.sourceKind,
 		sourceVersion: request.snapshot.sourceVersion,
-		source: { ...request.snapshot.domain.source, scene: result.scene },
+		source: replaceUnitData(request.snapshot.domain.source, 'scene', result.scene),
 		changes: [
 			{
 				kind: `scene-${kind}`,
@@ -328,13 +331,13 @@ function toOutcome(
 }
 
 function entityReference(
-	request: PlannerRequest<ProjectDocument>,
+	request: PlannerRequest<ProjectEnvelope>,
 	entityId: string
 ): SemanticReference {
 	return {
 		version: 1,
 		domain: 'scene',
-		revision: { kind: 'exact', contentRevision: request.snapshot.sourceContentId },
+		revision: { kind: 'exact', contentRevision: request.snapshot.domain.source.units.scene.header.contentRevision },
 		subject: { kind: 'entity', id: entityId },
 		instancePath: [],
 		location: { kind: 'project-root' },
@@ -363,7 +366,7 @@ function payloadMismatch(kind: string): SceneOperationResult {
 	};
 }
 
-function invalidPayload(issues: readonly ShapeIssue[]): PlannerOutcome<ProjectDocument> {
+function invalidPayload(issues: readonly ShapeIssue[]): PlannerOutcome<ProjectEnvelope> {
 	// A structurally valid reference to a frame this reader cannot resolve is not
 	// malformed intent, it is an unsupported capability, so it keeps its own code
 	// instead of being flattened into `invalid-value`.
@@ -383,7 +386,7 @@ function rejected(
 	code: string,
 	message: string,
 	diagnostics: readonly string[]
-): PlannerOutcome<ProjectDocument> {
+): PlannerOutcome<ProjectEnvelope> {
 	return {
 		kind: 'rejected',
 		code,

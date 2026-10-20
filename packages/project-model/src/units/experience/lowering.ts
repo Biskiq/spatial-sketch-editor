@@ -181,7 +181,6 @@ export function lowerExperienceProgram(
 		sourceContentId: options.sourceContentId,
 		sessionEpoch: options.sessionEpoch
 	});
-	const experienceRevision = envelope.units.experience.header.contentRevision;
 	const cameraRevision = envelope.units.camera.header.contentRevision;
 	const entryGuide = experience.guides.find((guide) => guide.id === experience.entryGuideId) ?? null;
 	const selectedGuide = options.guideId === undefined
@@ -227,13 +226,13 @@ export function lowerExperienceProgram(
 
 	const presentationById = new Map(experience.presentations.map((presentation) => [presentation.id, presentation]));
 	const contentByPresentation = new Map(options.content?.map((entry) => [entry.presentationId, entry.records]) ?? []);
+	// A Presentation may exist without a Guide (AM-9). Lowering emits every
+	// Presentation this Experience carries, not only those a selected Guide's
+	// Stops use, so a guide-free Presentation stays reachable to DOM navigation
+	// and camera handoff. Each View still has to resolve; an unreachable View is
+	// refused rather than dropped.
 	const presentations: ProgramPresentation[] = [];
-	const usedPresentationIds = new Set(order.map((stopId) => stopById.get(stopId)!.presentationId));
-	for (const presentationId of usedPresentationIds) {
-		const presentation = presentationById.get(presentationId);
-		if (presentation === undefined) {
-			return refuse('unknown-presentation', `the lowered order uses Presentation "${presentationId}", which this Experience does not carry`);
-		}
+	for (const presentation of experience.presentations) {
 		if (!resolves(context, reference('camera', 'view', presentation.viewId, cameraRevision, []))) {
 			return refuse(
 				'unknown-view',
@@ -261,6 +260,7 @@ export function lowerExperienceProgram(
 		);
 	}
 	const bindings = indexed.index;
+	const entryOccurrence = entryStopId === null ? -1 : order.indexOf(entryStopId);
 	const stops: ProgramStop[] = [];
 	const localTime: { stopId: string; holdSeconds: number }[] = [];
 	let previousViewId: string | null = null;
@@ -274,7 +274,17 @@ export function lowerExperienceProgram(
 				stop.id
 			);
 		}
-		const invocation = resolveInvocation(envelope, context, cameraRevision, stop, presentation.viewId, occurrence, previousViewId, bindings);
+		const invocation = resolveInvocation(
+			envelope,
+			context,
+			cameraRevision,
+			stop,
+			presentation.viewId,
+			occurrence,
+			occurrence === entryOccurrence,
+			previousViewId,
+			bindings
+		);
 		if (invocation.kind === 'refused') return invocation;
 		stops.push({
 			id: stop.id,
@@ -465,12 +475,15 @@ function resolveInvocation(
 	stop: Experience['stops'][number],
 	viewId: string,
 	occurrence: number,
+	isEntry: boolean,
 	previousViewId: string | null,
 	bindings: ReadonlyMap<string, ExperienceInvocationBinding>
 ): { readonly kind: 'resolved'; readonly invocation: ProgramInvocation } | ExperienceLoweringRefusal {
 	const binding = bindings.get(bindingKey(stop.id, occurrence)) ?? bindings.get(bindingKey(stop.id, undefined));
 	if (binding === undefined) {
-		if (occurrence === 0) return { kind: 'resolved', invocation: { kind: 'cut', viewId } };
+		// The entry may be authored anywhere in the Guide order; it is still the
+		// first arrival, so it defaults to a Cut and never needs an approach edge.
+		if (isEntry) return { kind: 'resolved', invocation: { kind: 'cut', viewId } };
 		return refuse(
 			'missing-binding',
 			`Stop "${stop.id}" at occurrence ${occurrence} declares no Cut/Travel binding; lowering never infers one`,
@@ -487,10 +500,17 @@ function resolveInvocation(
 		}
 		return { kind: 'resolved', invocation: { kind: 'cut', viewId } };
 	}
-	if (previousViewId === null) {
+	if (isEntry) {
 		return refuse(
 			'invalid-binding',
 			`Stop "${stop.id}" is the entry occurrence and cannot bind a Travel; enter through a Cut`,
+			stop.id
+		);
+	}
+	if (previousViewId === null) {
+		return refuse(
+			'invalid-binding',
+			`Stop "${stop.id}" has no predecessor View and cannot bind a Travel; enter through a Cut`,
 			stop.id
 		);
 	}

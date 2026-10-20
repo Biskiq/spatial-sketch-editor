@@ -5,7 +5,6 @@
 	import { MathUtils, Spherical, Vector3 } from 'three';
 	import type { PerspectiveCamera } from 'three';
 	import {
-		getCameraRoute,
 		getNode,
 		createCameraMotion,
 		createCameraMotionSample,
@@ -16,38 +15,58 @@
 	} from '@portfolio/camera-core';
 	import type { NavigationGraph } from '@portfolio/project-model';
 	import type { VisitorRuntimeState } from './visitor-runtime-state.svelte';
-	import { visitorMainFlowNodeIds } from './visitor-runtime-state.svelte';
+	import { resolveVisitorCameraRoute } from './visitor-camera-route';
 	import type { LayoutBounds3 } from '@portfolio/layout-core';
 
 	let {
 		graph,
 		visitor,
-		bounds = null
+		bounds = null,
+		onCameraGap
 	}: {
 		graph: NavigationGraph;
 		visitor: VisitorRuntimeState;
 		bounds?: LayoutBounds3 | null;
+		/** Surfaces a typed handoff gap instead of silently re-routing. */
+		onCameraGap?: (message: string | null) => void;
 	} = $props();
 
-	// svelte-ignore state_referenced_locally
-	const authoredStartId = visitor.activeNodeId;
-	const hasAuthoredStart = authoredStartId !== '';
+	const currentViewId = $derived(visitor.currentViewId);
 	let cameraRef: PerspectiveCamera | undefined = $state(undefined);
 
 	const motionSample = createCameraMotionSample();
 	const currentPosition = motionSample.position;
 	const currentTarget = motionSample.target;
-	// svelte-ignore state_referenced_locally
-	if (hasAuthoredStart) {
-		const initialNode = getNode(authoredStartId, graph);
-		currentPosition.set(...initialNode.position);
-		currentTarget.set(...initialNode.cameraTarget);
-		motionSample.fov = initialNode.fov;
-	} else {
+	let cameraViewId: string | null = null;
+
+	function setNeutralFrame() {
 		currentPosition.set(0, 8, 12);
 		currentTarget.set(0, 1, 0);
 		motionSample.fov = VISITOR_CAMERA_PROJECTION.fov;
 	}
+
+	function frameFor(viewId: string | null) {
+		if (viewId === null) {
+			setNeutralFrame();
+			return;
+		}
+		// The graph is derived from the F.2 Camera unit. A View that is absent from
+		// a released snapshot must degrade to the neutral frame, not throw inside a
+		// reactive effect and blank the whole surface.
+		let node;
+		try {
+			node = getNode(viewId, graph);
+		} catch {
+			setNeutralFrame();
+			return;
+		}
+		currentPosition.set(...node.position);
+		currentTarget.set(...node.cameraTarget);
+		motionSample.fov = node.fov;
+	}
+
+	// svelte-ignore state_referenced_locally
+	frameFor(currentViewId);
 	const initialCameraPosition: [number, number, number] = [
 		currentPosition.x,
 		currentPosition.y,
@@ -56,7 +75,7 @@
 	const initialCameraFov = motionSample.fov;
 
 	let activeMotion: CameraMotion | null = null;
-	let activeTargetNodeId: string | null = $state(null);
+	let activeTargetViewId: string | null = $state(null);
 	let transitionProgress: number = $state(1);
 
 	const { canvas } = useThrelte();
@@ -69,16 +88,14 @@
 	const lookPointerSensitivity = 0.003;
 	let lookYaw = 0;
 	let lookPitch = 0;
-	let lookNodeId = hasAuthoredStart ? authoredStartId : '';
+	let lookViewId: string | null = null;
 
 	let pointerId: number | null = null;
 	let previousPointerX = 0;
 	let previousPointerY = 0;
 
-	const isAuthoredMode = () => visitor.activeNodeId !== '';
-
-	const canLookAround = () =>
-		isAuthoredMode() && !visitor.isTransitioning && activeTargetNodeId === null;
+	const isAuthoredMode = () => currentViewId !== null;
+	const canLookAround = () => isAuthoredMode() && activeTargetViewId === null;
 
 	function cancelPointerLook() {
 		if (pointerId !== null) {
@@ -93,43 +110,93 @@
 		else canvas.style.cursor = '';
 	}
 
-	function flowNeighbor(direction: -1 | 1): string | null {
-		const flow = visitorMainFlowNodeIds(graph);
-		if (!flow || flow.length === 0) return null;
-		const index = flow.indexOf(visitor.activeNodeId);
-		if (index === -1) return null;
-		const neighbor = flow[index + direction];
-		if (!neighbor) return null;
-		const node = graph.nodeById.get(neighbor);
-		if (!node || node.lockInteraction) return null;
-		return neighbor;
-	}
-
 	$effect(() => {
-		const targetNodeId = visitor.targetNodeId;
-		if (!targetNodeId || targetNodeId === activeTargetNodeId) return;
-		let route;
-		try {
-			route = getCameraRoute(visitor.activeNodeId, targetNodeId, graph);
-		} catch {
-			// Disconnected: stay put, clear the request without connecting.
-			visitor.targetNodeId = null;
-			visitor.isTransitioning = false;
+		// Only a changed Presentation view starts Camera motion. The Experience
+		// interpreter owns why the visitor moved; this owns how the Camera gets
+		// there. A Cut (or reduced motion) is instant; a Travel animates the
+		// Camera route the unit already validated.
+		const targetViewId = currentViewId;
+		if (targetViewId === null) {
+			cameraViewId = null;
+			activeMotion = null;
+			activeTargetViewId = null;
+			onCameraGap?.(null);
+			frameFor(null);
 			return;
 		}
-		activeMotion = createCameraMotion(route, {
+		// An explicit Cut, reduced motion, or the first framing settles instantly.
+		// This decision comes **before** the in-flight guard: a Cut to the View the
+		// Camera is already travelling to — or a reduced-motion toggle mid-travel —
+		// is a command to settle now, not a duplicate hold-tick re-run. Only an
+		// actual change is applied, so a hold at a Cut Stop does not reframe (and so
+		// does not cancel look-around) on every interpreter tick.
+		const invocation = visitor.currentInvocation ?? { kind: 'cut' as const, viewId: targetViewId };
+		if (cameraViewId === null || visitor.reducedMotion || invocation.kind === 'cut') {
+			const settling = cameraViewId !== targetViewId || activeTargetViewId !== null || activeMotion !== null;
+			if (!settling) return;
+			cameraViewId = targetViewId;
+			activeMotion = null;
+			activeTargetViewId = null;
+			onCameraGap?.(null);
+			frameFor(targetViewId);
+			return;
+		}
+		// A target equal to the settled View is a duplicate hold tick only when no
+		// Travel is in flight. With one in flight it is a real new invocation —
+		// for example an authored Travel back to the View the Camera left — and the
+		// handoff below must realize it rather than letting the stale motion run on.
+		if (targetViewId === cameraViewId && activeTargetViewId === null) return;
+		// A hold tick or any other interpreter state write re-runs this effect
+		// while the Camera is still travelling: `cameraViewId` stays at the origin
+		// until the motion completes. Starting the same route again would reset
+		// progress from the current mid-flight pose on every frame. The in-flight
+		// target is the guard; a different target still re-routes from here.
+		if (activeTargetViewId === targetViewId) return;
+		// A Travel can overtake the one still in flight: the previous Stop's
+		// authored hold expires on editorial time, not when the Camera physically
+		// arrives. The interpreter has already left that Stop, so the next
+		// connection's declared origin is authoritative. Accept the handoff from
+		// the live pose; never finish the stale Travel first (that would reorder
+		// the authored motion) and never substitute pathfinding.
+		const handoffFromViewId =
+			activeTargetViewId !== null && activeTargetViewId !== targetViewId
+				? activeTargetViewId
+				: null;
+		const resolved = resolveVisitorCameraRoute({
+			fromViewId: cameraViewId,
+			toViewId: targetViewId,
+			invocation,
+			graph,
+			handoffFromViewId
+		});
+		if (resolved.kind === 'gap') {
+			// Camera owns how; it cannot invent a different connection. Settle on the
+			// requested View as a Cut and surface the gap rather than pathfinding.
+			cameraViewId = targetViewId;
+			activeMotion = null;
+			activeTargetViewId = null;
+			onCameraGap?.(resolved.reason);
+			frameFor(targetViewId);
+			return;
+		}
+		onCameraGap?.(null);
+		activeMotion = createCameraMotion(resolved.route, {
 			position: currentPosition,
 			target: currentTarget,
 			fov: motionSample.fov
 		});
-		activeTargetNodeId = targetNodeId;
-		transitionProgress = visitor.reducedMotion ? 1 : 0;
+		// A handoff overtook a Travel to `originViewId`: that View is now the
+		// logical origin the Experience left, even though the Camera never
+		// finished reaching it. The next connection is evaluated from there.
+		cameraViewId = resolved.originViewId;
+		activeTargetViewId = targetViewId;
+		transitionProgress = 0;
 	});
 
 	useTask((delta) => {
-		if (!cameraRef) return;
-		if (!isAuthoredMode()) return;
-		if (activeTargetNodeId && activeMotion) {
+		if (!cameraRef || !isAuthoredMode()) return;
+		if (visitor.state.phase === 'holding') visitor.tick(delta * 1000);
+		if (activeTargetViewId && activeMotion) {
 			if (activeMotion.durationSeconds === 0) {
 				transitionProgress = 1;
 			} else {
@@ -138,33 +205,32 @@
 			}
 			sampleCameraMotion(activeMotion, transitionProgress, motionSample);
 			if (transitionProgress >= 1) {
-				const completed = activeTargetNodeId;
-				activeTargetNodeId = null;
+				cameraViewId = activeTargetViewId;
+				activeTargetViewId = null;
 				activeMotion = null;
-				visitor.completeTransition(completed);
 			}
-		} else {
+		} else if (!activeTargetViewId) {
 			let node;
 			try {
-				node = getNode(visitor.activeNodeId, graph);
+				node = getNode(cameraViewId ?? '', graph);
 			} catch {
 				return;
 			}
 			currentPosition.set(...node.position);
 			currentTarget.set(...node.cameraTarget);
 			motionSample.fov = node.fov;
-			if (canLookAround()) {
-				lookDirection.copy(currentTarget).sub(currentPosition);
-				lookSpherical.setFromVector3(lookDirection);
-				lookSpherical.theta += lookYaw;
-				lookSpherical.phi = MathUtils.clamp(
-					lookSpherical.phi + lookPitch,
-					0.08,
-					Math.PI - 0.08
-				);
-				lookDirection.setFromSpherical(lookSpherical);
-				currentTarget.copy(currentPosition).add(lookDirection);
-			}
+		}
+		if (canLookAround()) {
+			lookDirection.copy(currentTarget).sub(currentPosition);
+			lookSpherical.setFromVector3(lookDirection);
+			lookSpherical.theta += lookYaw;
+			lookSpherical.phi = MathUtils.clamp(
+				lookSpherical.phi + lookPitch,
+				0.08,
+				Math.PI - 0.08
+			);
+			lookDirection.setFromSpherical(lookSpherical);
+			currentTarget.copy(currentPosition).add(lookDirection);
 		}
 		cameraRef.position.copy(currentPosition);
 		cameraRef.lookAt(currentTarget);
@@ -191,7 +257,8 @@
 	}
 
 	onMount(() => {
-		if (!isAuthoredMode()) return;
+		// Register unconditionally: the surface starts neutral and enters after a
+		// parent mount, so an authored-mode guard here would never attach.
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.defaultPrevented) return;
 			const canvasEl = canvas as HTMLCanvasElement;
@@ -201,8 +268,6 @@
 			if (hasModifier(event)) return;
 			if (isEditableTarget(event.target)) return;
 			if (isInteractiveTarget(event.target)) return;
-			if (event.repeat && (event.key === 'ArrowLeft' || event.key === 'ArrowRight'))
-				return;
 
 			const key = event.key;
 			if (canLookAround() && (key === 'w' || key === 'W')) {
@@ -225,21 +290,12 @@
 				lookYaw = MathUtils.clamp(lookYaw - lookKeyStep, -lookYawLimit, lookYawLimit);
 				return;
 			}
-			if (key === 'ArrowRight') {
-				const next = flowNeighbor(1);
-				if (next) {
-					event.preventDefault();
-					visitor.requestNode(next);
-				}
-				return;
-			}
-			if (key === 'ArrowLeft') {
-				const previous = flowNeighbor(-1);
-				if (previous) {
-					event.preventDefault();
-					visitor.requestNode(previous);
-				}
-				return;
+			// Continue is the one editorial advance. There is no node-keyed
+			// previous/next: Guide order is authored, and a Gate is passed only by
+			// this explicit action.
+			if (key === 'ArrowRight' || key === 'Enter') {
+				event.preventDefault();
+				visitor.continue();
 			}
 		};
 
@@ -304,14 +360,13 @@
 
 	$effect(() => {
 		if (!isAuthoredMode()) return;
-		const activeNodeId = visitor.activeNodeId;
-		const lookEnabled = canLookAround();
-		if (activeNodeId !== lookNodeId) {
-			lookNodeId = activeNodeId;
+		const viewId = currentViewId;
+		if (viewId !== lookViewId) {
+			lookViewId = viewId;
 			lookYaw = 0;
 			lookPitch = 0;
 		}
-		if (!lookEnabled) cancelPointerLook();
+		if (!canLookAround()) cancelPointerLook();
 		else if (pointerId === null) {
 			try {
 				canvas.style.cursor = 'grab';

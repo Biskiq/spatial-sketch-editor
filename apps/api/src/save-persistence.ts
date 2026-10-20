@@ -1,36 +1,29 @@
 /**
- * Conditional Save (`SaveAcceptedSource@1`, AM-4 `conditional-save-current-v1`).
+ * Conditional Save (`SaveAcceptedSource@1`, AM-4) — the F.2 unit path.
  *
  * One write path, one transaction. The server does not trust the captured
- * digest: the admitted source handler re-parses the captured canonical bytes,
- * re-canonicalizes through its own codec, recomputes the identity and runs that
- * source's full admission. The **current-source** handler is the API's and runs
- * the same admission the visitor runtime uses, against the shipped Scene
- * catalogue; the **F.2 envelope** handler is injected by
- * `T3.P01.S05`'s backed contract and is not reachable from any route until
- * `T3.P01.S04` activates it.
+ * digest: the unit source handler re-parses the captured canonical envelope,
+ * re-canonicalizes it through the F.2 codec, recomputes the envelope identity,
+ * verifies every unit content revision and dependency lock, and refuses any
+ * capture that is not the canonical encoding of its own contents.
+ *
+ * `T3.P01.S04` activates this handler: it is now the only handler the route
+ * constructs, and the schema fence (`project_versions.source_format`) makes a
+ * pre-epoch writer fail structurally. The old current-source handler is gone.
  *
  * The saved base token is durable metadata beside the strict document. It is not
  * the local `AcceptedRevision`, the SQL `latest_version` ordinal publication
- * reads, or the publication OCC revision.
+ * status reads, or the publication OCC revision.
  */
 
-import {
-	CURRENT_SOURCE_KIND,
-	CURRENT_SOURCE_VERSION,
-	admitCurrentSourceContent,
-	canonicalSourceJson,
-	sourceContentIdForCanonicalJson
-} from '@portfolio/project-model';
 import type { AcceptedRevision, ProjectIssue } from '@portfolio/project-model';
+import { createUnitSaveHandler, UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
 import {
 	SAVE_CONTENT_IDENTITY_SCHEME,
 	createSavedBaseToken,
-	fullSourceHash,
 	resolveSaveSourceHandler,
 	sameAcceptedRevision,
 	samePrecondition,
-	type PreparedSaveSource,
 	type SaveAcknowledgement,
 	type SavePrecondition,
 	type SaveReceipt,
@@ -42,7 +35,9 @@ import {
 
 import type { DatabaseClient, DatabasePool } from './database.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
-import { REGISTRY_SCENE_OPTIONS } from './scene-registry.js';
+
+/** The one Save source handler this build admits. */
+const UNIT_SAVE_HANDLER = createUnitSaveHandler();
 
 /** One typed refusal. The route maps the code to its HTTP result and status. */
 export class SaveRefusalError extends Error {
@@ -89,91 +84,13 @@ function saveDatabase(db: DatabaseClient): SaveSourceDatabase {
 	};
 }
 
-/**
- * The current-source handler: today's admitted source pair. It is the default
- * the live route uses; nothing in this file can select another handler from a
- * request field, so a client cannot ask the server to admit a format the build
- * has not enabled.
- */
-export const CURRENT_SOURCE_SAVE_HANDLER: SaveSourceHandler = {
-	sourceKind: CURRENT_SOURCE_KIND,
-	sourceVersion: CURRENT_SOURCE_VERSION,
-	async prepare(capture) {
-		let parsed: unknown;
-		try {
-			parsed = JSON.parse(capture.canonicalJson);
-		} catch {
-			return { kind: 'refused', code: 'invalid-project', message: 'The captured source is not valid JSON' };
-		}
-		const canonical = canonicalSourceJson(parsed, { scene: REGISTRY_SCENE_OPTIONS });
-		if (canonical.kind === 'rejected') {
-			return {
-				kind: 'refused',
-				code: 'invalid-project',
-				message: canonical.issues[0]?.message ?? 'Invalid project',
-				issues: canonical.issues
-			};
-		}
-		if (canonical.canonicalJson !== capture.canonicalJson) {
-			return {
-				kind: 'refused',
-				code: 'content-identity-mismatch',
-				message: 'The captured source is not the canonical encoding of its contents'
-			};
-		}
-		if (canonical.project.id !== capture.projectId) {
-			return { kind: 'refused', code: 'invalid-save-request', message: 'The captured source belongs to a different project' };
-		}
-		const digest = await sourceContentIdForCanonicalJson(canonical.canonicalJson);
-		if (digest !== capture.sourceContentId) {
-			return { kind: 'refused', code: 'content-identity-mismatch', message: 'The recomputed content identity does not match the capture' };
-		}
-		const prepared: PreparedSaveSource = {
-			canonicalJson: canonical.canonicalJson,
-			document: JSON.parse(canonical.canonicalJson) as unknown,
-			projectId: canonical.project.id,
-			name: canonical.project.name,
-			sourceContentId: digest,
-			fullSourceHash: await fullSourceHash(canonical.canonicalJson)
-		};
-		return { kind: 'prepared', source: prepared };
-	},
-	async validate({ prepared, baseline }) {
-		const admitted = await admitCurrentSourceContent(JSON.parse(prepared.canonicalJson), {
-			scene: REGISTRY_SCENE_OPTIONS,
-			baselineBlockingIssues: baseline
-		});
-		if (admitted.kind === 'rejected') {
-			return { kind: 'refused', code: 'invalid-project', message: admitted.message, issues: admitted.issues };
-		}
-		if (admitted.canonicalJson !== prepared.canonicalJson || admitted.sourceContentId !== prepared.sourceContentId) {
-			return {
-				kind: 'refused',
-				code: 'content-identity-mismatch',
-				message: 'Admission produced a different canonical source than the capture'
-			};
-		}
-		return { kind: 'prepared', source: prepared };
-	},
-	async baseline(db, projectId, version) {
-		const rows = await queryRows<{ document: unknown }>(
-			db,
-			`SELECT document FROM project_versions WHERE project_id = $1 AND version = $2`,
-			[projectId, version]
-		);
-		if (!rows[0]) return [];
-		const base = await admitCurrentSourceContent(parseJsonb(rows[0].document), { scene: REGISTRY_SCENE_OPTIONS });
-		return base.kind === 'admitted' ? base.blockingIssues : [];
-	}
-};
-
-/** Save one captured source through the default current-source admission. */
+/** Save one captured F.2 envelope through the one admitted unit handler. */
 export async function saveAcceptedSource(
 	pool: DatabasePool,
 	ownerId: string,
 	request: SaveRequest
 ): Promise<SaveAcknowledgement> {
-	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [CURRENT_SOURCE_SAVE_HANDLER]);
+	return saveAcceptedSourceWithHandlers(pool, ownerId, request, [UNIT_SAVE_HANDLER]);
 }
 
 /**
@@ -181,7 +98,7 @@ export async function saveAcceptedSource(
  *
  * This is the seam the F.2 unit Save contract uses. It is never called by a
  * route: the route imports `saveAcceptedSource` alone, whose handler list is the
- * current source.
+ * one admitted unit source.
  */
 export async function saveAcceptedSourceWithHandler(
 	pool: DatabasePool,
@@ -218,6 +135,23 @@ export async function saveAcceptedSourceWithHandlers(
 	const prepared = preparedResult.source;
 
 	return withTransaction(pool, async (db) => {
+		// TD-7: an expected-saved-base Save proves ownership **before** taking any
+		// row lock. A foreign project is not-found without locking its row, while the
+		// create-only collision path stays intentionally owner-blind below.
+		if (capture.precondition.kind === 'expected-saved-base') {
+			const owned = await queryRows<{ id: unknown }>(
+				db,
+				`SELECT p.id
+FROM projects p
+WHERE p.id = $1 AND p.owner_id = $2
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $3
+	)`,
+				[capture.projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+			);
+			if (!owned[0]) throw new ProjectNotFoundError();
+		}
 		const locked = await queryRows<ProjectRow>(
 			db,
 			`SELECT id, owner_id AS "ownerId", name, latest_version AS version,
@@ -288,11 +222,34 @@ RETURNING id`,
 			) {
 				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
 			}
+			// The saved base is only the latest revision. Revision identity is durable,
+			// so reuse against an older receipt must refuse too: A -> B -> A with new
+			// contents would otherwise store revision A twice with different bytes.
+			const reused = await queryRows<{ id: unknown }>(
+				db,
+				`SELECT 1 AS id
+FROM save_receipts
+WHERE project_id = $1
+	AND accepted_revision ->> 'projectId' = $2
+	AND accepted_revision ->> 'revisionId' = $3
+	AND (source_content_id <> $4 OR full_source_hash <> $5)
+LIMIT 1`,
+				[
+					capture.projectId,
+					capture.acceptedRevision.projectId,
+					capture.acceptedRevision.revisionId,
+					prepared.sourceContentId,
+					prepared.fullSourceHash
+				]
+			);
+			if (reused[0]) {
+				throw new SaveRefusalError('revision-reuse', 'A saved revision identity cannot be reused for different contents');
+			}
 		}
 
-		// The baseline is the expected saved base's own blocking issues. Only the
-		// current-source handler reads one; a whole-envelope format validates every
-		// attempt from scratch and returns an empty baseline.
+		// The baseline is the expected saved base's own blocking issues. The unit
+		// handler validates every attempt from scratch and declares an empty
+		// baseline; the seam stays for any handler that needs history.
 		const baseline = row
 			? handler.baseline
 				? await handler.baseline(saveDatabase(db), readString(row.id), readSafeInteger(row.version))
@@ -313,9 +270,9 @@ RETURNING id`,
 		const nextVersion = latestVersion + 1;
 		const savedBaseToken = createSavedBaseToken();
 		await db.query(
-			`INSERT INTO project_versions (project_id, version, document)
-VALUES ($1, $2, $3)`,
-			[capture.projectId, nextVersion, finalSource.document]
+			`INSERT INTO project_versions (project_id, version, document, source_format)
+VALUES ($1, $2, $3, $4)`,
+			[capture.projectId, nextVersion, finalSource.document, UNIT_ENVELOPE_SOURCE_FORMAT]
 		);
 		const updated = await queryRows<ProjectRow>(
 			db,

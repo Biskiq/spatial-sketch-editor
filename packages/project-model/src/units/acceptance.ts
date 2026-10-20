@@ -64,6 +64,13 @@ export const UNIT_ACCEPTANCE_SCOPE = 'unit-acceptance-v1' as const;
 export const UNIT_ENVELOPE_SOURCE_KIND = 'unit-envelope';
 export const UNIT_ENVELOPE_SOURCE_VERSION = 1;
 
+/**
+ * The durable database fence value for the clean source epoch. The migration
+ * writes this exact literal; the Save path reads it from here so the schema and
+ * the writer cannot drift.
+ */
+export const UNIT_ENVELOPE_SOURCE_FORMAT = 'unit-envelope-v1';
+
 export type UnitAcceptanceAdapterOptions = {
 	/** The registry grant: compound changes are admitted and checked as one operation. */
 	readonly compound?: boolean;
@@ -252,6 +259,15 @@ export function createUnitAcceptanceAdapter(
 		validateChange(before, after, domain) {
 			const issues: ShapeIssue[] = [];
 			if (before.id !== after.id) issues.push(issue('$.id', 'project-mismatch', 'an accepted operation cannot change the project identity'));
+			// The envelope's own fields are not a unit's to change. A planner owns one
+			// domain unit (or an explicit resource lock); renaming the project or
+			// rewriting its format is a replacement, not an authored operation.
+			if (before.name !== after.name) {
+				issues.push(issue('$.name', 'project-mismatch', 'an accepted operation cannot rename the project'));
+			}
+			if (before.formatVersion !== after.formatVersion) {
+				issues.push(issue('$.formatVersion', 'project-mismatch', 'an accepted operation cannot change the envelope format'));
+			}
 			if (before.acceptedRevision.projectId !== after.acceptedRevision.projectId) {
 				issues.push(issue('$.acceptedRevision.projectId', 'project-mismatch', 'an accepted operation cannot change the accepted project'));
 			}

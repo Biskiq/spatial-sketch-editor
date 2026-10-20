@@ -2,11 +2,12 @@
 	/**
 	 * Route-harness double for `EditorHead`.
 	 *
-	 * The route test owns the host's *replacement* behaviour, not the Head's
-	 * rendering (that is T2's mounted Save journey). This double exposes the Save
-	 * snapshot the route built — status and saved-base token — and a Reload
-	 * control that hands `applyReloadOffer` an invalid remote document, so the
-	 * route's preservation branch is exercised without a real conflict round trip.
+	 * The route tests own the host's *replacement*, *resume* and *Save* wiring,
+	 * not the Head's rendering (that is T2's mounted Save journey). This double
+	 * exposes the Save snapshot and control the route built, a Save/Resume button
+	 * that runs the same command the real Head runs, and a Reload control that
+	 * hands `applyReloadOffer` an invalid remote document, so the route's
+	 * preservation branch is exercised without a real conflict round trip.
 	 */
 	import { untrack } from 'svelte';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
@@ -15,11 +16,15 @@
 	let {
 		projectName,
 		canDownloadSource,
+		canUndo = false,
+		canRedo = false,
 		save = null,
 		onReloadRemote = () => {}
 	}: {
 		projectName: string;
 		canDownloadSource: boolean;
+		canUndo?: boolean;
+		canRedo?: boolean;
 		save?: HeadSave | null;
 		onReloadRemote?: (offer: ReloadOffer) => void;
 	} = $props();
@@ -40,6 +45,17 @@
 		void version;
 		return save?.snapshot() ?? null;
 	});
+	const control = $derived.by(() => {
+		void version;
+		return save?.control() ?? null;
+	});
+
+	async function runSave(): Promise<void> {
+		if (save === null) return;
+		const status = save.snapshot().status;
+		if (status === 'refused' || status === 'error' || status === 'auth-required') await save.retry();
+		else await save.save();
+	}
 
 	// A remote row that cannot be admitted: the route must report it and keep the
 	// mounted project, not install the offer.
@@ -59,6 +75,18 @@
 	data-can-download={String(canDownloadSource)}
 	data-save-status={snapshot?.status ?? 'none'}
 	data-save-base={snapshot?.savedBaseToken ?? 'none'}
+	data-save-label={control?.label ?? 'none'}
+	data-save-disabled={String(control?.disabled ?? true)}
+	data-can-undo={String(canUndo)}
+	data-can-redo={String(canRedo)}
 >
+	{#if save !== null}
+		<button type="button" data-testid="head-save" disabled={control?.disabled ?? true} onclick={() => void runSave()}>
+			{control?.label ?? 'Save'}
+		</button>
+		{#if control?.reason !== null && control?.reason !== undefined}
+			<span data-testid="head-save-reason">{control.reason}</span>
+		{/if}
+	{/if}
 	<button type="button" onclick={() => onReloadRemote(invalidOffer)}>Reload remote</button>
 </div>

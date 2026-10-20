@@ -9,8 +9,16 @@
       "name": "Paris Salon Grand Piano",
       "assetId": "paris-grand-piano",
       "fallback": "piano",
-      "position": [0, 0, 0],
-      "rotation": [0, 0, 0]
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
     },
     {
       "kind": "model",
@@ -18,50 +26,94 @@
       "name": "Upholstered Paris Salon Chair",
       "assetId": "paris-salon-chair",
       "fallback": "chair",
-      "position": [-2, 0, 1],
-      "rotation": [0, 0, 0]
+      "position": [
+        -2,
+        0,
+        1
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ]
     }
   ],
   "navigationNodes": [
     {
       "id": "tour-a",
       "label": "Tour A: Entrance",
-      "position": [0, 1.65, 0],
-      "cameraTarget": [0, 1.25, -3],
+      "position": [
+        0,
+        1.65,
+        0
+      ],
+      "cameraTarget": [
+        0,
+        1.25,
+        -3
+      ],
       "fov": 54,
-      "connectedNodeIds": ["tour-d", "tour-b"],
-      "nextNodeId": "tour-b",
-      "previousNodeId": "tour-d"
+      "connectedNodeIds": [
+        "tour-d",
+        "tour-b"
+      ]
     },
     {
       "id": "tour-b",
       "label": "Tour B: Departure",
-      "position": [0, 1.65, 0],
-      "cameraTarget": [0, 1.25, -3],
+      "position": [
+        0,
+        1.65,
+        0
+      ],
+      "cameraTarget": [
+        0,
+        1.25,
+        -3
+      ],
       "fov": 54,
-      "connectedNodeIds": ["tour-a", "tour-paris"],
-      "nextNodeId": "tour-paris",
-      "previousNodeId": "tour-a"
+      "connectedNodeIds": [
+        "tour-a",
+        "tour-paris"
+      ]
     },
     {
       "id": "tour-paris",
       "label": "Tour Paris",
-      "position": [0, 1.65, 0],
-      "cameraTarget": [1.4, 1.25, 0],
+      "position": [
+        0,
+        1.65,
+        0
+      ],
+      "cameraTarget": [
+        1.4,
+        1.25,
+        0
+      ],
       "fov": 54,
-      "connectedNodeIds": ["tour-b", "tour-d"],
-      "nextNodeId": "tour-d",
-      "previousNodeId": "tour-b"
+      "connectedNodeIds": [
+        "tour-b",
+        "tour-d"
+      ]
     },
     {
       "id": "tour-d",
       "label": "Tour D: Workshop",
-      "position": [0, 1.65, 0],
-      "cameraTarget": [0, 1.25, -3],
+      "position": [
+        0,
+        1.65,
+        0
+      ],
+      "cameraTarget": [
+        0,
+        1.25,
+        -3
+      ],
       "fov": 54,
-      "connectedNodeIds": ["tour-paris", "tour-a"],
-      "nextNodeId": "tour-a",
-      "previousNodeId": "tour-paris"
+      "connectedNodeIds": [
+        "tour-paris",
+        "tour-a"
+      ]
     }
   ],
   "connections": [
@@ -75,11 +127,19 @@
         "anchors": [
           {
             "id": "tour-a-b-anchor-01",
-            "position": [-2, 1.65, 0]
+            "position": [
+              -2,
+              1.65,
+              0
+            ]
           },
           {
             "id": "tour-a-b-anchor-02",
-            "position": [2, 1.65, 0]
+            "position": [
+              2,
+              1.65,
+              0
+            ]
           }
         ]
       }
@@ -94,11 +154,19 @@
         "anchors": [
           {
             "id": "tour-b-paris-anchor-01",
-            "position": [-2, 1.65, -2]
+            "position": [
+              -2,
+              1.65,
+              -2
+            ]
           },
           {
             "id": "tour-b-paris-anchor-02",
-            "position": [3, 1.65, 2]
+            "position": [
+              3,
+              1.65,
+              2
+            ]
           }
         ]
       }
@@ -113,11 +181,19 @@
         "anchors": [
           {
             "id": "tour-paris-d-anchor-01",
-            "position": [-3, 1.65, 2]
+            "position": [
+              -3,
+              1.65,
+              2
+            ]
           },
           {
             "id": "tour-paris-d-anchor-02",
-            "position": [3, 1.65, 2]
+            "position": [
+              3,
+              1.65,
+              2
+            ]
           }
         ]
       }
@@ -132,11 +208,19 @@
         "anchors": [
           {
             "id": "tour-d-a-anchor-01",
-            "position": [0, 1.65, -2]
+            "position": [
+              0,
+              1.65,
+              -2
+            ]
           },
           {
             "id": "tour-d-a-anchor-02",
-            "position": [2, 1.65, 2]
+            "position": [
+              2,
+              1.65,
+              2
+            ]
           }
         ]
       }

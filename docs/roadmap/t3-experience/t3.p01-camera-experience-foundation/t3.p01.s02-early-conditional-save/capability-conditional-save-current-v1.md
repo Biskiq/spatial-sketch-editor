@@ -1,6 +1,6 @@
 # `F4.intent-acceptance@1:conditional-save-current-v1` — accepted capability record
 
-**Capability:** `F4.intent-acceptance@1:conditional-save-current-v1` · **Status:** active · **Gate:**
+**Capability:** `F4.intent-acceptance@1:conditional-save-current-v1` · **Status:** retired (2026-10-19 by `T3.P01.S04` phase B) · **Gate:**
 [`F4.intent-acceptance@1`](../../../README.md#gate-register) · **Original gate provider:**
 `T1.P01.S03` · **Extension slice:** `T3.P01.S02`
 
@@ -36,5 +36,8 @@ transport metadata, pinned by a golden-digest conformance test.
 This record accepts no F2/unit/compound Save, no source cutover, no migration inventory or recovery,
 and no host/Head Save control. The `conditional-save-units-v1` successor is `T3.P01.S03`;
 activation, retirement and the integrated result are `T3.P01.S04`; the PLATE Head Save integration
-is T1's host↔F4 slice (`T1.P01.S04` by default). Two pre-existing, out-of-scope deferred findings
+is T1's host↔F4 slice (`T1.P01.S04` by default). `T3.P01.S04` phase B retired this current-source
+scope on 2026-10-19: no live caller or unfinished consumer requires it, the protocol module remains
+as the source-agnostic capture vocabulary, and this record stays as the historical acceptance
+evidence only. Two pre-existing, out-of-scope deferred findings
 are recorded in [`operations/tech-debt`](../../../../operations/tech-debt/README.md).

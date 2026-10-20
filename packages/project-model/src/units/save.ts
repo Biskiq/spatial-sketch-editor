@@ -120,6 +120,17 @@ export async function captureUnitSave(input: {
 	if (!validated.success) {
 		return { kind: 'refused', code: 'invalid-project', message: 'The accepted envelope does not validate', issues: validated.issues };
 	}
+	// Executable closure is the same answer the Save reader gives: an envelope the
+	// registry cannot satisfy must not become a captured write. Repairable authored
+	// diagnostics remain non-blocking, exactly as F.2 defines them.
+	if (validated.closure.length > 0) {
+		return {
+			kind: 'refused',
+			code: 'invalid-project',
+			message: 'The envelope cannot satisfy an executable resource requirement',
+			issues: validated.closure.map((finding) => ({ path: finding.path, code: finding.code, message: finding.message }))
+		};
+	}
 	// The accepted source installed by the unit adapter is already normalized; this
 	// re-derives the same headers defensively, so a host that hands a raw envelope
 	// cannot capture a revision that disagrees with its data.

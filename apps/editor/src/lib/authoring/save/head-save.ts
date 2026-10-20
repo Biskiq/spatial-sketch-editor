@@ -37,6 +37,12 @@ export type HeadSaveControl = {
 	/** `null` when the control can act; otherwise the visible reason it cannot. */
 	readonly reason: string | null;
 	readonly disabled: boolean;
+	/**
+	 * The source itself cannot be saved (executable closure). Unlike the ordinary
+	 * disabled states, every Save-shaped command — including a retained resume —
+	 * must refuse for this reason.
+	 */
+	readonly unavailable: boolean;
 	readonly busy: boolean;
 	/** A conflict is the one state where *Reload remote* is offered. */
 	readonly conflict: boolean;
@@ -70,11 +76,23 @@ function statusReason(snapshot: SaveSnapshot): { label: string; reason: string |
 		case 'never-saved':
 			return snapshot.busy
 				? { label: 'Saving…', reason: null, disabled: true }
-				: { label: 'Save to Cloud', reason: null, disabled: false };
+				: snapshot.pending
+					? {
+							label: 'Resume pending save',
+							reason: 'A Save was captured before sign-in. Resume it to save exactly that work.',
+							disabled: false
+						}
+					: { label: 'Save to Cloud', reason: null, disabled: false };
 		case 'dirty':
 			return snapshot.busy
 				? { label: 'Saving…', reason: null, disabled: true }
-				: { label: 'Save changes', reason: null, disabled: false };
+				: snapshot.pending
+					? {
+							label: 'Resume pending save',
+							reason: 'A Save was captured before sign-in. Resume it to save exactly that work.',
+							disabled: false
+						}
+					: { label: 'Save changes', reason: null, disabled: false };
 		case 'saving':
 			return { label: 'Saving…', reason: null, disabled: true };
 		case 'saved':
@@ -125,16 +143,34 @@ function commandOf(outcome: SaveOutcome): HeadSaveCommand {
 	}
 }
 
-export function createHeadSave(state: SaveState): HeadSave {
+export function createHeadSave(
+	state: SaveState,
+	options: { readonly unavailableReason?: string | null } = {}
+): HeadSave {
 	return {
 		snapshot: () => state.getSnapshot(),
 		subscribe: (listener) => state.subscribe(listener),
 		refresh: () => state.refresh(),
 		control() {
 			const snapshot = state.getSnapshot();
+			const unavailableReason = options.unavailableReason ?? null;
+			// A source with executable closure can be inspected, but its Save must
+			// never be offered: the Save reader and F4 acceptance both refuse it.
+			if (unavailableReason !== null) {
+				return {
+					label: 'Save unavailable',
+					reason: unavailableReason,
+					disabled: true,
+					unavailable: true,
+					busy: snapshot.busy,
+					conflict: snapshot.status === 'conflict',
+					signInRequired: false
+				};
+			}
 			const base = statusReason(snapshot);
 			return {
 				...base,
+				unavailable: false,
 				busy: snapshot.busy,
 				conflict: snapshot.status === 'conflict',
 				signInRequired: snapshot.status === 'auth-required'

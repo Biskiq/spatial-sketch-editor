@@ -60,9 +60,7 @@ import {
 	RESOURCE_UNIT_FORMAT_VERSION
 } from './types';
 
-/** The admitted source pair these planners plan against. */
-export const UNIT_SOURCE_KIND = 'unit-envelope';
-export const UNIT_SOURCE_VERSION = 1;
+import { UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION } from './source';
 
 /** The single-domain Camera View operation kind. */
 export const CAMERA_VIEW_UPDATE_KIND = 'camera-view-update';

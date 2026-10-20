@@ -7,10 +7,9 @@
  * file owns *the accepting boundary* — one install per request with one undo
  * result, deterministic replay, stale/ABA and epoch refusal, exact state
  * restoration, the 100-entry bound, and the scope refusals
- * `local-single-domain-v1` owns. The admission and content-identity contracts
- * live in `f4-current-source-admission.test.ts` and
- * `tests/lib/project-model/content-identity.test.ts`; the public-isolation
- * boundary lives in `f4-public-isolation.test.ts` (arch lane).
+ * `unit-acceptance-v1` owns. The admission and content-identity contracts live
+ * in `f4-unit-acceptance.test.ts` and `tests/lib/project-model/units-*`; the
+ * public-isolation boundary lives in `f4-public-isolation.test.ts` (arch lane).
  */
 import { describe, expect, it } from 'vitest';
 
@@ -30,36 +29,45 @@ import {
 	sceneEntityReference
 } from './__fixtures__/f4-current-source-fixtures';
 import {
-	CURRENT_SOURCE_KIND,
-	CURRENT_SOURCE_VERSION,
-	admitCurrentSource,
-	admitCurrentSourceContent,
-	createEmptyWallFirstProject,
-	createCurrentSourceAdapter,
-	validateProject,
 	validateAuthoringIntent,
 	type DomainPlanner,
 	type PlannerRegistry,
 	type AcceptanceSourceAdapter,
-	type AcceptedRevision,
-	type ProjectDocument
+	type AcceptedRevision
 } from '@portfolio/project-model';
+import {
+	createUnitAcceptanceAdapter,
+	createUnitAcceptancePreparation,
+	createUnitPlannerRegistry,
+	serializeProjectEnvelope,
+	validateProjectEnvelope,
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
+import {
+	admitUnitContent,
+	admitUnitProject,
+	createUnitCoordinator,
+	createUnitProject
+} from './__fixtures__/unit-envelope-fixtures';
 
 const BOOT_REVISION: AcceptedRevision = { projectId: 'project-conformance', revisionId: 'revision-1' };
 const HISTORY_LIMIT = 100;
 
 async function boot(
 	overrides: {
-		readonly adapter?: AcceptanceSourceAdapter<ProjectDocument>;
-		readonly planners?: readonly DomainPlanner<ProjectDocument>[];
+		readonly adapter?: AcceptanceSourceAdapter<ProjectEnvelope>;
+		readonly planners?: readonly DomainPlanner<ProjectEnvelope>[];
 	} = {}
 ) {
-	const fixture = buildCurrentSourceFixture();
-	const admitted = await admitCurrentSource(fixture.project, { acceptedRevision: BOOT_REVISION });
+	const fixture = await buildCurrentSourceFixture();
+	const admitted = await admitUnitProject(fixture.project, BOOT_REVISION);
 	if (admitted.kind !== 'admitted') throw new Error(`the conformance fixture was not admitted: ${admitted.code}`);
-	const coordinator = createAcceptanceCoordinator<ProjectDocument>({
-		adapter: overrides.adapter ?? createCurrentSourceAdapter(),
+	const registry = createUnitPlannerRegistry<ProjectEnvelope>();
+	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
+		adapter: overrides.adapter ?? createUnitAcceptanceAdapter({ compound: true }),
 		sessionEpoch: 'session-1',
 		baseline: {
 			revision: BOOT_REVISION,
@@ -68,6 +76,7 @@ async function boot(
 			sourceContentId: admitted.sourceContentId,
 			blockingIssues: admitted.blockingIssues
 		},
+		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch: 'session-1' }),
 		planners: overrides.planners ?? [
 			createProofLayoutPlanner(fixture.objectId),
 			createProofSceneScalarPlanner(),
@@ -79,12 +88,13 @@ async function boot(
 }
 
 function layoutIntent(
-	fixture: ReturnType<typeof buildCurrentSourceFixture>,
+	fixture: Awaited<ReturnType<typeof buildCurrentSourceFixture>>,
 	revision: AcceptedRevision,
-	contentRevision: string,
+	source: ProjectEnvelope,
 	operationId: string,
 	position: readonly [number, number, number]
 ) {
+	const contentRevision = source.units.layout.header.contentRevision;
 	return proofIntent({
 		kind: PROOF_LAYOUT_TRANSFORM_KIND,
 		operationId,
@@ -98,10 +108,11 @@ function layoutIntent(
 
 function sceneIntent(
 	revision: AcceptedRevision,
-	contentRevision: string,
+	source: ProjectEnvelope,
 	operationId: string,
 	receiveShadow: boolean
 ) {
+	const contentRevision = source.units.scene.header.contentRevision;
 	return proofIntent({
 		kind: PROOF_SCENE_SCALAR_KIND,
 		operationId,
@@ -113,16 +124,16 @@ function sceneIntent(
 	});
 }
 
-/** The Camera-bearing Scene fields, as canonical bytes. */
-function cameraBytes(project: ProjectDocument): string {
-	return JSON.stringify({ navigationNodes: project.scene.navigationNodes, connections: project.scene.connections });
+/** The Camera unit's authored bytes. */
+function cameraBytes(project: ProjectEnvelope): string {
+	return JSON.stringify(project.units.camera.data);
 }
 
 describe('F.4 acceptance coordinator — one install per request', () => {
 	it('answers with one accepted revision, one undo result and no half-installed state', async () => {
 		const { coordinator, fixture } = await boot();
 		const result = await coordinator.accept(
-			layoutIntent(fixture, BOOT_REVISION, coordinator.current().sourceContentId, 'op-1', [2, 0.5, 0])
+			layoutIntent(fixture, BOOT_REVISION, coordinator.current().source, 'op-1', [2, 0.5, 0])
 		);
 		expect(result.kind).toBe('accepted');
 		if (result.kind !== 'accepted') return;
@@ -157,10 +168,10 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 		// Same captured inputs; a replayed set of top-level objects, not a shared
 		// reference, so nothing can pass by aliasing.
 		const a = await first.coordinator.accept(
-			layoutIntent(first.fixture, BOOT_REVISION, contentRevision, 'op-replay', [3, 0.5, 1])
+			layoutIntent(first.fixture, BOOT_REVISION, first.coordinator.current().source, 'op-replay', [3, 0.5, 1])
 		);
 		const b = await second.coordinator.accept(
-			layoutIntent(second.fixture, BOOT_REVISION, contentRevision, 'op-replay', [3, 0.5, 1])
+			layoutIntent(second.fixture, BOOT_REVISION, second.coordinator.current().source, 'op-replay', [3, 0.5, 1])
 		);
 		expect(a.kind).toBe('accepted');
 		expect(b.kind).toBe('accepted');
@@ -175,10 +186,9 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 
 	it('treats an unchanged outcome as a no-op with no history entry and no new revision', async () => {
 		const { coordinator, fixture } = await boot();
-		const bootContentId = coordinator.current().sourceContentId;
 
 		const first = await coordinator.accept(
-			sceneIntent(BOOT_REVISION, bootContentId, 'op-scene-1', true)
+			sceneIntent(BOOT_REVISION, coordinator.current().source, 'op-scene-1', true)
 		);
 		expect(first.kind).toBe('accepted');
 		if (first.kind !== 'accepted') return;
@@ -187,14 +197,14 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 
 		// The planner itself refuses the no-op in the same position.
 		const samePosition = await coordinator.accept(
-			layoutIntent(fixture, afterFirst.revision, afterFirst.sourceContentId, 'op-noop', [0, 0.5, 0])
+			layoutIntent(fixture, afterFirst.revision, afterFirst.source, 'op-noop', [0, 0.5, 0])
 		);
 		expect(samePosition.kind).toBe('no-op');
 		if (samePosition.kind === 'no-op') expect(samePosition.revision).toEqual(afterFirst.revision);
 
 		// And identical authored contents are a no-op even when the intent is new.
 		const identical = await coordinator.accept(
-			sceneIntent(afterFirst.revision, afterFirst.sourceContentId, 'op-scene-2', true)
+			sceneIntent(afterFirst.revision, afterFirst.source, 'op-scene-2', true)
 		);
 		expect(identical.kind).toBe('no-op');
 
@@ -203,49 +213,44 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 		expect(coordinator.history()).toEqual({ depth: 2, position: 1, limit: HISTORY_LIMIT });
 	});
 
-	it('ignores cursor-only candidates and restores full source after authored edits with cursor movement', async () => {
-		const planner: DomainPlanner<ProjectDocument> = {
+	it('restores full source after authored edits with cursor movement', async () => {
+		const planner: DomainPlanner<ProjectEnvelope> = {
 			...createProofLayoutPlanner('unused'),
 			prepare({ snapshot, intent }) {
 				const source = structuredClone(snapshot.domain.source);
-				source.layout.identity!.cursor += 100;
-				if ((intent.payload as { position: number[] }).position[0] === 1) source.layout.floor.name = 'Renamed floor';
+				source.units.layout.data.identity!.cursor += 100;
+				if ((intent.payload as { position: number[] }).position[0] === 1) source.units.layout.data.floor.name = 'Renamed floor';
 				return { kind: 'prepared', candidate: {
-					operationId: intent.operationId, sourceKind: CURRENT_SOURCE_KIND, sourceVersion: CURRENT_SOURCE_VERSION,
+					operationId: intent.operationId, sourceKind: UNIT_SOURCE_KIND, sourceVersion: UNIT_SOURCE_VERSION,
 					source, changes: [], correspondence: [], diagnostics: []
 				} };
 			}
 		};
 		const { coordinator, fixture } = await boot({ planners: [planner] });
 		const before = coordinator.current();
-		const historyBefore = coordinator.history();
-		const installsBefore = coordinator.installs();
-		expect((await coordinator.accept(layoutIntent(fixture, before.revision, before.sourceContentId, 'cursor-only', [0, 0.5, 0]))).kind).toBe('no-op');
-		expect(coordinator.current()).toEqual(before);
-		expect(coordinator.history()).toEqual(historyBefore);
-		expect(coordinator.installs()).toBe(installsBefore);
 
-		expect((await coordinator.accept(layoutIntent(fixture, before.revision, before.sourceContentId, 'authored-and-cursor', [1, 0.5, 0]))).kind).toBe('accepted');
+		// The envelope digest covers the authored Layout bytes, cursor included: a
+		// cursor movement is a real content change, not a silent no-op.
+		expect((await coordinator.accept(layoutIntent(fixture, before.revision, before.source, 'authored-and-cursor', [1, 0.5, 0]))).kind).toBe('accepted');
 		const after = coordinator.current();
 		expect(after.sourceContentId).not.toBe(before.sourceContentId);
-		expect(after.source.layout.identity!.cursor).toBe(before.source.layout.identity!.cursor + 100);
-		expect(JSON.parse(after.canonicalJson).layout.identity.cursor).toBe(after.source.layout.identity!.cursor);
+		expect(after.source.units.layout.data.identity!.cursor).toBe(before.source.units.layout.data.identity!.cursor + 100);
+		expect(JSON.parse(after.canonicalJson).units.layout.data.identity.cursor).toBe(after.source.units.layout.data.identity!.cursor);
 		expect((await coordinator.undo()).kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(before.canonicalJson);
-		expect(coordinator.current().source.layout.identity).toEqual(before.source.layout.identity);
+		expect(coordinator.current().source.units.layout.data.identity).toEqual(before.source.units.layout.data.identity);
 		expect(coordinator.current().sourceContentId).toBe(before.sourceContentId);
 		expect(coordinator.current().revision).not.toEqual(before.revision);
 		expect((await coordinator.redo()).kind).toBe('restored');
 		expect(coordinator.current().canonicalJson).toBe(after.canonicalJson);
-		expect(coordinator.current().source.layout.identity).toEqual(after.source.layout.identity);
+		expect(coordinator.current().source.units.layout.data.identity).toEqual(after.source.units.layout.data.identity);
 		expect(coordinator.current().sourceContentId).toBe(after.sourceContentId);
 		expect(coordinator.current().revision).not.toEqual(after.revision);
 	});
 
 	it('refuses a revision the accepted state has moved past (stale/ABA)', async () => {
 		const { coordinator, fixture } = await boot();
-		const bootContentId = coordinator.current().sourceContentId;
-		const stale = layoutIntent(fixture, BOOT_REVISION, bootContentId, 'op-stale-a', [2, 0.5, 0]);
+		const stale = layoutIntent(fixture, BOOT_REVISION, coordinator.current().source, 'op-stale-a', [2, 0.5, 0]);
 		const applied = await coordinator.accept(stale);
 		expect(applied.kind).toBe('accepted');
 		if (applied.kind !== 'accepted') return;
@@ -270,8 +275,8 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 				operationId: 'op-invalid',
 				expectedRevision: before.revision.revisionId,
 				projectId: before.revision.projectId,
-				contentRevision: before.sourceContentId,
-				targets: [sceneEntityReference(before.sourceContentId, FIXTURE_ENTITY_ID)],
+				contentRevision: before.source.units.scene.header.contentRevision,
+				targets: [sceneEntityReference(before.source.units.scene.header.contentRevision, FIXTURE_ENTITY_ID)],
 				payload: { entityId: FIXTURE_ENTITY_ID }
 			})
 		);
@@ -286,9 +291,9 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 	});
 
 	it('delivers exactly one install when two preparations race on one expected revision, in either completion order', async () => {
-		const inner = createCurrentSourceAdapter();
+		const inner = createUnitAcceptanceAdapter({ compound: true });
 		const gates: Array<() => void> = [];
-		const controlled: AcceptanceSourceAdapter<ProjectDocument> = {
+		const controlled: AcceptanceSourceAdapter<ProjectEnvelope> = {
 			sourceKind: inner.sourceKind,
 			sourceVersion: inner.sourceVersion,
 			admit(candidate, baseline) {
@@ -301,10 +306,10 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 			}
 		};
 		const { coordinator, fixture } = await boot({ adapter: controlled });
-		const contentId = coordinator.current().sourceContentId;
+		const source = coordinator.current().source;
 
-		const firstPrepared = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, contentId, 'op-race-a', [2, 0.5, 0]));
-		const secondPrepared = coordinator.accept(sceneIntent(BOOT_REVISION, contentId, 'op-race-b', true));
+		const firstPrepared = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, source, 'op-race-a', [2, 0.5, 0]));
+		const secondPrepared = coordinator.accept(sceneIntent(BOOT_REVISION, source, 'op-race-b', true));
 		expect(gates).toHaveLength(2);
 
 		// The *second* preparation's digest completes first: the out-of-order case.
@@ -322,12 +327,12 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 	});
 
 	it('cancels a completion from a superseded epoch and never installs it', async () => {
-		const inner = createCurrentSourceAdapter();
+		const inner = createUnitAcceptanceAdapter({ compound: true });
 		let release!: () => void;
 		const gate = new Promise<void>((resolve) => {
 			release = resolve;
 		});
-		const gated: AcceptanceSourceAdapter<ProjectDocument> = {
+		const gated: AcceptanceSourceAdapter<ProjectEnvelope> = {
 			sourceKind: inner.sourceKind,
 			sourceVersion: inner.sourceVersion,
 			async admit(candidate, baseline) {
@@ -336,14 +341,9 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 			}
 		};
 		const { coordinator, fixture } = await boot({ adapter: gated });
-		const contentId = coordinator.current().sourceContentId;
 
-		const pending = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, contentId, 'op-epoch', [2, 0.5, 0]));
-		const replacementProject: ProjectDocument = {
-			...fixture.project,
-			id: 'project-replacement',
-			name: 'Replacement project'
-		};
+		const pending = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().source, 'op-epoch', [2, 0.5, 0]));
+		const replacementProject = await createUnitProject({ id: 'project-replacement', name: 'Replacement project' });
 		const replacing = coordinator.replace({
 			revision: { projectId: 'project-replacement', revisionId: 'revision-replacement' },
 			source: replacementProject
@@ -373,7 +373,7 @@ describe('F.4 acceptance coordinator — one install per request', () => {
 		});
 		expect(outcome.kind).toBe('refused');
 		if (outcome.kind !== 'refused') return;
-		expect(outcome.code).toBe('invalid-project');
+		expect(outcome.code).toBe('invalid-envelope');
 		expect(outcome.issues.length).toBeGreaterThan(0);
 		expect(coordinator.current().canonicalJson).toBe(before.canonicalJson);
 		expect(coordinator.acceptedRevision()).toEqual(BOOT_REVISION);
@@ -389,7 +389,7 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		const bootCameraBytes = cameraBytes(bootState.source);
 
 		const layoutResult = await coordinator.accept(
-			layoutIntent(fixture, bootState.revision, bootState.sourceContentId, 'op-layout', [2, 0.5, 0])
+			layoutIntent(fixture, bootState.revision, bootState.source, 'op-layout', [2, 0.5, 0])
 		);
 		expect(layoutResult.kind).toBe('accepted');
 		if (layoutResult.kind !== 'accepted') return;
@@ -397,7 +397,7 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		const layoutCameraBytes = cameraBytes(layoutState.source);
 
 		const sceneResult = await coordinator.accept(
-			sceneIntent(layoutState.revision, layoutState.sourceContentId, 'op-scene', true)
+			sceneIntent(layoutState.revision, layoutState.source, 'op-scene', true)
 		);
 		expect(sceneResult.kind).toBe('accepted');
 		if (sceneResult.kind !== 'accepted') return;
@@ -429,10 +429,10 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		expect(coordinator.acceptedSnapshot().acceptedRevision).toEqual(coordinator.acceptedRevision());
 
 		// Round trip: the restored state is exactly what the writer accepts.
-		const validated = validateProject(coordinator.current().source);
+		const validated = validateProjectEnvelope(coordinator.current().source);
 		expect(validated.success).toBe(true);
 		if (!validated.success) return;
-		expect(validated.canonicalJson).toBe(coordinator.current().canonicalJson);
+		expect(serializeProjectEnvelope(validated.envelope)).toBe(coordinator.current().canonicalJson);
 
 		// Redo walks forward again without re-planning.
 		expect((await coordinator.redo()).kind).toBe('restored');
@@ -451,7 +451,7 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 		let revision = BOOT_REVISION;
 		for (let index = 1; index <= 105; index += 1) {
 			const accepted = await coordinator.accept(
-				layoutIntent(fixture, revision, coordinator.current().sourceContentId, `op-${index}`, [
+				layoutIntent(fixture, revision, coordinator.current().source, `op-${index}`, [
 					index * 0.1,
 					0.5,
 					0
@@ -473,7 +473,7 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 
 		const afterUndos = coordinator.current().canonicalJson;
 		const accepted = await coordinator.accept(
-			layoutIntent(fixture, coordinator.acceptedRevision(), coordinator.current().sourceContentId, 'op-branch', [
+			layoutIntent(fixture, coordinator.acceptedRevision(), coordinator.current().source, 'op-branch', [
 				99,
 				0.5,
 				0
@@ -499,84 +499,32 @@ describe('F.4 acceptance coordinator — one chronological history', () => {
 	}, 30000);
 });
 
-describe('F.4 acceptance coordinator — single-domain scope', () => {
-	it('refuses compound and resource operations before any planner runs', async () => {
-		const { coordinator, fixture } = await boot();
-		const contentId = coordinator.current().sourceContentId;
-
-		const compound = await coordinator.accept(
-			proofIntent({
-				kind: PROOF_LAYOUT_TRANSFORM_KIND,
-				operationId: 'op-compound',
-				expectedRevision: BOOT_REVISION.revisionId,
-				projectId: BOOT_REVISION.projectId,
-				contentRevision: contentId,
-				targets: [
-					layoutObjectReference(contentId, fixture.objectId),
-					sceneEntityReference(contentId, FIXTURE_ENTITY_ID)
-				],
-				payload: { objectId: fixture.objectId, position: [1, 0.5, 0] }
-			})
-		);
-		expect(compound.kind).toBe('rejected');
-		if (compound.kind === 'rejected') expect(compound.code).toBe('unsupported-compound');
-
-		const resource = await coordinator.accept(
-			proofIntent({
-				kind: PROOF_SCENE_SCALAR_KIND,
-				operationId: 'op-resource',
-				expectedRevision: BOOT_REVISION.revisionId,
-				projectId: BOOT_REVISION.projectId,
-				contentRevision: contentId,
-				targets: [
-					{
-						version: 1,
-						domain: 'resource:texture',
-						revision: { kind: 'exact', contentRevision: contentId },
-						subject: { kind: 'texture', id: 'texture-1' },
-						instancePath: [],
-						location: { kind: 'project-root' },
-						componentId: null,
-						capabilityId: null
-					}
-				],
-				payload: { entityId: FIXTURE_ENTITY_ID, receiveShadow: true }
-			})
-		);
-		expect(resource.kind).toBe('rejected');
-		if (resource.kind === 'rejected') expect(resource.code).toBe('unsupported-resource');
-
-		// Both refusals leave the accepted state and the history untouched.
-		expect(coordinator.current().sourceContentId).toBe(contentId);
-		expect(coordinator.installs()).toBe(1);
-		expect(coordinator.history().depth).toBe(1);
-	});
-
-	it('refuses registration of a planner that needs compound, unit or resource acceptance', async () => {
+describe('F.4 acceptance coordinator — unit scope', () => {
+	it('admits compound and unit planners while refusing resource staging', async () => {
 		const { coordinator } = await boot();
-		const compound = coordinator.register(createOverreachingPlanner({ compound: true }));
-		const units = coordinator.register(createOverreachingPlanner({ units: true }));
-		const resources = coordinator.register(createOverreachingPlanner({ resources: true }));
-		expect(compound).toMatchObject({ kind: 'refused', reason: 'compound-acceptance' });
-		expect(units).toMatchObject({ kind: 'refused', reason: 'unit-acceptance' });
+		const compound = coordinator.register({ ...createOverreachingPlanner({ compound: true }), kind: 'overreaching-compound' });
+		const units = coordinator.register({ ...createOverreachingPlanner({ units: true }), kind: 'overreaching-units' });
+		const resources = coordinator.register({ ...createOverreachingPlanner({ resources: true }), kind: 'overreaching-resources' });
+		expect(compound.kind).toBe('registered');
+		expect(units.kind).toBe('registered');
 		expect(resources).toMatchObject({ kind: 'refused', reason: 'resource-admission' });
 		expect(coordinator.registrationRefusals().map((refusal) => refusal.reason)).toEqual([
-			'compound-acceptance',
-			'unit-acceptance',
 			'resource-admission'
 		]);
-		// The three conformance planners stay registered.
+		// The three conformance planners stay registered beside the two admitted ones.
 		expect(coordinator.planners().map((planner) => planner.kind).sort()).toEqual([
 			PROOF_INVALID_CANDIDATE_KIND,
 			PROOF_LAYOUT_TRANSFORM_KIND,
-			PROOF_SCENE_SCALAR_KIND
+			PROOF_SCENE_SCALAR_KIND,
+			'overreaching-compound',
+			'overreaching-units'
 		].sort());
 	});
 
 	it('names the source kind and version the adapter admits', async () => {
 		const { coordinator } = await boot();
-		expect(coordinator.sourceKind).toBe(CURRENT_SOURCE_KIND);
-		expect(coordinator.acceptedSnapshot().sourceKind).toBe(CURRENT_SOURCE_KIND);
+		expect(coordinator.sourceKind).toBe(UNIT_SOURCE_KIND);
+		expect(coordinator.acceptedSnapshot().sourceKind).toBe(UNIT_SOURCE_KIND);
 		expect(coordinator.acceptedSnapshot().domain.source.id).toBe('project-conformance');
 	});
 });
@@ -584,13 +532,13 @@ describe('F.4 acceptance coordinator — single-domain scope', () => {
 // These cases challenge the coordinator with callers/planners that violate its assumptions.
 describe('F.4 adversarial boundary regressions', () => {
 	it('publishes detached immutable source, revision and history', async () => {
-		const { coordinator, admitted, fixture } = await boot();
+		const { coordinator, fixture } = await boot();
 		const before = coordinator.current();
-		expect(() => { admitted.project.name = 'external mutation'; }).toThrow();
+		expect(() => { coordinator.acceptedSnapshot().domain.source.name = 'external mutation'; }).toThrow();
 		expect(coordinator.current().source.name).toBe(JSON.parse(before.canonicalJson).name);
 		expect(() => { coordinator.current().source.name = 'bypass'; }).toThrow();
 		expect(() => { (coordinator.acceptedRevision() as { revisionId: string }).revisionId = 'bypass'; }).toThrow();
-		const result = await coordinator.accept(layoutIntent(fixture, coordinator.acceptedRevision(), before.sourceContentId, 'immutable', [2, 0.5, 0]));
+		const result = await coordinator.accept(layoutIntent(fixture, coordinator.acceptedRevision(), before.source, 'immutable', [2, 0.5, 0]));
 		expect(result.kind).toBe('accepted');
 		if (result.kind !== 'accepted') return;
 		expect(() => { result.snapshot.domain.source.name = 'bypass'; }).toThrow();
@@ -598,36 +546,36 @@ describe('F.4 adversarial boundary regressions', () => {
 		expect(coordinator.current().source.name).toBe(JSON.parse(before.canonicalJson).name);
 	});
 
-	it('enforces domain, Camera, resource and project ownership on actual candidates', async () => {
-		for (const change of ['layout', 'camera', 'resources', 'project'] as const) {
+	it('enforces resource and project ownership on actual candidates', async () => {
+		// Compound Layout/Camera changes are admitted by this profile; the resource
+		// unit and the project identity remain outside what a unit operation owns.
+		for (const change of ['resources', 'project'] as const) {
 			const { coordinator } = await boot();
 			const before = coordinator.current();
-			const planner: DomainPlanner<ProjectDocument> = {
+			const planner: DomainPlanner<ProjectEnvelope> = {
 				...createProofSceneScalarPlanner(), kind: `overreach-${change}`,
 				prepare({ snapshot, intent }) {
 					const source = structuredClone(snapshot.domain.source);
-					if (change === 'layout') source.layout.floor.name = 'wrong owner';
-					if (change === 'camera') source.scene.navigationNodes[0]!.label = 'wrong owner';
-					if (change === 'resources') source.scene.materials.push({ id: 'new-material', name: 'wrong owner', baseMaterialId: 'plaster-warm' });
+					if (change === 'resources') source.units.resources.data.resources = [...source.units.resources.data.resources, { kind: 'texture', id: 'new-texture', contentRevision: 'sha256-other', pin: null, unresolved: null }];
 					if (change === 'project') source.name = 'wrong owner';
-					return { kind: 'prepared', candidate: { operationId: intent.operationId, sourceKind: CURRENT_SOURCE_KIND, sourceVersion: snapshot.sourceVersion, source, changes: [], correspondence: [], diagnostics: [] } };
+					return { kind: 'prepared', candidate: { operationId: intent.operationId, sourceKind: UNIT_SOURCE_KIND, sourceVersion: snapshot.sourceVersion, source, changes: [], correspondence: [], diagnostics: [] } };
 				}
 			};
 			coordinator.register(planner);
-			expect(await coordinator.accept({ ...sceneIntent(before.revision, before.sourceContentId, planner.kind, true), kind: planner.kind }), change).toMatchObject({ kind: 'rejected', code: 'admission-refused' });
+			expect(await coordinator.accept({ ...sceneIntent(before.revision, before.source, planner.kind, true), kind: planner.kind }), change).toMatchObject({ kind: 'rejected', code: 'admission-refused' });
 			expect(coordinator.current()).toEqual(before);
 			expect(coordinator.installs()).toBe(1);
 		}
 	});
 
 	it('revalidates Undo and preserves the cursor on refusal', async () => {
-		const inner = createCurrentSourceAdapter();
+		const inner = createUnitAcceptanceAdapter({ compound: true });
 		let refuse = false;
-		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...inner, async admit(candidate, issues) {
+		const adapter: AcceptanceSourceAdapter<ProjectEnvelope> = { ...inner, async admit(candidate, issues) {
 			return refuse ? { kind: 'rejected', code: 'catalogue-changed', message: 'source no longer resolves', issues: [] } : inner.admit(candidate, issues);
 		} };
 		const { coordinator, fixture } = await boot({ adapter });
-		await coordinator.accept(layoutIntent(fixture, coordinator.acceptedRevision(), coordinator.current().sourceContentId, 'edit', [2, 0.5, 0]));
+		await coordinator.accept(layoutIntent(fixture, coordinator.acceptedRevision(), coordinator.current().source, 'edit', [2, 0.5, 0]));
 		const before = coordinator.current();
 		const history = coordinator.history();
 		refuse = true;
@@ -638,25 +586,25 @@ describe('F.4 adversarial boundary regressions', () => {
 
 	it('mints distinct default revisions across coordinator lifetimes and imported baselines', async () => {
 		const { admitted } = await boot();
-		const options = { adapter: createCurrentSourceAdapter(), sessionEpoch: 'session', baseline: { revision: { projectId: BOOT_REVISION.projectId, revisionId: 'accepted-1' }, source: admitted.project, canonicalJson: admitted.canonicalJson, sourceContentId: admitted.sourceContentId }, planners: [createProofSceneScalarPlanner()] };
-		const a = createAcceptanceCoordinator(options);
-		const b = createAcceptanceCoordinator(options);
-		const intent = sceneIntent(a.acceptedRevision(), a.current().sourceContentId, 'edit', true);
+		const baseline = { revision: { projectId: BOOT_REVISION.projectId, revisionId: 'accepted-1' }, source: admitted.project };
+		const a = await createUnitCoordinator({ baseline, sessionEpoch: 'session', planners: [createProofSceneScalarPlanner()] });
+		const b = await createUnitCoordinator({ baseline, sessionEpoch: 'session', planners: [createProofSceneScalarPlanner()] });
+		const intent = sceneIntent(a.acceptedRevision(), a.current().source, 'edit', true);
 		expect((await a.accept(intent)).kind).toBe('accepted');
-		expect(a.acceptedRevision()).not.toEqual(options.baseline.revision);
+		expect(a.acceptedRevision()).not.toEqual(baseline.revision);
 		expect((await b.accept(intent)).kind).toBe('accepted');
 		expect(a.acceptedRevision()).not.toEqual(b.acceptedRevision());
 	});
 
 	it('captures the intent before admission and rejects caller-mutated stale requests', async () => {
-		const inner = createCurrentSourceAdapter();
+		const inner = createUnitAcceptanceAdapter({ compound: true });
 		const gates: Array<() => void> = [];
-		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...inner, admit(candidate, issues) { return new Promise((resolve) => gates.push(() => { void inner.admit(candidate, issues).then(resolve); })); } };
+		const adapter: AcceptanceSourceAdapter<ProjectEnvelope> = { ...inner, admit(candidate, issues) { return new Promise((resolve) => gates.push(() => { void inner.admit(candidate, issues).then(resolve); })); } };
 		const { coordinator, fixture } = await boot({ adapter });
-		const id = coordinator.current().sourceContentId;
-		const stale = layoutIntent(fixture, BOOT_REVISION, id, 'captured', [2, 0.5, 0]);
+		const source = coordinator.current().source;
+		const stale = layoutIntent(fixture, BOOT_REVISION, source, 'captured', [2, 0.5, 0]);
 		const pending = coordinator.accept(stale);
-		const winner = coordinator.accept(sceneIntent(BOOT_REVISION, id, 'winner', true));
+		const winner = coordinator.accept(sceneIntent(BOOT_REVISION, source, 'winner', true));
 		gates[1]!(); await winner;
 		(stale as { expectedRevision: AcceptedRevision }).expectedRevision = coordinator.acceptedRevision();
 		gates[0]!();
@@ -665,11 +613,11 @@ describe('F.4 adversarial boundary regressions', () => {
 	});
 
 	it('invalidates pending work even when replacement reuses an epoch string', async () => {
-		const inner = createCurrentSourceAdapter();
+		const inner = createUnitAcceptanceAdapter({ compound: true });
 		const gates: Array<() => void> = [];
-		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...inner, admit(candidate, issues) { return new Promise((resolve) => gates.push(() => { void inner.admit(candidate, issues).then(resolve); })); } };
+		const adapter: AcceptanceSourceAdapter<ProjectEnvelope> = { ...inner, admit(candidate, issues) { return new Promise((resolve) => gates.push(() => { void inner.admit(candidate, issues).then(resolve); })); } };
 		const { coordinator, fixture } = await boot({ adapter });
-		const pending = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().sourceContentId, 'old-epoch', [2, 0.5, 0]));
+		const pending = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().source, 'old-epoch', [2, 0.5, 0]));
 		const replacing = coordinator.replace({ revision: { ...BOOT_REVISION, revisionId: 'replacement' }, source: fixture.project, sessionEpoch: 'session-1' });
 		gates[0]!();
 		expect(await pending).toMatchObject({ kind: 'rejected', code: 'superseded-epoch' });
@@ -678,18 +626,19 @@ describe('F.4 adversarial boundary regressions', () => {
 
 	it('qualifies correspondence to the accepted content', async () => {
 		const { coordinator } = await boot();
-		const result = await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'correspondence', true));
+		const result = await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().source, 'correspondence', true));
 		expect(result.kind).toBe('accepted');
 		if (result.kind !== 'accepted') return;
 		expect(result.correspondence[0]!.after!.revision).toEqual({ kind: 'exact', contentRevision: result.snapshot.sourceContentId });
 	});
 
-	it('rejects cycles and accessors without throwing or invoking code', () => {
+	it('rejects cycles and accessors without throwing or invoking code', async () => {
+		const { coordinator } = await boot();
 		const cyclic: Record<string, unknown> = {}; cyclic.self = cyclic;
 		let reads = 0;
 		const accessor = Object.defineProperty({}, 'value', { enumerable: true, get() { reads += 1; return reads; } });
 		for (const payload of [cyclic, accessor]) {
-			const input = { ...sceneIntent(BOOT_REVISION, 'digest', 'invalid', true), payload };
+			const input = { ...sceneIntent(BOOT_REVISION, coordinator.current().source, 'invalid', true), payload };
 			expect(() => validateAuthoringIntent(input)).not.toThrow();
 			expect(validateAuthoringIntent(input).success).toBe(false);
 		}
@@ -698,7 +647,7 @@ describe('F.4 adversarial boundary regressions', () => {
 
 	it('retains null captured values and refuses closure overrides', async () => {
 		const { coordinator } = await boot();
-		const intent = sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'capture', true);
+		const intent = sceneIntent(BOOT_REVISION, coordinator.current().source, 'capture', true);
 		const result = validateAuthoringIntent({ ...intent, capturedInputs: [{ name: 'nullable', value: null }] });
 		expect(result.success).toBe(true);
 		if (result.success) expect(result.value.capturedInputs).toEqual([{ name: 'nullable', value: null }]);
@@ -708,9 +657,9 @@ describe('F.4 adversarial boundary regressions', () => {
 
 // Controllable admission makes ordering deterministic without timing assertions.
 function controlledAdmission() {
-	const inner = createCurrentSourceAdapter();
+	const inner = createUnitAcceptanceAdapter({ compound: true });
 	const gates: Array<() => void> = [];
-	const adapter: AcceptanceSourceAdapter<ProjectDocument> = {
+	const adapter: AcceptanceSourceAdapter<ProjectEnvelope> = {
 		...inner,
 		admit(candidate, issues) {
 			return new Promise((resolve, reject) => gates.push(() => { void inner.admit(candidate, issues).then(resolve, reject); }));
@@ -726,7 +675,7 @@ describe('F.4 replacement and history contention', () => {
 		const first = coordinator.replace({ source: { ...fixture.project, name: 'First' }, revision: { ...BOOT_REVISION, revisionId: 'first' }, sessionEpoch: 'same-label' });
 		const second = coordinator.replace({ source: { ...fixture.project, name: 'Second' }, revision: { ...BOOT_REVISION, revisionId: 'second' }, sessionEpoch: 'same-label' });
 		// An edit during replacement cannot install against the previous project.
-		expect(await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'during-replace', true))).toMatchObject({ kind: 'rejected', code: 'superseded-epoch' });
+		expect(await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().source, 'during-replace', true))).toMatchObject({ kind: 'rejected', code: 'superseded-epoch' });
 		gates[1]!(); expect(await second).toMatchObject({ kind: 'replaced' });
 		gates[0]!(); expect(await first).toMatchObject({ kind: 'refused', code: 'superseded-epoch' });
 		expect(coordinator.current().source.name).toBe('Second');
@@ -742,10 +691,10 @@ describe('F.4 replacement and history contention', () => {
 	it('does not move a stale Undo cursor when an edit wins admission first', async () => {
 		const { adapter, gates } = controlledAdmission();
 		const { coordinator, fixture } = await boot({ adapter });
-		const first = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().sourceContentId, 'first', [2, 0.5, 0]));
+		const first = coordinator.accept(layoutIntent(fixture, BOOT_REVISION, coordinator.current().source, 'first', [2, 0.5, 0]));
 		gates[0]!(); await first;
 		const undo = coordinator.undo();
-		const edit = coordinator.accept(sceneIntent(coordinator.acceptedRevision(), coordinator.current().sourceContentId, 'winner', true));
+		const edit = coordinator.accept(sceneIntent(coordinator.acceptedRevision(), coordinator.current().source, 'winner', true));
 		gates[2]!(); expect(await edit).toMatchObject({ kind: 'accepted' });
 		gates[1]!(); expect(await undo).toMatchObject({ kind: 'refused', code: 'stale-revision' });
 		expect(coordinator.history()).toEqual({ depth: 3, position: 2, limit: HISTORY_LIMIT });
@@ -754,7 +703,8 @@ describe('F.4 replacement and history contention', () => {
 	it('refuses ABA after Undo restores the original contents', async () => {
 		const { coordinator, fixture } = await boot();
 		const originalId = coordinator.current().sourceContentId;
-		const stale = layoutIntent(fixture, BOOT_REVISION, originalId, 'stale', [2, 0.5, 0]);
+		const originalSource = coordinator.current().source;
+		const stale = layoutIntent(fixture, BOOT_REVISION, originalSource, 'stale', [2, 0.5, 0]);
 		await coordinator.accept(stale);
 		await coordinator.undo();
 		expect(coordinator.current().sourceContentId).toBe(originalId);
@@ -763,9 +713,9 @@ describe('F.4 replacement and history contention', () => {
 	});
 
 	it('handles digest failures as typed refusals without installing or truncating history', async () => {
-		const adapter: AcceptanceSourceAdapter<ProjectDocument> = { ...createCurrentSourceAdapter(), async admit() { throw new Error('digest unavailable'); } };
+		const adapter: AcceptanceSourceAdapter<ProjectEnvelope> = { ...createUnitAcceptanceAdapter({ compound: true }), async admit() { throw new Error('digest unavailable'); } };
 		const { coordinator } = await boot({ adapter });
-		expect(await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'failed-digest', true))).toMatchObject({ kind: 'rejected', code: 'admission-refused', reason: 'admission-failed' });
+		expect(await coordinator.accept(sceneIntent(BOOT_REVISION, coordinator.current().source, 'failed-digest', true))).toMatchObject({ kind: 'rejected', code: 'admission-refused', reason: 'admission-failed' });
 		expect(coordinator.installs()).toBe(1);
 	});
 
@@ -773,7 +723,7 @@ describe('F.4 replacement and history contention', () => {
 		const { coordinator } = await boot();
 		expect(await coordinator.accept(null as never)).toMatchObject({ kind: 'rejected', code: 'invalid-intent', actualRevision: null });
 		coordinator.register({ ...createProofSceneScalarPlanner(), kind: 'throws', prepare() { throw new Error('planner error'); } });
-		expect(await coordinator.accept({ ...sceneIntent(BOOT_REVISION, coordinator.current().sourceContentId, 'throws', true), kind: 'throws' })).toMatchObject({ kind: 'rejected', code: 'planner-rejected' });
+		expect(await coordinator.accept({ ...sceneIntent(BOOT_REVISION, coordinator.current().source, 'throws', true), kind: 'throws' })).toMatchObject({ kind: 'rejected', code: 'planner-rejected' });
 		expect(coordinator.installs()).toBe(1);
 	});
 });
@@ -801,10 +751,15 @@ it('reuses the enduring lifecycle/history with a source-independent preparation 
 			if (outcome.kind !== 'prepared') throw new Error('conformance planner failed');
 			return outcome;
 		} } });
-	const result = await coordinator.accept({ ...sceneIntent(BOOT_REVISION, '0', 'other', true), kind: 'other', targets: [], payload: 1 });
+	const otherIntent = (operationId: string, payload: number) => ({
+		version: 1 as const, kind: 'other', operationId,
+		expectedRevision: { projectId: BOOT_REVISION.projectId, revisionId: BOOT_REVISION.revisionId },
+		targets: [], payload, capturedInputs: [], allocatedIds: []
+	});
+	const result = await coordinator.accept(otherIntent('other', 1));
 	expect(result.kind).toBe('accepted');
 	expect(coordinator.acceptedSnapshot().domain.source).toEqual({ value: 1 });
-	expect(await coordinator.accept({ ...sceneIntent(BOOT_REVISION, '0', 'stale-other', true), kind: 'other', targets: [], payload: 2 })).toMatchObject({ kind: 'rejected', code: 'stale-revision' });
+	expect(await coordinator.accept(otherIntent('stale-other', 2))).toMatchObject({ kind: 'rejected', code: 'stale-revision' });
 	expect((await coordinator.undo()).kind).toBe('restored');
 	expect(coordinator.acceptedSnapshot().domain.source).toEqual({ value: 0 });
 	expect((await coordinator.redo()).kind).toBe('restored');
@@ -812,26 +767,14 @@ it('reuses the enduring lifecycle/history with a source-independent preparation 
 });
 
 
-it('validates Undo blocking issues relative to the current accepted baseline after a repair', async () => {
-	const source = buildFoldedPartitionProject();
-	const blocked = await admitCurrentSourceContent(source);
-	if (blocked.kind !== 'rejected') throw new Error('fixture must have a blocking fold');
-	const baseline = await admitCurrentSourceContent(source, { baselineBlockingIssues: blocked.blockingIssues });
-	if (baseline.kind !== 'admitted') throw new Error('repair-mode baseline must be admitted');
-	const repair: DomainPlanner<ProjectDocument> = { ...createProofLayoutPlanner('unused'), kind: 'repair-layout',
-		prepare({ snapshot, intent }) { return { kind: 'prepared', candidate: {
-			operationId: intent.operationId, sourceKind: snapshot.sourceKind, sourceVersion: snapshot.sourceVersion,
-			source: { ...snapshot.domain.source, layout: createEmptyWallFirstProject({ id: 'unused', name: 'unused' }).layout },
-			changes: [], correspondence: [], diagnostics: []
-		} }; }
-	};
-	const coordinator = createAcceptanceCoordinator({ adapter: createCurrentSourceAdapter(), sessionEpoch: 'repair',
-		baseline: { revision: BOOT_REVISION, source: baseline.project, canonicalJson: baseline.canonicalJson, sourceContentId: baseline.sourceContentId, blockingIssues: baseline.blockingIssues }, planners: [repair] });
-	const result = await coordinator.accept({ ...sceneIntent(BOOT_REVISION, baseline.sourceContentId, 'repair', true), kind: repair.kind, targets: [] });
-	expect(result.kind).toBe('accepted');
-	expect(coordinator.current().blockingIssues).toEqual([]);
-	const current = coordinator.current();
-	expect(await coordinator.undo()).toMatchObject({ kind: 'refused', code: 'admission-refused' });
-	expect(coordinator.current()).toBe(current);
-	expect(coordinator.history()).toEqual({ depth: 2, position: 1, limit: HISTORY_LIMIT });
+it('refuses a source with a blocking fold through the one unit admission', async () => {
+	const source = await buildFoldedPartitionProject();
+	const blocked = await admitUnitContent(source);
+	expect(blocked.kind).toBe('admitted');
+	// The unit runtime reports the blocking compile issue; the Stage admission is
+	// the path that refuses to mount it.
+	const admitted = await admitUnitProject(source, BOOT_REVISION);
+	expect(admitted.kind).toBe('rejected');
+	if (admitted.kind !== 'rejected') return;
+	expect(admitted.code).toBe('blocking-geometry');
 });

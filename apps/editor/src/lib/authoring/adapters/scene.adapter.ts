@@ -24,7 +24,7 @@ import type {
 	StageGhostMesh,
 	StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
-import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import {
 	NATIVE_PLACEMENT_PRIMITIVES,
 	nativePlacementDefinition
@@ -34,7 +34,7 @@ import {
 	floorSupportSnapshotOf,
 	queryFloorSupports
 } from '@portfolio/layout-core';
-import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/project-model';
+import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
 
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import { candidateGhost } from './scene/candidate-ghost';
@@ -63,10 +63,10 @@ const SCENE_PLACE_TASK = 'scene-place';
 const SCENE_COMPOSE_TASK = 'scene-compose';
 
 function entityFacts(
-	source: ReturnType<typeof currentStageSource>['source'],
+	source: ReturnType<typeof stageScene>,
 	entityId: string
 ): readonly StageCardFact[] {
-	const entity = source.scene.entities.find((candidate) => candidate.id === entityId);
+	const entity = source.entities.find((candidate) => candidate.id === entityId);
 	if (entity === undefined) return [];
 	return [
 		{ label: 'Kind', value: entity.kind },
@@ -167,7 +167,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		// Placement needs its admitted definitions, which carry an asynchronously
 		// captured metadata identity; it is registered once that identity exists.
 		if (planner.kind === 'place-object') continue;
-		const registration = services.authoring.registerPlanner(currentStagePlanner(planner));
+		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
 				`Scene adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`
@@ -183,7 +183,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				(planner) => planner.kind === 'place-object'
 			);
 			if (definitionPlace === undefined) return;
-			const registration = services.authoring.registerPlanner(currentStagePlanner(definitionPlace));
+			const registration = services.authoring.registerPlanner(definitionPlace);
 			// A refusal here means the epoch ended before registration; the adapter
 			// is already unbound, so there is no live surface to report it on.
 			if (registration.kind !== 'registered') return;
@@ -193,7 +193,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		id: 'scene',
 		requiredCapabilities: ['stage-instrument-v1'],
 		bind(context): StageAdapterBinding {
-			const source = currentStageSource(context.snapshot).source;
+			const source = stageScene(context.snapshot);
 			// One drag at a time: the press origin and the yaw it started from, so a
 			// shift-drag is a rotation of the same captured baseline.
 			let dragOrigin: { readonly x: number; readonly yaw: number } | null = null;
@@ -270,7 +270,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						// subject.
 						const reference = sceneEntityReference(
 							placedId,
-							services.stage.snapshot().sourceContentId
+							services.stage.snapshot().domain.unitRevisions.scene
 						);
 						services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 					}
@@ -580,7 +580,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							if (createdId === null) return;
 							const reference = sceneEntityReference(
 								createdId,
-								services.stage.snapshot().sourceContentId
+								services.stage.snapshot().domain.unitRevisions.scene
 							);
 							services.stage.setSelection({ ordered: [{ reference }], primary: reference });
 						});

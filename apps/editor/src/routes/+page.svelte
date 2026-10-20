@@ -4,13 +4,15 @@
 	import { onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
 	import {
-		clearPendingCloudSave,
 		createProjectAuth,
 		createProjectId,
-		readPendingCloudSave,
 		type ProjectLoginIntent,
 		ProjectPersistenceError
 	} from '$lib/platform/project-persistence';
+	import {
+		discardPendingCapture,
+		readPendingCapture
+	} from '$lib/authoring/save/pending-capture';
 
 	const apiOrigin = env.PUBLIC_API_ORIGIN;
 	const auth = apiOrigin ? createProjectAuth(apiOrigin) : null;
@@ -51,7 +53,7 @@
 	}
 
 	function discardDraft(): void {
-		clearPendingCloudSave();
+		discardPendingCapture();
 		pendingDraft = false;
 		notice = 'Draft discarded';
 		authStatus = null;
@@ -67,14 +69,14 @@
 		}
 		if (authStatus !== 'success' || authIntent !== 'save') {
 			if (authIntent === 'save' && (authStatus === 'cancelled' || authStatus === 'failed')) {
-				pendingDraft = readPendingCloudSave().status === 'ready';
+				pendingDraft = readPendingCapture().status === 'ready';
 				notice = authStatus === 'cancelled' ? 'Sign-in was cancelled' : 'Sign-in failed';
 			}
 			redirecting = false;
 			return;
 		}
 
-		const pending = readPendingCloudSave();
+		const pending = readPendingCapture();
 		if (pending.status !== 'ready') {
 			redirecting = false;
 			notice = pending.status === 'expired' ? 'The saved draft expired' : 'The saved draft is unavailable';

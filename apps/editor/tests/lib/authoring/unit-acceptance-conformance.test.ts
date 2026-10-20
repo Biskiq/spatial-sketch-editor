@@ -12,10 +12,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
-	createEmptyWallFirstProject,
 	resolveReference,
-	validateProject,
 	type AcceptedRevision,
 	type AuthoringIntent,
 	type SemanticReference
@@ -44,8 +43,7 @@ import { createUnitReadContext } from '@portfolio/project-model/references/unit-
 const REVISION: AcceptedRevision = { projectId: 'project-s05', revisionId: 'revision-1' };
 
 async function envelope(): Promise<ProjectEnvelope> {
-	const source = validateProject(createEmptyWallFirstProject({ id: REVISION.projectId, name: 'S05 project' }));
-	if (!source.success) throw new Error('the envelope fixture source does not validate');
+	const layout = createEmptyWallFirstLayoutDocument();
 	// The baseline is normalized exactly as the adapter normalizes an installed
 	// candidate, so the first change comparison is authored content, not derived
 	// header identities.
@@ -57,8 +55,8 @@ async function envelope(): Promise<ProjectEnvelope> {
 		dependencyLock: { formatVersion: 1, entries: [] },
 		units: {
 			layout: {
-				header: { domain: 'layout', unitId: 'unit-layout', formatVersion: source.project.layout.formatVersion, contentRevision: 'rev-layout' },
-				data: source.project.layout
+				header: { domain: 'layout', unitId: 'unit-layout', formatVersion: layout.formatVersion, contentRevision: 'rev-layout' },
+				data: layout
 			},
 			scene: {
 				header: { domain: 'scene', unitId: 'unit-scene', formatVersion: SCENE_UNIT_FORMAT_VERSION, contentRevision: 'rev-scene' },

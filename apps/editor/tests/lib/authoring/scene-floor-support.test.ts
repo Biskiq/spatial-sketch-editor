@@ -8,23 +8,19 @@
  * spans the shared wall-mesh builder draws plus the resolved Scene's primitives.
  */
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstProject,
-	type ProjectDocument,
-	type SceneEntity,
-	type Vec3
-} from '@portfolio/project-model';
-import { planWallChain } from '@portfolio/layout-core';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 
 import { floorSupport, supportOccluders } from '$lib/authoring/adapters/scene/support-occlusion';
 import { admitSource } from '$lib/authoring/stage/source-admission';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const PROJECT_ID = 'project-floor-support';
 
-function project(entities: readonly SceneEntity[]): ProjectDocument {
-	const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Floor support' });
+function project(entities: readonly SceneEntity[]): Promise<ProjectEnvelope> {
 	const planned = planWallChain({
-		baseline: base.layout,
+		baseline: createEmptyWallFirstLayoutDocument(),
 		points: [
 			[0, 0],
 			[7, 0],
@@ -35,7 +31,19 @@ function project(entities: readonly SceneEntity[]): ProjectDocument {
 		role: 'boundary'
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
-	return { ...base, layout: planned.document, scene: { ...base.scene, entities: [...entities] } };
+	return createUnitProject({
+		id: PROJECT_ID,
+		name: 'Floor support',
+		layout: planned.document,
+		scene: {
+			formatVersion: 1,
+			textures: [],
+			materials: [],
+			entities: [...entities],
+			navigationNodes: [],
+			connections: []
+		}
+	});
 }
 
 function box(id: string, position: Vec3): SceneEntity {
@@ -64,7 +72,7 @@ function ray(origin: Vec3, towards: Vec3) {
 }
 
 async function domainFor(entities: readonly SceneEntity[]) {
-	const admitted = await admitSource(project(entities), {
+	const admitted = await admitSource(await project(entities), {
 		sessionEpoch: 'session-floor-support',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-1' }
 	});

@@ -153,6 +153,7 @@ test('config fails closed and never leaks the secret', async (t) => {
 		SESSION_KEY: SESSION_KEY.toString('base64'),
 		R2_ENDPOINT: 'https://account.r2.cloudflarestorage.com',
 		R2_BUCKET: 'museum-assets',
+		R2_OBJECT_NAMESPACE: 'test',
 		R2_ACCESS_KEY_ID: 'access-key',
 		R2_SECRET_ACCESS_KEY: 'secret-key'
 	};

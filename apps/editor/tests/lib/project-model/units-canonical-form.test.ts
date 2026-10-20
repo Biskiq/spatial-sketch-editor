@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
@@ -29,20 +29,18 @@ import {
 	type ProjectEnvelopeInput
 } from '@portfolio/project-model/units';
 
-const SOURCE = validateProject(createEmptyWallFirstProject({ id: 'project-1', name: 'Project one' }));
+const EMPTY_LAYOUT = createEmptyWallFirstLayoutDocument();
 
 function parts(): Omit<ProjectEnvelopeInput, 'acceptedRevision' | 'dependencyLock' | 'id' | 'name'> {
-	if (!SOURCE.success) throw new Error('the fixture source does not validate');
-	const { layout, scene } = SOURCE.project;
 	return {
-		layout: { unitId: 'unit-layout', data: layout },
+		layout: { unitId: 'unit-layout', data: EMPTY_LAYOUT },
 		scene: {
 			unitId: 'unit-scene',
 			data: {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: scene.textures,
-				materials: scene.materials,
-				entities: scene.entities
+				textures: [],
+				materials: [],
+				entities: []
 			}
 		},
 		camera: {

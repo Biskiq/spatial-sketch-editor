@@ -25,13 +25,10 @@
  */
 
 import {
-	CURRENT_SOURCE_KIND,
-	CURRENT_SOURCE_VERSION,
 	type AuthoringIntent,
 	type CapturedInput,
 	type DomainPlanner,
 	type F4JsonValue,
-	type ProjectDocument,
 	type SceneDocument,
 	type SceneEntity,
 	type SceneModelEntity,
@@ -40,6 +37,13 @@ import {
 	type SemanticReference,
 	type Vec3
 } from '@portfolio/project-model';
+import {
+	replaceUnitData,
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
+import { createUnitProject } from './unit-envelope-fixtures';
 import {
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
@@ -164,7 +168,6 @@ export function buildScene(entityCount: number, extraEntity?: SceneEntity): Scen
 				cameraTarget: [1, 1.25, -2],
 				fov: 54,
 				connectedNodeIds: ['tour-b'],
-				nextNodeId: 'tour-b'
 			},
 			{
 				id: 'tour-b',
@@ -173,8 +176,6 @@ export function buildScene(entityCount: number, extraEntity?: SceneEntity): Scen
 				cameraTarget: [4, 1.25, 0],
 				fov: 54,
 				connectedNodeIds: ['tour-a'],
-				previousNodeId: 'tour-a',
-				holdSeconds: 1.5
 			}
 		],
 		connections: [
@@ -191,41 +192,46 @@ export function buildScene(entityCount: number, extraEntity?: SceneEntity): Scen
 
 /** A conformance source and the Layout object its proof planner transforms. */
 export type CurrentSourceFixture = {
-	readonly project: ProjectDocument;
+	readonly project: ProjectEnvelope;
 	readonly objectId: string;
 };
 
 /** The conformance project: one Layout object, one entity, Camera-bearing Scene data. */
-export function buildCurrentSourceFixture(): CurrentSourceFixture {
+export async function buildCurrentSourceFixture(): Promise<CurrentSourceFixture> {
 	const seed = layoutSeed();
 	return {
-		project: { id: FIXTURE_PROJECT_ID, name: 'Conformance project', layout: seed.document, scene: buildScene(1) },
+		project: await createUnitProject({
+			id: FIXTURE_PROJECT_ID,
+			name: 'Conformance project',
+			layout: seed.document,
+			scene: buildScene(1)
+		}),
 		objectId: seed.objectId
 	};
 }
 
 /** The densest current-format source this slice builds: many objects and entities. */
-export function buildDenseCurrentSourceFixture(): CurrentSourceFixture {
+export async function buildDenseCurrentSourceFixture(): Promise<CurrentSourceFixture> {
 	const seed = withLayoutObjects(layoutSeed(), 40);
 	return {
-		project: {
+		project: await createUnitProject({
 			id: FIXTURE_PROJECT_ID,
 			name: 'Dense conformance project',
 			layout: seed.document,
 			scene: buildScene(240)
-		},
+		}),
 		objectId: seed.objectId
 	};
 }
 
 /** A project whose model entity names an asset only the option-less reader accepts. */
-export function buildUnknownAssetProject(): ProjectDocument {
-	return {
+export async function buildUnknownAssetProject(): Promise<ProjectEnvelope> {
+	return createUnitProject({
 		id: FIXTURE_PROJECT_ID,
 		name: 'Unknown asset project',
 		layout: layoutSeed().document,
 		scene: buildScene(0, unknownAssetEntity())
-	};
+	});
 }
 
 const CHORD = 6;
@@ -260,13 +266,13 @@ export function foldedPartitionDocument(anchor: LayoutVec2 = [3, 2]): LayoutDocu
 }
 
 /** A project whose Layout compiles with one blocking issue but passes the codec. */
-export function buildFoldedPartitionProject(anchor: LayoutVec2 = [3, 2]): ProjectDocument {
-	return {
+export async function buildFoldedPartitionProject(anchor: LayoutVec2 = [3, 2]): Promise<ProjectEnvelope> {
+	return createUnitProject({
 		id: FIXTURE_PROJECT_ID,
 		name: 'Folded partition project',
 		layout: foldedPartitionDocument(anchor),
 		scene: buildScene(0)
-	};
+	});
 }
 
 /** An exact F.1 reference to one Layout object. */
@@ -325,13 +331,13 @@ export function proofIntent(input: {
  * `planExactLayoutObjectTransform` planner. Entity-level only — nothing outside
  * the object list changes, so Scene bytes (Camera included) cannot move.
  */
-export function createProofLayoutPlanner(fallbackObjectId: string): DomainPlanner<ProjectDocument> {
+export function createProofLayoutPlanner(fallbackObjectId: string): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'conformance.layout-object-transform',
 		kind: PROOF_LAYOUT_TRANSFORM_KIND,
 		admission: { domain: 'layout', compound: false, units: false, resources: false },
-		sourceKinds: [CURRENT_SOURCE_KIND],
-		sourceVersions: [CURRENT_SOURCE_VERSION],
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare({ snapshot, intent }) {
 			const payload = intent.payload as { objectId?: unknown; position?: unknown };
 			const targetId = typeof payload.objectId === 'string' ? payload.objectId : fallbackObjectId;
@@ -349,7 +355,7 @@ export function createProofLayoutPlanner(fallbackObjectId: string): DomainPlanne
 				};
 			}
 			const project = snapshot.domain.source;
-			const plan = planExactLayoutObjectTransform(project.layout, targetId, {
+			const plan = planExactLayoutObjectTransform(project.units.layout.data, targetId, {
 				position: [position[0], position[1], position[2]]
 			});
 			if (plan.kind === 'rejected') {
@@ -359,9 +365,9 @@ export function createProofLayoutPlanner(fallbackObjectId: string): DomainPlanne
 				kind: 'prepared',
 				candidate: {
 					operationId: intent.operationId,
-					sourceKind: CURRENT_SOURCE_KIND,
-					sourceVersion: CURRENT_SOURCE_VERSION,
-					source: { ...project, layout: plan.document },
+					sourceKind: UNIT_SOURCE_KIND,
+					sourceVersion: UNIT_SOURCE_VERSION,
+					source: replaceUnitData(project, 'layout', plan.document),
 					changes: [
 						{
 							kind: 'layout-object-transform',
@@ -372,8 +378,8 @@ export function createProofLayoutPlanner(fallbackObjectId: string): DomainPlanne
 					correspondence: [
 						{
 							relation: 'preserved',
-							before: layoutObjectReference(snapshot.sourceContentId, targetId),
-							after: layoutObjectReference(snapshot.sourceContentId, targetId)
+							before: layoutObjectReference(project.units.layout.header.contentRevision, targetId),
+							after: layoutObjectReference(project.units.layout.header.contentRevision, targetId)
 						}
 					],
 					diagnostics: []
@@ -388,13 +394,13 @@ export function createProofLayoutPlanner(fallbackObjectId: string): DomainPlanne
  * Entity-level, codec-validated and Camera-free by construction — the Scene's
  * navigation nodes and connections are carried over structurally.
  */
-export function createProofSceneScalarPlanner(): DomainPlanner<ProjectDocument> {
+export function createProofSceneScalarPlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'conformance.scene-entity-scalar',
 		kind: PROOF_SCENE_SCALAR_KIND,
 		admission: { domain: 'scene', compound: false, units: false, resources: false },
-		sourceKinds: [CURRENT_SOURCE_KIND],
-		sourceVersions: [CURRENT_SOURCE_VERSION],
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare({ snapshot, intent }) {
 			const payload = intent.payload as { entityId?: unknown; receiveShadow?: unknown };
 			const entityId = typeof payload.entityId === 'string' ? payload.entityId : FIXTURE_ENTITY_ID;
@@ -407,8 +413,8 @@ export function createProofSceneScalarPlanner(): DomainPlanner<ProjectDocument> 
 				};
 			}
 			const project = snapshot.domain.source;
-			const index = project.scene.entities.findIndex((entity) => entity.id === entityId);
-			const entity = index < 0 ? undefined : project.scene.entities[index];
+			const index = project.units.scene.data.entities.findIndex((entity) => entity.id === entityId);
+			const entity = index < 0 ? undefined : project.units.scene.data.entities[index];
 			if (entity === undefined) {
 				return { kind: 'rejected', code: 'unknown_entity', message: `No Scene entity "${entityId}"`, diagnostics: [] };
 			}
@@ -428,21 +434,21 @@ export function createProofSceneScalarPlanner(): DomainPlanner<ProjectDocument> 
 					diagnostics: []
 				};
 			}
-			const entities = [...project.scene.entities];
+			const entities = [...project.units.scene.data.entities];
 			entities[index] = { ...entity, receiveShadow: payload.receiveShadow };
 			return {
 				kind: 'prepared',
 				candidate: {
 					operationId: intent.operationId,
-					sourceKind: CURRENT_SOURCE_KIND,
-					sourceVersion: CURRENT_SOURCE_VERSION,
-					source: { ...project, scene: { ...project.scene, entities } },
+					sourceKind: UNIT_SOURCE_KIND,
+					sourceVersion: UNIT_SOURCE_VERSION,
+					source: replaceUnitData(project, 'scene', { ...project.units.scene.data, entities }),
 					changes: [{ kind: 'scene-entity-scalar', subjectIds: [entityId], fields: ['receiveShadow'] }],
 					correspondence: [
 						{
 							relation: 'preserved',
-							before: sceneEntityReference(snapshot.sourceContentId, entityId),
-							after: sceneEntityReference(snapshot.sourceContentId, entityId)
+							before: sceneEntityReference(project.units.scene.header.contentRevision, entityId),
+							after: sceneEntityReference(project.units.scene.header.contentRevision, entityId)
 						}
 					],
 					diagnostics: []
@@ -458,17 +464,17 @@ export function createProofSceneScalarPlanner(): DomainPlanner<ProjectDocument> 
  * the install rolls back completely — no revision, no history entry, no mutated
  * source.
  */
-export function createInvalidCandidatePlanner(): DomainPlanner<ProjectDocument> {
+export function createInvalidCandidatePlanner(): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'conformance.invalid-candidate',
 		kind: PROOF_INVALID_CANDIDATE_KIND,
 		admission: { domain: 'scene', compound: false, units: false, resources: false },
-		sourceKinds: [CURRENT_SOURCE_KIND],
-		sourceVersions: [CURRENT_SOURCE_VERSION],
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare({ snapshot, intent }) {
 			const project = snapshot.domain.source;
-			const index = project.scene.entities.findIndex((entity) => entity.id === FIXTURE_ENTITY_ID);
-			const entity = index < 0 ? undefined : project.scene.entities[index];
+			const index = project.units.scene.data.entities.findIndex((entity) => entity.id === FIXTURE_ENTITY_ID);
+			const entity = index < 0 ? undefined : project.units.scene.data.entities[index];
 			if (entity === undefined || entity.kind !== 'primitive') {
 				return {
 					kind: 'rejected',
@@ -477,15 +483,15 @@ export function createInvalidCandidatePlanner(): DomainPlanner<ProjectDocument> 
 					diagnostics: []
 				};
 			}
-			const entities = [...project.scene.entities];
+			const entities = [...project.units.scene.data.entities];
 			entities[index] = { ...entity, materialInstanceId: 'material-does-not-exist' };
 			return {
 				kind: 'prepared',
 				candidate: {
 					operationId: intent.operationId,
-					sourceKind: CURRENT_SOURCE_KIND,
-					sourceVersion: CURRENT_SOURCE_VERSION,
-					source: { ...project, scene: { ...project.scene, entities } },
+					sourceKind: UNIT_SOURCE_KIND,
+					sourceVersion: UNIT_SOURCE_VERSION,
+					source: replaceUnitData(project, 'scene', { ...project.units.scene.data, entities }),
 					changes: [
 						{
 							kind: 'conformance-invalid-candidate',
@@ -504,9 +510,8 @@ export function createInvalidCandidatePlanner(): DomainPlanner<ProjectDocument> 
 /** A planner asking for a wider scope than `local-single-domain-v1` grants. */
 export function createOverreachingPlanner(scope: {
 	readonly compound?: boolean;
-	readonly units?: boolean;
-	readonly resources?: boolean;
-}): DomainPlanner<ProjectDocument> {
+	readonly units?: boolean;			readonly resources?: boolean;
+}): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'conformance.overreaching',
 		kind: 'conformance-overreaching',
@@ -516,8 +521,8 @@ export function createOverreachingPlanner(scope: {
 			units: scope.units ?? false,
 			resources: scope.resources ?? false
 		},
-		sourceKinds: [CURRENT_SOURCE_KIND],
-		sourceVersions: [CURRENT_SOURCE_VERSION],
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare({ intent }) {
 			return {
 				kind: 'rejected',

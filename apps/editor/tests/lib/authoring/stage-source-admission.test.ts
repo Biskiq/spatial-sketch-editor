@@ -1,4 +1,3 @@
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S02 — source admission: **admission equals runtime preparation**.
  *
@@ -24,8 +23,18 @@ import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
  */
 import { describe, expect, it } from 'vitest';
 
-import { CURRENT_SOURCE_VERSION, validateProject as validateWithoutHostCatalogue } from '@portfolio/project-model';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	EXPERIENCE_UNIT_FORMAT_VERSION,
+	createUnitAcceptanceAdapter,
+	prepareUnitRuntime,
+	readUnitEnvelopeForSave,
+	serializeProjectEnvelope,
+	type ExperienceUnitPayload,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
+import { compileWallFirstLayoutGeometry, LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { DEFAULT_STARTER_TEMPLATE } from '$lib/authoring/stage/starter-gallery';
 import {
 	admitSource,
@@ -37,8 +46,10 @@ import {
 	FIXTURE_PROJECT_ID,
 	FIXTURE_UNKNOWN_ASSET_ID,
 	buildFoldedPartitionProject,
-	buildUnknownAssetProject
+	buildUnknownAssetProject,
+	unknownAssetEntity
 } from './__fixtures__/f4-current-source-fixtures';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const PROJECT_ID = 'project-stage-admission';
 
@@ -53,13 +64,13 @@ function contextFor(projectId: string = PROJECT_ID): AdmissionContext {
 const CONTEXT: AdmissionContext = contextFor();
 
 /** The canonical starter enclosure: a real current-format source, built through the retained planner. */
-function starterSource() {
-	return DEFAULT_STARTER_TEMPLATE.build(PROJECT_ID, DEFAULT_STARTER_TEMPLATE.label);
+function starterSource(context: AdmissionContext = CONTEXT) {
+	return DEFAULT_STARTER_TEMPLATE.build(PROJECT_ID, DEFAULT_STARTER_TEMPLATE.label, context.acceptedRevision);
 }
 
 describe('source admission', () => {
 	it('admits a real current source with the caller identity, the shared content identity and a usable domain read', async () => {
-		const project = starterSource();
+		const project = await starterSource();
 		const before = JSON.stringify(project);
 
 		const outcome = await admitSource(project, CONTEXT);
@@ -75,8 +86,8 @@ describe('source admission', () => {
 		// The admitted source kind/version are declared, and the version is the
 		// landed current Layout format the project model names — never a literal
 		// that could drift from a format cutover.
-		expect(snapshot.sourceKind).toBe('project-current');
-		expect(snapshot.sourceVersion).toBe(CURRENT_SOURCE_VERSION);
+		expect(snapshot.sourceKind).toBe('unit-envelope');
+		expect(snapshot.sourceVersion).toBe(1);
 		// One content identity, digesting the canonical authored content, and the
 		// compile/representation generation derived from it: every fragment this
 		// host emits carries that generation.
@@ -91,7 +102,7 @@ describe('source admission', () => {
 		// physical Walls. The exact Wall count is the compiler's topology, which the
 		// Layout suites own; admission only has to have compiled something to draw.
 		const domain = snapshot.domain;
-		expect(currentStageSource(snapshot).source.id).toBe(PROJECT_ID);
+		expect(stageEnvelope(snapshot).id).toBe(PROJECT_ID);
 		expect(domain.geometry.floors).toHaveLength(1);
 		expect(domain.geometry.walls.length).toBeGreaterThan(0);
 		expect(domain.datumMeters).toBe(domain.geometry.floors[0]!.elevation);
@@ -106,7 +117,7 @@ describe('source admission', () => {
 		// warnings, so asserting only "they are warnings" would hold on an empty list,
 		// and the blocking half of the partition is pinned non-vacuously by the
 		// `diagnostics` case below.
-		const independent = compileWallFirstLayoutGeometry(currentStageSource(snapshot).source.layout);
+		const independent = compileWallFirstLayoutGeometry(stageLayout(snapshot));
 		const expectedWarnings = independent.issues.filter((issue) => issue.severity === 'warning');
 		expect(domain.warnings.map((issue) => issue.code).sort()).toEqual(
 			expectedWarnings.map((issue) => issue.code).sort()
@@ -115,7 +126,7 @@ describe('source admission', () => {
 	});
 
 	it('takes the datum from the compiled Floor and never invents one', async () => {
-		const outcome = await admitSource(starterSource(), CONTEXT);
+		const outcome = await admitSource(await starterSource(), CONTEXT);
 		expect(outcome.kind).toBe('admitted');
 		if (outcome.kind !== 'admitted') return;
 		const geometry = outcome.snapshot.domain.geometry;
@@ -137,11 +148,11 @@ describe('source admission', () => {
 	});
 
 	it('refuses a source the host\'s own Scene options refuse, though the option-less reader accepts it', async () => {
-		const project = buildUnknownAssetProject();
+		const project = await buildUnknownAssetProject();
 
 		// The discriminating fact: without the host catalogue the identical document
 		// validates, so this refusal is the host's own Scene options deciding.
-		expect(validateWithoutHostCatalogue(project).success).toBe(true);
+		expect(validateProjectEnvelope(project).success).toBe(true);
 
 		const outcome = await admitSource(project, contextFor(FIXTURE_PROJECT_ID));
 
@@ -154,17 +165,24 @@ describe('source admission', () => {
 	});
 
 	it('refuses a structurally valid document from an older format, naming the version', async () => {
-		const current = starterSource();
-		// The pair's version is what moves at a format cutover; every other field keeps
-		// its shape, so only a reader that actually validates the version refuses this.
+		const current = await starterSource();
+		// The Layout payload's version is what moves at a format cutover; every other
+		// field keeps its shape, so only a reader that actually validates the version
+		// refuses this.
 		const older = {
 			...current,
-			layout: { ...current.layout, formatVersion: CURRENT_SOURCE_VERSION - 1 }
+			units: {
+				...current.units,
+				layout: {
+					...current.units.layout,
+					data: { ...current.units.layout.data, formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION - 1 }
+				}
+			}
 		};
 
 		// The option-less reader refuses it too — the point is that admission does, and
 		// says which version it was given.
-		expect(validateWithoutHostCatalogue(older).success).toBe(false);
+		expect(validateProjectEnvelope(older).success).toBe(false);
 
 		const outcome = await admitSource(older, CONTEXT);
 		expect(outcome.kind).toBe('refused');
@@ -188,7 +206,7 @@ describe('source admission', () => {
 	});
 
 	it('admits an explicit source-JSON open as the same source the in-memory entry admits', async () => {
-		const project = starterSource();
+		const project = await starterSource();
 		const direct = await admitSource(project, CONTEXT);
 		expect(direct.kind).toBe('admitted');
 		if (direct.kind !== 'admitted') return;
@@ -206,7 +224,7 @@ describe('source admission', () => {
 		// The route is showing PROJECT_ID; this document is a valid current source for
 		// a different project. Filing its bytes under this project's accepted revision
 		// would mislabel both the source and its content identity.
-		const foreign = buildFoldedPartitionProject();
+		const foreign = await buildFoldedPartitionProject();
 		const outcome = await admitSource(foreign, CONTEXT);
 
 		expect(outcome.kind).toBe('refused');
@@ -218,7 +236,7 @@ describe('source admission', () => {
 	});
 
 	it('reports blocking compile issues as diagnostics and yields no snapshot at all', async () => {
-		const outcome = await admitSource(buildFoldedPartitionProject(), contextFor(FIXTURE_PROJECT_ID));
+		const outcome = await admitSource(await buildFoldedPartitionProject(), contextFor(FIXTURE_PROJECT_ID));
 
 		expect(outcome.kind).toBe('diagnostics');
 		if (outcome.kind !== 'diagnostics') return;
@@ -228,5 +246,125 @@ describe('source admission', () => {
 		// The structural guarantee: this outcome cannot carry a Stage snapshot, so a
 		// blocking source can never render a silent empty or partial Stage.
 		expect(Object.keys(outcome)).not.toContain('snapshot');
+	});
+
+	it('admits and discloses an executable-closure source without fabricating a resource', async () => {
+		const PIN = { hash: 'sha256-paper', mime: 'image/png', size: 512, locator: 'objects/paper' } as const;
+		const source: ProjectEnvelope = {
+			...await starterSource(),
+			dependencyLock: {
+				formatVersion: 1,
+				entries: [
+					{
+						domain: 'resource:texture',
+						subjectKind: 'resource',
+						subjectId: 'paper',
+						instancePath: [],
+						contentRevision: PIN.hash,
+						requiredCapabilities: [],
+						pin: PIN
+					}
+				]
+			}
+		};
+
+		// Preparation is not a structural refusal: the envelope is readable, and the
+		// closure it cannot satisfy travels as its own answer.
+		const prepared = prepareUnitRuntime(source);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') return;
+		expect(prepared.diagnostics).toEqual([]);
+		expect(prepared.closure.map((finding) => finding.code)).toEqual(['missing-resource']);
+
+		// The editor admits the source for reading and discloses the closure. It
+		// neither invents the missing resource nor rewrites the lock it authored.
+		const outcome = await admitSource(source, CONTEXT);
+		expect(outcome.kind).toBe('admitted');
+		if (outcome.kind !== 'admitted') return;
+		expect(outcome.snapshot.domain.closure.map((finding) => finding.code)).toEqual(['missing-resource']);
+		expect(outcome.snapshot.domain.diagnostics).toEqual([]);
+		expect(stageEnvelope(outcome.snapshot).units.resources.data.resources).toEqual([]);
+		expect(stageEnvelope(outcome.snapshot).dependencyLock).toEqual(source.dependencyLock);
+
+		// Execution refuses it: F4 acceptance and Save are the closure boundary.
+		const admitted = await createUnitAcceptanceAdapter({ compound: true }).admit(source, []);
+		expect(admitted.kind).toBe('rejected');
+		if (admitted.kind === 'rejected') {
+			expect(admitted.code).toBe('lock-closure');
+			expect(admitted.issues.map((issue) => issue.code)).toContain('missing');
+		}
+		const read = await readUnitEnvelopeForSave(serializeProjectEnvelope(source));
+		expect(read.kind).toBe('refused');
+		if (read.kind === 'refused') {
+			expect(read.code).toBe('invalid-project');
+			expect(read.issues.map((issue) => issue.code)).toContain('missing-resource');
+		}
+	});
+
+	it('keeps a known catalogue model with missing bytes inspectable but refuses execution', async () => {
+		const source = await createUnitProject({
+			id: PROJECT_ID,
+			name: 'Missing model resource',
+			scene: { formatVersion: 2, textures: [], materials: [], entities: [
+				{ ...unknownAssetEntity(), assetId: 'paris-grand-piano' }
+			] }
+		});
+		const structural = validateProjectEnvelope(source);
+		expect(structural.success).toBe(true);
+		const admitted = await admitSource(source, CONTEXT);
+		expect(admitted.kind).toBe('admitted');
+		if (admitted.kind !== 'admitted') return;
+		expect(admitted.snapshot.domain.closure).toEqual([
+			expect.objectContaining({ code: 'missing-resource', message: expect.stringContaining('paris-grand-piano') })
+		]);
+		expect(stageEnvelope(admitted.snapshot).units.resources.data.resources).toEqual([]);
+		expect(stageEnvelope(admitted.snapshot).dependencyLock.entries).toEqual([]);
+		expect((await createUnitAcceptanceAdapter({ compound: true }).admit(source, [])).kind).toBe('rejected');
+		expect((await readUnitEnvelopeForSave(serializeProjectEnvelope(source))).kind).toBe('refused');
+	});
+
+	it('discloses repairable authored diagnostics without blocking admission, acceptance or Save', async () => {
+		const experience: ExperienceUnitPayload = {
+			formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+			experiences: [
+				{
+					id: 'experience-a',
+					label: 'Experience A',
+					entryGuideId: 'guide-1',
+					presentations: [{ id: 'presentation-1', label: 'Entry', viewId: 'view-absent' }],
+					stops: [
+						{
+							id: 'stop-1',
+							presentationId: 'presentation-1',
+							holdSeconds: 0,
+							continuation: { kind: 'end' }
+						}
+					],
+					guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
+					gates: [],
+					detours: []
+				}
+			]
+		};
+		const source = await createUnitProject({ id: PROJECT_ID, name: 'Repairable', experience });
+
+		const prepared = prepareUnitRuntime(source);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') return;
+		expect(prepared.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view']);
+		expect(prepared.closure).toEqual([]);
+
+		const outcome = await admitSource(source, CONTEXT);
+		expect(outcome.kind).toBe('admitted');
+		if (outcome.kind !== 'admitted') return;
+		expect(outcome.snapshot.domain.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view']);
+		expect(outcome.snapshot.domain.closure).toEqual([]);
+
+		// The binding is preserved as authored; admission does not resolve it by
+		// inventing a Camera view, and the non-blocking diagnostic does not become a
+		// closure finding.
+		expect(stageEnvelope(outcome.snapshot).units.camera.data.views).toEqual([]);
+		expect((await createUnitAcceptanceAdapter({ compound: true }).admit(source, [])).kind).toBe('admitted');
+		expect((await readUnitEnvelopeForSave(serializeProjectEnvelope(source))).kind).toBe('read');
 	});
 });

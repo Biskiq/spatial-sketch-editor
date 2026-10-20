@@ -15,19 +15,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-	CURRENT_SOURCE_KIND,
-	CURRENT_SOURCE_VERSION,
-	admitCurrentSource,
-	admitCurrentSourceContent,
-	createCurrentSourceAdapter,
-	createEmptyWallFirstProject,
 	createScenePlanners,
 	checkSceneRecordScope,
-	finalizeSceneCandidate,
-	validateProject,
+	finalizeSceneCandidate
+} from '@portfolio/project-model/scene-planning';
+import {
 	type AuthoringIntent,
 	type DomainPlanner,
-	type ProjectDocument,
 	type SceneDocument,
 	type SceneEntity,
 	type ScenePrimitiveEntity,
@@ -35,21 +29,33 @@ import {
 	type Vec3
 } from '@portfolio/project-model';
 import {
+	replaceUnitData,
+	validateProjectEnvelope,
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
+import {
+	createEmptyWallFirstLayoutDocument,
 	planCommitLayoutObjectPreset,
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import { nativePlacementDefinition } from '$lib/authoring/scene/object-definition-policy';
-import {
-	createAcceptanceCoordinator,
-	type AcceptanceCoordinator
-} from '$lib/authoring/f4/acceptance-coordinator';
+import type { AcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
 	PROOF_LAYOUT_TRANSFORM_KIND,
 	createProofLayoutPlanner,
 	layoutObjectReference,
 	proofIntent
-} from '../authoring/__fixtures__/f4-current-source-fixtures';
+} from './__fixtures__/f4-current-source-fixtures';
+import {
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	admitUnitContent,
+	admitUnitProject,
+	createUnitCoordinator,
+	createUnitProject
+} from './__fixtures__/unit-envelope-fixtures';
 
 const BOOT_REVISION = { projectId: 'project-scene-operations', revisionId: 'revision-1' };
 const ELEVATION = 2.5;
@@ -88,7 +94,6 @@ function sceneWith(
 				cameraTarget: [1, 1.25, -2],
 				fov: 54,
 				connectedNodeIds: ['tour-b'],
-				nextNodeId: 'tour-b'
 			},
 			{
 				id: 'tour-b',
@@ -97,7 +102,6 @@ function sceneWith(
 				cameraTarget: [4, 1.25, 0],
 				fov: 54,
 				connectedNodeIds: ['tour-a'],
-				previousNodeId: 'tour-a'
 			}
 		],
 		connections: [
@@ -113,9 +117,9 @@ function sceneWith(
 }
 
 function enclosedLayout(elevation = 0): LayoutDocumentWallFirst {
-	const base = createEmptyWallFirstProject({ id: BOOT_REVISION.projectId, name: 'Gallery' });
+	const base = createEmptyWallFirstLayoutDocument();
 	const planned = planWallChain({
-		baseline: { ...base.layout, floor: { ...base.layout.floor, elevation } },
+		baseline: { ...base, floor: { ...base.floor, elevation } },
 		points: [
 			[0, 0],
 			[7, 0],
@@ -129,9 +133,16 @@ function enclosedLayout(elevation = 0): LayoutDocumentWallFirst {
 	return planned.document;
 }
 
+type LegacyConformanceProject = {
+	readonly id: string;
+	readonly name: string;
+	readonly layout: LayoutDocumentWallFirst;
+	readonly scene: SceneDocument;
+};
+
 /** A supported project plus one real Layout object for the mixed-domain history. */
 function conformanceProject(elevation = ELEVATION): {
-	readonly project: ProjectDocument;
+	readonly project: LegacyConformanceProject;
 	readonly layoutObjectId: string;
 } {
 	const objectPlan = planCommitLayoutObjectPreset(enclosedLayout(elevation), 'plinth', [0, 0], 0);
@@ -206,38 +217,47 @@ function placeIntent(input: {
 	};
 }
 
-function cameraBytes(scene: SceneDocument): string {
-	return JSON.stringify({ navigationNodes: scene.navigationNodes, connections: scene.connections });
+function cameraBytes(camera: ProjectEnvelope['units']['camera']['data']): string {
+	return JSON.stringify({ views: camera.views, connections: camera.connections });
 }
 
 async function boot(options: { readonly elevation?: number } = {}) {
 	const { project, layoutObjectId } = conformanceProject(options.elevation ?? ELEVATION);
-	const admitted = await admitCurrentSource(project, { acceptedRevision: BOOT_REVISION });
+	const envelope = await createUnitProject({
+		id: project.id,
+		name: project.name,
+		acceptedRevision: BOOT_REVISION,
+		layout: project.layout,
+		scene: project.scene
+	});
+	const admitted = await admitUnitProject(envelope, BOOT_REVISION);
 	if (admitted.kind !== 'admitted') {
 		throw new Error(`the conformance project was not admitted: ${JSON.stringify(admitted.issues)}`);
 	}
 	const definition = await nativePlacementDefinition('box');
 	const scenePlanners = createScenePlanners({ definitions: [definition] });
-	const coordinator = createAcceptanceCoordinator<ProjectDocument>({
-		adapter: createCurrentSourceAdapter(),
+	const coordinator = await createUnitCoordinator({
 		sessionEpoch: 'session-1',
 		baseline: {
 			revision: BOOT_REVISION,
 			source: admitted.project,
 			canonicalJson: admitted.canonicalJson,
-			sourceContentId: admitted.sourceContentId,
-			blockingIssues: admitted.blockingIssues
+			sourceContentId: admitted.sourceContentId
 		},
 		planners: [...scenePlanners, createProofLayoutPlanner(layoutObjectId)],
 		mintRevisionId: (ordinal: number) => `revision-${ordinal + 1}`
 	});
-	return { coordinator, fixture: { project, layoutObjectId }, definition, admitted, scenePlanners };
+	return { coordinator, fixture: { project: envelope, layoutObjectId }, definition, admitted, scenePlanners };
 }
 
 /** The current accepted revision/content, as a caller captures an intent. */
-function now(coordinator: AcceptanceCoordinator<ProjectDocument>) {
+function now(coordinator: AcceptanceCoordinator<ProjectEnvelope>) {
 	const state = coordinator.current();
-	return { intentRevision: state.revision, contentId: state.sourceContentId };
+	return {
+		intentRevision: state.revision,
+		contentId: state.source.units.scene.header.contentRevision,
+		layoutContentId: state.source.units.layout.header.contentRevision
+	};
 }
 
 describe('Scene operations through the F.4 coordinator', () => {
@@ -255,30 +275,28 @@ describe('Scene operations through the F.4 coordinator', () => {
 				PROOF_LAYOUT_TRANSFORM_KIND
 			].sort()
 		);
-		expect(coordinator.sourceKind).toBe(CURRENT_SOURCE_KIND);
-		expect(coordinator.acceptedSnapshot().sourceVersion).toBe(CURRENT_SOURCE_VERSION);
+		expect(coordinator.sourceKind).toBe(UNIT_SOURCE_KIND);
+		expect(coordinator.acceptedSnapshot().sourceVersion).toBe(UNIT_SOURCE_VERSION);
 	});
 
 	it('installs one placement once, undoes it exactly and redoes the captured identity without planning', async () => {
 		const { admitted, scenePlanners, fixture } = await boot();
 		const scenePlanner = scenePlanners.find((planner) => planner.kind === 'place-object')!;
 		let preparationCount = 0;
-		const counted: DomainPlanner<ProjectDocument> = {
+		const counted: DomainPlanner<ProjectEnvelope> = {
 			...scenePlanner,
 			prepare(request) {
 				preparationCount += 1;
 				return scenePlanner.prepare(request);
 			}
 		};
-		const wrappedCoordinator = createAcceptanceCoordinator<ProjectDocument>({
-			adapter: createCurrentSourceAdapter(),
+		const wrappedCoordinator = await createUnitCoordinator({
 			sessionEpoch: 'session-1',
 			baseline: {
 				revision: BOOT_REVISION,
 				source: admitted.project,
 				canonicalJson: admitted.canonicalJson,
-				sourceContentId: admitted.sourceContentId,
-				blockingIssues: admitted.blockingIssues
+				sourceContentId: admitted.sourceContentId
 			},
 			planners: [
 				counted,
@@ -316,8 +334,10 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(preparationCount).toBe(1);
 
 		const placed = wrappedCoordinator.current();
-		expect(placed.source.scene.entities.at(-1)!.position).toEqual([3, ELEVATION + 0.5, 2]);
-		expect(cameraBytes(placed.source.scene)).toBe(cameraBytes(admitted.project.scene));
+		expect(placed.source.units.scene.data.entities.at(-1)!.position).toEqual([3, ELEVATION + 0.5, 2]);
+		expect(cameraBytes(placed.source.units.camera.data)).toBe(
+			cameraBytes(admitted.envelope.units.camera.data)
+		);
 
 		const undo = await wrappedCoordinator.undo();
 		expect(undo.kind).toBe('restored');
@@ -332,8 +352,8 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(redone.canonicalJson).toBe(placed.canonicalJson);
 		expect(redone.sourceContentId).toBe(placed.sourceContentId);
 		// Redo restored the captured id and pose; no planner ran again.
-		expect(redone.source.scene.entities.at(-1)!.id).toBe('entity-new');
-		expect(redone.source.scene.entities.at(-1)!.position).toEqual([3, ELEVATION + 0.5, 2]);
+		expect(redone.source.units.scene.data.entities.at(-1)!.id).toBe('entity-new');
+		expect(redone.source.units.scene.data.entities.at(-1)!.position).toEqual([3, ELEVATION + 0.5, 2]);
 		expect(preparationCount).toBe(1);
 	});
 
@@ -352,8 +372,8 @@ describe('Scene operations through the F.4 coordinator', () => {
 				operationId,
 				expectedRevision: state.intentRevision.revisionId,
 				projectId: state.intentRevision.projectId,
-				contentRevision: state.contentId,
-				targets: [layoutObjectReference(state.contentId, fixture.layoutObjectId)],
+				contentRevision: state.layoutContentId,
+				targets: [layoutObjectReference(state.layoutContentId, fixture.layoutObjectId)],
 				payload: { objectId: fixture.layoutObjectId, position }
 			});
 		const moveIntent = (state: ReturnType<typeof now>, operationId: string, x: number, z: number) =>
@@ -529,7 +549,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 		const second = await coordinator.accept(yawIntent(now(coordinator), 'op-second', -0.4));
 		expect(second.kind).toBe('accepted');
 		const afterSecond = coordinator.current();
-		const rotation = afterSecond.source.scene.entities[0]!.rotation;
+		const rotation = afterSecond.source.units.scene.data.entities[0]!.rotation;
 		expect(rotation[0]).toBe(0);
 		expect(rotation[1]).toBeCloseTo(-0.4, 12);
 		expect(rotation[2]).toBe(0);
@@ -551,17 +571,20 @@ describe('Scene operations through the F.4 coordinator', () => {
 		const before = coordinator.current();
 		const historyBefore = coordinator.history();
 		const installsBefore = coordinator.installs();
-		const bypassed: SceneDocument = {
-			...before.source.scene,
-			entities: [...before.source.scene.entities, box('entity-bypass', [5, ELEVATION + 0.5, 4])]
+		const bypassed: CameraFreeSceneDocument = {
+			...before.source.units.scene.data,
+			entities: [
+				...before.source.units.scene.data.entities,
+				box('entity-bypass', [5, ELEVATION + 0.5, 4])
+			]
 		};
-		const admitted = await admitCurrentSourceContent({ ...before.source, scene: bypassed });
+		const admitted = await admitUnitContent(replaceUnitData(before.source, 'scene', bypassed));
 		expect(admitted.kind).toBe('admitted');
 
 		expect(coordinator.current()).toEqual(before);
-		expect(coordinator.current().source.scene.entities.map((entity) => entity.id)).not.toContain(
-			'entity-bypass'
-		);
+		expect(
+			coordinator.current().source.units.scene.data.entities.map((entity) => entity.id)
+		).not.toContain('entity-bypass');
 		expect(coordinator.acceptedRevision()).toEqual(before.revision);
 		expect(coordinator.history()).toEqual(historyBefore);
 		expect(coordinator.installs()).toBe(installsBefore);
@@ -591,17 +614,19 @@ describe('Scene operations through the F.4 coordinator', () => {
 			}
 		]);
 		const afterDelete = coordinator.current();
-		expect(afterDelete.source.scene.entities.map((entity) => entity.id)).not.toContain('entity-b');
+		expect(afterDelete.source.units.scene.data.entities.map((entity) => entity.id)).not.toContain(
+			'entity-b'
+		);
 		// The two-member cluster falls below the format minimum, so the accepted
 		// candidate drops it in the same operation.
-		expect(afterDelete.source.scene.clusters ?? []).toEqual([]);
+		expect(afterDelete.source.units.scene.data.clusters ?? []).toEqual([]);
 
 		const undo = await coordinator.undo();
 		expect(undo.kind).toBe('restored');
 		// Exact prior snapshot, not a re-derived equivalent: same bytes, same content.
 		expect(coordinator.current().canonicalJson).toBe(before.canonicalJson);
 		expect(coordinator.current().sourceContentId).toBe(before.sourceContentId);
-		expect(coordinator.current().source.scene.clusters).toEqual([
+		expect(coordinator.current().source.units.scene.data.clusters).toEqual([
 			{ id: 'cluster-1', name: 'Group', memberIds: ['entity-b', 'entity-c'] }
 		]);
 
@@ -613,37 +638,41 @@ describe('Scene operations through the F.4 coordinator', () => {
 	it('refuses a mutation-control candidate the adapter admits, through the T2 record-scope guard', async () => {
 		const { coordinator } = await boot();
 		const before = coordinator.current();
-		const mutatedScene: SceneDocument = {
-			...before.source.scene,
-			entities: before.source.scene.entities.map((entity) =>
+		const mutatedScene: CameraFreeSceneDocument = {
+			...before.source.units.scene.data,
+			entities: before.source.units.scene.data.entities.map((entity) =>
 				entity.id === 'entity-b' ? box('entity-b', [6, ELEVATION + 0.5, 5]) : entity
 			)
 		};
-		const clusterMutatedScene: SceneDocument = {
-			...before.source.scene,
+		const clusterMutatedScene: CameraFreeSceneDocument = {
+			...before.source.units.scene.data,
 			clusters: [{ id: 'cluster-1', name: 'Group', memberIds: ['entity-b', 'entity-a'] }]
 		};
 
 		// The landed adapter itself admits these documents: record-level scope is not
 		// its concern, which is exactly why T2 must own it.
-		expect((await admitCurrentSourceContent({ ...before.source, scene: mutatedScene })).kind).toBe('admitted');
-		expect((await admitCurrentSourceContent({ ...before.source, scene: clusterMutatedScene })).kind).toBe('admitted');
+		expect(
+			(await admitUnitContent(replaceUnitData(before.source, 'scene', mutatedScene))).kind
+		).toBe('admitted');
+		expect(
+			(await admitUnitContent(replaceUnitData(before.source, 'scene', clusterMutatedScene))).kind
+		).toBe('admitted');
 
 		function mutationControl(input: {
 			readonly kind: string;
-			readonly scene: SceneDocument;
+			readonly scene: CameraFreeSceneDocument;
 			readonly changedEntityIds: readonly string[];
 			readonly changedEntityFields: readonly string[];
-		}): DomainPlanner<ProjectDocument> {
+		}): DomainPlanner<ProjectEnvelope> {
 			return {
 				id: `conformance.${input.kind}`,
 				kind: input.kind,
 				admission: { domain: 'scene', compound: false, units: false, resources: false },
-				sourceKinds: [CURRENT_SOURCE_KIND],
-				sourceVersions: [CURRENT_SOURCE_VERSION],
+				sourceKinds: [UNIT_SOURCE_KIND],
+				sourceVersions: [UNIT_SOURCE_VERSION],
 				prepare({ snapshot, intent }) {
 					const finalized = finalizeSceneCandidate({
-						before: snapshot.domain.source.scene,
+						before: snapshot.domain.source.units.scene.data,
 						after: input.scene,
 						scope: {
 							operationKind: 'move-horizontal',
@@ -668,7 +697,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 							operationId: intent.operationId,
 							sourceKind: snapshot.sourceKind,
 							sourceVersion: snapshot.sourceVersion,
-							source: { ...snapshot.domain.source, scene: finalized.scene },
+							source: replaceUnitData(snapshot.domain.source, 'scene', finalized.scene),
 							changes: [],
 							correspondence: [],
 							diagnostics: []
@@ -720,7 +749,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 		expect(coordinator.history()).toEqual({ depth: 1, position: 0, limit: 100 });
 		// The guard reports the untargeted records, not just a generic refusal.
 		expect(
-			checkSceneRecordScope(before.source.scene, mutatedScene, {
+			checkSceneRecordScope(before.source.units.scene.data, mutatedScene, {
 				operationKind: 'move-horizontal',
 				changedEntityIds: ['entity-a'],
 				changedEntityFields: ['position'],
@@ -730,7 +759,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 			}).some((issue) => issue.path.includes('entity-b'))
 		).toBe(true);
 		expect(
-			checkSceneRecordScope(before.source.scene, clusterMutatedScene, {
+			checkSceneRecordScope(before.source.units.scene.data, clusterMutatedScene, {
 				operationKind: 'move-horizontal',
 				changedEntityIds: [],
 				changedEntityFields: [],
@@ -743,7 +772,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 
 	it('keeps Camera-bearing bytes identical through every accepted operation', async () => {
 		const { coordinator, admitted } = await boot();
-		const bootCamera = cameraBytes(admitted.project.scene);
+		const bootCamera = cameraBytes(admitted.envelope.units.camera.data);
 
 		const placeState = now(coordinator);
 		const placed = await coordinator.accept(
@@ -762,7 +791,7 @@ describe('Scene operations through the F.4 coordinator', () => {
 			})
 		);
 		expect(placed.kind).toBe('accepted');
-		expect(cameraBytes(coordinator.current().source.scene)).toBe(bootCamera);
+		expect(cameraBytes(coordinator.current().source.units.camera.data)).toBe(bootCamera);
 
 		const operations: Array<{
 			readonly kind: string;
@@ -840,8 +869,11 @@ describe('Scene operations through the F.4 coordinator', () => {
 				})
 			);
 			expect(result.kind, operation.operationId).toBe('accepted');
-			expect(cameraBytes(coordinator.current().source.scene), operation.operationId).toBe(bootCamera);
+			expect(
+				cameraBytes(coordinator.current().source.units.camera.data),
+				operation.operationId
+			).toBe(bootCamera);
 		}
-		expect(validateProject(coordinator.current().source).success).toBe(true);
+		expect(validateProjectEnvelope(coordinator.current().source).success).toBe(true);
 	});
 });

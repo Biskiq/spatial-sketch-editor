@@ -2,18 +2,18 @@
 
 **Read when:** scene/layout/project codecs, cloud Save/Load, asset durability, publication,
 release delivery, fidelity.
-**Last reviewed:** 2026-10-13 (#115 WP4 — strict current-format generation; the editor session,
-import/export and the chronological history stack are gone; `chopin-project.json` is scoped to the
-frozen external project). The ratified direction below is unchanged; a landed contract keeps
-describing current behavior until its explicit cutover.
+**Last reviewed:** 2026-10-20 (T3.P01.S04 implementation; PR #158 review pending).
+The code contract below describes the F2 cutover tree. Deployment and migration 005 remain
+owner-controlled after merge; it does not claim production activation.
 
 ---
 
 ## Current vs destination (ratified 2026-09-27)
 
-**Current (everything below, until its explicit cutover).** The Layout/Scene codecs, the
-`ProjectDocument` envelope, cloud Save/Load and the P22 release path are the landed
-implementation.
+**Current implementation.** The one live source is F2 `ProjectEnvelope`: Layout, Scene, Camera,
+Experience and resources, each codec-versioned, with accepted-revision provenance and a dependency
+lock. Boot, starter, empty, Open, Download and Save use that envelope exclusively.
+`prepareUnitRuntime` compiles Layout, resolves Scene and derives connectivity from the Camera unit.
 
 **Destination.**
 
@@ -49,48 +49,24 @@ implementation.
   exceptions; merging a development schema does not create permanent
   compatibility.
 
-**Open:** history implementation (snapshot/op-log/CRDT), and exact
-codec/envelope interfaces are drafted by their first consumer then ratified as
-F amendments. Camera is settled as its own codec-bounded unit, split in the
-same cutover as the Experience order cutover
+**Further changes:** collaboration/history alternatives and future codec meanings require
+versioned F amendments. Camera and Experience already have distinct codec-bounded units
 ([`../composition-execution.md`](../composition-execution.md)).
 
-## One document format (post-#115)
+## One source format (F2 clean epoch)
 
-The product supports **one** document format and accepts nothing else:
+`ProjectEnvelope` format 1 contains `id`, `name`, `acceptedRevision`, `dependencyLock` and
+`units`. Unit payload versions are Layout 5, Scene 2, Camera 1, Experience 1 and resources 1.
+Only declared F2 versions are admitted; old files, mixed roots, old drafts and unknown versions
+refuse. There is no converter, format sniffing, fallback or dual write.
 
-- wall-first Layout, `formatVersion: 5`;
-- world-local Scene, `formatVersion: 1`.
-
-There is deliberately **no legacy recognition contract**: no `unsupported_generation`
-diagnostic, no legacy detector or classifier, no compatibility facade and no migration path.
-`project-compat`, `scene-world-conversion`, `standalone-scene-import`, the legacy Scene decoder,
-the legacy `createEmptyProject`, and layout-core's `layout-compat`, `layout-migration` and
-`layout-migration-math` were removed with their readers; `prepareCompatibleRuntime` became
-`prepareRuntime`. A malformed, incomplete or historical payload **still fails**, by ordinary
-current-format validation with the validator's own message — no schema rule is relaxed and no
-unknown field or missing `formatVersion` is tolerated.
-
-The current-format validation, canonicalization and deterministic serialization rules are
-otherwise unchanged: what a valid document means did not move.
-
-**Scene:** `textures` · `materials` · `entities` · `clusters?` · `navigationNodes` ·
-`connections`. Canonical shape is world-local (`formatVersion: 1`): project/world coordinates, no
-`roomId` (codec-enforced). The former versionless room-local compatibility shape (room-frame
-coordinates plus `roomId`) is **no longer decoded** — it is not converted on import and is never
-authored. Primitives: `box|plane|cylinder|sphere` only. Connection view tracks retain `forward` /
-`reverse` key arrays and may add a directional `framingEnvelope`; each present direction has
-exactly four finite ordered unit-interval bounds (`enterStart ≤ enterEnd ≤ exitStart ≤ exitEnd`).
-Canonical output deep-clones and emits the envelope only when authored; absence stays absent. The
-standalone scene codec forbids `roomId`; envelope shape/order is validated, and the project codec
-owns cross-document room-reference + world-space camera-pose validation and repeats envelope
-range/order checks at export. The canonical scene/project model and codecs live in
-`@portfolio/project-model`. The editor's `lib/content/scene.ts` `resolveSceneDocument` is the
-retained runtime seam over that model, and it no longer carries a Room-registry parameter where
-one existed only for room-local resolution. `SceneTextureAsset = { id, name, uri }` (P20 S0):
-static safe URIs remain public resources, `/local/...` and package rewrites are session/package
-only, and `/project-assets/{assetId}` is a logical authenticated registry reference resolved by
-the product app.
+Scene 2 carries `textures`, `materials`, `entities` and optional `clusters`; it carries no Camera
+or editorial fields. Camera carries Views and connections. Connection endpoints are generated,
+only interior anchors are authored, and directional framing envelopes retain their kernel rules.
+`validateProjectEnvelope` separates structural issues, repairable authored diagnostics and
+executable resource closure. The Stage discloses diagnostics and closure for inspection without
+inventing resources; closure refuses F4 acceptance, Save and release. An unresolved View remains
+repairable authored state and disables the affected visitor behavior.
 
 **Layout:** canonical `units: 'meters'`. Canonical Layout is wall-first (`formatVersion: 5`): one
 floor datum, junctions → walls → reconciled rooms → openings → layout objects, project/world-local.
@@ -107,39 +83,35 @@ re-pointed at it are gone.
 
 **Layout Junction identity at commit (P23.1→P23.15):** resolution is global — a draft endpoint falling within the `1e-9` identity tolerance of any Junction in the baseline adopts that Junction's stored coordinate and its ID, and connectivity follows from the committed record. Retirement is scoped — noding retires only the coincident duplicate records participating in the committed relationship, because a baseline already carrying two records for one node is a pre-existing identity defect that a gesture must not silently rewrite. Snapping is separate — an unaccepted snap suggestion, a hover/acquire radius and screen-space proximity have no effect by themselves; what connects is the committed coordinate, so exact or near-exact unsnapped input can join an existing Junction, deliberately. The tolerance is a coordinate identity tolerance only, never a screen-space acquisition or geometry/intersection tolerance. Core and editor closure are distinct: the planner closes a chain implicitly when its final point coincides with its first, while the editor run closes it by resolved Junction ID. Captured from P23.1→P23.15, where commit-time identity existed only in code and slice plans.
 
-**Editor workspace (removed).** The Layout Plan workspace, the editor layout session
-(import/copy/download/reset over `layout.json`), the room-unit relocation command, the transient
-independent scene/layout documents and their domain dirtiness checks were editor machinery and
-were removed with the editor shell in #115 (implementation-plan §4.4). The canonical
-`serializeLayoutDocument()` baseline and the layout-core planner behavior they sat on survive as
-pure kernel semantics; their authoring wiring is a T1/T3 rebuild, and the product cannot currently
-author Layout at all.
+**Editor workspace.** One Stage acceptance host installs unit candidates through F4. T1 Layout
+and T2 Scene planners retain separate ownership and share one chronological, bounded history.
+Open, starter, empty, Reload and pending-Save Resume replace the session through the host's
+unsaved-work and session-lifetime guards. No Undo crosses a replacement baseline.
 
 **Layout object transforms:** `position` = world/layout center; Euler `rotation` = radians;
 `dimensions` = full local extents before rotation. Plan footprints + bounds use rotation-aware
 world AABBs. Authored `box | plane | cylinder | sphere` objects are editable; imported `profile`
 objects round-trip unchanged and are read-only.
 
-**Project:** `{ id, name, layout, scene }`. The visitor-safe shared codec validates the nested
-layout and scene in one shape, prefixes nested issues, and rejects scene room references absent
-from the same layout. **In the frozen external project** (no longer in this repository) the
-`chopin-project.json` / `chopin-project.ts` pair is that project's sole production layout/scene
-source and validates once to expose the project, one room registry, the resolved scene, a
-navigation graph and the runtime. **Product cloud and guest projects are independent of it:** a
-product project is the `ProjectDocument` saved through `apps/api` and read by
-`@portfolio/project-model` (`validateProject` / `prepareRuntime`), with no Chopin file involved.
-No assets, binary payloads, UI or history live in the envelope. Portable package IDs,
-manifest/filename rules and `sha256Bytes` also live in `@portfolio/project-model`; the ZIP/Blob
-orchestration that used to sit in the editor import/export path was removed with the editor shell.
+**Project and Save.** `captureUnitSave` stamps the accepted revision into canonical persistence
+bytes; the mounted source keeps its embedded baseline provenance. Dirty/history comparisons use
+the captured mounted bytes, while the server validates the stamped capture. Save compares a
+`create-only` or `expected-saved-base` precondition, appends a version under a row lock and records
+an idempotent operation receipt. Reusing a revision for changed contents or an operation for changed
+bytes refuses. One concurrent saved-base contender wins; the loser preserves local work and gets a
+conflict. A network-ambiguous retry replays the exact capture. Reload is explicit replacement.
 
-**Cloud persistence (P19 shipped 2026-09-03):** authenticated owned Save/Load wraps the same
-canonical `ProjectDocument` — a `projects` row plus versioned JSONB in `project_versions`. Save
-validates the full current-format document, locks the project row, appends a version, and bumps
-`latest_version`; Load reads the latest version and revalidates; the project hub lists owned
-projects with their versions. Save takes no expected-base-version precondition today — row locking
-serializes writes but a stale full document can still save as a newer version; a stale-write /
-revision precondition is a ratified destination obligation (F.4) before simultaneous human/agent
-writers, not current behavior.
+**Sign-in recovery (TD-9).** Before redirect the Save-owned pending-capture seam stores the exact
+F2 request in session storage. The auth return page routes to `resume-save`; the spatial route
+offers it even after a cloud 404 for a create-only request. Only explicit Resume installs and
+replays it with the original operation ID and precondition. Cancellation preserves source,
+selection, history and saved base; stale admission after replacement cannot install.
+
+**Clean epoch.** Migration 005 removes authored rows in one transaction and installs the
+`unit-envelope-v1` schema fence, retaining users and migration history. The runner holds a session
+advisory lock; rerun is a no-op and pre-epoch writers refuse. Namespace-owned R2 purge is a separate
+owner action after the epoch; unknown or foreign keys refuse the purge. No production data reset
+or deployment is implied by this source contract. Activation follows AM-9's owner-run runbook.
 
 **Project asset durability (P20 shipped 2026-09-04):** registry metadata in Postgres, heavy
 texture bytes in private R2 through `apps/api` only. Session/package texture URIs cannot reach
@@ -147,20 +119,17 @@ semantic JSONB Save (durability gate). Assets are not normalized into `ProjectDo
 registry/storage boundary stays separate, and each asset row carries `importState`
 (pending/ready/failed), `mime`, `byteSize`, `sha256` and `objectKey`.
 
-**Publish + releases (P22 shipped 2026-09-08):** one `publications` row per project (unique project ID, unique random public ID allocated only by first Publish, nullable active version, monotonic publication revision, timestamps) plus immutable `releases` keyed by `(project_id, version)` carrying the validated delivery manifest (saved `ProjectDocument` snapshot + pinned P20 asset key/SHA-256/MIME/size). Publish/Update/Unpublish run a short SQL transaction (row lock, ownership + expected-revision + saved-version recheck, release insert/reuse, active-pointer switch, revision bump); R2 verification (bounded streaming hash/size/MIME check) happens before the transaction, never inside it, and publication **fails closed** on a pending, missing, corrupt or wrong-size asset. First publish alone allocates the stable public ID; status GET never creates one. ABA (`N → unpublished → N`) still bumps revision, so stale writers get 409. Anonymous reads resolve the active release once per bootstrap (document + manifest share one version); unpublish disables all document/byte delivery for that public ID. `Cache-Control: no-store` on public metadata/bytes. Owner API: `GET/PUT/DELETE /projects/:id/publication`; anonymous: `GET /publications/:id` plus version-qualified asset content. This is the current path to cut over to the versioned prepared-payload reader (T4); publication pointers belong to published Experiences in the destination, not exclusively to the project. The product's publication **UI** is removed — the API is the current surface.
+**Publication gap (AM-9).** Publish/Update return `501 prepared-reader-required`. Public metadata
+and asset reads return honest 404 with `Cache-Control: no-store`; no old-document reader is a live
+delivery fallback. Owned status and OCC-checked Unpublish remain. T4 owns the prepared reader.
 
 **Asset policy:** static safe URIs remain public resources; scene model entities reference shipped
 catalogue `assetId`s. Project-local GLB import is absent: the editor's ingest/resource staging path
 was removed with the editor shell, and rebuilding it is a T2 obligation, not a current capability.
 
-**History (removed; F.4 is the destination).** The editor's one chronological undo stack — entries
-tagged `layout` | `scene`, a 100-entry cap, domain-scoped undo/redo, no-op skipping and
-import/reset clearing the stack — was editor-session state and was removed with the editor shell.
-It was never serialized and was never a collaboration operation log. The accepted destination is
-the F.4 model above: one expected project revision, validated typed intents across affected
-domains and resource locks, and one atomic accepted result with one undo result
-([`../composition-execution.md`](../composition-execution.md)). The history implementation stays
-an open decision there.
+**History.** One F4 chronological stack holds at most 100 accepted operations, skips no-ops,
+truncates redo after a new edit and mints fresh revisions on Undo/Redo. Session selection, generated
+geometry, renderer handles and history are never serialized. This is not a collaboration log.
 
 **Session-only (editor, removed):** the session `scaleVector` map, lighting overrides, UI chrome
 and pending ghosts were editor session state and went with the editor shell. The pure

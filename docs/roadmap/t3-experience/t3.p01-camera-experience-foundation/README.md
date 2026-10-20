@@ -1,6 +1,6 @@
 # T3.P01 — Camera/Experience cutover foundation
 
-**Phase:** T3.P01 · **Status:** registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
+**Phase:** T3.P01 · **Status:** closable (final gate `T3.P01.S04` accepted and shipped by routine closeout 2026-10-20; phase-closeout remains a separate owner action) — registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
 `T3.P01.S02` shipped 2026-10-16 (PR #133), accepted with `conditional-save-current-v1`;
 `T3.P01.S03` shipped 2026-10-17 (PRs #140/#141) through its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md),
 with its original obligations reconciled; `T3.P01.S05` shipped with both unit capabilities accepted
@@ -30,9 +30,9 @@ compound acceptance and runtime preparation (S03) and the live ownership cutover
 the provider of `T3.camera-experience-cutover@1` and this phase's final gate. The proposal's first
 capture/Cut Preview slice and its integrated gate become the candidate next phase,
 [T3.P02 — First capture and Cut Preview](../t3.p02-capture-and-cut-preview/README.md): they consume a
-cutover gate that was then `undrafted` (ratified at version 1 on 2026-10-19, not yet accepted), so they
-could not be registered truthfully,
-and the activation slice is already the exhaustive integration point. Capture/Cut Preview remains the
+cutover gate that was `undrafted` when proposed and ratified at version 1 on 2026-10-19; it is now
+accepted by S04 closeout, so T3.P02 can be registered against its trusted base. The activation slice
+is already the exhaustive integration point. Capture/Cut Preview remains the
 first T3 authoring milestone and does not wait for advanced path, transport or media authoring.
 
 All slices implement against the landed r186 base (three 0.186.1, camera-core peer extended, Threlte
@@ -146,7 +146,7 @@ lifecycle and prerequisites only.
 | T3.P01.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); umbrella for its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) — accepted and shipped 2026-10-17 (PRs #140/#141); every original criterion reconciled to the half slices |
 | T3.P01.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:acceptance-invariants-v1 | — | [Unit acceptance and unit Save](./t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md) | [record](./t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #140) — `unit-acceptance-v1` and `conditional-save-units-v1` accepted; first half of the S03 split |
 | T3.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1 | — | [Experience runtime and Camera handoff](./t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md) | [record](./t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #141) — `camera-handoff-v1` accepted; second half of the S03 split |
-| T3.P01.S04 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | owner-authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), R5) — phase A on T3-owned files now; phase B after the batch C current-source freeze |
+| T3.P01.S04 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover (closed stub)](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [final-gate acceptance record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | owner-authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), R5); independent implementation review ACCEPT at `06a8aac8fa601de6c808c4d7014b6f360516e648` (Phase A + B, no blocking findings); routine slice-closeout 2026-10-20; final gate accepted, T3.P01 closable; PR #158 remains for P1 merge commit and post-merge anchor verification |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 and S02 are now shipped
 with their accepted capabilities; their exact records, prerequisites, exports and conformance are in
@@ -172,20 +172,22 @@ contract, no capability prerequisite and no part of S04's scope. Both halves are
 original exit criteria are [reconciled](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md).
 S04 was authorized on 2026-10-19.
 
-`T3.camera-experience-cutover@1` is `ratified` (2026-10-19) with AM-9 as its contract and S04 as sole
-provider; T3.P02 registers only once the gate is `accepted`.
+`T3.camera-experience-cutover@1` was ratified 2026-10-19 with AM-9 as its contract and S04 as sole
+provider; routine closeout accepted it at the recorded revision. T3.P02 registers only after this
+accepted gate is present on its trusted base.
 
 ```text
 FINAL PHASE GATE: T3.P01.S04 → ./t3.p01.s04-live-ownership-cutover/acceptance.md
+Gate:         accepted 2026-10-20 by independent implementation review + routine slice-closeout
 
 PHASE CLOSE
-Stage:        active
+Stage:        closable
+Next:         owner-invoked phase-closeout, if desired
 ```
 
-S01, S02, S03, S05 and S06 are accepted and shipped with their accepted capability records. The
-final gate is declared, not closeable: the final child `T3.P01.S04` is neither accepted nor shipped, so no `PHASE
-CLOSE` beyond the active stage marker is written, and phase/track closure stays a separate owner
-event. The first authoring surface does not wait for this phase's closure.
+S01, S02, S03, S05, S06 and S04 are accepted and shipped with their recorded capability outcomes.
+The final gate makes T3.P01 closable; no `PHASE CLOSE` block is written and phase/track closure stays
+a separate owner event. The first authoring surface does not wait for this phase's closure.
 
 ## Cutover mechanics and retirement
 
@@ -204,7 +206,10 @@ event. The first authoring surface does not wait for this phase's closure.
    removes all authored rows (`projects`, `project_versions`, `save_receipts`, `assets`,
    `publications`, `releases`) and installs a schema that structurally admits only the F2 envelope,
    so a pre-epoch writer fails. `users` and `schema_migrations` are kept. Unreferenced R2 bytes are
-   purged afterwards, idempotently. Before any purge, verify that the bucket/prefix is application-owned (configured, and holding only keys this API writes); purge only keys under that verified prefix that no remaining row references, and never delete an object outside it or of unknown provenance.
+   purged afterwards, idempotently. A purge requires the active `005` epoch and a configured
+   deployment namespace, verifies that every visible key sits under `projects/<namespace>/` and
+   only uses the shape this API writes, and deletes only unreferenced keys under it. A shared
+   bucket, a foreign namespace or an object of unknown provenance refuses the purge.
 3. **One source epoch.** API admission, editor boot, import, session drafts and Save accept only
    declared F2 versions. Old clients, files and drafts, mixed roots and unknown versions fail with
    typed version diagnostics. There is no sniffing, fallback, dual write or writable flag. New

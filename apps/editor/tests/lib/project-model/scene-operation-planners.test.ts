@@ -21,20 +21,18 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-	createEmptyWallFirstProject,
-	admitCurrentSource,
 	createScenePlanners,
 	selectSceneSupport,
 	checkSceneRecordScope,
 	DUPLICATE_OFFSET_METERS,
 	YAW_SCOPE_FIELD,
 	sceneSupportGenerationId,
+	type NormalizedPlacementDefinition
+} from '@portfolio/project-model/scene-planning';
+import {
 	type AcceptedSnapshot,
 	type AuthoringIntent,
 	type DomainPlanner,
-	type NormalizedPlacementDefinition,
-	type ProjectDocument,
-	type SceneDocument,
 	type SceneEntity,
 	type SceneObjectCluster,
 	type ScenePrimitiveEntity,
@@ -42,6 +40,18 @@ import {
 	type Vec3
 } from '@portfolio/project-model';
 import {
+	SCENE_UNIT_FORMAT_VERSION,
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
+import {
+	admitUnitProject,
+	createUnitProject
+} from '../authoring/__fixtures__/unit-envelope-fixtures';
+import {
+	createEmptyWallFirstLayoutDocument,
 	floorSupportSnapshotOf,
 	compileWallFirstLayoutGeometry,
 	queryFloorSupports,
@@ -52,9 +62,9 @@ import {
 const ELEVATION = 2.5;
 const GENERATION = sceneSupportGenerationId('content-1');
 
-function supportedProject(elevation = 0): ProjectDocument {
-	const base = createEmptyWallFirstProject({ id: 'project-1', name: 'Gallery' });
-	const baseline = { ...base.layout, floor: { ...base.layout.floor, elevation } };
+function supportedLayout(elevation = 0) {
+	const empty = createEmptyWallFirstLayoutDocument();
+	const baseline = { ...empty, floor: { ...empty.floor, elevation } };
 	const planned = planWallChain({
 		baseline,
 		points: [
@@ -67,7 +77,7 @@ function supportedProject(elevation = 0): ProjectDocument {
 		role: 'boundary'
 	});
 	if (planned.kind !== 'success') throw new Error('the support fixture enclosure was refused');
-	return { ...base, layout: planned.document };
+	return planned.document;
 }
 
 function box(
@@ -101,67 +111,99 @@ function box(
 function sceneWith(
 	entities: readonly SceneEntity[],
 	clusters?: readonly SceneObjectCluster[],
-	materials: SceneDocument['materials'] = []
-): SceneDocument {
+	materials: CameraFreeSceneDocument['materials'] = []
+): CameraFreeSceneDocument {
 	return {
-		formatVersion: 1,
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
 		textures: [],
 		materials,
 		entities: [...entities],
-		...(clusters === undefined ? {} : { clusters: [...clusters] }),
-		navigationNodes: [
-			{
-				id: 'tour-a',
-				label: 'Tour A',
-				position: [1, 1.65, 1],
-				cameraTarget: [1, 1.25, -2],
-				fov: 54,
-				connectedNodeIds: ['tour-b'],
-				nextNodeId: 'tour-b'
-			},
-			{
-				id: 'tour-b',
-				label: 'Tour B',
-				position: [4, 1.65, 3],
-				cameraTarget: [4, 1.25, 0],
-				fov: 54,
-				connectedNodeIds: ['tour-a'],
-				previousNodeId: 'tour-a'
-			}
-		],
-		connections: [
-			{
-				id: 'tour-a-b',
-				fromNodeId: 'tour-a',
-				toNodeId: 'tour-b',
-				clearance: 0.35,
-				positionPath: { kind: 'auto-bezier', anchors: [] }
-			}
-		]
+		...(clusters === undefined ? {} : { clusters: [...clusters] })
 	};
 }
 
+/** The Camera unit every fixture carries, so preservation can be measured. */
+const TOUR_CAMERA = {
+	formatVersion: 1 as const,
+	views: [
+		{
+			id: 'tour-a',
+			label: 'Tour A',
+			eye: [1, 1.65, 1] as [number, number, number],
+			target: [1, 1.25, -2] as [number, number, number],
+			fov: 54,
+			connectedViewIds: ['tour-b']
+		},
+		{
+			id: 'tour-b',
+			label: 'Tour B',
+			eye: [4, 1.65, 3] as [number, number, number],
+			target: [4, 1.25, 0] as [number, number, number],
+			fov: 54,
+			connectedViewIds: ['tour-a']
+		}
+	],
+	connections: [
+		{
+			id: 'tour-a-b',
+			fromNodeId: 'tour-a',
+			toNodeId: 'tour-b',
+			clearance: 0.35,
+			positionPath: { kind: 'auto-bezier' as const, anchors: [] }
+		}
+	]
+};
+
 function projectWith(
-	scene: SceneDocument,
+	scene: CameraFreeSceneDocument,
 	elevation = 0
-): ProjectDocument {
-	return { ...supportedProject(elevation), scene };
+): Promise<ProjectEnvelope> {
+	return createUnitProject({
+		id: 'project-1',
+		name: 'Gallery',
+		layout: supportedLayout(elevation),
+		scene,
+		camera: TOUR_CAMERA
+	});
 }
 
-async function snapshotOf(project: ProjectDocument): Promise<AcceptedSnapshot<ProjectDocument>> {
-	const admitted = await admitCurrentSource(project, {
-		acceptedRevision: { projectId: project.id, revisionId: 'revision-1' }
+async function snapshotOf(project: ProjectEnvelope): Promise<AcceptedSnapshot<ProjectEnvelope>> {
+	const admitted = await admitUnitProject(project, {
+		projectId: project.id,
+		revisionId: 'revision-1'
 	});
 	if (admitted.kind !== 'admitted') {
 		throw new Error(`the fixture was not admitted: ${JSON.stringify(admitted.issues)}`);
 	}
-	return admitted.snapshot;
+	// The Stage snapshot carries compiled domain reads; a planner request carries
+	// only the AM-4 identity and the envelope it names.
+	return {
+		acceptedRevision: admitted.snapshot.acceptedRevision,
+		sourceContentId: admitted.snapshot.sourceContentId,
+		sourceKind: admitted.snapshot.sourceKind,
+		sourceVersion: admitted.snapshot.sourceVersion,
+		domain: {
+			identity: {
+				acceptedRevision: admitted.snapshot.acceptedRevision,
+				sourceContentId: admitted.snapshot.sourceContentId
+			},
+			source: project
+		}
+	};
+}
+
+function sceneTargetRevision(snapshot: AcceptedSnapshot<ProjectEnvelope>): string {
+	return snapshot.domain.source.units.scene.header.contentRevision;
+}
+
+function cameraBytes(source: ProjectEnvelope): string {
+	return JSON.stringify(source.units.camera.data);
 }
 
 function intent(input: {
 	readonly kind: string;
 	readonly operationId: string;
-	readonly snapshot: AcceptedSnapshot<ProjectDocument>;
+	readonly snapshot: AcceptedSnapshot<ProjectEnvelope>;
 	readonly payload: unknown;
 	readonly targets?: readonly SemanticReference[];
 	readonly allocatedIds?: readonly { readonly kind: string; readonly id: string }[];
@@ -201,8 +243,7 @@ function frameReference() {
 
 function plannerFor(
 	kind: string,
-	definitions: readonly NormalizedPlacementDefinition[] = []
-): DomainPlanner<ProjectDocument> {
+	definitions: readonly NormalizedPlacementDefinition[] = []	): DomainPlanner<ProjectEnvelope> {
 	const planner = createScenePlanners({ definitions }).find((candidate) => candidate.kind === kind);
 	if (planner === undefined) throw new Error(`no planner for ${kind}`);
 	return planner;
@@ -210,7 +251,7 @@ function plannerFor(
 
 function prepare(
 	kind: string,
-	snapshot: AcceptedSnapshot<ProjectDocument>,
+	snapshot: AcceptedSnapshot<ProjectEnvelope>,
 	captured: AuthoringIntent,
 	definitions: readonly NormalizedPlacementDefinition[] = []
 ) {
@@ -266,17 +307,10 @@ function placePayload(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function cameraBytes(scene: SceneDocument): string {
-	return JSON.stringify({
-		navigationNodes: scene.navigationNodes,
-		connections: scene.connections
-	});
-}
-
 function supportCandidates(
-	snapshot: AcceptedSnapshot<ProjectDocument>
+	snapshot: AcceptedSnapshot<ProjectEnvelope>
 ): readonly FloorSupportCandidate[] {
-	const compiled = compileWallFirstLayoutGeometry(snapshot.domain.source.layout);
+	const compiled = compileWallFirstLayoutGeometry(snapshot.domain.source.units.layout.data);
 	const queried = queryFloorSupports(floorSupportSnapshotOf(compiled.geometry), {
 		generationId: sceneSupportGenerationId(snapshot.sourceContentId),
 		x: 3,
@@ -305,15 +339,67 @@ describe('scene operation planners — registration', () => {
 				units: false,
 				resources: false
 			});
-			expect(planner.sourceKinds).toEqual(['current-source']);
-			expect(planner.sourceVersions).toEqual([5]);
+			expect(planner.sourceKinds).toEqual([UNIT_SOURCE_KIND]);
+			expect(planner.sourceVersions).toEqual([UNIT_SOURCE_VERSION]);
 		}
+	});
+});
+
+describe('scene operation planners — definition pins', () => {
+	it('refuses a placement whose named definition was never admitted, and names the pin', async () => {
+		const project = await projectWith(sceneWith([]), ELEVATION);
+		const snapshot = await snapshotOf(project);
+		// The catalogue model is excluded by S01's policy, so no session captures a
+		// definition for it; a payload naming it must refuse rather than guess.
+		const result = prepare(
+			'place-object',
+			snapshot,
+			intent({
+				kind: 'place-object',
+				operationId: 'op-place-missing',
+				snapshot,
+				payload: placePayload({
+					definitionKey: 'model:paris-grand-piano',
+					metadataContentId: `sha256-${'0'.repeat(64)}`
+				}),
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }]
+			}),
+			[]
+		);
+		expect(result).toMatchObject({ kind: 'rejected', code: 'missing-definition' });
+		if (result.kind !== 'rejected') return;
+		expect(result.diagnostics.map((issue) => issue.message)).toContain('model:paris-grand-piano');
+	});
+
+	it('refuses a placement whose captured metadata identity no longer matches the admitted definition', async () => {
+		const project = await projectWith(sceneWith([]), ELEVATION);
+		const snapshot = await snapshotOf(project);
+		const admitted = nativeBoxDefinition();
+		const capturedIdentity = `sha256-${'1'.repeat(64)}`;
+		expect(capturedIdentity).not.toBe(admitted.metadataContentId);
+		const result = prepare(
+			'place-object',
+			snapshot,
+			intent({
+				kind: 'place-object',
+				operationId: 'op-place-changed',
+				snapshot,
+				payload: placePayload({ metadataContentId: capturedIdentity }),
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }]
+			}),
+			[admitted]
+		);
+		expect(result).toMatchObject({ kind: 'rejected', code: 'definition-changed' });
+		if (result.kind !== 'rejected') return;
+		const messages = result.diagnostics.map((issue) => issue.message);
+		expect(messages).toContain(admitted.metadataContentId);
+		expect(messages).toContain(capturedIdentity);
 	});
 });
 
 describe('scene operation planners — poses and ownership', () => {
 	it('places one captured entity on the compiled floor, upright at relative scale 1', async () => {
-		const project = projectWith(sceneWith([]), ELEVATION);
+		const project = await projectWith(sceneWith([]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'place-object',
@@ -330,7 +416,7 @@ describe('scene operation planners — poses and ownership', () => {
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
 
-		const scene = result.candidate.source.scene;
+		const scene = result.candidate.source.units.scene.data;
 		const placed = scene.entities.at(-1)!;
 		expect(placed.id).toBe('entity-new');
 		expect(placed.position).toEqual([3, ELEVATION + 0.5, 2]);
@@ -344,7 +430,7 @@ describe('scene operation planners — poses and ownership', () => {
 		expect(result.candidate.changes).toEqual([
 			{ kind: 'scene-place-object', subjectIds: ['entity-new'], fields: ['entities'] }
 		]);
-		expect(cameraBytes(scene)).toBe(cameraBytes(snapshot.domain.source.scene));
+		expect(cameraBytes(result.candidate.source)).toBe(cameraBytes(snapshot.domain.source));
 	});
 
 	it('moves horizontally while preserving Y, rotation, scale, dimensions and material', async () => {
@@ -353,7 +439,7 @@ describe('scene operation planners — poses and ownership', () => {
 			rotation: [0, 0.9, 0],
 			materialInstanceId: 'material-1'
 		});
-		const project = projectWith(
+		const project = await projectWith(
 			sceneWith([entity], undefined, [
 				{ id: 'material-1', name: 'Material', baseMaterialId: 'plaster-warm' }
 			]),
@@ -367,7 +453,7 @@ describe('scene operation planners — poses and ownership', () => {
 				kind: 'move-horizontal',
 				operationId: 'op-move',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [5, 4],
@@ -379,13 +465,13 @@ describe('scene operation planners — poses and ownership', () => {
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		const moved = result.candidate.source.scene.entities[0]!;
+		const moved = result.candidate.source.units.scene.data.entities[0]!;
 		expect(moved.position).toEqual([5, ELEVATION + 0.7, 4]);
 		expect(moved.rotation).toEqual([0, 0.9, 0]);
 		expect(moved.scale).toBe(1.4);
 		expect(moved.kind === 'primitive' ? moved.dimensions : null).toEqual({ width: 1, height: 1, depth: 1 });
 		expect('materialInstanceId' in moved ? moved.materialInstanceId : null).toBe('material-1');
-		expect(cameraBytes(result.candidate.source.scene)).toBe(cameraBytes(snapshot.domain.source.scene));
+		expect(cameraBytes(result.candidate.source)).toBe(cameraBytes(snapshot.domain.source));
 		expect(result.candidate.correspondence[0]!.relation).toBe('preserved');
 	});
 
@@ -395,7 +481,7 @@ describe('scene operation planners — poses and ownership', () => {
 			// Sub-tolerance pitch/roll are admitted as upright; yaw must not rewrite them.
 			rotation: [5e-10, 0.4, -5e-10]
 		});
-		const project = projectWith(sceneWith([entity]), ELEVATION);
+		const project = await projectWith(sceneWith([entity]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'set-yaw',
@@ -404,7 +490,7 @@ describe('scene operation planners — poses and ownership', () => {
 				kind: 'set-yaw',
 				operationId: 'op-yaw',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					yaw: 1.2,
@@ -415,7 +501,7 @@ describe('scene operation planners — poses and ownership', () => {
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		const yawed = result.candidate.source.scene.entities[0]!;
+		const yawed = result.candidate.source.units.scene.data.entities[0]!;
 		expect(yawed.position).toEqual([3, ELEVATION + 0.5, 2]);
 		expect(yawed.rotation[0]).toBe(5e-10);
 		expect(yawed.rotation[1]).toBeCloseTo(1.2, 12);
@@ -427,7 +513,7 @@ describe('scene operation planners — poses and ownership', () => {
 		const entity = box('entity-a', [3, ELEVATION + 0.5, 2], {
 			rotation: [5e-10, 0.4, -5e-10]
 		});
-		const project = projectWith(sceneWith([entity]), ELEVATION);
+		const project = await projectWith(sceneWith([entity]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'place-on-floor',
@@ -436,7 +522,7 @@ describe('scene operation planners — poses and ownership', () => {
 				kind: 'place-on-floor',
 				operationId: 'op-seat-yaw',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [1, 1],
@@ -449,7 +535,7 @@ describe('scene operation planners — poses and ownership', () => {
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		const seated = result.candidate.source.scene.entities[0]!;
+		const seated = result.candidate.source.units.scene.data.entities[0]!;
 		expect(seated.rotation[0]).toBe(5e-10);
 		expect(seated.rotation[1]).toBeCloseTo(0.9, 12);
 		expect(seated.rotation[2]).toBe(-5e-10);
@@ -457,7 +543,7 @@ describe('scene operation planners — poses and ownership', () => {
 
 	it('reseats on the floor and owns the resulting Y, preserving scale and rotation', async () => {
 		const entity = box('entity-a', [3, ELEVATION + 0.5, 2], { scale: 1.5, rotation: [0, 0.4, 0] });
-		const project = projectWith(sceneWith([entity]), ELEVATION);
+		const project = await projectWith(sceneWith([entity]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'place-on-floor',
@@ -466,7 +552,7 @@ describe('scene operation planners — poses and ownership', () => {
 				kind: 'place-on-floor',
 				operationId: 'op-seat',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [1, 1],
@@ -478,7 +564,7 @@ describe('scene operation planners — poses and ownership', () => {
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		const seated = result.candidate.source.scene.entities[0]!;
+		const seated = result.candidate.source.units.scene.data.entities[0]!;
 		expect(seated.position).toEqual([1, ELEVATION + 0.75, 1]);
 		expect(seated.rotation).toEqual([0, 0.4, 0]);
 		expect(seated.scale).toBe(1.5);
@@ -486,7 +572,7 @@ describe('scene operation planners — poses and ownership', () => {
 
 	it('resizes uniformly and compensates Y to keep the same contact elevation', async () => {
 		const entity = box('entity-a', [3, ELEVATION + 0.5, 2], { rotation: [0, 0.4, 0] });
-		const project = projectWith(sceneWith([entity]), ELEVATION);
+		const project = await projectWith(sceneWith([entity]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'resize-on-floor',
@@ -495,13 +581,13 @@ describe('scene operation planners — poses and ownership', () => {
 				kind: 'resize-on-floor',
 				operationId: 'op-resize',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: { entityId: 'entity-a', scale: 2, contactMinY: -0.5 }
 			})
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		const resized = result.candidate.source.scene.entities[0]!;
+		const resized = result.candidate.source.units.scene.data.entities[0]!;
 		expect(resized.scale).toBe(2);
 		expect(resized.position).toEqual([3, ELEVATION + 1, 2]);
 		expect(resized.rotation).toEqual([0, 0.4, 0]);
@@ -509,7 +595,7 @@ describe('scene operation planners — poses and ownership', () => {
 
 	it('duplicates by exactly +0.5 m world X/Z, preserving every other component', async () => {
 		const entity = box('entity-a', [3, ELEVATION + 0.65, 2], { scale: 1.3, rotation: [0, 0.7, 0] });
-		const project = projectWith(sceneWith([entity]), ELEVATION);
+		const project = await projectWith(sceneWith([entity]), ELEVATION);
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'duplicate-one',
@@ -518,14 +604,14 @@ describe('scene operation planners — poses and ownership', () => {
 				kind: 'duplicate-one',
 				operationId: 'op-duplicate',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: { entityId: 'entity-a', contactMinY: -0.5 },
 				allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
 			})
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		const duplicate = result.candidate.source.scene.entities.at(-1)!;
+		const duplicate = result.candidate.source.units.scene.data.entities.at(-1)!;
 		expect(duplicate.id).toBe('entity-copy');
 		expect(duplicate.position).toEqual([
 			3 + DUPLICATE_OFFSET_METERS,
@@ -552,8 +638,8 @@ describe('scene operation planners — poses and ownership', () => {
 			{ id: 'cluster-keep', name: 'Keep', memberIds: ['entity-a', 'entity-b', 'entity-c'] },
 			{ id: 'cluster-drop', name: 'Drop', memberIds: ['entity-d', 'entity-e'] }
 		]);
-		const snapshot = await snapshotOf(projectWith(scene));
-		const deleteOf = (entityId: string, operationId: string, from: AcceptedSnapshot<ProjectDocument>) =>
+		const snapshot = await snapshotOf(await projectWith(scene));
+		const deleteOf = (entityId: string, operationId: string, from: AcceptedSnapshot<ProjectEnvelope>) =>
 			prepare(
 				'delete-one',
 				from,
@@ -561,7 +647,7 @@ describe('scene operation planners — poses and ownership', () => {
 					kind: 'delete-one',
 					operationId,
 					snapshot: from,
-					targets: [entityTarget(from.sourceContentId, entityId)],
+					targets: [entityTarget(sceneTargetRevision(from), entityId)],
 					payload: { entityId }
 				})
 			);
@@ -569,13 +655,13 @@ describe('scene operation planners — poses and ownership', () => {
 		const kept = deleteOf('entity-c', 'op-delete-keep', snapshot);
 		expect(kept.kind).toBe('prepared');
 		if (kept.kind !== 'prepared') return;
-		expect(kept.candidate.source.scene.entities.map((entity) => entity.id)).toEqual([
+		expect(kept.candidate.source.units.scene.data.entities.map((entity) => entity.id)).toEqual([
 			'entity-a',
 			'entity-b',
 			'entity-d',
 			'entity-e'
 		]);
-		expect(kept.candidate.source.scene.clusters).toEqual([
+		expect(kept.candidate.source.units.scene.data.clusters).toEqual([
 			{ id: 'cluster-keep', name: 'Keep', memberIds: ['entity-a', 'entity-b'] },
 			{ id: 'cluster-drop', name: 'Drop', memberIds: ['entity-d', 'entity-e'] }
 		]);
@@ -592,7 +678,7 @@ describe('scene operation planners — poses and ownership', () => {
 		const dropped = deleteOf('entity-e', 'op-delete-drop', snapshot);
 		expect(dropped.kind).toBe('prepared');
 		if (dropped.kind !== 'prepared') return;
-		expect(dropped.candidate.source.scene.clusters).toEqual([
+		expect(dropped.candidate.source.units.scene.data.clusters).toEqual([
 			{ id: 'cluster-keep', name: 'Keep', memberIds: ['entity-a', 'entity-b', 'entity-c'] }
 		]);
 	});
@@ -600,7 +686,7 @@ describe('scene operation planners — poses and ownership', () => {
 
 describe('scene operation planners — support and refusals', () => {
 	it('refuses a destination without support at the resting elevation', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'move-horizontal',
@@ -609,7 +695,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'move-horizontal',
 				operationId: 'op-move-out',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [20, 20],
@@ -623,7 +709,7 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('refuses a duplicate whose shifted contact leaves the supported floor', async () => {
-		const project = projectWith(sceneWith([box('entity-corner', [6.6, 0.5, 5.6])]));
+		const project = await projectWith(sceneWith([box('entity-corner', [6.6, 0.5, 5.6])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'duplicate-one',
@@ -632,7 +718,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'duplicate-one',
 				operationId: 'op-duplicate-outside',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-corner')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-corner')],
 				payload: { entityId: 'entity-corner', contactMinY: -0.5 },
 				allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
 			})
@@ -641,11 +727,11 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('refuses a stale or unknown captured support choice instead of re-choosing', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
-		const source = snapshot.sourceContentId;
+		const source = sceneTargetRevision(snapshot);
 		for (const [choice, code] of [
-			[{ kind: 'order-key', orderKey: 'unknown', generationId: sceneSupportGenerationId(source) }, 'support-choice-required'],
+			[{ kind: 'order-key', orderKey: 'unknown', generationId: sceneSupportGenerationId(snapshot.sourceContentId) }, 'support-choice-required'],
 			[{ kind: 'order-key', orderKey: 'unknown', generationId: 'old-generation' }, 'stale-generation']
 		] as const) {
 			const result = prepare(
@@ -673,9 +759,9 @@ describe('scene operation planners — support and refusals', () => {
 	it('resolves a valid captured support choice instead of refusing every choice', async () => {
 		// The strict-issue check must not turn a legitimate captured choice into a
 		// refusal: this is the positive half of the stale/unknown choice cases.
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
-		const source = snapshot.sourceContentId;
+		const source = sceneTargetRevision(snapshot);
 		const orderKey = supportCandidates(snapshot)[0]!.orderKey;
 		const result = prepare(
 			'move-horizontal',
@@ -694,18 +780,18 @@ describe('scene operation planners — support and refusals', () => {
 					supportChoice: {
 						kind: 'order-key',
 						orderKey,
-						generationId: sceneSupportGenerationId(source)
+						generationId: sceneSupportGenerationId(snapshot.sourceContentId)
 					}
 				}
 			})
 		);
 		expect(result.kind).toBe('prepared');
 		if (result.kind !== 'prepared') return;
-		expect(result.candidate.source.scene.entities[0]!.position).toEqual([4, 0.5, 3]);
+		expect(result.candidate.source.units.scene.data.entities[0]!.position).toEqual([4, 0.5, 3]);
 	});
 
 	it('refuses a captured contact that disagrees with the primitive dimensions', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'move-horizontal',
@@ -714,7 +800,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'move-horizontal',
 				operationId: 'op-bad-contact',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [5, 4],
@@ -752,7 +838,7 @@ describe('scene operation planners — support and refusals', () => {
 			rotation: [0, 0, 0]
 		};
 		const tilted = box('entity-tilted', [3, 0.5, 2], { rotation: [0.2, 0, 0] });
-		const project = projectWith(
+		const project = await projectWith(
 			sceneWith([light, plane, tilted, box('entity-a', [3, 0.5, 2])], [
 				{ id: 'cluster-1', name: 'Group', memberIds: ['entity-a', 'entity-tilted'] }
 			])
@@ -766,7 +852,7 @@ describe('scene operation planners — support and refusals', () => {
 					kind: 'set-yaw',
 					operationId,
 					snapshot,
-					targets: [entityTarget(snapshot.sourceContentId, entityId)],
+					targets: [entityTarget(sceneTargetRevision(snapshot), entityId)],
 					payload: {
 						entityId,
 						yaw: 0.5,
@@ -787,7 +873,7 @@ describe('scene operation planners — support and refusals', () => {
 					kind: 'duplicate-one',
 					operationId: 'cluster-duplicate',
 					snapshot,
-					targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+					targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 					payload: { entityId: 'entity-a', contactMinY: -0.5 },
 					allocatedIds: [{ kind: 'scene-entity', id: 'entity-copy' }]
 				})
@@ -796,7 +882,7 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('refuses a cluster-member duplicate and a captured id that already exists', async () => {
-		const project = projectWith(
+		const project = await projectWith(
 			sceneWith([box('entity-a', [3, 0.5, 2]), box('entity-b', [2, 0.5, 2])], [
 				{ id: 'cluster-1', name: 'Group', memberIds: ['entity-a', 'entity-b'] }
 			])
@@ -821,7 +907,7 @@ describe('scene operation planners — support and refusals', () => {
 					kind: 'duplicate-one',
 					operationId: `op-${newId}`,
 					snapshot,
-					targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+					targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 					payload: { entityId: 'entity-a', contactMinY: -0.5 },
 					allocatedIds: [{ kind: 'scene-entity', id: newId }]
 				})
@@ -833,9 +919,9 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('refuses unknown payload keys and a mismatched support-choice variant', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
-		const source = snapshot.sourceContentId;
+		const source = sceneTargetRevision(snapshot);
 		// An unknown key is a captured-data defect, not something to ignore: the
 		// reader records it and the planner must refuse before doing any work.
 		const unknownKey = prepare(
@@ -896,7 +982,7 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('returns no_op for an unchanged authored result', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const result = prepare(
 			'set-yaw',
@@ -905,7 +991,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'set-yaw',
 				operationId: 'op-noop',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					yaw: 0,
@@ -918,7 +1004,7 @@ describe('scene operation planners — support and refusals', () => {
 
 		// The same rotation stored in another representation is still no change: a
 		// canonicalized equivalent must not install a history entry.
-		const wrapped = projectWith(sceneWith([box('entity-wrapped', [3, 0.5, 2], { rotation: [0, 4, 0] })]));
+		const wrapped = await projectWith(sceneWith([box('entity-wrapped', [3, 0.5, 2], { rotation: [0, 4, 0] })]));
 		const wrappedSnapshot = await snapshotOf(wrapped);
 		const wrappedResult = prepare(
 			'set-yaw',
@@ -927,7 +1013,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'set-yaw',
 				operationId: 'op-noop-wrapped',
 				snapshot: wrappedSnapshot,
-				targets: [entityTarget(wrappedSnapshot.sourceContentId, 'entity-wrapped')],
+				targets: [entityTarget(sceneTargetRevision(wrappedSnapshot), 'entity-wrapped')],
 				payload: {
 					entityId: 'entity-wrapped',
 					yaw: 4,
@@ -940,7 +1026,7 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('refuses a captured identity, target or frame that does not answer this snapshot', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const cases: Array<[AuthoringIntent, string]> = [
 			[intent({
@@ -959,7 +1045,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'set-yaw',
 				operationId: 'wrong-payload-target',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-b',
 					yaw: 1,
@@ -971,7 +1057,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'set-yaw',
 				operationId: 'wrong-frame',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					yaw: 1,
@@ -983,7 +1069,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'set-yaw',
 				operationId: 'unexpected-allocation',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					yaw: 1,
@@ -1002,7 +1088,7 @@ describe('scene operation planners — support and refusals', () => {
 	});
 
 	it('refuses an owner-qualified frame instead of trusting an unverified conversion', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		// Structurally valid: owner, frame id and revision are all present, so the
 		// reference's shape is not the problem. What is missing is the owner's
@@ -1028,7 +1114,7 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'move-horizontal',
 				operationId: 'owner-frame-move',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [1, 1],
@@ -1041,14 +1127,14 @@ describe('scene operation planners — support and refusals', () => {
 				kind: 'set-yaw',
 				operationId: 'owner-frame-yaw',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: { entityId: 'entity-a', yaw: 0.9, frame: conversion, frameReference: ownerFrame }
 			}),
 			intent({
 				kind: 'place-on-floor',
 				operationId: 'owner-frame-seat',
 				snapshot,
-				targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+				targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 				payload: {
 					entityId: 'entity-a',
 					worldXZ: [1, 1],
@@ -1075,7 +1161,7 @@ describe('scene operation planners — support and refusals', () => {
 			kind: 'set-yaw',
 			operationId: 'owner-frame-malformed',
 			snapshot,
-			targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+			targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 			payload: {
 				entityId: 'entity-a',
 				yaw: 0.9,
@@ -1091,7 +1177,7 @@ describe('scene operation planners — support and refusals', () => {
 			kind: 'set-yaw',
 			operationId: 'identity-frame-yaw',
 			snapshot,
-			targets: [entityTarget(snapshot.sourceContentId, 'entity-a')],
+			targets: [entityTarget(sceneTargetRevision(snapshot), 'entity-a')],
 			payload: { entityId: 'entity-a', yaw: 0.6, frame: projectWorldFrame(), frameReference: frameReference() }
 		});
 		expect(prepare('set-yaw', snapshot, identity)).toMatchObject({ kind: 'prepared' });
@@ -1099,7 +1185,7 @@ describe('scene operation planners — support and refusals', () => {
 });
 
 describe('scene record-scope guard', () => {
-	const before: SceneDocument = sceneWith(
+	const before: CameraFreeSceneDocument = sceneWith(
 		[box('entity-a', [3, 0.5, 2]), box('entity-b', [1, 0.5, 1])],
 		[
 			{ id: 'cluster-1', name: 'Group', memberIds: ['entity-a', 'entity-b'] },
@@ -1167,7 +1253,7 @@ describe('scene record-scope guard', () => {
 	});
 
 	it('grants only the position components each horizontal operation owns', () => {
-		const withEntity = (patch: Partial<ScenePrimitiveEntity>): SceneDocument => ({
+		const withEntity = (patch: Partial<ScenePrimitiveEntity>): CameraFreeSceneDocument => ({
 			...before,
 			entities: [{ ...before.entities[0]!, ...patch } as SceneEntity, before.entities[1]!]
 		});
@@ -1247,7 +1333,7 @@ describe('scene record-scope guard', () => {
 			removedEntityIds: [],
 			allowClusterCleanup: false
 		};
-		const withRotation = (rotation: readonly [number, number, number]): SceneDocument => ({
+		const withRotation = (rotation: readonly [number, number, number]): CameraFreeSceneDocument => ({
 			...before,
 			entities: [{ ...before.entities[0]!, rotation: [...rotation] as Vec3 }, before.entities[1]!]
 		});
@@ -1275,7 +1361,7 @@ describe('scene record-scope guard', () => {
 	it('refuses a top-level field the Scene format does not define yet', () => {
 		// The comparison is derived from the documents, not a fixed list of known
 		// fields, so a new Scene field is protected the day it lands.
-		const withUnknownField = { ...before, storyboard: { frames: [] } } as unknown as SceneDocument;
+		const withUnknownField = { ...before, storyboard: { frames: [] } } as unknown as CameraFreeSceneDocument;
 		expect(
 			checkSceneRecordScope(before, withUnknownField, {
 				operationKind: 'set-yaw',
@@ -1342,7 +1428,7 @@ describe('scene record-scope guard', () => {
 				{ ...before.clusters![0]!, tint: '#ffffff' },
 				before.clusters![1]!
 			]
-		} as unknown as SceneDocument;
+		} as unknown as CameraFreeSceneDocument;
 		expect(
 			checkSceneRecordScope(before, withClusterField, {
 				operationKind: 'set-yaw',
@@ -1360,7 +1446,7 @@ describe('scene record-scope guard', () => {
 	});
 
 	it('admits exactly the delete cleanup: removed id out of membership, below-minimum cluster dropped', () => {
-		const after: SceneDocument = {
+		const after: CameraFreeSceneDocument = {
 			...before,
 			entities: [before.entities[0]!],
 			clusters: [{ id: 'cluster-1', name: 'Group', memberIds: ['entity-a'] }, before.clusters![1]!]
@@ -1383,7 +1469,7 @@ describe('scene record-scope guard', () => {
 			message: expect.stringContaining('two-member minimum')
 		});
 
-		const cleaned: SceneDocument = { ...before, entities: [before.entities[0]!], clusters: [] };
+		const cleaned: CameraFreeSceneDocument = { ...before, entities: [before.entities[0]!], clusters: [] };
 		expect(
 			checkSceneRecordScope(before, cleaned, {
 				operationKind: 'delete-one',
@@ -1498,7 +1584,7 @@ describe('snapshot-qualified support selection', () => {
 	});
 
 	it('derives a stable generation identity from the snapshot content', async () => {
-		const project = projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
+		const project = await projectWith(sceneWith([box('entity-a', [3, 0.5, 2])]));
 		const snapshot = await snapshotOf(project);
 		const candidates = supportCandidates(snapshot);
 		expect(candidates).toHaveLength(1);
@@ -1508,13 +1594,13 @@ describe('snapshot-qualified support selection', () => {
 
 describe('scene operation determinism and write ownership', () => {
 	it('prepares every operation as detached data without writing the accepted source', async () => {
-		const project = projectWith(
+		const project = await projectWith(
 			sceneWith([box('entity-a', [3, ELEVATION + 0.5, 2]), box('entity-b', [1, ELEVATION + 0.5, 1])]),
 			ELEVATION
 		);
 		const snapshot = await snapshotOf(project);
 		const before = JSON.stringify(snapshot.domain.source);
-		const contentId = snapshot.sourceContentId;
+		const contentId = sceneTargetRevision(snapshot);
 		const target = (entityId: string) => [entityTarget(contentId, entityId)];
 		const captured: Array<[string, AuthoringIntent]> = [
 			['place-object', intent({ kind: 'place-object', operationId: 'all-place', snapshot, payload: placePayload(), allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }] })],
@@ -1533,19 +1619,19 @@ describe('scene operation determinism and write ownership', () => {
 			expect(JSON.stringify(snapshot.domain.source), kind).toBe(before);
 			if (result.kind !== 'prepared') continue;
 			expect(result.candidate.source, kind).not.toBe(snapshot.domain.source);
-			expect(result.candidate.source.scene, kind).not.toBe(snapshot.domain.source.scene);
-			expect(result.candidate.source.layout, kind).toBe(snapshot.domain.source.layout);
+			expect(result.candidate.source.units.scene.data, kind).not.toBe(snapshot.domain.source.units.scene.data);
+			expect(result.candidate.source.units.layout.data, kind).toBe(snapshot.domain.source.units.layout.data);
 		}
 	});
 
 	it('replays every operation to an identical candidate and never mutates the source', async () => {
-		const project = projectWith(
+		const project = await projectWith(
 			sceneWith([box('entity-a', [3, ELEVATION + 0.5, 2]), box('entity-b', [1, ELEVATION + 0.5, 1])]),
 			ELEVATION
 		);
 		const snapshot = await snapshotOf(project);
 		const before = JSON.stringify(snapshot.domain.source);
-		const target = (entityId: string) => [entityTarget(snapshot.sourceContentId, entityId)];
+		const target = (entityId: string) => [entityTarget(sceneTargetRevision(snapshot), entityId)];
 		// Every operation replays: the ones with support queries, allocations and
 		// array writes are where a hidden read of time, order or the catalogue would
 		// surface, so a yaw-only replay would prove the least.
@@ -1578,8 +1664,8 @@ describe('scene operation determinism and write ownership', () => {
 			if (first.kind !== 'prepared') continue;
 			// A prepared candidate is new data, never the accepted source rewritten.
 			expect(first.candidate.source, kind).not.toBe(snapshot.domain.source);
-			expect(first.candidate.source.scene, kind).not.toBe(snapshot.domain.source.scene);
-			expect(first.candidate.source.layout, kind).toBe(snapshot.domain.source.layout);
+			expect(first.candidate.source.units.scene.data, kind).not.toBe(snapshot.domain.source.units.scene.data);
+			expect(first.candidate.source.units.layout.data, kind).toBe(snapshot.domain.source.units.layout.data);
 		}
 	});
 });

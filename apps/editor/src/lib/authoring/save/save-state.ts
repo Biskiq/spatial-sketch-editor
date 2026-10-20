@@ -12,6 +12,11 @@
  * - **saved/dirty compares the full captured canonical source**, not the digest:
  *   the digest excludes `layout.identity.cursor`, so a cursor-only divergence
  *   must still read dirty.
+ * - **the persistence capture is stamped at the same boundary as the server**:
+ *   `captureUnitSave` writes the coordinator's accepted revision into the saved
+ *   bytes. The admitted source keeps its embedded baseline revision untouched, so
+ *   that unstamped canonical text is tracked separately for dirty/conflict and
+ *   history comparisons.
  * - **acknowledgment marks only what it captured**: edits made during an
  *   in-flight Save stay dirty.
  * - **an old session epoch's response is dropped**: it neither marks saved nor
@@ -34,8 +39,13 @@
  *   the live view.
  */
 
-import type { AcceptedRevision, ProjectDocument } from '@portfolio/project-model';
-import { CURRENT_SOURCE_KIND, CURRENT_SOURCE_VERSION } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model';
+import {
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	captureUnitSave,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import type {
 	SaveAcknowledgement,
 	SavePrecondition,
@@ -47,9 +57,22 @@ import { SAVE_CONTENT_IDENTITY_SCHEME, sameAcceptedRevision } from '@portfolio/p
 /** The exact source a Save captures, read from the coordinator. */
 export type SaveSourceState = {
 	readonly revision: AcceptedRevision;
-	readonly source: ProjectDocument;
+	readonly source: ProjectEnvelope;
 	readonly canonicalJson: string;
 	readonly sourceContentId: string;
+};
+
+/**
+ * One capture retained for retry, together with the **unstamped** admitted
+ * source text it describes. `request.capture.canonicalJson` names the accepted
+ * revision it is saved under; `sourceCanonicalJson` is what the coordinator
+ * installed (whose embedded revision is the baseline provenance). Keeping both
+ * lets dirty/conflict report the local source while the server receives the
+ * bytes it requires.
+ */
+type PendingCapture = {
+	readonly request: SaveRequest;
+	readonly sourceCanonicalJson: string;
 };
 
 /**
@@ -193,6 +216,19 @@ export type SaveStateOptions = {
 	/** Optional read port for the remote side of a conflict (never auto-installs). */
 	readonly loadRemote?: (projectId: string) => Promise<SaveRemoteProject>;
 	readonly mintOperationId?: () => string;
+	/**
+	 * A Save captured before a sign-in redirect (TD-9). It is retained as the
+	 * unresolved capture so `retry()` replays the **exact** operation identity and
+	 * precondition. Constructing the state never runs it: the Head offers it and
+	 * the creator resumes deliberately.
+	 */
+	readonly resume?: SaveRequest | null;
+	/**
+	 * Called when the server answers `auth-required`, before the platform redirect.
+	 * The host persists the exact request (precondition and operation ID included)
+	 * so the return visit can offer it. It is never called for any other outcome.
+	 */
+	readonly onAuthRequired?: (request: SaveRequest) => void | Promise<void>;
 };
 
 const EMPTY_BASELINE: SaveBaseline = {
@@ -209,7 +245,24 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	let error: SaveError | null = null;
 	let conflict: SaveConflict | null = null;
 	let inFlight: { readonly epoch: string; readonly canonicalJson: string } | null = null;
-	let pending: SaveRequest | null = null;
+	/** A capture is being stamped/normalized by the Save boundary. */
+	let preparing = false;
+	let pending: PendingCapture | null = null;
+	if (options.resume) {
+		// Only a capture for this project under this exact saved base is resumable.
+		// Anything else would pair one project's operation with another's baseline.
+		const current = options.coordinator.current();
+		const precondition = options.resume.capture.precondition;
+		const sameBase =
+			precondition.kind === 'create-only'
+				? baseline.savedBaseToken === null
+				: precondition.kind === 'expected-saved-base' && precondition.token === baseline.savedBaseToken;
+		if (options.resume.capture.projectId === current.revision.projectId && sameBase) {
+			// A resumed source is admitted from the captured bytes themselves, so the
+			// unstamped source text is those same bytes until the creator edits.
+			pending = { request: options.resume, sourceCanonicalJson: options.resume.capture.canonicalJson };
+		}
+	}
 	const listeners = new Set<(snapshot: SaveSnapshot) => void>();
 
 	function readCurrent(): SaveSourceState | null {
@@ -292,7 +345,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		return {
 			status: reportedStatus(currentDirty),
 			dirty: currentDirty,
-			busy: inFlight !== null,
+			busy: inFlight !== null || preparing,
 			pending: pending !== null,
 			savedBaseToken: baseline.savedBaseToken,
 			savedRevision: baseline.savedRevision,
@@ -320,43 +373,67 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	 * this precondition. A changed payload under the retained operation ID would be
 	 * refused by the server, so it never qualifies.
 	 */
-	function retainedCapture(current: SaveSourceState): SaveRequest | null {
+	function retainedCapture(current: SaveSourceState): PendingCapture | null {
 		if (!pending) return null;
+		const request = pending.request;
 		const precondition = currentPrecondition();
 		const sameCondition =
 			precondition.kind === 'create-only'
-				? pending.capture.precondition.kind === 'create-only'
-				: pending.capture.precondition.kind === 'expected-saved-base' &&
-					pending.capture.precondition.token === precondition.token;
+				? request.capture.precondition.kind === 'create-only'
+				: request.capture.precondition.kind === 'expected-saved-base' &&
+					request.capture.precondition.token === precondition.token;
 		const sameSource =
-			pending.capture.canonicalJson === current.canonicalJson &&
-			sameAcceptedRevision(pending.capture.acceptedRevision, current.revision) &&
+			pending.sourceCanonicalJson === current.canonicalJson &&
+			sameAcceptedRevision(request.capture.acceptedRevision, current.revision) &&
 			sameCondition;
 		return sameSource ? pending : null;
 	}
 
-	function prepareRequest(current: SaveSourceState): SaveRequest {
+	type CapturePreparation =
+		| { readonly kind: 'ready'; readonly pending: PendingCapture }
+		| {
+				readonly kind: 'refused';
+				readonly code: 'invalid-project' | 'content-identity-mismatch' | 'invalid-save-request';
+				readonly message: string;
+				readonly issues?: readonly { path: string; code: string; message: string }[];
+		  };
+
+	async function prepareRequest(current: SaveSourceState): Promise<CapturePreparation> {
 		const retained = retainedCapture(current);
-		if (retained) return retained;
-		return {
-			contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
-			capture: {
-				protocol: 'SaveAcceptedSource@1',
-				projectId: current.revision.projectId,
-				operationId: mintOperationId(),
-				precondition: currentPrecondition(),
-				sourceKind: CURRENT_SOURCE_KIND,
-				sourceVersion: CURRENT_SOURCE_VERSION,
+		if (retained) return { kind: 'ready', pending: retained };
+		// Capture through the persistence boundary the server reads, not by
+		// hand-serializing the admitted source: the coordinator's revision is
+		// stamped into the saved bytes while the source itself keeps its embedded
+		// baseline revision. A hand-built capture would disagree with the server's
+		// re-serialization and be refused on every live Save.
+		const captured = await captureUnitSave({
+			snapshot: {
 				acceptedRevision: current.revision,
 				sourceContentId: current.sourceContentId,
-				canonicalJson: current.canonicalJson
+				sourceKind: UNIT_SOURCE_KIND,
+				sourceVersion: UNIT_SOURCE_VERSION,
+				domain: {
+					identity: { acceptedRevision: current.revision, sourceContentId: current.sourceContentId },
+					source: current.source
+				}
+			},
+			operationId: mintOperationId(),
+			precondition: currentPrecondition()
+		});
+		if (captured.kind === 'refused') return captured;
+		return {
+			kind: 'ready',
+			pending: {
+				request: { contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME, capture: captured.capture },
+				sourceCanonicalJson: current.canonicalJson
 			}
 		};
 	}
 
-	async function run(request: SaveRequest, signal?: AbortSignal): Promise<SaveOutcome> {
+	async function run(prepared: PendingCapture, signal?: AbortSignal): Promise<SaveOutcome> {
 		if (inFlight) return { kind: 'busy' };
-		pending = request;
+		const request = prepared.request;
+		pending = prepared;
 		const requestEpoch = epoch();
 		const capturedJson = request.capture.canonicalJson;
 		inFlight = { epoch: requestEpoch, canonicalJson: capturedJson };
@@ -417,13 +494,16 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				baseline = {
 					savedBaseToken: acknowledged.savedBaseToken,
 					savedRevision: acknowledged.savedRevision,
-					savedCanonicalJson: capturedJson,
+					// The saved base compares against the admitted source text, not the
+					// stamped persistence bytes: the envelope's embedded revision is
+					// baseline provenance and does not move when the coordinator mints.
+					savedCanonicalJson: prepared.sourceCanonicalJson,
 					savedSourceContentId: acknowledged.sourceContentId
 				};
 				pending = null;
 				// Acknowledgment marks only the captured contents; edits made during
 				// the Save stay dirty.
-				const kind = currentCanonical() === capturedJson ? 'saved' : 'dirty';
+				const kind = currentCanonical() === prepared.sourceCanonicalJson ? 'saved' : 'dirty';
 				status = kind;
 				emit();
 				return { kind, acknowledgement: acknowledged };
@@ -461,11 +541,23 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				}
 				return { kind: 'conflict' };
 			}
-			case 'auth-required':
+			case 'auth-required': {
 				error = { code: 'auth-required', message: 'Sign-in is required', retryable: true };
 				status = 'auth-required';
 				emit();
+				// TD-9: capture the exact request before the platform redirect. The
+				// capture stays retained, so the return visit resumes this operation
+				// rather than minting a new one from a base the server may have moved.
+				if (options.onAuthRequired) {
+					try {
+						await options.onAuthRequired(request);
+					} catch {
+						// A failed handoff must not turn the Save into a different outcome; the
+						// retained capture still lets the creator retry from the Head.
+					}
+				}
 				return { kind: 'refused', code: 'auth-required', message: error.message };
+			}
 			case 'refused':
 				error = {
 					code: result.code,
@@ -492,19 +584,62 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		}
 	}
 
-	function saveCommand(signal?: AbortSignal): Promise<SaveOutcome> {
+	async function saveCommand(signal?: AbortSignal): Promise<SaveOutcome> {
 		const current = readCurrent();
-		if (!current) return Promise.resolve({ kind: 'unavailable' });
+		if (!current) return { kind: 'unavailable' };
 		// An in-flight Save is busy, not unresolved: its own response is still the
-		// answer, and `retry()` must not race it either.
-		if (inFlight) return Promise.resolve({ kind: 'busy' });
+		// answer, and `retry()` must not race it either. Capture preparation is part
+		// of the command, so it holds the same exclusivity.
+		if (inFlight || preparing) return { kind: 'busy' };
 		// A retained capture is an unresolved Save: it may still have committed,
 		// and only its receipt can say. Minting a new operation from newer bytes
 		// would drop that recovery and send a precondition the server may already
 		// have moved, so the ambiguity is settled first (`retry()`). Once it is, the
 		// newer contents save normally under a fresh operation ID.
-		if (pending && retainedCapture(current) === null) return Promise.resolve({ kind: 'unresolved' });
-		return run(prepareRequest(current), signal);
+		if (pending && retainedCapture(current) === null) return { kind: 'unresolved' };
+
+		preparing = true;
+		const requestEpoch = epoch();
+		status = 'saving';
+		error = null;
+		conflict = null;
+		emit();
+		let preparation: CapturePreparation;
+		try {
+			preparation = await prepareRequest(current);
+		} catch (failure) {
+			preparing = false;
+			error = {
+				code: 'invalid',
+				message: failure instanceof Error ? failure.message : 'The accepted source could not be captured',
+				retryable: false
+			};
+			status = 'error';
+			emit();
+			return { kind: 'error', message: error.message };
+		}
+		preparing = false;
+
+		// The capture was stamped from a session that may no longer be installed.
+		// Do not retain it under the new session's state.
+		if (epoch() !== requestEpoch) {
+			status = derivedStatus();
+			emit();
+			return { kind: 'stale-epoch' };
+		}
+		if (preparation.kind === 'refused') {
+			error = {
+				code: preparation.code,
+				message: preparation.message,
+				issues: preparation.issues,
+				retryable: false
+			};
+			pending = null;
+			status = 'refused';
+			emit();
+			return { kind: 'refused', code: preparation.code, message: preparation.message };
+		}
+		return run(preparation.pending, signal);
 	}
 
 	return {
@@ -522,7 +657,7 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 		},
 		save: saveCommand,
 		retry(signal) {
-			if (inFlight) return Promise.resolve({ kind: 'busy' });
+			if (inFlight || preparing) return Promise.resolve({ kind: 'busy' });
 			if (pending) return run(pending, signal);
 			return saveCommand(signal);
 		},

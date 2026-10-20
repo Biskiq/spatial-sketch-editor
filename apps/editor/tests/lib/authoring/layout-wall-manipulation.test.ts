@@ -24,14 +24,15 @@ import {
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
-import type { ProjectDocument } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import {
 	createLayoutInstrument,
@@ -103,12 +104,12 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 
 async function mount(): Promise<Mounted> {
 	const { document, wallId, openingId } = fixtureDocument();
-	const project: ProjectDocument = {
+	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S05 wall manipulation',
 		layout: document,
 		scene: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
-	};
+	});
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-s05',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
@@ -145,7 +146,7 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 	const reference = {
 		version: 1 as const,
 		domain: 'layout' as const,
-		revision: { kind: 'exact' as const, contentRevision: snapshot.sourceContentId },
+		revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
 		subject: { kind: 'wall' as const, id: sourceId },
 		instancePath: [],
 		location: {
@@ -199,14 +200,14 @@ function typedInstrument(mounted: Mounted): LayoutInstrument {
 		subject: { kind: 'wall', id: mounted.wallId },
 		document: mounted.document,
 		projectId: PROJECT_ID,
-		contentRevision: mounted.facade.snapshot().sourceContentId,
+		contentRevision: mounted.facade.snapshot().domain.unitRevisions.layout,
 		port: mounted.services.authoring
 	});
 	return instrument;
 }
 
 function acceptedLayout(facade: StageFacade): LayoutDocumentWallFirst {
-	return currentStageSource(facade.snapshot()).source.layout;
+	return stageEnvelope(facade.snapshot()).units.layout.data;
 }
 
 function wallPoints(document: LayoutDocumentWallFirst, wallId: string): {
@@ -230,7 +231,7 @@ describe('T1.P01.S05 — existing straight-Wall manipulation planners', () => {
 		const reference = {
 			version: 1 as const,
 			domain: 'layout' as const,
-			revision: { kind: 'exact' as const, contentRevision: snapshot.sourceContentId },
+			revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
 			subject: { kind: 'wall' as const, id: wallId },
 			instancePath: [],
 			location: {
@@ -271,7 +272,7 @@ describe('T1.P01.S05 — existing straight-Wall manipulation planners', () => {
 
 		// The intent must address the Wall it edits: a target naming another Wall
 		// is refused even though the payload names this one.
-		const otherWall = currentStageSource(facade.snapshot()).source.layout.walls[1]!;
+		const otherWall = stageEnvelope(facade.snapshot()).units.layout.data.walls[1]!;
 		const otherReference = { ...reference, subject: { kind: 'wall' as const, id: otherWall.id } };
 		expect(
 			await host.accept({
@@ -350,7 +351,7 @@ describe('T1.P01.S05 — typed Wall manipulation', () => {
 			subject: { kind: 'wall', id: mounted.wallId },
 			document: mounted.document,
 			projectId: PROJECT_ID,
-			contentRevision: mounted.facade.snapshot().sourceContentId,
+			contentRevision: mounted.facade.snapshot().domain.unitRevisions.layout,
 			port
 		});
 		noWrite.edit('length', '   ');
@@ -756,7 +757,7 @@ describe('T1.P01.S05 — handle hit-testing and inverse mapping', () => {
 			operationId: 'intent',
 			projectId: PROJECT_ID,
 			revisionId: snapshot.acceptedRevision.revisionId,
-			contentRevision: snapshot.sourceContentId,
+			contentRevision: snapshot.domain.unitRevisions.layout,
 			levelId: snapshot.domain.layoutLevelId
 		};
 		expect(

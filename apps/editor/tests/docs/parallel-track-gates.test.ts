@@ -1896,7 +1896,13 @@ describe('the capability-readiness rule', () => {
 				viewport
 			],
 			'T1.P01.S05': ['F1.reference@1:references-v1', local, viewport],
-			'T1.P01.S06': ['F1.reference@1:references-v1', local, viewport],
+			'T1.P01.S06': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F4.intent-acceptance@1:unit-acceptance-v1',
+				'F4.intent-acceptance@1:conditional-save-units-v1',
+				viewport
+			],
 			'T1.P01.S07': ['F1.reference@1:references-v1', 'F3.channels@1:inspection-v1', local],
 			'T2.P01.S01': ['F1.reference@1:references-v1'],
 			'T2.P01.S02': ['F1.reference@1:references-v1', local],

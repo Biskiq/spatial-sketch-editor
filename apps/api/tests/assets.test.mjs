@@ -18,7 +18,7 @@ import { assetMemoryPool, memoryObjectStore, SESSION_COOKIE, SESSION_KEY, sessio
 test('asset routes authenticate before parsing or touching storage', async () => {
 	const pool = assetMemoryPool();
 	const store = memoryObjectStore();
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const headers = {
 			'content-type': 'application/octet-stream',
@@ -48,7 +48,7 @@ test('asset routes authenticate before parsing or touching storage', async () =>
 test('owned asset registration, streaming upload, metadata, bytes, and isolation work', async () => {
 	const pool = assetMemoryPool();
 	const store = memoryObjectStore();
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const owner = await sessionCookie(app, 'google:user-1');
 		const other = await sessionCookie(app, 'google:user-2');
@@ -93,7 +93,7 @@ test('owned asset registration, streaming upload, metadata, bytes, and isolation
 		assert.match(ready.sha256, /^sha256-[0-9a-f]{64}$/);
 		assert.equal('objectKey' in ready, false);
 		assert.equal(store.puts.length, 1);
-		assert.match(store.puts[0].key, new RegExp(`^projects/project:test/assets/${assetId}/[0-9a-f]+$`));
+		assert.match(store.puts[0].key, new RegExp(`^projects/test/project:test/assets/${assetId}/[0-9a-f]{32}$`));
 		assert.deepEqual(store.puts[0].bytes, bytes);
 
 		const listed = await app.inject({ method: 'GET', url: '/projects/project:test/assets', headers: { cookie: owner } });
@@ -132,7 +132,7 @@ test('asset upload validation and storage failure never produce ready metadata',
 	const pool = assetMemoryPool();
 	const storeOptions = { failPut: true };
 	const store = memoryObjectStore(storeOptions);
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const cookie = await sessionCookie(app, 'google:user-1');
 		const registered = await app.inject({
@@ -181,7 +181,7 @@ test('finalize failure leaves pending metadata and retains the uploaded object',
 	const poolOptions = { failFinalize: true };
 	const pool = assetMemoryPool(poolOptions);
 	const store = memoryObjectStore();
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const cookie = await sessionCookie(app, 'google:user-1');
 		const registered = await app.inject({
@@ -221,7 +221,7 @@ test('finalize failure leaves pending metadata and retains the uploaded object',
 test('multi-chunk PNG, WebP, and JPEG uploads record exact metadata and hashes', async () => {
 	const pool = assetMemoryPool();
 	const store = memoryObjectStore();
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const cookie = await sessionCookie(app, 'google:user-1');
 		const fixtures = [
@@ -265,7 +265,7 @@ test('multi-chunk PNG, WebP, and JPEG uploads record exact metadata and hashes',
 test('storage-less asset metadata remains readable without an object key', async () => {
 	const pool = assetMemoryPool();
 	const store = memoryObjectStore();
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	const assetId = '00000000-0000-4000-8000-000000000010';
 	pool.assets.set(assetId, {
 		id: assetId,
@@ -308,7 +308,7 @@ test('storage-less asset metadata remains readable without an object key', async
 test('asset byte reads fail closed for missing, mismatched, and broken objects', async () => {
 	const pool = assetMemoryPool();
 	const store = memoryObjectStore();
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const cookie = await sessionCookie(app, 'google:user-1');
 		const registered = await app.inject({
@@ -359,7 +359,7 @@ test('concurrent uploads use distinct claims and only latest claim finalizes', a
 		await new Promise((resolve) => releases.push(resolve));
 		return originalPut(...args);
 	};
-	const app = createApp({ pool, objectStore: store, sessionKey: SESSION_KEY, logger: false });
+	const app = createApp({ pool, objectStore: store, objectNamespace: 'test', sessionKey: SESSION_KEY, logger: false });
 	try {
 		const cookie = await sessionCookie(app, 'google:user-1');
 		const registered = await app.inject({

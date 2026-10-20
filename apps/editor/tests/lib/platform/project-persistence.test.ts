@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	canonicalSourceJson,
-	createEmptyWallFirstProject,
-	sourceContentIdForCanonicalJson
-} from '@portfolio/project-model';
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	computeEnvelopeSourceContentId,
+	serializeProjectEnvelope
+} from '@portfolio/project-model/units';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import {
 	SAVE_CONTENT_IDENTITY_SCHEME,
 	type SaveAcknowledgement,
@@ -26,10 +28,9 @@ const PROJECT_ID = 'project:client-test';
 const TOKEN = 'saved-base:11111111-1111-4111-8111-111111111111';
 
 async function fixture() {
-	const project = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Client project' });
-	const canonical = canonicalSourceJson(project);
-	if (canonical.kind === 'rejected') throw new Error('fixture was not canonical');
-	const sourceContentId = await sourceContentIdForCanonicalJson(canonical.canonicalJson);
+	const project = await createUnitProject({ id: PROJECT_ID, name: 'Client project' });
+	const canonicalJson = serializeProjectEnvelope(project);
+	const sourceContentId = await computeEnvelopeSourceContentId(project);
 	const request: SaveRequest = {
 		contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
 		capture: {
@@ -37,14 +38,14 @@ async function fixture() {
 			projectId: PROJECT_ID,
 			operationId: 'operation-1',
 			precondition: { kind: 'create-only' },
-			sourceKind: 'current-source',
-			sourceVersion: 5,
+			sourceKind: UNIT_SOURCE_KIND,
+			sourceVersion: UNIT_SOURCE_VERSION,
 			acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-1' },
 			sourceContentId,
-			canonicalJson: canonical.canonicalJson
+			canonicalJson
 		}
 	};
-	return { project, canonical, sourceContentId, request };
+	return { project, canonicalJson, sourceContentId, request };
 }
 
 function acknowledgement(sourceContentId: string): SaveAcknowledgement {

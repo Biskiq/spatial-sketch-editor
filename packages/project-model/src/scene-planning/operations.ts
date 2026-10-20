@@ -28,8 +28,8 @@
  */
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import type { ShapeIssue } from '../strict-shape';
-import type { ProjectDocument } from '../project-types';
-import type { SceneDocument, SceneEntity, ScenePrimitiveEntity, Vec3 } from '../scene';
+import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
+import type { SceneEntity, ScenePrimitiveEntity, Vec3 } from '../scene';
 import { framePointToWorld, frameYawToWorld, isFinitePlacementFrame } from './frame';
 import { finalizeSceneCandidate, sameSceneValues, type SceneRecordScope } from './record-scope';
 import { resolveSceneSupport, type SceneSupportChoice } from './support';
@@ -104,8 +104,16 @@ export type SceneOperationCandidate = {
 
 export type SceneOperationResult = SceneOperationCandidate | SceneOperationRefusal;
 
+/**
+ * One accepted Scene read: the two unit payloads an operation may consult plus
+ * the accepted content identity that qualifies its support generation.
+ *
+ * Layout is read-only here — a Scene operation resolves support from it and
+ * never writes it, which is why it is a payload rather than a source object.
+ */
 export type SceneOperationContext = {
-	readonly project: ProjectDocument;
+	readonly layout: import('@portfolio/layout-core').LayoutDocumentWallFirst;
+	readonly scene: SceneDocument;
 	readonly sourceContentId: string;
 };
 
@@ -134,7 +142,7 @@ export function planMoveHorizontal(input: {
 	readonly contactMinY: number;
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneOperationResult {
-	const target = readObject(input.context.project.scene, input.entityId);
+	const target = readObject(input.context.scene, input.entityId);
 	if (target.kind !== 'object') return target;
 	const contact = readContactMinY(target.entity, input.contactMinY);
 	if (contact.kind !== 'value') return contact;
@@ -174,7 +182,7 @@ export function planSetYaw(input: {
 	readonly yaw: number;
 	readonly frame: LocalInputFrame;
 }): SceneOperationResult {
-	const target = readObject(input.context.project.scene, input.entityId);
+	const target = readObject(input.context.scene, input.entityId);
 	if (target.kind !== 'object') return target;
 	if (!upright(target.entity)) return unsupportedTransform(input.entityId, 'set-yaw');
 	if (!Number.isFinite(input.yaw) || !isFinitePlacementFrame(input.frame)) return invalidFrame();
@@ -214,7 +222,7 @@ export function planPlaceOnFloor(input: {
 	readonly yaw?: number | undefined;
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneOperationResult {
-	const target = readObject(input.context.project.scene, input.entityId);
+	const target = readObject(input.context.scene, input.entityId);
 	if (target.kind !== 'object') return target;
 	const contact = readContactMinY(target.entity, input.contactMinY);
 	if (contact.kind !== 'value') return contact;
@@ -268,7 +276,7 @@ export function planResizeOnFloor(input: {
 	readonly contactMinY: number;
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneOperationResult {
-	const target = readObject(input.context.project.scene, input.entityId);
+	const target = readObject(input.context.scene, input.entityId);
 	if (target.kind !== 'object') return target;
 	const contact = readContactMinY(target.entity, input.contactMinY);
 	if (contact.kind !== 'value') return contact;
@@ -318,7 +326,7 @@ export function planDuplicateOne(input: {
 	readonly contactMinY: number;
 	readonly choice?: SceneSupportChoice | undefined;
 }): SceneOperationResult {
-	const scene = input.context.project.scene;
+	const scene = input.context.scene;
 	const target = readObject(scene, input.entityId);
 	if (target.kind !== 'object') return target;
 	const contact = readContactMinY(target.entity, input.contactMinY);
@@ -396,7 +404,7 @@ export function planDeleteOne(input: {
 	readonly context: SceneOperationContext;
 	readonly entityId: string;
 }): SceneOperationResult {
-	const scene = input.context.project.scene;
+	const scene = input.context.scene;
 	const target = scene.entities.find((entity) => entity.id === input.entityId);
 	if (target === undefined) {
 		return refusal('missing-target', `No Scene entity "${input.entityId}" exists in the accepted source.`, [
@@ -452,7 +460,7 @@ export function finalizePlacedEntity(input: {
 	readonly scene: SceneDocument;
 }): SceneOperationResult {
 	const finalized = finalizeSceneCandidate({
-		before: input.context.project.scene,
+		before: input.context.scene,
 		after: input.scene,
 		scope: {
 			operationKind: 'place-object',
@@ -484,7 +492,7 @@ function finalize(input: {
 	readonly correspondence: readonly SceneOperationCorrespondence[];
 	readonly support?: SceneOperationSupportEvidence;
 }): SceneOperationResult {
-	const before = input.context.project.scene;
+	const before = input.context.scene;
 	const after: SceneDocument = {
 		...before,
 		entities: before.entities.map((entity) => (entity.id === input.next.id ? input.next : entity))
@@ -522,7 +530,7 @@ function resolveSupport(
 	choice: SceneSupportChoice | undefined
 ): { readonly kind: 'resolved'; readonly support: SceneOperationSupportEvidence } | SceneOperationRefusal {
 	const resolution = resolveSceneSupport({
-		layout: context.project.layout,
+		layout: context.layout,
 		sourceContentId: context.sourceContentId,
 		point,
 		requiredElevation,

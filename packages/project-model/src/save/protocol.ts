@@ -7,19 +7,18 @@
  * dependency. It owns **the capture**, the receipt/refusal vocabulary and the
  * durable saved-base token form. It deliberately does not own:
  *
- * - project validation or admission — that is the one project codec plus
- *   `admitCurrentSourceContent`, so Save cannot become a second validator;
- * - the content-identity implementation — the digest still comes from
- *   `content-identity.ts`, and its **scheme** travels as transport metadata
- *   outside the capture. Keeping the scheme constant here, pinned by a
- *   golden-digest test, makes a canonicalization change fail loudly instead of
- *   silently turning every Save into a false conflict or false match.
+ * - source validation or admission — the live F.2 unit Save handler owns both,
+ *   so Save cannot become a second validator;
+ * - the content-identity implementation — the digest comes from the live source
+ *   provider, and its **scheme** travels as transport metadata outside the
+ *   capture. Keeping the scheme constant here, pinned by a golden-digest test,
+ *   makes a canonicalization change fail loudly instead of silently turning
+ *   every Save into a false conflict or false match.
  *
  * The capture carries the full canonical source **text**. That is deliberate:
- * the digest excludes `layout.identity.cursor`, so equal digests do not prove
- * equal bytes, and retry identity / dirty comparison need the full bytes. The
- * server re-parses and re-canonicalizes them through the single project export
- * before admitting anything.
+ * equal digests do not prove equal bytes, and retry identity / dirty comparison
+ * need the full bytes. The server re-parses and re-canonicalizes them through
+ * the live unit source provider before admitting anything.
  */
 
 import { sha256Bytes } from '../package-sha';

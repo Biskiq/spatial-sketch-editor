@@ -255,7 +255,6 @@ export function resolveChannelPropertyScope(
 		};
 	}
 	const resolution = resolveReference(owner, context.read);
-	const current = context.read.snapshot.sourceContentId;
 	if (resolution.kind !== 'resolved') {
 		return {
 			kind: 'refused',
@@ -264,14 +263,11 @@ export function resolveChannelPropertyScope(
 			action: resolution.repairs[0]?.description ?? 'Re-resolve the owner from the current snapshot.'
 		};
 	}
-	if (resolution.subject.contentRevision !== current) {
-		return {
-			kind: 'refused',
-			reason: 'unresolved-owner-reference',
-			message: `the owner reference resolves at content "${resolution.subject.contentRevision}" and the supplied snapshot is content "${current}"`,
-			action: 'Re-resolve the owner from the current snapshot before contributing.'
-		};
-	}
+	// A resolved owner already names the current content of its owning unit: the
+	// resolver refuses an exact reference whose revision is not the revision it
+	// holds. The envelope-wide `sourceContentId` is not a domain revision in F.2
+	// (each unit has its own), so comparing against it would refuse every valid
+	// owner. Staleness is still caught above, before the value is admitted.
 	if (address.frame.kind === 'owner-frame') {
 		const frame = resolveFrame(address.frame, context.read);
 		if (frame.kind !== 'resolved') {

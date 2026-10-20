@@ -1,4 +1,3 @@
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * The session host owns the facts that must not survive a project replacement.
  *
@@ -19,7 +18,9 @@ import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 import { describe, expect, it } from 'vitest';
 import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutVec2 } from '@portfolio/layout-core';
-import { createEmptyWorldLocalSceneDocument, type ProjectDocument } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import {
 	admitSource,
 	type AdmissionContext,
@@ -36,7 +37,7 @@ import {
 const PROJECT_ID = 'project-session';
 const OTHER_PROJECT_ID = 'project-session-other';
 
-function enclosureProject(id: string, scale: number = 1): ProjectDocument {
+async function enclosureProject(id: string, scale: number = 1): Promise<ProjectEnvelope> {
 	const points: LayoutVec2[] = [
 		[0, -4 * scale],
 		[7 * scale, -4 * scale],
@@ -50,18 +51,13 @@ function enclosureProject(id: string, scale: number = 1): ProjectDocument {
 		role: 'boundary'
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
-	return {
-		id,
-		name: 'Session project',
-		layout: plan.document,
-		scene: createEmptyWorldLocalSceneDocument()
-	};
+	return createUnitProject({ id, name: 'Session project', layout: plan.document });
 }
 
 let revisionCounter = 0;
 
 async function admit(
-	document: ProjectDocument,
+	document: ProjectEnvelope,
 	projectId: string = document.id,
 	sessionEpoch?: string
 ): Promise<StageReadSnapshot> {
@@ -78,7 +74,7 @@ async function admit(
 describe('stage session — one replacement epoch and one teardown', () => {
 	it('cancels every registered writer exactly once and clears the replaced context', async () => {
 		const session = createStageSession({ sessionEpoch: 'session-1' });
-		const first = await admit(enclosureProject(PROJECT_ID));
+		const first = await admit(await enclosureProject(PROJECT_ID));
 		session.replace(first);
 		expect(session.current()).toBe(first);
 
@@ -96,10 +92,10 @@ describe('stage session — one replacement epoch and one teardown', () => {
 			policy: 'continue-after-revalidation'
 		});
 		expect(lease.kind).toBe('granted');
-		session.select({ sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, ref: { sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, stream: 'projected', subRef: null } });
+		session.select({ sourceId: stageLayout(first).walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, ref: { sourceId: stageLayout(first).walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, stream: 'projected', subRef: null } });
 		session.openTask({ kind: 'subject-membership', label: 'Plan membership', targetRef: null });
 
-		const second = await admit(enclosureProject(OTHER_PROJECT_ID, 0.5), OTHER_PROJECT_ID);
+		const second = await admit(await enclosureProject(OTHER_PROJECT_ID, 0.5), OTHER_PROJECT_ID);
 		const result = session.replace(second);
 
 		expect(cancelled.sort()).toEqual(['gesture', 'load']);
@@ -123,18 +119,18 @@ describe('stage session — one replacement epoch and one teardown', () => {
 
 	it('keeps the epoch and the live writers across a content change for the same project', async () => {
 		const session = createStageSession({ sessionEpoch: 'session-1' });
-		const first = await admit(enclosureProject(PROJECT_ID));
+		const first = await admit(await enclosureProject(PROJECT_ID));
 		session.replace(first);
 		const token = session.token();
 		let cancelled = 0;
 		session.writers().register('load', token, () => {
 			cancelled += 1;
 		});
-		session.select({ sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, ref: { sourceId: currentStageSource(first).source.layout.walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, stream: 'projected', subRef: null } });
+		session.select({ sourceId: stageLayout(first).walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, ref: { sourceId: stageLayout(first).walls[0]!.id, sourceKind: 'wall', generationId: first.compileGeneration, stream: 'projected', subRef: null } });
 
 		// A content change is admitted under the session's own epoch: it is the same
 		// host lifetime, and the session refuses a snapshot from another one.
-		const changed = await admit(enclosureProject(PROJECT_ID, 0.5), PROJECT_ID, session.sessionEpoch);
+		const changed = await admit(await enclosureProject(PROJECT_ID, 0.5), PROJECT_ID, session.sessionEpoch);
 		const install = session.installAccepted(changed);
 
 		expect(install.kind).toBe('installed');
@@ -155,12 +151,12 @@ describe('stage session — one replacement epoch and one teardown', () => {
 		// Identical content is not a content change either.
 		expect(
 			session.installAccepted(
-				await admit(enclosureProject(PROJECT_ID, 0.5), PROJECT_ID, session.sessionEpoch)
+				await admit(await enclosureProject(PROJECT_ID, 0.5), PROJECT_ID, session.sessionEpoch)
 			)
 		).toEqual({ kind: 'unchanged', sourceContentId: changed.sourceContentId });
 		// A different project identity is a replacement, and the session refuses to
 		// pretend otherwise.
-		const other = await admit(enclosureProject(OTHER_PROJECT_ID), OTHER_PROJECT_ID);
+		const other = await admit(await enclosureProject(OTHER_PROJECT_ID), OTHER_PROJECT_ID);
 		expect(session.installAccepted(other)).toEqual({
 			kind: 'refused',
 			code: 'different-project',
@@ -171,7 +167,7 @@ describe('stage session — one replacement epoch and one teardown', () => {
 
 	it('runs every disposer exactly once at teardown, even when one throws', async () => {
 		const session = createStageSession({ sessionEpoch: 'session-1' });
-		session.replace(await admit(enclosureProject(PROJECT_ID)));
+		session.replace(await admit(await enclosureProject(PROJECT_ID)));
 		let first = 0;
 		let second = 0;
 		session.addDisposable(() => {
@@ -233,7 +229,7 @@ describe('stage session — the gesture policy runs at a reading change', () => 
 
 	it('cancels a cancel-on-reading-change lease exactly once, and keeps the others', async () => {
 		const session = createStageSession({ sessionEpoch: 'session-gesture' });
-		const snapshot = await admit(enclosureProject(PROJECT_ID));
+		const snapshot = await admit(await enclosureProject(PROJECT_ID));
 		session.replace(snapshot);
 		const revision = snapshot.acceptedRevision;
 
@@ -309,7 +305,7 @@ describe('stage session — the gesture policy runs at a reading change', () => 
 
 		// A replacement aborts the in-flight GET exactly once, and its completion can no
 		// longer install into the project that replaced it.
-		session.replace(await admit(enclosureProject(OTHER_PROJECT_ID)));
+		session.replace(await admit(await enclosureProject(OTHER_PROJECT_ID)));
 		expect(captured.signal?.aborted).toBe(true);
 		expect(session.writers().size).toBe(0);
 		pending.resolve('the previous project\u2019s document');
@@ -341,7 +337,7 @@ describe('stage session — the gesture policy runs at a reading change', () => 
 describe('stage session — the reduced-motion endpoint rule', () => {
 	it('settles at the declared reading endpoint when the clock is unbounded', async () => {
 		const session = createStageSession({ sessionEpoch: 'session-1' });
-		session.replace(await admit(enclosureProject(PROJECT_ID)));
+		session.replace(await admit(await enclosureProject(PROJECT_ID)));
 		const snapshot = session.current()!;
 		const camera = createCameraSession({ snapshot, viewportId: 'stage', outputId: 'output:test' });
 		const rect = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };

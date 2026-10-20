@@ -14,14 +14,12 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-	admitCurrentSource,
-	createEmptyWallFirstProject,
 	type AuthoringIntent,
-	type ProjectDocument,
 	type SceneEntity,
 	type Vec3
 } from '@portfolio/project-model';
-import { planWallChain } from '@portfolio/layout-core';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 
 import {
 	createSceneSession,
@@ -40,17 +38,17 @@ import { createStageFacade } from '$lib/authoring/stage/stage-facade';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { bootFromSourceJson } from '$lib/authoring/stage/boot-state';
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
+import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const ENTITY_ID = 'entity-composition-box';
 const PROJECT_ID = 'project-composition-loop';
 const BASELINE: Vec3 = [2, 0.5, 2];
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
-function supportedProject(entities: readonly SceneEntity[]): ProjectDocument {
-	const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Composition loop' });
+function supportedProject(entities: readonly SceneEntity[]): Promise<ProjectEnvelope> {
 	const planned = planWallChain({
-		baseline: base.layout,
+		baseline: createEmptyWallFirstLayoutDocument(),
 		points: [
 			[0, 0],
 			[7, 0],
@@ -61,7 +59,19 @@ function supportedProject(entities: readonly SceneEntity[]): ProjectDocument {
 		role: 'boundary'
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
-	return { ...base, layout: planned.document, scene: { ...base.scene, entities: [...entities] } };
+	return createUnitProject({
+		id: PROJECT_ID,
+		name: 'Composition loop',
+		layout: planned.document,
+		scene: {
+			formatVersion: 1,
+			textures: [],
+			materials: [],
+			entities: [...entities],
+			navigationNodes: [],
+			connections: []
+		}
+	});
 }
 
 const LIGHT_ID = 'entity-composition-light';
@@ -152,9 +162,10 @@ function writePort(): TestPort {
 async function sessionFor(
 	entities: readonly SceneEntity[]
 ): Promise<{ session: ScenePlacementSession; port: TestPort }> {
-	const project = supportedProject(entities);
-	const admitted = await admitCurrentSource(project, {
-		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
+	const project = await supportedProject(entities);
+	const admitted = await admitUnitProject(project, {
+		projectId: PROJECT_ID,
+		revisionId: 'revision-boot'
 	});
 	if (admitted.kind !== 'admitted') throw new Error(`the fixture was not admitted: ${admitted.kind}`);
 	let sequence = 0;
@@ -162,8 +173,8 @@ async function sessionFor(
 	const session = createSceneSession({
 		snapshot: {
 			projectId: PROJECT_ID,
-			contentRevision: admitted.snapshot.sourceContentId,
-			source: admitted.snapshot.domain.source,
+			contentRevision: admitted.snapshot.domain.unitRevisions.scene,
+			source: { layout: stageLayout(admitted.snapshot), scene: stageScene(admitted.snapshot) },
 			compileGeneration: 'generation-1',
 			evaluationId: 'evaluation-1'
 		},
@@ -343,7 +354,7 @@ describe('Scene duplicate and delete — captured identity, exact subject', () =
 
 describe('Scene composition journey — one host, one history stack', () => {
 	async function mounted(entities: readonly SceneEntity[] = [boxEntity()]) {
-		const project = supportedProject(entities);
+		const project = await supportedProject(entities);
 		const admitted = await admitSource(project, {
 			sessionEpoch: 'session-compose-host',
 			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
@@ -367,7 +378,7 @@ describe('Scene composition journey — one host, one history stack', () => {
 			planners: []
 		});
 		mountStageAdapter(facade, host, createAdapter);
-		const reference = sceneEntityReference(ENTITY_ID, facade.snapshot().sourceContentId);
+		const reference = sceneEntityReference(ENTITY_ID, facade.snapshot().domain.unitRevisions.scene);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
 		return { facade, host };
 	}
@@ -470,6 +481,56 @@ describe('Scene composition journey — one host, one history stack', () => {
 		expect(facade.selectionState().primary).toBeNull();
 	});
 
+	it('places typed, edits the placed subject, then undoes and redoes through the same host', async () => {
+		const { facade, host } = await mounted();
+		// The placement planner registers once its captured definition identity
+		// exists; that promise settles in a microtask, before the first task bind.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const opened = facade.openContributedTask('scene-place', 'scene');
+		if (opened.kind !== 'opened') throw new Error(`Place was not opened: ${opened.message}`);
+		const evaluation = facade.evaluation();
+		if (evaluation === null) throw new Error('the composition fixture has no evaluation');
+		const surface = sceneSurfaceFor(facade.snapshot(), evaluation);
+		if (surface === null) throw new Error('Place published no surface');
+
+		// Typed Place captures the admitted native definition and an exact X/Z; the
+		// accepted install is the same one a pointer release produces.
+		await expect(surface.session.place('box', 4, 3)).resolves.toEqual({ kind: 'committed' });
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+		const placedId = surface.session.placedEntityId();
+		expect(placedId).not.toBeNull();
+		if (placedId === null) return;
+		expect(entityOf(facade, placedId)).toMatchObject({ position: [4, 0.5, 3], scale: 1 });
+		expect(host.history().depth).toBe(2);
+		// The typed path selects the exact entity it installed.
+		const selected = facade.selectionState().primary;
+		expect(selected?.subject.kind).toBe('entity');
+		if (selected === null || selected.subject.kind !== 'entity') return;
+		expect(selected.subject.id).toBe(placedId);
+
+		// The typed commit went through the session directly, so the accepted install
+		// left no Place task open to close before Compose.
+		expect(facade.session.task()).toBeNull();
+		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
+		const beforeEditJson = facade.snapshot().canonicalJson;
+		const compose = openCompose(facade);
+		compose.session.beginResize(placedId);
+		expect(compose.session.previewResize(2).kind).toBe('candidate');
+		await expect(compose.session.commitResize()).resolves.toEqual({ kind: 'committed' });
+		await eventually(() => entityOf(facade, placedId)?.scale === 2);
+		expect(entityOf(facade, placedId)).toMatchObject({ position: [4, 1, 3], scale: 2 });
+		expect(host.history().depth).toBe(3);
+
+		// Undo removes only the edit: the placement remains the accepted source.
+		await host.undo();
+		await eventually(() => facade.snapshot().canonicalJson === beforeEditJson);
+		expect(entityOf(facade, placedId)).not.toBeNull();
+		expect(entityOf(facade, placedId)?.scale ?? 1).toBe(1);
+		await host.redo();
+		await eventually(() => entityOf(facade, placedId)?.scale === 2);
+		expect(host.history().depth).toBe(3);
+	});
+
 	it('reloads the downloaded canonical JSON through the route open path and refuses an invalid source', async () => {
 		const { facade } = await mounted();
 		const compose = openCompose(facade);
@@ -501,7 +562,7 @@ describe('Scene composition journey — one host, one history stack', () => {
 			sessionEpoch: reloaded.snapshot.sessionEpoch,
 			baseline: {
 				revision: reloaded.snapshot.acceptedRevision,
-				source: currentStageSource(reloaded.snapshot).source,
+				source: stageEnvelope(reloaded.snapshot),
 				canonicalJson: reloaded.snapshot.canonicalJson,
 				sourceContentId: reloaded.snapshot.sourceContentId
 			},

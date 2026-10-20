@@ -47,7 +47,9 @@ export type PlanSceneFootprintOptions = {
  * Y is deliberately discarded; default asset scale/orientation never re-enters.
  */
 export function buildPlanSceneFootprintProjection(
-	document: SceneDocument,
+	// `SceneDocument` and the Camera-free Scene 2 unit share the entity records
+	// this projection reads; naming only that member keeps both callers exact.
+	document: Pick<SceneDocument, 'entities'>,
 	options: PlanSceneFootprintOptions = {}
 ): PlanSceneProjection {
 	const assetById = options.assetById ?? getAssetById;

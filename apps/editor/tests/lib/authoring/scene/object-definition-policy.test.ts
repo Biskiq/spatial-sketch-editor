@@ -11,7 +11,8 @@
  * inside the renderer" is proven rather than asserted.
  */
 import { describe, expect, it } from 'vitest';
-import { preparePlaceObjectCandidate, type FloorSupportCandidate } from '@portfolio/project-model';
+import { preparePlaceObjectCandidate } from '@portfolio/project-model/scene-planning';
+import type { FloorSupportCandidate } from '@portfolio/project-model';
 import { assets, getAssetById } from '$lib/content/assets';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import {
@@ -188,7 +189,7 @@ describe('normalization is applied exactly once', () => {
 	it('places a native block whose declared footprint matches the retained Plan projection at scale 1', async () => {
 		const definition = await nativePlacementDefinition('box');
 		const result = preparePlaceObjectCandidate({
-			document: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] },
+			document: { formatVersion: 2, textures: [], materials: [], entities: [] },
 			entityId: 'entity-1',
 			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },
 			supportSnapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },

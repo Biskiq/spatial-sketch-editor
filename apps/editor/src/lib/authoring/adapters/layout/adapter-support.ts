@@ -2,11 +2,11 @@
  * T1.P01.S04 — wiring between the adapter's public services and the
  * framework-free instrument controller.
  *
- * It reads the current accepted source and the one canonical selection; it owns
+ * It reads the accepted F.2 Layout unit and the one canonical selection; it owns
  * no state and reaches no host internals.
  */
 
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageAcceptOutcome } from '$lib/authoring/stage/host-acceptance';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
@@ -43,7 +43,7 @@ function port(services: StageAdapterServices): LayoutInstrumentOptions['port'] {
 }
 
 function documentOf(services: StageAdapterServices): LayoutDocumentWallFirst {
-	return currentStageSource(services.stage.snapshot()).source.layout;
+	return stageLayout(services.stage.snapshot());
 }
 
 /**
@@ -108,7 +108,7 @@ export function layoutNameTarget(
 		subject,
 		document,
 		projectId: snapshot.acceptedRevision.projectId,
-		contentRevision: snapshot.sourceContentId,
+		contentRevision: snapshot.domain.unitRevisions.layout,
 		port: port(services)
 	});
 	return {
@@ -136,7 +136,7 @@ export function layoutDimensionsInput(services: StageAdapterServices): LayoutIns
 		subject,
 		document: documentOf(services),
 		projectId: snapshot.acceptedRevision.projectId,
-		contentRevision: snapshot.sourceContentId,
+		contentRevision: snapshot.domain.unitRevisions.layout,
 		port: port(services),
 		gesture: gesturePort(services)
 	};
@@ -156,7 +156,7 @@ export function layoutPlacementInput(services: StageAdapterServices): LayoutInst
 		subject,
 		document: documentOf(services),
 		projectId: snapshot.acceptedRevision.projectId,
-		contentRevision: snapshot.sourceContentId,
+		contentRevision: snapshot.domain.unitRevisions.layout,
 		port: port(services),
 		gesture: gesturePort(services)
 	};

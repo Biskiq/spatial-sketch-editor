@@ -1,7 +1,7 @@
 # Camera and tour
 
 **Read when:** camera nodes, connections, route/path evaluation, framing envelopes, motion guards, guided visitor runtime.
-**Last reviewed:** 2026-10-13 (#115 WP4 — editor Camera surfaces removed; one Camera authority and the current document format confirmed)
+**Last reviewed:** 2026-10-20 (T3.P01.S04 cutover implementation; PR #158 review pending, production activation owner-controlled)
 
 ---
 
@@ -10,7 +10,7 @@
 | Camera node | Eye / target / FOV (world-local; `roomId` absent — legacy room-local only) |
 | Connection | Edge; JSON stores **interior** anchors only |
 | Path kinds | `rounded-polyline` · `auto-bezier` (no tangent handles) |
-| Order | Open chain (main route + branches); loop derived from a distinct tail↔head connection. Current Scene-encoded behavior, retired at the T3 Camera/Experience cutover (below) |
+| Order | Experience Guide Stop order; Camera connectivity never determines editorial order |
 | View | Camera-owned spatial attention: pose/framing (or explicitly adaptive subject framing), projection and evaluation |
 
 Defaults: eye **1.65 m**, target **1.25 m**, distance **3 m**, clearance **0.35 m**.
@@ -39,8 +39,8 @@ inputs. The visitor cold runtime
 (`apps/editor/src/lib/visitor/visitor-cold-runtime.ts`) evaluates released
 documents through this same authority, and the visitor-only app components are
 `VisitorCameraDirector.svelte`, `VisitorEntities.svelte`, `VisitorLayoutShell.svelte`
-and `VisitorPreviewSurface.svelte`. The release reader is the strict cold path on
-`/p/:publicationId`; there are currently no releases (owner statement).
+and `VisitorPreviewSurface.svelte`. The public `/p/:publicationId` route currently receives an honest 404 under AM-9; T4 owns the
+prepared-reader activation. No old-source fallback is served.
 
 **What #115 removed.** The editor's Camera surfaces are gone with the editor shell:
 there is no Camera Plan, no camera timeline or transport, no camera-graph
@@ -54,11 +54,13 @@ remains in the tree.
 
 ## Current vs destination (ratified 2026-09-27; reconciled 2026-09-29)
 
-**Current (everything below, until its explicit cutover).** The node/connection
-graph, order links, holds and evaluator described here are the landed
-implementation, now reachable only through the current document format and the
-release reader. `camera-route.ts` / `camera-motion.ts` and the curve/guard
-mechanism are the current mechanism, not the destination guarantee.
+**Current implementation (T3.P01.S04).** F2 Camera Views/connections supply the live graph;
+Experience Presentations/Stops/Guides supply editorial order, holds and continuation. The visitor
+store runs the shared interpreter. Guide-free Presentations remain selectable without fabricated
+Stops. Cut and reduced motion settle through the same Camera authority; Travel resolves the exact
+authored connection and direction. An in-flight handoff uses only the Experience-declared predecessor
+View and the live pose; unrelated connectivity is a typed gap. Authored Cut/Travel controls, text,
+state and lifecycle homes are T3.P02 amendments. Public reads remain unavailable until T4's reader.
 
 **Destination.** Camera keeps connectivity, routes, framing, projection and
 evaluation as one authority; every profile controller realizes viewing intent
@@ -90,19 +92,17 @@ owns their disclosure, information homes and Outside/Through/Plan postures. The
 owns truthful observer/target/framing representation, grips and precision feedback;
 it introduces no orbit constraint or additional Camera operation.
 
-### Order: current encoding, and the cutover that retires it
+### Order: Experience Guide order only
 
 Camera owns Views, connectivity/routes, framing/projection and movement
 evaluation. Experience owns Presentations, Stops, Guide editorial
 order/continuation/Gates and Camera invocation context. Legacy node
-`nextNodeId`/`previousNodeId` order, `holdSeconds`, `detourOfNodeId` and
-`lockInteraction` remain **current Scene-encoded behavior only** — the new product
-has no writer for them after #115, and they are **RETIRE AT T3** in the Camera/Experience
-cutover (implementation-plan §5.1), whose concrete dependency is the retained
-visitor guided runtime consuming that order. A read-only compatibility adapter may
-serve migration, but no new writable node order may coexist with Experience Guide
-order. Exploration releases guided Camera control; rejoin evaluates from the
-current pose and leaves autoplay paused. The exact detour explanation lifecycle is
+`nextNodeId`/`previousNodeId` order, node `holdSeconds`, `detourOfNodeId` and
+`lockInteraction` were **retired by `T3.P01.S04`**: the Scene/Camera types and
+codec no longer admit them, their flow-order exports are gone and the converter
+was removed. No writable node order coexists with Experience Guide order.
+Exploration releases guided Camera control; rejoin evaluates from the current
+pose and leaves autoplay paused. The exact detour explanation lifecycle is
 reserved for Prototype V2.
 
 ### Envelope, guards and framing (current kernel behavior)

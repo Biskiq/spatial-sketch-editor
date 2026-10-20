@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildScaleFixture, SCALE_FIXTURE_SEEDS } from './__fixtures__/layout-scale-fixtures';
-import { getCameraMotionOptions, getFlowRoute } from '@portfolio/camera-core';
+import { getCameraMotionOptions } from '@portfolio/camera-core';
 import type { Vector3Like } from '@portfolio/camera-core';
 
 function vectorToTuple(point: Vector3Like): [number, number, number] {
@@ -243,22 +243,6 @@ describe('G2 hit-priority freeze', () => {
 });
 
 describe('G2 camera-projection scene fixture', () => {
-	it('resolves the flow loop and flattens to the expected 2D polyline', () => {
-		const graph = g2SceneNavigationGraph();
-		const route = getFlowRoute('n0', graph, { loop: true });
-		expect(route.nodeIds).toEqual(['n0', 'n1', 'n2', 'n0']);
-		const positions = route.positionParts.flatMap((part) => {
-			const points = part.kind === 'rounded-polyline' ? part.points : part.anchors;
-			return points.map(vectorToTuple);
-		});
-		expect(positions.map(([x, , z]) => [x, z])).toEqual([
-			[0, 0],
-			[6, 0],
-			[6, 4],
-			[0, 0]
-		]);
-	});
-
 	it('exposes per-direction timing for connection labels', () => {
 		const graph = g2SceneNavigationGraph();
 		const connection = graph.connections.find((candidate) => candidate.id === 'c0')!;

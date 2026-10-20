@@ -15,7 +15,7 @@ import {
 	canonicalDefinitionMetadata,
 	definitionMetadataContentId,
 	type NormalizedPlacementDefinition
-} from '@portfolio/project-model';
+} from '@portfolio/project-model/scene-planning';
 
 type Facts = Omit<NormalizedPlacementDefinition, 'metadataContentId'>;
 

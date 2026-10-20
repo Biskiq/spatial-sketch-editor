@@ -27,27 +27,6 @@ function fixtureDocument(): SceneDocument {
 	return cloneFixtureDocument('tour-minimal');
 }
 
-function assertGuidedCycleInvariant(document: SceneDocument) {
-	const guided = document.navigationNodes.filter(
-		(node) => node.nextNodeId !== undefined || node.previousNodeId !== undefined
-	);
-	if (guided.length === 0) return;
-
-	const nodeById = new Map(document.navigationNodes.map((node) => [node.id, node]));
-	const startId = guided[0]!.id;
-	const visited = new Set<string>();
-	let cursor = nodeById.get(startId);
-
-	while (cursor && !visited.has(cursor.id)) {
-		visited.add(cursor.id);
-		cursor = cursor.nextNodeId ? nodeById.get(cursor.nextNodeId) : undefined;
-	}
-
-	expect(visited.size).toBe(guided.length);
-	expect(cursor?.id).toBe(startId);
-}
-
-
 describe('resolveSceneDocument', () => {
 	it('rejects unknown placement asset IDs at the scene boundary', () => {
 		const base = fixtureDocument();

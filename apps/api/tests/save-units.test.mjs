@@ -3,9 +3,9 @@
  * guards**: this is the conditional Save transaction over an F.2 envelope, and a
  * mock cannot prove the row-lock, receipt, rollback or pointer-update contracts.
  *
- * The unit handler is injected directly into the service. No HTTP route admits
- * `unit-envelope`: the live Save route still constructs only the current-source
- * handler, which is exactly what keeps this capability inactive until S04.
+ * `T3.P01.S04` activated this handler on the live Save route. These tests still
+ * inject it directly so they exercise the transaction rather than HTTP framing;
+ * `save.test.mjs` owns the route-level admission contract.
  */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -13,7 +13,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
-import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
 import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -31,11 +31,8 @@ import {
 } from '@portfolio/project-model/units';
 
 import { runMigrations } from '../dist/migrate.js';
-import {
-	CURRENT_SOURCE_SAVE_HANDLER,
-	saveAcceptedSource,
-	saveAcceptedSourceWithHandler
-} from '../dist/save-persistence.js';
+import { ProjectNotFoundError } from '../dist/project-persistence.js';
+import { saveAcceptedSource, saveAcceptedSourceWithHandler } from '../dist/save-persistence.js';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 
@@ -56,14 +53,12 @@ async function cleanupProject(projectId) {
 
 async function unitEnvelope(projectId, label = 'S05 unit', options = {}) {
 	const revision = options.acceptedRevision ?? { projectId, revisionId: `revision-${randomUUID()}` };
-	const source = validateProject(createEmptyWallFirstProject({ id: projectId, name: label }));
-	assert.equal(source.success, true);
 	return createProjectEnvelope({
 		id: projectId,
 		name: label,
 		acceptedRevision: revision,
 		dependencyLock: { formatVersion: 1, entries: options.lockEntries ?? [] },
-		layout: { unitId: 'unit-layout', data: source.project.layout },
+		layout: { unitId: 'unit-layout', data: createEmptyWallFirstLayoutDocument() },
 		scene: {
 			unitId: 'unit-scene',
 			data: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] }
@@ -146,19 +141,19 @@ test('a unit envelope saves create-only and the stored version is its canonical 
 	assert.deepEqual(stored.rows[0].document, JSON.parse(request.capture.canonicalJson));
 });
 
-test('the live current-source Save entry refuses a unit capture and writes nothing', async () => {
+test('the live Save entry admits the F.2 unit capture directly', async () => {
 	const projectId = nextProjectId();
 	createdProjects.push(projectId);
 	const owner = `owner:${randomUUID()}`;
 	const request = await requestFor(await unitEnvelope(projectId));
-	// No route or client selects the unit handler: the default entry admits only
-	// the current source, which is what keeps this capability inactive until S04.
-	await assert.rejects(
-		() => saveAcceptedSource(pool, owner, request),
-		(error) => error.code === 'source-version-mismatch'
+	// S04 activated the unit handler: the entry the route imports is the F.2 one.
+	const acknowledgement = await saveAcceptedSource(pool, owner, request);
+	assert.equal(acknowledgement.version, 1);
+	const stored = await pool.query(
+		'SELECT source_format AS "sourceFormat" FROM project_versions WHERE project_id = $1 AND version = 1',
+		[projectId]
 	);
-	const rows = await pool.query('SELECT count(*)::int AS count FROM projects WHERE id = $1', [projectId]);
-	assert.equal(rows.rows[0].count, 0);
+	assert.equal(stored.rows[0].sourceFormat, 'unit-envelope-v1');
 });
 
 test('same-base unit writers: exactly one wins, the loser gets a conflict and writes nothing', async () => {
@@ -260,26 +255,24 @@ test('a tampered unit revision and an unresolvable lock entry refuse before any 
 	assert.equal(exists.rows.length, 0);
 });
 
-test('no API source selects the unit handler and the route list stays current-source only', async () => {
+test('the live entry selects the unit handler and no current-source handler survives', async () => {
 	const files = await sourceFiles(new URL('../src/', import.meta.url));
 	assert.ok(files.length > 0, 'the source scan found no API TypeScript files');
 	const offenders = [];
 	for (const file of files) {
-		// The handler exists here and nowhere else: this file defines the seam, it
-		// does not select it on a request.
-		if (file.pathname.endsWith('/save-persistence.ts')) continue;
 		const text = await readFile(file, 'utf8');
-		if (/createUnitSaveHandler|UNIT_SAVE_SOURCE_KIND|saveAcceptedSourceWithHandler|@portfolio\/project-model\/units/.test(text)) {
+		if (/CURRENT_SOURCE_SAVE_HANDLER|admitCurrentSourceContent|canonicalSourceJson/.test(text)) {
 			offenders.push(file.pathname);
 		}
 	}
-	assert.deepEqual(offenders, [], 'no API source may reach the inactive unit admission');
+	assert.deepEqual(offenders, [], 'no API source may reach the retired current-source admission');
+	const persistence = await readFile(new URL('../src/save-persistence.ts', import.meta.url), 'utf8');
+	assert.match(persistence, /createUnitSaveHandler\(\)/);
+	assert.match(persistence, /\[UNIT_SAVE_HANDLER\]/);
 	const app = await readFile(new URL('../src/app.ts', import.meta.url), 'utf8');
 	assert.match(app, /saveAcceptedSource\b/);
 	assert.doesNotMatch(app, /saveAcceptedSourceWithHandler|saveAcceptedSourceWithHandlers/);
-	// The route's only handler is the current source; the unit pair is different.
-	assert.equal(CURRENT_SOURCE_SAVE_HANDLER.sourceKind, 'current-source');
-	assert.notEqual(CURRENT_SOURCE_SAVE_HANDLER.sourceKind, UNIT_ENVELOPE_SOURCE_KIND);
+	assert.equal(UNIT_ENVELOPE_SOURCE_KIND, 'unit-envelope');
 });
 
 test('a capture with no precondition is refused by the request reader', async () => {
@@ -371,6 +364,57 @@ test('a captured envelope whose accepted revision belongs to another project ref
 	});
 	assert.equal(captured.kind, 'refused');
 	assert.equal(captured.code, 'invalid-project');
+});
+
+test('a foreign expected-saved-base Save is not-found and never locks the owner row', async () => {
+	const projectId = nextProjectId();
+	createdProjects.push(projectId);
+	const owner = `owner:${randomUUID()}`;
+	const stranger = `owner:${randomUUID()}`;
+	const first = await save(pool, owner, await requestFor(await unitEnvelope(projectId, 'Owned')));
+	const token = first.savedBaseToken;
+
+	// Hold the row lock the pre-TD-7 path would have waited on. The foreign
+	// request must answer not-found while this lock is still held.
+	const holder = await pool.connect();
+	try {
+		await holder.query('BEGIN');
+		await holder.query('SELECT id FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+		const foreign = await requestFor(await unitEnvelope(projectId, 'Stolen'), {
+			precondition: { kind: 'expected-saved-base', token }
+		});
+		const outcome = await Promise.race([
+			save(pool, stranger, foreign).then(
+				() => ({ kind: 'saved' }),
+				(error) => ({ kind: 'refused', error })
+			),
+			new Promise((resolve) => setTimeout(() => resolve({ kind: 'blocked' }), 2_000))
+		]);
+		assert.equal(outcome.kind, 'refused', 'the foreign Save must not wait on the owner row lock');
+		assert.ok(outcome.error instanceof ProjectNotFoundError);
+	} finally {
+		await holder.query('ROLLBACK');
+		holder.release();
+	}
+
+	const state = await pool.query(
+		'SELECT latest_version AS "latestVersion", saved_base_token AS "savedBaseToken" FROM projects WHERE id = $1',
+		[projectId]
+	);
+	assert.equal(state.rows[0].latestVersion, 1);
+	assert.equal(state.rows[0].savedBaseToken, token);
+	const versions = await pool.query('SELECT count(*)::int AS count FROM project_versions WHERE project_id = $1', [projectId]);
+	assert.equal(versions.rows[0].count, 1);
+
+	// The owner's own Save is then free to take the lock and advance the base.
+	const ownerNext = await save(
+		pool,
+		owner,
+		await requestFor(await unitEnvelope(projectId, 'Owner next'), {
+			precondition: { kind: 'expected-saved-base', token }
+		})
+	);
+	assert.equal(ownerNext.version, 2);
 });
 
 test('a failure after version staging but before the pointer update leaves the prior version and base intact', async () => {

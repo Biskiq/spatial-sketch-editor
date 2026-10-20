@@ -312,9 +312,7 @@ function g2Node(
 	position: Vec3,
 	cameraTarget: Vec3,
 	fov: number,
-	connectedNodeIds: string[],
-	nextNodeId: string,
-	previousNodeId: string
+	connectedNodeIds: string[]
 ): NavigationNodeData {
 	return {
 		id,
@@ -323,9 +321,7 @@ function g2Node(
 		position: [...position] as Vec3,
 		cameraTarget: [...cameraTarget] as Vec3,
 		fov,
-		connectedNodeIds: [...connectedNodeIds],
-		nextNodeId,
-		previousNodeId
+		connectedNodeIds: [...connectedNodeIds]
 	};
 }
 
@@ -355,14 +351,15 @@ function g2Connection(
 }
 
 /**
- * Minimal three-node guided cycle for the G2 camera-projection goldens. All
- * positions share a 1.6 m camera height so dropping Y yields a clean 2D plan
- * polyline: n0 (0,0) → n1 (6,0) → n2 (6,4) → n0 (0,0).
+ * Minimal three-node Camera graph for the G2 projection goldens. Order is not a
+ * Camera fact after `T3.P01.S04`: the nodes carry framing and connectivity only,
+ * and the Experience unit owns any editorial sequence. Positions share a 1.6 m
+ * camera height so dropping Y yields a clean 2D plan polyline.
  */
 export function g2SceneNavigationGraph(): NavigationGraph {
 	const definitions = [
-		{ id: 'n0', roomId: 'room-a', position: [0, 1.6, 0] as Vec3, cameraTarget: [3, 1.2, 0] as Vec3, fov: 54, connected: ['n1'], next: 'n1', previous: 'n2' },
-		{ id: 'n1', roomId: 'room-b', position: [6, 1.6, 0] as Vec3, cameraTarget: [6, 1.2, 2] as Vec3, fov: 54, connected: ['n0', 'n2'], next: 'n2', previous: 'n0' },
+		{ id: 'n0', roomId: 'room-a', position: [0, 1.6, 0] as Vec3, cameraTarget: [3, 1.2, 0] as Vec3, fov: 54, connected: ['n1'], },
+		{ id: 'n1', roomId: 'room-b', position: [6, 1.6, 0] as Vec3, cameraTarget: [6, 1.2, 2] as Vec3, fov: 54, connected: ['n0', 'n2'], },
 		{ id: 'n2', roomId: 'room-c', position: [6, 1.6, 4] as Vec3, cameraTarget: [3, 1.2, 4] as Vec3, fov: 60, connected: ['n1'], next: 'n0', previous: 'n1' }
 	];
 	const navigationNodes = definitions.map((definition) =>
@@ -372,9 +369,7 @@ export function g2SceneNavigationGraph(): NavigationGraph {
 			definition.position,
 			definition.cameraTarget,
 			definition.fov,
-			definition.connected,
-			definition.next,
-			definition.previous
+			definition.connected
 		)
 	);
 	const nodeById = new Map(navigationNodes.map((node) => [node.id, node]));

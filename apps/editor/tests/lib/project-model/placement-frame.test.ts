@@ -7,6 +7,7 @@
  * elevation, because a frame at the origin with yaw 0 cannot fail.
  */
 import { describe, expect, it } from 'vitest';
+import type { Vec3 } from '@portfolio/project-model';
 import {
 	frameDirectionFromWorld,
 	frameDirectionToWorld,
@@ -15,9 +16,8 @@ import {
 	frameYawFromWorld,
 	frameYawToWorld,
 	isFinitePlacementFrame,
-	type LocalInputFrame,
-	type Vec3
-} from '@portfolio/project-model';
+	type LocalInputFrame
+} from '@portfolio/project-model/scene-planning';
 
 const QUARTER_TURN: LocalInputFrame = { origin: [1, 2, 3], yaw: Math.PI / 2 };
 const TILTED: LocalInputFrame = { origin: [1, 0.5, 2], yaw: 0.4 };

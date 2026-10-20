@@ -348,14 +348,10 @@ export async function loadPublicReleaseBundle(input: {
 	});
 	input.signal?.throwIfAborted();
 
-	const document = release.document as { id?: unknown; name?: unknown; layout?: unknown; scene?: unknown };
 	let bundle: ColdReleaseBundle;
 	try {
 		bundle = composeColdReleaseBundle({
-			projectId: typeof document.id === 'string' ? document.id : '',
-			projectName: typeof document.name === 'string' ? document.name : release.name,
-			layout: document.layout,
-			scene: document.scene,
+			document: release.document,
 			manifest: { releaseId: `${input.publicationId}@v${release.version}`, bytesByUri },
 			signal: input.signal
 		});

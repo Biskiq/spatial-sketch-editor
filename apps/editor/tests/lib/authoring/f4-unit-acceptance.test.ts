@@ -17,9 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
 import {
-	createEmptyWallFirstProject,
 	createPlannerRegistry,
-	validateProject,
 	type AcceptanceSourceAdapter,
 	type AcceptedRevision,
 	type AcceptedSnapshot,
@@ -36,17 +34,15 @@ import type { ReferenceReadContext, SemanticReference } from '@portfolio/project
 import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
-	EXPERIENCE_UNIT_FORMAT_VERSION,
 	RESOURCE_UNIT_FORMAT_VERSION,
-	SCENE_UNIT_FORMAT_VERSION,
-	createProjectEnvelope,
 	// Staging is the F.2-dependent half of the capability, so it lives behind the
-	// inactive `./units` subpath (the architecture gate keeps `f4/**` free of it
-	// until T3.P01.S04). A test may cross that boundary; editor sources may not.
+	// `./units` subpath (the architecture gate keeps `f4/**` free of it). A test
+	// may cross that boundary; editor sources may not.
 	stageUnitResources,
 	type ProjectEnvelope,
 	type TypedResource
 } from '@portfolio/project-model/units';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const REVISION: AcceptedRevision = { projectId: 'project-unit', revisionId: 'revision-1' };
 
@@ -142,40 +138,16 @@ function snapshot(): AcceptedSnapshot<Source> {
 }
 
 async function sourceEnvelope(): Promise<ProjectEnvelope> {
-	const source = validateProject(createEmptyWallFirstProject({ id: 'project-unit', name: 'Project unit' }));
-	if (!source.success) throw new Error('the envelope fixture source does not validate');
-	return createProjectEnvelope({
+	return createUnitProject({
 		id: 'project-unit',
 		name: 'Project unit',
 		acceptedRevision: REVISION,
-		dependencyLock: { formatVersion: 1, entries: [] },
-		layout: { unitId: 'unit-layout', data: source.project.layout },
-		scene: {
-			unitId: 'unit-scene',
-			data: {
-				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: source.project.scene.textures,
-				materials: source.project.scene.materials,
-				entities: source.project.scene.entities
-			}
-		},
 		camera: {
-			unitId: 'unit-camera',
-			data: {
-				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
-				views: [
-					{ id: 'view-entry', label: 'Entry', eye: [0, 1.6, 0], target: [0, 1.6, -1], fov: 60, connectedViewIds: [] }
-				],
-				connections: []
-			}
-		},
-		experience: {
-			unitId: 'unit-experience',
-			data: { formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION, experiences: [] }
-		},
-		resources: {
-			unitId: 'unit-resources',
-			data: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [] }
+			formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+			views: [
+				{ id: 'view-entry', label: 'Entry', eye: [0, 1.6, 0], target: [0, 1.6, -1], fov: 60, connectedViewIds: [] }
+			],
+			connections: []
 		}
 	});
 }

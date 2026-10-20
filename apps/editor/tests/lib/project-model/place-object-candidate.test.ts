@@ -21,27 +21,36 @@ import { describe, expect, it } from 'vitest';
 import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene';
 import {
 	FLOOR_SUPPORT_TOLERANCES,
-	createEmptyWallFirstProject,
-	framePointToWorld,
+	createEmptyWallFirstLayoutDocument,
 	planWallChain,
 	compileWallFirstLayoutGeometry,
 	floorSupportSnapshotOf,
 	queryFloorSupports,
 	chooseFloorSupport,
-	parseProjectJson,
-	serializeProject,
 	validateDerivedSourceRef,
+	type FloorSupportCandidate
+} from '@portfolio/project-model';
+import {
+	framePointToWorld,
 	preparePlaceObjectCandidate,
-	validateProject,
-	type FloorSupportCandidate,
 	type LocalInputFrame,
 	type NormalizedPlacementDefinition,
 	type ObjectCreationDefaults,
 	type PlaceObjectInput,
 	type PlaceObjectRefusalCode,
-	type PlaceObjectResult,
-	type SceneDocument
-} from '@portfolio/project-model';
+	type PlaceObjectResult
+} from '@portfolio/project-model/scene-planning';
+import {
+	createEmptyUnitSceneDocument,
+	replaceUnitData,
+	serializeProjectEnvelope,
+	validateProjectEnvelope,
+	type CameraFreeSceneDocument
+} from '@portfolio/project-model/units';
+import {
+	cameraFreeScene
+} from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 
 const GENERATION = 'generation-1';
 const SNAPSHOT = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' };
@@ -136,8 +145,8 @@ function modelDefinition(
 	};
 }
 
-function emptyScene(): SceneDocument {
-	return createEmptyWallFirstProject({ id: 'project-1', name: 'Project' }).scene;
+function emptyScene(): CameraFreeSceneDocument {
+	return createEmptyUnitSceneDocument();
 }
 
 function placeInput(overrides: Partial<PlaceObjectInput> = {}): PlaceObjectInput {
@@ -242,36 +251,38 @@ describe('place-object candidate Scene', () => {
 		expect(scene.entities).toHaveLength(document.entities.length + 1);
 		expect(scene.entities.at(-1)!.id).toBe('entity-1');
 		expect(scene).not.toBe(document);
-		// Structural carry-over: the same objects the accepted source held.
-		expect(scene.navigationNodes).toBe(document.navigationNodes);
-		expect(scene.connections).toBe(document.connections);
+		// Structural carry-over: the same objects the accepted source held. The
+		// Camera graph is a separate unit and cannot appear here at all.
 		expect(scene.textures).toBe(document.textures);
 		expect(scene.materials).toBe(document.materials);
 		expect(scene.clusters).toBe(document.clusters);
 		expect(scene.formatVersion).toBe(document.formatVersion);
 	});
 
-	it('leaves canonical Camera-bearing bytes identical and creates no roomId', () => {
-		const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Project' });
-		const node = {
-			id: 'node-1',
-			label: 'Entry',
-			position: [1, 1.65, 2] as [number, number, number],
-			cameraTarget: [1, 1.25, 0] as [number, number, number],
-			fov: 54,
-			connectedNodeIds: [] as string[]
-		};
-		const source = {
-			...project,
-			scene: { ...project.scene, navigationNodes: [node] }
-		};
-		const baseline = validateProject(source);
-		expect(baseline.success).toBe(true);
-		if (!baseline.success) return;
+	it('leaves the Camera unit untouched and creates no roomId', async () => {
+		const envelope = await createUnitProject({
+			id: 'project-1',
+			name: 'Project',
+			camera: {
+				formatVersion: 1,
+				views: [
+					{
+						id: 'node-1',
+						label: 'Entry',
+						eye: [1, 1.65, 2],
+						target: [1, 1.25, 0],
+						fov: 54,
+						connectedViewIds: []
+					}
+				],
+				connections: []
+			}
+		});
+		const baselineScene = envelope.units.scene.data;
 
 		const result = preparePlaceObjectCandidate(
 			placeInput({
-				document: source.scene,
+				document: baselineScene,
 				definition: modelDefinition(),
 				worldXZ: [3, -1],
 				yaw: 0.4
@@ -280,20 +291,23 @@ describe('place-object candidate Scene', () => {
 		expect(result.kind).toBe('candidate');
 		if (result.kind !== 'candidate') return;
 
-		const candidate = validateProject({ ...source, scene: result.candidate.scene });
-		expect(candidate.success).toBe(true);
-		if (!candidate.success) return;
+		const candidate = replaceUnitData(envelope, 'scene', result.candidate.scene);
+		expect(validateProjectEnvelope(candidate).success).toBe(true);
+		// The Camera unit is not part of the Scene candidate at all, so its bytes
+		// cannot move. This asserts the envelope-level carry-over.
+		expect(candidate.units.camera.data).toBe(envelope.units.camera.data);
+		expect(serializeProjectEnvelope(candidate)).toContain('"camera"');
 
-		const withoutEntities = (scene: SceneDocument): string => {
+		const withoutEntities = (scene: CameraFreeSceneDocument): string => {
 			const { entities: _entities, ...rest } = scene;
 			return JSON.stringify(rest);
 		};
-		expect(withoutEntities(candidate.project.scene)).toBe(withoutEntities(baseline.project.scene));
-		expect(candidate.project.scene.entities.slice(0, baseline.project.scene.entities.length)).toEqual(
-			baseline.project.scene.entities
+		expect(withoutEntities(candidate.units.scene.data)).toBe(withoutEntities(baselineScene));
+		expect(candidate.units.scene.data.entities.slice(0, baselineScene.entities.length)).toEqual(
+			baselineScene.entities
 		);
 		// No `roomId` is created anywhere in the new entity.
-		const placed = candidate.project.scene.entities.at(-1)!;
+		const placed = candidate.units.scene.data.entities.at(-1)!;
 		expect(placed.id).toBe('entity-1');
 		expect('roomId' in placed).toBe(false);
 		expect(JSON.stringify(placed)).not.toContain('roomId');
@@ -319,9 +333,8 @@ describe('place-object refusals', () => {
 			'invalid-value'
 		);
 
-		const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Project' });
 		const existing = preparePlaceObjectCandidate(
-			placeInput({ document: project.scene, entityId: 'entity-1' })
+			placeInput({ document: emptyScene(), entityId: 'entity-1' })
 		);
 		if (existing.kind !== 'candidate') throw new Error('expected a candidate');
 		const duplicate = preparePlaceObjectCandidate(
@@ -530,27 +543,27 @@ describe('placement source and support qualification', () => {
 });
 
 
-it('places on a real raised compiled floor with Plan/3D parity and strict project round trip', () => {
-	const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Raised gallery' });
-	const baseline = { ...project.layout, floor: { ...project.layout.floor, elevation: 2.5 } };
+it('places on a real raised compiled floor with Plan/3D parity and strict project round trip', async () => {
+	const empty = createEmptyWallFirstLayoutDocument();
+	const baseline = { ...empty, floor: { ...empty.floor, elevation: 2.5 } };
 	const planned = planWallChain({ baseline, points: [[0, 0], [7, 0], [7, 6], [0, 6]], close: true, role: 'boundary' });
 	if (planned.kind !== 'success') throw new Error('enclosure failed');
-	const source = { ...project, layout: planned.document };
-	const compiled = compileWallFirstLayoutGeometry(source.layout);
+	const source = await createUnitProject({ id: 'project-1', name: 'Raised gallery', layout: planned.document });
+	const compiled = compileWallFirstLayoutGeometry(source.units.layout.data);
 	const result = queryFloorSupports(floorSupportSnapshotOf(compiled.geometry), { generationId: GENERATION, x: 3, z: 2 });
 	if (result.kind !== 'candidates') throw new Error('support query failed');
 	const chosen = chooseFloorSupport(result.candidates);
 	if (chosen.kind !== 'resolved') throw new Error('support choice failed');
-	const input = placeInput({ document: source.scene, worldXZ: [3, 2], frame: { origin: [0, 0, 0], yaw: 0 }, frameReference: { version: 1, kind: 'project-world' }, support: chosen });
+	const input = placeInput({ document: source.units.scene.data, worldXZ: [3, 2], frame: { origin: [0, 0, 0], yaw: 0 }, frameReference: { version: 1, kind: 'project-world' }, support: chosen });
 	const plan = preparePlaceObjectCandidate(input);
 	const meshHit = { x: 3, y: 9999, z: 2 };
 	const hit = preparePlaceObjectCandidate({ ...input, worldXZ: [meshHit.x, meshHit.z] });
 	expect(hit).toEqual(plan);
 	if (plan.kind !== 'candidate') throw new Error('placement failed');
 	expect(plan.candidate.entity.position).toEqual([3, 3, 2]);
-	const candidateProject = { ...source, scene: plan.candidate.scene };
-	expect(validateProject(candidateProject).success).toBe(true);
-	expect(parseProjectJson(serializeProject(candidateProject)).success).toBe(true);
+	const candidateProject = replaceUnitData(source, 'scene', plan.candidate.scene);
+	expect(validateProjectEnvelope(candidateProject).success).toBe(true);
+	expect(validateProjectEnvelope(JSON.parse(serializeProjectEnvelope(candidateProject))).success).toBe(true);
 	expect(plan.candidate.support.fragments[0]!.source.subject.id).toBe(compiled.geometry.rooms[0]!.roomId);
 });
 
@@ -564,8 +577,8 @@ it('refuses a finite native contact inconsistent with the primitive dimensions',
 });
 
 
-it('preserves populated Camera, resource and cluster bytes across every admitted entity kind', () => {
- const document = cloneFixtureDocument('tour-minimal');
+it('preserves populated resource and cluster bytes across every admitted entity kind', () => {
+ const document = cameraFreeScene(cloneFixtureDocument('tour-minimal'));
  document.textures = [{ id: 'texture-1', name: 'Texture', uri: '/textures/test.png' }];
  document.materials = [{ id: 'material-1', name: 'Material', baseMaterialId: 'plaster-warm', baseTextureId: 'texture-1', roughness: 0.25, metalness: 0.75 }];
  document.clusters = [{ id: 'cluster-1', name: 'Group', memberIds: document.entities.map(entity => entity.id) }];
@@ -574,10 +587,8 @@ it('preserves populated Camera, resource and cluster bytes across every admitted
  };
  freeze(document);
  const before = JSON.stringify(document);
- const canonicalUnrelated = (scene: SceneDocument): string => {
-  const validated = validateProject({ ...createEmptyWallFirstProject({ id: 'project-1', name: 'Project' }), scene });
-  if (!validated.success) throw new Error(JSON.stringify(validated.issues));
-  const { entities: _entities, ...rest } = validated.project.scene;
+ const canonicalUnrelated = (scene: CameraFreeSceneDocument): string => {
+  const { entities: _entities, ...rest } = scene;
   return JSON.stringify(rest);
  };
  for (const definition of [nativeDefinition(), modelDefinition(), ...(['cylinder', 'sphere'] as const).map(primitive => nativeDefinition({

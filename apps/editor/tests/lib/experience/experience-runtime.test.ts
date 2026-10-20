@@ -124,10 +124,78 @@ describe('Experience lowering', () => {
 		expect(lowered.profile).toEqual({ reducedMotion: 'required', semanticDomNavigation: 'required' });
 	});
 
+	it('keeps a Guide-free Presentation reachable instead of dropping it', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		// `presentation-study` has no Stop in this Guide. AM-9 says a Presentation
+		// may exist without a Guide; lowering emits it and the companion exposes it
+		// as a destination, rather than silently dropping the authored record.
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							...base.presentations,
+							{ id: 'presentation-study', label: 'Study', viewId: 'view-2' }
+						]
+					}
+				]
+			}
+		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		expect(lowered.kind).toBe('lowered');
+		if (lowered.kind !== 'lowered') return;
+		expect(lowered.program.presentations.map((presentation) => presentation.id)).toContain('presentation-study');
+		const entered = reduceExperience(lowered.program, createExperienceRun(lowered.program, OPTIONS), event('enter'));
+		const companion = buildExperienceCompanion(lowered.program, entered.state);
+		expect(companion.presentations).toContainEqual({
+			presentationId: 'presentation-study',
+			label: 'Study',
+			viewId: 'view-2',
+			stopIds: []
+		});
+	});
+
 	it('refuses a non-entry occurrence without an invocation binding instead of inferring a Cut', async () => {
 		const envelope = await experienceEnvelope();
 		const lowered = lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, bindings: [] });
 		expect(lowered).toMatchObject({ kind: 'refused', code: 'missing-binding', stopId: 'stop-2' });
+	});
+
+	it('treats a non-first authored entry Stop as the first arrival, not a Travel', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						guides: [{ ...base.guides[0]!, entryStopId: 'stop-2' }]
+					}
+				]
+			}
+		});
+		// stop-1 precedes the entry in the Guide order and still needs its Cut
+		// binding; the entry itself defaults to a Cut rather than borrowing an edge.
+		const cutEntry = lowerExperienceProgram(envelope, {
+			...LOWERING_OPTIONS,
+			bindings: [{ stopId: 'stop-1', invocation: { kind: 'cut', viewId: 'view-1' } }]
+		});
+		expect(cutEntry.kind).toBe('lowered');
+		if (cutEntry.kind !== 'lowered') return;
+		expect(cutEntry.program.entryStopId).toBe('stop-2');
+		expect(cutEntry.program.stops[1]).toMatchObject({ invocation: { kind: 'cut', viewId: 'view-2' } });
+
+		// A Travel binding on the entry has no predecessor to travel from.
+		const travelEntry = lowerExperienceProgram(envelope, {
+			...LOWERING_OPTIONS,
+			bindings: [
+				{ stopId: 'stop-1', invocation: { kind: 'cut', viewId: 'view-1' } },
+				{ stopId: 'stop-2', invocation: { kind: 'travel', connectionId: 'connection-1' } }
+			]
+		});
+		expect(travelEntry).toMatchObject({ kind: 'refused', code: 'invalid-binding', stopId: 'stop-2' });
 	});
 
 	it('reports a travel gap when no Camera connection joins the adjacent views', async () => {

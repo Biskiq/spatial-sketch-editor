@@ -46,6 +46,17 @@ vi.mock('$lib/platform/project-persistence', () => {
 	}
 	return {
 		ProjectPersistenceError,
+		// The route constructs the auth port before deciding whether an API origin
+		// exists; the harness never signs in.
+		createProjectAuth: () => ({
+			getSession: async () => ({
+				kind: 'signed-out' as const,
+				user: null,
+				intent: null
+			}),
+			signIn: () => undefined,
+			signOut: async () => undefined
+		}),
 		createProjectApi: () => ({
 			async loadProject() {
 				harness.loadCalls += 1;
@@ -64,12 +75,14 @@ vi.mock('$lib/platform/project-persistence', () => {
 });
 
 import { mount, tick, unmount } from 'svelte';
-import { createEmptyWallFirstProject, serializeProject } from '$lib/project/project-codec';
+import { serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 let component: ReturnType<typeof mount> | null = null;
 let target: HTMLElement;
 let nextFile: File | null = null;
+let mountedProject: ProjectEnvelope;
 
 function head(): HTMLElement {
 	const element = target.querySelector<HTMLElement>('[data-testid="head"]');
@@ -98,8 +111,9 @@ async function settled(): Promise<void> {
 	await tick();
 }
 
-beforeEach(() => {
-	harness.document = createEmptyWallFirstProject({ id: 'project-1', name: 'Mounted project' });
+beforeEach(async () => {
+	mountedProject = await createUnitProject({ id: 'project-1', name: 'Mounted project' });
+	harness.document = mountedProject;
 	harness.loadCalls = 0;
 	nextFile = null;
 
@@ -175,6 +189,25 @@ describe('spatial route source replacement', () => {
 		expect(head().dataset.saveStatus).toBe('saved');
 	});
 
+	it('refuses a legacy project payload without replacing the mounted project', async () => {
+		await mountReady();
+		const originalCanvas = stageCanvas();
+
+		nextFile = new File(
+			[JSON.stringify({ id: 'project-1', name: 'Legacy', layout: {}, scene: {} })],
+			'legacy.json',
+			{ type: 'application/json' }
+		);
+		await requestOpen();
+		await vi.waitFor(() => {
+			expect(target.textContent).toContain('it is not the current document format');
+		});
+
+		expect(stageCanvas()).toBe(originalCanvas);
+		expect(head().dataset.project).toBe('Mounted project');
+		expect(head().dataset.saveBase).toBe('token-1');
+	});
+
 	it('reports a typed refusal and keeps the mounted project for invalid Open JSON', async () => {
 		await mountReady();
 		const originalCanvas = stageCanvas();
@@ -199,7 +232,7 @@ describe('spatial route source replacement', () => {
 		const originalCanvas = stageCanvas();
 
 		nextFile = new File(
-			[serializeProject(createEmptyWallFirstProject({ id: 'project-2', name: 'Another project' }))],
+			[serializeProjectEnvelope(await createUnitProject({ id: 'project-2', name: 'Another project' }))],
 			'other.json',
 			{ type: 'application/json' }
 		);
@@ -236,7 +269,7 @@ describe('spatial route source replacement', () => {
 		await mountReady();
 
 		nextFile = new File(
-			[serializeProject(createEmptyWallFirstProject({ id: 'project-1', name: 'Opened project' }))],
+			[serializeProjectEnvelope(await createUnitProject({ id: 'project-1', name: 'Opened project' }))],
 			'valid.json',
 			{ type: 'application/json' }
 		);

@@ -5,7 +5,7 @@
  * nodes, waypoints, path anchors, connections, position paths, camera view tracks,
  * and the connection timing readers. It also hosts the semantic pass that runs on
  * the parsed document (`validateSemantics`), the reciprocal-cycle tour guard
- * (`validateVersionTwoTour`), and the shared uniqueness/geometry helpers.
+ * and the shared uniqueness/geometry helpers.
  *
  * Tagged `@internal` except `cameraSceneConnectionTimingFailureReason`
  * (re-exported from `index.ts` for editor diagnostics). Never imported outside
@@ -35,9 +35,7 @@ import {
 	addIssue,
 	assertAllowedKeys,
 	isRecord,
-	readHoldSeconds,
 	readOptionalString,
-	readRequiredBoolean,
 	readRequiredNumber,
 	readRequiredString,
 	rejectRoomId,
@@ -63,12 +61,7 @@ export function parseNode(
 			'position',
 			'cameraTarget',
 			'fov',
-			'connectedNodeIds',
-			'nextNodeId',
-			'previousNodeId',
-			'detourOfNodeId',
-			'lockInteraction',
-			'holdSeconds'
+			'connectedNodeIds'
 		],
 		path,
 		issues
@@ -95,14 +88,6 @@ export function parseNode(
 		`${path}.connectedNodeIds`,
 		issues
 	);
-	const nextNodeId = readOptionalString(input, 'nextNodeId', path, issues);
-	const previousNodeId = readOptionalString(input, 'previousNodeId', path, issues);
-	const detourOfNodeId = readOptionalString(input, 'detourOfNodeId', path, issues);
-	let lockInteraction: boolean | undefined;
-	if ('lockInteraction' in input) {
-		lockInteraction = readRequiredBoolean(input, 'lockInteraction', path, issues);
-	}
-	const holdSeconds = readHoldSeconds(input, 'holdSeconds', path, issues);
 	if (
 		!id ||
 		!label ||
@@ -121,12 +106,7 @@ export function parseNode(
 		position,
 		cameraTarget,
 		fov,
-		connectedNodeIds,
-		...(nextNodeId === undefined ? {} : { nextNodeId }),
-		...(previousNodeId === undefined ? {} : { previousNodeId }),
-		...(detourOfNodeId === undefined ? {} : { detourOfNodeId }),
-		...(lockInteraction === undefined ? {} : { lockInteraction }),
-		...(holdSeconds === undefined ? {} : { holdSeconds })
+		connectedNodeIds
 	};
 }
 
@@ -792,232 +772,4 @@ export function validateSemantics(document: SceneDocument, issues: SceneDocument
 		if (visited.size !== connectedNodeIds.length) addIssue(issues, '$.connections', 'disconnected_graph', 'Navigation connections must form one connected graph');
 	}
 
-	validateVersionTwoTour(document.navigationNodes, nodeById, issues);
-}
-
-export function validateVersionTwoTour(
-	nodes: readonly SceneNavigationNode[],
-	nodeById: ReadonlyMap<string, SceneNavigationNode>,
-	issues: SceneDocumentIssue[]
-) {
-	const linkedNodes: SceneNavigationNode[] = [];
-	for (const [index, node] of nodes.entries()) {
-		const path = `$.navigationNodes[${index}]`;
-		const hasNext = node.nextNodeId !== undefined;
-		const hasPrevious = node.previousNodeId !== undefined;
-		if (!hasNext && !hasPrevious) {
-			// A link-less node with a detour marker is a one-node detour chain
-			// (head = tail = itself); its origin must exist (S10.2, F5).
-			if (node.detourOfNodeId !== undefined && !nodeById.has(node.detourOfNodeId)) {
-				addIssue(
-					issues,
-					`${path}.detourOfNodeId`,
-					'unknown_node',
-					`Unknown navigation node: ${node.detourOfNodeId}`
-				);
-			}
-			continue;
-		}
-		linkedNodes.push(node);
-		for (const [key, opposite] of [
-			['nextNodeId', 'previousNodeId'],
-			['previousNodeId', 'nextNodeId']
-		] as const) {
-			const linkedId = node[key];
-			if (linkedId === undefined) continue;
-			if (linkedId === node.id) {
-				addIssue(issues, `${path}.${key}`, 'self_tour_link', 'A tour link cannot reference its own node');
-				continue;
-			}
-			const linked = nodeById.get(linkedId);
-			if (!linked) {
-				addIssue(issues, `${path}.${key}`, 'unknown_node', `Unknown navigation node: ${linkedId}`);
-				continue;
-			}
-			if (linked.nextNodeId === undefined && linked.previousNodeId === undefined) {
-				addIssue(
-					issues,
-					`${path}.${key}`,
-					'free_only_tour_link',
-					`Tour link ${linkedId} references a free-only node`
-				);
-			}
-			if (!node.connectedNodeIds.includes(linkedId)) {
-				addIssue(
-					issues,
-					`${path}.${key}`,
-					'non_adjacent_tour_link',
-					`Tour link ${linkedId} is not adjacent`
-				);
-			}
-			if (linked[opposite] !== node.id) {
-				addIssue(
-					issues,
-					`${path}.${key}`,
-					'non_reciprocal_tour_link',
-					`${linkedId}.${opposite} must equal ${node.id}`
-				);
-			}
-		}
-		// detourOfNodeId (S10.2) — valid only on a chain head, referencing an
-		// existing node (the origin lives on the main route by convention; the
-		// codec cannot know which component is main, so the cross-component rule
-		// is enforced by the editor flow validators).
-		if (node.detourOfNodeId !== undefined) {
-			if (node.previousNodeId !== undefined) {
-				addIssue(
-					issues,
-					`${path}.detourOfNodeId`,
-					'detour_not_head',
-					'A detour marker is only valid on a chain head (no previousNodeId)'
-				);
-			}
-			if (!nodeById.has(node.detourOfNodeId)) {
-				addIssue(
-					issues,
-					`${path}.detourOfNodeId`,
-					'unknown_node',
-					`Unknown navigation node: ${node.detourOfNodeId}`
-				);
-			}
-		}
-	}
-
-	if (linkedNodes.length === 0) {
-		// A graph with no ordered chain is a valid authoring state (a flow can be
-		// drafted node-by-node from a blank project). Runtime tour preview is
-		// gated by `canStartTourPreview` instead of the codec.
-		return;
-	}
-
-	// S10.2 component analysis: every ordered component must be a simple open
-	// chain (one head, one tail, no repeats), or — legacy — exactly one closed
-	// cycle containing every linked node. The loop is never a codec state for
-	// new documents; a persisted closed cycle is the legacy single-cycle shape
-	// whose open chain + derived loop are resolved at read time by the flow
-	// model (`getFlowRoute`).
-	const componentOf = new Map<string, number>();
-	const components: { nodes: SceneNavigationNode[]; linked: boolean }[] = [];
-	for (const node of linkedNodes) {
-		if (componentOf.has(node.id)) continue;
-		const component: SceneNavigationNode[] = [];
-		const queue = [node];
-		componentOf.set(node.id, components.length);
-		while (queue.length > 0) {
-			const current = queue.shift()!;
-			component.push(current);
-			for (const linkedId of [current.nextNodeId, current.previousNodeId]) {
-				if (linkedId === undefined) continue;
-				const linked = nodeById.get(linkedId);
-				if (!linked || componentOf.has(linked.id)) continue;
-				componentOf.set(linked.id, components.length);
-				queue.push(linked);
-			}
-		}
-		components.push({ nodes: component, linked: true });
-	}
-	// One-node detour chains (link-less head with a detour marker) participate
-	// in the component analysis as singleton open chains.
-	for (const node of nodes) {
-		if (node.detourOfNodeId !== undefined && !componentOf.has(node.id)) {
-			componentOf.set(node.id, components.length);
-			components.push({ nodes: [node], linked: false });
-		}
-	}
-
-	const invalidComponent = () =>
-		addIssue(
-			issues,
-			'$.navigationNodes',
-			'invalid_tour_cycle',
-			'Order links must form simple open chains (or one legacy closed cycle)'
-		);
-
-	let legacyCycleCount = 0;
-	let linkedComponentCount = 0;
-	let legacyCycleNodeIds: string[] | undefined;
-	for (const { nodes: component, linked } of components) {
-		if (linked) linkedComponentCount += 1;
-		const inComponent = new Set(component.map((node) => node.id));
-		const heads = component.filter(
-			(node) =>
-				node.previousNodeId === undefined || !inComponent.has(node.previousNodeId)
-		);
-		const tails = component.filter(
-			(node) => node.nextNodeId === undefined || !inComponent.has(node.nextNodeId)
-		);
-		const closed = heads.length === 0 && tails.length === 0;
-		if (closed) {
-			const start = component[0]!;
-			const visited = new Set<string>();
-			let cursor: SceneNavigationNode | undefined = start;
-			while (cursor && !visited.has(cursor.id)) {
-				visited.add(cursor.id);
-				const nextId: string | undefined = cursor.nextNodeId;
-				cursor = nextId === undefined ? undefined : nodeById.get(nextId);
-			}
-			if (visited.size !== component.length || cursor?.id !== start.id) {
-				invalidComponent();
-			}
-			legacyCycleCount += 1;
-			legacyCycleNodeIds = component.map((node) => node.id);
-			continue;
-		}
-		if (heads.length !== 1 || tails.length !== 1) {
-			invalidComponent();
-			continue;
-		}
-		const head = heads[0]!;
-		const visited = new Set<string>();
-		let cursor: SceneNavigationNode | undefined = head;
-		while (cursor && !visited.has(cursor.id)) {
-			visited.add(cursor.id);
-			const nextId: string | undefined = cursor.nextNodeId;
-			cursor =
-				nextId === undefined || !inComponent.has(nextId)
-					? undefined
-					: nodeById.get(nextId);
-		}
-		if (visited.size !== component.length) {
-			invalidComponent();
-		}
-	}
-
-	if (legacyCycleCount > 0 && linkedComponentCount !== 1) {
-		// A legacy closed cycle may coexist only with detour chains: every
-		// other linked component must be a chain whose head declares an origin
-		// inside the closed cycle. Any other open chain next to a closed cycle
-		// would be ambiguous under the flow model (which component is main?).
-		// One-node detour chains are link-less and never conflict.
-		const cycleIds = new Set(legacyCycleNodeIds ?? []);
-		const otherLinkedComponents = components.filter(
-			({ nodes: component, linked: isLinked }) => {
-				if (!isLinked) return false;
-				const isCycle =
-					component.length === cycleIds.size &&
-					component.every((node) => cycleIds.has(node.id));
-				return !isCycle;
-			}
-		);
-		const everyOtherIsDetour = otherLinkedComponents.every(({ nodes: component }) => {
-			const head = component.find(
-				(node) =>
-					node.previousNodeId === undefined ||
-					!component.some((candidate) => candidate.id === node.previousNodeId)
-			);
-			return (
-				head !== undefined &&
-				head.detourOfNodeId !== undefined &&
-				cycleIds.has(head.detourOfNodeId)
-			);
-		});
-		if (!everyOtherIsDetour) {
-			addIssue(
-				issues,
-				'$.navigationNodes',
-				'invalid_tour_cycle',
-				'A closed order cycle must contain every ordered node (legacy single-cycle shape)'
-			);
-		}
-	}
 }

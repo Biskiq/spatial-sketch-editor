@@ -77,10 +77,9 @@ export const ARCH_FILES: string[] = [
 	// configuration rather than any product code, and no lane report can reveal a
 	// file that runs in no lane, so only the unconditional lane can own it.
 	'tests/config/lane-membership.test.ts',
-	// T3.P01.S01: the F.2 entries' closure and inactivity (AM-2/AM-6/AM-7). The
-	// delivery-only program closure and the "no product file imports an inactive
-	// F.2 entry before the T3.P01.S04 cutover" guarantee are import-graph facts,
-	// which no lane, build or type check can see.
+	// T3.P01.S01: the F.2 entries' closure (AM-2/AM-6/AM-7). The delivery-only
+	// program closure and the active-source import guarantee are import-graph
+	// facts, which no lane, build or type check can see.
 	'tests/lib/project-model/program-entry-closure.test.ts',
 	// T1.P01.S02: read-only boot. The stage route host must reach no write path —
 	// only the project GET. The writer is reachable (one API client module), an

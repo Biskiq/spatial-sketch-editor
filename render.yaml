@@ -26,6 +26,9 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
+      # Unique per environment; scopes asset keys and the epoch purge.
+      - key: R2_OBJECT_NAMESPACE
+        sync: false
       - key: R2_ACCESS_KEY_ID
         sync: false
       - key: R2_SECRET_ACCESS_KEY

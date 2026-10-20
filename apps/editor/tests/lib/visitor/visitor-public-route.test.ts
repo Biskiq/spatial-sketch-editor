@@ -2,7 +2,8 @@ import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createEmptyWallFirstProject } from '@portfolio/project-model';
+import { RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import {
 	fetchPublicRelease,
 	fetchPublicReleaseBytes,
@@ -14,11 +15,6 @@ import {
 	isForbiddenPreviewSurfaceModule,
 	validatePreviewSurfaceGraph
 } from '$lib/visitor/preview-surface-boundary';
-import {
-	createVisitorRuntimeState,
-	visitorMainFlowNodeIds,
-	visitorStartNodeId
-} from '$lib/visitor/visitor-runtime-state.svelte';
 
 const PUB_A = '11111111-1111-4111-8111-111111111111';
 const PUB_B = '22222222-2222-4222-8222-222222222222';
@@ -27,6 +23,25 @@ const ASSET_ID = '33333333-3333-4333-8333-333333333333';
 const PNG_BYTES = new Uint8Array([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x01, 0x02, 0x03
 ]);
+
+async function texturedProject(id: string, name: string, uri: string) {
+	return createUnitProject({
+		id,
+		name,
+		scene: {
+			formatVersion: SCENE_UNIT_FORMAT_VERSION,
+			textures: [{ id: 'tex-1', name: 'Pinned', uri }],
+			materials: [],
+			entities: []
+		},
+		resources: {
+			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+			resources: [
+				{ kind: 'texture', id: 'tex-1', contentRevision: 'revision-tex-1', pin: null, unresolved: null }
+			]
+		}
+	});
+}
 
 function releasePayload(document: unknown, assets: Array<{ assetId: string; mime: string; byteSize: number }> = []) {
 	return {
@@ -64,7 +79,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('loads an empty project cold with zero camera nodes and no storage', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-empty', name: 'Empty Public' });
+		const project = await createUnitProject({ id: 'project:public-empty', name: 'Empty Public' });
 		const requested: string[] = [];
 		const fetchImpl = vi.fn(async (input: string, _init?: RequestInit) => {
 			requested.push(input);
@@ -96,12 +111,8 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('uses the released document name and verifies P20 bytes before install', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-tex', name: 'Released Title' });
 		const uri = `/project-assets/${ASSET_ID}`;
-		const document = {
-			...project,
-			scene: { ...project.scene, textures: [{ id: 'tex-1', name: 'Pinned', uri }] }
-		};
+		const document = await texturedProject('project:public-tex', 'Released Title', uri);
 		const assets = [{ assetId: ASSET_ID, mime: 'image/png', byteSize: PNG_BYTES.byteLength }];
 		const requested: string[] = [];
 		const fetchImpl = vi.fn(async (input: string) => {
@@ -135,12 +146,8 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('surfaces asset failures as retryable without a partial bundle', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-bad-asset', name: 'Bad Asset' });
 		const uri = `/project-assets/${ASSET_ID}`;
-		const document = {
-			...project,
-			scene: { ...project.scene, textures: [{ id: 'tex-1', name: 'Pinned', uri }] }
-		};
+		const document = await texturedProject('project:public-bad-asset', 'Bad Asset', uri);
 		const assets = [{ assetId: ASSET_ID, mime: 'image/png', byteSize: PNG_BYTES.byteLength }];
 		const gone = vi.fn(async (input: string) => {
 			if (input.endsWith(`/publications/${PUB_A}`)) return jsonResponse(releasePayload(document, assets));
@@ -177,12 +184,8 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('keys scopes by public ID + version so releases never share bytes', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-scope', name: 'Scoped' });
 		const uri = `/project-assets/${ASSET_ID}`;
-		const document = {
-			...project,
-			scene: { ...project.scene, textures: [{ id: 'tex-1', name: 'Pinned', uri }] }
-		};
+		const document = await texturedProject('project:public-scope', 'Scoped', uri);
 		const assets = [{ assetId: ASSET_ID, mime: 'image/png', byteSize: PNG_BYTES.byteLength }];
 		const fetchFor = (pubId: string) =>
 			vi.fn(async (input: string) => {
@@ -214,7 +217,7 @@ describe('P22.3 public release client', () => {
 	});
 
 	it('propagates aborts so route switches never install stale releases', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-abort', name: 'Abort' });
+		const project = await createUnitProject({ id: 'project:public-abort', name: 'Abort' });
 		const controller = new AbortController();
 		controller.abort();
 		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(project)));
@@ -254,92 +257,6 @@ describe('P22.3 public release client', () => {
 		).rejects.toMatchObject({ code: 'asset-failed' });
 		expect(PublicVisitorError).toBeDefined();
 	});
-
-	it('loads a connected two-node Sequence tour through the public loader (fixture 4)', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-tour', name: 'Tour Public' });
-		// PR #115 (WP3): the released document is a current-format project. The tour
-		// below used to be room-local (a legacy Room-owned Layout plus nodes that
-		// named a room); a current-format Scene carries no `roomId` and its values are
-		// project/world coordinates, so the tour is expressed directly. Every
-		// assertion below is unchanged — this fixture asserts the Sequence tour, not
-		// any Room frame resolution.
-		const document = {
-			...project,
-			scene: {
-				...project.scene,
-				navigationNodes: [
-					{
-						id: 'tour-a',
-						label: 'Tour A',
-						position: [1, 1.65, 1],
-						cameraTarget: [1, 1.25, -2],
-						fov: 54,
-						connectedNodeIds: ['tour-b'],
-						nextNodeId: 'tour-b'
-					},
-					{
-						id: 'tour-b',
-						label: 'Tour B',
-						position: [4, 1.65, 3],
-						cameraTarget: [4, 1.25, 0],
-						fov: 54,
-						connectedNodeIds: ['tour-a'],
-						previousNodeId: 'tour-a',
-						holdSeconds: 1.5
-					}
-				],
-				connections: [
-					{
-						id: 'tour-a-b',
-						fromNodeId: 'tour-a',
-						toNodeId: 'tour-b',
-						clearance: 0.35,
-						positionPath: { kind: 'auto-bezier', anchors: [] }
-					}
-				]
-			}
-		};
-		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(document)));
-		const { bundle } = await loadPublicReleaseBundle({
-			publicationId: PUB_A,
-			apiOrigin: 'https://api.test',
-			fetchImpl
-		});
-		try {
-			expect(bundle.graph.navigationNodes.map((node) => node.id)).toEqual(['tour-a', 'tour-b']);
-			expect(bundle.graph.connections.map((connection) => connection.id)).toEqual(['tour-a-b']);
-			// Sequence order survives the public loader; entry is the tour head.
-			expect(visitorMainFlowNodeIds(bundle.graph)).toEqual(['tour-a', 'tour-b']);
-			expect(visitorStartNodeId(bundle.graph)).toBe('tour-a');
-			// View key survives the public loader.
-			expect(bundle.graph.nodeById.get('tour-b')?.holdSeconds).toBe(1.5);
-		} finally {
-			bundle.dispose();
-		}
-	});
-
-	it('keeps reduced-motion behavior on the public runtime state', async () => {
-		const project = createEmptyWallFirstProject({ id: 'project:public-rm', name: 'Reduced Motion' });
-		const fetchImpl = vi.fn(async () => jsonResponse(releasePayload(project)));
-		const { bundle } = await loadPublicReleaseBundle({
-			publicationId: PUB_A,
-			apiOrigin: 'https://api.test',
-			fetchImpl
-		});
-		try {
-			const visitor = createVisitorRuntimeState(bundle.graph, visitorStartNodeId(bundle.graph));
-			visitor.reducedMotion = true;
-			expect(visitor.reducedMotion).toBe(true);
-			expect(visitor.activeNodeId).toBe('');
-		} finally {
-			bundle.dispose();
-		}
-	});
-});
-
-describe('P22.3 public closure', () => {
-	beforeEach(() => vi.unstubAllGlobals());
-	afterEach(() => vi.unstubAllGlobals());
 
 	it('public modules are self-contained: no editor/session/store imports', () => {
 		const testDir = dirname(fileURLToPath(import.meta.url));

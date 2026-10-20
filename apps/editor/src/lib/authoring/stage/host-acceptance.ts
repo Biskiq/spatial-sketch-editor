@@ -15,17 +15,20 @@
  * It owns no history of its own: the coordinator's bounded authoring history is the
  * single stack, and this module never interprets an accepted source.
  */
-import {
-	createCurrentSourceAdapter,
-	type AcceptedRevision,
-	type AcceptedSnapshot,
-	type AuthoringIntent,
-	type CorrespondenceEntry,
-	type DomainPlanner,
-	type ProjectDocument,
-	type RegistrationOutcome
+import type {
+	AcceptedRevision,
+	AcceptedSnapshot,
+	AuthoringIntent,
+	CorrespondenceEntry,
+	DomainPlanner,
+	RegistrationOutcome
 } from '@portfolio/project-model';
-import { MUSEUM_SCENE_VALIDATION_OPTIONS } from '$lib/content/scene-validation';
+import {
+	createUnitAcceptanceAdapter,
+	createUnitAcceptancePreparation,
+	createUnitPlannerRegistry,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 import {
 	createAcceptanceCoordinator,
@@ -40,7 +43,7 @@ import { sameReference, sameSubject } from './semantic-selection';
 /** The baseline one host lifetime starts from; the route already admitted it. */
 export type StageAcceptanceBaseline = {
 	readonly revision: AcceptedRevision;
-	readonly source: ProjectDocument;
+	readonly source: ProjectEnvelope;
 	readonly canonicalJson: string;
 	readonly sourceContentId: string;
 };
@@ -141,7 +144,7 @@ export type StageAcceptanceHost = {
 		readonly sessionEpoch: string;
 	}): Promise<StageReplacementOutcome>;
 	/** The coordinator itself, for wiring evidence and registration refusals. */
-	coordinator(): AcceptanceCoordinator<ProjectDocument>;
+	coordinator(): AcceptanceCoordinator<ProjectEnvelope>;
 	dispose(): void;
 };
 
@@ -149,13 +152,21 @@ export function createStageAcceptanceHost(options: {
 	readonly facade: StageFacade;
 	readonly baseline: StageAcceptanceBaseline;
 	readonly sessionEpoch: string;
-	/** Test-only conformance planners; production registers none until S04. */
-	readonly planners?: readonly DomainPlanner<ProjectDocument>[];
+	/**
+	 * Conformance planners supplied by a caller before adapters mount. The live
+	 * Scene adapter registers its own planners through `registerPlanner`; this
+	 * option exists so tests can install a planner into the same coordinator.
+	 */
+	readonly planners?: readonly DomainPlanner<ProjectEnvelope>[];
 }): StageAcceptanceHost {
 	const { facade, baseline } = options;
 	const sessionEpoch = options.sessionEpoch;
-	const coordinator = createAcceptanceCoordinator<ProjectDocument>({
-		adapter: createCurrentSourceAdapter({ scene: MUSEUM_SCENE_VALIDATION_OPTIONS }),
+	const registry = createUnitPlannerRegistry<ProjectEnvelope>();
+	const coordinator = createAcceptanceCoordinator<ProjectEnvelope>({
+		// F.2 unit admission: compound Camera/Experience operations are admitted;
+		// resource staging is not granted by this host.
+		adapter: createUnitAcceptanceAdapter({ compound: true }),
+		preparation: createUnitAcceptancePreparation({ registry, sessionEpoch }),
 		sessionEpoch,
 		baseline: {
 			revision: baseline.revision,
@@ -209,7 +220,7 @@ export function createStageAcceptanceHost(options: {
 	}
 
 	async function install(
-		snapshot: AcceptedSnapshot<ProjectDocument>,
+		snapshot: AcceptedSnapshot<ProjectEnvelope>,
 		correspondence: readonly CorrespondenceEntry[]
 	): Promise<StageAcceptOutcome> {
 		if (disposed) {
@@ -286,7 +297,7 @@ export function createStageAcceptanceHost(options: {
 		}
 			// The restore below reports its own live-proposal window through the same
 			// reason, so a caller that races a second command gets one vocabulary.
-		let outcome: HistoryOutcome<ProjectDocument>;
+		let outcome: HistoryOutcome<ProjectEnvelope>;
 		try {
 			outcome = direction === 'undo' ? await coordinator.undo() : await coordinator.redo();
 		} catch {
@@ -346,7 +357,7 @@ export function createStageAcceptanceHost(options: {
 	return {
 		sessionEpoch,
 		acceptedRevision: () => coordinator.acceptedRevision(),
-		registerPlanner: (planner) => coordinator.register(planner as DomainPlanner<ProjectDocument>),
+		registerPlanner: (planner) => coordinator.register(planner as DomainPlanner<ProjectEnvelope>),
 		onChanged(listener) {
 			listeners.add(listener);
 			return () => { listeners.delete(listener); };

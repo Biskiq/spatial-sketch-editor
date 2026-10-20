@@ -21,25 +21,18 @@ ratification record.
 ```text
 apps/editor (product)            frozen Chopin project (separate)
   sign-in → project hub              independently hosted + versioned
-  → /project/:id/spatial read-only Stage  /museum + /museum/editor
+  → /project/:id/spatial F2 Stage  /museum + /museum/editor
   → cloud Save/Load                  outside this repository entirely
-  → cold public release /p/:id
+  → /p/:id unavailable until T4
 ```
 
-- **PR #115 removed the authoring shell.** The product today has no placement or
-  transform editing, no Camera authoring, no preview takeover, no publish surface
-  and no import/export. The surviving product capability is sign-in, the project
-  hub, cloud Save/Load, the API and the cold public visitor runtime. Capability
-  returns through the T1–T4 tracks; the loss is recorded in the #115 plan's
-  capability-loss list, not hidden behind a flag.
-- **T1.P01.S02 restored a read-only Stage, not authoring.** The spatial route boots
-  a stored current-format source (or the starter gallery for a minted id, or an
-  explicit source JSON) and renders it through one persistent Canvas with the
-  visitor's own renderers; it writes nothing back. The Stage's host half
-  (`apps/editor/src/lib/authoring/stage/`) owns admission, boot outcomes, the
-  session and the seam surface; the shell (`stage/shell/`) composes Head, Index,
-  Stage, Card and instrument chrome. Editing, Save, history and Camera authoring
-  remain with S04/T3/T4, so "the shell exists again" is not a capability claim.
+- **T1/T2 authoring with the T3 F2 cutover.** The spatial Stage boots one F2 envelope,
+  including starter, empty and Open source JSON. T1 Layout and T2 Scene planners accept unit
+  candidates through one F4 host and chronological history. The Head owns conditional Save,
+  conflict/Reload and explicit sign-in Save recovery. One Canvas and one viewport evaluation
+  serve both readings. Camera authoring controls, general GLB ingest, Wall creation and
+  publication UI remain outside this cutover. PR #158 carries the implementation; independent
+  review and owner-run production activation remain separate.
 - **Frozen, separate projects are outside product scope.** No product file
   imports, aliases or references them; no Chopin project/editor state or history
   migrates into the product, and no product export is promoted into the frozen
@@ -59,12 +52,11 @@ apps/editor (product)            frozen Chopin project (separate)
 | `/` | Public entry (guest start, or continue with Google) |
 | `/projects` | Project hub (owned cloud project list for authenticated creators) |
 | `/editor` | Compatibility redirect → `/project/<fresh id>/spatial?create=1` (the mint marks a new identity, so a 404 is read as `new`, not `missing`) |
-| `/project/:id/spatial` | Authoring Stage (T1.P01.S02): read-only boot of a stored current-format source, the starter gallery for a minted id, an empty project, or an explicitly opened source JSON. One Canvas, one viewport evaluation, no write path — Save and editing intents belong to S04/T3 |
-| `/p/:publicationId` | Public visitor route (cold release bootstrap, no auth). Strict current-format reader; there are currently no releases (owner statement) |
+| `/project/:id/spatial` | F2 authoring Stage: stored source, starter, empty or Open JSON; unit-scoped Layout/Scene operations, one history, conditional Head Save and guarded replacement |
+| `/p/:publicationId` | Visitor-only route; AM-9 public reads return honest 404 until T4 prepared-reader activation |
 | `/dev/materials` · `/dev/assets` | Development previews retained inside the reduced foundation |
 
-PR #115 removed the earlier editable workspace. T1.P01.S02 restores the
-read-only Stage described above. Still removed by #115 are `/project/:id/publish`,
+PR #115 removed the earlier editable workspace; the T1/T2 Stage and T3 unit cutover restore the bounded authoring loop above. Still removed by #115 are `/project/:id/publish`,
 `/project/:id/preview`, the `/dev/perf` benchmark harness, and — as **product**
 routes — `/museum` and `/museum/editor`, which belong to the independently
 deployed frozen project.
@@ -73,11 +65,9 @@ The `/editor` compatibility route and hub's New Project enter the starter galler
 for a minted identity; choosing an empty project is explicit. No Chopin/legacy
 state is loaded or migrated. Guest/local work lives in the browser session. Authenticated cloud work
 adds owned Save/Load with a project list and versioned saves. Save/Load, assets
-and publication accept the **current document format only** — wall-first Layout
-(`formatVersion: 5`) with a world-local Scene (`formatVersion: 1`); there is no
-legacy reader, detector, classifier or migration path, and malformed input fails
-ordinary current-format validation (see
-[`components/persistence.md`](./components/persistence.md)).
+admit only declared F2 envelopes (Layout 5, Scene 2, Camera/Experience/resources 1).
+Old files, drafts, mixed roots and unknown versions refuse without conversion. Publication
+writes return `prepared-reader-required`; see [persistence](./components/persistence.md).
 
 ## Platform boundary (current)
 
@@ -101,10 +91,10 @@ private-R2 bytes served only through release membership, cold public route
 (`POST /test-auth/session`, allowlisted automation identities) may mint the same
 app-owned session for agent/E2E testing; it replaces only the external ceremony
 and is structurally absent unless explicitly configured, never in production.
-One `ProjectDocument` currently holds separately owned `LayoutDocument` and
-`SceneDocument` domains; the current Scene document also stores Camera data.
-These are current encodings with explicit cutovers (see the decision record's
-migration step 3), not the destination partitions.
+The live source is `ProjectEnvelope`, with five distinct codec-bounded units, accepted-revision
+provenance and a dependency lock. Migration 005's F2 schema fence rejects pre-epoch writers;
+applying that destructive migration to the deployed environment is a separate owner-run action.
+The P22 delivery path is retired: public reads are unavailable until T4's prepared reader.
 
 ## Semantic authorities (ratified destination)
 
@@ -115,12 +105,12 @@ project envelope ([`composition-execution.md`](./composition-execution.md) §F.2
 
 | Authority | Owns | Current encoding (until cutover) |
 |---|---|---|
-| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `project.layout` / `LayoutDocument` (`@portfolio/layout-core`), wall-first `formatVersion: 5`, one floor datum |
-| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `project.scene` / `SceneDocument` (`@portfolio/project-model`), world-local `formatVersion: 1`, no `roomId` |
-| **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | Camera data inside `project.scene`; `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
-| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | None — destination; `ExperienceDocument` is not designed. F.2 settles its codec-bounded unit (collection-capable) |
-| **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | P20 project-scoped texture registry + catalogue; no general resource system |
-| **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectDocument` + versioned cloud saves; the editor's chronological Layout/Scene history was removed by #115, so there is no product history today, no compound acceptance and no expected-revision precondition |
+| **Layout** | Architectural topology, dimensions, hosted Openings, levels, placed structures, architectural definitions/instances, alternatives, parameters, validity; runtime-safe contextual representation | `units.layout.data` / `LayoutDocument` (`@portfolio/layout-core`), wall-first `formatVersion: 5`, one floor datum |
+| **Scene** | Object definitions, components, base transforms, variants, attachments, materials, lights, placed instances, world presentation (environment/atmosphere, render settings, spatial trigger subjects) | `units.scene.data` / Scene 2 (`@portfolio/project-model`), world-local, no `roomId` |
+| **Camera** | Views, spatial connectivity, paths, framing, projection policy, intrinsic movement profiles, evaluation, reusable Camera resources | `units.camera.data` (Camera 1); `@portfolio/camera-core` (`camera-route.ts` + `camera-motion.ts`) evaluates |
+| **Experience** | Presentations, Experience-wide Interactions, optional Guides and Stops, editorial order/continuation/Gates, visitor-facing content/localization/UI configuration, contextual Activity invocations, typed session declarations | `units.experience.data` (Experience 1, collection-capable); later authoring amendments remain future work |
+| **Typed resources** | Reusable states, clips, performances, role interfaces, revisions, dependency locks; project and library scopes | `units.resources.data` and the exact dependency lock; bytes stay in the P20 registry/private storage; general ingest remains future work |
+| **Project coordination** | Accepted revision, dependency lock, cross-domain validation, coherent history, release preparation, deterministic typed intents (F.4) | `ProjectEnvelope`, unit F4 acceptance, one chronological history, local expected revision and durable saved-base CAS; source and cloud revision identities are distinct |
 | **Execution session** | Active runs, clocks, channel control, visitor choices, media position — isolated per preview/visitor/session | The editor-local playback/preview state was removed by #115 with the editor shell; the surviving execution surface is the visitor cold runtime's session state, never written back to authored definitions |
 | **Audience/collaboration** | Comments, approvals, saved visitor configurations, shared-session snapshots, outcome analytics — outside authored source, anchored by public semantic address + release context | None; P22 release/publication rows are delivery state, not audience records |
 
@@ -261,7 +251,7 @@ interior-only.
 
 | Concern | Current source of truth |
 |---------|-----------------|
-| Rooms, frames, boundaries, openings | `project.layout` / `LayoutDocument` (`@portfolio/layout-core`) |
+| Rooms, frames, boundaries, openings | `units.layout.data` / `LayoutDocument` (`@portfolio/layout-core`) |
 | Rough parametric layout objects | `project.layout.objects` |
 | Scene models, primitives, lights, materials | `project.scene` / `SceneDocument` (`@portfolio/project-model`) |
 | Camera nodes, connections, paths, view tracks | `project.scene` (until the Camera codec cutover) |

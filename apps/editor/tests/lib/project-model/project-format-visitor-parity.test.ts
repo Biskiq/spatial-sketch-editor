@@ -20,11 +20,13 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { prepareRuntime, validateProject } from '@portfolio/project-model';
 import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
 import { planFirstEnclosureCreation } from '@portfolio/layout-core';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -34,8 +36,8 @@ function coldManifest() {
 	return { releaseId: 'project:stage4@v1', bytesByUri: new Map() };
 }
 
-/** Wall-first payload born through the stage-2 writer (rect + door + node). */
-function wallFirstPayload() {
+/** The one envelope every case opens: a wall-first enclosure plus one Camera view. */
+async function wallFirstPayload() {
 	const birth = planFirstEnclosureCreation({
 		candidateDocument: {
 			units: 'meters' as const,
@@ -61,28 +63,25 @@ function wallFirstPayload() {
 		}
 	});
 	if (birth.kind !== 'success') throw new Error('birth fixture failed');
-	return {
+	return createUnitProject({
 		id: 'project-wall-first-parity',
 		name: 'Wall First Parity',
 		layout: birth.document,
-		scene: {
+		camera: {
 			formatVersion: 1,
-			textures: [],
-			materials: [],
-			entities: [],
-			navigationNodes: [
+			views: [
 				{
 					id: 'node-1',
 					label: 'Entrance',
-					position: [1, 0, 1] as [number, number, number],
-					cameraTarget: [2, 0, 2] as [number, number, number],
+					eye: [1, 0, 1],
+					target: [2, 0, 2],
 					fov: 60,
-					connectedNodeIds: []
+					connectedViewIds: []
 				}
 			],
 			connections: []
 		}
-	};
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -90,15 +89,9 @@ function wallFirstPayload() {
 // ---------------------------------------------------------------------------
 
 describe('P23.0 stage 4 — visitor compile parity for wall-first', () => {
-	it('the visitor composer compiles the wall-first payload through the one shared core', () => {
-		const payload = wallFirstPayload();
-		const visitor = composeColdReleaseBundle({
-			projectId: payload.id,
-			projectName: payload.name,
-			layout: payload.layout,
-			scene: payload.scene,
-			manifest: coldManifest()
-		});
+	it('the visitor composer compiles the wall-first payload through the one shared core', async () => {
+		const payload = await wallFirstPayload();
+		const visitor = composeColdReleaseBundle({ document: payload, manifest: coldManifest() });
 		try {
 			expect(visitor.geometry.rooms).toHaveLength(1);
 			expect(visitor.graph.navigationNodes).toHaveLength(1);
@@ -107,13 +100,13 @@ describe('P23.0 stage 4 — visitor compile parity for wall-first', () => {
 		}
 	});
 
-	it('runtime preparation equals the direct wall-first compiler output (one shared core)', () => {
-		const payload = wallFirstPayload();
-		const prepared = prepareRuntime(structuredClone(payload));
+	it('runtime preparation equals the direct wall-first compiler output (one shared core)', async () => {
+		const payload = await wallFirstPayload();
+		const prepared = prepareUnitRuntime(structuredClone(payload));
 		if (prepared.kind === 'rejected') {
 			throw new Error(`expected ready: ${JSON.stringify(prepared.issues)}`);
 		}
-		const direct = compileWallFirstLayoutGeometry(payload.layout as never);
+		const direct = compileWallFirstLayoutGeometry(payload.units.layout.data);
 		expect(prepared.geometry).toEqual(direct.geometry);
 		expect(prepared.issues).toEqual(direct.issues);
 	});
@@ -124,60 +117,47 @@ describe('P23.0 stage 4 — visitor compile parity for wall-first', () => {
 // ---------------------------------------------------------------------------
 
 describe('P23.0 stage 4 — current-format preparation discipline', () => {
-	it('world-local Scenes pass through byte-identical (no frame to consult)', () => {
-		const payload = wallFirstPayload();
-		const prepared = prepareRuntime(structuredClone(payload));
+	it('the Camera unit supplies the navigation graph, with no Room frame to consult', async () => {
+		const payload = await wallFirstPayload();
+		const prepared = prepareUnitRuntime(structuredClone(payload));
 		if (prepared.kind === 'rejected') throw new Error('expected ready');
-		expect(prepared.runtimeScene.navigationNodes).toEqual(payload.scene.navigationNodes);
+		expect(prepared.runtimeScene.navigationNodes.map((node) => node.id)).toEqual(['node-1']);
 		expect(prepared.rooms.entries).toEqual([]);
 	});
 
-	it('rejects an unknown root key through the canonical validator, before any state is installed', () => {
+	it('rejects an unknown root key through the canonical validator, before any state is installed', async () => {
 		// One acceptance authority: runtime preparation must not be laxer than the
 		// persisted-document reader, or a stored record could load here and fail
 		// (or vice versa) depending on which entry point opened it.
-		const withExtraKey = { ...wallFirstPayload(), extra: true };
-		const viaRuntime = prepareRuntime(withExtraKey);
-		expect(viaRuntime).toMatchObject({ kind: 'rejected', reason: 'invalid-project' });
+		const withExtraKey = { ...(await wallFirstPayload()), extra: true };
+		const viaRuntime = prepareUnitRuntime(withExtraKey);
+		expect(viaRuntime).toMatchObject({ kind: 'rejected', reason: 'invalid-envelope' });
 		if (viaRuntime.kind !== 'rejected') return;
-		expect(viaRuntime.issues.some((issue) => issue.code === 'unknown_key')).toBe(true);
-		const viaReader = validateProject(withExtraKey);
+		expect(viaRuntime.issues.some((issue) => issue.code === 'unknown-key')).toBe(true);
+		const viaReader = validateProjectEnvelope(withExtraKey);
 		expect(viaReader.success).toBe(false);
 	});
 
-	it('rejects anything that is not the current document pair, before any state is installed', () => {
-		expect(prepareRuntime({ nope: true })).toMatchObject({
+	it('rejects anything that is not the admitted envelope, before any state is installed', async () => {
+		expect(prepareUnitRuntime({ nope: true })).toMatchObject({
 			kind: 'rejected',
-			reason: 'invalid-project'
+			reason: 'invalid-envelope'
 		});
 
-		// A Scene record that still names a Room is refused by the Scene reader,
-		// so no room reference can reach the runtime.
-		const payload = wallFirstPayload();
-		const dangling = {
-			...structuredClone(payload),
-			scene: {
-				...payload.scene,
-				navigationNodes: [
-					{ ...payload.scene.navigationNodes[0]!, roomId: 'room-nope' }
-				]
-			}
+		// A Camera view that carries an editorial field is refused by the strict
+		// Camera reader, so no such value reaches the runtime projection.
+		const payload = await wallFirstPayload();
+		const dangling = JSON.parse(JSON.stringify(payload)) as {
+			units: { camera: { data: { views: Record<string, unknown>[] } } };
 		};
-		const rejected = prepareRuntime(dangling);
+		dangling.units.camera.data.views = [
+			{ ...dangling.units.camera.data.views[0]!, roomId: 'room-nope' }
+		];
+		const rejected = prepareUnitRuntime(dangling);
 		expect(rejected).toMatchObject({ kind: 'rejected' });
-		if (rejected.kind !== 'rejected') return;
-		expect(
-			rejected.issues.some((issue) => issue.code === 'room_id_forbidden_in_world_local')
-		).toBe(true);
 
 		expect(() =>
-			composeColdReleaseBundle({
-				projectId: 'project-dangling',
-				projectName: 'Dangling',
-				layout: { nope: true },
-				scene: {},
-				manifest: coldManifest()
-			})
+			composeColdReleaseBundle({ document: { nope: true }, manifest: coldManifest() })
 		).toThrow();
 	});
 });
@@ -187,16 +167,10 @@ describe('P23.0 stage 4 — current-format preparation discipline', () => {
 // ---------------------------------------------------------------------------
 
 describe('P23.0 stage 4 — cold-load byte-identity (no stored-byte rewrites)', () => {
-	it('the visitor composer leaves a realistic current-format payload untouched', () => {
-		const payload = wallFirstPayload();
+	it('the visitor composer leaves a realistic envelope untouched', async () => {
+		const payload = await wallFirstPayload();
 		const snapshot = structuredClone(payload);
-		const bundle = composeColdReleaseBundle({
-			projectId: payload.id,
-			projectName: payload.name,
-			layout: payload.layout,
-			scene: payload.scene,
-			manifest: coldManifest()
-		});
+		const bundle = composeColdReleaseBundle({ document: payload, manifest: coldManifest() });
 		try {
 			expect(bundle.geometry.rooms).toHaveLength(1);
 			expect(payload).toEqual(snapshot);

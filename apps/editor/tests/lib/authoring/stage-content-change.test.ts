@@ -21,7 +21,8 @@ import {
 	planWallChain,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import { createEmptyWorldLocalSceneDocument, type ProjectDocument } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import {
 	admitSource,
 	type AdmissionContext,
@@ -48,7 +49,7 @@ const CHANGED_ENCLOSURE: readonly LayoutVec2[] = [
 	[1, 1]
 ];
 
-function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID): ProjectDocument {
+async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID): Promise<ProjectEnvelope> {
 	const plan = planWallChain({
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
@@ -56,12 +57,7 @@ function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID
 		role: 'boundary'
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
-	return {
-		id,
-		name: 'Content change project',
-		layout: plan.document,
-		scene: createEmptyWorldLocalSceneDocument()
-	};
+	return createUnitProject({ id, name: 'Content change project', layout: plan.document });
 }
 
 let revisionCounter = 0;
@@ -75,7 +71,7 @@ function admissionContext(projectId: string): AdmissionContext {
 }
 
 async function admit(
-	document: ProjectDocument,
+	document: ProjectEnvelope,
 	projectId: string = document.id,
 	sessionEpoch?: string
 ): Promise<StageReadSnapshot> {
@@ -92,8 +88,8 @@ type Mounted = {
 };
 
 /** The host's own mount order for a first (or replacement) mount. */
-async function mount(document: ProjectDocument = enclosureProject(FIRST_ENCLOSURE)): Promise<Mounted> {
-	const snapshot = await admit(document);
+async function mount(document?: ProjectEnvelope): Promise<Mounted> {
+	const snapshot = await admit(document ?? (await enclosureProject(FIRST_ENCLOSURE)));
 	const session = createStageSession({ sessionEpoch: snapshot.sessionEpoch });
 	session.replace(snapshot);
 	const facade = createStageFacade({ snapshot, session });
@@ -129,7 +125,7 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 
 		// A content change is admitted under the *same* host session epoch: it is the
 		// same lifetime, so the output, the snapshot and the session keep one identity.
-		const next = await admit(enclosureProject(CHANGED_ENCLOSURE), PROJECT_ID, facade.snapshot().sessionEpoch);
+		const next = await admit(await enclosureProject(CHANGED_ENCLOSURE), PROJECT_ID, facade.snapshot().sessionEpoch);
 		expect(next.sourceContentId).not.toBe(facade.snapshot().sourceContentId);
 		const lease = facade.acquireGesture({
 			owner: 'stage-pointer',
@@ -204,7 +200,7 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 		// Same canonical content, a fresh acceptance revision: nothing about the
 		// view, the claim or the selection changes.
 		const sameContent = await admit(
-			enclosureProject(FIRST_ENCLOSURE),
+			await enclosureProject(FIRST_ENCLOSURE),
 			PROJECT_ID,
 			facade.snapshot().sessionEpoch
 		);
@@ -224,7 +220,7 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 		const contentBefore = facade.snapshot().sourceContentId;
 
 		const other = await admit(
-			enclosureProject(CHANGED_ENCLOSURE, OTHER_PROJECT_ID),
+			await enclosureProject(CHANGED_ENCLOSURE, OTHER_PROJECT_ID),
 			OTHER_PROJECT_ID,
 			facade.snapshot().sessionEpoch
 		);
@@ -243,17 +239,17 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 		const { facade } = await mount();
 		const epoch = facade.snapshot().sessionEpoch;
 		facade.dispose();
-		const install = facade.installAccepted(await admit(enclosureProject(CHANGED_ENCLOSURE), PROJECT_ID, epoch));
+		const install = facade.installAccepted(await admit(await enclosureProject(CHANGED_ENCLOSURE), PROJECT_ID, epoch));
 		expect(install.kind).toBe('refused');
 		if (install.kind !== 'refused') return;
 		expect(install.code).toBe('disposed');
 
 		// Nothing mounted: a first install is a replacement, and the session says so.
 		const session = createStageSession({ sessionEpoch: 'session-empty' });
-		const first = await admit(enclosureProject(FIRST_ENCLOSURE), PROJECT_ID, 'session-empty');
+		const first = await admit(await enclosureProject(FIRST_ENCLOSURE), PROJECT_ID, 'session-empty');
 		const fresh = createStageFacade({ snapshot: first, session });
 		const firstInstall = fresh.installAccepted(
-			await admit(enclosureProject(CHANGED_ENCLOSURE), PROJECT_ID, 'session-empty')
+			await admit(await enclosureProject(CHANGED_ENCLOSURE), PROJECT_ID, 'session-empty')
 		);
 		expect(firstInstall.kind).toBe('refused');
 		if (firstInstall.kind !== 'refused') return;
@@ -268,7 +264,7 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 		// A replacement: a new session, a snapshot of a different project, a fresh
 		// facade and a fresh output state.
 		const replacementSnapshot = await admit(
-			enclosureProject(CHANGED_ENCLOSURE, OTHER_PROJECT_ID),
+			await enclosureProject(CHANGED_ENCLOSURE, OTHER_PROJECT_ID),
 			OTHER_PROJECT_ID
 		);
 		const session = createStageSession({ sessionEpoch: replacementSnapshot.sessionEpoch });

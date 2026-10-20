@@ -41,17 +41,20 @@ import {
 	type LayoutVec2,
 	type PrecisionPlan
 } from '@portfolio/layout-core';
-import {
-	CURRENT_SOURCE_KIND,
-	CURRENT_SOURCE_VERSION,
-	type AuthoringIntent,
-	type DomainPlanner,
-	type PlannerOutcome,
-	type PlannerRequest,
-	type PreparedCandidate,
-	type ProjectDocument,
-	type SemanticReference
+import type {
+	AuthoringIntent,
+	DomainPlanner,
+	PlannerOutcome,
+	PlannerRequest,
+	PreparedCandidate,
+	SemanticReference
 } from '@portfolio/project-model';
+import {
+	replaceUnitData,
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 export const LAYOUT_WALL_HEIGHT_KIND = 'layout-wall-height';
 export const LAYOUT_WALL_THICKNESS_KIND = 'layout-wall-thickness';
@@ -142,7 +145,7 @@ export function isLayoutOpeningField(value: unknown): value is LayoutOpeningFiel
 
 /** An exact F.1 reference to one Layout subject in the current level. */
 export function layoutReference(
-	snapshot: PlannerRequest<ProjectDocument>['snapshot'],
+	snapshot: PlannerRequest<ProjectEnvelope>['snapshot'],
 	subject: LayoutSubject,
 	contentRevision: string
 ): SemanticReference {
@@ -156,7 +159,7 @@ export function layoutReference(
 			kind: 'layout-location',
 			// The authored level id, read from the admitted source rather than a second
 			// level registry: P23 has exactly one canonical Floor.
-			levelId: snapshot.domain.source.layout.floor.id,
+			levelId: snapshot.domain.source.units.layout.data.floor.id,
 			structureInstancePath: []
 		},
 		componentId: null,
@@ -164,20 +167,20 @@ export function layoutReference(
 	};
 }
 
-function rejected(code: string, message: string): PlannerOutcome<ProjectDocument> {
+function rejected(code: string, message: string): PlannerOutcome<ProjectEnvelope> {
 	return { kind: 'rejected', code, message, diagnostics: [] };
 }
 
 function layoutPlanner(
 	kind: string,
-	prepare: (request: PlannerRequest<ProjectDocument>) => PlannerOutcome<ProjectDocument>
-): DomainPlanner<ProjectDocument> {
+	prepare: (request: PlannerRequest<ProjectEnvelope>) => PlannerOutcome<ProjectEnvelope>
+): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: `layout.${kind}`,
 		kind,
 		admission: Object.freeze({ domain: 'layout', compound: false, units: false, resources: false }),
-		sourceKinds: [CURRENT_SOURCE_KIND],
-		sourceVersions: [CURRENT_SOURCE_VERSION],
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare
 	};
 }
@@ -190,7 +193,7 @@ function layoutPlanner(
  * accepted selection would requalify the wrong entry.
  */
 function addressedSubject(
-	request: PlannerRequest<ProjectDocument>,
+	request: PlannerRequest<ProjectEnvelope>,
 	kind: LayoutSubjectKind,
 	id: string
 ): { readonly ok: true } | { readonly ok: false; readonly message: string } {
@@ -208,19 +211,23 @@ function addressedSubject(
 }
 
 function prepared(
-	request: PlannerRequest<ProjectDocument>,
+	request: PlannerRequest<ProjectEnvelope>,
 	operationKind: string,
 	subject: LayoutSubject,
 	document: LayoutDocumentWallFirst,
 	fields: readonly string[],
 	options: { readonly created?: boolean; readonly id?: string } = {}
-): PlannerOutcome<ProjectDocument> {
-	const reference = layoutReference(request.snapshot, subject, request.snapshot.sourceContentId);
-	const candidate: PreparedCandidate<ProjectDocument> = {
+): PlannerOutcome<ProjectEnvelope> {
+	const reference = layoutReference(
+		request.snapshot,
+		subject,
+		request.snapshot.domain.source.units.layout.header.contentRevision
+	);
+	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
-		sourceKind: CURRENT_SOURCE_KIND,
-		sourceVersion: CURRENT_SOURCE_VERSION,
-		source: { ...request.snapshot.domain.source, layout: document },
+		sourceKind: UNIT_SOURCE_KIND,
+		sourceVersion: UNIT_SOURCE_VERSION,
+		source: replaceUnitData(request.snapshot.domain.source, 'layout', document),
 		changes: [{ kind: operationKind, subjectIds: [options.id ?? subject.id], fields: [...fields] }],
 		correspondence: [
 			options.created
@@ -232,7 +239,7 @@ function prepared(
 	return { kind: 'prepared', candidate };
 }
 
-function wallHeightPlanner(): DomainPlanner<ProjectDocument> {
+function wallHeightPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_HEIGHT_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_HEIGHT_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -242,7 +249,7 @@ function wallHeightPlanner(): DomainPlanner<ProjectDocument> {
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planExactWallHeight(request.snapshot.domain.source.layout, wallId, height);
+		const plan = planExactWallHeight(request.snapshot.domain.source.units.layout.data, wallId, height);
 		if (plan.kind === 'rejected') {
 			return rejected(plan.rejection.code, plan.rejection.message);
 		}
@@ -252,7 +259,7 @@ function wallHeightPlanner(): DomainPlanner<ProjectDocument> {
 	});
 }
 
-function wallThicknessPlanner(): DomainPlanner<ProjectDocument> {
+function wallThicknessPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_THICKNESS_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_THICKNESS_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -263,7 +270,7 @@ function wallThicknessPlanner(): DomainPlanner<ProjectDocument> {
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planExactWallThickness(
-			request.snapshot.domain.source.layout,
+			request.snapshot.domain.source.units.layout.data,
 			wallId,
 			thickness
 		);
@@ -288,7 +295,7 @@ function wallThicknessPlanner(): DomainPlanner<ProjectDocument> {
  * end, `end` keeps the end and moves the start. The retained planner owns the
  * solve, the shared-Junction consequences and every identity/Opening/Room gate.
  */
-function wallLengthPlanner(): DomainPlanner<ProjectDocument> {
+function wallLengthPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_LENGTH_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_LENGTH_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -301,7 +308,7 @@ function wallLengthPlanner(): DomainPlanner<ProjectDocument> {
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planExactWallLength(request.snapshot.domain.source.layout, {
+		const plan = planExactWallLength(request.snapshot.domain.source.units.layout.data, {
 			wallId,
 			length,
 			fixedEndpoint: fixed
@@ -314,7 +321,7 @@ function wallLengthPlanner(): DomainPlanner<ProjectDocument> {
 }
 
 /** Exact straight-Wall angle, in canonical `atan2(z, x)` radians, one fixed endpoint. */
-function wallAnglePlanner(): DomainPlanner<ProjectDocument> {
+function wallAnglePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_ANGLE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_ANGLE_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -327,7 +334,7 @@ function wallAnglePlanner(): DomainPlanner<ProjectDocument> {
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planExactWallAngle(request.snapshot.domain.source.layout, {
+		const plan = planExactWallAngle(request.snapshot.domain.source.units.layout.data, {
 			wallId,
 			angle: angleRadians,
 			fixedEndpoint: fixed
@@ -340,7 +347,7 @@ function wallAnglePlanner(): DomainPlanner<ProjectDocument> {
 }
 
 /** Rigid straight-Wall translation: one delta, both endpoints, no shape change. */
-function wallMovePlanner(): DomainPlanner<ProjectDocument> {
+function wallMovePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_WALL_MOVE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_WALL_MOVE_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -353,7 +360,7 @@ function wallMovePlanner(): DomainPlanner<ProjectDocument> {
 		}
 		const addressed = addressedSubject(request, 'wall', wallId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const plan = planRigidWallMove(request.snapshot.domain.source.layout, wallId, [deltaX, deltaZ]);
+		const plan = planRigidWallMove(request.snapshot.domain.source.units.layout.data, wallId, [deltaX, deltaZ]);
 		if (plan.kind === 'rejected') return rejected(plan.rejection.code, plan.rejection.message);
 		return prepared(request, 'layout-wall-move', { kind: 'wall', id: wallId }, plan.document, [
 			'position'
@@ -361,7 +368,7 @@ function wallMovePlanner(): DomainPlanner<ProjectDocument> {
 	});
 }
 
-function openingMeasurePlanner(): DomainPlanner<ProjectDocument> {
+function openingMeasurePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_OPENING_MEASURE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_OPENING_MEASURE_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -384,7 +391,7 @@ function openingMeasurePlanner(): DomainPlanner<ProjectDocument> {
 		const addressed = addressedSubject(request, 'opening', openingId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
 		const plan = planUpdateWallFirstOpening(
-			request.snapshot.domain.source.layout,
+			request.snapshot.domain.source.units.layout.data,
 			openingId,
 			{ [field]: value } as Parameters<typeof planUpdateWallFirstOpening>[2]
 		);
@@ -401,7 +408,7 @@ function openingMeasurePlanner(): DomainPlanner<ProjectDocument> {
 	});
 }
 
-function entityNamePlanner(): DomainPlanner<ProjectDocument> {
+function entityNamePlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_ENTITY_NAME_KIND, (request) => {
 		const payload = readPayload(LAYOUT_ENTITY_NAME_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -418,7 +425,7 @@ function entityNamePlanner(): DomainPlanner<ProjectDocument> {
 		}
 		const addressed = addressedSubject(request, subjectKind, subjectId);
 		if (!addressed.ok) return rejected('invalid-value', addressed.message);
-		const document = request.snapshot.domain.source.layout;
+		const document = request.snapshot.domain.source.units.layout.data;
 		const plan =
 			subjectKind === 'wall'
 				? planWallMetadataUpdate(document, subjectId, { name })
@@ -436,7 +443,7 @@ function entityNamePlanner(): DomainPlanner<ProjectDocument> {
 	});
 }
 
-function plinthPlanner(): DomainPlanner<ProjectDocument> {
+function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 	return layoutPlanner(LAYOUT_PLINTH_PLACE_KIND, (request) => {
 		const payload = readPayload(LAYOUT_PLINTH_PLACE_KIND, request.intent.payload);
 		if ('message' in payload) return rejected('invalid-value', payload.message);
@@ -456,7 +463,7 @@ function plinthPlanner(): DomainPlanner<ProjectDocument> {
 		}
 		// The captured datum must still be the mounted level's datum: placing at a
 		// stale elevation would create an object floating at the previous floor.
-		const datumMeters = request.snapshot.domain.source.layout.floor.elevation;
+		const datumMeters = request.snapshot.domain.source.units.layout.data.floor.elevation;
 		if (floorElevation !== datumMeters) {
 			return rejected(
 				'stale-datum',
@@ -477,7 +484,7 @@ function plinthPlanner(): DomainPlanner<ProjectDocument> {
 			);
 		}
 		const plan = planCommitLayoutObjectPresetWithId(
-			request.snapshot.domain.source.layout,
+			request.snapshot.domain.source.units.layout.data,
 			'plinth',
 			point as LayoutVec2,
 			floorElevation,
@@ -498,7 +505,7 @@ function plinthPlanner(): DomainPlanner<ProjectDocument> {
 }
 
 /** The five production Layout planners, one operation kind each. */
-export function createLayoutPlanners(): readonly DomainPlanner<ProjectDocument>[] {
+export function createLayoutPlanners(): readonly DomainPlanner<ProjectEnvelope>[] {
 	return [
 		wallHeightPlanner(),
 		wallThicknessPlanner(),

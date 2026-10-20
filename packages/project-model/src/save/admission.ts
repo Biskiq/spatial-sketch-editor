@@ -3,18 +3,16 @@
  * admitted source formats.
  *
  * `SaveAcceptedSource@1` already carries `sourceKind`/`sourceVersion` and the
- * canonical source text, but the landed server hard-coded the current-source
- * pair. `T3.P01.S05` adds the F.2 envelope as a second admitted source without
- * turning Save into a dispatcher that trusts the client: a handler decides
- * whether the captured bytes are a source **its own codec** accepts, and the
- * generic persistence path keeps the saved-base token, receipts, row lock and
- * one-transaction write exactly as `conditional-save-current-v1` established
- * them.
+ * canonical source text. `T3.P01.S04` admits exactly one live source — the F.2
+ * envelope — without turning Save into a dispatcher that trusts the client: a
+ * handler decides whether the captured bytes are a source **its own codec**
+ * accepts, and the generic persistence path keeps the saved-base token,
+ * receipts, row lock and one-transaction write exactly as
+ * `conditional-save-current-v1` established them.
  *
- * The handler lives outside this module on purpose. The current-source handler
- * is the API's (it needs the guest Scene registry and the compiled baseline); the
- * unit handler is the inactive F.2 subpath's. This module only states the seam
- * and its result vocabulary, so `save/**` never imports the unit envelope.
+ * The handler lives outside this module on purpose. The unit handler is the F.2
+ * subpath's; this module only states the seam and its result vocabulary, so
+ * `save/**` never imports the unit envelope.
  *
  * Runtime-safe: types and one lookup, no IO, no editor, no F.2 import.
  */

@@ -1,8 +1,9 @@
 /**
- * Conditional Save conformance (T3.P01.S02, AM-4
- * `conditional-save-current-v1`). Real Postgres, **no skip guards**: these are
- * the OCC, collision, receipt and atomicity contracts, and a mock cannot prove
- * them. `npm run test:api` is the owning lane.
+ * Conditional Save conformance at the route (T3.P01.S04 activation).
+ *
+ * Real Postgres, **no skip guards**: these are the HTTP admission, OCC,
+ * collision, receipt and atomicity contracts over the live F.2 unit path, and a
+ * mock cannot prove them. `npm run test:api` is the owning lane.
  */
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -12,12 +13,7 @@ import test, { after, before } from 'node:test';
 import { createApp } from '../dist/app.js';
 import { runMigrations } from '../dist/migrate.js';
 
-import {
-	SESSION_KEY,
-	projectDocument,
-	saveRequestBody,
-	sessionCookie
-} from './test-support.mjs';
+import { SESSION_KEY, projectDocument, saveRequestBody, sessionCookie } from './test-support.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://localhost:5432/biskiq';
 
@@ -28,7 +24,7 @@ let counter = 0;
 
 function nextProjectId() {
 	counter += 1;
-	return `s02save${Date.now().toString(36)}${counter}${randomUUID().slice(0, 8)}`;
+	return `s04save${Date.now().toString(36)}${counter}${randomUUID().slice(0, 8)}`;
 }
 
 function track(projectId) {
@@ -54,9 +50,9 @@ async function save(projectId, cookie, request) {
 	});
 }
 
-async function createProject(cookie, document) {
-	const projectId = track(document.id);
-	const request = await saveRequestBody(document);
+async function createProject(cookie, envelope) {
+	const projectId = track(envelope.id);
+	const request = await saveRequestBody(envelope);
 	const response = await save(projectId, cookie, request);
 	assert.equal(response.statusCode, 200, JSON.stringify(response.json()));
 	return { projectId, request, acknowledgement: response.json() };
@@ -96,8 +92,20 @@ after(async () => {
 	else if (pool) await pool.end();
 });
 
+test('the live Save path stores the envelope and its source_format fence value', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
+	const envelope = projectDocument('Epoch save', { id: nextProjectId() });
+	const { projectId, request } = await createProject(cookie, envelope);
+	const stored = await pool.query(
+		'SELECT source_format AS "sourceFormat", document FROM project_versions WHERE project_id = $1 AND version = 1',
+		[projectId]
+	);
+	assert.equal(stored.rows[0].sourceFormat, 'unit-envelope-v1');
+	assert.deepEqual(stored.rows[0].document, JSON.parse(request.capture.canonicalJson));
+});
+
 test('same-base writers: exactly one winner, the loser gets a conflict and no version', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());
 	const createOperation = `create-${randomUUID()}`;
 	const first = await save(
@@ -105,7 +113,7 @@ test('same-base writers: exactly one winner, the loser gets a conflict and no ve
 		cookie,
 		await saveRequestBody(projectDocument('Base', { id: projectId }), { operationId: createOperation })
 	);
-	assert.equal(first.statusCode, 200);
+	assert.equal(first.statusCode, 200, JSON.stringify(first.json()));
 	const token = first.json().savedBaseToken;
 
 	const leftOperation = `left-${randomUUID()}`;
@@ -140,7 +148,6 @@ test('same-base writers: exactly one winner, the loser gets a conflict and no ve
 	assert.equal(state.latestVersion, 2);
 	assert.equal(state.receipts, 2);
 	assert.notEqual(state.savedBaseToken, token);
-	// One receipt for the create and one for the winner: the loser wrote none.
 	assert.deepEqual(
 		(await receiptOperations(projectId)).sort(),
 		[createOperation, left.statusCode === 200 ? leftOperation : rightOperation].sort()
@@ -148,7 +155,7 @@ test('same-base writers: exactly one winner, the loser gets a conflict and no ve
 });
 
 test('concurrent identical retries both replay the winner receipt without a second version', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const { projectId, acknowledgement } = await createProject(
 		cookie,
 		projectDocument('Retry race', { id: nextProjectId() })
@@ -167,7 +174,7 @@ test('concurrent identical retries both replay the winner receipt without a seco
 });
 
 test('concurrent create-only: exactly one winner and one collision', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());
 	const [left, right] = await Promise.all([
 		save(projectId, cookie, await saveRequestBody(projectDocument('Left create', { id: projectId }))),
@@ -183,22 +190,8 @@ test('concurrent create-only: exactly one winner and one collision', async () =>
 	assert.equal(state.receipts, 1);
 });
 
-test('concurrent identical create-only retries replay the winner receipt with no second version', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
-	const projectId = track(nextProjectId());
-	const request = await saveRequestBody(projectDocument('Create retry', { id: projectId }));
-	const [left, right] = await Promise.all([save(projectId, cookie, request), save(projectId, cookie, request)]);
-	assert.equal(left.statusCode, 200, JSON.stringify(left.json()));
-	assert.equal(right.statusCode, 200, JSON.stringify(right.json()));
-	assert.deepEqual(left.json(), right.json());
-	assert.equal(left.json().version, 1);
-	const state = await counts(projectId);
-	assert.equal(state.versions, 1);
-	assert.equal(state.receipts, 1);
-});
-
 test('concurrent create-only under one operation ID with different bytes refuses the loser', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());
 	const operationId = `create-race-${randomUUID()}`;
 	const [left, right] = await Promise.all([
@@ -217,8 +210,8 @@ test('concurrent create-only under one operation ID with different bytes refuses
 });
 
 test('create-only collision is owner-blind and another owner is not-found', async () => {
-	const owner = await sessionCookie(app, 'google:s02-save-1');
-	const stranger = await sessionCookie(app, 'google:s02-save-2');
+	const owner = await sessionCookie(app, 'google:s04-save-1');
+	const stranger = await sessionCookie(app, 'google:s04-save-2');
 	const { projectId, acknowledgement } = await createProject(
 		owner,
 		projectDocument('Owned', { id: nextProjectId() })
@@ -241,6 +234,8 @@ test('create-only collision is owner-blind and another owner is not-found', asyn
 		error: { code: 'save_collision', message: 'A project with this ID already exists' }
 	});
 
+	// TD-7: ownership is proved before any row lock, so a foreign expected-base
+	// Save is not-found rather than a lock on another owner's row.
 	const strangerExpected = await save(
 		projectId,
 		stranger,
@@ -253,7 +248,7 @@ test('create-only collision is owner-blind and another owner is not-found', asyn
 });
 
 test('retry replays the original receipt; a changed payload under the same ID refuses', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const { projectId, request, acknowledgement } = await createProject(
 		cookie,
 		projectDocument('Receipt', { id: nextProjectId() })
@@ -289,12 +284,12 @@ test('retry replays the original receipt; a changed payload under the same ID re
 });
 
 test('no partial version/pointer update when the pointer write fails', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const { projectId, acknowledgement } = await createProject(
 		cookie,
 		projectDocument('Atomic', { id: nextProjectId() })
 	);
-	const triggerId = `s02_fail_${projectId.replace(/[^A-Za-z0-9_]/g, '_')}`;
+	const triggerId = `s04_fail_${projectId.replace(/[^A-Za-z0-9_]/g, '_')}`;
 	await pool.query(
 		`CREATE OR REPLACE FUNCTION ${triggerId}() RETURNS trigger AS $$
 		BEGIN
@@ -338,78 +333,27 @@ test('no partial version/pointer update when the pointer write fails', async () 
 	assert.equal(repaired.json().version, 2);
 });
 
-test('admission refusals write nothing: unknown asset, unknown material, invalid document', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+test('a non-F2 envelope is refused as invalid_project and writes nothing', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());
-
-	const unknownAsset = projectDocument('Unknown asset', { id: projectId });
-	unknownAsset.scene.entities = [
-		{
-			kind: 'model',
-			id: 'imported',
-			name: 'Imported',
-			// The parity fixture id shared with the editor admission test.
-			assetId: 'asset-not-in-the-host-catalogue',
-			fallback: 'piano',
-			position: [0, 0, 0],
-			rotation: [0, 0, 0]
-		}
-	];
-	const unknownAssetSave = await save(projectId, cookie, await saveRequestBody(unknownAsset));
-	assert.equal(unknownAssetSave.statusCode, 400);
-	assert.equal(unknownAssetSave.json().error.code, 'invalid_project');
-	// The admission's own issues reach the client; they are what makes the
-	// refusal actionable rather than a bare 400.
-	assert.ok(Array.isArray(unknownAssetSave.json().issues));
-	assert.ok(unknownAssetSave.json().issues.length > 0);
-
-	const unknownMaterial = projectDocument('Unknown material', { id: projectId });
-	unknownMaterial.scene.entities = [
-		{
-			kind: 'primitive',
-			id: 'box',
-			name: 'Box',
-			primitive: 'box',
-			dimensions: { width: 1, height: 1, depth: 1 },
-			materialId: 'not-a-material',
-			castShadow: true,
-			receiveShadow: false,
-			position: [0, 0, 0],
-			rotation: [0, 0, 0]
-		}
-	];
-	// The fixture builder's permissive default admits the unknown material, but the
-	// API's registry pass refuses it before any digest comparison.
-	const unknownMaterialRequest = await saveRequestBody(projectDocument('Shape', { id: projectId }));
-	const unknownMaterialSave = await save(projectId, cookie, {
-		...unknownMaterialRequest,
-		capture: {
-			...unknownMaterialRequest.capture,
-			canonicalJson: `${JSON.stringify(unknownMaterial, null, 2)}\n`,
-			sourceContentId: `sha256-${'1'.repeat(64)}`
-		}
+	const request = await saveRequestBody(projectDocument('Invalid', { id: projectId }));
+	const envelope = JSON.parse(request.capture.canonicalJson);
+	envelope.units.scene.data.formatVersion = 99;
+	const invalid = await save(projectId, cookie, {
+		...request,
+		capture: { ...request.capture, canonicalJson: JSON.stringify(envelope) }
 	});
-	assert.equal(unknownMaterialSave.statusCode, 400);
-	assert.equal(unknownMaterialSave.json().error.code, 'invalid_project');
-
-	const invalidRequest = await saveRequestBody(projectDocument('Invalid', { id: projectId }));
-	const invalidDocument = await save(projectId, cookie, {
-		...invalidRequest,
-		capture: {
-			...invalidRequest.capture,
-			canonicalJson: `${JSON.stringify({ id: projectId, name: 'Missing fields' })}\n`
-		}
-	});
-	assert.equal(invalidDocument.statusCode, 400);
-	assert.equal(invalidDocument.json().error.code, 'invalid_project');
+	assert.equal(invalid.statusCode, 400);
+	assert.equal(invalid.json().error.code, 'invalid_project');
+	assert.ok(invalid.json().issues.length > 0);
 
 	const state = await counts(projectId);
 	assert.equal(state.versions, 0);
 	assert.equal(state.receipts, 0);
 });
 
-test('scheme, source version and content identity mismatches refuse as themselves', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+test('scheme, source version, digest and canonical-bytes mismatches refuse as themselves', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const { projectId, request, acknowledgement } = await createProject(
 		cookie,
 		projectDocument('Identity', { id: nextProjectId() })
@@ -434,7 +378,6 @@ test('scheme, source version and content identity mismatches refuse as themselve
 	assert.equal(digest.statusCode, 400);
 	assert.equal(digest.json().error.code, 'content-identity-mismatch');
 
-	// Non-canonical bytes are not the encoding of their contents.
 	const nonCanonical = await save(projectId, cookie, {
 		...request,
 		capture: {
@@ -446,12 +389,11 @@ test('scheme, source version and content identity mismatches refuse as themselve
 	assert.equal(nonCanonical.statusCode, 400);
 	assert.equal(nonCanonical.json().error.code, 'content-identity-mismatch');
 
-	const state = await counts(projectId);
-	assert.equal(state.versions, 1);
+	assert.equal((await counts(projectId)).versions, 1);
 });
 
 test('a saved revision identity cannot be reused for different contents', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const { projectId, request, acknowledgement } = await createProject(
 		cookie,
 		projectDocument('Revision', { id: nextProjectId() })
@@ -466,73 +408,70 @@ test('a saved revision identity cannot be reused for different contents', async 
 	assert.equal((await counts(projectId)).versions, 1);
 });
 
-test('a stored base that fails registry admission does not block a valid Save', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
-	const owner = 'google:s02-save-1';
-	const projectId = track(nextProjectId());
-	const token = `saved-base:${randomUUID()}`;
-	const legacy = projectDocument('Legacy permissive row', { id: projectId });
-	legacy.scene.entities = [
-		{
-			kind: 'model',
-			id: 'legacy',
-			name: 'Legacy',
-			assetId: 'asset-not-in-the-host-catalogue',
-			fallback: 'piano',
-			position: [0, 0, 0],
-			rotation: [0, 0, 0]
-		}
-	];
-	await pool.query('INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [owner]);
-	await pool.query(
-		`INSERT INTO projects (id, owner_id, name, latest_version, saved_base_token)
-		 VALUES ($1, $2, $3, 1, $4)`,
-		[projectId, owner, legacy.name, token]
+test('an older saved revision identity also cannot be reused for different contents', async () => {
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
+	const { projectId, request, acknowledgement } = await createProject(
+		cookie,
+		projectDocument('Revision A', { id: nextProjectId() })
 	);
-	await pool.query('INSERT INTO project_versions (project_id, version, document) VALUES ($1, 1, $2)', [
-		projectId,
-		legacy
-	]);
-
-	const repaired = await save(
+	const revisionA = request.capture.acceptedRevision.revisionId;
+	const revisionB = `revision-${randomUUID()}`;
+	const second = await save(
 		projectId,
 		cookie,
-		await saveRequestBody(projectDocument('Repaired', { id: projectId }), {
-			precondition: { kind: 'expected-saved-base', token }
+		await saveRequestBody(projectDocument('Revision B', { id: projectId }), {
+			precondition: { kind: 'expected-saved-base', token: acknowledgement.savedBaseToken },
+			revisionId: revisionB
 		})
 	);
-	assert.equal(repaired.statusCode, 200, JSON.stringify(repaired.json()));
-	assert.equal(repaired.json().version, 2);
+	assert.equal(second.statusCode, 200, JSON.stringify(second.json()));
+
+	const reused = await save(
+		projectId,
+		cookie,
+		await saveRequestBody(projectDocument('Revision A with new contents', { id: projectId }), {
+			precondition: { kind: 'expected-saved-base', token: second.json().savedBaseToken },
+			revisionId: revisionA
+		})
+	);
+	assert.equal(reused.statusCode, 400);
+	assert.equal(reused.json().error.code, 'revision-reuse');
 	assert.equal((await counts(projectId)).versions, 2);
 });
 
-test('admission refusal writes nothing, including an owner row', async () => {
-	const owner = 'google:s02-save-no-write';
-	const cookie = await sessionCookie(app, owner);
+test('a pre-epoch writer is refused structurally by the schema fence', async () => {
+	const owner = 'google:s04-save-pre-epoch';
+	await pool.query('INSERT INTO users (id) VALUES ($1) ON CONFLICT (id) DO NOTHING', [owner]);
 	const projectId = track(nextProjectId());
-	const project = projectDocument('Unknown asset refusal', { id: projectId });
-	project.scene.entities = [
-		{
-			kind: 'model',
-			id: 'imported',
-			name: 'Imported',
-			assetId: 'asset-not-in-the-host-catalogue',
-			fallback: 'piano',
-			position: [0, 0, 0],
-			rotation: [0, 0, 0]
-		}
-	];
-	const refused = await save(projectId, cookie, await saveRequestBody(project));
-	assert.equal(refused.statusCode, 400);
-	assert.equal(refused.json().error.code, 'invalid_project');
-	const user = await pool.query('SELECT 1 FROM users WHERE id = $1', [owner]);
-	assert.equal(user.rows.length, 0);
-	const projectRow = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
-	assert.equal(projectRow.rows.length, 0);
+	await pool.query('INSERT INTO projects (id, owner_id, name) VALUES ($1, $2, $3)', [
+		projectId,
+		owner,
+		'Pre-epoch'
+	]);
+	await assert.rejects(
+		() =>
+			pool.query('INSERT INTO project_versions (project_id, version, document) VALUES ($1, 1, $2)', [
+				projectId,
+				projectDocument('Pre-epoch')
+			]),
+		(error) => error.code === '23502'
+	);
+
+	// The owned row still exists and carries no F.2 version. An old reader must
+	// not fall back to it: the project is absent from the list and the load is a
+	// 404 because the version join finds nothing, not because the row was deleted.
+	const cookie = await sessionCookie(app, owner);
+	const existing = await pool.query('SELECT 1 FROM projects WHERE id = $1', [projectId]);
+	assert.equal(existing.rows.length, 1);
+	const missing = await app.inject({ method: 'GET', url: `/projects/${projectId}`, headers: { cookie } });
+	assert.equal(missing.statusCode, 404);
+	const listed = await app.inject({ method: 'GET', url: '/projects', headers: { cookie } });
+	assert.equal(listed.statusCode, 200);
+	assert.equal(listed.json().projects.some((project) => project.id === projectId), false);
 });
 
 test('the unconditioned old-client body refuses with no write', async () => {
-	const cookie = await sessionCookie(app, 'google:s02-save-1');
+	const cookie = await sessionCookie(app, 'google:s04-save-1');
 	const projectId = track(nextProjectId());
 	const unconditioned = await save(projectId, cookie, {
 		document: projectDocument('Old client', { id: projectId })

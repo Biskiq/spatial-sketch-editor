@@ -74,7 +74,12 @@ describe('T1.P01.S04 — Head Save', () => {
 	it('enables Save for dirty work and signals the unsaved-work fact explicitly', () => {
 		const { state } = stub(snapshot());
 		const head = createHeadSave(state);
-		expect(head.control()).toMatchObject({ label: 'Save changes', disabled: false, reason: null });
+		expect(head.control()).toMatchObject({
+			label: 'Save changes',
+			disabled: false,
+			unavailable: false,
+			reason: null
+		});
 		expect(head.unsavedWork().kind).toBe('confirm');
 		expect(head.isDirty()).toBe(true);
 	});
@@ -120,6 +125,21 @@ describe('T1.P01.S04 — Head Save', () => {
 		// The resume path reissues the retained capture; its receipt is still unresolved.
 		expect(await head.retry()).toEqual({ kind: 'unresolved' });
 		expect(retry).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps Save disabled with the executable-closure reason instead of offering an impossible write', () => {
+		const { state } = stub(snapshot());
+		const head = createHeadSave(state, {
+			unavailableReason: 'This source cannot execute (missing-resource): paper. Save is unavailable.'
+		});
+		expect(head.control()).toMatchObject({
+			label: 'Save unavailable',
+			disabled: true,
+			unavailable: true,
+			reason: 'This source cannot execute (missing-resource): paper. Save is unavailable.'
+		});
+		// Unsaved-work signalling is unchanged: cancellation still preserves work.
+		expect(head.unsavedWork().kind).toBe('confirm');
 	});
 
 	it('retries a refusal with the state machine’s own reason intact', async () => {

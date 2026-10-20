@@ -1,6 +1,8 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { PassThrough, Readable } from 'node:stream';
 
+import { UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
+
 import type { DatabasePool } from './database.js';
 import type { ObjectStore } from './object-store.js';
 import { queryRows } from './project-persistence.js';
@@ -136,21 +138,25 @@ export async function registerAsset(
 	db: Pick<DatabasePool, 'query'>,
 	ownerId: string,
 	projectId: string,
-	name: string
+	name: string,
+	objectNamespace: string
 ): Promise<AssetMetadata> {
 	const assetId = randomUUID();
-	const objectKey = createObjectKey(projectId, assetId);
-	const rows = await queryRows<AssetRow>(
-		db,
-		`INSERT INTO assets (
+	const objectKey = createObjectKey(projectId, assetId, objectNamespace);
+	const rows = await queryRows<AssetRow>(			db,
+			`INSERT INTO assets (
 	id, project_id, name, kind, storage_kind, source_kind, object_key, import_state
 )
 SELECT $1::uuid, p.id, $3, 'texture', 'r2', 'upload', $5, 'pending'
 FROM projects p
 WHERE p.id = $2 AND p.owner_id = $4
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $6
+	)
 RETURNING ${returningColumns()}`,
-		[assetId, projectId, name, ownerId, objectKey]
-	);
+			[assetId, projectId, name, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
+		);
 	const row = rows[0];
 	if (!row) throw new AssetNotFoundError();
 	return readAssetMetadata(row);
@@ -161,15 +167,18 @@ export async function listAssets(
 	ownerId: string,
 	projectId: string
 ): Promise<AssetMetadata[]> {
-	const rows = await queryRows<AssetRow>(
-		db,
-		`SELECT ${ASSET_COLUMNS}
+	const rows = await queryRows<AssetRow>(			db,
+			`SELECT ${ASSET_COLUMNS}
 FROM projects p
 LEFT JOIN assets a ON a.project_id = p.id
 WHERE p.id = $1 AND p.owner_id = $2
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $3
+	)
 ORDER BY a.created_at DESC NULLS LAST, a.id ASC`,
-		[projectId, ownerId]
-	);
+			[projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+		);
 	if (rows.length === 0) throw new AssetNotFoundError();
 	return rows.filter((row) => row.id !== null).map(readAssetMetadata);
 }
@@ -180,14 +189,17 @@ export async function readAsset(
 	projectId: string,
 	assetId: string
 ): Promise<StoredAsset> {
-	const rows = await queryRows<AssetRow>(
-		db,
-		`SELECT ${ASSET_COLUMNS}
+	const rows = await queryRows<AssetRow>(			db,
+			`SELECT ${ASSET_COLUMNS}
 FROM assets a
 JOIN projects p ON p.id = a.project_id
-WHERE a.id = $1::uuid AND a.project_id = $2 AND p.owner_id = $3`,
-		[assetId, projectId, ownerId]
-	);
+WHERE a.id = $1::uuid AND a.project_id = $2 AND p.owner_id = $3
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $4
+	)`,
+			[assetId, projectId, ownerId, UNIT_ENVELOPE_SOURCE_FORMAT]
+		);
 	const row = rows[0];
 	if (!row) throw new AssetNotFoundError();
 	return readStoredAsset(row);
@@ -205,14 +217,15 @@ export async function uploadAsset(
 	assetId: string,
 	contentLength: number,
 	body: Readable,
-	objectStore: ObjectStore | undefined
+	objectStore: ObjectStore | undefined,
+	objectNamespace: string
 ): Promise<AssetMetadata> {
 	const asset = await readAsset(pool, ownerId, projectId, assetId);
 	if (asset.importState === 'ready') throw new AssetNotReadyError();
 	if (!objectStore) throw new Error('Object storage is unavailable');
 
 	// ponytail: object key doubles as upload claim; superseded bytes stay orphaned until GC ships.
-	const objectKey = createObjectKey(projectId, assetId);
+	const objectKey = createObjectKey(projectId, assetId, objectNamespace);
 	const claimed = await queryRows<AssetRow>(
 		pool,
 		`UPDATE assets a
@@ -220,8 +233,12 @@ SET object_key = $4, import_state = 'pending', updated_at = now()
 FROM projects p
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 	AND p.owner_id = $3 AND a.import_state <> 'ready'
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $5
+	)
 RETURNING ${returningColumns('a.')}`,
-		[assetId, projectId, ownerId, objectKey]
+		[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
 	);
 	if (!claimed[0]) throw new AssetNotReadyError();
 
@@ -234,8 +251,12 @@ RETURNING ${returningColumns('a.')}`,
 SET import_state = 'failed', updated_at = now()
 FROM projects p
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
-	AND p.owner_id = $3 AND a.object_key = $4 AND a.import_state <> 'ready'`,
-			[assetId, projectId, ownerId, objectKey]
+	AND p.owner_id = $3 AND a.object_key = $4 AND a.import_state <> 'ready'
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $5
+	)`,
+			[assetId, projectId, ownerId, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
 		);
 		throw error;
 	}
@@ -247,8 +268,12 @@ SET mime = $4, byte_size = $5, sha256 = $6, import_state = 'ready', updated_at =
 FROM projects p
 WHERE a.id = $1::uuid AND a.project_id = $2 AND p.id = a.project_id
 	AND p.owner_id = $3 AND a.object_key = $7 AND a.import_state = 'pending'
+	AND EXISTS (
+		SELECT 1 FROM project_versions v
+		WHERE v.project_id = p.id AND v.source_format = $8
+	)
 RETURNING ${returningColumns('a.')}`,
-		[assetId, projectId, ownerId, uploaded.mime, uploaded.byteSize, uploaded.sha256, objectKey]
+		[assetId, projectId, ownerId, uploaded.mime, uploaded.byteSize, uploaded.sha256, objectKey, UNIT_ENVELOPE_SOURCE_FORMAT]
 	);
 	const finalizedRow = finalized[0];
 	if (!finalizedRow) throw new AssetNotReadyError();
@@ -450,8 +475,8 @@ function readStoredAsset(row: AssetRow): StoredAsset {
 	return { ...readAssetMetadata(row), objectKey: readNullableString(row.objectKey) };
 }
 
-function createObjectKey(projectId: string, assetId: string): string {
-	return `projects/${projectId}/assets/${assetId}/${randomBytes(16).toString('hex')}`;
+function createObjectKey(projectId: string, assetId: string, objectNamespace: string): string {
+	return `projects/${objectNamespace}/${projectId}/assets/${assetId}/${randomBytes(16).toString('hex')}`;
 }
 
 function readString(value: unknown): string {

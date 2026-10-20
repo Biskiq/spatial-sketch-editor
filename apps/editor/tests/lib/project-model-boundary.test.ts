@@ -2,12 +2,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import {
-	createEmptyWallFirstProject,
-	derivePackageId,
-	sha256Bytes,
-	validateProject
-} from '@portfolio/project-model';
+import * as projectModel from '@portfolio/project-model';
+import { derivePackageId, sha256Bytes } from '@portfolio/project-model';
+import * as units from '@portfolio/project-model/units';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageSrc = resolve(testDir, '../../../../packages/project-model/src');
@@ -31,8 +29,36 @@ describe('project-model package boundary', () => {
 	it('exposes the portable package primitives directly', async () => {
 		expect(await sha256Bytes(new Uint8Array())).toMatch(/^sha256-[0-9a-f]{64}$/);
 		expect(await derivePackageId([])).toMatch(/^package-[0-9a-f]{12}$/);
-		const project = createEmptyWallFirstProject({ id: 'project', name: 'Project' });
-		expect(validateProject(project).success).toBe(true);
+	});
+
+	it('keeps the live F.2 source on the explicit units subpath, never the root barrel', async () => {
+		// T3.P01.S04 retired the current-source reader, so the root barrel has no
+		// project validator and no unit-envelope constructors. The one live source
+		// entry is `@portfolio/project-model/units`.
+		expect('validateProject' in projectModel).toBe(false);
+		expect('validateProjectEnvelope' in projectModel).toBe(false);
+		expect('createUnitProject' in projectModel).toBe(false);
+		expect(typeof units.validateProjectEnvelope).toBe('function');
+		expect(typeof units.prepareUnitRuntime).toBe('function');
+
+		const envelope = await units.createProjectEnvelope({
+			id: 'project',
+			name: 'Project',
+			acceptedRevision: { projectId: 'project', revisionId: 'revision-1' },
+			dependencyLock: { formatVersion: 1, entries: [] },
+			layout: { unitId: 'project:layout', data: createEmptyWallFirstLayoutDocument() },
+			scene: {
+				unitId: 'project:scene',
+				data: { formatVersion: 2, textures: [], materials: [], entities: [] }
+			},
+			camera: { unitId: 'project:camera', data: { formatVersion: 1, views: [], connections: [] } },
+			experience: {
+				unitId: 'project:experience',
+				data: { formatVersion: 1, experiences: [] }
+			},
+			resources: { unitId: 'project:resources', data: { formatVersion: 1, resources: [] } }
+		});
+		expect(units.validateProjectEnvelope(envelope).success).toBe(true);
 	});
 
 	it('keeps the extracted leaf independent from app/editor/rendering code', () => {

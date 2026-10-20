@@ -156,7 +156,7 @@ export function canonicalDocument(document: SceneDocument): SceneDocument {
 		})),
 		entities: document.entities.map(cloneEntity),
 		...(document.clusters === undefined ? {} : { clusters: document.clusters.map((cluster) => ({ id: cluster.id, name: cluster.name, ...(cluster.roomId === undefined ? {} : { roomId: cluster.roomId }), memberIds: [...cluster.memberIds] })) }),
-		navigationNodes: document.navigationNodes.map((node) => ({ id: node.id, ...(node.roomId === undefined ? {} : { roomId: node.roomId }), label: node.label, position: [...node.position], cameraTarget: [...node.cameraTarget], fov: node.fov, connectedNodeIds: [...node.connectedNodeIds], ...(node.nextNodeId === undefined ? {} : { nextNodeId: node.nextNodeId }), ...(node.previousNodeId === undefined ? {} : { previousNodeId: node.previousNodeId }), ...(node.detourOfNodeId === undefined ? {} : { detourOfNodeId: node.detourOfNodeId }), ...(node.lockInteraction === undefined ? {} : { lockInteraction: node.lockInteraction }), ...(node.holdSeconds === undefined ? {} : { holdSeconds: node.holdSeconds }) })),
+		navigationNodes: document.navigationNodes.map((node) => ({ id: node.id, ...(node.roomId === undefined ? {} : { roomId: node.roomId }), label: node.label, position: [...node.position], cameraTarget: [...node.cameraTarget], fov: node.fov, connectedNodeIds: [...node.connectedNodeIds] })),
 		connections: document.connections.map((connection) => ({
 			id: connection.id,
 			fromNodeId: connection.fromNodeId,

@@ -3,11 +3,11 @@
  * additive unit admission (T3.P01.S05).
  *
  * Why this file lives under `units/` and not under `f4/`: the architecture gate
- * (`apps/editor/tests/lib/project-model/program-entry-closure.test.ts`) forbids
- * any source outside the inactive F.2 subtrees from importing the unit envelope
- * before `T3.P01.S04` activates it. Staging needs the envelope's own resource
- * registry, so it belongs *inside* the inactive subtree and is reached only
- * through the explicit `@portfolio/project-model/units` subpath. The F4-facing
+ * (`apps/editor/tests/lib/project-model/program-entry-closure.test.ts`) keeps
+ * the unit envelope inside its explicit F.2 subtrees rather than the root
+ * barrel. Staging needs the envelope's own resource registry, so it belongs
+ * *inside* that subtree and is reached only through the explicit
+ * `@portfolio/project-model/units` subpath. The F4-facing
  * half — the wider planner admission, the dispatcher entry and target
  * validation — stays in `f4/unit-acceptance.ts` and imports nothing from here.
  *
