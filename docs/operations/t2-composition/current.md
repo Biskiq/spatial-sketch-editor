@@ -16,27 +16,27 @@ track's baton, and never treat stale baton text as a blocker — verify Git stat
 prerequisites instead.
 
 ```text
-PHASE: T2.P01 Supported object composition (in-progress, CLOSABLE) →
+PHASE: T2.P01 Supported object composition — CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: S01, S02, S03 and the final gate S04 are shipped. The phase README's slice register is
-        authoritative.
-BATON: No active T2 slice. S04 (bounded composition loop and final gate) was accepted 2026-10-19 from
-       the deliberate closeout invocation and merged in #157 as `99c38033`; its final gate is PASSED
-       and the phase is closable. Post-merge gate on that commit: check 0/0, tests 2,269/2,269,
-       arch 163/163, heavy 118/118. The
-       accepted capability is the `scene-compose` task (numeric uniform Resize on floor, duplicate,
-       delete) through AM-5 contributions only, reusing T1's source-JSON/replacement/Reload paths and
-       building no host seam, Head or Save UI. Resize and Duplicate stay primitive-only and read the
-       planner's own `floorTransformSupport`. The accepted-install lifetime rule covers typed and
-       pointer commits. Accepted evidence, residuals and the preserved plan stub live in the slice's
-       [acceptance record](../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/acceptance.md).
-NEXT:   Owner phase-close decision for T2.P01 (`phase-closeout`), or leave the phase open. Nothing
-        else is queued in T2.
+SLICES: none open. S01, S02, S03 and the final gate S04 are shipped; the phase README's slice
+        register is authoritative.
+BATON: No active T2 work and no authorized T2 slice. The phase closed 2026-10-20 by
+       `phase-closeout` under explicit owner authorization; its PHASE CLOSE block records the gate
+       (`S04`, accepted 2026-10-19, merged in PR #157 as `99c38033`) and the integration it rests on.
+       The declared gate artifact is now a closed-work stub at its own path; the accepted evidence,
+       review history and residuals are recoverable at `5d1a7573`.
+NEXT:  Owner decision only: register the next T2 phase — the K1 bounded editor-side GLB import
+       (one flat GLB plus maps, explicit scale/pivot/footprint, stage/approve, place/reload/preview)
+       — or leave T2 without a registered phase. Its prerequisites are the accepted F.1/F.2
+       resource/lock interfaces and F.4 staged acceptance; it needs no T4 release closure. Nothing
+       is authorized by this baton.
 ROUTE: ./README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/acceptance.md
-BLOCKER: none.
-CARRY:  The owner may push the local `closed/T2.P01.S03` and `closed/T2.P01.S04` tags. Cloud Save in a
-        real browser session and a model-contact capability stay with the host/S06 evidence and a
-        future T2 phase, not with this gate.
+       ../../roadmap/t2-composition/README.md (phase register) →
+       ../../roadmap/t2-composition/t2.p01-supported-composition/README.md (PHASE CLOSE and
+       deferred table) → ../../roadmap/core-editor-stability.md (K1)
+BLOCKER: none. T2 has no start gate to satisfy until a next phase is registered.
+CARRY: The owner may push the local `closed/T2.P01.S03`, `closed/T2.P01.S04` and the new
+        `closed/T2.P01` tags. Cloud Save in a real browser session and a model-contact capability
+        stay with the host evidence and a future T2 phase, not with the closed gate. T2 track
+        completion remains a separate owner event.
 ```

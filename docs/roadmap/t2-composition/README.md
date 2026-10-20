@@ -1,7 +1,8 @@
 # T2 — Composition
 
-**Track:** T2 · **Status:** approved — T2.P01 registered 2026-10-16; `T2.P01.S01` shipped
-2026-10-16; `T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (batch B); S04 authorized 2026-10-19 as batch C ([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T2 · **Status:** approved — `T2.P01` registered 2026-10-16 and **closed 2026-10-20**, with
+all four children shipped (`T2.P01.S01` 2026-10-16, `S02` 2026-10-17, `S03` 2026-10-18 (batch B),
+`S04` final gate 2026-10-20, PR #157) ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
@@ -64,7 +65,7 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T2.P01 | approved | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P01 — Supported object composition](./t2.p01-supported-composition/README.md) |
+| T2.P01 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P01 — Supported object composition](./t2.p01-supported-composition/README.md) |
 
 T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
@@ -75,9 +76,16 @@ T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/s02-pair-authorization-2026-10-16.md)).
 `Depends on` lists the external gates the phase's later slices consume. **`T2.P01.S03`** was
 owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), after
-`T1.viewport-projection@1` was accepted through `T1.P01.S07`, and shipped 2026-10-18 (PR #147). S04 is
+`T1.viewport-projection@1` was accepted through `T1.P01.S07`, and shipped 2026-10-18 (PR #147). S04 was
 owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); its T1 Head Save
-prerequisite shipped through `T1.P01.S04` (PR #148).
+prerequisite shipped through `T1.P01.S04` (PR #148). S04's final gate was accepted 2026-10-19 and
+shipped in PR #157 (`99c38033`), and the owner closed the phase on 2026-10-20 (its PHASE CLOSE block).
+
+**T2 is not complete.** Phase closure ends one bounded phase; the track's remaining objectives
+(materials/lights depth, attachments, definitions, and the K1 bounded editor-side GLB import) stay
+ahead of it. The next T2 phase is the K1 single-model ingest boundary described in the closed
+phase's deferred table, and it registers only through a later owner decision — this register
+proposes no phase, slice or gate.
 
 ## Starting foundation
 

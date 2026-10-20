@@ -1,8 +1,8 @@
 # T2.P01 — Supported object composition
 
-**Phase:** T2.P01 · **Status:** registered 2026-10-16 — `T2.P01.S01` shipped 2026-10-16;
+**Phase:** T2.P01 · **Status:** closed 2026-10-20 — registered 2026-10-16; `T2.P01.S01` shipped 2026-10-16;
 `T2.P01.S02` shipped 2026-10-17; S03 shipped 2026-10-18 (authorized 2026-10-17 as batch B, [record](../../../reference/decisions/batch-b-authorization-2026-10-17.md));
-S04 authorized 2026-10-19 as batch C ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) · **Track:** [T2](../README.md) · **Roadmap:**
+S04, the declared final gate, authorized 2026-10-19 as batch C ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and shipped 2026-10-20 (PR #157, `99c38033`) · **Track:** [T2](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) ·
 **Contracts:** [contract drafts](./contracts.md),
@@ -151,7 +151,7 @@ lifecycle and prerequisites only.
 | T2.P01.S01 | shipped | F1.reference@1 | F1.reference@1:references-v1 | — | [Deterministic candidates and canonical floor support](./t2.p01.s01-candidates-and-floor-support/implementation-plan.md) | [record](./t2.p01.s01-candidates-and-floor-support/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/parallel-slice-authorization-2026-10-16.md)); accepted 2026-10-16 with independent implementation review and focused T1/Layout sign-off |
 | T2.P01.S02 | shipped | F1.reference@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Scene operations and shared history](./t2.p01.s02-scene-operations-and-history/implementation-plan.md) | [record](./t2.p01.s02-scene-operations-and-history/acceptance.md) | owner-authorized 2026-10-16 ([record](../../../reference/decisions/s02-pair-authorization-2026-10-16.md)); owner acceptance via deliberate closeout invocation on 2026-10-17; independent review resolved separately (see record) |
 | T2.P01.S03 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [First coherent editing surface](./t2.p01.s03-first-editing-surface/implementation-plan.md) | [record](./t2.p01.s03-first-editing-surface/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T1.P01.S04` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); acceptance refreshed 2026-10-18 after pointer Move repair and independent delta review; anchor `2747f169` / tag `closed/T2.P01.S03` (local only) |
-| T2.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](./t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record](./t2.p01.s04-bounded-composition-loop/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T1.P01.S05` ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); scope correction C4; accepted 2026-10-19 via deliberate closeout invocation, final gate PASSED; merged in #157 as `99c38033`; anchor `ca516743` / tag `closed/T2.P01.S04` (pushed); phase closable |
+| T2.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Bounded composition loop and final gate](./t2.p01.s04-bounded-composition-loop/implementation-plan.md) | [record (closed-work stub)](./t2.p01.s04-bounded-composition-loop/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T1.P01.S05` ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); scope correction C4; accepted 2026-10-19 via deliberate closeout invocation, final gate PASSED; merged in #157 as `99c38033`; anchor `ca516743` / tag `closed/T2.P01.S04` (pushed); phase **closed 2026-10-20** (PHASE CLOSE below) |
 
 `F1.reference@1:references-v1` was accepted at `ee463d0b` and S01 shipped in PR #130. S02's
 `local-single-domain-v1` (with `acceptance-invariants-v1`) was accepted at `8ec0c5f1`, an ancestor
@@ -167,31 +167,42 @@ is judged at the slice's own trusted base. Both hold on `main` `5fee2a2d` (T1.P0
 #148). S04 is owner-authorized 2026-10-19 as batch C with `T1.P01.S05`
 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)), with a scope correction that reuses T1's shipped source JSON and *Reload remote* controls.
 
-The requirements above describe the pre-cutover source adapter. `T3.P01.S04` migrates existing
-callers and unfinished plans to accepted F2 `unit-envelope-v1`, F1 `unit-resolution-v1` and F4
-`unit-acceptance-v1` from T3.P01.S01/S05, with `conditional-save-units-v1` for Save users. Replace
-current-source requirements then; do not consume a retired adapter. Plain Scene caller migration
-does not require T3 Camera-authoring UI. No consumer satisfies itself with its own readiness edits.
+`T3.P01.S04` has since migrated the landed T1/T2 callers and unfinished plans to accepted F2
+`unit-envelope-v1`, F1 `unit-resolution-v1` and F4 `unit-acceptance-v1` from T3.P01.S01/S05, with
+`conditional-save-units-v1` for Save users. S04 itself shipped on the current-source adapter before
+that cutover, so the scopes in its `shipped` row are the ones it actually required and stays a
+historical record — not a live consumer, and not a route for any later slice.
 
 ```text
 FINAL PHASE GATE: T2.P01.S04 → ./t2.p01.s04-bounded-composition-loop/acceptance.md
 
 PHASE CLOSE
-Stage:        active
+Stage:        closed
+Closed:       2026-10-20 — owner ratification recorded in the phase-closeout commit on branch
+              `t2-p01-closeout`, which carries this block (explicit owner phase-close
+              authorization of 2026-10-20)
+Final gate:   T2.P01.S04 → ./t2.p01.s04-bounded-composition-loop/acceptance.md — accepted
+              2026-10-19, merged as `99c38033` (PR #157)
+Integration:  the gate artifact's ten-contract phase matrix and its recorded journeys, on the
+              integrated tree `2cad26b9` and re-run at the merge commit: `npm run check` 0/0,
+              `npm test` 2,269/2,269 (171 files), `test:arch` 163/163, `test:heavy` 118/118, all
+              exit 0; independent final-gate review ACCEPT WITH REQUIRED FIXES with both blocking
+              findings closed by executable evidence, plus a second reviewer ACCEPT on the
+              reviewed implementation revision
+Preservation: the declared gate artifact is now a closed-work stub at its own path; its full body,
+              including the row-by-row evidence and the review history, is recoverable at
+              `5d1a7573`. Renderable evidence archived by this close: none. The preservation report
+              is in the stub.
 ```
 
-S01, S02 and S03 have acceptance evidence. S02's owner acceptance was recorded 2026-10-17 from the
-deliberate `slice-closeout` invocation. That event did not waive independent review; the earlier
-review gap was separately resolved after review of the reconciled implementation and a component-scope
-repair. See the [acceptance record](./t2.p01.s02-scene-operations-and-history/acceptance.md) for the
-distinct owner-acceptance and reviewer-authored evidence. S03's owner acceptance was recorded
-2026-10-18 from the same deliberate invocation, on an independent-review verdict that covers its
-implementation revision; its [record](./t2.p01.s03-first-editing-surface/acceptance.md) names the
-tier, the declared integration route, the four recorded journeys and the remaining residuals. The final
-gate (`T2.P01.S04`) is **accepted 2026-10-19**: its acceptance record carries the phase matrix, the
-repository gate, the independently reviewed implementation, the two closed blocking findings and the
-remaining residuals. The phase is **CLOSABLE**; `PHASE CLOSE` is a separate owner event and nothing
-here closes the phase or the track.
+S01, S02 and S03 each carry their own acceptance evidence. S02's owner acceptance was recorded
+2026-10-17 from the deliberate `slice-closeout` invocation; that event did not waive independent
+review, and the earlier review gap was separately resolved after review of the reconciled
+implementation and a component-scope repair. S03's owner acceptance was recorded 2026-10-18 on an
+independent-review verdict covering its implementation revision. The final gate (`T2.P01.S04`) is
+accepted, shipped and now closed as the phase's final child, so every child of this phase is
+`shipped` and no phase child is open. **T2 as a track stays `approved`**: track completion is a
+separate owner event against the track's bounded objectives, and nothing here declares it.
 
 ## Minimum dependencies
 
@@ -212,9 +223,10 @@ activation stay T3/T4-owned.
 
 ## Phase acceptance evidence (final gate)
 
-These are the required proofs, judged together at `T2.P01.S04`. The [acceptance
-record](./t2.p01.s04-bounded-composition-loop/acceptance.md) carries each row's status and evidence at
-the tested revision; this table stays the requirement, not the result.
+These are the proofs that were judged together at `T2.P01.S04`, where each row was recorded with its
+status and evidence at the tested revision. This table stays the **requirement**, never the result;
+the [gate artifact](./t2.p01.s04-bounded-composition-loop/acceptance.md) is now a closed-work stub
+whose recovery anchor holds the accepted row-by-row evidence.
 
 | Contract/failure | Evidence and practical pass condition |
 | --- | --- |
@@ -248,6 +260,16 @@ also require real-Postgres checks with zero skips; they are not planned here.
 | Multi-selection, group/cluster editing and batch duplication | Require ordered set policy, stable pivots and atomic all-candidate validation. Carry the T2 evidence's full/partial cluster duplication and no silent subset rules into that phase. This phase refuses unsupported set operations. |
 | Definitions/components/variants/performances | Need stable component/resource identity and channel baseline/invocation semantics. An opaque mesh and flat cluster do not establish those capabilities. |
 | Camera/Experience and publication | T3 owns authored Views/order/capture, unit/compound acceptance and the early conditional Save extension; T4 owns prepared readers/releases. Existing Camera fields pass through unchanged. No hidden Camera node is created by object placement. |
+
+## Carry-forward after closure
+
+Closure transfers none of the deferred table above into this phase, and registers nothing new. The
+next T2 phase boundary is the K1 bounded editor-side GLB import, planned and registered only by a
+later owner decision; it must consume the accepted F.1/F.2 resource/lock interfaces and F.4 staged
+acceptance rather than re-deriving them. Wall/ceiling attachments, multi-selection and cluster
+editing, definitions/components and full 3D transforms stay unplanned capability work with no
+phase. Publication and prepared readers stay T4. The deferred camera/experience half is already
+T3's, and its cutover shipped in `T3.P01.S04`.
 
 ## Architecture cycle and parallel integration
 
