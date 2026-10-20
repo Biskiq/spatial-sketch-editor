@@ -8,8 +8,9 @@ recording `T1.viewport-projection@1:viewport-projection-v1` accepted); `T1.P01.S
 2026-10-17 as batch B ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)) and
 accepted and shipped 2026-10-18 (PR #148); S05 authorized 2026-10-19 as batch C
 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and accepted and shipped
-2026-10-19 (PR #156, accepted at `3d432836`, TD-8 fixed); S06 proposed and unauthorized, routed after
-`T3.P01.S04` (ruling C3) ·
+2026-10-19 (PR #156, accepted at `3d432836`, TD-8 fixed); S06 authorized 2026-10-20 as batch D
+([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)) as the post-cutover
+integrated gate, with TD-10 due before or with it (ruling C3, D2) ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -153,7 +154,7 @@ an ancestor. **S07 was authorized** by the owner decision of 2026-10-17 ([record
 `T1.viewport-projection@1:viewport-projection-v1` with `T1.P01.S02` unchanged as the sole provider.
 **S04 is authorized** with T2.P01.S03 as batch B by the owner decision of 2026-10-17
 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in scope (ruling D3).
-**S05 was authorized** as batch C by the owner decision of 2026-10-19 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and is **accepted and shipped**: independent review accepted its implementation at `3d432836` (round 4, no blockers), and routine `slice-closeout` ran on the same branch. S06 is **proposed** and holds no implementation permission. Same-phase sequencing
+**S05 was authorized** as batch C by the owner decision of 2026-10-19 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and is **accepted and shipped**: independent review accepted its implementation at `3d432836` (round 4, no blockers), and routine `slice-closeout` ran on the same branch. S06 is **approved**: owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)), with its post-cutover `Consumes`/`Requires` already rewritten by `T3.P01.S04` phase B and TD-10 due before or with it (D2). Same-phase sequencing
 never bypasses the trusted-base rule: each consumed gate and each required capability must be
 accepted at the consumer's trusted base.
 
@@ -165,7 +166,7 @@ accepted at the consumer's trusted base.
 | T1.P01.S07 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); accepted 2026-10-17 after four review rounds and the complete gate at its merge candidates (API suites 65 tests, zero skips); records `viewport-projection-v1` accepted with `T1.P01.S02` as unchanged sole provider; shipped via PR #137, which must land as a merge commit so the recorded P1 anchors stay reachable |
 | T1.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision (closed stub)](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record (closed stub)](./t1.p01.s04-existing-layout-precision/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T2.P01.S03` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); Head Save integration in scope (ruling D3), so `conditional-save-current-v1` joined `Requires` at authorization; composition-root gaps closed under the [host-integration exception](../../../reference/decisions/t1-s04-host-integration-2026-10-17.md); accepted 2026-10-18 at `2d37adef`; closed 2026-10-18 by `slice-closeout` |
 | T1.P01.S05 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation (closed stub)](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T2.P01.S04` ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); TD-8 is its first increment (ruling C5); accepted 2026-10-19 at `3d432836`; closed 2026-10-19 by `slice-closeout` (plan compacted to its stub); PR #156 must land as a merge commit |
-| T1.P01.S06 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | — |
+| T1.P01.S06 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)): the post-cutover integrated gate, exhaustive scope preserved; starts only from a trusted base where `T3.camera-experience-cutover@1` is `accepted` (`06a8aac8`, ancestor of `9a457f6b`); TD-10 repaired before or within S06 (D2) |
 
 Every slice also declares the specific capabilities it requires (`Requires`) in its own plan, and the
 row above restates it for the [checker](../../../roadmap/README.md#gate-register) — a consumed gate
@@ -193,8 +194,8 @@ and the complete merge gate on then-current `main`. Its acceptance records `view
 with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
 the viewport readiness route. S02's acceptance record is unchanged. S07's acceptance now records the
 capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S05 is accepted and
-shipped as batch C (2026-10-19); S06 remains proposed and holds no implementation permission until its
-own authorization.
+shipped as batch C (2026-10-19); S06 was owner-authorized 2026-10-20 as batch D, so it holds
+implementation permission and nothing more — it is not accepted, shipped or evidenced.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
@@ -206,8 +207,12 @@ alongside `T3.P01.S03` (both shipped). The [batch B protocol](../../cross-track-
 governed S04 alongside `T2.P01.S03` (both shipped). Batch C (owner-authorized 2026-10-19,
 [record](../../../reference/decisions/batch-c-authorization-2026-10-19.md);
 [protocol](../../cross-track-execution.md#authorized-batch-c-2026-10-19)) authorizes S05 alongside
-`T2.P01.S04` and moves S06 after `T3.P01.S04` with re-declared unit scopes (ruling C3). S06 holds no
-implementation permission until its own authorization record.
+`T2.P01.S04` and moves S06 after `T3.P01.S04` with re-declared unit scopes (ruling C3). Batch D
+(owner-authorized 2026-10-20,
+[record](../../../reference/decisions/batch-d-authorization-2026-10-20.md);
+[protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20)) then authorizes S06 on the
+post-cutover tree, alongside `T3.P02.S01`. S06's evidence does not depend on any unaccepted T3.P02
+implementation.
 
 ```text
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md
@@ -219,9 +224,10 @@ Stage:        active
 `T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03`, `T1.P01.S04`, `T1.P01.S05` and `T1.P01.S07` are accepted
 and shipped. S02's acceptance uses the owner-override recorded in its acceptance stub; the viewport
 capability is accepted through S07's record, and consumer readiness starts at a trusted base
-containing PR #137's merge. S06 has no accepted result. The
-final gate is declared, not closeable: the phase's final child S06 is neither accepted nor shipped, so no `PHASE CLOSE` beyond this active
-stage marker is written, and closure stays an explicit owner request.
+containing PR #137's merge. S06 has no accepted result: it is authorized and unimplemented. The final
+gate is therefore declared and not closeable — the phase's final child S06 is neither accepted nor
+shipped, so no `PHASE CLOSE` beyond this active stage marker is written, and closure stays an
+explicit owner request after S06 is accepted.
 
 ## Bounded architecture-cycle window
 

@@ -166,8 +166,10 @@ PR #115 replaced that sequence with the tracks above.
 
 ## Unscheduled proposals
 
-These proposals are not authorized and have no phase or slice. Registering execution is an
-owner decision; their presence here is a planning route, not lifecycle or gate readiness.
+Each entry here registers no phase or slice of its own: it is either a proposal, a coordination
+proposal plus its bounded batch authorization, or a standalone maintenance scope. Registering
+execution stays an owner decision, an authorization recorded here covers only the slices it names,
+and nothing in this section is lifecycle or gate readiness.
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
@@ -203,6 +205,20 @@ owner decision; their presence here is a planning route, not lifecycle or gate r
   Rules: [batch C protocol](./cross-track-execution.md#authorized-batch-c-2026-10-19). At authorization,
   the gate row was `ratified`; no capability scope was accepted. S04 closeout later accepted the
   cutover gate itself; see its gate-register row and final-gate record.
+
+- **Batch D (2026-10-20), owner-authorized.** The
+  [record](../reference/decisions/batch-d-authorization-2026-10-20.md) is the decision provenance for four
+  things, all on the post-PR #158 base `9a457f6b`:
+  - `T1.P01.S06` (T1.P01's integrated final gate) authorized on the post-cutover tree, exhaustive scope
+    preserved, with **TD-10** repaired before or within it (D1/D2);
+  - `T3.P02 — First Capture and Cut Preview` **registered** with `T3.P02.S01` authorized and
+    `T3.P02.S02` registered `proposed` (D3);
+  - the activation sequencing reconciliation: a deployed activation is an owner-run operational step on
+    the accepted code and never a readiness gate for the next consumers (D4);
+  - the two phase closures `T2.P01` and `T3.P01`, recorded through their own phase-closeout PRs.
+
+  Rules: [batch D protocol](./cross-track-execution.md#authorized-batch-d-2026-10-20). No gate row,
+  version, capability entry or track lifecycle changes state, and nothing was deployed or activated.
 
 - **Three.js dependency maintenance** — [scoped upgrade plan](./threejs-upgrade/implementation-plan.md)
   from the post-PR #116 baseline. Owner-authorized standalone maintenance,
