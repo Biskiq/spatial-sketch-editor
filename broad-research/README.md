@@ -51,6 +51,13 @@ verification notes: country-slice checked against its source, the roof formulas 
 the performance figures classed. They correct the page's explanatory material and leave the
 verbatim report untouched.
 
+- **Architecture assessment:** [`procedural-architectural-authoring-assessment.md`](./procedural-architectural-authoring-assessment.md)
+  weighs the study against Biskiq's wall-first Layout. It keeps the Wall as the authored
+  primitive, recommends gestures that compile into canonical Walls and a Layout family for
+  slabs, ceilings and roofs, lists the owner decisions this would need, and gives
+  falsification experiments for P3. Review input for the owner, not a contract, roadmap change
+  or ratification.
+
 ## Cross-domain synthesis
 
 - **Research 6:** [`biskiq-integrated-product-synthesis.md`](./biskiq-integrated-product-synthesis.md) — integrated product direction, reviewed creator journeys, cross-domain revision principles, capability seams, and UX/architecture handoffs. This **Markdown-only editorially reconciled synthesis** is research input, not a ratified product contract. No interactive companion is added by this PR; the five domain-study HTML companions remain available above.
