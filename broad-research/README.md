@@ -35,6 +35,19 @@ Panels marked *reconstruction* are rebuilt from flattened widget snapshots. Pane
 *illustrative* act out a mechanism the report describes, using sample content that is not in
 the source. Each page's Source notes say which is which.
 
+## Focused technical study
+
+The same pair format, for a narrower engineering question:
+
+| Topic | Interactive synthesis | Verbatim report |
+| --- | --- | --- |
+| Intuitive procedural architectural authoring: interaction grammars, geometric representations and reactive dependencies (the Tiny Glade lineage) | [`procedural-architectural-authoring-ux.html`](./procedural-architectural-authoring-ux.html) | [`procedural-architectural-authoring-ux.md`](./procedural-architectural-authoring-ux.md) |
+
+Its source is a shared Gemini Deep Research page rather than a `.docx` export, so two things
+differ. Equations stay as the page's LaTeX. Citations are the source cards Gemini shows for each
+passage (`[Sn]`), because the page's citation numbers cannot be resolved to URLs. The front
+matter and the page's Source notes record both.
+
 ## Cross-domain synthesis
 
 - **Research 6:** [`biskiq-integrated-product-synthesis.md`](./biskiq-integrated-product-synthesis.md) — integrated product direction, reviewed creator journeys, cross-domain revision principles, capability seams, and UX/architecture handoffs. This **Markdown-only editorially reconciled synthesis** is research input, not a ratified product contract. No interactive companion is added by this PR; the five domain-study HTML companions remain available above.
