@@ -1,6 +1,6 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4); Phase B not implemented; the slice is not accepted, merged, activated or closeable**
+**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4) with the declared-origin correction at `ce6678da`; the branch is merged with frozen `main` at `fd3cf67e`; Phase B not implemented; the slice is not accepted, merged, activated or closeable**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -241,6 +241,41 @@ tried; that is a diagnostic wording limit, not a routing or contract defect.
 | `npm run test:arch` | pass — 20 files, 164 tests |
 | `npm run test:heavy` | pass — 8 files, 118 tests |
 
+#### Declared-handoff origin correction (2026-10-19, `ce6678da`)
+
+A declared handoff must resolve the authored connection against the **Experience-declared in-flight
+predecessor View only**. The resolver previously also offered the Camera's earlier settled View as an
+alternative origin, so during A→B an invocation toward C whose connection joins A→C was accepted
+from A — an unrelated connection the Experience never requested.
+
+`resolveVisitorCameraRoute` now chooses exactly one origin: the declared in-flight View when the
+Experience has left the settled View, otherwise the settled View. Ordinary non-handoff Travel keeps
+its existing settled-origin semantics, and the gap message names the origin that was actually
+evaluated. `ce6678da` adds the negative regression (A→B in flight, C requested with an A→C
+connection: typed gap; the same connection is a route from settled A without a handoff). The
+regression fails on the pre-fix resolver (two cases fail when the origin is forced to the settled
+View) and passes with the correction. `6d146f20` collapses the now-single-element origin list to one
+expression without changing behaviour.
+
+Independent reviewer tooling was unavailable in this session, so this correction was reviewed by the
+coordinator against the AM-9 contract rather than by a second independent agent; that limitation is
+recorded here. Forward/reverse handoffs, Cut, reduced motion, exact connection identity and live-pose
+continuity are unchanged and remain covered by the existing director and route suites.
+
+### Merged with the batch C freeze (2026-10-19, `fd3cf67e`)
+
+`origin/main` (`d6b4bf7d`, after #156, #159, #157 and #161) is merged into the branch. The one
+conflict — the tech-debt ledger — resolves by keeping the frozen mainline text and adding this
+slice's TD-6/TD-7 closure table while TD-9 and TD-10 stay open.
+
+| Check at `fd3cf67e` | Result |
+| --- | --- |
+| `npm run check` | pass — 0 errors, 0 warnings |
+| `npm test` | pass — 172 files, 2,253 tests |
+| `npm run test:arch` | pass — 20 files, 164 tests |
+| `npm run test:heavy` | pass — 8 files, 118 tests |
+| `npx vitest run tests/lib/visitor` | pass — 7 files, 63 tests |
+
 ## Outstanding — Phase B and review handoff
 
 1. **Callers are still pre-epoch.** Editor boot/import/export, the Stage read facade, the starter
@@ -257,16 +292,19 @@ tried; that is a diagnostic wording limit, not a routing or contract defect.
    delivery path.
 6. The visitor's Camera graph is still Scene-derived while the program names Camera-unit Views. The
    director degrades to the neutral frame instead of throwing, but building that graph from the
-   Camera unit is Phase B wiring, not a Phase A claim.
-7. **Phase A accepted at `b9cb5ed1` (round 4); the slice is not.** Phase B remains unimplemented on
-   the same PR, so #158 is **not** merge-eligible, the cutover gate is unaccepted, and no data
-   reset, deploy or activation has occurred.
+   Camera unit is Phase B wiring, not a Phase A claim.7. **Phase A accepted at `b9cb5ed1` (round 4) and corrected at `ce6678da`; the slice is not.**
+   Phase B remains unimplemented on the same PR, so #158 is **not** merge-eligible, the cutover gate
+   is unaccepted, and no data reset, deploy or activation has occurred. Phase B starts from the
+   frozen `main` merge at `fd3cf67e`; it is one caller-migration unit of work, because a partial
+   migration would leave both a current-source and an F2 path live — exactly the second reader the
+   plan forbids.
 
 ## Acceptance status
 
 **Phase A implementation: ACCEPTED at `b9cb5ed1`** (independent re-review round 4, no blocking
 findings, covering the interrupted-Travel declared handoff; the round-3 acceptance at `dcc23bd2`
 covered the unit Save live switch, epoch admission, retirement, the runtime blockers and the
-Travel-settling fix). This is **not** slice acceptance: Phase B, the final review, the cutover gate
-and the owner-run activation remain. No criterion is marked accepted for the slice, and #158 stays
-open on the same PR.
+Travel-settling fix). The declared-origin correction at `ce6678da` is the only Phase A change after
+that verdict and is recorded above with its coordinator review limitation. This is **not** slice
+acceptance: Phase B, the final review, the cutover gate and the owner-run activation remain. No
+criterion is marked accepted for the slice, and #158 stays open on the same PR.

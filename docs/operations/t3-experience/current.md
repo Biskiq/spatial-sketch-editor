@@ -26,20 +26,29 @@ BATON: The owner ratified the clean source epoch (R1–R4): saved data is dispos
        supersedes AM-7, and the publication gap is empty by construction. S04 is authorized in two
        phases (R5). Phase A (T3-owned files: reset migration 005 with an advisory lock, API
        admission, the unit Save live path, converter retirement, lowering and visitor) is accepted
-       at `b9cb5ed1` on PR #158; the slice is not accepted and `#158` is not merge-eligible until
-       Phase B. Phase B is the caller migration, after the current-source freeze (T1.P01.S05 and
-       T2.P01.S04 merged). S04 owns TD-6, TD-7, working F2 sign-in Save recovery (TD-9; deletion
-       does not count), the S06 requirement rewrite,
+       at `b9cb5ed1`, with the declared-handoff origin correction at `ce6678da`; the branch is merged
+       with the frozen `main` at `fd3cf67e`. The slice is not accepted and `#158` is not
+       merge-eligible until Phase B. **Phase B is not started**: the editor still boots, imports,
+       exports, stages and saves the current source, and the visitor Camera graph is still
+       Scene-derived. S04 owns TD-6, TD-7 (both closed in Phase A and recorded in the ledger),
+       working F2 sign-in Save recovery (TD-9; deletion does not count), the S06 requirement rewrite,
        and the Guide-free Presentation fix (shipped in Phase A as a visitor Presentation control).
-NEXT: Phase A needs no further review. After the batch C freeze, rebase and implement Phase B
-      (caller migration, TD-9 on F2, the S06 requirement rewrite) on PR #158. Activation uses a
-      dedicated bucket per environment because the purge refuses pre-namespace legacy keys; no data
-      is reset until S04 merges and the owner runs the activation runbook.
+NEXT: Implement Phase B on PR #158 from `fd3cf67e` as one atomic caller migration: F2 admission at
+      boot/import/export, Stage read ownership and the starter; unit-backed T1/T2 operation and
+      history callers; the unit Save mounted in the Head with TD-9's route-level recovery; the
+      Camera-unit visitor graph; and the S06 requirement rewrite in the same commit that retires
+      `local-single-domain-v1`. A partial migration is not mergeable: it would leave a second
+      current-source reader alive. Then run the exhaustive lane, `check:api`, the DB-backed
+      `test:api` with zero skips and the migration/concurrency rehearsal, obtain independent final
+      review, close out and merge. Activation uses a dedicated bucket per environment because the
+      purge refuses pre-namespace legacy keys; no data is reset until S04 merges and the owner runs
+      the activation runbook.
 ROUTE: ./README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →
        ../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover
-BLOCKER: phase B waits for the batch C freeze. Disclosed residuals that move to T3.P02/T4: the
+BLOCKER: none technical — the batch C freeze is complete. Phase B is the remaining authorized
+         implementation. Disclosed residuals that move to T3.P02/T4: the
          authored Cut/Travel selector, presentation text, state and lifecycle homes (T3.P02 F2
          amendments; @1 defaults are fixed in AM-9); resource bytes host-asserted until storage
          verifies them; the envelope's acceptedRevision is baseline provenance, not revision
