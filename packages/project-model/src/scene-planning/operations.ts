@@ -552,6 +552,56 @@ function resolveSupport(
 	);
 }
 
+/**
+ * Whether the floor-transform planners may own this entity at all, with the
+ * exact refusal they would give.
+ *
+ * The editor's Compose surface reads this same predicate, so a disabled control
+ * and a planner refusal cannot disagree: lights, vertical planes, tilted
+ * primitives and primitives without an analytic contact are all unsupported.
+ * This is not a second capability model — it is the planner's own gate, exposed
+ * for the one UI that must not offer a command it cannot run.
+ */
+export type FloorTransformSupport =
+	| { readonly supported: true }
+	| {
+			readonly supported: false;
+			readonly code: 'unsupported-transform';
+			readonly message: string;
+	  };
+
+export function floorTransformSupport(entity: SceneEntity): FloorTransformSupport {
+	if (entity.kind === 'light') {
+		return {
+			supported: false,
+			code: 'unsupported-transform',
+			message: `Entity "${entity.id}" is a light; lights have no object footprint or floor placement to transform.`
+		};
+	}
+	if (entity.kind === 'primitive' && entity.primitive === 'plane') {
+		return {
+			supported: false,
+			code: 'unsupported-transform',
+			message: `Entity "${entity.id}" is a vertical plane, which has no honest floor footprint for this operation.`
+		};
+	}
+	if (!upright(entity)) {
+		return {
+			supported: false,
+			code: 'unsupported-transform',
+			message: `Entity "${entity.id}" is not a truthful upright floor object, so this operation cannot own its transform.`
+		};
+	}
+	if (entity.kind === 'primitive' && analyticalContactMinY(entity) === null) {
+		return {
+			supported: false,
+			code: 'unsupported-transform',
+			message: `Entity "${entity.id}" has no honest floor footprint for this operation.`
+		};
+	}
+	return { supported: true };
+}
+
 function readObject(
 	scene: SceneDocument,
 	entityId: string
@@ -562,20 +612,8 @@ function readObject(
 			entityId
 		]);
 	}
-	if (entity.kind === 'light') {
-		return refusal(
-			'unsupported-transform',
-			`Entity "${entityId}" is a light; lights have no object footprint or floor placement to transform.`,
-			[entityId]
-		);
-	}
-	if (entity.kind === 'primitive' && entity.primitive === 'plane') {
-		return refusal(
-			'unsupported-transform',
-			`Entity "${entityId}" is a vertical plane, which has no honest floor footprint for this operation.`,
-			[entityId]
-		);
-	}
+	const support = floorTransformSupport(entity);
+	if (!support.supported) return refusal(support.code, support.message, [entityId]);
 	return { kind: 'object', entity };
 }
 

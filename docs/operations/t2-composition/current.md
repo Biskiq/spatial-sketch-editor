@@ -16,20 +16,25 @@ track's baton, and never treat stale baton text as a blocker — verify Git stat
 prerequisites instead.
 
 ```text
-PHASE: T2.P01 Supported object composition (in-progress) →
+PHASE: T2.P01 Supported object composition (in-progress, CLOSABLE) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: the phase README's slice register is authoritative. S01, S02 and S03 are shipped. S04, the
-        phase's declared FINAL PHASE GATE, is authorized as batch C (2026-10-19), effective when
-        PR #155 merges.
-BATON: S04 runs alongside T1.P01.S05 under the batch C protocol. Scope correction C4: reuse T1's
-       shipped Download/Open source JSON and Reload remote, build no persistence UI, keep numeric
-       Resize as the guaranteed route, and stop-and-report for any new host seam. TD-8 is T1's to
-       fix; record the base the journeys ran on.
-NEXT:   After PR #155 merges, start S04 through the runbook start step at its own trusted base.
-        Owner follow-up: push the local `closed/T2.P01.S03` tag.
+SLICES: S01, S02, S03 and the final gate S04 are shipped. The phase README's slice register is
+        authoritative.
+BATON: No active T2 slice. S04 (bounded composition loop and final gate) was accepted 2026-10-19 from
+       the deliberate closeout invocation; its final gate is PASSED and the phase is closable. The
+       accepted capability is the `scene-compose` task (numeric uniform Resize on floor, duplicate,
+       delete) through AM-5 contributions only, reusing T1's source-JSON/replacement/Reload paths and
+       building no host seam, Head or Save UI. Resize and Duplicate stay primitive-only and read the
+       planner's own `floorTransformSupport`. The accepted-install lifetime rule covers typed and
+       pointer commits. Accepted evidence, residuals and the preserved plan stub live in the slice's
+       [acceptance record](../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/acceptance.md).
+NEXT:   Owner phase-close decision for T2.P01 (`phase-closeout`), or leave the phase open. Nothing
+        else is queued in T2.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-c-2026-10-19
-BLOCKER: none once PR #155 merges.
+       ../../roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/acceptance.md
+BLOCKER: none.
+CARRY:  The owner may push the local `closed/T2.P01.S03` and `closed/T2.P01.S04` tags. Cloud Save in a
+        real browser session and a model-contact capability stay with the host/S06 evidence and a
+        future T2 phase, not with this gate.
 ```

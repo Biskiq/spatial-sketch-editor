@@ -39,20 +39,34 @@ export function candidateGhost(
 			return candidate.primitive === null ? null : primitiveShape(candidate.primitive);
 		}
 		if (entity === null || entity.kind !== 'primitive') return null;
+		// A Resize candidate is drawn at the scale it would install, so the ghost is
+		// the object's own new body rather than its previous size at the new Y.
+		const scale = candidate.kind === 'resize' ? candidate.scale : 1;
 		switch (entity.primitive) {
 			case 'box':
 				return {
 					kind: 'box',
-					size: [entity.dimensions.width, entity.dimensions.height, entity.dimensions.depth]
+					size: [
+						entity.dimensions.width * scale,
+						entity.dimensions.height * scale,
+						entity.dimensions.depth * scale
+					]
 				};
 			case 'plane':
 				// The drawn plane has no thickness; a hair of depth keeps the ghost
 				// visible from the side without implying a solid object.
-				return { kind: 'box', size: [entity.dimensions.width, entity.dimensions.height, 0.01] };
+				return {
+					kind: 'box',
+					size: [entity.dimensions.width * scale, entity.dimensions.height * scale, 0.01]
+				};
 			case 'cylinder':
-				return { kind: 'cylinder', radius: entity.dimensions.radius, height: entity.dimensions.height };
+				return {
+					kind: 'cylinder',
+					radius: entity.dimensions.radius * scale,
+					height: entity.dimensions.height * scale
+				};
 			case 'sphere':
-				return { kind: 'sphere', radius: entity.dimensions.radius };
+				return { kind: 'sphere', radius: entity.dimensions.radius * scale };
 		}
 		return null;
 	})();

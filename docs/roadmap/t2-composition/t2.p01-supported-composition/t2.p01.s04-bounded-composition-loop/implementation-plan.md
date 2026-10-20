@@ -1,63 +1,54 @@
-# T2.P01.S04 — Bounded composition loop and final gate: implementation plan
+# T2.P01.S04 — closed plan stub
 
-**Slice:** T2.P01.S04 · **Status:** approved — owner-authorized 2026-10-19 as batch C · **Phase:** [T2.P01](../README.md) ·
-[slice register](../README.md#slice-register) · **Track:** [T2](../../README.md) · **Runbook:**
-[T2 operations](../../../../operations/t2-composition/README.md)
+AUTHORITY: NONE — shipped slice plan preserved in Git.
 
 ```text
-CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: exhaustive
 ```
 
-This is the phase's **FINAL PHASE GATE**.
+The accepted verification tier remains declared here because this slice is the phase's final gate and
+the phase-close checker reads it from the planned route until the phase closes.
 
-## Prerequisite
+Delivered the bounded Scene composition loop on the shipped S01–S03 planners and the T1 Stage host: a
+contributed `scene-compose` task and `Resize`/`Duplicate`/`Delete` Find entries, uniform positive
+Resize on floor through `resize-on-floor` (numeric scale is the guaranteed route; no direct handle),
+duplicate through `duplicate-one` with a captured id, and delete through `delete-one`. Resize and
+Duplicate are admitted only where the planner's own `floorTransformSupport` can re-seat the subject;
+lights, vertical planes, tilted primitives and models without verified contact show no `Scale` fact
+and disable both commands with the reason. An open proposal is cancelled when the canonical selection
+moves, and the panel stops reporting through task services after any accepted install (typed or
+pointer) because TD-8's host closes the task synchronously.
 
-S01–S03 accepted; `T3.P01.S02`'s `conditional-save-current-v1` accepted at this slice's trusted base;
-T1's Head Save integration accepted
-([assignment](../../../../reference/decisions/s02-pair-authorization-2026-10-16.md)). The integration is a
-slice dependency, not a capability. The gate checker cannot see it, so it is checked at this slice's
-start against the named T1 slice's acceptance record.
+The slice reuses T1's shipped *Download source JSON*, *Open source JSON* replacement guard and
+*Reload remote*, and builds no Head, persistence or Save UI. Save is proved through the mounted
+`EditorHead` over the accepted `conditional-save-current-v1` state machine; the browser journey
+proves source download, invalid-open refusal, Undo/Redo byte identity and the refused/failed route
+preservation. The phase's final gate passed on that evidence; see the [acceptance
+record](./acceptance.md), which stays live while the phase-close decision is pending.
 
-## Scope
+Provenance: PR #157; reviewed implementation `f39f630b`, integrated on `2cad26b9`; the accepted-install
+pointer guard and the Plan-reading proof at `786c6035` and `206a30cb`. Owner acceptance 2026-10-19 from
+the deliberate `slice-closeout` invocation. Verification: `exhaustive` tier; the acceptance record owns
+the numbers, the tested revision and the residual list.
 
-Add explicit positive uniform Resize on floor, using the same support/contact result in preview and
-commit. Numeric scale is the guaranteed route; add a direct handle only if its scale and pivot are
-legible. Admit every finite positive scalar the operation can represent; do not import the old
-helper's silent minimum/reset policy. Non-finite, zero, negative or unequal-axis input refuses without
-averaging. Expose no independent-scale mode or misleading light scale control.
+Entry points:
 
-Add duplicate/delete through the common scoped actions/Find list and the S02 operations
-(`resize-on-floor`, `duplicate-one` and `delete-one` already exist in `scene-planning/operations.ts`).
-Prove canonical source JSON download/parse/reload through the shared project replacement guard.
+```text
+implementation  apps/editor/src/lib/authoring/adapters/scene/SceneTransformInstrument.svelte
+                apps/editor/src/lib/authoring/adapters/scene/placement.ts
+                packages/project-model/src/scene-planning/operations.ts
+regressions     apps/editor/tests/lib/authoring/scene-composition-loop.test.ts
+                apps/editor/tests/lib/authoring/scene-compose-instrument.test.ts
+                apps/editor/tests/lib/authoring/scene-proposal-lifetime.test.ts
+                apps/editor/tests/lib/authoring/head-save-journey.test.ts
+                apps/editor/tests/lib/authoring/spatial-route-source-replacement.test.ts
+```
 
-**Scope correction (batch C ruling C4).** T1 already ships *Download source JSON*, *Open
-source JSON* through the replacement guard, and *Reload remote* (Head and spatial route, PR #148).
-This slice reuses them and proves the journey. It adds no Head, persistence or Save UI. A direct
-Resize handle is admitted only through S07's contribution points and the existing T2 host/renderer
-seams, without extending them; any new host seam is a stop-and-report to T1. Record the base the
-journeys ran on, and whether it contains T1's TD-8 fix. Reload
-validates everything before installation, cancels one active preview, starts a new session/history
-baseline and never creates a synthetic source edit. It is source JSON with existing static
-references, not a portable asset package. Cloud reads use retained validated paths. Save and reload
-go through `T3.P01.S02`'s accepted `conditional-save-current-v1` and its client Save state, as
-mounted by T1's Head integration. This slice builds no Save state, protocol or Head control of its
-own. It proves the creator journey: dirty versus saved by full captured source, an in-flight older
-Save never marking newer edits saved, and a conflict preserving work until Reload. Persistence adds
-no Undo stack or source edit.
-After T3 activation use the accepted unit Save adapter.
+Residuals: no direct Resize handle or pointer preview; Resize/Duplicate are primitive-only; cloud Save
+was not exercised in the browser (mounted-Head proof instead); Delete was not separately browser-run;
+no 3D candidate mesh; the pointer commit path is guarded by regression rather than a browser drag. All
+are named with their owners in the acceptance record.
 
-## Exit criteria
-
-Run the full [phase evidence matrix](../README.md#phase-acceptance-evidence-final-gate), including all
-required repository verification; review all four slice outcomes together. Record any detailed 3D UX
-decisions with their scope and evidence.
-
-## Readiness declaration
-
-This slice is **owner-authorized** (2026-10-19, batch C with `T1.P01.S05`,
-[record](../../../../reference/decisions/batch-c-authorization-2026-10-19.md)). Nothing here claims
-implementation, acceptance or readiness. Its prerequisites hold on `main` `5fee2a2d`, including T1's
-Head Save integration accepted through `T1.P01.S04`; the runbook start step re-checks them. A passed final gate makes the phase closable,
-not closed. Evidence belongs in [acceptance.md](./acceptance.md).
+EVIDENCE-PATHS: start — the following is a historical Git recovery path at the accepted closeout base.
+`git show ca5167435a7accabd00b0135435753c25cb8639f:docs/roadmap/t2-composition/t2.p01-supported-composition/t2.p01.s04-bounded-composition-loop/implementation-plan.md`
+EVIDENCE-PATHS: end
