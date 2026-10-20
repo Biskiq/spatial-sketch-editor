@@ -55,7 +55,7 @@ choice grammar, conditional branching), advanced path/anchor authoring and Camer
 a second Camera controller or a second navigation graph, a second Experience timeline or sequence
 editor, general animation orchestration, media authoring/playback, publication or prepared readers,
 and any change to Layout/Scene ownership. The richer interaction grammar is the
-[PR #154 prototype's](../../../../prototypes/README.md) exploration; this slice neither invents it nor
+[PR #154 prototype's](../../../../../prototypes/README.md) exploration; this slice neither invents it nor
 imports it.
 
 ## Sequence
