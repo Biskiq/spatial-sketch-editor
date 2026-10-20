@@ -4,7 +4,7 @@ synthesis: procedural-architectural-authoring-ux.html
 source: "Gemini Deep Research share — https://gemini.google.com/share/60fed113bb18 (short link https://share.gemini.google/gbU5z3XlQf4z), captured 2026-10-20 from the rendered share page"
 contents: "10 chapters, 9 tables, 2 code blocks, 13 display equations, 4 figures, 50 sources"
 anchors: "headings, paragraphs and lists (<section>-pN) and tables (<section>-tN) carry stable <a id> anchors"
-citations: "the share page shows numbered citation markers whose numbers are Gemini-internal and are not resolvable to URLs; each passage instead lists the source cards Gemini shows for it as [Sn](#src-n), numbered by first appearance. Literal '[cite: …]' text in table cells is the source's own and is kept verbatim."
+citations: "the share page shows numbered citation markers whose numbers are Gemini-internal and are not resolvable to URLs; each passage instead lists the source cards Gemini shows for it as `[Sn](#src-n)`, numbered by first appearance. Literal '[cite: …]' text in table cells is the source's own and is kept verbatim."
 equations: "kept as the LaTeX the share page carries ($…$ inline, $$…$$ display). One paragraph (mathematical-formulation-of-side-specific-resizing-p3) is garbled in the source itself and is kept as-is."
 figures: "not embedded. A '> [Figure …]' marker shows where each sat and links to the synthesis page that keeps its snapshot."
 status: "research input for future design work — not a product contract or routed authority (docs/README.md governs product truth)"

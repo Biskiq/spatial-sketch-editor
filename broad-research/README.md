@@ -46,7 +46,10 @@ The same pair format, for a narrower engineering question:
 Its source is a shared Gemini Deep Research page rather than a `.docx` export, so two things
 differ. Equations stay as the page's LaTeX. Citations are the source cards Gemini shows for each
 passage (`[Sn]`), because the page's citation numbers cannot be resolved to URLs. The front
-matter and the page's Source notes record both.
+matter and the page's Source notes record both. The Source notes also carry dated
+verification notes: country-slice checked against its source, the roof formulas rechecked and
+the performance figures classed. They correct the page's explanatory material and leave the
+verbatim report untouched.
 
 ## Cross-domain synthesis
 
