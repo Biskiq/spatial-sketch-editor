@@ -54,7 +54,7 @@ entry points   implementation  packages/project-model/src/units/ (envelope, expe
                                apps/api/src/ (app.ts, save-persistence.ts, migrate.ts, r2-purge.ts)
                                apps/editor/src/lib/visitor/
                                apps/api/migrations/005-clean-source-epoch.sql
-               validation      apps/editor/src/lib/authoring/source-admission (host admission seam)
+               validation      apps/editor/src/lib/authoring/stage/source-admission.ts (host admission seam)
                regressions     apps/editor/tests/lib/project-model/units-conformance.test.ts
                                apps/editor/tests/lib/experience/experience-runtime.test.ts
                                apps/editor/tests/lib/visitor/visitor-cold-runtime.test.ts
