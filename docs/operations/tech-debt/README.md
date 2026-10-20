@@ -28,9 +28,68 @@ one whose subject retired with the benchmark is **retired**. Neither is ever rec
 as *fixed*: nothing was repaired, and the obligation that survives is the one named
 below, not the entry.
 
+Both entries below were found *by* the S06 browser leg and fixed in the same slice, under
+a scoped authorization that named only the TD-10 repair; the acceptance record flags that
+deviation explicitly for owner ratification.
+
 ---
 
 ## Fixed
+
+## TD-12 — an adapter drag re-reads the evaluation id every frame, so it never commits
+
+Status        fixed (`5beb1e83`, `T1.P01.S06` browser leg)
+Found         2026-10-20, driving the direct 3D edit with a real pointer during S06
+Owner         T1 Stage host (the spatial route)
+Symptom       Selecting a Wall and dragging a Dimensions handle moved the preview for the first
+              sample only: the drag then stopped advancing, and release committed nothing or was
+              refused as stale. Direct manipulation was effectively unreachable in the browser.
+Reproduce     Select a Wall, open `Inspect · Layout → Dimensions`, press a handle and move the
+              pointer. Before the fix the overlay preview stopped after the first move and no
+              acceptance followed.
+Root cause    `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` sent
+              `facade.evaluationId()` on every `move`/`up`/`cancel`. The Camera raises a new
+              evaluation generation per frame, so the id changed on every sample while the adapter
+              was told its projection had changed, and the gesture could never reach a commit.
+              Latent: the release path also committed after a reading change had already cancelled
+              the lease, instead of cancelling the press.
+Why green     The adapter suites drive `pointerIntent` directly with one explicit evaluation id, so
+              no test ever re-read the id between phases.
+Fix options   1) Carry the evaluation the press was measured in from the claimed `down` through
+              every later phase and clear it with the press, and cancel instead of releasing when
+              the gesture lease is already gone. 2) Re-evaluate the pointer against the newest
+              projection each move — do NOT take this: it silently rebases a drag the creator did
+              not measure in that view.
+Then add      The browser journey itself (drag commit, Escape cancel, drag after a reading flip).
+              A route-level harness for press-scoped evaluation identity is still owed.
+
+## TD-11 — Stage pointer hits and overlay markers mix Stage-local and viewport CSS
+
+Status        fixed (`5beb1e83`, `T1.P01.S06` browser leg)
+Found         2026-10-20, driving Plan selection and the Dimensions instrument during S06
+Owner         T1 Stage host (the facade and the spatial route)
+Symptom       With the Index open beside the Stage, a Plan click selected a subject roughly one
+              Index panel away from the pointer, and a Dimensions handle could not be claimed at
+              all because the click never reached it. Selection markers painted offset by the same
+              amount.
+Reproduce     At 1280×900 with the Index open, click a Wall span in Plan: the Card named a
+              different Wall (or a room floor). Project a known world point, subtract the evaluated
+              rect, and resolve that Stage-local point — pre-fix it missed every surface.
+Root cause    `StagePointerIntent.css` and the overlay layer are Stage-surface coordinates, while
+              `evaluateViewport`/`projectWorld` return viewport CSS. `stage-facade.ts` compared the
+              Stage-local candidate against viewport projections, and `overlays()` returned adapter
+              markers in viewport CSS, while the route's `selectionEcho` did the same. The
+              translation existed nowhere; it only looked correct while the surface began at the
+              window origin.
+Why green     Every facade/adapter suite used a rect at the window origin
+              (`left: 0, top: 0`), where the two spaces coincide.
+Fix options   1) Translate once at the facade boundary in both directions (`resolveSourceHit` adds
+              the evaluated rect; `overlays` and the route's selection echo subtract it).
+              2) Make adapters project in surface space — rejected: it duplicates the Camera's
+              projection contract in every adapter.
+Then add      `stage-facade.test.ts` (offset hit resolution, offset overlay marker) and
+              `layout-wall-manipulation.test.ts` (handle claim from Stage-local CSS) — added with
+              the fix. A route-level echo assertion is still owed.
 
 ## TD-10 — a late successful source Open applies after a newer session epoch
 

@@ -1,8 +1,9 @@
 # T1.P01.S06 — Integrated final gate: implementation plan
 
 **Slice:** T1.P01.S06 · **Status:** in progress — owner-authorized 2026-10-20 as batch D
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md)); the TD-10 increment has
-landed, the automated gate is green and the browser leg is incomplete — **not accepted** ·
+([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md)); TD-10 and the two
+Stage-host repairs found by the browser leg (`5beb1e83`, TD-11/TD-12) have landed, the automated gate is
+green, most browser journeys are executed and the fixture battery is not — **not accepted** ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 

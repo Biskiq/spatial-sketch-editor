@@ -20,37 +20,40 @@ PHASE: T1.P01 Stage and authoring foundation (in-progress; final gate S06 in pro
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md
 ACTIVE: T1.P01.S06 — Integrated final gate, owner-authorized 2026-10-20 as batch D
         ([record](../../reference/decisions/batch-d-authorization-2026-10-20.md), D1). Branch
-        `T1-P01-S06` on `origin/main` `bb166c67`. S01–S05 and S07 are shipped; the slice declares
-        exhaustive verification over the existing integrated scope, not a reduced one.
-BATON: TD-10 is CLOSED (`21c18402`, D2): `openSourceJson` and `applyReloadOffer` capture the session
-       token before admitting and drop a result whose epoch is no longer current, reporting nothing
-       for the stale action. Four mounted route cases in
-       `spatial-route-source-replacement.test.ts` fail without either guard. Automated gate green on
-       that revision: `check` 0/0, `build`, `check:api`/`check:project-model`/`check:layout-core`/
-       `check:camera-core`, `test:full` 169 files / 2,215, `test:arch` 20/166, `test:heavy` 8/118,
-       DB-backed `test:api` 80 tests / 0 skips on an isolated local database.
-       NOT DONE: the browser-journey leg. Executed only the boot/render, Plan selection, Compose
-       instrument and reduced-motion control; the precision field edit, direct 3D edit, Undo/Redo,
-       download/reopen, replacement, empty-baseline and reduced-motion behaviour, plus the F2
-       Save/conflict/Reload and TD-9 sign-in resume (no cloud client in this environment), are not
-       recorded browser evidence. Also unresolved: the Layout `Dimensions` task opened the route's
-       membership body rather than an adapter field surface for the selected subject.
-NEXT:   Finish the browser leg on a trusted base with a local Compose stack (`.env` + `stack:up`), or
-        record why a journey cannot run; settle the `Dimensions` observation; then the acceptance
-        record, independent review and `slice-closeout`. S06 acceptance makes T1.P01 closable — the
-        phase close is a separate owner event and is not invoked here.
+        `T1-P01-S06` on `origin/main` `bb166c67`. S01–S05 and S07 are shipped.
+BATON: TD-10 is CLOSED (`21c18402`, D2). The browser leg then found and fixed two Stage-host defects
+       in `5beb1e83`: pointer/overlay CSS mixed Stage-surface and viewport spaces (TD-11), and an
+       adapter drag re-read the evaluation id every frame so it never committed (TD-12). Three new
+       unit cases; automated gate green on that revision: `check` 0/0, `build`, `check:api`/
+       `check:project-model`/`check:layout-core`/`check:camera-core`, `test:full` 169 files / 2,218,
+       `test:arch` 20/166, `test:heavy` 8/118, DB-backed `test:api` 80 tests / 0 skips on an isolated
+       local database (`biskiq_s06_gate`, recreated in this environment).
+       EXECUTED in a real browser against a local stack (Postgres + API :8787 with the test-auth seam +
+       Vite :5173): starter boot, Plan select and precision edit, typed refusal, Undo/Redo, 3D drag
+       commit, Escape cancel, Save create, second-writer conflict, *Reload remote*, canonical source
+       download (5,192 bytes), guarded replacement, source reopen and mismatch refusal, TD-9 sign-in
+       Save resume, empty baseline, reduced-motion toggle, 720×640 overflow.
+       NOT DONE: the fixture battery (nonzero datum, curved Wall, shared Junction, duplicate names,
+       Opening void/cap, coincident structures, dense geometry, long identity); empty-boot plinth press
+       (accepted nothing — refusal vs defect unestablished); reduced-motion *behaviour*; narrow-shell
+       interaction pass.
+NEXT:   Run the fixture battery and settle the plinth press, then get owner ratification of `5beb1e83`
+        (it exceeds D1's TD-10-only scope), add the route-level echo/press-identity tests, and only then
+        accept this record. S06 acceptance makes T1.P01 closable — the phase close is a separate owner
+        event and is not invoked here.
 ROUTE: ./README.md → ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md →
        ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md →
        ../../roadmap/cross-track-execution.md#authorized-batch-d-2026-10-20
-BLOCKER: the browser leg needs a cloud client (`.env` + Compose stack) that this environment does not
-         have, and one observation (`Dimensions`) is unresolved. Neither blocks the TD-10 increment,
-         which is landed and verified. The T1.P01 architecture-cycle window is CLOSED at
-         `PHASE_3_EVALUATE` with readiness `owner-verdict-owed`; verdicts stay the owner's.
+BLOCKER: none for the automated lanes. The remaining browser journeys need only the local stack this
+         environment now has; acceptance still waits on owner ratification of the two host repairs.
+         The T1.P01 architecture-cycle window is CLOSED at `PHASE_3_EVALUATE` with readiness
+         `owner-verdict-owed`; verdicts stay the owner's.
 CARRY:  RESIDUAL, owner T1 shell composition: the Card paints over the Scene Compose instrument
         (`Card` x 368→704, y 627→884, z 12; `.instrument` x 369→1262, y 658→888, z 6 at 1280×900),
         hiding its actions and clipping its text. Not fixed: the correction is a shell-composition
-        decision and S06's authorization covers no code outside the TD-10 repair. Reproduced with
-        boxes and screenshots in the S06 acceptance record.
+        decision. Reproduced with boxes and screenshots in the S06 acceptance record.
+        RESOLVED observation: the Layout `Dimensions` task in the Card is the Plan membership body; the
+        adapter field surface is Index → `Inspect · Layout → Dimensions`. Not a defect.
         S06 does not depend on `T3.P02.S01`, and its evidence excludes unaccepted T3.P02 work. Batch D
         is parallel: shared-file ownership is in its protocol, and the Stage host, the spatial route
         and the TD-10 repair are T1-owned.
