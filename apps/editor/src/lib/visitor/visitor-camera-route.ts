@@ -71,18 +71,16 @@ export function resolveVisitorCameraRoute({
 			// handoff: accepting it would realize an editorial transition the
 			// Experience never requested. Any other endpoint pairing is a genuine
 			// gap.
-			const origins = handoffFromViewId !== null && handoffFromViewId !== fromViewId
-				? [handoffFromViewId]
-				: [fromViewId];
-			for (const origin of origins) {
-				let direction: CameraConnectionDirection;
-				if (connection.fromNodeId === origin && connection.toNodeId === toViewId) {
-					direction = 'forward';
-				} else if (connection.fromNodeId === toViewId && connection.toNodeId === origin) {
-					direction = 'reverse';
-				} else {
-					continue;
-				}
+			const origin = handoffFromViewId !== null && handoffFromViewId !== fromViewId
+				? handoffFromViewId
+				: fromViewId;
+			let direction: CameraConnectionDirection | null = null;
+			if (connection.fromNodeId === origin && connection.toNodeId === toViewId) {
+				direction = 'forward';
+			} else if (connection.fromNodeId === toViewId && connection.toNodeId === origin) {
+				direction = 'reverse';
+			}
+			if (direction !== null) {
 				return {
 					kind: 'route',
 					route: getCameraConnectionRoute(connection.id, direction, graph),
@@ -90,10 +88,9 @@ export function resolveVisitorCameraRoute({
 					originViewId: origin
 				};
 			}
-			const expectedOrigin = origins[0];
 			return {
 				kind: 'gap',
-				reason: `Camera connection "${connection.id}" does not join "${expectedOrigin}" to "${toViewId}".`
+				reason: `Camera connection "${connection.id}" does not join "${origin}" to "${toViewId}".`
 			};
 		}
 		return {
