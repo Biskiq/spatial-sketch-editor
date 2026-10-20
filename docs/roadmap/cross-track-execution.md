@@ -9,13 +9,16 @@ Exact interfaces stay in [`../reference/composition-execution.md`](../reference/
 [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md#capability-readiness). It
 registers no gate, phase or slice, and each provider is wired through its own authorized track
 phase. Candidate IDs below remain provisional until their phase registers them. Registered now:
-T1.P01 (S01, S02, S03, S07 and S04 shipped, S04 through batch B; S05 authorized 2026-10-19 as batch
-C; S06 proposed), T2.P01 (S01, S02 and S03 shipped, S03 through batch B; S04 authorized 2026-10-19 as
-batch C) and T3.P01 (S01–S06; S01/S02/S03/S05/S06 shipped, with S03 reconciled through its
-owner-authorized split halves; S04 authorized 2026-10-19). T3.P02 remains unregistered candidate work, and all T4 work is
-deferred by ruling R1-D. Batch B shipped under the [batch B protocol](#authorized-batch-b-2026-10-17); batch C
+T1.P01 (S01–S05 and S07 shipped, S04 through batch B and S05 through batch C; **S06 authorized
+2026-10-20 as batch D**), T2.P01 (**closed 2026-10-20**; S01–S04 shipped, S03 through batch B and S04
+through batch C) and T3.P01 (**closed 2026-10-20**; S01–S06 shipped, S03 reconciled through its
+owner-authorized split halves and S04 through the AM-9 two-phase authorization), plus
+**T3.P02 registered 2026-10-20** with `S01` authorized and `S02` `proposed`. All T4 work is deferred
+by ruling R1-D. Batch B shipped under the [batch B protocol](#authorized-batch-b-2026-10-17); batch C
 (`T1.P01.S05` ∥ `T2.P01.S04`, authorized 2026-10-19) and the two-phase T3.P01.S04 (authorized
-2026-10-19 under AM-9) run under the [batch C protocol](#authorized-batch-c-2026-10-19). The four slices authorized first on 2026-10-16 run under the
+2026-10-19 under AM-9) shipped under the [batch C protocol](#authorized-batch-c-2026-10-19), and
+batch D (`T1.P01.S06` ∥ `T3.P02.S01`, authorized 2026-10-20) runs under the
+[batch D protocol](#authorized-batch-d-2026-10-20). The four slices authorized first on 2026-10-16 run under the
 [parallel batch protocol](#parallel-batch-2026-10-16); `T2.P01.S02` and `T3.P01.S02` run under the
 [parallel pair protocol](#parallel-pair-2026-10-16).
 Cross-PR links identify proposals, never accepted prerequisites.
@@ -214,10 +217,10 @@ flowchart TD
   B --> UI
   B --> P["T1 S04: Layout precision + Head Save"]
   S --> P
-  P --> W["T1 S05: Wall manipulation"] --> G["T1 S06: T1.P01 final gate"]
+  P --> W["T1 S05: Wall manipulation"]
   W --> CUT
   T2F --> CUT
-  CUT --> G
+  CUT --> G["T1 S06: T1.P01 final gate"]
   P --> T2F["T2 S04: bounded loop + T2.P01 final gate"]
   UI --> T2F
   U --> X5["T3 S05: unit acceptance + Save"]
@@ -238,19 +241,22 @@ flowchart TD
   classDef shipped fill:#d8ecd8,stroke:#3c7a3c,color:#1e3d1e
   classDef authorized fill:#d6e4f5,stroke:#2f5f99,color:#17304d
   classDef deferred fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3
-  class A,V,L,U,O,B,S,C,X5,X6,X,P,UI shipped
-  class W,T2F,CUT authorized
+  class A,V,L,U,O,B,S,C,X5,X6,X,P,UI,W,T2F,CUT shipped
+  class G,PRE authorized
   class F,OFF,PUB,UX deferred
 ```
 
-Status key (2026-10-19): green nodes are shipped; batch B (`P`, `UI`) shipped in PRs #148 and #147.
-Blue nodes are authorized: batch C (`W`, `T2F`) and `CUT` (T3 S04, two-phase). The `W → CUT`,
-`T2F → CUT` and `CUT → G` edges are the batch C current-source freeze and S06's post-cutover route. Unstyled
-nodes are proposed, or are candidate work that is not yet registered (T3.P02). Grey dashed nodes are
-T4 work deferred by ruling R1-D until [Core Editor Stability](./core-editor-stability.md) is accepted.
-The status key restates the phase registers; it never overrides them. Every edge is a real
-capability or ownership dependency. `S → P` is the Head Save integration mounting T3's client Save
-state (`conditional-save-current-v1`), and batch B adds no other cross-track edge.
+Status key (2026-10-20): green nodes are shipped — batch B (`P`, `UI`) in PRs #148/#147, batch C
+(`W`, `T2F`) and `CUT` (T3 S04) in PR #158. Blue nodes are batch D's authorized work: `G`
+(`T1.P01.S06`) and `PRE` (`T3.P02.S01`) are authorized and unimplemented. The `W → CUT`, `T2F → CUT`
+and `CUT → G`/`CUT → PRE` edges are the batch C current-source freeze and the post-cutover route for
+S06 and T3.P02. Grey dashed nodes are T4 work deferred by ruling R1-D until
+[Core Editor Stability](./core-editor-stability.md) is accepted. The status key restates the phase
+registers; it never overrides them. Every edge is a real capability or ownership dependency. `S → P`
+is the Head Save integration mounting T3's client Save state, and no batch adds another cross-track
+edge. **No edge leaves the owner-run deployment**: batch D corrected the batch C diagram's
+`owner-run activation → S06/T3.P02` arrows, because activation is an operational step on already
+accepted code, not a readiness gate.
 
 T4 S01 was docs-only drafting that could run early; under R1-D it waits, with the rest of T4, for
 Core Editor Stability. After the shared providers merged, independent
@@ -510,13 +516,21 @@ flowchart LR
   RAT["owner ratification (AM-9)"] --> CA["T3 S04 phase A: T3-owned files"]
   CA --> CB["T3 S04 phase B: caller migration"]
   FRZ --> CB
-  CB --> ACT["owner-run activation"]
-  ACT --> G["T1 S06 final gate, on units"]
-  ACT --> PRE["T3.P02 registration"]
+  CB --> G["T1 S06 final gate, on units (batch D)"]
+  CB --> PRE["T3.P02 registration (batch D)"]
+  CB -.-> ACT["owner-run activation (operational, unexecuted)"]
+  ACT -.-> DEP["deployed new epoch"]
 ```
 
-`W → FRZ` and `T2F → FRZ` are K6 made explicit: T3.P01.S04 migrates landed callers once. `ACT → G`
-moves the T1 final gate after the cutover (ruling C3). The main DAG carries these edges.
+`W → FRZ` and `T2F → FRZ` are K6 made explicit: T3.P01.S04 migrates landed callers once. The
+`CB → G` and `CB → PRE` edges are the post-cutover route ruling C3 established. **Reconciled
+2026-10-20 (batch D ruling D4):** this diagram previously drew `ACT → G` and `ACT → PRE`, which made
+a deployed activation a gate on engineering work. That reading contradicts the more specific ratified
+text — C3 (“after `T3.P01.S04` is accepted”), R5 (“the merge is the code cutover … activation is a
+separate owner-run step”) and AM-9 §6 — so the arrows now leave the accepted code, and activation is a
+dashed operational branch that gates nothing. Activation has not been executed. The four distinct
+states are recorded in the
+[batch D record](../reference/decisions/batch-d-authorization-2026-10-20.md#d4--sequencing-code-local-verification-deployment-and-the-next-consumers).
 
 **Shared-file ownership** (for batch C and S04 phase A; phase B takes over after the freeze):
 
@@ -549,6 +563,62 @@ moves the T1 final gate after the cutover (ruling C3). The main DAG carries thes
 **Cycle.** `T1.P01.S05` is the configured terminal exposure. Its start opens nothing new. Its
 closeout records the S05 exposure row, which makes the window closable; the owner's mechanism
 verdicts are a separate event. `T2.P01.S04` and `T3.P01.S04` are not exposures.
+
+## Authorized batch D 2026-10-20
+
+**Owner-authorized 2026-10-20** ([record](../reference/decisions/batch-d-authorization-2026-10-20.md),
+D1–D4). Two slices run in parallel on the post-cutover base `origin/main` `9a457f6b` (PR #158):
+
+| Slice | Phase | Plan | Consumes / Requires |
+| --- | --- | --- | --- |
+| `T1.P01.S06` — Integrated final gate (the phase's declared final gate) | T1.P01 | [plan](./t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md) | `F1.reference@1`, `F2.unit-envelope@1`, `F4.intent-acceptance@1`, `T1.viewport-projection@1`, `T3.camera-experience-cutover@1` / `unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`, `conditional-save-units-v1`, `viewport-projection-v1` |
+| `T3.P02.S01` — First capture and Cut Preview | T3.P02 | [plan](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | the same six gates / the same five scopes plus `camera-handoff-v1` |
+
+```mermaid
+flowchart LR
+  B["main 9a457f6b (PR #158 merged, gate accepted)"] --> S6["T1 S06: integrated final gate"]
+  B --> P1["T3.P02.S01: capture + Cut Preview"]
+  TD["TD-10 narrow repair + regression (T1 host)"] --> S6
+  S6 --> CL{{"T1.P01 closable (owner close event)"}}
+  P1 --> P2["T3.P02.S02: integrated final gate (proposed)"]
+```
+
+**Prerequisites verified at `9a457f6b`.** `T3.camera-experience-cutover@1` is `accepted` with
+`T3.P01.S04` as sole provider at `06a8aac8`; every `Requires` scope is `active`; `T2.P01.S04` and
+`T3.P01.S04` carry accepted final-gate evidence; and the accepted revisions are ancestors of `main`.
+TD-10 is open in the tree and is T1's first increment (D2).
+
+**Shared-file ownership.** One writer per row; everything else is read-only for the other slice.
+
+| Area | Writer | Rule for everyone else |
+| --- | --- | --- |
+| Host core: `stage/stage-facade.ts`, `stage-session.ts`, `stage-input.ts`, `stage-contributions.ts`, `stage-adapter-host.ts`, `host-acceptance.ts`, `stage/shell/**`, the spatial route (including the TD-10 repair) | `T1.P01.S06` | `T3.P02.S01`: additive registration only through AM-5's task/Find/instrument points and the accepted viewport facade. A new host seam is a stop-and-report to T1, never an edit. |
+| Layout adapters (`authoring/adapters/layout*`, `authoring/layout/**`) and `@portfolio/layout-core` | nobody in batch D | read-only; the compiler and its tolerances do not change |
+| Scene adapters (`authoring/adapters/scene*`, `authoring/scene/**`) and project-model `src/scene-planning/**` | nobody in batch D | read-only; S06 verifies the shipped behaviour, it does not re-open it |
+| `project-model` `src/units/**` (Experience unit, lowering, runtime), `src/f4/**`, `src/save/**`, and `@portfolio/camera-core` | `T3.P02.S01`, additive | `T1.P01.S06` is read-only. An incompatible shared-shape change is a new gate major and a re-declared consumer: stop and report. |
+| New T3 authoring surface directories and their adapters | `T3.P02.S01` | `T1.P01.S06` does not edit them; it verifies the host journeys that reach them |
+| `apps/api/**` and migrations | nobody in batch D | read-only; S06 exercises the shipped F2 Save path, T3.P02.S01 consumes it |
+| Root barrels, `package.json` exports, [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | append-only | the second merger resolves the conflict |
+| Editor tests and boundary suites | each slice adds its own files and assertions | no slice weakens an existing assertion; a shared fixture is owned by the slice that first needs it |
+| Gate register, phase registers, batons | each slice edits only its own rows and its own track's baton | no cross-track register edits |
+| `docs/roadmap/t4-release/**`, `prototypes/**` | nobody | frozen (R1-D); the PR #154 prototype program is untouched |
+
+**Merge protocol.**
+
+1. Each slice runs its runbook start step at its own trusted base, then implements, is reviewed
+   independently against its own acceptance criteria, and runs its own `slice-closeout`.
+2. Each merges as its own P1 merge commit after independent acceptance, rerunning the complete merge
+gate on then-current `main`. There is no imposed order: the slices consume nothing from each other.
+3. `T1.P01.S06`'s acceptance makes `T1.P01` closable and is not a T1 phase closure; a separate owner
+   event closes it. `T3.P02.S01`'s acceptance is not the phase gate and claims no capability entry.
+4. `T3.P02.S02` stays `proposed`. It starts only from its own owner authorization after S01 is
+   accepted, and its `Requires` are unchanged by anything in this batch.
+5. Neither slice's acceptance evidence may include the other's unaccepted implementation. S06 proves
+   the authoring foundation that already shipped, T3.P02.S01 proves capture and Cut Preview, and the
+   creator loop's integrated result is `T3.P02.S02`'s.
+
+**Not in batch D.** T1 Wall creation (K3), T2 GLB import (K1), project lifecycle (K4) and all T4 work
+stay subsequent candidates: registered and authorized only by their own owner events.
 
 ## Owner ratifications and cycle disposition
 

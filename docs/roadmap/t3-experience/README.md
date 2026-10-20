@@ -69,6 +69,7 @@ register owns lifecycle only.
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
+| T3.P02 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
@@ -87,11 +88,13 @@ not been executed.
 `Depends on` lists the
 external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
 
-**Candidate next phase (not registered):**
-[T3.P02 — First capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md). Its
-registration precondition — an accepted `T3.camera-experience-cutover@1` — is now met, so it
-registers only through the owner's own registration and slice-authorization event, not as a
-consequence of T3.P01's closure.
+**`T3.P02` is registered 2026-10-20** (owner-authorized as batch D,
+[record](../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) once its registration
+precondition — an accepted `T3.camera-experience-cutover@1` — was met by `T3.P01.S04`. Its
+`T3.P02.S01` (first capture and Cut Preview) is authorized for implementation; `T3.P02.S02`, the
+phase's final gate, is registered `proposed` and holds no permission. `Depends on` lists the external
+gates its slices consume; `F2.unit-envelope@1`, `F3.channels@1` and the F4 unit scopes come from
+`T3.P01`'s accepted outputs, and `T3.camera-experience-cutover@1` from `T3.P01.S04`.
 
 ## Starting foundation
 
