@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+	import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 
 	/**
 	 * T1.P01.S02 — the editor **route host**.
@@ -22,14 +22,20 @@
 	 * target can never intercept input.
 	 */
 	import { onMount } from 'svelte';
-	import { beforeNavigate } from '$app/navigation';
+	import { beforeNavigate, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import {
+		clearPendingCloudSave,
 		createProjectApi,
+		createProjectAuth,
+		readPendingCloudSave,
+		writePendingCloudSave,
 		ProjectPersistenceError,
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
+	import type { SaveRequest } from '@portfolio/project-model/save';
+	import type { ProjectEnvelope } from '@portfolio/project-model/units';
 	import { primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
 	import {
 		bootEmpty,
@@ -94,6 +100,7 @@
 	const intent: BootIntent = bootIntentFromSearch(page.url.searchParams);
 
 	const api: ProjectApi | null = createProjectApi({ apiOrigin: env.PUBLIC_API_ORIGIN });
+	const auth = env.PUBLIC_API_ORIGIN ? createProjectAuth(env.PUBLIC_API_ORIGIN) : null;
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
 
 	let boot = $state<BootState>(initialBootState(projectId, intent));
@@ -134,6 +141,18 @@
 	 * path that can install a remote document.
 	 */
 	let headSave = $state.raw<HeadSave | null>(null);
+	/**
+	 * TD-9 — the exact Save captured before a sign-in redirect, offered on return.
+	 * It is never run until the creator chooses *Resume pending Save*.
+	 */
+	let resumeOffer = $state.raw<{
+		readonly save: SaveRequest;
+		readonly project: ProjectEnvelope;
+	} | null>(null);
+	/** Set only for the epoch that mounts a resumed capture. */
+	let resumeSource: SaveRequest | null = null;
+	/** The cloud row's canonical bytes, for the resumed capture's dirty comparison. */
+	let remoteSavedCanonicalJson: string | null = null;
 
 	let historyState = $state<StageHistoryState>({
 		canUndo: false,
@@ -259,12 +278,20 @@
 		const state = createSaveState({
 			coordinator: mounted.coordinator(),
 			save: createApiSaveTransport(api),
+			resume: resumeSource,
+			onAuthRequired: async (request) => {
+				// Capture the exact unit Save before the platform redirect. The draft
+				// carries the precondition and operation ID, so the return visit can
+				// resume it rather than mint a new write from a moved base.
+				writePendingCloudSave(request);
+				await auth?.signIn('save');
+			},
 			baseline: {
 				savedBaseToken: saved?.token ?? null,
 				// Only the cloud row knows the saved revision; a minted baseline and a
 				// legacy row both report none rather than a locally invented one.
 				savedRevision: saved?.revision ?? null,
-				savedCanonicalJson: snapshot.canonicalJson,
+				savedCanonicalJson: remoteSavedCanonicalJson ?? snapshot.canonicalJson,
 				savedSourceContentId: saved?.contentId ?? snapshot.sourceContentId
 			},
 			loadRemote: async (id) => {
@@ -314,7 +341,7 @@
 			sessionEpoch: snapshot.sessionEpoch,
 			baseline: {
 				revision: snapshot.acceptedRevision,
-				source: currentStageSource(snapshot).source,
+				source: stageEnvelope(snapshot),
 				// The baseline's bytes must be the snapshot's own canonical form: the F4
 				// adapter re-admits them on Undo and refuses a different serialization.
 				canonicalJson: snapshot.canonicalJson,
@@ -345,6 +372,8 @@
 		// The previous epoch's controller belongs to its disposed coordinator; this
 		// epoch gets exactly one state machine over the new one.
 		headSave = buildHeadSave(mounted, snapshot);
+		// A resumed capture belongs to the epoch that consumed it.
+		resumeSource = null;
 		historyState = mounted.history();
 		resetViewContext();
 	}
@@ -436,8 +465,92 @@
 		// Only now, with the currency check passed, does this load's base become the
 		// epoch's base: the save state built by `activate` reads it once, and only a
 		// source that actually admitted gets a base to pair with.
-		if (next.status === 'ready' || next.status === 'empty') pendingSavedBase = captured.base;
+		if (next.status === 'ready' || next.status === 'empty') {
+			pendingSavedBase = captured.base;
+			// The cloud row's canonical bytes are the saved side of a resumed capture's
+			// dirty comparison; the captured bytes are the local work.
+			remoteSavedCanonicalJson = next.snapshot.canonicalJson;
+		}
 		applyState(next);
+		if (next.status === 'ready' || next.status === 'empty') offerResumeSave();
+	}
+
+	/**
+	 * TD-9 — offer, never auto-run, a Save captured before the sign-in redirect.
+	 *
+	 * The `/` auth return path lands here with `resume-save=1`. The draft's exact
+	 * operation identity and precondition are preserved; mounting and retrying it
+	 * are both explicit creator actions.
+	 */
+	function offerResumeSave(): void {
+		const url = new URL(page.url);
+		if (url.searchParams.get('resume-save') !== '1') return;
+		// Consume the flag so a refresh cannot re-offer a draft this visit resolved.
+		url.searchParams.delete('resume-save');
+		replaceState(`${url.pathname}${url.search}`, {});
+		const pending = readPendingCloudSave();
+		if (pending.status !== 'ready' || pending.project.id !== projectId) {
+			notice =
+				pending.status === 'expired'
+					? 'The pending Save expired; the cloud copy is unchanged.'
+					: 'The pending Save is unavailable; the cloud copy is unchanged.';
+			return;
+		}
+		resumeOffer = pending;
+		notice = 'A Save captured before sign-in is available. Resume it to save exactly that work.';
+	}
+
+	/**
+	 * Mount the captured local source and replay its exact Save.
+	 *
+	 * The captured precondition is the base that Save states, so the server — not
+	 * this host — decides whether that base still matches. A moved base answers a
+	 * typed conflict and preserves the local work.
+	 */
+	async function resumePendingSave(): Promise<void> {
+		const offer = resumeOffer;
+		if (offer === null) return;
+		const next = await bootFromSourceJson(offer.save.capture.canonicalJson, projectId, admissionContext());
+		if (next.status !== 'ready' && next.status !== 'empty') {
+			reportSourceRefusal(next, 'reload');
+			return;
+		}
+		const precondition = offer.save.capture.precondition;
+		pendingSavedBase = {
+			token: precondition.kind === 'expected-saved-base' ? precondition.token : null,
+			revision: pendingSavedBase?.revision ?? null,
+			contentId: pendingSavedBase?.contentId ?? null
+		};
+		resumeSource = offer.save;
+		resumeOffer = null;
+		applyState(next);
+		const outcome = await headSave?.retry();
+		switch (outcome?.kind) {
+			case 'saved':
+				clearPendingCloudSave();
+				notice = 'The pending Save completed.';
+				break;
+			case 'dirty':
+				clearPendingCloudSave();
+				notice = 'The pending Save completed; newer edits remain local.';
+				break;
+			case 'conflict':
+				clearPendingCloudSave();
+				notice = 'The cloud copy changed; the pending Save was not applied. Resolve the conflict explicitly.';
+				break;
+			case 'refused':
+			case 'error':
+				notice = outcome.message;
+				break;
+			default:
+				break;
+		}
+	}
+
+	function dismissResumeOffer(): void {
+		resumeOffer = null;
+		clearPendingCloudSave();
+		notice = 'The pending Save was discarded; the cloud copy is unchanged.';
 	}
 
 	async function fetchOutcome(
@@ -508,6 +621,7 @@
 			revision: offer.savedRevision,
 			contentId: offer.savedSourceContentId
 		};
+		remoteSavedCanonicalJson = next.snapshot.canonicalJson;
 		applyState(next);
 	}
 
@@ -537,11 +651,13 @@
 		if (action === 'starter') {
 			// A minted baseline has no cloud saved base: its first Save is a create.
 			pendingSavedBase = null;
+			remoteSavedCanonicalJson = null;
 			applyState(await bootStarterGallery(projectId, admissionContext()));
 			return;
 		}
 		if (action === 'empty') {
 			pendingSavedBase = null;
+			remoteSavedCanonicalJson = null;
 			applyState(await bootEmpty(projectId, admissionContext()));
 			return;
 		}
@@ -570,6 +686,7 @@
 		// row behind it, so its first Save is a create. Set this only once the
 		// source has actually admitted; a refused open must not clear it.
 		pendingSavedBase = null;
+		remoteSavedCanonicalJson = null;
 		applyState(next);
 	}
 
@@ -1410,6 +1527,17 @@
 		onToggleReducedMotion={() => (reducedMotion = !reducedMotion)}
 	/>
 
+	{#if resumeOffer}
+		<div class="resume-offer" role="region" aria-label="Pending cloud save">
+			<p>
+				A cloud Save was captured before sign-in. Resuming mounts your captured work and
+				replays that exact Save — it is never applied automatically.
+			</p>
+			<button type="button" class="primary" onclick={() => void resumePendingSave()}>Resume pending Save</button>
+			<button type="button" onclick={dismissResumeOffer}>Discard captured Save</button>
+		</div>
+	{/if}
+
 	<div class="editor-body">
 		<EditorIndex
 			open={indexOpen}
@@ -1758,6 +1886,35 @@
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
+	}
+	.resume-offer {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.7rem 1rem;
+		border-bottom: 1px solid #6b5426;
+		background: #2b2417;
+		color: #f4e5c8;
+	}
+	.resume-offer p {
+		flex: 1 1 22rem;
+		margin: 0;
+		line-height: 1.4;
+	}
+	.resume-offer button {
+		padding: 0.45rem 0.7rem;
+		border: 1px solid #8a6a31;
+		border-radius: 0.35rem;
+		background: #3a3020;
+		color: inherit;
+		font: inherit;
+		cursor: pointer;
+	}
+	.resume-offer button.primary {
+		border-color: #d8b26a;
+		background: #7a5a22;
+		color: #fff;
 	}
 	.boot-panel {
 		position: absolute;

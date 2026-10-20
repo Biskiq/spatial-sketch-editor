@@ -24,7 +24,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type PlanSourceRef
 } from '@portfolio/layout-core';
-import type { ProjectDocument } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSession } from '$lib/authoring/stage/stage-session';
@@ -32,7 +32,8 @@ import { createStageFacade, datumWorkingPlane, type StageFacade } from '$lib/aut
 import { createStageAcceptanceHost, type StageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { mountStageAdapter, type StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
@@ -82,12 +83,12 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 
 async function mount(): Promise<Mounted> {
 	const { document, wallId, openingId } = fixtureDocument();
-	const project: ProjectDocument = {
+	const project: ProjectEnvelope = await createUnitProject({
 		id: PROJECT_ID,
 		name: 'S04 precision',
 		layout: document,
 		scene: { formatVersion: 1, textures: [], materials: [], entities: [], navigationNodes: [], connections: [] }
-	};
+	});
 	const admitted = await admitSource(project, {
 		sessionEpoch: 'session-s04',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
@@ -153,20 +154,20 @@ describe('T1.P01.S04 — Layout precision', () => {
 			subject: { kind: 'wall', id: wallId },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		const precisionValue = 2.734567890123;
 		instrument.edit('height', String(precisionValue));
 		const outcome = await instrument.commit('height');
 		expect(outcome.kind).toBe('accepted');
-		const accepted = currentStageSource(facade.snapshot()).source.layout.walls.find((wall) => wall.id === wallId)!;
+		const accepted = stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!;
 		expect(accepted.height).toBe(precisionValue);
 		// The baseline state is history entry one, so one accepted edit is depth two.
 		expect(host.history()).toMatchObject({ depth: 2, position: 1 });
 		expect((await host.undo()).kind).toBe('installed');
 		expect(
-			currentStageSource(facade.snapshot()).source.layout.walls.find((wall) => wall.id === wallId)!.height
+			stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!.height
 		).toBe(document.walls.find((wall) => wall.id === wallId)!.height);
 	});
 
@@ -176,7 +177,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 			subject: { kind: 'wall', id: wallId },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		instrument.edit('height', '1.2');
@@ -188,10 +189,10 @@ describe('T1.P01.S04 — Layout precision', () => {
 		// The baseline is entry one; a refused proposal adds none and moves nothing.
 		expect(host.history()).toMatchObject({ depth: 1, position: 0 });
 		expect(
-			currentStageSource(facade.snapshot()).source.layout.walls.find((wall) => wall.id === wallId)!.height
+			stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!.height
 		).toBe(document.walls.find((wall) => wall.id === wallId)!.height);
 		expect(
-			currentStageSource(facade.snapshot()).source.layout.openings.find((opening) => opening.id === openingId)!.height
+			stageEnvelope(facade.snapshot()).units.layout.data.openings.find((opening) => opening.id === openingId)!.height
 		).toBe(document.openings.find((opening) => opening.id === openingId)!.height);
 	});
 
@@ -202,7 +203,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 			subject: { kind: 'wall', id: wallId },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port
 		});
 		instrument.edit('height', '   ');
@@ -217,18 +218,18 @@ describe('T1.P01.S04 — Layout precision', () => {
 
 	it('places one plinth at the captured id and on the current floor datum, and Undo removes it', async () => {
 		const { facade, host, services, document } = await mount();
-		const before = currentStageSource(facade.snapshot()).source.layout.objects.length;
+		const before = stageEnvelope(facade.snapshot()).units.layout.data.objects.length;
 		const instrument = createLayoutInstrument({
 			subject: { kind: 'object', id: '(placement)' },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		instrument.setPlacement('2.25', '-1.5');
 		const outcome = await instrument.place();
 		expect(outcome.kind).toBe('accepted');
-		const objects = currentStageSource(facade.snapshot()).source.layout.objects;
+		const objects = stageEnvelope(facade.snapshot()).units.layout.data.objects;
 		expect(objects).toHaveLength(before + 1);
 		const created = objects.at(-1)!;
 		expect(created.kind).toBe('box');
@@ -238,7 +239,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 		// The baseline state is history entry one, so one accepted edit is depth two.
 		expect(host.history()).toMatchObject({ depth: 2, position: 1 });
 		expect((await host.undo()).kind).toBe('installed');
-		expect(currentStageSource(facade.snapshot()).source.layout.objects).toHaveLength(before);
+		expect(stageEnvelope(facade.snapshot()).units.layout.data.objects).toHaveLength(before);
 	});
 
 	it('holds the host gesture lease for typed X/Z and releases it when the placement settles', async () => {
@@ -264,7 +265,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(instrument.proposalLive()).toBe(false);
 		expect(host.history().canUndo).toBe(true);
 		expect(
-			currentStageSource(facade.snapshot()).source.layout.objects.some(
+			stageEnvelope(facade.snapshot()).units.layout.data.objects.some(
 				(object) => object.position[0] === 0.75 && object.position[2] === -0.75
 			)
 		).toBe(true);
@@ -291,25 +292,19 @@ describe('T1.P01.S04 — Layout precision', () => {
 	});
 
 	it('refuses a stale floor datum and a mismatched captured object id', async () => {
-		const { facade, services, document } = await mount();
+		const { facade, host, services, document } = await mount();
 		const stale = createLayoutInstrument({
 			subject: { kind: 'object', id: '(placement)' },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		stale.setPlacement('1', '1');
 		// The mounted datum is `document.floor.elevation`; a different accepted datum
 		// is refused by the planner. Drive that path through the planner itself.
 		const planner = createLayoutPlanners().find((entry) => entry.kind === 'layout-plinth-place')!;
-		const snapshot = {
-			acceptedRevision: facade.snapshot().acceptedRevision,
-			sourceContentId: facade.snapshot().sourceContentId,
-			sourceKind: facade.snapshot().sourceKind,
-			sourceVersion: facade.snapshot().sourceVersion,
-			domain: { identity: { projectId: PROJECT_ID }, source: currentStageSource(facade.snapshot()).source }
-		} as unknown as Parameters<typeof planner.prepare>[0]['snapshot'];
+		const snapshot = host.coordinator().acceptedSnapshot();
 		const baseIntent = {
 			version: 1 as const,
 			kind: 'layout-plinth-place',
@@ -360,13 +355,13 @@ describe('T1.P01.S04 — Layout precision', () => {
 			subject: { kind: 'opening', id: openingId },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		const precisionSill = 0.9123456789012345;
 		instrument.edit('sillHeight', String(precisionSill));
 		expect(await instrument.commit('sillHeight')).toEqual({ kind: 'accepted' });
-		const accepted = currentStageSource(facade.snapshot()).source.layout.openings.find(
+		const accepted = stageEnvelope(facade.snapshot()).units.layout.data.openings.find(
 			(opening) => opening.id === openingId
 		)!;
 		expect(accepted.sillHeight).toBe(precisionSill);
@@ -374,7 +369,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(host.history()).toMatchObject({ depth: 2, position: 1 });
 		expect((await host.undo()).kind).toBe('installed');
 		expect(
-			currentStageSource(facade.snapshot()).source.layout.openings.find((opening) => opening.id === openingId)!.sillHeight
+			stageEnvelope(facade.snapshot()).units.layout.data.openings.find((opening) => opening.id === openingId)!.sillHeight
 		).toBe(document.openings.find((opening) => opening.id === openingId)!.sillHeight);
 	});
 
@@ -400,14 +395,14 @@ describe('T1.P01.S04 — Layout precision', () => {
 			subject: { kind: 'wall', id: wallId },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		instrument.edit('name', '  S04 boundary wall  ');
 		expect(await instrument.commit('name')).toEqual({ kind: 'accepted' });
 		// The canonical metadata planner owns trimming, so the accepted name is its
 		// value, not the raw edit buffer.
-		const renamed = currentStageSource(facade.snapshot()).source.layout.walls.find(
+		const renamed = stageEnvelope(facade.snapshot()).units.layout.data.walls.find(
 			(wall) => wall.id === wallId
 		)!;
 		expect(renamed.name).toBe('S04 boundary wall');
@@ -419,7 +414,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 			subject: { kind: 'object', id: '(placement)' },
 			document,
 			projectId: PROJECT_ID,
-			contentRevision: facade.snapshot().sourceContentId,
+			contentRevision: facade.snapshot().domain.unitRevisions.layout,
 			port: services.authoring
 		});
 		expect(objectInstrument.fields()).toEqual([]);
@@ -434,7 +429,7 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(await writer!.commit('  Card boundary wall  ')).toEqual({ kind: 'accepted' });
 		// The canonical metadata planner trims; the Card sent raw text.
 		expect(
-			currentStageSource(facade.snapshot()).source.layout.walls.find((wall) => wall.id === wallId)!.name
+			stageEnvelope(facade.snapshot()).units.layout.data.walls.find((wall) => wall.id === wallId)!.name
 		).toBe('Card boundary wall');
 
 		// A Layout object's name is its identity, so no adapter claims a writer.
@@ -468,7 +463,7 @@ function selectWall(facade: StageFacade, sourceId: string): void {
 	const reference = {
 		version: 1 as const,
 		domain: 'layout' as const,
-		revision: { kind: 'exact' as const, contentRevision: snapshot.sourceContentId },
+		revision: { kind: 'exact' as const, contentRevision: snapshot.domain.unitRevisions.layout },
 		subject: { kind: 'wall' as const, id: sourceId },
 		instancePath: [],
 		location: {

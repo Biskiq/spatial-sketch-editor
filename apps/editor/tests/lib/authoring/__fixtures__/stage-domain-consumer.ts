@@ -1,13 +1,13 @@
-import { currentStageSource, currentStagePlanner } from '$lib/authoring/stage/current-stage-source';
 /** Independent domain consumer: public facade + public authoring port only. */
 import type { StageAdapterFactory } from '$lib/authoring/stage/stage-adapter-host';
+import { stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { createProofLayoutPlanner, createProofSceneScalarPlanner, proofIntent,
 	PROOF_LAYOUT_TRANSFORM_KIND, layoutObjectReference } from './f4-current-source-fixtures';
 
 export function createDomainConsumer(objectId: string, disposals: string[]): StageAdapterFactory {
 	return ({ stage, authoring }) => {
 		for (const planner of [createProofLayoutPlanner(objectId), createProofSceneScalarPlanner()]) {
-			const registration = authoring.registerPlanner(currentStagePlanner(planner));
+			const registration = authoring.registerPlanner(planner);
 			if (registration.kind !== 'registered') throw new Error('planner registration failed');
 		}
 		return {
@@ -29,21 +29,23 @@ export function createDomainConsumer(objectId: string, disposals: string[]): Sta
 
 export function consumerMove(services: Parameters<StageAdapterFactory>[0], objectId: string) {
 	const snapshot = services.stage.snapshot();
+	const layoutRevision = snapshot.domain.unitRevisions.layout;
 	return services.authoring.accept(proofIntent({
 		kind: PROOF_LAYOUT_TRANSFORM_KIND, operationId: 'consumer-operation',
 		expectedRevision: services.authoring.acceptedRevision().revisionId,
-		projectId: snapshot.acceptedRevision.projectId, contentRevision: snapshot.sourceContentId,
-		targets: [layoutObjectReference(snapshot.sourceContentId, objectId)], payload: { objectId, position: [4, 0, 2] }
+		projectId: snapshot.acceptedRevision.projectId, contentRevision: layoutRevision,
+		targets: [layoutObjectReference(layoutRevision, objectId)], payload: { objectId, position: [4, 0, 2] }
 	}));
 }
 
 export function consumerSceneEdit(services: Parameters<StageAdapterFactory>[0]) {
 	const snapshot = services.stage.snapshot();
-	const entity = currentStageSource(snapshot).source.scene.entities[0]!;
+	const entity = stageScene(snapshot).entities[0]!;
+	const sceneRevision = snapshot.domain.unitRevisions.scene;
 	return services.authoring.accept(proofIntent({ kind: 'conformance-scene-entity-scalar',
 		operationId: 'consumer-scene-operation', expectedRevision: services.authoring.acceptedRevision().revisionId,
-		projectId: snapshot.acceptedRevision.projectId, contentRevision: snapshot.sourceContentId,
-		targets: [{ version: 1, domain: 'scene', revision: { kind: 'exact', contentRevision: snapshot.sourceContentId },
+		projectId: snapshot.acceptedRevision.projectId, contentRevision: sceneRevision,
+		targets: [{ version: 1, domain: 'scene', revision: { kind: 'exact', contentRevision: sceneRevision },
 			subject: { kind: 'entity', id: entity.id }, instancePath: [], location: { kind: 'project-root' }, componentId: null, capabilityId: null }],
 		payload: { entityId: entity.id, receiveShadow: true }
 	}));

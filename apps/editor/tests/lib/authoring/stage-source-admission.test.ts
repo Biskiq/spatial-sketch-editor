@@ -1,4 +1,3 @@
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S02 — source admission: **admission equals runtime preparation**.
  *
@@ -24,8 +23,9 @@ import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
  */
 import { describe, expect, it } from 'vitest';
 
-import { CURRENT_SOURCE_VERSION, validateProject as validateWithoutHostCatalogue } from '@portfolio/project-model';
-import { compileWallFirstLayoutGeometry } from '@portfolio/layout-core';
+import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import { compileWallFirstLayoutGeometry, LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
+import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { DEFAULT_STARTER_TEMPLATE } from '$lib/authoring/stage/starter-gallery';
 import {
 	admitSource,
@@ -53,13 +53,13 @@ function contextFor(projectId: string = PROJECT_ID): AdmissionContext {
 const CONTEXT: AdmissionContext = contextFor();
 
 /** The canonical starter enclosure: a real current-format source, built through the retained planner. */
-function starterSource() {
-	return DEFAULT_STARTER_TEMPLATE.build(PROJECT_ID, DEFAULT_STARTER_TEMPLATE.label);
+function starterSource(context: AdmissionContext = CONTEXT) {
+	return DEFAULT_STARTER_TEMPLATE.build(PROJECT_ID, DEFAULT_STARTER_TEMPLATE.label, context.acceptedRevision);
 }
 
 describe('source admission', () => {
 	it('admits a real current source with the caller identity, the shared content identity and a usable domain read', async () => {
-		const project = starterSource();
+		const project = await starterSource();
 		const before = JSON.stringify(project);
 
 		const outcome = await admitSource(project, CONTEXT);
@@ -75,8 +75,8 @@ describe('source admission', () => {
 		// The admitted source kind/version are declared, and the version is the
 		// landed current Layout format the project model names — never a literal
 		// that could drift from a format cutover.
-		expect(snapshot.sourceKind).toBe('project-current');
-		expect(snapshot.sourceVersion).toBe(CURRENT_SOURCE_VERSION);
+		expect(snapshot.sourceKind).toBe('unit-envelope');
+		expect(snapshot.sourceVersion).toBe(1);
 		// One content identity, digesting the canonical authored content, and the
 		// compile/representation generation derived from it: every fragment this
 		// host emits carries that generation.
@@ -91,7 +91,7 @@ describe('source admission', () => {
 		// physical Walls. The exact Wall count is the compiler's topology, which the
 		// Layout suites own; admission only has to have compiled something to draw.
 		const domain = snapshot.domain;
-		expect(currentStageSource(snapshot).source.id).toBe(PROJECT_ID);
+		expect(stageEnvelope(snapshot).id).toBe(PROJECT_ID);
 		expect(domain.geometry.floors).toHaveLength(1);
 		expect(domain.geometry.walls.length).toBeGreaterThan(0);
 		expect(domain.datumMeters).toBe(domain.geometry.floors[0]!.elevation);
@@ -106,7 +106,7 @@ describe('source admission', () => {
 		// warnings, so asserting only "they are warnings" would hold on an empty list,
 		// and the blocking half of the partition is pinned non-vacuously by the
 		// `diagnostics` case below.
-		const independent = compileWallFirstLayoutGeometry(currentStageSource(snapshot).source.layout);
+		const independent = compileWallFirstLayoutGeometry(stageLayout(snapshot));
 		const expectedWarnings = independent.issues.filter((issue) => issue.severity === 'warning');
 		expect(domain.warnings.map((issue) => issue.code).sort()).toEqual(
 			expectedWarnings.map((issue) => issue.code).sort()
@@ -115,7 +115,7 @@ describe('source admission', () => {
 	});
 
 	it('takes the datum from the compiled Floor and never invents one', async () => {
-		const outcome = await admitSource(starterSource(), CONTEXT);
+		const outcome = await admitSource(await starterSource(), CONTEXT);
 		expect(outcome.kind).toBe('admitted');
 		if (outcome.kind !== 'admitted') return;
 		const geometry = outcome.snapshot.domain.geometry;
@@ -137,11 +137,11 @@ describe('source admission', () => {
 	});
 
 	it('refuses a source the host\'s own Scene options refuse, though the option-less reader accepts it', async () => {
-		const project = buildUnknownAssetProject();
+		const project = await buildUnknownAssetProject();
 
 		// The discriminating fact: without the host catalogue the identical document
 		// validates, so this refusal is the host's own Scene options deciding.
-		expect(validateWithoutHostCatalogue(project).success).toBe(true);
+		expect(validateProjectEnvelope(project).success).toBe(true);
 
 		const outcome = await admitSource(project, contextFor(FIXTURE_PROJECT_ID));
 
@@ -154,17 +154,24 @@ describe('source admission', () => {
 	});
 
 	it('refuses a structurally valid document from an older format, naming the version', async () => {
-		const current = starterSource();
-		// The pair's version is what moves at a format cutover; every other field keeps
-		// its shape, so only a reader that actually validates the version refuses this.
+		const current = await starterSource();
+		// The Layout payload's version is what moves at a format cutover; every other
+		// field keeps its shape, so only a reader that actually validates the version
+		// refuses this.
 		const older = {
 			...current,
-			layout: { ...current.layout, formatVersion: CURRENT_SOURCE_VERSION - 1 }
+			units: {
+				...current.units,
+				layout: {
+					...current.units.layout,
+					data: { ...current.units.layout.data, formatVersion: LAYOUT_WALL_FIRST_FORMAT_VERSION - 1 }
+				}
+			}
 		};
 
 		// The option-less reader refuses it too — the point is that admission does, and
 		// says which version it was given.
-		expect(validateWithoutHostCatalogue(older).success).toBe(false);
+		expect(validateProjectEnvelope(older).success).toBe(false);
 
 		const outcome = await admitSource(older, CONTEXT);
 		expect(outcome.kind).toBe('refused');
@@ -188,7 +195,7 @@ describe('source admission', () => {
 	});
 
 	it('admits an explicit source-JSON open as the same source the in-memory entry admits', async () => {
-		const project = starterSource();
+		const project = await starterSource();
 		const direct = await admitSource(project, CONTEXT);
 		expect(direct.kind).toBe('admitted');
 		if (direct.kind !== 'admitted') return;
@@ -206,7 +213,7 @@ describe('source admission', () => {
 		// The route is showing PROJECT_ID; this document is a valid current source for
 		// a different project. Filing its bytes under this project's accepted revision
 		// would mislabel both the source and its content identity.
-		const foreign = buildFoldedPartitionProject();
+		const foreign = await buildFoldedPartitionProject();
 		const outcome = await admitSource(foreign, CONTEXT);
 
 		expect(outcome.kind).toBe('refused');
@@ -218,7 +225,7 @@ describe('source admission', () => {
 	});
 
 	it('reports blocking compile issues as diagnostics and yields no snapshot at all', async () => {
-		const outcome = await admitSource(buildFoldedPartitionProject(), contextFor(FIXTURE_PROJECT_ID));
+		const outcome = await admitSource(await buildFoldedPartitionProject(), contextFor(FIXTURE_PROJECT_ID));
 
 		expect(outcome.kind).toBe('diagnostics');
 		if (outcome.kind !== 'diagnostics') return;

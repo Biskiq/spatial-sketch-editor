@@ -34,8 +34,12 @@
  *   the live view.
  */
 
-import type { AcceptedRevision, ProjectDocument } from '@portfolio/project-model';
-import { CURRENT_SOURCE_KIND, CURRENT_SOURCE_VERSION } from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model';
+import {
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import type {
 	SaveAcknowledgement,
 	SavePrecondition,
@@ -47,7 +51,7 @@ import { SAVE_CONTENT_IDENTITY_SCHEME, sameAcceptedRevision } from '@portfolio/p
 /** The exact source a Save captures, read from the coordinator. */
 export type SaveSourceState = {
 	readonly revision: AcceptedRevision;
-	readonly source: ProjectDocument;
+	readonly source: ProjectEnvelope;
 	readonly canonicalJson: string;
 	readonly sourceContentId: string;
 };
@@ -193,6 +197,19 @@ export type SaveStateOptions = {
 	/** Optional read port for the remote side of a conflict (never auto-installs). */
 	readonly loadRemote?: (projectId: string) => Promise<SaveRemoteProject>;
 	readonly mintOperationId?: () => string;
+	/**
+	 * A Save captured before a sign-in redirect (TD-9). It is retained as the
+	 * unresolved capture so `retry()` replays the **exact** operation identity and
+	 * precondition. Constructing the state never runs it: the Head offers it and
+	 * the creator resumes deliberately.
+	 */
+	readonly resume?: SaveRequest | null;
+	/**
+	 * Called when the server answers `auth-required`, before the platform redirect.
+	 * The host persists the exact request (precondition and operation ID included)
+	 * so the return visit can offer it. It is never called for any other outcome.
+	 */
+	readonly onAuthRequired?: (request: SaveRequest) => void | Promise<void>;
 };
 
 const EMPTY_BASELINE: SaveBaseline = {
@@ -210,6 +227,19 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 	let conflict: SaveConflict | null = null;
 	let inFlight: { readonly epoch: string; readonly canonicalJson: string } | null = null;
 	let pending: SaveRequest | null = null;
+	if (options.resume) {
+		// Only a capture for this project under this exact saved base is resumable.
+		// Anything else would pair one project's operation with another's baseline.
+		const current = options.coordinator.current();
+		const precondition = options.resume.capture.precondition;
+		const sameBase =
+			precondition.kind === 'create-only'
+				? baseline.savedBaseToken === null
+				: precondition.kind === 'expected-saved-base' && precondition.token === baseline.savedBaseToken;
+		if (options.resume.capture.projectId === current.revision.projectId && sameBase) {
+			pending = options.resume;
+		}
+	}
 	const listeners = new Set<(snapshot: SaveSnapshot) => void>();
 
 	function readCurrent(): SaveSourceState | null {
@@ -345,8 +375,8 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				projectId: current.revision.projectId,
 				operationId: mintOperationId(),
 				precondition: currentPrecondition(),
-				sourceKind: CURRENT_SOURCE_KIND,
-				sourceVersion: CURRENT_SOURCE_VERSION,
+				sourceKind: UNIT_SOURCE_KIND,
+				sourceVersion: UNIT_SOURCE_VERSION,
 				acceptedRevision: current.revision,
 				sourceContentId: current.sourceContentId,
 				canonicalJson: current.canonicalJson
@@ -461,11 +491,23 @@ export function createSaveState(options: SaveStateOptions): SaveState {
 				}
 				return { kind: 'conflict' };
 			}
-			case 'auth-required':
+			case 'auth-required': {
 				error = { code: 'auth-required', message: 'Sign-in is required', retryable: true };
 				status = 'auth-required';
 				emit();
+				// TD-9: capture the exact request before the platform redirect. The
+				// capture stays retained, so the return visit resumes this operation
+				// rather than minting a new one from a base the server may have moved.
+				if (options.onAuthRequired) {
+					try {
+						await options.onAuthRequired(request);
+					} catch {
+						// A failed handoff must not turn the Save into a different outcome; the
+						// retained capture still lets the creator retry from the Head.
+					}
+				}
 				return { kind: 'refused', code: 'auth-required', message: error.message };
+			}
 			case 'refused':
 				error = {
 					code: result.code,

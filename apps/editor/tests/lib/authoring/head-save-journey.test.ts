@@ -20,14 +20,11 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
-import {
-	createEmptyWallFirstProject,
-	type ProjectDocument,
-	type SceneEntity,
-	type Vec3
-} from '@portfolio/project-model';
+import type { SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import type { SaveAcknowledgement, SaveRequest } from '@portfolio/project-model/save';
-import { planWallChain } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 import { sceneSurfaceFor } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
@@ -67,10 +64,9 @@ function boxEntity(position: Vec3 = [2, 0.5, 2]): SceneEntity {
 	};
 }
 
-function project(position: Vec3 = [2, 0.5, 2]): ProjectDocument {
-	const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Head journey' });
+function project(position: Vec3 = [2, 0.5, 2]): Promise<ProjectEnvelope> {
 	const planned = planWallChain({
-		baseline: base.layout,
+		baseline: createEmptyWallFirstLayoutDocument(),
 		points: [
 			[0, 0],
 			[7, 0],
@@ -81,7 +77,19 @@ function project(position: Vec3 = [2, 0.5, 2]): ProjectDocument {
 		role: 'boundary'
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
-	return { ...base, layout: planned.document, scene: { ...base.scene, entities: [boxEntity(position)] } };
+	return createUnitProject({
+		id: PROJECT_ID,
+		name: 'Head journey',
+		layout: planned.document,
+		scene: {
+			formatVersion: 1,
+			textures: [],
+			materials: [],
+			entities: [boxEntity(position)],
+			navigationNodes: [],
+			connections: []
+		}
+	});
 }
 
 async function eventually(predicate: () => boolean): Promise<void> {
@@ -128,7 +136,7 @@ function acknowledgementOf(request: SaveRequest, token: string): SaveAcknowledge
 async function mountHead(
 	onReloadRemote: (offer: ReloadOffer) => void = () => {}
 ): Promise<Mounted> {
-	const document_ = project();
+	const document_ = await project();
 	const admitted = await admitSource(document_, {
 		sessionEpoch: 'session-head-journey',
 		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
@@ -168,7 +176,7 @@ async function mountHead(
 			projectId: id,
 			// A **distinct** remote copy: the Head must hand this document to the host,
 			// not echo the local source back as an offer.
-			document: project([5, 0.5, 5]),
+			document: await project([5, 0.5, 5]),
 			savedBaseToken: NEXT_TOKEN,
 			savedRevision: { projectId: id, revisionId: 'revision-remote' },
 			savedSourceContentId: admitted.snapshot.sourceContentId
@@ -287,6 +295,9 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 		await eventually(() => mounted.pending.length === 1);
 		mounted.pending[0]!.resolve({ kind: 'conflict' });
 		await eventually(() => statusOf(mounted.target) === 'conflict');
+		// The conflict stands before the remote read lands, so Reload is only a real
+		// offer once that read has installed the remote copy.
+		await eventually(() => (mounted.state.getSnapshot().conflict?.remote ?? null) !== null);
 
 		expect(mounted.target.querySelector('[data-unsaved-work]')).not.toBeNull();
 		const reload = [...mounted.target.querySelectorAll('button')].find((button) =>
@@ -304,8 +315,11 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 		if (offer.kind !== 'reload') throw new Error('the Head offered no reload');
 		// The offer carries the **remote** document and its saved base, and the local
 		// work is still what is mounted: the host guard, not the Head, installs it.
-		const remote = offer.document as ProjectDocument;
-		expect(remote.scene.entities[0]).toMatchObject({ id: ENTITY_ID, position: [5, 0.5, 5] });
+		const remote = offer.document as ProjectEnvelope;
+		expect(remote.units.scene.data.entities[0]).toMatchObject({
+			id: ENTITY_ID,
+			position: [5, 0.5, 5]
+		});
 		expect(offer.savedBaseToken).toBe(NEXT_TOKEN);
 		expect(offer.savedRevision?.revisionId).toBe('revision-remote');
 		expect(mounted.facade.snapshot().canonicalJson).toBe(localJson);
@@ -326,7 +340,7 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 
 		// The route's own replacement path: admit the new source, then swap the
 		// session under the open proposal before the new facade is installed.
-		const admitted = await admitSource(project([4, 0.5, 4]), {
+		const admitted = await admitSource(await project([4, 0.5, 4]), {
 			sessionEpoch: 'session-head-journey-replacement',
 			acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-replaced' }
 		});

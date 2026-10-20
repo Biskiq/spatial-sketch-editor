@@ -42,7 +42,7 @@ import {
 	type StageCardSubject,
 	type StagePointerIntent
 } from '$lib/authoring/stage/stage-facade';
-import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageLayout, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 
 import LayoutDimensionsInstrument from './layout/LayoutDimensionsInstrument.svelte';
@@ -162,7 +162,7 @@ type WallGesture = {
 
 export const createAdapter: StageAdapterFactory = (services) => {
 	for (const planner of createLayoutPlanners()) {
-		const registration = services.authoring.registerPlanner(currentStagePlanner(planner));
+		const registration = services.authoring.registerPlanner(planner);
 		if (registration.kind !== 'registered') {
 			throw new Error(
 				`Layout adapter planner "${planner.kind}" was refused: ${registration.reason} — ${registration.message}`
@@ -174,7 +174,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 		id: 'layout',
 		requiredCapabilities: ['stage-instrument-v1'],
 		bind(context): StageAdapterBinding {
-			const document = currentStageSource(context.snapshot).source.layout;
+			const document = stageLayout(context.snapshot);
 			/** The task this binding is showing; pointer handles belong to it. */
 			let openTaskKind: string | null = null;
 			let gesture: WallGesture | null = null;
@@ -223,7 +223,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 				if (primary === null || primary.domain !== 'layout' || primary.subject.kind !== 'wall') {
 					return null;
 				}
-				const frame = wallFrame(currentStageSource(adapterContext.snapshot).source.layout, primary.subject.id);
+				const frame = wallFrame(stageLayout(adapterContext.snapshot), primary.subject.id);
 				return frame === null ? null : { wallId: primary.subject.id, frame };
 			}
 
@@ -247,7 +247,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						operationId: globalThis.crypto.randomUUID(),
 						projectId: snapshot.acceptedRevision.projectId,
 						revisionId: services.authoring.acceptedRevision().revisionId,
-						contentRevision: snapshot.sourceContentId,
+						contentRevision: stageUnitRevision(snapshot, 'layout'),
 						levelId: snapshot.domain.layoutLevelId
 					})
 				);
@@ -319,7 +319,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 						if (gesture !== null) endGesture();
 						pausedProposal = null;
 						// A new gesture supersedes the previous paused value for this source.
-						clearPausedProposalsForSource(adapterContext.snapshot.sourceContentId);
+						clearPausedProposalsForSource(adapterContext.snapshot.domain.unitRevisions.layout);
 						refusal = null;
 						const selected = selectedWall(adapterContext);
 						if (selected === null) return false;
@@ -342,7 +342,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 							evaluationId: intent.evaluationId,
 							handle,
 							fixed: handle === 'body' ? 'start' : wallHandleFixedEndpoint(handle),
-							baseline: currentStageSource(adapterContext.snapshot).source.layout,
+							baseline: stageLayout(adapterContext.snapshot),
 							frame: selected.frame,
 							startPoint: point,
 							lease: acquisition,
@@ -367,7 +367,7 @@ export const createAdapter: StageAdapterFactory = (services) => {
 					// Preserve the last explicit parameter, end the writer and let the
 					// creator apply it deliberately from Dimensions or cancel it.
 					if (intent.evaluationId !== gesture.evaluationId) {
-						preservePausedProposal(adapterContext.snapshot.sourceContentId);
+						preservePausedProposal(adapterContext.snapshot.domain.unitRevisions.layout);
 						endGesture();
 						services.stage.notifySurfaceChange();
 						return true;

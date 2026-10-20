@@ -9,17 +9,14 @@ export * from './channels';
 export type { ShapeIssue, ShapeValidation } from './strict-shape';
 export * from './package-format';
 export * from './package-sha';
-export * from './runtime';
-export * from './project-codec';
-// T1.P01.S03 — the one current-source content identity, and the F.4 acceptance
-// contract, intent reader, planner registry and current-source admission.
-// (Appended: barrels are append-only for the 2026-10-16 parallel batch.)
-export * from './content-identity';
+// T3.P01.S04 — the current-source reader, serializer, runtime and admission are
+// retired. The one live source is the F.2 envelope at the explicit `./units`
+// subpath; the F.4 acceptance contract here is source-agnostic and its F.2
+// adapter lives behind that subpath too.
 export * from './f4';
 export * from './project-layout-semantics';
 export * from './project-types';
 export * from './scene';
 export * from './scene-codec';
-export * from './wall-first-project';
 export * from './shipped-static';
 export * from './scene-planning';

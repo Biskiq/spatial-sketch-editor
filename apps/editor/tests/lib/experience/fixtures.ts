@@ -3,7 +3,7 @@
  * through the F.2 provider's own canonical writer, so the tests read the shapes a
  * real reader accepts rather than a hand-written object that happens to parse.
  */
-import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
@@ -14,8 +14,6 @@ import {
 	type ExperienceUnitPayload,
 	type ProjectEnvelope
 } from '@portfolio/project-model/units';
-
-const EMPTY = createEmptyWallFirstProject({ id: 'project-1', name: 'Project one' });
 
 export const VIEWS: CameraUnitPayload['views'] = [
 	{
@@ -81,21 +79,19 @@ export async function experienceEnvelope(overrides: {
 	camera?: CameraUnitPayload;
 	experience?: ExperienceUnitPayload;
 } = {}): Promise<ProjectEnvelope> {
-	const source = validateProject(EMPTY);
-	if (!source.success) throw new Error('the fixture source does not validate');
 	return createProjectEnvelope({
 		id: 'project-1',
 		name: 'Project one',
 		acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
 		dependencyLock: { formatVersion: 1, entries: [] },
-		layout: { unitId: 'unit-layout', data: source.project.layout },
+		layout: { unitId: 'unit-layout', data: createEmptyWallFirstLayoutDocument() },
 		scene: {
 			unitId: 'unit-scene',
 			data: {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: source.project.scene.textures,
-				materials: source.project.scene.materials,
-				entities: source.project.scene.entities
+				textures: [],
+				materials: [],
+				entities: []
 			}
 		},
 		camera: {

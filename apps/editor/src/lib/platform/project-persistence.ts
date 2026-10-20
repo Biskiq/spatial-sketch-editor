@@ -1,11 +1,10 @@
-import type { ProjectDocument } from '@portfolio/project-model';
+import { validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 import {
 	isSavedBaseToken,
 	readSaveRequest,
 	type SaveAcknowledgement,
 	type SaveRequest
 } from '@portfolio/project-model/save';
-import { validateProject } from '$lib/project/project-codec';
 import { PROJECT_ASSET_MAX_BYTES } from '$lib/platform/mime-sniff';
 
 export type ProjectLoginIntent = 'projects' | 'save';
@@ -51,7 +50,7 @@ export type PendingCloudSaveResult =
 	| { status: 'missing' }
 	| { status: 'invalid' | 'expired' }
 	/** `project` keeps the `/` route's existing reader shape compatible. */
-	| { status: 'ready'; project: ProjectDocument; save: SaveRequest };
+	| { status: 'ready'; project: ProjectEnvelope; save: SaveRequest };
 
 export type ProjectSummary = {
 	id: string;
@@ -233,12 +232,12 @@ export function writePendingCloudSave(
 	} catch {
 		return false;
 	}
-	const validation = validateProject(project);
+	const validation = validateProjectEnvelope(project);
 	if (!validation.success) return false;
 	// The draft pairs this capture with the document it names. A capture whose
 	// project ID disagrees with its own bytes would resume a Save against one
 	// project while the reader shows another, so it is not a draft at all.
-	if (validation.project.id !== parsed.request.capture.projectId) return false;
+	if (validation.envelope.id !== parsed.request.capture.projectId) return false;
 	try {
 		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
@@ -280,14 +279,14 @@ export function readPendingCloudSave(
 		}
 		const parsed = readSaveRequest(value.save);
 		if (parsed.kind === 'invalid') throw new Error('invalid capture');
-		const validation = validateProject(JSON.parse(parsed.request.capture.canonicalJson));
-		if (!validation.success) throw new Error('invalid project');
+		const validation = validateProjectEnvelope(JSON.parse(parsed.request.capture.canonicalJson));
+		if (!validation.success) throw new Error('invalid envelope');
 		// Same rule on the read side: the capture and the document it names must
 		// describe one project, or the entry is invalid and cleared.
-		if (validation.project.id !== parsed.request.capture.projectId) throw new Error('capture mismatch');
+		if (validation.envelope.id !== parsed.request.capture.projectId) throw new Error('capture mismatch');
 		return {
 			status: 'ready',
-			project: JSON.parse(validation.canonicalJson) as ProjectDocument,
+			project: validation.envelope,
 			save: parsed.request
 		};
 	} catch {

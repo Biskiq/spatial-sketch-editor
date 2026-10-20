@@ -1,7 +1,10 @@
 /** One domain-neutral, ordered selection value. Layout fragments are optional qualifications. */
 import { compareReferences, resolveReference, immutableF4Data, type ResolvedSubject, type SemanticReference } from '@portfolio/project-model';
 import type { PlanSourceRef } from '@portfolio/layout-core';
+import type { UnitDomain } from '@portfolio/project-model/units';
 import type { StageReadSnapshot } from './accepted-read';
+
+const layoutUnitDomain: UnitDomain = 'layout';
 
 export type StageSelectionEntry = {
 	readonly reference: SemanticReference;
@@ -84,7 +87,7 @@ export function admitSelection(value: StageSelectionState, snapshot: StageReadSn
 /** Explicit Layout convenience conversion; no Scene identity is forced into a PlanSourceRef. */
 export function layoutSelectionReference(ref: PlanSourceRef, snapshot: StageReadSnapshot): SemanticReference {
 	return { version: 1, domain: 'layout', subject: { kind: ref.sourceKind === 'room-floor' ? 'room' : ref.sourceKind, id: ref.sourceId },
-		revision: { kind: 'exact', contentRevision: snapshot.sourceContentId }, instancePath: [],
+		revision: { kind: 'exact', contentRevision: (snapshot.domain.unitRevisions as Record<string, string>)[layoutUnitDomain] ?? snapshot.sourceContentId }, instancePath: [],
 		// The authored level, not the compiled floor list: a source with objects and no
 		// enclosure compiles to no floors and its Layout subjects still resolve.
 		location: { kind: 'layout-location', levelId: snapshot.domain.layoutLevelId, structureInstancePath: [] },

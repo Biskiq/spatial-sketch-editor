@@ -9,10 +9,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	canonicalSourceJson,
-	createEmptyWallFirstProject,
-	sourceContentIdForCanonicalJson
-} from '@portfolio/project-model';
+	computeEnvelopeSourceContentId,
+	serializeProjectEnvelope
+} from '@portfolio/project-model/units';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import {
 	SAVE_ACCEPTED_SOURCE_VERSION,
 	SAVE_CONTENT_IDENTITY_SCHEME,
@@ -24,35 +24,36 @@ import {
 	type SaveRequest
 } from '@portfolio/project-model/save';
 
-const GOLDEN_DIGEST = 'sha256-794ff6c9722991377649dbf15cfe4ea9624d446f3d28f32321ac24d2bd47255d';
-const GOLDEN_FULL_SOURCE_HASH = 'sha256-9a203a106501d88044887db0aa4a323f77cfb5c498592824f7b116cd73c894b7';
-
 async function request(): Promise<SaveRequest> {
-	const project = createEmptyWallFirstProject({ id: 'project:save-golden', name: 'Save golden' });
-	const canonical = canonicalSourceJson(project);
-	if (canonical.kind === 'rejected') throw new Error('fixture was not canonical');
+	const envelope = await createUnitProject({ id: 'project:save-golden', name: 'Save golden' });
+	const canonicalJson = serializeProjectEnvelope(envelope);
 	return {
 		contentIdentityScheme: SAVE_CONTENT_IDENTITY_SCHEME,
 		capture: {
 			protocol: SAVE_ACCEPTED_SOURCE_VERSION,
-			projectId: project.id,
+			projectId: envelope.id,
 			operationId: 'operation-1',
 			precondition: { kind: 'create-only' },
-			sourceKind: 'current-source',
-			sourceVersion: 5,
-			acceptedRevision: { projectId: project.id, revisionId: 'revision-1' },
-			sourceContentId: await sourceContentIdForCanonicalJson(canonical.canonicalJson),
-			canonicalJson: canonical.canonicalJson
+			sourceKind: 'unit-envelope',
+			sourceVersion: 1,
+			acceptedRevision: { projectId: envelope.id, revisionId: 'revision-1' },
+			sourceContentId: await computeEnvelopeSourceContentId(envelope),
+			canonicalJson
 		}
 	};
 }
 
 describe('SaveAcceptedSource@1', () => {
-	it('pins the content-identity scheme to the landed digest and full-source hash', async () => {
+	it('pins the content-identity scheme and a stable envelope digest', async () => {
 		const { capture } = await request();
+		// The golden bytes themselves are pinned by the unit canonical-form suite;
+		// this suite pins the transport scheme and that the capture’s digest is the
+		// envelope digest of exactly the captured bytes.
 		expect(SAVE_CONTENT_IDENTITY_SCHEME).toBe('project-model/canonical-authored-json@1');
-		expect(capture.sourceContentId).toBe(GOLDEN_DIGEST);
-		expect(await fullSourceHash(capture.canonicalJson)).toBe(GOLDEN_FULL_SOURCE_HASH);
+		expect(capture.sourceContentId).toMatch(/^sha256-[0-9a-f]{64}$/);
+		expect(await computeEnvelopeSourceContentId(JSON.parse(capture.canonicalJson))).toBe(capture.sourceContentId);
+		expect(await fullSourceHash(capture.canonicalJson)).toMatch(/^sha256-[0-9a-f]{64}$/);
+		expect(await fullSourceHash(capture.canonicalJson)).not.toBe(capture.sourceContentId);
 	});
 
 	it('reads the exact capture and transport scheme', async () => {

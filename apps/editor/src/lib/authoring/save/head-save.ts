@@ -70,11 +70,23 @@ function statusReason(snapshot: SaveSnapshot): { label: string; reason: string |
 		case 'never-saved':
 			return snapshot.busy
 				? { label: 'Saving…', reason: null, disabled: true }
-				: { label: 'Save to Cloud', reason: null, disabled: false };
+				: snapshot.pending
+					? {
+							label: 'Resume pending save',
+							reason: 'A Save was captured before sign-in. Resume it to save exactly that work.',
+							disabled: false
+						}
+					: { label: 'Save to Cloud', reason: null, disabled: false };
 		case 'dirty':
 			return snapshot.busy
 				? { label: 'Saving…', reason: null, disabled: true }
-				: { label: 'Save changes', reason: null, disabled: false };
+				: snapshot.pending
+					? {
+							label: 'Resume pending save',
+							reason: 'A Save was captured before sign-in. Resume it to save exactly that work.',
+							disabled: false
+						}
+					: { label: 'Save changes', reason: null, disabled: false };
 		case 'saving':
 			return { label: 'Saving…', reason: null, disabled: true };
 		case 'saved':

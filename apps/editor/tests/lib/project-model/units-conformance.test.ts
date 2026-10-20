@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
 	EXPERIENCE_UNIT_FORMAT_VERSION,
@@ -41,7 +41,7 @@ import {
 	type TypedResource
 } from '@portfolio/project-model/units';
 
-const EMPTY = createEmptyWallFirstProject({ id: 'project-1', name: 'Project one' });
+const EMPTY_LAYOUT = createEmptyWallFirstLayoutDocument();
 
 function lock(entries: DependencyLock['entries'] = []): DependencyLock {
 	return { formatVersion: 1, entries };
@@ -53,21 +53,19 @@ async function envelope(overrides: {
 	resources?: ResourceUnitPayload;
 	dependencyLock?: DependencyLock;
 } = {}): Promise<ProjectEnvelope> {
-	const source = validateProject(EMPTY);
-	if (!source.success) throw new Error('the fixture source does not validate');
 	return createProjectEnvelope({
 		id: 'project-1',
 		name: 'Project one',
 		acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
 		dependencyLock: overrides.dependencyLock ?? lock(),
-		layout: { unitId: 'unit-layout', data: source.project.layout },
+		layout: { unitId: 'unit-layout', data: EMPTY_LAYOUT },
 		scene: {
 			unitId: 'unit-scene',
 			data: {
 				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: source.project.scene.textures,
-				materials: source.project.scene.materials,
-				entities: source.project.scene.entities
+				textures: [],
+				materials: [],
+				entities: []
 			}
 		},
 		camera: {
@@ -437,10 +435,7 @@ describe('independent AM-2 regressions', () => {
 			expect(read.success && read.closure.length > 0).toBe(true);
 		}
 	});
-});
-
-
-it('retains the current project codec camera eye/target constraint in the Camera unit', () => {
+});	it('retains the camera eye/target constraint in the Camera unit', () => {
 	const result = validateCameraPayload({ formatVersion: 1, views: [
 		{ id: 'a', label: 'A', eye: [0, 0, 0], target: [0, 0, 1], fov: 54, connectedViewIds: ['b'] },
 		{ id: 'b', label: 'B', eye: [4, 0, 0], target: [4, 0, 1], fov: 54, connectedViewIds: ['a'] }

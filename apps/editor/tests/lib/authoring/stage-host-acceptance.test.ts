@@ -1,4 +1,3 @@
-import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S07 — the host↔F4 integration bridge, proved from the host boundary.
  *
@@ -28,7 +27,9 @@ import { describe, expect, it } from 'vitest';
 import type { Component } from 'svelte';
 import { planDeleteLayoutObject } from '@portfolio/layout-core';
 import type { PlanSourceRef } from '@portfolio/layout-core';
-import type { ProjectDocument } from '@portfolio/project-model';
+import type { PlannerRequest } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 
 import { admitSource, type StageReadSnapshot } from '$lib/authoring/stage/source-admission';
 import { createStageSession, type StageSelection } from '$lib/authoring/stage/stage-session';
@@ -62,11 +63,11 @@ type Mounted = {
 	readonly snapshot: StageReadSnapshot;
 	readonly host: StageAcceptanceHost;
 	readonly objectId: string;
-	readonly project: ProjectDocument;
+	readonly project: ProjectEnvelope;
 };
 
 async function mount(sessionEpoch = 'session-s07'): Promise<Mounted> {
-	const { project, objectId } = buildCurrentSourceFixture();
+	const { project, objectId } = await buildCurrentSourceFixture();
 	const admitted = await admitSource(project, {
 		sessionEpoch,
 		acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'revision-boot' }
@@ -135,7 +136,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 	it('mounts an external domain factory with planner registration, submission and live UI contributions', async () => {
 		const { facade, snapshot, objectId } = await mount();
 		const host = createStageAcceptanceHost({ facade, sessionEpoch: snapshot.sessionEpoch,
-			baseline: { revision: snapshot.acceptedRevision, source: currentStageSource(snapshot).source,
+			baseline: { revision: snapshot.acceptedRevision, source: stageEnvelope(snapshot),
 				canonicalJson: snapshot.canonicalJson, sourceContentId: snapshot.sourceContentId } });
 		settle(facade);
 		const disposed: string[] = [];
@@ -156,10 +157,10 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		facade.openContributedTask('consumer-move');
 		expect(facade.instrumentForTask('consumer-move')?.summary).toBe(facade.snapshot().sourceContentId);
 		expect((await consumerSceneEdit(services)).kind).toBe('installed');
-		expect(currentStageSource(facade.snapshot()).source.scene.entities[0]).toMatchObject({ receiveShadow: true });
+		expect(stageEnvelope(facade.snapshot()).units.scene.data.entities[0]).toMatchObject({ receiveShadow: true });
 		expect(host.history()).toMatchObject({ depth: 3, position: 2 });
 		expect((await host.undo()).kind).toBe('installed');
-		expect(currentStageSource(facade.snapshot()).source.scene.entities[0]).toMatchObject({ receiveShadow: false });
+		expect(stageEnvelope(facade.snapshot()).units.scene.data.entities[0]).toMatchObject({ receiveShadow: false });
 		expect((await host.redo()).kind).toBe('installed');
 		settle(facade);
 		facade.openContributedTask('consumer-move');
@@ -244,7 +245,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 			bind(context) { return { tasks: [{ id, taskKind: id, label: context.snapshot.sourceContentId }],
 				dispose() { disposed.push(id); if (id === 'throws') throw new Error('cleanup failed'); } }; } });
 		expect((await host.accept(moveIntent(objectId, snapshot.acceptedRevision.revisionId,
-			snapshot.sourceContentId, 'throwing-cleanup', [2, 0, 1]))).kind).toBe('installed');
+			snapshot.domain.unitRevisions.layout, 'throwing-cleanup', [2, 0, 1]))).kind).toBe('installed');
 		expect(disposed).toEqual(['throws', 'continues']);
 		expect(facade.inspectionTicket()).not.toBeNull();
 		settle(facade);
@@ -308,8 +309,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-object-move',
 				expectedRevision: snapshot.acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: snapshot.sourceContentId,
-				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				contentRevision: snapshot.domain.unitRevisions.layout,
+				targets: [layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [1, 0, 1] }
 			})
 		);
@@ -361,8 +362,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-layout',
 				expectedRevision: snapshot.acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: snapshot.sourceContentId,
-				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				contentRevision: snapshot.domain.unitRevisions.layout,
+				targets: [layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [2, 0, 1] }
 			})
 		);
@@ -376,8 +377,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-scene',
 				expectedRevision: host.coordinator().acceptedRevision().revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: afterLayout,
-				targets: [sceneEntityReference(afterLayout, FIXTURE_ENTITY_ID)],
+				contentRevision: snapshot.domain.unitRevisions.scene,
+				targets: [sceneEntityReference(snapshot.domain.unitRevisions.scene, FIXTURE_ENTITY_ID)],
 				payload: { entityId: FIXTURE_ENTITY_ID, receiveShadow: true }
 			})
 		);
@@ -434,19 +435,20 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		settle(facade);
 		facade.select(objectSelection(facade, objectId));
 		const proof = createProofLayoutPlanner(objectId);
-		host.registerPlanner(currentStagePlanner({ ...proof, id: 'delete-probe', kind: 'delete-probe', prepare(input) {
+		host.registerPlanner({ ...proof, id: 'delete-probe', kind: 'delete-probe', prepare(input: PlannerRequest<ProjectEnvelope>) {
 			const prepared = proof.prepare(input);
 			if (prepared.kind !== 'prepared') return prepared;
-			const deletion = planDeleteLayoutObject(input.snapshot.domain.source.layout, objectId);
+			const deletion = planDeleteLayoutObject(input.snapshot.domain.source.units.layout.data, objectId);
 			if (deletion.kind !== 'success') throw new Error('deletion refused');
 			return { ...prepared, candidate: { ...prepared.candidate,
-				source: { ...input.snapshot.domain.source, layout: deletion.document },
-				correspondence: [{ relation: 'retired', before: layoutObjectReference(input.snapshot.sourceContentId, objectId), after: null }] } };
-		} }));
-		const intent = moveIntent(objectId, snapshot.acceptedRevision.revisionId, snapshot.sourceContentId, 'delete-operation', [2, 0, 1]);
+				source: { ...prepared.candidate.source, units: { ...prepared.candidate.source.units,
+					layout: { ...prepared.candidate.source.units.layout, data: deletion.document } } },
+				correspondence: [{ relation: 'retired', before: layoutObjectReference(input.snapshot.domain.source.units.layout.header.contentRevision, objectId), after: null }] } };
+		} });
+		const intent = moveIntent(objectId, snapshot.acceptedRevision.revisionId, snapshot.domain.unitRevisions.layout, 'delete-operation', [2, 0, 1]);
 		expect(await host.accept({ ...intent, kind: 'delete-probe' })).toMatchObject({ kind: 'installed', selectionClearedReason: 'subject-retired' });
 		expect(facade.selection()).toBeNull();
-		expect(currentStageSource(facade.snapshot()).source.layout.objects).toEqual([]);
+		expect(stageEnvelope(facade.snapshot()).units.layout.data.objects).toEqual([]);
 		facade.dispose();
 	});
 
@@ -459,8 +461,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-before-replacement',
 				expectedRevision: host.coordinator().acceptedRevision().revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: facade.snapshot().sourceContentId,
-				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				contentRevision: facade.snapshot().domain.unitRevisions.layout,
+				targets: [layoutObjectReference(facade.snapshot().domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [3, 0, 1] }
 			})
 		);
@@ -615,8 +617,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-echo',
 				expectedRevision: snapshot.acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: snapshot.sourceContentId,
-				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				contentRevision: snapshot.domain.unitRevisions.layout,
+				targets: [layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [1.5, 0, 1] }
 			})
 		);
@@ -664,7 +666,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 		}
 		const before = opened.instrument.view.services;
 		const accepted = await host.accept(
-			moveIntent(objectId, host.acceptedRevision().revisionId, facade.snapshot().sourceContentId, 'op-td8-close', [2, 0, 1])
+			moveIntent(objectId, host.acceptedRevision().revisionId, facade.snapshot().domain.unitRevisions.layout, 'op-td8-close', [2, 0, 1])
 		);
 		expect(accepted.kind).toBe('installed');
 		expect(facade.session.task()).toBeNull();
@@ -676,8 +678,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-td8-stale',
 				expectedRevision: facade.snapshot().acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: facade.snapshot().sourceContentId,
-				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				contentRevision: facade.snapshot().domain.unitRevisions.layout,
+				targets: [layoutObjectReference(facade.snapshot().domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [3, 0, 1] }
 			})
 		);
@@ -697,8 +699,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-td8-reopened',
 				expectedRevision: facade.snapshot().acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: facade.snapshot().sourceContentId,
-				targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+				contentRevision: facade.snapshot().domain.unitRevisions.layout,
+				targets: [layoutObjectReference(facade.snapshot().domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [4, 0, 1] }
 			})
 		);
@@ -746,8 +748,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 					operationId: 'op-td8-replaced-stale',
 					expectedRevision: facade.snapshot().acceptedRevision.revisionId,
 					projectId: FIXTURE_PROJECT_ID,
-					contentRevision: facade.snapshot().sourceContentId,
-					targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+					contentRevision: facade.snapshot().domain.unitRevisions.layout,
+					targets: [layoutObjectReference(facade.snapshot().domain.unitRevisions.layout, objectId)],
 					payload: { objectId, position: [5, 0, 1] }
 				})
 			)
@@ -761,8 +763,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 					operationId: 'op-td8-replaced-current',
 					expectedRevision: facade.snapshot().acceptedRevision.revisionId,
 					projectId: FIXTURE_PROJECT_ID,
-					contentRevision: facade.snapshot().sourceContentId,
-					targets: [layoutObjectReference(facade.snapshot().sourceContentId, objectId)],
+					contentRevision: facade.snapshot().domain.unitRevisions.layout,
+					targets: [layoutObjectReference(facade.snapshot().domain.unitRevisions.layout, objectId)],
 					payload: { objectId, position: [6, 0, 1] }
 				})
 			)
@@ -804,8 +806,8 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 				operationId: 'op-td8-ended',
 				expectedRevision: snapshot.acceptedRevision.revisionId,
 				projectId: FIXTURE_PROJECT_ID,
-				contentRevision: snapshot.sourceContentId,
-				targets: [layoutObjectReference(snapshot.sourceContentId, objectId)],
+				contentRevision: snapshot.domain.unitRevisions.layout,
+				targets: [layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId)],
 				payload: { objectId, position: [3, 0, 1] }
 			})
 		);
@@ -838,7 +840,7 @@ describe('T1.P01.S07 — host↔F4 acceptance wiring', () => {
 			moveIntent(
 				objectId,
 				host.coordinator().acceptedRevision().revisionId,
-				facade.snapshot().sourceContentId,
+				facade.snapshot().domain.unitRevisions.layout,
 				'op-td8-install',
 				[3, 0, 1]
 			)
@@ -1042,7 +1044,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 			moveIntent(
 				objectId,
 				host.coordinator().acceptedRevision().revisionId,
-				facade.snapshot().sourceContentId,
+				facade.snapshot().domain.unitRevisions.layout,
 				'op-live-1',
 				[1, 0, 1]
 			)
@@ -1057,7 +1059,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 			moveIntent(
 				objectId,
 				host.coordinator().acceptedRevision().revisionId,
-				facade.snapshot().sourceContentId,
+				facade.snapshot().domain.unitRevisions.layout,
 				'op-live-2',
 				[2, 0, 1]
 			)
@@ -1083,7 +1085,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 		// The accept is past its own synchronous checks and awaiting admission when the
 		// replacement runs, so the refusal is the coordinator's generation guard — the
 		// host's `disposed` flag alone could not be what stopped it.
-		const pending = host.accept(moveIntent(objectId, revisionBefore, before, 'op-race', [5, 0, 1]));
+		const pending = host.accept(moveIntent(objectId, revisionBefore, facade.snapshot().domain.unitRevisions.layout, 'op-race', [5, 0, 1]));
 		const replaced = await host.replace({
 			source: project,
 			revision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'revision-race' },
@@ -1109,7 +1111,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 		const boot = facade.snapshot().sourceContentId;
 
 		const pending = host.accept(
-			moveIntent(objectId, host.coordinator().acceptedRevision().revisionId, boot, 'op-refused', [6, 0, 1])
+			moveIntent(objectId, host.coordinator().acceptedRevision().revisionId, facade.snapshot().domain.unitRevisions.layout, 'op-refused', [6, 0, 1])
 		);
 		// The Stage is gone before the accepted result reaches it: a non-lifetime
 		// refusal for the host, but the coordinator has already committed.
@@ -1139,7 +1141,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 		if (registration.kind !== 'registered') throw new Error('registration refused');
 		for (let step = 1; step <= 2; step += 1) {
 			expect((await host.accept(moveIntent(objectId, host.acceptedRevision().revisionId,
-				facade.snapshot().sourceContentId, `lifecycle-${step}`, [step, 0, 1]))).kind).toBe('installed');
+				facade.snapshot().domain.unitRevisions.layout, `lifecycle-${step}`, [step, 0, 1]))).kind).toBe('installed');
 			settle(facade, step + 3);
 		}
 		expect(generation).toBe(3);
@@ -1158,9 +1160,8 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 
 	it('preserves the exact F4 baseline and live Stage when replacement fails Stage admission', async () => {
 		const { facade, host, objectId } = await mount();
-		settle(facade);
-		expect((await host.accept(moveIntent(objectId, host.acceptedRevision().revisionId,
-			facade.snapshot().sourceContentId, 'before-failed-replace', [1, 0, 2]))).kind).toBe('installed');
+		settle(facade);			expect((await host.accept(moveIntent(objectId, host.acceptedRevision().revisionId,
+			facade.snapshot().domain.unitRevisions.layout, 'before-failed-replace', [1, 0, 2]))).kind).toBe('installed');
 		settle(facade);
 		facade.select(objectSelection(facade, objectId));
 		const snapshot = facade.snapshot();
@@ -1174,7 +1175,7 @@ describe('T1.P01.S07 — live-proposal state, epoch races and install refusal', 
 		facade.registerStageAdapter({ id: 'still-live', dispose: () => { disposed += 1; } });
 		// F4 validates the source, but Stage refuses the mismatched project identity.
 		// No fake admission function or host bypass is involved.
-		expect(await host.replace({ source: currentStageSource(snapshot).source,
+		expect(await host.replace({ source: stageEnvelope(snapshot),
 			revision: { projectId: 'wrong-project', revisionId: 'failed-replacement' },
 			sessionEpoch: 'failed-replacement-epoch' })).toMatchObject({ kind: 'refused', code: 'project-mismatch' });
 		expect(host.coordinator().current()).toBe(current);
@@ -1239,7 +1240,7 @@ describe('T1.P01.S07 — contribution surface signal', () => {
 
 		// Identical content is `unchanged`: nothing rebinds, so the surface is not
 		// invalidated and a mounted adapter's entries are not rebuilt for nothing.
-		const same = await admitSource(currentStageSource(facade.snapshot()).source, {
+		const same = await admitSource(stageEnvelope(facade.snapshot()), {
 			sessionEpoch: facade.snapshot().sessionEpoch,
 			acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'revision-same-content' }
 		});
@@ -1269,7 +1270,7 @@ describe('T1.P01.S07 — contribution surface signal', () => {
 			moveIntent(
 				objectId,
 				host.coordinator().acceptedRevision().revisionId,
-				facade.snapshot().sourceContentId,
+				facade.snapshot().domain.unitRevisions.layout,
 				'op-static-echo',
 				[3, 0, 1]
 			)
@@ -1298,7 +1299,7 @@ describe('T1.P01.S07 — contribution surface signal', () => {
 			moveIntent(
 				objectId,
 				host.coordinator().acceptedRevision().revisionId,
-				facade.snapshot().sourceContentId,
+				facade.snapshot().domain.unitRevisions.layout,
 				'op-signal-rebuild',
 				[4, 0, 1]
 			)
@@ -1326,7 +1327,7 @@ describe('T1.P01.S07 — mutation controls', () => {
 			moveIntent(
 				producer.objectId,
 				producer.host.coordinator().acceptedRevision().revisionId,
-				producer.facade.snapshot().sourceContentId,
+				producer.facade.snapshot().domain.unitRevisions.layout,
 				'op-control-source',
 				[7, 0, 1]
 			)

@@ -52,7 +52,7 @@ type Mounted = {
 
 /** The host's own mount order, through the public admission path. */
 async function mount(): Promise<Mounted> {
-	const { project } = buildCurrentSourceFixture();
+	const { project } = await buildCurrentSourceFixture();
 	const context: AdmissionContext = {
 		sessionEpoch: 'session-consumer-probes',
 		acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'revision-probes-1' }

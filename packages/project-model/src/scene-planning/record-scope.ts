@@ -28,9 +28,9 @@
  * registry must call this finalizer itself — the mutation-control acceptance
  * test exists because such a candidate would otherwise be admitted.
  */
-import { validateSceneDocument } from '../scene-codec';
+import { validateCameraFreeScenePayload } from '../units/validate';
 import type { ShapeIssue } from '../strict-shape';
-import type { SceneDocument } from '../scene';
+import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
 
 /**
  * The records one operation may touch. `changedEntityFields` is the value-level
@@ -89,7 +89,7 @@ export function finalizeSceneCandidate(input: {
 			diagnostics: issues
 		};
 	}
-	const validation = validateSceneDocument(input.after);
+	const validation = validateCameraFreeScenePayload(input.after);
 	if (!validation.success) {
 		return {
 			kind: 'rejected',

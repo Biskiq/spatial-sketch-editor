@@ -19,12 +19,12 @@
  */
 import {
 	hasBlockingLayoutIssues,
-	prepareRuntime,
 	type CompiledLayoutGeometry,
 	type LayoutRoomRegistry,
 	type NavigationGraph,
 	type RuntimeScene
 } from '@portfolio/project-model';
+import { prepareUnitRuntime } from '@portfolio/project-model/units';
 import {
 	getShippedMaterialById,
 	getShippedModelByAssetId,
@@ -185,37 +185,36 @@ export function validateColdReleaseReferences(input: {
  * URLs. Aborts early when `signal` is already aborted.
  */
 export function composeColdReleaseBundle(input: {
-	projectId: string;
-	projectName: string;
-	layout: unknown;
-	scene: unknown;
+	/** The released F.2 envelope; the only source format a release may carry. */
+	document: unknown;
 	manifest: ColdReleaseManifest;
 	signal?: AbortSignal;
 }): ColdReleaseBundle {
-	const { projectId, projectName, layout, scene, manifest, signal } = input;
+	const { document, manifest, signal } = input;
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
-	const name = projectName.trim();
-	if (!name) throw new Error('Project name cannot be empty');
-	if (!projectId) throw new Error('Project is not ready for release');
 	if (!manifest.releaseId.trim()) throw new Error('Release requires a releaseId');
 
-	const validated = prepareRuntime(
-		{ id: projectId, name, layout, scene },
-		COLD_SCENE_OPTIONS as never
-	);
-	if (validated.kind === 'rejected') {
-		throw new Error(validated.issues[0]?.message ?? 'Project validation failed');
+	const prepared = prepareUnitRuntime(document, COLD_SCENE_OPTIONS as never);
+	if (prepared.kind === 'rejected') {
+		throw new Error(prepared.issues[0]?.message ?? 'Project validation failed');
 	}
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
 
-	if (hasBlockingLayoutIssues(validated.issues)) {
-		throw new Error(validated.issues[0]?.message ?? 'Layout geometry is invalid');
+	if (hasBlockingLayoutIssues(prepared.issues)) {
+		throw new Error(prepared.issues[0]?.message ?? 'Layout geometry is invalid');
 	}
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
 
-	const rooms = validated.rooms;
-	const runtimeScene = validated.runtimeScene;
-	const graph = validated.graph;
+	const name = prepared.envelope.name.trim();
+	if (!name) throw new Error('Project name cannot be empty');
+	if (!prepared.envelope.id) throw new Error('Project is not ready for release');
+
+	const projectId = prepared.envelope.id;
+	const rooms = prepared.rooms;
+	const runtimeScene = prepared.runtimeScene;
+	// The navigation graph is the Camera unit's own connectivity, prepared by the
+	// one unit runtime; the released Scene no longer carries a navigation graph.
+	const graph = prepared.graph;
 
 	const referenceIssues = validateColdReleaseReferences(
 		{
@@ -249,7 +248,7 @@ export function composeColdReleaseBundle(input: {
 		projectId,
 		projectName: name,
 		scene: runtimeScene,
-		geometry: validated.geometry,
+		geometry: prepared.geometry,
 		rooms,
 		graph,
 		textureScope,

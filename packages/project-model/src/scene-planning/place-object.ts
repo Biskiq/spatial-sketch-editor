@@ -29,18 +29,18 @@
  * is checked with captured inputs; stale support query refusals keep their code.
  */
 import { FLOOR_SUPPORT_TOLERANCES, type FloorSupportCandidate, type LayoutVec2 } from '@portfolio/layout-core';
-import { validateSceneDocument } from '../scene-codec';
+import { validateCameraFreeScenePayload } from '../units/validate';
 import { validateFrameReference, validateSnapshotIdentity, type DerivedSourceRef, type FrameReference, type SnapshotIdentity } from '../references';
 import { isSimplePlacementFootprint } from './footprint';
 import type {
 	SceneBoxDimensions,
 	SceneCylinderDimensions,
-	SceneDocument,
 	SceneEntity,
 	ScenePrimitiveEntity,
 	SceneSphereDimensions,
 	Vec3
 } from '../scene';
+import type { CameraFreeSceneDocument as SceneDocument } from '../units/types';
 import { framePointToWorld, frameYawToWorld, isFinitePlacementFrame } from './frame';
 import type { LocalInputFrame, NormalizedPlacementDefinition } from './types';
 
@@ -229,7 +229,7 @@ export function preparePlaceObjectCandidate(input: PlaceObjectInput): PlaceObjec
 	const scene: SceneDocument = { ...input.document, entities: [...input.document.entities, entity] };
 	// Validate through the landed codec, but keep the structural candidate: the
 	// canonicalizer must never rebuild or normalize unrelated Camera fields.
-	const validation = validateSceneDocument(scene);
+	const validation = validateCameraFreeScenePayload(scene);
 	if (!validation.success) {
 		return refuse('invalid-value', 'The prepared Scene fails current-format validation.',
 			validation.issues.map(issue => `${issue.path}: ${issue.code}`));

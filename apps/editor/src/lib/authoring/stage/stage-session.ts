@@ -439,7 +439,17 @@ type LegacySelectionOutcome = 'admitted' | 'cleared' | 'refused';
 			// Explicit identity requalification within this source; replacement clears tasks.
 			let target = task.target;
 			if (target) {
-				target = { ...target, revision: { kind: 'exact', contentRevision: current.sourceContentId } };
+				// A subject reference names its owning unit's content revision. The
+				// envelope digest would name content no domain resolver holds.
+				target = {
+					...target,
+					revision: {
+						kind: 'exact',
+						contentRevision:
+							current.domain.unitRevisions[target.domain as keyof typeof current.domain.unitRevisions] ??
+							current.sourceContentId
+					}
+				};
 				const resolved = resolveReference(target, current.domain.references);
 				if (resolved.kind !== 'resolved') return { kind: 'refused', code: resolved.code, message: `${resolved.message} Choose another target or close this task.` };
 			}

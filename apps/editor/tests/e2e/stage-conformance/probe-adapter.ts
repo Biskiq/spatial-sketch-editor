@@ -1,9 +1,11 @@
-import { currentStageSource, currentStagePlanner } from '$lib/authoring/stage/current-stage-source';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 /** TEST-ONLY sentinel: STAGE_BROWSER_CONFORMANCE_WRITER. No production import. */
 import { planExactWallHeight } from '@portfolio/layout-core';
-import { CURRENT_SOURCE_KIND, CURRENT_SOURCE_VERSION, resolveReference, type DomainPlanner,
-	type ProjectDocument, type AuthoringIntent, type ScenePrimitiveEntity,
+import { resolveReference, type DomainPlanner,
+	type AuthoringIntent, type ScenePrimitiveEntity,
 	type SemanticReference } from '@portfolio/project-model';
+import { replaceUnitData, UNIT_SOURCE_KIND, UNIT_SOURCE_VERSION,
+	type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { StageAdapterFactory, StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
 import type { StageReadSnapshot } from '$lib/authoring/stage/accepted-read';
 import type { StageTask, TaskResumeOutcome } from '$lib/authoring/stage/stage-session';
@@ -22,21 +24,23 @@ function sceneReference(contentRevision: string, entityId: string): SemanticRefe
 		componentId: null, capabilityId: null };
 }
 
-const planner: DomainPlanner<ProjectDocument> = {
+const planner: DomainPlanner<ProjectEnvelope> = {
 	id: KIND, kind: KIND,
 	admission: { domain: 'layout', compound: false, units: false, resources: false },
-	sourceKinds: [CURRENT_SOURCE_KIND], sourceVersions: [CURRENT_SOURCE_VERSION],
+	sourceKinds: [UNIT_SOURCE_KIND], sourceVersions: [UNIT_SOURCE_VERSION],
 	prepare({ snapshot, intent }) {
-		const wall = snapshot.domain.source.layout.walls[0];
+		const project = snapshot.domain.source;
+		const layout = project.units.layout.data;
+		const wall = layout.walls[0];
 		if (!wall) return { kind: 'rejected', code: 'missing-wall', message: 'Starter wall required', diagnostics: [] };
-		const plan = planExactWallHeight(snapshot.domain.source.layout, wall.id, wall.height + 1);
+		const plan = planExactWallHeight(layout, wall.id, wall.height + 1);
 		if (plan.kind === 'rejected') return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
 		const reference = { version: 1 as const, domain: 'layout' as const, subject: { kind: 'wall', id: wall.id },
-			revision: { kind: 'exact' as const, contentRevision: snapshot.sourceContentId },
-			instancePath: [], location: { kind: 'layout-location' as const, levelId: snapshot.domain.source.layout.floor.id, structureInstancePath: [] }, componentId: null, capabilityId: null };
+			revision: { kind: 'exact' as const, contentRevision: project.units.layout.header.contentRevision },
+			instancePath: [], location: { kind: 'layout-location' as const, levelId: layout.floor.id, structureInstancePath: [] }, componentId: null, capabilityId: null };
 		return { kind: 'prepared', candidate: { operationId: intent.operationId,
-			sourceKind: CURRENT_SOURCE_KIND, sourceVersion: CURRENT_SOURCE_VERSION,
-			source: { ...snapshot.domain.source, layout: plan.document },
+			sourceKind: UNIT_SOURCE_KIND, sourceVersion: UNIT_SOURCE_VERSION,
+			source: replaceUnitData(project, 'layout', plan.document),
 			changes: [{ kind: KIND, subjectIds: [wall.id], fields: ['height'] }],
 			correspondence: [{ relation: 'preserved', before: reference, after: reference }], diagnostics: [] } };
 	}
@@ -50,13 +54,14 @@ const planner: DomainPlanner<ProjectDocument> = {
  * through the same accepted path every production edit will take. Entity-level
  * only — Layout bytes and Camera-bearing navigation data are carried over.
  */
-const createEntityPlanner: DomainPlanner<ProjectDocument> = {
+const createEntityPlanner: DomainPlanner<ProjectEnvelope> = {
 	id: SCENE_CREATE_KIND, kind: SCENE_CREATE_KIND,
 	admission: { domain: 'scene', compound: false, units: false, resources: false },
-	sourceKinds: [CURRENT_SOURCE_KIND], sourceVersions: [CURRENT_SOURCE_VERSION],
+	sourceKinds: [UNIT_SOURCE_KIND], sourceVersions: [UNIT_SOURCE_VERSION],
 	prepare({ snapshot, intent }) {
 		const project = snapshot.domain.source;
-		if (project.scene.entities.some((entity) => entity.id === ENTITY_ID)) {
+		const scene = project.units.scene.data;
+		if (scene.entities.some((entity) => entity.id === ENTITY_ID)) {
 			return { kind: 'rejected', code: 'entity-exists', message: `Scene entity "${ENTITY_ID}" already exists`, diagnostics: [] };
 		}
 		const entity: ScenePrimitiveEntity = {
@@ -65,31 +70,32 @@ const createEntityPlanner: DomainPlanner<ProjectDocument> = {
 			castShadow: false, receiveShadow: false, position: [3.5, 0.5, -1], rotation: [0, 0, 0]
 		};
 		return { kind: 'prepared', candidate: { operationId: intent.operationId,
-			sourceKind: CURRENT_SOURCE_KIND, sourceVersion: CURRENT_SOURCE_VERSION,
-			source: { ...project, scene: { ...project.scene, entities: [...project.scene.entities, entity] } },
+			sourceKind: UNIT_SOURCE_KIND, sourceVersion: UNIT_SOURCE_VERSION,
+			source: replaceUnitData(project, 'scene', { ...scene, entities: [...scene.entities, entity] }),
 			changes: [{ kind: 'scene-entity-create', subjectIds: [ENTITY_ID], fields: ['entities'] }],
-			correspondence: [{ relation: 'created', before: null, after: sceneReference(snapshot.sourceContentId, ENTITY_ID) }], diagnostics: [] } };
+			correspondence: [{ relation: 'created', before: null, after: sceneReference(project.units.scene.header.contentRevision, ENTITY_ID) }], diagnostics: [] } };
 	}
 };
 
 /** Toggle one boolean Scene scalar on the created entity, correspondence preserved. */
-const shadowPlanner: DomainPlanner<ProjectDocument> = {
+const shadowPlanner: DomainPlanner<ProjectEnvelope> = {
 	id: SCENE_SHADOW_KIND, kind: SCENE_SHADOW_KIND,
 	admission: { domain: 'scene', compound: false, units: false, resources: false },
-	sourceKinds: [CURRENT_SOURCE_KIND], sourceVersions: [CURRENT_SOURCE_VERSION],
+	sourceKinds: [UNIT_SOURCE_KIND], sourceVersions: [UNIT_SOURCE_VERSION],
 	prepare({ snapshot, intent }) {
 		const project = snapshot.domain.source;
-		const index = project.scene.entities.findIndex((entity) => entity.id === ENTITY_ID);
-		const entity = index < 0 ? undefined : project.scene.entities[index];
+		const scene = project.units.scene.data;
+		const index = scene.entities.findIndex((entity) => entity.id === ENTITY_ID);
+		const entity = index < 0 ? undefined : scene.entities[index];
 		if (entity === undefined || entity.kind !== 'primitive') {
 			return { kind: 'rejected', code: 'missing-entity', message: `Scene entity "${ENTITY_ID}" must exist and be a primitive`, diagnostics: [] };
 		}
-		const entities = [...project.scene.entities];
+		const entities = [...scene.entities];
 		entities[index] = { ...entity, receiveShadow: !entity.receiveShadow };
-		const reference = sceneReference(snapshot.sourceContentId, ENTITY_ID);
+		const reference = sceneReference(project.units.scene.header.contentRevision, ENTITY_ID);
 		return { kind: 'prepared', candidate: { operationId: intent.operationId,
-			sourceKind: CURRENT_SOURCE_KIND, sourceVersion: CURRENT_SOURCE_VERSION,
-			source: { ...project, scene: { ...project.scene, entities } },
+			sourceKind: UNIT_SOURCE_KIND, sourceVersion: UNIT_SOURCE_VERSION,
+			source: replaceUnitData(project, 'scene', { ...scene, entities }),
 			changes: [{ kind: 'scene-entity-scalar', subjectIds: [ENTITY_ID], fields: ['receiveShadow'] }],
 			correspondence: [{ relation: 'preserved', before: reference, after: reference }], diagnostics: [] } };
 	}
@@ -101,47 +107,50 @@ function target(contentRevision: string): SemanticReference {
 
 export function heightIntent({ stage, authoring }: StageAdapterServices): AuthoringIntent {
 	const snapshot = stage.snapshot();
-	const wall = currentStageSource(snapshot).source.layout.walls[0]!;
+	const layout = stageEnvelope(snapshot).units.layout.data;
+	const wall = layout.walls[0]!;
 	return { version: 1, kind: KIND, operationId: crypto.randomUUID(), expectedRevision: authoring.acceptedRevision(),
 		targets: [{ version: 1, domain: 'layout', subject: { kind: 'wall', id: wall.id },
-			revision: { kind: 'exact', contentRevision: snapshot.sourceContentId },
-			instancePath: [], location: { kind: 'layout-location', levelId: currentStageSource(snapshot).source.layout.floor.id, structureInstancePath: [] }, componentId: null, capabilityId: null }],
+			revision: { kind: 'exact', contentRevision: snapshot.domain.unitRevisions.layout },
+			instancePath: [], location: { kind: 'layout-location', levelId: layout.floor.id, structureInstancePath: [] }, componentId: null, capabilityId: null }],
 		payload: {}, capturedInputs: [], allocatedIds: [] };
 }
 
 export function sceneCreateIntent({ stage, authoring }: StageAdapterServices): AuthoringIntent {
 	const snapshot = stage.snapshot();
 	return { version: 1, kind: SCENE_CREATE_KIND, operationId: crypto.randomUUID(),
-		expectedRevision: authoring.acceptedRevision(), targets: [target(snapshot.sourceContentId)],
+		expectedRevision: authoring.acceptedRevision(), targets: [target(snapshot.domain.unitRevisions.scene)],
 		payload: {}, capturedInputs: [], allocatedIds: [] };
 }
 
 export function sceneShadowIntent({ stage, authoring }: StageAdapterServices): AuthoringIntent {
 	const snapshot = stage.snapshot();
 	return { version: 1, kind: SCENE_SHADOW_KIND, operationId: crypto.randomUUID(),
-		expectedRevision: authoring.acceptedRevision(), targets: [target(snapshot.sourceContentId)],
+		expectedRevision: authoring.acceptedRevision(), targets: [target(snapshot.domain.unitRevisions.scene)],
 		payload: {}, capturedInputs: [], allocatedIds: [] };
 }
 
 /** Select the created entity through the public ordered/primary selection port. */
 export function selectSceneEntity({ stage }: StageAdapterServices): string {
 	const snapshot = stage.snapshot();
-	const reference = target(snapshot.sourceContentId);
+	const reference = target(snapshot.domain.unitRevisions.scene);
 	const result = stage.setSelection({ ordered: [{ reference }], primary: reference });
 	return result.kind === 'selected' ? 'selected' : `${result.kind}:${result.code}`;
 }
 
 export const createAdapter: StageAdapterFactory = (services) => {
-	for (const registered of [currentStagePlanner(planner), currentStagePlanner(createEntityPlanner), currentStagePlanner(shadowPlanner)]) {
+	for (const registered of [planner, createEntityPlanner, shadowPlanner]) {
 		if (services.authoring.registerPlanner(registered).kind !== 'registered') throw new Error('conformance planner refused');
 	}
 	return {
 		id: 'stage-browser-conformance', requiredCapabilities: ['stage-instrument-v1'],
 		bind({ snapshot }) {
-			const source = currentStageSource(snapshot).source;
-			const wall = source.layout.walls[0];
-			const entity = source.scene.entities.find((candidate) => candidate.id === ENTITY_ID);
-			const reference = entity ? target(snapshot.sourceContentId) : null;
+			const source = stageEnvelope(snapshot);
+			const layout = source.units.layout.data;
+			const scene = source.units.scene.data;
+			const wall = layout.walls[0];
+			const entity = scene.entities.find((candidate) => candidate.id === ENTITY_ID);
+			const reference = entity ? target(snapshot.domain.unitRevisions.scene) : null;
 			publishProbe({ entityId: entity?.id ?? null, receiveShadow: entity?.kind === 'primitive' ? entity.receiveShadow : null });
 			return {
 				tasks: [

@@ -32,8 +32,7 @@ import {
 	compareReferences,
 	createCameraOutputState,
 	createChannelHost,
-	createCurrentDomainResolverHost,
-	createEmptyWallFirstProject,
+	createEmptyWallFirstLayoutDocument,
 	declaredProperty,
 	familyProblems,
 	negotiateChannelContribution,
@@ -56,22 +55,41 @@ import {
 	type ChannelPropertyScope,
 	type ChannelState,
 	type DependencyLockReader,
-	type ProjectDocument,
 	type SemanticReference,
 	type SnapshotIdentity
 } from '@portfolio/project-model';
+import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 
-const CONTENT = 'sha256-source-7';
+/** A real F.2 envelope with one authored floor and one Camera view. */
+const DOCUMENT = await createUnitProject({
+	id: 'project-1',
+	name: 'Fixture',
+	layout: (() => {
+		const layout = createEmptyWallFirstLayoutDocument();
+		layout.floor = { id: 'floor-2', name: 'First floor', elevation: 3 };
+		layout.junctions = [
+			{ id: 'junction-1', point: [0, 0] },
+			{ id: 'junction-2', point: [5, 0] },
+			{ id: 'junction-3', point: [5, 4] }
+		];
+		layout.walls = [
+			{ id: 'wall-1', startJunctionId: 'junction-1', endJunctionId: 'junction-2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'wall-2', startJunctionId: 'junction-2', endJunctionId: 'junction-3', role: 'partition', thickness: 0.1, height: 3, centerline: { kind: 'line' } }
+		];
+		return layout;
+	})(),
+	camera: {
+		formatVersion: 1,
+		views: [{ id: 'view-1', label: 'Entry', eye: [0, 1.6, 2], target: [0, 1.4, 0], fov: 54, connectedViewIds: [] }],
+		connections: []
+	}
+});
+
+/** The owning unit revision every exact owner reference names. */
+const CONTENT = DOCUMENT.units.layout.header.contentRevision;
+const CAMERA_CONTENT = DOCUMENT.units.camera.header.contentRevision;
 const SNAPSHOT: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-7' }, sourceContentId: CONTENT };
-
-/** A current project: the canonical boot with one authored floor and two walls. */
-function currentDocument(): ProjectDocument {
-	const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Fixture' });
-	project.layout.floor = { id: 'floor-2', name: 'First floor', elevation: 3 };
-	return project;
-}
-
-const DOCUMENT = currentDocument();
 
 type ContextOptions = {
 	snapshot?: SnapshotIdentity;
@@ -80,19 +98,20 @@ type ContextOptions = {
 	outputs?: readonly CameraOutputState[];
 };
 
-/** The F.1 read context over the current document, plus the live Camera outputs. */
+/** The F.1 read context over the envelope, plus the live Camera outputs. */
 function context(options: ContextOptions = {}): ChannelEvaluationContext {
 	const snapshot = options.snapshot ?? SNAPSHOT;
-	const host = createCurrentDomainResolverHost(DOCUMENT, snapshot);
 	return {
 		read: {
-			snapshot,
-			sessionEpoch: 'session-1',
-			generationId: options.generationId === undefined ? 'generation-3' : options.generationId,
-			supportedExtensions: [],
-			lock: options.lock ?? null,
-			resolvers: host.resolvers,
-			frameResolvers: host.frameResolvers
+			...createUnitReadContext({
+				envelope: DOCUMENT,
+				acceptedRevision: snapshot.acceptedRevision,
+				sourceContentId: snapshot.sourceContentId,
+				sessionEpoch: 'session-1',
+				generationId: options.generationId === undefined ? 'generation-3' : options.generationId,
+				lock: options.lock ?? null
+			}),
+			snapshot
 		},
 		cameraOutputs: options.outputs ?? []
 	};
@@ -116,11 +135,12 @@ function levelReference(overrides: Partial<SemanticReference> = {}): SemanticRef
 	};
 }
 
-/** The project's Camera authority root: the owner of a session output's values. */
+/** The Camera unit's one view: the owner of a session output's values. */
 const CAMERA_ROOT: SemanticReference = {
 	...levelReference(),
 	domain: 'camera',
-	subject: { kind: 'camera', id: 'project-1' }
+	revision: { kind: 'exact', contentRevision: CAMERA_CONTENT },
+	subject: { kind: 'view', id: 'view-1' }
 };
 
 function address(propertyId: string, overrides: Partial<ChannelAddress> = {}): ChannelAddress {
@@ -503,14 +523,15 @@ describe('F.3 inspection-v1 — exclusive ownership, replacement and cleanup', (
 				value: number(1.2),
 				invocationId,
 				runEpoch,
-				address: address('cut-height', { ownerReference: levelReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-8' } }) }),
+				address: address('cut-height', { ownerReference: levelReference({ revision: { kind: 'exact', contentRevision: CONTENT } }) }),
 				computedFrom: { contentRevision: 'sha256-source-8', generationId: 'generation-3' }
 			});
 		// The same run re-offers its re-evaluated value under the new content.
 		const reEvaluated = accepted(negotiate(x.state, fresh('x', 4), next));
 		expect([reEvaluated.expired.length, reEvaluated.replaced.length]).toEqual([1, 0]);
-		// A contribution computed from superseded content or generation is refused outright.
-		expect(reason(negotiate(EMPTY_CHANNEL_STATE, fresh('y', 1)))).toBe('unresolved-owner-reference');
+		// A contribution computed from superseded content or generation is refused
+		// outright; the content check runs before owner qualification.
+		expect(reason(negotiate(EMPTY_CHANNEL_STATE, fresh('y', 1)))).toBe('stale-contribution');
 		expect(
 			reason(negotiate(EMPTY_CHANNEL_STATE, contribution({ propertyId: 'cut-height', value: number(1.2), computedFrom: { contentRevision: CONTENT, generationId: 'generation-2' } })))
 		).toBe('stale-contribution');
@@ -520,7 +541,7 @@ describe('F.3 inspection-v1 — exclusive ownership, replacement and cleanup', (
 	it('distinguishes expiry (re-evaluation permitted) from withdrawal (run retired), even after a prune', () => {
 		const edited: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-8' }, sourceContentId: 'sha256-source-8' };
 		const next = context({ snapshot: edited });
-		const nextOwner = levelReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-8' } });
+		const nextOwner = levelReference({ revision: { kind: 'exact', contentRevision: CONTENT } });
 		for (const [propertyId, value] of [
 			['cut-height', number(1.2)],
 			['reveal', walls('wall-1')]
@@ -626,7 +647,7 @@ describe('F.3 inspection-v1 — Reveal union contributions', () => {
 		const both = accepted(negotiate(x.state, reveal('y', 1, ['wall-2'])));
 		const edited: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-8' }, sourceContentId: 'sha256-source-8' };
 		const next = context({ snapshot: edited });
-		const nextOwner = levelReference({ revision: { kind: 'exact', contentRevision: 'sha256-source-8' } });
+		const nextOwner = levelReference({ revision: { kind: 'exact', contentRevision: CONTENT } });
 		const yAgain = accepted(
 			negotiateChannelContribution(
 				HOST,

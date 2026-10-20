@@ -35,12 +35,13 @@ import {
 	type SceneOperationContext,
 	type SceneOperationResult
 } from '@portfolio/project-model';
-import type { AuthoringIntent, ProjectDocument, SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
+import type { CameraFreeSceneDocument, LayoutUnitPayload } from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 import type { GestureAcquisition } from '$lib/authoring/stage/stage-session';
 import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageLayout, stageScene, stageUnitRevision } from '$lib/authoring/stage/unit-stage-source';
 
 import {
 	nativePlacementContactMinY,
@@ -65,7 +66,11 @@ export type SceneWritePort = {
 export type SceneEditingSnapshot = {
 	readonly projectId: string;
 	readonly contentRevision: string;
-	readonly source: ProjectDocument;
+	/** The two unit payloads a Scene operation may read; Layout is read-only. */
+	readonly source: {
+		readonly layout: LayoutUnitPayload;
+		readonly scene: CameraFreeSceneDocument;
+	};
 	readonly compileGeneration: string;
 	readonly evaluationId: string;
 	/**
@@ -409,7 +414,11 @@ export function createSceneSession(input: {
 	}
 
 	function context(): SceneOperationContext {
-		return { project: input.snapshot.source, sourceContentId: input.snapshot.contentRevision };
+		return {
+			layout: input.snapshot.source.layout,
+			scene: input.snapshot.source.scene,
+			sourceContentId: input.snapshot.contentRevision
+		};
 	}
 
 	function entityOf(id: string): SceneEntity | null {
@@ -1059,11 +1068,11 @@ export function sceneSessionFromServices(input: {
 	readonly evaluationId: string;
 }): ScenePlacementSession {
 	const snapshot = input.services.stage.snapshot();
-	const source = currentStageSource(snapshot).source;
+	const source = { layout: stageLayout(snapshot), scene: stageScene(snapshot) };
 	return createSceneSession({
 		snapshot: {
 			projectId: snapshot.acceptedRevision.projectId,
-			contentRevision: snapshot.sourceContentId,
+			contentRevision: stageUnitRevision(snapshot, 'scene'),
 			source,
 			compileGeneration: snapshot.compileGeneration,
 			evaluationId: input.evaluationId,

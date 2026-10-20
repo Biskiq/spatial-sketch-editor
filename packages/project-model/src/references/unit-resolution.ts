@@ -31,6 +31,7 @@ import type { DependencyLock, ProjectEnvelope } from '../units/types';
 import type {
 	AcceptedRevision,
 	DependencyLockReader,
+	ReferenceLocation,
 	ReferenceReadContext,
 	ReferenceFailureCode,
 	ReferenceRepairAction,
@@ -99,6 +100,8 @@ type UnitSubject = {
 	revision: string | null;
 	repair?: string;
 	failure?: Exclude<ReferenceFailureCode, 'incompatible'>;
+	/** The subject's canonical location; project-root when absent. */
+	location?: ReferenceLocation;
 };
 
 function scoped(subjects: readonly UnitSubject[], reference: SemanticReference, contentRevision: string): ReferenceResolverOutcome {
@@ -143,7 +146,75 @@ function scoped(subjects: readonly UnitSubject[], reference: SemanticReference, 
 	if (contentRevision !== found.revision) {
 		return { kind: 'repair-required', message: 'the reference revision names content this unit does not hold', repairs: REACQUIRE };
 	}
-	return { kind: 'resolved', contentRevision: found.revision, location: { kind: 'project-root' } };
+	return { kind: 'resolved', contentRevision: found.revision, location: found.location ?? { kind: 'project-root' } };
+}
+
+/**
+ * The F.2 Layout subject scope.
+ *
+ * Layout keeps the landed canonical location: the one authored Floor is the
+ * level, every other subject lives on that level with an empty structure path,
+ * and `project-root` is an equally valid qualification of the same subject. A
+ * different level, a structure instance path, a component or a capability is a
+ * qualification this unit cannot author and is reported as missing.
+ */
+function layoutScoped(
+	subjects: readonly UnitSubject[],
+	reference: SemanticReference,
+	contentRevision: string,
+	levelId: string
+): ReferenceResolverOutcome {
+	if (reference.componentId !== null || reference.capabilityId !== null) {
+		return { kind: 'missing', message: 'this unit authors no such component or capability', repairs: REACQUIRE };
+	}
+	if (reference.location.kind === 'layout-location') {
+		if (reference.location.levelId !== levelId) {
+			return { kind: 'missing', message: `the Layout unit authors level "${levelId}" and no level "${reference.location.levelId}"`, repairs: REACQUIRE };
+		}
+		if (reference.location.structureInstancePath.length > 0) {
+			return { kind: 'missing', message: 'the Layout unit authors no structure instances', repairs: REACQUIRE };
+		}
+	}
+	if (reference.instancePath.length > 0) {
+		return { kind: 'missing', message: 'the Layout unit authors no nested instances', repairs: REACQUIRE };
+	}
+	const found = subjects.find(
+		(subject) => subject.kind === reference.subject.kind && subject.id === reference.subject.id
+	);
+	if (found === undefined) {
+		return { kind: 'missing', message: `the Layout unit has no ${reference.subject.kind} "${reference.subject.id}"`, repairs: REACQUIRE };
+	}
+	if (found.revision === null || found.repair !== undefined) {
+		return {
+			kind: found.failure ?? 'repair-required',
+			message: found.repair ?? `${reference.subject.kind} "${reference.subject.id}" has no resolved content revision`,
+			repairs: REACQUIRE
+		};
+	}
+	if (contentRevision !== found.revision) {
+		return { kind: 'repair-required', message: 'the reference revision names content this unit does not hold', repairs: REACQUIRE };
+	}
+	return { kind: 'resolved', contentRevision: found.revision, location: found.location ?? { kind: 'project-root' } };
+}
+
+/**
+ * A supplied lock may only answer for the envelope it was admitted for. The
+ * landed layer compares the lock against the reference's project; a unit reader
+ * additionally knows the project whose source it holds, so a lock for another
+ * project is `missing` even when the reference names that same project — there is
+ * no source here to resolve that identity against.
+ */
+function foreignLock(
+	request: { readonly context: ReferenceReadContext },
+	envelope: ProjectEnvelope
+): ReferenceResolverOutcome | null {
+	const lock = request.context.lock;
+	if (lock === null || lock.projectId === envelope.id) return null;
+	return {
+		kind: 'missing',
+		message: `the supplied dependency lock belongs to project "${lock.projectId}"`,
+		repairs: REACQUIRE
+	};
 }
 
 function resolver(
@@ -160,6 +231,8 @@ function resolver(
 		owner: domain,
 		resolve: (reference, request) => {
 			const accepted = request.context.snapshot.acceptedRevision;
+			const foreign = foreignLock(request, envelope);
+			if (foreign !== null) return foreign;
 			// Project identity binds the context to this envelope. The revision ids are
 			// deliberately not compared: an F.2 envelope keeps the **baseline** revision
 			// it was prepared from (history restoration is byte-exact), while
@@ -191,9 +264,54 @@ function resolver(
  * binding exists and needs repair.
  */
 export function createUnitSubjectResolvers(envelope: ProjectEnvelope): ReferenceResolver[] {
+	const layoutRevision = envelope.units.layout.header.contentRevision;
+	const sceneRevision = envelope.units.scene.header.contentRevision;
 	const cameraRevision = envelope.units.camera.header.contentRevision;
 	const experienceRevision = envelope.units.experience.header.contentRevision;
+	const layout = envelope.units.layout.data;
+	const levelId = layout.floor.id;
+	const layoutLocation: ReferenceLocation = { kind: 'layout-location', levelId, structureInstancePath: [] };
 	const resolvers: ReferenceResolver[] = [
+		{
+			id: 'unit.layout@1',
+			domain: 'layout',
+			subjectKinds: ['level', 'room', 'wall', 'opening', 'junction', 'object'],
+			owner: 'layout',
+			resolve(reference, request) {
+				const accepted = request.context.snapshot.acceptedRevision;
+				const foreign = foreignLock(request, envelope);
+				if (foreign !== null) return foreign;
+				if (envelope.acceptedRevision.projectId !== envelope.id || accepted.projectId !== envelope.id) {
+					return { kind: 'repair-required', message: 'the resolver and read context must name the same accepted project', repairs: REACQUIRE };
+				}
+				return layoutScoped(
+					[
+						{ kind: 'level', id: levelId, instancePath: [], revision: layoutRevision },
+						...layout.rooms.map((room) => ({ kind: 'room', id: room.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
+						...layout.walls.map((wall) => ({ kind: 'wall', id: wall.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
+						...layout.openings.map((opening) => ({ kind: 'opening', id: opening.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
+						...layout.junctions.map((junction) => ({ kind: 'junction', id: junction.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation })),
+						...layout.objects.map((object) => ({ kind: 'object', id: object.id, instancePath: [] as readonly string[], revision: layoutRevision, location: layoutLocation }))
+					],
+					reference,
+					request.contentRevision,
+					levelId
+				);
+			}
+		},
+		resolver(
+			'unit.scene@1',
+			'scene',
+			['scene', 'entity', 'cluster', 'material', 'texture'],
+			[
+				{ kind: 'scene', id: envelope.id, instancePath: [], revision: sceneRevision },
+				...envelope.units.scene.data.entities.map((entity) => ({ kind: 'entity', id: entity.id, instancePath: [] as readonly string[], revision: sceneRevision })),
+				...(envelope.units.scene.data.clusters ?? []).map((cluster) => ({ kind: 'cluster', id: cluster.id, instancePath: [] as readonly string[], revision: sceneRevision })),
+				...envelope.units.scene.data.materials.map((material) => ({ kind: 'material', id: material.id, instancePath: [] as readonly string[], revision: sceneRevision })),
+				...envelope.units.scene.data.textures.map((texture) => ({ kind: 'texture', id: texture.id, instancePath: [] as readonly string[], revision: sceneRevision }))
+			],
+			envelope
+		),
 		resolver(
 			'unit.camera@1',
 			'camera',

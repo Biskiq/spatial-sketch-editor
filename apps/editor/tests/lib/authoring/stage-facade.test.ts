@@ -26,7 +26,8 @@ import {
 	planWallChain,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import { createEmptyWorldLocalSceneDocument, type ProjectDocument } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import {
 	admitSource,
 	type AdmissionContext,
@@ -44,7 +45,7 @@ const PROJECT_ID = 'project-stage-facade';
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
 /** A real closed enclosure through the retained chain planner: no literal topology. */
-function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID): ProjectDocument {
+async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID): Promise<ProjectEnvelope> {
 	const plan = planWallChain({
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
@@ -52,19 +53,15 @@ function enclosureProject(points: readonly LayoutVec2[], id: string = PROJECT_ID
 		role: 'boundary'
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
-	return {
-		id,
-		name: 'Stage facade project',
-		layout: plan.document,
-		scene: createEmptyWorldLocalSceneDocument()
-	};
+	return createUnitProject({ id, name: 'Stage facade project', layout: plan.document });
 }
 
 /** The enclosure with one door opening, so its first Wall has two solid spans. */
-function enclosureWithDoor(): ProjectDocument {
-	const base = enclosureProject(STARTER_ENCLOSURE_POINTS);
-	const wallId = base.layout.walls[0]!.id;
-	const door = planCreateWallFirstOpening(base.layout, {
+async function enclosureWithDoor(): Promise<ProjectEnvelope> {
+	const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
+	const baseLayout = base.units.layout.data;
+	const wallId = baseLayout.walls[0]!.id;
+	const door = planCreateWallFirstOpening(baseLayout, {
 		wallId,
 		kind: 'door',
 		offset: 0.5,
@@ -73,7 +70,7 @@ function enclosureWithDoor(): ProjectDocument {
 		sillHeight: 0
 	});
 	if (door.kind !== 'success') throw new Error(`the door fixture no longer plans: ${door.rejection.code}`);
-	return { ...base, layout: door.document };
+	return createUnitProject({ id: base.id, name: base.name, layout: door.document });
 }
 
 let revisionCounter = 0;
@@ -95,9 +92,10 @@ type Mounted = {
 };
 
 /** The host's own mount order: admit, replace the session, then create the facade. */
-async function mount(document: ProjectDocument = enclosureProject(STARTER_ENCLOSURE_POINTS)): Promise<Mounted> {
-	const context = admissionContext(document.id);
-	const admitted = await admitSource(document, context);
+async function mount(document?: ProjectEnvelope): Promise<Mounted> {
+	const source = document ?? (await enclosureProject(STARTER_ENCLOSURE_POINTS));
+	const context = admissionContext(source.id);
+	const admitted = await admitSource(source, context);
 	if (admitted.kind !== 'admitted') throw new Error(`the fixture source was not admitted: ${admitted.kind}`);
 	const session = createStageSession({ sessionEpoch: context.sessionEpoch });
 	session.replace(admitted.snapshot);
@@ -692,7 +690,7 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 	});
 
 	it('picks only the span its own fragment names, on a Wall split by an Opening', async () => {
-		const document = enclosureWithDoor();
+		const document = await enclosureWithDoor();
 		const { facade } = await mount(document);
 		facade.acquireInspection('exclusive');
 		const bounds = facade.snapshot().domain.geometry.bounds;

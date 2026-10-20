@@ -8,18 +8,11 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import {
-	admitCurrentSource,
-	createCurrentSourceAdapter,
-	type AcceptedRevision,
-	type ProjectDocument
-} from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import type { SaveRequest } from '@portfolio/project-model/save';
 
-import {
-	createAcceptanceCoordinator,
-	type AcceptanceCoordinator
-} from '$lib/authoring/f4';
+import { type AcceptanceCoordinator } from '$lib/authoring/f4';
 import {
 	createSaveState,
 	type SaveCoordinatorPort,
@@ -29,13 +22,13 @@ import {
 } from '$lib/authoring/save';
 
 import {
-	HOST_SCENE_OPTIONS,
 	PROOF_LAYOUT_TRANSFORM_KIND,
 	buildCurrentSourceFixture,
 	createProofLayoutPlanner,
 	layoutObjectReference,
 	proofIntent
 } from './__fixtures__/f4-current-source-fixtures';
+import { admitUnitProject, createUnitCoordinator } from './__fixtures__/unit-envelope-fixtures';
 
 const TOKEN_ONE = 'saved-base:11111111-1111-4111-8111-111111111111';
 const TOKEN_TWO = 'saved-base:22222222-2222-4222-8222-222222222222';
@@ -50,17 +43,12 @@ function deferred<T>(): Deferred<T> {
 }
 
 async function boot(overrides: { baselineToken?: string | null; legacyTokenOnly?: boolean } = {}) {
-	const fixture = buildCurrentSourceFixture();
+	const fixture = await buildCurrentSourceFixture();
 	const revision: AcceptedRevision = { projectId: fixture.project.id, revisionId: 'revision-1' };
-	const admitted = await admitCurrentSource(fixture.project, {
-		acceptedRevision: revision,
-		scene: HOST_SCENE_OPTIONS
-	});
+	const admitted = await admitUnitProject(fixture.project, revision);
 	if (admitted.kind !== 'admitted') throw new Error('fixture was not admitted');
 
-	const coordinator = createAcceptanceCoordinator<ProjectDocument>({
-		adapter: createCurrentSourceAdapter({ scene: HOST_SCENE_OPTIONS }),
-		sessionEpoch: 'session-1',
+	const coordinator = await createUnitCoordinator({
 		baseline: {
 			revision,
 			source: admitted.project,
@@ -124,16 +112,17 @@ function acknowledgement(request: SaveRequest, token = TOKEN_TWO): SaveTransport
 	};
 }
 
-async function acceptEdit(coordinator: AcceptanceCoordinator<ProjectDocument>, fixture: ReturnType<typeof buildCurrentSourceFixture>) {
+async function acceptEdit(coordinator: AcceptanceCoordinator<ProjectEnvelope>, fixture: Awaited<ReturnType<typeof buildCurrentSourceFixture>>) {
 	const current = coordinator.current();
+	const contentRevision = current.source.units.layout.header.contentRevision;
 	const result = await coordinator.accept(
 		proofIntent({
 			kind: PROOF_LAYOUT_TRANSFORM_KIND,
 			operationId: 'editor-edit-1',
 			expectedRevision: current.revision.revisionId,
 			projectId: current.revision.projectId,
-			contentRevision: current.sourceContentId,
-			targets: [layoutObjectReference(current.sourceContentId, fixture.objectId)],
+			contentRevision,
+			targets: [layoutObjectReference(contentRevision, fixture.objectId)],
 			payload: { objectId: fixture.objectId, position: [2, 0.5, 0] }
 		})
 	);
@@ -143,7 +132,7 @@ async function acceptEdit(coordinator: AcceptanceCoordinator<ProjectDocument>, f
 	return result;
 }
 
-function remoteProject(admitted: { project: ProjectDocument; sourceContentId: string }, revision: AcceptedRevision): SaveRemoteProject {
+function remoteProject(admitted: { project: ProjectEnvelope; sourceContentId: string }, revision: AcceptedRevision): SaveRemoteProject {
 	return {
 		projectId: revision.projectId,
 		document: admitted.project,
@@ -293,12 +282,9 @@ describe('framework-free Save state', () => {
 	});
 
 	it('compares full bytes, so a cursor-only divergence is dirty even with the same digest', async () => {
-		const fixture = buildCurrentSourceFixture();
+		const fixture = await buildCurrentSourceFixture();
 		const revision: AcceptedRevision = { projectId: fixture.project.id, revisionId: 'revision-1' };
-		const admitted = await admitCurrentSource(fixture.project, {
-			acceptedRevision: revision,
-			scene: HOST_SCENE_OPTIONS
-		});
+		const admitted = await admitUnitProject(fixture.project, revision);
 		if (admitted.kind !== 'admitted') throw new Error('fixture was not admitted');
 		const source = {
 			revision,

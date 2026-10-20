@@ -15,14 +15,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-	admitCurrentSource,
-	createEmptyWallFirstProject,
 	type AuthoringIntent,
-	type ProjectDocument,
+	type SceneDocument,
 	type SceneEntity,
 	type Vec3
 } from '@portfolio/project-model';
-import { planWallChain } from '@portfolio/layout-core';
+import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import type { ViewportEvaluation } from '@portfolio/camera-core';
 
 import {
@@ -36,7 +35,7 @@ import {
 	type ScenePlacementSession,
 	type SceneWritePort
 } from '$lib/authoring/adapters/scene/placement';
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageEnvelope, stageLayout, stageScene } from '$lib/authoring/stage/unit-stage-source';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
 import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
 import { createStageFacade } from '$lib/authoring/stage/stage-facade';
@@ -44,16 +43,16 @@ import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { buildCurrentSourceFixture, FIXTURE_ENTITY_ID, FIXTURE_PROJECT_ID } from './__fixtures__/f4-current-source-fixtures';
+import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const ENTITY_ID = 'entity-scene-box';
 const PROJECT_ID = 'project-scene-editing';
 const BASELINE: Vec3 = [2, 0.5, 2];
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 
-function supportedProject(entities: readonly SceneEntity[]): ProjectDocument {
-	const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Scene editing' });
+async function supportedProject(entities: readonly SceneEntity[]): Promise<ProjectEnvelope> {
 	const planned = planWallChain({
-		baseline: base.layout,
+		baseline: createEmptyWallFirstLayoutDocument(),
 		points: [
 			[0, 0],
 			[7, 0],
@@ -64,15 +63,14 @@ function supportedProject(entities: readonly SceneEntity[]): ProjectDocument {
 		role: 'boundary'
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
-	return {
-		...base,
+	return createUnitProject({
+		id: PROJECT_ID,
+		name: 'Scene editing',
 		layout: planned.document,
-		scene: {
-			...base.scene,
-			entities: [...entities]
-		}
-	};
+		scene: { formatVersion: 1, textures: [], materials: [], entities: [...entities], navigationNodes: [], connections: [] }
+	});
 }
+
 
 function boxEntity(id = ENTITY_ID, position: Vec3 = BASELINE): SceneEntity {
 	return {
@@ -137,17 +135,18 @@ async function sessionFor(
 	entities: readonly SceneEntity[],
 	port: TestPort = writePort()
 ): Promise<{ session: ScenePlacementSession; port: TestPort }> {
-	const project = supportedProject(entities);
-	const admitted = await admitCurrentSource(project, {
-		acceptedRevision: { projectId: PROJECT_ID, revisionId: 'revision-boot' }
+	const project = await supportedProject(entities);
+	const admitted = await admitUnitProject(project, {
+		projectId: PROJECT_ID,
+		revisionId: 'revision-boot'
 	});
 	if (admitted.kind !== 'admitted') throw new Error(`the Scene fixture was not admitted: ${admitted.kind}`);
 	let sequence = 0;
 	const session = createSceneSession({
 		snapshot: {
 			projectId: PROJECT_ID,
-			contentRevision: admitted.snapshot.sourceContentId,
-			source: admitted.snapshot.domain.source,
+			contentRevision: admitted.snapshot.domain.unitRevisions.scene,
+			source: { layout: stageLayout(admitted.snapshot), scene: stageScene(admitted.snapshot) },
 			compileGeneration: 'generation-1',
 			evaluationId: 'evaluation-1'
 		},
@@ -453,12 +452,13 @@ describe('Scene placement session', () => {
 describe('Scene adapter registration', () => {
 
 	async function mounted(
-		project = buildCurrentSourceFixture().project,
+		project?: ProjectEnvelope,
 		rect: typeof RECT = RECT
 	) {
-		const admitted = await admitSource(project, {
+		const source = project ?? (await buildCurrentSourceFixture()).project;
+		const admitted = await admitSource(source, {
 			sessionEpoch: 'session-scene-adapter',
-			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
+			acceptedRevision: { projectId: source.id, revisionId: 'revision-boot' }
 		});
 		if (admitted.kind !== 'admitted') throw new Error('the adapter fixture was not admitted');
 		const stageSession = createStageSession({ sessionEpoch: admitted.snapshot.sessionEpoch });
@@ -473,7 +473,7 @@ describe('Scene adapter registration', () => {
 			sessionEpoch: admitted.snapshot.sessionEpoch,
 			baseline: {
 				revision: admitted.snapshot.acceptedRevision,
-				source: project,
+				source,
 				canonicalJson: admitted.snapshot.canonicalJson,
 				sourceContentId: admitted.snapshot.sourceContentId
 			},
@@ -484,7 +484,10 @@ describe('Scene adapter registration', () => {
 
 	it('selects a Scene entity canonically without fabricating a Plan fragment', async () => {
 		const { facade } = await mounted();
-		const reference = sceneEntityReference(FIXTURE_ENTITY_ID, facade.snapshot().sourceContentId);
+		const reference = sceneEntityReference(
+			FIXTURE_ENTITY_ID,
+			facade.snapshot().domain.unitRevisions.scene
+		);
 		const selected = facade.setSelection({ ordered: [{ reference }], primary: reference });
 		expect(selected).toEqual({ kind: 'selected' });
 		expect(facade.selectionState()).toMatchObject({
@@ -498,7 +501,7 @@ describe('Scene adapter registration', () => {
 	async function withSceneSurface(
 		accept?: SceneWritePort['accept'],
 		taskId: 'scene-arrange' | 'scene-place' = 'scene-arrange',
-		project?: ProjectDocument,
+		project?: ProjectEnvelope,
 		rect: typeof RECT = RECT
 	) {
 		const { facade, host } = await mounted(project, rect);
@@ -510,8 +513,8 @@ describe('Scene adapter registration', () => {
 		const session = createSceneSession({
 			snapshot: {
 				projectId: snapshot.acceptedRevision.projectId,
-				contentRevision: snapshot.sourceContentId,
-				source: currentStageSource(snapshot).source,
+				contentRevision: snapshot.domain.unitRevisions.scene,
+				source: { layout: stageLayout(snapshot), scene: stageScene(snapshot) },
 				compileGeneration: snapshot.compileGeneration,
 				evaluationId
 			},
@@ -529,7 +532,7 @@ describe('Scene adapter registration', () => {
 		const evaluation = facade.evaluation();
 		if (evaluation === null) throw new Error('the adapter fixture has no evaluation');
 		publishSceneSurface(snapshot, { reading: sceneReadingKey(evaluation), session });
-		const reference = sceneEntityReference(FIXTURE_ENTITY_ID, snapshot.sourceContentId);
+		const reference = sceneEntityReference(FIXTURE_ENTITY_ID, snapshot.domain.unitRevisions.scene);
 		facade.setSelection({ ordered: [{ reference }], primary: reference });
 		facade.openContributedTask(taskId, 'scene');
 		return { facade, session, evaluationId, evaluation, intents, snapshot };
@@ -553,7 +556,7 @@ describe('Scene adapter registration', () => {
 
 	/** A mounted adapter over a real acceptance host, with the Place task open. */
 	async function acceptedPlaceSurface(beforeAccept?: () => Promise<void>) {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const admitted = await admitSource(project, {
 			sessionEpoch: 'session-scene-accepted',
 			acceptedRevision: { projectId: project.id, revisionId: 'revision-boot' }
@@ -619,7 +622,7 @@ describe('Scene adapter registration', () => {
 
 	it('moves from Stage-local pointer CSS through an offset viewport and commits the ghost pose', async () => {
 		const rect = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-arrange',
@@ -650,7 +653,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('keeps a typed candidate, its surface and its drawn pose across an ordinary re-evaluation', async () => {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-arrange',
@@ -692,7 +695,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('plans each exact entry from the pose the previous entry captured', async () => {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { session } = await withSceneSurface(undefined, 'scene-arrange', project);
 		expect(session.begin(FIXTURE_ENTITY_ID).kind).toBe('idle');
 
@@ -726,7 +729,7 @@ describe('Scene adapter registration', () => {
 			position: [5, 1.5, 3],
 			rotation: [0, 0, 0]
 		};
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2]), withScreen]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2]), withScreen]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-arrange',
@@ -757,7 +760,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('places from an armed pointer, selects the new entity and stays armed until Esc', async () => {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-place',
@@ -808,7 +811,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('releases the pose the press claimed even when the viewport is re-evaluated mid-press', async () => {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-place',
@@ -833,7 +836,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('does not install a pointer pose whose lease a reading change ended', async () => {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-place',
@@ -958,7 +961,7 @@ describe('Scene adapter registration', () => {
 		expect(installed.domain.scene.entities.some((entity) => entity.id === primary.subject.id)).toBe(true);
 		expect(primary.revision).toMatchObject({
 			kind: 'exact',
-			contentRevision: installed.sourceContentId
+			contentRevision: installed.domain.unitRevisions.scene
 		});
 	});
 
@@ -994,7 +997,7 @@ describe('Scene adapter registration', () => {
 	});
 
 	it('refuses a pointer Place whose datum hit is outside every compiled Room floor', async () => {
-		const project = supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
+		const project = await supportedProject([boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])]);
 		const { facade, session, evaluationId, intents } = await withSceneSurface(
 			undefined,
 			'scene-place',
@@ -1026,9 +1029,8 @@ describe('Scene adapter registration', () => {
 		// A Room whose far wall sits at a non-integer bound, so a snap step can move an
 		// interior pointer point past the floor. Support must be resolved at the snapped
 		// point commit will use, not the raw pointer point.
-		const base = createEmptyWallFirstProject({ id: PROJECT_ID, name: 'Snap floor' });
 		const planned = planWallChain({
-			baseline: base.layout,
+			baseline: createEmptyWallFirstLayoutDocument(),
 			points: [
 				[0, 0],
 				[6.9, 0],
@@ -1039,11 +1041,20 @@ describe('Scene adapter registration', () => {
 			role: 'boundary'
 		});
 		if (planned.kind !== 'success') throw new Error('the snap fixture was refused');
-		const project: ProjectDocument = {
-			...base,
-			layout: planned.document,
-			scene: { ...base.scene, entities: [boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])] }
+		const scene: SceneDocument = {
+			formatVersion: 1,
+			textures: [],
+			materials: [],
+			entities: [boxEntity(FIXTURE_ENTITY_ID, [2, 0.5, 2])],
+			navigationNodes: [],
+			connections: []
 		};
+		const project = await createUnitProject({
+			id: PROJECT_ID,
+			name: 'Snap floor',
+			layout: planned.document,
+			scene
+		});
 		const { facade, session, evaluationId } = await withSceneSurface(
 			undefined,
 			'scene-place',
@@ -1063,7 +1074,11 @@ describe('Scene adapter registration', () => {
 		const { facade, session, evaluationId, evaluation, snapshot } = await withSceneSurface();
 		// A second Stage session (another accepted snapshot) publishes its own
 		// surface. The two surfaces are scoped by snapshot and cannot collide.
-		const otherProject = { ...currentStageSource(snapshot).source, id: 'project-other-stage' };
+		const otherProject: ProjectEnvelope = {
+			...stageEnvelope(snapshot),
+			id: 'project-other-stage',
+			acceptedRevision: { projectId: 'project-other-stage', revisionId: 'revision-other' }
+		};
 		const otherAdmitted = await admitSource(otherProject, {
 			sessionEpoch: 'session-other-stage',
 			acceptedRevision: { projectId: 'project-other-stage', revisionId: 'revision-other' }
@@ -1072,8 +1087,11 @@ describe('Scene adapter registration', () => {
 		const otherSession = createSceneSession({
 			snapshot: {
 				projectId: otherAdmitted.snapshot.acceptedRevision.projectId,
-				contentRevision: otherAdmitted.snapshot.sourceContentId,
-				source: currentStageSource(otherAdmitted.snapshot).source,
+				contentRevision: otherAdmitted.snapshot.domain.unitRevisions.scene,
+				source: {
+					layout: stageLayout(otherAdmitted.snapshot),
+					scene: stageScene(otherAdmitted.snapshot)
+				},
 				compileGeneration: otherAdmitted.snapshot.compileGeneration,
 				evaluationId: 'evaluation-other-stage'
 			},
@@ -1130,8 +1148,8 @@ describe('Scene adapter registration', () => {
 		const second = createSceneSession({
 			snapshot: {
 				projectId: snapshot.acceptedRevision.projectId,
-				contentRevision: snapshot.sourceContentId,
-				source: currentStageSource(snapshot).source,
+				contentRevision: snapshot.domain.unitRevisions.scene,
+				source: { layout: stageLayout(snapshot), scene: stageScene(snapshot) },
 				compileGeneration: snapshot.compileGeneration,
 				evaluationId
 			},
@@ -1168,8 +1186,8 @@ describe('Scene adapter registration', () => {
 		const replacement = createSceneSession({
 			snapshot: {
 				projectId: snapshot.acceptedRevision.projectId,
-				contentRevision: snapshot.sourceContentId,
-				source: currentStageSource(snapshot).source,
+				contentRevision: snapshot.domain.unitRevisions.scene,
+				source: { layout: stageLayout(snapshot), scene: stageScene(snapshot) },
 				compileGeneration: snapshot.compileGeneration,
 				evaluationId: 'evaluation-replacement'
 			},

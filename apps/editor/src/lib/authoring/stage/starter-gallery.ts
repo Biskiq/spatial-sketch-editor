@@ -3,12 +3,16 @@
  * reconciled Room and floor datum, no Scene objects and no Camera/Experience
  * content.
  *
- * The template is a static current-format document built **through the retained
- * canonical architecture** — `planWallChain` over an empty wall-first document,
- * using the same wall/opening/room reconciliation every other authoring gesture
- * uses. It is deliberately not a second topology generator: no document literal
- * encodes wall normals, junctions, room polygons or storey heights, and the
- * compiler derives all of it.
+ * The template's Layout is built **through the retained canonical
+ * architecture** — `planWallChain` over an empty wall-first document, using the
+ * same wall/opening/room reconciliation every other authoring gesture uses. It is
+ * deliberately not a second topology generator: no document literal encodes wall
+ * normals, junctions, room polygons or storey heights, and the compiler derives
+ * all of it.
+ *
+ * The template emits an F.2 envelope, never a current-source document. The
+ * Camera and Experience units are present and empty: a starter fabricates no
+ * View, Presentation or Guide.
  *
  * Booting a template is a **new project/history baseline, never silent
  * architecture insertion** into an existing project: the route host validates the
@@ -23,10 +27,8 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
-import {
-	createEmptyWorldLocalSceneDocument,
-	type ProjectDocument
-} from '@portfolio/project-model';
+import type { AcceptedRevision } from '@portfolio/project-model';
+import { createEmptyUnitEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
 
 /** The starter enclosure, in project-world XZ meters: a 7 m x 6 m rectangle. */
 export const STARTER_ENCLOSURE_POINTS: readonly LayoutVec2[] = [
@@ -43,8 +45,12 @@ export type StarterTemplate = {
 	readonly label: string;
 	/** One short line describing what the template boots. */
 	readonly description: string;
-	/** Build the current-format document for a concrete project identity. */
-	readonly build: (projectId: string, name: string) => ProjectDocument;
+	/** Build the F.2 envelope for a concrete project identity. */
+	readonly build: (
+		projectId: string,
+		name: string,
+		acceptedRevision: AcceptedRevision
+	) => Promise<ProjectEnvelope>;
 };
 
 /**
@@ -67,13 +73,17 @@ export function buildStarterEnclosureLayout(): LayoutDocumentWallFirst {
 	return plan.document;
 }
 
-function starterProject(projectId: string, name: string): ProjectDocument {
-	return {
+function starterEnvelope(
+	projectId: string,
+	name: string,
+	acceptedRevision: AcceptedRevision
+): Promise<ProjectEnvelope> {
+	return createEmptyUnitEnvelope({
 		id: projectId,
 		name,
-		layout: buildStarterEnclosureLayout(),
-		scene: createEmptyWorldLocalSceneDocument()
-	};
+		acceptedRevision,
+		layout: buildStarterEnclosureLayout()
+	});
 }
 
 export const STARTER_TEMPLATES: readonly StarterTemplate[] = [
@@ -81,7 +91,7 @@ export const STARTER_TEMPLATES: readonly StarterTemplate[] = [
 		id: 'starter-enclosure',
 		label: 'Enclosed room',
 		description: 'One rectangular room with real reconciled walls, floor polygon and datum.',
-		build: (projectId, name) => starterProject(projectId, name)
+		build: (projectId, name, acceptedRevision) => starterEnvelope(projectId, name, acceptedRevision)
 	}
 ];
 
@@ -94,14 +104,14 @@ export function starterTemplate(templateId: string): StarterTemplate | null {
 }
 
 /**
- * The blocking compile issues of a starter document, if any.
+ * The blocking compile issues of a starter envelope, if any.
  *
  * A template that cannot compile to a real floor is not a template: the gallery's
  * own test pins this to `[]`, and the route refuses to boot a template that names
  * one rather than rendering a silent partial Stage.
  */
-export function starterBlockingIssueMessages(document: ProjectDocument): readonly string[] {
-	const compiled = compileWallFirstLayoutGeometry(document.layout);
+export function starterBlockingIssueMessages(envelope: ProjectEnvelope): readonly string[] {
+	const compiled = compileWallFirstLayoutGeometry(envelope.units.layout.data);
 	return compiled.issues
 		.filter((issue) => issue.severity !== 'warning')
 		.map((issue) => issue.message);

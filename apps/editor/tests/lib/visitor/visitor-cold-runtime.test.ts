@@ -30,7 +30,8 @@ import {
 	listShippedTextureUris,
 	listShippedModelFiles
 } from '$lib/visitor/shipped-static-registry';
-import { createEmptyWallFirstProject } from '@portfolio/project-model';
+import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { Group, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 import type { Texture as ThreeTexture } from 'three';
 
@@ -244,14 +245,11 @@ describe('P22.1 cold runtime + asset seam', () => {
 		).toBeGreaterThan(0);
 	});
 
-	it('composes an empty project store-free and disposes cleanly', () => {
+	it('composes an empty project store-free and disposes cleanly', async () => {
 		setDefaultTextureSourceLoader(null);
-		const project = createEmptyWallFirstProject({ id: 'project:cold-a', name: 'Cold A' });
+		const project = await createUnitProject({ id: 'project:cold-a', name: 'Cold A' });
 		const bundle = composeColdReleaseBundle({
-			projectId: project.id,
-			projectName: project.name,
-			layout: project.layout,
-			scene: project.scene,
+			document: project,
 			manifest: { releaseId: `${project.id}@v1`, bytesByUri: new Map() }
 		});
 		expect(bundle.graph.navigationNodes).toHaveLength(0);
@@ -264,21 +262,23 @@ describe('P22.1 cold runtime + asset seam', () => {
 		expect(bundle.textureScope.resolveTexture('/textures/plaster-warm/map.png')).toBeNull();
 	});
 
-	it('composes a P20-textured release from supplied bytes; missing bytes fail closed', () => {
-		const project = createEmptyWallFirstProject({ id: 'project:cold-b', name: 'Cold B' });
+	it('composes a P20-textured release from supplied bytes; missing bytes fail closed', async () => {
 		const uri = '/project-assets/pinned-1';
-		const scene = {
-			...project.scene,
-			textures: [{ id: 'tex-1', name: 'Pinned', uri }]
-		};
+		const project = await createUnitProject({
+			id: 'project:cold-b',
+			name: 'Cold B',
+			scene: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [{ id: 'tex-1', name: 'Pinned', uri }],
+				materials: [],
+				entities: []
+			}
+		});
 		const bytes = new Map<string, ReleaseBytesEntry>([
 			[uri, { bytes: new Uint8Array([137, 80, 78, 71]), mime: 'image/png' }]
 		]);
 		const bundle = composeColdReleaseBundle({
-			projectId: project.id,
-			projectName: project.name,
-			layout: project.layout,
-			scene,
+			document: project,
 			manifest: { releaseId: `${project.id}@v3`, bytesByUri: bytes }
 		});
 		expect(bundle.textureScope.objectUrlByUri.has(uri)).toBe(true);
@@ -286,10 +286,7 @@ describe('P22.1 cold runtime + asset seam', () => {
 
 		expect(() =>
 			composeColdReleaseBundle({
-				projectId: project.id,
-				projectName: project.name,
-				layout: project.layout,
-				scene,
+				document: project,
 				manifest: { releaseId: `${project.id}@v4`, bytesByUri: new Map() }
 			})
 		).toThrow(/missing release bytes/i);

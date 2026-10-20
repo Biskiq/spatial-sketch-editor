@@ -147,8 +147,10 @@ export const CAMERA_SESSION_INSPECTION_FAMILY: ChannelFamily = {
 	id: CAMERA_SESSION_INSPECTION_FAMILY_ID,
 	domain: 'camera',
 	capability: { id: 'camera.session-inspection', required: true },
-	// A session output is owned by the Camera authority root; its target is project-world.
-	admission: { ownerSubjectKinds: ['camera'], frameKinds: ['project-world'], qualifiedAddresses: false },
+	// A session output is owned by a Camera view: the Camera unit authors views as
+	// its addressable authority subjects (there is no separate current-source
+	// camera root), and its target is project-world.
+	admission: { ownerSubjectKinds: ['view'], frameKinds: ['project-world'], qualifiedAddresses: false },
 	requiredProperties: ['controller'],
 	controllerProperty: 'controller',
 	properties: [

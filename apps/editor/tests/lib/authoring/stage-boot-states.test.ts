@@ -1,4 +1,3 @@
-import { currentStageSource } from '$lib/authoring/stage/current-stage-source';
 /**
  * T1.P01.S02 — the editor host's explicit boot states.
  *
@@ -38,15 +37,20 @@ import {
 	type BootLoadOutcome,
 	type BootState
 } from '$lib/authoring/stage/boot-state';
-import { CURRENT_SOURCE_VERSION, type ProjectDocument } from '@portfolio/project-model';
+import {
+	serializeProjectEnvelope,
+	UNIT_SOURCE_KIND,
+	UNIT_SOURCE_VERSION,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import { EDITOR_SRC } from '../../helpers/import-closure';
 import type { AdmissionContext } from '$lib/authoring/stage/source-admission';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import {
 	STARTER_TEMPLATES,
 	buildStarterEnclosureLayout,
 	starterBlockingIssueMessages
 } from '$lib/authoring/stage/starter-gallery';
-import { serializeProject } from '$lib/project/project-codec';
 import { FIXTURE_PROJECT_ID, buildFoldedPartitionProject } from './__fixtures__/f4-current-source-fixtures';
 
 const PROJECT_ID = 'project-boot-states';
@@ -75,8 +79,8 @@ function contextFor(projectId: string = PROJECT_ID): AdmissionContext {
 	};
 }
 
-function starterDocument(): ProjectDocument {
-	return STARTER_TEMPLATES[0]!.build(PROJECT_ID, STARTER_TEMPLATES[0]!.label);
+function starterDocument(context: AdmissionContext): Promise<ProjectEnvelope> {
+	return STARTER_TEMPLATES[0]!.build(PROJECT_ID, STARTER_TEMPLATES[0]!.label, context.acceptedRevision);
 }
 
 describe('the editor host boots into exactly one named state', () => {
@@ -130,9 +134,9 @@ describe('the editor host boots into exactly one named state', () => {
 	});
 
 	it('admits a loaded valid source into ready with the read-facade contract the Stage mounts', async () => {
-		const document = starterDocument();
-		const before = JSON.stringify(document);
 		const context = contextFor();
+		const document = await starterDocument(context);
+		const before = JSON.stringify(document);
 		const ready = await bootFromLoadOutcome(
 			initialBootState(PROJECT_ID, 'open'),
 			{ kind: 'loaded', document },
@@ -144,8 +148,8 @@ describe('the editor host boots into exactly one named state', () => {
 		const snapshot = ready.snapshot;
 		expect(snapshot.acceptedRevision).toEqual(context.acceptedRevision);
 		expect(snapshot.sessionEpoch).toBe(context.sessionEpoch);
-		expect(snapshot.sourceKind).toBe('project-current');
-		expect(snapshot.sourceVersion).toBe(CURRENT_SOURCE_VERSION);
+		expect(snapshot.sourceKind).toBe(UNIT_SOURCE_KIND);
+		expect(snapshot.sourceVersion).toBe(UNIT_SOURCE_VERSION);
 		expect(snapshot.sourceContentId).toMatch(/^sha256-[0-9a-f]{64}$/);
 		expect(snapshot.compileGeneration).toBe(`compile:${snapshot.sourceContentId}`);
 
@@ -154,14 +158,13 @@ describe('the editor host boots into exactly one named state', () => {
 		// visitor-equivalent navigation graph.
 		// The read adapters bind to the one admitted source, and admitting it does not
 		// mutate or re-spell the payload the caller supplied.
-		expect(snapshot.domain.references.snapshot).toEqual(currentStageSource(snapshot).snapshot);
-		expect(currentStageSource(snapshot).source.id).toBe(document.id);
-		expect(currentStageSource(snapshot).source.layout).toEqual(document.layout);
-		expect(JSON.stringify(document)).toBe(before);
-		expect(currentStageSource(snapshot).snapshot).toEqual({
+		expect(snapshot.domain.references.snapshot).toEqual({
 			acceptedRevision: context.acceptedRevision,
 			sourceContentId: snapshot.sourceContentId
 		});
+		expect(stageEnvelope(snapshot).id).toBe(document.id);
+		expect(stageEnvelope(snapshot).units.layout.data).toEqual(document.units.layout.data);
+		expect(JSON.stringify(document)).toBe(before);
 		expect(snapshot.domain.geometry.floors).toHaveLength(1);
 		expect(snapshot.domain.datumMeters).toBe(snapshot.domain.geometry.floors[0]!.elevation);
 		expect(snapshot.domain.geometry.bounds).not.toBeNull();
@@ -178,10 +181,19 @@ describe('the editor host boots into exactly one named state', () => {
 	});
 
 	it('separates a refused payload from a source whose canonical compile is blocked', async () => {
-		const starter = starterDocument();
+		const starter = await starterDocument(contextFor());
 		const malformed = await bootFromLoadOutcome(
 			initialBootState(PROJECT_ID, 'open'),
-			{ kind: 'loaded', document: { ...(starter as Record<string, unknown>), layout: { units: 'meters' } } },
+			{
+				kind: 'loaded',
+				document: {
+					...starter,
+					units: {
+						...starter.units,
+						layout: { ...starter.units.layout, data: { units: 'meters' } }
+					}
+				}
+			},
 			contextFor()
 		);
 		expect(malformed.status).toBe('refused');
@@ -195,7 +207,7 @@ describe('the editor host boots into exactly one named state', () => {
 		// names the issue instead of rendering a silent empty or partial Stage.
 		const blocked = await bootFromLoadOutcome(
 			initialBootState(FIXTURE_PROJECT_ID, 'open'),
-			{ kind: 'loaded', document: buildFoldedPartitionProject() },
+			{ kind: 'loaded', document: await buildFoldedPartitionProject() },
 			contextFor(FIXTURE_PROJECT_ID)
 		);
 		expect(blocked.status).toBe('diagnostics');
@@ -205,15 +217,14 @@ describe('the editor host boots into exactly one named state', () => {
 		expect('snapshot' in blocked).toBe(false);
 	});
 
-	it('unwraps the reader carrier without rewriting a raw source', () => {
+	it('passes the reader payload through unchanged and never unwraps a legacy carrier', () => {
 		const raw = { id: PROJECT_ID, name: 'Raw', layout: {}, scene: {} };
 		expect(documentOf(raw)).toBe(raw);
 
+		// The pre-epoch `{ project }` carrier is not sniffed or unwrapped: the F.2
+		// envelope is the only source, and admission refuses anything else.
 		const inner = { id: PROJECT_ID, name: 'Carried', layout: {}, scene: {} };
-		expect(documentOf({ project: inner })).toBe(inner);
-
-		// A carrier whose `project` is not an identified document is passed
-		// through unchanged: admission decides, not this reader.
+		expect(documentOf({ project: inner })).not.toBe(inner);
 		const unrelated = { project: { layout: {} } };
 		expect(documentOf(unrelated)).toBe(unrelated);
 		expect(documentOf(null)).toBeNull();
@@ -224,7 +235,9 @@ describe('the editor host boots into exactly one named state', () => {
 		// A template that cannot compile to a real floor is not a template.
 		for (const template of STARTER_TEMPLATES) {
 			expect(
-				starterBlockingIssueMessages(template.build(PROJECT_ID, template.label)),
+				starterBlockingIssueMessages(
+					await template.build(PROJECT_ID, template.label, contextFor().acceptedRevision)
+				),
 				`starter template "${template.id}" must compile with no blocking issue`
 			).toEqual([]);
 		}
@@ -236,7 +249,7 @@ describe('the editor host boots into exactly one named state', () => {
 		const state = await bootStarterGallery(PROJECT_ID, context);
 		expect(state.status).toBe('ready');
 		if (state.status !== 'ready') return;
-		expect(currentStageSource(state.snapshot).source.name).toBe(STARTER_TEMPLATES[0]!.label);
+		expect(stageEnvelope(state.snapshot).name).toBe(STARTER_TEMPLATES[0]!.label);
 		expect(state.snapshot.domain.geometry.floors).toHaveLength(1);
 		expect(state.snapshot.domain.geometry.walls).toHaveLength(4);
 		// No Scene objects and no Camera content: the starter is architecture.
@@ -261,12 +274,12 @@ describe('the editor host boots into exactly one named state', () => {
 		expect(state.snapshot.domain.geometry.walls).toEqual([]);
 		expect(state.snapshot.domain.geometry.floors.every((floor) => floor.roomIds.length === 0)).toBe(true);
 		expect(state.snapshot.domain.datumMeters).toBe(0);
-		expect(currentStageSource(state.snapshot).source.name).toBe('Untitled project');
+		expect(stageEnvelope(state.snapshot).name).toBe('Untitled project');
 	});
 
 	it('opens explicit source JSON through the one admission path', async () => {
-		const document = starterDocument();
-		const viaJson = await bootFromSourceJson(serializeProject(document), PROJECT_ID, contextFor());
+		const document = await starterDocument(contextFor());
+		const viaJson = await bootFromSourceJson(serializeProjectEnvelope(document), PROJECT_ID, contextFor());
 		expect(viaJson.status).toBe('ready');
 		if (viaJson.status !== 'ready') return;
 
@@ -312,14 +325,14 @@ describe('the editor host boots into exactly one named state', () => {
 		states.push(
 			await bootFromLoadOutcome(
 				initialBootState(PROJECT_ID, 'open'),
-				{ kind: 'loaded', document: starterDocument() },
+				{ kind: 'loaded', document: await starterDocument(contextFor()) },
 				contextFor()
 			)
 		);
 		states.push(
 			await bootFromLoadOutcome(
 				initialBootState(FIXTURE_PROJECT_ID, 'open'),
-				{ kind: 'loaded', document: buildFoldedPartitionProject() },
+				{ kind: 'loaded', document: await buildFoldedPartitionProject() },
 				contextFor(FIXTURE_PROJECT_ID)
 			)
 		);

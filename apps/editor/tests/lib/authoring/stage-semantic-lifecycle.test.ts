@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { admitSource } from '$lib/authoring/stage/source-admission';
-import { currentStagePlanner, currentStageSource } from '$lib/authoring/stage/current-stage-source';
+import { stageEnvelope } from '$lib/authoring/stage/unit-stage-source';
 import { createStageSession } from '$lib/authoring/stage/stage-session';
 import { createStageFacade, type StageAdapterBindingContext } from '$lib/authoring/stage/stage-facade';
 import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance';
@@ -9,7 +9,7 @@ import { buildCurrentSourceFixture, FIXTURE_PROJECT_ID, FIXTURE_ENTITY_ID, creat
 import { encodingIndependentRead, readAccepted, selectAccepted } from './__fixtures__/stage-accepted-read-consumer';
 
 async function mount() {
-	const { project, objectId } = buildCurrentSourceFixture();
+	const { project, objectId } = await buildCurrentSourceFixture();
 	const admission = await admitSource(project, { sessionEpoch: 'semantic-lifecycle', acceptedRevision: { projectId: FIXTURE_PROJECT_ID, revisionId: 'boot' } });
 	if (admission.kind !== 'admitted') throw new Error(admission.kind);
 	const snapshot = admission.snapshot;
@@ -18,9 +18,9 @@ async function mount() {
 	stage.acquireInspection(); stage.camera.evaluate({ left: 0, top: 0, width: 800, height: 600, devicePixelRatio: 1 }, 0);
 	const host = createStageAcceptanceHost({ facade: stage, sessionEpoch: snapshot.sessionEpoch,
 		baseline: { revision: snapshot.acceptedRevision, source: project, canonicalJson: snapshot.canonicalJson, sourceContentId: snapshot.sourceContentId }, planners: [createProofSceneScalarPlanner()] });
-	const scene = () => sceneEntityReference(stage.snapshot().sourceContentId, FIXTURE_ENTITY_ID);
+	const scene = () => sceneEntityReference(stage.snapshot().domain.unitRevisions.scene, FIXTURE_ENTITY_ID);
 	const edit = () => host.accept(proofIntent({ kind: PROOF_SCENE_SCALAR_KIND, operationId: crypto.randomUUID(), projectId: FIXTURE_PROJECT_ID,
-		expectedRevision: host.acceptedRevision().revisionId, contentRevision: stage.snapshot().sourceContentId, targets: [scene()], payload: { entityId: FIXTURE_ENTITY_ID, receiveShadow: true } }));
+		expectedRevision: host.acceptedRevision().revisionId, contentRevision: stage.snapshot().domain.unitRevisions.scene, targets: [scene()], payload: { entityId: FIXTURE_ENTITY_ID, receiveShadow: true } }));
 	return { stage, session, snapshot, host, scene, edit, objectId };
 }
 
@@ -28,16 +28,14 @@ describe('Stage accepted read and ordered semantic selection', () => {
 	it('supports a source-independent consumer and explicitly refuses the wrong encoding adapter', async () => {
 		const { snapshot, scene } = await mount();
 		const alternate = encodingIndependentRead(snapshot.domain);
-		// A planner written against the current encoding refuses a foreign snapshot
-		// instead of decoding it, and the common port never hands it one unchecked.
-		expect(currentStagePlanner(createProofSceneScalarPlanner()).prepare({ snapshot: { sourceKind: 'test-read-port', sourceVersion: 27 } } as never))
-			.toMatchObject({ kind: 'rejected', code: 'incompatible-source' });
+		// The F.2 source adapter refuses a foreign encoding instead of decoding it,
+		// and the common port never hands it one unchecked.
 		expect(readAccepted(alternate, scene())).toMatchObject({ kind: 'test-read-port', version: 27, resolution: { kind: 'resolved', subject: { owner: 'scene' } } });
-		expect(() => currentStageSource(alternate)).toThrow('test-read-port@27');
+		expect(() => stageEnvelope(alternate)).toThrow('test-read-port@27');
 		expect(snapshot.domain).not.toHaveProperty('project');
 		expect(snapshot.domain).not.toHaveProperty('current');
 		expect(Object.isFrozen(snapshot.domain.scene.entities)).toBe(true);
-		expect(Object.isFrozen(currentStageSource(snapshot).source.scene.entities)).toBe(true);
+		expect(Object.isFrozen(stageEnvelope(snapshot).units.scene.data.entities)).toBe(true);
 		const session = createStageSession(); session.replace(alternate);
 		const stage = createStageFacade({ session, snapshot: alternate });
 		expect(selectAccepted(stage, scene())).toEqual({ kind: 'selected' });
@@ -45,7 +43,7 @@ describe('Stage accepted read and ordered semantic selection', () => {
 	});
 	it('keeps deterministic caller order, one explicit primary, Card facts and live selection echo', async () => {
 		const { stage, scene, objectId, snapshot } = await mount();
-		const layout = layoutObjectReference(snapshot.sourceContentId, objectId);
+		const layout = layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId);
 		const echoes: string[][] = [];
 		stage.registerStageAdapter({ id: 'scene-reader', selectionChanged: (value) => echoes.push(value.ordered.map((entry) => entry.reference.subject.id)),
 			cardFacts: (subject) => subject.reference?.domain === 'scene' ? [{ label: 'Canonical entity', value: subject.reference.subject.id }] : [] });
@@ -64,7 +62,7 @@ describe('Stage accepted read and ordered semantic selection', () => {
 	});
 	it('dedups one canonical subject addressed with two equivalent locations', async () => {
 		const { stage, objectId, snapshot } = await mount();
-		const canonical = layoutObjectReference(snapshot.sourceContentId, objectId);
+		const canonical = layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId);
 		const alias = { ...canonical, location: { kind: 'project-root' as const } };
 		expect(stage.setSelection({ ordered: [{ reference: alias }, { reference: canonical }], primary: alias })).toEqual({ kind: 'selected' });
 		expect(stage.selectionState().ordered).toHaveLength(1);
@@ -74,7 +72,7 @@ describe('Stage accepted read and ordered semantic selection', () => {
 	});
 	it('requalifies Scene through accepted edit and history, reports absent correspondence, and clears on replacement', async () => {
 		const { stage, session, scene, edit, host, objectId, snapshot } = await mount();
-		const layout = layoutObjectReference(snapshot.sourceContentId, objectId);
+		const layout = layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId);
 		stage.setSelection({ ordered: [{ reference: layout }, { reference: scene() }], primary: scene() });
 		const edited = await edit();
 		expect(edited).toMatchObject({ kind: 'installed', selectionClearedReason: null, install: { selectionRemovals: [{ reference: layout, reason: 'no-correspondence' }] } });
@@ -97,7 +95,7 @@ describe('Stage lens exit and explicit task Resume', () => {
 		let cancelled = 0; let revalidations = 0;
 		stage.registerStageAdapter({ id: 'scene-task', bind(context) { captured = context; return {
 			tasks: [{ id: 'scene', taskKind: 'scene', label: 'Scene task', target: scene(), configuration: { amount: 2 },
-				revalidate: (task, current) => { revalidations++; expect(task.target?.revision).toEqual({ kind: 'exact', contentRevision: current.sourceContentId }); return { kind: 'resumed' }; } }],
+				revalidate: (task, current) => { revalidations++; expect(task.target?.revision).toEqual({ kind: 'exact', contentRevision: current.domain.unitRevisions.scene }); return { kind: 'resumed' }; } }],
 			instrument: () => ({ summary: 'active only' }) }; } });
 		stage.setSelection({ ordered: [{ reference: scene() }], primary: scene() });
 		stage.openContributedTask('scene', 'scene-task');
@@ -116,7 +114,7 @@ describe('Stage lens exit and explicit task Resume', () => {
 		stage.changeLens('world');
 		expect(session.task()).toBeNull();
 		expect(revalidations).toBe(0);
-		const layout = layoutObjectReference(snapshot.sourceContentId, objectId);
+		const layout = layoutObjectReference(snapshot.domain.unitRevisions.layout, objectId);
 		stage.setSelection({ ordered: [{ reference: layout }], primary: layout });
 		const pose = stage.camera.state().pose;
 		expect(old.setSelection({ ordered: [], primary: null })).toMatchObject({ kind: 'refused', code: 'stale-binding' });

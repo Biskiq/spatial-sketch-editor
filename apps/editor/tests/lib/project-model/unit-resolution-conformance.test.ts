@@ -17,9 +17,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	createEmptyWallFirstProject,
+	createEmptyWallFirstLayoutDocument,
 	resolveReference,
-	validateProject,
 	type SemanticReference
 } from '@portfolio/project-model';
 import {
@@ -41,7 +40,7 @@ import {
 	type TypedResource
 } from '@portfolio/project-model/units';
 
-const SOURCE = validateProject(createEmptyWallFirstProject({ id: 'project-1', name: 'Project one' }));
+const EMPTY_LAYOUT = createEmptyWallFirstLayoutDocument();
 
 const PIN = { hash: 'sha256-paper', mime: 'image/png', size: 512, locator: 'objects/paper' };
 
@@ -59,22 +58,15 @@ function experience(id: string, stopId: string): Experience {
 }
 
 async function build(resources: TypedResource[] = [], lockEntries: DependencyLock['entries'] = []): Promise<ProjectEnvelope> {
-	if (!SOURCE.success) throw new Error('the fixture source does not validate');
-	const { layout, scene } = SOURCE.project;
 	return createProjectEnvelope({
 		id: 'project-1',
 		name: 'Project one',
 		acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' },
 		dependencyLock: { formatVersion: 1, entries: lockEntries },
-		layout: { unitId: 'unit-layout', data: layout },
+		layout: { unitId: 'unit-layout', data: EMPTY_LAYOUT },
 		scene: {
 			unitId: 'unit-scene',
-			data: {
-				formatVersion: SCENE_UNIT_FORMAT_VERSION,
-				textures: scene.textures,
-				materials: scene.materials,
-				entities: scene.entities
-			}
+			data: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] }
 		},
 		camera: {
 			unitId: 'unit-camera',
@@ -254,15 +246,26 @@ describe('Camera, Experience and resource subjects', () => {
 		expect(resolved.subject.contentRevision).toBe(PIN.hash);
 	});
 
-	it('does not invent a Layout or Scene resolver over unit sources', async () => {
+	it('resolves Layout and Scene subjects from their owning units', async () => {
 		const envelope = await build();
-		const resolution = await resolveUnitReference(
-			reference({ domain: 'layout', subject: { kind: 'wall', id: 'wall-1' } }),
+		const layout = await resolveUnitReference(
+			reference({
+				domain: 'layout',
+				subject: { kind: 'level', id: 'floor' },
+				revision: { kind: 'exact', contentRevision: envelope.units.layout.header.contentRevision }
+			}),
 			input(envelope)
 		);
-		expect(resolution.kind).toBe('failed');
-		if (resolution.kind !== 'failed') return;
-		expect(resolution.code).toBe('incompatible');
+		expect(layout.kind).toBe('resolved');
+		const scene = await resolveUnitReference(
+			reference({
+				domain: 'scene',
+				subject: { kind: 'scene', id: 'project-1' },
+				revision: { kind: 'exact', contentRevision: envelope.units.scene.header.contentRevision }
+			}),
+			input(envelope)
+		);
+		expect(scene.kind).toBe('resolved');
 	});
 });
 

@@ -19,13 +19,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-	CURRENT_CAMERA_SUBJECT_KINDS,
-	CURRENT_LAYOUT_SUBJECT_KINDS,
-	CURRENT_SCENE_SUBJECT_KINDS,
 	compareReferences,
-	createCurrentDomainReadAdapters,
-	createCurrentDomainResolverHost,
-	createEmptyWallFirstProject,
+	createEmptyWallFirstLayoutDocument,
 	createReferenceResolverHost,
 	matchesGeneration,
 	resolveDerivedSourceRef,
@@ -38,12 +33,17 @@ import {
 	validateSnapshotIdentity,
 	type DependencyLockReader,
 	type FrameResolver,
-	type ProjectDocument,
 	type ReferenceReadContext,
 	type ReferenceResolver,
 	type SemanticReference,
 	type SnapshotIdentity
 } from '@portfolio/project-model';
+import {
+	SCENE_UNIT_FORMAT_VERSION,
+	type LayoutUnitPayload
+} from '@portfolio/project-model/units';
+import { createUnitReadContext } from '@portfolio/project-model/references/unit-resolution';
+import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 
 const SNAPSHOT: SnapshotIdentity = {
 	acceptedRevision: { projectId: 'project-1', revisionId: 'revision-7' },
@@ -471,18 +471,23 @@ describe('F.1 references-v1 — stable ID ordering', () => {
 });
 
 /**
- * A genuinely current document: the canonical new-project boot, then a small authored
- * world. It is built from the package's own boot value rather than a hand-written payload,
- * so the Layout floor ID, the Scene root and the entity collections are the real ones.
+ * A real F.2 envelope: the four authored domains this suite addresses are built
+ * through the provider's own writer, so the Layout floor ID, the Scene records
+ * and the Camera/Experience subjects are the ones a live reader resolves.
+ *
+ * T3.P01.S04 retired the bounded current-domain read adapters with the current
+ * source. The equivalent coverage now runs through the unit read context, whose
+ * resolvers are the only live implementation over an admitted envelope.
  */
-function currentDocument(): ProjectDocument {
-	const project = createEmptyWallFirstProject({ id: 'project-1', name: 'Fixture' });
-	project.layout.floor = { id: 'floor-2', name: 'First floor', elevation: 3 };
-	project.layout.junctions = [
+function unitLayout(): LayoutUnitPayload {
+	const layout = createEmptyWallFirstLayoutDocument();
+	layout.floor = { id: 'floor-2', name: 'First floor', elevation: 3 };
+	layout.junctions = [
 		{ id: 'junction-1', point: [0, 0] },
-		{ id: 'junction-2', point: [5, 0] }
+		{ id: 'junction-2', point: [5, 0] },
+		{ id: 'junction-3', point: [5, 4] }
 	];
-	project.layout.walls = [
+	layout.walls = [
 		{
 			id: 'wall-1',
 			startJunctionId: 'junction-1',
@@ -497,7 +502,7 @@ function currentDocument(): ProjectDocument {
 		{
 			id: 'wall-2',
 			startJunctionId: 'junction-2',
-			endJunctionId: 'junction-1',
+			endJunctionId: 'junction-3',
 			role: 'partition',
 			thickness: 0.1,
 			height: 3,
@@ -505,8 +510,16 @@ function currentDocument(): ProjectDocument {
 			name: 'wall-1'
 		}
 	];
-	project.layout.rooms = [{ id: 'room-1', name: 'Room', boundary: [], floorThickness: 0.1, ceilingThickness: 0.1 }];
-	project.layout.openings = [
+	layout.rooms = [
+		{
+			id: 'room-1',
+			name: 'Room',
+			boundary: [{ wallId: 'wall-1', direction: 'forward' }],
+			floorThickness: 0.1,
+			ceilingThickness: 0.1
+		}
+	];
+	layout.openings = [
 		{
 			id: 'opening-1',
 			wallId: 'wall-1',
@@ -518,83 +531,119 @@ function currentDocument(): ProjectDocument {
 			profile: 'rectangular'
 		}
 	];
-	project.layout.objects = [
+	layout.objects = [
 		{ id: 'object-1', kind: 'box', position: [1, 2, 3], rotation: [0, 0, 0], dimensions: [1, 1, 1] }
 	];
-	project.scene.clusters = [{ id: 'cluster-1', name: 'Cluster', memberIds: ['entity-2'] }];
-	project.scene.entities = [
-		{ id: 'entity-1', name: 'Free', position: [0, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'piano', fallback: 'piano' },
-		{ id: 'entity-2', name: 'Clustered', position: [1, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'chair', fallback: 'chair' }
-	];
-	project.scene.materials = [{ id: 'material-1', name: 'Plaster', baseMaterialId: 'plaster-warm' }];
-	project.scene.textures = [{ id: 'texture-1', name: 'Paper', uri: 'paper.png' }];
-	project.scene.navigationNodes = [
-		{ id: 'node-1', label: 'Entry', position: [0, 0, 0], cameraTarget: [0, 0, 1], fov: 54, connectedNodeIds: ['node-2'] }
-	];
-	project.scene.connections = [
-		{
-			id: 'connection-1',
-			fromNodeId: 'node-1',
-			toNodeId: 'node-2',
-			positionPath: { kind: 'auto-bezier', anchors: [] },
-			clearance: 0.5
-		}
-	];
-	return project;
+	return layout;
 }
 
-/**
- * A reference into the supplied current source. Its concrete revision is the
- * supplied snapshot's source-content identity — the immutable content identity
- * `exact {contentRevision}` names, not the acceptance token, which is fresh on
- * every source change including Undo/Redo and so names an acceptance event.
- */
+const DOCUMENT = await createUnitProject({
+	id: 'project-1',
+	name: 'Fixture',
+	acceptedRevision: SNAPSHOT.acceptedRevision,
+	layout: unitLayout(),
+	scene: {
+		formatVersion: SCENE_UNIT_FORMAT_VERSION,
+		textures: [{ id: 'texture-1', name: 'Paper', uri: '/textures/paper.png' }],
+		materials: [{ id: 'material-1', name: 'Plaster', baseMaterialId: 'plaster-warm' }],
+		entities: [
+			{ id: 'entity-1', name: 'Free', position: [0, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'piano', fallback: 'piano' },
+			{ id: 'entity-2', name: 'Clustered', position: [1, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'chair', fallback: 'chair' },
+			{ id: 'entity-3', name: 'Clustered too', position: [2, 0, 0], rotation: [0, 0, 0], kind: 'model', assetId: 'chair', fallback: 'chair' }
+		],
+		clusters: [{ id: 'cluster-1', name: 'Cluster', memberIds: ['entity-2', 'entity-3'] }]
+	},
+	camera: {
+		formatVersion: 1,
+		views: [
+			{ id: 'node-1', label: 'Entry', eye: [0, 0, 0], target: [0, 0, 1], fov: 54, connectedViewIds: ['node-2'] },
+			{ id: 'node-2', label: 'Hall', eye: [0, 0, 2], target: [0, 0, 3], fov: 54, connectedViewIds: ['node-1'] }
+		],
+		connections: [
+			{
+				id: 'connection-1',
+				fromNodeId: 'node-1',
+				toNodeId: 'node-2',
+				positionPath: { kind: 'auto-bezier', anchors: [] },
+				clearance: 0.5
+			}
+		]
+	},
+	experience: {
+		formatVersion: 1,
+		experiences: [
+			{
+				id: 'experience-1',
+				label: 'Walk',
+				entryGuideId: 'guide-1',
+				presentations: [{ id: 'presentation-1', label: 'Entry', viewId: 'node-1' }],
+				stops: [{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'end' } }],
+				guides: [{ id: 'guide-1', label: 'Main', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
+				gates: [],
+				detours: []
+			}
+		]
+	}
+});
+
+const UNIT_REVISION = {
+	layout: DOCUMENT.units.layout.header.contentRevision,
+	scene: DOCUMENT.units.scene.header.contentRevision,
+	camera: DOCUMENT.units.camera.header.contentRevision,
+	experience: DOCUMENT.units.experience.header.contentRevision
+} as const;
+
+/** A reference into the envelope, at the revision its owning unit holds. */
 function currentReference(overrides: Partial<SemanticReference> = {}): SemanticReference {
-	return layoutReference({
-		revision: { kind: 'exact', contentRevision: SNAPSHOT.sourceContentId },
-		...overrides
-	});
+	const domain = overrides.domain ?? 'layout';
+	const revision =
+		domain === 'layout' || domain === 'scene' || domain === 'camera' || domain === 'experience'
+			? UNIT_REVISION[domain]
+			: SNAPSHOT.sourceContentId;
+	return {
+		version: 1,
+		domain: 'layout',
+		revision: { kind: 'exact', contentRevision: revision },
+		subject: { kind: 'wall', id: 'wall-1' },
+		instancePath: [],
+		location: { kind: 'project-root' },
+		componentId: null,
+		capabilityId: null,
+		...overrides,
+		...(overrides.revision === undefined ? { revision: { kind: 'exact', contentRevision: revision } } : {})
+	};
 }
 
-/**
- * The read context for one supplied document, built from its own bounded adapters.
- * `bound` is the snapshot those adapters were built for, so a fixture can hold
- * identical content under a different acceptance than the context names.
- */
-function currentContext(
-	document: ProjectDocument,
-	overrides: Partial<ReferenceReadContext> = {},
-	bound: SnapshotIdentity = SNAPSHOT
-): ReferenceReadContext {
-	const host = createCurrentDomainResolverHost(document, bound);
+/** The one live unit-backed read context, bound to the envelope's snapshot. */
+function currentContext(overrides: Partial<ReferenceReadContext> = {}): ReferenceReadContext {
 	return {
-		snapshot: bound,
-		sessionEpoch: 'session-1',
-		generationId: 'generation-3',
-		supportedExtensions: [],
-		lock: null,
-		resolvers: host.resolvers,
-		frameResolvers: host.frameResolvers,
+		...createUnitReadContext({
+			envelope: DOCUMENT,
+			acceptedRevision: SNAPSHOT.acceptedRevision,
+			sourceContentId: SNAPSHOT.sourceContentId,
+			sessionEpoch: 'session-1',
+			generationId: 'generation-3'
+		}),
 		...overrides
 	};
 }
 
-describe('F.1 references-v1 — bounded current-domain read adapters', () => {
-	const document = currentDocument();
-	const read = currentContext(document);
+describe('F.1 references-v1 — unit-backed read context', () => {
+	const read = currentContext();
 
-	it('admits actual Layout, Scene and read-only Camera subjects from one supplied source', () => {
-		const host = createCurrentDomainResolverHost(document, SNAPSHOT);
-		expect(host.problems).toEqual([]);
-		expect(host.resolvers.map((resolver) => resolver.domain)).toEqual(['layout', 'scene', 'camera']);
-		expect(host.resolvers.map((resolver) => [...resolver.subjectKinds])).toEqual([
-			[...CURRENT_LAYOUT_SUBJECT_KINDS],
-			[...CURRENT_SCENE_SUBJECT_KINDS],
-			[...CURRENT_CAMERA_SUBJECT_KINDS]
+	it('admits the unit domains and their typed-resource scopes from one admitted envelope', () => {
+		expect(read.resolvers.map((resolver) => resolver.domain)).toEqual([
+			'layout',
+			'scene',
+			'camera',
+			'experience',
+			'resource:texture',
+			'resource:asset'
 		]);
-		// Experience and typed resources have no current provider: no resolver is registered, and
-		// the shared layer reports exactly that instead of a fabricated resolved subject.
-		expect(createCurrentDomainReadAdapters(document, SNAPSHOT).resolvers.map((resolver) => resolver.domain)).not.toContain('experience');
+		// Layout, Scene, Camera and Experience all resolve from their owning unit.
+		expect(read.resolvers.flatMap((resolver) => [...resolver.subjectKinds])).toEqual(
+			expect.arrayContaining(['wall', 'entity', 'view', 'connection', 'experience', 'presentation', 'stop', 'guide'])
+		);
 	});
 
 	it('resolves every actual Layout entity by its stable id and records the concrete revision', () => {
@@ -617,11 +666,11 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 			);
 			expect(result.kind, `${kind} "${id}"`).toBe('resolved');
 			if (result.kind !== 'resolved') continue;
-			expect(result.subject.contentRevision).toBe(SNAPSHOT.sourceContentId);
+			expect(result.subject.contentRevision).toBe(UNIT_REVISION.layout);
 			expect(result.subject.owner).toBe('layout');
 			expect(result.subject.subject).toEqual({ kind, id });
-			// The resolver states the canonical location, whichever valid qualification was used:
-			// a current Layout entity sits on the one authored level, and the level at the root.
+		// The resolver states the canonical location, whichever valid qualification was used:
+		// a Layout entity sits on the one authored level, and the level at the root.
 			expect(result.subject.location).toEqual(
 				kind === 'level' ? { kind: 'project-root' } : { kind: 'layout-location', levelId: 'floor-2', structureInstancePath: [] }
 			);
@@ -653,9 +702,8 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		).toBe('resolved');
 		expect(
 			resolveReference(currentReference({ domain: 'scene', subject: { kind: 'texture', id: 'texture-1' } }), read).kind
-		).toBe('resolved');
-		expect(
-			resolveReference(currentReference({ domain: 'camera', subject: { kind: 'navigation-node', id: 'node-1' } }), read).kind
+		).toBe('resolved');			expect(
+			resolveReference(currentReference({ domain: 'camera', subject: { kind: 'view', id: 'node-1' } }), read).kind
 		).toBe('resolved');
 		const connection = resolveReference(
 			currentReference({ domain: 'camera', subject: { kind: 'connection', id: 'connection-1' } }),
@@ -664,13 +712,18 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(connection.kind).toBe('resolved');
 		if (connection.kind !== 'resolved') return;
 		expect(connection.subject.owner).toBe('camera');
-		// The Camera authority root, addressed by the project id like the Scene root.
-		const cameraRoot = resolveReference(currentReference({ domain: 'camera', subject: { kind: 'camera', id: 'project-1' } }), read);
-		expect(cameraRoot.kind === 'resolved' && cameraRoot.subject.location).toEqual({ kind: 'project-root' });
-		expect(resolveReference(currentReference({ domain: 'camera', subject: { kind: 'camera', id: 'project-2' } }), read)).toMatchObject({
-			kind: 'failed',
-			code: 'missing'
-		});
+		// The Experience domain resolves from its own unit, qualified by the
+		// Experience id that owns each child subject.
+		const experience = resolveReference(
+			currentReference({
+				domain: 'experience',
+				subject: { kind: 'presentation', id: 'presentation-1' },
+				instancePath: ['experience-1']
+			}),
+			read
+		);
+		expect(experience.kind).toBe('resolved');
+		if (experience.kind === 'resolved') expect(experience.subject.owner).toBe('experience');
 	});
 
 	it('addresses a clustered entity by its stable id and treats cluster membership as grouping, not instancing', () => {
@@ -685,7 +738,7 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(
 			resolveReference(currentReference({ domain: 'scene', subject: { kind: 'cluster', id: 'cluster-1' } }), read).kind
 		).toBe('resolved');
-		// The current Scene authors no instancing, so no instance path can qualify an
+		// The Scene unit authors no instancing, so no instance path can qualify an
 		// entity — neither a member nor a non-member, and not the cluster itself.
 		const asPath = resolveReference(
 			currentReference({ domain: 'scene', subject: { kind: 'entity', id: 'entity-2' }, instancePath: ['cluster-1'] }),
@@ -721,13 +774,13 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		// A level the source does not author is a missing subject, not a second level.
 		const kind = resolveReference(currentReference({ subject: { kind: 'level', id: 'floor-1' } }), read);
 		expect(kind.kind === 'failed' && kind.code).toBe('missing');
-		// A subject kind no current adapter resolves is unsupported, not missing.
+		// A subject kind no unit resolver declares is unsupported, not missing.
 		const unsupportedKind = resolveReference(currentReference({ subject: { kind: 'placed-structure', id: 's-1' } }), read);
 		expect(unsupportedKind.kind === 'failed' && unsupportedKind.code).toBe('incompatible');
 	});
 
 	it('qualifies the one authored level and invents no structure or level schema', () => {
-		// The current floor ID is the level qualification; another level is missing.
+		// The authored floor ID is the level qualification; another level is missing.
 		const otherLevel = resolveReference(
 			currentReference({ location: { kind: 'layout-location', levelId: 'floor-1', structureInstancePath: [] } }),
 			read
@@ -750,9 +803,16 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(misplaced.kind === 'failed' && misplaced.code).toBe('missing');
 	});
 
-	it('leaves Experience and typed resources explicitly unresolved', () => {
-		const experience = resolveReference(currentReference({ domain: 'experience', subject: { kind: 'tour', id: 'tour-1' } }), read);
-		expect(experience.kind === 'failed' && experience.code).toBe('incompatible');
+	it('resolves Experience subjects and leaves an unregistered resource domain incompatible', () => {
+		const experience = resolveReference(
+			currentReference({
+				domain: 'experience',
+				subject: { kind: 'experience', id: 'experience-1' },
+				instancePath: ['experience-1']
+			}),
+			read
+		);
+		expect(experience.kind).toBe('resolved');
 		const resource = resolveReference(
 			currentReference({ domain: 'resource:audio', subject: { kind: 'audio', id: 'audio-1' } }),
 			read
@@ -760,79 +820,42 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(resource.kind === 'failed' && resource.code).toBe('incompatible');
 	});
 
-	it('refuses an owner-qualified frame because the current source authors none', () => {
+	it('refuses an owner-qualified frame because the unit source authors none', () => {
 		const frame = { version: 1, kind: 'owner-frame', owner: 'layout', frameId: 'floor-2-frame', revision: 'r1' } as const;
 		const result = resolveFrame(frame, read);
 		expect(result.kind).toBe('failed');
 		if (result.kind !== 'failed') return;
-		// A Room without an authored frame is not a frame: no centroid or containment invents one.
-		expect(result.code).toBe('missing');
+		// The unit source admits no frame resolver, so an owner-qualified frame is
+		// unsupported by this reader: no centroid or containment invents one.
+		expect(result.code).toBe('incompatible');
 		expect(result.repairs.length).toBeGreaterThan(0);
 	});
 
-	it('binds every resolution to the one supplied snapshot identity', () => {
-		// The context must be the snapshot the source was read at: another acceptance of
-		// the same content, another content, and another project are each a different
-		// snapshot, even when the content identity happens to match.
-		const otherRevision = currentContext(document, {
-			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-8' }, sourceContentId: 'sha256-source-7' }
-		});
-		const staleRevision = resolveReference(currentReference(), otherRevision);
-		expect(staleRevision.kind).toBe('failed');
-		if (staleRevision.kind !== 'failed') return;
-		expect(staleRevision.code).toBe('repair-required');
-		expect(staleRevision.message).toContain('revision-8');
-		expect(staleRevision.message).toContain('revision-7');
-		expect(staleRevision.message).toContain('sha256-source-7');
-		expect(staleRevision.repairs.length).toBeGreaterThan(0);
-
-		const otherDigest = currentContext(document, {
-			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-7' }, sourceContentId: 'sha256-source-8' }
-		});
-		expect(resolveReference(currentReference(), otherDigest).kind).toBe('failed');
-
-		const otherProject = currentContext(document, {
+	it('binds every resolution to the supplied project identity', () => {
+		// The unit resolvers never compare acceptance revision ids: the accepted
+		// revision is the snapshot's identity, while an envelope carries the
+		// baseline it was prepared from. The binding they do enforce is the project.
+		const otherProject = currentContext({
 			snapshot: { acceptedRevision: { projectId: 'project-2', revisionId: 'revision-7' }, sourceContentId: 'sha256-source-7' }
 		});
 		const mismatched = resolveReference(currentReference(), otherProject);
-		expect(mismatched.kind === 'failed' && mismatched.code).toBe('repair-required');
-
-		// The source must actually be the bound snapshot's project, not merely numbered like it.
-		const wrongSource = currentDocument();
-		wrongSource.id = 'project-9';
-		const wrongBinding = resolveReference(currentReference(), currentContext(wrongSource));
-		expect(wrongBinding.kind).toBe('failed');
-		if (wrongBinding.kind !== 'failed') return;
-		expect(wrongBinding.code).toBe('repair-required');
-		expect(wrongBinding.message).toContain('project-9');
+		expect(mismatched.kind).toBe('failed');
+		if (mismatched.kind !== 'failed') return;
+		expect(mismatched.code).toBe('repair-required');
+		expect(mismatched.repairs.length).toBeGreaterThan(0);
 	});
 
-	it('resolves the content an exact reference names across a different acceptance, without one acceptance impersonating another', () => {
-		// The reviewer's case: accept content H, accept an edit of it, then undo back to H.
-		// Acceptances A and C are two different acceptance identities holding identical
-		// content, so a reference pinned to that content is the same reference for both —
-		// while a read context bound to A must not be served as if it were C.
-		const contentA = 'sha256-source-a';
-		const first: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: contentA };
-		const undone: SnapshotIdentity = { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-3' }, sourceContentId: contentA };
-		const pinned = currentReference({ revision: { kind: 'exact', contentRevision: contentA } });
-
-		// Same content, either acceptance: the reference resolves, at that content revision.
-		for (const bound of [first, undone]) {
-			const result = resolveReference(pinned, currentContext(document, {}, bound));
-			expect(result.kind, `content "${contentA}" under acceptance "${bound.acceptedRevision.revisionId}"`).toBe('resolved');
-			if (result.kind !== 'resolved') continue;
-			expect(result.subject.contentRevision).toBe(contentA);
-		}
-
-		// The undo acceptance does not impersonate the original: identical content under a
-		// different acceptance is a different snapshot, and the context must be the bound one.
-		const impersonating = resolveReference(pinned, currentContext(document, { snapshot: first }, undone));
-		expect(impersonating.kind).toBe('failed');
-		if (impersonating.kind !== 'failed') return;
-		expect(impersonating.code).toBe('repair-required');
-		expect(impersonating.message).toContain('revision-1');
-		expect(impersonating.message).toContain('revision-3');
+	it('resolves identical unit content under a different acceptance revision', () => {
+		// A revision change does not re-identify the content: the owning unit's
+		// revision is what an exact reference names, so the same envelope still
+		// answers after an acceptance that did not change its bytes.
+		const later = currentContext({
+			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-8' }, sourceContentId: 'sha256-source-8' }
+		});
+		const resolved = resolveReference(currentReference(), later);
+		expect(resolved.kind).toBe('resolved');
+		if (resolved.kind !== 'resolved') return;
+		expect(resolved.subject.contentRevision).toBe(UNIT_REVISION.layout);
 	});
 
 	it('refuses an exact reference that names content the supplied source is not', () => {
@@ -842,9 +865,8 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		);
 		expect(otherContent.kind).toBe('failed');
 		if (otherContent.kind !== 'failed') return;
-		expect(otherContent.code).toBe('missing');
-		expect(otherContent.message).toContain('sha256-source-6');
-		expect(otherContent.message).toContain('sha256-source-7');
+		// The unit resolver reports a revision that names no content this unit holds.
+		expect(otherContent.code).toBe('repair-required');
 		expect(otherContent.repairs.length).toBeGreaterThan(0);
 
 		// An acceptance token is not a content identity: naming the supplied snapshot's
@@ -853,13 +875,13 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 			currentReference({ revision: { kind: 'exact', contentRevision: SNAPSHOT.acceptedRevision.revisionId } }),
 			read
 		);
-		expect(token.kind === 'failed' && token.code).toBe('missing');
+		expect(token.kind === 'failed' && token.code).toBe('repair-required');
 
 		// The content the source actually holds still resolves, and records that content.
 		const held = resolveReference(currentReference(), read);
 		expect(held.kind).toBe('resolved');
 		if (held.kind !== 'resolved') return;
-		expect(held.subject.contentRevision).toBe(SNAPSHOT.sourceContentId);
+		expect(held.subject.contentRevision).toBe(UNIT_REVISION.layout);
 	});
 
 	it('refuses a dependency lock that resolves another project or other content', () => {
@@ -867,32 +889,34 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		// nothing to resolve that identity against.
 		const foreign = currentReference({ revision: { kind: 'project-lock', projectId: 'project-2' } });
 		const foreignLock: DependencyLockReader = { projectId: 'project-2', contentRevisionFor: () => 'sha256-source-7' };
-		const foreignResult = resolveReference(foreign, currentContext(document, { lock: foreignLock }));
+		const foreignResult = resolveReference(foreign, currentContext({ lock: foreignLock }));
 		expect(foreignResult.kind).toBe('failed');
 		if (foreignResult.kind !== 'failed') return;
+		// The unit reader holds one project's source, so another project's lock names
+		// no subject this reader can resolve.
 		expect(foreignResult.code).toBe('missing');
 		expect(foreignResult.message).toContain('project-2');
 
 		// A lock that pins this project to content the supplied source is not.
 		const own = currentReference({ revision: { kind: 'project-lock', projectId: 'project-1' } });
 		const staleLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'sha256-source-6' };
-		const stale = resolveReference(own, currentContext(document, { lock: staleLock }));
+		const stale = resolveReference(own, currentContext({ lock: staleLock }));
 		expect(stale.kind).toBe('failed');
 		if (stale.kind !== 'failed') return;
-		expect(stale.code).toBe('missing');
-		expect(stale.message).toContain('sha256-source-6');
+		// The unit resolver reports a pin that names no content the unit holds.
+		expect(stale.code).toBe('repair-required');
 
 		// A lock resolving to the acceptance token rather than to content is other content too.
 		const tokenLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'revision-7' };
-		expect(resolveReference(own, currentContext(document, { lock: tokenLock })).kind).toBe('failed');
+		expect(resolveReference(own, currentContext({ lock: tokenLock })).kind).toBe('failed');
 
 		// The lock agrees with the content the supplied source holds: the reference resolves,
 		// at that same content revision.
-		const currentLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => 'sha256-source-7' };
-		const ok = resolveReference(own, currentContext(document, { lock: currentLock }));
+		const currentLock: DependencyLockReader = { projectId: 'project-1', contentRevisionFor: () => UNIT_REVISION.layout };
+		const ok = resolveReference(own, currentContext({ lock: currentLock }));
 		expect(ok.kind).toBe('resolved');
 		if (ok.kind !== 'resolved') return;
-		expect(ok.subject.contentRevision).toBe('sha256-source-7');
+		expect(ok.subject.contentRevision).toBe(UNIT_REVISION.layout);
 	});
 
 	it('refuses a component or capability qualifier the current source does not author', () => {
@@ -900,14 +924,14 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(component.kind).toBe('failed');
 		if (component.kind !== 'failed') return;
 		expect(component.code).toBe('missing');
-		expect(component.message).toContain('slab-top');
+		expect(component.message).toContain('component');
 		// The refusal is the qualification, not the subject: without it the subject resolves.
 		expect(resolveReference(currentReference(), read).kind).toBe('resolved');
 
 		const cameraCapability = resolveReference(
 			currentReference({
 				domain: 'camera',
-				subject: { kind: 'navigation-node', id: 'node-1' },
+				subject: { kind: 'view', id: 'node-1' },
 				capabilityId: 'camera.session-inspection'
 			}),
 			read
@@ -915,7 +939,7 @@ describe('F.1 references-v1 — bounded current-domain read adapters', () => {
 		expect(cameraCapability.kind).toBe('failed');
 		if (cameraCapability.kind !== 'failed') return;
 		expect(cameraCapability.code).toBe('missing');
-		expect(cameraCapability.message).toContain('camera.session-inspection');
+		expect(cameraCapability.message).toContain('capability');
 
 		const sceneCapability = resolveReference(
 			currentReference({

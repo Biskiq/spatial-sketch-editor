@@ -30,6 +30,7 @@
  * host uses for the ordered selection. Neither retargets by id alone.
  */
 import { resolveReference, type CorrespondenceEntry, type SemanticReference } from '@portfolio/project-model';
+import type { UnitDomain } from '@portfolio/project-model/units';
 
 import type { StageReadSnapshot } from './accepted-read';
 import { canonicalReference, sameSubject, type StageSelectionEntry } from './semantic-selection';
@@ -129,7 +130,11 @@ export function requalifySelectionEntry(entry: StageSelectionEntry, corresponden
 	if (!mapping) return { kind: 'cleared', reason: 'no-correspondence' };
 	const after = mapping.after;
 	if (!after || after.domain !== entry.reference.domain || after.subject.kind !== entry.reference.subject.kind) return { kind: 'cleared', reason: 'subject-retired' };
-	const candidate: SemanticReference = { ...after, revision: { kind: 'exact', contentRevision: next.sourceContentId } };
+	// The reference names the owning unit's content revision. An F.2 envelope has
+	// five independent unit revisions; using the envelope-wide digest here would
+	// name content the domain resolver does not hold.
+	const revision = next.domain.unitRevisions[after.domain as UnitDomain] ?? next.sourceContentId;
+	const candidate: SemanticReference = { ...after, revision: { kind: 'exact', contentRevision: revision } };
 	const resolved = resolveReference(candidate, next.domain.references);
 	if (resolved.kind !== 'resolved') return { kind: 'cleared', reason: 'subject-retired' };
 	// The owner's answer is the stored identity, exactly as admission does it. A
