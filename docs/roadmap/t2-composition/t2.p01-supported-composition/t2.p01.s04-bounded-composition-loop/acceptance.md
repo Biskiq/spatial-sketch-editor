@@ -1,8 +1,10 @@
 # T2.P01.S04 — acceptance record: Bounded composition loop and final gate
 
-**Slice:** T2.P01.S04 · **Status:** implemented and final gate **PASSED** on the evidence below;
-independent final-gate review recorded in [Review](#review) · phase closure is a separate owner event
-**Plan:** [implementation-plan.md](./implementation-plan.md) — owns the criteria
+**Slice:** T2.P01.S04 · **Status:** accepted 2026-10-19 and final gate **PASSED** on the evidence
+below; reviewed per [Review](#review) · the phase is CLOSABLE and its closure is a separate owner
+event
+**Plan:** [implementation-plan.md](./implementation-plan.md) — closed stub; this record owns the
+accepted criteria
 **Phase:** [T2.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 **Integrated base:** `origin/main` `a4f15897` (PR #160 merge; it contains #156 and #159). The branch
@@ -95,10 +97,64 @@ result.
 
 ## Review
 
-_(Independent final-gate review verdict is recorded here before closeout.)_
+Independent final-gate review ran on the integrated tree `2cad26b9` (implementation `1ad924b9`), read
+against [implementation-plan.md](./implementation-plan.md), this record and the cited tests.
+
+**Verdict — ACCEPT WITH REQUIRED FIXES.** Two blocking findings:
+
+1. The accepted-install lifetime fix covered the typed commands but not the session's pointer
+   outcome listener, which the drag adapter calls after its commit resolves. A pointer-originated
+   commit would still notify retired task services.
+2. The Creator-experience row was marked **Proved** while its own evidence admitted that a numeric
+   Resize in the Plan reading had not been run, and the final gate was declared PASSED on that
+   wording.
+
+Non-blocking findings: this Review section was empty; the Duplicate selection observation was
+attributed to the browser although only the suite asserts it; support-parity and wiring citations
+named later slices rather than the suites that carry the proofs.
+
+**Corrections.** `786c6035` registers `applyPointerOutcome`, which applies the accepted-install rule
+to the pointer path, and adds the regression that invokes the registered listener with a committed
+outcome and with a refused one (the regression fails on the pre-fix line and passes after it).
+`206a30cb` records the Plan-reading numeric Resize proof, attributes the selection claim to
+`scene-composition-loop.test.ts`, and cites the actual support-parity and mutation-control suites.
+All four non-blocking findings are closed by those edits.
+
+A second independent reviewer returned **ACCEPT** on `1ad924b9`: the accepted/refused split is the
+only correct predicate, no accepted typed path retains a task-service write, the new regressions are
+not overfit, and the `scene-proposal-lifetime` expectation change is a contract update rather than a
+weakened assertion.
+
+**Post-fix review.** No independent reviewer agent was available in this session for the delta, so
+the coordinator reviewed it against the same criteria: the guard is the same one-line rule the typed
+commands use, its only caller is the session listener whose contract is the outcome union, the
+regression exercises the real registration and fails without the guard, and the browser run added
+the missing permutation on the corrected tree. Both blocking findings are therefore closed by
+executable evidence rather than by wording. This limitation is recorded here rather than presented
+as an independent verdict.
 
 ## Final gate
 
-**PASSED** on this integrated tree, subject only to the independent review verdict above. This record
-does not close the phase or the track; `T2.P01.S04` is the phase's declared final gate, so acceptance
-makes the phase closable and leaves `PHASE CLOSE` to the owner.
+**PASSED** on this integrated tree: the reviewed implementation plus the closed blocking findings.
+This record does not close the phase or the track; `T2.P01.S04` is the phase's declared final gate, so
+acceptance makes the phase closable and leaves `PHASE CLOSE` to the owner.
+
+## CLOSEOUT PRESERVATION — T2.P01.S04 (2026-10-19)
+
+```text
+prose compacted:                 1   implementation-plan.md (stub at its own path)
+reference promotions:            0   durable composition contract already lives in reference/composition-execution.md
+renderable evidence archived:    0 files / 0 bytes
+evidence stubs / manifests:      0
+new live → archive prose links:  0
+transient artifacts removed:     0
+historical anchor:               ca5167435a7accabd00b0135435753c25cb8639f · tag closed/T2.P01.S04 (local only — not pushed)
+manual-owed verification rows:   0
+remaining deferred items:        6   named in Deliberate scope and residuals
+permanent stubs added:           1   (the owner-ratified cost: one per closed prose artifact)
+```
+
+The acceptance record itself stays live under the final-gate exception: it is the evidence the owner
+reads for the phase-close decision. The plan stub keeps the recovery line for its full body; the
+anchor is a merge-commit ancestor of the accepted implementation branch by construction and is
+verified after merge.
