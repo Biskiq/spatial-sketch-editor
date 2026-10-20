@@ -1938,6 +1938,25 @@ describe('the capability-readiness rule', () => {
 				'F3.channels@1:camera-handoff-v1',
 				'F4.intent-acceptance@1:unit-acceptance-v1',
 				'F4.intent-acceptance@1:conditional-save-units-v1'
+			],
+			// Batch D registration (2026-10-20): the first T3 authoring phase consumes the accepted
+			// cutover plus the unit, handoff, acceptance, Save and viewport scopes. S02 is its declared
+			// final gate and stays `proposed`.
+			'T3.P02.S01': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F3.channels@1:camera-handoff-v1',
+				'F4.intent-acceptance@1:unit-acceptance-v1',
+				'F4.intent-acceptance@1:conditional-save-units-v1',
+				viewport
+			],
+			'T3.P02.S02': [
+				'F1.reference@1:unit-resolution-v1',
+				'F2.unit-envelope@1:unit-envelope-v1',
+				'F3.channels@1:camera-handoff-v1',
+				'F4.intent-acceptance@1:unit-acceptance-v1',
+				'F4.intent-acceptance@1:conditional-save-units-v1',
+				viewport
 			]
 		});
 		expect(capabilityProblems(model)).toEqual([]);

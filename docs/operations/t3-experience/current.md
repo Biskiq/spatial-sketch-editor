@@ -16,33 +16,38 @@ track's baton, and never treat stale baton text as a blocker — verify Git stat
 prerequisites instead.
 
 ```text
-PHASE: T3.P01 Camera-experience foundation — CLOSED 2026-10-20, all six children shipped →
+PHASE: T3.P02 First Capture and Cut Preview (registered 2026-10-20; S01 authorized) →
+       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
+       T3.P01 is CLOSED 2026-10-20 — all six children shipped, final gate accepted at `06a8aac8`,
+       merged as `9a457f6b` (PR #158). →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
-SLICES: none open. S01, S02, S03 (through S05/S06) and the final gate S04 are shipped. The phase
-        README's slice register is authoritative.
-BATON: The phase closed 2026-10-20 by `phase-closeout` under explicit owner authorization. The final
-       gate `T3.P01.S04` was accepted at `06a8aac8` and merged as the P1 merge commit `9a457f6b`
-       (PR #158); the plan anchor `f5147aca` was verified reachable after the merge, and
-       `T3.camera-experience-cutover@1` is `accepted` in the gate register. The S04 gate artifact and
-       plan are now closed-work stubs; accepted evidence and the runbook are recoverable at
-       `fd619ef1` and `f5147aca`.
-       SEPARATE AND STILL OWED: the owner-run production activation (migration 005, API and editor
-       deploys, namespace-scoped R2 purge, smoke checks). The merge executed no migration against any
-       deployed database, and no shared data, bucket or deployment was touched.
-NEXT:  Owner decision only: register T3.P02 (first capture and Cut Preview) and authorize its S01, or
-       leave T3 without a registered phase. The repository holds an unregistered proposal at
-       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md; nothing is authorized by
-       this baton.
-ROUTE: ./README.md →
-       ../../roadmap/t3-experience/README.md (phase register) →
-       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md (PHASE CLOSE and
-       cutover mechanics) →
-       ../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover
-BLOCKER: none for planning. T3.P02 authorization is the owner's start gate; production activation
-         is the owner's operational step and blocks no repository work.
-CARRY:  The owner may push the new `closed/T3.P01` tag. Residuals that move forward: the authored
-        Cut/Travel selector, presentation text, state and lifecycle homes (T3.P02 F2 amendments);
-        resource bytes host-asserted until storage verifies them; the envelope's acceptedRevision is
-        baseline provenance, not revision authority; T4 owns the prepared public reader under the
+ACTIVE: T3.P02.S01 — First capture and Cut Preview, owner-authorized 2026-10-20 as batch D (D3,
+        [record](../../reference/decisions/batch-d-authorization-2026-10-20.md)). It declares
+        architecture-integration verification with its integration route at `T3.P02.S02`. S02 is
+        registered `proposed` and is NOT authorized.
+BATON: Build the first authoring surface on the accepted F2 cutover: Experience create/select, View
+       capture from the shared Stage, one-operation Presentation/Stop binding, Presentation reuse
+       across distinct Stops, reorder by stable identity, bounded labels/text/holds/continuation, a
+       first Cut Guide, isolated Preview with Camera return, and Undo/Redo/Save/reload through F2/F4.
+       One Camera authority, Experience-owned order, Camera-owned View identity, shared output/return
+       tickets, visitor isolation and room-local frame semantics all bind it. It contributes through
+       AM-5's task/Find/instrument points and the accepted viewport facade; a new host seam is a
+       stop-and-report to T1. Rich interaction grammar belongs to the PR #154 prototype and is not
+       imported here.
+NEXT:  Start S01 through the runbook start step at its own trusted base, implement, then independent
+       review, `slice-closeout` and a P1 merge commit. Its acceptance is not the phase gate:
+       `T3.P02.S02` needs its own authorization after S01 lands.
+ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →
+       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md →
+       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md →
+       ../../roadmap/cross-track-execution.md#authorized-batch-d-2026-10-20
+BLOCKER: none. S01 consumes only accepted gates; it does not wait for `T1.P01.S06`, and no
+         architecture-cycle window applies to T3.
+CARRY:  SEPARATE AND STILL OWED: the owner-run production activation of the F2 epoch (migration 005,
+        API and editor deploys, namespace-scoped R2 purge, smoke checks). The S04 merge executed no
+        migration against a deployed database. Residuals that move into this phase or beyond: the
+        authored Cut/Travel selector and presentation text/state/lifecycle homes (AM-9 amendment
+        drafts, S01), resource bytes host-asserted until storage verifies them, the envelope's
+        acceptedRevision as baseline provenance only, and T4's prepared public reader under the
         approved empty publication gap. T3 track completion remains a separate owner event.
 ```
