@@ -1,6 +1,6 @@
 # T3.P01 — Camera/Experience cutover foundation
 
-**Phase:** T3.P01 · **Status:** closable (final gate `T3.P01.S04` accepted and shipped by routine closeout 2026-10-20; phase-closeout remains a separate owner action) — registered 2026-10-16 — `T3.P01.S01` shipped 2026-10-16 (PR #131);
+**Phase:** T3.P01 · **Status:** closed 2026-10-20 — registered 2026-10-16; every child shipped, the final gate `T3.P01.S04` accepted by routine closeout and merged in PR #158 (`9a457f6b`) — `T3.P01.S01` shipped 2026-10-16 (PR #131);
 `T3.P01.S02` shipped 2026-10-16 (PR #133), accepted with `conditional-save-current-v1`;
 `T3.P01.S03` shipped 2026-10-17 (PRs #140/#141) through its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md),
 with its original obligations reconciled; `T3.P01.S05` shipped with both unit capabilities accepted
@@ -146,7 +146,7 @@ lifecycle and prerequisites only.
 | T3.P01.S03 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1 | — | [Compound and runtime preparation](./t3.p01.s03-compound-and-runtime-preparation/implementation-plan.md) | [record](./t3.p01.s03-compound-and-runtime-preparation/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); umbrella for its [registered split](./t3.p01.s03-compound-and-runtime-preparation/split-proposal.md) — accepted and shipped 2026-10-17 (PRs #140/#141); every original criterion reconciled to the half slices |
 | T3.P01.S05 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:acceptance-invariants-v1 | — | [Unit acceptance and unit Save](./t3.p01.s05-unit-acceptance-and-unit-save/implementation-plan.md) | [record](./t3.p01.s05-unit-acceptance-and-unit-save/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #140) — `unit-acceptance-v1` and `conditional-save-units-v1` accepted; first half of the S03 split |
 | T3.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:inspection-v1 | — | [Experience runtime and Camera handoff](./t3.p01.s06-experience-runtime-and-camera-handoff/implementation-plan.md) | [record](./t3.p01.s06-experience-runtime-and-camera-handoff/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/s03-split-followup-authorization-2026-10-17.md)); accepted and shipped 2026-10-17 (PR #141) — `camera-handoff-v1` accepted; second half of the S03 split |
-| T3.P01.S04 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover (closed stub)](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [final-gate acceptance record](./t3.p01.s04-live-ownership-cutover/acceptance.md) | owner-authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), R5); independent implementation review ACCEPT at `06a8aac8fa601de6c808c4d7014b6f360516e648` (Phase A + B, no blocking findings); routine slice-closeout 2026-10-20; final gate accepted, T3.P01 closable; PR #158 remains for P1 merge commit and post-merge anchor verification |
+| T3.P01.S04 | shipped | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1 | — | [Live ownership cutover (closed stub)](./t3.p01.s04-live-ownership-cutover/implementation-plan.md) | [final-gate acceptance record (closed stub)](./t3.p01.s04-live-ownership-cutover/acceptance.md) | owner-authorized 2026-10-19 ([record](../../../reference/decisions/t3-cutover-ratification-2026-10-19.md), R5); independent implementation review ACCEPT at `06a8aac8fa601de6c808c4d7014b6f360516e648` (Phase A + B, no blocking findings); routine slice-closeout 2026-10-20; final gate accepted; merged as a P1 merge commit `9a457f6b` (PR #158) with the plan anchor verified after merge; phase **closed 2026-10-20** (PHASE CLOSE below) |
 
 `references-v1` and `inspection-v1` were accepted on S01's trusted base. S01 and S02 are now shipped
 with their accepted capabilities; their exact records, prerequisites, exports and conformance are in
@@ -173,21 +173,39 @@ original exit criteria are [reconciled](./t3.p01.s03-compound-and-runtime-prepar
 S04 was authorized on 2026-10-19.
 
 `T3.camera-experience-cutover@1` was ratified 2026-10-19 with AM-9 as its contract and S04 as sole
-provider; routine closeout accepted it at the recorded revision. T3.P02 registers only after this
-accepted gate is present on its trusted base.
+provider, and is `accepted` in the gate register at the recorded implementation revision
+`06a8aac8`. T3.P02 registers only after this accepted gate is present on its trusted base;
+registering it is a separate owner event and not a consequence of this closure.
 
 ```text
 FINAL PHASE GATE: T3.P01.S04 → ./t3.p01.s04-live-ownership-cutover/acceptance.md
-Gate:         accepted 2026-10-20 by independent implementation review + routine slice-closeout
 
 PHASE CLOSE
-Stage:        closable
-Next:         owner-invoked phase-closeout, if desired
+Stage:        closed
+Closed:       2026-10-20 — owner ratification recorded in PR #163, the phase-closeout
+              documentation PR that carries this block (explicit owner phase-close
+              authorization of 2026-10-20)
+Final gate:   T3.P01.S04 → ./t3.p01.s04-live-ownership-cutover/acceptance.md — accepted
+              2026-10-20 at `06a8aac8`, merged as `9a457f6b` (PR #158, merge commit)
+Integration:  the gate artifact's integrated Phase A + Phase B verification on the tree tested
+              from implementation `75c59264` merged with `origin/main` `42d77b28` at `420dc2f3`,
+              plus the admission/refusal matrix: `npm run check` 0/0, `check:project-model`,
+              `check:layout-core`, `check:camera-core`, `check:api`, `npm run build` and
+              `build:api` pass, `npm test` 169 files / 2,211 tests, `test:arch` 20 files / 166
+              tests, `test:heavy` 8 files / 118 tests, DB-backed `test:api` 80 tests with zero
+              skips, and the migration-005 rehearsal with concurrent-runner coverage. Phase A and
+              Phase B review ACCEPT; post-merge anchor verification recorded in the gate artifact.
+Preservation: the gate artifact and the S04 plan are closed-work stubs at their own paths; the
+              accepted body is recoverable at `fd619ef1` (gate artifact) and `f5147aca` (plan and
+              superseded ratification draft). Renderable evidence archived: 2 PNG files / 183 KiB.
+              The preservation report is in the gate artifact stub.
 ```
 
-S01, S02, S03, S05, S06 and S04 are accepted and shipped with their recorded capability outcomes.
-The final gate makes T3.P01 closable; no `PHASE CLOSE` block is written and phase/track closure stays
-a separate owner event. The first authoring surface does not wait for this phase's closure.
+S01, S02, S03, S05, S06 and S04 are accepted and shipped with their recorded capability outcomes,
+so every child of this phase is `shipped` and no phase child is open. **T3 as a track stays
+`approved`**: track completion is a separate owner event, the first authoring surface is T3.P02's,
+and the owner-run production activation is a separate operational step that this closure neither
+executes nor claims.
 
 ## Cutover mechanics and retirement
 
@@ -224,9 +242,13 @@ a separate owner event. The first authoring surface does not wait for this phase
 5. **Recover deliberately.** A failed migration transaction leaves the prior state untouched. After
    activation, recovery rolls forward. Every project starts at a new-format history baseline, and
    source Undo never crosses the format boundary.
-6. **Activation is owner-run.** The S04 merge is the code cutover. The reset on the deployed
-   environment (migration 005, then the API and editor deploys) follows the runbook in the S04 plan.
-   It is not part of any planning PR.
+6. **Activation is owner-run.** The S04 merge is the code cutover, and it happened on 2026-10-20
+   (`9a457f6b`, PR #158). The reset on the deployed environment (migration 005, then the API and
+   editor deploys, then the namespace-scoped purge and smoke checks) has **not** been run: it
+   follows the runbook recoverable from the plan's closed-work stub at
+   [`./t3.p01.s04-live-ownership-cutover/implementation-plan.md`](./t3.p01.s04-live-ownership-cutover/implementation-plan.md),
+   and it is not part of any planning or closeout PR. Merging S04 executed no migration against any
+   deployed database, and no deployment, shared database or object store was touched.
 
 Changes include the canonical package/source boundary, not only JSON Save. The current portable
 package format has its own version/header; S04 declares the F2 admission explicitly. Unknown or
@@ -375,12 +397,13 @@ and check:api/test:api on a reachable DB with **zero skips**. A focused green ru
 a gate. This planning-only change runs documentation and the whole arch lane; no product
 behavior or DB acceptance is claimed here.
 
-**Acceptance:** S04 makes the behavioral cutover gate ready only with exports, conformance,
-independent acceptance and a real ancestor commit recorded in the global register, and as this
-phase's final gate it accepts early conditional Save and every scoped migration obligation, with
-unresolved residuals named by owner. The creator loop (capture/Cut Preview) is T3.P02's acceptance.
-One-Camera, one-order, current-format, visitor-isolation and source/session separation must all
-hold. Refusals must be reviewable results with unchanged accepted state, not silent exclusions.
+**Acceptance (recorded, now closed):** S04 made the behavioral cutover gate ready only with
+exports, conformance, independent acceptance and a real ancestor commit in the global register, and
+as this phase's final gate it accepted early conditional Save and every scoped migration obligation
+with unresolved residuals named by owner. The creator loop (capture/Cut Preview) is T3.P02's
+acceptance. One-Camera, one-order, current-format, visitor-isolation and source/session separation
+all held at acceptance. Refusals were reviewable results with unchanged accepted state, not silent
+exclusions. The evidence lives at the gate artifact's recovery anchor.
 
 ## Authorization and open decisions
 

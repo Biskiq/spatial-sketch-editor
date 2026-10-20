@@ -1,9 +1,9 @@
 # T3 — Experience
 
-**Track:** T3 · **Status:** approved — T3.P01 registered 2026-10-16; `T3.P01.S01` shipped
-2026-10-16 (PR #131); `T3.P01.S02` shipped 2026-10-16 (PR #133); S03 shipped 2026-10-17 after
-reconciling its split halves `T3.P01.S05` (PR #140) and `T3.P01.S06` (PR #141); S04 authorized
-2026-10-19 ([record](../../reference/decisions/t3-cutover-ratification-2026-10-19.md)) ([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T3 · **Status:** approved — `T3.P01` registered 2026-10-16 and **closed 2026-10-20**, with
+all six children shipped (`T3.P01.S01` 2026-10-16 (PR #131), `S02` 2026-10-16 (PR #133), `S03`
+through its split halves `S05` (PR #140) and `S06` (PR #141), and the final gate `S04` 2026-10-20
+(PR #158, `9a457f6b`)) ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -68,7 +68,7 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T3.P01 | closable | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
+| T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
@@ -77,15 +77,21 @@ source/runtime cutover phase (S01–S06, final gate S04), with its
 evidence. **`T3.P01.S01`** shipped 2026-10-16 (PR #131) and **`T3.P01.S02`** shipped 2026-10-16 (PR
 #133). **`T3.P01.S03`** shipped 2026-10-17 through its registered split, **`T3.P01.S05`** (PR #140)
 and **`T3.P01.S06`** (PR #141), which accepted `unit-acceptance-v1`, `conditional-save-units-v1` and
-`camera-handoff-v1`. The final gate **`T3.P01.S04`** is the only open child. It was owner-authorized on 2026-10-19
-([record](../../reference/decisions/t3-cutover-ratification-2026-10-19.md)), after AM-9 replaced AM-7 with a clean source epoch;
-its [authorization path](./t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md#authorization-path)
-is closed.
+`camera-handoff-v1`. The final gate **`T3.P01.S04`** was owner-authorized on 2026-10-19
+([record](../../reference/decisions/t3-cutover-ratification-2026-10-19.md)), after AM-9 replaced AM-7
+with a clean source epoch; its accepted result is the second delivery of this track's Camera →
+Experience split, and `T3.camera-experience-cutover@1` is `accepted` in the gate register at
+`06a8aac8`. The phase closed 2026-10-20 (its PHASE CLOSE block); **the track is not complete**, and
+the owner-run production activation of the new source epoch is a separate operational step that has
+not been executed.
 `Depends on` lists the
 external gates its slices consume; `F2.unit-envelope@1` is provided inside the phase by S01.
 
 **Candidate next phase (not registered):**
-[T3.P02 — First capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md), which registers only after `T3.camera-experience-cutover@1` is accepted on its trusted base.
+[T3.P02 — First capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md). Its
+registration precondition — an accepted `T3.camera-experience-cutover@1` — is now met, so it
+registers only through the owner's own registration and slice-authorization event, not as a
+consequence of T3.P01's closure.
 
 ## Starting foundation
 
