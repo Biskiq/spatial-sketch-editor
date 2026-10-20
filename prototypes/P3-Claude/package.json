@@ -1,0 +1,29 @@
+{
+  "name": "biskiq-vellum",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Biskiq · Vellum — a drafting-table prototype for making and remaking buildings in the browser.",
+  "scripts": {
+    "dev": "vite --port 5191 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "@fontsource/instrument-sans": "^5.1.0",
+    "@fontsource/instrument-serif": "^5.1.0",
+    "polygon-clipping": "^0.15.7",
+    "preact": "^10.25.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.1",
+    "@types/three": "^0.170.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
