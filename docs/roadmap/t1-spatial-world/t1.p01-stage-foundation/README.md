@@ -92,7 +92,7 @@ whole-world refitting buttons are not selected mechanisms.
 | `packages/layout-core/src/layout-room-frame.ts`, current Scene/Room types | The retained frame helper consumes legacy Room frames; current wall-first Rooms carry no frame and Scene roots are world-local. Preserve explicit room-local conversion semantics when a real frame is supplied, without inventing Room ownership or reintroducing legacy decoding. |
 
 **Reference reconciliation finding, not an amendment:**
-[persistence](../../../reference/components/persistence.md#one-document-format-post-115) says
+[persistence](../../../reference/components/persistence.md#one-source-format-f2-clean-epoch) says
 Junction reuse is global at commit. `layout-wall-chain.ts` and
 `apps/editor/tests/lib/layout/layout-junction-identity.test.ts` instead document and exercise
 declared-connection reuse, with independent coincident placement; the precision gates are
