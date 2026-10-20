@@ -27,10 +27,12 @@ import {
 	DUPLICATE_OFFSET_METERS,
 	YAW_SCOPE_FIELD,
 	sceneSupportGenerationId,
+	type NormalizedPlacementDefinition
+} from '@portfolio/project-model/scene-planning';
+import {
 	type AcceptedSnapshot,
 	type AuthoringIntent,
 	type DomainPlanner,
-	type NormalizedPlacementDefinition,
 	type SceneEntity,
 	type SceneObjectCluster,
 	type ScenePrimitiveEntity,
@@ -340,6 +342,58 @@ describe('scene operation planners — registration', () => {
 			expect(planner.sourceKinds).toEqual([UNIT_SOURCE_KIND]);
 			expect(planner.sourceVersions).toEqual([UNIT_SOURCE_VERSION]);
 		}
+	});
+});
+
+describe('scene operation planners — definition pins', () => {
+	it('refuses a placement whose named definition was never admitted, and names the pin', async () => {
+		const project = await projectWith(sceneWith([]), ELEVATION);
+		const snapshot = await snapshotOf(project);
+		// The catalogue model is excluded by S01's policy, so no session captures a
+		// definition for it; a payload naming it must refuse rather than guess.
+		const result = prepare(
+			'place-object',
+			snapshot,
+			intent({
+				kind: 'place-object',
+				operationId: 'op-place-missing',
+				snapshot,
+				payload: placePayload({
+					definitionKey: 'model:paris-grand-piano',
+					metadataContentId: `sha256-${'0'.repeat(64)}`
+				}),
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }]
+			}),
+			[]
+		);
+		expect(result).toMatchObject({ kind: 'rejected', code: 'missing-definition' });
+		if (result.kind !== 'rejected') return;
+		expect(result.diagnostics.map((issue) => issue.message)).toContain('model:paris-grand-piano');
+	});
+
+	it('refuses a placement whose captured metadata identity no longer matches the admitted definition', async () => {
+		const project = await projectWith(sceneWith([]), ELEVATION);
+		const snapshot = await snapshotOf(project);
+		const admitted = nativeBoxDefinition();
+		const capturedIdentity = `sha256-${'1'.repeat(64)}`;
+		expect(capturedIdentity).not.toBe(admitted.metadataContentId);
+		const result = prepare(
+			'place-object',
+			snapshot,
+			intent({
+				kind: 'place-object',
+				operationId: 'op-place-changed',
+				snapshot,
+				payload: placePayload({ metadataContentId: capturedIdentity }),
+				allocatedIds: [{ kind: 'scene-entity', id: 'entity-new' }]
+			}),
+			[admitted]
+		);
+		expect(result).toMatchObject({ kind: 'rejected', code: 'definition-changed' });
+		if (result.kind !== 'rejected') return;
+		const messages = result.diagnostics.map((issue) => issue.message);
+		expect(messages).toContain(admitted.metadataContentId);
+		expect(messages).toContain(capturedIdentity);
 	});
 });
 

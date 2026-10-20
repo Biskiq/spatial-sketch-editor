@@ -5,8 +5,8 @@
 [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
 ```text
-CONSUMES: F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1
-REQUIRES: F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1
+CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1
+REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: exhaustive
 ```
 
@@ -25,23 +25,22 @@ evidence would go stale when T3 replaces the current-source adapter and the star
 boot seam, K6). It would also put an exhaustive run on the cutover's critical path, and T1's next
 phase (K3) waits for the F2 cutover anyway.
 
-**Requirement handoff (exact).** `T3.P01.S04` phase B rewrites this slice's register row, the header
-above and its `parallel-track-gates.test.ts` pin in the same commit that retires
+**Requirement handoff (exact, performed).** `T3.P01.S04` phase B rewrote this slice's register row,
+the header above and its `parallel-track-gates.test.ts` pin in the same commit that retired
 `local-single-domain-v1` (S04 plan, phase B "Requirements"):
 
-- `Consumes` becomes `F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1,
+- `Consumes` is now `F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1,
   T1.viewport-projection@1, T3.camera-experience-cutover@1`;
-- `Requires` becomes `unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`,
+- `Requires` is now `unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`,
   `conditional-save-units-v1` (for the Save/reload journey) and `viewport-projection-v1`.
 
-Until then the row is inert: it is `proposed`, holds no permission, and the header above still
-names the current-source scopes only because S04 has not yet retired them. S06 **cannot start**
-with a retired scope: its own later authorization record requires the rewritten row, every scope
-`active` and `T3.camera-experience-cutover@1` `accepted` at its trusted base, and the runbook start
-step checks this explicitly because the current checker does not evaluate proposed-row readiness.
-The cutover gate is `ratified` at version 1 (2026-10-19), not yet accepted. On the post-cutover
-tree, the journey below also verifies the working F2 sign-in Save resume
-([TD-9](../../../../operations/tech-debt/README.md#td-9--the-sign-in-save-resume-is-half-wired)).
+The row is inert: it is `proposed`, holds no permission, and needs no scope retired by T3 S04. S06
+**cannot start** until its own later authorization record exists: that record requires the rewritten
+row, every scope `active` and `T3.camera-experience-cutover@1` `accepted` at its trusted base, and
+the runbook start step checks this explicitly because the current checker does not evaluate
+proposed-row readiness. The cutover gate is `ratified` at version 1 (2026-10-19), not yet accepted.
+On the post-cutover tree, the journey below also verifies the working F2 sign-in Save resume
+([TD-9](../../../../operations/tech-debt/README.md#closed-by-t3p01s04)).
 The pre-cutover alternative was declined.
 
 ## Produces
@@ -83,9 +82,12 @@ owner phase-close request closes it; neither phase nor cycle closure is fabricat
 ## Readiness declaration
 
 This slice is `proposed` and **not authorized**: it runs only after S01–S05 and S07 are
-accepted with routine closeout, it consumes `F1.reference@1`, `F4.intent-acceptance@1` and
-`T1.viewport-projection@1` accepted at its trusted base, and its `Requires` capabilities
-(`references-v1`, `local-single-domain-v1`, `viewport-projection-v1`) must be accepted before it starts. No gate state,
+accepted with routine closeout, it consumes `F1.reference@1`, `F2.unit-envelope@1`,
+`F4.intent-acceptance@1`, `T1.viewport-projection@1` and `T3.camera-experience-cutover@1`
+accepted at its trusted base, and its `Requires` capabilities
+(`unit-resolution-v1`, `unit-envelope-v1`, `unit-acceptance-v1`, `conditional-save-units-v1`,
+`viewport-projection-v1`) must be accepted before it starts, with `T3.camera-experience-cutover@1`
+`accepted` rather than merely `ratified`. No gate state,
 readiness, implementation, acceptance, evidence or commit is claimed by this plan. A passed
 final gate makes the phase closable, not closed, and only an explicit owner phase-close request
 closes it. Under the architecture cycle, this slice neither opens nor waits for the window: the

@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { AcceptedRevision } from '@portfolio/project-model';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitSaveHandler, type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { SaveRequest } from '@portfolio/project-model/save';
 
 import { type AcceptanceCoordinator } from '$lib/authoring/f4';
@@ -40,6 +40,14 @@ function deferred<T>(): Deferred<T> {
 		resolve = done;
 	});
 	return { promise, resolve };
+}
+
+async function eventually(predicate: () => boolean): Promise<void> {
+	for (let attempt = 0; attempt < 100; attempt += 1) {
+		if (predicate()) return;
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	}
+	throw new Error('the Save state did not settle');
 }
 
 async function boot(overrides: { baselineToken?: string | null; legacyTokenOnly?: boolean } = {}) {
@@ -150,7 +158,7 @@ describe('framework-free Save state', () => {
 
 		const pending = state.save();
 		expect(state.getSnapshot().status).toBe('saving');
-		expect(calls).toHaveLength(1);
+		await eventually(() => calls.length === 1);
 		expect(calls[0].capture.canonicalJson).toBe(admitted.canonicalJson);
 		expect(calls[0].capture.precondition).toEqual({ kind: 'expected-saved-base', token: TOKEN_ONE });
 
@@ -176,6 +184,7 @@ describe('framework-free Save state', () => {
 		setBehaviour(() => reply.promise);
 
 		const pending = state.save();
+		await eventually(() => calls.length === 1);
 		const replaced = await coordinator.replace({
 			revision: { projectId: fixture.project.id, revisionId: 'revision-replaced' },
 			source: admitted.project,
@@ -350,12 +359,35 @@ describe('framework-free Save state', () => {
 		expect(snapshot.status).toBe('dirty');
 	});
 
+	it('stamps a post-edit capture so the live Save reader accepts it', async () => {
+		const { state, coordinator, fixture, calls, setBehaviour } = await boot();
+		await acceptEdit(coordinator, fixture);
+		const current = coordinator.current();
+		// The admitted source keeps its baseline revision embedded; only the
+		// persistence boundary names the revision the Save is recorded under.
+		expect(current.source.acceptedRevision).not.toEqual(current.revision);
+
+		setBehaviour(async (request) => acknowledgement(request));
+		await expect(state.save()).resolves.toMatchObject({ kind: 'saved' });
+		await eventually(() => calls.length === 1);
+		const request = calls[0]!;
+		expect(request.capture.acceptedRevision).toEqual(current.revision);
+		const stamped = JSON.parse(request.capture.canonicalJson) as ProjectEnvelope;
+		expect(stamped.acceptedRevision).toEqual(current.revision);
+
+		// This is the server's own reader/handler, not a second implementation.
+		const prepared = await createUnitSaveHandler().prepare(request.capture);
+		expect(prepared.kind).toBe('prepared');
+		expect(state.getSnapshot().status).toBe('saved');
+	});
+
 	it('drops the retained capture when the session epoch is replaced', async () => {
 		const { state, coordinator, fixture, admitted, calls, setBehaviour } = await boot();
 		const reply = deferred<SaveTransportResult>();
 		setBehaviour(() => reply.promise);
 
 		const pending = state.save();
+		await eventually(() => calls.length === 1);
 		await coordinator.replace({
 			revision: { projectId: fixture.project.id, revisionId: 'revision-replaced' },
 			source: admitted.project,
@@ -469,7 +501,12 @@ describe('framework-free Save state', () => {
 		// Once resolved, the newer contents save under a new operation.
 		await expect(state.save()).resolves.toMatchObject({ kind: 'saved' });
 		expect(calls[2].capture.operationId).not.toBe(ambiguous);
-		expect(calls[2].capture.canonicalJson).toBe(coordinator.current().canonicalJson);
+		// The saved bytes name the revision the coordinator installed, not the
+		// embedded baseline revision the admitted source still carries.
+		const captured = JSON.parse(calls[2].capture.canonicalJson) as ProjectEnvelope;
+		expect(calls[2].capture.acceptedRevision).toEqual(coordinator.current().revision);
+		expect(captured.acceptedRevision).toEqual(coordinator.current().revision);
+		expect(coordinator.current().canonicalJson).not.toBe(calls[2].capture.canonicalJson);
 	});
 
 	it('never installs a conflict load into a newer conflict that captured the same bytes', async () => {
@@ -491,8 +528,10 @@ describe('framework-free Save state', () => {
 
 		const first = state.save();
 		// Let the first run reach its outstanding load, where `busy` is already clear.
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await eventually(() => loads === 1);
 		const second = state.save();
+		// The second conflict is established before the older load answers.
+		await eventually(() => loads === 2);
 
 		stale.resolve({ ...remoteProject(admitted, revision), projectId: 'project:foreign' });
 		await first;

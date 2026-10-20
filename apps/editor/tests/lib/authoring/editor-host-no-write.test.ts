@@ -4,10 +4,13 @@
  * The cloud API client can save a project (`PUT`), and the platform layer exports
  * pending-cloud-save helpers. T1.P01.S02's contract was a read-only boot. T1.P01.S04
  * is the owner-authorized exception: the Head mounts `T3.P01.S02`'s conditional Save,
- * so the **one** authorized writer is `api.saveAcceptedSource`, and it must be
- * reached only through the Save transport (`save/api-transport.ts`) — never from the
- * route, a shell module or an adapter. The pending-cloud-save helpers and any other
- * write path stay forbidden.
+ * so the **authorized saved-source writer** is `api.saveAcceptedSource`, and it must
+ * be reached only through the Save transport (`save/api-transport.ts`). T3.P01.S04
+ * adds TD-9: a Save captured before the sign-in redirect is persisted, read and
+ * cleared only through the Save-owned `save/pending-capture.ts` seam, because the
+ * capture must outlive a page load without becoming an automatic write. Both seams
+ * are excluded from the host call-site walk and asserted positively below; the raw
+ * helpers, `saveProject` and every other write path stay forbidden in host modules.
  *
  * Nothing executable can prove an absence. The writer is *reachable* (the API
  * client is a single module), an imported name is not a call, and no lane, build or
@@ -17,11 +20,12 @@
  * (`tests/helpers/import-closure.ts`, `tests/README.md` rule 7) — and it belongs to
  * the unconditional arch lane for the same reason that suite does.
  *
- * **Scope.** Every editor-source member of the route host's closure except
- * `lib/platform/project-persistence.ts` itself, which is the writer's own home: the
- * client interface declares `saveProject`, and the platform exports the
- * pending-save helpers. That module matching the write predicate is therefore
- * expected, and it is asserted below — the *exclusion* is deliberate, not the
+ * **Scope.** Every editor-source member of the route host's closure except the two
+ * transport homes and `lib/platform/project-persistence.ts` itself. Persistence is
+ * the writer's own home: the client interface declares `saveProject`, and the
+ * module exports the pending-save helpers. The two Save-owned seams call those
+ * helpers so no host module has to. Those modules matching the write predicate are
+ * therefore expected and asserted below — the *exclusion* is deliberate, not the
  * absence.
  */
 import { readFileSync } from 'node:fs';
@@ -43,21 +47,25 @@ const ROUTE_MEMBER = 'apps/editor/src/routes/project/[projectId]/spatial/+page.s
 const PLATFORM_PERSISTENCE_MEMBER = 'apps/editor/src/lib/platform/project-persistence.ts';
 const EDITOR_SOURCE_PREFIX = 'apps/editor/src/';
 
+/** The two Save-owned transports: the only modules that may call a raw writer. */
+const AUTHORIZED_SAVE = 'saveAcceptedSource';
+const SAVE_TRANSPORT_MEMBER = 'apps/editor/src/lib/authoring/save/api-transport.ts';
+const PENDING_CAPTURE_MEMBER = 'apps/editor/src/lib/authoring/save/pending-capture.ts';
+const TRANSPORT_MEMBERS = new Set([SAVE_TRANSPORT_MEMBER, PENDING_CAPTURE_MEMBER]);
+
 /** The host's closure, as repository-relative paths. */
 const REACHED = [...importClosure([ROUTE_ROOT])].map(relativeToRepo);
 
-/** The members whose call sites are judged (everything editor-side but the writer's home). */
+/** The members whose call sites are judged (everything editor-side but the writer's homes). */
 const HOST_MEMBERS = REACHED.filter(
 	(member) =>
-		member.startsWith(EDITOR_SOURCE_PREFIX) && member !== PLATFORM_PERSISTENCE_MEMBER
+		member.startsWith(EDITOR_SOURCE_PREFIX) &&
+		member !== PLATFORM_PERSISTENCE_MEMBER &&
+		!TRANSPORT_MEMBERS.has(member)
 );
 
 /** The write paths the host must never reach, even with conditional Save mounted. */
 const WRITE_PATHS = ['saveProject', 'writePendingCloudSave', 'clearPendingCloudSave'] as const;
-
-/** The one authorized writer, allowed only in its platform transport module. */
-const AUTHORIZED_SAVE = 'saveAcceptedSource';
-const SAVE_TRANSPORT_MEMBER = 'apps/editor/src/lib/authoring/save/api-transport.ts';
 
 /**
  * Which write paths this source *calls*. Comments are blanked first: the host's own
@@ -77,7 +85,8 @@ describe('the editor host reaches only authorized write paths', () => {
 		// Positive controls: the walk is real, and it is the host's own graph.
 		expect(REACHED).toContain(ROUTE_MEMBER);
 		expect(REACHED).toContain(PLATFORM_PERSISTENCE_MEMBER);
-		expect(REACHED).toContain('apps/editor/src/lib/project/project-codec.ts');
+		expect(REACHED).toContain(SAVE_TRANSPORT_MEMBER);
+		expect(REACHED).toContain(PENDING_CAPTURE_MEMBER);
 		expect(REACHED).toContain('apps/editor/src/lib/authoring/stage/boot-state.ts');
 		expect(REACHED).toContain('apps/editor/src/lib/authoring/stage/shell/StageCanvas.svelte');
 		expect(HOST_MEMBERS.length).toBeGreaterThan(8);
@@ -112,13 +121,27 @@ describe('the editor host reaches only authorized write paths', () => {
 	});
 
 	it('reaches the authorized Save writer only through its transport module', () => {
-		const callers = HOST_MEMBERS.filter((member) =>
-			new RegExp(`\\b${AUTHORIZED_SAVE}\\s*\\(`).test(stripComments(sourceOf(member)))
-		);
-		// Conditional Save is mounted, so the transport must be reached; and no other
-		// host module may call the writer directly.
-		expect(callers).toEqual([SAVE_TRANSPORT_MEMBER]);
+		const calls = (member: string) =>
+			new RegExp(`\\b${AUTHORIZED_SAVE}\\s*\\(`).test(stripComments(sourceOf(member)));
+		// Conditional Save is mounted, so the transport must call the writer; and no
+		// other host module may reach it directly.
+		expect(calls(SAVE_TRANSPORT_MEMBER)).toBe(true);
+		expect(HOST_MEMBERS.filter(calls)).toEqual([]);
 		expect(REACHED).toContain(SAVE_TRANSPORT_MEMBER);
+	});
+
+	it('reaches the TD-9 capture only through the Save-owned pending transport', () => {
+		// The route must not call the raw helpers; the capture seam is the only
+		// editor module that does, and it must reach all three operations.
+		expect(callsIn(sourceOf(ROUTE_MEMBER))).toEqual([]);
+		expect(callsIn(sourceOf(PENDING_CAPTURE_MEMBER))).toEqual([
+			'writePendingCloudSave',
+			'clearPendingCloudSave'
+		]);
+		const route = stripComments(sourceOf(ROUTE_MEMBER));
+		expect(/\bpersistPendingCapture\s*\(/.test(route)).toBe(true);
+		expect(/\breadPendingCapture\s*\(/.test(route)).toBe(true);
+		expect(/\bdiscardPendingCapture\s*\(/.test(route)).toBe(true);
 	});
 
 	it('would flag a write call, and does flag the writer module the walk reaches', () => {

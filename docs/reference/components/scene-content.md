@@ -1,18 +1,15 @@
 # Scene content
 
 **Read when:** entities, asset library, materials/textures, lights, clusters, transforms.
-**Last reviewed:** 2026-10-13 (#115 WP4 — current-format readers, removed editor shell;
-`placement.md` merged into this contract and deleted)
+**Last reviewed:** 2026-10-20 (T3.P01.S04 cutover implementation; PR #158 review pending, production activation owner-controlled)
 
 ---
 
 ## Current implementation
 
-The Scene document is **world-local** and carries its own format discriminator
-(`formatVersion: 1`); it is validated strict-generation alongside the wall-first Layout
-(`formatVersion: 5`). Only one format is supported and there is no legacy recognition: a
-malformed or incomplete document fails ordinary current-format validation, with no
-`unsupported_generation` code, detector or compatibility facade.
+The live Scene is the world-local Scene 2 payload of the F2 envelope. Camera Views and
+connections live in the separate Camera unit; Experience owns editorial order. Strict unit
+validation rejects old versions and retired fields. There is no legacy recognition or conversion.
 
 Editable entity kinds: **model** / **primitive** (`box|plane|cylinder|sphere`) / **light**
 (`point|spot|directional`) · textures · material instances · clusters.
@@ -30,15 +27,13 @@ Current clusters are **not** a durable assembly/instance model: they carry membe
 editor-only hierarchy metadata, and cloning a Three hierarchy supplies no authored component
 identity or revision policy. GLB provenance: [`assets.md`](./assets.md).
 
-**The earlier editable shell was removed by #115.** T1.P01.S02 restores a read-only Plan/3D
-Stage for source inspection and selection; it adds no Scene mutation path. There is still no
-publication UI or import/export, so Scene documents are created, validated, serialized and
-rendered through the retained paths: the strict codec in `packages/project-model`, the
-catalogue-configured policy in `apps/editor/src/lib/content/scene-validation.ts`, the generic
-renderer modules under `apps/editor/src/lib/museum/` (`assets/`, `entities/`, `materials/`,
-`layout/` — the directory name is retained to avoid churn in test paths and does not denote a
-museum product), the visitor cold runtime, and the Stage's shared renderers. Scene editing remains
-a T2 capability.
+**Current authoring.** The T2 Scene adapter places, edits, resizes, duplicates and deletes through
+unit F4 planners, sharing the Stage's single history with Layout. Definitions must already be pinned
+or procedural; the starter may capture a bounded verified palette. Missing or changed pins refuse
+placement; no resource is silently admitted. General GLB ingest remains T2's follow-on. The shared
+Stage/visitor renderers remain under `apps/editor/src/lib/museum/`, with catalogue policy in
+`apps/editor/src/lib/content/scene-validation.ts`. The directory name is not a separate product.
+Open and Download use F2 source JSON. Publication UI and Camera authoring controls remain absent.
 
 ## Validation and transform contract (current)
 

@@ -34,7 +34,7 @@ import {
 	planSetYaw,
 	type SceneOperationContext,
 	type SceneOperationResult
-} from '@portfolio/project-model';
+} from '@portfolio/project-model/scene-planning';
 import type { AuthoringIntent, SceneEntity, Vec3 } from '@portfolio/project-model';
 import type { CameraFreeSceneDocument, LayoutUnitPayload } from '@portfolio/project-model/units';
 import type { FrameReference, SemanticReference } from '@portfolio/project-model';

@@ -44,7 +44,8 @@ const SUBPATH_ONLY_MODULES = [
 	path.join(PROJECT_MODEL_SRC, 'program/index.ts'),
 	path.join(PROJECT_MODEL_SRC, 'program/types.ts'),
 	path.join(PROJECT_MODEL_SRC, 'program/validate.ts'),
-	path.join(PROJECT_MODEL_SRC, 'references/unit-resolution.ts')
+	path.join(PROJECT_MODEL_SRC, 'references/unit-resolution.ts'),
+	path.join(PROJECT_MODEL_SRC, 'scene-planning/index.ts')
 ];
 
 function closureOf(entry: string): string[] {
@@ -103,7 +104,14 @@ describe('the retired converter and the active source entry', () => {
 		const manifest = JSON.parse(readFileSync(path.join(PACKAGES_ROOT, 'project-model/package.json'), 'utf8')) as {
 			exports: Record<string, unknown>;
 		};
-		for (const subpath of ['.', './units', './program', './references/unit-resolution', './save']) {
+		for (const subpath of [
+			'.',
+			'./units',
+			'./program',
+			'./references/unit-resolution',
+			'./save',
+			'./scene-planning'
+		]) {
 			expect(Object.keys(manifest.exports), subpath).toContain(subpath);
 		}
 	});

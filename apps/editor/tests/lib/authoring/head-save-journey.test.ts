@@ -21,7 +21,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mount, tick, unmount } from 'svelte';
 import type { SceneEntity, Vec3 } from '@portfolio/project-model';
-import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { createUnitSaveHandler, type ProjectEnvelope } from '@portfolio/project-model/units';
 import type { SaveAcknowledgement, SaveRequest } from '@portfolio/project-model/save';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -258,17 +258,23 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 	it('keeps newer edits unsaved when an in-flight older Save is acknowledged', async () => {
 		const mounted = await mountHead();
 		await resizeTo(mounted, 2, 2);
-		const firstJson = mounted.facade.snapshot().canonicalJson;
+		const capturedRevision = mounted.host.coordinator().current().revision;
+		const capturedLocalJson = mounted.facade.snapshot().canonicalJson;
 		expect(statusOf(mounted.target)).toBe('dirty');
 
 		saveButton(mounted.target).click();
 		await eventually(() => mounted.pending.length === 1);
 		await tick();
 		expect(statusOf(mounted.target)).toBe('saving');
-		// The Save captured the 2x source; this edit makes the local source newer
-		// while that request is still in flight.
+		// The Save captured the 2x source under the installed revision; this edit
+		// makes the local source newer while that request is still in flight.
 		const captured = mounted.pending[0]!.request;
-		expect(captured.capture.canonicalJson).toBe(firstJson);
+		const capturedSource = JSON.parse(captured.capture.canonicalJson) as ProjectEnvelope;
+		expect(capturedSource.units.scene.data.entities[0]).toMatchObject({ scale: 2 });
+		expect(captured.capture.acceptedRevision).toEqual(capturedRevision);
+		expect(capturedSource.acceptedRevision).toEqual(capturedRevision);
+		// The mounted capture passes the server's own Save reader.
+		await expect(createUnitSaveHandler().prepare(captured.capture)).resolves.toMatchObject({ kind: 'prepared' });
 		await resizeTo(mounted, 3, 3);
 
 		mounted.pending[0]!.resolve({
@@ -280,7 +286,10 @@ describe('T2.P01.S04 — Save creator journey through the mounted Head', () => {
 			dirty: true,
 			savedSourceContentId: captured.capture.sourceContentId
 		});
-		expect(mounted.facade.snapshot().canonicalJson).not.toBe(captured.capture.canonicalJson);
+		// The saved base is the admitted source text the Save captured; the newer
+		// edit is what stays dirty.
+		expect(mounted.state.getSnapshot().savedCanonicalJson).toBe(capturedLocalJson);
+		expect(mounted.facade.snapshot().canonicalJson).not.toBe(capturedLocalJson);
 		expect(mounted.target.querySelector('[data-unsaved-work]')).not.toBeNull();
 		expect(saveButton(mounted.target).textContent?.trim()).toBe('Save changes');
 	});

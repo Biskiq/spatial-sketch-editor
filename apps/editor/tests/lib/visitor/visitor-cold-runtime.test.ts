@@ -30,7 +30,7 @@ import {
 	listShippedTextureUris,
 	listShippedModelFiles
 } from '$lib/visitor/shipped-static-registry';
-import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { Group, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 import type { Texture as ThreeTexture } from 'three';
@@ -272,6 +272,14 @@ describe('P22.1 cold runtime + asset seam', () => {
 				textures: [{ id: 'tex-1', name: 'Pinned', uri }],
 				materials: [],
 				entities: []
+			},
+			// A released texture must carry its typed-resource record; release
+			// composition refuses an unresolved resource rather than inventing bytes.
+			resources: {
+				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+				resources: [
+					{ kind: 'texture', id: 'tex-1', contentRevision: 'revision-tex-1', pin: null, unresolved: null }
+				]
 			}
 		});
 		const bytes = new Map<string, ReleaseBytesEntry>([

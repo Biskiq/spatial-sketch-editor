@@ -19,7 +19,8 @@ import {
 	computeEnvelopeSourceContentId,
 	readUnitEnvelopeForSave,
 	serializeProjectEnvelope,
-	type CameraFreeSceneDocument
+	type CameraFreeSceneDocument,
+	type ProjectEnvelope
 } from '@portfolio/project-model/units';
 
 import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
@@ -82,5 +83,48 @@ describe('Save admission parity', () => {
 		if (admitted.kind !== 'admitted') return;
 		expect(admitted.canonicalJson).toBe(canonicalJson);
 		expect(admitted.sourceContentId).toBe(await computeEnvelopeSourceContentId(project));
+	});
+
+	it('admits closure for read but refuses to Save it, with the validator’s own finding', async () => {
+		const PIN = { hash: 'sha256-paper', mime: 'image/png', size: 512, locator: 'objects/paper' } as const;
+		const base = await createUnitProject({
+			id: 'project:parity',
+			name: 'Parity',
+			acceptedRevision: PARITY_REVISION
+		});
+		const project: ProjectEnvelope = {
+			...base,
+			dependencyLock: {
+				formatVersion: 1,
+				entries: [
+					{
+						domain: 'resource:texture',
+						subjectKind: 'resource',
+						subjectId: 'paper',
+						instancePath: [],
+						contentRevision: PIN.hash,
+						requiredCapabilities: [],
+						pin: PIN
+					}
+				]
+			}
+		};
+
+		// Admission is structural: reading the source is allowed and the closure is
+		// disclosed, not repaired into a resource the source never carried.
+		const admitted = await admitUnitProject(project, PARITY_REVISION);
+		expect(admitted.kind).toBe('admitted');
+		if (admitted.kind !== 'admitted') return;
+		expect(admitted.snapshot.domain.closure.map((finding) => finding.code)).toEqual(['missing-resource']);
+		expect(admitted.snapshot.domain.diagnostics).toEqual([]);
+
+		// Save is execution: the same canonical bytes are refused, and the refusal
+		// carries the closure finding rather than a generic error.
+		const read = await readUnitEnvelopeForSave(serializeProjectEnvelope(project));
+		expect(read.kind).toBe('refused');
+		if (read.kind === 'refused') {
+			expect(read.code).toBe('invalid-project');
+			expect(read.issues.map((issue) => issue.code)).toEqual(['missing-resource']);
+		}
 	});
 });

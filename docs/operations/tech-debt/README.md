@@ -102,38 +102,9 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 | --- | --- | --- | --- |
 | **TD-6** | Two migration runners raced on one database: one exited 0, the loser exited 1 although the schema finished complete | **fixed.** `apps/api/src/migrate.ts` takes `pg_try_advisory_lock(MIGRATION_LOCK_KEY)` on the session before reading `schema_migrations`, polls with a bounded 30 s wait and releases in `finally`; a dropped connection releases the session lock too. | None. `apps/api/tests/migration.test.mjs` pins lock-before-read and the unlock; `apps/api/tests/migration-fence.test.mjs` runs two concurrent runners in one throwaway schema — both fulfil and `schema_migrations` records 1–5 once each. |
 | **TD-7** | An `expected-saved-base` Save locked a foreign project row before the owner test | **fixed.** The unit Save path proves ownership with a non-locking owner/F2 query before `SELECT … FOR UPDATE`; a foreign project answers not-found without locking its row. The create-only collision path stays intentionally owner-blind and never reveals owner, name or contents. | None. `apps/api/tests/save-units.test.mjs` asserts the foreign refusal and that no lock precedes the owner test; the live Save lane is the unit handler only. |
+| **TD-9** | The sign-in Save resume was half-wired: only the same mounted session could retry, and the spatial route ignored `resume-save` | **fixed.** The Head writes the exact unit Save capture (operation ID, precondition, canonical source) through a Save-owned pending-capture seam before the sign-in redirect; the draft is v2 with a 15-minute expiry and the legacy v1 shape is invalid. The spatial route consumes `resume-save` by **offering**, never auto-running: a create-only capture is still offered after the cloud 404; resuming goes through the host replacement/unsaved-work confirmation, re-admits under the captured `acceptedRevision` and calls the existing Head retry. Cancellation keeps the current content, selection, history and saved base; a stale admission cannot overwrite a newer session. | None. `spatial-route-resume-save.test.ts` drives Save → sign-in redirect → return → offer → exact replay for create-only and expected-base, including the 404 path, cancellation and the stale-admission drop; `head-save.test.ts` covers the transport and disabled states. No real OAuth browser run was performed; the redirect contract is exercised at the mounted-route level. |
 
 ## Open
-
-## TD-9 — the sign-in Save resume is half-wired
-
-Status        open — found by source inspection; not yet reproduced in a browser
-Found         2026-10-19, during Batch C coordination (also noted in the unmerged research of PR #154)
-Owner         T1 Head integration (the spatial route and Head Save mount). Under batch C ruling C6
-              (approved 2026-10-19), `T3.P01.S04` must deliver working F2 recovery when it migrates Save
-              callers (deleting the old path does not close this entry), and `T1.P01.S06` verifies the journey end to end.
-Symptom       Expected from the code, not yet observed: a Save that needs sign-in can resume only
-              while the same editor session stays mounted (*Resume pending save* in the Head). If
-              sign-in navigates away, nothing restores the captured Save. T1.P01.S04's acceptance
-              text says "pending sign-in drafts resume", which overstates the shipped behaviour.
-Reproduce     Signed out, edit a project, then Save; sign in through the redirect flow and return.
-              Expected: the capture is not offered again. A browser run must confirm this.
-Root cause    `writePendingCloudSave` (`apps/editor/src/lib/platform/project-persistence.ts`) has no
-              production caller; only tests call it. The root route reads the draft and redirects
-              with `?resume-save=1`, but the spatial route never reads that parameter. The
-              same-session retry in `authoring/save/head-save.ts` is the only live path.
-Why green     The persistence tests cover the draft codec in isolation. No route-level test drives
-              Save → sign-in redirect → return.
-Fix options   1) Write the captured `SaveAcceptedSource` draft before the sign-in redirect, and have
-              the spatial route consume `resume-save` by offering, never auto-running, the resumed
-              Save through the Head. 2) Delete the dead draft path and state that only same-session
-              resume is supported — **not acceptable** without an owner-recorded product gap,
-              because Core Editor Stability requires sign-in Save recovery. Do NOT resume by installing the draft's document as a new
-              baseline without the user's action, and do NOT keep an old-format draft path alive
-              past the F2 cutover.
-Then add      A route-level test, Save → sign-in → return, that offers exactly the captured Save with
-              its precondition and operation ID; and, after the cutover, a test that refuses an
-              old-format draft with a notice.
 
 ## TD-10 — a late successful source Open applies after a newer session epoch
 
@@ -185,6 +156,6 @@ git show e90a58224443bdbf44114d7285d55c983b79cc84:docs/operations/tech-debt/READ
 | **TD-4** | Curved-fixture release-cost increases that did not reproduce across sessions | **retired with the benchmark.** Every number in that family was advisory by design — no threshold, budget or regression guard was ever set — and the harness that produced them (the PERF lane, `lib/bench/**`, the checked-in baseline and the reuse ratchet) was removed by #115. | Recorded as **unresolved**, never as fixed. A future measurement re-derives a same-session before/after arm under a separately authorized benchmark scope. |
 | **TD-5** | Reuse and comparison over `$state`-proxied compiled geometry paid a ~12× per-read penalty, and a measured candidate optimization was proven output-identical yet slower | **retired with the benchmark.** No test measured per-access proxy cost, and the reuse counters were counts, not durations. | Its **lesson** — do not deep-proxy compiled geometry, and measure against the input the editor actually hands in — is carried in [`docs/roadmap/t1-spatial-world/planning-evidence.md`](../../roadmap/t1-spatial-world/planning-evidence.md) §15. |
 
-TD-9 and TD-10 are the open entries. TD-6 and TD-7 were fixed by `T3.P01.S04` (see the closure
-table above). A new deferred defect is added under `## Open` using the template, with the track or
-file that owns the remaining obligation named in `Owner`.
+TD-10 is the open entry. TD-6, TD-7 and TD-9 were fixed by `T3.P01.S04` (see the closure table
+above). A new deferred defect is added under `## Open` using the template, with the track or file
+that owns the remaining obligation named in `Owner`.

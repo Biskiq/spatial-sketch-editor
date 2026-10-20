@@ -152,7 +152,11 @@ export function createStageAcceptanceHost(options: {
 	readonly facade: StageFacade;
 	readonly baseline: StageAcceptanceBaseline;
 	readonly sessionEpoch: string;
-	/** Test-only conformance planners; production registers none until S04. */
+	/**
+	 * Conformance planners supplied by a caller before adapters mount. The live
+	 * Scene adapter registers its own planners through `registerPlanner`; this
+	 * option exists so tests can install a planner into the same coordinator.
+	 */
 	readonly planners?: readonly DomainPlanner<ProjectEnvelope>[];
 }): StageAcceptanceHost {
 	const { facade, baseline } = options;

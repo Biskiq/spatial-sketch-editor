@@ -13,7 +13,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { Pool } from 'pg';
 import test, { after, before } from 'node:test';
 
-import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
 import { SAVE_CONTENT_IDENTITY_SCHEME, readSaveRequest } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -53,14 +53,12 @@ async function cleanupProject(projectId) {
 
 async function unitEnvelope(projectId, label = 'S05 unit', options = {}) {
 	const revision = options.acceptedRevision ?? { projectId, revisionId: `revision-${randomUUID()}` };
-	const source = validateProject(createEmptyWallFirstProject({ id: projectId, name: label }));
-	assert.equal(source.success, true);
 	return createProjectEnvelope({
 		id: projectId,
 		name: label,
 		acceptedRevision: revision,
 		dependencyLock: { formatVersion: 1, entries: options.lockEntries ?? [] },
-		layout: { unitId: 'unit-layout', data: source.project.layout },
+		layout: { unitId: 'unit-layout', data: createEmptyWallFirstLayoutDocument() },
 		scene: {
 			unitId: 'unit-scene',
 			data: { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures: [], materials: [], entities: [] }

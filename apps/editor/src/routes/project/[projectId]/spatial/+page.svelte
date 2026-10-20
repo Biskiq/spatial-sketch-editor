@@ -7,9 +7,10 @@
 	 * This replaces the foundation-reset notice. It performs a **read-only cloud
 	 * boot** (only `loadProject`), admits the source through the one admission path
 	 * (canonical validation + canonical compile + runtime Scene resolution), and
-	 * mounts the Stage shell on the admitted snapshot. It never writes: no
-	 * `saveProject`, no pending-cloud-save helper, no import of a writer is reached
-	 * from this route's call sites (see `editor-host-no-write.test.ts`).
+	 * mounts the Stage shell on the admitted snapshot. The route reaches no raw
+	 * writer: the Head owns `api.saveAcceptedSource` behind its Save transport, and
+	 * TD-9's sign-in capture is written and cleared only through the Save-owned
+	 * `pending-capture` seam (see `editor-host-no-write.test.ts`).
 	 *
 	 * Every explicit state is rendered: loading, new (starter gallery/empty), empty,
 	 * ready, diagnostics (blocking compile), refused (invalid/non-current format),
@@ -26,14 +27,16 @@
 	import { page } from '$app/state';
 	import { env } from '$env/dynamic/public';
 	import {
-		clearPendingCloudSave,
 		createProjectApi,
 		createProjectAuth,
-		readPendingCloudSave,
-		writePendingCloudSave,
 		ProjectPersistenceError,
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
+	import {
+		discardPendingCapture,
+		persistPendingCapture,
+		readPendingCapture
+	} from '$lib/authoring/save/pending-capture';
 	import type { SaveRequest } from '@portfolio/project-model/save';
 	import type { ProjectEnvelope } from '@portfolio/project-model/units';
 	import { primaryEntry, type StageSelectionEntry } from '$lib/authoring/stage/semantic-selection';
@@ -104,6 +107,16 @@
 	const session = createStageSession({ sessionEpoch: 'session:route-boot' });
 
 	let boot = $state<BootState>(initialBootState(projectId, intent));
+	/**
+	 * Validator findings of the mounted source, disclosed without being repaired.
+	 * `closure` is executable and blocks Save; `diagnostics` are repairable
+	 * authored bindings and stay visible without blocking inspection or edits.
+	 */
+	const sourceFindings = $derived.by(() => {
+		if (boot.status !== 'ready' && boot.status !== 'empty') return null;
+		const { diagnostics, closure } = boot.snapshot.domain;
+		return diagnostics.length === 0 && closure.length === 0 ? null : { diagnostics, closure };
+	});
 	let facade = $state.raw<StageFacade | null>(null);
 	/**
 	 * The host↔F4 acceptance host for the current project epoch. There is exactly
@@ -275,6 +288,7 @@
 	function buildHeadSave(mounted: StageAcceptanceHost, snapshot: StageReadSnapshot): HeadSave | null {
 		if (api === null) return null;
 		const saved = pendingSavedBase;
+		const closure = snapshot.domain.closure;
 		const state = createSaveState({
 			coordinator: mounted.coordinator(),
 			save: createApiSaveTransport(api),
@@ -282,8 +296,14 @@
 			onAuthRequired: async (request) => {
 				// Capture the exact unit Save before the platform redirect. The draft
 				// carries the precondition and operation ID, so the return visit can
-				// resume it rather than mint a new write from a moved base.
-				writePendingCloudSave(request);
+				// resume it rather than mint a new write from a moved base. A redirect
+				// without that draft would lose the operation, so storage failure keeps
+				// the creator here with a visible reason instead of signing in.
+				if (!persistPendingCapture(request)) {
+					notice =
+						'The pending Save could not be stored in this browser; sign-in was not started. Retry when browser storage is available.';
+					return;
+				}
 				await auth?.signIn('save');
 			},
 			baseline: {
@@ -305,7 +325,12 @@
 				};
 			}
 		});
-		return createHeadSave(state);
+		return createHeadSave(state, {
+			unavailableReason:
+				closure.length === 0
+					? null
+					: `This source cannot execute (${closure[0]!.code}): ${closure[0]!.message} Save is unavailable until the resource requirement is satisfied.`
+		});
 	}
 
 	function activate(snapshot: StageReadSnapshot): void {
@@ -384,7 +409,7 @@
 		// start a new project baseline, so they get a fresh session epoch and a fresh
 		// view. The **content-change** transition (same project, new content, view
 		// kept) is the seam's own install path, proved in `stage-content-change.test.ts`
-		// until S04 adds the first editing command that reaches it.
+		// and reached by accepted editing commands through the Stage acceptance host.
 		if (next.status === 'ready' || next.status === 'empty') activate(next.snapshot);
 		boot = next;
 	}
@@ -430,9 +455,10 @@
 	/* --- boot -------------------------------------------------------------- */
 
 	async function load(projectIdToLoad: string, requestedIntent: BootIntent): Promise<void> {
-		// A read is a new epoch's source: no previous saved base and no previous
-		// epoch's Save controller may survive into it.
+		// A read is a new epoch's source: no previous saved base, saved bytes or
+		// previous epoch's Save controller may survive into it.
 		pendingSavedBase = null;
+		remoteSavedCanonicalJson = null;
 		headSave = null;
 		boot = initialBootState(projectIdToLoad, requestedIntent);
 		if (api === null) {
@@ -452,7 +478,7 @@
 			// epoch: a replacement or teardown aborts it exactly once, and a completion
 			// that lands after either is dropped instead of installing itself over the
 			// newer source.
-			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal, captured));
+			outcome = await runBoundLoad(session, (signal) => fetchOutcome(projectIdToLoad, signal, captured, requestedIntent));
 		} catch {
 			// The GET was cancelled: the replacement that cancelled it owns the stage now.
 			return;
@@ -472,36 +498,59 @@
 			remoteSavedCanonicalJson = next.snapshot.canonicalJson;
 		}
 		applyState(next);
-		if (next.status === 'ready' || next.status === 'empty') offerResumeSave();
+		// A loaded source is offered with whatever precondition its capture states.
+		// An absent row is different: only a create-only capture can describe a Save
+		// the server could still accept, so the offer is deliberately narrowed there.
+		// The boot state itself is unchanged — `new` stays `new`, `missing` stays
+		// `missing`; the offer is a separate, explicit creator action.
+		if (next.status === 'ready' || next.status === 'empty') offerResumeSave({ createOnly: false });
+		else if (next.status === 'new' || next.status === 'missing') offerResumeSave({ createOnly: true });
 	}
 
 	/**
 	 * TD-9 — offer, never auto-run, a Save captured before the sign-in redirect.
 	 *
-	 * The `/` auth return path lands here with `resume-save=1`. The draft's exact
-	 * operation identity and precondition are preserved; mounting and retrying it
-	 * are both explicit creator actions.
+	 * The `/` auth return path lands here with `resume-save=1`. A create-only
+	 * capture is offered even when the cloud row is still absent: the Save never
+	 * reached the server, so the return visit's 404 is exactly why the pending work
+	 * must remain resumable. The draft's exact operation identity and precondition
+	 * are preserved; mounting and retrying it are both explicit creator actions.
 	 */
-	function offerResumeSave(): void {
+	function offerResumeSave(options: { readonly createOnly: boolean }): void {
 		const url = new URL(page.url);
 		if (url.searchParams.get('resume-save') !== '1') return;
-		// Consume the flag so a refresh cannot re-offer a draft this visit resolved.
-		url.searchParams.delete('resume-save');
-		replaceState(`${url.pathname}${url.search}`, {});
-		const pending = readPendingCloudSave();
+		const pending = readPendingCapture();
 		if (pending.status !== 'ready' || pending.project.id !== projectId) {
+			// Consume the flag only once a draft was actually considered, so a direct
+			// visit cannot leave a stale flag that re-offers a later draft by accident.
+			url.searchParams.delete('resume-save');
+			replaceState(`${url.pathname}${url.search}`, {});
 			notice =
 				pending.status === 'expired'
 					? 'The pending Save expired; the cloud copy is unchanged.'
 					: 'The pending Save is unavailable; the cloud copy is unchanged.';
 			return;
 		}
+		if (options.createOnly && pending.save.capture.precondition.kind !== 'create-only') {
+			// A row that does not exist cannot satisfy an expected saved base. Keep
+			// the normal boot state and leave the flag for the next real load retry.
+			return;
+		}
+		// Consume the flag so a refresh cannot re-offer a draft this visit resolved.
+		url.searchParams.delete('resume-save');
+		replaceState(`${url.pathname}${url.search}`, {});
 		resumeOffer = pending;
 		notice = 'A Save captured before sign-in is available. Resume it to save exactly that work.';
 	}
 
 	/**
 	 * Mount the captured local source and replay its exact Save.
+	 *
+	 * Resuming is a **source replacement**, so it asks the same unsaved-work
+	 * question as every other replacement: cancelling preserves the mounted
+	 * content, selection, history and saved base. Admission is asynchronous, so the
+	 * session token captured before it must still be current afterwards; a newer
+	 * replacement wins and the captured source is never installed over it.
 	 *
 	 * The captured precondition is the base that Save states, so the server — not
 	 * this host — decides whether that base still matches. A moved base answers a
@@ -510,7 +559,38 @@
 	async function resumePendingSave(): Promise<void> {
 		const offer = resumeOffer;
 		if (offer === null) return;
-		const next = await bootFromSourceJson(offer.save.capture.canonicalJson, projectId, admissionContext());
+		// The Head disables Save for a source with executable closure. Resuming is
+		// the same Save command, so it must respect the same visible refusal rather
+		// than bypass the control and rely on the server to reject it.
+		const control = headSave?.control();
+		if (control?.unavailable === true) {
+			notice = control.reason ?? 'Save is unavailable for this source.';
+			return;
+		}
+		if (activeProject()) {
+			const unsaved = headSave?.unsavedWork();
+			if (
+				unsaved?.kind === 'confirm' &&
+				typeof window !== 'undefined' &&
+				!window.confirm(unsaved.message)
+			) {
+				return;
+			}
+		}
+		const token = session.token();
+		// The captured Save states the local acceptance revision its operation was
+		// minted under. Re-admitting the same bytes under a fresh revision would
+		// make the retained capture un-replayable (the state compares revisions),
+		// so the epoch is new but the acceptance identity is the capture's own.
+		const context = admissionContext();
+		const next = await bootFromSourceJson(offer.save.capture.canonicalJson, projectId, {
+			sessionEpoch: context.sessionEpoch,
+			acceptedRevision: offer.save.capture.acceptedRevision
+		});
+		// The admission is asynchronous: a replacement or teardown that happened
+		// while it ran owns the Stage now, and this older capture must not overwrite
+		// it. The offer remains available for an explicit retry.
+		if (!session.isCurrent(token)) return;
 		if (next.status !== 'ready' && next.status !== 'empty') {
 			reportSourceRefusal(next, 'reload');
 			return;
@@ -527,18 +607,24 @@
 		const outcome = await headSave?.retry();
 		switch (outcome?.kind) {
 			case 'saved':
-				clearPendingCloudSave();
+				discardPendingCapture();
 				notice = 'The pending Save completed.';
 				break;
 			case 'dirty':
-				clearPendingCloudSave();
+				discardPendingCapture();
 				notice = 'The pending Save completed; newer edits remain local.';
 				break;
 			case 'conflict':
-				clearPendingCloudSave();
+				discardPendingCapture();
 				notice = 'The cloud copy changed; the pending Save was not applied. Resolve the conflict explicitly.';
 				break;
 			case 'refused':
+				notice = outcome.message;
+				// A refused capture cannot become a successful replay under the same
+				// operation ID; the state machine has already dropped it. Keep it only
+				// for the resumable auth-required case.
+				if (headSave?.snapshot().pending !== true) discardPendingCapture();
+				break;
 			case 'error':
 				notice = outcome.message;
 				break;
@@ -549,14 +635,15 @@
 
 	function dismissResumeOffer(): void {
 		resumeOffer = null;
-		clearPendingCloudSave();
+		discardPendingCapture();
 		notice = 'The pending Save was discarded; the cloud copy is unchanged.';
 	}
 
 	async function fetchOutcome(
 		projectIdToLoad: string,
 		signal: AbortSignal,
-		captured: { base: typeof pendingSavedBase }
+		captured: { base: typeof pendingSavedBase },
+		requestedIntent: BootIntent
 	): Promise<BootLoadOutcome> {
 		try {
 			const loaded = await api!.loadProject(projectIdToLoad, signal);
@@ -573,6 +660,12 @@
 			// An abort is not a cloud answer, so it must not become one: rethrow so the
 			// bound load drops the whole attempt.
 			if (signal.aborted) throw error;
+			// A minted guest identity starts local work before authentication. An
+			// unrelated Open still reports forbidden, and Save remains create-only: no
+			// project row is created until the creator explicitly saves.
+			if (requestedIntent === 'create' && error instanceof ProjectPersistenceError && error.code === 'auth') {
+				return { kind: 'not-found' };
+			}
 			return loadOutcomeFromError(error);
 		}
 	}
@@ -1538,6 +1631,35 @@
 		</div>
 	{/if}
 
+	{#if sourceFindings !== null}
+		<div class="source-findings" role="status" aria-label="Source findings">
+			{#if sourceFindings.closure.length > 0}
+				<p>
+					<strong>This source cannot execute.</strong> Its resource requirements are not
+					satisfied, so Save, accepted edits and release are unavailable. The source stays
+					visible for inspection; nothing is repaired or pinned automatically.
+				</p>
+				<ul>
+					{#each sourceFindings.closure.slice(0, 5) as finding (finding.path + finding.code)}
+						<li>{finding.path}: {finding.message} ({finding.code})</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if sourceFindings.diagnostics.length > 0}
+				<p>
+					{sourceFindings.diagnostics.length} repairable authored
+					{sourceFindings.diagnostics.length === 1 ? 'binding is' : 'bindings are'} unresolved.
+					They are disclosed as authored; they do not block this source.
+				</p>
+				<ul>
+					{#each sourceFindings.diagnostics.slice(0, 5) as finding (finding.path + finding.code)}
+						<li>{finding.path}: {finding.message} ({finding.code})</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	{/if}
+
 	<div class="editor-body">
 		<EditorIndex
 			open={indexOpen}
@@ -1915,6 +2037,24 @@
 		border-color: #d8b26a;
 		background: #7a5a22;
 		color: #fff;
+	}
+	.source-findings {
+		padding: 0.7rem 1rem;
+		border-bottom: 1px solid #635a6f;
+		background: #201d29;
+		color: #ddd6e6;
+	}
+	.source-findings p {
+		margin: 0 0 0.35rem;
+		line-height: 1.4;
+	}
+	.source-findings ul {
+		margin: 0 0 0.35rem 1rem;
+		padding: 0;
+		font-size: 0.85rem;
+	}
+	.source-findings li {
+		margin-bottom: 0.2rem;
 	}
 	.boot-panel {
 		position: absolute;

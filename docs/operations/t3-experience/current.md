@@ -19,38 +19,34 @@ prerequisites instead.
 PHASE: T3.P01 Camera-experience foundation (in-progress) →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
 SLICES: S01, S02, S05 and S06 are shipped, and S03 is shipped by reconciliation. S04 is authorized
-        (2026-10-19), effective from PR #155. Phase A is implemented and **accepted at `b9cb5ed1`**
-        (independent round 4, no blocking findings). `T3.camera-experience-cutover@1` is `ratified`,
-        with AM-9 as its contract.
+        (2026-10-19), effective from PR #155. Phase A is **accepted at `b9cb5ed1`** (independent
+        round 4, no blocking findings); Phase B is implemented on PR #158 and awaiting independent
+        final review. `T3.camera-experience-cutover@1` is `ratified`, with AM-9 as its contract.
 BATON: The owner ratified the clean source epoch (R1–R4): saved data is disposable, AM-9
        supersedes AM-7, and the publication gap is empty by construction. S04 is authorized in two
-       phases (R5). Phase A (T3-owned files: reset migration 005 with an advisory lock, API
-       admission, the unit Save live path, converter retirement, lowering and visitor) is accepted
-       at `b9cb5ed1`, with the declared-handoff origin correction at `ce6678da`; the branch is merged
-       with the frozen `main` at `fd3cf67e`. The slice is not accepted and `#158` is not
-       merge-eligible until Phase B. **Phase B is not started**: the editor still boots, imports,
-       exports, stages and saves the current source, and the visitor Camera graph is still
-       Scene-derived. S04 owns TD-6, TD-7 (both closed in Phase A and recorded in the ledger),
-       working F2 sign-in Save recovery (TD-9; deletion does not count), the S06 requirement rewrite,
-       and the Guide-free Presentation fix (shipped in Phase A as a visitor Presentation control).
-NEXT: Implement Phase B on PR #158 from `fd3cf67e` as one atomic caller migration: F2 admission at
-      boot/import/export, Stage read ownership and the starter; unit-backed T1/T2 operation and
-      history callers; the unit Save mounted in the Head with TD-9's route-level recovery; the
-      Camera-unit visitor graph; and the S06 requirement rewrite in the same commit that retires
-      `local-single-domain-v1`. A partial migration is not mergeable: it would leave a second
-      current-source reader alive. Then run the exhaustive lane, `check:api`, the DB-backed
-      `test:api` with zero skips and the migration/concurrency rehearsal, obtain independent final
-      review, close out and merge. Activation uses a dedicated bucket per environment because the
-      purge refuses pre-namespace legacy keys; no data is reset until S04 merges and the owner runs
-      the activation runbook.
+       phases (R5). Phase A (reset migration 005 with an advisory lock, API admission, the unit Save
+       live path, converter retirement, lowering and visitor) is accepted at `b9cb5ed1`, with the
+       declared-handoff origin correction at `ce6678da`; the branch is merged with the frozen
+       `main` at `fd3cf67e`. **Phase B is implemented** in `0d2f6ceb` with the A/B/C corrections:
+       every editor boot/starter/empty/Open/Download/import path is F2, the Stage read facade and
+       T1/T2 operations/history are unit-scoped, Scene definitions are pinned/procedural, the Head
+       Save is the unit Save, TD-9 route-level recovery is live, the visitor Camera graph comes from
+       the Camera unit, and the S06 requirement rewrite / capability retirement landed with the
+       caller migration. TD-6, TD-7 and TD-9 are closed in the ledger. The exhaustive, arch, heavy,
+       build, check and fresh-DB API lanes pass; the migration rehearsal and fence refusals pass.
+NEXT: Obtain independent final review of the Phase B revision on PR #158. Resolve any findings and
+      re-review until accepted; then record acceptance in the slice record, run between-review
+      closeout (S04 is the phase's final gate, so closeout makes the phase *closable* and stops),
+      commit/push the accepted changes to #158, and verify the remote head/ancestry, clean worktree
+      and mergeability. Stop before merging; merge and the activation runbook are owner actions.
 ROUTE: ./README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/t3.p01.s04-live-ownership-cutover/implementation-plan.md →
        ../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover
-BLOCKER: none technical — the batch C freeze is complete. Phase B is the remaining authorized
-         implementation. Disclosed residuals that move to T3.P02/T4: the
-         authored Cut/Travel selector, presentation text, state and lifecycle homes (T3.P02 F2
-         amendments; @1 defaults are fixed in AM-9); resource bytes host-asserted until storage
-         verifies them; the envelope's acceptedRevision is baseline provenance, not revision
-         authority.
+BLOCKER: independent final review of Phase B is pending; none technical. Disclosed residuals that
+         move to T3.P02/T4: the public reader (T4), catalogue model placement until r186 contact
+         verification (T2 K1), the authored Cut/Travel selector, presentation text, state and
+         lifecycle homes (T3.P02 F2 amendments; @1 defaults are fixed in AM-9), resource bytes
+         host-asserted until storage verifies them, and the envelope's acceptedRevision as baseline
+         provenance rather than revision authority.
 ```

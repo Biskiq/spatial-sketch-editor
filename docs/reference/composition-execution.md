@@ -99,9 +99,9 @@ establish identity across revisions or re-exports.
   Presentation/Stop. An intentional keep-current-viewpoint policy is distinct
   from a missing View. Executable closure is a separate check (§F.4–F.5).
 
-**Current behavior (until T2/T3 cutover):** references are plain asset IDs and
-object IDs within one `ProjectDocument`; P22 publication addressing is keyed by
-publication position/version, not durable semantic identity.
+**Current implementation:** the F2 Stage uses unit-qualified F1 resolution for selection and
+operations. Resource IDs and locks retain exact revision/pin identity. Publication reads remain
+unavailable under AM-9 until T4's prepared reader.
 
 **Extension point:** reference kinds, each declaring target scope, validation
 and resolution/repair semantics.
@@ -168,14 +168,11 @@ families/operators, evaluator and release lowering, effects, and conformance
 fixtures — then gets its own unit. Never hide a new domain inside an existing
 document merely because it has storage space.
 
-**Current behavior:** one `ProjectDocument` holds separately owned
-`LayoutDocument` and `SceneDocument` domains with Camera data inside Scene;
-cloud saves append versions under a row lock but take no expected-revision
-precondition. The destination units are **designed, not implemented**: their
-exact shared envelope, unit-header, dependency-lock and unresolved-binding
-interfaces are ratified in AM-2, while no unit codec, reader or writer exists and
-the current encoding stays until the T3 cutover. A designed contract is not
-shipped code.
+**Current implementation (T3.P01.S04):** the five codec-bounded F2 units are the live source
+for boot, Open, starter/empty, Download, Stage operations and Head Save. Camera is separate from
+Scene; Experience carries editorial order. Only declared versions are admitted. The clean epoch
+uses migration 005's structural fence, with deployment activation a separate owner-run action.
+PR #158 review remains pending; this describes implementation, not production activation.
 
 ## F.3 Channels and representation parameters
 
@@ -282,14 +279,11 @@ This contract fixes the acceptance boundary, not the history mechanism. Event
 sourcing, CRDTs, branch merge and selective actor undo remain separate
 decisions.
 
-**Current behavior:** the editor's chronological undo stack (per-domain
-Layout/Scene snapshot entries) was removed by #115 with the editor shell, so the
-product has no history today; there is no cross-domain atomic acceptance and no
-expected-revision precondition. The Layout mutation-planning layering stays as
-documented in [`architecture.md`](./architecture.md) §Layout semantic mutation.
-
-**Extension point:** intent kinds and their domain planners; stale-revision
-rejection behavior for local and cloud writers.
+**Current implementation:** unit F4 acceptance provides one validated atomic install and one
+bounded chronological history across Layout and Scene; Undo/Redo mint fresh revisions. Local
+expected revision and durable saved-base CAS remain separate preconditions. Head Save captures
+exact source/revision/operation identity, preserves conflicts and ambiguous retries, and offers
+captured F2 sign-in recovery explicitly. See [persistence](./components/persistence.md).
 
 ## Session state and declarative logic
 
@@ -386,10 +380,9 @@ Rules:
   clearly; an immutable release is never silently reinterpreted by a changed
   implementation.
 
-**Current behavior:** P22 stores an authored `ProjectDocument` snapshot plus an
-asset manifest and revalidates it with deployed code at read time. That path is
-replaced by the versioned prepared-payload reader at its cutover; no prepared
-envelope is implemented.
+**Current implementation:** AM-9 retires the P22 authored-document reader. Publish/Update return
+`prepared-reader-required` and public reads return honest 404 with `no-store`. Prepared delivery
+remains T4's obligation; no compatibility fallback is served.
 
 **Extension point:** program node kinds; profile capabilities;
 contract-version negotiation.
@@ -565,7 +558,7 @@ explicit.
 | `local-single-domain-v1` | Current-source adapter admission: registered Layout or Scene planners over the current source adapter, complete current-project validation, unchanged-domain/resource enforcement and refusal of multi-domain, new-unit, external-staging and resource-changing operations. Requires `acceptance-invariants-v1` and **retires with the current-source adapter at T3.P01.S04**. Proves neither unit/resource compound acceptance nor cloud Save. |
 | History | One 100-entry chronological snapshot stack through the same boundary. Undo/Redo validates, installs once with fresh identity, preserves unrelated contents and truncates redo after new edits. No-op, refusal, cancel and stale results add nothing. Replacement starts a new baseline. |
 | `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. It requires `local-single-domain-v1` and retires with the current-source adapter at T3.P01.S04. |
-| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (future T3.P01.S03 capabilities; candidate-only before T3.P01.S04). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
+| `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (provided by T3.P01.S05 and used by the live T3.P01.S04 callers). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
 
 **Current-source content identity.** The single project-model export hashes UTF-8 canonical
 authored-content JSON with `sha256Bytes` (`sha256-<hex>`): strict normalized source, ID-keyed

@@ -116,7 +116,9 @@ function domainOf(
 		rooms: runtime.rooms,
 		graph: runtime.graph,
 		unitRevisions,
-		warnings: runtime.issues.filter((issue) => issue.severity === 'warning')
+		warnings: runtime.issues.filter((issue) => issue.severity === 'warning'),
+		diagnostics: runtime.diagnostics,
+		closure: runtime.closure
 	};
 }
 

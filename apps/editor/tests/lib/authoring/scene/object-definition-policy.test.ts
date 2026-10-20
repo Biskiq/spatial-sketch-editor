@@ -11,7 +11,8 @@
  * inside the renderer" is proven rather than asserted.
  */
 import { describe, expect, it } from 'vitest';
-import { preparePlaceObjectCandidate, type FloorSupportCandidate } from '@portfolio/project-model';
+import { preparePlaceObjectCandidate } from '@portfolio/project-model/scene-planning';
+import type { FloorSupportCandidate } from '@portfolio/project-model';
 import { assets, getAssetById } from '$lib/content/assets';
 import { buildPlanSceneFootprintProjection } from '$lib/authoring/scene/plan-scene-footprint';
 import {

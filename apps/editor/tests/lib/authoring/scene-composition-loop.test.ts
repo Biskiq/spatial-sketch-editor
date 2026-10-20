@@ -481,6 +481,56 @@ describe('Scene composition journey — one host, one history stack', () => {
 		expect(facade.selectionState().primary).toBeNull();
 	});
 
+	it('places typed, edits the placed subject, then undoes and redoes through the same host', async () => {
+		const { facade, host } = await mounted();
+		// The placement planner registers once its captured definition identity
+		// exists; that promise settles in a microtask, before the first task bind.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const opened = facade.openContributedTask('scene-place', 'scene');
+		if (opened.kind !== 'opened') throw new Error(`Place was not opened: ${opened.message}`);
+		const evaluation = facade.evaluation();
+		if (evaluation === null) throw new Error('the composition fixture has no evaluation');
+		const surface = sceneSurfaceFor(facade.snapshot(), evaluation);
+		if (surface === null) throw new Error('Place published no surface');
+
+		// Typed Place captures the admitted native definition and an exact X/Z; the
+		// accepted install is the same one a pointer release produces.
+		await expect(surface.session.place('box', 4, 3)).resolves.toEqual({ kind: 'committed' });
+		await eventually(() => facade.snapshot().domain.scene.entities.length === 2);
+		const placedId = surface.session.placedEntityId();
+		expect(placedId).not.toBeNull();
+		if (placedId === null) return;
+		expect(entityOf(facade, placedId)).toMatchObject({ position: [4, 0.5, 3], scale: 1 });
+		expect(host.history().depth).toBe(2);
+		// The typed path selects the exact entity it installed.
+		const selected = facade.selectionState().primary;
+		expect(selected?.subject.kind).toBe('entity');
+		if (selected === null || selected.subject.kind !== 'entity') return;
+		expect(selected.subject.id).toBe(placedId);
+
+		// The typed commit went through the session directly, so the accepted install
+		// left no Place task open to close before Compose.
+		expect(facade.session.task()).toBeNull();
+		expect(facade.camera.evaluate(RECT, 2).kind).toBe('evaluated');
+		const beforeEditJson = facade.snapshot().canonicalJson;
+		const compose = openCompose(facade);
+		compose.session.beginResize(placedId);
+		expect(compose.session.previewResize(2).kind).toBe('candidate');
+		await expect(compose.session.commitResize()).resolves.toEqual({ kind: 'committed' });
+		await eventually(() => entityOf(facade, placedId)?.scale === 2);
+		expect(entityOf(facade, placedId)).toMatchObject({ position: [4, 1, 3], scale: 2 });
+		expect(host.history().depth).toBe(3);
+
+		// Undo removes only the edit: the placement remains the accepted source.
+		await host.undo();
+		await eventually(() => facade.snapshot().canonicalJson === beforeEditJson);
+		expect(entityOf(facade, placedId)).not.toBeNull();
+		expect(entityOf(facade, placedId)?.scale ?? 1).toBe(1);
+		await host.redo();
+		await eventually(() => entityOf(facade, placedId)?.scale === 2);
+		expect(host.history().depth).toBe(3);
+	});
+
 	it('reloads the downloaded canonical JSON through the route open path and refuses an invalid source', async () => {
 		const { facade } = await mounted();
 		const compose = openCompose(facade);

@@ -200,6 +200,14 @@ export function composeColdReleaseBundle(input: {
 	}
 	if (signal?.aborted) throw new Error('Release preparation was cancelled');
 
+	// Executable closure blocks release exactly as it blocks F4 acceptance and
+	// Save; the editor may still show the source read-only for repair.
+	const closure = prepared.closure[0];
+	if (closure !== undefined) {
+		throw new Error(`Project cannot execute: ${closure.message}`);
+	}
+	if (signal?.aborted) throw new Error('Release preparation was cancelled');
+
 	if (hasBlockingLayoutIssues(prepared.issues)) {
 		throw new Error(prepared.issues[0]?.message ?? 'Layout geometry is invalid');
 	}

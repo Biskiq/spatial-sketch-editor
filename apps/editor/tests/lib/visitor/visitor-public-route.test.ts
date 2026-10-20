@@ -2,7 +2,7 @@ import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import {
 	fetchPublicRelease,
@@ -33,6 +33,12 @@ async function texturedProject(id: string, name: string, uri: string) {
 			textures: [{ id: 'tex-1', name: 'Pinned', uri }],
 			materials: [],
 			entities: []
+		},
+		resources: {
+			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+			resources: [
+				{ kind: 'texture', id: 'tex-1', contentRevision: 'revision-tex-1', pin: null, unresolved: null }
+			]
 		}
 	});
 }

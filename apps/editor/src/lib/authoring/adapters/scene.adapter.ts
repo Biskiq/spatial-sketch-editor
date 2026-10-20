@@ -34,7 +34,7 @@ import {
 	floorSupportSnapshotOf,
 	queryFloorSupports
 } from '@portfolio/layout-core';
-import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/project-model';
+import { createScenePlanners, sceneSupportGenerationId } from '@portfolio/project-model/scene-planning';
 
 import SceneTransformInstrument from './scene/SceneTransformInstrument.svelte';
 import { candidateGhost } from './scene/candidate-ghost';

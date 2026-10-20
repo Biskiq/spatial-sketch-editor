@@ -31,7 +31,7 @@ import {
 	type ObjectCreationDefaults,
 	type ObjectDefinitionAdmission,
 	type ObjectDefinitionExclusion
-} from '@portfolio/project-model';
+} from '@portfolio/project-model/scene-planning';
 import {
 	assets,
 	normalizeAssetFootprintOutline,

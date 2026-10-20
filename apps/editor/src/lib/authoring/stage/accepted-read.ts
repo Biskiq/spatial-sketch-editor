@@ -1,7 +1,7 @@
 /** Common accepted Stage read boundary. No current-format source dependency. */
 import type { CompiledLayoutGeometry, LayoutGeometryIssue } from '@portfolio/layout-core';
 import type { AcceptedRevision, ReferenceReadContext, RuntimeScene, LayoutRoomRegistry, NavigationGraph } from '@portfolio/project-model';
-import type { UnitDomain } from '@portfolio/project-model/units';
+import type { EnvelopeClosureFinding, EnvelopeDiagnostic, UnitDomain } from '@portfolio/project-model/units';
 
 /** The domain read access a Stage snapshot publishes. Immutable by construction. */
 export type StageDomainRead = {
@@ -34,6 +34,18 @@ export type StageDomainRead = {
 	readonly unitRevisions: Readonly<Record<UnitDomain, string>>;
 	/** Non-blocking compiler warnings, retained for diagnostics disclosure. */
 	readonly warnings: readonly LayoutGeometryIssue[];
+	/**
+	 * Repairable authored bindings this exact source does not resolve. They are
+	 * disclosure only: admission and editing may proceed, and the validator's
+	 * identity is preserved rather than repaired by the host.
+	 */
+	readonly diagnostics: readonly EnvelopeDiagnostic[];
+	/**
+	 * Executable resource requirements this exact source cannot satisfy. The
+	 * source is admitted for reading, but F4 acceptance, Save and release refuse
+	 * it; the host must disclose why execution is unavailable.
+	 */
+	readonly closure: readonly EnvelopeClosureFinding[];
 };
 
 /**

@@ -1,4 +1,8 @@
-import { validateProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	serializeProjectEnvelope,
+	validateProjectEnvelope,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import {
 	isSavedBaseToken,
 	readSaveRequest,
@@ -215,6 +219,30 @@ export function createProjectId(randomUUID: () => string = () => globalThis.cryp
 	return `project:${randomUUID()}`;
 }
 
+/**
+ * A draft pairs one capture with the exact document it will re-admit. The
+ * envelope must name the capture's project **and** revision, and the bytes must
+ * be the canonical encoding of that envelope: a draft that only happens to
+ * parse is not the source the server will accept under this operation ID.
+ */
+function captureDescribesEnvelope(
+	capture: SaveRequest['capture'],
+	envelope: ProjectEnvelope
+): boolean {
+	if (envelope.id !== capture.projectId) return false;
+	if (
+		envelope.acceptedRevision.projectId !== capture.acceptedRevision.projectId ||
+		envelope.acceptedRevision.revisionId !== capture.acceptedRevision.revisionId
+	) {
+		return false;
+	}
+	try {
+		return serializeProjectEnvelope(envelope) === capture.canonicalJson;
+	} catch {
+		return false;
+	}
+}
+
 export function writePendingCloudSave(
 	save: SaveRequest,
 	storage: SessionStorageLike | null = browserSessionStorage(),
@@ -235,9 +263,9 @@ export function writePendingCloudSave(
 	const validation = validateProjectEnvelope(project);
 	if (!validation.success) return false;
 	// The draft pairs this capture with the document it names. A capture whose
-	// project ID disagrees with its own bytes would resume a Save against one
-	// project while the reader shows another, so it is not a draft at all.
-	if (validation.envelope.id !== parsed.request.capture.projectId) return false;
+	// project, revision or canonical bytes disagree with its own document would
+	// resume a different write than the creator captured.
+	if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) return false;
 	try {
 		storage.setItem(PENDING_CLOUD_SAVE_KEY, JSON.stringify({ createdAt, save: parsed.request }));
 		return true;
@@ -281,9 +309,12 @@ export function readPendingCloudSave(
 		if (parsed.kind === 'invalid') throw new Error('invalid capture');
 		const validation = validateProjectEnvelope(JSON.parse(parsed.request.capture.canonicalJson));
 		if (!validation.success) throw new Error('invalid envelope');
-		// Same rule on the read side: the capture and the document it names must
-		// describe one project, or the entry is invalid and cleared.
-		if (validation.envelope.id !== parsed.request.capture.projectId) throw new Error('capture mismatch');
+		// Same rule on the read side: the capture, its stamped revision and the
+		// canonical document must describe one write, or the entry is invalid and
+		// cleared rather than offered as a misleading resume.
+		if (!captureDescribesEnvelope(parsed.request.capture, validation.envelope)) {
+			throw new Error('capture mismatch');
+		}
 		return {
 			status: 'ready',
 			project: validation.envelope,

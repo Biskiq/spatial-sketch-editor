@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
-import { createEmptyWallFirstProject, validateProject } from '@portfolio/project-model';
+import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
 import { SAVE_CONTENT_IDENTITY_SCHEME } from '@portfolio/project-model/save';
 import {
 	CAMERA_UNIT_FORMAT_VERSION,
@@ -55,8 +55,9 @@ function unit(domain, unitId, formatVersion, data) {
 }
 
 export function projectDocument(name = 'Cloud project', { id = 'project:test', textures = [] } = {}) {
-	const source = validateProject(createEmptyWallFirstProject({ id, name }));
-	assert.equal(source.success, true);
+	// The API admits only F.2; the empty Layout is the canonical wall-first
+	// document, not a retired current-source project.
+	const layout = createEmptyWallFirstLayoutDocument();
 	const scene = { formatVersion: SCENE_UNIT_FORMAT_VERSION, textures, materials: [], entities: [] };
 	const camera = {
 		formatVersion: CAMERA_UNIT_FORMAT_VERSION,
@@ -72,7 +73,7 @@ export function projectDocument(name = 'Cloud project', { id = 'project:test', t
 		acceptedRevision: { projectId: id, revisionId: `revision-${randomUUID()}` },
 		dependencyLock: { formatVersion: 1, entries: [] },
 		units: {
-			layout: unit('layout', 'unit-layout', source.project.layout.formatVersion, source.project.layout),
+			layout: unit('layout', 'unit-layout', layout.formatVersion, layout),
 			scene: unit('scene', 'unit-scene', SCENE_UNIT_FORMAT_VERSION, scene),
 			camera: unit('camera', 'unit-camera', CAMERA_UNIT_FORMAT_VERSION, camera),
 			experience: unit('experience', 'unit-experience', EXPERIENCE_UNIT_FORMAT_VERSION, experience),

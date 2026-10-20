@@ -1,15 +1,15 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4) with the declared-origin correction at `ce6678da`; the branch is merged with frozen `main` at `fd3cf67e`; Phase B not implemented; the slice is not accepted, merged, activated or closeable**
+**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4) with the declared-origin correction at `ce6678da`; the branch is merged with frozen `main` at `fd3cf67e`; Phase B implemented on PR #158 with the A/B/C corrections; independent final review pending; the slice is not yet accepted, merged, activated or closeable**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
-This record now holds Phase A implementation evidence. It does **not** claim slice acceptance,
-Phase B completion, activation or the cutover gate. Independent review accepted the **Phase A
+This record holds Phase A and Phase B implementation evidence. It does **not** claim slice
+acceptance, activation or the cutover gate. Independent review accepted the **Phase A
 implementation** at `dcc23bd2` (round 3, no blocking findings); the interrupted-Travel correction
-at `b9cb5ed1` was re-reviewed and **accepted** (round 4, no blocking findings). The review that
-closes S04 is a separate event after Phase B, and the owner-run activation runbook has not been
-executed.
+at `b9cb5ed1` was re-reviewed and **accepted** (round 4, no blocking findings). Phase B is
+implemented in `0d2f6ceb` and the A/B/C corrections below; its independent final review is the
+remaining acceptance event. The owner-run activation runbook has not been executed.
 
 ## Base and evidence lane
 
@@ -18,8 +18,8 @@ executed.
 | Branch | `T3-P01-S04` (isolated sibling worktree) |
 | Base | `origin/main` `919c2904` (PR #155 merge) |
 | Phase A scope | T3-owned files only: `apps/api/**` and migrations, project-model units/program/save, `lib/visitor/**`, camera-core flow exports |
-| Phase B | **not implemented**; waits for the current-source freeze |
-| PR lifecycle | PR #158 is the continuing S04 implementation PR. Phase A is reviewed there but is **not** merged on its own; Phase B lands on the same PR after the freeze, followed by final review and closeout. |
+| Phase B | implemented in `0d2f6ceb`; A/B/C corrections in the reviewed working tree |
+| PR lifecycle | PR #158 is the continuing S04 implementation PR. Phase A is reviewed there but is **not** merged on its own; Phase B lands on the same PR, followed by final review and closeout. |
 
 ## Implemented in Phase A
 
@@ -266,7 +266,8 @@ continuity are unchanged and remain covered by the existing director and route s
 
 `origin/main` (`d6b4bf7d`, after #156, #159, #157 and #161) is merged into the branch. The one
 conflict — the tech-debt ledger — resolves by keeping the frozen mainline text and adding this
-slice's TD-6/TD-7 closure table while TD-9 and TD-10 stay open.
+slice's TD-6/TD-7 closure table; TD-9 and TD-10 stayed open at that point (TD-9 closes in Phase B
+below; TD-10 remains open).
 
 | Check at `fd3cf67e` | Result |
 | --- | --- |
@@ -276,28 +277,142 @@ slice's TD-6/TD-7 closure table while TD-9 and TD-10 stay open.
 | `npm run test:heavy` | pass — 8 files, 118 tests |
 | `npx vitest run tests/lib/visitor` | pass — 7 files, 63 tests |
 
-## Outstanding — Phase B and review handoff
+## Phase B — caller migration (implemented 2026-10-19, `0d2f6ceb`)
 
-1. **Callers are still pre-epoch.** Editor boot/import/export, the Stage read facade, the starter
-   boot, validation/runtime composition and T1/T2 operations still read or emit the current source.
-   Phase B migrates them onto unit admission after `T1.P01.S05` and `T2.P01.S04` freeze.
-2. **TD-9 is not closed.** Sign-in Save recovery must be rewired to F2 captures in Phase B; deleting
-   the old draft path is explicitly insufficient.
-3. **S06 requirement rewrite** (`local-single-domain-v1` retirement, S06 register/plan pin,
-   `parallel-track-gates` pin) is Phase B, in the same commit that removes the last callers.
-4. **Starter and bootstrap** still emit the current source; AM-9's "new bootstrap and starter emit
-   only F2" is not claimed here.
-5. The public route and its cold reader/client remain in the editor but are unreachable while every
-   public read is 404. T4 owns the prepared reader; their removal/rebuild is T4's, not a working
-   delivery path.
-6. The visitor's Camera graph is still Scene-derived while the program names Camera-unit Views. The
-   director degrades to the neutral frame instead of throwing, but building that graph from the
-   Camera unit is Phase B wiring, not a Phase A claim.7. **Phase A accepted at `b9cb5ed1` (round 4) and corrected at `ce6678da`; the slice is not.**
-   Phase B remains unimplemented on the same PR, so #158 is **not** merge-eligible, the cutover gate
-   is unaccepted, and no data reset, deploy or activation has occurred. Phase B starts from the
-   frozen `main` merge at `fd3cf67e`; it is one caller-migration unit of work, because a partial
-   migration would leave both a current-source and an F2 path live — exactly the second reader the
-   plan forbids.
+Phase B is one caller-migration unit: the old current-source reader/writer path is removed rather
+than left beside a second F2 path. The implementation evidence below is the state of PR #158 (the
+`0d2f6ceb` commit plus the A/B/C corrections that follow it).
+
+### Boot, starter, empty, Open, Download, import/export
+
+- Every editor source enters through `admitSource`/`prepareUnitRuntime`; `bootFromSourceJson`
+  validates the F2 envelope before the Stage exists. The current-source readers
+  (`current-stage-source.ts`, `project-codec.ts`, `content-identity.ts`, `wall-first-project.ts`,
+  the migration converter) and their package exports are deleted. The package boundary declares F2
+  admission and the root barrel exports no current-source reader.
+- The starter gallery and empty baseline emit F2 envelopes directly; `new` (no cloud row,
+  create-only) and `missing` remain distinct boot states. Open and Reload parse the downloaded
+  canonical JSON bytes through the same admission path, and Download writes
+  `snapshot.canonicalJson`. Import/export therefore round-trips the unit envelope, not a parallel
+  serialization.
+- A source that does not admit is a refused state; the mounted Stage, previous baseline and Save
+  state are not silently replaced.
+
+### Stage read ownership, operations and history
+
+- `StageDomainRead` and every T1/T2 consumer read the unit envelope and its identity. Reference
+  resolution, selection, gestures, task lifecycle, Undo/Redo and source replacement are unit-scoped;
+  there is one acceptance host and one history stack per epoch.
+- Layout precision/planner callers and Scene composition callers are unit planners. The integrated
+  composition journey covers typed Place, Resize, Duplicate, Delete, Undo, Redo and Reload; the Head
+  Save journey covers Save/conflict/Reload. The source-replacement suite covers the explicit
+  replacement guard and unsaved-work confirmation.
+- **Scene definitions.** Placement admits only definitions captured for the session: the three
+  analytical native primitives and catalogue models with a recorded, verified r186 contact. The
+  catalogue inventory keeps every excluded floor model with a reason (the piano's geometry
+  mismatch included). A payload naming an uncaptured pin refuses `missing-definition`; a captured
+  pin whose `metadataContentId` changed refuses `definition-changed`. A missing definition is
+  reported as unavailable, never fabricated or silently substituted.
+
+### Head Save and TD-9
+
+- The Head mounts the unit Save state. Create-only and expected-saved-base preconditions, CAS
+  conflict handling, explicit Reload, revision/operation identity and the ambiguous-retry path are
+  the only Save transport. Diagnostics and executable closure are disclosed; closure disables Save
+  with the visible reason and is refused again by the Save capture/read path.
+- **TD-9** is working on F2: a Save that needs sign-in writes the exact captured unit Save and its
+  precondition through the Save-owned pending-capture seam before the redirect. On return the
+  spatial route consumes `resume-save` as an **offer**, never an automatic Save or creation. A
+  create-only capture is offered after a 404 because the cloud row does not exist yet; the exact
+  source, operation ID and precondition are preserved. Resuming goes through the host's
+  replacement/unsaved-work confirmation; cancellation keeps the current content, selection,
+  history and saved base. Re-admission uses the captured `acceptedRevision` epoch, and a stale
+  admission cannot overwrite a newer session. The old draft format is invalid and no current-source
+  draft path survives.
+
+### Visitor Camera graph and one Camera authority
+
+- The cold visitor runtime builds its Camera graph from the Camera unit named by the programmed
+  Views, with Scene retained only as the landed encoding of Camera data until its explicit cutover.
+  Missing Camera definitions surface as typed gaps and settle neutrally rather than throwing or
+  falling back to node order. Travel, Cut and reduced motion still resolve through the one Camera
+  authority; the Guide-free Presentation control and the declared-handoff rules from Phase A are
+  unchanged.
+
+### Requirements retirement
+
+- `T1.P01.S06`'s register row and plan header now consume `F1.reference@1, F2.unit-envelope@1,
+  F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1` and require the
+  unit scopes, in the same change that retires the current-source capabilities. S06 remains
+  `proposed`; the `parallel-track-gates.test.ts` pin matches the rewritten row.
+- `F4.intent-acceptance@1:local-single-domain-v1` and
+  `F4.intent-acceptance@1:conditional-save-current-v1` are `retired` in the gate register and their
+  capability records. Shipped slices keep their historical requirements; no live caller names the
+  retired scopes. The historical F4 module keeps its profile name for the retired contract, but no
+  editor boot, Stage, Save or visitor path selects it.
+- The gate register's F4 row points at the existing unit acceptance/conformance exports, not at
+  removed current-source modules.
+
+### A/B/C review corrections
+
+- **A — create-only resume after sign-in.** Saving a project that has no cloud row and returning
+  after the 404 offers the exact create-only capture instead of dropping it. The offer preserves
+  the operation ID, precondition and canonical source; it never runs automatically.
+- **B — replacement and stale admission.** Resuming uses the host's replacement/unsaved-work
+  confirmation rather than a second controller. Cancellation preserves the working source,
+  selection, history and saved base. The resume admission carries the capture's
+  `acceptedRevision`; an async admission that settles after a newer session is dropped.
+- **C — executable closure.** `prepareUnitRuntime` exposes `diagnostics` and `closure` through
+  `StageDomainRead`/`StageReadSnapshot`; the route discloses both, and the Head Save is disabled
+  with the reason when closure is present. F4 acceptance, Save capture/read and visitor release
+  refuse executable closure rather than executing it. Structural admission still admits a source
+  with repairable diagnostics; those remain visible and non-blocking, and no diagnostic is
+  suppressed to make a test or a pin pass.
+
+## Verification run on the final Phase B tree
+
+| Check | Result |
+| --- | --- |
+| `npm run check:project-model`, `check:camera-core`, `check:layout-core` | pass |
+| `npm run check:api` | pass |
+| `npm run check` (editor) | pass — 0 errors, 0 warnings |
+| `npm run build` (editor) and `npm run build:api` | pass |
+| `npm test` (editor, exhaustive) | pass — 169 files, 2,208 tests |
+| `npm run test:arch` | pass — 20 files, 166 tests |
+| `npm run test:heavy` | pass — 8 files, 118 tests |
+| DB-backed `npm run test:api` on fresh `biskiq_s04_phaseb_final` | pass — 80 tests, 0 failures, 0 skips |
+| Migration 005 rehearsal on fresh `biskiq_s04_phaseb_rehearsal_final` | seeded one row in each of the six authored tables; 005 removed all six and retained `users`; `schema_migrations` = 1–5; rerun was a no-op; pre-epoch writer refused `23502` |
+| Two concurrent runners | automated in `migration-fence.test.mjs` on the same final tree — both complete; versions recorded once each |
+| Focused journeys | `scene-composition-loop` (Place, Resize, Duplicate, Delete, Undo, Redo, Reload), `head-save-journey` (Save/conflict/Reload), `spatial-route-resume-save` (A/B), `stage-source-admission` (C), visitor Camera/reduced-motion suites |
+
+**Browser evidence (test-only stage-conformance harness,
+`vite.stage-conformance.config.ts`, owned session).** With no cloud origin configured the route
+boots the `new` state; the starter replacement loaded the F2 "Enclosed room" (four wall units and a
+room floor). The probe adapter registered through the real unit host; an accepted wall-height edit
+enabled Undo, Undo disabled Redo, Redo restored it, Download source JSON was enabled, and the
+reduced-motion control toggled without error. The harness has no API/Save transport, so Save
+remained disabled there; Save, conflict, Reload and the sign-in resume are proved by the mounted
+route/Head suites and the API lane rather than claimed as browser Save evidence.
+
+No production or shared database was reset, no deployment was made, no object was purged and no
+production activation occurred in this verification.
+
+## Outstanding and declared limits
+
+1. **Independent final review of Phase B is pending.** This record does not accept the slice, the
+   cutover gate or #158 until that review returns without blocking findings.
+2. **Public reader remains T4.** The editor still contains the unreachable public route/cold
+   reader/client; every public read answers not-found while T4 owns the prepared reader. This is not
+   a live delivery path and is not Phase B scope.
+3. **Catalogue model placement awaits r186 contact verification** (T2 follow-on K1). Existing
+   documents may reference those assets; new placement does not admit them until a verified record
+   exists. The native primitives are analytical and admitted.
+4. **Resource bytes remain host-asserted until storage verification**; new typed-resource admission
+   is the staged T2 follow-on, not part of this cutover.
+5. The envelope's `acceptedRevision` is baseline provenance, not revision authority; Save receipts
+   and the API own revision identity.
+6. `T3.P01.S04` is the phase's declared final gate. Slice closeout makes the phase **closable**, not
+   closed; phase closure remains an owner event.
 
 ## Acceptance status
 
@@ -305,6 +420,9 @@ slice's TD-6/TD-7 closure table while TD-9 and TD-10 stay open.
 findings, covering the interrupted-Travel declared handoff; the round-3 acceptance at `dcc23bd2`
 covered the unit Save live switch, epoch admission, retirement, the runtime blockers and the
 Travel-settling fix). The declared-origin correction at `ce6678da` is the only Phase A change after
-that verdict and is recorded above with its coordinator review limitation. This is **not** slice
-acceptance: Phase B, the final review, the cutover gate and the owner-run activation remain. No
-criterion is marked accepted for the slice, and #158 stays open on the same PR.
+that verdict and is recorded above with its coordinator review limitation.
+
+**Phase B implementation: complete, independent final review pending.** The A/B/C corrections are
+implemented and covered by the mounted route, Save and source-admission suites. This is **not**
+slice acceptance: the final review, closeout, the cutover gate and the owner-run activation remain.
+No criterion is marked accepted for the slice, and #158 stays open on the same PR.

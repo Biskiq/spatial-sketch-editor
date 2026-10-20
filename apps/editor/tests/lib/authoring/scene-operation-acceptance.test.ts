@@ -17,7 +17,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	createScenePlanners,
 	checkSceneRecordScope,
-	finalizeSceneCandidate,
+	finalizeSceneCandidate
+} from '@portfolio/project-model/scene-planning';
+import {
 	type AuthoringIntent,
 	type DomainPlanner,
 	type SceneDocument,

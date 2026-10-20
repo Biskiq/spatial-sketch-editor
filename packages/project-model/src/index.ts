@@ -19,4 +19,6 @@ export * from './project-types';
 export * from './scene';
 export * from './scene-codec';
 export * from './shipped-static';
-export * from './scene-planning';
+// Scene planning is F.2-native (it reads and replaces unit payloads), so it is the
+// explicit `./scene-planning` subpath. Exporting it here would drag the unit
+// envelope into the root barrel's closure, which the F.2 entry boundary forbids.

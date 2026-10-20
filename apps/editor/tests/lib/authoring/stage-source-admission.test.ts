@@ -24,6 +24,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	EXPERIENCE_UNIT_FORMAT_VERSION,
+	createUnitAcceptanceAdapter,
+	prepareUnitRuntime,
+	readUnitEnvelopeForSave,
+	serializeProjectEnvelope,
+	type ExperienceUnitPayload,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import { compileWallFirstLayoutGeometry, LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import { stageEnvelope, stageLayout } from '$lib/authoring/stage/unit-stage-source';
 import { DEFAULT_STARTER_TEMPLATE } from '$lib/authoring/stage/starter-gallery';
@@ -37,8 +46,10 @@ import {
 	FIXTURE_PROJECT_ID,
 	FIXTURE_UNKNOWN_ASSET_ID,
 	buildFoldedPartitionProject,
-	buildUnknownAssetProject
+	buildUnknownAssetProject,
+	unknownAssetEntity
 } from './__fixtures__/f4-current-source-fixtures';
+import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 
 const PROJECT_ID = 'project-stage-admission';
 
@@ -235,5 +246,125 @@ describe('source admission', () => {
 		// The structural guarantee: this outcome cannot carry a Stage snapshot, so a
 		// blocking source can never render a silent empty or partial Stage.
 		expect(Object.keys(outcome)).not.toContain('snapshot');
+	});
+
+	it('admits and discloses an executable-closure source without fabricating a resource', async () => {
+		const PIN = { hash: 'sha256-paper', mime: 'image/png', size: 512, locator: 'objects/paper' } as const;
+		const source: ProjectEnvelope = {
+			...await starterSource(),
+			dependencyLock: {
+				formatVersion: 1,
+				entries: [
+					{
+						domain: 'resource:texture',
+						subjectKind: 'resource',
+						subjectId: 'paper',
+						instancePath: [],
+						contentRevision: PIN.hash,
+						requiredCapabilities: [],
+						pin: PIN
+					}
+				]
+			}
+		};
+
+		// Preparation is not a structural refusal: the envelope is readable, and the
+		// closure it cannot satisfy travels as its own answer.
+		const prepared = prepareUnitRuntime(source);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') return;
+		expect(prepared.diagnostics).toEqual([]);
+		expect(prepared.closure.map((finding) => finding.code)).toEqual(['missing-resource']);
+
+		// The editor admits the source for reading and discloses the closure. It
+		// neither invents the missing resource nor rewrites the lock it authored.
+		const outcome = await admitSource(source, CONTEXT);
+		expect(outcome.kind).toBe('admitted');
+		if (outcome.kind !== 'admitted') return;
+		expect(outcome.snapshot.domain.closure.map((finding) => finding.code)).toEqual(['missing-resource']);
+		expect(outcome.snapshot.domain.diagnostics).toEqual([]);
+		expect(stageEnvelope(outcome.snapshot).units.resources.data.resources).toEqual([]);
+		expect(stageEnvelope(outcome.snapshot).dependencyLock).toEqual(source.dependencyLock);
+
+		// Execution refuses it: F4 acceptance and Save are the closure boundary.
+		const admitted = await createUnitAcceptanceAdapter({ compound: true }).admit(source, []);
+		expect(admitted.kind).toBe('rejected');
+		if (admitted.kind === 'rejected') {
+			expect(admitted.code).toBe('lock-closure');
+			expect(admitted.issues.map((issue) => issue.code)).toContain('missing');
+		}
+		const read = await readUnitEnvelopeForSave(serializeProjectEnvelope(source));
+		expect(read.kind).toBe('refused');
+		if (read.kind === 'refused') {
+			expect(read.code).toBe('invalid-project');
+			expect(read.issues.map((issue) => issue.code)).toContain('missing-resource');
+		}
+	});
+
+	it('keeps a known catalogue model with missing bytes inspectable but refuses execution', async () => {
+		const source = await createUnitProject({
+			id: PROJECT_ID,
+			name: 'Missing model resource',
+			scene: { formatVersion: 2, textures: [], materials: [], entities: [
+				{ ...unknownAssetEntity(), assetId: 'paris-grand-piano' }
+			] }
+		});
+		const structural = validateProjectEnvelope(source);
+		expect(structural.success).toBe(true);
+		const admitted = await admitSource(source, CONTEXT);
+		expect(admitted.kind).toBe('admitted');
+		if (admitted.kind !== 'admitted') return;
+		expect(admitted.snapshot.domain.closure).toEqual([
+			expect.objectContaining({ code: 'missing-resource', message: expect.stringContaining('paris-grand-piano') })
+		]);
+		expect(stageEnvelope(admitted.snapshot).units.resources.data.resources).toEqual([]);
+		expect(stageEnvelope(admitted.snapshot).dependencyLock.entries).toEqual([]);
+		expect((await createUnitAcceptanceAdapter({ compound: true }).admit(source, [])).kind).toBe('rejected');
+		expect((await readUnitEnvelopeForSave(serializeProjectEnvelope(source))).kind).toBe('refused');
+	});
+
+	it('discloses repairable authored diagnostics without blocking admission, acceptance or Save', async () => {
+		const experience: ExperienceUnitPayload = {
+			formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+			experiences: [
+				{
+					id: 'experience-a',
+					label: 'Experience A',
+					entryGuideId: 'guide-1',
+					presentations: [{ id: 'presentation-1', label: 'Entry', viewId: 'view-absent' }],
+					stops: [
+						{
+							id: 'stop-1',
+							presentationId: 'presentation-1',
+							holdSeconds: 0,
+							continuation: { kind: 'end' }
+						}
+					],
+					guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1'], entryStopId: 'stop-1' }],
+					gates: [],
+					detours: []
+				}
+			]
+		};
+		const source = await createUnitProject({ id: PROJECT_ID, name: 'Repairable', experience });
+
+		const prepared = prepareUnitRuntime(source);
+		expect(prepared.kind).toBe('ready');
+		if (prepared.kind !== 'ready') return;
+		expect(prepared.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view']);
+		expect(prepared.closure).toEqual([]);
+
+		const outcome = await admitSource(source, CONTEXT);
+		expect(outcome.kind).toBe('admitted');
+		if (outcome.kind !== 'admitted') return;
+		expect(outcome.snapshot.domain.diagnostics.map((finding) => finding.code)).toEqual(['unresolved-view']);
+		expect(outcome.snapshot.domain.closure).toEqual([]);
+
+		// The binding is preserved as authored; admission does not resolve it by
+		// inventing a Camera view, and the non-blocking diagnostic does not become a
+		// closure finding.
+		expect(stageEnvelope(outcome.snapshot).units.camera.data.views).toEqual([]);
+		expect((await createUnitAcceptanceAdapter({ compound: true }).admit(source, [])).kind).toBe('admitted');
+		expect((await readUnitEnvelopeForSave(serializeProjectEnvelope(source))).kind).toBe('read');
 	});
 });

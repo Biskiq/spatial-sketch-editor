@@ -50,9 +50,9 @@
 			setNeutralFrame();
 			return;
 		}
-		// The Scene-derived graph and the F.2 Camera unit are different sources
-		// during the cutover. A missing View must degrade to the neutral frame, not
-		// throw inside a reactive effect and blank the whole surface.
+		// The graph is derived from the F.2 Camera unit. A View that is absent from
+		// a released snapshot must degrade to the neutral frame, not throw inside a
+		// reactive effect and blank the whole surface.
 		let node;
 		try {
 			node = getNode(viewId, graph);

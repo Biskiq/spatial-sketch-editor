@@ -22,22 +22,24 @@ import { cloneFixtureDocument } from '../content/__fixtures__/load-fixture-scene
 import {
 	FLOOR_SUPPORT_TOLERANCES,
 	createEmptyWallFirstLayoutDocument,
-	framePointToWorld,
 	planWallChain,
 	compileWallFirstLayoutGeometry,
 	floorSupportSnapshotOf,
 	queryFloorSupports,
 	chooseFloorSupport,
 	validateDerivedSourceRef,
+	type FloorSupportCandidate
+} from '@portfolio/project-model';
+import {
+	framePointToWorld,
 	preparePlaceObjectCandidate,
-	type FloorSupportCandidate,
 	type LocalInputFrame,
 	type NormalizedPlacementDefinition,
 	type ObjectCreationDefaults,
 	type PlaceObjectInput,
 	type PlaceObjectRefusalCode,
 	type PlaceObjectResult
-} from '@portfolio/project-model';
+} from '@portfolio/project-model/scene-planning';
 import {
 	createEmptyUnitSceneDocument,
 	replaceUnitData,

@@ -32,13 +32,29 @@ import type {
 	CameraUnitPayload,
 	ProjectEnvelope
 } from './types';
-import { validateProjectEnvelope } from './validate';
+import {
+	validateProjectEnvelope,
+	type EnvelopeClosureFinding,
+	type EnvelopeDiagnostic
+} from './validate';
 
 export type UnitRuntimeReady = {
 	readonly kind: 'ready';
 	readonly envelope: ProjectEnvelope;
 	readonly geometry: CompiledLayoutGeometry;
 	readonly issues: readonly LayoutGeometryIssue[];
+	/**
+	 * Repairable authored bindings the envelope does not resolve yet. They are
+	 * disclosed, never rewritten into a fabricated resolution, and do not block
+	 * preparation or admission.
+	 */
+	readonly diagnostics: readonly EnvelopeDiagnostic[];
+	/**
+	 * Executable resource requirements the envelope cannot satisfy. This is a
+	 * separate answer from structural refusal: the source can be read and shown,
+	 * but execution (F4 acceptance, Save, release) must refuse it.
+	 */
+	readonly closure: readonly EnvelopeClosureFinding[];
 	readonly rooms: LayoutRoomRegistry;
 	readonly runtimeScene: RuntimeScene;
 	readonly graph: NavigationGraph;
@@ -120,6 +136,8 @@ export function prepareUnitRuntime(
 		envelope,
 		geometry: compiled.geometry,
 		issues: compiled.issues,
+		diagnostics: validated.diagnostics,
+		closure: validated.closure,
 		rooms: createEmptyLayoutRoomRegistry(),
 		runtimeScene,
 		graph: createNavigationGraph(runtimeScene)
