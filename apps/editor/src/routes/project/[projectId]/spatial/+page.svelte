@@ -701,7 +701,15 @@
 		) {
 			return;
 		}
+		// TD-10: the accepted offer is this epoch's, not whichever epoch is mounted
+		// when its admission resolves. Capture the token before admitting, so a
+		// `Reload remote` that a newer replacement (or teardown) superseded is
+		// abandoned instead of installing over the project the creator now has.
+		const token = session.token();
 		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
+		// Admission itself is asynchronous: a stale offer installs nothing, adopts no
+		// saved base and reports no refusal over the newer session.
+		if (!session.isCurrent(token)) return;
 		// Only a source that actually admitted replaces the mounted project and
 		// becomes this epoch's saved base. A failed reload keeps the local source,
 		// its history/selection and the saved base the Head is still saving against.
@@ -770,7 +778,15 @@
 		// A cancelled dialog changes nothing — including the saved base the current
 		// Head is still saving against.
 		if (file === null) return;
+		// TD-10: reading and admitting the chosen file is asynchronous, and the epoch
+		// this Open belongs to is the one captured here — not whichever project is
+		// mounted when the admission resolves. A superseded Open is abandoned rather
+		// than installed over the newer project, its history and its saved base.
+		const token = session.token();
 		const next = await bootFromSourceJson(await file.text(), projectId, admissionContext());
+		// A stale result reports nothing: neither a success nor a refusal may appear
+		// for an action the creator has already replaced.
+		if (!session.isCurrent(token)) return;
 		if (next.status !== 'ready' && next.status !== 'empty') {
 			reportSourceRefusal(next, 'open');
 			return;
