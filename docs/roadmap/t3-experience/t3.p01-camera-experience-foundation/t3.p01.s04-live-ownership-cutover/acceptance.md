@@ -1,6 +1,6 @@
 # T3.P01.S04 — acceptance record: Live ownership cutover
 
-**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4) with the declared-origin correction at `ce6678da`; the branch is merged with frozen `main` at `fd3cf67e`; Phase B implemented on PR #158 with the A/B/C corrections; independent final review pending; the slice is not yet accepted, merged, activated or closeable**
+**Slice:** T3.P01.S04 · **Status:** authorized 2026-10-19; **Phase A implementation ACCEPTED at `b9cb5ed1` (round 4) with the declared-origin correction at `ce6678da`; the branch is merged with frozen `main` at `fd3cf67e`; Phase B implemented on PR #158 with the A/B/C corrections; independent PR review deferred by owner on 2026-10-20; verification passed at `e0a39838`; the slice is not yet accepted, merged, activated or closeable**
 **Plan:** [implementation-plan.md](./implementation-plan.md) — owns this slice's acceptance criteria
 **Phase:** [T3.P01](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -18,7 +18,7 @@ remaining acceptance event. The owner-run activation runbook has not been execut
 | Branch | `T3-P01-S04` (isolated sibling worktree) |
 | Base | `origin/main` `919c2904` (PR #155 merge) |
 | Phase A scope | T3-owned files only: `apps/api/**` and migrations, project-model units/program/save, `lib/visitor/**`, camera-core flow exports |
-| Phase B | implemented in `0d2f6ceb`; A/B/C corrections in the reviewed working tree |
+| Phase B | implemented in `0d2f6ceb`; A/B/C and guest-boot corrections at `75c59264`; integrated with current `main` at `420dc2f3`, link reconciliation at `e0a39838` |
 | PR lifecycle | PR #158 is the continuing S04 implementation PR. Phase A is reviewed there but is **not** merged on its own; Phase B lands on the same PR, followed by final review and closeout. |
 
 ## Implemented in Phase A
@@ -369,7 +369,7 @@ than left beside a second F2 path. The implementation evidence below is the stat
   with repairable diagnostics; those remain visible and non-blocking, and no diagnostic is
   suppressed to make a test or a pin pass.
 
-## Verification run on the final Phase B tree
+## Historical interrupted-tree verification (superseded by the final run below)
 
 | Check | Result |
 | --- | --- |
@@ -385,17 +385,71 @@ than left beside a second F2 path. The implementation evidence below is the stat
 | Two concurrent runners | automated in `migration-fence.test.mjs` on the same final tree — both complete; versions recorded once each |
 | Focused journeys | `scene-composition-loop` (Place, Resize, Duplicate, Delete, Undo, Redo, Reload), `head-save-journey` (Save/conflict/Reload), `spatial-route-resume-save` (A/B), `stage-source-admission` (C), visitor Camera/reduced-motion suites |
 
-**Browser evidence (test-only stage-conformance harness,
-`vite.stage-conformance.config.ts`, owned session).** With no cloud origin configured the route
-boots the `new` state; the starter replacement loaded the F2 "Enclosed room" (four wall units and a
-room floor). The probe adapter registered through the real unit host; an accepted wall-height edit
-enabled Undo, Undo disabled Redo, Redo restored it, Download source JSON was enabled, and the
-reduced-motion control toggled without error. The harness has no API/Save transport, so Save
-remained disabled there; Save, conflict, Reload and the sign-in resume are proved by the mounted
-route/Head suites and the API lane rather than claimed as browser Save evidence.
+## Final verification — 2026-10-20
 
-No production or shared database was reset, no deployment was made, no object was purged and no
-production activation occurred in this verification.
+Tested implementation: `75c59264`, merged with `origin/main` `42d77b28` at `420dc2f3`.
+Final exhaustive/architecture/heavy tree: `e0a39838` (only documentation-link repairs after the
+integrated implementation). No production/test/config changes followed those runs. Later evidence
+and baton edits are documentation only; their documentation gate runs separately.
+
+| Command / journey | Result |
+| --- | --- |
+| `npm run check` | pass, 0 errors and 0 warnings |
+| `npm run check:project-model`, `check:layout-core`, `check:camera-core`, `check:api` | pass |
+| `npm run build`, `npm run build:api` | pass; existing dependency/chunk-size build warnings only |
+| `npm test` | pass, 169 files / 2,211 tests |
+| `npm run test:arch` | pass, 20 files / 166 tests |
+| `npm run test:heavy` | pass, 8 files / 118 tests |
+| `DATABASE_URL=postgresql://biskiq:biskiq@localhost:5448/biskiq npm run test:api` | pass, 80 tests, 0 failures, **0 skips**, isolated Compose project `s04-verify-20261020` |
+| Migration 005 rehearsal on the Compose database, isolated schema | six authored tables seeded then cleared, users retained, versions 1–5 once; runner rerun and direct SQL rerun preserve new-epoch rows; pre-epoch insert refused `23502` |
+| Concurrent runners / fence matrix | real-Postgres `migration-fence.test.mjs`, included in the zero-skip API run; both runners fulfill, schema versions recorded once; malformed/pre-epoch inputs refuse |
+| A/B | mounted spatial route: guest 401 → first Save auth-required → captured F2 → signed-in cloud 404 → explicit Resume → identical operation/precondition/source → saved; cancellation preserves source, nonempty selection, history and cloud base; confirmation replaces baseline; delayed old admission loses to newer Open |
+| C | known `paris-grand-piano` model without a resource remains structurally readable and inspectable, with `missing-resource`; F4 and Save refuse; repairable missing-View diagnostics remain non-blocking; no resource or pin is fabricated |
+| Integrated journeys | `scene-composition-loop` covers Place, Resize, Duplicate, Delete, Undo/Redo and Reload; Head/route suites cover Save, conflict, Reload, replacement, captured-source equality and stale session results; visitor suites cover Camera graph, Guide-free Presentations and reduced motion |
+
+**Browser creator evidence.** Production Vite route and adapters (no conformance adapter), one owned
+`agent-browser` session, disposable local Postgres/API. Only external OIDC was replaced at its public
+adapter boundary by a local callback; real session cookies, project GET, Save capture/transport,
+Postgres versions and receipts were used. Guest create initially exposed a 401 boot blocker: the
+narrow create-intent fix is included and the mounted regression now starts with that real boundary
+answer. Unrelated Open retains forbidden/missing semantics. The F2 enclosed starter produced a
+create-only captured request; signed-in return 404 offered Resume and did not create a project.
+Explicit Resume produced version 1 with operation `e83c5b0e-0afa-4a5d-967a-b07fdc1a74ca`, matching
+the pending capture. Place box at X=3/Z=-1, Duplicate at +0.5 X/Z, Undo, Redo, reduced-motion toggle
+and Save changes executed through the real UI. The Resize prompt was cancelled by the automation
+harness; successful Resize and Delete are claimed from mounted integration tests, not this browser
+run. Camera reduced-motion destination behavior is proved by mounted director/kernel tests; the
+browser proves the creator preference control. Real Google OAuth and production activation were
+not exercised. Supporting screenshots: [explicit Resume saved](./evidence/browser-resume.png) and
+[placed/duplicated source saved with reduced motion](./evidence/browser-saved-reduced-motion.png).
+They are evidence of visible states, not acceptance substitutes. The Card overlapped the Compose
+buttons during pointer interaction; keyboard activation exercised Duplicate. This shell-layout
+limitation is carried to T1/S06 review, not treated as a Phase B semantic fix.
+
+**Failures adjudicated.** The initial interrupted tree had three undefined old pending-save helper
+calls on the auth-return page; repaired before final check. Early concurrent lane runs hit timeout
+limits under competing exhaustive/build work; isolated reruns passed without weakening tests or
+density. The integrated exhaustive run found three stale documentation paths/anchors, repaired in
+`e0a39838`; the complete rerun passed. Docker initially was stopped, then became available; the
+required Compose-backed evidence was completed. No environment gate is skipped.
+
+No shared or production data was reset, no deployment was made, no object was purged. Only the
+isolated rehearsal schemas/databases and task-owned Compose project were used.
+
+## Review scheduling and closeout preflight
+
+On 2026-10-20 the owner instructed: “no need independent review, pr will be reviewed later once you
+pushed”. This defers independent review to PR review; it is **not** a per-revision acceptance waiver.
+No new independent verdict is claimed. Reviewed Phase B revision: **none**. The implementation and
+verification are ready for PR review.
+
+The `slice-closeout` skill was read and its acceptance guard applied: “A missing, stale, withdrawn
+or pending verdict still stops (step 1).” Formal acceptance, shipped status, gate activation,
+compaction and final-gate closeout therefore remain pending the later review. No owner override is
+inferred. Preflight hygiene: no checkpoint exists for this slice; all source callers use F2, no
+unowned compatibility writer remains, S06 stays proposed, references and baton are reconciled,
+and P1 merge-commit / post-merge anchor verification remain the eventual merger's obligations.
+No implementation edit is made as routine closeout. The plan and this final-gate evidence stay live.
 
 ## Outstanding and declared limits
 
@@ -425,4 +479,6 @@ that verdict and is recorded above with its coordinator review limitation.
 **Phase B implementation: complete, independent final review pending.** The A/B/C corrections are
 implemented and covered by the mounted route, Save and source-admission suites. This is **not**
 slice acceptance: the final review, closeout, the cutover gate and the owner-run activation remain.
-No criterion is marked accepted for the slice, and #158 stays open on the same PR.
+No criterion is marked accepted for the slice, and #158 stays open on the same PR. All prescribed
+automated and disposable-Compose gates pass; review and formal closeout remain pending by the
+owner’s scheduling instruction. Merge eligibility is not claimed before those events.
