@@ -141,7 +141,7 @@
 			if (session !== null && persistentPlace !== null && session.placementCommittedListener() === null) {
 				session.setPlacementCommittedListener(persistentPlace);
 			}
-			session?.setPointerOutcomeListener?.(applyOutcome);
+			session?.setPointerOutcomeListener?.(applyPointerOutcome);
 			sessionReading = reading;
 			surfaceSnapshot = snapshot;
 			// The proposal belonged to the reading that just ended; the session it named
@@ -170,6 +170,15 @@
 		return next.snappedStep === null
 			? `Candidate ${pose}.`
 			: `Candidate ${pose} · snap ${next.snappedStep} m applied.`;
+	}
+
+	/**
+	 * A pointer commit is an accepted install too: the host closes the task and
+	 * retires this panel before the adapter reports the outcome. Only a
+	 * non-accepted outcome has anything for the visible panel to say.
+	 */
+	function applyPointerOutcome(outcome: SceneSessionOutcome): void {
+		if (outcome.kind !== 'committed') applyOutcome(outcome);
 	}
 
 	function applyOutcome(outcome: SceneSessionOutcome): void {

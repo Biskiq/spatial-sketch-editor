@@ -235,4 +235,24 @@ describe('Scene Compose — truthful capability and captured subject', () => {
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(notify).not.toHaveBeenCalled();
 	});
+
+	it('does not report a committed pointer outcome through retired services', async () => {
+		const { spies, notify } = await mountCompose(BOX_ID);
+		const register = spies.session.setPointerOutcomeListener as unknown as ReturnType<typeof vi.fn>;
+		const listener = register.mock.calls.at(-1)?.[0] as
+			| ((outcome: unknown) => void)
+			| undefined;
+		if (listener === undefined) throw new Error('the session registered no pointer listener');
+		notify.mockClear();
+
+		// The adapter commits a pointer drag and only then reports the outcome; by
+		// then the accepted install has closed the task and retired this panel.
+		listener({ kind: 'committed' });
+		expect(notify).not.toHaveBeenCalled();
+
+		// A refusal is not an install: it still has something to say, and the task
+		// is still open.
+		listener({ kind: 'refused', code: 'no-contact', message: 'the light has no footprint' });
+		expect(notify).toHaveBeenCalledTimes(1);
+	});
 });
