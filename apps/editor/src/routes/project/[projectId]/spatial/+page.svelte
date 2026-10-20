@@ -876,7 +876,15 @@
 		);
 		const projected = stage.projectWorld([center[0], fragment.elevationMeters, center[1]], stage.evaluationId() ?? '');
 		if (projected.kind !== 'projected') return null;
-		return { css: projected.css, label: selected.reference.subject.id };
+		// The Camera projects into viewport CSS; the overlay paints inside the Stage
+		// surface, so the echo subtracts the same evaluation rect the hit path adds.
+		const evaluationRect = stage.evaluation()?.rect ?? rect;
+		const offsetX = evaluationRect?.left ?? 0;
+		const offsetY = evaluationRect?.top ?? 0;
+		return {
+			css: [projected.css[0] - offsetX, projected.css[1] - offsetY],
+			label: selected.reference.subject.id
+		};
 	}
 
 	onMount(() => {
@@ -1217,6 +1225,19 @@
 
 	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' } | null = null;
 	/**
+	 * The evaluation a claimed adapter press was measured in.
+	 *
+	 * The Camera raises a new evaluation generation every frame, so reading
+	 * `evaluationId()` again on each move would tell the adapter its projection had
+	 * changed on every sample: a drag would pause on its first move and a release
+	 * would look stale, making direct manipulation unreachable. `StagePointerIntent`
+	 * names *the evaluation the press was measured in*, so this one value is carried
+	 * from the claimed down through every later phase of that press and cleared with
+	 * it. A genuine reading change still ends the drag through the gesture lease's
+	 * `cancel-on-reading-change` policy.
+	 */
+	let adapterEvaluationId: string | null = null;
+	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
 	 * travelled, and an interruption has to stop that click from selecting. It also
@@ -1250,6 +1271,7 @@
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey });
 					return;
 				}
+				adapterEvaluationId = pointerEvaluationId;
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 				return;
 			}
@@ -1283,8 +1305,16 @@
 		if (drag === null) return;
 		if (drag.mode === 'adapter') {
 			if (!press.ownsPointer(event.pointerId)) return;
+			// A reading change cancels the adapter's gesture lease before the next
+			// frame. The pointer mapping was measured in the old projection, so the
+			// press ends instead of dragging a proposal through a view it was never
+			// measured in.
+			if (session.gesture() === null) {
+				cancelAdapterDrag(event);
+				return;
+			}
 			const stage = facade;
-			const id = stage?.evaluationId() ?? null;
+			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			if (stage === null || id === null) return;
 			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
@@ -1318,6 +1348,7 @@
 	 */
 	function endGesture(): void {
 		drag = null;
+		adapterEvaluationId = null;
 		session.gesture()?.release();
 	}
 
@@ -1340,10 +1371,14 @@
 		if (!press.end(event.pointerId)) return;
 		if (drag?.mode === 'adapter') {
 			const stage = facade;
-			const id = stage?.evaluationId() ?? null;
+			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			drag = null;
+			adapterEvaluationId = null;
 			if (stage !== null && id !== null) {
-				stage.pointerIntent({ phase: 'up', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+				// After a reading change the lease is already gone: the press is cancelled
+				// rather than released, so no stale projection commits.
+				const phase = session.gesture() === null ? 'cancel' : 'up';
+				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			}
 			return;
 		}
@@ -1361,8 +1396,9 @@
 	 */
 	function cancelAdapterDrag(event: PointerEvent): void {
 		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
+		const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 		drag = null;
+		adapterEvaluationId = null;
 		if (stage !== null && id !== null) {
 			stage.pointerIntent({ phase: 'cancel', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 		}

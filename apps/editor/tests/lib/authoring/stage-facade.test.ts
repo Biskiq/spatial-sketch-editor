@@ -260,6 +260,68 @@ describe('Stage facade — one evaluation, one Plan, one selection owner', () =>
 		}
 	});
 
+	it('resolves a Stage-local candidate when the Stage does not start at the window origin', async () => {
+		// The Index sits beside the Stage, so the surface is offset in the window.
+		// The route sends Stage-local CSS; the Camera projects into viewport CSS.
+		// The facade is the one boundary that translates, or a click selects a
+		// subject one Index panel away from the one under the pointer.
+		const OFFSET_RECT = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
+		const { facade } = await mount();
+		expect(facade.camera.evaluate(OFFSET_RECT, 1).kind).toBe('evaluated');
+		const id = facade.evaluationId() ?? '';
+		const planResult = facade.plan();
+		expect(planResult.kind).toBe('evaluated');
+		if (planResult.kind !== 'evaluated') return;
+		const floor = planResult.plan.membership.find((row) => row.sourceKind === 'room-floor');
+		expect(floor).toBeDefined();
+		if (floor === undefined) return;
+		const interior: [number, number, number] = [
+			STARTER_ENCLOSURE_POINTS.reduce((sum, point) => sum + point[0], 0) / STARTER_ENCLOSURE_POINTS.length,
+			0,
+			STARTER_ENCLOSURE_POINTS.reduce((sum, point) => sum + point[1], 0) / STARTER_ENCLOSURE_POINTS.length
+		];
+		const projected = facade.projectWorld(interior, id);
+		expect(projected.kind).toBe('projected');
+		if (projected.kind !== 'projected') return;
+		const local: [number, number] = [
+			projected.css[0] - OFFSET_RECT.left,
+			projected.css[1] - OFFSET_RECT.top
+		];
+		const hit = facade.resolveSourceHit({ evaluationId: id, css: local });
+		expect(hit.kind === 'resolved' ? hit.hit.sourceId : null).toBe(floor.sourceId);
+	});
+
+	it('paints adapter markers in Stage-local CSS when the Stage is offset in the window', async () => {
+		const OFFSET_RECT = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
+		const { facade } = await mount();
+		expect(facade.camera.evaluate(OFFSET_RECT, 1).kind).toBe('evaluated');
+		const id = facade.evaluationId() ?? '';
+		const point: [number, number, number] = [
+			STARTER_ENCLOSURE_POINTS.reduce((sum, p) => sum + p[0], 0) / STARTER_ENCLOSURE_POINTS.length,
+			0,
+			STARTER_ENCLOSURE_POINTS.reduce((sum, p) => sum + p[1], 0) / STARTER_ENCLOSURE_POINTS.length
+		];
+		facade.registerStageAdapter({
+			id: 'probe-offset-marker',
+			requiredCapabilities: [HOST_STAGE_CAPABILITIES[0]!],
+			overlay: (context) => {
+				const css = context.project(point);
+				return css === null ? [] : [{ id: 'probe-offset-marker', css, label: 'probe' }];
+			}
+		});
+		const projected = facade.projectWorld(point, id);
+		expect(projected.kind).toBe('projected');
+		if (projected.kind !== 'projected') return;
+		const marker = facade.overlays().find((contribution) => contribution.id === 'probe-offset-marker');
+		expect(marker?.css).toEqual([
+			projected.css[0] - OFFSET_RECT.left,
+			projected.css[1] - OFFSET_RECT.top
+		]);
+		// Inside the surface box the overlay actually paints in.
+		expect(marker!.css[0]).toBeGreaterThanOrEqual(0);
+		expect(marker!.css[0]).toBeLessThanOrEqual(OFFSET_RECT.width);
+	});
+
 	it('keeps one selection owner and one task home', async () => {
 		const { facade, session, snapshot } = await mount();
 		const fragment = facade.eligibleFragments()[0];
