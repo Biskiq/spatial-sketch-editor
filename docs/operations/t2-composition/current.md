@@ -21,7 +21,9 @@ PHASE: T2.P01 Supported object composition (in-progress, CLOSABLE) →
 SLICES: S01, S02, S03 and the final gate S04 are shipped. The phase README's slice register is
         authoritative.
 BATON: No active T2 slice. S04 (bounded composition loop and final gate) was accepted 2026-10-19 from
-       the deliberate closeout invocation; its final gate is PASSED and the phase is closable. The
+       the deliberate closeout invocation and merged in #157 as `99c38033`; its final gate is PASSED
+       and the phase is closable. Post-merge gate on that commit: check 0/0, tests 2,269/2,269,
+       arch 163/163, heavy 118/118. The
        accepted capability is the `scene-compose` task (numeric uniform Resize on floor, duplicate,
        delete) through AM-5 contributions only, reusing T1's source-JSON/replacement/Reload paths and
        building no host seam, Head or Save UI. Resize and Duplicate stay primitive-only and read the

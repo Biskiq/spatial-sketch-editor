@@ -139,6 +139,11 @@ as an independent verdict.
 This record does not close the phase or the track; `T2.P01.S04` is the phase's declared final gate, so
 acceptance makes the phase closable and leaves `PHASE CLOSE` to the owner.
 
+**Merged.** PR #157 merged as merge commit `99c38033` (2026-10-20) on `main`. The post-merge gate was
+re-run on that commit: `npm run check` 0/0, `npm test` 2,269/2,269 (171 files), `test:arch` 163/163,
+`test:heavy` 118/118, all exit 0. Anchor `ca5167435a7accabd00b0135435753c25cb8639f` is an ancestor of
+`99c38033`; its full plan body resolves through `git show`. Tag `closed/T2.P01.S04` is pushed.
+
 ## CLOSEOUT PRESERVATION — T2.P01.S04 (2026-10-19)
 
 ```text
@@ -148,7 +153,7 @@ renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:      0
 new live → archive prose links:  0
 transient artifacts removed:     0
-historical anchor:               ca5167435a7accabd00b0135435753c25cb8639f · tag closed/T2.P01.S04 (local only — not pushed)
+historical anchor:               ca5167435a7accabd00b0135435753c25cb8639f · tag closed/T2.P01.S04 (pushed)
 manual-owed verification rows:   0
 remaining deferred items:        6   named in Deliberate scope and residuals
 permanent stubs added:           1   (the owner-ratified cost: one per closed prose artifact)
@@ -156,5 +161,4 @@ permanent stubs added:           1   (the owner-ratified cost: one per closed pr
 
 The acceptance record itself stays live under the final-gate exception: it is the evidence the owner
 reads for the phase-close decision. The plan stub keeps the recovery line for its full body; the
-anchor is a merge-commit ancestor of the accepted implementation branch by construction and is
-verified after merge.
+anchor was verified as an ancestor of the merge commit after #157 merged.
