@@ -1,7 +1,8 @@
 # T1.P01.S06 — Integrated final gate: implementation plan
 
-**Slice:** T1.P01.S06 · **Status:** approved — owner-authorized 2026-10-20 as batch D
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md)); **not implemented** ·
+**Slice:** T1.P01.S06 · **Status:** in progress — owner-authorized 2026-10-20 as batch D
+([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md)); the TD-10 increment has
+landed, the automated gate is green and the browser leg is incomplete — **not accepted** ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -13,8 +14,8 @@ VERIFICATION: exhaustive
 
 This plan is the phase's declared **FINAL PHASE GATE** and the integration route every narrowed
 slice in this phase routes its deferred proof to; its acceptance record is the phase's declared
-final-gate artifact. It is authorized and unimplemented: nothing here is accepted, ready or
-evidenced.
+final-gate artifact. It is authorized and in progress: the TD-10 repair and every automated lane it
+requires are recorded in the [acceptance record](./acceptance.md), which is **not** an acceptance.
 
 ## Authorization
 
@@ -36,8 +37,8 @@ stale when T3 replaced the current-source adapters and the starter boot (AM-5's 
 **Verified at the authorized base `9a457f6b`.** `T3.camera-experience-cutover@1` is `accepted` with
 `T3.P01.S04` as its sole provider, at implementation revision `06a8aac8`; every `Requires` scope above
 is `active`; and the capability records are reachable from `main`. This slice's register row, header
-and `parallel-track-gates.test.ts` pin were rewritten in the same commit that retired
-`local-single-domain-v1`, so no retried current-source admission remains.
+and `parallel-track-gates.test.ts` pin were rewritten in the same commit that retired the
+local single-domain admission scope, so no retried current-source admission remains.
 
 **Save journey.** The sign-in Save resume that TD-9 required is delivered by `T3.P01.S04` (TD-9 is
 closed in the debt ledger) and is verified here end to end through the real route, not by deletion.
