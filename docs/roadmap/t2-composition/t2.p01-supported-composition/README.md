@@ -178,8 +178,8 @@ FINAL PHASE GATE: T2.P01.S04 → ./t2.p01.s04-bounded-composition-loop/acceptanc
 
 PHASE CLOSE
 Stage:        closed
-Closed:       2026-10-20 — owner ratification recorded in the phase-closeout commit on branch
-              `t2-p01-closeout`, which carries this block (explicit owner phase-close
+Closed:       2026-10-20 — owner ratification recorded in PR #162, the phase-closeout
+              documentation PR that carries this block (explicit owner phase-close
               authorization of 2026-10-20)
 Final gate:   T2.P01.S04 → ./t2.p01.s04-bounded-composition-loop/acceptance.md — accepted
               2026-10-19, merged as `99c38033` (PR #157)
