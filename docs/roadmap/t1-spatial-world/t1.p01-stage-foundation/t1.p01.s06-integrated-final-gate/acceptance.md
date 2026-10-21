@@ -1,13 +1,18 @@
 # T1.P01.S06 — acceptance record: Integrated final gate
 
-**Slice:** T1.P01.S06 · **Status:** in progress — **not accepted** (owner-authorized 2026-10-20 as batch D, ruling D1)
-**Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [T1.P01](../README.md) · **Declared** `FINAL PHASE GATE` artifact of T1.P01
+**Slice:** T1.P01.S06 · **Status:** accepted and shipped 2026-10-21 by routine `slice-closeout`, under a per-slice `owner-override` (owner-authorized 2026-10-20 as batch D, ruling D1)
+**Plan:** [implementation-plan.md](./implementation-plan.md) (closed recovery stub; owns the criteria) · **Phase:** [T1.P01](../README.md) · **Declared** `FINAL PHASE GATE` artifact of T1.P01
 
 TD-10 and the browser-discovered host defects are repaired. The owner ratified the bounded TD-11/12
 amendment and the separate Index correction. The fixture browser pass now has recorded observations.
 The corrected implementation and updated composition guard are at `d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa`, based on `origin/main`
-`f412865512bfa2b5aa2d6ef58a9142c46a8b799a` through merge `5bca5d11`.
-**Acceptance remains the owner's review; no phase closure, merge or architecture verdict is claimed.**
+`f412865512bfa2b5aa2d6ef58a9142c46a8b799a` through merge `5bca5d11`. Later changes through the
+closeout base are documentation and evidence only. On 2026-10-21 the owner accepted S06 at that
+implementation revision and waived the independent-review verdict for this slice. The waiver is
+per-slice and per-revision; it does not waive any acceptance criterion, prerequisite or verification
+row below. The independent review's recorded non-acceptance remains distinct from this owner ruling.
+S06 records the integrated gate only and produces no new capability outcome. The phase is closable,
+not closed; no phase closure, merge or architecture verdict is claimed.
 
 ## Preserved browser and automated baseline — October 20
 
@@ -121,11 +126,9 @@ Owner: T1 shell composition, next T1 increment.
 
 ## Takeover implementation and browser evidence — October 20–21, 2026
 
-**NOT ACCEPTED — owner review outstanding.** The owner instructed that further independent review
-stop and that the result be pushed for their own review. After an immediate-wrap-up interruption, the
-owner resumed completion of verification. No slice-closeout or phase closure has been performed.
-Earlier automated results below remain historical; the final implementation results are recorded
-separately at the end.
+The following implementation and browser evidence was recorded before the October 21 owner
+acceptance. The owner had directed that no further independent review be sought; the review outcome
+and the precise acceptance override are recorded below.
 
 **Authorization:** the owner explicitly approved the [narrow D1 amendment](./d1-amendment.md), ratifying
 TD-11/12 and the necessary S05 compatibility repair/regressions, then separately approved the Index
@@ -168,16 +171,21 @@ guard fails 1/9. Restoring the final implementation passes all nine. Final imple
 The mounted Resume path emits Svelte `derived_inert` development warnings after the old instrument
 is destroyed; the browser and mounted assertions found no surviving paused marker/instrument.
 
-**Review:** an independent agent initially found the reading-flip blocker and later ran the 9/9
-mounted suite on the correction. It found the narrow approach technically sound, but did not accept
-the complete slice. At the owner's subsequent instruction, no further independent review is sought.
-The owner will review the pushed commit themselves.
+**Review:** an independent reviewer initially found the reading-flip blocker and later ran the 9/9
+mounted suite on the correction. The reviewer found the narrow approach technically sound but did
+not accept the complete slice. No independent-review acceptance verdict exists. Under the owner's
+2026-10-21 ruling, no further independent review was sought and that verdict prerequisite was waived
+for this slice only; the owner accepted the complete S06 result at `d63bdb6c`.
 
-**Acceptance frontier:** owner review remains outstanding. Existing Save/conflict/Reload/TD-9 evidence
-above is preserved. Card-over-Compose remains the recorded T1 shell residual. Layout-plinth dimension
-editing is not claimed. Four development-only `derived_inert` warnings arise after Resume destroys
-the old instrument; subsequent reading changes work and no stale instrument or paused marker survives.
-**BLOCKED for acceptance pending owner review; not merge-ready.**
+**Acceptance — 2026-10-21, OWNER-OVERRIDE.** The owner accepted T1.P01.S06 at implementation
+revision `d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa` and waived the independent-review verdict for
+the complete slice. Scope is S06 at that revision; no other slice or phase is covered. The exhaustive
+criteria, trusted-base prerequisites and verification rows remain required and are satisfied by the
+recorded evidence. Existing Save/conflict/Reload/TD-9 evidence above is preserved. Card-over-Compose
+remains the recorded T1 shell residual. Layout-plinth dimension editing is not claimed. Four
+development-only `derived_inert` warnings arise after Resume destroys the old instrument;
+subsequent reading changes work and no stale instrument or paused marker survives. The owner retains
+final review and merge; this record does not close T1.P01 or claim an architecture verdict.
 
 ## Final implementation gate — `d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa`
 
@@ -201,6 +209,29 @@ press; the real mounted test remains the behavioral proof. Final full, arch and 
 unchanged after that test correction. No assertion of a published gate, deployed activation, phase
 closure or owner architecture verdict follows from these results.
 
-The final documentation update reruns the whole arch lane before push. The owner requested no
-further independent review; the pushed implementation awaits their acceptance. Until then the
-required status is **BLOCKED / awaiting owner review**, with no slice-closeout or merge.
+The final documentation update reran the whole arch lane before closeout. The owner accepted this
+slice under the scoped override above. The final-gate artifact stays live for the separate phase
+close decision; the owner retains final PR review and merge. No merge or phase closure is claimed.
+
+## Closeout preservation — T1.P01.S06 (2026-10-21)
+
+```text
+prose compacted:                 2   implementation plan and D1 amendment → stubs at their own paths
+reference promotions:            0   no durable reference contract changed
+renderable evidence archived:    14 PNG files / 1,410,638 bytes; byte-identical copies under
+                                     docs/archive/roadmap/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/evidence/
+evidence stubs / manifests:       1   evidence bundle CLOSED.md
+transient artifacts removed:     1   completed S06 takeover checkpoint
+historical anchor:               b786ccff126a33286627bd6510671199b7354279 · tag closed/T1.P01.S06
+                                     (local only — not pushed)
+new live → archive prose links:   0
+manual-owed verification rows:    0
+remaining deferred items:         1   Card-over-Compose, owned by T1 shell composition
+permanent stubs added:            2   implementation-plan.md and d1-amendment.md (owner-ratified hybrid cost)
+```
+
+```text
+git show b786ccff126a33286627bd6510671199b7354279:docs/roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/implementation-plan.md
+REQUIRED MERGE METHOD — P1    merge commit via PR #168; no squash, rebase or amend
+POST-MERGE VERIFICATION OWED   git merge-base --is-ancestor b786ccff126a33286627bd6510671199b7354279 main
+```

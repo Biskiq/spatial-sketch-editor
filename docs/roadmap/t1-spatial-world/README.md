@@ -1,8 +1,9 @@
 # T1 — Spatial world
 
 **Track:** T1 · **Status:** approved — T1.P01 registered; `T1.P01.S01` shipped (shared F1/F3
-providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05–S06
-unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
+shipped; S06 accepted and shipped 2026-10-21 by owner-override in PR #168. T1.P01 remains open
+until its separate owner-invoked phase close ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
@@ -87,7 +88,7 @@ with `T2.P01.S01` and `T3.P01.S01`; both shipped, S02 by owner-override. **T1.P0
 Stage↔F4 bridge, owner-authorized 2026-10-17) shipped in PR #137 and recorded
 `T1.viewport-projection@1:viewport-projection-v1` accepted. **T1.P01.S04** was owner-authorized
 2026-10-17 as batch B with `T2.P01.S03` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in
-scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); S06 stays `proposed`, routed after the T3 cutover (ruling C3). No authorization extends to another phase, slice or track.
+scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); **S06** was owner-authorized as batch D and accepted and shipped 2026-10-21 under a scoped owner-override (PR #168). No authorization extends to another phase, slice or track.
 
 ## Starting foundation
 
