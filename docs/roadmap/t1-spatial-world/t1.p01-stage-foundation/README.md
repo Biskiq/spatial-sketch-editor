@@ -1,6 +1,6 @@
 # T1.P01 — Stage and authoring foundation
 
-**Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
+**Phase:** T1.P01 · **Status:** closed 2026-10-21 by owner ratification in PR #168 — `T1.P01.S01` accepted and shipped
 (F1/F3 shared providers and readiness enforcement); `T1.P01.S03` accepted and shipped 2026-10-16
 (F4 `acceptance-invariants-v1` and `local-single-domain-v1`); `T1.P01.S02` accepted and shipped
 2026-10-17 by owner-override (PR #128); `T1.P01.S07` accepted and shipped 2026-10-17 (PR #137,
@@ -218,16 +218,21 @@ implementation.
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md
 
 PHASE CLOSE
-Stage:        closable
+Stage:        closed
+Closed:       2026-10-21 — owner ratification recorded in PR #168
+Owner ratification: closed by owner ruling 2026-10-21 (PR #168)
+Final gate:   T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md — accepted 2026-10-21
+Integration:  exhaustive final gate at d63bdb6c; check/build/package/API pass; full 170/2,227, arch 20/166, heavy 8/118, DB API 80 passed with 0 skips
+Preservation: final-gate stub records phase and slice preservation, anchors and recovery commands
 ```
 
 `T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03`, `T1.P01.S04`, `T1.P01.S05` and `T1.P01.S07` are accepted
 and shipped. S02's acceptance uses the owner-override recorded in its acceptance stub; the viewport
 capability is accepted through S07's record, and consumer readiness starts at a trusted base
 containing PR #137's merge. S06 is accepted and shipped by routine `slice-closeout` under a scoped
-owner-override ([record](./t1.p01.s06-integrated-final-gate/acceptance.md)); its complete exhaustive
-evidence remains in the declared final-gate artifact. The final gate makes T1.P01 **closable**. No
-phase or track closure is recorded here; `phase-closeout` remains a separate explicit owner request.
+owner-override, and this phase was closed by the owner on 2026-10-21 through `phase-closeout`. The
+final-gate artifact at the declared path is now a recovery stub; it retains the exact full record at
+the phase-close anchor. T1.P01 is shipped in the T1 phase register. No T1 track completion is recorded.
 
 ## Bounded architecture-cycle window
 

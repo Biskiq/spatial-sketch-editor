@@ -1,14 +1,14 @@
 # T1 — Spatial world: current baton
 
-PHASE: T1.P01 remains in progress; S06 accepted and shipped 2026-10-21 under a scoped owner-override.
-ACTIVE: PR #168, branch T1-P01-S06; owner retains final review and merge.
-NEXT: Owner-invoked `phase-closeout` for T1.P01, requested 2026-10-21.
-ROUTE: ../../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md → PHASE CLOSE.
+PHASE: T1.P01 closed 2026-10-21; all registered slices are shipped.
+ACTIVE: none; the T1 phase register has no next phase.
+NEXT: Owner planning decision to register a later T1 phase; keep the T1 track open.
+ROUTE: ../../roadmap/t1-spatial-world/README.md#phase-register → global roadmap.
 
-The owner waived only S06's independent-review verdict; all criteria, trusted-base prerequisites and
-exhaustive verification remain recorded as satisfied. The complete gate, browser matrix, review
-disposition and preservation report remain in the S06 acceptance artifact until phase closeout.
+T1.P01's S06 final gate is accepted and recorded under a scoped owner-override. The phase README
+records the owner ratification; its final-gate stub carries the exact recovery anchor. PR #168 still
+awaits the owner's final review and merge.
 
 BOUNDARIES: merge commit required; no squash/rebase/amend. Card-over-Compose remains owned by T1
-shell composition; Layout-plinth dimension editing is not claimed. No merge or architecture verdict
-is recorded.
+shell composition; Layout-plinth dimension editing is not claimed. No T1 TRACK COMPLETE event or
+architecture verdict is recorded.

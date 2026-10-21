@@ -1,11 +1,12 @@
 # T1.P01.S06 — implementation plan — CLOSED STUB
 
 ```text
-AUTHORITY: NONE — the phase README owns slice status; the live acceptance record owns the final-gate evidence.
+AUTHORITY: NONE — the phase README owns status; the closed acceptance stub records outcomes and recovery.
 STATUS:    accepted and shipped 2026-10-21 by routine slice-closeout under a scoped owner-override.
 PROVENANCE: PR #168; owner acceptance at implementation revision d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa.
 ROLE:      recovery route for the approved exhaustive integration scope and its verification tier.
 NOT:       product contract · acceptance authority · phase closure · architecture verdict.
+VERIFICATION: exhaustive
 ```
 
 ## Delivered
@@ -30,11 +31,11 @@ Layout, F2 Save/reload, Camera and shared Stage paths without adding a second au
 
 ## Evidence
 
-The [live acceptance record](./acceptance.md) holds the complete criterion matrix, browser fixtures,
-residuals, and final implementation gate: check/build and package/API checks passed; full editor suite
-170 files / 2,227 tests; arch 20 / 166; heavy 8 / 118; DB-backed API 80 passed with zero skips.
-No performance threshold or speed claim was accepted. The artifact remains live as T1.P01's final-gate
-evidence until the separate phase-close decision.
+The [closed acceptance stub](./acceptance.md) records the owner-override, phase closure and residuals.
+The complete criterion matrix, browser fixtures and implementation gate are recoverable at the phase
+close anchor below: check/build and package/API checks passed; full editor suite 170 files / 2,227
+tests; arch 20 / 166; heavy 8 / 118; DB-backed API 80 passed with zero skips. No performance
+threshold or speed claim was accepted.
 
 ## Entry points
 

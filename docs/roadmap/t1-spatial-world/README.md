@@ -1,9 +1,10 @@
 # T1 — Spatial world
 
-**Track:** T1 · **Status:** approved — T1.P01 registered; `T1.P01.S01` shipped (shared F1/F3
+**Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; T1 remains open with
+no next phase registered; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
-shipped; S06 accepted and shipped 2026-10-21 by owner-override in PR #168. T1.P01 remains open
-until its separate owner-invoked phase close ([track register](../README.md#track-register)) · **Runbook:**
+shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
+not complete ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
@@ -70,7 +71,7 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T1.P01 | approved | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
+| T1.P01 | shipped | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
 
 The `Depends on` column stays empty for T1.P01: the phase's first slice, `T1.P01.S01`, is itself
 the sole provider of `F1.reference@1` and `F3.channels@1`, so listing either as a phase dependency

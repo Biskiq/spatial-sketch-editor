@@ -11,7 +11,7 @@ NOT:       authorization for further implementation, another slice, phase closur
 The owner approved the narrow CSS-space and press-scoped-evaluation corrections, their required route
 regressions, and the separately approved generated-Plan cloneability fix. S06 accepted those changes
 under its 2026-10-21 per-slice owner-override; the independent-review verdict was the only waived
-prerequisite. See the [live S06 acceptance record](./acceptance.md).
+prerequisite. See the [S06 closed acceptance stub](./acceptance.md) and its recovery anchor.
 
 ## Recovery
 
