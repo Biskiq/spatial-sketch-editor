@@ -1,7 +1,7 @@
 # T1.P01.S06 D1 amendment — CLOSED STUB
 
 ```text
-AUTHORITY: NONE — the phase README owns slice scope/status; the live S06 acceptance artifact records outcomes.
+AUTHORITY: NONE — the phase README owns slice scope/status; the closed S06 acceptance stub records outcomes and recovery.
 STATUS:    owner-approved 2026-10-20; consumed by S06 and compacted at slice-closeout.
 PROVENANCE: PR #168; full approved amendment at commit d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa.
 ROLE:      recovery route for the bounded TD-11/12 and Index-selection corrections approved during takeover.
