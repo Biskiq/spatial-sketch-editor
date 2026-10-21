@@ -23,12 +23,12 @@ const doOp = (p: Project, op: any, ch: any = {}) => runTxn(p, op, ch).after;
  * even-hip detent, the slopes made fuller (a real bow, not a straight line), and the roof drawn out to a 0.6 m
  * overhang. `wallTop` is the one thing the mezzanine step cannot invent for itself.
  */
-function cottage(wallTop = 3) {
+function cottage(wallTop = 3, ceiling: 'flat' | 'follow' = 'flat') {
   let p = doOp(emptyProject(), opAddRun(poly(rect(0, 0, 10, 6)), { baseY: 0 }));
   p = doOp(p, opAddRun(poly([[10, 6], [10, 14], [6, 14], [6, 6]], false), { baseY: 0 }));
   const d = derive(p);
   if (d.rooms.length !== 2) throw new Error(`expected two rooms, got ${d.rooms.length}`);
-  for (const r of d.rooms) p = doOp(p, opRoom(r.id, { height: wallTop }));
+  for (const r of d.rooms) p = doOp(p, opRoom(r.id, { height: wallTop, ceiling }));
   // one cover for both rooms; turning wings on is part of that accepted step, not a second Undo
   p = doOp(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable', { wings: true }));
   const oh = p.overheads[0];
@@ -89,7 +89,7 @@ describe('Phase 0 · the §11.3 cottage, made the way the plan says it is made',
     expect(oh.profile.some((q) => !q.crease)).toBe(true);
   });
 
-  it('qualifies a mezzanine and its stair together in the room made tall enough for one', () => {
+  it('qualifies a mezzanine and its stair together when the wall top gives it headroom over a flat ceiling', () => {
     const { p, block, wing } = cottage(5);
     expect(roofWingsState(oh0(p)).kind).toBe('compound');
     const room = derive(p).rooms.find((r) => r.id === block)!;
@@ -136,7 +136,38 @@ describe('Phase 0 · the §11.3 cottage, made the way the plan says it is made',
     expect(mezzanineOffer(p, wing).candidates.length).toBeGreaterThan(0);
   });
 
-  it('offers nothing in the 3 m cottage, and the recorded reason is its ceiling, not a broken roof', () => {
+  it('opens the 3 m cottage to its roof: the same walls now carry a loft, and the hip is what limits it', () => {
+    const { p, block } = cottage(3, 'follow');
+    const room = derive(p).rooms.find((r) => r.id === block)!;
+    expect(room.topY).toBeCloseTo(3, 6); // no wall was raised for this
+    const offer = mezzanineOffer(p, block);
+    expect(offer.why).toBe('');
+    expect(offer.candidates.length).toBe(2);
+    const cand = offer.candidates[0];
+    expect(cand.area).toBeCloseTo(12.9, 1);
+    // every clearance is read from the hipped surface over the whole footprint, and the hip is the binding one:
+    // the lowest point of that surface is exactly what the offer reports
+    const oh = oh0(p);
+    let lowest = Infinity;
+    for (const q of cand.outline) lowest = Math.min(lowest, ohUndersideAt(oh, q) - cand.y);
+    expect(lowest).toBeCloseTo(cand.above, 3);
+    expect(cand.above).toBeCloseTo(2.285, 2);
+    expect(cand.above).toBeLessThan(oh.profile.reduce((m, q) => Math.max(m, q.h), 0) + oh.baseY + oh.thick - cand.y);
+  });
+
+  it('keeps the flat-ceiling boundary honest: at 5 m the ceiling, not the hip, is what the offer reads', () => {
+    const { p, block } = cottage(5, 'flat');
+    const room = derive(p).rooms.find((r) => r.id === block)!;
+    const cand = mezzanineOffer(p, block).candidates[0];
+    expect(cand.above).toBeCloseTo(room.topY - cand.y, 6); // 2.30 m, the ceiling over the 2.70 m deck
+    const oh = oh0(p);
+    let lowest = Infinity;
+    for (const q of cand.outline) lowest = Math.min(lowest, ohUndersideAt(oh, q) - cand.y);
+    // the roof is well clear of that loft everywhere, so this fixture does not exercise the hip at all
+    expect(lowest).toBeGreaterThan(cand.above + 0.5);
+  });
+
+  it('offers nothing in the 3 m cottage with a flat ceiling, and the reason is its ceiling, not a broken roof', () => {
     const { p, block } = cottage();
     const offer = mezzanineOffer(p, block);
     expect(offer.candidates).toEqual([]);

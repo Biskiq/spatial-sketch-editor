@@ -13,7 +13,7 @@ import { stairSteps } from '../model/settle';
 import { describeProfile, ohRidge, ProfilePreset } from '../model/overheadGeom';
 import {
   opRoom, opConfirmRoom, opAddFloorAbove, opRunPatch, opRunTop, opAddOpening, openingDefaults, opOpening, opOverhead, opDeck, opVoid, opStair, opObj,
-  opRemove, removalReach, opCoverRooms, isRoundish, opProject, opAddMezzanine, opAddStairTo, Op, OBJ_NAMES,
+  opRemove, removalReach, opCoverRooms, coverCheck, isRoundish, opProject, opAddMezzanine, opAddStairTo, Op, OBJ_NAMES,
 } from '../model/ops';
 import { mezzanineOffer, stairCandidates } from '../model/offers';
 import { surfaceName } from '../scene/interact';
@@ -138,6 +138,14 @@ function RoomCard({ s, dr, dc, p }: { s: RoomSeed; dr: DRoom | undefined; dc: De
   const names = group.map((id) => dc.roomById.get(id)?.name ?? '').filter(Boolean);
   const [only, setOnly] = useState(false);
   const targets = only || group.length < 2 ? [s.id] : group;
+  // a preset that cannot carry this group is not offered: the chip, its preview and its commit all ask the same
+  // question, so a refusal is never a click that silently does nothing
+  const presets: ProfilePreset[] = round ? ['flat', 'dome', 'gable'] : ['flat', 'raked', 'gable', 'clerestory', 'vault'];
+  const checks = useMemo(() => {
+    const out = new Map<ProfilePreset, ReturnType<typeof coverCheck>>();
+    for (const k of presets) out.set(k, coverCheck(p, targets, k, { wings: targets.length > 1 }));
+    return out;
+  }, [p, s.id, only, group.length, round]);
   const mezz = useMemo(
     () => (covered ? mezzanineOffer(p, s.id) : { candidates: [], why: '' }),
     [p, s.id, !!covered],
@@ -195,20 +203,25 @@ function RoomCard({ s, dr, dc, p }: { s: RoomSeed; dr: DRoom | undefined; dc: De
       {!covered && (
         <Sec label={targets.length === 2 ? `Cover ${names.join(' and ')}` : targets.length > 2 ? `Cover all ${targets.length} rooms` : 'Cover it'}>
           <div class="chips">
-            {((round ? ['flat', 'dome', 'gable'] : ['flat', 'raked', 'gable', 'clerestory', 'vault']) as ProfilePreset[]).map((k) => (
-              <button
-                class="chip pencil"
-                title={targets.length > 1 ? `One roof over ${names.join(', ')}` : `A ${k} roof over ${s.name}`}
-                onPointerEnter={() => store.setPreview(opCoverRooms(targets, k, { wings: targets.length > 1 }))}
-                onPointerLeave={() => store.setPreview(null)}
-                onClick={() => {
-                  store.setPreview(null);
-                  store.commit(targets.length > 1 ? `Covered ${names.join(', ')}` : `Covered ${s.name}`, opCoverRooms(targets, k, { wings: targets.length > 1 }));
-                }}
-              >
-                {k === 'gable' && round ? 'cone' : k}
-              </button>
-            ))}
+            {presets.map((k) => {
+              const check = checks.get(k)!;
+              return (
+                <button
+                  class="chip pencil"
+                  disabled={!check.ok}
+                  title={!check.ok ? `Not one roof with these rooms: ${check.reason}` : targets.length > 1 ? `One roof over ${names.join(', ')}` : `A ${k} roof over ${s.name}`}
+                  onPointerEnter={() => check.ok && store.setPreview(opCoverRooms(targets, k, { wings: targets.length > 1 }))}
+                  onPointerLeave={() => store.setPreview(null)}
+                  onClick={() => {
+                    store.setPreview(null);
+                    if (!check.ok) return;
+                    store.commit(targets.length > 1 ? `Covered ${names.join(', ')}` : `Covered ${s.name}`, opCoverRooms(targets, k, { wings: targets.length > 1 }));
+                  }}
+                >
+                  {k === 'gable' && round ? 'cone' : k}
+                </button>
+              );
+            })}
             {group.length > 1 && (
               <button class={'chip' + (only ? ' on' : '')} onClick={() => setOnly(!only)} title={`Cover ${s.name} on its own`}>
                 Only {s.name}

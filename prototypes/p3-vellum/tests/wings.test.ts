@@ -423,6 +423,21 @@ describe('Phase 0 · what the candidate refuses, and why', () => {
     expect(meshArea(prev)).toBeCloseTo(Math.abs(polyArea(prev.outline)), 1);
   });
 
+  it('treats a translated roof as the same massing, and still refuses a real change of massing', () => {
+    const prev = oh0(roofOn(outlineOf([L.A, L.B])));
+    expect(roofWingsState(prev).kind).toBe('compound');
+    // the whole roof slides a metre and a half: moving is not dividing differently, so the massing is kept
+    const moved = { ...prev, outline: prev.outline.map(([x, z]) => [x + 1, z + 0.5] as V2) };
+    expect(roofWingsState(moved).kind).toBe('compound');
+    const c = continuedWings(prev, moved);
+    expect(c.kept).toBe(true);
+    expect(c.reason).toBe('');
+    expect(c.state.kind).toBe('compound');
+    // a different plan still is a different massing
+    const other = oh0(roofOn(outlineOf([L.A, [6, 6, 10, 17]])));
+    expect(continuedWings(prev, other).kept).toBe(false);
+  });
+
   it('records when a fitted outline change would choose another massing (the primary can flip)', () => {
     const at = (overhang: number) => {
       const p = roofOn(outlineOf([L.A, L.B], overhang));

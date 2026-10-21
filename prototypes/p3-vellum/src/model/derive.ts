@@ -7,6 +7,7 @@ import { P, intersection, union, mpolyArea } from './clip';
 import { runGeom } from './runs';
 import { levelArrangements, lvl, roomTop, stairSteps } from './settle';
 import { ohUndersideAt, ohCovers, ohRidge, ohTopAt } from './overheadGeom';
+import { roofWingsState } from './wings';
 import type { Project, Run, RoomSeed, Opening, Overhead, Deck, Stair, Element } from './types';
 import { findEl, newId } from './types';
 
@@ -386,6 +387,19 @@ function computeIssues(p: Project, rooms: DRoom[], roomById: Map<string, DRoom>,
   const len = (st: V2[]) => st.reduce((a, q, i) => (i ? a + dist(st[i - 1], q) : 0), 0);
 
   for (const oh of p.overheads) {
+    // A wing roof whose section no longer fits its wings has no surface at all: it is reported, not stretched into
+    // one span, because a single-span surface under a wing roof is a different roof that happens to look plausible.
+    if (oh.oneSpan === false) {
+      const ws = roofWingsState(oh);
+      if (ws.kind === 'unsupported') {
+        const mid = interiorPoint(oh.outline);
+        issues.push({
+          key: `wings:${oh.id}`, kind: 'fit',
+          text: `${oh.name} has no surface: its section cannot be carried across these wings (${ws.reason}).`,
+          ids: [oh.id], at: [mid[0], oh.baseY + 0.5, mid[1]], fixes: [], acknowledged: false,
+        });
+      }
+    }
     const sts = stretches(oh.outline, oh.baseY, 1.6, 1.2);
     sts.forEach((st, k) => {
       const posts = postsAlong(st, oh.outline, 3.6);

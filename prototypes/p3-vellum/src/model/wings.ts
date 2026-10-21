@@ -477,12 +477,26 @@ export interface WingContinuity {
 
 const near = (a: number, b: number, tol = 0.08) => Math.abs(a - b) <= tol;
 
-function sameMassing(a: Wing[], b: Wing[]): boolean {
+/**
+ * Whether the two decompositions are the same roof, with `shift` (in the roof frame) removed first: moving the whole
+ * roof is not a change of massing, so a translated roof keeps its structure instead of being refused as a jump.
+ */
+function sameMassing(a: Wing[], b: Wing[], shift: [number, number]): boolean {
   if (a.length !== b.length) return false;
   return a.every((w, i) => {
     const q = b[i];
-    return w.span === q.span && w.ends.lo === q.ends.lo && w.ends.hi === q.ends.hi && w.rect.every((x, k) => near(x, q.rect[k]));
+    if (w.span !== q.span || w.ends.lo !== q.ends.lo || w.ends.hi !== q.ends.hi) return false;
+    return w.rect.every((x, k) => near(x + (k < 2 ? shift[0] : shift[1]), q.rect[k]));
   });
+}
+
+/** The outline's translation between two revisions, read in the roof's own frame. */
+function frameShift(prev: Overhead, next: Overhead): [number, number] | null {
+  if (Math.abs(prev.dir - next.dir) > 1e-9) return null;
+  const a = bboxOf(prev.outline), b = bboxOf(next.outline);
+  const d = fromAngle(prev.dir), e: V2 = [-d[1], d[0]];
+  const delta: V2 = [(b.min[0] + b.max[0]) / 2 - (a.min[0] + a.max[0]) / 2, (b.min[1] + b.max[1]) / 2 - (a.min[1] + a.max[1]) / 2];
+  return [dot(delta, d), dot(delta, e)];
 }
 
 /**
@@ -509,7 +523,8 @@ export function continuedWings(prev: Overhead, next: Overhead): WingContinuity {
     return { state: after, kept: true, reason: '' };
   }
   if (after.kind === 'unsupported') return { state: after, kept: false, reason: after.reason };
-  if (before.kind === 'compound' && sameMassing(before.wings, after.wings)) return { state: after, kept: true, reason: '' };
+  const shift = before.kind === 'compound' ? frameShift(prev, next) : null;
+  if (before.kind === 'compound' && shift && sameMassing(before.wings, after.wings, shift)) return { state: after, kept: true, reason: '' };
   if (before.kind !== 'compound')
     return { state: after, kept: false, reason: 'this roof would need wings it did not have; confirm a grouped cover first' };
   return {

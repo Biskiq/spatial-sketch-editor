@@ -31,6 +31,9 @@ export function buildOverhead(oh: Overhead, holes: V2[][]): OverheadMesh {
   if (oh.form === 'revolve') return buildRevolve(oh, holes);
   const st = roofWingsState(oh);
   if (st.kind === 'compound') return buildCompound(oh, holes, st);
+  // A wing roof whose section cannot be carried across its wings has no surface. Stretching it across the outline as
+  // one span would draw a different roof under this one's name; the gap is deliberate, and `derive` reports why.
+  if (oh.oneSpan === false && st.kind === 'unsupported') return { top: new Geo(), under: new Geo(), glass: new Geo() };
   return buildSingle(oh, holes);
 }
 

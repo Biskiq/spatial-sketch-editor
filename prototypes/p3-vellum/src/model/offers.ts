@@ -7,7 +7,7 @@
 //     breaks and corners: a gable's peak is not evidence for its eaves;
 //   · 4.80 m is a floor-to-roof bound that rejects early, never a proof;
 //   · a stair must reach the deck edge with its full width and land on a floor, not merely on "ground somewhere".
-import { V2, add, mul, sub, norm, perp, lerp2, dist, pointInPolyHoles, polyArea, bbox, rdpIdx, segIntersect, polyCentroid, interiorPoint } from './geom2d';
+import { V2, add, mul, sub, norm, perp, lerp2, dist, pointInPolyHoles, polyArea, bbox, rdpIdx, segIntersect, polyCentroid, interiorPoint, distToPolyEdge } from './geom2d';
 import type { Project, Overhead, SurfaceRef } from './types';
 import { P, difference, intersection, mpolyArea, type MPoly } from './clip';
 import { derive } from './derive';
@@ -45,6 +45,8 @@ export interface MezzCandidate {
   below: number;
   above: number;
   area: number;
+  /** The posts this deck needs, laid out before its stair is chosen so the two can be qualified together. */
+  posts: V2[];
   stair: StairPlan;
 }
 
@@ -54,6 +56,66 @@ export interface MezzCheck {
 }
 
 export const deckTopFor = (floorY: number) => Math.round((floorY + MIN_BELOW + DECK_THICK) * 100) / 100;
+
+/** Reach of one post, m: edges closer than this to a wall are carried by the wall instead. */
+export const POST_REACH = 2.2;
+export const POST_SIZE = 0.2;
+
+/** Distance from a point to a polyline in plan. */
+function distToPath(q: V2, path: V2[]): number {
+  let best = Infinity;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const a = path[i], b = path[i + 1];
+    const ab = sub(b, a);
+    const l2 = ab[0] * ab[0] + ab[1] * ab[1];
+    const t = l2 < 1e-12 ? 0 : Math.max(0, Math.min(1, ((q[0] - a[0]) * ab[0] + (q[1] - a[1]) * ab[1]) / l2));
+    best = Math.min(best, dist(q, [a[0] + ab[0] * t, a[1] + ab[1] * t]));
+  }
+  return best;
+}
+
+/**
+ * The posts a loft standing in `room` needs: along every edge that is not already carried by a wall, spaced closer
+ * than the prototype's own support reach, and clear of `avoid` (the stair the loft will be served by). Where the stair
+ * crosses an edge, the posts are packed into the stretches either side of it, so the stair never runs into a post and
+ * the remaining free stretches keep their reach. Deterministic, so the offer, its preview and its commit agree.
+ */
+export function postsUnder(outline: V2[], room: V2[], avoid?: { path: V2[]; width: number }): V2[] {
+  const out: V2[] = [];
+  const gap = avoid ? avoid.width / 2 + POST_SIZE / 2 + 0.1 : 0;
+  const blocked = (q: V2) => !!avoid && distToPath(q, avoid.path) < gap;
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i], b = outline[(i + 1) % outline.length];
+    if (distToPolyEdge(lerp2(a, b, 0.5), room) <= 0.55) continue;
+    const len = dist(a, b);
+    // the stretches of this edge the stair does not use, as fractions of its length
+    const runs: [number, number][] = [];
+    if (avoid) {
+      const step = Math.min(0.05, len / 4);
+      let start: number | null = null;
+      for (let s = 0; s <= len + 1e-9; s += step) {
+        const t = Math.min(1, s / len);
+        const free = !blocked(lerp2(a, b, t))
+          && distToPolyEdge(lerp2(a, b, t), room) > 0.55;
+        if (free && start === null) start = t;
+        if (!free && start !== null) { runs.push([start, t]); start = null; }
+      }
+      if (start !== null) runs.push([start, 1]);
+    } else {
+      runs.push([0, 1]);
+    }
+    for (const [t0, t1] of runs) {
+      const runLen = (t1 - t0) * len;
+      if (runLen < 0.3) continue;
+      const k = Math.max(1, Math.ceil(runLen / POST_REACH));
+      for (let j = 0; j < k; j++) {
+        const t = t0 + ((t1 - t0) * (j + 0.5)) / k;
+        out.push(lerp2(a, b, t));
+      }
+    }
+  }
+  return out;
+}
 
 // ------------------------------------------------------------------ sampling the real surfaces
 function overheadsAbove(p: Project, at: V2): Overhead[] {
@@ -336,13 +398,22 @@ function crossesWall(path: V2[], walls: V2[][]): boolean {
  * Stair plans onto a deck from the floor below: a straight run `rise · 1.6` long that reaches the deck edge with
  * full width, lands on a real floor and has clear headroom the whole way.
  */
-export function stairPlansFor(p: Project, outline: V2[], deckY: number, floorY: number, excludeDeck?: string): StairPlan[] {
+export function stairPlansFor(
+  p: Project,
+  outline: V2[],
+  deckY: number,
+  floorY: number,
+  excludeDeck?: string,
+  /** posts that are not in the project yet: the ones the deck being offered will need */
+  extraPosts: V2[] = [],
+): StairPlan[] {
   const d = derive(p);
   const rise = deckY - floorY;
   if (rise < 0.6) return [];
   const L = Math.max(1.2, rise * STAIR_SLOPE);
   const plans: StairPlan[] = [];
   const walls = wallSegments(p, floorY + 0.1, deckY);
+  const posts = [...p.posts.map((q) => q.at), ...extraPosts];
   const inside = (q: V2) => pointInPolyHoles(q, outline);
   const edges = outline.map((a, i) => [a, outline[(i + 1) % outline.length]] as [V2, V2]);
   for (let e = 0; e < edges.length; e++) {
@@ -372,19 +443,28 @@ export function stairPlansFor(p: Project, outline: V2[], deckY: number, floorY: 
       const foot = swept(path, STAIR_WIDTH);
       // support: the whole sweep stands over the lower floor, not merely the bottom point
       if (!foot.every((q) => pointInPolyHoles(q, land.poly, land.holes))) continue;
+      // a post stands through the swept footprint: the stair and the supports have to clear each other
+      if (posts.some((q) => pointInPolyHoles(q, foot) || distToPolyEdge(q, foot) <= POST_SIZE / 2 + 0.05)) continue;
       // walls, voids, other slabs
       if (crossesWall(path, walls)) continue;
       if (p.voids.some((v) => v.toY > floorY && v.fromY < deckY && overlap(foot, v.outline))) continue;
       if (p.decks.some((k) => k.id !== excludeDeck && k.y - k.thick < deckY && k.y > floorY && overlap(foot, k.outline))) continue;
-      // headroom over the run
+      // headroom over the run, read across the stair's full width and capped by a flat ceiling when the room has one
+      const ceilingY = land.seed.ceiling === 'flat' ? land.topY : null;
+      const dir = norm(sub(top, bottom));
+      const side = perp(dir);
       let clear = true;
       for (let i = 0; i <= 10 && clear; i++) {
-        const q = lerp2(bottom, top, i / 10);
+        const c = lerp2(bottom, top, i / 10);
         const y = floorY + (rise * i) / 10;
-        const oh = lowestOverheadAbove(p, q, y);
-        if (oh && ohUndersideAt(oh, q) - y < 2.0) clear = false;
+        for (const off of [0, STAIR_WIDTH / 2 - 0.05, -(STAIR_WIDTH / 2 - 0.05)]) {
+          const q = add(c, mul(side, off));
+          const oh = lowestOverheadAbove(p, q, y);
+          const head = Math.min(oh ? ohUndersideAt(oh, q) : Infinity, ceilingY ?? Infinity);
+          if (head - y < 2.0) { clear = false; break; }
+        }
         // the run must not climb through the slab it serves
-        if (i < 8 && y < deckY - 0.4 && pointInPolyHoles(q, outline)) clear = false;
+        if (i < 8 && y < deckY - 0.4 && pointInPolyHoles(c, outline)) clear = false;
       }
       if (!clear) continue;
       // the top reaches the deck, and the run is straight
@@ -450,8 +530,15 @@ export function mezzanineOffer(p: Project, roomId: string): MezzCheck {
     if (below < MIN_BELOW - 1e-6) return;
     const above = clearanceOver(p, ring, y, ceilingY);
     if (!Number.isFinite(above) || above < MIN_ABOVE - 1e-6) return;
-    const stairs = stairPlansFor(p, ring, y, room.floorY);
-    if (!stairs.length) return;
+    // The deck, its posts and its stair are qualified together: the stair is chosen first, the posts are packed into
+    // the stretches it does not use, and the stair is then re-checked against exactly those posts — so an offer can
+    // never arrive with a post standing inside the stair it came with.
+    const core = stairPlansFor(p, ring, y, room.floorY);
+    if (!core.length) return;
+    const posts = postsUnder(ring, room.poly, { path: core[0].path, width: core[0].width });
+    const cleared = stairPlansFor(p, ring, y, room.floorY, undefined, posts);
+    const stair = cleared.find((s) => s.id === core[0].id) ?? cleared[0];
+    if (!stair) return;
     if (out.some((c) => c.id === id)) return;
     const ext = axes.map((a) => {
       let mn = Infinity, mx = -Infinity;
@@ -459,7 +546,7 @@ export function mezzanineOffer(p: Project, roomId: string): MezzCheck {
       return mx - mn;
     });
     const depth = Math.round(Math.min(...ext) * 100) / 100;
-    out.push({ id, roomId, outline: ring, y, thick: DECK_THICK, depth, below, above: Math.round(above * 1000) / 1000, area: Math.round(u.area * 10) / 10, stair: stairs[0] });
+    out.push({ id, roomId, outline: ring, y, thick: DECK_THICK, depth, below, above: Math.round(above * 1000) / 1000, area: Math.round(u.area * 10) / 10, posts, stair });
   };
   for (let ai = 0; ai < axes.length; ai++) {
     const axis = axes[ai];

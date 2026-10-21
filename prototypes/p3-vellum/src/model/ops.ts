@@ -2,18 +2,19 @@
 // and settle() reports what else moved.
 import {
   V2, add, sub, mul, dist, norm, angleOf, polyArea, ensureCCW, offsetPoly, polyCentroid, closestOnSeg, fmtM, polyPerimeter,
-  interiorPoint, pointInPolyHoles, bbox, rot, rdpIdx, pointInPoly, lerp2, distToPolyEdge,
+  interiorPoint, pointInPolyHoles, bbox, rot, rdpIdx, pointInPoly,
 } from './geom2d';
 import { P, union, mpolyArea, difference } from './clip';
 import type { Project, Run, Tie, Opening, OpeningShape, Overhead, ProfilePt, Deck, Void, Stair, SurfaceRef, Obj, ObjType, RoomSeed, CeilingMode } from './types';
 import { clone, newId, findEl } from './types';
 import { settle, Note, lvl, roomTop, seedAt, carryStanding } from './settle';
 import { runGeom, closestOnRun, translateRun, scaleRun, pointAtT } from './runs';
-import { derive, DRoom, openingKind, elementName, floorUnder } from './derive';
+import { derive, DRoom, Derived, openingKind, elementName, floorUnder } from './derive';
+import { roofWingsState } from './wings';
 import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt } from './overheadGeom';
 import type { StrokeFit } from './strokes';
 import { isRoundish, fittedOutline } from './fit';
-import { mezzanineCandidates, stairCandidates, type MezzCandidate, type StairPlan } from './offers';
+import { mezzanineCandidates, stairCandidates, POST_SIZE, type MezzCandidate, type StairPlan } from './offers';
 
 export interface Decision {
   key: string;
@@ -367,7 +368,19 @@ export function spanDir(outline: V2[]): number {
 
 export { isRoundish };
 
-export const opAddOverhead = (outline: V2[], baseY: number, o: { profile?: ProfilePt[]; preset?: ProfilePreset; dir?: number; restsOn?: string[] | null; name?: string; form?: 'extrude' | 'revolve'; fit?: Overhead['fit']; oneSpan?: boolean } = {}): Op => (p) => {
+export interface OverheadSpec {
+  profile?: ProfilePt[];
+  preset?: ProfilePreset;
+  dir?: number;
+  restsOn?: string[] | null;
+  name?: string;
+  form?: 'extrude' | 'revolve';
+  fit?: Overhead['fit'];
+  oneSpan?: boolean;
+}
+
+/** An overhead built from a spec, not yet added to the project. `p` is only read for its next id and name. */
+function makeOverhead(p: Project, outline: V2[], baseY: number, o: OverheadSpec = {}): Overhead {
   const ol = ensureCCW(outline);
   const round = o.form ?? (isRoundish(ol) ? 'revolve' : 'extrude');
   const oh: Overhead = {
@@ -377,6 +390,11 @@ export const opAddOverhead = (outline: V2[], baseY: number, o: { profile?: Profi
     ...(o.oneSpan === undefined ? {} : { oneSpan: o.oneSpan }),
   };
   oh.profile = o.profile ?? presetProfile(o.preset ?? 'flat', ohSpan(oh));
+  return oh;
+}
+
+export const opAddOverhead = (outline: V2[], baseY: number, o: OverheadSpec = {}): Op => (p) => {
+  const oh = makeOverhead(p, outline, baseY, o);
   p.overheads.push(oh);
   return { select: oh.id };
 };
@@ -406,25 +424,72 @@ export function coverOutline(rooms: DRoom[], thick = 0.24, overhang = 0.45): V2[
   return biggest ? biggest[0] : rooms[0].poly;
 }
 
-export const opCoverRooms = (roomIds: string[], preset: ProfilePreset, o: { wings?: boolean } = {}): Op => (p) => {
-  const d = derive(p);
-  const rooms = roomIds.map((id) => d.roomById.get(id)).filter((x): x is DRoom => !!x);
-  if (!rooms.length) return;
+/** The overhead a grouped cover would make, without adding it: what the chip, its preview and its commit share. */
+function coverRoof(p: Project, d: Derived, rooms: DRoom[], roomIds: string[], preset: ProfilePreset, o: { wings?: boolean }): Overhead {
   const round = rooms.length === 1 && isRoundish(rooms[0].poly);
   const base = Math.max(...rooms.map((r) => r.topY));
   // stop short of taller rooms next door, so their walls rise past the eave
   const taller = d.rooms.filter((r) => !roomIds.includes(r.id) && r.topY > base + 0.05 && r.floorY < base);
   const overhang = round ? 0.35 : 0.45;
   const outline = fittedOutline(rooms.map((r) => r.poly), overhang, taller.map((r) => r.poly)) ?? coverOutline(rooms);
-  const res = opAddOverhead(outline, base, {
+  return makeOverhead(p, outline, base, {
     fit: { rooms: rooms.map((r) => r.id), overhang },
     preset: round && preset === 'flat' ? 'flat' : preset, restsOn: roomIds, form: round ? 'revolve' : 'extrude',
     name: rooms.length === 1 ? `${rooms[0].name} roof` : undefined,
-    // one step, one cover: the second tap is not a second Undo. Set at creation so the profile's span is the
-    // primary wing's, not the whole outline's.
-    oneSpan: o.wings ? false : undefined,
-  })(p, {}) as OpResult;
-  return { ...res, notes: [{ kind: 'good', text: `Covered ${rooms.map((r) => r.name).join(', ')}. The roof rests on ${rooms.length > 1 ? 'them' : 'it'} and follows ${rooms.length > 1 ? 'their' : 'its'} walls, taller or wider.`, ids: [] }] };
+    // One step, one cover: the second tap is not a second Undo. Set at creation so the profile's span is the primary
+    // wing's, not the whole outline's. A flat section needs no wings at all — it is the same surface either way —
+    // and asking the wing decomposition to carry it only invents a refusal.
+    oneSpan: o.wings && preset !== 'flat' ? false : undefined,
+  });
+}
+
+export interface CoverCheck {
+  ok: boolean;
+  reason: string;
+  overhead: Overhead | null;
+}
+
+/**
+ * Whether a preset can cover these rooms as one roof. One answer for all three uses: a chip that cannot be committed
+ * is not offered, a hover previews only what would be placed, and the commit refuses the same case.
+ */
+export function coverCheck(p: Project, roomIds: string[], preset: ProfilePreset, o: { wings?: boolean } = {}): CoverCheck {
+  const d = derive(p);
+  const rooms = roomIds.map((id) => d.roomById.get(id)).filter((x): x is DRoom => !!x);
+  if (!rooms.length) return { ok: false, reason: 'Those rooms are not there any more.', overhead: null };
+  // a scratch copy, so asking the question never moves the project's next id
+  const oh = coverRoof({ ...p }, d, rooms, roomIds, preset, o);
+  if (oh.oneSpan === false) {
+    const st = roofWingsState(oh);
+    if (st.kind === 'unsupported') return { ok: false, reason: st.reason, overhead: null };
+  }
+  return { ok: true, reason: '', overhead: oh };
+}
+
+export const opCoverRooms = (roomIds: string[], preset: ProfilePreset, o: { wings?: boolean } = {}): Op => (p) => {
+  const d = derive(p);
+  const rooms = roomIds.map((id) => d.roomById.get(id)).filter((x): x is DRoom => !!x);
+  if (!rooms.length) return;
+  const mark = p.nextId;
+  const oh = coverRoof(p, d, rooms, roomIds, preset, o);
+  if (oh.oneSpan === false) {
+    const st = roofWingsState(oh);
+    if (st.kind === 'unsupported') {
+      p.nextId = mark; // the refused draft must leave no trace
+      return {
+        notes: [{
+          kind: 'info',
+          text: `A ${preset} roof cannot cover ${rooms.length > 1 ? 'these rooms' : rooms[0].name} as one roof: ${st.reason}. Nothing was placed.`,
+          ids: [],
+        }],
+      };
+    }
+  }
+  p.overheads.push(oh);
+  return {
+    select: oh.id,
+    notes: [{ kind: 'good', text: `Covered ${rooms.map((r) => r.name).join(', ')}. The roof rests on ${rooms.length > 1 ? 'them' : 'it'} and follows ${rooms.length > 1 ? 'their' : 'its'} walls, taller or wider.`, ids: [] }],
+  };
 };
 
 // ------------------------------------------------------------------ decks, voids, stairs, posts, objects
@@ -577,29 +642,36 @@ export const opStair = (id: string, patch: Partial<Stair>): Op => (p) => {
  * not placed: the card says why and nothing moves. The deck is independent of the room's ceiling (a mezzanine *inside*
  * the room), so it is not tied to the room's top.
  */
+/** Exact agreement between a previewed outline and the one this revision would produce. */
+function sameRing(a: V2[], b: V2[]): boolean {
+  return a.length === b.length && a.every((q, i) => Math.abs(q[0] - b[i][0]) < 1e-6 && Math.abs(q[1] - b[i][1]) < 1e-6);
+}
+
+const refKey = (r: SurfaceRef) => (r.kind === 'room' || r.kind === 'deck' ? `${r.kind}:${r.id}` : `${r.kind}:${r.y}`);
+
+function sameStair(a: StairPlan, b: StairPlan): boolean {
+  // a candidate is qualified before its deck exists, so its `to` deck has no id yet: an unset id is not a difference
+  const sameRef = (x: SurfaceRef, y: SurfaceRef) => refKey(x) === refKey(y)
+    || (x.kind === 'deck' && y.kind === 'deck' && (!x.id || !y.id));
+  return sameRing(a.path, b.path) && Math.abs(a.fromY - b.fromY) < 1e-6 && Math.abs(a.toY - b.toY) < 1e-6
+    && sameRef(a.from, b.from) && sameRef(a.to, b.to);
+}
+
 export const opAddMezzanine = (roomId: string, candidate: MezzCandidate): Op => (p) => {
   const room = derive(p).rooms.find((r) => r.id === roomId);
   const name = room?.name ?? 'the room';
   const ok = mezzanineCandidates(p, roomId).find((c) => c.id === candidate.id);
   if (!ok) return { notes: [{ kind: 'info', text: `A mezzanine no longer fits in ${name}. Nothing was placed.`, ids: [] }] };
+  // The previewed candidate itself is checked, not just its id: the same id on a moved deck is a different loft, and
+  // placing that one silently would move the thing the newcomer was looking at.
+  if (!sameRing(ok.outline, candidate.outline) || Math.abs(ok.y - candidate.y) > 1e-6)
+    return { notes: [{ kind: 'info', text: `That loft moved since it was offered in ${name}. Nothing was placed; hover the offer again.`, ids: [] }] };
   const res = opAddDeck(ok.outline, ok.y, { name: `Mezzanine in ${name}` })(p, {}) as { select?: string };
   const deckId = res.select!;
-  // Support is part of the same accepted step. A loft spanning away from the walls gets posts along every edge that
-  // is not already carried by a wall, spaced closer than the prototype's own support reach, so the result is never a
-  // floating deck the newcomer is left to repair.
-  let posts = 0;
-  const walls = room?.poly ?? [];
-  for (let i = 0; i < ok.outline.length; i++) {
-    const a = ok.outline[i], b = ok.outline[(i + 1) % ok.outline.length];
-    if (distToPolyEdge(lerp2(a, b, 0.5), walls) <= 0.55) continue;
-    const k = Math.max(1, Math.ceil(dist(a, b) / 2.2));
-    for (let j = 0; j < k; j++) {
-      const at = lerp2(a, b, (j + 0.5) / k);
-      if (distToPolyEdge(at, walls) <= 0.55) continue;
-      p.posts.push({ id: newId(p, 'q'), kind: 'post', at, size: 0.2, order: p.nextId });
-      posts++;
-    }
-  }
+  // Support is part of the same accepted step, and it is the layout the offer qualified — the one its stair was
+  // checked against — so a committed mezzanine never arrives with a post standing in its own stair.
+  for (const at of ok.posts) p.posts.push({ id: newId(p, 'q'), kind: 'post', at, size: POST_SIZE, order: p.nextId });
+  const posts = ok.posts.length;
   return {
     select: deckId,
     notes: [{ kind: 'good', text: posts ? `A mezzanine in ${name}, on ${posts} post${posts > 1 ? 's' : ''}.` : `A mezzanine in ${name}, supported by its walls.`, ids: [deckId] }],
@@ -612,6 +684,8 @@ export const opAddStairTo = (deckId: string, plan: StairPlan): Op => (p) => {
   if (!deck) return;
   const ok = stairCandidates(p, deckId).find((s) => s.id === plan.id);
   if (!ok) return { notes: [{ kind: 'info', text: `No clear approach to ${deck.name} any more. Nothing was placed.`, ids: [] }] };
+  if (!sameStair(ok, plan))
+    return { notes: [{ kind: 'info', text: `That stair moved since it was offered on ${deck.name}. Nothing was placed; hover the offer again.`, ids: [] }] };
   return opAddStair(ok.path, ok.from, { kind: 'deck', id: deckId }, ok.fromY, ok.toY)(p, {});
 };
 

@@ -7,9 +7,19 @@ packages, or `docs/reference`. No commits unless the owner asks, and never an ag
 and overhang (§3.1). Phase 1 (the section model) and the pure half of Phase 2 (zones, detents, ridge turning) are
 implemented and tested. Phase 5's compound geometry and Phase 6's offer qualification are implemented. The offer
 cards are wired: a room can be covered over its connected group in one step, then offered a mezzanine, and the deck a
-stair, each as one accepted step (`opAddMezzanine`, `opAddStairTo`). **Not wired into the UI yet:** Hold zones and
-their handles/highlights/card hint, the Edit Shape sheet, ink from meaning, Settings' *one span* control, the pen
-tips, and the browser checks in §11.2 that depend on them. No Phase 3–6 acceptance is claimed.
+stair, each as one accepted step (`opAddMezzanine`, `opAddStairTo`).
+
+**Qualification governs all three places it is asked** (review fixes, `tests/qualification.test.ts`): a chip, its
+hover preview and its commit now share one answer, so a preset the group cannot carry is disabled with its reason
+instead of committing a roof the wings cannot divide; a saved wing roof that cannot be divided is reported and not
+drawn as one span; a mezzanine is qualified with the posts it will need *and* the stair it is offered with, so no post
+stands in its own stair; stair headroom is read through a flat ceiling and across the stair's full width; a commit
+places exactly the candidate that was previewed, or refuses and asks for a fresh hover.
+
+**Not wired into the UI yet:** Hold zones and their handles/highlights/card hint, the Edit Shape sheet, ink from
+meaning, Settings' *one span* control, the pen tips, and the browser checks in §11.2 that depend on them. The resize
+continuity guard is model-only: `continuedWings` has no runtime caller, so no gesture is protected by it yet. No
+Phase 3–6 acceptance is claimed.
 
 Intent comes from [the design summary](../DESIGN.md#point-of-view) and
 [the working prototype summary](../README.md#whats-real-prepared-simulated-or-unsupported): draw what you mean,
@@ -111,10 +121,11 @@ The required L/T/U baseline is a gable and the fuller slopes used in the journey
 
 ### 3.1 Phase 0 — verified results and the decisions they make normative
 
-Run from `prototypes/p3-vellum`: `npm run typecheck`, `npm test` (14 files, 171 tests) and `npm run build` all pass.
+Run from `prototypes/p3-vellum`: `npm run typecheck`, `npm test` (15 files, 181 tests) and `npm run build` all pass.
 Phase 0's evidence lives in `tests/wings.test.ts` (compound roofs and resize continuity), `tests/offers.test.ts`
-(mezzanine and stair), `tests/journey.test.ts` (the §11.3 cottage, end to end in model operations) and
-`tests/section.test.ts` (the gesture validator and the nearest-preset tolerance). Nothing here is wired into the UI
+(mezzanine and stair), `tests/journey.test.ts` (the §11.3 cottage, end to end in model operations),
+`tests/section.test.ts` (the gesture validator and the nearest-preset tolerance) and `tests/qualification.test.ts`
+(what a chip, a preview and a commit are each allowed to claim). Nothing here is wired into the UI
 yet; §5 and §6 still own that.
 
 **Files this phase added or changed.**
@@ -166,7 +177,10 @@ so the last valid roof is kept"* and the caller keeps its last valid preview. A 
 compound roof is refused the same way; a plan that has genuinely become one rectangle has no wings left and is
 allowed, which is a plan change, not a primary flip. `tests/wings.test.ts` walks a wing from 4 m to 12 m against a
 fixed gesture start: 3 cm is kept with the eaves still at 0 and the mesh matching the new outline, every larger step
-is refused with the reason, and the sweep crosses a real primary change (several different `primarySpan` values). The
+is refused with the reason, and the sweep crosses a real primary change (several different `primarySpan` values).
+**Correction after review:** the comparison now removes the outline's own translation first, in the roof's frame, so
+moving an unchanged roof by 1.5 m keeps its massing instead of being refused as a jump; a genuinely different plan is
+still refused. The guard is called by nothing but its tests — no gesture is protected by it yet. The
 new roof being valid on its own is not enough; continuity is a separate test.
 
 **Gesture-validation semantics (normative for every edit route).**
@@ -194,8 +208,9 @@ The section model also settles two things the plan left open:
   from either read. New points created by an edit still come from `newProfileId()`.
 - **Freehand readings ship tidy + as-drawn only** for now. The tidy reading is offered only when it keeps the drawing's
   joint/step kinds and moves no point more than `max(0.05 m, 0.02 · span)`; the ridge is snapped only for the gable and
-  saltbox families, and a near-symmetric drawing is mirrored exactly. The "nearest preset" reading in §4.5 is **not
-  implemented** and must not be claimed until a tolerance test exists.
+  saltbox families, and a near-symmetric drawing is mirrored exactly. The "nearest preset" reading in §4.5 is
+  implemented inside the declared tolerance, `PRESET_TOL(span) = max(0.12 m, 0.035 · span)`, and tested in both
+  directions across spans (`tests/section.test.ts`).
 
 **Mezzanine and stair offers: what is now proven.** See §9.3 and §9.4 for the amended rules; the fixtures show:
 
@@ -211,18 +226,23 @@ The section model also settles two things the plan left open:
   the ridge at 45° over the 6 m room, an even hip (3.57 m at the 0.45 m overhang it is taken at), a bowed (fuller)
   section and a 0.6 m overhang. The roof stays one continuous compound roof (two spans 5.44 m and 7.44 m, mesh top
   area equal to the outline area within 0.1 m², symmetric bowed profile).
-  - **At the exact 3.0 m wall top it offers nothing**, and the reason is recorded precisely: the default *flat* ceiling
-    sits at the wall top, so a 2.70 m deck leaves 0.30 m everywhere, measured at every 0.4 m sample. The roof itself
-    rises to 6 m at the ridge; the ceiling, not a broken roof, is why. This is the same 3.0 m result as the flat-room
-    case and it is not weakening the 4.80 m arithmetic.
-  - **With the wall top raised to 5.0 m** (the same cottage, the same modifiers, one height change) it qualifies a
-    mezzanine and its stair together. Every candidate's clearance is measured from the hipped compound surface,
-    `below ≥ 2.40`, `above ≥ 2.10`; the candidate carries its own 1.3 m stair, `fromY = 0`, `toY = deck top`, a run of
-    at least `rise · 1.6 − 0.45` and a landing on the room's floor. Preview changes nothing (`decks` and `stairs`
-    stay empty); one accepted step makes the deck and the stair, and the stair's `to` is that deck.
-  - **The wall-top arithmetic is the caveat, and the fixture states it:** `2.40 below + 0.30 slab + 2.10 above =
-    4.80 m`. A cottage with a mezzanine over a 2.70 m deck needs 4.80 m at the eave, so the journey's "taller room"
-    is a real requirement, not a UI nicety. The 3 m version is kept as the negative so the boundary is tested.
+  - **At the exact 3.0 m wall top with the default *flat* ceiling it offers nothing**, and the reason is recorded
+    precisely: the ceiling sits at the wall top, so a 2.70 m deck leaves 0.30 m everywhere, measured at every 0.4 m
+    sample. The roof itself rises to 6 m at the ridge; the ceiling, not a broken roof, is why.
+  - **The same 3.0 m cottage opened to its roof (`ceiling: 'follow'`) qualifies two 12.9 m² lofts at 2.285 m clear**,
+    with no wall raised. That clearance is the hip: the lowest point of the hipped surface over each footprint is
+    exactly the reported number, and well below the ridge. So the journey's "taller room" is one route to a mezzanine,
+    not a requirement — opening the room to its roof is the other.
+  - **With the wall top raised to 5.0 m and a flat ceiling** (the same cottage, the same modifiers, one height change)
+    it qualifies two 30.6 m² lofts at exactly 2.30 m, which is the ceiling over the 2.70 m deck. The roof over those
+    footprints is more than 3.1 m clear, so this fixture is ceiling-limited and establishes nothing about the hip: the
+    hip-constrained fixture is the 3.0 m open-to-roof case above. Every candidate carries its own 1.3 m stair,
+    `fromY = 0`, `toY = deck top`, a run of at least `rise · 1.6 − 0.45` and a landing on the room's floor. Preview
+    changes nothing (`decks` and `stairs` stay empty); one accepted step makes the deck and the stair, and the stair's
+    `to` is that deck.
+  - **The wall-top arithmetic is the flat-ceiling caveat, and the fixture states it:** `2.40 below + 0.30 slab +
+    2.10 above = 4.80 m`. That is what a flat ceiling over a 2.70 m deck needs at the eave. Both 3 m cases are kept
+    as boundaries: one negative (flat), one positive (open to the roof).
 
 **Not proven in Phase 0, and not to be claimed:** compound roofs in a live UI (only model operations); the Hold
 gesture's UI lifecycle (only its model semantics); and every Phase 2–7 wiring item other than the cover group, the
@@ -1188,6 +1208,12 @@ Before this section was implemented, *Cover it* in `RoomCard` covered only the s
   cover is one accepted step — not "cover, then find and flip the Settings toggle" — and the section profile is
   scaled on the primary wing's span from the start rather than on the whole outline's. The opt-in is explicit: no
   saved roof with `oneSpan` absent changes behaviour.
+- **Implemented (review fix): `coverCheck(p, roomIds, preset, { wings })`** is the single answer used by the chip, the
+  hover preview and the commit. A preset the wings cannot carry is disabled with its reason in its title; the commit
+  refuses it, places nothing and spends no id; and a flat section is exempt from `oneSpan: false` because a flat roof
+  is the same surface with or without wings (`tests/qualification.test.ts`). A wing roof that still arrives
+  unsupported (an imported file) is reported by `derive` and `buildOverhead` draws no surface for it rather than one
+  stretched span.
 - **Implemented:** `coverGroup(d, roomId)` in `derive.ts` walks the derived wall pieces, joining only rooms on the
   same level, still unroofed, with a top within 0.3 m of the **starting** room's top (not the previous room's, so a
   chain cannot drift) through a shared piece of at least 0.3 m. The start is first and the rest are name-ordered, so
@@ -1295,7 +1321,15 @@ In `readings.ts`, the `plinth` reading's label "Raised floor" becomes **"Platfor
 - **Support is part of the accepted step.** A loft that spans away from the walls is given posts along every edge
   that is not carried by a wall, spaced closer than the prototype's own support reach (2.2 m), so the new deck
   never arrives with a *"nothing under …"* issue the newcomer is expected to repair. The note says how many posts.
-  Measured: a 5 m, 10×6 room under a gable gives a 12.6 m² loft on 3 posts, with no derived issue.
+- **The deck, its posts and its stair are qualified together (review fix).** The stair's plan is chosen first, the
+  posts are packed into the stretches of edge that stair does not use, and the stair is then re-checked against exactly
+  those posts. An offer can therefore no longer arrive with a post standing inside its own stair: in the 10×6 flat
+  case the nearest post is 1.63 m from the stair's centre line (half width 0.65 m), and 0.98 m in the L exercised in
+  the browser. `opAddMezzanine` places the
+  qualified layout instead of recomputing one, so preview and commit agree on the supports too.
+  Measured after the fix: a 5 m, 10×6 room under a gable gives a 30.6 m² loft on 2 posts, its nearest post 1.63 m
+  from its stair's centre line, with no derived support issue; the same room at 5.2 m under a flat roof also gives
+  30.6 m² on 2 posts at the same clearance.
 
 **Phase 0 implementation (verified in `src/model/offers.ts`, `tests/offers.test.ts`).** Pure and deterministic, and
 the Phase 6 wiring in `RoomCard` (below) is in place; §9.4's `DeckCard` wiring is in place too.
@@ -1344,6 +1378,11 @@ the Phase 6 wiring in `RoomCard` (below) is in place; §9.4's `DeckCard` wiring 
   continuous support at the lower landing, contact with a usable deck edge at the upper landing, clear approach
   areas, no wall/slab/roof intersection, no crossing a void, and the existing prototype slope/fit checks. The final
   path rises to the edge; an offset parallel path that never reaches it is not a fallback.
+- **Headroom is read through ceilings, across the width, and around posts (review fix).** Headroom is sampled at the
+  centre line and at both edges of the 1.3 m walk, and capped by the landing room's flat ceiling when it has one: a
+  run whose top clears the roof but sits 0.3 m under the ceiling at 3.0 m is now refused (`tests/qualification.test.ts`).
+  A post inside the swept footprint, or within 0.15 m of it, removes the plan, which is what makes the mezzanine offer
+  and its stair agree.
 - **How.** **+ Add a stair** previews the best candidate on hover/focus. Click commits and selects it. Up to three
   qualified alternatives can amend the same step. `opAddStairTo(deckId, candidate)` revalidates and calls
   `opAddStair(path, below.ref, { kind: 'deck', id }, below.y, deck.y)`.
@@ -1369,6 +1408,13 @@ existing ripple/readings UI rather than adding a wizard. Hover/focus leaving can
 cancels it without accepting. Keep alternatives few and visibly different, with no speculative auto-placement.
 
 ### 9.5 Tests
+
+**`tests/qualification.test.ts` (added after review)** holds the cases where the chip, preview, commit and renderer
+used to give different answers: a preset the group cannot carry (refused, no id spent, nothing placed, the chip
+disabled with the reason; a flat section exempt because it needs no wings); a saved wing roof that cannot be divided
+(reported by `derive`, and `buildOverhead` draws no surface rather than one stretched span); posts clear of the
+offered stair; stair headroom through a ceiling and across the width; and a commit refusing a loft or stair that moved
+since it was previewed.
 
 - In `tests/model.test.ts`:
   - a box `StrokeFit` reads Room first, with Platform among its readings;
@@ -1470,18 +1516,20 @@ Through `__t`, using pointer events, not direct store calls:
 3. Raise the ridge to the 45° stop to make usable loft space. Drag a ridge end to an even hip; drag a slope 0.3 m
    fuller; drag an eave to 0.6 m of overhang. The readouts/highlights reveal that ends, slopes, wings and fitted
    edges are linked.
-4. Set the room's wall top to 5.0 m — the mezzanine step needs `2.40 + 0.30 + 2.10 = 4.80 m` at the eave — then
-   *Opens up to the roof* (the flat ceiling at the wall top otherwise leaves 0.30 m over the deck; at the exact 3.0 m
-   of step 1 the qualified result is **no offer**, and the card must say why), then *+ Add a mezzanine*, then
-   *+ Add a stair* on the new mezzanine. Phase 0's model evidence for this geometry is in `tests/journey.test.ts`;
-   the card and stair offer still have to be wired.
+4. Get headroom, by either route. At the 3.0 m of step 1, *Open to the roof* is enough: the hipped surface over a
+   12.9 m² loft reports 2.285 m clear (flat-ceiling version: **no offer**, and the card says why — the ceiling at the
+   wall top leaves 0.30 m over the deck). The other route is a 5.0 m wall top with a flat ceiling, which meets
+   `2.40 + 0.30 + 2.10 = 4.80 m` at the eave and reports 2.30 m, ceiling-limited. Then *+ Add a mezzanine* (its posts
+   and stair are qualified together, so nothing stands in the stair) and *+ Add a stair* on the new mezzanine. Phase 0's
+   model evidence for both routes is in `tests/journey.test.ts`; the cards are wired and were exercised in a browser.
 
 Pass conditions:
 - each accepted model edit is one undo step; selection, inspection, hover, cancellation and no-ops add none;
 - `derive` reports no clash or floating issues;
 - `wings.test`-style probes on the live roof pass (eaves at 0, no cliffs);
 - resizing a wall with a compound roof keeps the last valid roof and **says why** when the change would alter the
-  massing; a silent primary-wing jump is a failure, not a valid preview (§3.1);
+  massing; a silent primary-wing jump is a failure, not a valid preview (§3.1). This one cannot be run yet: the guard
+  exists and is tested, but no gesture calls it;
 - screenshots are attached.
 
 **Revision/recovery script.** Without entering Shape, change the roof height again and inspect its effect on the
