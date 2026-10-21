@@ -14,6 +14,8 @@ Three things to know before reading:
   coordinates, and id-only revalidation) were reproduced and then fixed in the working tree after this report was
   first written. That section replaces the affected sentences above it; the fixes are the commit
   `fix(p3-vellum): one answer for what a cover and an offer may claim`, straight after this report.
+- **§6c is open work, not a claim.** A review of `ff117342` found four more corrections (F1–F4) and reproduced each
+  of them. F1–F3 come before Phase 2 is wired, and F4 before any gesture calls the resize guard.
 - **Only the model and the offer cards are claimable.** Hold's pointer lifecycle, the Edit Shape sheet, ink and the
   pen tips are designed in the plan and absent from the code. Nothing here is a Round 4 acceptance claim.
 
@@ -170,12 +172,169 @@ no-commit-unless-asked rule held.
 
 ---
 
+## 6c. Next corrections — open, for the implementing agent
+
+Reproduced on `ff117342` (181 tests green) with a scratch script. **None of these is fixed yet.** F1–F3 come before
+Phase 2 is wired to the pointer: Hold will make the unsupported wing state common (a steep pitch on an L, a section
+dragged asymmetric), so that state has to be safe and repairable first. F4 comes before any gesture calls
+`continuedWings`.
+
+Each fix lands with its test in `tests/qualification.test.ts` (F1–F3) or `tests/wings.test.ts` (F4); typecheck, the
+suite and the build stay green. No commit unless the owner asks.
+
+### F1 — a roof with no surface has no heights
+
+**Reproduce.** `L(3)` from `tests/qualification.test.ts`, both rooms `ceiling: 'follow'`, then
+`opCoverRooms(ids, 'gable', { wings: true })`: compound, walls up to 6.12 m. Then
+`opOverhead(id, { profile: presetProfile('raked', ohSpan(oh)) })`, which the profile pad can do today. The state
+becomes `unsupported` ("the section has no ridge") and `buildOverhead` returns empty geometry, but:
+
+- the walls still rise to 4.90 m, the single-span raked underside, with nothing on them;
+- `ohRidge` reports 5.25 m and `derive` adds a ridge snap at 5.25 m;
+- `overheadAbove`, `postSpan`, the roof-vs-ceiling issue, voids and every offer headroom probe read the same
+  single-span surface;
+- the zones (`roofZones.ts`) and the overhead handles (`handles.ts:228`) would sit on it.
+
+Other routes into the same state today: *Spun it round* on a wing roof (only an extruded section takes wings), the
+*Span direction* slider at any angle more than 2° off the plan, and a stepped preset drawn in the pad.
+
+**Fix.**
+
+1. `overheadGeom.ts`: `export function ohHasSurface(oh: Overhead): boolean`, false exactly when
+   `oh.oneSpan === false && roofWingsState(oh).kind === 'unsupported'`. This is the one definition:
+   `buildOverhead` (`scene/build/overheads.ts`) and the `wings:` issue in `derive.ts` call it instead of repeating
+   the condition.
+2. `ohCovers(oh, p, pad)` returns false when `!ohHasSurface(oh)`. That one gate fixes `overheadAbove`,
+   `overheadForWall` (walls fall back to their own tops), `postSpan`, the voids in `scene/build/parts.ts` and
+   `overheadsAbove` in `offers.ts`.
+3. `ohRidge(oh)` returns `oh.baseY + oh.thick` when there is no surface, so the ridge snap disappears (its rise is
+   under the 0.3 m threshold) and `bounds.top` stops counting a phantom peak.
+4. Ownership is not height. `derive`'s `coveredBy` tests the outline directly:
+   `pointInPoly(q, oh.outline) && (ohHasSurface(oh) ? ohUndersideAt(oh, s.at) : oh.baseY) > s.floorY + 0.5`. The
+   rooms stay claimed by the broken roof, so the room card does not offer a second roof over it.
+5. `computeIssues`: after pushing the `wings:` issue, `continue`. A roof with no surface gets no support stretches
+   and no pencil posts.
+6. Offers never read a no-surface roof as open sky. `mezzanineOffer` refuses when the room's `coveredBy` roof has no
+   surface, with `why: '{roof} has no surface yet, so there is no headroom to measure.'` `stairCandidates` refuses the
+   same way when a no-surface roof's outline covers any point of the deck's outline. Without this, a flat-ceiling
+   room would qualify against its ceiling under a roof that is not there.
+7. `Inspector.tsx` overhead card: when `!ohHasSurface(oh)`, show "no surface — see the note on the roof" instead of
+   "highest point …".
+8. `roofZones.ts` returns no zones, and `handles.ts` places no top-surface handles, for a no-surface roof. Outline
+   and eave handles sit at `oh.baseY`.
+
+**Test** ("a wing roof with no surface has no heights"): the reproduction above, asserting:
+
+- the state is `unsupported` and the mesh is empty;
+- every wall's `maxTop ≤ 3.01`;
+- `ohRidge === baseY + thick`, and there is no `ridge` snap for that roof;
+- both rooms' `coveredBy` is still the roof's id;
+- `mezzanineOffer` returns no candidates, with `why` matching `/no surface/`.
+
+A second case, `L(5)` with flat ceilings, asserts that the mezzanine offer is refused too. It would otherwise
+qualify on the 5 m ceiling.
+
+### F2 — the no-surface state can be repaired, and says so when it happens
+
+**Reproduce.** Same as F1. The `wings:` issue has `fixes: []`, and the `opOverhead` that caused it returns no note. A
+roof with no mesh cannot be clicked in 3D, so the issue marker and the room card are the only ways back to it.
+
+**Fix.**
+
+1. Give the `wings:` issue two `Fix` entries. Each is offered only if applying it to a clone gives the state it
+   promises, so a fix that leaves the roof broken is never offered:
+   - **Make it a gable**: `profile = presetProfile('gable', span)` at the primary span. Set it once, read `ohSpan`
+     of the result (now the compound primary span), then set it again. `hip`, `fit` and `dir` stay as they are. If
+     the plan itself is the reason (an off-axis edge, too many rectangles), the trial is not `compound` and the fix
+     is not offered.
+   - **Cover as one span**: `oneSpan = true`. This is the explicit, owner-chosen single span; the Settings toggle
+     (§8.6 of the plan) will expose the same field. It is always valid.
+2. `opOverhead`: when the roof had a surface before the patch and has none after, return an info note with the
+   reason and both ways out, `ids: [id]`: *"{name} can't carry this section across its wings ({reason}), so it has
+   no surface. Make it a gable, or cover it as one span."* When the existing "has its own outline now" note also
+   applies, return both.
+3. On a wing roof, *Spun it round* is disabled, with the reason in its title ("only an extruded section can cover
+   several wings"). This is the cover chips' pattern: the chip, the preview and the commit give one answer. The free
+   *Span direction* slider is left alone here; Phase 2's *Turn the ridge* replaces it for wing roofs.
+
+**Test**: from F1's state:
+
+- both fixes are present;
+- *Make it a gable* gives `compound`, with a mesh area equal to the outline area (as in `wings.test.ts`);
+- *Cover as one span* gives `single`;
+- the raked `opOverhead` returns the note.
+
+A failure the plan causes (an outline edge 3° off the frame) offers only *Cover as one span*.
+
+### F3 — a mezzanine commit compares its supports and its stair too
+
+**Reproduce.**
+
+1. `room10x6(5)`, then `opCoverRooms([id], 'flat')`.
+2. Take `c = mezzanineOffer(p, id).candidates[0]`: `mezz:m2:0:0:5:2.7`, 2 posts, `stair:1:0.50`.
+3. `opAddPost` at `c.stair.path[Math.floor(len / 2)]`.
+
+The fresh candidate keeps the same id, outline and height but has different posts and a different stair. Even so,
+`opAddMezzanine(id, c)` commits ("A mezzanine in Room 1, on 2 posts"), with posts that do not match the preview.
+
+**Fix.** In `opAddMezzanine` (`ops.ts`), after the outline and height check, also require that `ok.posts` equals
+`candidate.posts` point for point, and `sameStair(ok.stair, candidate.stair)`. `sameRing` already compares point lists
+exactly; rename or alias it, because posts are not a ring. Otherwise refuse with *"That loft's supports changed since
+it was offered in {name}. Nothing was placed; hover the offer again."* The preview runs the same op, so a fresh hover
+still commits exactly.
+
+**Test**: the reproduction. The stale candidate places no deck and no posts and returns the note; the fresh candidate
+commits with posts equal to `fresh.posts`.
+
+### F4 — "same massing" means the same structure, not the same sizes
+
+Do this before any gesture calls `continuedWings`.
+
+**Reproduce.** The `tests/wings.test.ts` case "keeps a wall move under the tolerance continuous…" asserts that
+widening the wing from 4 m to 4.5 m is refused. `sameMassing` compares every rectangle to within 8 cm, so once the
+guard is wired a wing roof could never follow a wall moved more than 8 cm. That contradicts the plan's *extend sides*
+goal. The guard exists to stop the primary wing flipping, not to freeze resizing.
+
+**Fix** in `wings.ts`: compare structure instead of dimensions. After removing `frameShift`, two decompositions are the
+same massing when:
+
+- they have the same number of wings;
+- each previous wing matches exactly one next wing, by largest overlap in the roof frame (overlap > 0), one to one;
+- matched wings have the same `span` axis and the same `ends`;
+- the primary wing matches the primary wing. Record which wing is primary on `CompoundState` (e.g. `primary: number`)
+  rather than inferring it from `primarySpan`.
+
+Sizes, scales and hips are free and are recomputed for the new outline, as today. The existing reasons and the
+single-span and one-span rules stay unchanged.
+
+**Test changes**:
+
+- The sweep keeps every width whose primary is unchanged and refuses exactly the widths where the primary flips.
+  Assert that both sets are non-empty.
+- The translation test stays.
+- The "different plan" case uses a genuine change of structure (an L becoming a T, or a primary flip), not a longer
+  wing.
+
+In `effortless-creation.md` §8, the sentence "every larger step is refused" is corrected to match.
+
+### A rule for Phase 2 that follows from these
+
+Hold makes the no-surface state reachable in the middle of a drag. During a Hold, Edit Shape or pad drag, a candidate
+with no surface is not previewed. The last valid preview stays, the readout gives the reason (the plan's own
+gesture-validation rule), and release commits what was shown. The visible no-surface state from F1 and F2 remains the
+outcome only for one-shot edits: a freehand redraw in the pad, the card controls and imports.
+
+---
+
 ## 7. What is not done
 
-Held against the plan's own phase table:
+Held against the plan's own phase table. Order: §6c F1–F3 first, then Phase 2's wiring. F4 goes before any gesture
+calls `continuedWings`.
 
 | Not started | Plan | Size |
 | --- | --- | --- |
+| §6c corrections: F1 a roof with no surface has no heights, F2 its repairs and note, F3 the mezzanine's supports | §6c | S |
+| §6c F4: structural massing comparison for the resize guard | §6c, plan §8 | S |
 | Hold wired to the pointer: `zoneHandle`, drag branches, highlights, readouts, card hint | §5.3–5.5 | M |
 | Edit Shape: entry/exit, 3D view while shaping, `SectionSheet.tsx`, `sectionContext.ts` | §6 | L |
 | Ink from meaning: `facets`/`ink`, `roofInk.ts`, revolve rings, ghost twins, `tests/ink.test.ts` | §7 | M |
