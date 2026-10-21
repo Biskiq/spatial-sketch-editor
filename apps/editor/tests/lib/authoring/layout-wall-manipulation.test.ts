@@ -444,6 +444,27 @@ describe('T1.P01.S05 — pointer Wall manipulation', () => {
 		expect(mounted.session.gesture()).toBeNull();
 	});
 
+	it('claims a handle from Stage-local CSS when the Stage is offset in the window', async () => {
+		// The route sends Stage-local pointer CSS while the Camera projects into
+		// viewport CSS. With the Index beside the Stage those spaces differ, and a
+		// handle that cannot be claimed makes direct manipulation unreachable.
+		const mounted = await mount();
+		const OFFSET_RECT = { left: 352, top: 119, width: 928, height: 458, devicePixelRatio: 1 };
+		expect(mounted.facade.camera.evaluate(OFFSET_RECT, 1).kind).toBe('evaluated');
+		selectWall(mounted.facade, mounted.wallId);
+		expect(mounted.facade.openContributedTask('layout-dimensions').kind).toBe('opened');
+		const evaluationId = mounted.facade.evaluationId()!;
+		const projected = mounted.facade.projectWorld([6, ELEVATION, 0], evaluationId);
+		expect(projected.kind).toBe('projected');
+		if (projected.kind !== 'projected') return;
+		const endCss: [number, number] = [
+			projected.css[0] - OFFSET_RECT.left,
+			projected.css[1] - OFFSET_RECT.top
+		];
+		expect(mounted.facade.pointerIntent({ phase: 'down', css: endCss, evaluationId }).claimed).toBe(true);
+		mounted.facade.pointerIntent({ phase: 'cancel', css: endCss, evaluationId });
+	});
+
 	it('shift-drags an endpoint to an exact angle and commits it once', async () => {
 		const mounted = await mount();
 		settle(mounted.facade, 2);

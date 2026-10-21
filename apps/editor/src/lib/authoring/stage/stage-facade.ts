@@ -135,6 +135,12 @@ export type ResolvedStageHit =
 
 export type StageOverlayContribution = {
 	readonly id: string;
+	/**
+	 * CSS pixels relative to the **Stage surface**, the space the overlay layer
+	 * paints in and the same space `StagePointerIntent.css` uses. An adapter
+	 * projects through the Camera's viewport CSS, and this boundary translates
+	 * once, so a marker can never be painted at the surface offset.
+	 */
 	readonly css: readonly [number, number];
 	readonly label: string;
 };
@@ -1360,9 +1366,18 @@ export function createStageFacade(input: {
 					if (claimed !== null) return { kind: 'resolved', hit: claimed };
 				}
 			}
+			// A candidate arrives in Stage-local CSS (the space `StagePointerIntent`
+			// uses); the Camera projects into viewport CSS, whose origin includes the
+			// Stage's own offset in the window. Translate once, here, or a Stage that
+			// does not start at the window origin picks a subject metres away from
+			// the one under the pointer.
+			const candidateCss: [number, number] = [
+				candidate.css[0] + evaluation.rect.left,
+				candidate.css[1] + evaluation.rect.top
+			];
 			if (
-				!Number.isFinite(candidate.css[0]) ||
-				!Number.isFinite(candidate.css[1])
+				!Number.isFinite(candidateCss[0]) ||
+				!Number.isFinite(candidateCss[1])
 			) {
 				return { kind: 'failed', code: 'invalid-css-point' };
 			}
@@ -1384,7 +1399,7 @@ export function createStageFacade(input: {
 			const eligible = [...eligiblePlanFragments(plan)].sort(compareFragments);
 			for (const fragment of eligible) {
 				const surfaces = pickSurfacesOf(fragment, currentSnapshot.domain.geometry, currentSnapshot.domain.datumMeters);
-				const pick = cssDistanceToSurfaces(candidate.css, surfaces, project);
+				const pick = cssDistanceToSurfaces(candidateCss, surfaces, project);
 				if (pick === null || pick.distanceCss > PLAN_HIT_TOLERANCE_CSS_PX) continue;
 				return {
 					kind: 'resolved',
@@ -1394,7 +1409,7 @@ export function createStageFacade(input: {
 						generationId: fragment.ref.generationId,
 						stream: fragment.ref.stream,
 						subRef: fragment.ref.subRef,
-						worldPoint: worldPointOnSurface(candidate.css, pick.surface, fragment, evaluation, token)
+						worldPoint: worldPointOnSurface(candidateCss, pick.surface, fragment, evaluation, token)
 					}
 				};
 			}
@@ -1511,8 +1526,18 @@ export function createStageFacade(input: {
 			ensureBindings();
 			const handle = adapterContext();
 			if (handle === null) return [];
+			// Adapters project through the Camera's viewport CSS; the overlay paints
+			// inside the Stage surface. The one accepted evaluation rect is the only
+			// translation, applied here so no adapter has to know the surface offset
+			// and no marker can be painted one Index panel to the right of its target.
+			const { left, top } = handle.context.evaluation.rect;
 			return [...adapters.values()].flatMap((entry) => {
-				try { return entry.contributions.overlay?.(handle.context) ?? []; } catch { return []; }
+				try {
+					return (entry.contributions.overlay?.(handle.context) ?? []).map((marker) => ({
+						...marker,
+						css: [marker.css[0] - left, marker.css[1] - top] as const
+					}));
+				} catch { return []; }
 			});
 		},
 		graphics() {

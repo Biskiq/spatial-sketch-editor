@@ -12,12 +12,21 @@
  * still-mounted project's Stage and left an error panel with no way back, and a
  * cancelled dialog cleared the saved base first. A local source action may only
  * replace the mounted project when its source actually admits.
+ *
+ * TD-10 is the same two paths' *epoch* contract: their admission is asynchronous,
+ * so a result that resolves after a newer replacement owns the Stage must be
+ * abandoned — it installs no source, adopts no saved base and reports neither a
+ * success nor a refusal over the project the creator now has.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const harness = vi.hoisted(() => ({
 	document: null as unknown,
-	loadCalls: 0
+	loadCalls: 0,
+	// TD-10's harness: hold one admission open so a newer replacement can land
+	// while the older result is still unresolved.
+	deferNextBootFromSource: false,
+	releaseBootFromSource: null as (() => void) | null
 }));
 
 // `$app/state`, `$app/navigation` and `$env/dynamic/public` resolve through the
@@ -74,9 +83,31 @@ vi.mock('$lib/platform/project-persistence', () => {
 	};
 });
 
+vi.mock('$lib/authoring/stage/boot-state', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('$lib/authoring/stage/boot-state')>();
+	return {
+		...actual,
+		async bootFromSourceJson(
+			json: string,
+			projectId: string,
+			context: import('$lib/authoring/stage/source-admission').AdmissionContext
+		) {
+			if (harness.deferNextBootFromSource) {
+				harness.deferNextBootFromSource = false;
+				await new Promise<void>((resolve) => {
+					harness.releaseBootFromSource = resolve;
+				});
+			}
+			return actual.bootFromSourceJson(json, projectId, context);
+		}
+	};
+});
+
 import { mount, tick, unmount } from 'svelte';
 import { serializeProjectEnvelope, type ProjectEnvelope } from '@portfolio/project-model/units';
+import type { ReloadOffer } from '$lib/authoring/save/save-state';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { resetReloadOffer, setReloadOffer } from './fixtures/reload-offer';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 
 let component: ReturnType<typeof mount> | null = null;
@@ -115,7 +146,10 @@ beforeEach(async () => {
 	mountedProject = await createUnitProject({ id: 'project-1', name: 'Mounted project' });
 	harness.document = mountedProject;
 	harness.loadCalls = 0;
+	harness.deferNextBootFromSource = false;
+	harness.releaseBootFromSource = null;
 	nextFile = null;
+	resetReloadOffer();
 
 	// jsdom has no layout/WebGL loop; the route's frame loop is unrelated to the
 	// replacement decision this suite exercises.
@@ -151,9 +185,31 @@ afterEach(() => {
 	component = null;
 	target.replaceChildren();
 	nextFile = null;
+	harness.releaseBootFromSource?.();
+	harness.releaseBootFromSource = null;
+	resetReloadOffer();
 	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 });
+
+/** A current unit envelope for this project, as the Open dialog would hand one in. */
+async function sourceFile(name: string): Promise<File> {
+	return new File([serializeProjectEnvelope(await createUnitProject({ id: 'project-1', name }))], 'source.json', {
+		type: 'application/json'
+	});
+}
+
+/** The same envelope as a conflict's remote copy: a Reload that actually admits. */
+async function admittedOffer(name: string): Promise<ReloadOffer> {
+	return {
+		kind: 'reload',
+		projectId: 'project-1',
+		document: await createUnitProject({ id: 'project-1', name }),
+		savedBaseToken: 'remote-token',
+		savedRevision: { projectId: 'project-1', revisionId: 'remote-revision' },
+		savedSourceContentId: 'remote-content'
+	};
+}
 
 /** The route's explicit replacement guard, then the file dialog. */
 async function requestOpen(): Promise<void> {
@@ -283,5 +339,103 @@ describe('spatial route source replacement', () => {
 		expect(head().dataset.saveBase).toBe('none');
 		expect(head().dataset.saveStatus).toBe('never-saved');
 		expect(stageCanvas()).not.toBeNull();
+	});
+
+	it('drops a delayed admitted Open after a newer replacement owns the Stage', async () => {
+		await mountReady();
+
+		// Hold the Open's admission open, then replace the Stage through an admitted
+		// reload while the older result is still unresolved.
+		harness.deferNextBootFromSource = true;
+		nextFile = await sourceFile('Opened project');
+		await requestOpen();
+		await vi.waitFor(() => expect(harness.releaseBootFromSource).not.toBeNull());
+
+		setReloadOffer(await admittedOffer('Remote project'));
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Remote project'));
+		const remoteCanvas = stageCanvas();
+		expect(head().dataset.saveBase).toBe('remote-token');
+
+		// The older Open completes now. Its epoch is gone: it installs nothing, clears
+		// no newer saved base and reports no success over the newer project.
+		harness.releaseBootFromSource?.();
+		await settled();
+
+		expect(head().dataset.project).toBe('Remote project');
+		expect(stageCanvas()).toBe(remoteCanvas);
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(head().dataset.saveStatus).toBe('saved');
+		expect(target.textContent).not.toContain('The source was not opened');
+	});
+
+	it('reports nothing for a refused Open that a newer replacement superseded', async () => {
+		await mountReady();
+
+		harness.deferNextBootFromSource = true;
+		nextFile = new File(['{ "id": '], 'broken.json', { type: 'application/json' });
+		await requestOpen();
+		await vi.waitFor(() => expect(harness.releaseBootFromSource).not.toBeNull());
+
+		setReloadOffer(await admittedOffer('Remote project'));
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Remote project'));
+		const remoteCanvas = stageCanvas();
+
+		// The failed Open arrives after its epoch is gone: the newer project stands,
+		// and the stale action reports nothing rather than a notice about a file the
+		// creator no longer opened.
+		harness.releaseBootFromSource?.();
+		await settled();
+
+		expect(head().dataset.project).toBe('Remote project');
+		expect(stageCanvas()).toBe(remoteCanvas);
+		expect(head().dataset.saveBase).toBe('remote-token');
+		expect(target.textContent).not.toContain('The source was not opened');
+	});
+
+	it('drops a delayed admitted Reload after a newer replacement owns the Stage', async () => {
+		await mountReady();
+
+		setReloadOffer(await admittedOffer('Remote project'));
+		harness.deferNextBootFromSource = true;
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(harness.releaseBootFromSource).not.toBeNull());
+
+		nextFile = await sourceFile('Opened project');
+		await requestOpen();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Opened project'));
+		const openedCanvas = stageCanvas();
+
+		// The remote copy that arrives now belongs to the replaced epoch: it must not
+		// install itself or adopt its saved base over the newer open.
+		harness.releaseBootFromSource?.();
+		await settled();
+
+		expect(head().dataset.project).toBe('Opened project');
+		expect(stageCanvas()).toBe(openedCanvas);
+		expect(head().dataset.saveBase).toBe('none');
+		expect(head().dataset.saveStatus).toBe('never-saved');
+	});
+
+	it('reports nothing for a refused Reload that a newer replacement superseded', async () => {
+		await mountReady();
+
+		// The fixture's default offer cannot admit, so this is the refusal branch.
+		harness.deferNextBootFromSource = true;
+		button('Reload remote').click();
+		await vi.waitFor(() => expect(harness.releaseBootFromSource).not.toBeNull());
+
+		nextFile = await sourceFile('Opened project');
+		await requestOpen();
+		await vi.waitFor(() => expect(head().dataset.project).toBe('Opened project'));
+		const openedCanvas = stageCanvas();
+
+		harness.releaseBootFromSource?.();
+		await settled();
+
+		expect(head().dataset.project).toBe('Opened project');
+		expect(stageCanvas()).toBe(openedCanvas);
+		expect(target.textContent).not.toContain('The remote copy was not installed');
 	});
 });

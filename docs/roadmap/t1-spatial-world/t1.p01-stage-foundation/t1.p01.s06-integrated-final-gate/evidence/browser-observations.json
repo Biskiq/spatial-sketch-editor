@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-21",
+  "workloads": [
+    {
+      "observations": [
+        {
+          "milliseconds": 430.4,
+          "query": "room-0",
+          "rows": 12
+        },
+        {
+          "milliseconds": 349.7,
+          "query": "wall",
+          "rows": 19
+        },
+        {
+          "milliseconds": 7883.7,
+          "query": "",
+          "rows": 23
+        }
+      ],
+      "project": "S06 datum-curve-opening",
+      "viewport": [
+        1280,
+        900
+      ]
+    },
+    {
+      "observations": [
+        {
+          "milliseconds": 122.6,
+          "query": "room-0",
+          "rows": 11
+        },
+        {
+          "milliseconds": 14699.4,
+          "query": "wall",
+          "rows": 47
+        },
+        {
+          "milliseconds": 31.7,
+          "query": "",
+          "rows": 57
+        }
+      ],
+      "project": "S06 dense-long",
+      "viewport": [
+        1280,
+        900
+      ]
+    }
+  ],
+  "motion": {
+    "normalFirst": {
+      "plan": "true",
+      "three": "false"
+    },
+    "normalSettled": {
+      "plan": "false",
+      "three": "true"
+    },
+    "reduced": "Reduced motion on",
+    "reducedFirst": {
+      "plan": "true",
+      "three": "false"
+    }
+  },
+  "policy": "Observations only, no timing gate or performance threshold; identical three search inputs and two-frame flush in the real mounted route."
+}

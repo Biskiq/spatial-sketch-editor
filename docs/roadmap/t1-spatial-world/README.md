@@ -1,8 +1,10 @@
 # T1 — Spatial world
 
-**Track:** T1 · **Status:** approved — T1.P01 registered; `T1.P01.S01` shipped (shared F1/F3
-providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05–S06
-unauthorized ([track register](../README.md#track-register)) · **Runbook:**
+**Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; T1 remains open with
+no next phase registered; `T1.P01.S01` shipped (shared F1/F3
+providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
+shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
+not complete ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t1-spatial-world/README.md`](../../operations/t1-spatial-world/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T1.viewport-projection` ([gate register](../README.md#gate-register)) ·
@@ -69,7 +71,7 @@ register owns lifecycle only.
 
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
-| T1.P01 | approved | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
+| T1.P01 | shipped | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
 
 The `Depends on` column stays empty for T1.P01: the phase's first slice, `T1.P01.S01`, is itself
 the sole provider of `F1.reference@1` and `F3.channels@1`, so listing either as a phase dependency
@@ -77,7 +79,7 @@ would be a self-dependency the phase cannot satisfy before it starts. The owner-
 contracts remain this phase's design basis, consumed as ratified shapes rather than as an accepted
 prerequisite gate.
 
-T1.P01 is registered and **T1.P01.S01 is accepted and shipped** (owner-authorized 2026-10-15,
+T1.P01 is closed, and **T1.P01.S01 is accepted and shipped** (owner-authorized 2026-10-15,
 [record](../../reference/decisions/f-ratification-2026-10-15.md); independently accepted at
 `ee463d0b`). S01 supplied the shared `F1.reference@1` and `F3.channels@1` providers — its accepted
 outputs `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` — and the
@@ -87,7 +89,7 @@ with `T2.P01.S01` and `T3.P01.S01`; both shipped, S02 by owner-override. **T1.P0
 Stage↔F4 bridge, owner-authorized 2026-10-17) shipped in PR #137 and recorded
 `T1.viewport-projection@1:viewport-projection-v1` accepted. **T1.P01.S04** was owner-authorized
 2026-10-17 as batch B with `T2.P01.S03` ([record](../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in
-scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); S06 stays `proposed`, routed after the T3 cutover (ruling C3). No authorization extends to another phase, slice or track.
+scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026-10-19 as batch C ([record](../../reference/decisions/batch-c-authorization-2026-10-19.md)); **S06** was owner-authorized as batch D and accepted and shipped 2026-10-21 under a scoped owner-override (PR #168). No authorization extends to another phase, slice or track.
 
 ## Starting foundation
 

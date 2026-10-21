@@ -204,3 +204,13 @@ work (R1-D). Those stay subsequent candidates and are neither implemented nor ne
 D1 approved  D2 approved  D3 approved  D4 approved
 Owner: repository owner (authorized in the 2026-10-20 post-cutover commission)   Date: 2026-10-20
 ```
+
+
+## D1 corrective amendment — owner-approved October 20, 2026
+
+During the PR #168 takeover, the owner explicitly approved the narrow
+[TD-11/TD-12 amendment](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md),
+then separately approved its supplemental Index-selection cloneability correction. The linked record
+owns the exact bounded increments. No other D1–D4 scope or Batch D ownership changed. The owner later
+requested that further independent review stop and the checkpoint be pushed for their own review;
+that request does not itself accept S06 or close T1.P01.

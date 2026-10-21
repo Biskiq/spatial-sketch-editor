@@ -1,0 +1,430 @@
+{
+  "formatVersion": 1,
+  "id": "project:s06-fixture-gate",
+  "name": "S06 datum-curve-opening",
+  "acceptedRevision": {
+    "projectId": "project:s06-fixture-gate",
+    "revisionId": "revision-1"
+  },
+  "dependencyLock": {
+    "formatVersion": 1,
+    "entries": []
+  },
+  "units": {
+    "layout": {
+      "header": {
+        "domain": "layout",
+        "unitId": "project:s06-fixture-gate:layout",
+        "formatVersion": 5,
+        "contentRevision": "sha256-edc0ef49193dea3ed9e8fde0dfc5a5489c275cece4c7d6e7725f633eab1fc07c"
+      },
+      "data": {
+        "units": "meters",
+        "formatVersion": 5,
+        "floor": {
+          "id": "floor",
+          "name": "Floor",
+          "elevation": 1.25
+        },
+        "junctions": [
+          {
+            "id": "room-0:j0",
+            "point": [
+              0,
+              0
+            ]
+          },
+          {
+            "id": "room-0:j1",
+            "point": [
+              12,
+              0
+            ]
+          },
+          {
+            "id": "room-0:j2",
+            "point": [
+              12,
+              10
+            ]
+          },
+          {
+            "id": "room-0:j3",
+            "point": [
+              0,
+              10
+            ]
+          },
+          {
+            "id": "room-1:j0",
+            "point": [
+              20,
+              0
+            ]
+          },
+          {
+            "id": "room-1:j1",
+            "point": [
+              32,
+              0
+            ]
+          },
+          {
+            "id": "room-1:j2",
+            "point": [
+              32,
+              10
+            ]
+          },
+          {
+            "id": "room-1:j3",
+            "point": [
+              20,
+              10
+            ]
+          },
+          {
+            "id": "room-2:j0",
+            "point": [
+              40,
+              0
+            ]
+          },
+          {
+            "id": "room-2:j1",
+            "point": [
+              52,
+              0
+            ]
+          },
+          {
+            "id": "room-2:j2",
+            "point": [
+              52,
+              10
+            ]
+          },
+          {
+            "id": "room-2:j3",
+            "point": [
+              40,
+              10
+            ]
+          }
+        ],
+        "walls": [
+          {
+            "id": "room-0:wall-0",
+            "startJunctionId": "room-0:j0",
+            "endJunctionId": "room-0:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-0:wall-0:knot:1",
+                  "point": [
+                    6,
+                    -0.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    2,
+                    -0.11666666666666667
+                  ],
+                  "handleIn": [
+                    4,
+                    -0.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    8,
+                    -0.35
+                  ],
+                  "handleIn": [
+                    10,
+                    -0.11666666666666667
+                  ]
+                }
+              ]
+            },
+            "name": "Duplicate Wall"
+          },
+          {
+            "id": "room-0:wall-1",
+            "startJunctionId": "room-0:j1",
+            "endJunctionId": "room-0:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            },
+            "name": "Duplicate Wall"
+          },
+          {
+            "id": "room-0:wall-2",
+            "startJunctionId": "room-0:j2",
+            "endJunctionId": "room-0:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-0:wall-3",
+            "startJunctionId": "room-0:j3",
+            "endJunctionId": "room-0:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-1:wall-0",
+            "startJunctionId": "room-1:j0",
+            "endJunctionId": "room-1:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-1:wall-1",
+            "startJunctionId": "room-1:j1",
+            "endJunctionId": "room-1:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-1:wall-2",
+            "startJunctionId": "room-1:j2",
+            "endJunctionId": "room-1:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-1:wall-3",
+            "startJunctionId": "room-1:j3",
+            "endJunctionId": "room-1:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-2:wall-0",
+            "startJunctionId": "room-2:j0",
+            "endJunctionId": "room-2:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-2:wall-1",
+            "startJunctionId": "room-2:j1",
+            "endJunctionId": "room-2:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-2:wall-2",
+            "startJunctionId": "room-2:j2",
+            "endJunctionId": "room-2:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "room-2:wall-3",
+            "startJunctionId": "room-2:j3",
+            "endJunctionId": "room-2:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "id": "room-0",
+            "name": "Duplicate gallery",
+            "boundary": [
+              {
+                "wallId": "room-0:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-0:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-0:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-0:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-1",
+            "name": "Duplicate gallery",
+            "boundary": [
+              {
+                "wallId": "room-1:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-1:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-1:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-1:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-2",
+            "name": "Room 2",
+            "boundary": [
+              {
+                "wallId": "room-2:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-2:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-2:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-2:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          }
+        ],
+        "openings": [
+          {
+            "id": "opening:window:1",
+            "wallId": "room-0:wall-1",
+            "kind": "window",
+            "offset": 2,
+            "width": 1.2,
+            "height": 1.2,
+            "sillHeight": 0.8,
+            "profile": "rectangular"
+          }
+        ],
+        "objects": [],
+        "identity": {
+          "cursor": 0,
+          "rooms": {},
+          "junctions": {},
+          "walls": {},
+          "openings": {}
+        }
+      }
+    },
+    "scene": {
+      "header": {
+        "domain": "scene",
+        "unitId": "project:s06-fixture-gate:scene",
+        "formatVersion": 2,
+        "contentRevision": "sha256-096d5b3199637cb9a00a0c801986aca50cfaf67c8fdb37917a718faf56132168"
+      },
+      "data": {
+        "formatVersion": 2,
+        "textures": [],
+        "materials": [],
+        "entities": []
+      }
+    },
+    "camera": {
+      "header": {
+        "domain": "camera",
+        "unitId": "project:s06-fixture-gate:camera",
+        "formatVersion": 1,
+        "contentRevision": "sha256-bc34d5cbec17db2aed8857f8d0489e4917e5832839aeec337e42934abca17df0"
+      },
+      "data": {
+        "formatVersion": 1,
+        "views": [],
+        "connections": []
+      }
+    },
+    "experience": {
+      "header": {
+        "domain": "experience",
+        "unitId": "project:s06-fixture-gate:experience",
+        "formatVersion": 1,
+        "contentRevision": "sha256-54507fb88afebbe34143ec370039abe978bed22b996fdd7d8765bebcda93cd6f"
+      },
+      "data": {
+        "formatVersion": 1,
+        "experiences": []
+      }
+    },
+    "resources": {
+      "header": {
+        "domain": "resources",
+        "unitId": "project:s06-fixture-gate:resources",
+        "formatVersion": 1,
+        "contentRevision": "sha256-9482adb0db109b0d3a588810edc7ef22d889ce8822c0c527f904eac542667eca"
+      },
+      "data": {
+        "formatVersion": 1,
+        "resources": []
+      }
+    }
+  }
+}

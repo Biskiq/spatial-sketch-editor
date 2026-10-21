@@ -12,6 +12,7 @@
 	import { untrack } from 'svelte';
 	import type { HeadSave } from '$lib/authoring/save/head-save';
 	import type { ReloadOffer } from '$lib/authoring/save/save-state';
+	import { reloadOffer } from './reload-offer';
 
 	let {
 		projectName,
@@ -57,16 +58,11 @@
 		else await save.save();
 	}
 
-	// A remote row that cannot be admitted: the route must report it and keep the
-	// mounted project, not install the offer.
-	const invalidOffer: ReloadOffer = {
-		kind: 'reload',
-		projectId: 'project-1',
-		document: { nope: true },
-		savedBaseToken: 'remote-token',
-		savedRevision: { projectId: 'project-1', revisionId: 'remote-revision' },
-		savedSourceContentId: 'remote-content'
-	};
+	// The offer is the fixture's, not the probe's: a suite that needs an
+	// *admitting* remote copy (TD-10's stale-reload regressions) sets one.
+	function offerReload(): void {
+		onReloadRemote(reloadOffer() as ReloadOffer);
+	}
 </script>
 
 <div
@@ -88,5 +84,5 @@
 			<span data-testid="head-save-reason">{control.reason}</span>
 		{/if}
 	{/if}
-	<button type="button" onclick={() => onReloadRemote(invalidOffer)}>Reload remote</button>
+	<button type="button" onclick={offerReload}>Reload remote</button>
 </div>

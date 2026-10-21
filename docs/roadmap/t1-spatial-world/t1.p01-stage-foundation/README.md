@@ -1,6 +1,6 @@
 # T1.P01 — Stage and authoring foundation
 
-**Phase:** T1.P01 · **Status:** registered 2026-10-15 — `T1.P01.S01` accepted and shipped
+**Phase:** T1.P01 · **Status:** closed 2026-10-21 by owner ratification in PR #168 — `T1.P01.S01` accepted and shipped
 (F1/F3 shared providers and readiness enforcement); `T1.P01.S03` accepted and shipped 2026-10-16
 (F4 `acceptance-invariants-v1` and `local-single-domain-v1`); `T1.P01.S02` accepted and shipped
 2026-10-17 by owner-override (PR #128); `T1.P01.S07` accepted and shipped 2026-10-17 (PR #137,
@@ -10,7 +10,8 @@ accepted and shipped 2026-10-18 (PR #148); S05 authorized 2026-10-19 as batch C
 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and accepted and shipped
 2026-10-19 (PR #156, accepted at `3d432836`, TD-8 fixed); S06 authorized 2026-10-20 as batch D
 ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)) as the post-cutover
-integrated gate, with TD-10 due before or with it (ruling C3, D2) ·
+integrated gate, then accepted and shipped 2026-10-21 by routine `slice-closeout` under a scoped
+owner-override in PR #168 (implementation `d63bdb6c`) ·
 **Track:** [T1](../README.md) · **Roadmap:**
 [track + gate register](../../README.md) · **Runbook:**
 [T1 operations](../../../operations/t1-spatial-world/README.md) · **Baton:**
@@ -41,7 +42,7 @@ real reconciled Room/floor polygon and floor datum, no Scene objects or Camera/E
 Use captured project/source IDs, strict canonical validation and the single Layout compiler to
 prove real support; this is a new project/history baseline, never silent architecture insertion
 into the current project. The creator confirms project replacement through the same host guard.
-T3 S04 replaces this boot adapter with its F2-backed equivalent, preserving the public host seam.
+T3 S04 replaced this boot adapter with its F2-backed equivalent, preserving the public host seam.
 
 The template supplies an intentionally bounded entry without general Wall drawing, role selection,
 topology editing or a new floor schema. Empty boot remains honest and Scene placement there refuses
@@ -55,14 +56,13 @@ supported Wall/Opening dimensions and straight-Wall pose, cancel/refuse, Undo/Re
 canonical source JSON. T2/T3 mount their adapters after the viewport gate, without waiting for
 later Layout tools or shell depth. Stage selection, tasks, gestures and Camera output stay shared.
 
-Source Save is a T3-owned early extension, **S02 conditional Save**, independent of F2 activation.
-Until `F4.intent-acceptance@1:conditional-save-current-v1` is accepted on main, Save explains its
-unavailability. Once accepted, local edits have explicit dirty state; create-only or expected-
-saved-base Save validates/compares atomically, preserves conflicts and never introduces another
-history. Source download/reopen remains available independently; it is not a portable asset package.
-After T3 S04, Save/source consumers re-declare unit capabilities accepted in T3 S05 (the S03
-split's first half). No resource
-upload, general importer, publication or complete creator-to-visitor journey is claimed here.
+Source Save began as the T3-owned **S02 conditional Save** extension, independent of F2 activation.
+Its original `conditional-save-current-v1` scope was retired at the T3 S04 cutover; active Save/source
+consumers use the F2 unit envelope and `conditional-save-units-v1` accepted in T3 S05.
+Local edits expose dirty state; create-only or expected-saved-base Save validates and compares
+atomically, preserves conflicts and never introduces another history. Source download/reopen
+remains available independently; it is not a portable asset package. No resource upload,
+general importer, publication or complete creator-to-visitor journey is claimed here.
 
 **Foundation prerequisite:** planning proceeds on the landed r186 base: the separate
 [r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) merged into `main`
@@ -154,7 +154,7 @@ an ancestor. **S07 was authorized** by the owner decision of 2026-10-17 ([record
 `T1.viewport-projection@1:viewport-projection-v1` with `T1.P01.S02` unchanged as the sole provider.
 **S04 is authorized** with T2.P01.S03 as batch B by the owner decision of 2026-10-17
 ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)), with the Head Save integration in scope (ruling D3).
-**S05 was authorized** as batch C by the owner decision of 2026-10-19 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and is **accepted and shipped**: independent review accepted its implementation at `3d432836` (round 4, no blockers), and routine `slice-closeout` ran on the same branch. S06 is **approved**: owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)), with its post-cutover `Consumes`/`Requires` already rewritten by `T3.P01.S04` phase B and TD-10 due before or with it (D2). Same-phase sequencing
+**S05 was authorized** as batch C by the owner decision of 2026-10-19 ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)) and is **accepted and shipped**: independent review accepted its implementation at `3d432836` (round 4, no blockers), and routine `slice-closeout` ran on the same branch. S06 was owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)); its post-cutover `Consumes`/`Requires` were rewritten by `T3.P01.S04` phase B and TD-10 was due before or with it (D2). S06 is now **accepted and shipped** 2026-10-21 under the scoped owner-override recorded in its acceptance artifact. Same-phase sequencing
 never bypasses the trusted-base rule: each consumed gate and each required capability must be
 accepted at the consumer's trusted base.
 
@@ -166,17 +166,17 @@ accepted at the consumer's trusted base.
 | T1.P01.S07 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | F1.reference@1:references-v1, F3.channels@1:inspection-v1, F4.intent-acceptance@1:local-single-domain-v1 | — | [Stage↔F4 integration bridge (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/implementation-plan.md) | [record (closed stub)](./t1.p01.s07-stage-f4-integration-bridge/acceptance.md) | owner-authorized 2026-10-17 ([record](../../../reference/decisions/next-batch-authorization-2026-10-17.md)); accepted 2026-10-17 after four review rounds and the complete gate at its merge candidates (API suites 65 tests, zero skips); records `viewport-projection-v1` accepted with `T1.P01.S02` as unchanged sole provider; shipped via PR #137, which must land as a merge commit so the recorded P1 anchors stay reachable |
 | T1.P01.S04 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, F4.intent-acceptance@1:conditional-save-current-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing Layout precision (closed stub)](./t1.p01.s04-existing-layout-precision/implementation-plan.md) | [record (closed stub)](./t1.p01.s04-existing-layout-precision/acceptance.md) | owner-authorized 2026-10-17 as batch B with `T2.P01.S03` ([record](../../../reference/decisions/batch-b-authorization-2026-10-17.md)); Head Save integration in scope (ruling D3), so `conditional-save-current-v1` joined `Requires` at authorization; composition-root gaps closed under the [host-integration exception](../../../reference/decisions/t1-s04-host-integration-2026-10-17.md); accepted 2026-10-18 at `2d37adef`; closed 2026-10-18 by `slice-closeout` |
 | T1.P01.S05 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:references-v1, F4.intent-acceptance@1:local-single-domain-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Existing straight-Wall manipulation (closed stub)](./t1.p01.s05-existing-straight-wall-manipulation/implementation-plan.md) | [record](./t1.p01.s05-existing-straight-wall-manipulation/acceptance.md) | owner-authorized 2026-10-19 as batch C with `T2.P01.S04` ([record](../../../reference/decisions/batch-c-authorization-2026-10-19.md)); TD-8 is its first increment (ruling C5); accepted 2026-10-19 at `3d432836`; closed 2026-10-19 by `slice-closeout` (plan compacted to its stub); PR #156 must land as a merge commit |
-| T1.P01.S06 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)): the post-cutover integrated gate, exhaustive scope preserved; starts only from a trusted base where `T3.camera-experience-cutover@1` is `accepted` (`06a8aac8`, ancestor of `9a457f6b`); TD-10 repaired before or within S06 (D2) |
+| T1.P01.S06 | shipped | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate (closed stub)](./t1.p01.s06-integrated-final-gate/implementation-plan.md) | [record](./t1.p01.s06-integrated-final-gate/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md)); accepted and shipped 2026-10-21 by routine `slice-closeout` under a per-slice owner-override at implementation `d63bdb6c` (PR #168); the owner waived only the independent-review verdict; all exhaustive criteria and evidence remain recorded; merge commit required |
 
 Every slice also declares the specific capabilities it requires (`Requires`) in its own plan, and the
 row above restates it for the [checker](../../../roadmap/README.md#gate-register) — a consumed gate
 version is not by itself sufficient readiness, and the readiness rule this phase installs at S01 is
 exactly that distinction. Rows for shipped slices keep the scopes those slices actually required at
-their acceptance — historical records, not live requirements. The one unfinished consumer, `T1.P01.S06`,
+their acceptance — historical records, not live requirements. The final consumer, `T1.P01.S06`,
 was migrated by `T3.P01.S04` phase B to the accepted
 F2/unit-resolution/unit-acceptance capabilities from T3 S01/S05, with `conditional-save-units-v1`
-for its Save/reload journey and `T3.camera-experience-cutover@1` once that gate is accepted; no
-unfinished row keeps a retired current-source admission. That migration did not wait for the whole
+for its Save/reload journey and the accepted `T3.camera-experience-cutover@1` gate; no
+shipped S06 row retains a retired current-source admission. That migration did not wait for the whole
 T1 phase. No current-source acceptance record proves unit capability readiness.
 
 The [global gate register](../../README.md#gate-register) records accepted F1/F3 providers from S01,
@@ -194,8 +194,7 @@ and the complete merge gate on then-current `main`. Its acceptance records `view
 with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
 the viewport readiness route. S02's acceptance record is unchanged. S07's acceptance now records the
 capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S05 is accepted and
-shipped as batch C (2026-10-19); S06 was owner-authorized 2026-10-20 as batch D, so it holds
-implementation permission and nothing more — it is not accepted, shipped or evidenced.
+shipped as batch C (2026-10-19); S06 is accepted and shipped 2026-10-21 under the scoped owner-override recorded in its acceptance artifact. Its exhaustive final-gate evidence supported the owner's T1.P01 closure on 2026-10-21.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
@@ -218,16 +217,21 @@ implementation.
 FINAL PHASE GATE: T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md
 
 PHASE CLOSE
-Stage:        active
+Stage:        closed
+Closed:       2026-10-21 — owner ratification recorded in PR #168
+Owner ratification: closed by owner ruling 2026-10-21 (PR #168)
+Final gate:   T1.P01.S06 → ./t1.p01.s06-integrated-final-gate/acceptance.md — accepted 2026-10-21
+Integration:  exhaustive final gate at d63bdb6c; check/build/package/API pass; full 170/2,227, arch 20/166, heavy 8/118, DB API 80 passed with 0 skips
+Preservation: final-gate stub records phase and slice preservation, anchors and recovery commands
 ```
 
 `T1.P01.S01`, `T1.P01.S02`, `T1.P01.S03`, `T1.P01.S04`, `T1.P01.S05` and `T1.P01.S07` are accepted
 and shipped. S02's acceptance uses the owner-override recorded in its acceptance stub; the viewport
 capability is accepted through S07's record, and consumer readiness starts at a trusted base
-containing PR #137's merge. S06 has no accepted result: it is authorized and unimplemented. The final
-gate is therefore declared and not closeable — the phase's final child S06 is neither accepted nor
-shipped, so no `PHASE CLOSE` beyond this active stage marker is written, and closure stays an
-explicit owner request after S06 is accepted.
+containing PR #137's merge. S06 is accepted and shipped by routine `slice-closeout` under a scoped
+owner-override, and this phase was closed by the owner on 2026-10-21 through `phase-closeout`. The
+final-gate artifact at the declared path is now a recovery stub; it retains the exact full record at
+the phase-close anchor. T1.P01 is shipped in the T1 phase register. No T1 track completion is recorded.
 
 ## Bounded architecture-cycle window
 

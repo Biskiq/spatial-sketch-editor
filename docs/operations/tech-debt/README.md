@@ -28,9 +28,132 @@ one whose subject retired with the benchmark is **retired**. Neither is ever rec
 as *fixed*: nothing was repaired, and the obligation that survives is the one named
 below, not the entry.
 
+TD-11/TD-12 were found by the S06 browser leg and initially exceeded the TD-10-only code scope.
+The owner explicitly ratified their narrow corrective amendment during the PR #168 takeover, then
+separately approved the TD-13 Index correction. The exact scope and provenance are recorded in the
+[S06 amendment](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md).
+
 ---
 
 ## Fixed
+
+## TD-13 — Index selection passes a reactive Plan reference to immutable selection
+
+Status        fixed (`b1ffa4e3`, PR #168 takeover; owner-approved narrow correction)
+Found         2026-10-20, real-browser selection of an eligible Index row
+Owner         T1 Stage host (spatial route)
+Symptom       An Index row throws `DataCloneError` and leaves selection unchanged.
+Root cause    `planView` was deep reactive state. `selectSource` handed its proxied fragment reference
+              to immutable selection, whose `structuredClone` refuses a Svelte proxy.
+Correction    Generated Plan evaluations are replaced whole through `$state.raw`; no nested Plan
+              mutation exists and no selection/serialization authority changes.
+Evidence      `spatial-route-gesture.test.ts`: mounted Index row selects the requested Wall through
+              the real route/session/facade. Real browser independently selected the two named
+              Walls, coincident Walls and long identity. The mutation restoring `$state` fails.
+
+## TD-12 — an adapter drag re-reads the evaluation id every frame, so it never commits
+
+Status        fixed (`5beb1e83`, completed by `b1ffa4e3` and route regressions in PR #168)
+Found         2026-10-20, driving the direct 3D edit with a real pointer during S06
+Owner         T1 Stage host (the spatial route)
+Symptom       Selecting a Wall and dragging a Dimensions handle moved the preview for the first
+              sample only: the drag then stopped advancing, and release committed nothing or was
+              refused as stale. Direct manipulation was effectively unreachable in the browser.
+Reproduce     Select a Wall, open `Inspect · Layout → Dimensions`, press a handle and move the
+              pointer. Before the fix the overlay preview stopped after the first move and no
+              acceptance followed.
+Root cause    `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` sent
+              `facade.evaluationId()` on every `move`/`up`/`cancel`. The Camera raises a new
+              evaluation generation per frame, so the id changed on every sample while the adapter
+              was told its projection had changed, and the gesture could never reach a commit.
+              Latent: the release path also committed after a reading change had already cancelled
+              the lease, instead of cancelling the press.
+Why green     The adapter suites drive `pointerIntent` directly with one explicit evaluation id, so
+              no test ever re-read the id between phases.
+Fix options   1) Carry the evaluation the press was measured in from the claimed `down` through
+              every later phase and clear it with the press, and cancel instead of releasing when
+              the gesture lease is already gone. 2) Re-evaluate the pointer against the newest
+              projection each move — do NOT take this: it silently rebases a drag the creator did
+              not measure in that view.
+Then add      The browser journey itself (drag commit, Escape cancel, drag after a reading flip).
+              The takeover adds `spatial-route-gesture.test.ts`, through the existing route probes:
+              ordinary evaluation updates commit once; a genuine reading flip preserves the exact
+              request with explicit Resume/Discard; stale release commits nothing. It also covers
+              offset hits/echo, cancellation, capture loss, Escape and subsequent reading changes.
+              The first repair's direct abort bypassed the accepted S05 pause path; the takeover
+              now notifies the existing adapter mismatch path before clearing ownership. A
+              reproduced navigation drift during a claimed press is prevented by refusing host
+              wheel/Fit/keyboard navigation until release; explicit reading interruption still runs.
+
+## TD-11 — Stage pointer hits and overlay markers mix Stage-local and viewport CSS
+
+Status        fixed (`5beb1e83`, `T1.P01.S06` browser leg)
+Found         2026-10-20, driving Plan selection and the Dimensions instrument during S06
+Owner         T1 Stage host (the facade and the spatial route)
+Symptom       With the Index open beside the Stage, a Plan click selected a subject roughly one
+              Index panel away from the pointer, and a Dimensions handle could not be claimed at
+              all because the click never reached it. Selection markers painted offset by the same
+              amount.
+Reproduce     At 1280×900 with the Index open, click a Wall span in Plan: the Card named a
+              different Wall (or a room floor). Project a known world point, subtract the evaluated
+              rect, and resolve that Stage-local point — pre-fix it missed every surface.
+Root cause    `StagePointerIntent.css` and the overlay layer are Stage-surface coordinates, while
+              `evaluateViewport`/`projectWorld` return viewport CSS. `stage-facade.ts` compared the
+              Stage-local candidate against viewport projections, and `overlays()` returned adapter
+              markers in viewport CSS, while the route's `selectionEcho` did the same. The
+              translation existed nowhere; it only looked correct while the surface began at the
+              window origin.
+Why green     Every facade/adapter suite used a rect at the window origin
+              (`left: 0, top: 0`), where the two spaces coincide.
+Fix options   1) Translate once at the facade boundary in both directions (`resolveSourceHit` adds
+              the evaluated rect; `overlays` and the route's selection echo subtract it).
+              2) Make adapters project in surface space — rejected: it duplicates the Camera's
+              projection contract in every adapter.
+Then add      `stage-facade.test.ts` (offset hit resolution, offset overlay marker) and
+              `layout-wall-manipulation.test.ts` (handle claim from Stage-local CSS) — added with
+              the fix. The takeover adds the mounted route offset-hit/selection-echo assertion in
+              `spatial-route-gesture.test.ts`.
+
+## TD-10 — a late successful source Open applies after a newer session epoch
+
+Status        fixed (`21c18402`, `T1.P01.S06` first increment) — disclosed by the PR #159 review;
+              pre-existing there, not introduced by that fix
+Found         2026-10-19, while reviewing the refused-Open host follow-up
+Owner         T1 Stage host (the spatial route) — the obligation is discharged here; the slice that
+              consumes the corrected behaviour is `T1.P01.S06`
+Symptom       Expected from the code, reproduced at route level: an Open that was admitted before a
+              newer project replacement (or reload) finishes could still install its source after the
+              newer epoch was mounted, overwriting the newer project and its saved base. The same
+              window let a stale refusal print over the newer project.
+Reproduce     Admit a Source JSON Open, supersede the project before its result resolves (for
+              example by an admitted replacement), then let the first result arrive. A route-level
+              harness can delay the admission port instead of racing a real file dialog.
+Root cause    `openSourceJson` and `applyReloadOffer` in
+              `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` captured the
+              admission context but never captured/re-checked `session.isCurrent(token)` after the
+              awaited admission, unlike `load` and the resumed-save path. The refused-source
+              contract does not depend on it, so PR #159 deliberately did not broaden its scope.
+Why green     `spatial-route-source-replacement.test.ts` exercised refusals and one admitted Open
+              within a single epoch. No test superseded the session while an admission was in flight.
+Fix options   1) Capture the session token before admission and abandon the result when
+              `!session.isCurrent(token)`, mirroring `load`; report nothing for the stale action.
+              2) Re-check the boot state after admission — weaker: it still races a replacement that
+              starts after the check. Do NOT install a late result as a new baseline, and do NOT
+              clear the newer saved base.
+Fix           Option 1 in both paths. The token is captured before the admission await and the
+              result is dropped when its epoch is no longer current, before any status branch, so a
+              stale action installs no source, adopts no saved base and reports neither a success nor
+              a refusal. No second guard and no session/lifetime refactor.
+Then add      A route-level regression: a delayed admitted Open superseded by a newer replacement
+              must leave the newer project, its history and saved base intact and must not show a
+              stale success or refusal notice.
+Tests         `tests/lib/authoring/spatial-route-source-replacement.test.ts`, four mounted cases —
+              a delayed admitted Open (superseded by an admitted reload), a delayed refused Open, a
+              delayed admitted Reload (superseded by an admitted Open) and a delayed refused Reload;
+              each asserts the newer project, its Stage node and its saved base survive and that no
+              stale notice is shown. Removing either guard fails exactly those four and leaves the
+              six existing replacement cases green. The suite's Head double now takes its reload
+              offer from `fixtures/reload-offer.ts`, so an admitting reload is reachable.
 
 ## TD-8 — a task's scoped services go stale after an accepted install, refusing `Begin`
 
@@ -106,35 +229,7 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## Open
 
-## TD-10 — a late successful source Open applies after a newer session epoch
-
-Status        open — disclosed by the PR #159 review; pre-existing, not introduced by that fix
-Found         2026-10-19, while reviewing the refused-Open host follow-up
-Owner         T1 Stage host (the spatial route); closed before or with `T1.P01.S06`, which verifies
-              the host journeys end to end
-Symptom       Expected from the code, not reproduced in a browser: an Open that was admitted before
-              a newer project replacement (or reload) finishes can still install its source after
-              the newer epoch is mounted, overwriting the newer project and its saved base.
-Reproduce     Admit a Source JSON Open, supersede the project before its result resolves (for
-              example by an admitted replacement), then let the first result arrive. A route-level
-              harness can delay the admission port instead of racing a real file dialog.
-Root cause    `openSourceJson` and `applyReloadOffer` in
-              `apps/editor/src/routes/project/[projectId]/spatial/+page.svelte` capture the
-              admission context but never capture/re-check `session.isCurrent(token)` after the
-              awaited admission, unlike `load`. The refused-source contract does not depend on it,
-              so PR #159 deliberately did not broaden its scope.
-Why green     `spatial-route-source-replacement.test.ts` exercises refusals and one admitted Open
-              within a single epoch. No test supersedes the session while an admission is in flight.
-Fix options   1) Capture the session token before admission and abandon the result when
-              `!session.isCurrent(token)`, mirroring `load`; report nothing for the stale action.
-              2) Re-check the boot state after admission — weaker: it still races a replacement that
-              starts after the check. Do NOT install a late result as a new baseline, and do NOT
-              clear the newer saved base.
-Then add      A route-level regression: a delayed admitted Open superseded by a newer replacement
-              must leave the newer project, its history and saved base intact and must not show a
-              stale success or refusal notice.
-
-No other entry is open.
+No entry is open. TD-10 was the last one and is fixed above.
 
 ---
 
@@ -156,6 +251,7 @@ git show e90a58224443bdbf44114d7285d55c983b79cc84:docs/operations/tech-debt/READ
 | **TD-4** | Curved-fixture release-cost increases that did not reproduce across sessions | **retired with the benchmark.** Every number in that family was advisory by design — no threshold, budget or regression guard was ever set — and the harness that produced them (the PERF lane, `lib/bench/**`, the checked-in baseline and the reuse ratchet) was removed by #115. | Recorded as **unresolved**, never as fixed. A future measurement re-derives a same-session before/after arm under a separately authorized benchmark scope. |
 | **TD-5** | Reuse and comparison over `$state`-proxied compiled geometry paid a ~12× per-read penalty, and a measured candidate optimization was proven output-identical yet slower | **retired with the benchmark.** No test measured per-access proxy cost, and the reuse counters were counts, not durations. | Its **lesson** — do not deep-proxy compiled geometry, and measure against the input the editor actually hands in — is carried in [`docs/roadmap/t1-spatial-world/planning-evidence.md`](../../roadmap/t1-spatial-world/planning-evidence.md) §15. |
 
-TD-10 is the open entry. TD-6, TD-7 and TD-9 were fixed by `T3.P01.S04` (see the closure table
-above). A new deferred defect is added under `## Open` using the template, with the track or file
-that owns the remaining obligation named in `Owner`.
+TD-6, TD-7 and TD-9 were fixed by `T3.P01.S04` (see the closure table above) and TD-10 by
+`T1.P01.S06`'s first increment (`21c18402`). No entry is open. A new deferred defect is added under
+`## Open` using the template, with the track or file that owns the remaining obligation named in
+`Owner`.

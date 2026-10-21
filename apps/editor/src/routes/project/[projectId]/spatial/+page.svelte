@@ -213,7 +213,9 @@
 	let query = $state('');
 	let reducedMotion = $state(false);
 	let evaluation = $state<ViewportEvaluation | null>(null);
-	let planView = $state<PlanEvaluation | null>(null);
+	// Generated Plan evaluations are replaced whole; raw data keeps their references
+	// cloneable when Index selection crosses the immutable selection boundary.
+	let planView = $state.raw<PlanEvaluation | null>(null);
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
@@ -701,7 +703,15 @@
 		) {
 			return;
 		}
+		// TD-10: the accepted offer is this epoch's, not whichever epoch is mounted
+		// when its admission resolves. Capture the token before admitting, so a
+		// `Reload remote` that a newer replacement (or teardown) superseded is
+		// abandoned instead of installing over the project the creator now has.
+		const token = session.token();
 		const next = await bootFromSourceJson(JSON.stringify(offer.document), projectId, admissionContext());
+		// Admission itself is asynchronous: a stale offer installs nothing, adopts no
+		// saved base and reports no refusal over the newer session.
+		if (!session.isCurrent(token)) return;
 		// Only a source that actually admitted replaces the mounted project and
 		// becomes this epoch's saved base. A failed reload keeps the local source,
 		// its history/selection and the saved base the Head is still saving against.
@@ -770,7 +780,15 @@
 		// A cancelled dialog changes nothing — including the saved base the current
 		// Head is still saving against.
 		if (file === null) return;
+		// TD-10: reading and admitting the chosen file is asynchronous, and the epoch
+		// this Open belongs to is the one captured here — not whichever project is
+		// mounted when the admission resolves. A superseded Open is abandoned rather
+		// than installed over the newer project, its history and its saved base.
+		const token = session.token();
 		const next = await bootFromSourceJson(await file.text(), projectId, admissionContext());
+		// A stale result reports nothing: neither a success nor a refusal may appear
+		// for an action the creator has already replaced.
+		if (!session.isCurrent(token)) return;
 		if (next.status !== 'ready' && next.status !== 'empty') {
 			reportSourceRefusal(next, 'open');
 			return;
@@ -860,7 +878,15 @@
 		);
 		const projected = stage.projectWorld([center[0], fragment.elevationMeters, center[1]], stage.evaluationId() ?? '');
 		if (projected.kind !== 'projected') return null;
-		return { css: projected.css, label: selected.reference.subject.id };
+		// The Camera projects into viewport CSS; the overlay paints inside the Stage
+		// surface, so the echo subtracts the same evaluation rect the hit path adds.
+		const evaluationRect = stage.evaluation()?.rect ?? rect;
+		const offsetX = evaluationRect?.left ?? 0;
+		const offsetY = evaluationRect?.top ?? 0;
+		return {
+			css: [projected.css[0] - offsetX, projected.css[1] - offsetY],
+			label: selected.reference.subject.id
+		};
 	}
 
 	onMount(() => {
@@ -943,6 +969,10 @@
 	function submit(intent: ViewingIntent, clockSeconds: number): StageIntentResult | null {
 		const stage = facade;
 		if (stage === null) return null;
+		// A claimed adapter press owns its projection until release or an explicit
+		// reading interruption. Wheel/Fit/keyboard navigation must not remap that
+		// press while its evaluation identity is deliberately retained.
+		if (drag?.mode === 'adapter' && intent.kind !== 'set-reading') return null;
 		const first = stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
 		if (first.kind !== 'superseded') return first;
 		stage.acquireInspection('exclusive');
@@ -957,7 +987,23 @@
 		// `cancel-on-reading-change` ended is already gone, and its delta samples were
 		// taken against the reading that is ending. Dropping them here is what makes
 		// T2.S03's "cancel before the flip" mean the gesture also stops moving.
-		if (drag !== null && session.gesture() === null) abortGesture();
+		if (drag !== null && session.gesture() === null) {
+			if (drag.mode === 'adapter' && facade !== null) {
+				// Evaluate through Camera before notifying the claimed adapter: ordinary
+				// frame generations retain the press id, but this explicit reading change
+				// must reach its existing mismatch path and preserve the exact request.
+				// A move cannot commit; cancel then clears the pointer owner (including
+				// adapters whose reading-change contract simply discards the preview).
+				const css: [number, number] = [drag.x - (rect?.left ?? 0), drag.y - (rect?.top ?? 0)];
+				refresh();
+				const id = facade.evaluationId();
+				if (id !== null) {
+					facade.pointerIntent({ phase: 'move', css, evaluationId: id });
+					facade.pointerIntent({ phase: 'cancel', css, evaluationId: id });
+				}
+			}
+			abortGesture();
+		}
 	}
 
 	function fit(): void {
@@ -1201,6 +1247,19 @@
 
 	let drag: { x: number; y: number; mode: 'pan' | 'orbit' | 'adapter' } | null = null;
 	/**
+	 * The evaluation a claimed adapter press was measured in.
+	 *
+	 * The Camera raises a new evaluation generation every frame, so reading
+	 * `evaluationId()` again on each move would tell the adapter its projection had
+	 * changed on every sample: a drag would pause on its first move and a release
+	 * would look stale, making direct manipulation unreachable. `StagePointerIntent`
+	 * names *the evaluation the press was measured in*, so this one value is carried
+	 * from the claimed down through every later phase of that press and cleared with
+	 * it. A genuine reading change still ends the drag through the gesture lease's
+	 * `cancel-on-reading-change` policy.
+	 */
+	let adapterEvaluationId: string | null = null;
+	/**
 	 * The drag-versus-click decision. It is **not** the gesture: pointer up ends the
 	 * gesture, but the click that follows still has to know how far the pointer
 	 * travelled, and an interruption has to stop that click from selecting. It also
@@ -1234,6 +1293,7 @@
 					stage.pointerIntent({ phase: 'cancel', css, evaluationId: pointerEvaluationId, shift: event.shiftKey });
 					return;
 				}
+				adapterEvaluationId = pointerEvaluationId;
 				drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 				return;
 			}
@@ -1267,8 +1327,16 @@
 		if (drag === null) return;
 		if (drag.mode === 'adapter') {
 			if (!press.ownsPointer(event.pointerId)) return;
+			// A reading change cancels the adapter's gesture lease before the next
+			// frame. The pointer mapping was measured in the old projection, so the
+			// press ends instead of dragging a proposal through a view it was never
+			// measured in.
+			if (session.gesture() === null) {
+				cancelAdapterDrag(event);
+				return;
+			}
 			const stage = facade;
-			const id = stage?.evaluationId() ?? null;
+			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			if (stage === null || id === null) return;
 			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
@@ -1302,6 +1370,7 @@
 	 */
 	function endGesture(): void {
 		drag = null;
+		adapterEvaluationId = null;
 		session.gesture()?.release();
 	}
 
@@ -1324,10 +1393,14 @@
 		if (!press.end(event.pointerId)) return;
 		if (drag?.mode === 'adapter') {
 			const stage = facade;
-			const id = stage?.evaluationId() ?? null;
+			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			drag = null;
+			adapterEvaluationId = null;
 			if (stage !== null && id !== null) {
-				stage.pointerIntent({ phase: 'up', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
+				// After a reading change the lease is already gone: the press is cancelled
+				// rather than released, so no stale projection commits.
+				const phase = session.gesture() === null ? 'cancel' : 'up';
+				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			}
 			return;
 		}
@@ -1340,13 +1413,14 @@
 	 * The adapter owns its own candidate and baseline; ending only the host's
 	 * gesture would leave it showing (and able to commit) a proposal from a press
 	 * the creator never finished. The explicit `cancel` is the same one a real
-	 * pointer cancel sends, so Escape, cancel-on-reading-change and capture loss
-	 * all converge on one adapter path.
+	 * pointer cancel sends, so pointer cancel and capture loss converge on one adapter path. A reading
+	 * interruption first reaches the adapter's changed-evaluation path above.
 	 */
 	function cancelAdapterDrag(event: PointerEvent): void {
 		const stage = facade;
-		const id = stage?.evaluationId() ?? null;
+		const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 		drag = null;
+		adapterEvaluationId = null;
 		if (stage !== null && id !== null) {
 			stage.pointerIntent({ phase: 'cancel', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 		}

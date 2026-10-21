@@ -1,0 +1,115 @@
+{
+  "formatVersion": 1,
+  "id": "project:s06-empty-gate",
+  "name": "Untitled project",
+  "acceptedRevision": {
+    "projectId": "project:s06-empty-gate",
+    "revisionId": "revision-2"
+  },
+  "dependencyLock": {
+    "formatVersion": 1,
+    "entries": []
+  },
+  "units": {
+    "layout": {
+      "header": {
+        "domain": "layout",
+        "unitId": "project:s06-empty-gate:layout",
+        "formatVersion": 5,
+        "contentRevision": "sha256-95ed80fe003df8c2fba9830d6b7ff342d5adcfe63782b41b10b3e25276478c99"
+      },
+      "data": {
+        "units": "meters",
+        "formatVersion": 5,
+        "floor": {
+          "id": "floor",
+          "name": "Floor",
+          "elevation": 0
+        },
+        "junctions": [],
+        "walls": [],
+        "rooms": [],
+        "openings": [],
+        "objects": [
+          {
+            "id": "layout-object-1",
+            "kind": "box",
+            "position": [
+              2.734567890123,
+              0.5,
+              3.912345678901
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": [
+              0.8,
+              1,
+              0.8
+            ]
+          }
+        ],
+        "identity": {
+          "cursor": 0,
+          "rooms": {},
+          "junctions": {},
+          "walls": {},
+          "openings": {}
+        }
+      }
+    },
+    "scene": {
+      "header": {
+        "domain": "scene",
+        "unitId": "project:s06-empty-gate:scene",
+        "formatVersion": 2,
+        "contentRevision": "sha256-096d5b3199637cb9a00a0c801986aca50cfaf67c8fdb37917a718faf56132168"
+      },
+      "data": {
+        "formatVersion": 2,
+        "textures": [],
+        "materials": [],
+        "entities": []
+      }
+    },
+    "camera": {
+      "header": {
+        "domain": "camera",
+        "unitId": "project:s06-empty-gate:camera",
+        "formatVersion": 1,
+        "contentRevision": "sha256-bc34d5cbec17db2aed8857f8d0489e4917e5832839aeec337e42934abca17df0"
+      },
+      "data": {
+        "formatVersion": 1,
+        "views": [],
+        "connections": []
+      }
+    },
+    "experience": {
+      "header": {
+        "domain": "experience",
+        "unitId": "project:s06-empty-gate:experience",
+        "formatVersion": 1,
+        "contentRevision": "sha256-54507fb88afebbe34143ec370039abe978bed22b996fdd7d8765bebcda93cd6f"
+      },
+      "data": {
+        "formatVersion": 1,
+        "experiences": []
+      }
+    },
+    "resources": {
+      "header": {
+        "domain": "resources",
+        "unitId": "project:s06-empty-gate:resources",
+        "formatVersion": 1,
+        "contentRevision": "sha256-9482adb0db109b0d3a588810edc7ef22d889ce8822c0c527f904eac542667eca"
+      },
+      "data": {
+        "formatVersion": 1,
+        "resources": []
+      }
+    }
+  }
+}
