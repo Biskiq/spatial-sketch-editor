@@ -5,10 +5,11 @@ packages, or `docs/reference`. No commits unless the owner asks, and never an ag
 
 **Implementation status at this revision.** Phase 0 is verified, including the cottage fixture after hips, fullness
 and overhang (§3.1). Phase 1 (the section model) and the pure half of Phase 2 (zones, detents, ridge turning) are
-implemented and tested. Phase 5's compound geometry and Phase 6's offer qualification are implemented as pure model
-code. **Not wired into the UI yet:** Hold zones and their handles/highlights/card hint, the Edit Shape sheet, ink
-from meaning, Settings' *one span* control, the pen tips, `opAddMezzanine`/`opAddStairTo`, and every browser check in
-§11.2 that depends on them. No Phase 3–6 acceptance is claimed.
+implemented and tested. Phase 5's compound geometry and Phase 6's offer qualification are implemented. The offer
+cards are wired: a room can be covered over its connected group in one step, then offered a mezzanine, and the deck a
+stair, each as one accepted step (`opAddMezzanine`, `opAddStairTo`). **Not wired into the UI yet:** Hold zones and
+their handles/highlights/card hint, the Edit Shape sheet, ink from meaning, Settings' *one span* control, the pen
+tips, and the browser checks in §11.2 that depend on them. No Phase 3–6 acceptance is claimed.
 
 Intent comes from [the design summary](../DESIGN.md#point-of-view) and
 [the working prototype summary](../README.md#whats-real-prepared-simulated-or-unsupported): draw what you mean,
@@ -110,7 +111,7 @@ The required L/T/U baseline is a gable and the fuller slopes used in the journey
 
 ### 3.1 Phase 0 — verified results and the decisions they make normative
 
-Run from `prototypes/p3-vellum`: `npm run typecheck`, `npm test` (14 files, 165 tests) and `npm run build` all pass.
+Run from `prototypes/p3-vellum`: `npm run typecheck`, `npm test` (14 files, 171 tests) and `npm run build` all pass.
 Phase 0's evidence lives in `tests/wings.test.ts` (compound roofs and resize continuity), `tests/offers.test.ts`
 (mezzanine and stair), `tests/journey.test.ts` (the §11.3 cottage, end to end in model operations) and
 `tests/section.test.ts` (the gesture validator and the nearest-preset tolerance). Nothing here is wired into the UI
@@ -224,8 +225,8 @@ The section model also settles two things the plan left open:
     is a real requirement, not a UI nicety. The 3 m version is kept as the negative so the boundary is tested.
 
 **Not proven in Phase 0, and not to be claimed:** compound roofs in a live UI (only model operations); the Hold
-gesture's UI lifecycle (only its model semantics); every automatic offer's discovery in the UI (the model qualifies
-it, `RoomCard` does not show it yet); and every Phase 2–7 wiring item.
+gesture's UI lifecycle (only its model semantics); and every Phase 2–7 wiring item other than the cover group, the
+mezzanine and the stair-to-deck offers, which were hovered and clicked through in a browser (see §8.7 and §9.3).
 
 ---
 
@@ -1160,8 +1161,8 @@ commits one step. An invalid alternative is explained and cannot be committed as
 
 ### 8.7 Covering neighbouring rooms together
 
-Today, *Cover it* in `RoomCard` covers only the selected room (`opCoverRooms([s.id], preset)`). For an L-shaped
-cottage, the default should be one roof over the whole group.
+Before this section was implemented, *Cover it* in `RoomCard` covered only the selected room
+(`opCoverRooms([s.id], preset)`). For an L-shaped cottage, the default is now one roof over the whole group.
 
 - **New helper in `derive.ts`: `coverGroup(d, roomId): string[]`.** Starting from the room, collect the rooms
   connected to it through shared walls that:
@@ -1172,17 +1173,27 @@ cottage, the default should be one roof over the whole group.
   Use the derived wall arrangement to establish an actual shared boundary segment of meaningful length (at least
   0.3 m). Expanded polygons are not adjacency: they also match corner touches, gaps and nearby disconnected rooms.
 - **The chips.** When the group has more than one room, the preset chips cover the whole group, under the heading
-  *"Cover {A} and {B}"* (or *"{A} and 2 more"*). One extra chip, *Only {A}*, keeps today's single-room cover.
+  *"Cover {A} and {B}"* — or *"Cover all 3 rooms"* once the names would run long. One extra chip, *Only {A}*,
+  keeps the single-room cover.
 - Hover/focus previews the full grouped roof and highlights its rooms. The action names the reach before acceptance;
   no existing roof is replaced. Alternate coverage can amend that same step through the existing readings mechanism.
 - `opCoverRooms` already accepts several rooms, but its fallback `coverOutline` retains only the largest union
   polygon's outer ring. Qualify connected groups and preserve courtyards/holes or decline that group explicitly;
   never silently drop an island or cover a courtyard. Revalidate the **fitted** footprint after overhang and taller
-  neighbour exclusions, not just the room-centre polygons.
+  neighbour exclusions, not just the room-centre polygons. **Implemented (group side):** `coverGroup` adds a room only
+  if the group still unions into one shape with no hole, so a ring of rooms around a roofed courtyard stops one room
+  short instead of silently roofing the court (tested in `tests/model.test.ts` with the guard removed to prove it is
+  load-bearing). The fitted-footprint island check for drawn roofs remains open.
 - **Implemented:** `opCoverRooms(roomIds, preset, { wings: true })` sets `oneSpan: false` **at creation**, so a grouped
   cover is one accepted step — not "cover, then find and flip the Settings toggle" — and the section profile is
   scaled on the primary wing's span from the start rather than on the whole outline's. The opt-in is explicit: no
   saved roof with `oneSpan` absent changes behaviour.
+- **Implemented:** `coverGroup(d, roomId)` in `derive.ts` walks the derived wall pieces, joining only rooms on the
+  same level, still unroofed, with a top within 0.3 m of the **starting** room's top (not the previous room's, so a
+  chain cannot drift) through a shared piece of at least 0.3 m. The start is first and the rest are name-ordered, so
+  the preview and the commit name the same group. `RoomCard` labels the preset chips *Cover A and B*, hover-previews
+  that roof in one step, and adds *Only A* to keep a single-room cover. Tested for both rooms of an L, a roofed
+  neighbour, a taller/off-level neighbour and a corner-only touch.
 
 ### 8.8 Tests: `tests/wings.test.ts`
 
@@ -1277,9 +1288,17 @@ In `readings.ts`, the `plinth` reading's label "Raised floor" becomes **"Platfor
   Candidate geometry and ordering are computed once per project revision; preview, click and reading amendments
   use the same candidates. With no valid candidate, the card explains why (e.g. *"Needs more headroom over a usable
   floor area"*) and points to drawing on the sheet. It does not offer a failing automatic action.
+- **Implemented.** The card reads the offer from the **committed** project, not from a hover preview (a preview of
+  the deck already contains it, so the offer would vanish under the pointer). Hovering previews the placement in
+  pencil; clicking commits one step; up to two alternate placements appear as chips beside the first. With no
+  candidate the card shows the reason and the sheet route.
+- **Support is part of the accepted step.** A loft that spans away from the walls is given posts along every edge
+  that is not carried by a wall, spaced closer than the prototype's own support reach (2.2 m), so the new deck
+  never arrives with a *"nothing under …"* issue the newcomer is expected to repair. The note says how many posts.
+  Measured: a 5 m, 10×6 room under a gable gives a 12.6 m² loft on 3 posts, with no derived issue.
 
-**Phase 0 implementation (verified in `src/model/offers.ts`, `tests/offers.test.ts`).** Pure and deterministic;
-**not yet wired to `RoomCard` and `opAddMezzanine` does not exist.**
+**Phase 0 implementation (verified in `src/model/offers.ts`, `tests/offers.test.ts`).** Pure and deterministic, and
+the Phase 6 wiring in `RoomCard` (below) is in place; §9.4's `DeckCard` wiring is in place too.
 
 - Constants: `DECK_THICK 0.30`, `MIN_BELOW 2.40`, `MIN_ABOVE 2.10`, `MIN_AREA 5 m²`, `MIN_SIDE 2.0 m`,
   `MIN_NECK 1.2 m`. The deck top is `floorY + 2.70`, with one alternate height 0.30 m higher to show the
@@ -1314,7 +1333,9 @@ In `readings.ts`, the `plinth` reading's label "Raised floor" becomes **"Platfor
 ### 9.4 The stair offer
 
 - **Where.** In `DeckCard`, including floors made by *Add a floor above*, when no stair connects it and a valid
-  candidate exists. A full floor may need an opening; do not offer a stair through its slab without an explicitly
+  candidate exists. **Implemented** as `opAddStairTo(deckId, plan)`, which revalidates the plan and commits one step;
+  the card's *Getting up here* section disappears as soon as a stair's `to` is that deck. A full floor may need an
+  opening; do not offer a stair through its slab without an explicitly
   previewed opening. Automatic opening creation is outside this round.
 - **Candidates.** Test free edge segments with enough width, at their midpoint and a bounded set of alternate
   positions/directions. Resolve `floorUnder` at each proposed **lower endpoint**, not an undefined deck centre;
@@ -1330,7 +1351,9 @@ In `readings.ts`, the `plinth` reading's label "Raised floor" becomes **"Platfor
   Never place the first option anyway. These checks are prototype fit heuristics, not construction-code claims.
 
 **Phase 0 implementation (verified).** `stairPlansFor(project, outline, deckY, floorY)` and
-`stairCandidates(project, deckId)` in `src/model/offers.ts`; `opAddStairTo` does not exist yet.
+`stairCandidates(project, deckId)` in `src/model/offers.ts`; `opAddStairTo` now exists in `src/model/ops.ts` and
+revalidates the chosen plan at commit time. In the browser, a new mezzanine in §11.3's hall offers a 1.30 m stair,
+hovering previews one step, clicking commits it, and the offer disappears once the deck is served.
 
 - Free outline edges at least `STAIR_WIDTH + 0.8` (2.1 m) long, at the midpoint and at 28%/72%, on the outward normal.
 - A straight run `L = max(1.2, rise · 1.6)` whose top tread sits 0.35 m onto the deck, so the run **reaches the edge**;

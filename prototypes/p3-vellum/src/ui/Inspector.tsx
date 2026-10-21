@@ -1,8 +1,9 @@
 // A plain-language card for whatever is picked: what it is, how tall in people, and what it remembers.
 import type { ComponentChildren } from 'preact';
+import { useMemo, useState } from 'preact/hooks';
 import { store } from '../store';
 import { app, liveProps } from './ctx';
-import { derive, elementName, openingKind, stairMode, DRoom } from '../model/derive';
+import { derive, elementName, openingKind, stairMode, coverGroup, DRoom, Derived } from '../model/derive';
 import { findEl } from '../model/types';
 import type { Run, Opening, RoomSeed, Overhead, Deck, Void, Stair, Post, Obj, Project } from '../model/types';
 import { fmtM, inPeople, polyArea } from '../model/geom2d';
@@ -12,8 +13,9 @@ import { stairSteps } from '../model/settle';
 import { describeProfile, ohRidge, ProfilePreset } from '../model/overheadGeom';
 import {
   opRoom, opConfirmRoom, opAddFloorAbove, opRunPatch, opRunTop, opAddOpening, openingDefaults, opOpening, opOverhead, opDeck, opVoid, opStair, opObj,
-  opRemove, removalReach, opCoverRooms, isRoundish, opProject, Op, OBJ_NAMES,
+  opRemove, removalReach, opCoverRooms, isRoundish, opProject, opAddMezzanine, opAddStairTo, Op, OBJ_NAMES,
 } from '../model/ops';
+import { mezzanineOffer, stairCandidates } from '../model/offers';
 import { surfaceName } from '../scene/interact';
 import { ProfilePad, ProfilePresets } from './ProfilePad';
 import { detachImport } from '../import/importer';
@@ -124,10 +126,22 @@ function Head({ kind, name: raw, rename, onClose }: { kind: string; name: string
 }
 
 // ------------------------------------------------------------------ per kind
-function RoomCard({ s, dr, p }: { s: RoomSeed; dr: DRoom | undefined; p: Project }) {
+function RoomCard({ s, dr, dc, p }: { s: RoomSeed; dr: DRoom | undefined; dc: Derived; p: Project }) {
   const parent = s.inheritedFrom ? p.rooms.find((r) => r.id === s.inheritedFrom) : null;
-  const covered = dr?.coveredBy ? p.overheads.find((o) => o.id === dr.coveredBy) : null;
+  // what the chips offer is read from the committed project, never from `dr`: a hover preview already contains the
+  // roof (or deck) being offered, so reading it here would make the chip under the pointer vanish before the click
+  const committed = dc.roomById.get(s.id);
+  const covered = committed?.coveredBy ? p.overheads.find((o) => o.id === committed.coveredBy) : null;
   const round = dr ? isRoundish(dr.poly) : false;
+  // one cover can reach the rooms a wall actually joins, so the reach is named before it is accepted
+  const group = coverGroup(dc, s.id);
+  const names = group.map((id) => dc.roomById.get(id)?.name ?? '').filter(Boolean);
+  const [only, setOnly] = useState(false);
+  const targets = only || group.length < 2 ? [s.id] : group;
+  const mezz = useMemo(
+    () => (covered ? mezzanineOffer(p, s.id) : { candidates: [], why: '' }),
+    [p, s.id, !!covered],
+  );
   return (
     <>
       <Head kind="Room" name={s.name} rename={(v) => store.commit(`Renamed ${s.name} to ${v}`, opRoom(s.id, { name: v }))} />
@@ -179,17 +193,67 @@ function RoomCard({ s, dr, p }: { s: RoomSeed; dr: DRoom | undefined; p: Project
         </div>
       </Sec>
       {!covered && (
-        <Sec label="Cover it">
+        <Sec label={targets.length === 2 ? `Cover ${names.join(' and ')}` : targets.length > 2 ? `Cover all ${targets.length} rooms` : 'Cover it'}>
           <div class="chips">
             {((round ? ['flat', 'dome', 'gable'] : ['flat', 'raked', 'gable', 'clerestory', 'vault']) as ProfilePreset[]).map((k) => (
-              <button class="chip pencil" onClick={() => store.commit(`Covered ${s.name}`, opCoverRooms([s.id], k))}>
+              <button
+                class="chip pencil"
+                title={targets.length > 1 ? `One roof over ${names.join(', ')}` : `A ${k} roof over ${s.name}`}
+                onPointerEnter={() => store.setPreview(opCoverRooms(targets, k, { wings: targets.length > 1 }))}
+                onPointerLeave={() => store.setPreview(null)}
+                onClick={() => {
+                  store.setPreview(null);
+                  store.commit(targets.length > 1 ? `Covered ${names.join(', ')}` : `Covered ${s.name}`, opCoverRooms(targets, k, { wings: targets.length > 1 }));
+                }}
+              >
                 {k === 'gable' && round ? 'cone' : k}
               </button>
             ))}
+            {group.length > 1 && (
+              <button class={'chip' + (only ? ' on' : '')} onClick={() => setOnly(!only)} title={`Cover ${s.name} on its own`}>
+                Only {s.name}
+              </button>
+            )}
           </div>
           <div class="note" style={{ marginTop: '4px' }}>
             Or pull the sheet to “{s.name} top” and draw the outline yourself.
           </div>
+        </Sec>
+      )}
+      {covered && (
+        <Sec label="Inside">
+          {mezz.candidates.length > 0 ? (
+            <div class="row" style={{ flexWrap: 'wrap', gap: '4px' }}>
+              <button
+                class="btn small outline"
+                title={`2.40 m clear below · at least ${mezz.candidates[0].above.toFixed(2)} m clear above`}
+                onPointerEnter={() => store.setPreview(opAddMezzanine(s.id, mezz.candidates[0]))}
+                onPointerLeave={() => store.setPreview(null)}
+                onClick={() => {
+                  store.setPreview(null);
+                  store.commit(`Added a mezzanine in ${s.name}`, opAddMezzanine(s.id, mezz.candidates[0]));
+                }}
+              >
+                + Add a mezzanine
+              </button>
+              {mezz.candidates.slice(1).map((c) => (
+                <button
+                  class="chip pencil"
+                  title="Another qualified placement, in this same step"
+                  onPointerEnter={() => store.setPreview(opAddMezzanine(s.id, c))}
+                  onPointerLeave={() => store.setPreview(null)}
+                  onClick={() => {
+                    store.setPreview(null);
+                    store.commit(`Added a mezzanine in ${s.name}`, opAddMezzanine(s.id, c));
+                  }}
+                >
+                  {c.area.toFixed(0)} m²
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div class="note">{mezz.why || 'No mezzanine fits here.'} <span>Draw one on the sheet instead.</span></div>
+          )}
         </Sec>
       )}
       <Remember
@@ -397,6 +461,8 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
 
 function DeckCard({ dk, p }: { dk: Deck; p: Project }) {
   const host = dk.restsOn ? elementName(p, dk.restsOn) : null;
+  const hasStair = p.stairs.some((st) => st.to.kind === 'deck' && st.to.id === dk.id);
+  const plans = useMemo(() => (hasStair ? [] : stairCandidates(p, dk.id)), [p, dk.id, hasStair]);
   return (
     <>
       <Head kind={dk.bridge ? 'Bridge' : 'Floor in the air'} name={dk.name} rename={(v) => store.commit(`Renamed it ${v}`, opDeck(dk.id, { name: v }))} />
@@ -404,6 +470,22 @@ function DeckCard({ dk, p }: { dk: Deck; p: Project }) {
         <span class="num">{Math.abs(polyArea(dk.outline)).toFixed(1)} m²</span> at <span class="num">{fmtM(dk.y)}</span>, {inPeople(dk.y)} up
       </div>
       <Slider label={host ? 'Height (moving it unties it)' : 'Height'} value={dk.y} min={0.3} max={14} commit={`Moved ${dk.name}`} make={(v) => opDeck(dk.id, { y: v })} people />
+      {plans.length > 0 && (
+        <Sec label="Getting up here">
+          <button
+            class="btn small outline"
+            title={`A ${plans[0].width.toFixed(2)} m stair from the floor below, landing on this edge`}
+            onPointerEnter={() => store.setPreview(opAddStairTo(dk.id, plans[0]))}
+            onPointerLeave={() => store.setPreview(null)}
+            onClick={() => {
+              store.setPreview(null);
+              store.commit(`Added a stair to ${dk.name}`, opAddStairTo(dk.id, plans[0]));
+            }}
+          >
+            + Add a stair
+          </button>
+        </Sec>
+      )}
       <Sec label="Edges">
         <div class="chips">
           <button class={'chip' + (dk.bridge ? ' on' : '')} onClick={() => store.commit(dk.bridge ? 'Made it a floor' : 'Made it a bridge', opDeck(dk.id, { bridge: !dk.bridge }))}>
@@ -554,24 +636,27 @@ function ImportCard({ p }: { p: Project }) {
 export function Inspector() {
   const ui = store.ui;
   if (ui.mode !== 'make' || !ui.selection || ui.start) return null;
-  const p = store.shown;
+  // The card describes what is shown (so numbers follow a live drag), but the chips act on what is committed:
+  // a hover preview is added to `shown`, and a chip that read it would hide itself under the pointer.
+  const p = store.project;
+  const shown = store.shown;
   const id = ui.selection;
   let body: any = null;
-  if (id === 'building') body = <BuildingCard p={p} />;
-  else if (id === 'import') body = p.imported ? <ImportCard p={p} /> : null;
+  if (id === 'building') body = <BuildingCard p={shown} />;
+  else if (id === 'import') body = shown.imported ? <ImportCard p={shown} /> : null;
   else {
-    const e = findEl(p, id);
+    const e = findEl(shown, id);
     if (!e) return null;
-    const d = derive(p);
+    const d = derive(shown);
     switch (e.kind) {
-      case 'room': body = <RoomCard s={e} dr={d.roomById.get(e.id)} p={p} />; break;
-      case 'run': body = <RunCard r={e} p={p} />; break;
-      case 'opening': body = <OpeningCard o={e} p={p} />; break;
-      case 'overhead': body = <OverheadCard oh={e} p={p} />; break;
+      case 'room': body = <RoomCard s={e} dr={d.roomById.get(e.id)} dc={derive(p)} p={p} />; break;
+      case 'run': body = <RunCard r={e} p={shown} />; break;
+      case 'opening': body = <OpeningCard o={e} p={shown} />; break;
+      case 'overhead': body = <OverheadCard oh={e} p={shown} />; break;
       case 'deck': body = <DeckCard dk={e} p={p} />; break;
       case 'void': body = <VoidCard vd={e} />; break;
-      case 'stair': body = <StairCard st={e} p={p} />; break;
-      case 'obj': body = <ObjCard o={e} p={p} />; break;
+      case 'stair': body = <StairCard st={e} p={shown} />; break;
+      case 'obj': body = <ObjCard o={e} p={shown} />; break;
       case 'post': body = <PostCard po={e} />; break;
     }
   }

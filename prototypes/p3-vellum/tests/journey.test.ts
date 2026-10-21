@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { emptyProject, Project, Overhead } from '../src/model/types';
-import { runTxn, opAddRun, opRoom, opCoverRooms, opOverhead, opAddDeck, opAddStair } from '../src/model/ops';
+import { runTxn, opAddRun, opRoom, opCoverRooms, opOverhead, opAddMezzanine, opAddStairTo } from '../src/model/ops';
 import { derive } from '../src/model/derive';
 import { roofWingsState } from '../src/model/wings';
 import { presetProfile, ensureShoulder, pullShoulder, profileSymmetric, ohH, ohUndersideAt } from '../src/model/overheadGeom';
@@ -118,15 +118,18 @@ describe('Phase 0 · the §11.3 cottage, made the way the plan says it is made',
     expect(p.decks.length).toBe(0);
     expect(p.stairs.length).toBe(0);
 
-    // one step makes the deck and the stair together, and the candidate's own stair is what gets built
-    let made = doOp(p, opAddDeck(cand.outline, cand.y));
+    // one step makes the deck (with the posts its own support rule asks for) and the stair, and the candidate's
+    // own stair is what gets built
+    let made = doOp(p, opAddMezzanine(block, cand));
     const deck = made.decks[0];
     expect(deck.y).toBeCloseTo(cand.y, 6);
     expect(deck.thick).toBeCloseTo(DECK_THICK, 6);
-    made = doOp(made, opAddStair(cand.stair.path, cand.stair.from, { kind: 'deck', id: deck.id }, cand.stair.fromY, cand.stair.toY));
+    expect(derive(made).issues.filter((i) => i.kind === 'support' && i.ids.includes(deck.id))).toEqual([]);
+    made = doOp(made, opAddStairTo(deck.id, cand.stair));
     expect(made.stairs.length).toBe(1);
     expect(made.stairs[0].toY).toBeCloseTo(deck.y, 6);
     expect(made.stairs[0].from.kind).toBe('room');
+    expect(derive(made).issues.filter((i) => i.kind === 'support' && i.ids.includes(deck.id))).toEqual([]);
     // the wing room, under the same roof, is offered its own loft from its own surface
     expect(wingRoom.coveredBy).toBe(oh0(p).id);
     expect(mezzanineOffer(p, wing).why).toBe('');

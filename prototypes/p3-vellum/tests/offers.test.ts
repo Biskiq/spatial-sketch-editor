@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { emptyProject, Project } from '../src/model/types';
 import type { V2 } from '../src/model/geom2d';
-import { runTxn, opAddRun, opRoom, opCoverRooms, opAddDeck, opAddVoid, opOverhead } from '../src/model/ops';
+import { runTxn, opAddRun, opRoom, opCoverRooms, opAddDeck, opAddVoid, opOverhead, opAddMezzanine, opAddStairTo } from '../src/model/ops';
 import { presetProfile } from '../src/model/overheadGeom';
 import { derive } from '../src/model/derive';
 import { mezzanineOffer, mezzanineCandidates, stairCandidates, MIN_ABOVE, MIN_AREA, DECK_THICK } from '../src/model/offers';
@@ -103,6 +103,44 @@ describe('mezzanine offers', () => {
     let p = covered(room(10, 6, 5.2), 'flat');
     p = doOp(p, opAddDeck(rect(10, 6), 2.7, { name: 'Existing deck' }));
     expect(mezzanineCandidates(p, roomId(p))).toEqual([]);
+  });
+
+  it('commits the candidate it previewed, and refuses a stale one without placing anything', () => {
+    const p = covered(room(10, 6, 5.2), 'flat');
+    const cand = mezzanineCandidates(p, roomId(p))[0];
+    expect(cand).toBeTruthy();
+    const made = runTxn(p, opAddMezzanine(roomId(p), cand));
+    expect(made.after.decks.length).toBe(1);
+    expect(made.after.decks[0].outline).toEqual(cand.outline);
+    expect(made.after.decks[0].y).toBeCloseTo(cand.y, 6);
+    expect(made.after.decks[0].restsOn).toBeNull(); // a mezzanine inside the room, not tied to its ceiling
+    expect(p.decks.length).toBe(0);
+
+    // the same candidate against a revision that no longer allows it: nothing is placed and the card can say why
+    let q = covered(room(10, 6, 5.2), 'flat');
+    q = doOp(q, opAddDeck(rect(10, 6), 2.7, { name: 'Filled' }));
+    const stale = runTxn(q, opAddMezzanine(roomId(q), cand));
+    expect(stale.after.decks.length).toBe(1); // only the deck that was already there
+    expect(stale.notes.some((n) => /no longer fits/i.test(n.text))).toBe(true);
+  });
+
+  it('commits a stair offer onto a deck, and refuses an approach that has been walled off', () => {
+    let p = covered(room(10, 6, 5.2), 'flat');
+    p = doOp(p, opAddDeck([[0, 0], [3.5, 0], [3.5, 6], [0, 6]], 2.7, { name: 'Loft' }));
+    const deck = p.decks[0];
+    const plan = stairCandidates(p, deck.id)[0];
+    expect(plan).toBeTruthy();
+    const made = runTxn(p, opAddStairTo(deck.id, plan));
+    expect(made.after.stairs.length).toBe(1);
+    expect(made.after.stairs[0].to).toEqual({ kind: 'deck', id: deck.id });
+    expect(made.after.stairs[0].toY).toBeCloseTo(deck.y, 6);
+    expect(made.after.stairs[0].path).toEqual(plan.path);
+
+    let q = p;
+    for (const w of [[[6, 0], [6, 6]], [[10, 0], [6, 0]], [[6, 6], [10, 6]], [[10, 6], [10, 0]]] as V2[][]) q = doOp(q, opAddRun(poly(w, false), { baseY: 0 }));
+    const stale = runTxn(q, opAddStairTo(deck.id, plan));
+    expect(stale.after.stairs.length).toBe(0);
+    expect(stale.notes.some((n) => /no clear approach/i.test(n.text))).toBe(true);
   });
 
   it('previews equal the committed outline: one candidate carries its own stair and never moves anything', () => {

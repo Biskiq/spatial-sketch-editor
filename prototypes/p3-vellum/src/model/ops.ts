@@ -2,7 +2,7 @@
 // and settle() reports what else moved.
 import {
   V2, add, sub, mul, dist, norm, angleOf, polyArea, ensureCCW, offsetPoly, polyCentroid, closestOnSeg, fmtM, polyPerimeter,
-  interiorPoint, pointInPolyHoles, bbox, rot, rdpIdx, pointInPoly,
+  interiorPoint, pointInPolyHoles, bbox, rot, rdpIdx, pointInPoly, lerp2, distToPolyEdge,
 } from './geom2d';
 import { P, union, mpolyArea, difference } from './clip';
 import type { Project, Run, Tie, Opening, OpeningShape, Overhead, ProfilePt, Deck, Void, Stair, SurfaceRef, Obj, ObjType, RoomSeed, CeilingMode } from './types';
@@ -13,6 +13,7 @@ import { derive, DRoom, openingKind, elementName, floorUnder } from './derive';
 import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt } from './overheadGeom';
 import type { StrokeFit } from './strokes';
 import { isRoundish, fittedOutline } from './fit';
+import { mezzanineCandidates, stairCandidates, type MezzCandidate, type StairPlan } from './offers';
 
 export interface Decision {
   key: string;
@@ -568,6 +569,50 @@ export const opAddStair = (path: V2[], from: SurfaceRef, to: SurfaceRef, fromY: 
 export const opStair = (id: string, patch: Partial<Stair>): Op => (p) => {
   const s = p.stairs.find((x) => x.id === id);
   if (s) Object.assign(s, patch);
+};
+
+/**
+ * A mezzanine from a qualified offer, revalidated against the current project at commit time. The candidate's own
+ * outline and height are used — never recomputed from a different revision — and a candidate that no longer fits is
+ * not placed: the card says why and nothing moves. The deck is independent of the room's ceiling (a mezzanine *inside*
+ * the room), so it is not tied to the room's top.
+ */
+export const opAddMezzanine = (roomId: string, candidate: MezzCandidate): Op => (p) => {
+  const room = derive(p).rooms.find((r) => r.id === roomId);
+  const name = room?.name ?? 'the room';
+  const ok = mezzanineCandidates(p, roomId).find((c) => c.id === candidate.id);
+  if (!ok) return { notes: [{ kind: 'info', text: `A mezzanine no longer fits in ${name}. Nothing was placed.`, ids: [] }] };
+  const res = opAddDeck(ok.outline, ok.y, { name: `Mezzanine in ${name}` })(p, {}) as { select?: string };
+  const deckId = res.select!;
+  // Support is part of the same accepted step. A loft spanning away from the walls gets posts along every edge that
+  // is not already carried by a wall, spaced closer than the prototype's own support reach, so the result is never a
+  // floating deck the newcomer is left to repair.
+  let posts = 0;
+  const walls = room?.poly ?? [];
+  for (let i = 0; i < ok.outline.length; i++) {
+    const a = ok.outline[i], b = ok.outline[(i + 1) % ok.outline.length];
+    if (distToPolyEdge(lerp2(a, b, 0.5), walls) <= 0.55) continue;
+    const k = Math.max(1, Math.ceil(dist(a, b) / 2.2));
+    for (let j = 0; j < k; j++) {
+      const at = lerp2(a, b, (j + 0.5) / k);
+      if (distToPolyEdge(at, walls) <= 0.55) continue;
+      p.posts.push({ id: newId(p, 'q'), kind: 'post', at, size: 0.2, order: p.nextId });
+      posts++;
+    }
+  }
+  return {
+    select: deckId,
+    notes: [{ kind: 'good', text: posts ? `A mezzanine in ${name}, on ${posts} post${posts > 1 ? 's' : ''}.` : `A mezzanine in ${name}, supported by its walls.`, ids: [deckId] }],
+  };
+};
+
+/** A stair from a qualified offer onto an existing deck, revalidated at commit time. */
+export const opAddStairTo = (deckId: string, plan: StairPlan): Op => (p) => {
+  const deck = p.decks.find((x) => x.id === deckId);
+  if (!deck) return;
+  const ok = stairCandidates(p, deckId).find((s) => s.id === plan.id);
+  if (!ok) return { notes: [{ kind: 'info', text: `No clear approach to ${deck.name} any more. Nothing was placed.`, ids: [] }] };
+  return opAddStair(ok.path, ok.from, { kind: 'deck', id: deckId }, ok.fromY, ok.toY)(p, {});
 };
 
 export const opAddPost = (at: V2): Op => (p) => {

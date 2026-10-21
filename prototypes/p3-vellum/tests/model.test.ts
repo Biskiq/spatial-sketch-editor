@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { fitStroke } from '../src/model/strokes';
 import { emptyProject, Project } from '../src/model/types';
 import { runTxn, opAddRun, opRemove, opRoom, opAddOpening, opBend, opAddDeck, opCoverRooms, opMoveNode } from '../src/model/ops';
-import { derive } from '../src/model/derive';
+import { derive, coverGroup } from '../src/model/derive';
+import { P, union } from '../src/model/clip';
 import { arrange } from '../src/model/arrangement';
 import { V2 } from '../src/model/geom2d';
 import type { StrokeFit } from '../src/model/strokes';
@@ -50,6 +51,82 @@ describe('stroke reading', () => {
     expect(f.kind).toBe('open');
     expect(f.pts.length).toBe(2);
     expect(Math.abs(f.bulge[0])).toBeGreaterThan(0.3);
+  });
+});
+
+describe('covering the rooms a wall actually joins', () => {
+  const L = () => {
+    let p = apply(emptyProject(), opAddRun(poly([[0, 0], [10, 0], [10, 6], [0, 6]]), { baseY: 0 })).after;
+    p = apply(p, opAddRun(poly([[10, 6], [10, 14], [6, 14], [6, 6]], false), { baseY: 0 })).after;
+    return p;
+  };
+
+  it('finds both rooms of an L through their shared wall, starting from either', () => {
+    const p = L();
+    const d = derive(p);
+    expect(d.rooms.length).toBe(2);
+    for (const r of d.rooms) {
+      const g = coverGroup(d, r.id);
+      expect(g.length).toBe(2);
+      expect(g[0]).toBe(r.id);
+      expect(new Set(g)).toEqual(new Set(d.rooms.map((x) => x.id)));
+    }
+    // stable order for the rest, so preview and commit name the same rooms
+    expect(coverGroup(d, d.rooms[0].id)).toEqual(coverGroup(d, d.rooms[0].id));
+  });
+
+  it('leaves out a room that is already roofed, off the level, or too much taller than the room it starts from', () => {
+    const p = L();
+    let d = derive(p);
+    const first = d.rooms[0].id;
+    const second = d.rooms[1].id;
+    const roofed = apply(p, opCoverRooms([second], 'flat')).after;
+    d = derive(roofed);
+    expect(coverGroup(d, first)).toEqual([first]);
+
+    const taller = apply(p, opRoom(second, { height: 4.0 })).after;
+    d = derive(taller);
+    expect(coverGroup(d, first)).toEqual([first]);
+    expect(coverGroup(d, second)).toEqual([second]);
+
+    const raised = apply(p, opRoom(second, { floorY: 3 })).after;
+    d = derive(raised);
+    expect(coverGroup(d, first)).toEqual([first]);
+  });
+
+  it('stops before a ring of rooms would close around a courtyard it cannot keep open', () => {
+    // four rooms around a 4×4 courtyard: an outer 12×12 ring, the courtyard, and four spokes
+    let p = apply(emptyProject(), opAddRun(poly([[0, 0], [12, 0], [12, 12], [0, 12]]), { baseY: 0 })).after;
+    p = apply(p, opAddRun(poly([[4, 4], [8, 4], [8, 8], [4, 8]]), { baseY: 0 })).after;
+    for (const spoke of [[[4, 6], [0, 6]], [[8, 6], [12, 6]], [[6, 4], [6, 0]], [[6, 8], [6, 12]]] as V2[][]) {
+      p = apply(p, opAddRun(poly(spoke, false), { baseY: 0 })).after;
+    }
+    let d = derive(p);
+    expect(d.rooms.length).toBe(5);
+    // a roof over the courtyard only (a glazed lightwell): the four rooms around it can no longer be covered
+    // as one shape, because one roof outline has no way to keep that courtyard separate
+    const court = d.rooms.reduce((a, b) => (a.area <= b.area ? a : b));
+    p = apply(p, opCoverRooms([court.id], 'flat')).after;
+    d = derive(p);
+    const ring = d.rooms.filter((r) => r.id !== court.id);
+    expect(ring.length).toBe(4);
+    for (const r of ring) {
+      const g = coverGroup(d, r.id);
+      expect(g[0]).toBe(r.id);
+      expect(g).not.toContain(court.id);
+      expect(g.length).toBe(3);
+      const u = union(...g.map((id) => P(d.roomById.get(id)!.poly)));
+      expect(u.length).toBe(1);
+      expect(u[0].length).toBe(1); // no courtyard hole, no separate island
+    }
+  });
+
+  it('does not join rooms that only touch at a corner', () => {
+    let p = apply(emptyProject(), opAddRun(poly([[0, 0], [6, 0], [6, 4], [0, 4]]), { baseY: 0 })).after;
+    p = apply(p, opAddRun(poly([[6, 4], [10, 4], [10, 8], [6, 8]]), { baseY: 0 })).after;
+    const d = derive(p);
+    expect(d.rooms.length).toBe(2);
+    for (const r of d.rooms) expect(coverGroup(d, r.id)).toEqual([r.id]);
   });
 });
 

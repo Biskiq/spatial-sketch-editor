@@ -588,3 +588,49 @@ export function elementName(p: Project, id: string): string {
     case 'obj': return e.name;
   }
 }
+
+/**
+ * The rooms that one accepted cover may spread over, starting from `roomId`: connected through a shared wall piece
+ * at least 0.3 m long, on the same level, still unroofed, and with a top within 0.3 m of the *starting* room's top —
+ * compared to the start, not the previous room, so a chain cannot drift. The starting room is always first and the
+ * rest are ordered by name, so a preview and a commit name the same group.
+ *
+ * A room is only ever added if the group still unions into a single shape with no hole: a ring of rooms around a
+ * courtyard stops before it closes, because one roof outline has no way to keep that courtyard open.
+ */
+export function coverGroup(d: Derived, roomId: string, maxTopDrift = 0.3): string[] {
+  const start = d.roomById.get(roomId);
+  if (!start) return [];
+  const group = new Set<string>([roomId]);
+  const queue = [roomId];
+  while (queue.length) {
+    const id = queue.shift()!;
+    for (const w of d.walls.values()) {
+      for (const pc of w.pieces) {
+        const a = pc.left, b = pc.right;
+        if (!a || !b || (a !== id && b !== id)) continue;
+        const other = a === id ? b : a;
+        if (group.has(other)) continue;
+        const o = d.roomById.get(other);
+        if (!o) continue;
+        if (Math.abs(o.level - start.level) > 1e-6) continue;
+        if (o.coveredBy) continue;
+        if (Math.abs(o.topY - start.topY) > maxTopDrift) continue;
+        if (Math.abs(pc.s1 - pc.s0) < 0.3) continue;
+        if (!oneShape([...group, other], d)) continue;
+        group.add(other);
+        queue.push(other);
+      }
+    }
+  }
+  const name = (id: string) => d.roomById.get(id)?.name ?? '';
+  return [roomId, ...[...group].filter((x) => x !== roomId).sort((x, y) => name(x).localeCompare(name(y)))];
+}
+
+/** True when these rooms union into one outline with no courtyard in it. */
+function oneShape(ids: string[], d: Derived): boolean {
+  const polys = ids.map((id) => d.roomById.get(id)?.poly).filter((q): q is V2[] => !!q && q.length > 2);
+  if (polys.length !== ids.length) return false;
+  const u = union(...polys.map((q) => P(q)));
+  return u.length === 1 && u[0].length === 1;
+}
