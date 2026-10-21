@@ -3,10 +3,11 @@
 **Slice:** T1.P01.S06 · **Status:** in progress — **not accepted** (owner-authorized 2026-10-20 as batch D, ruling D1)
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the criteria) · **Phase:** [T1.P01](../README.md) · **Declared** `FINAL PHASE GATE` artifact of T1.P01
 
-This record claims only what was executed. TD-10 is closed, two further Stage-host defects found by the
-browser leg are fixed, every automated lane the plan requires is green on this revision, and **most** of
-the browser journeys now have recorded evidence. The fixture battery and two smaller observations are
-still unexecuted, so the gate is **not accepted** and `T1.P01` is **not closable**.
+TD-10 and the browser-discovered host defects are repaired. The owner ratified the bounded TD-11/12
+amendment and the separate Index correction. The fixture browser pass now has recorded observations.
+The corrected implementation is `b1ffa4e39cf6c7ea610d8220bfb5c74c4a381222`, based on `origin/main`
+`f412865512bfa2b5aa2d6ef58a9142c46a8b799a` through merge `5bca5d11`.
+**Acceptance remains the owner's review; no phase closure, merge or architecture verdict is claimed.**
 
 ```text
 tested revision   branch `T1-P01-S06`, based on `origin/main` `bb166c67` (the batch D merge)
@@ -17,16 +18,13 @@ browser           Chromium via agent-browser (owned sessions), Vite dev on 127.0
                   API on :8787 with the test-auth seam (`agent-user-a`), 1280×757 and 720×640
 ```
 
-## Authorization note — one deviation, flagged for the owner
+## Authorization — owner ratified
 
-Batch D ruling D1 authorizes "the exhaustive integrated verification this plan declares and the narrow
-TD-10 disposition", and no code outside the TD-10 repair. The browser leg could not be executed without
-repairing two host defects that made Plan selection and direct manipulation unreachable
-([TD-11 and TD-12](../../../../operations/tech-debt/README.md#td-11--stage-pointer-hits-and-overlay-markers-mix-stage-local-and-viewport-css)):
-with the Index open, a Plan click resolved a subject one panel away, and a 3D handle drag never committed.
-Both are one-boundary translations/state fixes with three new unit cases and no API, protocol or
-store change. They are recorded here as a **deliberate scope excursion**, not as authorized work; the
-owner should ratify or revert `5beb1e83` before this record is treated as acceptance evidence.
+The owner explicitly approved the [D1 corrective amendment](./d1-amendment.md) during the takeover,
+ratifying `5beb1e83`'s TD-11/12 increments and the necessary existing S05 paused-proposal correction and
+regressions. The owner separately approved the one-line raw Plan-state correction after a real
+Index-selection `DataCloneError` reproduction. The [Batch D record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md#d1-corrective-amendment--owner-approved-october-20-2026)
+records both approvals. All other ownership constraints remain unchanged.
 
 ## TD-10 — closed (first increment)
 
@@ -43,7 +41,7 @@ project, its Stage node and its saved base survive with no stale notice.
 restoring them passes 10/10, and the paired `spatial-route-resume-save` suite stays 5/5.
 Ledger: [TD-10 fixed](../../../../operations/tech-debt/README.md#td-10--a-late-successful-source-open-applies-after-a-newer-session-epoch).
 
-## TD-11 / TD-12 — fixed (this increment)
+## TD-11 / TD-12 — fixed, with takeover route regressions
 
 - **TD-11 — pointer and overlay spaces.** The route sends Stage-local CSS while the Camera projects into
   viewport CSS. `resolveSourceHit` now adds the evaluated rect once, `overlays()` and the route's
@@ -54,8 +52,9 @@ Ledger: [TD-10 fixed](../../../../operations/tech-debt/README.md#td-10--a-late-s
   raises the generation per frame, so the press paused after its first move and could not commit. The
   press now carries the evaluation it was measured in and is cancelled when the gesture lease ends
   (reading change), instead of released.
-- **Owed:** route-level tests for the selection echo offset and for press-scoped evaluation identity;
-  today they are covered by the facade/adapter cases plus the browser journeys below.
+- **Route coverage added:** `spatial-route-gesture.test.ts` uses the existing mounted-route probes
+  with real Camera, facade, Layout adapter and F4. It covers offset hits/echo, uninterrupted evaluation
+  updates, reading pause with exact Resume/Discard, stale release, navigation stability and cancellation.
 
 ## Automated gate — green on `5beb1e83`
 
@@ -104,17 +103,6 @@ The `Dimensions` observation from the previous revision is **resolved, not a def
 reached through the Index's `Inspect · Layout → Dimensions` task. Both are deliberate task homes; the
 finding was an instrument/lens mismatch in how the journey was driven, not a missing contribution.
 
-## Browser journeys — still not executed
-
-- The fixture battery the plan names: nonzero floor datum, curved Wall, shared Junction, duplicate names,
-  Opening void/cap, independent coincident structures, dense geometry, long identity. Their kernel and
-  architecture coverage is green, but this is **not** the browser evidence the plan requires.
-- Empty boot → **native plinth**: `Place plinth` was opened on the empty baseline and a Stage press
-  accepted nothing; whether that is a correct typed refusal (no enclosure/support yet) or a broken
-  placement was not established in this run.
-- Reduced-motion **behaviour** (settled vs animated readings) beyond the control and media emulation.
-- A narrow/short shell *interaction* pass (only overflow and layout were observed at 720×640).
-
 ## Residual — Card over the Compose instrument (owner: T1 shell composition)
 
 Reproduced, not fixed. With a subject selected and a Scene task open at **1280×900**:
@@ -129,11 +117,66 @@ cause is deterministic (two bottom-anchored overlays, the Card nearer the viewer
 because the correction is a shell-composition decision: how the Card and the bottom instrument band dock.
 Owner: T1 shell composition, next T1 increment.
 
-## What therefore remains before acceptance
+## Takeover implementation and browser evidence — October 20–21, 2026
 
-1. Run the fixture battery and the empty-baseline plinth journey in the browser, and establish whether
-   the plinth press is a typed refusal or a defect.
-2. Owner ratification (or revert) of `5beb1e83`, which exceeds D1's TD-10-only scope.
-3. The route-level tests TD-11/TD-12 still owe, and the reduced-motion behaviour observation.
-4. Then this record's acceptance, which is what makes `T1.P01` **closable** — closing it stays an
-   explicit owner event, and the architecture-cycle verdicts stay `owner-verdict-owed`.
+**NOT ACCEPTED — owner review outstanding.** The owner instructed that further independent review
+stop and that the result be pushed for their own review. After an immediate-wrap-up interruption, the
+owner resumed completion of verification. No slice-closeout or phase closure has been performed.
+Earlier automated results below remain historical; the final implementation results are recorded
+separately at the end.
+
+**Authorization:** the owner explicitly approved the [narrow D1 amendment](./d1-amendment.md), ratifying
+TD-11/12 and the necessary S05 compatibility repair/regressions, then separately approved the Index
+selection cloneability correction. No API, Camera-core, Layout/Scene planner or T3 authoring code changed.
+The branch includes trusted `origin/main` `f412865512bfa2b5aa2d6ef58a9142c46a8b799a`. The
+implementation revision is **`b1ffa4e39cf6c7ea610d8220bfb5c74c4a381222`**. The research/prototype
+changes brought in from accepted main are not S06 edits or acceptance evidence.
+
+**Reading-flip verdict:** reproduced through the mounted route before repair. `setReading` dropped the
+route press after the lease ended without reaching the Layout adapter's paused-proposal path.
+The host now evaluates through the existing Camera and forwards a noncommitting changed-evaluation
+move, then cancels pointer ownership. The adapter's existing mismatch path retains the exact request.
+Ordinary frame generations retain the press id. Wheel/Fit/keyboard navigation is refused during a
+claimed adapter drag so it cannot silently remap that press. No second controller or evaluator exists.
+
+**Index selection:** real browser row selection threw `DataCloneError` when a reactive Plan fragment
+reference reached immutable selection. Generated Plan evaluations are now `$state.raw`, replaced whole.
+Mounted Index selection and real browser selection both work after this correction.
+
+| Required condition | Actual takeover evidence |
+| --- | --- |
+| Nonzero datum and curved Wall | Admitted [fixture](./evidence/datum-curve-opening.json): 12 Walls, 3 Rooms, datum 1.25 m. Curved Wall Dimensions exposes Height/Thickness, no straight-only fields; height 3 → 3.2 accepted with Undo enabled. [Capture](./evidence/01-curved-datum.png) |
+| Shared Junction | Real endpoint preview showed `Length 11.097 m · fixed start` and `Neighbour room-0:wall-2 reshaped by this edit`; Escape cancelled. [Capture](./evidence/13-shared-junction-preview.png) |
+| Opening void/cap | Window fixture (offset 2, width 1.2, height 1.2, sill .8) admitted and selected in Plan and 3D; [precision](./evidence/05-opening.png), [3D](./evidence/14-opening-3d.png). A [focused 3D view](./evidence/15-opening-focused.png) after Bring into view/zoom/orbit visibly shows the void, sill and surrounding cap. Deeper correctness is covered by existing mesh/kernel suites. |
+| Duplicate names | Two different Wall ids `room-0:wall-0` / `room-0:wall-1` selected independently; both Card name inputs read `Duplicate Wall`. Index labels remain identity-based. [Capture](./evidence/12-duplicate-names.png) |
+| Independent coincident structures | Existing d12 exact-coincidence [fixture](./evidence/coincident.json), 8 Walls/2 Rooms; `k-a1` and `c-a1` independently selected with distinct canonical Card ids. [Capture](./evidence/06-coincident.png) |
+| Dense geometry and long identity | Existing 40-Wall/10-Room all-curved [fixture](./evidence/dense-long.json); all 40 Wall rows present, search `wall-long-identity` located the 258-character id, Card retained it, no horizontal overflow. [Identity](./evidence/10-dense-long.png), [Plan](./evidence/11-dense-plan.png). The [same three search inputs](./evidence/browser-observations.json) were observed on 12-Wall and 40-Wall sources; all expected rows returned. Times were highly noisy (roughly 32 ms–14.7 s in this headless software-rendered run), so no speed/regression inference or threshold is claimed. |
+| Empty → native plinth → precision → reopen | Numeric Place plinth succeeded. Repeated with X `2.734567890123`, Z `3.912345678901`; [downloaded source](./evidence/empty-plinth-source.json) and guarded reopen retain exact position `[2.734567890123,.5,3.912345678901]` and dimensions `[.8,1,.8]`, with Undo disabled after reopen. [Capture](./evidence/08-empty-reopened.png). Precision here is placement/inspection: Layout-plinth resize has no shipped writer; the Wall precision edit is the separate grouped journey. S04's historical “place → dimension edit” wording exceeds its delivered planner inventory and is not claimed. |
+| Reduced-motion behaviour | Real browser normal Plan → 3D: first sampled frame still Plan, later frame 3D. Reduced motion on: Plan endpoint reached in the first two sampled frames. The [successful repeated observation](./evidence/browser-observations.json) used a fresh admitted source after dismissing an HMR/beforeunload interruption. |
+| Narrow/short reachable controls | At 720×640: clicked Index collapse/expand, Plan, 3D, Fit, Open source guard and Cancel; clicked Place plinth, entered X=1.25/Z=2.5, placed a second object, then actual Undo/Redo buttons. Two object rows after Redo, Undo enabled, Redo disabled, no horizontal overflow. [Capture](./evidence/09-narrow-controls.png) |
+| Reading pause and Resume | Browser retained `9.961108398437501 m · fixed start`, showed Resume/Discard, and Resume removed paused markers/instrument and enabled Undo. [Paused](./evidence/02-reading-paused.png), [resumed](./evidence/03-reading-resumed.png) |
+
+**Executed takeover verification:** mounted route, source replacement, resumed Save, Wall manipulation
+and facade suites: **5 files / 58 tests passed**. The new mounted route suite is **9/9**, covering
+Index selection, offset hit/echo, continuous drag over evaluation updates, navigation stability,
+exact-angle Resume, Discard, stale release, pointer cancellation, capture loss and Escape. It checks
+one accepted history entry and subsequent Plan switching after Resume. Navigation mutation before
+the guard: 1 failed / 8 passed. Reading interruption failed before repair. `npm run check` reported
+0 errors / 0 warnings before the final navigation guard; it is not claimed as a final-revision check.
+The mounted Resume path emits Svelte `derived_inert` development warnings after the old instrument
+is destroyed; the browser and mounted assertions found no surviving paused marker/instrument.
+
+**Review:** an independent agent initially found the reading-flip blocker and later ran the 9/9
+mounted suite on the correction. It found the narrow approach technically sound, but did not accept
+the complete slice. At the owner's subsequent instruction, no further independent review is sought.
+The owner will review the pushed commit themselves.
+
+**Acceptance frontier:** owner review remains outstanding. Existing Save/conflict/Reload/TD-9 evidence
+above is preserved. Card-over-Compose remains the recorded T1 shell residual. Layout-plinth dimension
+editing is not claimed. Four development-only `derived_inert` warnings arise after Resume destroys
+the old instrument; subsequent reading changes work and no stale instrument or paused marker survives.
+**BLOCKED for acceptance pending owner review; not merge-ready.**
+
+## Final implementation gate — `b1ffa4e39cf6c7ea610d8220bfb5c74c4a381222`
+
+Execution in progress; results will be recorded here before the checkpoint is pushed.

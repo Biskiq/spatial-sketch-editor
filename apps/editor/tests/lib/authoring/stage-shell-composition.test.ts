@@ -172,9 +172,11 @@ describe('Stage shell composition', () => {
 		expect(route).toContain("acquisition.kind !== 'granted'");
 		expect(route).toContain('onpointercancel={onPointerCancel}');
 		expect(route).toContain('onlostpointercapture={onLostPointerCapture}');
-		// A reading change can end the lease before the flip is drawn; the samples the
-		// gesture took belong to the reading that is ending.
-		expect(route).toContain('session.gesture() === null) abortGesture()');
+		// A reading change must end the route press after the lease policy runs.
+		// The mounted spatial-route-gesture suite also proves the adapter receives
+		// the interruption first and preserves its exact Resume/Discard proposal.
+		const reading = route.slice(route.indexOf('function setReading('), route.indexOf('function fit('));
+		expect(reading).toMatch(/if \(drag !== null && session\.gesture\(\) === null\) \{[\s\S]*abortGesture\(\);/);
 		// One ending, used by every path, so a policy- released lease is not released
 		// twice and no ending is forgotten.
 		expect((route.match(/function endGesture\(\)/g) ?? []).length).toBe(1);

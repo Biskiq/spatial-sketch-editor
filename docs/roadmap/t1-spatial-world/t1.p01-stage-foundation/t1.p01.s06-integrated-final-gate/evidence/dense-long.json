@@ -1,0 +1,2298 @@
+{
+  "formatVersion": 1,
+  "id": "project:s06-fixture-gate",
+  "name": "S06 dense-long",
+  "acceptedRevision": {
+    "projectId": "project:s06-fixture-gate",
+    "revisionId": "revision-1"
+  },
+  "dependencyLock": {
+    "formatVersion": 1,
+    "entries": []
+  },
+  "units": {
+    "layout": {
+      "header": {
+        "domain": "layout",
+        "unitId": "project:s06-fixture-gate:layout",
+        "formatVersion": 5,
+        "contentRevision": "sha256-7fe3830528bf26b352213f0065a5ed071bd7b40477a303adf45209c9a37bb6ae"
+      },
+      "data": {
+        "units": "meters",
+        "formatVersion": 5,
+        "floor": {
+          "id": "floor",
+          "name": "Floor",
+          "elevation": 0
+        },
+        "junctions": [
+          {
+            "id": "room-0:j0",
+            "point": [
+              0,
+              0
+            ]
+          },
+          {
+            "id": "room-0:j1",
+            "point": [
+              12,
+              0
+            ]
+          },
+          {
+            "id": "room-0:j2",
+            "point": [
+              12,
+              10
+            ]
+          },
+          {
+            "id": "room-0:j3",
+            "point": [
+              0,
+              10
+            ]
+          },
+          {
+            "id": "room-1:j0",
+            "point": [
+              20,
+              0
+            ]
+          },
+          {
+            "id": "room-1:j1",
+            "point": [
+              32,
+              0
+            ]
+          },
+          {
+            "id": "room-1:j2",
+            "point": [
+              32,
+              10
+            ]
+          },
+          {
+            "id": "room-1:j3",
+            "point": [
+              20,
+              10
+            ]
+          },
+          {
+            "id": "room-2:j0",
+            "point": [
+              40,
+              0
+            ]
+          },
+          {
+            "id": "room-2:j1",
+            "point": [
+              52,
+              0
+            ]
+          },
+          {
+            "id": "room-2:j2",
+            "point": [
+              52,
+              10
+            ]
+          },
+          {
+            "id": "room-2:j3",
+            "point": [
+              40,
+              10
+            ]
+          },
+          {
+            "id": "room-3:j0",
+            "point": [
+              60,
+              0
+            ]
+          },
+          {
+            "id": "room-3:j1",
+            "point": [
+              72,
+              0
+            ]
+          },
+          {
+            "id": "room-3:j2",
+            "point": [
+              72,
+              10
+            ]
+          },
+          {
+            "id": "room-3:j3",
+            "point": [
+              60,
+              10
+            ]
+          },
+          {
+            "id": "room-4:j0",
+            "point": [
+              0,
+              18
+            ]
+          },
+          {
+            "id": "room-4:j1",
+            "point": [
+              12,
+              18
+            ]
+          },
+          {
+            "id": "room-4:j2",
+            "point": [
+              12,
+              28
+            ]
+          },
+          {
+            "id": "room-4:j3",
+            "point": [
+              0,
+              28
+            ]
+          },
+          {
+            "id": "room-5:j0",
+            "point": [
+              20,
+              18
+            ]
+          },
+          {
+            "id": "room-5:j1",
+            "point": [
+              32,
+              18
+            ]
+          },
+          {
+            "id": "room-5:j2",
+            "point": [
+              32,
+              28
+            ]
+          },
+          {
+            "id": "room-5:j3",
+            "point": [
+              20,
+              28
+            ]
+          },
+          {
+            "id": "room-6:j0",
+            "point": [
+              40,
+              18
+            ]
+          },
+          {
+            "id": "room-6:j1",
+            "point": [
+              52,
+              18
+            ]
+          },
+          {
+            "id": "room-6:j2",
+            "point": [
+              52,
+              28
+            ]
+          },
+          {
+            "id": "room-6:j3",
+            "point": [
+              40,
+              28
+            ]
+          },
+          {
+            "id": "room-7:j0",
+            "point": [
+              60,
+              18
+            ]
+          },
+          {
+            "id": "room-7:j1",
+            "point": [
+              72,
+              18
+            ]
+          },
+          {
+            "id": "room-7:j2",
+            "point": [
+              72,
+              28
+            ]
+          },
+          {
+            "id": "room-7:j3",
+            "point": [
+              60,
+              28
+            ]
+          },
+          {
+            "id": "room-8:j0",
+            "point": [
+              0,
+              36
+            ]
+          },
+          {
+            "id": "room-8:j1",
+            "point": [
+              12,
+              36
+            ]
+          },
+          {
+            "id": "room-8:j2",
+            "point": [
+              12,
+              46
+            ]
+          },
+          {
+            "id": "room-8:j3",
+            "point": [
+              0,
+              46
+            ]
+          },
+          {
+            "id": "room-9:j0",
+            "point": [
+              20,
+              36
+            ]
+          },
+          {
+            "id": "room-9:j1",
+            "point": [
+              32,
+              36
+            ]
+          },
+          {
+            "id": "room-9:j2",
+            "point": [
+              32,
+              46
+            ]
+          },
+          {
+            "id": "room-9:j3",
+            "point": [
+              20,
+              46
+            ]
+          }
+        ],
+        "walls": [
+          {
+            "id": "wall-long-identity-abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+            "startJunctionId": "room-0:j0",
+            "endJunctionId": "room-0:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-0:wall-0:knot:1",
+                  "point": [
+                    6,
+                    -0.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    2,
+                    -0.11666666666666667
+                  ],
+                  "handleIn": [
+                    4,
+                    -0.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    8,
+                    -0.35
+                  ],
+                  "handleIn": [
+                    10,
+                    -0.11666666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-0:wall-1",
+            "startJunctionId": "room-0:j1",
+            "endJunctionId": "room-0:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-0:wall-1:knot:1",
+                  "point": [
+                    12.35,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    12.116666666666667,
+                    1.6666666666666665
+                  ],
+                  "handleIn": [
+                    12.35,
+                    3.3333333333333335
+                  ]
+                },
+                {
+                  "handleOut": [
+                    12.35,
+                    6.666666666666666
+                  ],
+                  "handleIn": [
+                    12.116666666666667,
+                    8.333333333333334
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-0:wall-2",
+            "startJunctionId": "room-0:j2",
+            "endJunctionId": "room-0:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-0:wall-2:knot:1",
+                  "point": [
+                    6,
+                    10.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    10,
+                    10.116666666666667
+                  ],
+                  "handleIn": [
+                    8,
+                    10.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    4,
+                    10.35
+                  ],
+                  "handleIn": [
+                    2,
+                    10.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-0:wall-3",
+            "startJunctionId": "room-0:j3",
+            "endJunctionId": "room-0:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-0:wall-3:knot:1",
+                  "point": [
+                    -0.35,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    -0.11666666666666665,
+                    8.333333333333334
+                  ],
+                  "handleIn": [
+                    -0.35,
+                    6.666666666666666
+                  ]
+                },
+                {
+                  "handleOut": [
+                    -0.35,
+                    3.3333333333333335
+                  ],
+                  "handleIn": [
+                    -0.11666666666666665,
+                    1.6666666666666665
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-1:wall-0",
+            "startJunctionId": "room-1:j0",
+            "endJunctionId": "room-1:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-1:wall-0:knot:1",
+                  "point": [
+                    26,
+                    -0.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    22,
+                    -0.11666666666666667
+                  ],
+                  "handleIn": [
+                    24,
+                    -0.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    28,
+                    -0.35
+                  ],
+                  "handleIn": [
+                    30,
+                    -0.11666666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-1:wall-1",
+            "startJunctionId": "room-1:j1",
+            "endJunctionId": "room-1:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-1:wall-1:knot:1",
+                  "point": [
+                    32.35,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    32.11666666666667,
+                    1.6666666666666665
+                  ],
+                  "handleIn": [
+                    32.35,
+                    3.3333333333333335
+                  ]
+                },
+                {
+                  "handleOut": [
+                    32.35,
+                    6.666666666666666
+                  ],
+                  "handleIn": [
+                    32.11666666666667,
+                    8.333333333333334
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-1:wall-2",
+            "startJunctionId": "room-1:j2",
+            "endJunctionId": "room-1:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-1:wall-2:knot:1",
+                  "point": [
+                    26,
+                    10.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    30,
+                    10.116666666666667
+                  ],
+                  "handleIn": [
+                    28,
+                    10.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    24,
+                    10.35
+                  ],
+                  "handleIn": [
+                    22,
+                    10.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-1:wall-3",
+            "startJunctionId": "room-1:j3",
+            "endJunctionId": "room-1:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-1:wall-3:knot:1",
+                  "point": [
+                    19.65,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    19.883333333333333,
+                    8.333333333333334
+                  ],
+                  "handleIn": [
+                    19.65,
+                    6.666666666666666
+                  ]
+                },
+                {
+                  "handleOut": [
+                    19.65,
+                    3.3333333333333335
+                  ],
+                  "handleIn": [
+                    19.883333333333333,
+                    1.6666666666666665
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-2:wall-0",
+            "startJunctionId": "room-2:j0",
+            "endJunctionId": "room-2:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-2:wall-0:knot:1",
+                  "point": [
+                    46,
+                    -0.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    42,
+                    -0.11666666666666667
+                  ],
+                  "handleIn": [
+                    44,
+                    -0.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    48,
+                    -0.35
+                  ],
+                  "handleIn": [
+                    50,
+                    -0.11666666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-2:wall-1",
+            "startJunctionId": "room-2:j1",
+            "endJunctionId": "room-2:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-2:wall-1:knot:1",
+                  "point": [
+                    52.35,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    52.11666666666667,
+                    1.6666666666666665
+                  ],
+                  "handleIn": [
+                    52.35,
+                    3.3333333333333335
+                  ]
+                },
+                {
+                  "handleOut": [
+                    52.35,
+                    6.666666666666666
+                  ],
+                  "handleIn": [
+                    52.11666666666667,
+                    8.333333333333334
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-2:wall-2",
+            "startJunctionId": "room-2:j2",
+            "endJunctionId": "room-2:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-2:wall-2:knot:1",
+                  "point": [
+                    46,
+                    10.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    50,
+                    10.116666666666667
+                  ],
+                  "handleIn": [
+                    48,
+                    10.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    44,
+                    10.35
+                  ],
+                  "handleIn": [
+                    42,
+                    10.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-2:wall-3",
+            "startJunctionId": "room-2:j3",
+            "endJunctionId": "room-2:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-2:wall-3:knot:1",
+                  "point": [
+                    39.65,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    39.88333333333333,
+                    8.333333333333334
+                  ],
+                  "handleIn": [
+                    39.65,
+                    6.666666666666666
+                  ]
+                },
+                {
+                  "handleOut": [
+                    39.65,
+                    3.3333333333333335
+                  ],
+                  "handleIn": [
+                    39.88333333333333,
+                    1.6666666666666665
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-3:wall-0",
+            "startJunctionId": "room-3:j0",
+            "endJunctionId": "room-3:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-3:wall-0:knot:1",
+                  "point": [
+                    66,
+                    -0.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    62,
+                    -0.11666666666666667
+                  ],
+                  "handleIn": [
+                    64,
+                    -0.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    68,
+                    -0.35
+                  ],
+                  "handleIn": [
+                    70,
+                    -0.11666666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-3:wall-1",
+            "startJunctionId": "room-3:j1",
+            "endJunctionId": "room-3:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-3:wall-1:knot:1",
+                  "point": [
+                    72.35,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    72.11666666666666,
+                    1.6666666666666665
+                  ],
+                  "handleIn": [
+                    72.35,
+                    3.3333333333333335
+                  ]
+                },
+                {
+                  "handleOut": [
+                    72.35,
+                    6.666666666666666
+                  ],
+                  "handleIn": [
+                    72.11666666666666,
+                    8.333333333333334
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-3:wall-2",
+            "startJunctionId": "room-3:j2",
+            "endJunctionId": "room-3:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-3:wall-2:knot:1",
+                  "point": [
+                    66,
+                    10.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    70,
+                    10.116666666666667
+                  ],
+                  "handleIn": [
+                    68,
+                    10.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    64,
+                    10.35
+                  ],
+                  "handleIn": [
+                    62,
+                    10.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-3:wall-3",
+            "startJunctionId": "room-3:j3",
+            "endJunctionId": "room-3:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-3:wall-3:knot:1",
+                  "point": [
+                    59.65,
+                    5
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    59.88333333333333,
+                    8.333333333333334
+                  ],
+                  "handleIn": [
+                    59.65,
+                    6.666666666666666
+                  ]
+                },
+                {
+                  "handleOut": [
+                    59.65,
+                    3.3333333333333335
+                  ],
+                  "handleIn": [
+                    59.88333333333333,
+                    1.6666666666666665
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-4:wall-0",
+            "startJunctionId": "room-4:j0",
+            "endJunctionId": "room-4:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-4:wall-0:knot:1",
+                  "point": [
+                    6,
+                    17.65
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    2,
+                    17.883333333333333
+                  ],
+                  "handleIn": [
+                    4,
+                    17.65
+                  ]
+                },
+                {
+                  "handleOut": [
+                    8,
+                    17.65
+                  ],
+                  "handleIn": [
+                    10,
+                    17.883333333333333
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-4:wall-1",
+            "startJunctionId": "room-4:j1",
+            "endJunctionId": "room-4:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-4:wall-1:knot:1",
+                  "point": [
+                    12.35,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    12.116666666666667,
+                    19.666666666666668
+                  ],
+                  "handleIn": [
+                    12.35,
+                    21.333333333333332
+                  ]
+                },
+                {
+                  "handleOut": [
+                    12.35,
+                    24.666666666666668
+                  ],
+                  "handleIn": [
+                    12.116666666666667,
+                    26.333333333333332
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-4:wall-2",
+            "startJunctionId": "room-4:j2",
+            "endJunctionId": "room-4:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-4:wall-2:knot:1",
+                  "point": [
+                    6,
+                    28.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    10,
+                    28.116666666666667
+                  ],
+                  "handleIn": [
+                    8,
+                    28.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    4,
+                    28.35
+                  ],
+                  "handleIn": [
+                    2,
+                    28.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-4:wall-3",
+            "startJunctionId": "room-4:j3",
+            "endJunctionId": "room-4:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-4:wall-3:knot:1",
+                  "point": [
+                    -0.35,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    -0.11666666666666665,
+                    26.333333333333332
+                  ],
+                  "handleIn": [
+                    -0.35,
+                    24.666666666666668
+                  ]
+                },
+                {
+                  "handleOut": [
+                    -0.35,
+                    21.333333333333332
+                  ],
+                  "handleIn": [
+                    -0.11666666666666665,
+                    19.666666666666668
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-5:wall-0",
+            "startJunctionId": "room-5:j0",
+            "endJunctionId": "room-5:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-5:wall-0:knot:1",
+                  "point": [
+                    26,
+                    17.65
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    22,
+                    17.883333333333333
+                  ],
+                  "handleIn": [
+                    24,
+                    17.65
+                  ]
+                },
+                {
+                  "handleOut": [
+                    28,
+                    17.65
+                  ],
+                  "handleIn": [
+                    30,
+                    17.883333333333333
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-5:wall-1",
+            "startJunctionId": "room-5:j1",
+            "endJunctionId": "room-5:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-5:wall-1:knot:1",
+                  "point": [
+                    32.35,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    32.11666666666667,
+                    19.666666666666668
+                  ],
+                  "handleIn": [
+                    32.35,
+                    21.333333333333332
+                  ]
+                },
+                {
+                  "handleOut": [
+                    32.35,
+                    24.666666666666668
+                  ],
+                  "handleIn": [
+                    32.11666666666667,
+                    26.333333333333332
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-5:wall-2",
+            "startJunctionId": "room-5:j2",
+            "endJunctionId": "room-5:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-5:wall-2:knot:1",
+                  "point": [
+                    26,
+                    28.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    30,
+                    28.116666666666667
+                  ],
+                  "handleIn": [
+                    28,
+                    28.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    24,
+                    28.35
+                  ],
+                  "handleIn": [
+                    22,
+                    28.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-5:wall-3",
+            "startJunctionId": "room-5:j3",
+            "endJunctionId": "room-5:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-5:wall-3:knot:1",
+                  "point": [
+                    19.65,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    19.883333333333333,
+                    26.333333333333332
+                  ],
+                  "handleIn": [
+                    19.65,
+                    24.666666666666668
+                  ]
+                },
+                {
+                  "handleOut": [
+                    19.65,
+                    21.333333333333332
+                  ],
+                  "handleIn": [
+                    19.883333333333333,
+                    19.666666666666668
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-6:wall-0",
+            "startJunctionId": "room-6:j0",
+            "endJunctionId": "room-6:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-6:wall-0:knot:1",
+                  "point": [
+                    46,
+                    17.65
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    42,
+                    17.883333333333333
+                  ],
+                  "handleIn": [
+                    44,
+                    17.65
+                  ]
+                },
+                {
+                  "handleOut": [
+                    48,
+                    17.65
+                  ],
+                  "handleIn": [
+                    50,
+                    17.883333333333333
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-6:wall-1",
+            "startJunctionId": "room-6:j1",
+            "endJunctionId": "room-6:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-6:wall-1:knot:1",
+                  "point": [
+                    52.35,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    52.11666666666667,
+                    19.666666666666668
+                  ],
+                  "handleIn": [
+                    52.35,
+                    21.333333333333332
+                  ]
+                },
+                {
+                  "handleOut": [
+                    52.35,
+                    24.666666666666668
+                  ],
+                  "handleIn": [
+                    52.11666666666667,
+                    26.333333333333332
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-6:wall-2",
+            "startJunctionId": "room-6:j2",
+            "endJunctionId": "room-6:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-6:wall-2:knot:1",
+                  "point": [
+                    46,
+                    28.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    50,
+                    28.116666666666667
+                  ],
+                  "handleIn": [
+                    48,
+                    28.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    44,
+                    28.35
+                  ],
+                  "handleIn": [
+                    42,
+                    28.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-6:wall-3",
+            "startJunctionId": "room-6:j3",
+            "endJunctionId": "room-6:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-6:wall-3:knot:1",
+                  "point": [
+                    39.65,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    39.88333333333333,
+                    26.333333333333332
+                  ],
+                  "handleIn": [
+                    39.65,
+                    24.666666666666668
+                  ]
+                },
+                {
+                  "handleOut": [
+                    39.65,
+                    21.333333333333332
+                  ],
+                  "handleIn": [
+                    39.88333333333333,
+                    19.666666666666668
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-7:wall-0",
+            "startJunctionId": "room-7:j0",
+            "endJunctionId": "room-7:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-7:wall-0:knot:1",
+                  "point": [
+                    66,
+                    17.65
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    62,
+                    17.883333333333333
+                  ],
+                  "handleIn": [
+                    64,
+                    17.65
+                  ]
+                },
+                {
+                  "handleOut": [
+                    68,
+                    17.65
+                  ],
+                  "handleIn": [
+                    70,
+                    17.883333333333333
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-7:wall-1",
+            "startJunctionId": "room-7:j1",
+            "endJunctionId": "room-7:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-7:wall-1:knot:1",
+                  "point": [
+                    72.35,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    72.11666666666666,
+                    19.666666666666668
+                  ],
+                  "handleIn": [
+                    72.35,
+                    21.333333333333332
+                  ]
+                },
+                {
+                  "handleOut": [
+                    72.35,
+                    24.666666666666668
+                  ],
+                  "handleIn": [
+                    72.11666666666666,
+                    26.333333333333332
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-7:wall-2",
+            "startJunctionId": "room-7:j2",
+            "endJunctionId": "room-7:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-7:wall-2:knot:1",
+                  "point": [
+                    66,
+                    28.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    70,
+                    28.116666666666667
+                  ],
+                  "handleIn": [
+                    68,
+                    28.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    64,
+                    28.35
+                  ],
+                  "handleIn": [
+                    62,
+                    28.116666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-7:wall-3",
+            "startJunctionId": "room-7:j3",
+            "endJunctionId": "room-7:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-7:wall-3:knot:1",
+                  "point": [
+                    59.65,
+                    23
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    59.88333333333333,
+                    26.333333333333332
+                  ],
+                  "handleIn": [
+                    59.65,
+                    24.666666666666668
+                  ]
+                },
+                {
+                  "handleOut": [
+                    59.65,
+                    21.333333333333332
+                  ],
+                  "handleIn": [
+                    59.88333333333333,
+                    19.666666666666668
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-8:wall-0",
+            "startJunctionId": "room-8:j0",
+            "endJunctionId": "room-8:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-8:wall-0:knot:1",
+                  "point": [
+                    6,
+                    35.65
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    2,
+                    35.88333333333333
+                  ],
+                  "handleIn": [
+                    4,
+                    35.65
+                  ]
+                },
+                {
+                  "handleOut": [
+                    8,
+                    35.65
+                  ],
+                  "handleIn": [
+                    10,
+                    35.88333333333333
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-8:wall-1",
+            "startJunctionId": "room-8:j1",
+            "endJunctionId": "room-8:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-8:wall-1:knot:1",
+                  "point": [
+                    12.35,
+                    41
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    12.116666666666667,
+                    37.666666666666664
+                  ],
+                  "handleIn": [
+                    12.35,
+                    39.333333333333336
+                  ]
+                },
+                {
+                  "handleOut": [
+                    12.35,
+                    42.666666666666664
+                  ],
+                  "handleIn": [
+                    12.116666666666667,
+                    44.333333333333336
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-8:wall-2",
+            "startJunctionId": "room-8:j2",
+            "endJunctionId": "room-8:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-8:wall-2:knot:1",
+                  "point": [
+                    6,
+                    46.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    10,
+                    46.11666666666667
+                  ],
+                  "handleIn": [
+                    8,
+                    46.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    4,
+                    46.35
+                  ],
+                  "handleIn": [
+                    2,
+                    46.11666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-8:wall-3",
+            "startJunctionId": "room-8:j3",
+            "endJunctionId": "room-8:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-8:wall-3:knot:1",
+                  "point": [
+                    -0.35,
+                    41
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    -0.11666666666666665,
+                    44.333333333333336
+                  ],
+                  "handleIn": [
+                    -0.35,
+                    42.666666666666664
+                  ]
+                },
+                {
+                  "handleOut": [
+                    -0.35,
+                    39.333333333333336
+                  ],
+                  "handleIn": [
+                    -0.11666666666666665,
+                    37.666666666666664
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-9:wall-0",
+            "startJunctionId": "room-9:j0",
+            "endJunctionId": "room-9:j1",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-9:wall-0:knot:1",
+                  "point": [
+                    26,
+                    35.65
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    22,
+                    35.88333333333333
+                  ],
+                  "handleIn": [
+                    24,
+                    35.65
+                  ]
+                },
+                {
+                  "handleOut": [
+                    28,
+                    35.65
+                  ],
+                  "handleIn": [
+                    30,
+                    35.88333333333333
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-9:wall-1",
+            "startJunctionId": "room-9:j1",
+            "endJunctionId": "room-9:j2",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-9:wall-1:knot:1",
+                  "point": [
+                    32.35,
+                    41
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    32.11666666666667,
+                    37.666666666666664
+                  ],
+                  "handleIn": [
+                    32.35,
+                    39.333333333333336
+                  ]
+                },
+                {
+                  "handleOut": [
+                    32.35,
+                    42.666666666666664
+                  ],
+                  "handleIn": [
+                    32.11666666666667,
+                    44.333333333333336
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-9:wall-2",
+            "startJunctionId": "room-9:j2",
+            "endJunctionId": "room-9:j3",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-9:wall-2:knot:1",
+                  "point": [
+                    26,
+                    46.35
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    30,
+                    46.11666666666667
+                  ],
+                  "handleIn": [
+                    28,
+                    46.35
+                  ]
+                },
+                {
+                  "handleOut": [
+                    24,
+                    46.35
+                  ],
+                  "handleIn": [
+                    22,
+                    46.11666666666667
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "id": "room-9:wall-3",
+            "startJunctionId": "room-9:j3",
+            "endJunctionId": "room-9:j0",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "cubic-chain",
+              "knots": [
+                {
+                  "id": "room-9:wall-3:knot:1",
+                  "point": [
+                    19.65,
+                    41
+                  ]
+                }
+              ],
+              "spans": [
+                {
+                  "handleOut": [
+                    19.883333333333333,
+                    44.333333333333336
+                  ],
+                  "handleIn": [
+                    19.65,
+                    42.666666666666664
+                  ]
+                },
+                {
+                  "handleOut": [
+                    19.65,
+                    39.333333333333336
+                  ],
+                  "handleIn": [
+                    19.883333333333333,
+                    37.666666666666664
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "id": "room-0",
+            "name": "Room 0",
+            "boundary": [
+              {
+                "wallId": "wall-long-identity-abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghij",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-0:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-0:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-0:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-1",
+            "name": "Room 1",
+            "boundary": [
+              {
+                "wallId": "room-1:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-1:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-1:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-1:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-2",
+            "name": "Room 2",
+            "boundary": [
+              {
+                "wallId": "room-2:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-2:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-2:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-2:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-3",
+            "name": "Room 3",
+            "boundary": [
+              {
+                "wallId": "room-3:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-3:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-3:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-3:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-4",
+            "name": "Room 4",
+            "boundary": [
+              {
+                "wallId": "room-4:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-4:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-4:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-4:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-5",
+            "name": "Room 5",
+            "boundary": [
+              {
+                "wallId": "room-5:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-5:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-5:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-5:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-6",
+            "name": "Room 6",
+            "boundary": [
+              {
+                "wallId": "room-6:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-6:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-6:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-6:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-7",
+            "name": "Room 7",
+            "boundary": [
+              {
+                "wallId": "room-7:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-7:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-7:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-7:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-8",
+            "name": "Room 8",
+            "boundary": [
+              {
+                "wallId": "room-8:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-8:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-8:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-8:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-9",
+            "name": "Room 9",
+            "boundary": [
+              {
+                "wallId": "room-9:wall-0",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-9:wall-1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-9:wall-2",
+                "direction": "forward"
+              },
+              {
+                "wallId": "room-9:wall-3",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          }
+        ],
+        "openings": [],
+        "objects": [],
+        "identity": {
+          "cursor": 0,
+          "rooms": {},
+          "junctions": {},
+          "walls": {},
+          "openings": {}
+        }
+      }
+    },
+    "scene": {
+      "header": {
+        "domain": "scene",
+        "unitId": "project:s06-fixture-gate:scene",
+        "formatVersion": 2,
+        "contentRevision": "sha256-096d5b3199637cb9a00a0c801986aca50cfaf67c8fdb37917a718faf56132168"
+      },
+      "data": {
+        "formatVersion": 2,
+        "textures": [],
+        "materials": [],
+        "entities": []
+      }
+    },
+    "camera": {
+      "header": {
+        "domain": "camera",
+        "unitId": "project:s06-fixture-gate:camera",
+        "formatVersion": 1,
+        "contentRevision": "sha256-bc34d5cbec17db2aed8857f8d0489e4917e5832839aeec337e42934abca17df0"
+      },
+      "data": {
+        "formatVersion": 1,
+        "views": [],
+        "connections": []
+      }
+    },
+    "experience": {
+      "header": {
+        "domain": "experience",
+        "unitId": "project:s06-fixture-gate:experience",
+        "formatVersion": 1,
+        "contentRevision": "sha256-54507fb88afebbe34143ec370039abe978bed22b996fdd7d8765bebcda93cd6f"
+      },
+      "data": {
+        "formatVersion": 1,
+        "experiences": []
+      }
+    },
+    "resources": {
+      "header": {
+        "domain": "resources",
+        "unitId": "project:s06-fixture-gate:resources",
+        "formatVersion": 1,
+        "contentRevision": "sha256-9482adb0db109b0d3a588810edc7ef22d889ce8822c0c527f904eac542667eca"
+      },
+      "data": {
+        "formatVersion": 1,
+        "resources": []
+      }
+    }
+  }
+}

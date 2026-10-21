@@ -28,13 +28,28 @@ one whose subject retired with the benchmark is **retired**. Neither is ever rec
 as *fixed*: nothing was repaired, and the obligation that survives is the one named
 below, not the entry.
 
-Both entries below were found *by* the S06 browser leg and fixed in the same slice, under
-a scoped authorization that named only the TD-10 repair; the acceptance record flags that
-deviation explicitly for owner ratification.
+TD-11/TD-12 were found by the S06 browser leg and initially exceeded the TD-10-only code scope.
+The owner explicitly ratified their narrow corrective amendment during the PR #168 takeover, then
+separately approved the TD-13 Index correction. The exact scope and provenance are recorded in the
+[S06 amendment](../../roadmap/t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/d1-amendment.md).
 
 ---
 
 ## Fixed
+
+## TD-13 — Index selection passes a reactive Plan reference to immutable selection
+
+Status        fixed (PR #168 takeover; owner-approved narrow correction)
+Found         2026-10-20, real-browser selection of an eligible Index row
+Owner         T1 Stage host (spatial route)
+Symptom       An Index row throws `DataCloneError` and leaves selection unchanged.
+Root cause    `planView` was deep reactive state. `selectSource` handed its proxied fragment reference
+              to immutable selection, whose `structuredClone` refuses a Svelte proxy.
+Correction    Generated Plan evaluations are replaced whole through `$state.raw`; no nested Plan
+              mutation exists and no selection/serialization authority changes.
+Evidence      `spatial-route-gesture.test.ts`: mounted Index row selects the requested Wall through
+              the real route/session/facade. Real browser independently selected the two named
+              Walls, coincident Walls and long identity. The mutation restoring `$state` fails.
 
 ## TD-12 — an adapter drag re-reads the evaluation id every frame, so it never commits
 
@@ -61,7 +76,14 @@ Fix options   1) Carry the evaluation the press was measured in from the claimed
               projection each move — do NOT take this: it silently rebases a drag the creator did
               not measure in that view.
 Then add      The browser journey itself (drag commit, Escape cancel, drag after a reading flip).
-              A route-level harness for press-scoped evaluation identity is still owed.
+              The takeover adds `spatial-route-gesture.test.ts`, through the existing route probes:
+              ordinary evaluation updates commit once; a genuine reading flip preserves the exact
+              request with explicit Resume/Discard; stale release commits nothing. It also covers
+              offset hits/echo, cancellation, capture loss, Escape and subsequent reading changes.
+              The first repair's direct abort bypassed the accepted S05 pause path; the takeover
+              now notifies the existing adapter mismatch path before clearing ownership. A
+              reproduced navigation drift during a claimed press is prevented by refusing host
+              wheel/Fit/keyboard navigation until release; explicit reading interruption still runs.
 
 ## TD-11 — Stage pointer hits and overlay markers mix Stage-local and viewport CSS
 
@@ -89,7 +111,8 @@ Fix options   1) Translate once at the facade boundary in both directions (`reso
               projection contract in every adapter.
 Then add      `stage-facade.test.ts` (offset hit resolution, offset overlay marker) and
               `layout-wall-manipulation.test.ts` (handle claim from Stage-local CSS) — added with
-              the fix. A route-level echo assertion is still owed.
+              the fix. The takeover adds the mounted route offset-hit/selection-echo assertion in
+              `spatial-route-gesture.test.ts`.
 
 ## TD-10 — a late successful source Open applies after a newer session epoch
 

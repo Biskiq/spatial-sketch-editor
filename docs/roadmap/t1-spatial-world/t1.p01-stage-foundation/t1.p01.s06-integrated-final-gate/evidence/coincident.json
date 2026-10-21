@@ -1,0 +1,322 @@
+{
+  "formatVersion": 1,
+  "id": "project:s06-fixture-gate",
+  "name": "S06 coincident",
+  "acceptedRevision": {
+    "projectId": "project:s06-fixture-gate",
+    "revisionId": "revision-1"
+  },
+  "dependencyLock": {
+    "formatVersion": 1,
+    "entries": []
+  },
+  "units": {
+    "layout": {
+      "header": {
+        "domain": "layout",
+        "unitId": "project:s06-fixture-gate:layout",
+        "formatVersion": 5,
+        "contentRevision": "sha256-baddfd671c79ae10dcb0f461969c5a56628035aa4fa9b8715be9c39c184a1b3f"
+      },
+      "data": {
+        "units": "meters",
+        "formatVersion": 5,
+        "floor": {
+          "id": "floor",
+          "name": "Floor",
+          "elevation": 0
+        },
+        "junctions": [
+          {
+            "id": "k-a",
+            "point": [
+              0,
+              0
+            ]
+          },
+          {
+            "id": "k-b",
+            "point": [
+              6,
+              0
+            ]
+          },
+          {
+            "id": "k-c",
+            "point": [
+              6,
+              4
+            ]
+          },
+          {
+            "id": "k-d",
+            "point": [
+              0,
+              4
+            ]
+          },
+          {
+            "id": "c-a",
+            "point": [
+              0,
+              0
+            ]
+          },
+          {
+            "id": "c-b",
+            "point": [
+              6,
+              0
+            ]
+          },
+          {
+            "id": "c-c",
+            "point": [
+              6,
+              4
+            ]
+          },
+          {
+            "id": "c-d",
+            "point": [
+              0,
+              4
+            ]
+          }
+        ],
+        "walls": [
+          {
+            "id": "k-a1",
+            "startJunctionId": "k-a",
+            "endJunctionId": "k-b",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "k-b1",
+            "startJunctionId": "k-b",
+            "endJunctionId": "k-c",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "k-c1",
+            "startJunctionId": "k-c",
+            "endJunctionId": "k-d",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "k-d1",
+            "startJunctionId": "k-d",
+            "endJunctionId": "k-a",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "c-a1",
+            "startJunctionId": "c-a",
+            "endJunctionId": "c-b",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "c-b1",
+            "startJunctionId": "c-b",
+            "endJunctionId": "c-c",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "c-c1",
+            "startJunctionId": "c-c",
+            "endJunctionId": "c-d",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          },
+          {
+            "id": "c-d1",
+            "startJunctionId": "c-d",
+            "endJunctionId": "c-a",
+            "role": "boundary",
+            "thickness": 0.2,
+            "height": 3,
+            "centerline": {
+              "kind": "line"
+            }
+          }
+        ],
+        "rooms": [
+          {
+            "id": "room-k",
+            "name": "Room k",
+            "boundary": [
+              {
+                "wallId": "k-a1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "k-b1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "k-c1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "k-d1",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          },
+          {
+            "id": "room-c",
+            "name": "Room c",
+            "boundary": [
+              {
+                "wallId": "c-a1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "c-b1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "c-c1",
+                "direction": "forward"
+              },
+              {
+                "wallId": "c-d1",
+                "direction": "forward"
+              }
+            ],
+            "floorThickness": 0.1,
+            "ceilingThickness": 0.1
+          }
+        ],
+        "openings": [
+          {
+            "id": "opening:k:door:1",
+            "wallId": "k-a1",
+            "kind": "door",
+            "offset": 1,
+            "width": 0.9,
+            "height": 2.1,
+            "sillHeight": 0,
+            "profile": "rectangular"
+          }
+        ],
+        "objects": [
+          {
+            "id": "obj-k",
+            "kind": "box",
+            "position": [
+              3,
+              0.5,
+              2
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": [
+              1,
+              1,
+              1
+            ],
+            "roomId": "room-k"
+          }
+        ],
+        "identity": {
+          "cursor": 0,
+          "rooms": {},
+          "junctions": {},
+          "walls": {},
+          "openings": {}
+        }
+      }
+    },
+    "scene": {
+      "header": {
+        "domain": "scene",
+        "unitId": "project:s06-fixture-gate:scene",
+        "formatVersion": 2,
+        "contentRevision": "sha256-096d5b3199637cb9a00a0c801986aca50cfaf67c8fdb37917a718faf56132168"
+      },
+      "data": {
+        "formatVersion": 2,
+        "textures": [],
+        "materials": [],
+        "entities": []
+      }
+    },
+    "camera": {
+      "header": {
+        "domain": "camera",
+        "unitId": "project:s06-fixture-gate:camera",
+        "formatVersion": 1,
+        "contentRevision": "sha256-bc34d5cbec17db2aed8857f8d0489e4917e5832839aeec337e42934abca17df0"
+      },
+      "data": {
+        "formatVersion": 1,
+        "views": [],
+        "connections": []
+      }
+    },
+    "experience": {
+      "header": {
+        "domain": "experience",
+        "unitId": "project:s06-fixture-gate:experience",
+        "formatVersion": 1,
+        "contentRevision": "sha256-54507fb88afebbe34143ec370039abe978bed22b996fdd7d8765bebcda93cd6f"
+      },
+      "data": {
+        "formatVersion": 1,
+        "experiences": []
+      }
+    },
+    "resources": {
+      "header": {
+        "domain": "resources",
+        "unitId": "project:s06-fixture-gate:resources",
+        "formatVersion": 1,
+        "contentRevision": "sha256-9482adb0db109b0d3a588810edc7ef22d889ce8822c0c527f904eac542667eca"
+      },
+      "data": {
+        "formatVersion": 1,
+        "resources": []
+      }
+    }
+  }
+}

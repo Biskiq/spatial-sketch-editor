@@ -1,9 +1,9 @@
 # T1.P01.S06 — Integrated final gate: implementation plan
 
-**Slice:** T1.P01.S06 · **Status:** in progress — owner-authorized 2026-10-20 as batch D
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md)); TD-10 and the two
-Stage-host repairs found by the browser leg (`5beb1e83`, TD-11/TD-12) have landed, the automated gate is
-green, most browser journeys are executed and the fixture battery is not — **not accepted** ·
+**Slice:** T1.P01.S06 · **Status:** in progress — owner-authorized as batch D, with the
+[corrective D1 amendment](./d1-amendment.md) explicitly ratified. Host corrections and the fixture
+browser pass are implemented; final verification and owner acceptance are recorded in the
+[acceptance record](./acceptance.md). **Not accepted.** ·
 **Phase:** [T1.P01](../README.md) · [slice register](../README.md#slice-register) · **Track:**
 [T1](../../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
@@ -22,9 +22,9 @@ requires are recorded in the [acceptance record](./acceptance.md), which is **no
 
 `T1.P01.S06` is owner-authorized 2026-10-20 as batch D (ruling D1, [record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md)),
 on the post-cutover base `origin/main` `9a457f6b` (PR #158). The authorization covers the exhaustive
-integrated verification this plan declares and the narrow TD-10 disposition below. It covers nothing
-else: no code outside the TD-10 repair, no second harness, no general host refactor and no narrowing
-of the journeys.
+integrated verification this plan declares and the narrow TD-10 disposition below. The owner-approved [D1 amendment](./d1-amendment.md) additionally authorizes only the named
+TD-11/12 corrections, necessary S05 compatibility/regressions and the separately approved Index
+cloneability correction. No second harness, general host refactor or narrowing of the journeys is authorized.
 
 ## Prerequisite
 
@@ -122,3 +122,13 @@ own acceptance is `T3.P02.S02`'s. No gate state, readiness, implementation, acce
 commit is claimed by this plan. A passed final gate makes the phase closable, not closed, and only an
 explicit owner phase-close request closes it. Under the architecture cycle, this slice neither opens
 nor waits for the window: the T1.P01 window is closed and the terminal verdicts stay the owner's.
+
+
+## Takeover authorization and review frontier
+
+The owner approved the [D1 corrective amendment](./d1-amendment.md) and its separate narrow Index
+correction on October 20, 2026. That approval supersedes this plan's original TD-10-only code limit
+only for those named increments and necessary regressions. The owner subsequently requested no more
+independent review and commit/push for their own review, then resumed completion of the final verification. The acceptance record contains
+the executed fixture matrix and the final exhaustive gate still owed. The slice remains unaccepted;
+no phase closure or merge is authorized by this checkpoint.
