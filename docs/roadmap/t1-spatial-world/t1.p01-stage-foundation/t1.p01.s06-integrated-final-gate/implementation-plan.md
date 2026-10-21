@@ -114,12 +114,13 @@ owner phase-close request closes it; neither phase nor cycle closure is fabricat
 
 ## Readiness declaration
 
-This slice is `approved` and **unimplemented**: it runs only on a trusted base where S01–S05 and S07
+This slice remains `approved` in the register until owner acceptance. Its implemented verification
+and evidence are recorded in the acceptance artifact. It starts only on a trusted base where S01–S05 and S07
 are accepted with routine closeout, `T3.camera-experience-cutover@1` is `accepted`, and every scope
 named in `Requires` is `active`. It consumes no retired current-source admission, and its evidence
 does not depend on any `T3.P02` implementation — `T3.P02.S01` is an independent parallel slice whose
-own acceptance is `T3.P02.S02`'s. No gate state, readiness, implementation, acceptance, evidence or
-commit is claimed by this plan. A passed final gate makes the phase closable, not closed, and only an
+own acceptance is `T3.P02.S02`'s. The acceptance artifact owns executed results; this plan
+claims no accepted gate or capability. A passed final gate makes the phase closable, not closed, and only an
 explicit owner phase-close request closes it. Under the architecture cycle, this slice neither opens
 nor waits for the window: the T1.P01 window is closed and the terminal verdicts stay the owner's.
 
@@ -130,5 +131,5 @@ The owner approved the [D1 corrective amendment](./d1-amendment.md) and its sepa
 correction on October 20, 2026. That approval supersedes this plan's original TD-10-only code limit
 only for those named increments and necessary regressions. The owner subsequently requested no more
 independent review and commit/push for their own review, then resumed completion of the final verification. The acceptance record contains
-the executed fixture matrix and the final exhaustive gate still owed. The slice remains unaccepted;
+the executed fixture matrix and final exhaustive gate results at `d63bdb6c`. The slice remains unaccepted;
 no phase closure or merge is authorized by this checkpoint.

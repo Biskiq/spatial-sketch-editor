@@ -39,7 +39,7 @@ separately approved the TD-13 Index correction. The exact scope and provenance a
 
 ## TD-13 — Index selection passes a reactive Plan reference to immutable selection
 
-Status        fixed (PR #168 takeover; owner-approved narrow correction)
+Status        fixed (`b1ffa4e3`, PR #168 takeover; owner-approved narrow correction)
 Found         2026-10-20, real-browser selection of an eligible Index row
 Owner         T1 Stage host (spatial route)
 Symptom       An Index row throws `DataCloneError` and leaves selection unchanged.
@@ -53,7 +53,7 @@ Evidence      `spatial-route-gesture.test.ts`: mounted Index row selects the req
 
 ## TD-12 — an adapter drag re-reads the evaluation id every frame, so it never commits
 
-Status        fixed (`5beb1e83`, `T1.P01.S06` browser leg)
+Status        fixed (`5beb1e83`, completed by `b1ffa4e3` and route regressions in PR #168)
 Found         2026-10-20, driving the direct 3D edit with a real pointer during S06
 Owner         T1 Stage host (the spatial route)
 Symptom       Selecting a Wall and dragging a Dimensions handle moved the preview for the first

@@ -226,7 +226,8 @@ and shipped. S02's acceptance uses the owner-override recorded in its acceptance
 capability is accepted through S07's record, and consumer readiness starts at a trusted base
 containing PR #137's merge. S06 has no accepted result: it is authorized and **under implementation**
 (its row stays `approved`, which means authorized and unaccepted, until acceptance) — its TD-10
-increment is fixed and its automated gate is green, while its browser-journey leg is still open
+increment and the ratified host corrections are implemented, with the fixture browser observations
+recorded and owner review still outstanding
 ([record](./t1.p01.s06-integrated-final-gate/acceptance.md)). The final
 gate is therefore declared and not closeable — the phase's final child S06 is neither accepted nor
 shipped, so no `PHASE CLOSE` beyond this active stage marker is written, and closure stays an

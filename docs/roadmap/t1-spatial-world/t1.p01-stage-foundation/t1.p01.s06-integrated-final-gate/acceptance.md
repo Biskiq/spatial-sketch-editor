@@ -5,9 +5,11 @@
 
 TD-10 and the browser-discovered host defects are repaired. The owner ratified the bounded TD-11/12
 amendment and the separate Index correction. The fixture browser pass now has recorded observations.
-The corrected implementation is `b1ffa4e39cf6c7ea610d8220bfb5c74c4a381222`, based on `origin/main`
+The corrected implementation and updated composition guard are at `d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa`, based on `origin/main`
 `f412865512bfa2b5aa2d6ef58a9142c46a8b799a` through merge `5bca5d11`.
 **Acceptance remains the owner's review; no phase closure, merge or architecture verdict is claimed.**
+
+## Preserved browser and automated baseline — October 20
 
 ```text
 tested revision   branch `T1-P01-S06`, based on `origin/main` `bb166c67` (the batch D merge)
@@ -50,13 +52,13 @@ Ledger: [TD-10 fixed](../../../../operations/tech-debt/README.md#td-10--a-late-s
   `layout-wall-manipulation.test.ts` (handle claim from Stage-local CSS).
 - **TD-12 — press-scoped evaluation.** Adapter drags re-read `evaluationId()` on every phase; the Camera
   raises the generation per frame, so the press paused after its first move and could not commit. The
-  press now carries the evaluation it was measured in and is cancelled when the gesture lease ends
-  (reading change), instead of released.
+  press now carries the evaluation it was measured in. A reading change ends its lease, reaches the
+  existing exact paused-proposal path, and clears ownership without a release commit.
 - **Route coverage added:** `spatial-route-gesture.test.ts` uses the existing mounted-route probes
   with real Camera, facade, Layout adapter and F4. It covers offset hits/echo, uninterrupted evaluation
   updates, reading pause with exact Resume/Discard, stale release, navigation stability and cancellation.
 
-## Automated gate — green on `5beb1e83`
+## Preserved automated gate — green on `5beb1e83`
 
 | Check | Result |
 | --- | --- |
@@ -70,7 +72,7 @@ Ledger: [TD-10 fixed](../../../../operations/tech-debt/README.md#td-10--a-late-s
 | Migration + concurrent-runner fence (`migration.test.mjs`, `migration-fence.test.mjs`) | inside the API lane above |
 
 The full suite rose from 2,215 to 2,218 with exactly the three TD-11 cases (`5beb1e83`). The first
-`test:arch` / `test:heavy` invocation in this run reported one 5-second timeout each
+`test:arch` / `test:heavy` invocation in that earlier run reported one 5-second timeout each
 (`documentation-references`, `camera-motion-dense-sweeps`) while the machine was loaded by the preceding
 full-suite run; both lanes passed unchanged on an immediate clean re-run and neither suite touches the
 changed files. The isolated gate database had to be recreated in this environment (`createdb
@@ -129,7 +131,7 @@ separately at the end.
 TD-11/12 and the necessary S05 compatibility repair/regressions, then separately approved the Index
 selection cloneability correction. No API, Camera-core, Layout/Scene planner or T3 authoring code changed.
 The branch includes trusted `origin/main` `f412865512bfa2b5aa2d6ef58a9142c46a8b799a`. The
-implementation revision is **`b1ffa4e39cf6c7ea610d8220bfb5c74c4a381222`**. The research/prototype
+implementation revision is **`d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa`** (production repair `b1ffa4e3`). The research/prototype
 changes brought in from accepted main are not S06 edits or acceptance evidence.
 
 **Reading-flip verdict:** reproduced through the mounted route before repair. `setReading` dropped the
@@ -160,9 +162,9 @@ Mounted Index selection and real browser selection both work after this correcti
 and facade suites: **5 files / 58 tests passed**. The new mounted route suite is **9/9**, covering
 Index selection, offset hit/echo, continuous drag over evaluation updates, navigation stability,
 exact-angle Resume, Discard, stale release, pointer cancellation, capture loss and Escape. It checks
-one accepted history entry and subsequent Plan switching after Resume. Navigation mutation before
-the guard: 1 failed / 8 passed. Reading interruption failed before repair. `npm run check` reported
-0 errors / 0 warnings before the final navigation guard; it is not claimed as a final-revision check.
+one accepted history entry and subsequent Plan switching after Resume. Mutation controls: restoring the broken echo translation fails 1/9; per-frame press identity fails
+7/9; direct reading-flip abort fails 2/9; reactive Index Plan state fails 1/9. Navigation before the
+guard fails 1/9. Restoring the final implementation passes all nine. Final implementation verification is recorded below.
 The mounted Resume path emits Svelte `derived_inert` development warnings after the old instrument
 is destroyed; the browser and mounted assertions found no surviving paused marker/instrument.
 
@@ -177,6 +179,28 @@ editing is not claimed. Four development-only `derived_inert` warnings arise aft
 the old instrument; subsequent reading changes work and no stale instrument or paused marker survives.
 **BLOCKED for acceptance pending owner review; not merge-ready.**
 
-## Final implementation gate — `b1ffa4e39cf6c7ea610d8220bfb5c74c4a381222`
+## Final implementation gate — `d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa`
 
-Execution in progress; results will be recorded here before the checkpoint is pushed.
+Executed October 21, 2026 on `d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa`. Subsequent changes are
+documentation/evidence only; production, tests, package manifests and configuration are unchanged.
+
+| Gate | Final result |
+| --- | --- |
+| `npm run check` | 0 errors, 0 warnings; exit 0 |
+| `npm run build` | exit 0 |
+| `check:api`, `check:project-model`, `check:layout-core`, `check:camera-core` | exit 0 each |
+| `npm run test:full` | **170 files / 2,227 passed**, exit 0 |
+| `npm run test:arch` | **20 files / 166 passed**, exit 0 |
+| `npm run test:heavy` | **8 files / 118 passed**, exit 0 |
+| DB-backed `npm run test:api` | **80 passed, 0 failed, 0 skipped**, exit 0; local `localhost:5432/biskiq_s06_gate` |
+
+The API run includes all 11 prescribed files, migration rehearsal and concurrent-runner fencing.
+An initial full run caught the composition suite's literal expectation of the old one-line abort.
+The bounded source assertion now allows the existing adapter notification before ending the route
+press; the real mounted test remains the behavioral proof. Final full, arch and heavy lanes passed
+unchanged after that test correction. No assertion of a published gate, deployed activation, phase
+closure or owner architecture verdict follows from these results.
+
+The final documentation update reruns the whole arch lane before push. The owner requested no
+further independent review; the pushed implementation awaits their acceptance. Until then the
+required status is **BLOCKED / awaiting owner review**, with no slice-closeout or merge.
