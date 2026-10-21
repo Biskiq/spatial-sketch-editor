@@ -293,16 +293,22 @@ export function ProfilePad({ oh: committed }: { oh: Overhead }) {
           </button>
         </div>
       )}
-      <div class="chips" style={{ marginTop: '6px' }}>
-        {((revolve ? ['flat', 'dome', 'gable'] : ['flat', 'raked', 'gable', 'clerestory', 'vault', 'fold', 'sawtooth', 'butterfly']) as ProfilePreset[]).map((k) => (
-          <button class="chip" onClick={() => store.commit(`Made ${oh.name} ${k === 'gable' && revolve ? 'a cone' : k}`, opOverhead(oh.id, { profile: presetProfile(k, span) }))}>
-            {k === 'gable' && revolve ? 'cone' : k}
-          </button>
-        ))}
-      </div>
-      <div class="note" style={{ marginTop: '6px' }}>
-        Drag a point to move it · drag the line to bend it · double-click the line to add a point · ⌥-click a point to remove it · double-click a point: ■ sharp ↔ ○ smooth · draw on empty paper to start over.
-      </div>
+      <div class="note" style={{ marginTop: '6px' }}>Drag a point or the line · double-click the line to add a point.</div>
+    </div>
+  );
+}
+
+/** Starting shapes: a quick way in, folded away so they support sculpting rather than replace it. */
+export function ProfilePresets({ oh }: { oh: Overhead }) {
+  const revolve = oh.form === 'revolve';
+  const span = ohSpan(oh);
+  return (
+    <div class="chips">
+      {((revolve ? ['flat', 'dome', 'gable'] : ['flat', 'raked', 'gable', 'clerestory', 'vault', 'fold', 'sawtooth', 'butterfly']) as ProfilePreset[]).map((k) => (
+        <button class="chip" onClick={() => store.commit(`Made ${oh.name} ${k === 'gable' && revolve ? 'a cone' : k}`, opOverhead(oh.id, { profile: presetProfile(k, span) }))}>
+          {k === 'gable' && revolve ? 'cone' : k}
+        </button>
+      ))}
     </div>
   );
 }

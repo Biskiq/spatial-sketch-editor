@@ -12,7 +12,7 @@ import {
 } from '../model/ops';
 import { snapPoint, Guide } from '../model/snap';
 import type { Tie } from '../model/types';
-import { ohFrame, ohRidge, ohTopAt, profileH, ohSection, moveProfilePoint } from '../model/overheadGeom';
+import { ohTopAt, ohSection, moveProfilePoint, profilePeak, movePeak, profileShoulder, ensureShoulder, pullShoulder, profileSymmetric } from '../model/overheadGeom';
 import { lvl } from '../model/settle';
 
 export type DragMode = { type: 'plan'; y: number } | { type: 'vertical'; at: V2 } | { type: 'surface'; origin: V2; tan: V2; y0: number };
@@ -24,7 +24,7 @@ export interface Handle {
   mode: DragMode;
   label: string;
   /** given the dragged point, the op to preview/commit and a measurement to show */
-  drag: (pt: { plan: V2; y: number }, e: PointerEvent) => { op: Op; measure: string; knot?: V2 | null; guides?: Guide[]; snap?: string; at?: V2 } | null;
+  drag: (pt: { plan: V2; y: number }, e: PointerEvent) => { op: Op; measure: string; knot?: V2 | null; guides?: Guide[]; snap?: string; at?: V2; commit?: string } | null;
   title: string;
   /** 'detail' handles stay out of the way until the pointer comes near (or every point is asked for). */
   tier?: 'primary' | 'detail';
@@ -258,17 +258,72 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
       });
       const c = polyCentroid(outline);
       if (e.kind === 'overhead') {
+        // the eave sits out at a corner, at eave height: it reads as "the whole roof", apart from the peak above the middle
+        const k0 = outline.reduce((b, q, i) => (dist(q, c) > dist(outline[b], c) ? i : b), 0);
+        const ec = add(outline[k0], mul(norm(sub(outline[k0], c)), 0.6));
         out.push({
-          id: 'eave', pos: new THREE.Vector3(c[0], e.baseY + lift, c[1]), shape: 'bead', mode: { type: 'vertical', at: c }, label: 'eave', title: 'Drag to raise or lower the whole overhead',
+          id: 'eave', pos: new THREE.Vector3(ec[0], e.baseY + lift, ec[1]), shape: 'bead', mode: { type: 'vertical', at: ec }, label: 'eave', title: 'Drag to raise or lower the whole roof',
           drag: (pt) => {
             const yy = Math.max(1.0, snapY(pt.y));
             return { op: opOverhead(e.id, { baseY: yy }), measure: `eave at ${fmtM(yy)}` };
           },
         });
-        // the profile's own points, on the roof's section: the same points as in the pad (dragging either edits both)
+        // Sculpting: a peak (up = taller, sideways = lean) and a shoulder on each slope (out = broader, in = pointier).
+        // With the eave and the edges (width), that's the whole default vocabulary; the profile's own points come out
+        // as the pointer nears them, for precision.
         const sec = ohSection(e);
-        e.profile.forEach((q) => {
+        const prof = e.profile;
+        const pk = profilePeak(prof);
+        const flat = pk.h < 0.05;
+        const pkU = flat ? 0.5 : pk.u;
+        const pkAt = sec.at(pkU, pk.h);
+        const off = 0.3;
+        out.push({
+          id: 'peak', pos: new THREE.Vector3(pkAt.plan[0], pkAt.y + off + lift, pkAt.plan[1]), shape: 'bead',
+          mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: flat ? 'pull up' : 'peak',
+          title: flat ? 'Pull up to give the roof a peak' : sec.revolve ? 'Drag up or down: taller or flatter' : 'Drag up or down: taller or flatter · sideways: lean the peak',
+          drag: (pt) => {
+            const r = sec.uh(pt.plan, pt.y - lift);
+            const h = Math.max(0, pk.h + snapY(r.h - pk.h - off));
+            const u = pkU + round(r.u - pkU, 0.01);
+            const next = movePeak(prof, u, h, !sec.revolve);
+            const np = profilePeak(next);
+            const lean = !sec.revolve && Math.abs(np.u - pkU) > 0.004 ? ` · peak ${Math.round(np.u * 100)}% across` : '';
+            return { op: opOverhead(e.id, { profile: next }), measure: `rises ${fmtM(np.h)}${lean}`, commit: `Reshaped ${e.name}’s peak` };
+          },
+        });
+        const sym = profileSymmetric(prof);
+        const shoulders: { u: number; h: number }[] = [];
+        for (const side of sec.revolve ? (['L'] as const) : (['L', 'R'] as const)) {
+          const sh = profileShoulder(prof, side);
+          if (!sh) continue;
+          shoulders.push(sh);
+          const a = sec.at(sh.u, sh.h);
+          let base: typeof prof | null = null;
+          out.push({
+            id: `shoulder:${side}`, pos: new THREE.Vector3(a.plan[0], a.y + 0.05 + lift, a.plan[1]), shape: 'ring',
+            mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: '',
+            title: `Drag sideways: out for a broader roof, in for a pointier one${sym && !sec.revolve ? ' (both sides stay alike)' : ''}`,
+            drag: (pt) => {
+              // the first pull gives a straight slope its one shoulder point (both slopes, if they mirror)
+              if (!base) {
+                base = ensureShoulder(prof, side);
+                if (sym) base = ensureShoulder(base, side === 'L' ? 'R' : 'L');
+              }
+              const r = sec.uh(pt.plan, pt.y - lift);
+              const du = round(r.u - sh.u, 0.005);
+              const outward = side === 'L' ? -du : du;
+              const word = outward >= 0 ? 'broader' : 'pointier';
+              return { op: opOverhead(e.id, { profile: pullShoulder(base, side, du, sym) }), measure: Math.abs(du) < 0.004 ? '' : word, commit: `Made ${e.name} ${word}` };
+            },
+          });
+        }
+        // the profile's own points, on the roof's section: the same points as in the pad (dragging either edits both)
+        prof.forEach((q, i) => {
           if (!q.id || (sec.revolve && q.u > 0.5 + 1e-6)) return;
+          // a single peak point and a slope's shoulder point already have their big handle
+          if (!flat && pk.i0 === pk.i1 && i === pk.i0) return;
+          if (shoulders.some((sh) => Math.abs(sh.u - q.u) < 0.03 && Math.abs(sh.h - q.h) < 0.12 * pk.h)) return;
           const a = sec.at(q.u, q.h);
           out.push({
             tier: 'detail', id: `pp:${q.id}`, pos: new THREE.Vector3(a.plan[0], a.y + 0.05 + lift, a.plan[1]), shape: 'dot',
@@ -278,24 +333,10 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
               // steps from where it was: a sideways pull never nudges its height
               const h = Math.max(0, q.h + snapY(r.h - q.h));
               const u = q.u + round(r.u - q.u, 0.005);
-              return { op: opOverhead(e.id, { profile: moveProfilePoint(e.profile, q.id!, u, h) }), measure: `${fmtM(h)} above the eave` };
+              return { op: opOverhead(e.id, { profile: moveProfilePoint(prof, q.id!, u, h) }), measure: `${fmtM(h)} above the eave` };
             },
           });
         });
-        const f = ohFrame(e);
-        const maxH = Math.max(...f.samples.map((s) => s.h));
-        if (maxH > 0.05) {
-          const ridgeS = f.samples.reduce((a, s) => (s.h > a.h ? s : a), f.samples[0]);
-          const rp: V2 = e.form === 'revolve' ? c : add(mul(f.d, f.wmin + ridgeS.u * (f.wmax - f.wmin)), mul(perp(f.d), dot(c, perp(f.d))));
-          out.push({
-            id: 'ridge', pos: new THREE.Vector3(rp[0], e.baseY + e.thick + maxH + 0.05 + lift, rp[1]), shape: 'bead', mode: { type: 'vertical', at: rp }, label: 'ridge', title: 'Drag to make the profile steeper or flatter',
-            drag: (pt) => {
-              const nh = Math.max(0.1, snapY(pt.y - e.baseY - e.thick));
-              const k = nh / maxH;
-              return { op: opOverhead(e.id, { profile: e.profile.map((q) => ({ ...q, h: q.h * k })) }), measure: `rises ${fmtM(nh)}` };
-            },
-          });
-        }
       } else if (e.kind === 'deck') {
         out.push({
           id: 'height', pos: new THREE.Vector3(c[0], e.y + 0.05 + lift, c[1]), shape: 'bead', mode: { type: 'vertical', at: c }, label: 'level', title: 'Drag to raise or lower this floor',

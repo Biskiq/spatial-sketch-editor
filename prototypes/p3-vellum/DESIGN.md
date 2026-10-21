@@ -43,7 +43,13 @@ Revision is where tools usually break trust, so the whole surface uses the marks
 2. **The sheet** is one piece of tracing vellum on a rail. It is the plane you draw on, the level you are working at,
    and an x-ray of everything above it. There is no global storey stack: every room, deck and roof keeps its own height,
    and the rail shows them as magnetic, labelled heights ("Studio top", "Mezzanine", "Old wing roof eave"). When the
-   sheet lies on a floor you draw on that floor; lifted, you draw in the air.
+   sheet lies on a floor you draw on that floor; lifted, you draw in the air. Raising it while selecting picks up
+   the pen (it's paper; the dock shows Draw), and putting it away puts the pen down again.
+   - **Add a floor above** is the shortcut for a conventional storey, made of the same ordinary parts: a floor at
+     the room's top, walls along its outline (the same curved or round wall when one wall makes the room) and a room
+     as tall as the one below. It ties nothing; the floor and walls simply stand at that height. A roof over the
+     room is never moved by itself: when it is in the way, the ripple offers to lift it, in the same step. Freehand
+     floors on the sheet stay for mezzanines and odd platforms.
 3. **Draw the shape you mean.**
    - Roofs come from a drawn section profile: a rise with a step makes clerestory glazing, an arch makes a vault, and
      on a round room the profile spins into a dome or cone. The drawing then stays editable without redrawing: drag
@@ -51,8 +57,15 @@ Revision is where tools usually break trust, so the whole surface uses the marks
      adds no points), double-click to add a point, ⌥-click to remove one. The pad and the blue section drawn on the
      roof are two views of the *same* authored points, so editing either updates both live, and every gesture is one
      undo step.
-   - Handles are few by default (a wall's ends, height and move; a roof's eave, ridge and edges). Corners, bends and
-     profile points come out as the pointer nears them, or all at once with *Show every point*.
+   - Ordinary roof sculpting happens on the roof, with a few handles that each do one thing: the peak (up and down
+     scales the heights so the shape keeps its character; sideways leans it, carrying each slope along), a shoulder
+     on each slope (outward is broader and fuller, inward is pointier; a symmetric roof stays symmetric; the first
+     pull gives a straight slope its one smooth point, the only point it ever adds), the edges for width, and the
+     eave for the whole roof. A flat roof's peak handle reads *pull up* and grows one sharp peak. Bending the
+     surface, sharp/smooth, adding and removing points and the presets are depth you go to on purpose (the pad,
+     the points that come out as you near them, *Shapes & settings*).
+   - Handles are few by default (a wall's ends, height and move; a roof's eave, peak, shoulders and edges). Corners,
+     bends and profile points come out as the pointer nears them, or all at once with *Show every point*.
    - Canopies come from their shadow; stairs from their walk.
    - Heights are given in people as well as metres ("4.2 m · about 2½ people tall"), and scale figures stand in the
      rooms.
@@ -88,6 +101,7 @@ you built becomes a thing you tell.
 | Remove something others lean on | Hover *Remove* to see what turns red first. Afterwards, the roof stays and the ripple offers posts. |
 | Two wings, plinth, bridge, stairs | Raise one room's floor for a plinth. An open stroke on the sheet between wings reads as a bridge; drawing from floor to deck makes a stair. |
 | Compression, mezzanine, lightwell | A closed stroke through the deck reads as a lightwell. Raising its bottom bead above the mezzanine fills the deck back in, because the deck's outline was never cut. |
+| A second storey | Pick the room, hover *+ Add a floor above* to see it, click. Choose whether the roof lifts onto it; then reshape the new walls, or pull the sheet up to the new top and sketch its roof. |
 | Raise a ceiling with a floor above | A tied deck asks: carry it up (and with it the room standing on it, and that room's roof), or keep it as a mezzanine inside. The stair reports the steps it gains. |
 | Move an object across levels | Ghosted and cut parts can't be picked, so you drop through to the visible floor. The ripple says "Sculpture moved from The hall to Mezzanine". |
 | Imported architecture | Drop a `.glb`, or open the prepared boathouse. It can be sliced, x-rayed, walked and told, but not reshaped; switch it to a tracing underlay and draw native walls over it. |

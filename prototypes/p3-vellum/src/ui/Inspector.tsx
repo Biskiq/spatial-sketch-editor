@@ -11,11 +11,11 @@ import { lvl } from '../model/settle';
 import { stairSteps } from '../model/settle';
 import { describeProfile, ohRidge, ProfilePreset } from '../model/overheadGeom';
 import {
-  opRoom, opConfirmRoom, opRunPatch, opRunTop, opAddOpening, openingDefaults, opOpening, opOverhead, opDeck, opVoid, opStair, opObj,
+  opRoom, opConfirmRoom, opAddFloorAbove, opRunPatch, opRunTop, opAddOpening, openingDefaults, opOpening, opOverhead, opDeck, opVoid, opStair, opObj,
   opRemove, removalReach, opCoverRooms, isRoundish, opProject, Op, OBJ_NAMES,
 } from '../model/ops';
 import { surfaceName } from '../scene/interact';
-import { ProfilePad } from './ProfilePad';
+import { ProfilePad, ProfilePresets } from './ProfilePad';
 import { detachImport } from '../import/importer';
 import { IClose, ITrash } from './icons';
 
@@ -134,6 +134,21 @@ function RoomCard({ s, dr, p }: { s: RoomSeed; dr: DRoom | undefined; p: Project
       <div class="facts">
         <span class="num">{dr ? `${dr.area.toFixed(1)} m²` : ''}</span> · floor at <span class="num">{fmtM(s.floorY, 2)}</span> · {s.height.toFixed(1)} m tall, {inPeople(s.height)}
         {covered ? <> · under {covered.name}</> : <> · open to the sky</>}
+      </div>
+      <div class="row" style={{ marginTop: '8px' }}>
+        {/* hovering shows the storey in place; clicking makes it, as one step (the walls then come selected to reshape) */}
+        <button
+          class="btn small outline"
+          title="A floor at this room's top, with walls along its outline and a room as tall as this one. Nothing is tied to the room below."
+          onPointerEnter={() => !store.ui.dragging && store.setPreview(opAddFloorAbove(s.id))}
+          onPointerLeave={() => store.setPreview(null)}
+          onClick={() => {
+            store.setPreview(null);
+            store.commit(`Added a floor above ${s.name}`, opAddFloorAbove(s.id));
+          }}
+        >
+          + Add a floor above
+        </button>
       </div>
       {parent && (
         <div class="note pencil">
@@ -323,12 +338,15 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
       <div class="facts">
         Covers <span class="num">{Math.abs(polyArea(oh.outline)).toFixed(0)} m²</span> · eave at <span class="num">{fmtM(oh.baseY)}</span> · highest point <span class="num">{fmtM(ohRidge(oh))}</span>
       </div>
-      <Sec label="Profile — draw it">
+      <Sec label="Section — drag the roof's blue handles, or here">
         <ProfilePad oh={oh} />
       </Sec>
-      {round && (
-        <Sec label="Form">
-          <div class="chips">
+      <details class="more">
+        <summary>Shapes &amp; settings</summary>
+        <div class="lab">Start from a shape</div>
+        <ProfilePresets oh={oh} />
+        {round && (
+          <div class="chips" style={{ marginTop: '8px' }}>
             <button class={'chip' + (oh.form === 'extrude' ? ' on' : '')} onClick={() => store.commit('Spanned it one way', opOverhead(oh.id, { form: 'extrude' }))}>
               Spans one way
             </button>
@@ -336,21 +354,24 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
               Spins round
             </button>
           </div>
-        </Sec>
-      )}
-      {oh.form === 'extrude' && (
-        <Slider label="Span direction" value={((oh.dir * 180) / Math.PI + 360) % 180} min={0} max={179} step={1} fmt={(v) => `${Math.round(v)}°`} commit="Turned the span" make={(v) => opOverhead(oh.id, { dir: (v * Math.PI) / 180 })} />
-      )}
-      <Slider
-        label={tied ? 'Eave (moving it unties it)' : 'Eave'}
-        value={oh.baseY}
-        min={1}
-        max={14}
-        commit={`Moved ${oh.name}`}
-        make={(v) => opOverhead(oh.id, { baseY: v, ...(tied ? { restsOn: null } : {}) })}
-        people
-      />
-      <Slider label="Thickness" value={oh.thick} min={0.05} max={0.8} step={0.01} fmt={(v) => `${Math.round(v * 100)} cm`} commit="Changed the thickness" make={(v) => opOverhead(oh.id, { thick: v })} />
+        )}
+        {oh.form === 'extrude' && (
+          <Slider label="Span direction" value={((oh.dir * 180) / Math.PI + 360) % 180} min={0} max={179} step={1} fmt={(v) => `${Math.round(v)}°`} commit="Turned the span" make={(v) => opOverhead(oh.id, { dir: (v * Math.PI) / 180 })} />
+        )}
+        <Slider
+          label={tied ? 'Eave (moving it unties it)' : 'Eave'}
+          value={oh.baseY}
+          min={1}
+          max={14}
+          commit={`Moved ${oh.name}`}
+          make={(v) => opOverhead(oh.id, { baseY: v, ...(tied ? { restsOn: null } : {}) })}
+          people
+        />
+        <Slider label="Thickness" value={oh.thick} min={0.05} max={0.8} step={0.01} fmt={(v) => `${Math.round(v * 100)} cm`} commit="Changed the thickness" make={(v) => opOverhead(oh.id, { thick: v })} />
+        <div class="note" style={{ marginTop: '6px' }}>
+          In the pad: ⌥-click a point to remove it · double-click a point: ■ sharp ↔ ○ smooth · draw on empty paper to start over. On the roof: drag its surface to bend it; the section's own points come out as you near them.
+        </div>
+      </details>
       <Remember
         items={[
           ...(tied ? [{ text: `Rests on ${tied.join(', ')} — follows if they change`, knot: true, untie: () => store.commit(`Untied ${oh.name}`, opOverhead(oh.id, { restsOn: null })) }] : [{ text: 'Its own height — not tied to any room' }]),

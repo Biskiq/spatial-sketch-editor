@@ -102,7 +102,8 @@ export function Ripple() {
               <div>
                 {i.text}
                 {!open && chosen && <span class="note"> — repaired: {i.fixes[chosen.fix]?.toLowerCase()}.</span>}
-                <div class="opts">
+                {!open && !chosen && <span class="note"> — resolved by your choice above.</span>}
+                <div class="opts" style={!open && !chosen ? { display: 'none' } : undefined}>
                   {i.fixes.map((f, k) => (
                     <button class={'chip' + (chosen?.fix === k ? ' on' : ' red')} onClick={() => store.amendFix(i.key, chosen?.fix === k ? null : k)}>
                       {f}
@@ -149,10 +150,10 @@ export function Hint() {
   } else if (ui.tool === 'slice') h = <><b>Draw a line</b> across the building. The side nearest you is cut away. Esc returns.</>;
   else if (ui.tool === 'place') h = <><b>Click a floor</b> to place. Things always belong to a surface — drag them later, even between levels.</>;
   else if (!p.runs.length && !p.overheads.length) h = <><b>Drag on the table to draw a wall.</b> Close a loop and a room appears. A circle makes one round wall. The chip by your pen says what it read — press Tab to change it.</>;
+  else if (v.sheetOut && ui.tool === 'pen') h = <>Drawing on the sheet at <b>{v.sheetY.toFixed(2)} m</b>. A closed shape over rooms is a roof; inside a room it's a mezzanine; a line between floors is a bridge.{store.ui.sheetPen ? <> Esc puts the sheet away · V to select.</> : null}</>;
   else if (ui.tool === 'select' && !ui.selection) h = <><b>Select</b> — click to pick, drag to turn the table. Nothing is drawn. Press <b>D</b> (or Draw) to draw.</>;
   else if (ui.selection && ui.tool === 'pen') h = <>Drawing. To shape {ui.selection === 'building' ? 'the whole building' : elementName(p, ui.selection)} with its <b style={{ color: 'var(--blue)' }}>blue handles</b>, press <b>V</b> (Select).</>;
   else if (ui.selection) h = <>Drag the <b style={{ color: 'var(--blue)' }}>blue handles</b> to shape {ui.selection === 'building' ? 'the whole building' : elementName(p, ui.selection)}. Hover <b>Remove</b> to see what leans on it first.</>;
-  else if (v.sheetOut) h = <>Drawing on the sheet at <b>{v.sheetY.toFixed(2)} m</b>. A closed shape over rooms is a roof; inside a room it's a mezzanine; a line between floors is a bridge.</>;
   else if (store.past.length < 6) h = <>Draw on a wall's face for a door or arch · between two floors for a stair · pull <b>the sheet</b> up (right) to draw in the air. Right-drag or two-finger scroll turns the table.</>;
   if (!h) return null;
   return <div class="hint">{h}</div>;

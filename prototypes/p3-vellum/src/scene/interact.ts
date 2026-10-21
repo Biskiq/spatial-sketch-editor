@@ -20,6 +20,7 @@ import { lvl } from '../model/settle';
 import { holeOutline } from './build/walls';
 import { routeHeights } from '../story/route';
 import { opRoute, opAddMoment, opMoment } from '../story/storyOps';
+import { wheelSource } from './wheel';
 
 export interface WheelIn { t: number; dx: number; dy: number; mode: number; ctrl: boolean; shift: boolean; x: number; y: number; wdy?: number }
 export interface TraceEv { kind: string; ev: any; read: string; cam: { az: number; pol: number; dist: number } }
@@ -59,6 +60,7 @@ export class Interact {
   stroke: Stroke | null = null;
   handle: Handle | null = null;
   handleOp: Op | null = null;
+  private handleLabel: string | undefined;
   camDrag: { x: number; y: number; pan: boolean } | null = null;
   objDrag: { id: string; op: Op | null; from: string; to: string } | null = null;
   space = false;
@@ -170,6 +172,7 @@ export class Interact {
       const res = this.handle.drag(pt, e);
       if (!res) return;
       this.handleOp = res.op;
+      this.handleLabel = res.commit;
       store.setPreview(res.op);
       this.ov.measure = res.measure ? { text: res.measure, pos: new THREE.Vector3(pt.plan[0], pt.y + 0.4, pt.plan[1]) } : null;
       const hy = this.handle.mode.type === 'plan' ? this.handle.mode.y : 0;
@@ -250,8 +253,9 @@ export class Interact {
       if (op) {
         const sel = store.ui.selection;
         const name = sel === 'building' ? 'the whole building' : elementName(store.project, sel ?? '');
-        store.commit(h.id === 'roof-bend' ? `Bent ${name}’s profile` : h.id.startsWith('pp:') ? `Moved a point on ${name}’s profile` : `Shaped ${name}`, op);
+        store.commit(this.handleLabel ?? (h.id === 'roof-bend' ? `Bent ${name}’s profile` : h.id.startsWith('pp:') ? `Moved a point on ${name}’s profile` : `Shaped ${name}`), op);
       } else store.setPreview(null);
+      this.handleLabel = undefined;
       return;
     }
     if (st === 'objdrag' && this.objDrag) {
@@ -333,6 +337,7 @@ export class Interact {
     } else if (this.state === 'handle' || this.state === 'objdrag') {
       this.handle = null;
       this.handleOp = null;
+      this.handleLabel = undefined;
       this.objDrag = null;
       this.ov.activeHandle = null;
       this.ov.measure = null;
@@ -792,10 +797,8 @@ export class Interact {
     st.last = w.t;
     if (fresh) {
       st.pivot = null;
-      // Chrome and Safari report wheelDeltaY = -3·deltaY for trackpads; whole notches for wheels
-      const tp = w.wdy !== undefined && w.wdy !== 0 ? Math.abs(w.wdy) === Math.abs(w.dy) * 3 : w.mode === 0 && !(w.dx === 0 && Number.isInteger(w.dy) && Math.abs(w.dy) >= 50);
-      st.src = w.mode === 1 ? 'mouse' : tp ? 'trackpad' : 'mouse';
-    } else if (st.src === 'mouse' && (w.dx !== 0 || !Number.isInteger(w.dy))) st.src = 'trackpad';
+      st.src = wheelSource(w);
+    } else if (st.src === 'mouse' && w.dx !== 0) st.src = 'trackpad'; // only a sideways scroll proves a trackpad mid-stream
     // the point under the cursor stays put while zooming; picked once per stream, again if the cursor wanders
     if (st.pivot && Math.hypot(w.x - st.pivotAt[0], w.y - st.pivotAt[1]) > 24) st.pivot = null;
     const pivot = () => {
@@ -901,7 +904,8 @@ export class Interact {
       if (this.stroke || this.state === 'handle' || this.state === 'objdrag') return this.cancelGesture();
       if (store.ui.readingChip) return store.set({ readingChip: null });
       const base = store.ui.mode === 'make' ? store.ui.baseTool : 'pen';
-      if (store.ui.tool !== base) return store.set({ tool: base, placeType: null });
+      // a pen picked up for the sheet goes down with the sheet (store.back below), so Esc never strands it out
+      if (store.ui.tool !== base && !store.ui.sheetPen) return store.set({ tool: base, placeType: null });
       if (store.ui.panel !== 'none') return store.set({ panel: 'none' });
       if (store.back()) return;
       if (ctl.mode === 'eye') {

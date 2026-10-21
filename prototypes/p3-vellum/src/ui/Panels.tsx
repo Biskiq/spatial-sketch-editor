@@ -24,7 +24,7 @@ function Panel({ title, children }: { title: string; children: ComponentChildren
 
 // ------------------------------------------------------------------ what's real
 const TRUTH: [string, string, string][] = [
-  ['real', 'Drawing', 'Stroke reading and fitting (lines, arcs, one-piece circles), alternative readings, rooms emerging from walls, per-room heights, openings and arches on any wall, straight ruled lines (⇧) and snapping with guides (ends, faces, square, 45°, in line), roofs from a drawn profile that you can then move, bend, add to and thin out (in the pad or on the roof), decks, bridges, voids, stairs and ramps from a drawn walk.'],
+  ['real', 'Drawing', 'Stroke reading and fitting (lines, arcs, one-piece circles), alternative readings, rooms emerging from walls, per-room heights, openings and arches on any wall, straight ruled lines (⇧) and snapping with guides (ends, faces, square, 45°, in line), roofs from a drawn profile, sculpted on the roof with a peak, two shoulders and the edges, and refined point by point (in the pad or on the roof), a floor above a room in one step, decks, bridges, voids, stairs and ramps from a drawn walk.'],
   ['real', 'Revision', 'Ties and knots (a wall that lands on another only touches it until you choose Join), ripples with choices that amend the same step, loose ends, the set-aside tray, room memory through divide and merge, whole-building scale with intents, one-step undo/redo. All of it runs here, in your browser.'],
   ['real', 'Looking', 'The sheet (draw plane, level and x-ray), cut with section fill, a straight snapped slice with live preview, lift, isolate, Focus Height (an experiment), and the view history behind Esc. Sun shadows are real-time.'],
   ['real', 'Telling', 'The visitor’s walk (it climbs stairs from the surfaces under it), moments with captions, targets and reveals, and the visitor player.'],
@@ -65,6 +65,8 @@ const TRY: [string, string][] = [
   ['A curved gallery and a round room', 'Draw one long sweeping stroke, then a circle that touches it. Draw an arch shape on the wall between. The circle is one continuous wall with a centre and a size handle.'],
   ['Drama overhead', 'Open “Galleries”. Pick the roof — draw a new profile in the pad: a rise with a step makes clerestory glazing. Ceilings below stay flat unless you open them to the roof.'],
   ['A canopy past the footprint', 'Pull the sheet up to a room top and draw a shape beyond the walls. Posts appear in pencil; click one to accept.'],
+  ['A second storey', 'Pick a room and hover “+ Add a floor above” to see it; click to make it. Lift the roof onto it if you like, then reshape the new walls or sketch a roof on the sheet at the new top.'],
+  ['Sculpt a roof', 'Pick a roof. Pull its peak up or lean it sideways; pull a shoulder out for a broader roof or in for a pointier one; push an edge for width. The pad shows the same section.'],
   ['Too small?', 'Press ⌘A for the whole building and drag the corner handle. Doors stay person-sized; round stays round.'],
   ['Divide, then undivide', 'Draw a wall across a room. The new half borrows settings in pencil. Remove the wall: the room is whole again, and a changed half’s settings go to the tray, not the bin.'],
   ['Remove something others lean on', 'Pick a wall under a roof and hover Remove. What it touches turns red first. After, the ripple offers posts or shrinking.'],

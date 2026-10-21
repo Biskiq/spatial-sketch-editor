@@ -258,7 +258,11 @@ export function readStroke(c: ReadCtx): Reading[] {
   const deckHere = p.decks.find((dk) => Math.abs(dk.y - y) < 0.06 && overlapArea(dk.outline, outline) > 0.6 * A);
   const overThings = p.decks.some((dk) => dk.y <= y + 0.05 && overlapArea(dk.outline, outline) > 0.2 * A) || p.overheads.some((oh) => oh.baseY >= y - 0.5 && overlapArea(oh.outline, outline) > 0.2 * A) || under.some((r) => r.coveredBy);
   const tiedRooms = snapRooms.filter((id) => under.some((r) => r.id === id));
-  const roofName = under.length ? `Roof over ${under.slice(0, 2).map((r) => r.name).join(' & ')}${under.length > 2 ? '…' : ''}` : 'Canopy';
+  // name a roof after the top storey it covers, not every room stacked beneath it
+  const topY = Math.max(...under.map((r) => (r.topY <= y + 0.3 ? r.topY : -Infinity)));
+  const named = under.filter((r) => r.topY <= y + 0.3 && r.topY > topY - 0.3);
+  const nameRooms = named.length ? named : under;
+  const roofName = under.length ? `Roof over ${nameRooms.slice(0, 2).map((r) => r.name).join(' & ')}${nameRooms.length > 2 ? '…' : ''}` : 'Canopy';
   const roof: Reading = {
     id: 'roof', label: roofName,
     detail: `${tiedRooms.length ? 'resting on ' + tiedRooms.map((id) => d.roomById.get(id)!.name).join(', ') + ' (tied)' : under.length ? 'free above the rooms' : 'shade, drawn by its shadow'} · ${areaTxt}`,

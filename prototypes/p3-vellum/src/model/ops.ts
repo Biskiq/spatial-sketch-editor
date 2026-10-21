@@ -2,7 +2,7 @@
 // and settle() reports what else moved.
 import {
   V2, add, sub, mul, dist, norm, angleOf, polyArea, ensureCCW, offsetPoly, polyCentroid, closestOnSeg, fmtM, polyPerimeter,
-  interiorPoint, pointInPolyHoles, bbox, rot,
+  interiorPoint, pointInPolyHoles, bbox, rot, rdpIdx, pointInPoly,
 } from './geom2d';
 import { P, union, mpolyArea, difference } from './clip';
 import type { Project, Run, Tie, Opening, OpeningShape, Overhead, ProfilePt, Deck, Void, Stair, SurfaceRef, Obj, ObjType, RoomSeed, CeilingMode } from './types';
@@ -10,7 +10,7 @@ import { clone, newId, findEl } from './types';
 import { settle, Note, lvl, roomTop, seedAt, carryStanding } from './settle';
 import { runGeom, closestOnRun, translateRun, scaleRun, pointAtT } from './runs';
 import { derive, DRoom, openingKind, elementName, floorUnder } from './derive';
-import { presetProfile, ProfilePreset, ohSpan } from './overheadGeom';
+import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt } from './overheadGeom';
 import type { StrokeFit } from './strokes';
 
 export interface Decision {
@@ -429,6 +429,66 @@ export const opAddDeck = (outline: V2[], y: number, o: { restsOn?: string | null
   };
   p.decks.push(d);
   return { select: d.id };
+};
+
+/**
+ * Another storey over a room, made of the usual parts: a floor slab at the room's top, walls standing on it along
+ * the room's outline, and the room they enclose (same height as the one below). Nothing is tied: the floor and
+ * walls stand at a height, as if drawn on the sheet. A roof over the room is never moved by itself; when it is in
+ * the way, lifting it onto the new storey is offered in the same step.
+ */
+export const opAddFloorAbove = (roomId: string): Op => (p, ch) => {
+  const d = derive(p);
+  const r = d.roomById.get(roomId);
+  const below = p.rooms.find((x) => x.id === roomId);
+  if (!r || !below) return;
+  const y = Math.round(r.topY * 1000) / 1000;
+  // the same wall when one closed wall makes the room (curves and circles stay), else the room's outline, simplified
+  const own = p.runs.find((w) => {
+    if (lvl(w.baseY) !== lvl(r.level) || !w.closed || w.top !== null) return false;
+    const ring = runGeom(w).ps.pts;
+    return pointInPoly(r.at, ring) && Math.abs(Math.abs(polyArea(ring)) - r.area) < 0.2 * r.area + 2;
+  });
+  let fit: StrokeFit, slab: V2[];
+  if (own) {
+    fit = { kind: own.shape === 'circle' ? 'circle' : 'closed', pts: own.pts.map((q) => [q[0], q[1]] as V2), bulge: own.bulge.slice(), closed: true, center: own.center, radius: own.radius, length: 0, curved: false, corners: 0 };
+    slab = runGeom(own).ps.pts.slice(0, -1);
+  } else {
+    const ring = [...r.poly, r.poly[0]];
+    const keep = rdpIdx(ring, 0.05).filter((k) => k < r.poly.length);
+    const pts = keep.map((k) => r.poly[k]);
+    fit = { kind: 'closed', pts, bulge: pts.map(() => 0), closed: true, center: [0, 0], radius: 0, length: 0, curved: false, corners: pts.length };
+    slab = pts;
+  }
+  const deck: Deck = { id: newId(p, 'd'), kind: 'deck', name: `${r.name} upper floor`, outline: ensureCCW(slab), y, thick: 0.3, restsOn: null, bridge: false, order: p.nextId };
+  p.decks.push(deck);
+  const walls = makeRun(p, fit, { baseY: y, thick: own?.thick });
+  // the room upstairs keeps the storey height of the one below; settle finds it again in the walls just made
+  const up: RoomSeed = {
+    id: newId(p, 'm'), kind: 'room', name: `${r.name} upstairs`, level: y, floorY: y, height: below.height, ceiling: below.ceiling,
+    dormant: false, customized: false, inheritedFrom: null, poly: r.poly.map((q) => [q[0], q[1]] as V2), holes: [], at: r.at, order: p.nextId,
+  };
+  p.rooms.push(up);
+  const notes: Note[] = [{ kind: 'good', text: `${up.name}: a floor and walls at ${fmtM(y)}, ${fmtM(below.height)} tall like ${r.name}. Nothing is tied to the room below.`, ids: [walls.id, deck.id] }];
+  const decisions: Decision[] = [];
+  const oh = r.coveredBy ? p.overheads.find((o) => o.id === r.coveredBy) : null;
+  if (oh && ohUndersideAt(oh, r.at) < y + below.height) {
+    const others = d.rooms.filter((x) => x.id !== roomId && x.coveredBy === oh.id).map((x) => x.name);
+    const dec: Decision = {
+      key: 'roof',
+      text: `${oh.name} is in the way of the new storey${others.length ? ` (it also covers ${others.join(', ')})` : ''}.`,
+      options: [{ id: 'leave', label: 'Leave it where it is' }, { id: 'lift', label: 'Lift it onto the new storey' }],
+      chosen: 'leave',
+    };
+    decisions.push(dec);
+    if (decide(ch, dec) === 'lift') {
+      oh.baseY = Math.round((oh.baseY + below.height) * 1000) / 1000;
+      // it rested on the room below; now it rests on the walls under it
+      if (oh.restsOn?.includes(roomId)) oh.restsOn = oh.restsOn.map((id) => (id === roomId ? up.id : id));
+      notes.push({ kind: 'info', text: `${oh.name} was lifted ${fmtM(below.height)} onto ${up.name}.`, ids: [oh.id] });
+    }
+  }
+  return { select: walls.id, notes, decisions };
 };
 
 export const opDeck = (id: string, patch: Partial<Deck>): Op => (p) => {

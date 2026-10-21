@@ -105,18 +105,20 @@ export function Rail() {
           Cut
         </button>
       </div>
-      {v.sheetOut && (
+      {/* the sheet's buttons keep their room while it rests, so the track (and every height on it) never jumps mid-drag */}
+      {(
         <button
           class={'chip' + (v.focusY !== null ? ' on' : '')}
-          style={{ marginTop: '6px', width: '100%', justifyContent: 'center' }}
+          style={{ marginTop: '6px', width: '100%', justifyContent: 'center', visibility: v.sheetOut ? 'visible' : 'hidden' }}
+          tabIndex={v.sheetOut ? 0 : -1}
           title="Focus this height: what stands on it stays solid up to the next floor; everything above and below turns to tracing paper and can't be picked. Esc returns."
           onClick={() => (v.focusY !== null ? store.setView({ focusY: null }) : store.setView({ focusY: v.sheetY }, 'focus'))}
         >
           {v.focusY !== null ? `Focused at ${v.focusY.toFixed(2)} m` : 'Focus this height'}
         </button>
       )}
-      {v.sheetOut && (
-        <button class="btn small outline" style={{ marginTop: '6px', width: '100%', justifyContent: 'center' }} onClick={() => store.setView({ sheetOut: false, focusY: null })}>
+      {(
+        <button class="btn small outline" style={{ marginTop: '6px', width: '100%', justifyContent: 'center', visibility: v.sheetOut ? 'visible' : 'hidden' }} tabIndex={v.sheetOut ? 0 : -1} onClick={() => store.setView({ sheetOut: false, focusY: null })}>
           Put away
         </button>
       )}

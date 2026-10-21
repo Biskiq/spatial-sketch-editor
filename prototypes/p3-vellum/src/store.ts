@@ -69,6 +69,8 @@ export interface UIState {
   dragging: boolean;
   /** show every handle, not just the few that matter (session only) */
   allHandles: boolean;
+  /** the sheet came out while selecting, so the pen was picked up for it; putting the sheet away puts it down */
+  sheetPen: boolean;
 }
 
 type Listener = () => void;
@@ -86,7 +88,7 @@ class Store {
   viewStack: { view: ViewState; cam: CamSnap | null; label: string }[] = [];
   ui: UIState = {
     mode: 'make', tool: 'pen', baseTool: 'pen', placeType: null, selection: null, hover: null, panel: 'none', start: true, people: true,
-    removePreview: null, fixPreview: null, issueFocus: null, readingChip: null, rippleHidden: -1, hint: null, momentFocus: null, toast: null, dragging: false, allHandles: false,
+    removePreview: null, fixPreview: null, issueFocus: null, readingChip: null, rippleHidden: -1, hint: null, momentFocus: null, toast: null, dragging: false, allHandles: false, sheetPen: false,
   };
   cam: { snap: () => CamSnap; restore: (s: CamSnap) => void } | null = null;
   private listeners = new Set<Listener>();
@@ -112,8 +114,19 @@ class Store {
     return () => this.listeners.delete(fn);
   }
   emit() {
+    this.syncSheetPen();
     this.version++;
     for (const l of this.listeners) l();
+  }
+
+  /** The sheet is paper: raising it while selecting picks up the pen (the dock shows it); putting it away puts it down. */
+  private sheetWas = false;
+  private syncSheetPen() {
+    const out = this.view.sheetOut;
+    if (out === this.sheetWas) return;
+    this.sheetWas = out;
+    if (out && this.ui.mode === 'make' && this.ui.tool === 'select') this.ui = { ...this.ui, tool: 'pen', sheetPen: true };
+    else if (!out && this.ui.sheetPen) this.ui = { ...this.ui, tool: this.ui.mode === 'make' && this.ui.tool === 'pen' ? 'select' : this.ui.tool, sheetPen: false };
   }
 
   // ---------------------------------------------------------------- history
@@ -329,7 +342,8 @@ class Store {
 
   // ---------------------------------------------------------------- ui
   set(patch: Partial<UIState>) {
-    this.ui = { ...this.ui, ...patch };
+    // choosing a tool by hand ends the sheet's borrowed pen
+    this.ui = { ...this.ui, ...('tool' in patch ? { sheetPen: false } : {}), ...patch };
     this.emit();
   }
 

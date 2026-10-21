@@ -41,8 +41,10 @@ scenario in the brief.
 | Snapping | Ends, wall faces, square/45°/parallel to nearby walls, and in line with corners, shown as blue guides. ⌥ while dragging turns it off. A wall end that lands on another wall only *touches* it; the ripple offers **Join** (it then follows that wall) in the same step. |
 | Drag on a wall's face | Draw a door, arch, window or round window. |
 | Drag from one floor to another | Draw a stair or ramp along your walk. |
-| Pull **the sheet** (right rail) up | Draw in the air: roofs, canopies, mezzanines, bridges, lightwells. The sheet also x-rays everything above it. *Focus this height* also ghosts what is below. |
-| Roof profile pad | Drag a point to move it, drag the line to bend it, double-click the line to add a point, ⌥-click a point to remove it, draw on empty paper to start over. The same points sit on the roof's blue section in 3D. |
+| Pull **the sheet** (right rail) up | Draw in the air: roofs, canopies, mezzanines, bridges, lightwells. Raising it while selecting picks up Draw (the sheet is paper); Esc or *Put away* puts it down again. The sheet also x-rays everything above it. *Focus this height* also ghosts what is below. |
+| Room → **+ Add a floor above** | Another storey: a floor at the room's top, walls along its outline and a room as tall. Hover to preview, click to make it (one step); the new walls come selected to reshape. A roof in the way stays put unless you choose *Lift it onto the new storey*. Nothing is tied. |
+| Roof (Select) | A few big handles: the **peak** (up/down: taller or flatter; sideways: lean it), a **shoulder** on each slope (out: broader; in: pointier — the first pull gives a straight slope its one smooth point), the **edges** (width) and the **eave** (the whole roof). Drag the roof's surface to bend it; the section's own points come out as you near them. |
+| Roof profile pad | Drag a point to move it, drag the line to bend it, double-click the line to add a point, ⌥-click a point to remove it, draw on empty paper to start over. The same points sit on the roof's blue section in 3D. Starting shapes, span, eave and thickness are folded under *Shapes & settings*. |
 | Right-drag / ⌥-drag / two-finger scroll | Turn the table. Pinch or wheel zooms about the point under the pointer; ⇧ pans. Safari's pinch and rotate gestures work too. |
 | **L** (hold) · ⇧L | Lift roofs and upper floors apart. |
 | Slice tool | Drag a straight, snapped line to cut a section; it previews live, Esc cancels, **Flip** keeps the other side. |

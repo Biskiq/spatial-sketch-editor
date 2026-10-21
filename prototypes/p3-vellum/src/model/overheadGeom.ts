@@ -226,6 +226,136 @@ export function setCrease(pts: ProfilePt[], id: string, crease: boolean): Profil
   return pts.map((q) => (q.id === id ? { ...q, crease } : q));
 }
 
+// ---- Sculpting: a few big moves on the same authored points (the roof's primary handles in 3D) ----
+
+const TOP_EPS = 1e-3;
+
+/** The peak: the run of points at the profile's greatest height (one point for a gable, two for a flat-topped ridge). */
+export function profilePeak(pts: ProfilePt[]) {
+  const H = Math.max(...pts.map((q) => q.h));
+  let i0 = pts.findIndex((q) => q.h > H - TOP_EPS);
+  let i1 = i0;
+  while (i1 + 1 < pts.length && pts[i1 + 1].h > H - TOP_EPS) i1++;
+  return { i0, i1, u: (pts[i0].u + pts[i1].u) / 2, h: H };
+}
+
+/** Mirror-symmetric about the middle (then a pull on one shoulder pulls both). */
+export function profileSymmetric(pts: ProfilePt[]): boolean {
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[n - 1 - i];
+    if (Math.abs(a.u - (1 - b.u)) > 2e-3 || Math.abs(a.h - b.h) > 2e-3) return false;
+  }
+  return true;
+}
+
+/**
+ * Drag the peak to (u, h): up and down scales every height (the shape keeps its character); sideways leans the
+ * peak, carrying each slope's points along proportionally, so creases, curves and steps keep their places on their
+ * slope. A flat roof grows a sharp peak where it is pulled — the one new point, made on purpose by pulling up.
+ */
+export function movePeak(pts: ProfilePt[], u: number, h: number, lean = true): ProfilePt[] {
+  const n = pts.length;
+  const pk = profilePeak(pts);
+  const hh = Math.max(0, h);
+  if (pk.h < 0.05) {
+    if (hh < 0.05) return pts;
+    const uu = lean ? clamp(u, 0.1, 0.9) : 0.5;
+    let j = 0;
+    while (j + 2 < n && pts[j + 1].u <= uu) j++;
+    const out = pts.map((q) => ({ ...q, h: 0 }));
+    out.splice(j + 1, 0, { u: uu, h: hh, crease: true, id: newProfileId() });
+    return out;
+  }
+  const k = hh / pk.h;
+  let out = pts.map((q) => ({ ...q, h: q.h * k }));
+  // a peak on an eave edge (a raked or butterfly roof) has nowhere to lean
+  if (!lean || pk.i0 === 0 || pk.i1 === n - 1) return out;
+  const half = (pts[pk.i1].u - pts[pk.i0].u) / 2;
+  const c = clamp(u, half + 0.06, 1 - half - 0.06);
+  const a0 = pts[pk.i0].u, a1 = pts[pk.i1].u;
+  const b0 = c - half, b1 = c + half;
+  out = out.map((q, i) => {
+    if (i <= pk.i0) return { ...q, u: a0 > 0 ? (q.u / a0) * b0 : q.u };
+    if (i >= pk.i1) return { ...q, u: a1 < 1 ? b1 + ((q.u - a1) / (1 - a1)) * (1 - b1) : q.u };
+    return { ...q, u: b0 + (q.u - a0) };
+  });
+  return out;
+}
+
+/** Where a slope's shoulder sits: on the curve at half the peak's height, between the eave and the peak. */
+export function profileShoulder(pts: ProfilePt[], side: 'L' | 'R'): { u: number; h: number } | null {
+  const pk = profilePeak(pts);
+  if (pk.h < 0.05) return null;
+  if (side === 'L' ? pk.i0 === 0 : pk.i1 === pts.length - 1) return null;
+  const s = sampleProfile(pts);
+  const target = pk.h / 2;
+  const uA = side === 'L' ? 0 : pts[pk.i1].u, uB = side === 'L' ? pts[pk.i0].u : 1;
+  // walk from the eave towards the peak to the first crossing of half height
+  const seq = side === 'L' ? s : [...s].reverse();
+  for (let i = 0; i + 1 < seq.length; i++) {
+    const a = seq[i], b = seq[i + 1];
+    if (a.u < uA - 1e-9 || a.u > uB + 1e-9) continue;
+    if ((a.h - target) * (b.h - target) <= 0 && Math.abs(b.h - a.h) > 1e-9) {
+      const t = (target - a.h) / (b.h - a.h);
+      return { u: a.u + t * (b.u - a.u), h: target };
+    }
+  }
+  return null;
+}
+
+/** A slope's interior points (between its eave end and the peak), and the slope's ends. */
+function slopeOf(pts: ProfilePt[], side: 'L' | 'R') {
+  const pk = profilePeak(pts);
+  const lo = side === 'L' ? 0 : pk.i1, hi = side === 'L' ? pk.i0 : pts.length - 1;
+  const idx: number[] = [];
+  for (let i = lo + 1; i < hi; i++) idx.push(i);
+  return { idx, uA: pts[lo].u, uB: pts[hi].u };
+}
+
+/**
+ * Give a slope its shoulder point if it has none yet: one smooth point on the curve at half height, so a straight
+ * slope can start to bow. This is the only point a shoulder pull ever adds; the curve doesn't change shape.
+ */
+export function ensureShoulder(pts: ProfilePt[], side: 'L' | 'R'): ProfilePt[] {
+  if (slopeOf(pts, side).idx.length) return pts;
+  const sh = profileShoulder(pts, side);
+  return sh ? insertProfilePoint(pts, sh.u).profile : pts;
+}
+
+/**
+ * Pull a slope's shoulder sideways by du (towards the eave = broader and fuller; towards the peak = pointier).
+ * Only the slope's interior points move, and only sideways: the most near the middle of the slope, fading to
+ * nothing at the eave and at the peak, scaled so the shoulder follows the pen. Heights, creases and steps keep.
+ * A symmetric profile stays symmetric unless `mirror` is false.
+ */
+export function pullShoulder(pts: ProfilePt[], side: 'L' | 'R', du: number, mirror = profileSymmetric(pts)): ProfilePt[] {
+  const sh = profileShoulder(pts, side);
+  if (!sh || Math.abs(du) < 1e-9) return pts;
+  const out = pts.map((q) => ({ ...q }));
+  const apply = (sd: 'L' | 'R', d: number, at: number) => {
+    const { idx, uA, uB } = slopeOf(pts, sd);
+    if (!idx.length || uB - uA < 1e-6) return;
+    const bump = (u: number) => Math.sin(Math.PI * clamp((u - uA) / (uB - uA), 0, 1));
+    const w0 = Math.max(bump(at), 0.2);
+    const gap = 0.01;
+    let prev = uA + gap;
+    for (const i of idx) {
+      const uu = clamp(pts[i].u + (d * bump(pts[i].u)) / w0, prev, uB - gap);
+      // a vertical step's two points share a u, so they get the same pull and stay vertical
+      out[i].u = i > idx[0] && Math.abs(pts[i].u - pts[i - 1].u) < 1e-6 ? out[i - 1].u : uu;
+      prev = out[i].u;
+    }
+  };
+  apply(side, du, sh.u);
+  if (mirror) {
+    const other = side === 'L' ? 'R' : 'L';
+    const sh2 = profileShoulder(pts, other);
+    if (sh2) apply(other, -du, sh2.u);
+  }
+  return out;
+}
+
 // ---- Presets: a vocabulary of overheads expressed as profiles ----
 export type ProfilePreset = 'flat' | 'raked' | 'gable' | 'clerestory' | 'vault' | 'fold' | 'sawtooth' | 'butterfly' | 'dome';
 
