@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8832", "--directory", "prototypes/object-composition-prototype"],
       "port": 8832
+    },
+    {
+      "name": "vellum",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "prototypes/p3-vellum", "run", "dev"],
+      "port": 5191
     }
   ]
 }
