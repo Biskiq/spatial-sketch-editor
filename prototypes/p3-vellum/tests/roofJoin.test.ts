@@ -1,13 +1,15 @@
 // Joining two roofs: explicit, narrow, and exactly what the preview showed. Two compatible gables become one wing
 // roof whose valley comes from the proven decomposition; everything else is refused with the reason.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import pc from 'polygon-clipping';
 import { emptyProject, Project } from '../src/model/types';
 import { runTxn, opAddRun, opRoom, opCoverRooms, opAddOverhead, opOverhead } from '../src/model/ops';
 import { derive } from '../src/model/derive';
 import { roofWingsState } from '../src/model/wings';
 import { presetProfile, ohSpan } from '../src/model/overheadGeom';
-import { joinCheck, joinNeighbours, opJoinRoofs, gablePitch } from '../src/model/roofJoin';
+import { joinCheck, joinNeighbours, opJoinRoofs, gablePitch, sameSectionShape } from '../src/model/roofJoin';
 import type { V2 } from '../src/model/geom2d';
+import { readSection, sectionFamily } from '../src/model/section';
 import type { StrokeFit } from '../src/model/strokes';
 import { rect, probeRoof, cornerRise, overlapDisagreement } from './support/roofProbe';
 
@@ -162,5 +164,96 @@ describe('a stale offer is never committed', () => {
     const fresh = joinCheck(moved, a.id, b.id);
     expect(fresh.ok).toBe(true);
     expect(runTxn(moved, opJoinRoofs(a.id, b.id, fresh.merged)).after.overheads[0]).toEqual(fresh.merged);
+  });
+});
+
+describe('the preview is compared in full, not by outline and section alone', () => {
+  const staleAfter = (change: (p: Project) => Project, base: () => Project = L) => {
+    const p = base();
+    const [a, b] = p.overheads;
+    const shown = joinCheck(p, a.id, b.id).merged!;
+    const q = change(p);
+    // the changed pair still qualifies on its own, so only the comparison with the preview can catch it
+    expect(joinCheck(q, a.id, b.id).ok).toBe(true);
+    const t = runTxn(q, opJoinRoofs(a.id, b.id, shown));
+    expect(t.after.overheads.length).toBe(2);
+    expect(t.after.overheads).toEqual(q.overheads);
+    expect(t.notes.some((n) => /hover the offer again/.test(n.text))).toBe(true);
+  };
+  const tweakA = (patch: (o: any) => void) => (p: Project) => {
+    const q = structuredClone(p);
+    patch(q.overheads[0]);
+    return q;
+  };
+
+  // free roofs, so nothing re-seats the eave on its rooms
+  it('A’s eave moved 1 cm (inside the join tolerance)', () => staleAfter((p) => doOp(p, opOverhead(p.overheads[0].id, { baseY: p.overheads[0].baseY + 0.01 })), cross));
+  it('A’s thickness changed by 5 mm', () => staleAfter(tweakA((o) => { o.thick += 0.005; })));
+  it('A’s hip changed by 3 cm', () => staleAfter((p) => doOp(doOp(p, opOverhead(p.overheads[0].id, { hip: 0.03 })), opOverhead(p.overheads[1].id, { hip: 0.03 }))));
+
+  it('both roofs stopped following their walls after a fitted preview: refused, no crash', () => {
+    const p = L();
+    const [a, b] = p.overheads;
+    const shown = joinCheck(p, a.id, b.id).merged!;
+    expect(shown.fit).not.toBeNull();
+    const q = doOp(doOp(p, opOverhead(a.id, { fit: null })), opOverhead(b.id, { fit: null }));
+    const t = runTxn(q, opJoinRoofs(a.id, b.id, shown));
+    expect(t.after.overheads.length).toBe(2);
+    expect(t.notes.some((n) => /hover the offer again/.test(n.text))).toBe(true);
+  });
+});
+
+describe('a clipping failure never deletes a roof', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('a clipper that throws refuses the join and keeps both roofs', () => {
+    const p = cross();
+    const [a, b] = p.overheads;
+    vi.spyOn(pc, 'union').mockImplementation(() => { throw new Error('robustness failure'); });
+    const c = joinCheck(p, a.id, b.id);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/couldn't be combined/);
+    expect(joinNeighbours(p, a.id)).toEqual([]);
+    const t = runTxn(p, opJoinRoofs(a.id, b.id));
+    expect(t.after.overheads).toEqual(p.overheads);
+  });
+
+  it('a "union" that is only A (the old fallback shape) fails the coverage check', () => {
+    const p = cross();
+    const [a, b] = p.overheads;
+    vi.spyOn(pc, 'union').mockImplementation(() => [[[...a.outline.map((q) => [q[0], q[1]]), [a.outline[0][0], a.outline[0][1]]]]] as any);
+    const c = joinCheck(p, a.id, b.id);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/couldn't be combined/);
+    expect(runTxn(p, opJoinRoofs(a.id, b.id)).after.overheads.length).toBe(2);
+  });
+});
+
+describe('the same pitch is not the same section', () => {
+  it('a sagging gable and a straight one at the same pitch are refused', () => {
+    const sagging = (span: number) => {
+      const g = presetProfile('gable', span);
+      const peak = Math.max(...g.map((q) => q.h));
+      return [
+        { ...g[0], u: 0, h: 0 },
+        { u: 0.25, h: peak * 0.3, crease: false, id: 'b1' },
+        { ...g[1], u: 0.5, h: peak },
+        { u: 0.75, h: peak * 0.3, crease: false, id: 'b2' },
+        { ...g[g.length - 1], u: 1, h: 0 },
+      ];
+    };
+    const p = twoDrawn(rect(0, 2, 12, 7), Math.PI / 2, rect(4, 0, 9, 12), 0, sagging);
+    const [a, b] = p.overheads;
+    // both read as gables, at one pitch — only the shape tells them apart
+    expect(sectionFamily(readSection(b.profile), 'extrude')).toBe('gable');
+    expect(gablePitch(b)).toBeCloseTo(gablePitch(a), 0);
+    expect(sameSectionShape(a.profile, b.profile)).toBe(false);
+    const c = joinCheck(p, a.id, b.id);
+    expect(c.ok).toBe(false);
+    expect(c.reason).toMatch(/shaped differently/);
+  });
+
+  it('the same section at a different span is the same shape', () => {
+    expect(sameSectionShape(presetProfile('gable', 5), presetProfile('gable', 9))).toBe(true);
   });
 });

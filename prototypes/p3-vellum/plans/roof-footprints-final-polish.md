@@ -50,11 +50,19 @@ The probe fires vertical rays at each roof's top mesh and compares the hits with
 - `src/model/roofJoin.ts`:
   - `joinCheck` decides by **running the join on a copy**, so the chip, its preview and the commit all see the same
     settled roof.
-  - `opJoinRoofs(a, b, expect)` refuses a stale preview with *"…changed since the join was offered… hover the offer
-    again"*.
+  - `opJoinRoofs(a, b, expect)` re-runs the join on a copy, settles it and compares the result with the previewed
+    roof **in full**: outline, eave, thickness, hip, section, fit and ties. Any difference refuses with *"…changed
+    since the join was offered… hover the offer again"*. This is tested for a 1 cm eave move, a 5 mm thickness change,
+    a 3 cm hip change, and fit dropped after a fitted preview.
+  - **A clipping failure never deletes a roof.** The join uses `tryUnion` (new in `clip.ts`), which reports failure
+    instead of falling back to its first input. The joined outline must also be proven to contain every vertex of
+    both footprints, with an area between the larger footprint's and their sum, before B is removed. Both failure
+    shapes (a throwing clipper, and a "union" that is only A) are tested.
   - `joinNeighbours` offers the join only with roofs whose outlines meet.
 - **Qualifies only when:**
-  - both roofs have a surface and both sections read as *gable*;
+  - both roofs have a surface, both sections read as *gable*, and the two sections are **the same shape**: scaled to
+    unit span and peak, they agree within 2%. A sagging gable and a straight one share a pitch but not a shape, and
+    joining keeps only A's section, so they are refused;
   - the outlines overlap or touch, and their union has no courtyard;
   - eaves are within 2 cm, thickness within 1 cm, pitch within 1° and hip within 5 cm;
   - both roofs are fitted with the same overhang, or neither is fitted, and both rest on rooms or neither does.
@@ -87,8 +95,8 @@ The probe fires vertical rays at each roof's top mesh and compares the hits with
 
 ## 4. Verification (at review)
 
-- **Tests:** 248 in 18 files, all passing (`npx vitest run --exclude tests/roof-polish-review-temp.test.ts`).
-  - New: `tests/footprints.test.ts` (31) and `tests/roofJoin.test.ts` (14).
+- **Tests:** 256 in 18 files, all passing (`npx vitest run --exclude tests/roof-polish-review-temp.test.ts`).
+  - New: `tests/footprints.test.ts` (31) and `tests/roofJoin.test.ts` (22, including the review regressions).
   - Two `qualification.test.ts` expectations changed to the gated repairs.
   - `npx tsc --noEmit` is clean apart from the untracked `tests/roof-polish-review-temp.test.ts` (its `node:fs`
     import has no types), which also stops `npm run build`. Its probe now lives in `tests/support/roofProbe.ts`.

@@ -34,6 +34,19 @@ export function union(...ms: MPoly[]): MPoly {
   if (valid.length === 1) return valid[0];
   return safe(() => (pc.union as any)(...valid.map(toPC)), valid[0]);
 }
+/**
+ * A union that says when it failed. `union` falls back to its first input when the clipper throws, which is fine for
+ * drawing but not for an edit that deletes a source on the strength of the result; such callers use this and refuse.
+ */
+export function tryUnion(...ms: MPoly[]): MPoly | null {
+  const valid = ms.filter((m) => m.length);
+  if (valid.length < 2) return valid[0] ?? [];
+  try {
+    return fromPC((pc.union as any)(...valid.map(toPC)));
+  } catch {
+    return null;
+  }
+}
 export function intersection(a: MPoly, b: MPoly): MPoly {
   if (!a.length || !b.length) return [];
   return safe(() => pc.intersection(toPC(a) as any, toPC(b) as any), []);
