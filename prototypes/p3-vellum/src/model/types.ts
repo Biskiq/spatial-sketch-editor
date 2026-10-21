@@ -88,6 +88,10 @@ export interface Overhead {
   /** Tied: base follows the top of these rooms (+ offset). */
   restsOn: string[] | null;
   restOffset: number;
+  /** Fitted: the outline is these rooms' outline grown by the walls and the overhang, and follows them (see fit.ts). */
+  fit?: { rooms: string[]; overhang: number } | null;
+  /** Hipped ends: how far (m) the slopes come in from each end of the ridge; 0 is a gable. */
+  hip?: number;
   order: number;
 }
 

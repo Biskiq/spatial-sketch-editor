@@ -14,6 +14,7 @@ import {
 import { runGeom, pointAtT } from './runs';
 import { lvl, stairSteps, roomTop, surfaceY } from './settle';
 import { ohCovers } from './overheadGeom';
+import { fittedOutline, overhangOf } from './fit';
 
 export interface Magnet {
   run: string;
@@ -263,11 +264,25 @@ export function readStroke(c: ReadCtx): Reading[] {
   const named = under.filter((r) => r.topY <= y + 0.3 && r.topY > topY - 0.3);
   const nameRooms = named.length ? named : under;
   const roofName = under.length ? `Roof over ${nameRooms.slice(0, 2).map((r) => r.name).join(' & ')}${nameRooms.length > 2 ? '…' : ''}` : 'Canopy';
-  const roof: Reading = {
+  const rest = tiedRooms.length ? tiedRooms : null;
+  const asDrawn: Reading = {
     id: 'roof', label: roofName,
     detail: `${tiedRooms.length ? 'resting on ' + tiedRooms.map((id) => d.roomById.get(id)!.name).join(', ') + ' (tied)' : under.length ? 'free above the rooms' : 'shade, drawn by its shadow'} · ${areaTxt}`,
-    op: opAddOverhead(outline, y, { restsOn: tiedRooms.length ? tiedRooms : null, name: under.length ? undefined : nextName(p, 'Canopy') }),
+    op: opAddOverhead(outline, y, { restsOn: rest, name: under.length ? undefined : nextName(p, 'Canopy') }),
   };
+  // drawn about over the top storey's rooms (not far past them, where it's a canopy): fitted, so it follows their walls
+  const fitRooms = named.filter((r) => overlapArea(r.poly, outline) > 0.7 * r.area);
+  const fitArea = fitRooms.reduce((s, r) => s + r.area, 0);
+  const fitted = fitRooms.length && fitArea > 0.55 * A && fitArea < 1.08 * A ? fittedOutline(fitRooms.map((r) => r.poly), overhangOf(outline, fitRooms.map((r) => r.poly))) : null;
+  const overhang = fitted ? overhangOf(outline, fitRooms.map((r) => r.poly)) : 0;
+  const roof: Reading = fitted
+    ? {
+        id: 'roof', label: roofName,
+        detail: `fitted to ${fitRooms.map((r) => r.name).join(' & ')}: follows ${fitRooms.length > 1 ? 'their' : 'its'} walls · ${Math.round(overhang * 100)} cm overhang${rest ? ` · rests on ${fitRooms.length > 1 ? 'them' : 'it'} (tied)` : ''}`,
+        op: opAddOverhead(fitted, y, { restsOn: rest, fit: { rooms: fitRooms.map((r) => r.id), overhang } }),
+      }
+    : asDrawn;
+  const roofDrawn: Reading | null = fitted ? { ...asDrawn, id: 'roof-drawn', label: 'Roof, as drawn', detail: `its own outline, as you drew it · ${areaTxt}` } : null;
   const deckRest = snapRooms.find((id) => {
     const r = d.roomById.get(id);
     return r && overlapArea(r.poly, outline) > 0.5 * A;
@@ -290,6 +305,7 @@ export function readStroke(c: ReadCtx): Reading[] {
     out.push(roof, deck);
     if (overThings) out.push(lightwell, atrium);
   }
+  if (roofDrawn) out.splice(out.indexOf(roof) + 1, 0, roofDrawn);
   return out;
 }
 

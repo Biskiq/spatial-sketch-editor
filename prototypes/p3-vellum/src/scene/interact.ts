@@ -61,6 +61,8 @@ export class Interact {
   handle: Handle | null = null;
   handleOp: Op | null = null;
   private handleLabel: string | undefined;
+  private queuedMove: PointerEvent | null = null;
+  private moveRaf = 0;
   camDrag: { x: number; y: number; pan: boolean } | null = null;
   objDrag: { id: string; op: Op | null; from: string; to: string } | null = null;
   space = false;
@@ -167,22 +169,10 @@ export class Interact {
       return;
     }
     if (this.state === 'handle' && this.handle) {
-      const pt = this.dragPoint(this.handle, e);
-      if (!pt) return;
-      const res = this.handle.drag(pt, e);
-      if (!res) return;
-      this.handleOp = res.op;
-      this.handleLabel = res.commit;
-      store.setPreview(res.op);
-      this.ov.measure = res.measure ? { text: res.measure, pos: new THREE.Vector3(pt.plan[0], pt.y + 0.4, pt.plan[1]) } : null;
-      const hy = this.handle.mode.type === 'plan' ? this.handle.mode.y : 0;
-      if (this.handle.mode.type === 'plan') {
-        const at = res.at ?? pt.plan;
-        this.ov.moveActive(new THREE.Vector3(at[0], this.handle.pos.y, at[1]));
-      } else if (this.handle.mode.type === 'vertical') this.ov.moveActive(new THREE.Vector3(this.handle.pos.x, pt.y + this.stage.liftOf(store.ui.selection ?? ''), this.handle.pos.z));
-      this.ov.setKnot(res.knot ? [res.knot[0], hy, res.knot[1]] : null);
-      this.ov.setGuides(res.guides ?? null, hy, res.snap ? { text: res.snap, at: pt.plan } : null);
-      if (res.snap) this.ov.measure = null;
+      // one reshape per frame: pointers can report far more often than the screen redraws, and each reshape
+      // previews the whole building; only the latest position matters
+      this.queuedMove = e;
+      if (!this.moveRaf) this.moveRaf = requestAnimationFrame(() => this.flushHandleMove());
       return;
     }
     if (this.state === 'pending' && this.down) {
@@ -232,7 +222,33 @@ export class Interact {
     }
   }
 
+  // applies the latest queued handle move (called once per frame, and on release so the last position counts)
+  private flushHandleMove() {
+    if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
+    this.moveRaf = 0;
+    const e = this.queuedMove;
+    this.queuedMove = null;
+    if (!e || !this.handle) return;
+    const pt = this.dragPoint(this.handle, e);
+      if (!pt) return;
+      const res = this.handle.drag(pt, e);
+      if (!res) return;
+      this.handleOp = res.op;
+      this.handleLabel = res.commit;
+      store.setPreview(res.op);
+      this.ov.measure = res.measure ? { text: res.measure, pos: new THREE.Vector3(pt.plan[0], pt.y + 0.4, pt.plan[1]) } : null;
+      const hy = this.handle.mode.type === 'plan' ? this.handle.mode.y : 0;
+      if (this.handle.mode.type === 'plan') {
+        const at = res.at ?? pt.plan;
+        this.ov.moveActive(new THREE.Vector3(at[0], this.handle.pos.y, at[1]));
+      } else if (this.handle.mode.type === 'vertical') this.ov.moveActive(new THREE.Vector3(this.handle.pos.x, pt.y + this.stage.liftOf(store.ui.selection ?? ''), this.handle.pos.z));
+      this.ov.setKnot(res.knot ? [res.knot[0], hy, res.knot[1]] : null);
+      this.ov.setGuides(res.guides ?? null, hy, res.snap ? { text: res.snap, at: pt.plan } : null);
+      if (res.snap) this.ov.measure = null;
+  }
+
   private onUp(e: PointerEvent) {
+    if (this.state === 'handle') this.flushHandleMove();
     const st = this.state;
     this.state = 'idle';
     if (st === 'camera') {
@@ -335,6 +351,9 @@ export class Interact {
       this.ov.setReading(null);
       this.live.style.display = 'none';
     } else if (this.state === 'handle' || this.state === 'objdrag') {
+      if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
+      this.moveRaf = 0;
+      this.queuedMove = null;
       this.handle = null;
       this.handleOp = null;
       this.handleLabel = undefined;

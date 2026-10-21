@@ -40,6 +40,12 @@ export interface OhFrame {
   d: V2; // span axis
   wmin: number;
   wmax: number;
+  /** along the ridge (perpendicular to the span): the outline's extent */
+  emin: number;
+  emax: number;
+  /** hipped ends: the effective hip length (m) and the end slope, as profile fractions from eave (0) to peak (1) */
+  hip: number;
+  hipU: number;
   center: V2;
   R: number;
   samples: PSample[];
@@ -48,20 +54,27 @@ export interface OhFrame {
 const frames = new WeakMap<Overhead, { key: string; f: OhFrame }>();
 
 export function ohFrame(oh: Overhead): OhFrame {
-  const key = `${oh.outline.join(';')}|${oh.dir}|${JSON.stringify(oh.profile)}|${oh.form}`;
+  const key = `${oh.outline.join(';')}|${oh.dir}|${JSON.stringify(oh.profile)}|${oh.form}|${oh.hip ?? 0}`;
   const c = frames.get(oh);
   if (c && c.key === key) return c.f;
   const d = fromAngle(oh.dir);
-  let wmin = Infinity, wmax = -Infinity;
+  const e: V2 = [-d[1], d[0]];
+  let wmin = Infinity, wmax = -Infinity, emin = Infinity, emax = -Infinity;
   for (const p of oh.outline) {
-    const w = dot(p, d);
+    const w = dot(p, d), v = dot(p, e);
     wmin = Math.min(wmin, w);
     wmax = Math.max(wmax, w);
+    emin = Math.min(emin, v);
+    emax = Math.max(emax, v);
   }
   const center = polyCentroid(oh.outline);
   let R = 0;
   for (const p of oh.outline) R = Math.max(R, dist(p, center));
-  const f = { d, wmin, wmax, center, R, samples: sampleProfile(oh.profile) };
+  const pk = profilePeak(oh.profile);
+  // a hip needs a ridge with slopes on both sides (not a raked or flat roof, not a dome)
+  const canHip = oh.form === 'extrude' && pk.h > 0.05 && pk.i0 > 0 && pk.i1 < oh.profile.length - 1;
+  const hip = canHip ? Math.min(Math.max(0, oh.hip ?? 0), (emax - emin) / 2) : 0;
+  const f = { d, wmin, wmax, emin, emax, hip, hipU: oh.profile[pk.i0]?.u ?? 0.5, center, R, samples: sampleProfile(oh.profile) };
   frames.set(oh, { key, f });
   return f;
 }
@@ -88,9 +101,26 @@ export function ohU(oh: Overhead, p: V2): number {
   return clamp((dot(p, f.d) - f.wmin) / Math.max(f.wmax - f.wmin, 1e-6), 0, 1);
 }
 
+/**
+ * A hipped end: within `hip` of either end of the ridge the roof slopes down to the end edge too, with the cross
+ * slope's own shape. The height there is the lower of the two, so the hip lines come out where the slopes meet.
+ */
+export function hipH(f: OhFrame, v: number): number {
+  if (f.hip <= 1e-6) return Infinity;
+  const t = clamp(Math.min(v - f.emin, f.emax - v) / f.hip, 0, 1);
+  return profileH(f.samples, t * f.hipU);
+}
+
+/** Height above the eave at a plan point (the cross profile, cut down by hipped ends). */
+export function ohH(oh: Overhead, p: V2): number {
+  const f = ohFrame(oh);
+  const h = profileH(f.samples, ohU(oh, p));
+  return f.hip > 0 ? Math.min(h, hipH(f, dot(p, [-f.d[1], f.d[0]]))) : h;
+}
+
 /** The eave (baseY) is the underside where the overhead meets its walls; its thickness sits above. */
 export function ohUndersideAt(oh: Overhead, p: V2): number {
-  return oh.baseY + profileH(ohFrame(oh).samples, ohU(oh, p));
+  return oh.baseY + ohH(oh, p);
 }
 
 export function ohTopAt(oh: Overhead, p: V2): number {
@@ -110,6 +140,14 @@ export function ohSpan(oh: Overhead) {
   const f = ohFrame(oh);
   return oh.form === 'revolve' ? f.R * 2 : f.wmax - f.wmin;
 }
+
+// Sculpting stops short of the extremes: a roof never rises past one and a half times its span (a spire, not a stick), a peak
+// never leans so far that a slope stands vertical, and a shoulder keeps each slope at least a quarter of its width
+// either side, so it bows but never folds flat against the peak or the eave.
+export const MAX_RISE = 1.5;
+export const PEAK_MARGIN = 0.12;
+export const SHOULDER_MARGIN = 0.25;
+export const maxRise = (oh: Overhead) => Math.max(1, MAX_RISE * ohSpan(oh));
 
 /**
  * Where the profile shows on the roof itself: a section across the span through the middle (through the centre
@@ -232,6 +270,7 @@ const TOP_EPS = 1e-3;
 
 /** The peak: the run of points at the profile's greatest height (one point for a gable, two for a flat-topped ridge). */
 export function profilePeak(pts: ProfilePt[]) {
+  if (!pts.length) return { i0: 0, i1: 0, u: 0.5, h: 0 };
   const H = Math.max(...pts.map((q) => q.h));
   let i0 = pts.findIndex((q) => q.h > H - TOP_EPS);
   let i1 = i0;
@@ -260,7 +299,7 @@ export function movePeak(pts: ProfilePt[], u: number, h: number, lean = true): P
   const hh = Math.max(0, h);
   if (pk.h < 0.05) {
     if (hh < 0.05) return pts;
-    const uu = lean ? clamp(u, 0.1, 0.9) : 0.5;
+    const uu = lean ? clamp(u, PEAK_MARGIN, 1 - PEAK_MARGIN) : 0.5;
     let j = 0;
     while (j + 2 < n && pts[j + 1].u <= uu) j++;
     const out = pts.map((q) => ({ ...q, h: 0 }));
@@ -272,7 +311,7 @@ export function movePeak(pts: ProfilePt[], u: number, h: number, lean = true): P
   // a peak on an eave edge (a raked or butterfly roof) has nowhere to lean
   if (!lean || pk.i0 === 0 || pk.i1 === n - 1) return out;
   const half = (pts[pk.i1].u - pts[pk.i0].u) / 2;
-  const c = clamp(u, half + 0.06, 1 - half - 0.06);
+  const c = clamp(u, half + PEAK_MARGIN, 1 - half - PEAK_MARGIN);
   const a0 = pts[pk.i0].u, a1 = pts[pk.i1].u;
   const b0 = c - half, b1 = c + half;
   out = out.map((q, i) => {
@@ -338,10 +377,12 @@ export function pullShoulder(pts: ProfilePt[], side: 'L' | 'R', du: number, mirr
     if (!idx.length || uB - uA < 1e-6) return;
     const bump = (u: number) => Math.sin(Math.PI * clamp((u - uA) / (uB - uA), 0, 1));
     const w0 = Math.max(bump(at), 0.2);
-    const gap = 0.01;
-    let prev = uA + gap;
+    const gap = Math.max(0.01, SHOULDER_MARGIN * (uB - uA));
+    // points already inside the margin (drawn there) keep their place rather than jump out
+    let prev = uA;
     for (const i of idx) {
-      const uu = clamp(pts[i].u + (d * bump(pts[i].u)) / w0, prev, uB - gap);
+      const lo = Math.max(prev, Math.min(uA + gap, pts[i].u)), hi = Math.max(uB - gap, pts[i].u);
+      const uu = clamp(pts[i].u + (d * bump(pts[i].u)) / w0, lo, Math.max(lo, hi));
       // a vertical step's two points share a u, so they get the same pull and stay vertical
       out[i].u = i > idx[0] && Math.abs(pts[i].u - pts[i - 1].u) < 1e-6 ? out[i - 1].u : uu;
       prev = out[i].u;

@@ -30,7 +30,18 @@ describe('a floor above, from ordinary parts', () => {
     expect(upper.name).toBe('Room 1 upstairs');
     expect(upper.topY - upper.floorY).toBeCloseTo(3.2, 6);
     expect(r.select).toBe(up.id);
-    expect(r.decisions.length).toBe(0);
+    expect(r.decisions.map((d) => [d.key, d.chosen])).toEqual([['cover', 'open']]);
+    expect(q.overheads.length).toBe(0);
+  });
+
+  it('an open storey can take a roof in the same step, fitted to its walls', () => {
+    const p = oneRoom();
+    const q = runTxn(p, opAddFloorAbove(p.rooms[0].id), { cover: 'gable' }).after;
+    expect(q.overheads.length).toBe(1);
+    const upper = derive(q).rooms.find((x) => x.floorY > 1)!;
+    expect(q.overheads[0].fit?.rooms).toEqual([upper.id]);
+    expect(q.overheads[0].baseY).toBeCloseTo(6.4, 6);
+    expect(derive(q).rooms.find((x) => x.floorY > 1)!.coveredBy).toBe(q.overheads[0].id);
   });
 
   it('a roof in the way stays put unless lifting it is chosen in the same step', () => {

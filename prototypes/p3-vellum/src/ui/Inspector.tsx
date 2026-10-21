@@ -331,6 +331,8 @@ function OpeningCard({ o, p }: { o: Opening; p: Project }) {
 
 function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
   const tied = oh.restsOn?.length ? oh.restsOn.map((id) => elementName(p, id)) : null;
+  const fitNames = oh.fit ? oh.fit.rooms.map((id) => elementName(p, id)).join(', ') : '';
+  const coveredIds = derive(p).rooms.filter((r) => r.coveredBy === oh.id).map((r) => r.id);
   const round = isRoundish(oh.outline);
   return (
     <>
@@ -367,6 +369,15 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
           make={(v) => opOverhead(oh.id, { baseY: v, ...(tied ? { restsOn: null } : {}) })}
           people
         />
+        {oh.fit ? (
+          <Slider label="Overhang past the walls" value={oh.fit.overhang} min={0} max={1.5} step={0.05} fmt={(v) => `${Math.round(v * 100)} cm`} commit="Changed the overhang" make={(v) => opOverhead(oh.id, { fit: { ...oh.fit!, overhang: v } })} />
+        ) : coveredIds.length ? (
+          <div class="row" style={{ marginTop: '8px' }}>
+            <button class="btn small outline" title="Fit the outline to the rooms under it again, so it follows their walls" onClick={() => store.commit(`Fitted ${oh.name} to its walls`, opOverhead(oh.id, { fit: { rooms: coveredIds, overhang: 0.3 } }))}>
+              Fit to the walls below
+            </button>
+          </div>
+        ) : null}
         <Slider label="Thickness" value={oh.thick} min={0.05} max={0.8} step={0.01} fmt={(v) => `${Math.round(v * 100)} cm`} commit="Changed the thickness" make={(v) => opOverhead(oh.id, { thick: v })} />
         <div class="note" style={{ marginTop: '6px' }}>
           In the pad: ⌥-click a point to remove it · double-click a point: ■ sharp ↔ ○ smooth · draw on empty paper to start over. On the roof: drag its surface to bend it; the section's own points come out as you near them.
@@ -375,6 +386,7 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
       <Remember
         items={[
           ...(tied ? [{ text: `Rests on ${tied.join(', ')} — follows if they change`, knot: true, untie: () => store.commit(`Untied ${oh.name}`, opOverhead(oh.id, { restsOn: null })) }] : [{ text: 'Its own height — not tied to any room' }]),
+          ...(oh.fit ? [{ text: `Fits ${fitNames}'s walls — follows when they grow or move`, knot: true, untie: () => store.commit(`${oh.name} keeps its outline`, opOverhead(oh.id, { fit: null })) }] : [{ text: 'Its own outline — it stays as drawn' }]),
           { text: 'Sharp creases stay sharp; smooth points stay smooth' },
         ]}
       />

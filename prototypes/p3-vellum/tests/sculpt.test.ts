@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { presetProfile, movePeak, profilePeak, pullShoulder, ensureShoulder, profileShoulder, profileSymmetric, sampleProfile, profileH } from '../src/model/overheadGeom';
+import { emptyProject } from '../src/model/types';
+import { runTxn, opAddOverhead } from '../src/model/ops';
+import { maxRise, MAX_RISE, PEAK_MARGIN, SHOULDER_MARGIN, presetProfile, movePeak, profilePeak, pullShoulder, ensureShoulder, profileShoulder, profileSymmetric, sampleProfile, profileH } from '../src/model/overheadGeom';
 
 const H = (pts: ReturnType<typeof presetProfile>, u: number) => profileH(sampleProfile(pts), u);
 
@@ -78,5 +80,35 @@ describe('sculpting a roof with a few big moves', () => {
     const g = ensureShoulder(ensureShoulder(movePeak(presetProfile('gable', 10), 0.6, 3), 'L'), 'R');
     const m = pullShoulder(g, 'L', -0.1);
     expect(m[3].u).toBe(g[3].u);
+  });
+});
+
+describe('sculpting stops short of the extremes', () => {
+  it('a shoulder pulled all the way in or out keeps a quarter of the slope either side', () => {
+    const g = ensureShoulder(ensureShoulder(presetProfile('gable', 10), 'L'), 'R');
+    const pk = profilePeak(g);
+    for (const du of [-5, 5]) {
+      const m = pullShoulder(g, 'L', du);
+      const inner = m.filter((q, i) => i > 0 && i < pk.i0);
+      expect(inner.length).toBeGreaterThan(0);
+      for (const q of inner) {
+        expect(q.u).toBeGreaterThanOrEqual(SHOULDER_MARGIN * m[pk.i0].u - 1e-9);
+        expect(q.u).toBeLessThanOrEqual((1 - SHOULDER_MARGIN) * m[pk.i0].u + 1e-9);
+      }
+      expect(profileSymmetric(m)).toBe(true);
+    }
+  });
+  it('a leaning peak never stands a slope upright', () => {
+    const g = presetProfile('gable', 10);
+    for (const u of [0, 1]) {
+      const p = profilePeak(movePeak(g, u, profilePeak(g).h)).u;
+      expect(p).toBeGreaterThanOrEqual(PEAK_MARGIN - 1e-9);
+      expect(p).toBeLessThanOrEqual(1 - PEAK_MARGIN + 1e-9);
+    }
+    expect(profilePeak(movePeak(presetProfile('flat', 10), 0.01, 2)).u).toBeCloseTo(PEAK_MARGIN);
+  });
+  it('a roof rises at most one and a half times its span', () => {
+    const oh = runTxn(emptyProject(), opAddOverhead([[0, 0], [6, 0], [6, 10], [0, 10]], 3, { dir: 0 })).after.overheads[0];
+    expect(maxRise(oh)).toBeCloseTo(MAX_RISE * 6);
   });
 });

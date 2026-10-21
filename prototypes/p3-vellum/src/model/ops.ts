@@ -12,6 +12,7 @@ import { runGeom, closestOnRun, translateRun, scaleRun, pointAtT } from './runs'
 import { derive, DRoom, openingKind, elementName, floorUnder } from './derive';
 import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt } from './overheadGeom';
 import type { StrokeFit } from './strokes';
+import { isRoundish, fittedOutline } from './fit';
 
 export interface Decision {
   key: string;
@@ -363,19 +364,15 @@ export function spanDir(outline: V2[]): number {
   return best + Math.PI / 2;
 }
 
-export function isRoundish(poly: V2[]) {
-  const A = Math.abs(polyArea(poly));
-  const Lp = polyPerimeter(poly);
-  return poly.length > 16 && (4 * Math.PI * A) / (Lp * Lp) > 0.96;
-}
+export { isRoundish };
 
-export const opAddOverhead = (outline: V2[], baseY: number, o: { profile?: ProfilePt[]; preset?: ProfilePreset; dir?: number; restsOn?: string[] | null; name?: string; form?: 'extrude' | 'revolve' } = {}): Op => (p) => {
+export const opAddOverhead = (outline: V2[], baseY: number, o: { profile?: ProfilePt[]; preset?: ProfilePreset; dir?: number; restsOn?: string[] | null; name?: string; form?: 'extrude' | 'revolve'; fit?: Overhead['fit'] } = {}): Op => (p) => {
   const ol = ensureCCW(outline);
   const round = o.form ?? (isRoundish(ol) ? 'revolve' : 'extrude');
   const oh: Overhead = {
     id: newId(p, 'h'), kind: 'overhead', name: o.name ?? nextName(p, round === 'revolve' ? 'Dome' : 'Roof'),
     outline: ol, baseY, profile: [], dir: o.dir ?? spanDir(ol), form: round, thick: 0.25,
-    restsOn: o.restsOn ?? null, restOffset: 0, order: p.nextId,
+    restsOn: o.restsOn ?? null, restOffset: 0, fit: o.fit ?? null, hip: 0, order: p.nextId,
   };
   oh.profile = o.profile ?? presetProfile(o.preset ?? 'flat', ohSpan(oh));
   p.overheads.push(oh);
@@ -390,8 +387,15 @@ export const opOverhead = (id: string, patch: Partial<Overhead>): Op => (p) => {
     const tops = oh.restsOn.map((rid) => p.rooms.find((r) => r.id === rid)).filter(Boolean).map((r) => roomTop(r!));
     if (tops.length) oh.restOffset = patch.baseY - Math.max(...tops);
   }
+  // an outline of its own (an edge or corner pulled) ends the fit: from now on the roof keeps exactly this outline
+  const unfit = patch.outline !== undefined && patch.fit === undefined && !!oh.fit;
+  const names = unfit ? oh.fit!.rooms.map((id) => p.rooms.find((r) => r.id === id)?.name).filter(Boolean).join(', ') : '';
   Object.assign(oh, patch);
   if (patch.outline) oh.outline = ensureCCW(patch.outline);
+  if (unfit) {
+    oh.fit = null;
+    return { notes: [{ kind: 'info', text: `${oh.name} has its own outline now; it no longer follows ${names}'s walls.`, ids: [oh.id] }] };
+  }
 };
 
 export function coverOutline(rooms: DRoom[], thick = 0.24, overhang = 0.45): V2[] {
@@ -406,19 +410,16 @@ export const opCoverRooms = (roomIds: string[], preset: ProfilePreset): Op => (p
   if (!rooms.length) return;
   const round = rooms.length === 1 && isRoundish(rooms[0].poly);
   const base = Math.max(...rooms.map((r) => r.topY));
-  let outline = round ? offsetPoly(ensureCCW(rooms[0].poly), 0.12 + 0.35).pts : coverOutline(rooms);
   // stop short of taller rooms next door, so their walls rise past the eave
   const taller = d.rooms.filter((r) => !roomIds.includes(r.id) && r.topY > base + 0.05 && r.floorY < base);
-  if (taller.length) {
-    const cut = difference(P(outline), ...taller.map((r) => P(offsetPoly(ensureCCW(r.poly), 0.12).pts)));
-    const biggest = cut.sort((a, b) => mpolyArea([b]) - mpolyArea([a]))[0];
-    if (biggest) outline = biggest[0];
-  }
+  const overhang = round ? 0.35 : 0.45;
+  const outline = fittedOutline(rooms.map((r) => r.poly), overhang, taller.map((r) => r.poly)) ?? coverOutline(rooms);
   const res = opAddOverhead(outline, base, {
+    fit: { rooms: rooms.map((r) => r.id), overhang },
     preset: round && preset === 'flat' ? 'flat' : preset, restsOn: roomIds, form: round ? 'revolve' : 'extrude',
     name: rooms.length === 1 ? `${rooms[0].name} roof` : undefined,
   })(p, {}) as OpResult;
-  return { ...res, notes: [{ kind: 'good', text: `Covered ${rooms.map((r) => r.name).join(', ')}. The roof rests on ${rooms.length > 1 ? 'them' : 'it'} and follows if ${rooms.length > 1 ? 'they grow' : 'it grows'} taller.`, ids: [] }] };
+  return { ...res, notes: [{ kind: 'good', text: `Covered ${rooms.map((r) => r.name).join(', ')}. The roof rests on ${rooms.length > 1 ? 'them' : 'it'} and follows ${rooms.length > 1 ? 'their' : 'its'} walls, taller or wider.`, ids: [] }] };
 };
 
 // ------------------------------------------------------------------ decks, voids, stairs, posts, objects
@@ -485,7 +486,28 @@ export const opAddFloorAbove = (roomId: string): Op => (p, ch) => {
       oh.baseY = Math.round((oh.baseY + below.height) * 1000) / 1000;
       // it rested on the room below; now it rests on the walls under it
       if (oh.restsOn?.includes(roomId)) oh.restsOn = oh.restsOn.map((id) => (id === roomId ? up.id : id));
+      if (oh.fit?.rooms.includes(roomId)) oh.fit = { ...oh.fit, rooms: oh.fit.rooms.map((id) => (id === roomId ? up.id : id)) };
       notes.push({ kind: 'info', text: `${oh.name} was lifted ${fmtM(below.height)} onto ${up.name}.`, ids: [oh.id] });
+    }
+  } else if (!oh) {
+    // nothing over it: the new storey can get its own roof in the same step (it fits the walls and follows them)
+    const round = isRoundish(r.poly);
+    const dec: Decision = {
+      key: 'cover',
+      text: `${up.name} is open to the sky.`,
+      options: [{ id: 'open', label: 'Leave it open' }, { id: 'flat', label: 'Flat roof' }, { id: 'gable', label: round ? 'Cone roof' : 'Pitched roof' }],
+      chosen: 'open',
+    };
+    decisions.push(dec);
+    const k = decide(ch, dec);
+    if (k === 'flat' || k === 'gable') {
+      // built from the new room directly (it only becomes a derived room once this step settles)
+      const overhang = round ? 0.35 : 0.45;
+      const outline = fittedOutline([up.poly], overhang);
+      if (outline) {
+        opAddOverhead(outline, y + below.height, { preset: k, restsOn: [up.id], form: round ? 'revolve' : 'extrude', name: `${up.name} roof`, fit: { rooms: [up.id], overhang } })(p, {});
+        notes.push({ kind: 'good', text: `Covered ${up.name}. The roof rests on it and follows its walls.`, ids: [] });
+      }
     }
   }
   return { select: walls.id, notes, decisions };

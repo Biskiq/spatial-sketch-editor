@@ -66,7 +66,7 @@ const TRY: [string, string][] = [
   ['Drama overhead', 'Open “Galleries”. Pick the roof — draw a new profile in the pad: a rise with a step makes clerestory glazing. Ceilings below stay flat unless you open them to the roof.'],
   ['A canopy past the footprint', 'Pull the sheet up to a room top and draw a shape beyond the walls. Posts appear in pencil; click one to accept.'],
   ['A second storey', 'Pick a room and hover “+ Add a floor above” to see it; click to make it. Lift the roof onto it if you like, then reshape the new walls or sketch a roof on the sheet at the new top.'],
-  ['Sculpt a roof', 'Pick a roof. Pull its peak up or lean it sideways; pull a shoulder out for a broader roof or in for a pointier one; push an edge for width. The pad shows the same section.'],
+  ['Sculpt a roof', 'Pick a roof. Pull its peak up or lean it sideways; pull a shoulder out for a broader roof or in for a pointier one; pull a ridge-end ring in to hip the ends (all the way: a pyramid); push an edge for width. The pad shows the same section.'],
   ['Too small?', 'Press ⌘A for the whole building and drag the corner handle. Doors stay person-sized; round stays round.'],
   ['Divide, then undivide', 'Draw a wall across a room. The new half borrows settings in pencil. Remove the wall: the room is whole again, and a changed half’s settings go to the tray, not the bin.'],
   ['Remove something others lean on', 'Pick a wall under a roof and hover Remove. What it touches turns red first. After, the ripple offers posts or shrinking.'],

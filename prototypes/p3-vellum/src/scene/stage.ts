@@ -253,13 +253,15 @@ export class Stage {
     // overheads
     for (const oh of p.overheads) {
       const holes = p.voids.filter((v) => v.toY >= oh.baseY - 0.01).map((v) => v.outline);
-      const key = JSON.stringify([oh.outline, oh.baseY, oh.profile, oh.dir, oh.form, oh.thick, holes]);
+      // the roof being sculpted skips its ink edges (the costliest part of a rebuild); they come back on release
+      const live = store.ui.dragging && store.ui.selection === oh.id;
+      const key = JSON.stringify([oh.outline, oh.baseY, oh.profile, oh.dir, oh.form, oh.thick, oh.hip ?? 0, holes, live]);
       want.set(`roof:${oh.id}`, {
         key,
         build: () => {
           const part = this.makePart(`roof:${oh.id}`, key, oh.id, 'roof', topLayer);
           const mesh = buildOverhead(oh, holes);
-          this.addSolid(part, mesh.top.geometry(), this.m.roof);
+          this.addSolid(part, mesh.top.geometry(), this.m.roof, { edges: !live });
           this.addSolid(part, mesh.under.geometry(), this.m.roofUnder, { edges: false });
           this.addGlass(part, mesh.glass);
           return part;

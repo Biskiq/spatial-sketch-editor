@@ -60,8 +60,11 @@ Revision is where tools usually break trust, so the whole surface uses the marks
    - Ordinary roof sculpting happens on the roof, with a few handles that each do one thing: the peak (up and down
      scales the heights so the shape keeps its character; sideways leans it, carrying each slope along), a shoulder
      on each slope (outward is broader and fuller, inward is pointier; a symmetric roof stays symmetric; the first
-     pull gives a straight slope its one smooth point, the only point it ever adds), the edges for width, and the
-     eave for the whole roof. A flat roof's peak handle reads *pull up* and grows one sharp peak. Bending the
+     pull gives a straight slope its one smooth point, the only point it ever adds), a ring at each end of the ridge
+     (pull in to hip the ends, all the way for a pyramid), the edges for width, and the eave for the whole roof. Each
+     stops short of the extremes (at most 1½× the span tall; no slope stood upright; a shoulder keeps a quarter of
+     its slope either side), so a roof becomes a spire, never a stick. A roof made by covering rooms fits their walls
+     plus an overhang and follows when they grow or move, until its own edge is pulled. A flat roof's peak handle reads *pull up* and grows one sharp peak. Bending the
      surface, sharp/smooth, adding and removing points and the presets are depth you go to on purpose (the pad,
      the points that come out as you near them, *Shapes & settings*).
    - Handles are few by default (a wall's ends, height and move; a roof's eave, peak, shoulders and edges). Corners,

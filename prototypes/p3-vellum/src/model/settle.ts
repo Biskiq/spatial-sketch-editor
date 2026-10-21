@@ -1,6 +1,7 @@
 // After every edit the project "settles": ties are followed, rooms keep their identity, tied heights follow.
 // Everything settle does is reported as notes, so nothing changes without the creator being told.
 import { V2, interiorPoint, pointInPoly, pointInPolyHoles, bbox, bboxOverlap, polyArea, fmtM } from './geom2d';
+import { fittedOutline } from './fit';
 import { overlapArea } from './clip';
 import { arrange, Arrangement } from './arrangement';
 import { resolveTies, runGeom } from './runs';
@@ -226,6 +227,24 @@ export function settle(p: Project): Note[] {
       notes.push({ kind: 'info', text: `${oh.name} ${nb > oh.baseY ? 'rose' : 'came down'} ${fmtM(Math.abs(nb - oh.baseY), 2)} with ${oh.restsOn.map(nameOf).join(', ')} (it rests on ${oh.restsOn.length > 1 ? 'them' : 'it'}).`, ids: [oh.id] });
       oh.baseY = nb;
     }
+  }
+  // a fitted roof keeps fitting its rooms as their walls move
+  for (const oh of p.overheads) {
+    if (!oh.fit) continue;
+    const rooms = oh.fit.rooms.map((id) => p.rooms.find((r) => r.id === id && !r.dormant)).filter((r): r is RoomSeed => !!r);
+    if (!rooms.length) {
+      notes.push({ kind: 'info', text: `${oh.name} has no rooms left to fit; it keeps its outline.`, ids: [oh.id] });
+      oh.fit = null;
+      continue;
+    }
+    if (rooms.length < oh.fit.rooms.length) oh.fit = { ...oh.fit, rooms: rooms.map((r) => r.id) };
+    const ids = oh.fit.rooms;
+    const taller = p.rooms.filter((r) => !r.dormant && !ids.includes(r.id) && roomTop(r) > oh.baseY + 0.05 && r.floorY < oh.baseY);
+    const ol = fittedOutline(rooms.map((r) => r.poly), oh.fit.overhang, taller.map((r) => r.poly));
+    if (!ol) continue;
+    if (Math.abs(Math.abs(polyArea(ol)) - Math.abs(polyArea(oh.outline))) > 0.05)
+      notes.push({ kind: 'info', text: `${oh.name} followed ${rooms.map((r) => r.name).join(', ')}'s walls.`, ids: [oh.id] });
+    oh.outline = ol;
   }
   for (const st of p.stairs) {
     for (const end of ['from', 'to'] as const) {

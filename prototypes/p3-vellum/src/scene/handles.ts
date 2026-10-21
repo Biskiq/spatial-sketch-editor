@@ -12,7 +12,7 @@ import {
 } from '../model/ops';
 import { snapPoint, Guide } from '../model/snap';
 import type { Tie } from '../model/types';
-import { ohTopAt, ohSection, moveProfilePoint, profilePeak, movePeak, profileShoulder, ensureShoulder, pullShoulder, profileSymmetric } from '../model/overheadGeom';
+import { ohTopAt, ohSection, ohFrame, maxRise, moveProfilePoint, profilePeak, movePeak, profileShoulder, ensureShoulder, pullShoulder, profileSymmetric } from '../model/overheadGeom';
 import { lvl } from '../model/settle';
 
 export type DragMode = { type: 'plan'; y: number } | { type: 'vertical'; at: V2 } | { type: 'surface'; origin: V2; tan: V2; y0: number };
@@ -284,14 +284,38 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
           title: flat ? 'Pull up to give the roof a peak' : sec.revolve ? 'Drag up or down: taller or flatter' : 'Drag up or down: taller or flatter · sideways: lean the peak',
           drag: (pt) => {
             const r = sec.uh(pt.plan, pt.y - lift);
-            const h = Math.max(0, pk.h + snapY(r.h - pk.h - off));
+            const h = Math.max(0, Math.min(maxRise(e), pk.h + snapY(r.h - pk.h - off)));
             const u = pkU + round(r.u - pkU, 0.01);
             const next = movePeak(prof, u, h, !sec.revolve);
             const np = profilePeak(next);
             const lean = !sec.revolve && Math.abs(np.u - pkU) > 0.004 ? ` · peak ${Math.round(np.u * 100)}% across` : '';
-            return { op: opOverhead(e.id, { profile: next }), measure: `rises ${fmtM(np.h)}${lean}`, commit: `Reshaped ${e.name}’s peak` };
+            const top = np.h >= maxRise(e) - 0.01 ? ' · as tall as it goes' : '';
+            return { op: opOverhead(e.id, { profile: next }), measure: `rises ${fmtM(np.h)}${lean}${top}`, commit: `Reshaped ${e.name}’s peak` };
           },
         });
+        // the ridge's ends: pull one in and both ends hip (the slopes come round the end); all the way in, a pyramid
+        const fr = ohFrame(e);
+        const canHip = !sec.revolve && !flat && pk.i0 > 0 && pk.i1 < prof.length - 1;
+        if (canHip) {
+          const ea: V2 = [-fr.d[1], fr.d[0]];
+          const wr = fr.wmin + pk.u * (fr.wmax - fr.wmin);
+          const half = (fr.emax - fr.emin) / 2;
+          const ry = pkAt.y + 0.05;
+          for (const end of ['A', 'B'] as const) {
+            const v = end === 'A' ? fr.emin + fr.hip : fr.emax - fr.hip;
+            const q = add(mul(fr.d, wr), mul(ea, v));
+            out.push({
+              id: `hip:${end}`, pos: new THREE.Vector3(q[0], ry + lift, q[1]), shape: 'ring', mode: { type: 'plan', y: ry }, label: '',
+              title: 'Drag along the ridge: in to hip the ends (all the way for a pyramid), out for gable ends',
+              drag: (pt) => {
+                const along = dot(pt.plan, ea);
+                const hip = Math.max(0, Math.min(half, round(end === 'A' ? along - fr.emin : fr.emax - along, 0.05)));
+                const word = hip < 0.01 ? 'gable ends' : hip >= half - 0.01 ? 'a point (pyramid)' : `hipped ${fmtM(hip)}`;
+                return { op: opOverhead(e.id, { hip }), measure: word, commit: hip < 0.01 ? `Gave ${e.name} gable ends` : `Hipped ${e.name}’s ends` };
+              },
+            });
+          }
+        }
         const sym = profileSymmetric(prof);
         const shoulders: { u: number; h: number }[] = [];
         for (const side of sec.revolve ? (['L'] as const) : (['L', 'R'] as const)) {
@@ -331,7 +355,7 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
             drag: (pt) => {
               const r = sec.uh(pt.plan, pt.y - lift);
               // steps from where it was: a sideways pull never nudges its height
-              const h = Math.max(0, q.h + snapY(r.h - q.h));
+              const h = Math.max(0, Math.min(maxRise(e), q.h + snapY(r.h - q.h)));
               const u = q.u + round(r.u - q.u, 0.005);
               return { op: opOverhead(e.id, { profile: moveProfilePoint(prof, q.id!, u, h) }), measure: `${fmtM(h)} above the eave` };
             },
