@@ -6,7 +6,7 @@ PHASE:     T1.P01 closed 2026-10-21 by owner ratification recorded in PR #168.
 SLICE:     accepted and shipped 2026-10-21 under a per-slice owner-override.
 PROVENANCE: PR #168; implementation/test revision d63bdb6c0ffbcbd6d2670d4f1c725f66e52194fa.
 ROLE:      final-gate outcome, phase integration and exact recovery route.
-NOT:       a new capability outcome, architecture verdict, merge record or T1 track completion.
+NOT:       a new capability outcome, architecture verdict or T1 track completion.
 ~~~
 
 ## Acceptance and owner ruling
@@ -20,8 +20,8 @@ rows remained required and are recorded as satisfied. No other slice, phase or t
 the waiver.
 
 The owner closed T1.P01 on 2026-10-21 after S06. The phase register marks it shipped. S06 records the
-integrated final gate only and creates no new capability outcome. PR #168 remains open for the owner's
-final review and merge. This record does not claim a merge or architecture verdict.
+integrated final gate only and creates no new capability outcome. PR #168 merged on 2026-10-21 as P1 merge commit `e8e834900ad24d007ddc9a06c6046fa6bdc4dbfc`.
+This record does not claim an architecture verdict or T1 track completion.
 
 ## Integrated result
 
@@ -90,7 +90,7 @@ permanent stubs added:           3   the S06 plan, D1 amendment and final-gate a
 ~~~
 
 ~~~text
-REQUIRED MERGE METHOD — P1     merge commit via PR #168; no squash, rebase or amend
-POST-MERGE VERIFICATION OWED    git merge-base --is-ancestor 8ca55962e7a3efd3b5a4e26a3b7604cb10b79d91 main
-                                git merge-base --is-ancestor b786ccff126a33286627bd6510671199b7354279 main
+P1 MERGE COMPLETED            PR #168 → e8e834900ad24d007ddc9a06c6046fa6bdc4dbfc (merge commit)
+POST-MERGE ANCHORS VERIFIED    8ca55962e7a3efd3b5a4e26a3b7604cb10b79d91 ancestor of merge/main
+                               b786ccff126a33286627bd6510671199b7354279 ancestor of merge/main
 ~~~
