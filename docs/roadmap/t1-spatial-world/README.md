@@ -79,7 +79,7 @@ would be a self-dependency the phase cannot satisfy before it starts. The owner-
 contracts remain this phase's design basis, consumed as ratified shapes rather than as an accepted
 prerequisite gate.
 
-T1.P01 is registered and **T1.P01.S01 is accepted and shipped** (owner-authorized 2026-10-15,
+T1.P01 is closed, and **T1.P01.S01 is accepted and shipped** (owner-authorized 2026-10-15,
 [record](../../reference/decisions/f-ratification-2026-10-15.md); independently accepted at
 `ee463d0b`). S01 supplied the shared `F1.reference@1` and `F3.channels@1` providers — its accepted
 outputs `F1.reference@1:references-v1` and `F3.channels@1:inspection-v1` — and the
