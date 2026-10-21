@@ -381,44 +381,53 @@ describe('Phase 0 · what the candidate refuses, and why', () => {
     expect(st.reason).toMatch(/higher roof/);
   });
 
-  it('keeps a wall move under the tolerance continuous, then keeps the last valid roof and explains the rest', () => {
-    // the wing keeps its east wall flush with the block and grows inward, so every step is still a clean L
-    const at = (wingWidth: number) => roofOn(outlineOf([L.A, [6 - (wingWidth - 4), 6, 10, 14]]));
-    const start = at(4);
-    const prev = oh0(start);
+  it('keeps a wall move that leaves the structure alone, however far the wall moves', () => {
+    // A 20 m block with a 4 m wing: the decomposition is unambiguous here, so growing a room really is only a resize.
+    const plan = (wingDepth: number, blockEnd: number) => [[0, 0, blockEnd, 6] as const, [6, 6, 10, 14 + wingDepth] as const];
+    const prev = oh0(roofOn(outlineOf(plan(0, 20))));
     expect(roofWingsState(prev).kind).toBe('compound');
 
-    // a 3 cm wall move is the same massing, recomputed for the new outline (fresh scales, never a replayed shape)
-    const small = at(4.03);
-    const kept = continuedWings(prev, oh0(small));
+    // a 3 cm wall move is the same structure, recomputed for the new outline (fresh scales, never a replayed shape)
+    const small = oh0(roofOn(outlineOf(plan(0.03, 20)), { dir: prev.dir }));
+    const kept = continuedWings(prev, small);
     expect(kept.kept).toBe(true);
     expect(kept.reason).toBe('');
     expect(kept.state.kind).toBe('compound');
-    const ohSmall = oh0(small);
-    expect(meshArea(ohSmall)).toBeCloseTo(Math.abs(polyArea(ohSmall.outline)), 1);
-    for (const q of eavePoints(ohSmall)) expect(ohH(ohSmall, q)).toBeLessThan(0.01);
+    expect(meshArea(small)).toBeCloseTo(Math.abs(polyArea(small.outline)), 1);
+    for (const q of eavePoints(small)) expect(ohH(small, q)).toBeLessThan(0.01);
 
-    // every wider wing is a different massing: refused, with a reason, and the preview keeps the last valid roof
-    const primaries = new Set<number>();
-    let refused = 0;
-    for (const w of [4.5, 5, 5.5, 6, 7, 8, 12]) {
-      const next = at(w);
-      const nst = roofWingsState(oh0(next));
-      if (nst.kind !== 'compound') continue; // 9 and 11 would leave a sliver wing; their own reason is tested above
-      expect(nst.kind).toBe('compound');
-      primaries.add(Math.round(nst.primarySpan * 100));
-      const c = continuedWings(prev, oh0(next));
-      expect(c.kept).toBe(false);
-      expect(c.reason).toMatch(/different massing/);
-      expect(c.state.kind).toBe('unsupported');
-      if (c.state.kind === 'unsupported') expect(c.state.reason).toBe(c.reason);
-      // the caller keeps the gesture-start preview: never the new outline wearing the old shape
-      expect(prev.outline).not.toEqual(oh0(next).outline);
-      refused++;
+    // sizes are not massing: 4 m more wing, or a block 3 m longer, is the same two wings and is kept
+    const resizes: [number, number, string][] = [[4, 20, 'the wing 4 m longer'], [0, 23, 'the block 3 m longer'], [0, 17, 'the block 3 m shorter']];
+    for (const [depth, end, what] of resizes) {
+      const next = oh0(roofOn(outlineOf(plan(depth, end)), { dir: prev.dir }));
+      const c = continuedWings(prev, next);
+      expect(c.kept, what).toBe(true);
+      expect(c.state.kind, what).toBe('compound');
+      expect(meshArea(next), what).toBeCloseTo(Math.abs(polyArea(next.outline)), 1);
     }
-    // the sweep really does cross a primary-wing transition, not merely bigger wings
-    expect(primaries.size).toBeGreaterThan(1);
-    expect(refused).toBeGreaterThan(0);
+
+    // a width sweep: wings whose ridge still runs the same way are kept; the ones that turn it are refused
+    const keptW: number[] = [], refusedW: number[] = [];
+    for (const w of [4.2, 4.6, 5.2, 6, 6.6, 7, 8, 12]) {
+      const next = oh0(roofOn(outlineOf([[0, 0, 20, 6], [6 - (w - 4), 6, 10, 14]]), { dir: prev.dir }));
+      if (roofWingsState(next).kind !== 'compound') { refusedW.push(w); continue; }
+      const c = continuedWings(prev, next);
+      if (c.kept) expect(c.state.kind).toBe('compound');
+      (c.kept ? keptW : refusedW).push(w);
+    }
+    expect(keptW.length).toBeGreaterThan(0);
+    expect(refusedW.length).toBeGreaterThan(0);
+    expect(keptW).toContain(6); // 2 m wider than the start, far past the old 8 cm tolerance
+
+    // once the wing is wider than it is deep its section would sit across the other way: refused with a reason, and the
+    // caller keeps the gesture-start preview rather than the new outline wearing the old shape
+    const flipped = oh0(roofOn(outlineOf([[0, 0, 20, 6], [3, 6, 10, 14]]), { dir: prev.dir }));
+    const f = continuedWings(prev, flipped);
+    expect(f.kept).toBe(false);
+    expect(f.reason).toMatch(/different massing/);
+    expect(f.state.kind).toBe('unsupported');
+    if (f.state.kind === 'unsupported') expect(f.state.reason).toBe(f.reason);
+    expect(prev.outline).not.toEqual(flipped.outline);
     // and the retained roof still covers exactly its own outline
     expect(meshArea(prev)).toBeCloseTo(Math.abs(polyArea(prev.outline)), 1);
   });
@@ -433,8 +442,9 @@ describe('Phase 0 · what the candidate refuses, and why', () => {
     expect(c.kept).toBe(true);
     expect(c.reason).toBe('');
     expect(c.state.kind).toBe('compound');
-    // a different plan still is a different massing
-    const other = oh0(roofOn(outlineOf([L.A, [6, 6, 10, 17]])));
+    // a genuinely different plan — three wings instead of two — is a different massing, even unhurried by a drag
+    const other = oh0(roofOn(outlineOf(Object.values(U) as any)));
+    expect(roofWingsState(other).kind).toBe('compound');
     expect(continuedWings(prev, other).kept).toBe(false);
   });
 

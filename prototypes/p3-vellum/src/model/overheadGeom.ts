@@ -95,12 +95,25 @@ export function ohTopAt(oh: Overhead, p: V2): number {
   return ohUndersideAt(oh, p) + oh.thick;
 }
 
+/**
+ * Whether the roof has a surface at all. A wing roof only has one while its section can still be carried across every
+ * wing; when it cannot, the roof is reported rather than stretched into a single span that happens to look plausible.
+ * This is the one definition: heights, hit tests, offers, handles and the mesh all ask it, so no part of the app can
+ * believe in a surface that is not drawn.
+ */
+export function ohHasSurface(oh: Overhead): boolean {
+  return !(oh.oneSpan === false && roofWingsState(oh).kind === 'unsupported');
+}
+
 export function ohCovers(oh: Overhead, p: V2, pad = 0): boolean {
+  if (!ohHasSurface(oh)) return false;
   if (pointInPoly(p, oh.outline)) return true;
   return pad > 0 && distToPolyEdge(p, oh.outline) < pad;
 }
 
 export function ohRidge(oh: Overhead): number {
+  // no surface, no peak: the eave is the only height this roof can honestly claim
+  if (!ohHasSurface(oh)) return oh.baseY + oh.thick;
   const st = roofWingsState(oh);
   if (st.kind === 'compound') {
     const peak = Math.max(...sampleProfile(oh.profile).map((s) => s.h));

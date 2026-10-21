@@ -6,10 +6,10 @@ import {
 import { P, intersection, union, mpolyArea } from './clip';
 import { runGeom } from './runs';
 import { levelArrangements, lvl, roomTop, stairSteps } from './settle';
-import { ohUndersideAt, ohCovers, ohRidge, ohTopAt } from './overheadGeom';
+import { ohUndersideAt, ohCovers, ohRidge, ohTopAt, ohHasSurface, ohSpan, presetProfile } from './overheadGeom';
 import { roofWingsState } from './wings';
 import type { Project, Run, RoomSeed, Opening, Overhead, Deck, Stair, Element } from './types';
-import { findEl, newId } from './types';
+import { findEl, newId, clone } from './types';
 
 export interface DRoom {
   id: string;
@@ -131,7 +131,10 @@ export function derive(p: Project): Derived {
   for (const s of p.rooms) {
     if (s.dormant || s.poly.length < 3) continue;
     const ctr = polyCentroid(s.poly);
-    const covered = p.overheads.find((oh) => ohCovers(oh, pointInPoly(ctr, s.poly) ? ctr : s.at) && ohUndersideAt(oh, s.at) > s.floorY + 0.5);
+    const at = pointInPoly(ctr, s.poly) ? ctr : s.at;
+    // Ownership is not height. A roof with no surface still claims the rooms its outline covers, so the room card
+    // cannot offer a second roof over a broken one; the eave is the only height such a roof can honestly claim.
+    const covered = p.overheads.find((oh) => pointInPoly(at, oh.outline) && (ohHasSurface(oh) ? ohUndersideAt(oh, s.at) : oh.baseY) > s.floorY + 0.5);
     const dr: DRoom = {
       id: s.id, seed: s, name: s.name, poly: s.poly, holes: s.holes, area: Math.abs(polyArea(s.poly)), level: s.level,
       floorY: s.floorY, topY: roomTop(s), at: s.at, coveredBy: covered?.id ?? null,
@@ -389,16 +392,37 @@ function computeIssues(p: Project, rooms: DRoom[], roomById: Map<string, DRoom>,
   for (const oh of p.overheads) {
     // A wing roof whose section no longer fits its wings has no surface at all: it is reported, not stretched into
     // one span, because a single-span surface under a wing roof is a different roof that happens to look plausible.
-    if (oh.oneSpan === false) {
+    if (!ohHasSurface(oh)) {
       const ws = roofWingsState(oh);
-      if (ws.kind === 'unsupported') {
-        const mid = interiorPoint(oh.outline);
-        issues.push({
-          key: `wings:${oh.id}`, kind: 'fit',
-          text: `${oh.name} has no surface: its section cannot be carried across these wings (${ws.reason}).`,
-          ids: [oh.id], at: [mid[0], oh.baseY + 0.5, mid[1]], fixes: [], acknowledged: false,
-        });
-      }
+      const reason = ws.kind === 'unsupported' ? ws.reason : '';
+      const mid = interiorPoint(oh.outline);
+      const withRoof = (q: Project, f: (o: Overhead) => void) => {
+        const o = q.overheads.find((x) => x.id === oh.id);
+        if (o) f(o);
+      };
+      const asGable = (o: Overhead) => {
+        // re-reading the wings changes the span the shared section is laid out on, so it is set twice
+        o.profile = presetProfile('gable', ohSpan(o));
+        o.profile = presetProfile('gable', ohSpan(o));
+      };
+      // a repair is offered only when the same change on a copy delivers what its label promises
+      const trial = (f: (o: Overhead) => void) => {
+        const q: Project = clone(p);
+        withRoof(q, f);
+        const o = q.overheads.find((x) => x.id === oh.id);
+        return !!o && roofWingsState(o).kind === 'compound';
+      };
+      const fixes: Fix[] = [];
+      if (trial(asGable)) fixes.push({ label: 'Make it a gable', apply: (q) => withRoof(q, asGable) });
+      // the explicit, owner-chosen single span: always a real roof, never a silent one
+      fixes.push({ label: 'Cover as one span', apply: (q) => withRoof(q, (o) => { o.oneSpan = true; }) });
+      issues.push({
+        key: `wings:${oh.id}`, kind: 'fit',
+        text: `${oh.name} has no surface: its section cannot be carried across these wings (${reason}).`,
+        ids: [oh.id], at: [mid[0], oh.baseY + 0.5, mid[1]], fixes, acknowledged: false,
+      });
+      // and no supports are proposed for a roof that is not there
+      continue;
     }
     const sts = stretches(oh.outline, oh.baseY, 1.6, 1.2);
     sts.forEach((st, k) => {

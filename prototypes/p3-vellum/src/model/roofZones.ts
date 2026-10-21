@@ -1,12 +1,12 @@
-// Hold zones: what a pointer over a roof is pointing at, in metres. Pure; the caller converts pixels to metres and
-// resolves ties against the visible projected surface. Phase 2 model only — nothing here edits the roof.
+// Hold zones: what a pointer over a roof is pointing at, in metres. Classification and affected geometry are pure;
+// the caller converts pixels to metres, resolves visible hits and turns zones into transient handles and previews.
 //
 // Two rules keep a zone honest: a zone is only offered where that meaning exists (a shed's high edge is not a ridge,
 // a butterfly's two high edges are not one central ridge), and a compound roof classifies in the frame of the wing
 // that is actually visible at that point.
 import { V2, dot, distToPolyEdge, polyArea, clamp, add, mul } from './geom2d';
 import type { Overhead } from './types';
-import { ohFrame, ohTopAt, ohU, hipH, profileH } from './overheadGeom';
+import { ohFrame, ohTopAt, ohU, hipH, profileH, ohHasSurface, profileSymmetric } from './overheadGeom';
 import { profilePeak, sampleProfile } from './profileCurve';
 import { roofWingsState, wingHeight, type Wing } from './wings';
 import { P, intersection, type MPoly } from './clip';
@@ -39,7 +39,7 @@ export const ZONE_TIPS: Record<RoofZone['kind'], string> = {
 
 export function zoneTip(oh: Overhead, z: RoofZone): string {
   if (z.kind === 'eave') return oh.fit ? 'Drag out for more overhang' : 'Push or pull this edge';
-  if (z.kind === 'slope' && z.locked) return 'Double-click to edit this shape';
+  if (z.kind === 'slope' && z.locked) return 'Use the section pad for this stepped slope';
   return ZONE_TIPS[z.kind];
 }
 
@@ -81,6 +81,8 @@ function peakOf(oh: Overhead) {
 }
 
 export function roofZoneAt(oh: Overhead, q: V2, tol: ZoneTol): RoofZone | null {
+  // there is no surface to point at, so there is no meaning to offer: the roof is repaired through its issue
+  if (!ohHasSurface(oh)) return null;
   const f = ohFrame(oh);
   const st = roofWingsState(oh);
   if (st.kind === 'compound') return compoundZone(oh, q, tol, st);
@@ -201,6 +203,7 @@ export interface ZoneGeometry {
   /** polylines in world x,z with y already lifted above the roof surface */
   lines: [number, number, number][][];
   ring?: [number, number, number];
+  markers?: [number, number, number][];
 }
 
 export function zoneGeometry(oh: Overhead, z: RoofZone): ZoneGeometry {
@@ -229,22 +232,24 @@ export function zoneGeometry(oh: Overhead, z: RoofZone): ZoneGeometry {
     const at2 = wingGeom(wg, st.peakU);
     const lo = at2.r0 + wg.hipLo;
     const hi = at2.r1 - wg.hipHi;
+    const wingY = (q: V2) => oh.baseY + oh.thick + wingHeight(wg, f.samples, st.peakU, { d, e: ea }, q) + lift;
+    const wingLine = (pts: V2[]) => pts.map((q) => [q[0], wingY(q), q[1]] as [number, number, number]);
     const ridge = (a: number, b: number) => (wg.span === 'w' ? [at(at2.sPk, a), at(at2.sPk, b)] : [at(a, at2.sPk), at(b, at2.sPk)]);
     const box = wingRect(wg, at);
-    if (z.kind === 'ridge') return { lines: [line(ridge(lo, hi))] };
+    if (z.kind === 'ridge') return { lines: [wingLine(ridge(lo, hi))] };
     if (z.kind === 'ridgeEnd') {
       const r = z.end === 'A' ? lo : hi;
       const p = wg.span === 'w' ? at(at2.sPk, r) : at(r, at2.sPk);
-      return { lines: [line(ridge(lo, hi))], ring: [p[0], y(p), p[1]] };
+      return { lines: [wingLine(ridge(lo, hi))], ring: [p[0], wingY(p), p[1]] };
     }
     if (z.kind === 'slope') {
       const axis = wg.span === 'w' ? 'w' : 'v';
-      return { lines: boundaries(halfPlane(oh, axis, z.side === 'L' ? 'less' : 'more', at2.sPk), oh, box) };
+      return { lines: boundaries(halfPlane(oh, axis, z.side === 'L' ? 'less' : 'more', at2.sPk), oh, box, wingY) };
     }
     if (z.kind === 'endFace') {
       const r = z.end === 'A' ? at2.r0 + wg.hipLo : at2.r1 - wg.hipHi;
       const axis = wg.span === 'w' ? 'v' : 'w';
-      return { lines: boundaries(halfPlane(oh, axis, z.end === 'A' ? 'less' : 'more', r), oh, box) };
+      return { lines: boundaries(halfPlane(oh, axis, z.end === 'A' ? 'less' : 'more', r), oh, box, wingY) };
     }
   }
 
@@ -264,6 +269,44 @@ export function zoneGeometry(oh: Overhead, z: RoofZone): ZoneGeometry {
     return { lines: boundaries(region, oh) };
   }
   return { lines: [] };
+}
+
+/**
+ * The reach shown for a Hold gesture is the whole authored change: shared profile edits span every wing, mirrored
+ * sections show both slopes, shared hips show both exposed ends, and fitted eaves show every fitted edge.
+ */
+export function affectedZoneGeometry(oh: Overhead, z: RoofZone): ZoneGeometry {
+  const merge = (parts: ZoneGeometry[]): ZoneGeometry => ({
+    lines: parts.flatMap((part) => part.lines),
+    ring: parts.find((part) => part.ring)?.ring,
+    markers: parts.flatMap((part) => [...(part.markers ?? []), ...(part.ring ? [part.ring] : [])]),
+  });
+  const st = roofWingsState(oh);
+  if (z.kind === 'eave' && oh.fit) return merge(oh.outline.map((_, edge) => zoneGeometry(oh, { kind: 'eave', edge })));
+  if (st.kind === 'compound') {
+    const wings = st.wings.map((_, wing) => wing);
+    if (z.kind === 'ridge') return merge(wings.map((wing) => zoneGeometry(oh, { kind: 'ridge', wing })));
+    if (z.kind === 'ridgeEnd') {
+      return merge(wings.flatMap((wing) => (['A', 'B'] as const)
+        .filter((end) => st.wings[wing].ends[end === 'A' ? 'lo' : 'hi'] === 'exposed')
+        .map((end) => zoneGeometry(oh, { kind: 'ridgeEnd', end, wing }))));
+    }
+    if (z.kind === 'endFace') {
+      return merge(wings.flatMap((wing) => (['A', 'B'] as const)
+        .filter((end) => st.wings[wing].ends[end === 'A' ? 'lo' : 'hi'] === 'exposed' && (end === 'A' ? st.wings[wing].hipLo : st.wings[wing].hipHi) > 1e-6)
+        .map((end) => zoneGeometry(oh, { kind: 'endFace', end, wing }))));
+    }
+    if (z.kind === 'slope') {
+      const sides = profileSymmetric(oh.profile) ? ['L', 'R'] as const : [z.side] as const;
+      return merge(wings.flatMap((wing) => sides.map((side) => zoneGeometry(oh, { kind: 'slope', side, wing, locked: z.locked }))));
+    }
+  }
+  if (z.kind === 'ridgeEnd') return merge((['A', 'B'] as const).map((end) => zoneGeometry(oh, { kind: 'ridgeEnd', end, wing: 0 })));
+  if (z.kind === 'endFace') return merge((['A', 'B'] as const).map((end) => zoneGeometry(oh, { kind: 'endFace', end, wing: 0 })));
+  if (z.kind === 'slope' && profileSymmetric(oh.profile) && oh.form !== 'revolve') {
+    return merge((['L', 'R'] as const).map((side) => zoneGeometry(oh, { ...z, side })));
+  }
+  return zoneGeometry(oh, z);
 }
 
 function halfPlane(oh: Overhead, axis: 'w' | 'v', side: 'less' | 'more', at: number): MPoly {
@@ -288,7 +331,7 @@ function wingRect(wg: Wing, at: (w: number, v: number) => V2): V2[] {
   return [at(w0, v0), at(w1, v0), at(w1, v1), at(w0, v1)];
 }
 
-function boundaries(region: MPoly, oh: Overhead, clip?: V2[]): [number, number, number][][] {
+function boundaries(region: MPoly, oh: Overhead, clip?: V2[], surfaceY = (q: V2) => ohTopAt(oh, q) + 0.03): [number, number, number][][] {
   const cut = intersection(clip ? intersection(P(oh.outline), P(clip)) : P(oh.outline), region);
   const out: [number, number, number][][] = [];
   for (const poly of cut) {
@@ -302,7 +345,7 @@ function boundaries(region: MPoly, oh: Overhead, clip?: V2[]): [number, number, 
       for (let k = 0; k < n; k++) dense.push([a[0] + ((b[0] - a[0]) * k) / n, a[1] + ((b[1] - a[1]) * k) / n]);
     }
     dense.push(ring[0]);
-    out.push(dense.map((q) => [q[0], ohTopAt(oh, q) + 0.03, q[1]] as [number, number, number]));
+    out.push(dense.map((q) => [q[0], surfaceY(q), q[1]] as [number, number, number]));
   }
   return out;
 }

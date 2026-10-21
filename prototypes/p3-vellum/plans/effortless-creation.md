@@ -4,10 +4,12 @@ Status: **for owner review**. Prototype-only: everything happens in `prototypes/
 packages, or `docs/reference`. No commits unless the owner asks, and never an agent footer in a commit message.
 
 **Implementation status at this revision.** Phase 0 is verified, including the cottage fixture after hips, fullness
-and overhang (§3.1). Phase 1 (the section model) and the pure half of Phase 2 (zones, detents, ridge turning) are
-implemented and tested. Phase 5's compound geometry and Phase 6's offer qualification are implemented. The offer
-cards are wired: a room can be covered over its connected group in one step, then offered a mezzanine, and the deck a
-stair, each as one accepted step (`opAddMezzanine`, `opAddStairTo`).
+and overhang (§3.1). Phase 1 (the section model) and the core Hold path of Phase 2 are implemented and tested:
+selected-roof zones, highlighted reach, one-step guarded previews, detents, fitted eave edits, and ridge turning from
+the card or **R**. Compound roofs use the shared section and hip limits from §8.4. Phase 5's compound geometry and
+Phase 6's offer qualification are implemented. The offer cards are wired: a room can be covered over its connected
+group in one step, then offered a mezzanine, and the deck a stair, each as one accepted step
+(`opAddMezzanine`, `opAddStairTo`).
 
 **Qualification governs all three places it is asked** (review fixes, `tests/qualification.test.ts`): a chip, its
 hover preview and its commit now share one answer, so a preset the group cannot carry is disabled with its reason
@@ -16,15 +18,15 @@ drawn as one span; a mezzanine is qualified with the posts it will need *and* th
 stands in its own stair; stair headroom is read through a flat ceiling and across the stair's full width; a commit
 places exactly the candidate that was previewed, or refuses and asks for a fresh hover.
 
-**Not wired into the UI yet:** Hold zones and their handles/highlights/card hint, the Edit Shape sheet, ink from
-meaning, Settings' *one span* control, the pen tips, and the browser checks in §11.2 that depend on them. The resize
-continuity guard is model-only: `continuedWings` has no runtime caller, so no gesture is protected by it yet. No
-Phase 3–6 acceptance is claimed.
+**Still open:** the full Edit Shape sheet, ink from meaning, Settings' *one span* control, pen tips and the remaining
+browser checks in §11.2. The current prototype keeps the detailed ProfilePad and precise 3D profile/outline controls;
+the complete separation of Hold and Shape, including the no-dot Hold state, is not claimed. Hold roof gestures and
+ridge turns call the compound-continuity guard, but this is not a claim of full Phase 3–6 or §11.3 acceptance.
 
 Intent comes from [the design summary](../DESIGN.md#point-of-view) and
 [the working prototype summary](../README.md#whats-real-prepared-simulated-or-unsupported): draw what you mean,
-read it back, and preserve accepted work through revision. This plan proposes the next round; only what §3.1 lists
-is claimed as implemented.
+read it back, and preserve accepted work through revision. Status notes in the relevant sections distinguish current
+implementation from the remaining round design and acceptance work.
 
 ---
 
@@ -121,12 +123,13 @@ The required L/T/U baseline is a gable and the fuller slopes used in the journey
 
 ### 3.1 Phase 0 — verified results and the decisions they make normative
 
-Run from `prototypes/p3-vellum`: `npm run typecheck`, `npm test` (15 files, 181 tests) and `npm run build` all pass.
+Run from `prototypes/p3-vellum`: `npm run typecheck`, `npm test` (16 files, 193 tests) and `npm run build` all pass
+for the current prototype.
 Phase 0's evidence lives in `tests/wings.test.ts` (compound roofs and resize continuity), `tests/offers.test.ts`
 (mezzanine and stair), `tests/journey.test.ts` (the §11.3 cottage, end to end in model operations),
 `tests/section.test.ts` (the gesture validator and the nearest-preset tolerance) and `tests/qualification.test.ts`
-(what a chip, a preview and a commit are each allowed to claim). Nothing here is wired into the UI
-yet; §5 and §6 still own that.
+(what a chip, a preview and a commit are each allowed to claim). Model coverage does not establish whole-product UI or
+human acceptance; current Hold/offer wiring and remaining work are listed above and in §§5–6.
 
 **Files this phase added or changed.**
 
@@ -139,8 +142,8 @@ yet; §5 and §6 still own that.
 | `src/scene/build/overheads.ts` | Compound mesher: per-cell upper envelope of the active wings, fascia from the same evaluator. |
 | `src/model/section.ts` (new) | Joints, parts, families, clean rules, edits, freehand readings (§4). |
 | `src/model/offers.ts` (new) | Qualified mezzanine and stair candidates (§9.3, §9.4), including the clear-floor scan. |
-| `src/model/detents.ts` (new) | Structural-before-pitch stops for Hold (§5.2). Pure; not wired. |
-| `src/model/roofZones.ts` (new) | Hold zones for a single-span or compound roof (§5.1). Pure; not wired. |
+| `src/model/detents.ts` (new) | Structural-before-pitch stops for Hold (§5.2), now used by transient roof handles. |
+| `src/model/roofZones.ts` (new) | Pure Hold-zone classification and affected-region geometry for single-span or compound roofs (§5.1), used by scene hover and gestures. |
 | `src/model/ops.ts` | `opCoverRooms(..., { wings })`, so a grouped cover is one step and the profile uses the primary span. |
 | `tests/journey.test.ts` (new) | The §11.3 cottage end to end in model operations: continuity after the modifiers, the 3 m negative, the 5 m mezzanine-and-stair positive. |
 
@@ -170,18 +173,23 @@ unequal wing widths (3/5 and 5/3); fitted overhangs 0.30, 0.45, 0.60 and 0.90 m,
 
 **The primary wing can flip when the fitted outline changes, and the rule is now implemented and tested.** At 0.45 m
 overhang one L massing is primary; at 0.90 m the other is. Both are continuous roofs, so a fixed primary cannot be the
-rule. `continuedWings(prev, next)` compares the gesture-start decomposition with the candidate: the same rectangles,
-spans and exposed/joined ends within 8 cm are kept, recomputed for the new outline (fresh scales and hips, never a
-replayed old shape). Anything else is refused with the reason *"these walls would give the roof a different massing,
-so the last valid roof is kept"* and the caller keeps its last valid preview. A one-span cover appearing under a
+rule. `continuedWings(prev, next)` compares the gesture-start decomposition with the candidate: the same *structure*
+is kept, recomputed for the new outline (fresh scales and hips, never a replayed old shape). Same structure means the
+same number of wings; each previous wing matching exactly one next wing by largest overlap in the roof frame; that
+wing keeping its span axis and its joined/exposed ends; and the primary wing still the primary. **Sizes are not
+massing:** a wall may move as far as the structure allows, which is what *extend sides* needs. A wing that turns its
+own ridge, arrives, or vanishes is refused with the reason *"these walls would give the roof a different massing, so
+the last valid roof is kept"*, and the caller keeps its last valid preview. A one-span cover appearing under a
 compound roof is refused the same way; a plan that has genuinely become one rectangle has no wings left and is
-allowed, which is a plan change, not a primary flip. `tests/wings.test.ts` walks a wing from 4 m to 12 m against a
-fixed gesture start: 3 cm is kept with the eaves still at 0 and the mesh matching the new outline, every larger step
-is refused with the reason, and the sweep crosses a real primary change (several different `primarySpan` values).
-**Correction after review:** the comparison now removes the outline's own translation first, in the roof's frame, so
-moving an unchanged roof by 1.5 m keeps its massing instead of being refused as a jump; a genuinely different plan is
-still refused. The guard is called by nothing but its tests — no gesture is protected by it yet. The
-new roof being valid on its own is not enough; continuity is a separate test.
+allowed, which is a plan change, not a primary flip. `tests/wings.test.ts` holds a fixed gesture start on a 20 m block
+with a 4 m wing and keeps a 3 cm step, a wing 4 m longer, and a block 3 m longer and shorter, each with its eaves at 0
+and its mesh matching the new outline. A width sweep keeps the widths whose wing keeps its ridge direction (including
+2 m wider than the start, far past the first version's 8 cm tolerance) and refuses the widths where that wing's
+section would turn across it. **Correction after review:** the comparison also removes the outline's own translation
+first, in the roof's frame, so moving an unchanged roof by 1.5 m keeps its massing instead of being refused as a jump;
+a genuinely different plan (an L becoming a U, or the primary flipping) is still refused. At this review checkpoint,
+the guard had tests but no gesture caller. Phase 2 now calls it for every affected compound roof after a handle
+transaction settles; the new roof being valid on its own is not enough, so continuity remains a separate check.
 
 **Gesture-validation semantics (normative for every edit route).**
 
@@ -623,7 +631,8 @@ ridge or smooth crown; a shed's high edge and a butterfly's two high edges must 
 | flatTop | the outline ring |
 | apex | a ring at the apex |
 
-**Phase 2 model implemented (verified in `src/model/roofZones.ts`, `tests/zones.test.ts`); the wiring in §5.3 is not.**
+**Implemented:** zone classification, affected-region geometry and core Hold wiring (see §5.3). The model remains
+covered by `tests/zones.test.ts`; pointer behavior has automated and browser coverage.
 
 - The zone rules above hold, with three decisions the fixtures forced:
   - a compound roof classifies in the frame of the wing that **owns** the point (the highest wing whose rectangle
@@ -632,13 +641,14 @@ ridge or smooth crown; a shed's high edge and a butterfly's two high edges must 
   - on a compound roof the ridge and ridge-end tests run **before** the eave test, so a ridge end that meets the eave
     can still be grabbed, while a joined end never reports `ridgeEnd`;
   - a point covered by no wing (only reachable with a stale state) falls back to `eave`/`flatTop` rather than guessing.
-- A slope is `locked` when its side of the section contains a step or reverses direction; a step anywhere on the side
-  makes Hold's sideways pull a Shape job. A vault's smooth crown is a `ridge`; a shed's high edge and a butterfly's
-  two high edges are not.
+- A slope is `locked` when its side of the section contains a step or reverses direction; the current prototype
+  directs that detail to the ProfilePad. A vault's smooth crown is a `ridge`; a shed's high edge and a butterfly's two
+  high edges are not.
 - `ridgeDirections` returns **span** directions (outline edge + 90°), because `oh.dir` is the span; `nextRidgeDir`
   skips any direction within 2° of the current one, so a turn always visibly turns. Turning preserves the authored
   heights (tested) and the old ridge line stops being a ridge.
-- `zoneGeometry` drapes polylines with `ohTopAt` + 0.03 m and clips slope/end-face regions to the wing rectangle.
+- `zoneGeometry` drapes polylines with `ohTopAt` + 0.03 m and clips compound slope/end-face regions to the wing's
+  visible ownership region, not just its rectangle.
   The pixel-space tie-break and hysteresis between overlapping zones remain a caller responsibility.
 - `detents.ts` implements `detent` with 1.5× hysteresis, coincident-stop merging and deterministic nearest ties;
   structural stops precede pitch stops at the section level (§4.3). **Even hip is defined as half the roof's span**,
@@ -653,7 +663,7 @@ ridge or smooth crown; a shed's high edge and a butterfly's two high edges must 
 | ridgeEnd | "Drag along the ridge: hip both ends" |
 | endFace | "Push in to hip both ends" |
 | slope | "Push or pull: fuller or pointier" |
-| slope (locked) | "Double-click to edit this shape" |
+| slope (locked) | "Use the section pad for this stepped slope" |
 | eave (fitted roof) | "Drag out for more overhang" |
 | eave (otherwise) | "Push or pull this edge" |
 | flatTop | "Pull up to give it a peak" |
@@ -680,11 +690,25 @@ stops without resetting the gesture origin. Hard limits always report their reas
 
 ### 5.3 Wiring
 
-**Not started.** Everything in this subsection is still to do; the model above is the verified part of Phase 2.
+**Current implementation.** Hovering a selected roof reveals the zone and affected geometry. A primary-button drag
+arms after 4 CSS px; right/middle/Space camera gestures take priority, Alt makes an eligible roof edit free, and the
+gesture keeps its original owner if Alt changes mid-drag. Transient Hold handles preview from the gesture-start
+project. `qualifyRoofEdit` runs after settlement for every affected roof: it validates changed sections with
+`cleanSection` at the single span or each compound wing's effective span, checks surface and compound continuity,
+and returns the exact normalized profile operation used for both preview and commit. Invalid moves keep the previous
+valid preview and name the reason, including Alt drags. Wall handles go through the same settled-roof checks even
+when a wall is selected. The card button and **R** use one `qualifyRidgeTurn` result; it validates the changed span,
+rejects unsupported coverage, and hides a compound turn that would not visibly change the surface. Esc, pointer
+cancellation, lost capture, blur, mode/tool/selection changes and target deletion cancel queued work. Clicks, no-ops
+and return-to-origin gestures add no history.
+
+The current scope intentionally leaves the detailed ProfilePad, presets and precise `pp:`/`n:` 3D controls available.
+The full Edit Shape mode, context-menu and Enter entry paths, semantic ink, one-span setting and complete no-dot Hold
+state remain open. The detailed requirements below remain the target for completing the round; they are not all
+claims about the shipped prototype.
 
 **`src/scene/handles.ts`**
-- Add `zoneHandle(stage, oh, zone, hit): Handle | null`. It builds a transient `Handle`, the same way `beginRoofBend`
-  does today:
+- `zoneHandle` builds a transient `Handle` from the pointer-down roof zone. Current behavior by zone:
 
   | Zone | Mode | Drag |
   | --- | --- | --- |
@@ -730,9 +754,8 @@ stops without resetting the gesture origin. Hard limits always report their reas
   creates no history, and double-click can still enter Shape. Locked zones retain the ordinary camera behaviour,
   with a visible Edit shape action. Camera orbit remains available over the entire roof by explicit camera gesture.
 - **Delete `beginRoofBend`** and the "drag the picked roof's surface" branch in `onMove`.
-- **Keys** (all currently free in `onKey`):
-  - **R**: turn the ridge (§5.4) when a roof is selected;
-  - **Enter**: enter Edit Shape (§6.1).
+- **Keys:** **R** turns the selected roof's ridge (§5.4). **Enter** remains reserved for a future Edit Shape entry
+  path (§6.1).
 
 **`src/scene/overlays.ts`**
 - Add `setZone(g | null, tip?: string)`:
@@ -748,6 +771,9 @@ detail-tier handles that appear as the pointer comes near.
 
 ### 5.4 Turn the ridge
 
+**Implemented:** the roof card button previews on hover/focus and commits one operation; **R** commits the same
+qualified turn. The context-menu entry waits for the future Edit Shape/context-menu work.
+
 `src/model/overheadGeom.ts`:
 
 ```ts
@@ -757,10 +783,11 @@ export function nextRidgeDir(oh: Overhead): number | null; // the one after the 
                                                            // null for revolve, flat, or fewer than 2 directions
 ```
 
-It is offered three ways:
+It is currently offered two ways:
 - the roof card's **"Turn the ridge"** button;
-- **R**;
-- the context menu (§6.1).
+- **R**.
+
+The context-menu route (§6.1) remains future work with Edit Shape.
 
 Each is one step: `opOverhead(id, { dir })`, "Turned {name}'s ridge". The degree slider stays in Settings.
 `oh.dir` is the **span** direction; the displayed ridge is perpendicular to it. Preview turning on button hover/focus
@@ -768,6 +795,9 @@ and validate the changed span, height limits, fit and compound coverage before c
 heights; do not quietly rescale them on a turn. A compound roof whose result is unchanged has no Turn action.
 
 ### 5.5 Roof card in Hold
+
+**Current card:** editable name, area/eave/high-point facts, a short Hold hint, the Turn button, the existing detailed
+ProfilePad, presets and settings. The thumbnail and full Edit Shape layout below remain future work.
 
 `OverheadCard` in `Inspector.tsx`, top to bottom:
 1. Head: `kind = "Roof · " + roofName(oh)` and the editable name.
@@ -789,7 +819,13 @@ of the target cancels the preview and queued animation-frame work without a hist
 pointer position, commits only a changed valid result once, then clears preview. A click, cancelled gesture, or drag
 back to the original creates no undo step. A new action cannot accidentally commit a leftover hover preview.
 
-### 5.6 Tests: `tests/zones.test.ts`
+### 5.6 Tests: `tests/zones.test.ts`, `tests/hold.test.ts`
+
+The current suites cover zone classification/compound affected regions, stable flat-peak identity, ridge detents,
+shared compound-section edits, no-surface build behavior, and Hold cancellation/preview transaction semantics. The
+pointer-driven browser checks exercised ridge editing, Alt free mode and modifier changes, no-op and cancellation,
+camera priority, card/R ridge turning with undo/redo, a fitted overhang change, compound shared-section editing and
+invalid-outline feedback. The full §11.2 matrix and human §11.3 success test remain open.
 
 - On a 6×10 m gable, `roofZoneAt` gives: ridge at the ridge midpoint, ridgeEnd A and B at the ends (hipped), eave
   near each edge, slope L and R either side, and endFace inside a hipped end.
@@ -1155,6 +1191,9 @@ avoid recursive `ohFrame` → `roofWings` → `ohSpan` evaluation. Derived geome
 
 ### 8.4 Hold zones with wings
 
+**Implemented in the current Hold path:** zone ownership follows the visible wing, affected slope boundaries clip to
+the wing's visible ownership region, and shared profile/hip edits report their reach. The complete round remains open.
+
 - `roofZoneAt` finds the wings that contain `q`, and uses the one with the greatest `wingH` there (the visible one) in
   its own frame. That gives ridge, ridgeEnd (exposed ends only), endFace and slope zones per wing. Eave zones work as
   before.
@@ -1212,8 +1251,19 @@ Before this section was implemented, *Cover it* in `RoomCard` covered only the s
   hover preview and the commit. A preset the wings cannot carry is disabled with its reason in its title; the commit
   refuses it, places nothing and spends no id; and a flat section is exempt from `oneSpan: false` because a flat roof
   is the same surface with or without wings (`tests/qualification.test.ts`). A wing roof that still arrives
-  unsupported (an imported file) is reported by `derive` and `buildOverhead` draws no surface for it rather than one
-  stretched span.
+  unsupported (an imported file, *Spun it round*, the *Span direction* slider, a stepped preset in the pad) is
+  reported by `derive` and `buildOverhead` draws no surface for it rather than one stretched span.
+- **Implemented (review fix): a roof with no surface has none of its heights.** `ohHasSurface(oh)` is the one
+  definition (a wing roof whose section cannot be carried across its wings), and `ohCovers` and `ohRidge` both consult
+  it: every wall falls back to its own top instead of the single-span underside, and there is no phantom peak or ridge
+  snap. **Ownership is not height** — `derive` tests the outline directly, so the rooms stay claimed by the broken roof
+  and no second roof is offered over it. Offers refuse with *"has no surface yet, so there is no headroom to
+  measure"* rather than reading the missing roof as open sky, a deck's stairs are refused under one, and `roofZones`,
+  the top-surface handles and the drawn section line leave it out. The issue carries two repairs that are offered only
+  when a trial on a copy
+  delivers what they promise — *Make it a gable*, *Cover as one span* — and `opOverhead` says so when an edit removes
+  the surface. *Spun it round* is disabled on a wing roof, with its reason in the title. Tested in
+  `tests/qualification.test.ts`.
 - **Implemented:** `coverGroup(d, roomId)` in `derive.ts` walks the derived wall pieces, joining only rooms on the
   same level, still unroofed, with a top within 0.3 m of the **starting** room's top (not the previous room's, so a
   chain cannot drift) through a shared piece of at least 0.3 m. The start is first and the rest are name-ordered, so
@@ -1414,7 +1464,10 @@ used to give different answers: a preset the group cannot carry (refused, no id 
 disabled with the reason; a flat section exempt because it needs no wings); a saved wing roof that cannot be divided
 (reported by `derive`, and `buildOverhead` draws no surface rather than one stretched span); posts clear of the
 offered stair; stair headroom through a ceiling and across the width; and a commit refusing a loft or stair that moved
-since it was previewed.
+since it was previewed. After the second review it also holds the no-surface state end to end (walls at their own
+tops, no ridge snap, rooms still claimed, offers and zones refusing, the note and the two trial-proven repairs, and
+only *Cover as one span* when the plan itself is the reason), a flat ceiling that cannot stand in for the missing
+roof, and a commit refusing a loft whose posts or stair changed since it was offered.
 
 - In `tests/model.test.ts`:
   - a box `StrokeFit` reads Room first, with Platform among its readings;
@@ -1528,8 +1581,9 @@ Pass conditions:
 - `derive` reports no clash or floating issues;
 - `wings.test`-style probes on the live roof pass (eaves at 0, no cliffs);
 - resizing a wall with a compound roof keeps the last valid roof and **says why** when the change would alter the
-  massing; a silent primary-wing jump is a failure, not a valid preview (§3.1). This one cannot be run yet: the guard
-  exists and is tested, but no gesture calls it;
+  massing; a silent primary-wing jump is a failure, not a valid preview (§3.1). `tests/hold.test.ts` exercises the
+  settled wall-handle path for both an invalid resize and a valid fitted-roof translation; `tests/wings.test.ts` covers
+  larger continuous resizes and translations;
 - screenshots are attached.
 
 **Revision/recovery script.** Without entering Shape, change the roof height again and inspect its effect on the

@@ -1,7 +1,7 @@
 // Overheads: a drawn profile carried across a drawn outline (or spun around a round one).
 import { Geo, V3 } from './geo';
 import type { Overhead } from '../../model/types';
-import { ohFrame, profileH, PSample, hipH, ohH, profilePeak } from '../../model/overheadGeom';
+import { ohFrame, profileH, PSample, hipH, ohH, profilePeak, ohHasSurface } from '../../model/overheadGeom';
 import { V2, add, mul, dot, perp, dist, pointInPoly, polyArea, lerp2, bbox, segIntersect, distToPolyEdge } from '../../model/geom2d';
 import { P, intersection, difference, MPoly } from '../../model/clip';
 import { roofWingsState, type CompoundState, type Wing } from '../../model/wings';
@@ -28,12 +28,12 @@ function subdivideRing(ring: V2[], d: V2, ws: number[]): V2[] {
 }
 
 export function buildOverhead(oh: Overhead, holes: V2[][]): OverheadMesh {
+  // Qualification is shared across every mesher: an unsupported saved/imported roof has no surface, regardless of
+  // whether its stale `form` field asks for an extrusion or a revolve.
+  if (!ohHasSurface(oh)) return { top: new Geo(), under: new Geo(), glass: new Geo() };
   if (oh.form === 'revolve') return buildRevolve(oh, holes);
   const st = roofWingsState(oh);
   if (st.kind === 'compound') return buildCompound(oh, holes, st);
-  // A wing roof whose section cannot be carried across its wings has no surface. Stretching it across the outline as
-  // one span would draw a different roof under this one's name; the gap is deliberate, and `derive` reports why.
-  if (oh.oneSpan === false && st.kind === 'unsupported') return { top: new Geo(), under: new Geo(), glass: new Geo() };
   return buildSingle(oh, holes);
 }
 

@@ -14,8 +14,9 @@ Three things to know before reading:
   coordinates, and id-only revalidation) were reproduced and then fixed in the working tree after this report was
   first written. That section replaces the affected sentences above it; the fixes are the commit
   `fix(p3-vellum): one answer for what a cover and an offer may claim`, straight after this report.
-- **§6c is open work, not a claim.** A review of `ff117342` found four more corrections (F1–F4) and reproduced each
-  of them. F1–F3 come before Phase 2 is wired, and F4 before any gesture calls the resize guard.
+- **§6c is done, after this report.** A review of `ff117342` found four more corrections (F1–F4); each was
+  reproduced with its numbers and then fixed, and §6c now records what is true rather than what was open. The counts
+  in §6b are the ones at that commit; after §6c the suite is 186 tests.
 - **Only the model and the offer cards are claimable.** Hold's pointer lifecycle, the Edit Shape sheet, ink and the
   pen tips are designed in the plan and absent from the code. Nothing here is a Round 4 acceptance claim.
 
@@ -52,10 +53,12 @@ edges, because one section cannot be scaled across a non-convex plan.
   which is why mesh and evaluator agree within 5 mm in the tests rather than by coincidence.
 - `oneSpan` is opt-in. An absent `oneSpan` leaves every previously saved roof exactly single-span, so no saved project
   changes behaviour.
-- `continuedWings` is the resize guard: same massing within 8 cm survives a resize, otherwise the change is refused
-  with a reason so the caller can hold its last valid preview instead of previewing a primary-wing jump. **Two
-  corrections in §6b:** the comparison now ignores a pure translation, and nothing calls the guard yet — no gesture is
-  protected by it.
+- `continuedWings` is the resize guard: a resize that leaves the structure alone survives, otherwise the change is
+  refused with a reason so the caller can hold its last valid preview instead of previewing a primary-wing jump.
+  **Corrected in §6b and again in §6c:** the comparison ignores a pure translation, and it compares structure — wing
+  count, an overlap-matched wing-for-wing pairing, the same span axis and joined/exposed ends, and the same primary —
+  rather than rectangle sizes, so a wall may move as far as the structure allows. Nothing calls the guard yet; no
+  gesture is protected by it.
 
 **Not in this commit:** the Hold zones over wings, the Settings toggle and the group-cover card all come later or not
 at all; nothing in this commit touches the pointer.
@@ -172,21 +175,25 @@ no-commit-unless-asked rule held.
 
 ---
 
-## 6c. Next corrections — open, for the implementing agent
+## 6c. Corrections after the review of §6b (reproduced, then fixed)
 
-Reproduced on `ff117342` (181 tests green) with a scratch script. **None of these is fixed yet.** F1–F3 come before
-Phase 2 is wired to the pointer: Hold will make the unsupported wing state common (a steep pitch on an L, a section
-dragged asymmetric), so that state has to be safe and repairable first. F4 comes before any gesture calls
-`continuedWings`.
+A review of `ff117342` (181 tests green) found four more corrections. Each was reproduced with the numbers below and
+then fixed. The reproductions are kept because they are the evidence, not because they are still true: every bullet
+that says what the code did describes `ff117342`, and each subsection ends with what it does now.
 
-Each fix lands with its test in `tests/qualification.test.ts` (F1–F3) or `tests/wings.test.ts` (F4); typecheck, the
-suite and the build stay green. No commit unless the owner asks.
+F1–F3 came before Phase 2 is wired to the pointer — Hold will make the unsupported wing state common (a steep pitch on
+an L, a section dragged asymmetric), so that state had to be safe and repairable first. F4 came before any gesture
+calls `continuedWings`; it is fixed, and still uncalled, exactly as §6b says.
+
+Each fix carries its test in `tests/qualification.test.ts` (F1–F3) or `tests/wings.test.ts` (F4). Suite after §6c:
+**15 files, 186 tests**, typecheck and build clean. The four fixes and this section are one uncommitted change in the
+working tree; nothing is committed unless the owner asks.
 
 ### F1 — a roof with no surface has no heights
 
 **Reproduce.** `L(3)` from `tests/qualification.test.ts`, both rooms `ceiling: 'follow'`, then
 `opCoverRooms(ids, 'gable', { wings: true })`: compound, walls up to 6.12 m. Then
-`opOverhead(id, { profile: presetProfile('raked', ohSpan(oh)) })`, which the profile pad can do today. The state
+`opOverhead(id, { profile: presetProfile('raked', ohSpan(oh)) })`, which the profile pad could do at `ff117342`. The state
 becomes `unsupported` ("the section has no ridge") and `buildOverhead` returns empty geometry, but:
 
 - the walls still rise to 4.90 m, the single-span raked underside, with nothing on them;
@@ -195,10 +202,11 @@ becomes `unsupported` ("the section has no ridge") and `buildOverhead` returns e
   single-span surface;
 - the zones (`roofZones.ts`) and the overhead handles (`handles.ts:228`) would sit on it.
 
-Other routes into the same state today: *Spun it round* on a wing roof (only an extruded section takes wings), the
-*Span direction* slider at any angle more than 2° off the plan, and a stepped preset drawn in the pad.
+Other routes into the same state, all still open as one-shot edits: *Spun it round* on a wing roof (only an extruded
+section takes wings — now disabled), the *Span direction* slider at any angle more than 2° off the plan, and a stepped
+preset drawn in the pad.
 
-**Fix.**
+**Fixed as.**
 
 1. `overheadGeom.ts`: `export function ohHasSurface(oh: Overhead): boolean`, false exactly when
    `oh.oneSpan === false && roofWingsState(oh).kind === 'unsupported'`. This is the one definition:
@@ -221,7 +229,8 @@ Other routes into the same state today: *Spun it round* on a wing roof (only an 
 7. `Inspector.tsx` overhead card: when `!ohHasSurface(oh)`, show "no surface — see the note on the roof" instead of
    "highest point …".
 8. `roofZones.ts` returns no zones, and `handles.ts` places no top-surface handles, for a no-surface roof. Outline
-   and eave handles sit at `oh.baseY`.
+   and eave handles sit at `oh.baseY`. `overlays.ts` also hides the drawn section line for such a roof, which the
+   browser check found: with the handles gone it was the last thing drawing a ridge across thin air.
 
 **Test** ("a wing roof with no surface has no heights"): the reproduction above, asserting:
 
@@ -239,7 +248,7 @@ qualify on the 5 m ceiling.
 **Reproduce.** Same as F1. The `wings:` issue has `fixes: []`, and the `opOverhead` that caused it returns no note. A
 roof with no mesh cannot be clicked in 3D, so the issue marker and the room card are the only ways back to it.
 
-**Fix.**
+**Fixed as.**
 
 1. Give the `wings:` issue two `Fix` entries. Each is offered only if applying it to a clone gives the state it
    promises, so a fix that leaves the roof broken is never offered:
@@ -277,11 +286,11 @@ A failure the plan causes (an outline edge 3° off the frame) offers only *Cover
 The fresh candidate keeps the same id, outline and height but has different posts and a different stair. Even so,
 `opAddMezzanine(id, c)` commits ("A mezzanine in Room 1, on 2 posts"), with posts that do not match the preview.
 
-**Fix.** In `opAddMezzanine` (`ops.ts`), after the outline and height check, also require that `ok.posts` equals
-`candidate.posts` point for point, and `sameStair(ok.stair, candidate.stair)`. `sameRing` already compares point lists
-exactly; rename or alias it, because posts are not a ring. Otherwise refuse with *"That loft's supports changed since
-it was offered in {name}. Nothing was placed; hover the offer again."* The preview runs the same op, so a fresh hover
-still commits exactly.
+**Fixed as.** In `opAddMezzanine` (`ops.ts`), after the outline and height check, `ok.posts` must equal
+`candidate.posts` point for point and `sameStair(ok.stair, candidate.stair)` must hold. `sameRing` became `samePoints`,
+because posts are a list of points and a ring is not a kind of thing: the old name made the omission easy to miss.
+Otherwise the op refuses with *"That loft's supports changed since it was offered in {name}. Nothing was placed; hover
+the offer again."* The preview runs the same op, so a fresh hover still commits exactly.
 
 **Test**: the reproduction. The stale candidate places no deck and no posts and returns the note; the fresh candidate
 commits with posts equal to `fresh.posts`.
@@ -295,8 +304,8 @@ widening the wing from 4 m to 4.5 m is refused. `sameMassing` compares every rec
 guard is wired a wing roof could never follow a wall moved more than 8 cm. That contradicts the plan's *extend sides*
 goal. The guard exists to stop the primary wing flipping, not to freeze resizing.
 
-**Fix** in `wings.ts`: compare structure instead of dimensions. After removing `frameShift`, two decompositions are the
-same massing when:
+**Fixed as**, in `wings.ts`: compare structure instead of dimensions. After removing `frameShift`, two decompositions
+are the same massing when:
 
 - they have the same number of wings;
 - each previous wing matches exactly one next wing, by largest overlap in the roof frame (overlap > 0), one to one;
@@ -307,15 +316,22 @@ same massing when:
 Sizes, scales and hips are free and are recomputed for the new outline, as today. The existing reasons and the
 single-span and one-span rules stay unchanged.
 
-**Test changes**:
+**Test changes, and one correction to the plan above.**
 
-- The sweep keeps every width whose primary is unchanged and refuses exactly the widths where the primary flips.
-  Assert that both sets are non-empty.
-- The translation test stays.
-- The "different plan" case uses a genuine change of structure (an L becoming a T, or a primary flip), not a longer
-  wing.
+- The 10 × 6 / 4 × 8 L used for the reproduction turns out not to be a resize at all past a few centimetres: widening
+  its wing makes the vertical spine the largest rectangle, so the decomposition changes to a bar plus a remainder and
+  the refusal is correct for structural reasons. The test therefore uses a 20 m block with a 4 m wing, where growing a
+  room really is only a resize, and keeps a 3 cm step, a 4 m longer wing, and a block 3 m longer and shorter. All four
+  are kept with fresh geometry.
+- A width sweep keeps the widths whose wing keeps its ridge direction (including 6 m, two metres wider than the start —
+  far past the old 8 cm tolerance) and refuses the widths where the wing's own section turns across it. Both sets are
+  asserted non-empty. Sizes are free; a turned ridge is not.
+- The translation test is unchanged.
+- The "different plan" case is now a U (three wings) rather than a longer wing, because a longer wing is the same
+  two-wing structure and is kept.
 
-In `effortless-creation.md` §8, the sentence "every larger step is refused" is corrected to match.
+In `effortless-creation.md` §8, the sentences about the 8 cm tolerance and "every larger step is refused" are
+corrected to match.
 
 ### A rule for Phase 2 that follows from these
 
@@ -324,18 +340,39 @@ with no surface is not previewed. The last valid preview stays, the readout give
 gesture-validation rule), and release commits what was shown. The visible no-surface state from F1 and F2 remains the
 outcome only for one-shot edits: a freehand redraw in the pad, the card controls and imports.
 
+### Corrections after Hold runtime review
+
+Five findings in the wired Hold/Turn paths are corrected in the current working tree:
+
+- Hold and Turn candidates run through `cleanSection` from the gesture-start profile. Changed and new profile IDs are
+  identified explicitly; untouched semantic joints are protected. A changed span is checked at the single roof span
+  and at every effective compound-wing span. Invalid candidates retain the last valid preview with the reason, even
+  during Alt drags. The normalized candidate profile is replayed by the exact operation used for preview and commit.
+- Wall-handle transactions check every roof changed after `runTxn` settles, regardless of which entity is selected.
+  Valid compound translations and continuous resizes remain allowed; a massing change is held with an explanation.
+- Fullness uses the slope's outward normal in plan/up coordinates and converts that physical displacement back to a
+  profile-side movement using the local wing span and rise. Tangent drags therefore preserve the profile.
+- The straightening detent simulates the same `pullShoulder` transform as Hold, measures the sampled curve against its
+  chord within `STRAIGHT_TOL`, and is omitted when no reachable shoulder movement meets that tolerance.
+- The Turn card and **R** shortcut use one qualifier. It validates section, changed span and compound coverage,
+  accepts intentional valid turns without asking the resize guard to treat them as accidental, and omits a compound
+  action when the visible roof surface would not change.
+
+`tests/hold.test.ts` covers invalid Alt ridge movement and last-valid retention, eave and turn span limits, both-side
+tangent projection, one-point and multi-point straightening, shared Turn qualification, an invalid wall resize and a
+valid fitted-roof translation through `flushHandleMove`. `tests/wings.test.ts` covers larger continuous resizes and
+translations.
+
 ---
 
 ## 7. What is not done
 
-Held against the plan's own phase table. Order: §6c F1–F3 first, then Phase 2's wiring. F4 goes before any gesture
-calls `continuedWings`.
+Held against the plan's own phase table. §6c's F1–F4 and the Hold runtime review corrections above are done. Hold
+qualification calls `continuedWings` for affected compound roofs; the card and **R** share the same intentional-turn
+qualifier. Full browser acceptance and the remaining phase work are still open.
 
 | Not started | Plan | Size |
 | --- | --- | --- |
-| §6c corrections: F1 a roof with no surface has no heights, F2 its repairs and note, F3 the mezzanine's supports | §6c | S |
-| §6c F4: structural massing comparison for the resize guard | §6c, plan §8 | S |
-| Hold wired to the pointer: `zoneHandle`, drag branches, highlights, readouts, card hint | §5.3–5.5 | M |
 | Edit Shape: entry/exit, 3D view while shaping, `SectionSheet.tsx`, `sectionContext.ts` | §6 | L |
 | Ink from meaning: `facets`/`ink`, `roofInk.ts`, revolve rings, ghost twins, `tests/ink.test.ts` | §7 | M |
 | Pen tips (Box/Round, *Room beside*), the Platform label, `tests` for both | §9.1, §9.2, §9.5 | M |
@@ -344,9 +381,9 @@ calls `continuedWings`.
 | §11 acceptance: per-phase gates, browser checks, the full §11.3 script, screenshots, the five-person test | §11 | M |
 | §12 docs and in-app help | §12 | S |
 
-The acceptance script's step 2 (*Cover Room 1 and Room 2* → one roof) and half of step 4 (mezzanine, then stair) are
-now clickable. Step 3 — raise the ridge to 45°, drag a ridge end to an even hip, bow a slope, pull the eave — needs
-Hold's wiring and cannot be run yet.
+The acceptance script's step 2 (*Cover Room 1 and Room 2* → one roof), step 3's Hold gestures, and half of step 4
+(mezzanine, then stair) are wired. Step 3 has focused automated regressions, but still needs the full browser journey
+and screenshots required by §11.
 
 ---
 
@@ -356,7 +393,7 @@ From `prototypes/p3-vellum`:
 
 ```sh
 npm run typecheck     # tsc --noEmit
-npm test              # 15 files, 181 tests with the §6b fixes in the working tree
+npm test              # 16 files, 203 tests with the §6b, §6c and Hold review fixes in the working tree
 npm run build         # tsc --noEmit && vite build
 ```
 

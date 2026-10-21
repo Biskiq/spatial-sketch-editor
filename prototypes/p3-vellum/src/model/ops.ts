@@ -11,7 +11,7 @@ import { settle, Note, lvl, roomTop, seedAt, carryStanding } from './settle';
 import { runGeom, closestOnRun, translateRun, scaleRun, pointAtT } from './runs';
 import { derive, DRoom, Derived, openingKind, elementName, floorUnder } from './derive';
 import { roofWingsState } from './wings';
-import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt } from './overheadGeom';
+import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt, ohHasSurface } from './overheadGeom';
 import type { StrokeFit } from './strokes';
 import { isRoundish, fittedOutline } from './fit';
 import { mezzanineCandidates, stairCandidates, POST_SIZE, type MezzCandidate, type StairPlan } from './offers';
@@ -402,6 +402,7 @@ export const opAddOverhead = (outline: V2[], baseY: number, o: OverheadSpec = {}
 export const opOverhead = (id: string, patch: Partial<Overhead>): Op => (p) => {
   const oh = p.overheads.find((x) => x.id === id);
   if (!oh) return;
+  const hadSurface = ohHasSurface(oh);
   if (patch.baseY !== undefined && oh.restsOn && patch.restsOn === undefined) {
     // dragging the eave of a tied roof: keep it tied, remember the offset
     const tops = oh.restsOn.map((rid) => p.rooms.find((r) => r.id === rid)).filter(Boolean).map((r) => roomTop(r!));
@@ -412,10 +413,23 @@ export const opOverhead = (id: string, patch: Partial<Overhead>): Op => (p) => {
   const names = unfit ? oh.fit!.rooms.map((id) => p.rooms.find((r) => r.id === id)?.name).filter(Boolean).join(', ') : '';
   Object.assign(oh, patch);
   if (patch.outline) oh.outline = ensureCCW(patch.outline);
+  const notes: Note[] = [];
   if (unfit) {
     oh.fit = null;
-    return { notes: [{ kind: 'info', text: `${oh.name} has its own outline now; it no longer follows ${names}'s walls.`, ids: [oh.id] }] };
+    notes.push({ kind: 'info', text: `${oh.name} has its own outline now; it no longer follows ${names}'s walls.`, ids: [oh.id] });
   }
+  // A section edit that leaves a wing roof with no surface is said out loud, with both ways back: the roof cannot be
+  // clicked in 3D any more, so the note is the only thing that tells the creator what they did.
+  if (hadSurface && !ohHasSurface(oh)) {
+    const st = roofWingsState(oh);
+    const why = st.kind === 'unsupported' ? st.reason : 'its section no longer fits';
+    notes.push({
+      kind: 'info',
+      text: `${oh.name} can't carry this section across its wings (${why}), so it has no surface. Make it a gable, or cover it as one span.`,
+      ids: [oh.id],
+    });
+  }
+  if (notes.length) return { notes };
 };
 
 export function coverOutline(rooms: DRoom[], thick = 0.24, overhang = 0.45): V2[] {
@@ -436,10 +450,9 @@ function coverRoof(p: Project, d: Derived, rooms: DRoom[], roomIds: string[], pr
     fit: { rooms: rooms.map((r) => r.id), overhang },
     preset: round && preset === 'flat' ? 'flat' : preset, restsOn: roomIds, form: round ? 'revolve' : 'extrude',
     name: rooms.length === 1 ? `${rooms[0].name} roof` : undefined,
-    // One step, one cover: the second tap is not a second Undo. Set at creation so the profile's span is the primary
-    // wing's, not the whole outline's. A flat section needs no wings at all — it is the same surface either way —
-    // and asking the wing decomposition to carry it only invents a refusal.
-    oneSpan: o.wings && preset !== 'flat' ? false : undefined,
+    // One step, one cover: the second tap is not a second Undo. Keep an explicit grouped choice even while its
+    // section is flat, so raising it later continues across the same wings. Old roofs without the field stay single-span.
+    oneSpan: o.wings ? false : undefined,
   });
 }
 
@@ -643,7 +656,7 @@ export const opStair = (id: string, patch: Partial<Stair>): Op => (p) => {
  * the room), so it is not tied to the room's top.
  */
 /** Exact agreement between a previewed outline and the one this revision would produce. */
-function sameRing(a: V2[], b: V2[]): boolean {
+function samePoints(a: V2[], b: V2[]): boolean {
   return a.length === b.length && a.every((q, i) => Math.abs(q[0] - b[i][0]) < 1e-6 && Math.abs(q[1] - b[i][1]) < 1e-6);
 }
 
@@ -653,7 +666,7 @@ function sameStair(a: StairPlan, b: StairPlan): boolean {
   // a candidate is qualified before its deck exists, so its `to` deck has no id yet: an unset id is not a difference
   const sameRef = (x: SurfaceRef, y: SurfaceRef) => refKey(x) === refKey(y)
     || (x.kind === 'deck' && y.kind === 'deck' && (!x.id || !y.id));
-  return sameRing(a.path, b.path) && Math.abs(a.fromY - b.fromY) < 1e-6 && Math.abs(a.toY - b.toY) < 1e-6
+  return samePoints(a.path, b.path) && Math.abs(a.fromY - b.fromY) < 1e-6 && Math.abs(a.toY - b.toY) < 1e-6
     && sameRef(a.from, b.from) && sameRef(a.to, b.to);
 }
 
@@ -664,8 +677,12 @@ export const opAddMezzanine = (roomId: string, candidate: MezzCandidate): Op => 
   if (!ok) return { notes: [{ kind: 'info', text: `A mezzanine no longer fits in ${name}. Nothing was placed.`, ids: [] }] };
   // The previewed candidate itself is checked, not just its id: the same id on a moved deck is a different loft, and
   // placing that one silently would move the thing the newcomer was looking at.
-  if (!sameRing(ok.outline, candidate.outline) || Math.abs(ok.y - candidate.y) > 1e-6)
+  if (!samePoints(ok.outline, candidate.outline) || Math.abs(ok.y - candidate.y) > 1e-6)
     return { notes: [{ kind: 'info', text: `That loft moved since it was offered in ${name}. Nothing was placed; hover the offer again.`, ids: [] }] };
+  // The supports and the stair are part of what the preview promised, not decoration: a deck committed with a post
+  // layout the creator never saw is the same failure as one committed at a different height.
+  if (!samePoints(ok.posts, candidate.posts) || !sameStair(ok.stair, candidate.stair))
+    return { notes: [{ kind: 'info', text: `That loft's supports changed since it was offered in ${name}. Nothing was placed; hover the offer again.`, ids: [] }] };
   const res = opAddDeck(ok.outline, ok.y, { name: `Mezzanine in ${name}` })(p, {}) as { select?: string };
   const deckId = res.select!;
   // Support is part of the same accepted step, and it is the layout the offer qualified — the one its stair was

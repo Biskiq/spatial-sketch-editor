@@ -3,17 +3,20 @@ import * as THREE from 'three';
 import { store } from '../store';
 import type { Stage } from './stage';
 import { derive, Derived, wallTopAt, wallBottomAt } from '../model/derive';
-import type { Project, Run } from '../model/types';
+import type { Overhead, Project, Run } from '../model/types';
 import { findEl } from '../model/types';
-import { V2, add, sub, mul, dist, norm, perp, dot, polyCentroid, bbox, fmtM, inPeople, round, arcInfo, bulgeFromSagitta, lerp2, pointAtS } from '../model/geom2d';
+import { V2, add, sub, mul, dist, norm, perp, dot, polyCentroid, bbox, fmtM, inPeople, round, arcInfo, bulgeFromSagitta, lerp2, pointAtS, clamp } from '../model/geom2d';
 import { runGeom, pointAtT, closestOnRun } from '../model/runs';
 import {
   Op, opMoveNode, opBend, opRadius, opMoveRun, opRunTop, opRoom, opOpening, opOverhead, opDeck, opVoid, opStair, opScaleAll, opObj,
 } from '../model/ops';
 import { snapPoint, Guide } from '../model/snap';
 import type { Tie } from '../model/types';
-import { ohTopAt, ohSection, ohFrame, maxRise, moveProfilePoint, profilePeak, movePeak, profileShoulder, ensureShoulder, pullShoulder, profileSymmetric } from '../model/overheadGeom';
+import { ohTopAt, ohHasSurface, ohSection, ohFrame, ohSpan, maxRise, moveProfilePoint, profilePeak, movePeak, profileShoulder, ensureShoulder, pullShoulder, profileSymmetric, newProfileId } from '../model/overheadGeom';
 import { lvl } from '../model/settle';
+import type { RoofZone } from '../model/roofZones';
+import { detent, gestureStartStop, hipStops, OVERHANG_STOPS, pitchStops, straighteningStop } from '../model/detents';
+import { roofWingsState, type Wing } from '../model/wings';
 
 export type DragMode = { type: 'plan'; y: number } | { type: 'vertical'; at: V2 } | { type: 'surface'; origin: V2; tan: V2; y0: number };
 
@@ -24,7 +27,7 @@ export interface Handle {
   mode: DragMode;
   label: string;
   /** given the dragged point, the op to preview/commit and a measurement to show */
-  drag: (pt: { plan: V2; y: number }, e: PointerEvent) => { op: Op; measure: string; knot?: V2 | null; guides?: Guide[]; snap?: string; at?: V2; commit?: string } | null;
+  drag: (pt: { plan: V2; y: number }, e: PointerEvent) => { op?: Op; measure: string; reason?: string; changed?: boolean; knot?: V2 | null; guides?: Guide[]; snap?: string; at?: V2; commit?: string } | null;
   title: string;
   /** 'detail' handles stay out of the way until the pointer comes near (or every point is asked for). */
   tier?: 'primary' | 'detail';
@@ -32,6 +35,183 @@ export interface Handle {
 
 const snapY = (y: number) => round(y, 0.05);
 const snapP = (p: V2, step = 0.05): V2 => [round(p[0], step), round(p[1], step)];
+
+/** A short-lived roof control created from the zone under the pointer, never serialized or stored in the project. */
+export function zoneHandle(stage: Stage, _project: Project, oh: Overhead, zone: RoofZone, startPlan: V2, startY: number): Handle | null {
+  if (!ohHasSurface(oh) || (zone.kind === 'slope' && zone.locked)) return null;
+  const fr = ohFrame(oh);
+  const d = fr.d;
+  const e: V2 = [-d[1], d[0]];
+  const state = roofWingsState(oh);
+  const wing = state.kind === 'compound' && 'wing' in zone ? state.wings.find((w) => w.index === zone.wing) : undefined;
+  const scale = Math.max(wing?.scale ?? 1, 1e-6);
+  const spanDir: V2 = wing?.span === 'v' ? e : d;
+  const lift = stage.liftOf(oh.id);
+  const mpp = Math.max(1e-4, stage.mpp(new THREE.Vector3(startPlan[0], startY + lift, startPlan[1])));
+  const profile = oh.profile.map((q) => ({ ...q }));
+  const peak = profilePeak(profile);
+  const flat = levelProfile(profile);
+  const flatLevel = flat ? (profile[0]?.h ?? 0) : 0;
+  const fullness = zone.kind === 'slope' ? (() => {
+    const localSpan = wing ? wing.span === 'w' ? wing.rect[1] - wing.rect[0] : wing.rect[3] - wing.rect[2] : ohSpan(oh);
+    const eave = profile[zone.side === 'L' ? 0 : profile.length - 1];
+    const run = Math.max(0.05, localSpan * Math.abs(peak.u - (eave?.u ?? (zone.side === 'L' ? 0 : 1))));
+    const rise = Math.max(0.02, (peak.h - (eave?.h ?? 0)) * scale);
+    const hyp = Math.hypot(run, rise);
+    const straight = straighteningStop(profile.map((q) => ({ ...q, h: q.h * scale })), zone.side, localSpan);
+    return {
+      localSpan,
+      run,
+      rise,
+      hyp,
+      stops: straight.length ? [...straight, gestureStartStop(0)] : [],
+    };
+  })() : null;
+  let active: number | undefined;
+  let shoulderBase: typeof profile | null = null;
+  const symmetric = profileSymmetric(profile);
+  const ids = new Set(profile.map((q) => q.id).filter((id): id is string => !!id));
+  // movePeak allocates the one point for a flat roof. Allocate it once per gesture and reuse its identity in every
+  // preview, including a drag that reverses back to the start.
+  let flatPeakId: string | undefined;
+  if (flat) {
+    const seed = movePeak(profile.map((q) => ({ ...q, h: q.h - flatLevel })), 0.5, 0.1, false);
+    flatPeakId = seed.find((q) => q.id && !ids.has(q.id))?.id ?? newProfileId();
+  }
+  const peakProfile = (height: number) => {
+    if (!flat) return movePeak(profile, peak.u, height, false);
+    const relative = profile.map((q) => ({ ...q, h: q.h - flatLevel }));
+    return movePeak(relative, 0.5, height - flatLevel, false).map((q) => ({
+      ...q,
+      h: q.h + flatLevel,
+      ...(q.id && !ids.has(q.id) ? { id: flatPeakId } : {}),
+    }));
+  };
+  const peakReadout = (height: number, stop?: string, limit?: string) => {
+    const run = Math.max(peak.u * ohSpan(oh), (1 - peak.u) * ohSpan(oh));
+    const pitch = Math.atan2(Math.max(0, height - flatLevel), Math.max(run, 1e-6)) * 180 / Math.PI;
+    const pitchText = profile.every((q) => q.crease) && oh.form === 'extrude' && height > flatLevel + 0.05 ? ` · ${Math.round(pitch)}°` : '';
+    return `ridge ${fmtM(height)}${pitchText}${stop ? ` · ${stop}` : ''}${limit ? ` · ${limit}` : ''}`;
+  };
+
+  const mode: DragMode = zone.kind === 'ridge' || zone.kind === 'apex' || zone.kind === 'flatTop'
+    ? { type: 'vertical', at: startPlan }
+    : zone.kind === 'slope'
+      ? { type: 'surface', origin: startPlan, tan: spanDir, y0: 0 }
+      : { type: 'plan', y: startY };
+  const make = (patch: Partial<Overhead>, measure: string, commit: string) => ({ op: opOverhead(oh.id, patch), measure, commit });
+  const handle: Handle = {
+    id: `hold:${zone.kind}`,
+    pos: new THREE.Vector3(startPlan[0], startY + lift + 0.04, startPlan[1]),
+    shape: 'ring', mode, label: '', title: zoneTipFor(oh, zone),
+    drag: (pt, ev) => {
+      const free = ev.altKey;
+      if (zone.kind === 'ridge' || zone.kind === 'apex' || zone.kind === 'flatTop') {
+        const initial = flat ? 0 : peak.h * scale;
+        const delta = pt.y - startY;
+        const raw = initial + delta;
+        const max = maxRise(oh) * scale;
+        let local = clamp(raw, 0, max);
+        const limit = raw < 0 ? 'at the eave' : raw > max ? 'height limit' : undefined;
+        const stops = zone.kind === 'flatTop'
+          ? [30, 45, 60].map((deg) => ({ at: ohSpan(oh) * 0.5 * Math.tan(deg * Math.PI / 180) * scale, label: `${deg}° pitch`, key: `pitch:${deg}` }))
+          : oh.form === 'extrude' && profile.every((q) => q.crease) ? pitchStops(oh).map((s) => ({ ...s, at: s.at * scale })) : [];
+        stops.push(gestureStartStop(initial));
+        const snapped = detent(free ? local : round(local, 0.01), stops, Math.max(0.06, 8 * mpp), free, active);
+        active = snapped.active;
+        local = clamp(snapped.v, 0, max);
+        const height = flat ? flatLevel + local / scale : local / scale;
+        const next = peakProfile(height);
+        const word = height > (flat ? flatLevel : peak.h) + 0.01 ? 'taller' : height < (flat ? flatLevel : peak.h) - 0.01 ? 'flatter' : 'as it was';
+        return make({ profile: next }, peakReadout(height, snapped.label, limit), `Made ${oh.name} ${word}`);
+      }
+
+      if (zone.kind === 'ridgeEnd' || zone.kind === 'endFace') {
+        const crossAxis: V2 = wing?.span === 'v' ? d : e;
+        const inward = zone.end === 'A' ? 1 : -1;
+        const displacement = dot(sub(pt.plan, startPlan), mul(crossAxis, inward));
+        const maxHip = maximumHip(oh, state.kind === 'compound' ? state.wings : undefined);
+        const candidate = clamp((oh.hip ?? 0) + displacement / scale, 0, maxHip);
+        const stops = hipStops(oh).filter((s) => s.at <= maxHip + 1e-8);
+        const snapped = detent(free ? candidate : round(candidate, 0.05), stops, Math.max(0.25, 10 * mpp) / scale, free, active);
+        active = snapped.active;
+        const hip = clamp(snapped.v, 0, maxHip);
+        const word = hip < 0.01 ? 'gable ends' : Math.abs(hip - maxHip) < 0.02 ? 'ends meet' : `hip ${fmtM(hip)}`;
+        return make({ hip }, `${state.kind === 'compound' ? 'All wings · linked ends · ' : ''}${word}${snapped.label ? ` · ${snapped.label}` : ''}`, `Hipped ${oh.name}’s ends`);
+      }
+
+      if (zone.kind === 'slope') {
+        if (!fullness) return null;
+        const along = dot(sub(pt.plan, startPlan), spanDir) * (zone.side === 'L' ? -1 : 1);
+        const dy = pt.y - (startY + lift);
+        // `along` points out toward the eave. The outward unit normal has components (rise, run) in
+        // (plan-outward, up) coordinates; projecting on the slope tangent would invent fullness on a tangent drag.
+        let displacement = along * (fullness.rise / fullness.hyp) + dy * (fullness.run / fullness.hyp);
+        const snapped = detent(free ? displacement : round(displacement, 0.01), fullness.stops, Math.max(0.05, 6 * mpp), free, active);
+        active = snapped.active;
+        displacement = snapped.v;
+        if (Math.abs(displacement) < 0.002) return make({ profile }, `${state.kind === 'compound' ? 'All wings · ' : ''}as it was`, `Made ${oh.name} fuller`);
+        if (!shoulderBase) {
+          shoulderBase = ensureShoulder(profile, zone.side);
+          if (symmetric) shoulderBase = ensureShoulder(shoulderBase, zone.side === 'L' ? 'R' : 'L');
+        }
+        const du = (zone.side === 'L' ? -1 : 1) * displacement * (fullness.rise / fullness.hyp) / Math.max(fullness.localSpan, 0.1);
+        const next = pullShoulder(shoulderBase, zone.side, free ? du : round(du, 0.005), symmetric);
+        const word = displacement >= 0 ? 'fuller' : 'pointier';
+        return make({ profile: next }, `${state.kind === 'compound' ? 'All wings · same section · ' : ''}${snapped.label ?? word}`, `Made ${oh.name} ${word}`);
+      }
+
+      if (zone.kind === 'eave') {
+        const a = oh.outline[zone.edge], b = oh.outline[(zone.edge + 1) % oh.outline.length];
+        if (!a || !b) return null;
+        const outward = mul(perp(norm(sub(b, a))), -1); // outlines are CCW, so the right normal points out
+        const displacement = dot(sub(pt.plan, startPlan), outward);
+        if (oh.fit) {
+          const start = oh.fit.overhang;
+          const raw = start + displacement;
+          const bounded = clamp(raw, 0, 1.5);
+          const snapped = detent(free ? bounded : round(bounded, 0.05), OVERHANG_STOPS, 0.05, free, active);
+          active = snapped.active;
+          const overhang = clamp(snapped.v, 0, 1.5);
+          const limit = raw < 0 ? 'no overhang is the limit' : raw > 1.5 ? 'overhang limit' : '';
+          return make({ fit: { ...oh.fit, overhang } }, `all fitted edges · overhang ${Math.round(overhang * 100)} cm${snapped.label ? ` · ${snapped.label}` : ''}${limit ? ` · ${limit}` : ''}`, `Changed ${oh.name}’s overhang`);
+        }
+        const delta = free ? displacement : round(displacement, 0.05);
+        const outline = oh.outline.slice();
+        outline[zone.edge] = add(a, mul(outward, delta));
+        outline[(zone.edge + 1) % outline.length] = add(b, mul(outward, delta));
+        return make({ outline }, `${delta >= 0 ? 'out' : 'in'} ${fmtM(Math.abs(delta))}`, `Pushed ${oh.name}’s edge`);
+      }
+      return null;
+    },
+  };
+  return handle;
+}
+
+const levelProfile = (pts: { h: number }[]) => pts.length > 0 && pts.every((q) => Math.abs(q.h - pts[0].h) < 0.05);
+
+function maximumHip(oh: Overhead, wings?: Wing[]): number {
+  if (!wings) {
+    const f = ohFrame(oh);
+    return Math.max(0, (f.emax - f.emin) / 2);
+  }
+  const limits = wings.flatMap((w) => {
+    if (w.ends.lo !== 'exposed' && w.ends.hi !== 'exposed') return [];
+    const ridgeLength = w.span === 'w' ? w.rect[3] - w.rect[2] : w.rect[1] - w.rect[0];
+    return [ridgeLength / (2 * Math.max(w.scale, 1e-6))];
+  });
+  return limits.length ? Math.max(0, Math.min(...limits)) : 0;
+}
+
+function zoneTipFor(oh: Overhead, zone: RoofZone) {
+  if (zone.kind === 'eave' && oh.fit) return 'Drag out for more overhang';
+  if (zone.kind === 'slope' && zone.locked) return 'This slope needs detailed editing';
+  if (zone.kind === 'ridge' || zone.kind === 'apex') return 'Drag up or down: taller or flatter';
+  if (zone.kind === 'ridgeEnd' || zone.kind === 'endFace') return 'Drag inward: hip both ends';
+  if (zone.kind === 'slope') return 'Drag out for fuller slopes, back for pointier';
+  if (zone.kind === 'flatTop') return 'Pull up to give the roof a peak';
+  return oh.fit ? 'Drag out for more overhang' : 'Push or pull this edge';
+}
 
 export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | null): Handle[] {
   // handles belong to Select: in Draw a stroke that starts on a wall's middle or end must draw, never reshape
@@ -223,9 +403,10 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
     case 'deck':
     case 'void': {
       const outline = e.outline;
-      const y = e.kind === 'overhead' ? e.baseY : e.kind === 'deck' ? e.y : Math.min(e.toY, d.bounds.top + 0.2);
+      const y = e.kind === 'overhead' ? e.baseY + e.thick : e.kind === 'deck' ? e.y : Math.min(e.toY, d.bounds.top + 0.2);
       const set = (ol: V2[]): Op => (e.kind === 'overhead' ? opOverhead(e.id, { outline: ol }) : e.kind === 'deck' ? opDeck(e.id, { outline: ol }) : opVoid(e.id, { outline: ol }));
-      const yAt = (q: V2) => (e.kind === 'overhead' ? ohTopAt(e, q) : y);
+      // a roof with no surface has no top to grab: its outline handles stay at the eave
+      const yAt = (q: V2) => (e.kind === 'overhead' && ohHasSurface(e) ? ohTopAt(e, q) : y);
       // edges push and pull by default; corners come out as the pointer nears them
       outline.forEach((q, i) => {
         out.push({
@@ -246,6 +427,7 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
         const mid = lerp2(q, b, 0.5);
         const nn = perp(norm(sub(b, q)));
         out.push({
+          tier: e.kind === 'overhead' ? 'detail' : 'primary',
           id: `e:${i}`, pos: new THREE.Vector3(mid[0], yAt(mid) + 0.04 + lift, mid[1]), shape: 'ring', mode: { type: 'plan', y }, label: '', title: 'Push or pull this edge',
           drag: (pt) => {
             const dd = round(dot(sub(pt.plan, mid), nn), 0.05);
@@ -261,13 +443,17 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
         // the eave sits out at a corner, at eave height: it reads as "the whole roof", apart from the peak above the middle
         const k0 = outline.reduce((b, q, i) => (dist(q, c) > dist(outline[b], c) ? i : b), 0);
         const ec = add(outline[k0], mul(norm(sub(outline[k0], c)), 0.6));
-        out.push({
-          id: 'eave', pos: new THREE.Vector3(ec[0], e.baseY + lift, ec[1]), shape: 'bead', mode: { type: 'vertical', at: ec }, label: 'eave', title: 'Drag to raise or lower the whole roof',
+        if (!e.fit) out.push({
+          id: 'eave', pos: new THREE.Vector3(ec[0], e.baseY + lift, ec[1]), shape: 'bead', mode: { type: 'vertical', at: ec }, label: 'height', title: 'Drag to raise or lower the whole roof',
           drag: (pt) => {
             const yy = Math.max(1.0, snapY(pt.y));
             return { op: opOverhead(e.id, { baseY: yy }), measure: `eave at ${fmtM(yy)}` };
           },
         });
+        // A roof with no surface has no top to sculpt: its peak, hips, shoulders and section points would float over a
+        // roof that is not drawn, and the issue already carries the two repairs. So the vocabulary is outline and eave
+        // only, and the section can still be edited in the pad, which is where the way back is written down.
+        if (!ohHasSurface(e)) break;
         // Sculpting: a peak (up = taller, sideways = lean) and a shoulder on each slope (out = broader, in = pointier).
         // With the eave and the edges (width), that's the whole default vocabulary; the profile's own points come out
         // as the pointer nears them, for precision.
@@ -279,6 +465,7 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
         const pkAt = sec.at(pkU, pk.h);
         const off = 0.3;
         out.push({
+          tier: 'detail',
           id: 'peak', pos: new THREE.Vector3(pkAt.plan[0], pkAt.y + off + lift, pkAt.plan[1]), shape: 'bead',
           mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: flat ? 'pull up' : 'peak',
           title: flat ? 'Pull up to give the roof a peak' : sec.revolve ? 'Drag up or down: taller or flatter' : 'Drag up or down: taller or flatter · sideways: lean the peak',
@@ -305,6 +492,7 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
             const v = end === 'A' ? fr.emin + fr.hip : fr.emax - fr.hip;
             const q = add(mul(fr.d, wr), mul(ea, v));
             out.push({
+              tier: 'detail',
               id: `hip:${end}`, pos: new THREE.Vector3(q[0], ry + lift, q[1]), shape: 'ring', mode: { type: 'plan', y: ry }, label: '',
               title: 'Drag along the ridge: in to hip the ends (all the way for a pyramid), out for gable ends',
               drag: (pt) => {
@@ -325,6 +513,7 @@ export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | n
           const a = sec.at(sh.u, sh.h);
           let base: typeof prof | null = null;
           out.push({
+            tier: 'detail',
             id: `shoulder:${side}`, pos: new THREE.Vector3(a.plan[0], a.y + 0.05 + lift, a.plan[1]), shape: 'ring',
             mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: '',
             title: `Drag sideways: out for a broader roof, in for a pointier one${sym && !sec.revolve ? ' (both sides stay alike)' : ''}`,

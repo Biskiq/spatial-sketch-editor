@@ -3,14 +3,16 @@
 import { describe, it, expect } from 'vitest';
 import { emptyProject, Project } from '../src/model/types';
 import {
-  runTxn, opAddRun, opRoom, opCoverRooms, coverCheck, opAddOverhead, opAddDeck, opAddMezzanine, opAddStairTo,
+  runTxn, opAddRun, opRoom, opCoverRooms, coverCheck, opAddOverhead, opAddDeck, opAddMezzanine, opAddStairTo, opAddPost, opOverhead,
 } from '../src/model/ops';
 import { derive } from '../src/model/derive';
 import { roofWingsState } from '../src/model/wings';
 import { buildOverhead } from '../src/scene/build/overheads';
 import { mezzanineOffer, stairPlansFor, stairCandidates, deckTopFor } from '../src/model/offers';
-import { presetProfile } from '../src/model/overheadGeom';
-import { V2, dist, sub } from '../src/model/geom2d';
+import { presetProfile, ohHasSurface, ohRidge, ohSpan, ohCovers, ohH } from '../src/model/overheadGeom';
+import { roofZoneAt } from '../src/model/roofZones';
+import type { Overhead } from '../src/model/types';
+import { V2, dist, sub, polyArea, bbox, pointInPoly, distToPolyEdge, fromAngle } from '../src/model/geom2d';
 import type { StrokeFit } from '../src/model/strokes';
 
 const poly = (pts: V2[], closed = true): StrokeFit => ({
@@ -19,6 +21,60 @@ const poly = (pts: V2[], closed = true): StrokeFit => ({
 });
 const rect = (x0: number, z0: number, x1: number, z1: number): V2[] => [[x0, z0], [x1, z0], [x1, z1], [x0, z1]];
 const doOp = (p: Project, op: any) => runTxn(p, op).after;
+
+/** The projected top area from the mesh, the same method the wings tests use. */
+function meshArea(oh: Overhead) {
+  const P = buildOverhead(oh, []).top.pos;
+  let A = 0;
+  for (let i = 0; i < P.length; i += 9)
+    A += Math.abs((P[i + 3] - P[i]) * (P[i + 8] - P[i + 2]) - (P[i + 6] - P[i]) * (P[i + 5] - P[i + 2])) / 2;
+  return A;
+}
+
+/** Top-surface height from the rendered triangles, for checking the mesh against the shared evaluator. */
+function meshProbe(oh: Overhead) {
+  const P = buildOverhead(oh, []).top.pos;
+  const tris = [] as { a: V2; b: V2; c: V2; ya: number; yb: number; yc: number }[];
+  for (let i = 0; i < P.length; i += 9) {
+    const a: V2 = [P[i], P[i + 2]], b: V2 = [P[i + 3], P[i + 5]], c: V2 = [P[i + 6], P[i + 8]];
+    if (Math.abs((b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1])) < 1e-9) continue;
+    tris.push({ a, b, c, ya: P[i + 1], yb: P[i + 4], yc: P[i + 7] });
+  }
+  return (q: V2): number | null => {
+    let best: number | null = null;
+    for (const t of tris) {
+      const d = (t.b[0] - t.a[0]) * (t.c[1] - t.a[1]) - (t.c[0] - t.a[0]) * (t.b[1] - t.a[1]);
+      const l1 = ((t.b[0] - q[0]) * (t.c[1] - q[1]) - (t.c[0] - q[0]) * (t.b[1] - q[1])) / d;
+      const l2 = ((t.c[0] - q[0]) * (t.a[1] - q[1]) - (t.a[0] - q[0]) * (t.c[1] - q[1])) / d;
+      const l3 = 1 - l1 - l2;
+      if (l1 < -1e-7 || l2 < -1e-7 || l3 < -1e-7) continue;
+      const y = l1 * t.ya + l2 * t.yb + l3 * t.yc;
+      if (best === null || y > best) best = y;
+    }
+    return best;
+  };
+}
+
+function eaveSamples(oh: Overhead): V2[] {
+  const st = roofWingsState(oh);
+  if (st.kind !== 'compound') return [];
+  const d = fromAngle(oh.dir), e: V2 = [-d[1], d[0]];
+  const out: V2[] = [];
+  for (const wing of st.wings) {
+    const [w0, w1, v0, v1] = wing.rect;
+    const spanW = wing.span === 'w';
+    const s0 = spanW ? w0 : v0, s1 = spanW ? w1 : v1;
+    const r0 = spanW ? v0 : w0, r1 = spanW ? v1 : w1;
+    for (const [s, inward] of [[s0, 1], [s1, -1]] as const) for (let k = 1; k <= 7; k++) {
+      const r = r0 + ((r1 - r0) * k) / 8;
+      const w = spanW ? s + inward * 0.005 : r;
+      const v = spanW ? r : s + inward * 0.005;
+      const q: V2 = [d[0] * w + e[0] * v, d[1] * w + e[1] * v];
+      if (distToPolyEdge(q, oh.outline) < 0.02) out.push(q);
+    }
+  }
+  return out;
+}
 
 /** A 10 × 6 room with a 4 × 8 wing: the L every compound question is asked on. */
 function L(wallTop = 3): Project {
@@ -55,10 +111,10 @@ describe('a preset the group cannot carry is refused before it is drawn', () => 
     expect(bad.overhead).toBeNull();
     // the same rooms can still share a gable, so the refusal is the section, not the group
     expect(coverCheck(p, r, 'gable', { wings: true }).ok).toBe(true);
-    // and a flat section is one surface with or without wings, so it is never refused for wanting wings
+    // Flat is a valid grouped cover too; its explicit coverage choice must survive a later pitch edit.
     const flat = coverCheck(p, r, 'flat', { wings: true });
     expect(flat.ok).toBe(true);
-    expect(flat.overhead!.oneSpan).toBeUndefined();
+    expect(flat.overhead!.oneSpan).toBe(false);
 
     const before = JSON.stringify(p);
     const t = runTxn(p, opCoverRooms(r, 'clerestory', { wings: true }));
@@ -87,6 +143,59 @@ describe('a preset the group cannot carry is refused before it is drawn', () => 
     const issue = derive(q).issues.find((i) => i.key === `wings:${legacy.id}`);
     expect(issue).toBeTruthy();
     expect(issue!.text).toMatch(/no surface|cannot be carried/i);
+  });
+
+  it('keeps a grouped flat cover compound when raised, with a continuous mesh and true eaves', () => {
+    let p = L();
+    const roomIds = ids(p);
+    p = doOp(p, opCoverRooms(roomIds, 'flat', { wings: true }));
+    let oh = p.overheads[0];
+    expect(oh.oneSpan).toBe(false);
+    expect(roofWingsState(oh).kind).toBe('compound');
+    expect(meshArea(oh)).toBeCloseTo(Math.abs(polyArea(oh.outline)), 1);
+    for (const q of eaveSamples(oh)) expect(ohH(oh, q)).toBeLessThan(0.01);
+
+    const st = roofWingsState(oh);
+    if (st.kind !== 'compound') throw new Error('flat grouped cover did not qualify');
+    p = doOp(p, opOverhead(oh.id, { profile: presetProfile('gable', st.primarySpan) }));
+    oh = p.overheads[0];
+    expect(oh.oneSpan).toBe(false);
+    expect(roofWingsState(oh).kind).toBe('compound');
+    expect(meshArea(oh)).toBeCloseTo(Math.abs(polyArea(oh.outline)), 1);
+    for (const q of eaveSamples(oh)) expect(ohH(oh, q)).toBeLessThan(0.01);
+
+    const probe = meshProbe(oh), b = bbox(oh.outline);
+    let samples = 0;
+    for (let x = b.min[0] + 0.19; x < b.max[0]; x += 0.37) for (let z = b.min[1] + 0.23; z < b.max[1]; z += 0.31) {
+      const q: V2 = [x, z];
+      if (!pointInPoly(q, oh.outline)) continue;
+      const y = probe(q);
+      if (y === null) continue;
+      samples++;
+      expect(y).toBeCloseTo(oh.baseY + oh.thick + ohH(oh, q), 2);
+    }
+    expect(samples).toBeGreaterThan(20);
+
+    // The explicit choice is authored data. An old save without it remains a single-span roof.
+    const reloaded = JSON.parse(JSON.stringify(p)) as Project;
+    expect(reloaded.overheads[0].oneSpan).toBe(false);
+    expect(roofWingsState(reloaded.overheads[0]).kind).toBe('compound');
+    const legacy = { ...reloaded.overheads[0], oneSpan: undefined } as Overhead;
+    expect(roofWingsState(legacy).kind).toBe('single');
+  });
+
+  it('qualifies a revolved mesh before choosing its mesher', () => {
+    const p = L();
+    const shell = coverCheck(p, ids(p), 'gable', { wings: true }).overhead!;
+    const unsupported = { ...shell, form: 'revolve' } as Overhead;
+    expect(ohHasSurface(unsupported)).toBe(false);
+    expect(buildOverhead(unsupported, []).top.pos.length).toBe(0);
+
+    const round = doOp(emptyProject(), opAddOverhead(rect(0, 0, 8, 8), 3, {
+      form: 'revolve', profile: presetProfile('dome', 8),
+    })).overheads[0];
+    expect(ohHasSurface(round)).toBe(true);
+    expect(buildOverhead(round, []).top.pos.length).toBeGreaterThan(0);
   });
 });
 
@@ -171,5 +280,117 @@ describe('a click commits the candidate it previewed, not whatever now shares it
     const fresh = stairCandidates(moved, moved.decks[0].id)[0];
     const made = runTxn(moved, opAddStairTo(moved.decks[0].id, fresh));
     expect(made.after.stairs[0].path).toEqual(fresh.path);
+  });
+});
+
+describe('a click also commits the supports it previewed', () => {
+  it('refuses a loft whose posts or stair changed since it was offered, and commits the fresh one exactly', () => {
+    let p = room10x6(5.2);
+    p = doOp(p, opCoverRooms(ids(p), 'flat'));
+    const roomId = derive(p).rooms[0].id;
+    const cand = mezzanineOffer(p, roomId).candidates[0];
+    expect(cand.posts.length).toBeGreaterThan(0);
+
+    // a post dropped on the offered stair moves the qualified layout, but not the loft's id, outline or height
+    const blocked = cand.stair.path[Math.floor(cand.stair.path.length / 2)];
+    const moved = doOp(p, opAddPost(blocked));
+    const fresh = mezzanineOffer(moved, roomId).candidates.find((c) => c.id === cand.id);
+    expect(fresh).toBeTruthy();
+    expect(fresh!.outline).toEqual(cand.outline);
+    expect(fresh!.y).toBeCloseTo(cand.y, 6);
+    expect(fresh!.posts).not.toEqual(cand.posts);
+
+    const t = runTxn(moved, opAddMezzanine(roomId, cand));
+    expect(t.after.decks.length).toBe(0);
+    expect(t.after.posts.length).toBe(1); // only the post that was added by hand
+    expect(t.notes.some((n) => /supports changed since it was offered/i.test(n.text))).toBe(true);
+
+    // a fresh preview of the same loft commits exactly, supports included
+    const made = runTxn(moved, opAddMezzanine(roomId, fresh!));
+    expect(made.after.decks.length).toBe(1);
+    expect(made.after.posts.filter((q) => q.id !== moved.posts[0].id).map((q) => q.at)).toEqual(fresh!.posts);
+  });
+});
+
+describe('a roof with no surface has no heights', () => {
+  /** The L with both rooms open to the roof, covered as one gable, then given a section the wings cannot carry. */
+  function broken(follow = true, wallTop = 3) {
+    let p = L(wallTop);
+    const roomIds = derive(p).rooms.map((r) => r.id);
+    for (const id of roomIds) p = doOp(p, opRoom(id, follow ? {} : { ceiling: 'flat' as const }));
+    p = doOp(p, opCoverRooms(roomIds, 'gable', { wings: true }));
+    const before = p.overheads[0];
+    p = doOp(p, opOverhead(before.id, { profile: presetProfile('raked', ohSpan(before)) }));
+    return { p, oh: p.overheads[0], roomIds };
+  }
+
+  it('falls back to the walls, keeps the rooms claimed, and refuses every offer', () => {
+    const { p, oh, roomIds } = broken();
+    expect(roofWingsState(oh).kind).toBe('unsupported');
+    expect(ohHasSurface(oh)).toBe(false);
+    expect(buildOverhead(oh, []).top.pos.length).toBe(0);
+
+    const d = derive(p);
+    // every wall falls back to its own top, not to the 4.90 m single-span underside
+    for (const w of d.walls.values()) expect(w.maxTop).toBeLessThanOrEqual(3.01);
+    // the eave is the only height the roof can claim, so there is no peak and no ridge snap
+    expect(ohRidge(oh)).toBeCloseTo(oh.baseY + oh.thick, 6);
+    expect(d.snaps.filter((s) => s.kind === 'ridge' && s.ids.includes(oh.id))).toEqual([]);
+    // ownership is not height: the rooms are still this roof's, so a second roof is never offered over it
+    for (const id of roomIds) expect(d.rooms.find((r) => r.id === id)!.coveredBy).toBe(oh.id);
+    // and nothing is measured against a surface that is not drawn
+    expect(ohCovers(oh, [5, 5])).toBe(false);
+    for (const id of roomIds) {
+      const check = mezzanineOffer(p, id);
+      expect(check.candidates).toEqual([]);
+      expect(check.why).toMatch(/no surface/);
+    }
+    expect(roofZoneAt(oh, [5, 5], { ridge: 0.2, end: 0.2, eave: 0.2 })).toBeNull();
+  });
+
+  it('does not let a flat ceiling stand in for the missing roof', () => {
+    const { p, oh, roomIds } = broken(false, 5);
+    for (const id of roomIds) {
+      expect(derive(p).rooms.find((r) => r.id === id)!.coveredBy).toBe(oh.id);
+      const check = mezzanineOffer(p, id);
+      expect(check.candidates).toEqual([]);
+      expect(check.why).toMatch(/no surface/);
+    }
+  });
+
+  it('says so when an edit removes the surface, and offers only repairs a trial proves', () => {
+    let p = L(3);
+    const roomIds = derive(p).rooms.map((r) => r.id);
+    p = doOp(p, opCoverRooms(roomIds, 'gable', { wings: true }));
+    const oh = p.overheads[0];
+    const t = runTxn(p, opOverhead(oh.id, { profile: presetProfile('raked', ohSpan(oh)) }));
+    const note = t.notes.find((n) => /no surface/.test(n.text));
+    expect(note).toBeTruthy();
+    expect(note!.text).toMatch(/Make it a gable, or cover it as one span/);
+
+    const issue = derive(t.after).issues.find((i) => i.key === `wings:${oh.id}`)!;
+    const gable = issue.fixes.find((f) => f.label === 'Make it a gable');
+    const span = issue.fixes.find((f) => f.label === 'Cover as one span');
+    expect(gable).toBeTruthy();
+    expect(span).toBeTruthy();
+
+    const q = structuredClone(t.after);
+    gable!.apply(q);
+    expect(roofWingsState(q.overheads[0]).kind).toBe('compound');
+    expect(meshArea(q.overheads[0])).toBeCloseTo(Math.abs(polyArea(q.overheads[0].outline)), 1);
+
+    const r = structuredClone(t.after);
+    span!.apply(r);
+    expect(roofWingsState(r.overheads[0]).kind).toBe('single');
+  });
+
+  it('offers only the one-span repair when the plan itself is the reason', () => {
+    // an edge 3° off the frame cannot be carried by a gable however the section is drawn
+    const slanted: V2[] = [[0, 0], [10, 0], [10, 6], [6, 6], [6, 10], [4.6, 9.2], [4.6, 6], [0, 6]];
+    const p = doOp(emptyProject(), opAddOverhead(slanted, 3, { oneSpan: false, profile: presetProfile('gable', 6) }));
+    const oh = p.overheads[0];
+    expect(ohHasSurface(oh)).toBe(false);
+    const issue = derive(p).issues.find((i) => i.key === `wings:${oh.id}`)!;
+    expect(issue.fixes.map((f) => f.label)).toEqual(['Cover as one span']);
   });
 });

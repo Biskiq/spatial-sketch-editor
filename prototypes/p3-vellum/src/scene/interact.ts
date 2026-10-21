@@ -4,9 +4,9 @@ import * as THREE from 'three';
 import { store } from '../store';
 import type { Stage, Hit } from './stage';
 import type { Overlays } from './overlays';
-import { handlesFor, Handle } from './handles';
+import { handlesFor, zoneHandle, Handle } from './handles';
 import { derive, elementName, wallTopAt } from '../model/derive';
-import type { Project, SurfaceRef, Obj } from '../model/types';
+import type { Project, SurfaceRef, Obj, Overhead } from '../model/types';
 import { V2, dist, sub, dot, perp, norm, add, mul, pointInPoly, fmtM, closestOnSeg, angleOf, lerp2, round } from '../model/geom2d';
 import { fitStroke } from '../model/strokes';
 import { readStroke, findMagnet, Magnet, Reading } from '../model/readings';
@@ -14,8 +14,10 @@ import { snapPoint, SnapRes } from '../model/snap';
 import type { StrokeFit } from '../model/strokes';
 import { flattenSeg } from '../model/geom2d';
 import { runGeom, closestOnRun } from '../model/runs';
-import { opMoveObj, opAddObj, opRemove, opFix, opOverhead, Op, OBJ_NAMES } from '../model/ops';
-import { ohSection, bendProfile } from '../model/overheadGeom';
+import { opMoveObj, opAddObj, opRemove, opFix, opOverhead, Op, OBJ_NAMES, runTxn } from '../model/ops';
+import { ohHasSurface } from '../model/overheadGeom';
+import { roofZoneAt, affectedZoneGeometry, zoneTip, type RoofZone } from '../model/roofZones';
+import { qualifyRidgeTurn, qualifyRoofEdit, withRoofProfiles } from '../model/roofEdits';
 import { lvl } from '../model/settle';
 import { holeOutline } from './build/walls';
 import { routeHeights } from '../story/route';
@@ -25,7 +27,7 @@ import { wheelSource } from './wheel';
 export interface WheelIn { t: number; dx: number; dy: number; mode: number; ctrl: boolean; shift: boolean; x: number; y: number; wdy?: number }
 export interface TraceEv { kind: string; ev: any; read: string; cam: { az: number; pol: number; dist: number } }
 
-type State = 'idle' | 'pending' | 'stroke' | 'handle' | 'camera' | 'objdrag';
+type State = 'idle' | 'pending' | 'zonepending' | 'stroke' | 'handle' | 'camera' | 'objdrag';
 
 interface Stroke {
   wall: { run: string; origin: THREE.Vector3; n: THREE.Vector3 } | null;
@@ -60,6 +62,11 @@ export class Interact {
   stroke: Stroke | null = null;
   handle: Handle | null = null;
   handleOp: Op | null = null;
+  private handleStartProject: Project | null = null;
+  private handleStartSelection: string | null = null;
+  private handleChanged = false;
+  private handleZone: RoofZone | null = null;
+  private zonePending: { oh: Overhead; zone: RoofZone; plan: V2; y: number; startProject: Project } | null = null;
   private handleLabel: string | undefined;
   private queuedMove: PointerEvent | null = null;
   private moveRaf = 0;
@@ -77,9 +84,18 @@ export class Interact {
     this.live.className = 'live-reading';
     stage.el.appendChild(this.live);
     this.el.addEventListener('pointerdown', (e) => this.onDown(e));
+    this.el.addEventListener('pointerleave', () => {
+      if (this.state !== 'idle') return;
+      this.ov.pointer = null;
+      this.ov.hoverHandle = null;
+      this.ov.setZone(null);
+      this.el.style.cursor = '';
+    });
     window.addEventListener('pointermove', (e) => this.onMove(e));
     window.addEventListener('pointerup', (e) => this.onUp(e));
     window.addEventListener('pointercancel', () => this.cancelGesture());
+    this.el.addEventListener('lostpointercapture', () => this.cancelGesture());
+    window.addEventListener('blur', () => this.cancelGesture());
     this.el.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
     const gest = (type: 'start' | 'change' | 'end') => (e: any) => {
       e.preventDefault();
@@ -92,7 +108,10 @@ export class Interact {
     this.el.addEventListener('dblclick', (e) => this.onDbl(e));
     window.addEventListener('keydown', (e) => this.onKey(e, true));
     window.addEventListener('keyup', (e) => this.onKey(e, false));
-    store.subscribe(() => this.refreshHandles());
+    store.subscribe(() => {
+      this.refreshHandles();
+      this.cancelIfGestureContextChanged();
+    });
     stage.onFrame.push(() => {
       if (this.state === 'idle' && store.ui.selection) this.refreshHandlesPositions();
     });
@@ -118,6 +137,58 @@ export class Interact {
     }
   }
 
+  private cancelIfGestureContextChanged() {
+    const active = this.state === 'handle' || this.state === 'zonepending';
+    if (!active) return;
+    const startProject = this.state === 'handle' ? this.handleStartProject : this.zonePending?.startProject;
+    const target = this.state === 'handle' ? this.handleStartSelection : this.zonePending?.oh.id;
+    if (
+      store.project !== startProject ||
+      store.ui.mode !== 'make' ||
+      store.ui.tool !== 'select' ||
+      store.ui.selection !== target
+    ) this.cancelGesture();
+  }
+
+  private zoneAt(hit: Hit | null): { oh: Overhead; zone: RoofZone } | null {
+    if (!hit || hit.kind !== 'roof' || hit.id !== store.ui.selection || store.ui.mode !== 'make' || store.ui.tool !== 'select') return null;
+    const oh = store.project.overheads.find((o) => o.id === hit.id);
+    if (!oh || !ohHasSurface(oh)) return null;
+    const q: V2 = [hit.point.x, hit.point.z];
+    const mpp = this.stage.mpp(hit.point);
+    const zone = roofZoneAt(oh, q, { ridge: 14 * mpp, end: 18 * mpp, eave: 12 * mpp });
+    return zone ? { oh, zone } : null;
+  }
+
+  private beginHandle(h: Handle, zone: RoofZone | null = null, startProject = store.project) {
+    this.state = 'handle';
+    this.handle = h;
+    this.handleOp = null;
+    this.handleLabel = undefined;
+    this.handleStartProject = startProject;
+    this.handleStartSelection = store.ui.selection;
+    this.handleChanged = false;
+    this.handleZone = zone;
+    this.ov.activeHandle = h.id;
+    store.set({ dragging: true });
+  }
+
+  private beginZoneHandle(e: PointerEvent) {
+    const pending = this.zonePending;
+    if (!pending || store.project !== pending.startProject || store.ui.selection !== pending.oh.id) return this.cancelGesture();
+    const h = zoneHandle(this.stage, pending.startProject, pending.oh, pending.zone, pending.plan, pending.y);
+    this.zonePending = null;
+    this.down = null;
+    if (!h) {
+      this.state = 'idle';
+      this.ov.setZone(null);
+      return;
+    }
+    this.beginHandle(h, pending.zone, pending.startProject);
+    this.queuedMove = e;
+    if (!this.moveRaf) this.moveRaf = requestAnimationFrame(() => this.flushHandleMove());
+  }
+
   // ------------------------------------------------------------------ pointer
   private handleAt(x: number, y: number): Handle | null {
     const r = this.el.getBoundingClientRect();
@@ -138,7 +209,9 @@ export class Interact {
     try {
       this.el.setPointerCapture(e.pointerId);
     } catch {}
-    const cameraBtn = e.button === 2 || e.button === 1 || (e.button === 0 && (e.altKey || this.space));
+    // Explicit camera gestures always win. Alt is resolved after checking the selected roof's zones so it can mean
+    // a free Hold edit there while remaining the familiar orbit shortcut everywhere else.
+    const cameraBtn = e.button === 2 || e.button === 1 || (e.button === 0 && this.space);
     if (cameraBtn) {
       this.state = 'camera';
       this.camDrag = { x: e.clientX, y: e.clientY, pan: e.button === 1 || this.space || (e.button === 2 && e.shiftKey) };
@@ -147,14 +220,26 @@ export class Interact {
     if (e.button !== 0) return;
     store.set({ readingChip: null });
     const h = store.ui.mode === 'make' ? this.handleAt(e.clientX, e.clientY) : null;
-    if (h) {
-      this.state = 'handle';
-      this.handle = h;
-      this.ov.activeHandle = h.id;
-      store.set({ dragging: true });
+    const hit = this.stage.pick(e.clientX, e.clientY);
+    const overheadSelected = store.project.overheads.some((o) => o.id === store.ui.selection);
+    const precise = !!h && (!overheadSelected || h.id.startsWith('pp:') || h.id.startsWith('n:'));
+    if (precise && h) {
+      this.down = null;
+      this.beginHandle(h);
       return;
     }
-    const hit = this.stage.pick(e.clientX, e.clientY);
+    const target = this.zoneAt(hit);
+    if (target && !(target.zone.kind === 'slope' && target.zone.locked)) {
+      this.down = { x: e.clientX, y: e.clientY, button: e.button, hit, time: performance.now(), alt: e.altKey };
+      this.zonePending = { oh: target.oh, zone: target.zone, plan: [hit!.point.x, hit!.point.z], y: hit!.point.y, startProject: store.project };
+      this.state = 'zonepending';
+      return;
+    }
+    if (e.altKey) {
+      this.state = 'camera';
+      this.camDrag = { x: e.clientX, y: e.clientY, pan: false };
+      return;
+    }
     this.down = { x: e.clientX, y: e.clientY, button: e.button, hit, time: performance.now(), alt: e.altKey };
     this.state = 'pending';
   }
@@ -175,6 +260,11 @@ export class Interact {
       if (!this.moveRaf) this.moveRaf = requestAnimationFrame(() => this.flushHandleMove());
       return;
     }
+    if (this.state === 'zonepending' && this.zonePending) {
+      const start = this.down;
+      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) >= 4) this.beginZoneHandle(e);
+      return;
+    }
     if (this.state === 'pending' && this.down) {
       if (Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y) > 5) {
         const hit = this.down.hit;
@@ -185,9 +275,6 @@ export class Interact {
           this.objDrag = { id: hit.id, op: null, from: o ? surfaceName(store.project, o.on) : '', to: '' };
           store.select(hit.id);
           store.set({ dragging: true });
-        } else if (store.ui.mode === 'make' && tool === 'select' && hit?.kind === 'roof' && hit.id === store.ui.selection) {
-          // Select: grab the picked roof's surface and pull it — the profile bends there (the pad follows)
-          this.beginRoofBend(hit);
         } else if (store.ui.mode === 'make' && tool === 'select') {
           // Select never draws: a drag that isn't on a handle or an object turns the table (⇧ pans)
           this.state = 'camera';
@@ -213,12 +300,24 @@ export class Interact {
     }
     if (this.state === 'idle' && e.target === this.el) {
       const h = store.ui.mode === 'make' ? this.handleAt(e.clientX, e.clientY) : null;
-      const id = h?.id ?? null;
+      const selectedOverhead = store.project.overheads.some((o) => o.id === store.ui.selection);
+      const precise = !!h && (!selectedOverhead || h.id.startsWith('pp:') || h.id.startsWith('n:'));
+      const id = precise ? h!.id : null;
       if (id !== this.ov.hoverHandle) this.ov.hoverHandle = id;
       const tool = store.ui.tool;
-      const sel = store.ui.selection;
-      const overRoof = !h && tool === 'select' && store.ui.mode === 'make' && !!sel && store.project.overheads.some((o) => o.id === sel) && this.stage.pick(e.clientX, e.clientY)?.id === sel;
-      this.el.style.cursor = h ? 'grab' : overRoof ? 'ns-resize' : tool === 'place' ? 'copy' : tool === 'select' && store.ui.mode === 'make' ? 'default' : 'crosshair';
+      const hit = this.stage.pick(e.clientX, e.clientY);
+      const target = precise ? null : this.zoneAt(hit);
+      if (target) {
+        const lift = this.stage.liftOf(target.oh.id);
+        this.ov.setZone(affectedZoneGeometry(target.oh, target.zone), zoneTip(target.oh, target.zone), [hit!.point.x, hit!.point.y + lift, hit!.point.z], target.oh.id);
+        const z = target.zone;
+        this.el.style.cursor = z.kind === 'slope' && z.locked ? 'default'
+          : z.kind === 'ridge' || z.kind === 'apex' || z.kind === 'flatTop' ? 'ns-resize'
+            : z.kind === 'ridgeEnd' || z.kind === 'endFace' ? 'ew-resize' : 'grab';
+      } else {
+        this.ov.setZone(null);
+        this.el.style.cursor = precise ? 'grab' : tool === 'place' ? 'copy' : tool === 'select' && store.ui.mode === 'make' ? 'default' : 'crosshair';
+      }
     }
   }
 
@@ -230,21 +329,55 @@ export class Interact {
     this.queuedMove = null;
     if (!e || !this.handle) return;
     const pt = this.dragPoint(this.handle, e);
-      if (!pt) return;
-      const res = this.handle.drag(pt, e);
-      if (!res) return;
-      this.handleOp = res.op;
+    if (!pt) return;
+    const res = this.handle.drag(pt, e);
+    if (!res) return;
+    const start = this.handleStartProject ?? store.project;
+    let reason = res.reason;
+    let after: Project | null = null;
+    let candidateOp = res.op;
+    if (res.op) {
+      after = runTxn(start, res.op).after;
+      if (!reason) {
+        const qualified = qualifyRoofEdit(start, after);
+        if (qualified.reason) reason = qualified.reason;
+        else {
+          candidateOp = withRoofProfiles(res.op, qualified.profiles);
+          after = qualified.profiles.size ? runTxn(start, candidateOp).after : after;
+        }
+      }
+    }
+    const changed = !!after && JSON.stringify(after) !== JSON.stringify(start);
+    if (reason) {
+      const lift = this.stage.liftOf(this.handleStartSelection ?? '');
+      this.ov.measure = { text: `Kept the last valid shape · ${reason}`, pos: new THREE.Vector3(pt.plan[0], pt.y + lift + 0.4, pt.plan[1]) };
+    } else if (candidateOp && changed) {
+      this.handleOp = candidateOp;
+      this.handleChanged = true;
       this.handleLabel = res.commit;
-      store.setPreview(res.op);
-      this.ov.measure = res.measure ? { text: res.measure, pos: new THREE.Vector3(pt.plan[0], pt.y + 0.4, pt.plan[1]) } : null;
-      const hy = this.handle.mode.type === 'plan' ? this.handle.mode.y : 0;
-      if (this.handle.mode.type === 'plan') {
-        const at = res.at ?? pt.plan;
-        this.ov.moveActive(new THREE.Vector3(at[0], this.handle.pos.y, at[1]));
-      } else if (this.handle.mode.type === 'vertical') this.ov.moveActive(new THREE.Vector3(this.handle.pos.x, pt.y + this.stage.liftOf(store.ui.selection ?? ''), this.handle.pos.z));
-      this.ov.setKnot(res.knot ? [res.knot[0], hy, res.knot[1]] : null);
-      this.ov.setGuides(res.guides ?? null, hy, res.snap ? { text: res.snap, at: pt.plan } : null);
-      if (res.snap) this.ov.measure = null;
+      store.setPreview(candidateOp);
+      this.ov.measure = res.measure ? { text: res.measure, pos: new THREE.Vector3(pt.plan[0], pt.y + this.stage.liftOf(this.handleStartSelection ?? '') + 0.4, pt.plan[1]) } : null;
+    } else {
+      this.handleOp = null;
+      this.handleChanged = false;
+      this.handleLabel = undefined;
+      store.setPreview(null);
+      this.ov.measure = res.measure ? { text: res.measure, pos: new THREE.Vector3(pt.plan[0], pt.y + this.stage.liftOf(this.handleStartSelection ?? '') + 0.4, pt.plan[1]) } : null;
+    }
+    const shownOh = store.shown.overheads.find((o) => o.id === this.handleStartSelection);
+    if (this.handleZone && shownOh) {
+      const lift = this.stage.liftOf(shownOh.id);
+      const tip = reason ? `Kept the last valid roof · ${reason}` : res.measure || zoneTip(shownOh, this.handleZone);
+      this.ov.setZone(affectedZoneGeometry(shownOh, this.handleZone), tip, [pt.plan[0], pt.y + lift, pt.plan[1]], shownOh.id);
+    }
+    const hy = this.handle.mode.type === 'plan' ? this.handle.mode.y : 0;
+    if (this.handle.mode.type === 'plan') {
+      const at = res.at ?? pt.plan;
+      this.ov.moveActive(new THREE.Vector3(at[0], this.handle.pos.y, at[1]));
+    } else if (this.handle.mode.type === 'vertical') this.ov.moveActive(new THREE.Vector3(this.handle.pos.x, pt.y + this.stage.liftOf(this.handleStartSelection ?? ''), this.handle.pos.z));
+    this.ov.setKnot(res.knot ? [res.knot[0], hy, res.knot[1]] : null);
+    this.ov.setGuides(res.guides ?? null, hy, res.snap ? { text: res.snap, at: pt.plan } : null);
+    if (res.snap && !reason) this.ov.measure = null;
   }
 
   private onUp(e: PointerEvent) {
@@ -261,12 +394,18 @@ export class Interact {
       const h = this.handle;
       this.handle = null;
       this.handleOp = null;
+      const changed = this.handleChanged;
+      this.handleChanged = false;
+      this.handleStartProject = null;
+      this.handleStartSelection = null;
+      this.handleZone = null;
       this.ov.activeHandle = null;
       this.ov.measure = null;
       this.ov.setKnot(null);
       this.ov.setGuides(null);
+      this.ov.setZone(null);
       store.set({ dragging: false });
-      if (op) {
+      if (op && changed) {
         const sel = store.ui.selection;
         const name = sel === 'building' ? 'the whole building' : elementName(store.project, sel ?? '');
         store.commit(this.handleLabel ?? (h.id === 'roof-bend' ? `Bent ${name}’s profile` : h.id.startsWith('pp:') ? `Moved a point on ${name}’s profile` : `Shaped ${name}`), op);
@@ -288,9 +427,11 @@ export class Interact {
       this.endStroke(e.clientX, e.clientY);
       return;
     }
-    if (st === 'pending' && this.down) {
+    if ((st === 'pending' || st === 'zonepending') && this.down) {
       this.click(this.down.hit, e);
       this.down = null;
+      this.zonePending = null;
+      this.ov.setZone(null);
     }
   }
 
@@ -298,7 +439,9 @@ export class Interact {
     const ray = this.stage.ray(e.clientX, e.clientY);
     const m = h.mode;
     if (m.type === 'plan') {
-      const q = this.stage.planAt(e.clientX, e.clientY, m.y);
+      // Handle positions are lifted with their part. Intersect the matching raised plane while keeping the returned
+      // plan coordinate in model space, so a gesture during inspection lift starts without a parallax jump.
+      const q = this.stage.planAt(e.clientX, e.clientY, m.y + this.stage.liftOf(this.handleStartSelection ?? store.ui.selection ?? ''));
       return q ? { plan: q, y: m.y } : null;
     }
     if (m.type === 'vertical') {
@@ -317,32 +460,11 @@ export class Interact {
   }
 
   // ------------------------------------------------------------------ strokes
-  private beginRoofBend(hit: Hit) {
-    const oh = store.project.overheads.find((o) => o.id === hit.id);
-    if (!oh) return;
-    const lift = this.stage.liftOf(oh.id);
-    const plan: V2 = [hit.point.x, hit.point.z];
-    const sec = ohSection(oh);
-    const u = sec.uh(plan, 0).u;
-    const start = oh.profile;
-    const y0 = hit.point.y;
-    const h: Handle = {
-      id: 'roof-bend', pos: hit.point.clone().setY(hit.point.y + lift), shape: 'dot', mode: { type: 'vertical', at: plan }, label: '', title: '',
-      drag: (pt) => {
-        const dh = round(pt.y - y0, 0.01);
-        return { op: opOverhead(oh.id, { profile: bendProfile(start, u, dh) }), measure: `${dh >= 0 ? 'up' : 'down'} ${fmtM(Math.abs(dh), 2)}` };
-      },
-    };
-    this.state = 'handle';
-    this.handle = h;
-    this.ov.activeHandle = h.id;
-    this.down = null;
-    store.set({ dragging: true });
-  }
-
   /** Stop whatever the pointer was doing, leaving the building and the view as they were. */
   cancelGesture() {
-    if (this.state === 'stroke' && this.stroke) {
+    const state = this.state;
+    this.state = 'idle';
+    if (state === 'stroke' && this.stroke) {
       if (this.stroke.purpose === 'slice') store.cancelPeek();
       this.stroke = null;
       this.ov.setTrail(null);
@@ -350,12 +472,16 @@ export class Interact {
       this.ov.setGuides(null);
       this.ov.setReading(null);
       this.live.style.display = 'none';
-    } else if (this.state === 'handle' || this.state === 'objdrag') {
+    } else if (state === 'handle' || state === 'objdrag') {
       if (this.moveRaf) cancelAnimationFrame(this.moveRaf);
       this.moveRaf = 0;
       this.queuedMove = null;
       this.handle = null;
       this.handleOp = null;
+      this.handleStartProject = null;
+      this.handleStartSelection = null;
+      this.handleChanged = false;
+      this.handleZone = null;
       this.handleLabel = undefined;
       this.objDrag = null;
       this.ov.activeHandle = null;
@@ -363,12 +489,16 @@ export class Interact {
       this.ov.setKnot(null);
       this.ov.setGuides(null);
       this.ov.setTrail(null);
+      this.ov.setZone(null);
       store.set({ dragging: false });
       store.setPreview(null);
     }
+    if (state === 'zonepending') {
+      this.zonePending = null;
+      this.ov.setZone(null);
+    }
     this.camDrag = null;
     this.down = null;
-    this.state = 'idle';
   }
 
   private snapTol() {
@@ -919,8 +1049,20 @@ export class Interact {
       store.select('building');
       return;
     }
+    if (k === 'r' && !mod && this.state === 'idle' && store.ui.mode === 'make' && store.ui.tool === 'select') {
+      const oh = store.project.overheads.find((o) => o.id === store.ui.selection);
+      if (oh) {
+        const turn = qualifyRidgeTurn(store.project, oh.id);
+        if (turn.available && turn.reason) store.toast(turn.reason);
+        else if (turn.available && turn.op) {
+          e.preventDefault();
+          store.commit(`Turned ${oh.name}’s ridge`, turn.op);
+        }
+      }
+      return;
+    }
     if (k === 'escape') {
-      if (this.stroke || this.state === 'handle' || this.state === 'objdrag') return this.cancelGesture();
+      if (this.stroke || this.state === 'handle' || this.state === 'zonepending' || this.state === 'objdrag') return this.cancelGesture();
       if (store.ui.readingChip) return store.set({ readingChip: null });
       const base = store.ui.mode === 'make' ? store.ui.baseTool : 'pen';
       // a pen picked up for the sheet goes down with the sheet (store.back below), so Esc never strands it out

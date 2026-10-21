@@ -11,7 +11,7 @@ import { V2, add, mul, sub, norm, perp, lerp2, dist, pointInPolyHoles, polyArea,
 import type { Project, Overhead, SurfaceRef } from './types';
 import { P, difference, intersection, mpolyArea, type MPoly } from './clip';
 import { derive } from './derive';
-import { ohCovers, ohUndersideAt, ohFrame } from './overheadGeom';
+import { ohCovers, ohUndersideAt, ohFrame, ohHasSurface } from './overheadGeom';
 import { runGeom } from './runs';
 
 export const DECK_THICK = 0.3;
@@ -410,6 +410,13 @@ export function stairPlansFor(
   const d = derive(p);
   const rise = deckY - floorY;
   if (rise < 0.6) return [];
+  // A deck under a roof with no surface has no measured headroom. Refusing here keeps an unbuilt roof from reading as
+  // open sky over the run — the stair would otherwise climb into a surface that is not drawn.
+  const surfaceLess = p.overheads.filter((o) => !ohHasSurface(o));
+  if (surfaceLess.length) {
+    const ctr = polyCentroid(outline);
+    if (surfaceLess.some((o) => pointInPolyHoles(ctr, o.outline) || outline.some((q) => pointInPolyHoles(q, o.outline)))) return [];
+  }
   const L = Math.max(1.2, rise * STAIR_SLOPE);
   const plans: StairPlan[] = [];
   const walls = wallSegments(p, floorY + 0.1, deckY);
@@ -509,6 +516,9 @@ export function mezzanineOffer(p: Project, roomId: string): MezzCheck {
   if (room.coveredBy == null) return { candidates: [], why: 'Needs a roof over it before a mezzanine makes sense.' };
   const ceilingY = seed.ceiling === 'flat' ? room.topY : null;
   const oh = p.overheads.find((o) => o.id === room.coveredBy) ?? null;
+  // A roof that is reported but has no surface is not the same as open sky: its headroom cannot be measured, so no
+  // deck is offered against the room's ceiling as if the roof were absent.
+  if (oh && !ohHasSurface(oh)) return { candidates: [], why: `${oh.name} has no surface yet, so there is no headroom to measure.` };
   const f = oh ? ohFrame(oh) : null;
   const ridgeDir = oh && oh.form === 'extrude' && !oh.oneSpan && f ? Math.atan2(f.d[1], f.d[0]) + Math.PI / 2 : null;
   const axes = axesOf(room.poly, ridgeDir);

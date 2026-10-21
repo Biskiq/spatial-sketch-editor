@@ -57,18 +57,14 @@ Revision is where tools usually break trust, so the whole surface uses the marks
      adds no points), double-click to add a point, ⌥-click to remove one. The pad and the blue section drawn on the
      roof are two views of the *same* authored points, so editing either updates both live, and every gesture is one
      undo step.
-   - Ordinary roof sculpting happens on the roof, with a few handles that each do one thing: the peak (up and down
-     scales the heights so the shape keeps its character; sideways leans it, carrying each slope along), a shoulder
-     on each slope (outward is broader and fuller, inward is pointier; a symmetric roof stays symmetric; the first
-     pull gives a straight slope its one smooth point, the only point it ever adds), a ring at each end of the ridge
-     (pull in to hip the ends, all the way for a pyramid), the edges for width, and the eave for the whole roof. Each
-     stops short of the extremes (at most 1½× the span tall; no slope stood upright; a shoulder keeps a quarter of
-     its slope either side), so a roof becomes a spire, never a stick. A roof made by covering rooms fits their walls
-     plus an overhang and follows when they grow or move, until its own edge is pulled. A flat roof's peak handle reads *pull up* and grows one sharp peak. Bending the
-     surface, sharp/smooth, adding and removing points and the presets are depth you go to on purpose (the pad,
-     the points that come out as you near them, *Shapes & settings*).
-   - Handles are few by default (a wall's ends, height and move; a roof's eave, peak, shoulders and edges). Corners,
-     bends and profile points come out as the pointer nears them, or all at once with *Show every point*.
+   - Ordinary roof changes use highlighted Hold zones: pull the ridge or flat top up and down, pull a slope for
+     fullness, pull a ridge end or end face to hip both ends, and pull an eave for overhang or an independent edge.
+     Detents make common pitches and overhangs easy to reach; ⌥ gives a free edit, while hard geometry limits keep
+     the last valid roof. A roof made by covering rooms fits their walls plus an overhang and follows when they grow
+     or move, until its own edge is pulled. **R** or the roof card turns the ridge.
+   - Precise section work remains in the ProfilePad and its near-pointer 3D point handles; outline corners likewise
+     appear as the pointer nears them, or all at once with *Show every point*. The full isolated Edit Shape mode is
+     still future work in this prototype.
    - Canopies come from their shadow; stairs from their walk.
    - Heights are given in people as well as metres ("4.2 m · about 2½ people tall"), and scale figures stand in the
      rooms.

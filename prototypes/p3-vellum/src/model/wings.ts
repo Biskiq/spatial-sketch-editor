@@ -34,6 +34,8 @@ export interface Wing {
 export interface CompoundState {
   kind: 'compound';
   wings: Wing[];
+  /** which wing carries the authored section: the largest rectangle the cover started from. Recorded, not inferred. */
+  primary: number;
   primarySpan: number;
   /** the section's peak as a fraction of the span */
   peakU: number;
@@ -303,7 +305,7 @@ function decompose(oh: Overhead): WingState {
 
   const problem = validate(oh, wings, ext, samples, pk.u);
   if (problem) return { kind: 'unsupported', reason: problem };
-  return { kind: 'compound', wings, primarySpan: refSpan, peakU: pk.u };
+  return { kind: 'compound', wings, primary: 0, primarySpan: refSpan, peakU: pk.u };
 }
 
 /** Every maximal rectangle of a mask of cells, largest first with coordinate ties (deterministic). */
@@ -372,6 +374,10 @@ function onFootprint(oh: Overhead, ext: Ext, wg: Wing, at: number) {
 /** The shared section must be one ridge with two falling sides, eave to eave, symmetric so a rotated wing reads alike. */
 function qualifySection(oh: Overhead): string | null {
   const pts = oh.profile;
+  if (pts.length < 2) return 'the section has no ridge';
+  // A truly level eave section is the same surface over every wing. Keep the explicit coverage choice qualified so a
+  // later pitch edit can grow the intended compound roof instead of silently becoming a legacy single span.
+  if (pts.every((p) => Math.abs(p.h) <= 0.05)) return null;
   if (pts.length < 3) return 'the section has no ridge';
   for (let i = 1; i < pts.length; i++)
     if (Math.abs(pts[i].u - pts[i - 1].u) < 1e-6 && Math.abs(pts[i].h - pts[i - 1].h) >= 0.05)
@@ -475,19 +481,43 @@ export interface WingContinuity {
   reason: string;
 }
 
-const near = (a: number, b: number, tol = 0.08) => Math.abs(a - b) <= tol;
+/** Overlap of a previous wing with a next one, in the roof frame with the translation removed, m². */
+function shiftedOverlap(a: [number, number, number, number], b: [number, number, number, number], shift: [number, number]): number {
+  const w = Math.min(a[1] + shift[0], b[1]) - Math.max(a[0] + shift[0], b[0]);
+  const v = Math.min(a[3] + shift[1], b[3]) - Math.max(a[2] + shift[1], b[2]);
+  return w > 0 && v > 0 ? w * v : 0;
+}
 
 /**
  * Whether the two decompositions are the same roof, with `shift` (in the roof frame) removed first: moving the whole
  * roof is not a change of massing, so a translated roof keeps its structure instead of being refused as a jump.
+ *
+ * Same massing means the same *structure*, not the same sizes: as many wings, each previous wing matching a distinct
+ * next wing where they overlap, that wing keeping its span axis and its joined/exposed ends, and the primary wing
+ * still the primary wing. Widening a wing or moving a wall is free — the wings are recomputed for the new outline —
+ * while a wing appearing or vanishing, a ridge turning or the primary flipping is refused.
  */
-function sameMassing(a: Wing[], b: Wing[], shift: [number, number]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((w, i) => {
-    const q = b[i];
+function sameMassing(a: CompoundState, b: CompoundState, shift: [number, number]): boolean {
+  if (a.wings.length !== b.wings.length) return false;
+  const used = new Set<number>();
+  for (const w of a.wings) {
+    let best = 0, at = -1;
+    b.wings.forEach((q, i) => {
+      if (used.has(i)) return;
+      const ov = shiftedOverlap(w.rect, q.rect, shift);
+      if (ov > best + 1e-9) {
+        best = ov;
+        at = i;
+      }
+    });
+    if (at < 0) return false;
+    used.add(at);
+    const q = b.wings[at];
     if (w.span !== q.span || w.ends.lo !== q.ends.lo || w.ends.hi !== q.ends.hi) return false;
-    return w.rect.every((x, k) => near(x + (k < 2 ? shift[0] : shift[1]), q.rect[k]));
-  });
+    // the wing that carries the authored section has to stay the wing that carries it: that is the flip this guards
+    if ((w.index === a.primary) !== (at === b.primary)) return false;
+  }
+  return true;
 }
 
 /** The outline's translation between two revisions, read in the roof's own frame. */
@@ -502,8 +532,8 @@ function frameShift(prev: Overhead, next: Overhead): [number, number] | null {
 /**
  * The decomposition to show for `next`, given the one the gesture started from.
  *
- * Only the *same massing* (same rectangles, spans and joined/exposed ends, within 8 cm) is kept: the new state is
- * returned, computed for the new outline, so scales and hips are fresh. Anything else is refused with a reason, and
+ * Only the *same massing* (the same structure — see `sameMassing`) is kept: the new state is returned, computed for the
+ * new outline, so scales and hips are fresh. Anything else is refused with a reason, and
  * the caller keeps its last valid preview. The gesture-start decomposition is deliberately not reused as geometry:
  * its scales and hip lengths belong to the old outline, so replaying it on a new one would be a stale roof wearing a
  * continuous-looking shape. A massing change is an owner-visible decision (Settings), never a side effect of a wall drag.
@@ -524,7 +554,7 @@ export function continuedWings(prev: Overhead, next: Overhead): WingContinuity {
   }
   if (after.kind === 'unsupported') return { state: after, kept: false, reason: after.reason };
   const shift = before.kind === 'compound' ? frameShift(prev, next) : null;
-  if (before.kind === 'compound' && shift && sameMassing(before.wings, after.wings, shift)) return { state: after, kept: true, reason: '' };
+  if (before.kind === 'compound' && shift && sameMassing(before, after, shift)) return { state: after, kept: true, reason: '' };
   if (before.kind !== 'compound')
     return { state: after, kept: false, reason: 'this roof would need wings it did not have; confirm a grouped cover first' };
   return {

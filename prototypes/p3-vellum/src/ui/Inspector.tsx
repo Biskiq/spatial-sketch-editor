@@ -10,11 +10,12 @@ import { fmtM, inPeople, polyArea } from '../model/geom2d';
 import { runGeom, runLabel, closestOnRun } from '../model/runs';
 import { lvl } from '../model/settle';
 import { stairSteps } from '../model/settle';
-import { describeProfile, ohRidge, ProfilePreset } from '../model/overheadGeom';
+import { describeProfile, ohRidge, ohHasSurface, ProfilePreset } from '../model/overheadGeom';
 import {
   opRoom, opConfirmRoom, opAddFloorAbove, opRunPatch, opRunTop, opAddOpening, openingDefaults, opOpening, opOverhead, opDeck, opVoid, opStair, opObj,
-  opRemove, removalReach, opCoverRooms, coverCheck, isRoundish, opProject, opAddMezzanine, opAddStairTo, Op, OBJ_NAMES,
+  opRemove, removalReach, opCoverRooms, coverCheck, isRoundish, opProject, opAddMezzanine, opAddStairTo, Op, OBJ_NAMES, runTxn,
 } from '../model/ops';
+import { qualifyRidgeTurn } from '../model/roofEdits';
 import { mezzanineOffer, stairCandidates } from '../model/offers';
 import { surfaceName } from '../scene/interact';
 import { ProfilePad, ProfilePresets } from './ProfilePad';
@@ -407,16 +408,41 @@ function OpeningCard({ o, p }: { o: Opening; p: Project }) {
 }
 
 function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
+  const authored = store.project.overheads.find((o) => o.id === oh.id) ?? oh;
   const tied = oh.restsOn?.length ? oh.restsOn.map((id) => elementName(p, id)) : null;
   const fitNames = oh.fit ? oh.fit.rooms.map((id) => elementName(p, id)).join(', ') : '';
   const coveredIds = derive(p).rooms.filter((r) => r.coveredBy === oh.id).map((r) => r.id);
   const round = isRoundish(oh.outline);
+  const turn = qualifyRidgeTurn(store.project, authored.id);
+  const turnOp = turn.op;
+  const turnReason = turn.reason;
   return (
     <>
       <Head kind={`Overhead · ${describeProfile(oh)}`} name={oh.name} rename={(v) => store.commit(`Renamed it ${v}`, opOverhead(oh.id, { name: v }))} />
       <div class="facts">
-        Covers <span class="num">{Math.abs(polyArea(oh.outline)).toFixed(0)} m²</span> · eave at <span class="num">{fmtM(oh.baseY)}</span> · highest point <span class="num">{fmtM(ohRidge(oh))}</span>
+        Covers <span class="num">{Math.abs(polyArea(oh.outline)).toFixed(0)} m²</span> · eave at <span class="num">{fmtM(oh.baseY)}</span>
+        {ohHasSurface(oh)
+          ? <> · highest point <span class="num">{fmtM(ohRidge(oh))}</span></>
+          : <> · <span class="num">no surface</span> — see the note on the roof</>}
       </div>
+      <div class="note" style={{ marginTop: '6px' }}>Hold the ridge, a slope, an end or an edge. Use the section below for detailed profile editing.</div>
+      {turn.available && (
+        <div class="row" style={{ marginTop: '8px' }}>
+          <button
+            class="btn small outline"
+            disabled={!!turnReason || !turnOp}
+            title={turnReason || 'Turn the ridge to the next direction supported by this outline'}
+            onPointerEnter={() => !store.ui.dragging && !turnReason && turnOp && store.setPreview(turnOp)}
+            onPointerLeave={() => !store.ui.dragging && store.setPreview(null)}
+            onFocus={() => !store.ui.dragging && !turnReason && turnOp && store.setPreview(turnOp)}
+            onBlur={() => !store.ui.dragging && store.setPreview(null)}
+            onClick={() => {
+              store.setPreview(null);
+              if (!turnReason && turnOp) store.commit(`Turned ${authored.name}’s ridge`, turnOp);
+            }}
+          >Turn the ridge · R</button>
+        </div>
+      )}
       <Sec label="Section — drag the roof's blue handles, or here">
         <ProfilePad oh={oh} />
       </Sec>
@@ -429,7 +455,12 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
             <button class={'chip' + (oh.form === 'extrude' ? ' on' : '')} onClick={() => store.commit('Spanned it one way', opOverhead(oh.id, { form: 'extrude' }))}>
               Spans one way
             </button>
-            <button class={'chip' + (oh.form === 'revolve' ? ' on' : '')} onClick={() => store.commit('Spun it round', opOverhead(oh.id, { form: 'revolve' }))}>
+            <button
+              class={'chip' + (oh.form === 'revolve' ? ' on' : '')}
+              disabled={oh.oneSpan === false}
+              title={oh.oneSpan === false ? 'Only an extruded section can cover several wings' : 'A dome over this outline'}
+              onClick={() => oh.oneSpan !== false && store.commit('Spun it round', opOverhead(oh.id, { form: 'revolve' }))}
+            >
               Spins round
             </button>
           </div>
@@ -457,7 +488,7 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
         ) : null}
         <Slider label="Thickness" value={oh.thick} min={0.05} max={0.8} step={0.01} fmt={(v) => `${Math.round(v * 100)} cm`} commit="Changed the thickness" make={(v) => opOverhead(oh.id, { thick: v })} />
         <div class="note" style={{ marginTop: '6px' }}>
-          In the pad: ⌥-click a point to remove it · double-click a point: ■ sharp ↔ ○ smooth · draw on empty paper to start over. On the roof: drag its surface to bend it; the section's own points come out as you near them.
+          In the pad: ⌥-click a point to remove it · double-click a point: ■ sharp ↔ ○ smooth · draw on empty paper to start over. The roof's precise profile points appear as the pointer nears them.
         </div>
       </details>
       <Remember

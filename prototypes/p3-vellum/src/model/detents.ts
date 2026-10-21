@@ -1,7 +1,8 @@
 // Soft detents for Hold gestures: click-stops that help the hand, never hard limits. Pure. The gesture owns the
 // active stop and its hysteresis, so a stop holds until the pointer leaves 1.5× its capture radius.
-import { ohFrame, profilePeak, sampleProfile, ohSpan, PEAK_MARGIN } from './overheadGeom';
+import { ohFrame, profilePeak, sampleProfile, ohSpan, PEAK_MARGIN, pullShoulder, profileSymmetric } from './overheadGeom';
 import type { Overhead, ProfilePt } from './types';
+import { STRAIGHT_TOL } from './section';
 
 export interface Stop {
   at: number;
@@ -88,9 +89,9 @@ export function hipStops(oh: Overhead): Stop[] {
 export const OVERHANG_STOPS: Stop[] = [0, 0.3, 0.45, 0.6].map((at) => ({ at, label: at === 0 ? 'no overhang' : `${Math.round(at * 100)} cm overhang`, key: `oh:${at}` }));
 
 /**
- * The fullness stop: the mean offset of a side's smooth points from its chord, in metres. Moving the shoulder back
- * by that much returns the slope to straight; a side with no smooth point has no stop (0 would be mislabelled
- * "straight" while the slope is already straight).
+ * Find a reachable Hold-normal displacement whose actual shoulder pull straightens this sampled slope. The stop uses
+ * the same `pullShoulder` deformation as the gesture and is omitted when no reachable displacement puts the entire
+ * sampled slope within the section model's straight tolerance.
  */
 export function straighteningStop(profile: ProfilePt[], side: 'L' | 'R', span: number): Stop[] {
   const pk = profilePeak(profile);
@@ -98,11 +99,48 @@ export function straighteningStop(profile: ProfilePt[], side: 'L' | 'R', span: n
   if (!eave || pk.h < 0.05) return [];
   const interior = profile.filter((p) => !p.crease && (side === 'L' ? p.u > eave.u && p.u < pk.u : p.u > pk.u && p.u < eave.u));
   if (!interior.length) return [];
-  const chord = (u: number) => eave.h + ((pk.h - eave.h) * (u - eave.u)) / Math.max(pk.u - eave.u, 1e-9);
-  const offs = interior.map((p) => p.h - chord(p.u));
-  const mean = offs.reduce((a, b) => a + b, 0) / offs.length;
-  return [{ at: mean, label: 'straight', key: `straight:${side}` }];
+  const chordU = pk.u - eave.u;
+  const chord = (u: number) => eave.h + ((pk.h - eave.h) * (u - eave.u)) / (Math.abs(chordU) < 1e-9 ? 1e-9 : chordU);
+  const from = Math.min(eave.u, pk.u), to = Math.max(eave.u, pk.u);
+  const error = (du: number) => {
+    const samples = sampleProfile(pullShoulder(profile, side, du, profileSymmetric(profile)));
+    let worst = 0;
+    // The renderer's sampled curve is piecewise linear, so its maximum distance from this chord is at a sample
+    // vertex. Checking every vertex is both exact for that curve and cheaper than resampling a dense comparison grid.
+    for (const s of samples) if (s.u >= from - 1e-9 && s.u <= to + 1e-9)
+      worst = Math.max(worst, Math.abs(s.h - chord(s.u)));
+    return worst;
+  };
+  if (error(0) <= STRAIGHT_TOL) return [];
+  let best: { du: number; err: number } | null = null;
+  const steps = 1000;
+  for (let i = 1; i <= steps; i++) {
+    for (const sign of [-1, 1]) {
+      const du = sign * (i / steps);
+      const err = error(du);
+      if (err <= STRAIGHT_TOL && (!best || Math.abs(du) < Math.abs(best.du))) best = { du, err };
+    }
+    if (best) break;
+  }
+  if (!best) return [];
+  // Refine the first reachable point inside tolerance so the stop is as close as possible to the gesture start.
+  let lo = 0, hi = best.du;
+  for (let i = 0; i < 28; i++) {
+    const mid = (lo + hi) / 2;
+    if (error(mid) <= STRAIGHT_TOL) hi = mid;
+    else lo = mid;
+  }
+  const du = hi;
+  if (error(du) > STRAIGHT_TOL) return [];
+  const rise = Math.max(0.02, (pk.h - eave.h) * 1);
+  const run = Math.max(0.05, span * Math.abs(pk.u - eave.u));
+  const normalPlan = rise / Math.hypot(run, rise);
+  if (normalPlan < 1e-6) return [];
+  const outwardSign = side === 'L' ? -1 : 1;
+  const at = (du * span) / (outwardSign * normalPlan);
+  return Number.isFinite(at) ? [{ at, label: 'straight', key: `straight:${side}` }] : [];
 }
+
 
 export const PEAK_MARGIN_U = PEAK_MARGIN;
 

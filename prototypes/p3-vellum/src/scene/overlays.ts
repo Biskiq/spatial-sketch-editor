@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { store } from '../store';
 import type { Stage } from './stage';
 import type { Handle } from './handles';
@@ -11,7 +13,8 @@ import { V2, fmtM, inPeople, polyCentroid, dist } from '../model/geom2d';
 import { mats, BLUE, RED, PENCIL, INK } from './materials';
 import { routeHeights } from '../story/route';
 import type { Guide } from '../model/snap';
-import { ohSection, sampleProfile } from '../model/overheadGeom';
+import { ohSection, ohHasSurface, sampleProfile } from '../model/overheadGeom';
+import type { ZoneGeometry } from '../model/roofZones';
 
 // Handles share their geometry and materials: a drag previews dozens of times a second and must not allocate.
 const H_BLUE = new THREE.MeshBasicMaterial({ color: BLUE, depthTest: false, transparent: true });
@@ -51,6 +54,11 @@ export class Overlays {
   /** the picked roof's profile, drawn on the roof at real scale (its points are the pad's points) */
   section: Line2;
   sectionMat: LineMaterial;
+  zoneLines: LineSegments2;
+  zoneMat: LineMaterial;
+  zoneMarker: THREE.Group;
+  private zoneLiftId: string | null = null;
+  zoneTip: { text: string; pos: THREE.Vector3 } | null = null;
   pencilPosts: { mesh: THREE.Mesh; key: string; fix: number }[] = [];
   private lastVersion = -1;
   private sheetKey = '';
@@ -107,7 +115,38 @@ export class Overlays {
     this.section.renderOrder = 23;
     this.section.visible = false;
     this.group.add(this.section);
+    this.zoneMat = new LineMaterial({ color: BLUE, linewidth: 2, worldUnits: false, transparent: true, opacity: 0.95, depthTest: true });
+    this.zoneLines = new LineSegments2(new LineSegmentsGeometry(), this.zoneMat);
+    this.zoneLines.renderOrder = 22;
+    this.zoneLines.visible = false;
+    this.group.add(this.zoneLines);
+    this.zoneMarker = new THREE.Group();
+    const markerBack = new THREE.Mesh(new THREE.RingGeometry(0.72, 1.08, 24), new THREE.MeshBasicMaterial({ color: '#ffffff', depthTest: true, transparent: true }));
+    const markerFront = new THREE.Mesh(new THREE.RingGeometry(0.72, 1, 24), new THREE.MeshBasicMaterial({ color: BLUE, depthTest: true, transparent: true }));
+    markerBack.renderOrder = 30;
+    markerFront.renderOrder = 31;
+    this.zoneMarker.add(markerBack, markerFront);
+    this.zoneMarker.visible = false;
+    this.group.add(this.zoneMarker);
     stage.onFrame.push(() => this.frame());
+  }
+
+  /** A hovered Hold zone: its visible reach, one transient grab marker and a short card-like hint. */
+  setZone(g: ZoneGeometry | null, tip?: string, at?: [number, number, number] | null, liftId?: string | null) {
+    const positions: number[] = [];
+    for (const line of g?.lines ?? []) for (let i = 0; i + 1 < line.length; i++) positions.push(...line[i], ...line[i + 1]);
+    if (positions.length) {
+      const geometry = new LineSegmentsGeometry();
+      geometry.setPositions(positions);
+      this.zoneLines.geometry.dispose();
+      this.zoneLines.geometry = geometry;
+      this.zoneLines.visible = true;
+    } else this.zoneLines.visible = false;
+    this.zoneMarker.visible = !!at;
+    this.zoneTip = tip && at ? { text: tip, pos: new THREE.Vector3(at[0], at[1] + 0.12, at[2]) } : null;
+    if (at) this.zoneMarker.position.set(at[0], at[1] + 0.05, at[2]);
+    this.zoneLiftId = g ? liftId ?? null : null;
+    this.zoneLines.position.y = this.zoneLiftId ? this.stage.liftOf(this.zoneLiftId) : 0;
   }
 
   setGuides(gs: Guide[] | null, y = 0, note?: { text: string; at: V2 } | null) {
@@ -163,6 +202,8 @@ export class Overlays {
     this.routeMat.resolution.set(res.x, res.y);
     this.readingMat.resolution.set(res.x, res.y);
     this.sectionMat.resolution.set(res.x, res.y);
+    this.zoneMat.resolution.set(res.x, res.y);
+    this.zoneLines.position.y = this.zoneLiftId ? st.liftOf(this.zoneLiftId) : 0;
     if (store.version !== this.lastVersion) {
       this.lastVersion = store.version;
       this.rebuild();
@@ -182,6 +223,12 @@ export class Overlays {
     const kk = st.mpp(this.knot.position) * 14;
     this.knot.scale.setScalar(Math.max(0.6, kk / 0.22));
     this.knot2.scale.copy(this.knot.scale);
+    if (this.zoneMarker.visible) {
+      const d = st.camera.position.distanceTo(this.zoneMarker.position);
+      const k = d * st.mpp(this.zoneMarker.position) / Math.max(d, 1e-3);
+      this.zoneMarker.quaternion.copy(st.camera.quaternion);
+      this.zoneMarker.scale.setScalar(Math.max(0.6, 7.5 * k));
+    }
     this.labelsPass();
   }
 
@@ -249,8 +296,10 @@ export class Overlays {
         this.handleMeshes.push(grp);
       }
     }
-    // the picked roof's section
-    const ohSel = store.ui.mode === 'make' ? p.overheads.find((o) => o.id === store.ui.selection) : undefined;
+    // the picked roof's section — but only where there is a surface to show it on: a roof with no surface would draw
+    // a ridge line across thin air, which is the one thing that state is not allowed to do
+    const picked = store.ui.mode === 'make' ? p.overheads.find((o) => o.id === store.ui.selection) : undefined;
+    const ohSel = picked && ohHasSurface(picked) ? picked : undefined;
     this.section.visible = !!ohSel;
     if (ohSel) {
       const sec = ohSection(ohSel);
@@ -365,6 +414,7 @@ export class Overlays {
     }
     if (this.measure) L.put('measure', esc(this.measure.text), this.measure.pos, 'measure');
     if (this.snapNote) L.put('snap', esc(this.snapNote.text), this.snapNote.pos, 'measure snap-note');
+    if (this.zoneTip) L.put('zone-tip', esc(this.zoneTip.text), this.zoneTip.pos, 'handle-tip');
     for (const h of this.handles) if (h.label && (h.id === this.hoverHandle || h.id === this.activeHandle)) L.put(`hl:${h.id}`, esc(h.title), h.pos, 'handle-tip');
     L.end();
   }

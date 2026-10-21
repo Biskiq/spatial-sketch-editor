@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { emptyProject, Project, Overhead, ProfilePt } from '../src/model/types';
 import type { V2 } from '../src/model/geom2d';
 import { runTxn, opAddOverhead, opOverhead } from '../src/model/ops';
-import { presetProfile, ohTopAt, ohFrame, ridgeDirections, nextRidgeDir, ohSpan } from '../src/model/overheadGeom';
-import { roofZoneAt, zoneGeometry, zoneTip, ZONE_TIPS, type ZoneTol } from '../src/model/roofZones';
+import { presetProfile, ohTopAt, ohFrame, ridgeDirections, nextRidgeDir, ohSpan, pullShoulder, profileH, profileSymmetric, sampleProfile } from '../src/model/overheadGeom';
+import { roofZoneAt, zoneGeometry, affectedZoneGeometry, zoneTip, ZONE_TIPS, type ZoneTol } from '../src/model/roofZones';
 import { detent, mergeStops, reachable, pitchStops, hipStops, straighteningStop, OVERHANG_STOPS, gestureStartStop } from '../src/model/detents';
 import { roofWingsState } from '../src/model/wings';
 
@@ -82,7 +82,7 @@ describe('Hold zones on one span', () => {
   it('gives every zone a plain tip', () => {
     expect(ZONE_TIPS.ridge).toContain('taller');
     const g = roofWith(RECT, 'gable').oh;
-    expect(zoneTip(g, { kind: 'slope', side: 'L', wing: 0, locked: true })).toContain('Double-click');
+    expect(zoneTip(g, { kind: 'slope', side: 'L', wing: 0, locked: true })).toContain('section pad');
     expect(zoneTip(g, { kind: 'eave', edge: 0 })).toContain('edge');
     const fitted = { ...g, fit: { rooms: ['r'], overhang: 0.45 } } as Overhead;
     expect(zoneTip(fitted, { kind: 'eave', edge: 0 })).toContain('overhang');
@@ -144,6 +144,26 @@ describe('Hold zones on a compound roof', () => {
         expect(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(zz)).toBe(true);
         expect(y).toBeGreaterThan(oh.baseY);
       }
+  });
+
+  it('shows the full linked reach for a shared compound ridge and a mirrored slope', () => {
+    const { oh } = roofWith(L2, 'gable', { oneSpan: false, span: 10 });
+    const st = roofWingsState(oh);
+    if (st.kind !== 'compound') throw new Error(st.kind);
+    const oneRidge = zoneGeometry(oh, { kind: 'ridge', wing: 0 });
+    const allRidges = affectedZoneGeometry(oh, { kind: 'ridge', wing: 0 });
+    expect(allRidges.lines).toHaveLength(st.wings.length);
+    expect(allRidges.lines.length).toBeGreaterThan(oneRidge.lines.length);
+
+    const oneSlope = zoneGeometry(oh, { kind: 'slope', side: 'L', wing: 0, locked: false });
+    const bothSlopes = affectedZoneGeometry(oh, { kind: 'slope', side: 'L', wing: 0, locked: false });
+    expect(bothSlopes.lines.length).toBeGreaterThan(oneSlope.lines.length);
+  });
+
+  it('reveals every fitted edge when an overhang Hold zone is active', () => {
+    const roof = roofWith(RECT, 'gable').oh;
+    const fitted = { ...roof, fit: { rooms: ['r'], overhang: 0.3 } } as Overhead;
+    expect(affectedZoneGeometry(fitted, { kind: 'eave', edge: 1 }).lines).toHaveLength(RECT.length);
   });
 });
 
@@ -241,7 +261,7 @@ describe('detents', () => {
     expect(OVERHANG_STOPS.map((s) => s.at)).toEqual([0, 0.3, 0.45, 0.6]);
   });
 
-  it('labels a bowed side’s straightening displacement, and offers none for a straight side', () => {
+  it('returns a reachable normal displacement that actually straightens a bowed side', () => {
     const bowed: ProfilePt[] = [
       { u: 0, h: 0, crease: true, id: 'a' },
       { u: 0.25, h: 1.4, crease: false, id: 'b' },
@@ -252,7 +272,13 @@ describe('detents', () => {
     const left = straighteningStop(bowed, 'L', 8);
     expect(left).toHaveLength(1);
     expect(left[0].label).toBe('straight');
-    expect(left[0].at).toBeGreaterThan(0.2);
+    const run = 4, rise = 2, normalPlan = rise / Math.hypot(run, rise);
+    const du = -left[0].at * normalPlan / 8;
+    const straight = sampleProfile(pullShoulder(bowed, 'L', du, profileSymmetric(bowed)));
+    for (let i = 0; i <= 100; i++) {
+      const u = i / 200;
+      expect(Math.abs(profileH(straight, u) - 4 * u)).toBeLessThan(0.01);
+    }
     expect(straighteningStop(presetProfile('gable', 8), 'L', 8)).toEqual([]);
   });
 });
