@@ -213,7 +213,9 @@
 	let query = $state('');
 	let reducedMotion = $state(false);
 	let evaluation = $state<ViewportEvaluation | null>(null);
-	let planView = $state<PlanEvaluation | null>(null);
+	// Generated Plan evaluations are replaced whole; raw data keeps their references
+	// cloneable when Index selection crosses the immutable selection boundary.
+	let planView = $state.raw<PlanEvaluation | null>(null);
 	let rect = $state<ViewportRect | null>(null);
 	let markers = $state<readonly StageOverlayContribution[]>([]);
 	let ghosts = $state<readonly StageGhostMesh[]>([]);
@@ -967,6 +969,10 @@
 	function submit(intent: ViewingIntent, clockSeconds: number): StageIntentResult | null {
 		const stage = facade;
 		if (stage === null) return null;
+		// A claimed adapter press owns its projection until release or an explicit
+		// reading interruption. Wheel/Fit/keyboard navigation must not remap that
+		// press while its evaluation identity is deliberately retained.
+		if (drag?.mode === 'adapter' && intent.kind !== 'set-reading') return null;
 		const first = stage.requestViewingIntent(intent, stage.inspectionTicket(), clockSeconds);
 		if (first.kind !== 'superseded') return first;
 		stage.acquireInspection('exclusive');
@@ -981,7 +987,23 @@
 		// `cancel-on-reading-change` ended is already gone, and its delta samples were
 		// taken against the reading that is ending. Dropping them here is what makes
 		// T2.S03's "cancel before the flip" mean the gesture also stops moving.
-		if (drag !== null && session.gesture() === null) abortGesture();
+		if (drag !== null && session.gesture() === null) {
+			if (drag.mode === 'adapter' && facade !== null) {
+				// Evaluate through Camera before notifying the claimed adapter: ordinary
+				// frame generations retain the press id, but this explicit reading change
+				// must reach its existing mismatch path and preserve the exact request.
+				// A move cannot commit; cancel then clears the pointer owner (including
+				// adapters whose reading-change contract simply discards the preview).
+				const css: [number, number] = [drag.x - (rect?.left ?? 0), drag.y - (rect?.top ?? 0)];
+				refresh();
+				const id = facade.evaluationId();
+				if (id !== null) {
+					facade.pointerIntent({ phase: 'move', css, evaluationId: id });
+					facade.pointerIntent({ phase: 'cancel', css, evaluationId: id });
+				}
+			}
+			abortGesture();
+		}
 	}
 
 	function fit(): void {
@@ -1391,8 +1413,8 @@
 	 * The adapter owns its own candidate and baseline; ending only the host's
 	 * gesture would leave it showing (and able to commit) a proposal from a press
 	 * the creator never finished. The explicit `cancel` is the same one a real
-	 * pointer cancel sends, so Escape, cancel-on-reading-change and capture loss
-	 * all converge on one adapter path.
+	 * pointer cancel sends, so pointer cancel and capture loss converge on one adapter path. A reading
+	 * interruption first reaches the adapter's changed-evaluation path above.
 	 */
 	function cancelAdapterDrag(event: PointerEvent): void {
 		const stage = facade;
