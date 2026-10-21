@@ -30,7 +30,7 @@ function cottage(wallTop = 3, ceiling: 'flat' | 'follow' = 'flat') {
   if (d.rooms.length !== 2) throw new Error(`expected two rooms, got ${d.rooms.length}`);
   for (const r of d.rooms) p = doOp(p, opRoom(r.id, { height: wallTop, ceiling }));
   // one cover for both rooms; turning wings on is part of that accepted step, not a second Undo
-  p = doOp(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable', { wings: true }));
+  p = doOp(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable'));
   const oh = p.overheads[0];
 
   const steep = presetProfile('gable', 6).map((q, i) => (i === 1 ? { ...q, h: 3 } : q)); // 45° over the 6 m room

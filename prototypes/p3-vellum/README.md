@@ -21,7 +21,7 @@ Open <http://localhost:5191>. The app needs no backend and no network; fonts are
 | --- | --- |
 | `npm run dev` | Dev server on port 5191, with a dev-only fps and input readout and a `window.__t` test kit (`__t.trace` records and replays real wheel/pinch input) |
 | `npm run build` | Type-check, then a static build in `dist/` (open with any static server, e.g. `npx vite preview`) |
-| `npm test` | Model tests: stroke fitting, rooms from walls, divide and undivide, supports, ties, carrying levels, snapping, touching vs. joining, roof profile editing |
+| `npm test` | Model tests: stroke fitting, rooms from walls, divide and undivide, supports, ties, carrying levels, snapping, touching vs. joining, roof profile editing, roofs on L/T/U/plus footprints and roof joins (with a mesh-vs-evaluator probe) |
 | `npm run typecheck` | TypeScript only |
 
 It is built for a laptop or desktop browser with a trackpad or mouse. Drawing works with a pen or finger, but touch
@@ -44,6 +44,7 @@ scenario in the brief.
 | Pull **the sheet** (right rail) up | Draw in the air: roofs, canopies, mezzanines, bridges, lightwells. Raising it while selecting picks up Draw (the sheet is paper); Esc or *Put away* puts it down again. The sheet also x-rays everything above it. *Focus this height* also ghosts what is below. |
 | Room → **+ Add a floor above** | Another storey: a floor at the room's top, walls along its outline and a room as tall. Hover to preview, click to make it (one step); the new walls come selected to reshape. A roof in the way stays put unless you choose *Lift it onto the new storey*; with no roof, the step offers *Leave it open*, *Flat roof* or *Pitched roof* (*Cone roof* for a round room). Nothing is tied. |
 | Roof (Select) | Hover to reveal a highlighted roof zone. Drag the **ridge** or **flat top** up or down to change height; pull a **slope** for fuller or pointier sides; pull a **ridge end/end face** to hip both ends; pull an **eave** for more overhang or an independent outline. Detents keep common pitches and overhangs easy to reach; ⌥ gives a free edit. Invalid compound changes keep the last valid roof and explain why. **R** or the card button turns the ridge. Use the ProfilePad and nearby precision points for detailed work. |
+| Roof card → **Join with {roof}** | Shown when another roof meets this one. Two gables at the same eave, pitch, hip and fit become one roof with a valley where they meet: hover to preview, click to join (one step; Undo restores both). Anything else is disabled with the reason. |
 | Roof profile pad | Drag a point to move it, drag the line to bend it, double-click the line to add a point, ⌥-click a point to remove it, draw on empty paper to start over. The same authored section remains available through precise 3D points. Starting shapes, span, eave and thickness are under *Shapes & settings*. |
 | Right-drag / ⌥-drag / two-finger scroll | Turn the table. Pinch or wheel zooms about the point under the pointer; ⇧ pans. Safari's pinch and rotate gestures work too. |
 | **L** (hold) · ⇧L | Lift roofs and upper floors apart. |
@@ -63,6 +64,7 @@ The same list is in the app under **What's real?**
 - Stroke reading and fitting: lines, arcs, one-piece circles, rectangles and angle snapping, with alternative readings.
 - Separate Select and Draw tools; ruled straight lines (⇧); snapping with guides; touching vs. explicitly joined walls.
 - Hold edits for roof height, slope fullness, linked end hips, fitted overhang and ridge direction, with detents, affected-region highlights and one-step recovery.
+- Roofs on L, T, U and plus plans: covering one room or several, or drawing the roof with the pen, gives a wing roof whose eaves stay level and valleys meet (flat, gable, hipped gable, vault). A section the wings can't carry is refused with the reason instead of being placed as one span that stops in mid-air.
 - Roof profiles edited in the detailed ProfilePad, with nearby 3D point handles for precision. The same section drives every wing of a compound roof.
 - Rooms that emerge from walls (a planar arrangement) and keep their identity through divide and merge.
 - Per-room floors and ceilings, plinths and sunken courts, and walls that rise to their rooms or roofs.

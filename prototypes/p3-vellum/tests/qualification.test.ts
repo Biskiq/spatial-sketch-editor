@@ -105,25 +105,25 @@ describe('a preset the group cannot carry is refused before it is drawn', () => 
     const p = L();
     const r = ids(p);
     // a stepped section cannot be shared by the wings of an L: the chip must not be offered, and a commit must not land
-    const bad = coverCheck(p, r, 'clerestory', { wings: true });
+    const bad = coverCheck(p, r, 'clerestory');
     expect(bad.ok).toBe(false);
     expect(bad.reason).toMatch(/step|asymmetr/i);
     expect(bad.overhead).toBeNull();
     // the same rooms can still share a gable, so the refusal is the section, not the group
-    expect(coverCheck(p, r, 'gable', { wings: true }).ok).toBe(true);
+    expect(coverCheck(p, r, 'gable').ok).toBe(true);
     // Flat is a valid grouped cover too; its explicit coverage choice must survive a later pitch edit.
-    const flat = coverCheck(p, r, 'flat', { wings: true });
+    const flat = coverCheck(p, r, 'flat');
     expect(flat.ok).toBe(true);
     expect(flat.overhead!.oneSpan).toBe(false);
 
     const before = JSON.stringify(p);
-    const t = runTxn(p, opCoverRooms(r, 'clerestory', { wings: true }));
+    const t = runTxn(p, opCoverRooms(r, 'clerestory'));
     expect(t.after.overheads.length).toBe(0);
     expect(t.after.nextId).toBe(p.nextId); // the refused draft spent no id
     expect(JSON.stringify(t.after)).toBe(before);
     expect(t.notes.some((n) => /cannot cover/i.test(n.text))).toBe(true);
 
-    const ok = runTxn(p, opCoverRooms(r, 'gable', { wings: true }));
+    const ok = runTxn(p, opCoverRooms(r, 'gable'));
     expect(ok.after.overheads.length).toBe(1);
     expect(roofWingsState(ok.after.overheads[0]).kind).toBe('compound');
   });
@@ -132,7 +132,7 @@ describe('a preset the group cannot carry is refused before it is drawn', () => 
     const p = L();
     const r = ids(p);
     // the shape an imported file could carry: a wing roof whose section stopped fitting its wings
-    const shell = coverCheck(p, r, 'gable', { wings: true }).overhead!;
+    const shell = coverCheck(p, r, 'gable').overhead!;
     expect(shell.oneSpan).toBe(false);
     const legacy = { ...shell, profile: presetProfile('clerestory', 12) };
     expect(roofWingsState(legacy).kind).toBe('unsupported');
@@ -148,7 +148,7 @@ describe('a preset the group cannot carry is refused before it is drawn', () => 
   it('keeps a grouped flat cover compound when raised, with a continuous mesh and true eaves', () => {
     let p = L();
     const roomIds = ids(p);
-    p = doOp(p, opCoverRooms(roomIds, 'flat', { wings: true }));
+    p = doOp(p, opCoverRooms(roomIds, 'flat'));
     let oh = p.overheads[0];
     expect(oh.oneSpan).toBe(false);
     expect(roofWingsState(oh).kind).toBe('compound');
@@ -186,7 +186,7 @@ describe('a preset the group cannot carry is refused before it is drawn', () => 
 
   it('qualifies a revolved mesh before choosing its mesher', () => {
     const p = L();
-    const shell = coverCheck(p, ids(p), 'gable', { wings: true }).overhead!;
+    const shell = coverCheck(p, ids(p), 'gable').overhead!;
     const unsupported = { ...shell, form: 'revolve' } as Overhead;
     expect(ohHasSurface(unsupported)).toBe(false);
     expect(buildOverhead(unsupported, []).top.pos.length).toBe(0);
@@ -318,7 +318,7 @@ describe('a roof with no surface has no heights', () => {
     let p = L(wallTop);
     const roomIds = derive(p).rooms.map((r) => r.id);
     for (const id of roomIds) p = doOp(p, opRoom(id, follow ? {} : { ceiling: 'flat' as const }));
-    p = doOp(p, opCoverRooms(roomIds, 'gable', { wings: true }));
+    p = doOp(p, opCoverRooms(roomIds, 'gable'));
     const before = p.overheads[0];
     p = doOp(p, opOverhead(before.id, { profile: presetProfile('raked', ohSpan(before)) }));
     return { p, oh: p.overheads[0], roomIds };
@@ -361,36 +361,36 @@ describe('a roof with no surface has no heights', () => {
   it('says so when an edit removes the surface, and offers only repairs a trial proves', () => {
     let p = L(3);
     const roomIds = derive(p).rooms.map((r) => r.id);
-    p = doOp(p, opCoverRooms(roomIds, 'gable', { wings: true }));
+    p = doOp(p, opCoverRooms(roomIds, 'gable'));
     const oh = p.overheads[0];
     const t = runTxn(p, opOverhead(oh.id, { profile: presetProfile('raked', ohSpan(oh)) }));
     const note = t.notes.find((n) => /no surface/.test(n.text));
     expect(note).toBeTruthy();
-    expect(note!.text).toMatch(/Make it a gable, or cover it as one span/);
+    expect(note!.text).toMatch(/repairs that work/);
 
     const issue = derive(t.after).issues.find((i) => i.key === `wings:${oh.id}`)!;
     const gable = issue.fixes.find((f) => f.label === 'Make it a gable');
-    const span = issue.fixes.find((f) => f.label === 'Cover as one span');
+    // one span over this L would stop 2.9 m up at the inner eave, so it is not a repair here
     expect(gable).toBeTruthy();
-    expect(span).toBeTruthy();
+    expect(issue.fixes.find((f) => f.label === 'Cover as one span')).toBeUndefined();
 
     const q = structuredClone(t.after);
     gable!.apply(q);
     expect(roofWingsState(q.overheads[0]).kind).toBe('compound');
     expect(meshArea(q.overheads[0])).toBeCloseTo(Math.abs(polyArea(q.overheads[0].outline)), 1);
-
-    const r = structuredClone(t.after);
-    span!.apply(r);
-    expect(roofWingsState(r.overheads[0]).kind).toBe('single');
   });
 
-  it('offers only the one-span repair when the plan itself is the reason', () => {
+  it('offers a flat section when the plan itself is the reason and one span would stop in mid-air', () => {
     // an edge 3° off the frame cannot be carried by a gable however the section is drawn
     const slanted: V2[] = [[0, 0], [10, 0], [10, 6], [6, 6], [6, 10], [4.6, 9.2], [4.6, 6], [0, 6]];
     const p = doOp(emptyProject(), opAddOverhead(slanted, 3, { oneSpan: false, profile: presetProfile('gable', 6) }));
     const oh = p.overheads[0];
     expect(ohHasSurface(oh)).toBe(false);
     const issue = derive(p).issues.find((i) => i.key === `wings:${oh.id}`)!;
-    expect(issue.fixes.map((f) => f.label)).toEqual(['Cover as one span']);
+    expect(issue.fixes.map((f) => f.label)).toEqual(['Make it flat']);
+    const q = structuredClone(p);
+    issue.fixes[0].apply(q);
+    expect(ohHasSurface(q.overheads[0])).toBe(true);
+    expect(derive(q).issues.some((i) => i.key.startsWith('cliff:') || i.key.startsWith('wings:'))).toBe(false);
   });
 });

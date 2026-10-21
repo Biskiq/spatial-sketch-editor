@@ -268,7 +268,7 @@ export function readStroke(c: ReadCtx): Reading[] {
   const asDrawn: Reading = {
     id: 'roof', label: roofName,
     detail: `${tiedRooms.length ? 'resting on ' + tiedRooms.map((id) => d.roomById.get(id)!.name).join(', ') + ' (tied)' : under.length ? 'free above the rooms' : 'shade, drawn by its shadow'} · ${areaTxt}`,
-    op: opAddOverhead(outline, y, { restsOn: rest, name: under.length ? undefined : nextName(p, 'Canopy') }),
+    op: opAddOverhead(outline, y, { restsOn: rest, name: under.length ? undefined : nextName(p, 'Canopy'), oneSpan: 'auto' }),
   };
   // drawn about over the top storey's rooms (not far past them, where it's a canopy): fitted, so it follows their walls
   const fitRooms = named.filter((r) => overlapArea(r.poly, outline) > 0.7 * r.area);
@@ -279,7 +279,7 @@ export function readStroke(c: ReadCtx): Reading[] {
     ? {
         id: 'roof', label: roofName,
         detail: `fitted to ${fitRooms.map((r) => r.name).join(' & ')}: follows ${fitRooms.length > 1 ? 'their' : 'its'} walls · ${Math.round(overhang * 100)} cm overhang${rest ? ` · rests on ${fitRooms.length > 1 ? 'them' : 'it'} (tied)` : ''}`,
-        op: opAddOverhead(fitted, y, { restsOn: rest, fit: { rooms: fitRooms.map((r) => r.id), overhang } }),
+        op: opAddOverhead(fitted, y, { restsOn: rest, fit: { rooms: fitRooms.map((r) => r.id), overhang }, oneSpan: 'auto' }),
       }
     : asDrawn;
   const roofDrawn: Reading | null = fitted ? { ...asDrawn, id: 'roof-drawn', label: 'Roof, as drawn', detail: `its own outline, as you drew it · ${areaTxt}` } : null;

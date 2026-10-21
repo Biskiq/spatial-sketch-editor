@@ -11,6 +11,7 @@ import { settle, Note, lvl, roomTop, seedAt, carryStanding } from './settle';
 import { runGeom, closestOnRun, translateRun, scaleRun, pointAtT } from './runs';
 import { derive, DRoom, Derived, openingKind, elementName, floorUnder } from './derive';
 import { roofWingsState } from './wings';
+import { chooseSpan, type SpanChoice } from './roofSpan';
 import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt, ohHasSurface } from './overheadGeom';
 import type { StrokeFit } from './strokes';
 import { isRoundish, fittedOutline } from './fit';
@@ -376,25 +377,58 @@ export interface OverheadSpec {
   name?: string;
   form?: 'extrude' | 'revolve';
   fit?: Overhead['fit'];
-  oneSpan?: boolean;
+  /** 'auto': wings when the plan needs them and they qualify (`chooseSpan`) */
+  oneSpan?: boolean | 'auto';
 }
 
-/** An overhead built from a spec, not yet added to the project. `p` is only read for its next id and name. */
-function makeOverhead(p: Project, outline: V2[], baseY: number, o: OverheadSpec = {}): Overhead {
+/** An overhead built from a spec, not yet added to the project, with the span verdict. `p` is only read for its next id and name. */
+function draftOverhead(p: Project, outline: V2[], baseY: number, o: OverheadSpec = {}): { oh: Overhead; span: SpanChoice } {
   const ol = ensureCCW(outline);
   const round = o.form ?? (isRoundish(ol) ? 'revolve' : 'extrude');
   const oh: Overhead = {
     id: newId(p, 'h'), kind: 'overhead', name: o.name ?? nextName(p, round === 'revolve' ? 'Dome' : 'Roof'),
     outline: ol, baseY, profile: [], dir: o.dir ?? spanDir(ol), form: round, thick: 0.25,
     restsOn: o.restsOn ?? null, restOffset: 0, fit: o.fit ?? null, hip: 0, order: p.nextId,
-    ...(o.oneSpan === undefined ? {} : { oneSpan: o.oneSpan }),
   };
-  oh.profile = o.profile ?? presetProfile(o.preset ?? 'flat', ohSpan(oh));
-  return oh;
+  // a preset is sized to the span it will actually stand on: the primary wing's, or the whole outline's
+  const size = () => { oh.profile = o.profile ?? presetProfile(o.preset ?? 'flat', ohSpan(oh)); };
+  const fine: SpanChoice = { oneSpan: undefined, ok: true, reason: '' };
+  if (o.oneSpan !== 'auto') {
+    if (o.oneSpan !== undefined) oh.oneSpan = o.oneSpan;
+    size();
+    return { oh, span: fine };
+  }
+  if (round === 'extrude') {
+    oh.oneSpan = false;
+    size();
+    if (roofWingsState(oh).kind === 'compound') return { oh, span: { oneSpan: false, ok: true, reason: '' } };
+    delete oh.oneSpan;
+  }
+  size();
+  const span = chooseSpan(oh);
+  if (span.ok && span.oneSpan === false) {
+    oh.oneSpan = false;
+    size();
+  }
+  return { oh, span };
 }
 
+/** The overhead a spec makes, regardless of the span verdict (callers that pass 'auto' use `draftOverhead`). */
+function makeOverhead(p: Project, outline: V2[], baseY: number, o: OverheadSpec = {}): Overhead {
+  return draftOverhead(p, outline, baseY, o).oh;
+}
+
+/**
+ * Adds an overhead. With `oneSpan: 'auto'` a plan whose single span would stop in mid-air, and whose wings can't
+ * carry the section, is refused with the reason rather than placed malformed.
+ */
 export const opAddOverhead = (outline: V2[], baseY: number, o: OverheadSpec = {}): Op => (p) => {
-  const oh = makeOverhead(p, outline, baseY, o);
+  const mark = p.nextId;
+  const { oh, span } = draftOverhead(p, outline, baseY, o);
+  if (!span.ok) {
+    p.nextId = mark;
+    return { notes: [{ kind: 'info', text: `That roof can't be placed: ${span.reason}. Nothing was placed.`, ids: [] }] };
+  }
   p.overheads.push(oh);
   return { select: oh.id };
 };
@@ -425,7 +459,7 @@ export const opOverhead = (id: string, patch: Partial<Overhead>): Op => (p) => {
     const why = st.kind === 'unsupported' ? st.reason : 'its section no longer fits';
     notes.push({
       kind: 'info',
-      text: `${oh.name} can't carry this section across its wings (${why}), so it has no surface. Make it a gable, or cover it as one span.`,
+      text: `${oh.name} can't carry this section across its wings (${why}), so it has no surface. The note on it offers the repairs that work.`,
       ids: [oh.id],
     });
   }
@@ -438,21 +472,25 @@ export function coverOutline(rooms: DRoom[], thick = 0.24, overhang = 0.45): V2[
   return biggest ? biggest[0] : rooms[0].poly;
 }
 
-/** The overhead a grouped cover would make, without adding it: what the chip, its preview and its commit share. */
-function coverRoof(p: Project, d: Derived, rooms: DRoom[], roomIds: string[], preset: ProfilePreset, o: { wings?: boolean }): Overhead {
+/**
+ * The overhead a cover would make, without adding it: what the chip, its preview and its commit share. Wings or one
+ * span is the plan's answer (`chooseSpan`), not the number of rooms clicked, so one L-shaped room and two rooms
+ * making the same L get the same roof.
+ */
+function coverRoof(p: Project, d: Derived, rooms: DRoom[], roomIds: string[], preset: ProfilePreset): { oh: Overhead; span: SpanChoice } {
   const round = rooms.length === 1 && isRoundish(rooms[0].poly);
   const base = Math.max(...rooms.map((r) => r.topY));
   // stop short of taller rooms next door, so their walls rise past the eave
   const taller = d.rooms.filter((r) => !roomIds.includes(r.id) && r.topY > base + 0.05 && r.floorY < base);
   const overhang = round ? 0.35 : 0.45;
   const outline = fittedOutline(rooms.map((r) => r.poly), overhang, taller.map((r) => r.poly)) ?? coverOutline(rooms);
-  return makeOverhead(p, outline, base, {
+  return draftOverhead(p, outline, base, {
     fit: { rooms: rooms.map((r) => r.id), overhang },
     preset: round && preset === 'flat' ? 'flat' : preset, restsOn: roomIds, form: round ? 'revolve' : 'extrude',
     name: rooms.length === 1 ? `${rooms[0].name} roof` : undefined,
-    // One step, one cover: the second tap is not a second Undo. Keep an explicit grouped choice even while its
-    // section is flat, so raising it later continues across the same wings. Old roofs without the field stay single-span.
-    oneSpan: o.wings ? false : undefined,
+    // Set at creation, before the profile is sized, so the profile's span is the primary wing's, not the outline's.
+    // A flat cover over an L keeps its wings too, so raising it later continues across the same wings.
+    oneSpan: 'auto',
   });
 }
 
@@ -466,37 +504,31 @@ export interface CoverCheck {
  * Whether a preset can cover these rooms as one roof. One answer for all three uses: a chip that cannot be committed
  * is not offered, a hover previews only what would be placed, and the commit refuses the same case.
  */
-export function coverCheck(p: Project, roomIds: string[], preset: ProfilePreset, o: { wings?: boolean } = {}): CoverCheck {
+export function coverCheck(p: Project, roomIds: string[], preset: ProfilePreset): CoverCheck {
   const d = derive(p);
   const rooms = roomIds.map((id) => d.roomById.get(id)).filter((x): x is DRoom => !!x);
   if (!rooms.length) return { ok: false, reason: 'Those rooms are not there any more.', overhead: null };
   // a scratch copy, so asking the question never moves the project's next id
-  const oh = coverRoof({ ...p }, d, rooms, roomIds, preset, o);
-  if (oh.oneSpan === false) {
-    const st = roofWingsState(oh);
-    if (st.kind === 'unsupported') return { ok: false, reason: st.reason, overhead: null };
-  }
+  const { oh, span } = coverRoof({ ...p }, d, rooms, roomIds, preset);
+  if (!span.ok) return { ok: false, reason: span.reason, overhead: null };
   return { ok: true, reason: '', overhead: oh };
 }
 
-export const opCoverRooms = (roomIds: string[], preset: ProfilePreset, o: { wings?: boolean } = {}): Op => (p) => {
+export const opCoverRooms = (roomIds: string[], preset: ProfilePreset): Op => (p) => {
   const d = derive(p);
   const rooms = roomIds.map((id) => d.roomById.get(id)).filter((x): x is DRoom => !!x);
   if (!rooms.length) return;
   const mark = p.nextId;
-  const oh = coverRoof(p, d, rooms, roomIds, preset, o);
-  if (oh.oneSpan === false) {
-    const st = roofWingsState(oh);
-    if (st.kind === 'unsupported') {
-      p.nextId = mark; // the refused draft must leave no trace
-      return {
-        notes: [{
-          kind: 'info',
-          text: `A ${preset} roof cannot cover ${rooms.length > 1 ? 'these rooms' : rooms[0].name} as one roof: ${st.reason}. Nothing was placed.`,
-          ids: [],
-        }],
-      };
-    }
+  const { oh, span } = coverRoof(p, d, rooms, roomIds, preset);
+  if (!span.ok) {
+    p.nextId = mark; // the refused draft must leave no trace
+    return {
+      notes: [{
+        kind: 'info',
+        text: `A ${preset} roof cannot cover ${rooms.length > 1 ? 'these rooms' : rooms[0].name} as one roof: ${span.reason}. Nothing was placed.`,
+        ids: [],
+      }],
+    };
   }
   p.overheads.push(oh);
   return {

@@ -282,7 +282,7 @@ describe('Hold roof handles', () => {
     });
     let p = runTxn(emptyProject(), opAddRun(stroke([[0, 0], [10, 0], [10, 6], [0, 6]], true), { baseY: 0 })).after;
     p = runTxn(p, opAddRun(stroke([[10, 6], [10, 14], [6, 14], [6, 6]], false), { baseY: 0 })).after;
-    p = runTxn(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable', { wings: true })).after;
+    p = runTxn(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable')).after;
     const runId = p.runs[0].id;
     store.ui = { ...store.ui, selection: runId, mode: 'make', tool: 'select' };
     const handle = handlesFor(stage, p, derive(p), runId).find((h) => h.id === 'node:0');
@@ -310,7 +310,7 @@ describe('Hold roof handles', () => {
       corners: 0,
     });
     let p = runTxn(emptyProject(), opAddRun(stroke([[0, 0], [10, 0], [10, 6], [6, 6], [6, 14], [0, 14]]), { baseY: 0 })).after;
-    p = runTxn(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable', { wings: true })).after;
+    p = runTxn(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable')).after;
     const runId = p.runs[0].id;
     store.ui = { ...store.ui, selection: runId, mode: 'make', tool: 'select' };
     const handle = handlesFor(stage, p, derive(p), runId).find((h) => h.id === 'move');

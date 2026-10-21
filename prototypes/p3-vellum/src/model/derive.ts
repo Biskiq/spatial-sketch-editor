@@ -8,6 +8,7 @@ import { runGeom } from './runs';
 import { levelArrangements, lvl, roomTop, stairSteps } from './settle';
 import { ohUndersideAt, ohCovers, ohRidge, ohTopAt, ohHasSurface, ohSpan, presetProfile } from './overheadGeom';
 import { roofWingsState } from './wings';
+import { spanCliff } from './roofSpan';
 import type { Project, Run, RoomSeed, Opening, Overhead, Deck, Stair, Element } from './types';
 import { findEl, newId, clone } from './types';
 
@@ -414,8 +415,12 @@ function computeIssues(p: Project, rooms: DRoom[], roomById: Map<string, DRoom>,
       };
       const fixes: Fix[] = [];
       if (trial(asGable)) fixes.push({ label: 'Make it a gable', apply: (q) => withRoof(q, asGable) });
-      // the explicit, owner-chosen single span: always a real roof, never a silent one
-      fixes.push({ label: 'Cover as one span', apply: (q) => withRoof(q, (o) => { o.oneSpan = true; }) });
+      // the explicit, owner-chosen single span — offered only where one span is a whole roof, not one that would
+      // stop in mid-air at an inner eave
+      if (!spanCliff({ ...oh, oneSpan: true })) fixes.push({ label: 'Cover as one span', apply: (q) => withRoof(q, (o) => { o.oneSpan = true; }) });
+      // and when neither works (a plan the wings can't take, with a section that would stop in mid-air), a flat
+      // section is a whole roof over any plan
+      else if (!fixes.length) fixes.push({ label: 'Make it flat', apply: (q) => withRoof(q, (o) => { o.oneSpan = true; o.profile = presetProfile('flat', ohSpan(o)); o.hip = 0; }) });
       issues.push({
         key: `wings:${oh.id}`, kind: 'fit',
         text: `${oh.name} has no surface: its section cannot be carried across these wings (${reason}).`,
@@ -423,6 +428,23 @@ function computeIssues(p: Project, rooms: DRoom[], roomById: Map<string, DRoom>,
       });
       // and no supports are proposed for a roof that is not there
       continue;
+    }
+    // A single span that stops in mid-air at an inner eave (a plan that grew into an L, an older file, a pitch raised
+    // on a plan the wings can't take). A shed's high eave and a gable's end are not this: `spanCliff` reads the frame.
+    const cliff = spanCliff(oh);
+    if (cliff) {
+      const winged = (o: Overhead) => { o.oneSpan = false; };
+      const trial = clone(p);
+      const t = trial.overheads.find((x) => x.id === oh.id)!;
+      winged(t);
+      const fixes: Fix[] = roofWingsState(t).kind === 'compound'
+        ? [{ label: 'Give it wings', apply: (q) => { const o = q.overheads.find((x) => x.id === oh.id); if (o) winged(o); } }]
+        : [];
+      issues.push({
+        key: `cliff:${oh.id}`, kind: 'fit',
+        text: `${oh.name} stops ${fmtM(cliff.h)} up at an inner eave: one span can't cover this plan${fixes.length ? '' : ', and its wings can\'t carry this section'}.`,
+        ids: [oh.id], at: [cliff.at[0], oh.baseY + cliff.h / 2, cliff.at[1]], fixes, acknowledged: false,
+      });
     }
     const sts = stretches(oh.outline, oh.baseY, 1.6, 1.2);
     sts.forEach((st, k) => {

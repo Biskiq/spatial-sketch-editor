@@ -17,6 +17,7 @@ import {
 } from '../model/ops';
 import { qualifyRidgeTurn } from '../model/roofEdits';
 import { mezzanineOffer, stairCandidates } from '../model/offers';
+import { joinCheck, joinNeighbours, opJoinRoofs } from '../model/roofJoin';
 import { surfaceName } from '../scene/interact';
 import { ProfilePad, ProfilePresets } from './ProfilePad';
 import { detachImport } from '../import/importer';
@@ -144,7 +145,7 @@ function RoomCard({ s, dr, dc, p }: { s: RoomSeed; dr: DRoom | undefined; dc: De
   const presets: ProfilePreset[] = round ? ['flat', 'dome', 'gable'] : ['flat', 'raked', 'gable', 'clerestory', 'vault'];
   const checks = useMemo(() => {
     const out = new Map<ProfilePreset, ReturnType<typeof coverCheck>>();
-    for (const k of presets) out.set(k, coverCheck(p, targets, k, { wings: targets.length > 1 }));
+    for (const k of presets) out.set(k, coverCheck(p, targets, k));
     return out;
   }, [p, s.id, only, group.length, round]);
   const mezz = useMemo(
@@ -210,13 +211,13 @@ function RoomCard({ s, dr, dc, p }: { s: RoomSeed; dr: DRoom | undefined; dc: De
                 <button
                   class="chip pencil"
                   disabled={!check.ok}
-                  title={!check.ok ? `Not one roof with these rooms: ${check.reason}` : targets.length > 1 ? `One roof over ${names.join(', ')}` : `A ${k} roof over ${s.name}`}
-                  onPointerEnter={() => check.ok && store.setPreview(opCoverRooms(targets, k, { wings: targets.length > 1 }))}
+                  title={!check.ok ? `No ${k} roof over ${targets.length > 1 ? 'these rooms' : s.name}: ${check.reason}` : targets.length > 1 ? `One roof over ${names.join(', ')}` : `A ${k} roof over ${s.name}`}
+                  onPointerEnter={() => check.ok && store.setPreview(opCoverRooms(targets, k))}
                   onPointerLeave={() => store.setPreview(null)}
                   onClick={() => {
                     store.setPreview(null);
                     if (!check.ok) return;
-                    store.commit(targets.length > 1 ? `Covered ${names.join(', ')}` : `Covered ${s.name}`, opCoverRooms(targets, k, { wings: targets.length > 1 }));
+                    store.commit(targets.length > 1 ? `Covered ${names.join(', ')}` : `Covered ${s.name}`, opCoverRooms(targets, k));
                   }}
                 >
                   {k === 'gable' && round ? 'cone' : k}
@@ -416,6 +417,12 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
   const turn = qualifyRidgeTurn(store.project, authored.id);
   const turnOp = turn.op;
   const turnReason = turn.reason;
+  // offered only with roofs that meet this one, and read from the committed project, so a hover preview never hides
+  // the very chip under the pointer
+  const joins = useMemo(
+    () => joinNeighbours(store.project, authored.id).map((other) => ({ other, check: joinCheck(store.project, authored.id, other.id) })),
+    [store.project, authored.id],
+  );
   return (
     <>
       <Head kind={`Overhead · ${describeProfile(oh)}`} name={oh.name} rename={(v) => store.commit(`Renamed it ${v}`, opOverhead(oh.id, { name: v }))} />
@@ -441,6 +448,26 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
               if (!turnReason && turnOp) store.commit(`Turned ${authored.name}’s ridge`, turnOp);
             }}
           >Turn the ridge · R</button>
+        </div>
+      )}
+      {joins.length > 0 && (
+        <div class="row" style={{ marginTop: '8px', flexWrap: 'wrap', gap: '6px' }}>
+          {joins.map(({ other, check }) => (
+            <button
+              key={other.id}
+              class="btn small outline"
+              disabled={!check.ok}
+              title={check.ok ? `One roof over both, at ${authored.name}'s pitch, with a valley where they meet` : `Can't join: ${check.reason}`}
+              onPointerEnter={() => !store.ui.dragging && check.ok && store.setPreview(opJoinRoofs(authored.id, other.id, check.merged))}
+              onPointerLeave={() => !store.ui.dragging && store.setPreview(null)}
+              onFocus={() => !store.ui.dragging && check.ok && store.setPreview(opJoinRoofs(authored.id, other.id, check.merged))}
+              onBlur={() => !store.ui.dragging && store.setPreview(null)}
+              onClick={() => {
+                store.setPreview(null);
+                if (check.ok) store.commit(`Joined ${other.name} into ${authored.name}`, opJoinRoofs(authored.id, other.id, check.merged));
+              }}
+            >Join with {other.name}</button>
+          ))}
         </div>
       )}
       <Sec label="Section — drag the roof's blue handles, or here">
