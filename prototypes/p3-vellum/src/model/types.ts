@@ -92,6 +92,11 @@ export interface Overhead {
   fit?: { rooms: string[]; overhang: number } | null;
   /** Hipped ends: how far (m) the slopes come in from each end of the ridge; 0 is a gable. */
   hip?: number;
+  /**
+   * Coverage over a compound plan. Absent means the original single span (old saves keep their geometry).
+   * `false` opts this roof into wings, once the plan and section qualify (see wings.ts).
+   */
+  oneSpan?: boolean;
   order: number;
 }
 

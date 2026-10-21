@@ -366,13 +366,14 @@ export function spanDir(outline: V2[]): number {
 
 export { isRoundish };
 
-export const opAddOverhead = (outline: V2[], baseY: number, o: { profile?: ProfilePt[]; preset?: ProfilePreset; dir?: number; restsOn?: string[] | null; name?: string; form?: 'extrude' | 'revolve'; fit?: Overhead['fit'] } = {}): Op => (p) => {
+export const opAddOverhead = (outline: V2[], baseY: number, o: { profile?: ProfilePt[]; preset?: ProfilePreset; dir?: number; restsOn?: string[] | null; name?: string; form?: 'extrude' | 'revolve'; fit?: Overhead['fit']; oneSpan?: boolean } = {}): Op => (p) => {
   const ol = ensureCCW(outline);
   const round = o.form ?? (isRoundish(ol) ? 'revolve' : 'extrude');
   const oh: Overhead = {
     id: newId(p, 'h'), kind: 'overhead', name: o.name ?? nextName(p, round === 'revolve' ? 'Dome' : 'Roof'),
     outline: ol, baseY, profile: [], dir: o.dir ?? spanDir(ol), form: round, thick: 0.25,
     restsOn: o.restsOn ?? null, restOffset: 0, fit: o.fit ?? null, hip: 0, order: p.nextId,
+    ...(o.oneSpan === undefined ? {} : { oneSpan: o.oneSpan }),
   };
   oh.profile = o.profile ?? presetProfile(o.preset ?? 'flat', ohSpan(oh));
   p.overheads.push(oh);
@@ -404,7 +405,7 @@ export function coverOutline(rooms: DRoom[], thick = 0.24, overhang = 0.45): V2[
   return biggest ? biggest[0] : rooms[0].poly;
 }
 
-export const opCoverRooms = (roomIds: string[], preset: ProfilePreset): Op => (p) => {
+export const opCoverRooms = (roomIds: string[], preset: ProfilePreset, o: { wings?: boolean } = {}): Op => (p) => {
   const d = derive(p);
   const rooms = roomIds.map((id) => d.roomById.get(id)).filter((x): x is DRoom => !!x);
   if (!rooms.length) return;
@@ -418,6 +419,9 @@ export const opCoverRooms = (roomIds: string[], preset: ProfilePreset): Op => (p
     fit: { rooms: rooms.map((r) => r.id), overhang },
     preset: round && preset === 'flat' ? 'flat' : preset, restsOn: roomIds, form: round ? 'revolve' : 'extrude',
     name: rooms.length === 1 ? `${rooms[0].name} roof` : undefined,
+    // one step, one cover: the second tap is not a second Undo. Set at creation so the profile's span is the
+    // primary wing's, not the whole outline's.
+    oneSpan: o.wings ? false : undefined,
   })(p, {}) as OpResult;
   return { ...res, notes: [{ kind: 'good', text: `Covered ${rooms.map((r) => r.name).join(', ')}. The roof rests on ${rooms.length > 1 ? 'them' : 'it'} and follows ${rooms.length > 1 ? 'their' : 'its'} walls, taller or wider.`, ids: [] }] };
 };

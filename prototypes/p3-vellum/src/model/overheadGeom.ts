@@ -1,40 +1,11 @@
 // Shared math for overheads: roofs, canopies, vaults — a drawn profile carried across a drawn outline.
 import { V2, dot, fromAngle, polyCentroid, dist, clamp, pointInPoly, distToPolyEdge } from './geom2d';
 import type { Overhead, ProfilePt } from './types';
+import { PSample, sampleProfile, sampleRaw, profileH, profilePeak } from './profileCurve';
+import { roofWingsState, wingHeight } from './wings';
 
-export interface PSample { u: number; h: number }
-
-/** Expand smooth profile points into a dense polyline; creases stay sharp, vertical steps stay vertical. */
-export function sampleProfile(pts: ProfilePt[]): PSample[] {
-  return sampleRaw(pts, true);
-}
-
-/** Same curve; unclamped it is linear in the points' heights (used to bend the curve exactly under the pen). */
-function sampleRaw(pts: ProfilePt[], clampH: boolean): PSample[] {
-  if (pts.length < 2) return [{ u: 0, h: pts[0]?.h ?? 0 }, { u: 1, h: pts[0]?.h ?? 0 }];
-  const out: PSample[] = [{ u: pts[0].u, h: pts[0].h }];
-  const cr = (p0: number, p1: number, p2: number, p3: number, t: number) =>
-    0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
-  for (let i = 0; i + 1 < pts.length; i++) {
-    const a = pts[i], b = pts[i + 1];
-    const step = Math.abs(b.u - a.u) < 1e-6;
-    if (step || (a.crease && b.crease)) {
-      out.push({ u: b.u, h: b.h });
-      continue;
-    }
-    const p0 = a.crease || i === 0 ? a : pts[i - 1];
-    const p3 = b.crease || i + 2 >= pts.length ? b : pts[i + 2];
-    const N = 10;
-    for (let k = 1; k <= N; k++) {
-      const t = k / N;
-      const u = cr(p0.u, a.u, b.u, p3.u, t);
-      const h = cr(p0.h, a.h, b.h, p3.h, t);
-      const prevU = out[out.length - 1].u;
-      out.push({ u: clamp(Math.max(u, prevU), a.u, b.u), h: clampH ? Math.max(0, h) : h });
-    }
-  }
-  return out;
-}
+export type { PSample };
+export { sampleProfile, profileH, profilePeak };
 
 export interface OhFrame {
   d: V2; // span axis
@@ -79,19 +50,6 @@ export function ohFrame(oh: Overhead): OhFrame {
   return f;
 }
 
-/** Height of the profile at fraction u (takes the higher side at a vertical step). */
-export function profileH(samples: PSample[], u: number): number {
-  if (u <= samples[0].u) return samples[0].h;
-  for (let i = 0; i + 1 < samples.length; i++) {
-    const a = samples[i], b = samples[i + 1];
-    if (u >= a.u && u <= b.u) {
-      if (b.u - a.u < 1e-9) return Math.max(a.h, b.h);
-      return a.h + ((b.h - a.h) * (u - a.u)) / (b.u - a.u);
-    }
-  }
-  return samples[samples.length - 1].h;
-}
-
 export function ohU(oh: Overhead, p: V2): number {
   const f = ohFrame(oh);
   if (oh.form === 'revolve') {
@@ -111,9 +69,19 @@ export function hipH(f: OhFrame, v: number): number {
   return profileH(f.samples, t * f.hipU);
 }
 
-/** Height above the eave at a plan point (the cross profile, cut down by hipped ends). */
+/**
+ * Height above the eave at a plan point. A compound roof is the upper envelope of its wings' supports; otherwise it is
+ * the one cross profile, cut down by hipped ends.
+ */
 export function ohH(oh: Overhead, p: V2): number {
   const f = ohFrame(oh);
+  const st = roofWingsState(oh);
+  if (st.kind === 'compound') {
+    const ext = { d: f.d, e: [-f.d[1], f.d[0]] as V2 };
+    let best = 0;
+    for (const wg of st.wings) best = Math.max(best, wingHeight(wg, f.samples, st.peakU, ext, p));
+    return best;
+  }
   const h = profileH(f.samples, ohU(oh, p));
   return f.hip > 0 ? Math.min(h, hipH(f, dot(p, [-f.d[1], f.d[0]]))) : h;
 }
@@ -133,10 +101,17 @@ export function ohCovers(oh: Overhead, p: V2, pad = 0): boolean {
 }
 
 export function ohRidge(oh: Overhead): number {
+  const st = roofWingsState(oh);
+  if (st.kind === 'compound') {
+    const peak = Math.max(...sampleProfile(oh.profile).map((s) => s.h));
+    return oh.baseY + oh.thick + peak * Math.max(...st.wings.map((w) => w.scale));
+  }
   return oh.baseY + oh.thick + Math.max(...ohFrame(oh).samples.map((s) => s.h));
 }
 
 export function ohSpan(oh: Overhead) {
+  const st = roofWingsState(oh);
+  if (st.kind === 'compound') return st.primarySpan;
   const f = ohFrame(oh);
   return oh.form === 'revolve' ? f.R * 2 : f.wmax - f.wmin;
 }
@@ -265,18 +240,6 @@ export function setCrease(pts: ProfilePt[], id: string, crease: boolean): Profil
 }
 
 // ---- Sculpting: a few big moves on the same authored points (the roof's primary handles in 3D) ----
-
-const TOP_EPS = 1e-3;
-
-/** The peak: the run of points at the profile's greatest height (one point for a gable, two for a flat-topped ridge). */
-export function profilePeak(pts: ProfilePt[]) {
-  if (!pts.length) return { i0: 0, i1: 0, u: 0.5, h: 0 };
-  const H = Math.max(...pts.map((q) => q.h));
-  let i0 = pts.findIndex((q) => q.h > H - TOP_EPS);
-  let i1 = i0;
-  while (i1 + 1 < pts.length && pts[i1 + 1].h > H - TOP_EPS) i1++;
-  return { i0, i1, u: (pts[i0].u + pts[i1].u) / 2, h: H };
-}
 
 /** Mirror-symmetric about the middle (then a pull on one shoulder pulls both). */
 export function profileSymmetric(pts: ProfilePt[]): boolean {
@@ -475,4 +438,52 @@ export function describeProfile(oh: Overhead): string {
   if (turns >= 3) return 'folded';
   if (turns === 1) return p[0].h > p[Math.floor(p.length / 2)].h ? 'butterfly' : 'gable';
   return 'raked';
+}
+
+// ---- Turning the ridge ----
+// `oh.dir` is the SPAN direction; the displayed ridge is perpendicular to it. These helpers therefore return span
+// directions implied by the outline's edges (edge angle + 90°), so committing `dir = nextRidgeDir(oh)` lays the ridge
+// along that edge. Profile heights are preserved; a turn never rescales them.
+
+const modPi = (a: number) => ((a % Math.PI) + Math.PI) % Math.PI;
+const angleApart = (a: number, b: number) => {
+  const d = modPi(a - b);
+  return Math.min(d, Math.PI - d);
+};
+
+/** Distinct span directions the outline can carry, by total edge length, at most four. */
+export function ridgeDirections(oh: Overhead): number[] {
+  const groups: { a: number; len: number }[] = [];
+  const n = oh.outline.length;
+  for (let i = 0; i < n; i++) {
+    const a = oh.outline[i], b = oh.outline[(i + 1) % n];
+    const len = dist(a, b);
+    if (len < 0.2) continue;
+    const span = Math.atan2(b[1] - a[1], b[0] - a[0]) + Math.PI / 2;
+    const hit = groups.find((g) => angleApart(g.a, span) < (2 * Math.PI) / 180);
+    if (hit) hit.len += len;
+    else groups.push({ a: modPi(span), len });
+  }
+  return groups.sort((x, y) => y.len - x.len || x.a - y.a).slice(0, 4).map((g) => g.a);
+}
+
+/**
+ * The next span direction, or null when turning would do nothing: a round or flat roof, or an outline with fewer than
+ * two distinct edge directions. A direction already matching within 2° is skipped, so a turn always visibly turns.
+ */
+export function nextRidgeDir(oh: Overhead): number | null {
+  if (oh.form === 'revolve') return null;
+  if (Math.max(...oh.profile.map((p) => p.h)) < 0.05) return null;
+  const dirs = ridgeDirections(oh);
+  if (dirs.length < 2) return null;
+  const cur = modPi(oh.dir);
+  const i = dirs.findIndex((d) => angleApart(d, cur) < (2 * Math.PI) / 180);
+  const after = dirs.filter((d) => angleApart(d, cur) >= (2 * Math.PI) / 180);
+  if (!after.length) return null;
+  if (i < 0) return after[0];
+  for (let k = 1; k <= dirs.length; k++) {
+    const cand = dirs[(i + k) % dirs.length];
+    if (angleApart(cand, cur) >= (2 * Math.PI) / 180) return cand;
+  }
+  return null;
 }
