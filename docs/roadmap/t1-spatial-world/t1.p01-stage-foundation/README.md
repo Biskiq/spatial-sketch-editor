@@ -42,7 +42,7 @@ real reconciled Room/floor polygon and floor datum, no Scene objects or Camera/E
 Use captured project/source IDs, strict canonical validation and the single Layout compiler to
 prove real support; this is a new project/history baseline, never silent architecture insertion
 into the current project. The creator confirms project replacement through the same host guard.
-T3 S04 replaces this boot adapter with its F2-backed equivalent, preserving the public host seam.
+T3 S04 replaced this boot adapter with its F2-backed equivalent, preserving the public host seam.
 
 The template supplies an intentionally bounded entry without general Wall drawing, role selection,
 topology editing or a new floor schema. Empty boot remains honest and Scene placement there refuses
@@ -56,14 +56,13 @@ supported Wall/Opening dimensions and straight-Wall pose, cancel/refuse, Undo/Re
 canonical source JSON. T2/T3 mount their adapters after the viewport gate, without waiting for
 later Layout tools or shell depth. Stage selection, tasks, gestures and Camera output stay shared.
 
-Source Save is a T3-owned early extension, **S02 conditional Save**, independent of F2 activation.
-Until `F4.intent-acceptance@1:conditional-save-current-v1` is accepted on main, Save explains its
-unavailability. Once accepted, local edits have explicit dirty state; create-only or expected-
-saved-base Save validates/compares atomically, preserves conflicts and never introduces another
-history. Source download/reopen remains available independently; it is not a portable asset package.
-After T3 S04, Save/source consumers re-declare unit capabilities accepted in T3 S05 (the S03
-split's first half). No resource
-upload, general importer, publication or complete creator-to-visitor journey is claimed here.
+Source Save began as the T3-owned **S02 conditional Save** extension, independent of F2 activation.
+Its original `conditional-save-current-v1` scope was retired at the T3 S04 cutover; active Save/source
+consumers use the F2 unit envelope and `conditional-save-units-v1` accepted in T3 S05.
+Local edits expose dirty state; create-only or expected-saved-base Save validates and compares
+atomically, preserves conflicts and never introduces another history. Source download/reopen
+remains available independently; it is not a portable asset package. No resource upload,
+general importer, publication or complete creator-to-visitor journey is claimed here.
 
 **Foundation prerequisite:** planning proceeds on the landed r186 base: the separate
 [r186 upgrade PR #122](https://github.com/Biskiq/spatial-sketch-editor/pull/122) merged into `main`
@@ -173,11 +172,11 @@ Every slice also declares the specific capabilities it requires (`Requires`) in 
 row above restates it for the [checker](../../../roadmap/README.md#gate-register) — a consumed gate
 version is not by itself sufficient readiness, and the readiness rule this phase installs at S01 is
 exactly that distinction. Rows for shipped slices keep the scopes those slices actually required at
-their acceptance — historical records, not live requirements. The one unfinished consumer, `T1.P01.S06`,
+their acceptance — historical records, not live requirements. The final consumer, `T1.P01.S06`,
 was migrated by `T3.P01.S04` phase B to the accepted
 F2/unit-resolution/unit-acceptance capabilities from T3 S01/S05, with `conditional-save-units-v1`
-for its Save/reload journey and `T3.camera-experience-cutover@1` once that gate is accepted; no
-unfinished row keeps a retired current-source admission. That migration did not wait for the whole
+for its Save/reload journey and the accepted `T3.camera-experience-cutover@1` gate; no
+shipped S06 row retains a retired current-source admission. That migration did not wait for the whole
 T1 phase. No current-source acceptance record proves unit capability readiness.
 
 The [global gate register](../../README.md#gate-register) records accepted F1/F3 providers from S01,
@@ -195,7 +194,7 @@ and the complete merge gate on then-current `main`. Its acceptance records `view
 with `T1.P01.S02` as the unchanged sole provider. S06 stays the exhaustive final gate and is no longer
 the viewport readiness route. S02's acceptance record is unchanged. S07's acceptance now records the
 capability as `accepted`. S04 is accepted and shipped as batch B (2026-10-18); S05 is accepted and
-shipped as batch C (2026-10-19); S06 is accepted and shipped 2026-10-21 under the scoped owner-override recorded in its acceptance artifact. Its exhaustive final-gate evidence is complete, making T1.P01 closable pending the explicit owner phase-close step.
+shipped as batch C (2026-10-19); S06 is accepted and shipped 2026-10-21 under the scoped owner-override recorded in its acceptance artifact. Its exhaustive final-gate evidence supported the owner's T1.P01 closure on 2026-10-21.
 
 **Parallel integration.** S02 and S03 run in parallel with `T2.P01.S01` and `T3.P01.S01` under the
 [batch protocol](../../cross-track-execution.md#parallel-batch-2026-10-16): one writer per shared
