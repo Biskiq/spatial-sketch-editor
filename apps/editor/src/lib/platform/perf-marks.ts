@@ -115,6 +115,11 @@ export function perfSequence(): number {
  * next presented frame, which is what the latency budgets describe.
  */
 export function perfInstall(name: string, detail?: Readonly<Record<string, unknown>>): void {
+	// Check before building the sequence-carrying detail object: spreading the
+	// caller's detail allocates (and evaluates its getters) even when `record`
+	// would immediately discard the result, which would make the helper observable
+	// in the ordinary build.
+	if (!perfMarksEnabled()) return;
 	record('install', name, { sequence: latestSequence, ...detail });
 }
 

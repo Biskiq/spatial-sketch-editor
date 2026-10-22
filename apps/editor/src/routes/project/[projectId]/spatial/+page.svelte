@@ -32,7 +32,7 @@
 		ProjectPersistenceError,
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
-	import { perfInput, perfMark } from '$lib/platform/perf-marks';
+	import { perfInput, perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 	import {
 		discardPendingCapture,
 		persistPendingCapture,
@@ -870,21 +870,25 @@
 		// the selection echo are CSS points from `projectWorld`, never a second
 		// projection.
 		markers = stage.overlays();
-		// Tenths of a CSS pixel: a slow drag moves a preview by less than one pixel
-		// per sample, and a coarse key would make those presentations invisible.
-		const overlayKey = markers
-			.map((marker) => `${marker.id}:${Math.round(marker.css[0] * 10)},${Math.round(marker.css[1] * 10)}`)
-			.join('|');
-		if (overlayKey !== lastOverlayKey) {
-			lastOverlayKey = overlayKey;
-			// The preview is presented by the frame that paints this overlay state; the
-			// ledger's sequence says which input sample it belongs to. `preview` keeps a
-			// later overlay change (release, selection) from being counted as the
-			// presentation of the drag that produced it.
-			perfMark('overlay:updated', {
-				markers: markers.length,
-				preview: markers.some((marker) => marker.id.endsWith('-preview'))
-			});
+		// The key is only evidence for the harness, so it must cost nothing in the
+		// ordinary build: no string building or marker scan when the flag is absent.
+		if (perfMarksEnabled()) {
+			// Tenths of a CSS pixel: a slow drag moves a preview by less than one pixel
+			// per sample, and a coarse key would make those presentations invisible.
+			const overlayKey = markers
+				.map((marker) => `${marker.id}:${Math.round(marker.css[0] * 10)},${Math.round(marker.css[1] * 10)}`)
+				.join('|');
+			if (overlayKey !== lastOverlayKey) {
+				lastOverlayKey = overlayKey;
+				// The preview is presented by the frame that paints this overlay state; the
+				// ledger's sequence says which input sample it belongs to. `preview` keeps a
+				// later overlay change (release, selection) from being counted as the
+				// presentation of the drag that produced it.
+				perfMark('overlay:updated', {
+					markers: markers.length,
+					preview: markers.some((marker) => marker.id.endsWith('-preview'))
+				});
+			}
 		}
 		ghosts = stage.ghosts();
 		const selected = selection;

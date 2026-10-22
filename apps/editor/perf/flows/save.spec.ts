@@ -18,7 +18,7 @@
 import { expect, test } from '@playwright/test';
 
 import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
-import { browserFacts, newMeasuredSession } from '../lib/browser';
+import { browserFacts, clearBrowserState, newMeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
 import { fixtureProject } from '../lib/fixtures';
 import {
@@ -106,8 +106,9 @@ async function saveOnce(
 }
 
 test.describe('F9 Save', () => {
+	test.setTimeout(900_000);
 	test.skip(apiOrigin === undefined || secret === undefined, 'requires PERF_API_ORIGIN + E2E_TEST_AUTH_SECRET (local stack only)');
-	test('save against the local test-auth stack', async ({ browser, baseURL }, testInfo) => {
+	test('save against the local test-auth stack, cold and warm', async ({ browser, baseURL }, testInfo) => {
 		const origin = apiOrigin!;
 		const report = startReport(`f9-save-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const login = await loginAs({
@@ -121,61 +122,83 @@ test.describe('F9 Save', () => {
 		const name = pair.slice(0, equals);
 		const value = pair.slice(equals + 1);
 		expect(name).toBe(TEST_AUTH_SESSION_COOKIE);
+		const cookie = {
+			name,
+			value,
+			domain: new URL(baseURL!).hostname,
+			path: '/',
+			httpOnly: true,
+			secure: false
+		};
 
-		const session = await newMeasuredSession(browser, {
-			viewport: VIEWPORT,
-			deviceScaleFactor: DEVICE_SCALE_FACTOR,
-			network: NETWORK,
-			cacheState: 'warm'
-		});
-		try {
-			await session.context.addCookies([
-				{ name, value, domain: new URL(baseURL!).hostname, path: '/', httpOnly: true, secure: false }
-			]);
-			const facts = await browserFacts(browser, session.page);
-			for (let index = 0; index < WARMUP_RUNS; index++) await saveOnce(session, origin);
-			const runs: SaveRun[] = [];
-			for (let index = 0; index < RUNS; index++) runs.push(await saveOnce(session, origin));
-			const feedback = runs
-				.map((run) => run.submitToSavingLabel)
-				.filter((value): value is number => value !== null);
-			const receipt = runs
-				.map((run) => run.submitToReceipt)
-				.filter((value): value is number => value !== null);
-			const saved = runs
-				.map((run) => run.submitToSavedLabel)
-				.filter((value): value is number => value !== null);
-			const row: ResultRow = {
-				id: 'F9-save-local',
-				flow: 'F9 Save',
-				workload: 'S fixture, one typed edit, Save to the local test-auth stack',
-				cacheState: 'warm',
+		for (const cacheState of ['cold', 'warm'] as const) {
+			const session = await newMeasuredSession(browser, {
+				viewport: VIEWPORT,
+				deviceScaleFactor: DEVICE_SCALE_FACTOR,
 				network: NETWORK,
-				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
-				cpuRate: 1,
-				viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
-				metrics: {
-					wireBytesMedian: summarize(runs.map((run) => run.wireBytes)).median,
-					runs: runs.length
-				},
-				stats: {
-					localFeedback: summarize(feedback),
-					durableReceipt: summarize(receipt),
-					savedLabel: summarize(saved)
-				},
-				limitations: [
-					...passLimitations(),
-					'loopback unthrottled transport: the durable-receipt target formula is not evaluated here',
-					'main-thread work during Save is not split out by this pass'
-				]
-			};
-			report.rows.push(row);
-			console.log(formatRow(row));
-			const path = fileReport(report);
-			console.log(`raw results: ${path}`);
-			expect(feedback.length).toBeGreaterThan(0);
-		} finally {
-			await session.close();
+				cacheState
+			});
+			try {
+				if (cacheState === 'cold') await clearBrowserState(session.cdp);
+				await session.context.addCookies([cookie]);
+				const facts = await browserFacts(browser, session.page);
+				for (let index = 0; index < WARMUP_RUNS; index++) {
+					if (cacheState === 'cold') {
+						await clearBrowserState(session.cdp);
+						await session.context.addCookies([cookie]);
+					}
+					await saveOnce(session, origin);
+				}
+				const runs: SaveRun[] = [];
+				for (let index = 0; index < RUNS; index++) {
+					if (cacheState === 'cold') {
+						await clearBrowserState(session.cdp);
+						await session.context.addCookies([cookie]);
+					}
+					runs.push(await saveOnce(session, origin));
+				}
+				const feedback = runs
+					.map((run) => run.submitToSavingLabel)
+					.filter((value): value is number => value !== null);
+				const receipt = runs
+					.map((run) => run.submitToReceipt)
+					.filter((value): value is number => value !== null);
+				const saved = runs
+					.map((run) => run.submitToSavedLabel)
+					.filter((value): value is number => value !== null);
+				const row: ResultRow = {
+					id: `F9-save-local-${cacheState}`,
+					flow: 'F9 Save',
+					workload: 'S fixture, one typed edit, Save to the local test-auth stack',
+					cacheState,
+					network: NETWORK,
+					browser: `${testInfo.project.name} ${facts.chromeVersion}`,
+					cpuRate: 1,
+					viewport: `${VIEWPORT.width}x${VIEWPORT.height}@${DEVICE_SCALE_FACTOR}`,
+					metrics: {
+						wireBytesMedian: summarize(runs.map((run) => run.wireBytes)).median,
+						runs: runs.length
+					},
+					stats: {
+						localFeedback: summarize(feedback),
+						durableReceipt: summarize(receipt),
+						savedLabel: summarize(saved)
+					},
+					limitations: [
+						...passLimitations(),
+						'loopback unthrottled transport: the durable-receipt target formula is not evaluated here',
+						'main-thread work during Save is not split out by this pass'
+					]
+				};
+				report.rows.push(row);
+				console.log(formatRow(row));
+				expect(feedback.length).toBeGreaterThan(0);
+			} finally {
+				await session.close();
+			}
 		}
+		const path = fileReport(report);
+		console.log(`raw results: ${path}`);
+		expect(report.rows).toHaveLength(2);
 	});
 });

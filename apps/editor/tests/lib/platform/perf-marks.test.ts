@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	PERF_RECORD_LIMIT,
@@ -52,6 +52,30 @@ describe('perf marks are inert unless the harness enables them', () => {
 		expect(perfMarksEnabled()).toBe(false);
 		perfMark('save:submit');
 		expect(perfGlobal.__BISKIQ_PERF_RECORDS__).toBeUndefined();
+	});
+
+	it('does not evaluate installation detail or touch user timing while disabled', () => {
+		// `perfInstall` is on the continuous-drag path. Building its
+		// sequence-carrying detail object before the flag check would allocate on
+		// every pointer sample and would run getters the caller did not expect the
+		// ordinary build to run. A throwing getter proves the helper never reaches
+		// that work, and the clock/mark spies prove it emits nothing.
+		const now = vi.spyOn(performance, 'now');
+		const mark = vi.spyOn(performance, 'mark');
+		const detail = Object.defineProperty({}, 'wallId', {
+			enumerable: true,
+			get() {
+				throw new Error('installation detail was evaluated while disabled');
+			}
+		});
+		try {
+			expect(() => perfInstall('wall-preview', detail)).not.toThrow();
+			expect(now).not.toHaveBeenCalled();
+			expect(mark).not.toHaveBeenCalled();
+		} finally {
+			now.mockRestore();
+			mark.mockRestore();
+		}
 	});
 });
 
