@@ -1,7 +1,7 @@
 # T2.P02.S01 — acceptance record: Model resource storage and admission
 
 **Slice:** T2.P02.S01 · **Status:** implemented on `t2/p02-s01-model-resource-storage` at
-`b3d27bb5`, evidence recorded, **independent review owed** — not accepted, not merged ·
+`440bb690`, evidence recorded, **independent review owed** — not accepted, not merged ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T2.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -59,10 +59,10 @@ The slice adds no editor flow, so the batch E performance table's row for it is 
 | --- | --- |
 | API DB-backed, zero skips: owner-only, hash/size mismatch, oversize, non-glTF, missing referenced file, one revision for identical bytes, cancellation and expiry delete bytes, bounds at their limit | `apps/api/tests/model-resources.test.mjs` (8 tests) against real Postgres and a real object-store contract, including a streamed 50 MiB source and 25 MiB derivative and an upload after expiry that is refused with its bytes deleted; the whole `npm run test:api` suite green |
 | Save: unknown, foreign, unapproved, or size/type/provenance-disagreeing model pin refuses with no version change; a valid envelope saves and reloads with the same resource | `model-resources.test.mjs` "Save admits a model resource pinned to an approved revision and refuses every other pin" (unknown hash, wrong size, foreign project, staging-only, version stays 2) and "a staged import…" for the accepted save/load path |
-| Formats: old numbers refuse; strict readers reject unknown keys and part fields; resource without lock and lock without resource refuse | `apps/editor/tests/lib/project-model/model-resource-admission.test.ts` (14 tests) |
+| Formats: old numbers refuse; strict readers reject unknown keys and part fields; resource without lock and lock without resource refuse | `apps/editor/tests/lib/project-model/model-resource-admission.test.ts` (13 tests) |
 | No regression: catalogue/native placement, texture assets, conditional Save, conflict recovery, visitor/public boundary | `save`, `save-units`, `projects`, `assets`, `publication`, `migration*` API files; the affected editor project-model/Scene/stage/museum-asset contracts; the visitor cold-release catalogue-only test; the whole arch lane |
 
-## Evidence at `b3d27bb5`
+## Evidence at `440bb690`
 
 Environment: the owner's local checkout; `DATABASE_URL=postgresql://localhost:5432/biskiq`
 (reachable, no skip guards); Node 26.7.0; Vitest 3.2.7.
@@ -73,7 +73,7 @@ npm run check:api             pass   tsc -p tsconfig.json --noEmit, 0 errors
 npm run check                 pass   svelte-check: 0 errors, 0 warnings
 npm run test:api              pass   12 files / 88 tests, fail 0, skipped 0, cancelled 0 (exit 0)
 npm run test:arch             pass   21 files / 173 tests, default timeout, exit 0
-editor affected contracts     pass   39 files / 483 tests
+editor affected contracts     pass   39 files / 482 tests
   npx vitest run tests/lib/project-model tests/lib/authoring/scene \
     tests/lib/authoring/stage tests/lib/authoring/stage-source-admission.test.ts \
     tests/lib/museum/assets tests/lib/visitor/visitor-cold-runtime.test.ts
@@ -86,12 +86,15 @@ test streams a 50 MiB source file and a 25 MiB derivative through the upload rou
 checks the bytes are gone; the expiry test force-expires a staging import, refuses the next upload
 with 404, and checks its object and row are gone.
 
-The editor run includes the new 14-test model-resource contract, the new 3-test footprint contract,
+The editor run includes the new 13-test model-resource contract, the new 3-test footprint contract,
 the 15-test visitor cold-runtime contract (including the creator-model refusal), and the 13-test
-`stage-source-admission.ts` contract. `modelFootprints` is asserted on an admitted editor snapshot,
-and the cold release is exercised with a creator model and observed to refuse it.
+`stage-source-admission.ts` contract, which carries the end-to-end admission case and the
+`modelFootprints` assertion on the admitted snapshot. The cold release is exercised with a creator
+model and observed to refuse it.
 
-The code and contract evidence is at `b3d27bb5`. This record and the T2 baton were updated afterwards;
+The code and contract evidence is at `440bb690`, after a deletion-first pass removed the duplicated
+staging-expiry refusal, the duplicated structure-check signature, a re-exported size bound and three
+overlapping test cases. This record and the T2 baton were updated afterwards;
 the whole arch lane was re-run green on the final documentation tree (21 files / 173 tests at
 default), including the documentation-reference gate and the routing preflight that reads the
 baton.
@@ -156,6 +159,6 @@ regressions     apps/api/tests/model-resources.test.mjs
 
 ## Next
 
-Independent review of `b3d27bb5` against the plan. Acceptance, closeout and merge are not claimed;
+Independent review of `440bb690` against the plan. Acceptance, closeout and merge are not claimed;
 `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
 [`T2.P02.S03`](../t2.p02.s03-integrated-final-gate/acceptance.md).
