@@ -17,9 +17,8 @@ Three things to know before reading:
 - **§6c is done, after this report.** A review of `ff117342` found four more corrections (F1–F4); each was
   reproduced with its numbers and then fixed, and §6c now records what is true rather than what was open. The counts
   in §6b are the ones at that commit; after §6c the suite is 186 tests.
-- **The model, the offer cards and (since `6d`) Edit Shape are claimable.** Hold's pointer lifecycle is wired; ink
-  and the pen tips are still designed in the plan and absent from the code. Nothing here is a Round 4 acceptance
-  claim.
+- **The model, the offer cards, Edit Shape, the pen tips and ink are claimable.** Hold's pointer lifecycle is wired,
+  and §6g is the ink commit. Nothing here is a Round 4 acceptance claim.
 
 ---
 
@@ -508,6 +507,40 @@ no new tip for openings or stairs (those strokes stay hand-drawn).
 
 ---
 
+## 6g. Phase 4 — ink from meaning
+
+**What landed.** A roof's lines are now the boundaries between pieces that mean different things, not the edges of
+its triangles.
+
+- `src/scene/build/roofInk.ts` is pure geometry over the finished mesh. A *group* is (wing, surface, part), where the
+  part is the section joint the plan point falls in — so "same part of the same wing" means "same thing". Every
+  boundary between two groups is a line (ridge, hip, valley, crease, step, extreme edge, and the fascia's own edge and
+  corners); a boundary *inside* one group is a cell seam and cancels, because both facets share it. Two wings that meet
+  coplanar are one plane (within 5 mm and 2°), so their join is not drawn merely because the wing changed.
+- Curved boundaries are followed at 0.5 m steps and each point is lifted by the group's own height function, so a line
+  sits on the surface instead of chording through it; anything under 1 cm is a tessellation crumb and is dropped, and a
+  line shared by two boundaries is emitted once.
+- `buildOverhead` returns the ink (`{ ink: !live }`); `Stage.addInk` puts it in the edge slot with the same ghost twin
+  every outline has, so selection and the red pencil recolour it and **L** lifts it. Ink is deferred while the roof is
+  under the hand: a Hold drag needs the surface, not a union per group, so the settled roof is what gets inked.
+
+**Evidence.** `npm run typecheck` is clean; `npm test` is **22 files, 285 tests** (new `ink.test.ts` 10: a gable's ridge
+and edges only, a vault with nothing across it, a hipped gable's ridge and hips where the two heights agree, a step at
+both of its heights, a dome's rings without meridians, a curved surface followed rather than chorded with every line
+once, a compound roof with no seam where two wings are coplanar, and three unit cases over `roofInk` — coplanar
+groups, a step keeping both heights, and a hole outlined rather than chorded across). In the browser on 5191 with no
+console errors: the accepted model reads as ridge, hips, valleys and eaves, a vault as clean bands, and a hipped gable
+shows its ridge and its hips.
+
+Screenshots: `screenshots/ink-roofs.png`, `screenshots/ink-hipped-gable.png`.
+
+**Cut / honest limits.** Ink is line geometry in the edge material, so it is an outline, not a drawn stroke with weight
+that varies; a live Hold drag shows the surface without ink until release. The ink is a per-roof part, so it is rebuilt
+when that roof rebuilds, not incrementally. No ink for openings or glass, and the fascia's edge is the only under-surface
+line — a soffit's own corners are not drawn.
+
+---
+
 ## 7. What is not done
 
 Held against the plan's own phase table. §6c's F1–F4 and the Hold runtime review corrections above are done. Hold
@@ -516,10 +549,8 @@ qualifier. Full browser acceptance and the remaining phase work are still open.
 
 | Not started | Plan | Size |
 | --- | --- | --- |
-| Ink from meaning: `facets`/`ink`, `roofInk.ts`, revolve rings, ghost twins, `tests/ink.test.ts` | §7 | M |
 | Phase 7 (optional) room-sides push/pull | §10 | M |
 | §11 acceptance: per-phase gates, browser checks, the full §11.3 script, screenshots, the five-person test | §11 | M |
-| §12 docs and in-app help | §12 | S |
 
 The acceptance script's steps 1–4 (box and wing with a tip, one grouped cover, the Hold gestures over wings, Edit
 Shape, the mezzanine and its stair) are now wired and each step has browser evidence; the full §11.3 pass in one
@@ -533,7 +564,7 @@ From `prototypes/p3-vellum`:
 
 ```sh
 npm run typecheck     # tsc --noEmit
-npm test              # 20 files, 264 tests with §6b, §6c, the Hold review fixes and §6d
+npm test              # 22 files, 285 tests with §6b–§6g
 npm run build         # tsc --noEmit && vite build
 ```
 
@@ -547,7 +578,8 @@ git worktree remove --force /tmp/wt
 ```
 
 Result: `bc4299af` 79, `c547526e` 127, `258127e0` 151, `2a5fa0e5` 165, `96bc7d32` 165, `eb1095e6` 171. Typecheck is
-clean at every one of them. The §6b fixes commit raises the count to 181 on this same command.
+clean at every one of them. The §6b fixes commit raises the count to 181 on this same command; the pen tips take it to
+21 files, 275, and the ink commit to 22 files, 285.
 
-One number worth knowing before this becomes anything real: the production build emits a single ~960 kB bundle (281 kB
+One number worth knowing before this becomes anything real: the production build emits a single ~1.05 MB bundle (311 kB
 gzipped), almost all of it three.js — there is no code-splitting yet.
