@@ -30,9 +30,9 @@ ACTIVE: T3.P03.S01 `in-progress` on `t3/p03-s01-planner-scope-build-isolation`: 
 BATON: Review and accept T3.P03.S01 against its three acceptance rows — T1 (Stage/Layout) and T2
        (Scene) confirm their single-domain planners still admit — then close it out and merge: its
        merge is the start gate for T1.P02.S01, T2.P02.S01 and T3.P02.S01. T3.P03.S02
-       (measurement workflow, final gate) starts after it; the default-timeout `npm test` merge
-       gate is still owed on an unloaded host (the complete suite passed with timeout headroom
-       while unrelated applications held the machine at load average 47).
+       (measurement workflow, final gate) starts after it; the default-timeout `npm test` gate ran
+       green at `ffff320d` once host load fell (two earlier runs timed out untouched suites under
+       unrelated load average 47), and the per-merge rerun remains as the contract requires.
 NEXT:  T3.P03.S01 → merge → T3.P02.S01 and T3.P03.S02 in parallel. T3.P02.S01 settles its format
        draft's two open points (text bound, entryViewId) at implementation review.
 ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →

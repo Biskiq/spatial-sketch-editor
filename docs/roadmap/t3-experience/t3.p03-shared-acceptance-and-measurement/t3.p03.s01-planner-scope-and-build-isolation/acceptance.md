@@ -20,5 +20,6 @@ acceptance, readiness or implementation evidence until that record replaces this
 For that review: the implemented change also retargets the two static surface gate scripts (the same
 dead deleted-tree token) and corrects the F.4 current-implementation paragraph, neither of which the
 plan's change list names, so acceptance must disclose both. The Preview-injection and both-build
-mutation proofs are session evidence, not repository tests, and the default-timeout `npm test` merge
-gate is still owed on an unloaded host.
+mutation proofs are session evidence, not repository tests. The default-timeout `npm test` gate ran
+green at `ffff320d` once host load fell; two earlier runs timed out untouched suites under unrelated
+load average 47, and the per-merge rerun remains as the contract requires.
