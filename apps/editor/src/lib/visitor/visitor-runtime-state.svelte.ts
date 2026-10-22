@@ -27,8 +27,6 @@ export class VisitorRuntimeState {
 	readonly options: ExperienceInterpreterOptions;
 	/** Set by the host from `prefers-reduced-motion`; affects camera motion only. */
 	reducedMotion = $state(false);
-	/** A Stop-free Presentation selected through the visitor's DOM navigation. */
-	selectedPresentationId = $state<string | null>(null);
 	state: ExperienceRunState;
 
 	private readonly interpreter: ReturnType<typeof createExperienceInterpreter>;
@@ -44,36 +42,28 @@ export class VisitorRuntimeState {
 
 	/** Enter the Experience at its authored entry Stop. Idempotent. */
 	enter() {
-		this.selectedPresentationId = null;
 		this.state = this.interpreter.enter().state;
 	}
 
 	/** The explicit Continue control. A Gate or a finished hold advances once. */
 	continue() {
-		const before = this.state;
-		const next = this.interpreter.continue().state;
-		this.state = next;
-		// Continue during a hold is ignored by the interpreter. Only an actual
-		// advance returns the visitor from a detached Presentation to the Guide;
-		// a no-op keypress must not yank the selected View away.
-		if (next !== before) this.selectedPresentationId = null;
+		this.state = this.interpreter.continue().state;
 	}
 
 	/** An explicit authored destination; the Guide is never bypassed by this. */
 	navigate(stopId: string) {
-		this.selectedPresentationId = null;
 		this.state = this.interpreter.navigate(stopId).state;
 	}
 
 	/**
-	 * Select a Presentation that carries no Stop. It realizes the Presentation's
-	 * View through the same Camera authority and never fabricates a Stop.
+	 * Enter a Presentation that carries no Stop through the interpreter's
+	 * Presentation-entry event. It realizes the Presentation's Default View through
+	 * the same Camera authority and never fabricates a Stop.
 	 */
 	selectPresentation(presentationId: string): boolean {
-		if (!this.program.presentations.some((presentation) => presentation.id === presentationId)) {
-			return false;
-		}
-		this.selectedPresentationId = presentationId;
+		const result = this.interpreter.enterPresentation(presentationId);
+		if (result.outcome !== 'accepted') return false;
+		this.state = result.state;
 		return true;
 	}
 
@@ -102,30 +92,18 @@ export class VisitorRuntimeState {
 	}
 
 	get currentPresentation() {
-		if (this.selectedPresentationId !== null) {
-			return this.program.presentations.find(
-				(presentation) => presentation.id === this.selectedPresentationId
-			) ?? null;
-		}
-		const stop = this.currentStop;
-		return stop === null
+		const presentationId = this.state.presentationId;
+		return presentationId === null
 			? null
-			: this.program.presentations.find((presentation) => presentation.id === stop.presentationId) ?? null;
+			: this.program.presentations.find((presentation) => presentation.id === presentationId) ?? null;
 	}
 
-	/** The Camera view the current Stop's Presentation names, or `null`. */
+	/** The Camera View this run presents: the arrived Stop's own entry View. */
 	get currentViewId(): string | null {
-		return this.currentPresentation?.viewId ?? null;
+		return this.state.viewId;
 	}
 
 	get currentInvocation(): ProgramInvocation | null {
-		// A Stop-free Presentation has no authored connection: selecting it is a
-		// Cut through the same Camera authority. The interpreter's last invocation
-		// belongs to the Stop the visitor left, so it must not be replayed here.
-		if (this.selectedPresentationId !== null) {
-			const viewId = this.currentViewId;
-			return viewId === null ? null : { kind: 'cut', viewId };
-		}
 		return this.state.invocation;
 	}
 

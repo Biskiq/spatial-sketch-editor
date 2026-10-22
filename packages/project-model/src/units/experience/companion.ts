@@ -49,7 +49,8 @@ export type ExperienceCompanion = {
 	readonly presentations: readonly {
 		readonly presentationId: string;
 		readonly label: string;
-		readonly viewId: string;
+		readonly viewIds: readonly string[];
+		readonly defaultViewId: string;
 		readonly stopIds: readonly string[];
 	}[];
 	readonly panel: {
@@ -149,7 +150,8 @@ export function buildExperienceCompanion(
 		presentations: program.presentations.map((presentation) => ({
 			presentationId: presentation.id,
 			label: presentation.label,
-			viewId: presentation.viewId,
+			viewIds: presentation.viewIds,
+			defaultViewId: presentation.defaultViewId,
 			stopIds: program.stops
 				.filter((stop) => stop.presentationId === presentation.id)
 				.map((stop) => stop.id)

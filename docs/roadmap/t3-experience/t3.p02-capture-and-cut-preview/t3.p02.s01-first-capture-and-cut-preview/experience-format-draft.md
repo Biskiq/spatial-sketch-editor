@@ -45,9 +45,20 @@ tickets carry that epoch, so a completion from an exited run is refused. S01 off
 Reset. A case that would need one stops and reports, because it requires the ratified reset-fence
 interpreter change.
 
-## Open points for review
+## Implementation-review decisions (2026-10-22)
 
-1. The text length bound (proposed 4,000 characters) and whether Stop-local text is excluded from S01
-   (proposed: excluded; text belongs to the shared Presentation).
-2. Whether `entryViewId` alone covers "distinct entry roles" at reused Stops (proposed: yes; holds
-   and continuation already differ per Stop).
+The two open points this draft carried are settled here, at the implementation review the plan names.
+
+1. **Text bound: 4,000 code points, and no Stop-local text.** `body` is measured in Unicode code
+   points, so an authoring surface and the reader count the same text; a longer body refuses as a
+   structural issue rather than being truncated. Text belongs to the shared Presentation: a Stop is an
+   occurrence of a Presentation, so a per-Stop text field would create a second home for one panel's
+   copy and let two visits of the same Presentation disagree. Distinct copy at a reused Stop is
+   expressed by a second Presentation over the same View (the Presentation is the unit of subject and
+   text), which is format-2 data, not a new field.
+2. **`entryViewId` alone covers distinct entry roles at reused Stops.** A Stop's entry role is which
+   View of its Presentation the occurrence enters at; `entryViewId` names exactly that and defaults to
+   the Presentation's `defaultViewId`. Distinctions that are not the entry View — hold time, target of
+   the continuation, Cut versus Travel — already live on the Stop or its continuation edge, so a
+   second field per Stop would duplicate one of them. A role that needs different text or a different
+   subject is a different Presentation, per decision 1.

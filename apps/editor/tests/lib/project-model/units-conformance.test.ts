@@ -174,7 +174,9 @@ function experience(id: string, viewId: string): Experience {
 		id,
 		label: id,
 		entryGuideId: 'guide-1',
-		presentations: [{ id: 'presentation-1', label: 'Entry', viewId }],
+		presentations: [
+			{ id: 'presentation-1', label: 'Entry', viewIds: [viewId], defaultViewId: viewId, subject: null, text: null }
+		],
 		stops: [
 			{
 				id: 'stop-1',

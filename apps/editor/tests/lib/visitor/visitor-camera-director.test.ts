@@ -122,19 +122,20 @@ function graph(): NavigationGraph {
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 1,
+		formatVersion: 2,
 		capabilities: [],
 		experienceId: 'experience-director',
 		entryStopId: 'stop-1',
 		presentations: [
-			{ id: 'presentation-1', label: 'Entrance', viewId: 'view-1', content: [] },
-			{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] },
-			{ id: 'presentation-guide-free', label: 'Study', viewId: 'view-1', content: [] }
+			{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] },
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] },
+			{ id: 'presentation-guide-free', label: 'Study', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
+				viewId: 'view-1',
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				holdSeconds: null,
 				continuation: { kind: 'sequence-next' }
@@ -142,6 +143,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
+				viewId: 'view-2',
 				invocation: { kind: 'travel', connectionId: 'connection-2' },
 				holdSeconds: 1,
 				continuation: { kind: 'end' }
@@ -225,13 +227,13 @@ describe('mounted visitor Camera handoff', () => {
 		expect(target.querySelector('[data-testid="view"]')?.textContent).toBe('view-2');
 		expect(target.querySelector('[data-testid="phase"]')?.textContent).toBe('holding');
 
-		// A Stop-free selection is reactive too, and an advancing Continue clears it.
+		// A Stop-free selection is reactive too, and a real arrival replaces it.
 		visitor.selectPresentation('presentation-guide-free');
 		await tick();
 		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('presentation-guide-free');
-		visitor.tick(1100);
+		visitor.navigate('stop-2');
 		await tick();
-		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('none');
+		expect(target.querySelector('[data-testid="selected"]')?.textContent).toBe('presentation-2');
 	});
 
 	it('does not restart an in-flight Travel when hold ticks change interpreter state', async () => {
@@ -371,14 +373,15 @@ describe('mounted visitor Camera handoff', () => {
 		const threeStops = program({
 			entryStopId: 'stop-a',
 			presentations: [
-				{ id: 'presentation-a', label: 'Entrance', viewId: 'view-a', content: [] },
-				{ id: 'presentation-b', label: 'Gallery', viewId: 'view-b', content: [] },
-				{ id: 'presentation-c', label: 'Study', viewId: 'view-c', content: [] }
+				{ id: 'presentation-a', label: 'Entrance', viewIds: ['view-a'], defaultViewId: 'view-a', content: [] },
+				{ id: 'presentation-b', label: 'Gallery', viewIds: ['view-b'], defaultViewId: 'view-b', content: [] },
+				{ id: 'presentation-c', label: 'Study', viewIds: ['view-c'], defaultViewId: 'view-c', content: [] }
 			],
 			stops: [
 				{
 					id: 'stop-a',
 					presentationId: 'presentation-a',
+					viewId: 'view-a',
 					invocation: { kind: 'cut', viewId: 'view-a' },
 					holdSeconds: null,
 					continuation: { kind: 'sequence-next' }
@@ -386,6 +389,7 @@ describe('mounted visitor Camera handoff', () => {
 				{
 					id: 'stop-b',
 					presentationId: 'presentation-b',
+					viewId: 'view-b',
 					invocation: { kind: 'travel', connectionId: 'connection-ab' },
 					// Editorial time, not Camera arrival: this expires while the five-second
 					// Travel to B is still in flight.
@@ -395,6 +399,7 @@ describe('mounted visitor Camera handoff', () => {
 				{
 					id: 'stop-c',
 					presentationId: 'presentation-c',
+					viewId: 'view-c',
 					invocation: { kind: 'travel', connectionId: 'connection-bc' },
 					holdSeconds: null,
 					continuation: { kind: 'end' }
@@ -444,13 +449,14 @@ describe('mounted visitor Camera handoff', () => {
 		const visitor = createVisitorRuntimeState({
 			program: program({
 				presentations: [
-					{ id: 'presentation-1', label: 'Entrance', viewId: 'view-1', content: [] },
-					{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] }
+					{ id: 'presentation-1', label: 'Entrance', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] },
+					{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] }
 				],
 				stops: [
 					{
 						id: 'stop-1',
 						presentationId: 'presentation-1',
+						viewId: 'view-1',
 						invocation: { kind: 'cut', viewId: 'view-1' },
 						holdSeconds: null,
 						continuation: { kind: 'sequence-next' }
@@ -458,6 +464,7 @@ describe('mounted visitor Camera handoff', () => {
 					{
 						id: 'stop-2',
 						presentationId: 'presentation-2',
+						viewId: 'view-2',
 						invocation: { kind: 'travel', connectionId: 'connection-1' },
 						holdSeconds: 0.5,
 						continuation: { kind: 'sequence-next' }
@@ -465,6 +472,7 @@ describe('mounted visitor Camera handoff', () => {
 					{
 						id: 'stop-3',
 						presentationId: 'presentation-1',
+						viewId: 'view-1',
 						invocation: { kind: 'travel', connectionId: 'connection-1' },
 						holdSeconds: null,
 						continuation: { kind: 'end' }

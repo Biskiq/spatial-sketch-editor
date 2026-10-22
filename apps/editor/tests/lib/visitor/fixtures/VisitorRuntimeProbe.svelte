@@ -6,4 +6,4 @@
 
 <p data-testid="view">{visitor.currentViewId ?? 'none'}</p>
 <p data-testid="phase">{visitor.state.phase}</p>
-<p data-testid="selected">{visitor.selectedPresentationId ?? 'none'}</p>
+<p data-testid="selected">{visitor.state.presentationId ?? 'none'}</p>

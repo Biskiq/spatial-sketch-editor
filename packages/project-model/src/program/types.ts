@@ -22,7 +22,7 @@
 export const EXECUTION_PROGRAM_KIND = 'execution-program' as const;
 
 /** The program format version this module implements. */
-export const EXECUTION_PROGRAM_FORMAT_VERSION = 1 as const;
+export const EXECUTION_PROGRAM_FORMAT_VERSION = 2 as const;
 
 /**
  * A capability the program requires or tolerates. A reader must refuse an
@@ -33,11 +33,21 @@ export type ProgramCapability = { id: string; required: boolean };
 /** A content record shown by a Presentation. v1 admits text only. */
 export type ProgramContentRecord = { id: string; kind: 'text'; text: string };
 
-/** A labelled Presentation: the visitor-facing use of one Camera view. */
+/**
+ * A labelled, enterable Presentation: the visitor-facing use of the Camera Views
+ * it names.
+ *
+ * `viewIds` is display order only — never Guide order and never connectivity —
+ * and `defaultViewId` is the View the Presentation itself enters at. A Stop may
+ * enter at another of these Views through its own entry View, so a Cut to any
+ * member is this Presentation's Cut. Lowering omits a Presentation with no
+ * resolvable Default View: the delivery format only carries enterable ones.
+ */
 export type ProgramPresentation = {
 	id: string;
 	label: string;
-	viewId: string;
+	viewIds: readonly string[];
+	defaultViewId: string;
 	content: readonly ProgramContentRecord[];
 };
 
@@ -56,10 +66,17 @@ export type ProgramContinuation =
 	| { kind: 'stop'; stopId: string }
 	| { kind: 'end' };
 
-/** One stable Stop occurrence with its invocation and bounded hold. */
+/**
+ * One stable Stop occurrence with its invocation and bounded hold.
+ *
+ * `viewId` is the View this occurrence presents — the one its Stop enters at
+ * (`entryViewId` or the Presentation's Default). It is the occurrence's own fact,
+ * so a Presentation reused at two Stops may present two different Views.
+ */
 export type ProgramStop = {
 	id: string;
 	presentationId: string;
+	viewId: string;
 	invocation: ProgramInvocation;
 	/** Finite non-negative seconds, or `null` for no hold. */
 	holdSeconds: number | null;
@@ -124,7 +141,10 @@ export type ProgramProfile = {
 
 /**
  * The complete program. `entryStopId` is `null` exactly when `stops` is empty: an
- * empty program is explicit rather than a program with a dangling entry.
+ * empty program is explicit rather than a program with a dangling entry. A
+ * program with no Stops still carries its enterable Presentations, which the
+ * interpreter enters through the Presentation-entry event (a guide-free
+ * Experience enters one Presentation, never a fabricated Stop).
  */
 export type ExecutionProgram = {
 	kind: typeof EXECUTION_PROGRAM_KIND;

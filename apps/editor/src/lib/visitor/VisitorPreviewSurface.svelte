@@ -23,6 +23,8 @@ import { PCFShadowMap } from 'three';
 		graph,
 		program = null,
 		experienceOptions = null,
+		/** Enter this Presentation directly through the interpreter's Presentation entry. */
+		entryPresentationId = null,
 		resolveTexture,
 		textureScope = null,
 		reducedMotion = false,
@@ -37,6 +39,7 @@ import { PCFShadowMap } from 'three';
 		/** The lowered Experience program. Absent means no guided Experience. */
 		program?: ExecutionProgram | null;
 		experienceOptions?: ExperienceInterpreterOptions | null;
+		entryPresentationId?: string | null;
 		resolveTexture: (uri: string) => string | null;
 		textureScope?: TextureLoadScope | null;
 		reducedMotion?: boolean;
@@ -61,9 +64,12 @@ import { PCFShadowMap } from 'three';
 		visitorState.reducedMotion = reducedMotion;
 	});
 	// A program may arrive after the surface mounts, and a changed program creates
-	// a fresh neutral runtime. Enter every instance, not only the first.
+	// a fresh neutral runtime. Enter every instance, not only the first. A
+	// Presentation entry starts the same run at its Default View with no Stop.
 	$effect(() => {
-		visitorState?.enter();
+		if (visitorState === null) return;
+		if (entryPresentationId !== null) visitorState.selectPresentation(entryPresentationId);
+		else visitorState.enter();
 	});
 
 	const presentation = $derived.by(() => {
