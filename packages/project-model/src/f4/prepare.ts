@@ -36,11 +36,12 @@ export type { PlannerRegistration };
  * A planner registration refusal, or admission. Refusing at registration is the
  * honest place for a wider scope: `local-single-domain-v1` cannot make compound,
  * unit or resource-changing acceptance correct, so it declines the planner rather
- * than failing every one of its operations later.
+ * than failing every one of its operations later. The same applies to a compound
+ * planner whose declaration names no write set (`compound-write-set`).
  */
 export type RegistrationRefusal = {
 	readonly kind: 'refused';
-	/** `compound-acceptance` | `unit-acceptance` | `resource-admission` | `duplicate-kind`. */
+	/** `compound-acceptance` | `compound-write-set` | `unit-acceptance` | `resource-admission` | `duplicate-kind`. */
 	readonly reason: string;
 	readonly message: string;
 	readonly diagnostics: readonly ShapeIssue[];
@@ -166,6 +167,42 @@ export function createPlannerRegistry<Source>(
 					wider
 						? `planner "${planner.id}" needs compound acceptance, which this admission profile does not provide`
 						: `planner "${planner.id}" needs compound acceptance, which local-single-domain-v1 does not provide (T3.P01.S03's unit-acceptance-v1 owns it)`
+				);
+			}
+			if (planner.admission.compound && (planner.admission.writes ?? []).length === 0) {
+				// A compound planner that declares no write set is exactly the
+				// adapter-wide licence this provider stopped accepting: its scope would be
+				// "whatever the host grants" rather than what it can correctly produce.
+				// An empty set is the same contradiction as `writes` without `compound`:
+				// a planner that writes only its own domain is single-domain.
+				return registrationRefusal(
+					'compound-write-set',
+					`planner "${planner.id}" declares compound acceptance and must declare the other unit domains it writes (\`writes\`, at least one)`
+				);
+			}
+			const writes = planner.admission.writes ?? [];
+			const invalidWrite = writes.find(
+				(write, index) =>
+					write === planner.admission.domain ||
+					writes.indexOf(write) !== index ||
+					!(admission.domains as readonly string[]).includes(write)
+			);
+			if (invalidWrite !== undefined) {
+				// Registration and acceptance must not disagree: a write domain the
+				// profile never grants, the planner's own domain or a repeat is a
+				// declaration acceptance could only refuse later, on every operation.
+				return registrationRefusal(
+					'compound-write-set',
+					`planner "${planner.id}" declares write domain "${invalidWrite}", which must be a distinct domain other than "${planner.admission.domain}" that this profile admits (${admission.domains.join(', ')})`
+				);
+			}
+			if (!planner.admission.compound && planner.admission.writes !== undefined) {
+				// The opposite contradiction: a write set only widens a compound
+				// planner's declared scope, so accepting one here would silently ignore a
+				// declaration its author believed was enforced.
+				return registrationRefusal(
+					'compound-write-set',
+					`planner "${planner.id}" declares a write set without compound acceptance; a single-domain planner writes only its own domain`
 				);
 			}
 			if (planner.admission.units && !admission.units) {

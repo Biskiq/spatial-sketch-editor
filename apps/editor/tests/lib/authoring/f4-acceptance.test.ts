@@ -18,11 +18,13 @@ import {
 	PROOF_INVALID_CANDIDATE_KIND,
 	PROOF_LAYOUT_TRANSFORM_KIND,
 	PROOF_SCENE_SCALAR_KIND,
+	PROOF_SCENE_WALL_MOVE_KIND,
 	buildCurrentSourceFixture,
 	buildFoldedPartitionProject,
 	createInvalidCandidatePlanner,
 	createOverreachingPlanner,
 	createProofLayoutPlanner,
+	createSceneWithLayoutWritePlanner,
 	createProofSceneScalarPlanner,
 	layoutObjectReference,
 	proofIntent,
@@ -527,6 +529,57 @@ describe('F.4 acceptance coordinator — unit scope', () => {
 		expect(coordinator.acceptedSnapshot().sourceKind).toBe(UNIT_SOURCE_KIND);
 		expect(coordinator.acceptedSnapshot().domain.source.id).toBe('project-conformance');
 	});
+
+	it('refuses a candidate that changes a domain outside the producing planner’s write set', async () => {
+		// RR-4: a planner declared single-domain Scene whose candidate also moves a
+		// Wall. The envelope is valid and the operation is one install, so only
+		// per-planner scope enforcement can refuse it — targeted or untargeted,
+		// because an untargeted intent carries no domain for the dispatcher to
+		// compare.
+		const { coordinator, fixture } = await boot();
+		expect(coordinator.register(createSceneWithLayoutWritePlanner(fixture.objectId))).toEqual({
+			kind: 'registered'
+		});
+		const before = coordinator.current();
+		const sceneRevision = before.source.units.scene.header.contentRevision;
+		for (const targets of [[], [sceneEntityReference(sceneRevision, FIXTURE_ENTITY_ID)]] as const) {
+			const refused = await coordinator.accept(
+				proofIntent({
+					kind: PROOF_SCENE_WALL_MOVE_KIND,
+					operationId: 'op-scene-with-layout-write',
+					expectedRevision: before.revision.revisionId,
+					projectId: before.revision.projectId,
+					contentRevision: sceneRevision,
+					targets,
+					payload: null
+				})
+			);
+			expect(refused, `targets: ${targets.length}`).toMatchObject({
+				kind: 'rejected',
+				code: 'admission-refused',
+				reason: 'unsupported-change'
+			});
+			if (refused.kind !== 'rejected') continue;
+			expect(refused.diagnostics.some((entry) => entry.code === 'out-of-scope-domain')).toBe(true);
+			// No install, no revision, no history entry, no partial source.
+			expect(coordinator.current()).toEqual(before);
+			expect(coordinator.installs()).toBe(1);
+			expect(coordinator.history().depth).toBe(1);
+		}
+
+		// The controls: the same fixture confined to Layout, then to Scene, still
+		// installs, so the refusal is the extra domain and not the operation.
+		const layoutOnly = await coordinator.accept(
+			layoutIntent(fixture, before.revision, before.source, 'op-layout-only', [3, 0.5, 0])
+		);
+		expect(layoutOnly.kind).toBe('accepted');
+		const afterLayout = coordinator.current();
+		const sceneOnly = await coordinator.accept(
+			sceneIntent(afterLayout.revision, afterLayout.source, 'op-scene-only', true)
+		);
+		expect(sceneOnly.kind).toBe('accepted');
+		expect(coordinator.history().depth).toBe(3);
+	});
 });
 
 // These cases challenge the coordinator with callers/planners that violate its assumptions.
@@ -547,8 +600,9 @@ describe('F.4 adversarial boundary regressions', () => {
 	});
 
 	it('enforces resource and project ownership on actual candidates', async () => {
-		// Compound Layout/Camera changes are admitted by this profile; the resource
-		// unit and the project identity remain outside what a unit operation owns.
+		// The host profile grants compound installs, but each candidate is checked
+		// against the producing planner's own declaration; the resource unit and the
+		// project identity remain outside what any unit operation owns.
 		for (const change of ['resources', 'project'] as const) {
 			const { coordinator } = await boot();
 			const before = coordinator.current();

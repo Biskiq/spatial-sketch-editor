@@ -28,10 +28,14 @@
  *   `AcceptedSnapshot.acceptedRevision`; the Save capture stamps that revision
  *   into the persisted bytes at the persistence boundary.
  *
- * The adapter is constructed with the profile the host grants: a compound host
- * may change more than the planner's primary domain; a resource-staging host may
- * change the resource unit and lock. That mirrors `createUnitPlannerRegistry`'s
- * admission so registration and acceptance cannot disagree.
+ * The adapter is constructed with the profile the host **grants**: a compound
+ * host admits multi-domain installs; a resource-staging host admits resource
+ * unit and lock changes. The grant is not a planner's licence. `validateChange`
+ * receives the producing planner's whole admission and holds the candidate's
+ * changed unit domains to that planner's declared write set — its `domain`, plus
+ * a compound planner's `writes` — so an untargeted or Scene-targeted operation
+ * cannot quietly change a neighbouring authority. Resource and lock changes keep
+ * needing both the host's staging grant and the planner's `resources` grant.
  *
  * Runtime-safe: no editor, renderer, Svelte or Three import.
  */
@@ -256,7 +260,7 @@ export function createUnitAcceptanceAdapter(
 		sourceKind: UNIT_ENVELOPE_SOURCE_KIND,
 		sourceVersion: UNIT_ENVELOPE_SOURCE_VERSION,
 		admit: admitCandidate,
-		validateChange(before, after, domain) {
+		validateChange(before, after, admission) {
 			const issues: ShapeIssue[] = [];
 			if (before.id !== after.id) issues.push(issue('$.id', 'project-mismatch', 'an accepted operation cannot change the project identity'));
 			// The envelope's own fields are not a unit's to change. A planner owns one
@@ -284,17 +288,41 @@ export function createUnitAcceptanceAdapter(
 				);
 			}
 			const changed = changedDomains(before, after);
-			if (!compound && changed.some((changedDomain) => changedDomain !== domain)) {
+			// Two admissions hold, in this order: the host profile grants compound
+			// installs at all, and the producing planner's declaration says which
+			// domains this operation may write. An adapter-wide grant alone never
+			// widens a planner, and an untargeted intent gets no exemption.
+			if (!compound && changed.length > 1) {
 				issues.push(
 					issue(
 						'$.units',
 						'unsupported-compound',
-						`this admission changes one domain per operation; the candidate also changes ${changed.filter((item) => item !== domain).join(', ')}`
+						`this admission changes one domain per operation; the candidate changes ${changed.join(', ')}`
 					)
 				);
 			}
-			if (!resourceStaging && (changed.includes('resources') || lockChanged(before, after))) {
+			const permitted = new Set<string>([
+				admission.domain,
+				...(admission.compound ? admission.writes ?? [] : []),
+				// A staged resource/lock change is the planner's resource grant plus the
+				// host's staging grant, never a declared semantic write domain.
+				...(resourceStaging && admission.resources ? ['resources'] : [])
+			]);
+			const outsideScope = changed.filter((changedDomain) => !permitted.has(changedDomain));
+			if (outsideScope.length > 0) {
+				issues.push(
+					issue(
+						'$.units',
+						'out-of-scope-domain',
+						`the producing planner declares writes in ${[...permitted].join(', ')}; the candidate also changes ${outsideScope.join(', ')}`
+					)
+				);
+			}
+			const resourceChange = changed.includes('resources') || lockChanged(before, after);
+			if (resourceChange && !resourceStaging) {
 				issues.push(issue('$.units.resources', 'unsupported-resource', 'this admission does not grant resource staging or lock mutation'));
+			} else if (resourceChange && !admission.resources) {
+				issues.push(issue('$.units.resources', 'unsupported-resource', 'the producing planner does not declare resource staging'));
 			}
 			return issues;
 		}

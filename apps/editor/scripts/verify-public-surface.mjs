@@ -26,8 +26,10 @@ function listFiles(dir) {
 // and verifies the route root + plugin wiring. A source-only check of the
 // inner surface is insufficient — the plugin covers ancestor layouts,
 // dynamic imports and shared chunks via the transitive closure walk.
+// `$lib/authoring/` is the live editor tree; the token this replaced named the
+// deleted `$lib/editor/` and could never match a real import again.
 const FORBIDDEN = [
-	'$lib/editor/',
+	'$lib/authoring/',
 	'MuseumScene.svelte',
 	'MuseumHUD.svelte',
 	'MuseumCanvas.svelte',

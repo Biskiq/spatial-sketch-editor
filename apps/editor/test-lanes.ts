@@ -67,6 +67,11 @@ export const ARCH_FILES: string[] = [
 	// module, so no lane report or build can see the leak, and only the
 	// unconditional lane can own it.
 	'tests/lib/authoring/f4-public-isolation.test.ts',
+	// T3.P03.S01: the Visitor Preview surface's source closure. The public-route
+	// closure above and the build plugins see the resolved graph, but an authoring
+	// import added to the Preview root itself would leave every existing proof
+	// green while putting editor host code in a visitor-facing tree.
+	'tests/lib/visitor/preview-surface-closure.test.ts',
 	// T3.P01.S02: the conditional Save caller-retirement proof. It reads the
 	// editor tree for the old unconditional write and the one conditional client
 	// entry point; no lane report can see an uncalled legacy writer.

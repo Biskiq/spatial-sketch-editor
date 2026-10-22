@@ -22,7 +22,10 @@ export type PreviewSurfaceGraph = {
 };
 
 const FORBIDDEN_PATTERNS: ReadonlyArray<{ pattern: RegExp; label: string }> = [
-	{ pattern: /src\/lib\/editor\//, label: 'editor session/selection/history/gizmo/inspector/timeline' },
+	// The editor's authoring tree — Stage host, adapters, Save, F.4 acceptance — is
+	// editor machinery. This names the live tree; the deleted `src/lib/editor/`
+	// pattern it replaced could never match anything again.
+	{ pattern: /src\/lib\/authoring\//, label: 'editor authoring machinery (stage, adapters, Save, F.4)' },
 	{ pattern: /MuseumScene\.svelte/, label: 'bespoke MuseumScene' },
 	{ pattern: /MuseumHUD\.svelte/, label: 'bespoke MuseumHUD' },
 	{ pattern: /MuseumCanvas\.svelte/, label: 'museum canvas (Chopin-bound)' },

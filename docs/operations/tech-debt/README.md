@@ -229,7 +229,43 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## Open
 
-No entry is open. TD-10 was the last one and is fixed above.
+## TD-14 — envelope metadata moves outside a planner's content-derived scope check
+
+Status        open
+Found         2026-10-22, T3.P03.S01 review of `createUnitAcceptanceAdapter`'s `validateChange`
+Owner         T3 F4 acceptance (`unit-acceptance-v1`); no current consumer is blocked
+Symptom       An accepted operation can change envelope metadata that no unit payload owns — a unit
+              header's `unitId`, or a unit-scoped lock entry's `requiredCapabilities` — while every
+              changed-domain comparison reports nothing, so the change is attributed to no planner
+              and no declared scope. No user-visible symptom exists: the gap is reachable only from
+              planner code, and no authored journey produces it today.
+Reproduce     Take a normalized `unit-envelope-v1` project and (a) rewrite `units.layout.header.unitId`
+              only, or (b) append a resolvable `layout`/`object` lock entry whose
+              `requiredCapabilities` name an uncatalogued capability. Both are admitted by
+              `createUnitAcceptanceAdapter().admit`, and `validateChange` with a Layout-only planner
+              returns no issue for either — confirmed by a temporary probe against the conformance
+              fixture on 2026-10-22 (the probe was deleted; rebuild it from this recipe).
+Root cause    `packages/project-model/src/units/acceptance.ts`: `changedDomains` compares
+              `units[domain].header.contentRevision`, and `lockChanged` compares only `resource:`
+              lock entries. `normalizeUnitEnvelope` (same file) recomputes the `contentRevision`
+              field but preserves the rest of each header, every non-revision lock field, and the
+              lock's `requiredCapabilities`; `verifyUnitDependencyLocks` re-checks subject
+              revisions only. Layered: a unit header is authored-adjacent bookkeeping no planner is
+              meant to write, so no check existed to widen.
+Why green     No scope test builds a metadata-only candidate expecting acceptance. Every scope test
+              changes at least one unit payload, which is exactly what the content-revision
+              comparison can see.
+Fix options   1) Extend `validateChange` to compare the authored envelope shape it owns — unit
+              headers other than `contentRevision` against a recomputed canonical value, and unit
+              lock `requiredCapabilities`/`pin` against the planner's grants — the correct fix, once
+              a consumer decides whether a unit-scoped lock entry is planner-writable at all.
+              2) Compare a whole-envelope digest — do NOT: derived rewrites would become scope
+              failures and it duplicates the source-content identity. Keep the typed refusal
+              surface unchanged until an option is chosen.
+Then add      A refusal test per metadata field the chosen option covers, with the unchanged
+              source/revision/history assertions the other scope refusals already use.
+
+No other entry is open. TD-10 was open before it and is fixed above.
 
 ---
 
@@ -252,6 +288,6 @@ git show e90a58224443bdbf44114d7285d55c983b79cc84:docs/operations/tech-debt/READ
 | **TD-5** | Reuse and comparison over `$state`-proxied compiled geometry paid a ~12× per-read penalty, and a measured candidate optimization was proven output-identical yet slower | **retired with the benchmark.** No test measured per-access proxy cost, and the reuse counters were counts, not durations. | Its **lesson** — do not deep-proxy compiled geometry, and measure against the input the editor actually hands in — is carried in [`docs/roadmap/t1-spatial-world/planning-evidence.md`](../../roadmap/t1-spatial-world/planning-evidence.md) §15. |
 
 TD-6, TD-7 and TD-9 were fixed by `T3.P01.S04` (see the closure table above) and TD-10 by
-`T1.P01.S06`'s first increment (`21c18402`). No entry is open. A new deferred defect is added under
-`## Open` using the template, with the track or file that owns the remaining obligation named in
-`Owner`.
+`T1.P01.S06`'s first increment (`21c18402`). TD-14 is the one open entry. A new deferred defect is
+added under `## Open` using the template, with the track or file that owns the remaining obligation
+named in `Owner`.

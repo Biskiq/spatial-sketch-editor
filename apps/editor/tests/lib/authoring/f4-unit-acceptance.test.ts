@@ -72,7 +72,9 @@ function cameraViewPlanner(kind = 'camera-view', id = kind): DomainPlanner<Sourc
 		kind,
 		sourceKinds: [adapter.sourceKind],
 		sourceVersions: [1],
-		admission: { domain: 'camera', compound: true, units: true, resources: false },
+		// Compound admission states its extra domain: a compound planner must name at
+		// least one write domain beyond its own.
+		admission: { domain: 'camera', compound: true, writes: ['experience'], units: true, resources: false },
 		prepare({ snapshot, intent }) {
 			return {
 				kind: 'prepared',
@@ -207,6 +209,61 @@ describe('F.4 unit acceptance — the enduring lifecycle with a wider admission'
 		expect(coordinator.planners()).toHaveLength(0);
 	});
 
+	it('refuses a compound planner that declares no write set', () => {
+		// A compound planner's scope is its own declaration, not whatever the host
+		// grants: without `writes` the admission names no boundary to enforce, so
+		// registration refuses it instead of accepting every later candidate.
+		const registry = createUnitPlannerRegistry<Source>();
+		const undeclared: DomainPlanner<Source> = {
+			...cameraViewPlanner('compound-without-writes', 'compound-without-writes'),
+			admission: { domain: 'camera', compound: true, units: true, resources: false }
+		};
+		expect(registry.register(undeclared)).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
+		expect(registry.planners()).toHaveLength(0);
+		// The inverse contradiction is refused too: on a single-domain planner the
+		// field would widen nothing, so accepting it would silently ignore it.
+		expect(
+			registry.register({
+				...cameraViewPlanner('single-domain-with-writes', 'single-domain-with-writes'),
+				admission: { domain: 'camera', compound: false, writes: ['experience'], units: false, resources: false }
+			})
+		).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
+		expect(registry.planners()).toHaveLength(0);
+		// A declared write set is admitted, so the refusal is about the missing
+		// declaration rather than compound admission itself.
+		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });
+	});
+
+	it('refuses a compound write set that acceptance could only refuse later', () => {
+		// Registration and acceptance must not disagree: an empty set (a
+		// single-domain planner in disguise), the planner's own domain, a repeat or a
+		// domain the profile never admits is refused here, not on every operation.
+		const cases: ReadonlyArray<readonly [string, readonly string[]]> = [
+			['empty', []],
+			['own-domain', ['camera']],
+			['repeat', ['experience', 'experience']],
+			['not-a-domain', ['resources']]
+		];
+		for (const [name, writes] of cases) {
+			const registry = createUnitPlannerRegistry<Source>();
+			const planner: DomainPlanner<Source> = {
+				...cameraViewPlanner(`writes-${name}`, `writes-${name}`),
+				admission: { domain: 'camera', compound: true, writes: writes as never, units: true, resources: false }
+			};
+			expect(registry.register(planner), name).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
+			expect(registry.planners(), name).toHaveLength(0);
+		}
+		// A domain outside a narrower granted profile is refused the same way.
+		const narrow = createPlannerRegistry<Source>({ domains: ['camera', 'experience'], compound: true, units: true });
+		expect(
+			narrow.register({
+				...cameraViewPlanner('writes-ungranted', 'writes-ungranted'),
+				admission: { domain: 'camera', compound: true, writes: ['layout'], units: true, resources: false }
+			})
+		).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
+		expect(narrow.register(cameraViewPlanner())).toEqual({ kind: 'registered' });
+	});
+
 	it('refuses a duplicate operation kind and a resource planner it was not configured for', () => {
 		const registry = createUnitPlannerRegistry<Source>();
 		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });
@@ -327,7 +384,7 @@ describe('F.4 unit acceptance — the enduring lifecycle with a wider admission'
 		const registry = createUnitPlannerRegistry<Source>({ resourceStaging: true });
 		const planner: DomainPlanner<Source> = {
 			...cameraViewPlanner('staging-unit', 'staging-unit'),
-			admission: { domain: 'camera', compound: true, units: true, resources: true }
+			admission: { domain: 'camera', compound: true, writes: ['experience'], units: true, resources: true }
 		};
 		expect(registry.register(planner)).toEqual({ kind: 'registered' });
 		// A resource-bearing intent, so dispatch really takes the resource-admission

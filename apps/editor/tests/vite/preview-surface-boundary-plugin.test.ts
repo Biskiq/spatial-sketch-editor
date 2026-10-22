@@ -63,6 +63,23 @@ describe('preview-surface boundary plugin (actual generateBundle)', () => {
 		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/unresolved dynamic/);
 	});
 
+	it('passes a closure that reaches runtime-safe evaluators', () => {
+		// The control for the mutation proof above: shared package evaluators are
+		// admissible from the Preview surface; only editor machinery is not.
+		const plugin = previewSurfaceBoundaryPlugin() as unknown as {
+			transform: (this: unknown, code: string, id: string) => unknown;
+			generateBundle: (this: unknown, options: unknown, bundle: unknown) => void;
+		};
+		plugin.transform.call({}, `import '@portfolio/project-model/units';`, ROOT);
+		const evaluator = '/packages/project-model/src/units/index.ts';
+		plugin.transform.call({}, `export default 1;`, evaluator);
+		const ctx = stubContext({
+			[ROOT]: { importedIds: [evaluator], dynamicallyImportedIds: [] },
+			[evaluator]: { importedIds: [], dynamicallyImportedIds: [] }
+		});
+		expect(() => plugin.generateBundle.call(ctx, {}, {})).not.toThrow();
+	});
+
 	it('passes literal dynamics resolved in the graph', () => {
 		const plugin = previewSurfaceBoundaryPlugin() as unknown as {
 			transform: (this: unknown, code: string, id: string) => unknown;
@@ -86,17 +103,36 @@ describe('preview-surface boundary plugin (actual generateBundle)', () => {
 			transform: (this: unknown, code: string, id: string) => unknown;
 			generateBundle: (this: unknown, options: unknown, bundle: unknown) => void;
 		};
+		// The live editor tree is `src/lib/authoring/`; the deleted `src/lib/editor/`
+		// id this fixture named could no longer be rejected by the predicate.
 		plugin.transform.call({}, `import './Leaf.svelte';`, ROOT);
-		plugin.transform.call({}, `import '../editor/editor-store.svelte';`, '/src/lib/visitor/Leaf.svelte');
-		plugin.transform.call({}, `export default 1;`, '/src/lib/editor/editor-store.svelte');
+		plugin.transform.call({}, `import '../../authoring/f4/acceptance-coordinator';`, '/src/lib/visitor/Leaf.svelte');
+		plugin.transform.call({}, `export default 1;`, '/src/lib/authoring/f4/acceptance-coordinator.ts');
 		const ctx = stubContext({
 			[ROOT]: { importedIds: ['/src/lib/visitor/Leaf.svelte'], dynamicallyImportedIds: [] },
 			'/src/lib/visitor/Leaf.svelte': {
-				importedIds: ['/src/lib/editor/editor-store.svelte'],
+				importedIds: ['/src/lib/authoring/f4/acceptance-coordinator.ts'],
 				dynamicallyImportedIds: []
 			},
-			'/src/lib/editor/editor-store.svelte': { importedIds: [], dynamicallyImportedIds: [] }
+			'/src/lib/authoring/f4/acceptance-coordinator.ts': { importedIds: [], dynamicallyImportedIds: [] }
 		});
-		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/editor/);
+		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/authoring/);
+	});
+
+	it('rejects an authoring module imported directly by the Preview root', () => {
+		// The plan's literal fixture shape: the surface root itself importing
+		// authoring machinery, not only through an intermediate visitor leaf.
+		const plugin = previewSurfaceBoundaryPlugin() as unknown as {
+			transform: (this: unknown, code: string, id: string) => unknown;
+			generateBundle: (this: unknown, options: unknown, bundle: unknown) => void;
+		};
+		const coordinator = '/src/lib/authoring/f4/acceptance-coordinator.ts';
+		plugin.transform.call({}, `import '../../authoring/f4/acceptance-coordinator';`, ROOT);
+		plugin.transform.call({}, `export default 1;`, coordinator);
+		const ctx = stubContext({
+			[ROOT]: { importedIds: [coordinator], dynamicallyImportedIds: [] },
+			[coordinator]: { importedIds: [], dynamicallyImportedIds: [] }
+		});
+		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/authoring/);
 	});
 });

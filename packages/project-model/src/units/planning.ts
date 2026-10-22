@@ -350,10 +350,17 @@ export function createPresentationStopCreatePlanner(
 		kind: EXPERIENCE_PRESENTATION_STOP_CREATE_KIND,
 		// The operation is addressed through its parent Experience (the only
 		// pre-existing subject it targets), while it creates a Camera View as well.
-		// The landed dispatcher refuses a planner whose single declared domain
-		// disagrees with the intent's only domain, so the declared domain is the
-		// addressed one; `compound` is what admits the second domain's change.
-		admission: { domain: 'experience', compound: true, units: true, resources: options.resourceStaging === true },
+		// The dispatcher refuses a planner whose single declared domain disagrees
+		// with the intent's only domain, so the declared domain is the addressed one;
+		// `compound` admits the second domain's change and `writes` states exactly
+		// which one — acceptance holds changed units to that declared set.
+		admission: {
+			domain: 'experience',
+			compound: true,
+			writes: ['camera'],
+			units: true,
+			resources: options.resourceStaging === true
+		},
 		sourceKinds: [UNIT_SOURCE_KIND],
 		sourceVersions: [UNIT_SOURCE_VERSION],
 		prepare(request) {

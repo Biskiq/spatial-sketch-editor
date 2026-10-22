@@ -23,8 +23,10 @@ function listFiles(dir) {
 // `preview-surface-boundary` plugin, which walks the resolved module graph
 // (no regex) during `vite build`. This script fails fast on obvious leaks
 // and verifies the root + plugin wiring.
+// `$lib/authoring/` is the live editor tree; the token this replaced named the
+// deleted `$lib/editor/` and could never match a real import again.
 const FORBIDDEN = [
-	'$lib/editor/',
+	'$lib/authoring/',
 	'MuseumScene.svelte',
 	'MuseumHUD.svelte',
 	'MuseumCanvas.svelte',
