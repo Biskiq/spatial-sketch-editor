@@ -96,7 +96,6 @@ export function buildP23B11ConnectedCase(): LayoutDocumentWallFirst {
 				id,
 				startJunctionId: junctionId(column, row),
 				endJunctionId: junctionId(column + 1, row),
-				role: 'boundary',
 				thickness: WALL_THICKNESS,
 				height: WALL_HEIGHT,
 				centerline: curvedCenterline(start, end, `${id}:knot:1`, (row + column) % 2 === 0 ? BOW : -BOW)
@@ -113,7 +112,6 @@ export function buildP23B11ConnectedCase(): LayoutDocumentWallFirst {
 				id,
 				startJunctionId: junctionId(column, row),
 				endJunctionId: junctionId(column, row + 1),
-				role: 'boundary',
 				thickness: WALL_THICKNESS,
 				height: WALL_HEIGHT,
 				centerline: curvedCenterline(start, end, `${id}:knot:1`, (row + column) % 2 === 0 ? BOW : -BOW)

@@ -30,10 +30,10 @@ function squareDocument(): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		],
 		rooms: [{
 			id: 'room',
@@ -68,8 +68,8 @@ function degreeThreeDocument(): LayoutDocumentWallFirst {
 			: wall
 	);
 	document.walls.push(
-		{ id: 'w1b', startJunctionId: 'E', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-		{ id: 'w6', startJunctionId: 'E', endJunctionId: 'F', role: 'partition', thickness: 0.1, height: 3, centerline: { kind: 'line' } as const}
+		{ id: 'w1b', startJunctionId: 'E', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+		{ id: 'w6', startJunctionId: 'E', endJunctionId: 'F', thickness: 0.1, height: 3, centerline: { kind: 'line' } as const}
 	);
 	// Keep deterministic canonical document order: the square boundary first,
 	// then the two fragments in authored order.
@@ -96,9 +96,9 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 	const document = squareDocument();
 	document.junctions.push({ id: 'E', point: [8, 0] }, { id: 'F', point: [8, 3] });
 	document.walls.push(
-		{ id: 'w5', startJunctionId: 'C', endJunctionId: 'F', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-		{ id: 'w6', startJunctionId: 'F', endJunctionId: 'E', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-		{ id: 'w7', startJunctionId: 'E', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+		{ id: 'w5', startJunctionId: 'C', endJunctionId: 'F', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+		{ id: 'w6', startJunctionId: 'F', endJunctionId: 'E', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+		{ id: 'w7', startJunctionId: 'E', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 	);
 	document.rooms.push({
 		id: 'room-2',
@@ -125,7 +125,6 @@ function partitionCrossingDocument(): LayoutDocumentWallFirst {
 		id: 'w5',
 		startJunctionId: 'P',
 		endJunctionId: 'Q',
-		role: 'partition',
 		thickness: 0.1,
 		height: 3,
 		centerline: { kind: 'line' } as const,
@@ -146,7 +145,6 @@ function attachedPartitionCrossingDocument(): LayoutDocumentWallFirst {
 		id: 'w5',
 		startJunctionId: 'C',
 		endJunctionId: 'P',
-		role: 'partition',
 		thickness: 0.1,
 		height: 3,
 		centerline: { kind: 'line' } as const,
@@ -308,10 +306,10 @@ describe('P23.10 — canonical Junction coordinate edits', () => {
 			{ id: 'H', point: [6, 3] }
 		);
 		baseline.walls.push(
-			{ id: 'w5', startJunctionId: 'E', endJunctionId: 'F', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w6', startJunctionId: 'F', endJunctionId: 'G', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w7', startJunctionId: 'G', endJunctionId: 'H', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w8', startJunctionId: 'H', endJunctionId: 'E', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'w5', startJunctionId: 'E', endJunctionId: 'F', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w6', startJunctionId: 'F', endJunctionId: 'G', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w7', startJunctionId: 'G', endJunctionId: 'H', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w8', startJunctionId: 'H', endJunctionId: 'E', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		);
 		expect(planExactJunctionMove(baseline, 'A', [-1, 0])).toMatchObject({
 			kind: 'rejected',
@@ -336,7 +334,7 @@ describe('P23.10 — rigid straight-Wall translation', () => {
 		expect(result.changedWallIds).toEqual(['w1', 'w2', 'w4']);
 
 		const wall = result.document.walls.find((candidate) => candidate.id === 'w1')!;
-		expect(wall).toMatchObject({ startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const});
+		expect(wall).toMatchObject({ startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const});
 		// Rigid: length and direction are byte-identical.
 		const baselineWall = baseline.walls.find((candidate) => candidate.id === 'w1')!;
 		const length = (document: LayoutDocumentWallFirst) => {
@@ -484,7 +482,6 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 		// The retained fragment keeps the authored Wall ID and fields.
 		expect(result.document.walls.find((wall) => wall.id === 'w1')).toMatchObject({
 			startJunctionId: 'A',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -534,10 +531,10 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 			{ id: 'H', point: [6, 3] }
 		);
 		baseline.walls.push(
-			{ id: 'w5', startJunctionId: 'E', endJunctionId: 'F', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w6', startJunctionId: 'F', endJunctionId: 'G', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w7', startJunctionId: 'G', endJunctionId: 'H', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-			{ id: 'w8', startJunctionId: 'H', endJunctionId: 'E', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+			{ id: 'w5', startJunctionId: 'E', endJunctionId: 'F', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w6', startJunctionId: 'F', endJunctionId: 'G', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w7', startJunctionId: 'G', endJunctionId: 'H', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+			{ id: 'w8', startJunctionId: 'H', endJunctionId: 'E', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 		);
 		expect(planWallSubdivision(baseline, 'w1', 2, allocator)).toMatchObject({
 			kind: 'rejected',
@@ -563,10 +560,10 @@ describe('P23.10 — rectangle and subdivision reach the complete geometry seam'
 				{ id: 'S', point: [20, 3] }
 			);
 			document.walls.push(
-				{ id: 'wb1', startJunctionId: 'P', endJunctionId: 'Q', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'wb2', startJunctionId: 'Q', endJunctionId: 'R', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'wb3', startJunctionId: 'R', endJunctionId: 'S', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'wb4', startJunctionId: 'S', endJunctionId: 'P', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+				{ id: 'wb1', startJunctionId: 'P', endJunctionId: 'Q', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wb2', startJunctionId: 'Q', endJunctionId: 'R', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wb3', startJunctionId: 'R', endJunctionId: 'S', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wb4', startJunctionId: 'S', endJunctionId: 'P', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 			);
 			document.rooms.push({
 				id: 'room-3',

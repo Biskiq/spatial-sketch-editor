@@ -20,6 +20,7 @@ import {
 } from '@portfolio/project-model';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 import {
 	createSceneSession,
@@ -56,7 +57,7 @@ function supportedProject(entities: readonly SceneEntity[]): Promise<ProjectEnve
 			[0, 6]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	deriveLayoutWallRole,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	createWallSamplingDerivation,
@@ -45,7 +46,7 @@ function s2Fixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }> 
 }
 
 function curvedBoundaryWalls(document: LayoutDocumentWallFirst): number {
-	return document.walls.filter((wall) => wall.role === 'boundary' && wall.centerline.kind !== 'line').length;
+	return document.walls.filter((wall) => deriveLayoutWallRole(document, wall.id) !== 'free-standing' && wall.centerline.kind !== 'line').length;
 }
 
 describe('P23B.4 S2 — shared derivation through face extraction', () => {
@@ -258,11 +259,11 @@ describe('P23B.4 OR-8 — differential case families for the shared derivation',
 			...createEmptyWallFirstLayoutDocument(),
 			junctions,
 			walls: [
-				{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'wall-single', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'partition', thickness: 0.2, height: 3, centerline: chain([{ id: 'k1', point: single[1]! }], deriveChainSpans(single)) },
-				{ id: 'wall-multi', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'partition', thickness: 0.2, height: 3, centerline: chain(multi.slice(1, -1).map((point, index) => ({ id: `km${index}`, point })), deriveChainSpans(multi)) },
-				{ id: 'wall-deep', startJunctionId: 'j-e', endJunctionId: 'j-f', role: 'partition', thickness: 0.2, height: 3, centerline: chain([{ id: 'kdeep', point: deep[1]! }], deriveChainSpans(deep)) },
-				{ id: 'wall-tiny', startJunctionId: 'j-g', endJunctionId: 'j-h', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+				{ id: 'wall-straight', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'wall-single', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: chain([{ id: 'k1', point: single[1]! }], deriveChainSpans(single)) },
+				{ id: 'wall-multi', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: chain(multi.slice(1, -1).map((point, index) => ({ id: `km${index}`, point })), deriveChainSpans(multi)) },
+				{ id: 'wall-deep', startJunctionId: 'j-e', endJunctionId: 'j-f', thickness: 0.2, height: 3, centerline: chain([{ id: 'kdeep', point: deep[1]! }], deriveChainSpans(deep)) },
+				{ id: 'wall-tiny', startJunctionId: 'j-g', endJunctionId: 'j-h', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 			]
 		};
 		const lookup = new Map(junctions.map((junction) => [junction.id, junction.point]));

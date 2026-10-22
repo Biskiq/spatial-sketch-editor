@@ -27,6 +27,7 @@ import { composeColdReleaseBundle } from '$lib/visitor/visitor-cold-runtime';
 import { planFirstEnclosureCreation } from '@portfolio/layout-core';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -50,17 +51,18 @@ async function wallFirstPayload() {
 				{ id: 'j-d', point: [0, 4] as [number, number] }
 			],
 			walls: [
-				{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary' as const, thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+				{ id: 'wall-a', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 			],
 			rooms: [],
 			openings: [
 				{ id: 'door-1', wallId: 'wall-a', kind: 'door' as const, offset: 1, width: 0.9, height: 2.1, sillHeight: 0, profile: 'rectangular' as const }
 			],
 			objects: []
-		}
+		},
+		capture: freshCapture()
 	});
 	if (birth.kind !== 'success') throw new Error('birth fixture failed');
 	return createUnitProject({

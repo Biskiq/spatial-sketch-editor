@@ -133,10 +133,10 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 			{ id: 'b-j-b', point: [26, 4] }
 		);
 		doc.walls.push(
-			{ id: 'a-straight', startJunctionId: 'a-j-a', endJunctionId: 'a-j-m', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'a-curved', startJunctionId: 'a-j-m', endJunctionId: 'a-j-b', role: 'partition', thickness: 0.2, height: 3, centerline: curve([6, 0], [6, 4], [1, -2], 'a-curved:knot:1') },
-			{ id: 'b-straight', startJunctionId: 'b-j-a', endJunctionId: 'b-j-m', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'b-curved', startJunctionId: 'b-j-m', endJunctionId: 'b-j-b', role: 'partition', thickness: 0.2, height: 3, centerline: curve([26, 0], [26, 4], [21, -2], 'b-curved:knot:1') }
+			{ id: 'a-straight', startJunctionId: 'a-j-a', endJunctionId: 'a-j-m', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'a-curved', startJunctionId: 'a-j-m', endJunctionId: 'a-j-b', thickness: 0.2, height: 3, centerline: curve([6, 0], [6, 4], [1, -2], 'a-curved:knot:1') },
+			{ id: 'b-straight', startJunctionId: 'b-j-a', endJunctionId: 'b-j-m', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'b-curved', startJunctionId: 'b-j-m', endJunctionId: 'b-j-b', thickness: 0.2, height: 3, centerline: curve([26, 0], [26, 4], [21, -2], 'b-curved:knot:1') }
 		);
 		fixtures.push({ id: 'edge-multi-crossing', document: doc });
 	}
@@ -154,9 +154,9 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 				{ id: `${suffix}-j-3`, point: [8, 0.7 + gap] }
 			);
 			doc.walls.push(
-				{ id: `${suffix}-w-low`, startJunctionId: `${suffix}-j-0`, endJunctionId: `${suffix}-j-1`, role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, 0.35], `${suffix}-w-low:knot:1`) },
-				{ id: `${suffix}-w-link`, startJunctionId: `${suffix}-j-1`, endJunctionId: `${suffix}-j-3`, role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: `${suffix}-w-high`, startJunctionId: `${suffix}-j-2`, endJunctionId: `${suffix}-j-3`, role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0.7 + gap], [8, 0.7 + gap], [4, 0.35 + gap], `${suffix}-w-high:knot:1`) }
+				{ id: `${suffix}-w-low`, startJunctionId: `${suffix}-j-0`, endJunctionId: `${suffix}-j-1`, thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, 0.35], `${suffix}-w-low:knot:1`) },
+				{ id: `${suffix}-w-link`, startJunctionId: `${suffix}-j-1`, endJunctionId: `${suffix}-j-3`, thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: `${suffix}-w-high`, startJunctionId: `${suffix}-j-2`, endJunctionId: `${suffix}-j-3`, thickness: 0.2, height: 3, centerline: curve([0, 0.7 + gap], [8, 0.7 + gap], [4, 0.35 + gap], `${suffix}-w-high:knot:1`) }
 			);
 			return doc;
 		};
@@ -172,8 +172,8 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 			{ id: 'j-c', point: [8, 0.000001] }
 		);
 		doc.walls.push(
-			{ id: 'wall-long', startJunctionId: 'j-a', endJunctionId: 'j-b', role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, -0.3], 'wall-long:knot:1') },
-			{ id: 'wall-tiny', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'wall-long', startJunctionId: 'j-a', endJunctionId: 'j-b', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, -0.3], 'wall-long:knot:1') },
+			{ id: 'wall-tiny', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 		);
 		fixtures.push({ id: 'edge-degenerate-tiny', document: doc });
 	}
@@ -197,10 +197,10 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 			{ id: 'j-4', point: [0, 0] }
 		);
 		doc.walls.push(
-			{ id: 'w-0', startJunctionId: 'j-0', endJunctionId: 'j-1', role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, -0.3], 'w-0:knot:1') },
-			{ id: 'w-1', startJunctionId: 'j-1', endJunctionId: 'j-2', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w-2', startJunctionId: 'j-2', endJunctionId: 'j-3', role: 'partition', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w-3', startJunctionId: 'j-3', endJunctionId: 'j-4', role: 'partition', thickness: 0.2, height: 3, centerline: curve([0, 8], [0, 0], [-0.3, 4], 'w-3:knot:1') }
+			{ id: 'w-0', startJunctionId: 'j-0', endJunctionId: 'j-1', thickness: 0.2, height: 3, centerline: curve([0, 0], [8, 0], [4, -0.3], 'w-0:knot:1') },
+			{ id: 'w-1', startJunctionId: 'j-1', endJunctionId: 'j-2', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w-2', startJunctionId: 'j-2', endJunctionId: 'j-3', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w-3', startJunctionId: 'j-3', endJunctionId: 'j-4', thickness: 0.2, height: 3, centerline: curve([0, 8], [0, 0], [-0.3, 4], 'w-3:knot:1') }
 		);
 		fixtures.push({ id: 'edge-touch-chain', document: doc });
 	}
@@ -222,14 +222,14 @@ function edgeFixtures(): Array<{ id: string; document: LayoutDocumentWallFirst }
 				{ id: 'b3', point: [8, 16] }
 			);
 			doc.walls.push(
-				{ id: 'r1-south', startJunctionId: 'a0', endJunctionId: 'a1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'r1-east', startJunctionId: 'a1', endJunctionId: 'a2', role: 'boundary', thickness: 0.2, height: 3, centerline: eastKnot ? curve([8, 0], [8, 8], eastKnot, 'r1-east:knot:1') : { kind: 'line' } },
-				{ id: 'r1-north', startJunctionId: 'a2', endJunctionId: 'a3', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'r1-west', startJunctionId: 'a3', endJunctionId: 'a0', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'r2-south', startJunctionId: 'a2', endJunctionId: 'b1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'r2-east', startJunctionId: 'b1', endJunctionId: 'b2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'r2-north', startJunctionId: 'b2', endJunctionId: 'b3', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-				{ id: 'r2-west', startJunctionId: 'b3', endJunctionId: 'a2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+				{ id: 'r1-south', startJunctionId: 'a0', endJunctionId: 'a1', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r1-east', startJunctionId: 'a1', endJunctionId: 'a2', thickness: 0.2, height: 3, centerline: eastKnot ? curve([8, 0], [8, 8], eastKnot, 'r1-east:knot:1') : { kind: 'line' } },
+				{ id: 'r1-north', startJunctionId: 'a2', endJunctionId: 'a3', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r1-west', startJunctionId: 'a3', endJunctionId: 'a0', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-south', startJunctionId: 'a2', endJunctionId: 'b1', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-east', startJunctionId: 'b1', endJunctionId: 'b2', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-north', startJunctionId: 'b2', endJunctionId: 'b3', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+				{ id: 'r2-west', startJunctionId: 'b3', endJunctionId: 'a2', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 			);
 			doc.rooms.push(
 				{ id: 'room-1', name: 'SW', floorThickness: 0.1, ceilingThickness: 0.1, boundary: [

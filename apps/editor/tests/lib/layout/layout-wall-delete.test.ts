@@ -1,7 +1,7 @@
 /**
  * P23.6c — canonical Wall deletion.
  *
- * Planner contract (`planDeleteWall`, the `planWallRoleChange` architecture):
+ * Planner contract (`planDeleteWall`, the topology-changing-operation architecture):
  * topology-changing Wall operations go through candidate graph → face
  * extraction → P23.8 Room reconciliation → canonical validation/compiler,
  * never direct `walls` mutation. Pinned here:
@@ -37,17 +37,20 @@ import type {
 } from '@portfolio/layout-core';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
-	planDeleteWall,
-	planWallRoleChange,
+	planDeleteWall as planDeleteWallWithCapture,
 	type WallFirstOpPlan
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/** One captured Wall delete: every call is a new edit with a new nonce. */
+const deleteWall = (document: LayoutDocumentWallFirst, wallId: string): WallFirstOpPlan =>
+	planDeleteWallWithCapture(document, wallId, freshCapture());
 
 type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-};
+	};
 
 /**
  * Two-room wall-first fixture: a 6×4 enclosure split at x=3 by the shared
@@ -74,18 +77,17 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		{ id: 'wall-c2', start: 'j-n', end: 'j-d' },
 		{ id: 'wall-d', start: 'j-d', end: 'j-a' },
 		{ id: 'wall-e', start: 'j-m', end: 'j-n' },
-		{ id: 'wall-rl', start: 'j-x', end: 'j-y', role: 'partition' }
+		{ id: 'wall-rl', start: 'j-x', end: 'j-y' }
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 5 as const,
+		formatVersion: 6 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? ('boundary' as const),
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -140,7 +142,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 	});
 
 	it('deletes a shared boundary Wall and reconciles 2 Rooms → 1 through the normal path', () => {
-		const plan = success(planDeleteWall(BASE, 'wall-e'));
+		const plan = success(deleteWall(BASE, 'wall-e'));
 		// One physical Wall gone; both predecessor rooms replaced by exactly
 		// one survivor (the merge-survivor keeps the deterministic winner's ID).
 		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-e');
@@ -165,7 +167,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 	});
 
 	it('deletes an outer boundary Wall and retires the opened Room deterministically', () => {
-		const plan = success(planDeleteWall(BASE, 'wall-b'));
+		const plan = success(deleteWall(BASE, 'wall-b'));
 		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-b');
 		// The right enclosure opened: room-right retired, room-left untouched.
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left']);
@@ -180,7 +182,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 	});
 
 	it('deletes a roomless partition Wall with existing Room topology and identities unchanged', () => {
-		const plan = success(planDeleteWall(BASE, 'wall-rl'));
+		const plan = success(deleteWall(BASE, 'wall-rl'));
 		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-rl');
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left', 'room-right']);
 		expect(plan.retiredRoomIds).toEqual([]);
@@ -219,11 +221,11 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 				}
 			]
 		};
-		const sharedDelete = success(planDeleteWall(hosted, 'wall-e'));
+		const sharedDelete = success(deleteWall(hosted, 'wall-e'));
 		expect(sharedDelete.document.openings.map((opening) => opening.id)).toEqual([
 			'opening:window:1'
 		]);
-		const partitionDelete = success(planDeleteWall(hosted, 'wall-rl'));
+		const partitionDelete = success(deleteWall(hosted, 'wall-rl'));
 		expect(partitionDelete.document.openings.map((opening) => opening.id)).toEqual([
 			'opening:door:1'
 		]);
@@ -231,7 +233,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 
 	it('prunes Junctions reference-only: shared endpoints never vanish, orphans do', () => {
 		// Deleting the roomless partition orphans exactly its two endpoints.
-		const orphanPlan = success(planDeleteWall(BASE, 'wall-rl'));
+		const orphanPlan = success(deleteWall(BASE, 'wall-rl'));
 		expect(orphanPlan.document.junctions.map((junction) => junction.id)).toEqual([
 			'j-a',
 			'j-m',
@@ -242,7 +244,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 		]);
 		// Deleting one segment of the left room's outer boundary keeps j-a:
 		// wall-d still references it (no spatial healing, no merging).
-		const outerPlan = success(planDeleteWall(BASE, 'wall-a1'));
+		const outerPlan = success(deleteWall(BASE, 'wall-a1'));
 		const junctionIds = new Set(outerPlan.document.junctions.map((junction) => junction.id));
 		expect(junctionIds.has('j-a')).toBe(true);
 		expect(junctionIds.has('j-m')).toBe(true);
@@ -261,20 +263,20 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 		// The orphan is valid input: walls resolve, rooms are untouched.
 		expect(validateWallFirstLayoutDocument(withUnrelatedOrphan).success).toBe(true);
 		for (const wallId of ['wall-rl', 'wall-e', 'wall-b']) {
-			const plan = success(planDeleteWall(withUnrelatedOrphan, wallId));
+			const plan = success(deleteWall(withUnrelatedOrphan, wallId));
 			expect(plan.document.junctions.map((junction) => junction.id)).toContain('j-orphan');
 			expect(validateWallFirstLayoutDocument(plan.document).success).toBe(true);
 		}
 		// The deleted Wall's own endpoints still prune under the same rule:
 		// wall-rl's j-x/j-y go, but the unrelated orphan survives.
-		const partitionPlan = success(planDeleteWall(withUnrelatedOrphan, 'wall-rl'));
+		const partitionPlan = success(deleteWall(withUnrelatedOrphan, 'wall-rl'));
 		const ids = new Set(partitionPlan.document.junctions.map((junction) => junction.id));
 		expect(ids.has('j-x')).toBe(false);
 		expect(ids.has('j-y')).toBe(false);
 		expect(ids.has('j-orphan')).toBe(true);
 		// And when one endpoint IS shared with a surviving Wall, it survives
 		// while the other endpoint goes — per-endpoint reference check.
-		const outerPlan = success(planDeleteWall(withUnrelatedOrphan, 'wall-a1'));
+		const outerPlan = success(deleteWall(withUnrelatedOrphan, 'wall-a1'));
 		const outerIds = new Set(outerPlan.document.junctions.map((junction) => junction.id));
 		expect(outerIds.has('j-a')).toBe(true);
 		expect(outerIds.has('j-m')).toBe(true);
@@ -298,7 +300,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 				}
 			]
 		};
-		const plan = success(planDeleteWall(related, 'wall-e'));
+		const plan = success(deleteWall(related, 'wall-e'));
 		expect(plan.document.openings).toHaveLength(1);
 		// Both endpoints resolve to the deterministic merge survivor; the
 		// collapsed tuple clears per the P23.8 semantic-collapse rule only
@@ -329,7 +331,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 				}
 			]
 		};
-		const plan = success(planDeleteWall(related, 'wall-e'));
+		const plan = success(deleteWall(related, 'wall-e'));
 		expect(plan.document.openings).toEqual([]);
 	});
 
@@ -355,7 +357,7 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 				}
 			]
 		};
-		const plan = success(planDeleteWall(withObjects, 'wall-e'));
+		const plan = success(deleteWall(withObjects, 'wall-e'));
 		const byId = new Map(plan.document.objects.map((object) => [object.id, object]));
 		const survivorId = plan.document.rooms[0]!.id;
 		expect(byId.get('obj-1')!.roomId).toBe(survivorId);
@@ -363,23 +365,23 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 	});
 
 	it('rejects an unknown Wall atomically', () => {
-		expect(rejection(planDeleteWall(BASE, 'wall-missing'))).toMatchObject({
+		expect(rejection(deleteWall(BASE, 'wall-missing'))).toMatchObject({
 			code: 'unknown_wall'
 		});
 	});
 
 	it('is input-pure: the baseline document is never mutated', () => {
 		const snapshot = JSON.stringify(BASE);
-		success(planDeleteWall(BASE, 'wall-e'));
-		success(planDeleteWall(BASE, 'wall-b'));
-		success(planDeleteWall(BASE, 'wall-rl'));
+		success(deleteWall(BASE, 'wall-e'));
+		success(deleteWall(BASE, 'wall-b'));
+		success(deleteWall(BASE, 'wall-rl'));
 		expect(JSON.stringify(BASE)).toBe(snapshot);
 	});
 
 	it('demolishes every Wall one deletion at a time to an empty document', () => {
 		let document: LayoutDocumentWallFirst = BASE;
 		for (const wallId of ['wall-e', 'wall-b', 'wall-d', 'wall-a1', 'wall-a2', 'wall-c1', 'wall-c2', 'wall-rl']) {
-			document = success(planDeleteWall(document, wallId)).document;
+			document = success(deleteWall(document, wallId)).document;
 			expect(validateWallFirstLayoutDocument(document).success).toBe(true);
 		}
 		expect(document.walls).toEqual([]);
@@ -388,12 +390,9 @@ describe('P23.6c planDeleteWall — planner contract', () => {
 		expect(compileWallFirstLayoutGeometry(document).geometry.walls).toEqual([]);
 	});
 
-	it('keeps the role-change planner independent of the delete path', () => {
-		// The partition flip and the delete disagree on the same input without
-		// one leaking into the other: flipping wall-rl to boundary creates no
-		// closed face, so the role change is a canonical success with no Room
-		// change — while the delete of the same wall also succeeds cleanly.
-		const flipped = planWallRoleChange(BASE, 'wall-rl', 'boundary');
-		expect(flipped.kind).toBe('success');		expect(success(planDeleteWall(BASE, 'wall-rl')).kind).toBe('success');
+	it('deletes the roomless Wall cleanly (the former role-change subject is gone)', () => {
+		// Format 6 retires the role-change planner, so this covers the surviving
+		// operation: the same Wall deletes with no Room change.
+		expect(success(deleteWall(BASE, 'wall-rl')).kind).toBe('success');
 	});
 });

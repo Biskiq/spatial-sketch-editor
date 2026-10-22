@@ -18,6 +18,7 @@ import {
 	LAYOUT_ARCHITECTURAL_PRESETS,
 	layoutArchitecturalPreset,
 	layoutPresetPlacement,
+	nextLayoutPresetObjectId,
 	planCommitLayoutObjectPreset,
 	planDeleteLayoutObject,
 	planExactLayoutObjectTransform,
@@ -30,6 +31,7 @@ import {
 } from '@portfolio/layout-core';
 import { LAYOUT_WALL_FIRST_FORMAT_VERSION } from '@portfolio/layout-core';
 import type { LayoutVec2 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 function emptyDocument(elevation = 0): LayoutDocumentWallFirst {
 	return {
@@ -44,12 +46,33 @@ function emptyDocument(elevation = 0): LayoutDocumentWallFirst {
 	};
 }
 
+/**
+ * One preset operation: mint the capture, derive the captured id from the
+ * pre-commit document, then let the planner re-derive and verify it. A fresh
+ * capture per operation is the contract (reusing one is the collision case).
+ */
+function planPreset(
+	document: LayoutDocumentWallFirst,
+	presetId: LayoutArchitecturalPresetId,
+	point: LayoutVec2,
+	elevation = 0
+) {
+	const capture = freshCapture();
+	const capturedObjectId = nextLayoutPresetObjectId(document, capture);
+	return {
+		document,
+		capture,
+		capturedObjectId,
+		plan: planCommitLayoutObjectPreset(document, presetId, point, elevation, capturedObjectId)
+	};
+}
+
 function committedObject(
 	presetId: LayoutArchitecturalPresetId,
 	point: LayoutVec2,
 	elevation = 0
 ): LayoutDocumentWallFirst {
-	const plan = planCommitLayoutObjectPreset(emptyDocument(elevation), presetId, point, elevation);
+	const { plan } = planPreset(emptyDocument(elevation), presetId, point, elevation);
 	if (plan.kind !== 'success') throw new Error(`preset commit rejected: ${plan.rejection.message}`);
 	return plan.document;
 }
@@ -77,20 +100,20 @@ describe('P23.5 small architectural preset set', () => {
 	});
 
 	it('commits a Column as one ordinary document-level cylinder object', () => {
-		const plan = planCommitLayoutObjectPreset(emptyDocument(), 'column', [5, 6], 0);
+		const { plan, capturedObjectId } = planPreset(emptyDocument(), 'column', [5, 6], 0);
 		if (plan.kind !== 'success') throw new Error(`rejected: ${plan.rejection.message}`);
 		expect(plan.operation).toBe('layout-object-preset-create');
 		expect(plan.document.objects).toHaveLength(1);
 		const object = plan.document.objects[0]!;
 		expect(object).toMatchObject({
-			id: 'layout-object-1',
+			id: capturedObjectId,
 			kind: 'cylinder',
 			position: [5, 1.5, 6],
 			rotation: [0, 0, 0],
 			dimensions: [0.4, 3, 0.4]
 		});
 		expect(object).not.toHaveProperty('roomId');
-		expect(plan.createdObjectId).toBe('layout-object-1');
+		expect(plan.createdObjectId).toBe(capturedObjectId);
 	});
 
 	it('commits Platform and Plinth as ordinary box objects', () => {
@@ -115,43 +138,46 @@ describe('P23.5 small architectural preset set', () => {
 		expect(serializeWallFirstLayoutDocument(document)).not.toContain('preset');
 	});
 
-	it('allocates deterministic object ids and never mutates the input', () => {
+	it('derives object ids from each operation’s capture and never mutates the input', () => {
 		const baseline = emptyDocument();
-		const first = planCommitLayoutObjectPreset(baseline, 'column', [0, 0], 0);
-		if (first.kind !== 'success') throw new Error('first commit rejected');
+		const first = planPreset(baseline, 'column', [0, 0], 0);
+		if (first.plan.kind !== 'success') throw new Error('first commit rejected');
 		expect(baseline.objects).toHaveLength(0);
-		const second = planCommitLayoutObjectPreset(first.document, 'column', [1, 1], 0);
-		if (second.kind !== 'success') throw new Error('second commit rejected');
-		expect(second.document.objects.map((object) => object.id)).toEqual([
-			'layout-object-1',
-			'layout-object-2'
+		const second = planPreset(first.plan.document, 'column', [1, 1], 0);
+		if (second.plan.kind !== 'success') throw new Error('second commit rejected');
+		expect(second.plan.document.objects.map((object) => object.id)).toEqual([
+			first.capturedObjectId,
+			second.capturedObjectId
 		]);
-		expect(second.createdObjectId).toBe('layout-object-2');
+		expect(second.plan.createdObjectId).toBe(second.capturedObjectId);
+		// A new operation never reuses the previous operation's identity.
+		expect(second.capturedObjectId).not.toBe(first.capturedObjectId);
 	});
 
 	it('rejects unknown presets, non-finite points and non-finite elevations', () => {
-		const unknown = planCommitLayoutObjectPreset(
+		const unknown = planPreset(
 			emptyDocument(),
 			'partition' as LayoutArchitecturalPresetId,
 			[0, 0],
 			0
-		);
+		).plan;
 		expect(unknown.kind).toBe('rejected');
-		const nanPoint = planCommitLayoutObjectPreset(emptyDocument(), 'column', [NaN, 0], 0);
+		const nanPoint = planPreset(emptyDocument(), 'column', [NaN, 0], 0).plan;
 		expect(nanPoint.kind).toBe('rejected');
-		const nanElevation = planCommitLayoutObjectPreset(emptyDocument(), 'column', [0, 0], NaN);
+		const nanElevation = planPreset(emptyDocument(), 'column', [0, 0], NaN).plan;
 		expect(nanElevation.kind).toBe('rejected');
 		expect(layoutPresetPlacement(layoutArchitecturalPreset('column')!, [0, 0], NaN)).toBeUndefined();
 	});
 
 	it('edits and deletes preset objects through the existing P23.1 object semantics', () => {
 		const document = committedObject('platform', [0, 0]);
-		const edited = planExactLayoutObjectTransform(document, 'layout-object-1', {
+		const objectId = document.objects[0]!.id;
+		const edited = planExactLayoutObjectTransform(document, objectId, {
 			dimensions: [4, 0.2, 4]
 		});
 		if (edited.kind !== 'success') throw new Error(`edit rejected: ${edited.rejection.message}`);
 		expect(edited.document.objects[0]!.dimensions).toEqual([4, 0.2, 4]);
-		const deleted = planDeleteLayoutObject(edited.document, 'layout-object-1');
+		const deleted = planDeleteLayoutObject(edited.document, objectId);
 		if (deleted.kind !== 'success') throw new Error(`delete rejected: ${deleted.rejection.message}`);
 		expect(deleted.document.objects).toHaveLength(0);
 	});
@@ -162,7 +188,9 @@ describe('P23.5 small architectural preset set', () => {
 			...emptyDocument(),
 			objects: [
 				{
-					id: 'layout-object-1',
+					// Same compiled identity as the captured preset object; only the
+					// allocation path differs.
+					id: presetDocument.objects[0]!.id,
 					kind: 'cylinder',
 					position: [5, 1.5, 6],
 					rotation: [0, 0, 0],

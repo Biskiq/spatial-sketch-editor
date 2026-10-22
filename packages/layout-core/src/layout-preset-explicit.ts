@@ -1,17 +1,17 @@
 /**
  * T1.P01.S04 — bounded explicit-ID architectural preset creation.
  *
- * `planCommitLayoutObjectPreset` owns preset semantics and deterministically
- * allocates `layout-object-N` from the pre-commit candidate. F.4 acceptance
- * requires the caller to capture a created identity **before** evaluation, so
- * this module is the explicit-ID input the slice's Place → Layout plinth item
- * needs: the retained planner still owns the geometry, the validation and the
- * allocation rule, and its answer must agree with the captured id.
+ * `planCommitLayoutObjectPreset` owns preset semantics. T1.P02.S01 §1 captures
+ * the created identity **before** evaluation: the operation's nonce derives the
+ * `layout-object-N` seed, so the id is fixed at intent time and never read from
+ * the document's occupancy. This module is the explicit-ID seam the Place →
+ * Layout plinth item needs: the retained planner still owns the geometry and the
+ * validation, and its answer must agree with the captured id.
  *
- * It deliberately cannot inject an arbitrary id. If the retained planner
- * allocates anything other than the captured id — a document that changed
- * between capture and evaluation — this refuses rather than accepting a hidden
- * allocation, which would make Redo restore an identity nobody captured.
+ * It deliberately cannot inject an arbitrary id. If the derived id and the
+ * captured id disagree — a document that changed between capture and evaluation
+ * — this refuses rather than accepting a hidden allocation, which would make
+ * Redo restore an identity nobody captured.
  */
 
 import type { LayoutVec2 } from './layout-types.js';
@@ -22,32 +22,34 @@ import {
 	type PrecisionPlan
 } from './layout-wall-first-precision.js';
 import type { LayoutDocumentWallFirst } from './layout-wall-first-types.js';
+import { layoutCapturedId, type LayoutIdCapture } from './layout-id-capture.js';
 
 /**
- * The id `planCommitLayoutObjectPreset` will allocate for this document and
- * preset, computed by the same public rule it uses. A caller captures this
- * before building the intent; it is not an independent allocator.
+ * The id a preset placement derives from this operation's captured nonce and
+ * its own `layout-object-N` seed. The caller captures this before building the
+ * intent; the planner re-derives it and refuses any disagreement.
  */
-export function nextLayoutPresetObjectId(document: LayoutDocumentWallFirst): string {
-	const taken = new Set(document.objects.map((object) => object.id));
-	let index = document.objects.length + 1;
-	while (taken.has(`layout-object-${index}`)) index += 1;
-	return `layout-object-${index}`;
+export function nextLayoutPresetObjectId(
+	document: LayoutDocumentWallFirst,
+	capture: LayoutIdCapture
+): string {
+	return layoutCapturedId(capture, `layout-object-${document.objects.length + 1}`);
 }
 
 /**
  * Create one ordinary LayoutObject with an explicit, previously captured id.
  *
  * Refusals: an unknown preset, a non-finite point/elevation and a non-positive
- * preset dimension are the retained planner's own rejections; a captured id the
- * retained planner would not allocate is refused here as `invalid_value` with
- * the captured and allocated ids named, and no object is created.
+ * preset dimension are the retained planner's own rejections; a captured id
+ * that this operation's nonce does not derive is refused here as `invalid_value`
+ * with both ids named, and no object is created.
  */
 export function planCommitLayoutObjectPresetWithId(
 	document: LayoutDocumentWallFirst,
 	presetId: LayoutArchitecturalPresetId,
 	point: LayoutVec2,
 	floorElevation: number,
+	capture: LayoutIdCapture,
 	capturedObjectId: string
 ): PrecisionPlan {
 	if (layoutArchitecturalPreset(presetId) === undefined) {
@@ -70,14 +72,31 @@ export function planCommitLayoutObjectPresetWithId(
 			}
 		};
 	}
-	const planned = planCommitLayoutObjectPreset(document, presetId, point, floorElevation);
+	const expected = nextLayoutPresetObjectId(document, capture);
+	if (expected !== capturedObjectId) {
+		return {
+			kind: 'rejected',
+			rejection: {
+				code: 'invalid_value',
+				message: `Preset creation captured '${capturedObjectId}', but this operation's nonce derives '${expected}'; capture the id again before placing`,
+				targetIds: [capturedObjectId, expected]
+			}
+		};
+	}
+	const planned = planCommitLayoutObjectPreset(
+		document,
+		presetId,
+		point,
+		floorElevation,
+		capturedObjectId
+	);
 	if (planned.kind === 'rejected') return planned;
 	if (planned.createdObjectId !== capturedObjectId) {
 		return {
 			kind: 'rejected',
 			rejection: {
 				code: 'invalid_value',
-				message: `Preset creation allocated '${planned.createdObjectId ?? '(none)'}', not the captured '${capturedObjectId}'; capture the id again before placing`,
+				message: `Preset creation created '${planned.createdObjectId ?? '(none)'}', not the captured '${capturedObjectId}'; capture the id again before placing`,
 				targetIds: [capturedObjectId, planned.createdObjectId ?? presetId]
 			}
 		};

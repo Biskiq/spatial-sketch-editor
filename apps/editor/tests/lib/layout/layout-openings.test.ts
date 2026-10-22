@@ -21,7 +21,6 @@ import {
 	type LayoutWallFirstRoom
 } from '@portfolio/layout-core';
 import {
-	nextWallFirstOpeningId,
 	planCenterWallFirstOpening,
 	planCreateWallFirstOpening,
 	planDeleteWallFirstOpening,
@@ -35,13 +34,13 @@ import {
 	wallFirstWallLength
 } from '@portfolio/layout-core';
 import type { LayoutVec2 } from '@portfolio/layout-core';
+import { captureFor, capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 
 type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-};
+	};
 
 /**
  * Two-room wall-first fixture: a 6×4 enclosure split at x=3 by the shared
@@ -79,7 +78,6 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? ('boundary' as const),
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -116,6 +114,14 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 
 const BASE = twoRoomDocument();
 
+/**
+ * T1.P02.S01 §1 — a captured identity, not allocation order. These tests mint
+ * one nonce per operation; `DOOR_ID` is the id `DOOR_CAPTURE` derives on
+ * `wall-e`, and every lookup/assertion names that captured identity.
+ */
+const DOOR_CAPTURE = captureFor('opening-door-01');
+const DOOR_ID = capturedId(DOOR_CAPTURE, 'opening:door:wall-e');
+
 function success(plan: ReturnType<typeof planCreateWallFirstOpening>) {
 	if (plan.kind !== 'success') {
 		throw new Error(`expected success, got ${JSON.stringify(plan.rejection)}`);
@@ -141,15 +147,19 @@ describe('P23.3 canonical Opening domain operations', () => {
 
 	it('creates one authored Opening on a canonical Wall with document-global identity + defaults', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
 		expect(created.operation).toBe('opening-create');
-		expect(created.changedOpeningIds).toEqual(['opening:door:1']);
+		expect(created.changedOpeningIds).toEqual([DOOR_ID]);
 		expect(created.changedWallIds).toEqual(['wall-e']);
 		expect(created.document.openings).toHaveLength(1);
 		const opening = created.document.openings[0]!;
 		expect(opening).toMatchObject({
-			id: 'opening:door:1',
+			id: DOOR_ID,
 			wallId: 'wall-e',
 			kind: 'door',
 			offset: 1,
@@ -160,36 +170,53 @@ describe('P23.3 canonical Opening domain operations', () => {
 		});
 		// Identity is document-global, not Room- or Wall-scoped.
 		expect(opening.connectsRoomIds).toBeUndefined();
+		const secondCapture = freshCapture();
 		const second = success(
-			planCreateWallFirstOpening(created.document, {
-				wallId: 'wall-b',
-				kind: 'door',
-				offset: 1
-			})
+			planCreateWallFirstOpening(
+				created.document,
+				{
+					wallId: 'wall-b',
+					kind: 'door',
+					offset: 1
+				},
+				secondCapture
+			)
 		);
-		expect(second.document.openings.map((entry) => entry.id)).toEqual([
-			'opening:door:1',
-			'opening:door:2'
-		]);
-		expect(nextWallFirstOpeningId(second.document, 'door')).toBe('opening:door:3');
-		expect(nextWallFirstOpeningId(second.document, 'window')).toBe('opening:window:1');
+		const secondId = capturedId(secondCapture, 'opening:door:wall-b');
+		expect(second.document.openings.map((entry) => entry.id)).toEqual([DOOR_ID, secondId]);
+		// Identity is captured per operation, not allocated from document occupancy:
+		// a fresh nonce derives an id no existing Opening carries.
+		const fresh = freshCapture();
+		expect(
+			second.document.openings.some(
+				(entry) => entry.id === capturedId(fresh, 'opening:door:wall-e')
+			)
+		).toBe(false);
 	});
 
 	it('rejects an unknown hosting Wall without producing a document', () => {
-		const plan = planCreateWallFirstOpening(BASE, {
-			wallId: 'wall-missing',
-			kind: 'door',
-			offset: 0
-		});
+		const plan = planCreateWallFirstOpening(
+			BASE,
+			{
+				wallId: 'wall-missing',
+				kind: 'door',
+				offset: 0
+			},
+			freshCapture()
+		);
 		expect(rejection(plan)).toMatchObject({ code: 'unknown_wall' });
 	});
 
 	it('rejects an offset outside the hosting Wall instead of clamping it', () => {
-		const plan = planCreateWallFirstOpening(BASE, {
-			wallId: 'wall-e',
-			kind: 'door',
-			offset: 3.5
-		});
+		const plan = planCreateWallFirstOpening(
+			BASE,
+			{
+				wallId: 'wall-e',
+				kind: 'door',
+				offset: 3.5
+			},
+			freshCapture()
+		);
 		const rejected = rejection(plan);
 		expect(rejected.code).toBe('opening_set_invalid');
 		expect(rejected.message).toContain('does not fit');
@@ -197,23 +224,35 @@ describe('P23.3 canonical Opening domain operations', () => {
 
 	it('rejects same-Wall overlap atomically against the complete opening set', () => {
 		const first = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
-		const overlapping = planCreateWallFirstOpening(first.document, {
-			wallId: 'wall-e',
-			kind: 'window',
-			offset: 1.5
-		});
+		const overlapping = planCreateWallFirstOpening(
+			first.document,
+			{
+				wallId: 'wall-e',
+				kind: 'window',
+				offset: 1.5
+			},
+			freshCapture()
+		);
 		expect(rejection(overlapping).code).toBe('opening_set_invalid');
 		// The prior authored Opening is untouched (no partial commit).
 		expect(first.document.openings).toHaveLength(1);
 		// A disjoint sibling is fine even when the set is validated together.
 		const fine = success(
-			planCreateWallFirstOpening(first.document, {
-				wallId: 'wall-e',
-				kind: 'window',
-				offset: 2.5
-			})
+			planCreateWallFirstOpening(
+				first.document,
+				{
+					wallId: 'wall-e',
+					kind: 'window',
+					offset: 2.5
+				},
+				freshCapture()
+			)
 		);
 		expect(fine.document.openings).toHaveLength(2);
 	});
@@ -221,14 +260,18 @@ describe('P23.3 canonical Opening domain operations', () => {
 	it('rejects a vertical-fit failure (sill + height over the hosting Wall height)', () => {
 		// P23.6H — vertical fit is measured against the hosting Wall's
 		// authoritative height; the message names the Wall, not the Floor.
-		const plan = planCreateWallFirstOpening(BASE, {
-			wallId: 'wall-e',
-			kind: 'window',
-			offset: 1,
-			width: 1.2,
-			height: 1.2,
-			sillHeight: 2.2
-		});
+		const plan = planCreateWallFirstOpening(
+			BASE,
+			{
+				wallId: 'wall-e',
+				kind: 'window',
+				offset: 1,
+				width: 1.2,
+				height: 1.2,
+				sillHeight: 2.2
+			},
+			freshCapture()
+		);
 		const rejected = rejection(plan);
 		expect(rejected.code).toBe('opening_set_invalid');
 		expect(rejected.message).toContain("does not fit Wall 'wall-e'");
@@ -236,10 +279,14 @@ describe('P23.3 canonical Opening domain operations', () => {
 
 	it('updates exact fields, preserves the host/Wall ID, and rejects no-ops', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
 		const updated = success(
-			planUpdateWallFirstOpening(created.document, 'opening:door:1', {
+			planUpdateWallFirstOpening(created.document, DOOR_ID, {
 				offset: 0.5,
 				width: 1.1,
 				height: 2.4,
@@ -249,7 +296,7 @@ describe('P23.3 canonical Opening domain operations', () => {
 		);
 		const opening = updated.document.openings[0]!;
 		expect(opening).toMatchObject({
-			id: 'opening:door:1',
+			id: DOOR_ID,
 			wallId: 'wall-e',
 			offset: 0.5,
 			width: 1.1,
@@ -257,23 +304,27 @@ describe('P23.3 canonical Opening domain operations', () => {
 			sillHeight: 0.1,
 			profile: 'rounded'
 		});
-		expect(rejection(planUpdateWallFirstOpening(updated.document, 'opening:door:1', { offset: 0.5 }))).toMatchObject({ code: 'no_op' });
+		expect(rejection(planUpdateWallFirstOpening(updated.document, DOOR_ID, { offset: 0.5 }))).toMatchObject({ code: 'no_op' });
 		expect(rejection(planUpdateWallFirstOpening(BASE, 'opening:none', { offset: 0 }))).toMatchObject({ code: 'unknown_opening' });
 	});
 
 	it('reports exact meter metrics: length, offset, width, clearances, center', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
 		expect(wallFirstWallLength(created.document, 'wall-e')).toBeCloseTo(4, 12);
-		const metrics = wallFirstOpeningMetrics(created.document, 'opening:door:1')!;
+		const metrics = wallFirstOpeningMetrics(created.document, DOOR_ID)!;
 		expect(metrics.wallLength).toBeCloseTo(4, 12);
 		expect(metrics.offset).toBeCloseTo(1, 12);
 		expect(metrics.width).toBeCloseTo(0.9, 12);
 		expect(metrics.clearanceFromStart).toBeCloseTo(1, 12);
 		expect(metrics.clearanceFromEnd).toBeCloseTo(2.1, 12);
 		expect(metrics.centerOffset).toBeCloseTo(1.55, 12);
-		expect(wallFirstOpeningClearances(created.document, 'opening:door:1')).toEqual({
+		expect(wallFirstOpeningClearances(created.document, DOOR_ID)).toEqual({
 			fromStart: 1,
 			fromEnd: 4 - (1 + 0.9)
 		});
@@ -286,103 +337,139 @@ describe('P23.3 canonical Opening domain operations', () => {
 
 	it('centers an Opening on its Wall with an exact meter offset', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
-		const centered = success(planCenterWallFirstOpening(created.document, 'opening:door:1'));
+		const centered = success(planCenterWallFirstOpening(created.document, DOOR_ID));
 		expect(centered.document.openings[0]!.offset).toBeCloseTo(1.55, 12);
-		expect(rejection(planCenterWallFirstOpening(centered.document, 'opening:door:1'))).toMatchObject({ code: 'no_op' });
+		expect(rejection(planCenterWallFirstOpening(centered.document, DOOR_ID))).toMatchObject({ code: 'no_op' });
 	});
 
 	it('rejects a raw drag/move past the Wall end (no clamp-to-end commit)', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
-		const moved = rejection(planMoveWallFirstOpening(created.document, 'opening:door:1', 5.5));
+		const moved = rejection(planMoveWallFirstOpening(created.document, DOOR_ID, 5.5));
 		expect(moved.code).toBe('opening_set_invalid');
 		// A valid raw candidate on the same Wall commits.
-		const ok = success(planMoveWallFirstOpening(created.document, 'opening:door:1', 3));
+		const ok = success(planMoveWallFirstOpening(created.document, DOOR_ID, 3));
 		expect(ok.document.openings[0]!.offset).toBe(3);
 	});
 
 	it('deletes the single physical Opening record', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
 		const deleted = success(
-			planDeleteWallFirstOpening(created.document, 'opening:door:1')
+			planDeleteWallFirstOpening(created.document, DOOR_ID)
 		);
 		expect(deleted.operation).toBe('opening-delete');
 		expect(deleted.document.openings).toEqual([]);
-		expect(rejection(planDeleteWallFirstOpening(deleted.document, 'opening:door:1'))).toMatchObject({ code: 'unknown_opening' });
+		expect(rejection(planDeleteWallFirstOpening(deleted.document, DOOR_ID))).toMatchObject({ code: 'unknown_opening' });
 	});
 });
 
 describe('P23.3 portal relations on authored Openings', () => {
 	it('accepts the two physically adjacent Rooms of a boundary Wall and rejects strangers', () => {
 		const accepted = success(
-			planCreateWallFirstOpening(BASE, {
-				wallId: 'wall-e',
-				kind: 'door',
-				offset: 1,
-				connectsRoomIds: ['room-left', 'room-right']
-			})
+			planCreateWallFirstOpening(
+				BASE,
+				{
+					wallId: 'wall-e',
+					kind: 'door',
+					offset: 1,
+					connectsRoomIds: ['room-left', 'room-right']
+				},
+				freshCapture()
+			)
 		);
 		expect(accepted.document.openings[0]!.connectsRoomIds).toEqual([
 			'room-left',
 			'room-right'
 		]);
-		const stranger = planCreateWallFirstOpening(BASE, {
-			wallId: 'wall-e',
-			kind: 'door',
-			offset: 1,
-			connectsRoomIds: ['room-left', 'room-left']
-		});
+		const stranger = planCreateWallFirstOpening(
+			BASE,
+			{
+				wallId: 'wall-e',
+				kind: 'door',
+				offset: 1,
+				connectsRoomIds: ['room-left', 'room-left']
+			},
+			freshCapture()
+		);
 		expect(rejection(stranger).code).toBe('portal_relation_invalid');
-		const exterior = planCreateWallFirstOpening(BASE, {
-			wallId: 'wall-b',
-			kind: 'door',
-			offset: 1,
-			connectsRoomIds: ['room-left', 'room-right']
-		});
+		const exterior = planCreateWallFirstOpening(
+			BASE,
+			{
+				wallId: 'wall-b',
+				kind: 'door',
+				offset: 1,
+				connectsRoomIds: ['room-left', 'room-right']
+			},
+			freshCapture()
+		);
 		expect(rejection(exterior).code).toBe('portal_relation_invalid');
 	});
 
 	it('allows exterior and partition doors without a relation', () => {
 		const exterior = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-b', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-b', kind: 'door', offset: 1 },
+				freshCapture()
+			)
 		);
 		expect(exterior.document.openings[0]!.connectsRoomIds).toBeUndefined();
 		const partitionDoc: LayoutDocumentWallFirst = {
 			...BASE,
 			walls: BASE.walls.map((wall) =>
-				wall.id === 'wall-rl' ? { ...wall, role: 'partition' as const } : wall
+				wall.id === 'wall-rl' ? { ...wall } : wall
 			)
 		};
 		const partition = success(
-			planCreateWallFirstOpening(partitionDoc, {
-				wallId: 'wall-rl',
-				kind: 'door',
-				offset: 1
-			})
+			planCreateWallFirstOpening(
+				partitionDoc,
+				{
+					wallId: 'wall-rl',
+					kind: 'door',
+					offset: 1
+				},
+				freshCapture()
+			)
 		);
 		expect(partition.document.openings[0]!.connectsRoomIds).toBeUndefined();
 	});
 
 	it('requires an explicit relation clear for door → window and invents none for window → door', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, {
-				wallId: 'wall-e',
-				kind: 'door',
-				offset: 1,
-				connectsRoomIds: ['room-left', 'room-right']
-			})
+			planCreateWallFirstOpening(
+				BASE,
+				{
+					wallId: 'wall-e',
+					kind: 'door',
+					offset: 1,
+					connectsRoomIds: ['room-left', 'room-right']
+				},
+				DOOR_CAPTURE
+			)
 		);
-		const implicit = planUpdateWallFirstOpening(created.document, 'opening:door:1', {
+		const implicit = planUpdateWallFirstOpening(created.document, DOOR_ID, {
 			kind: 'window'
 		});
 		expect(rejection(implicit).code).toBe('portal_relation_invalid');
 		const cleared = success(
-			planUpdateWallFirstOpening(created.document, 'opening:door:1', {
+			planUpdateWallFirstOpening(created.document, DOOR_ID, {
 				kind: 'window',
 				connectsRoomIds: null
 			})
@@ -391,7 +478,7 @@ describe('P23.3 portal relations on authored Openings', () => {
 		expect(cleared.document.openings[0]!.connectsRoomIds).toBeUndefined();
 		// window → door never invents a relation; the old ID keeps its identity.
 		const backToDoor = success(
-			planUpdateWallFirstOpening(cleared.document, 'opening:door:1', { kind: 'door' })
+			planUpdateWallFirstOpening(cleared.document, DOOR_ID, { kind: 'door' })
 		);
 		expect(backToDoor.document.openings[0]!.kind).toBe('door');
 		expect(backToDoor.document.openings[0]!.connectsRoomIds).toBeUndefined();
@@ -399,9 +486,13 @@ describe('P23.3 portal relations on authored Openings', () => {
 
 	it('rejects a relation update that names nonadjacent Rooms', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
-		const plan = planUpdateWallFirstOpening(created.document, 'opening:door:1', {
+		const plan = planUpdateWallFirstOpening(created.document, DOOR_ID, {
 			connectsRoomIds: ['room-left', 'room-left']
 		});
 		expect(rejection(plan).code).toBe('portal_relation_invalid');
@@ -411,7 +502,11 @@ describe('P23.3 portal relations on authored Openings', () => {
 describe('P23.3 shared canonical opening-set validator (P23.1 shrink)', () => {
 	it('rejects a Wall shrink that would leave an authored Opening unfit (atomic, shared validator)', () => {
 		const created = success(
-			planCreateWallFirstOpening(BASE, { wallId: 'wall-e', kind: 'door', offset: 1 })
+			planCreateWallFirstOpening(
+				BASE,
+				{ wallId: 'wall-e', kind: 'door', offset: 1 },
+				DOOR_CAPTURE
+			)
 		);
 		// wall-e is 4 m; shrinking to 1.5 m would leave offset 1 + width 0.9
 		// outside the new length → the shared Opening-set contract must reject.
@@ -440,12 +535,16 @@ function compiledWallFirst(document: LayoutDocumentWallFirst) {
 
 function withDoor(overrides: Partial<{ offset: number; width: number }> = {}) {
 	const created = success(
-		planCreateWallFirstOpening(BASE, {
-			wallId: 'wall-e',
-			kind: 'door',
-			offset: overrides.offset ?? 1,
-			...(overrides.width === undefined ? {} : { width: overrides.width })
-		})
+		planCreateWallFirstOpening(
+			BASE,
+			{
+				wallId: 'wall-e',
+				kind: 'door',
+				offset: overrides.offset ?? 1,
+				...(overrides.width === undefined ? {} : { width: overrides.width })
+			},
+			DOOR_CAPTURE
+		)
 	);
 	return created.document;
 }
@@ -455,12 +554,12 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 		const document = withDoor();
 		const geometry = compiledWallFirst(document).geometry;
 		// The bare P23.2 resolver offers the clamped end placement — the hazard.
-		const bare = resolveOpeningDragSnap(geometry, HOST_SPAN, 'opening:door:1', 5.05, 0.9, SNAP_CONTEXT);
+		const bare = resolveOpeningDragSnap(geometry, HOST_SPAN, DOOR_ID, 5.05, 0.9, SNAP_CONTEXT);
 		expect(bare.kind).toBe('snap');
 		if (bare.kind !== 'snap') return;
 		expect(bare.candidate.offset).toBeCloseTo(3.1, 9);
 		// The P23.3 use-mode refuses to treat it as validity.
-		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 5.05, {
+		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 5.05, {
 			anchor: { kind: 'center' as const, width: 0.9 },
 			context: SNAP_CONTEXT
 		});
@@ -473,7 +572,7 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 	it('honors a genuine endpoint-clearance snap win (pointer within acquisition of the Wall end)', () => {
 		const document = withDoor();
 		const geometry = compiledWallFirst(document).geometry;
-		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 3.95, {
+		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 3.95, {
 			anchor: { kind: 'center' as const, width: 0.9 },
 			context: SNAP_CONTEXT
 		});
@@ -486,7 +585,7 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 	it('honors an in-range interior snap win', () => {
 		const document = withDoor();
 		const geometry = compiledWallFirst(document).geometry;
-		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 2, {
+		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 2, {
 			anchor: { kind: 'center' as const, width: 0.9 },
 			context: SNAP_CONTEXT
 		});
@@ -499,7 +598,7 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 	it('resolves width-handle drags in true edge space — flush at the Wall end, exactly', () => {
 		const document = withDoor();
 		const geometry = compiledWallFirst(document).geometry;
-		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 3.95, {
+		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 3.95, {
 			anchor: { kind: 'edge' },
 			context: SNAP_CONTEXT
 		});
@@ -513,9 +612,9 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 
 	it('lands the moving edge exactly on the Wall start and the Wall midpoint', () => {
 		const geometry = compiledWallFirst(withDoor()).geometry;
-		const atStart = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, 'opening:door:1', 0.04, SNAP_CONTEXT);
+		const atStart = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, DOOR_ID, 0.04, SNAP_CONTEXT);
 		expect(atStart.kind === 'snap' && atStart.candidate.offset).toBe(0);
-		const atMid = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 1.99, {
+		const atMid = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 1.99, {
 			anchor: { kind: 'edge' },
 			context: SNAP_CONTEXT
 		});
@@ -524,27 +623,33 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 	});
 
 	it('aligns a moving edge on another Opening’s edge identically from both approach sides', () => {
+		const windowCapture = freshCapture();
+		const windowId = capturedId(windowCapture, 'opening:window:wall-e');
 		const document = success(
-			planCreateWallFirstOpening(withDoor(), { wallId: 'wall-e', kind: 'window', offset: 2.5 })
+			planCreateWallFirstOpening(
+				withDoor(),
+				{ wallId: 'wall-e', kind: 'window', offset: 2.5 },
+				windowCapture
+			)
 		).document;
 		const geometry = compiledWallFirst(document).geometry;
-		const reference = geometry.queries.spans.find((span) => span.openingId === 'opening:window:1')!;
-		const fromLeft = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, 'opening:door:1', 2.4, SNAP_CONTEXT);
-		const fromRight = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, 'opening:door:1', 2.6, SNAP_CONTEXT);
-		expect(fromLeft.kind === 'snap' && fromLeft.candidate.sourceId).toBe('opening:window:1#start');
-		expect(fromRight.kind === 'snap' && fromRight.candidate.sourceId).toBe('opening:window:1#start');
+		const reference = geometry.queries.spans.find((span) => span.openingId === windowId)!;
+		const fromLeft = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, DOOR_ID, 2.4, SNAP_CONTEXT);
+		const fromRight = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, DOOR_ID, 2.6, SNAP_CONTEXT);
+		expect(fromLeft.kind === 'snap' && fromLeft.candidate.sourceId).toBe(`${windowId}#start`);
+		expect(fromRight.kind === 'snap' && fromRight.candidate.sourceId).toBe(`${windowId}#start`);
 		expect(fromLeft.kind === 'snap' && fromLeft.candidate.offset).toBe(reference.start[1]);
 		expect(fromRight.kind === 'snap' && fromRight.candidate.offset).toBe(reference.start[1]);
 		// The center-anchored body drag keeps its different, documented semantic
 		// (nearest-edge: the approaching edge lands on the reference edge).
-		const body = resolveOpeningDragSnap(geometry, HOST_SPAN, 'opening:door:1', 2, 0.9, SNAP_CONTEXT);
+		const body = resolveOpeningDragSnap(geometry, HOST_SPAN, DOOR_ID, 2, 0.9, SNAP_CONTEXT);
 		expect(body.kind === 'snap' && body.candidate.kind).toBe('opening-edge');
 		expect(body.kind === 'snap' && body.candidate.offset).toBeCloseTo(1.6, 9);
 	});
 
 	it('snaps the moving edge to the grid step in edge space', () => {
 		const geometry = compiledWallFirst(withDoor()).geometry;
-		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 3.24, {
+		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 3.24, {
 			anchor: { kind: 'edge' },
 			context: SNAP_CONTEXT
 		});
@@ -556,9 +661,9 @@ describe('P23.3 drag use-mode — clamping never converts an invalid drag into a
 	it('does not honor an edge clamp that only reaches the Wall end by clamping', () => {
 		const geometry = compiledWallFirst(withDoor()).geometry;
 		// The bare resolver still offers the clamped end placement — the hazard.
-		const bare = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, 'opening:door:1', 6.05, SNAP_CONTEXT);
+		const bare = resolveOpeningDragEdgeSnap(geometry, HOST_SPAN, DOOR_ID, 6.05, SNAP_CONTEXT);
 		expect(bare.kind === 'snap' && bare.candidate.offset).toBe(4);
-		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, 'opening:door:1', 6.05, {
+		const useMode = resolveOpeningDragSnapUseMode(geometry, HOST_SPAN, DOOR_ID, 6.05, {
 			anchor: { kind: 'edge' },
 			context: SNAP_CONTEXT
 		});
@@ -614,7 +719,7 @@ describe('P23.3 shared physical Wall single cut / no duplicates / roomless cover
 		const hosts = geometry.walls.filter((wall) => wall.wallId === 'wall-e');
 		expect(hosts).toHaveLength(1);
 		expect(hosts[0]!.openings).toHaveLength(1);
-		expect(hosts[0]!.openings[0]!.openingId).toBe('opening:door:1');
+		expect(hosts[0]!.openings[0]!.openingId).toBe(DOOR_ID);
 		// No per-Room duplicate: Room detail stays identity + floor semantics only.
 		expect(geometry.rooms).toHaveLength(2);
 		for (const room of geometry.rooms) {

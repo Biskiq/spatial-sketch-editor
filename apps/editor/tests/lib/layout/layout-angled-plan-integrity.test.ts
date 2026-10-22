@@ -41,6 +41,7 @@ import {
 	bottomEnd,
 	twoRoomsWithOneObliqueDivider
 } from '../../helpers/angled-plan-fixtures';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 describe('P23.6e extra — angled neighbours stay distinct Rooms', () => {
 	/** Room split by an oblique Wall: the exact shape that used to fuse. */
@@ -49,7 +50,7 @@ describe('P23.6e extra — angled neighbours stay distinct Rooms', () => {
 			baseline: baseDocument(),
 			points: [p(0, -4), p(3.5, -4), p(3.5, 1.5), p(0, 1.5)],
 			close: true,
-			role: 'boundary'
+			capture: freshCapture()
 		});
 		if (room.kind !== 'success') throw new Error('room birth failed');
 		return commit(room.document, p(0, 0.13), p(0.88, -4));
@@ -132,7 +133,6 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 					id: 'host',
 					startJunctionId: 'host-a',
 					endJunctionId: 'host-b',
-					role: 'partition',
 					thickness: 0.1,
 					height: 3,
 					centerline: { kind: 'line' } as const,
@@ -141,7 +141,6 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 					id: 'old-wall',
 					startJunctionId: 'existing',
 					endJunctionId: 'old-end',
-					role: 'partition',
 					thickness: 0.1,
 					height: 3,
 					centerline: { kind: 'line' } as const,
@@ -153,7 +152,7 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 			baseline,
 			points: [canonicalPoint, p(2, -2)],
 			close: false,
-			role: 'partition'
+			capture: freshCapture()
 		});
 		expect(result.kind).toBe('success');
 		if (result.kind !== 'success') return;
@@ -176,7 +175,6 @@ describe('P23.6e regression — projected Wall endpoints node oblique hosts', ()
 					id: 'host',
 					startJunctionId: 'host-a',
 					endJunctionId: 'host-b',
-					role: 'boundary',
 					thickness: 0.2,
 					height: 3,
 					centerline: { kind: 'line' } as const,
@@ -266,7 +264,6 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 					id: 'wall-a',
 					startJunctionId: 'junction-a',
 					endJunctionId: 'junction-b',
-					role: 'boundary',
 					thickness: 0.2,
 					height: 3,
 					centerline: { kind: 'line' } as const,
@@ -275,7 +272,6 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 					id: 'wall-b',
 					startJunctionId: 'junction-a',
 					endJunctionId: 'junction-c',
-					role: 'boundary',
 					thickness: 0.2,
 					height: 3,
 					centerline: { kind: 'line' } as const,
@@ -304,12 +300,13 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 			(wall) =>
 				wall.startJunctionId === 'junction-a' || wall.endJunctionId === 'junction-a'
 		);
-		expect(arms.map((wall) => wall.id).sort()).toEqual([
-			'wall-a',
-			'wall-b',
-			'wall-chain-1',
-			'wall-chain-1-b'
-		]);
+		// The new contract: ids are captured, so the expectation names the existing
+		// Walls plus exactly the ids this operation reported creating — never the
+		// old allocation-order literals.
+		expect(arms.map((wall) => wall.id).sort()).toEqual(
+			['wall-a', 'wall-b', ...result.createdWallIds].sort()
+		);
+		expect(result.createdWallIds).toHaveLength(2);
 		expect(result.document.junctions.filter((junction) => junction.id.includes('chain'))).toHaveLength(2);
 	});
 
@@ -330,7 +327,6 @@ describe('P23.6e extra — one Junction identity per physical node', () => {
 					id: 'wall-a',
 					startJunctionId: 'junction-a',
 					endJunctionId: 'junction-b',
-					role: 'boundary',
 					thickness: 0.2,
 					height: 3,
 					centerline: { kind: 'line' } as const

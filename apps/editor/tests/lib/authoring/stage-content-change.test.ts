@@ -22,6 +22,7 @@ import {
 	type LayoutVec2
 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import {
 	admitSource,
@@ -54,7 +55,7 @@ async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJ
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
 	return createUnitProject({ id, name: 'Content change project', layout: plan.document });
@@ -193,17 +194,16 @@ describe('Stage content change — the post-edit Camera-output path', () => {
 	});
 
 	it('leaves the live claim in place when the installed content is identical', async () => {
-		const { facade } = await mount();
+		// One captured project, mounted and then re-admitted: identical content
+		// means identical ids, so the same envelope must be used on both sides.
+		const project = await enclosureProject(FIRST_ENCLOSURE);
+		const { facade } = await mount(project);
 		const ticketBefore = facade.inspectionTicket();
 		expect(ticketBefore).not.toBeNull();
 
 		// Same canonical content, a fresh acceptance revision: nothing about the
 		// view, the claim or the selection changes.
-		const sameContent = await admit(
-			await enclosureProject(FIRST_ENCLOSURE),
-			PROJECT_ID,
-			facade.snapshot().sessionEpoch
-		);
+		const sameContent = await admit(project, PROJECT_ID, facade.snapshot().sessionEpoch);
 		expect(sameContent.sourceContentId).toBe(facade.snapshot().sourceContentId);
 		const install = facade.installAccepted(sameContent);
 

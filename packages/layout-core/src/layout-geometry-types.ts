@@ -1,5 +1,6 @@
 import type { Vec3 } from './types';
 import type { LayoutOpening, LayoutVec2 } from './layout-types';
+import type { LayoutDerivedWallRole } from './layout-wall-first-types';
 import type { SampleableSegment } from './layout-geometry-curve';
 
 /**
@@ -238,8 +239,13 @@ export type CompiledLayoutQueryGeometry = {
 
 export type CompiledPhysicalWall = CompiledIdentity & {
 	wallId: string;
-	/** Document-global Wall role (`boundary` participates in face extraction; `partition` does not). */
-	role: 'boundary' | 'partition';
+	/**
+	 * The derived Wall role (format 6): `bounding` = one Room boundary references it,
+	 * `dividing` = two or more do, `free-standing` = none. Derived from the reconciled
+	 * Rooms, never authored, and therefore the same vocabulary `deriveLayoutWallRole`
+	 * returns. Every Wall participates in face extraction regardless of this value.
+	 */
+	role: LayoutDerivedWallRole;
 	floorId: string;
 	thickness: number;
 	/**
@@ -299,7 +305,7 @@ export type CompiledJunctionLeg = {
 	halfThickness: number;
 	bottomY: number;
 	topY: number;
-	role: 'boundary' | 'partition';
+	role: LayoutDerivedWallRole;
 	/** True when a hosted Opening reaches this exact Wall endpoint. */
 	endpointOpen: boolean;
 	endpointSolidBands: CompiledEndpointBand[];

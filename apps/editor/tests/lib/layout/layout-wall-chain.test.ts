@@ -1,13 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
+	deriveLayoutWallRole,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
-	planWallChain,
-	planWallSegment,
+	planWallChain as planWallChainRaw,
+	planWallSegment as planWallSegmentRaw,
 	validateWallFirstTopology,
 	wallsShareTopologyComponent,
-	type LayoutDocumentWallFirst
+	type LayoutDocumentWallFirst,
+	type LayoutIdCapture,
+	type WallChainPlanOptions
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/**
+ * T1.P02.S01 §1 — one simulated operation, one fresh capture. A test that
+ * replays an operation (determinism, convenience-tool equivalence) passes the
+ * same capture explicitly, which is exactly the contract Redo relies on.
+ */
+function planWallChain(
+	options: Omit<WallChainPlanOptions, 'capture'> & { readonly capture?: LayoutIdCapture }
+): ReturnType<typeof planWallChainRaw> {
+	return planWallChainRaw({ ...options, capture: options.capture ?? freshCapture() });
+}
+
+function planWallSegment(
+	options: Omit<Parameters<typeof planWallSegmentRaw>[0], 'capture'> & {
+		readonly capture?: LayoutIdCapture;
+	}
+): ReturnType<typeof planWallSegmentRaw> {
+	return planWallSegmentRaw({ ...options, capture: options.capture ?? freshCapture() });
+}
 
 /** Empty wall-first document with a real floor record. */
 function baseDocument(): LayoutDocumentWallFirst {
@@ -81,7 +104,7 @@ describe('P23.9 open wall chains', () => {
 	it('commits an open two-point chain once and creates no Room', () => {
 		const baseline = baseDocument();
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: [p(0, 0), p(4, 0)], close: false, role: 'boundary' })
+			planWallChain({ baseline, points: [p(0, 0), p(4, 0)], close: false })
 		);
 		expect(plan.document.walls).toHaveLength(1);
 		expect(plan.document.junctions).toHaveLength(2);
@@ -90,7 +113,6 @@ describe('P23.9 open wall chains', () => {
 		expect(plan.createdJunctionIds).toHaveLength(2);
 		expect(plan.lineage).toHaveLength(0);
 		expect(plan.document.walls[0]).toMatchObject({
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3
 		});
@@ -99,7 +121,7 @@ describe('P23.9 open wall chains', () => {
 	it('commits a multi-leg open chain with one wall per leg', () => {
 		const baseline = baseDocument();
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: [p(0, 0), p(4, 0), p(4, 3)], close: false, role: 'boundary' })
+			planWallChain({ baseline, points: [p(0, 0), p(4, 0), p(4, 3)], close: false })
 		);
 		expect(plan.document.walls).toHaveLength(2);
 		expect(plan.document.junctions).toHaveLength(3);
@@ -112,42 +134,44 @@ describe('P23.9 open wall chains', () => {
 		expect(plan.document.rooms).toHaveLength(0);
 	});
 
-	it('a partition open chain never creates Rooms', () => {
+	it('an open chain closes no ring, so it creates no Rooms', () => {
 		const baseline = baseDocument();
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: RECT, close: true, role: 'partition' })
+			planWallChain({ baseline, points: RECT, close: false })
 		);
-		expect(plan.document.walls.every((wall) => wall.role === 'partition')).toBe(true);
+		expect(
+			plan.document.walls.every((wall) => deriveLayoutWallRole(plan.document, wall.id) === 'free-standing')
+		).toBe(true);
 		expect(plan.document.rooms).toHaveLength(0);
 	});
 
 	it('rejects an open chain with fewer than two vertices', () => {
 		expectRejected(
-			planWallChain({ baseline: baseDocument(), points: [p(0, 0)], close: false, role: 'boundary' }),
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0)], close: false }),
 			'insufficient_chain'
 		);
 	});
 
 	it('rejects a closed chain with fewer than three vertices', () => {
 		expectRejected(
-			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(4, 0)], close: true, role: 'boundary' }),
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(4, 0)], close: true }),
 			'insufficient_chain'
 		);
 	});
 
 	it('rejects non-finite input and implicitly-closed zero-vertex drafts', () => {
 		expectRejected(
-			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(Number.NaN, 0)], close: false, role: 'boundary' }),
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(Number.NaN, 0)], close: false }),
 			'non_finite_point'
 		);
 		// Two coincident points close implicitly and collapse to nothing.
 		expectRejected(
-			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(0, 0)], close: false, role: 'boundary' }),
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(0, 0)], close: false }),
 			'insufficient_chain'
 		);
 		// An explicit zero-length leg between distinct vertices rejects.
 		expectRejected(
-			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(2, 0), p(2, 0), p(2, 3)], close: false, role: 'boundary' }),
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(2, 0), p(2, 0), p(2, 3)], close: false }),
 			'zero_length_leg'
 		);
 	});
@@ -159,7 +183,6 @@ describe('P23.9 open wall chains', () => {
 				baseline,
 				points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3), p(4, -1)],
 				close: false,
-				role: 'boundary'
 			}),
 			'self_intersecting_chain'
 		);
@@ -172,7 +195,6 @@ describe('P23.9 open wall chains', () => {
 				baseline,
 				points: [p(0, 0), p(4, 0), p(2, 0), p(2, 3)],
 				close: false,
-				role: 'boundary'
 			}),
 			'collinear_overlap'
 		);
@@ -183,7 +205,7 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('a closed outer loop births one deterministic Room', () => {
 		const baseline = baseDocument();
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		expect(plan.document.walls).toHaveLength(4);
 		expect(plan.document.rooms).toHaveLength(1);
@@ -198,10 +220,10 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		const baseline = baseDocument();
 		// Same rectangle but the draft repeats the first point as the last click.
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: [...RECT, p(0, 0)], close: false, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT, p(0, 0)], close: false })
 		);
 		const closed = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		expect(plan.document.walls).toHaveLength(closed.document.walls.length);
 		expect(plan.document.junctions).toHaveLength(closed.document.junctions.length);
@@ -211,7 +233,7 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('a complete divider through an existing Room splits it 1→2', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const withRoom = enclosure.document;
 		expect(withRoom.rooms).toHaveLength(1);
@@ -226,7 +248,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 				baseline: withRoom,
 				points: [p(2, 0), p(2, 3)],
 				close: false,
-				role: 'boundary',
 				endpointHostSnaps: [
 					{ pointIndex: 0, wallId: horizontalWallAt(withRoom, 0) },
 					{ pointIndex: 1, wallId: horizontalWallAt(withRoom, 3) }
@@ -249,7 +270,7 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('a chain drawn exactly along an existing wall rejects atomically — when it declares that group', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		// A chain drawn exactly along the existing wall (0,0)→(4,0), DECLARING the
 		// Junction it starts from (P23B.3a S6): the overlap is now inside one
@@ -261,7 +282,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 				baseline: enclosure.document,
 				points: [p(0, 0), p(4, 0)],
 				close: false,
-				role: 'boundary',
 				endpointJunctionSnaps: [
 					{ pointIndex: 0, junctionId: junctionIdAt(enclosure.document, 0, 0) }
 				]
@@ -279,7 +299,7 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		// its own Junction identity.
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const hostWallIds = new Set(enclosure.document.walls.map((wall) => wall.id));
 		const plan = expectSuccess(
@@ -287,7 +307,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 				baseline: enclosure.document,
 				points: [p(0, 0), p(4, 0)],
 				close: false,
-				role: 'partition'
 			})
 		);
 		expect(plan.splitWallIds).toHaveLength(0);
@@ -300,7 +319,7 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('a chain T-ing into a wall interior performs canonical subdivision', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const withRoom = enclosure.document;
 		// Dead-end spur hitting the bottom wall's interior at x=3. P23B.3a S6 — the
@@ -311,7 +330,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 				baseline: withRoom,
 				points: [p(3, -2), p(3, 0)],
 				close: false,
-				role: 'boundary',
 				endpointHostSnaps: [{ pointIndex: 1, wallId: horizontalWallAt(withRoom, 0) }]
 			})
 		);
@@ -338,11 +356,11 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		// negative half) — nothing is split, adopted or merged.
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const withRoom = enclosure.document;
 		const crossing = expectSuccess(
-			planWallChain({ baseline: withRoom, points: [p(-1, 1.5), p(5, 1.5)], close: false, role: 'partition' })
+			planWallChain({ baseline: withRoom, points: [p(-1, 1.5), p(5, 1.5)], close: false })
 		);
 		expect(crossing.splitWallIds).toHaveLength(0);
 		expect(crossing.document.walls).toHaveLength(withRoom.walls.length + 1);
@@ -356,24 +374,27 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('a partition inside a Room leaves the Room 1→1', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const withRoom = enclosure.document;
 		const partition = expectSuccess(
-			planWallChain({ baseline: withRoom, points: [p(1, 1), p(2, 1)], close: false, role: 'partition' })
+			planWallChain({ baseline: withRoom, points: [p(1, 1), p(2, 1)], close: false })
 		);
 		expect(partition.document.rooms).toHaveLength(1);
 		expect(partition.document.rooms[0]!.id).toBe(withRoom.rooms[0]!.id);
 		expect(partition.lineage).toHaveLength(0);
 	});
 
-	it('allocation is deterministic across equal replans (no timestamps/randomness)', () => {
+	it('a captured operation replays its identities exactly (no replay allocation)', () => {
 		const baseline = baseDocument();
+		// The SAME capture is the replay contract: Redo restores captured ids, and
+		// planning the same nonce again derives exactly those ids.
+		const capture = freshCapture();
 		const first = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true, capture })
 		);
 		const second = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true, capture })
 		);
 		expect(second.document.junctions.map((junction) => junction.id)).toEqual(
 			first.document.junctions.map((junction) => junction.id)
@@ -385,14 +406,14 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('the baseline is never mutated by planning', () => {
 		const baseline = baseDocument();
 		const snapshot = structuredClone(baseline);
-		planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' });
+		planWallChain({ baseline, points: [...RECT], close: true });
 		expect(baseline).toEqual(snapshot);
 	});
 });	describe('P23.9 junction reuse', () => {
 	it('reuses an existing junction when the chain DECLARES it', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const withRoom = enclosure.document;
 		const cornerJunction = withRoom.walls[0]!.startJunctionId;
@@ -406,7 +427,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 				baseline: withRoom,
 				points: [p(0, 0), p(0, -2)],
 				close: false,
-				role: 'partition',
 				endpointJunctionSnaps: [{ pointIndex: 0, junctionId: cornerJunction }]
 			})
 		);
@@ -419,13 +439,13 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	it('a near-miss coordinate allocates a fresh junction (exact match only)', () => {
 		const baseline = baseDocument();
 		const enclosure = expectSuccess(
-			planWallChain({ baseline, points: [...RECT], close: true, role: 'boundary' })
+			planWallChain({ baseline, points: [...RECT], close: true })
 		);
 		const withRoom = enclosure.document;
 		// The editor's snap pipeline resolves exact junction coordinates before
 		// the planner runs; a near-miss without snap is a genuinely new vertex.
 		const spur = expectSuccess(
-			planWallChain({ baseline: withRoom, points: [p(0.0000001, -0.0000001), p(0, -2)], close: false, role: 'partition' })
+			planWallChain({ baseline: withRoom, points: [p(0.0000001, -0.0000001), p(0, -2)], close: false })
 		);
 		expect(spur.createdJunctionIds).toHaveLength(2);
 		const spurWall = spur.document.walls.find((wall) => wall.id === spur.createdWallIds[0])!;
@@ -437,10 +457,10 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 	function twoRoomBaseline(): LayoutDocumentWallFirst {
 		const empty = baseDocument();
 		const left = expectSuccess(
-			planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' })
+			planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true })
 		);
 		const both = expectSuccess(
-			planWallChain({ baseline: left.document, points: [p(6, 0), p(10, 0), p(10, 3), p(6, 3)], close: true, role: 'boundary' })
+			planWallChain({ baseline: left.document, points: [p(6, 0), p(10, 0), p(10, 3), p(6, 3)], close: true })
 		);
 		expect(both.document.rooms).toHaveLength(2);
 		return both.document;
@@ -463,7 +483,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 				baseline,
 				points: [p(0, 1.5), p(10, 1.5)],
 				close: false,
-				role: 'boundary',
 				endpointHostSnaps: [
 					{ pointIndex: 0, wallId: verticalWallAt(baseline, 0) },
 					{ pointIndex: 1, wallId: verticalWallAt(baseline, 10) }
@@ -483,7 +502,7 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 		const baseline = twoRoomBaseline();
 		const snapshot = structuredClone(baseline);
 		const plan = expectSuccess(
-			planWallChain({ baseline, points: [p(-1, 1.5), p(11, 1.5)], close: false, role: 'boundary' })
+			planWallChain({ baseline, points: [p(-1, 1.5), p(11, 1.5)], close: false })
 		);
 		expect(plan.splitWallIds).toHaveLength(0);
 		expect(plan.document.rooms).toHaveLength(2);
@@ -503,7 +522,6 @@ describe('P23.9 closed boundary chains and Rooms', () => {
 			baseline,
 			points: [p(2, -1), p(2, 0), p(4, 0)],
 			close: false,
-			role: 'boundary',
 			endpointHostSnaps: [{ pointIndex: 1, wallId: horizontalWallAt(baseline, 0) }]
 		});
 		expectRejected(plan, 'collinear_overlap');
@@ -518,7 +536,7 @@ describe('P23.9 planner input handling', () => {
 		// DataCloneError on it in the browser while these plain-object tests
 		// stay green. A Proxy reproduces the observable failure in Node.
 		const proxy = new Proxy(baseDocument(), {});
-		const plan = planWallChain({ baseline: proxy, points: [...RECT], close: true, role: 'boundary' });
+		const plan = planWallChain({ baseline: proxy, points: [...RECT], close: true });
 		expect(plan.kind).toBe('success');
 	});
 });
@@ -527,8 +545,16 @@ describe('P23.9 convenience-tool equivalence', () => {
 	it('a rectangle equals the equivalent four-wall boundary chain (P23.9 outcome)', () => {
 		// The Rect Room frontend submits its four corners with close: true —
 		// the committed graph must equal the same chain clicked by hand.
-		const viaRect = planWallChain({ baseline: baseDocument(), points: [...RECT], close: true, role: 'boundary' });
-		const viaChain = planWallChain({ baseline: baseDocument(), points: [...RECT, RECT[0]!], close: false, role: 'boundary' });
+		// One capture: these are two spellings of the SAME operation, so their
+		// canonical graphs must agree — including the captured identities.
+		const capture = freshCapture();
+		const viaRect = planWallChain({ baseline: baseDocument(), points: [...RECT], close: true, capture });
+		const viaChain = planWallChain({
+			baseline: baseDocument(),
+			points: [...RECT, RECT[0]!],
+			close: false,
+			capture
+		});
 		expect(viaRect.kind).toBe('success');
 		expect(viaChain.kind).toBe('success');
 		if (viaRect.kind !== 'success' || viaChain.kind !== 'success') return;
@@ -546,8 +572,14 @@ describe('P23.9 convenience-tool equivalence', () => {
 
 	it('a polygon close equals the equivalent open chain with a closing leg', () => {
 		const pentagon = [p(0, 0), p(2, 0), p(3, 1.5), p(1.5, 3), p(0, 2)] as const;
-		const viaClose = planWallChain({ baseline: baseDocument(), points: [...pentagon], close: true, role: 'boundary' });
-		const viaChain = planWallChain({ baseline: baseDocument(), points: [...pentagon, pentagon[0]!], close: false, role: 'boundary' });
+		const capture = freshCapture();
+		const viaClose = planWallChain({ baseline: baseDocument(), points: [...pentagon], close: true, capture });
+		const viaChain = planWallChain({
+			baseline: baseDocument(),
+			points: [...pentagon, pentagon[0]!],
+			close: false,
+			capture
+		});
 		expect(viaClose.kind).toBe('success');
 		expect(viaChain.kind).toBe('success');
 		if (viaClose.kind !== 'success' || viaChain.kind !== 'success') return;
@@ -563,7 +595,7 @@ describe('P23.9 convenience-tool equivalence', () => {
 		const start = p(1, 1);
 		const length = 2.75;
 		const end = p(1 + length, 1);
-		const plan = planWallChain({ baseline, points: [start, end], close: false, role: 'boundary' });
+		const plan = planWallChain({ baseline, points: [start, end], close: false });
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		const wall = plan.document.walls.find((candidate) => candidate.id === plan.createdWallIds[0])!;
@@ -582,7 +614,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('one segment = one Wall with canonical start/end Junctions for continuation', () => {
 		const baseline = baseDocument();
-		const first = planWallSegment({ baseline, start: p(0, 0), end: p(4, 0), role: 'boundary' });
+		const first = planWallSegment({ baseline, start: p(0, 0), end: p(4, 0) });
 		expect(first.kind).toBe('success');
 		if (first.kind !== 'success') return;
 		expect(first.authoredWallIds).toHaveLength(1);
@@ -602,7 +634,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: first.document,
 			start: endPoint,
 			end: p(4, 3),
-			role: 'boundary',
 			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: first.endJunctionId }]
 		});
 		expect(second.kind).toBe('success');
@@ -619,7 +650,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		// without it the second segment mints its own Junction — no shared topology,
 		// no silent join (F3/F8's scoped negative half).
 		const baseline = baseDocument();
-		const first = planWallSegment({ baseline, start: p(0, 0), end: p(4, 0), role: 'boundary' });
+		const first = planWallSegment({ baseline, start: p(0, 0), end: p(4, 0) });
 		expect(first.kind).toBe('success');
 		if (first.kind !== 'success') return;
 		const endPoint = junctionPoint(first.document, first.endJunctionId);
@@ -627,7 +658,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: first.document,
 			start: endPoint,
 			end: p(4, 3),
-			role: 'boundary'
 		});
 		expect(second.kind).toBe('success');
 		if (second.kind !== 'success') return;
@@ -647,7 +677,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('room closure: AB+BC+CD then DA onto the run-start Junction births one Room atomically', () => {
 		const empty = baseDocument();
-		const ab = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0), role: 'boundary' });
+		const ab = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0) });
 		if (ab.kind !== 'success') throw new Error('ab failed');
 		// P23B.3a S6 — every continuation leg DECLARES the run Junction it starts
 		// from (class 3), and the closing leg declares the run's start Junction as
@@ -658,7 +688,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: ab.document,
 			start: junctionPoint(ab.document, ab.endJunctionId),
 			end: p(4, 3),
-			role: 'boundary',
 			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: ab.endJunctionId }]
 		});
 		if (bc.kind !== 'success') throw new Error('bc failed');
@@ -666,7 +695,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: bc.document,
 			start: junctionPoint(bc.document, bc.endJunctionId),
 			end: p(0, 3),
-			role: 'boundary',
 			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: bc.endJunctionId }]
 		});
 		if (cd.kind !== 'success') throw new Error('cd failed');
@@ -676,7 +704,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: cd.document,
 			start: junctionPoint(cd.document, cd.endJunctionId),
 			end: junctionPoint(cd.document, runStart),
-			role: 'boundary',
 			endpointJunctionSnaps: [
 				{ pointIndex: 0, junctionId: cd.endJunctionId },
 				{ pointIndex: 1, junctionId: runStart }
@@ -692,7 +719,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('closure requires explicit Junction reuse; near-coordinates do not close', () => {
 		const empty = baseDocument();
-		const ab = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0), role: 'boundary' });
+		const ab = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0) });
 		if (ab.kind !== 'success') throw new Error('ab failed');
 		const nearStart = junctionPoint(ab.document, ab.startJunctionId);
 		// Near-miss without exact reuse allocates a fresh Junction.
@@ -700,7 +727,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: ab.document,
 			start: junctionPoint(ab.document, ab.endJunctionId),
 			end: [nearStart[0] + 1e-7, nearStart[1] - 1e-7],
-			role: 'boundary'
 		});
 		expect(near.kind).toBe('success');
 		if (near.kind !== 'success') return;
@@ -710,7 +736,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('rejection mutates nothing and preserves prior Walls', () => {
 		const empty = baseDocument();
-		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
+		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		const snapshot = structuredClone(enclosure.document);
 		// P23B.3a S6 — redrawing the enclosure's own Wall along its exact span is an
@@ -722,7 +748,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: enclosure.document,
 			start: p(0, 0),
 			end: p(4, 0),
-			role: 'boundary',
 			endpointJunctionSnaps: [
 				{ pointIndex: 0, junctionId: junctionIdAt(enclosure.document, 0, 0) },
 				{ pointIndex: 1, junctionId: junctionIdAt(enclosure.document, 4, 0) }
@@ -740,14 +765,13 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		// the enclosure is byte-identical afterwards (F5's permitted overlap and
 		// F8's scoped negative half).
 		const empty = baseDocument();
-		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
+		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		const snapshot = structuredClone(enclosure.document);
 		const placed = planWallSegment({
 			baseline: enclosure.document,
 			start: p(0, 0),
 			end: p(4, 0),
-			role: 'boundary'
 		});
 		expect(placed.kind).toBe('success');
 		if (placed.kind !== 'success') return;
@@ -761,7 +785,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('a divider is a genuine 1→2 with predecessor metadata on survivor and child', () => {
 		const empty = baseDocument();
-		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
+		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		const withMeta: LayoutDocumentWallFirst = {
 			...enclosure.document,
@@ -783,7 +807,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: withMeta,
 			start: p(2, 0),
 			end: p(2, 3),
-			role: 'boundary',
 			endpointHostSnaps: [
 				{ pointIndex: 0, wallId: horizontalWallAt(withMeta, 0) },
 				{ pointIndex: 1, wallId: horizontalWallAt(withMeta, 3) }
@@ -808,13 +831,12 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('1→2 divider: every Wall has exactly one physical/query representation', () => {
 		const empty = baseDocument();
-		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
+		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		const divider = planWallSegment({
 			baseline: enclosure.document,
 			start: p(2, 0),
 			end: p(2, 3),
-			role: 'boundary',
 			// P23B.3a S6 — both hosts declared (see the 1→2 divider suite above).
 			endpointHostSnaps: [
 				{ pointIndex: 0, wallId: horizontalWallAt(enclosure.document, 0) },
@@ -851,13 +873,12 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('partition segments never split Rooms', () => {
 		const empty = baseDocument();
-		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' });
+		const enclosure = planWallChain({ baseline: empty, points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true });
 		if (enclosure.kind !== 'success') throw new Error('enclosure failed');
 		const first = planWallSegment({
 			baseline: enclosure.document,
 			start: p(1, 1),
 			end: p(2, 1),
-			role: 'partition'
 		});
 		expect(first.kind).toBe('success');
 		if (first.kind !== 'success') return;
@@ -866,7 +887,6 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 			baseline: first.document,
 			start: junctionPoint(first.document, first.endJunctionId),
 			end: p(3, 1),
-			role: 'partition'
 		});
 		expect(second.kind).toBe('success');
 		if (second.kind !== 'success') return;
@@ -876,7 +896,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('roomless Wall exists in canonical compiled/query output (acceptance-blocking)', () => {
 		const empty = baseDocument();
-		const plan = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0), role: 'boundary' });
+		const plan = planWallSegment({ baseline: empty, start: p(0, 0), end: p(4, 0) });
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.document.rooms).toHaveLength(0);
@@ -895,14 +915,13 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 
 	it('returns only Junction IDs that survive noding adoption', () => {
 		const baseline = expectSuccess(
-			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true, role: 'boundary' })
+			planWallChain({ baseline: baseDocument(), points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)], close: true })
 		);
 		const plan = expectSuccess(
 			planWallSegment({
 				baseline: baseline.document,
 				start: [1e-16, 0],
 				end: p(6, 6),
-				role: 'boundary'
 			})
 		);
 		expectReturnedJunctionIdsLive(plan);
@@ -913,7 +932,7 @@ describe('P23.9 segment-first boundary (ratified 2026-09-11)', () => {
 		const start = p(1, 1);
 		const length = 2.75;
 		const end = p(1 + length, 1);
-		const plan = planWallSegment({ baseline, start, end, role: 'boundary' });
+		const plan = planWallSegment({ baseline, start, end });
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(plan.authoredWallIds).toHaveLength(1);
@@ -947,7 +966,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline: baseDocument(),
 				points: [p(0, 0), p(4, 0), p(4, 4)],
 				close: false,
-				role: 'partition'
 			})
 		);
 		const b = expectSuccess(
@@ -955,7 +973,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline: a.document,
 				points: [p(-1, 2), p(6, 2)],
 				close: false,
-				role: 'partition'
 			})
 		);
 		const remote = expectSuccess(
@@ -963,7 +980,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline: b.document,
 				points: [p(20, 20), p(24, 20)],
 				close: false,
-				role: 'partition'
 			})
 		);
 		return remote.document;
@@ -986,7 +1002,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(6, 3)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [{ pointIndex: 0, wallId: aHorizontal }]
 			})
 		);
@@ -1025,7 +1040,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(4, 1)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [
 					{ pointIndex: 0, wallId: horizontalWallAt(baseline, 0) },
 					{ pointIndex: 1, wallId: verticalWallAt(baseline, 4) }
@@ -1049,7 +1063,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(3, 2)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [
 					{ pointIndex: 0, wallId: horizontalWallAt(baseline, 0) },
 					{ pointIndex: 1, wallId: horizontalWallAt(baseline, 2) }
@@ -1070,7 +1083,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(6, 3)],
 				close: false,
-				role: 'partition'
 			})
 		);
 		expect(plan.splitWallIds).toHaveLength(0);
@@ -1086,7 +1098,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(6, 3)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [{ pointIndex: 0, wallId: 'no-such-wall' }]
 			}),
 			'invalid_candidate_document'
@@ -1104,7 +1115,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(6, 3)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [{ pointIndex: 0, wallId: remote }]
 			}),
 			'invalid_candidate_document'
@@ -1118,7 +1128,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(6, 3)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [{ pointIndex: 2, wallId: horizontalWallAt(baseline, 0) }]
 			}),
 			'invalid_candidate_document'
@@ -1132,7 +1141,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(2, 0), p(6, 3)],
 				close: false,
-				role: 'partition',
 				endpointHostSnaps: [
 					{ pointIndex: 0, wallId: horizontalWallAt(baseline, 0) },
 					{ pointIndex: 0, wallId: verticalWallAt(baseline, 4) }
@@ -1152,7 +1160,6 @@ describe('P23B.3a S6 (review correction) — a declared host is validated and au
 				baseline,
 				points: [p(4, 0), p(6, 3)],
 				close: false,
-				role: 'partition',
 				endpointJunctionSnaps: [{ pointIndex: 0, junctionId: junctionIdAt(baseline, 4, 0) }],
 				endpointHostSnaps: [{ pointIndex: 0, wallId: horizontalWallAt(baseline, 2) }]
 			}),

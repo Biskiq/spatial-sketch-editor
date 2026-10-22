@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	createEmptyWallFirstLayoutDocument,
+	nextLayoutPresetObjectId,
 	planCreateWallFirstOpening,
 	planWallChain,
 	type LayoutDocumentWallFirst,
@@ -38,6 +39,7 @@ import { createAdapter } from '$lib/authoring/adapters/layout.adapter';
 import { createLayoutInstrument } from '$lib/authoring/adapters/layout/instrument';
 import { createLayoutPlanners, layoutSubjectOf } from '$lib/authoring/adapters/layout/precision';
 import { createDimensionsInstrument, createPlacementInstrument } from '$lib/authoring/adapters/layout/adapter-support';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
 const PROJECT_ID = 'project-layout-s04';
@@ -65,18 +67,22 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 			[0, 4]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (chained.kind !== 'success') throw new Error('the S04 enclosure was refused');
 	const wallId = chained.document.walls[0]!.id;
-	const opening = planCreateWallFirstOpening(chained.document, {
-		wallId,
-		kind: 'window',
-		offset: 1,
-		width: 1.2,
-		height: 1.2,
-		sillHeight: 1
-	});
+	const opening = planCreateWallFirstOpening(
+		chained.document,
+		{
+			wallId,
+			kind: 'window',
+			offset: 1,
+			width: 1.2,
+			height: 1.2,
+			sillHeight: 1
+		},
+		freshCapture()
+	);
 	if (opening.kind === 'rejected') throw new Error(`opening fixture refused: ${opening.rejection.message}`);
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
@@ -242,6 +248,38 @@ describe('T1.P01.S04 — Layout precision', () => {
 		expect(stageEnvelope(facade.snapshot()).units.layout.data.objects).toHaveLength(before);
 	});
 
+	it('Redo reproduces the captured plinth id, while a new placement after Undo gets a fresh one', async () => {
+		const { facade, host, services } = await mount();
+		const place = async () => {
+			const instrument = createLayoutInstrument({
+				subject: { kind: 'object', id: '(placement)' },
+				document: stageEnvelope(facade.snapshot()).units.layout.data,
+				projectId: PROJECT_ID,
+				contentRevision: facade.snapshot().domain.unitRevisions.layout,
+				port: services.authoring
+			});
+			instrument.setPlacement('1.5', '2.5');
+			expect((await instrument.place()).kind).toBe('accepted');
+			return stageEnvelope(facade.snapshot()).units.layout.data.objects.at(-1)!.id;
+		};
+
+		const first = await place();
+		expect((await host.undo()).kind).toBe('installed');
+		expect(stageEnvelope(facade.snapshot()).units.layout.data.objects).toHaveLength(0);
+
+		// Redo restores the accepted state: the captured id is exactly the one the
+		// operation recorded, never a re-allocation.
+		expect((await host.redo()).kind).toBe('installed');
+		expect(stageEnvelope(facade.snapshot()).units.layout.data.objects.at(-1)!.id).toBe(first);
+
+		// Undo again, then a genuinely different operation: a fresh capture must
+		// not recycle the identity from the undone branch.
+		expect((await host.undo()).kind).toBe('installed');
+		const second = await place();
+		expect(second).not.toBe(first);
+		expect(stageEnvelope(facade.snapshot()).units.layout.data.objects).toHaveLength(1);
+	});
+
 	it('holds the host gesture lease for typed X/Z and releases it when the placement settles', async () => {
 		const { facade, host, services } = await mount();
 		const instrument = createPlacementInstrument(services);
@@ -305,13 +343,18 @@ describe('T1.P01.S04 — Layout precision', () => {
 		// is refused by the planner. Drive that path through the planner itself.
 		const planner = createLayoutPlanners().find((entry) => entry.kind === 'layout-plinth-place')!;
 		const snapshot = host.coordinator().acceptedSnapshot();
+		const capture = freshCapture();
+		const capturedInputs = [
+			{ name: 'layout-working-level', value: document.floor.id },
+			{ name: 'layout-id-nonce', value: capture.nonce }
+		];
 		const baseIntent = {
 			version: 1 as const,
 			kind: 'layout-plinth-place',
 			operationId: 'op',
 			expectedRevision: facade.snapshot().acceptedRevision,
 			targets: [],
-			capturedInputs: [],
+			capturedInputs,
 			allocatedIds: []
 		};
 		expect(
@@ -320,10 +363,14 @@ describe('T1.P01.S04 — Layout precision', () => {
 				intent: {
 					...baseIntent,
 					kind: 'layout-plinth-place',
-					payload: { point: [1, 1], floorElevation: ELEVATION + 1, objectId: 'layout-object-1' },
-					allocatedIds: [{ kind: 'layout-object', id: 'layout-object-1' }]
+					payload: {
+						point: [1, 1],
+						floorElevation: ELEVATION + 1,
+						objectId: nextLayoutPresetObjectId(document, capture)
+					},
+					allocatedIds: [{ kind: 'layout-object', id: nextLayoutPresetObjectId(document, capture) }]
 				},
-				capturedInputs: [],
+				capturedInputs,
 				allocatedIds: []
 			})
 		).toMatchObject({ kind: 'rejected', code: 'stale-datum' });
@@ -341,10 +388,10 @@ describe('T1.P01.S04 — Layout precision', () => {
 					},
 					allocatedIds: [{ kind: 'layout-object', id: 'captured-not-allocated' }]
 				},
-				capturedInputs: [],
+				capturedInputs,
 				allocatedIds: []
 			})
-		).toMatchObject({ kind: 'rejected', code: 'invalid_value' });
+		).toMatchObject({ kind: 'rejected', code: 'invalid-value' });
 		expect(layoutSubjectOf({ sourceKind: 'room-floor', sourceId: 'room' })).toBeNull();
 		expect(datumWorkingPlane(ELEVATION).datumMeters).toBe(ELEVATION);
 	});

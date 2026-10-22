@@ -65,7 +65,6 @@ import {
 	planRemoveRoom,
 	planWallChain,
 	planWallFirstRoomMove,
-	planWallRoleChange,
 	planWallSubdivision,
 	validateWallFirstLayoutDocument,
 	validateWallFirstTopology,
@@ -75,15 +74,18 @@ import {
 	type LayoutWallCenterline,
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
+import { captureFor } from './__fixtures__/layout-id-capture';
+
+/** One deterministic capture for this file's simulated operations. */
+const HAZARD_CAPTURE = captureFor('p23b3a-d12');
 
 const LINE: LayoutWallCenterline = { kind: 'line' };
 
-function wall(id: string, start: string, end: string, role: 'boundary' | 'partition') {
+function wall(id: string, start: string, end: string) {
 	return {
 		id,
 		startJunctionId: start,
 		endJunctionId: end,
-		role,
 		thickness: 0.2,
 		height: 3,
 		centerline: LINE
@@ -108,10 +110,10 @@ function enclosure(options: Enclosure) {
 		{ id: `${prefix}-d`, point: [x, z + depth] as LayoutVec2 }
 	];
 	const walls = [
-		wall(`${prefix}-a1`, `${prefix}-a`, `${prefix}-b`, 'boundary'),
-		wall(`${prefix}-b1`, `${prefix}-b`, `${prefix}-c`, 'boundary'),
-		wall(`${prefix}-c1`, `${prefix}-c`, `${prefix}-d`, 'boundary'),
-		wall(`${prefix}-d1`, `${prefix}-d`, `${prefix}-a`, 'boundary')
+		wall(`${prefix}-a1`, `${prefix}-a`, `${prefix}-b`),
+		wall(`${prefix}-b1`, `${prefix}-b`, `${prefix}-c`),
+		wall(`${prefix}-c1`, `${prefix}-c`, `${prefix}-d`),
+		wall(`${prefix}-d1`, `${prefix}-d`, `${prefix}-a`)
 	];
 	const room = {
 		id: `room-${prefix}`,
@@ -185,10 +187,10 @@ const FULL_CONTAINMENT = pairDocument(
 	{ prefix: 'k', x: 0, z: 0, width: 6, depth: 4 }
 );
 
-/** The operation under test: change the OPERATED Room's own south Wall to partition. */
+/** The operation under test: delete the OPERATED Room's own south Wall (format 6: removing it opens the enclosure exactly as dropping it from face extraction did). */
 function operateOnOperatedRoom(document: LayoutDocumentWallFirst) {
 	expect(document.rooms.map((room) => room.id)).toContain('room-c');
-	return planWallRoleChange(document, 'c-a1', 'partition');
+	return planDeleteWall(document, 'c-a1', HAZARD_CAPTURE);
 }
 
 function roomsOf(document: LayoutDocumentWallFirst) {
@@ -334,7 +336,6 @@ describe('P23B.3a S3 — the D-12 hazard, measured against the current reconcili
 					id: 'k-stub',
 					startJunctionId: 'k-c',
 					endJunctionId: 'k-c-out',
-					role: 'partition',
 					thickness: 0.2,
 					height: 3,
 					centerline: LINE
@@ -421,7 +422,7 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 	}
 
 	it('OR-D12-6 wall delete — deleting the OPERATED Room\'s Wall leaves the unrelated Room intact', () => {
-		const plan = planDeleteWall(FULL_CONTAINMENT, 'c-a1');
+		const plan = planDeleteWall(FULL_CONTAINMENT, 'c-a1', HAZARD_CAPTURE);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'wall delete');
@@ -439,7 +440,7 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 		// Dissolve only joins COLLINEAR straight Walls, so the operated Room's south
 		// Wall is split at a midpoint Junction and that Junction is the one dissolved.
 		const split = splitOperatedSouthWall(FULL_CONTAINMENT);
-		const plan = planDissolveJunction(split, 'c-mid');
+		const plan = planDissolveJunction(split, 'c-mid', HAZARD_CAPTURE);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		assertUnrelatedSurvives(plan.document, 'dissolve');
@@ -453,7 +454,7 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
 				[8, 2]
 			],
 			close: false,
-			role: 'partition'
+			capture: HAZARD_CAPTURE
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -502,8 +503,7 @@ describe('P23B.3a S3a — OR-D12-6, the other reconciliation callers', () => {
  * limitation rather than answered with new capability. The four geometric
  * reconciliation callers, checked one by one:
  *
- * - `planWallRoleChange` keeps every Wall id;
- * - `planWallRemovalSet` / `planRemoveRoom` removes Walls; a Room whose whole ring
+ * - `planDeleteWall` / `planRemoveRoom` removes Walls; a Room whose whole ring
  *   is removed stops enclosing a face, so it RETIRES (case c) instead of being
  *   replaced;
  * - `planWallChain` nodes new Walls into the existing graph, and the noder's split
@@ -599,7 +599,7 @@ describe('P23B.3a S3a — the D-12 fallback on coherent inputs, and reachable bo
 			components,
 			predecessorWitnesses,
 			predecessorPolygons,
-			allocator: createAuthoringRoomAllocator()
+			allocator: createAuthoringRoomAllocator(HAZARD_CAPTURE)
 		});
 		expect('kind' in result && result.kind === 'rejected').toBe(false);
 		if ('kind' in result) return;
@@ -632,7 +632,7 @@ describe('P23B.3a S3a — the D-12 fallback on coherent inputs, and reachable bo
 		// (geometry-only union restored): the plan's only Room was
 		// `[['room-c', 'Room c']]` — the lexical survivor took the enclosure, so the
 		// UNRELATED Room was the one retired and `obj-k` the association remapped.
-		const plan = planRemoveRoom(EXACT_COINCIDENCE, 'room-c');
+		const plan = planRemoveRoom(EXACT_COINCIDENCE, 'room-c', HAZARD_CAPTURE);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
 		expect(roomsOf(plan.document)).toEqual([['room-k', 'Room k']]);

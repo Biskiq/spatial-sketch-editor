@@ -36,6 +36,7 @@ import {
 } from '@portfolio/project-model/units';
 import {
 	createEmptyWallFirstLayoutDocument,
+	nextLayoutPresetObjectId,
 	planCommitLayoutObjectPreset,
 	planWallChain,
 	type LayoutDocumentWallFirst
@@ -48,6 +49,7 @@ import {
 	layoutObjectReference,
 	proofIntent
 } from './__fixtures__/f4-current-source-fixtures';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
 	UNIT_SOURCE_KIND,
 	UNIT_SOURCE_VERSION,
@@ -127,7 +129,7 @@ function enclosedLayout(elevation = 0): LayoutDocumentWallFirst {
 			[0, 6]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (planned.kind !== 'success') throw new Error('the conformance enclosure was refused');
 	return planned.document;
@@ -145,7 +147,15 @@ function conformanceProject(elevation = ELEVATION): {
 	readonly project: LegacyConformanceProject;
 	readonly layoutObjectId: string;
 } {
-	const objectPlan = planCommitLayoutObjectPreset(enclosedLayout(elevation), 'plinth', [0, 0], 0);
+	const objectDocument = enclosedLayout(elevation);
+	const objectCapture = freshCapture();
+	const objectPlan = planCommitLayoutObjectPreset(
+		objectDocument,
+		'plinth',
+		[0, 0],
+		0,
+		nextLayoutPresetObjectId(objectDocument, objectCapture)
+	);
 	if (objectPlan.kind !== 'success' || objectPlan.createdObjectId === undefined) {
 		throw new Error('the conformance Layout object was refused');
 	}

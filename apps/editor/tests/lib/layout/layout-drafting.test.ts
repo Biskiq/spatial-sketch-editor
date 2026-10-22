@@ -30,6 +30,7 @@ import {
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 import {
 	formatDegrees,
 	formatMeters,
@@ -51,7 +52,6 @@ const RECT = [p(0, 0), p(4, 0), p(4, 3), p(0, 3)] as const;
 function commitChain(
 	baseline: LayoutDocumentWallFirst,
 	points: [number, number][],
-	role: 'boundary' | 'partition',
 	close = false,
 	/**
 	 * P23B.3a S6 — the gesture's DECLARED connection to existing geometry (array
@@ -69,8 +69,8 @@ function commitChain(
 	const plan = planWallChain({
 		baseline,
 		points,
-		role,
 		close,
+		capture: freshCapture(),
 		...(junctionSnaps.length > 0 ? { endpointJunctionSnaps: junctionSnaps } : {}),
 		...(hostSnaps.length > 0 ? { endpointHostSnaps: hostSnaps } : {})
 	});
@@ -84,7 +84,7 @@ function commitChain(
 
 describe('P23.6 exact inputs — planner-owned validity', () => {
 	it('keeps full stored precision behind the rounded display', () => {
-		const document = commitChain(baseDocument(), [p(0, 0), p(4, 0)], 'boundary');
+		const document = commitChain(baseDocument(), [p(0, 0), p(4, 0)]);
 		const wallId = document.walls[0]!.id;
 		// What the user types parses fully: the planner stores exactly what it
 		// is given — display rounding never feeds back into the document.
@@ -100,7 +100,7 @@ describe('P23.6 exact inputs — planner-owned validity', () => {
 
 describe('P23.6 blank exact inputs leave the parsed value untouched', () => {
 	it('blank Junction X/Z changes nothing', () => {
-		const seed = commitChain(baseDocument(), [...RECT], 'boundary', true);
+		const seed = commitChain(baseDocument(), [...RECT], true);
 		const junction = seed.junctions[0]!;
 		for (const raw of ['', '   ']) {
 			const parsed = parseExactNumber(raw, junction.point[0], formatMeters);
@@ -124,8 +124,8 @@ describe('P23.6 blank exact inputs leave the parsed value untouched', () => {
 
 describe('P23.6 junction hit resolution', () => {
 	it('resolves a Plan hit on a canonical endpoint with no Room context', () => {
-		const first = commitChain(baseDocument(), [p(0, 0), p(4, 0)], 'boundary');
-		const document = commitChain(first, [p(0, 2), p(4, 2)], 'partition');
+		const first = commitChain(baseDocument(), [p(0, 0), p(4, 0)]);
+		const document = commitChain(first, [p(0, 2), p(4, 2)]);
 		const firstWall = document.walls[0]!;
 		const { geometry } = compileWallFirstLayoutGeometry(document);
 		const hit = resolvePlanHit(geometry.queries, [0.05, 0.02], 0.2);

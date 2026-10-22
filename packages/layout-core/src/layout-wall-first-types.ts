@@ -37,24 +37,38 @@ import type { LayoutObject, LayoutVec2 } from './layout-types';
  * carries `id`/`name`/`elevation` only, and a Room ceiling is derived from its
  * boundary Wall heights.
  *
- * **`5` is the only recognized version, and there is no `4` decoder.** P23.6I is a
- * pre-baseline slice, so the wall-first `4` generation that reached
- * `main` before this branch is deliberately *not* migrated: having existed on
- * `main` does not by itself create a backward-compatibility obligation before the
- * Release or Source Baseline (`docs/reference/north-star.md` → *Development-stage
- * schema compatibility (pre-baseline)*). A payload declaring `4` therefore fails as
- * `unsupported_format_version` instead of being silently reinterpreted as `5`.
- * There is no `4`→`5` cutover, no historical document type, no `6`/`7`.
+ * **T1.P02.S01 moved the canonical format to `6`: format 5 without the authored
+ * Wall `role`.** A Wall's role is derived from face membership instead
+ * ({@link LayoutDerivedWallRole}): the compiler, the Room gates and the Card fact
+ * all read the derived value, and nothing authors it. This settles the
+ * "migrate existing `partition` Walls" question by removal — a Wall is bounding,
+ * dividing or free-standing because of the topology it is part of, never because a
+ * field says so.
+ *
+ * **`6` is the only recognized version, and there is no `5` decoder.** The
+ * change is pre-baseline (`docs/reference/north-star.md` → *Development-stage
+ * schema compatibility (pre-baseline)*), so there is no migration, no dual reader
+ * and no negotiation: a payload declaring `5` (or any other number) fails as
+ * `unsupported_format_version` instead of being silently reinterpreted.
  */
-export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 5 as const;
+export const LAYOUT_WALL_FIRST_FORMAT_VERSION = 6 as const;
 
 /** All explicit `formatVersion` values the decoder recognizes. */
 export const KNOWN_LAYOUT_FORMAT_VERSIONS = [LAYOUT_WALL_FIRST_FORMAT_VERSION] as const;
 
 export type LayoutFormatVersion = (typeof KNOWN_LAYOUT_FORMAT_VERSIONS)[number];
 
-/** Semantic Wall role: only `boundary` Walls participate in Room face extraction. */
-export type LayoutWallRole = 'boundary' | 'partition';
+/**
+ * Derived Wall role, owned by face membership and never persisted.
+ *
+ * - `bounding` — referenced by exactly one Room boundary;
+ * - `dividing` — referenced by two or more Room boundaries (it separates them);
+ * - `free-standing` — referenced by no Room boundary.
+ *
+ * Room boundaries are the reconciled candidate faces, so this is the same
+ * membership face extraction produced; nothing reads an authored field.
+ */
+export type LayoutDerivedWallRole = 'bounding' | 'dividing' | 'free-standing';
 
 /** First-class connectivity point. Junction ID equality *is* connectivity. */
 export type LayoutJunction = {
@@ -145,12 +159,15 @@ export type LayoutWallCenterline =
  * Walls, a `cubic-chain` of bend points and one control pair per cubic span for
  * curved ones. The field is required on every persisted Wall (fresh-authority
  * policy: no migration, no missing-field tolerance).
+ *
+ * There is no authored `role` (format 6): bounding/dividing/free-standing is
+ * derived from Room boundary membership by
+ * {@link deriveLayoutWallRole}.
  */
 export type LayoutWall = {
   id: string;
   startJunctionId: string;
   endJunctionId: string;
-  role: LayoutWallRole;
   thickness: number;
   height: number;
   centerline: LayoutWallCenterline;

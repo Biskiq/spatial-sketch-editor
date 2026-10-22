@@ -12,7 +12,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset } from '@portfolio/layout-core';
+import {
+	createEmptyWallFirstLayoutDocument,
+	nextLayoutPresetObjectId,
+	planCommitLayoutObjectPreset
+} from '@portfolio/layout-core';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
 	resolveReference,
 	type AcceptedRevision,
@@ -246,7 +251,15 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 			prepare(request) {
 				const outcome = joint.prepare(request);
 				if (outcome.kind !== 'prepared') return outcome;
-				const plan = planCommitLayoutObjectPreset(outcome.candidate.source.units.layout.data, 'plinth', [0, 0], 0);
+				const candidateLayout = outcome.candidate.source.units.layout.data;
+				const capture = freshCapture();
+				const plan = planCommitLayoutObjectPreset(
+					candidateLayout,
+					'plinth',
+					[0, 0],
+					0,
+					nextLayoutPresetObjectId(candidateLayout, capture)
+				);
 				if (plan.kind !== 'success') throw new Error(`the Layout write fixture was refused: ${plan.kind}`);
 				return {
 					kind: 'prepared',

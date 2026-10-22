@@ -23,6 +23,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	deriveLayoutWallRole,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
@@ -81,14 +82,13 @@ function curvedRoomDocument(
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1])
 		},
-		{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: LINE }
 	];
 	document.rooms = [
 		{
@@ -284,7 +284,8 @@ describe('P23.11 slice 8 — exact curved split through the planner', () => {
 			(candidate) => candidate.id !== 'wall-a' && candidate.startJunctionId === first.endJunctionId
 		)!;
 		expect(second.endJunctionId).toBe('j-b');
-		expect(second.role).toBe(first.role);
+		/* Format 6: role is derived, so the split fragment keeps the same derived role. */
+		expect(deriveLayoutWallRole(next, second.id)).toBe(deriveLayoutWallRole(next, first.id));
 		expect(second.thickness).toBe(first.thickness);
 		expect(second.height).toBe(first.height);
 		expect(next.junctions).toHaveLength(5);

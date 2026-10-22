@@ -17,8 +17,7 @@ type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-};
+	};
 
 function document(
 	junctions: Array<[string, number, number]>,
@@ -33,7 +32,6 @@ function document(
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -337,7 +335,6 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 				id: wall.id,
 				startJunctionId: wall.start,
 				endJunctionId: wall.end,
-				role: 'boundary' as const,
 				thickness: 0.2,
 				height: 3,
 				centerline: { kind: 'line' } as const,
@@ -383,7 +380,6 @@ describe('Room reconciliation — safe components (P23.8 / H5)', () => {
 				id: wall.id,
 				startJunctionId: wall.start,
 				endJunctionId: wall.end,
-				role: 'boundary' as const,
 				thickness: 0.2,
 				height: 3,
 				centerline: { kind: 'line' } as const,

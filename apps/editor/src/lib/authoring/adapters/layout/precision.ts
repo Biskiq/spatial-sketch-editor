@@ -20,14 +20,21 @@
  * | Wall/Opening name | `layout-entity-name` | `planWallMetadataUpdate` / `planOpeningMetadataUpdate` |
  * | Place → Layout plinth | `layout-plinth-place` | `planCommitLayoutObjectPresetWithId` |
  *
- * Explicitly absent: independent arch rise, Wall roles, profile conversion,
- * Floor storey height and Layout-object rename. Those are read-only facts and
- * the Instrument explains them as unavailable rather than exposing a disabled
- * control that looks writable.
+ * Explicitly absent: independent arch rise, an authored Wall role (format 6
+ * derives it from Room boundary membership), profile conversion, Floor storey
+ * height and Layout-object rename. Those are read-only facts and the Instrument
+ * explains them as unavailable rather than exposing a disabled control that
+ * looks writable.
  */
 
 import {
+	deriveLayoutWallRole,
+	layoutIdCaptureInput,
+	layoutWorkingLevelInput,
+	nextLayoutPresetObjectId,
 	planCommitLayoutObjectPresetWithId,
+	readLayoutIdCapture,
+	readLayoutWorkingLevel,
 	planExactWallAngle,
 	planExactWallHeight,
 	planExactWallLength,
@@ -38,6 +45,7 @@ import {
 	planWallMetadataUpdate,
 	type FixedWallEndpoint,
 	type LayoutDocumentWallFirst,
+	type LayoutIdCapture,
 	type LayoutVec2,
 	type PrecisionPlan
 } from '@portfolio/layout-core';
@@ -147,7 +155,9 @@ export function isLayoutOpeningField(value: unknown): value is LayoutOpeningFiel
 export function layoutReference(
 	snapshot: PlannerRequest<ProjectEnvelope>['snapshot'],
 	subject: LayoutSubject,
-	contentRevision: string
+	contentRevision: string,
+	/** The working level, supplied by the caller as an explicit input. */
+	levelId: string
 ): SemanticReference {
 	return {
 		version: 1,
@@ -157,9 +167,7 @@ export function layoutReference(
 		instancePath: [],
 		location: {
 			kind: 'layout-location',
-			// The authored level id, read from the admitted source rather than a second
-			// level registry: P23 has exactly one canonical Floor.
-			levelId: snapshot.domain.source.units.layout.data.floor.id,
+			levelId,
 			structureInstancePath: []
 		},
 		componentId: null,
@@ -218,10 +226,23 @@ function prepared(
 	fields: readonly string[],
 	options: { readonly created?: boolean; readonly id?: string } = {}
 ): PlannerOutcome<ProjectEnvelope> {
+	// T1.P02.S01 §1 — the working level is an explicit captured input, never a
+	// field read out of the document during planning. A stale level fails closed.
+	const levelId = readLayoutWorkingLevel(request.capturedInputs);
+	if (levelId === null) {
+		return rejected('invalid-value', 'The intent must capture its working Layout level before evaluation.');
+	}
+	if (levelId !== request.snapshot.domain.source.units.layout.data.floor.id) {
+		return rejected(
+			'stale-level',
+			`The captured working level '${levelId}' is not the accepted Layout floor.`
+		);
+	}
 	const reference = layoutReference(
 		request.snapshot,
 		subject,
-		request.snapshot.domain.source.units.layout.header.contentRevision
+		request.snapshot.domain.source.units.layout.header.contentRevision,
+		levelId
 	);
 	const candidate: PreparedCandidate<ProjectEnvelope> = {
 		operationId: request.intent.operationId,
@@ -473,6 +494,25 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 		if (request.intent.targets.length !== 0) {
 			return rejected('invalid-value', 'A plinth placement addresses no existing subject.');
 		}
+		// T1.P02.S01 §1 — identity is captured, not allocated: the nonce input
+		// derives the object id, and the intent's captured allocation must agree.
+		const capture = readLayoutIdCapture(request.capturedInputs);
+		if (capture === null) {
+			return rejected(
+				'invalid-value',
+				'A plinth placement must capture its identity nonce before evaluation.'
+			);
+		}
+		const expectedObjectId = nextLayoutPresetObjectId(
+			request.snapshot.domain.source.units.layout.data,
+			capture
+		);
+		if (expectedObjectId !== objectId) {
+			return rejected(
+				'invalid-value',
+				`The plinth payload names '${objectId}', but this operation's nonce derives '${expectedObjectId}'.`
+			);
+		}
 		if (
 			!request.intent.allocatedIds.some(
 				(allocation) => allocation.kind === 'layout-object' && allocation.id === objectId
@@ -488,6 +528,7 @@ function plinthPlanner(): DomainPlanner<ProjectEnvelope> {
 			'plinth',
 			point as LayoutVec2,
 			floorElevation,
+			capture,
 			objectId
 		);
 		if (plan.kind === 'rejected') {
@@ -759,6 +800,7 @@ export function wallManipulationIntent(input: {
 		projectId: input.projectId,
 		revisionId: input.revisionId,
 		contentRevision: input.contentRevision,
+		levelId: input.levelId,
 		targets: [reference]
 	};
 	// One literal per operation: a shared conditional object would widen its
@@ -809,7 +851,9 @@ export function layoutFacts(
 			{ label: 'Name', value: wall.name ?? '(unnamed)' },
 			{ label: 'Height', value: formatMeters(wall.height) },
 			{ label: 'Thickness', value: formatMeters(wall.thickness) },
-			{ label: 'Role', value: `${wall.role} (read-only)` }
+			// Format 6 — the role is derived from Room boundary membership, shown
+			// read-only because it follows geometry rather than a control.
+			{ label: 'Role', value: `${deriveLayoutWallRole(document, wall.id) ?? 'free-standing'} (derived)` }
 		];
 	}
 	if (subject.kind === 'opening') {
@@ -921,15 +965,24 @@ export function parsePlacementXZ(xText: string, zText: string): PlacementParse {
 	return { ok: true, point: [x.value, z.value] };
 }
 
-/** Build the F.4 intent for one writable fact, with captured identity and revision. */
+/**
+ * Build the F.4 intent for one writable fact, with captured identity and revision.
+ *
+ * The working level is always an explicit captured input (T1.P02.S01 §1); an
+ * operation that mints Layout identity additionally captures its nonce here, so
+ * the planner derives the exact ids this intent recorded. Neither value is read
+ * out of the document by planning.
+ */
 export function buildLayoutIntent(input: {
 	readonly kind: string;
 	readonly operationId: string;
 	readonly projectId: string;
 	readonly revisionId: string;
 	readonly contentRevision: string;
+	readonly levelId: string;
 	readonly targets: readonly SemanticReference[];
 	readonly payload: AuthoringIntent['payload'];
+	readonly capture?: LayoutIdCapture;
 	readonly allocatedIds?: AuthoringIntent['allocatedIds'];
 }): AuthoringIntent {
 	return {
@@ -939,7 +992,10 @@ export function buildLayoutIntent(input: {
 		expectedRevision: { projectId: input.projectId, revisionId: input.revisionId },
 		targets: [...input.targets],
 		payload: input.payload,
-		capturedInputs: [],
+		capturedInputs: [
+			layoutWorkingLevelInput(input.levelId),
+			...(input.capture ? [layoutIdCaptureInput(input.capture)] : [])
+		],
 		allocatedIds: [...(input.allocatedIds ?? [])]
 	};
 }

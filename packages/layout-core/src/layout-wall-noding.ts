@@ -261,7 +261,6 @@ function planWallSplitInternal(
 			id: newWallId,
 			startJunctionId: junctionId,
 			endJunctionId: candidate.endJunctionId,
-			role: candidate.role,
 			thickness: candidate.thickness,
 			height: candidate.height,
 			centerline: fragmentB

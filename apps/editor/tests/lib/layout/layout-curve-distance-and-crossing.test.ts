@@ -21,6 +21,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { freshCapture } from './__fixtures__/layout-id-capture';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
@@ -96,7 +97,6 @@ function documentOf(centerline: LayoutWallCenterline): LayoutDocumentWallFirst {
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'partition',
 			thickness: 0.2,
 			height: 3,
 			centerline
@@ -166,6 +166,15 @@ function worstDeviation(points: readonly LayoutVec2[], baseline: readonly Layout
 // ===========================================================================
 // Fix 2 — unified Wall arc-distance authority
 // ===========================================================================
+
+type ChainOptions = Omit<Parameters<typeof planWallChain>[0], 'capture'>;
+function planWallChainCaptured(options: ChainOptions) {
+	return planWallChain({ ...options, capture: freshCapture() });
+}
+type SegmentOptions = Omit<Parameters<typeof planWallSegment>[0], 'capture'>;
+function planWallSegmentCaptured(options: SegmentOptions) {
+	return planWallSegment({ ...options, capture: freshCapture() });
+}
 
 describe('P23.11 fix 2 — one authored Wall-distance metric', () => {
 	const curve = () => documentOf(chainOf([0, 0], [CHORD, 0], [3, 2], [8, -1]));
@@ -273,7 +282,6 @@ function curvedWallDocument(): LayoutDocumentWallFirst {
 			id: 'curved',
 			startJunctionId: 'c-a',
 			endJunctionId: 'c-b',
-			role: 'partition',
 			thickness: 0.2,
 			height: 3,
 			centerline: chainOf([0, 0], [6, 0], [3, 3])
@@ -286,15 +294,14 @@ function curvedBoundaryHostDocument(
 	openings: ReadonlyArray<{ id: string; offset: number; width: number }> = []
 ): LayoutDocumentWallFirst {
 	const document = curvedWallDocument();
-	document.walls[0]!.role = 'boundary';
 	document.junctions.push(
 		{ id: 'c-c', point: [6, 4] },
 		{ id: 'c-d', point: [0, 4] }
 	);
 	document.walls.push(
-		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-right', startJunctionId: 'c-b', endJunctionId: 'c-c', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-top', startJunctionId: 'c-c', endJunctionId: 'c-d', thickness: 0.2, height: 3, centerline: LINE },
+		{ id: 'wall-left', startJunctionId: 'c-d', endJunctionId: 'c-a', thickness: 0.2, height: 3, centerline: LINE }
 	);
 	document.rooms = [
 		{
@@ -357,14 +364,13 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 		// loop and sampled call alike), and this Wall shares no Junction with `curved`,
 		// so the crossing is permitted geometry: nothing is adopted, `curved` is not
 		// split, and the canonical gate accepts what the planner built (R-3).
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline,
 			points: [
 				[1, 2],
 				[5, 2]
 			],
 			close: false,
-			role: 'partition'
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -389,14 +395,13 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 		// crossing is admitted and un-noded, which S5's F8 case asserts.
 		const baseline = curvedWallDocument();
 		const snapshot = JSON.stringify(baseline);
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline,
 			points: [
 				[6, 0],
 				[2, 4]
 			],
 			close: false,
-			role: 'partition',
 			endpointJunctionSnaps: [{ pointIndex: 0, junctionId: 'c-b' }]
 		});
 		expect(plan.kind).toBe('rejected');
@@ -410,28 +415,26 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 
 	it('accepts a valid straight Wall near but not crossing the curved Wall', () => {
 		const baseline = curvedWallDocument();
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline,
 			points: [
 				[-1, 1],
 				[-1, 3]
 			],
 			close: false,
-			role: 'partition'
 		});
 		expect(plan.kind).toBe('success');
 	});
 
 	it('accepts explicit shared-Junction contact with the curved Wall', () => {
 		const baseline = curvedWallDocument();
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline,
 			points: [
 				[6, 0],
 				[9, 0]
 			],
 			close: false,
-			role: 'partition'
 		});
 		expect(plan.kind).toBe('success');
 	});
@@ -444,21 +447,20 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 			{ id: 's-b', point: [8, 0] }
 		];
 		document.walls = [
-			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', role: 'partition', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', thickness: 0.2, height: 3, centerline: LINE }
 		];
 		// P23B.3a S6 — the author's chain attaches to the host Wall (the declaration a
 		// wall-span snap makes), so the X crossing is a WITHIN-GROUP relation and is
 		// noded exactly as it was before the policy. An UNDECLARED X between two
 		// commands is permitted, un-noded overlap instead (F8's scoped negative half),
 		// asserted immediately below.
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline: document,
 			points: [
 				[4, -3],
 				[4, 3]
 			],
 			close: false,
-			role: 'partition',
 			endpointHostSnaps: [{ pointIndex: 0, wallId: 'host' }]
 		});
 		expect(plan.kind).toBe('success');
@@ -475,16 +477,15 @@ describe('P23.11 fix 3 — authoring crosses a curved Wall only where the compon
 			{ id: 's-b', point: [8, 0] }
 		];
 		document.walls = [
-			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', role: 'partition', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'host', startJunctionId: 's-a', endJunctionId: 's-b', thickness: 0.2, height: 3, centerline: LINE }
 		];
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline: document,
 			points: [
 				[4, -3],
 				[4, 3]
 			],
 			close: false,
-			role: 'partition'
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -503,11 +504,10 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 	it('projects the normal Wall segment endpoint to true host arc distance and splits atomically', () => {
 		const baseline = curvedBoundaryHostDocument();
 		const hit = compiledWallSample(baseline, 'curved', 0.25);
-		const plan = planWallSegment({
+		const plan = planWallSegmentCaptured({
 			baseline,
 			start: [hit.point[0], hit.point[1] - 2],
 			end: hit.point,
-			role: 'partition',
 			endpointHostWallId: 'curved'
 		});
 		if (plan.kind !== 'success') throw new Error(`expected curved T success, got ${JSON.stringify(plan.rejection)}`);
@@ -550,11 +550,10 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 		const hit = compiledWallSample(seed, 'curved', 0.4);
 		const beforeNear = compiledOpeningCenter(seed, 'near');
 		const beforeFar = compiledOpeningCenter(seed, 'far');
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline: seed,
 			points: [[hit.point[0], hit.point[1] - 2], hit.point],
 			close: false,
-			role: 'partition',
 			endpointHostSnaps: [{ pointIndex: 1, wallId: 'curved' }]
 		});
 		if (plan.kind !== 'success') throw new Error(`expected boundary-host T success, got ${JSON.stringify(plan.rejection)}`);
@@ -592,11 +591,10 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 			}
 		];
 		const snapshot = JSON.stringify(seed);
-		const plan = planWallSegment({
+		const plan = planWallSegmentCaptured({
 			baseline: seed,
 			start: [hit.point[0], hit.point[1] - 2],
 			end: hit.point,
-			role: 'partition',
 			endpointHostWallId: 'curved'
 		});
 		expect(plan.kind).toBe('rejected');
@@ -610,11 +608,10 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 		const baseline = curvedWallDocument();
 		const hit = compiledWallSample(baseline, 'curved', 0.25);
 		const outside: LayoutVec2 = [hit.point[0], hit.point[1] + CURVE_FLATNESS_TOLERANCE * 0.5];
-		const plan = planWallSegment({
+		const plan = planWallSegmentCaptured({
 			baseline,
 			start: [outside[0] - 0.2, outside[1]],
 			end: outside,
-			role: 'partition'
 		});
 		if (plan.kind !== 'success') throw new Error(`expected disconnected near-miss success, got ${JSON.stringify(plan.rejection)}`);
 		expect(plan.splitWallIds).not.toContain('curved');
@@ -629,11 +626,10 @@ describe('P23.11 blocker 2 — authored endpoint T onto a curved host', () => {
 		// operation declares it: adoption is what a declared anchor buys, never what a
 		// sub-ulp coordinate buys on its own.
 		const baseline = curvedWallDocument();
-		const plan = planWallSegment({
+		const plan = planWallSegmentCaptured({
 			baseline,
 			start: [-2, 0],
 			end: [5e-10, -5e-10],
-			role: 'partition',
 			endpointJunctionSnaps: [{ pointIndex: 1, junctionId: 'c-a' }]
 		});
 		if (plan.kind !== 'success') throw new Error(`expected endpoint adoption, got ${JSON.stringify(plan.rejection)}`);

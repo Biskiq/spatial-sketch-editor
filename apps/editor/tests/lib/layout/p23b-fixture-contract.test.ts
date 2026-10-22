@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	compileWallFirstLayoutGeometry,
-	planWallRoleChange,
+	planDeleteWall,
 	serializeWallFirstLayoutDocument,
 	validateWallFirstLayoutDocument,
 	validateWallFirstTopology
@@ -35,6 +35,7 @@ import {
 	p23bCorrectnessVerdict,
 	p23bMatrixVerdict
 } from './__fixtures__/p23b-verdicts';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 function sha256(value: string | Uint8Array): string {
 	return createHash('sha256').update(value).digest('hex');
@@ -108,7 +109,7 @@ describe('P23B durable fixture contracts', () => {
 				// D-12 identity: a role change keeps the unrelated Room's id, the
 				// object's ownership and the Opening's host.
 				expect(topology, spec.id).toBeUndefined();
-				const changed = planWallRoleChange(document, 'c-a1', 'partition');
+				const changed = planDeleteWall(document, 'c-a1', freshCapture());
 				expect(changed.kind, spec.id).toBe('success');
 				if (changed.kind === 'success') {
 					expect(changed.document.rooms.map((room) => room.id), spec.id).toContain('room-k');

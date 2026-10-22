@@ -1,6 +1,6 @@
 {
   "units": "meters",
-  "formatVersion": 5,
+  "formatVersion": 6,
   "floor": {
     "id": "floor",
     "name": "Floor",
@@ -62,7 +62,6 @@
       "id": "wall-chain-1",
       "startJunctionId": "junction-chain-1",
       "endJunctionId": "junction-chain-1.4",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -73,7 +72,6 @@
       "id": "wall-chain-1-b",
       "startJunctionId": "junction-chain-1.4",
       "endJunctionId": "junction-chain-2",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -84,7 +82,6 @@
       "id": "wall-chain-1.2",
       "startJunctionId": "junction-chain-2",
       "endJunctionId": "junction-chain-1.2",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -95,7 +92,6 @@
       "id": "wall-chain-1.3",
       "startJunctionId": "junction-chain-1.2",
       "endJunctionId": "junction-chain-1.3",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -106,7 +102,6 @@
       "id": "wall-chain-1.4",
       "startJunctionId": "junction-chain-1.3",
       "endJunctionId": "junction-chain-1.5",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -117,7 +112,6 @@
       "id": "wall-chain-1.4-b",
       "startJunctionId": "junction-chain-1.5",
       "endJunctionId": "junction-chain-1",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -128,7 +122,6 @@
       "id": "wall-chain-1.5",
       "startJunctionId": "junction-chain-1.4",
       "endJunctionId": "junction-chain-2.2",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {
@@ -170,7 +163,6 @@
       "id": "wall-chain-1.6",
       "startJunctionId": "junction-chain-2.2",
       "endJunctionId": "junction-chain-1.5",
-      "role": "boundary",
       "thickness": 0.2,
       "height": 3,
       "centerline": {

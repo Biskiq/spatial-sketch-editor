@@ -138,7 +138,13 @@ export const HEAVY_FILES: string[] = [
 	// correspondence differential there is no cheap subset to retain — every row
 	// has the same cost shape — so the whole file moves rather than splitting
 	// into an arbitrary "representative" fast half.
-	'tests/lib/layout/p23b11-conditional-gate.test.ts'
+	'tests/lib/layout/p23b11-conditional-gate.test.ts',
+	// T1.P02.S01 acceptance criterion 2: the format 5 → 6 whole-table differential
+	// over the six CLASS 5 all-boundary kernels, against digests recorded from the
+	// base revision's compiler. A whole-table kernel differential, not a timing
+	// benchmark; it belongs here so no focused edit pays for the base-revision
+	// comparison and the acceptance gate runs it every time.
+	'tests/lib/layout/t1s01-format6-differential.test.ts'
 ];
 
 /** Everything the fast lane excludes (`test:fast` = full − these). */

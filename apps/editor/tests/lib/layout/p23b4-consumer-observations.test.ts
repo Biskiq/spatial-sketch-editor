@@ -20,7 +20,7 @@ import {
 } from './__fixtures__/p23b-fixtures';
 import { p2311Fixture, P2311_FIXTURES } from './__fixtures__/p2311-bend-fixtures';
 import { collectFixtureDigests, sha } from './p23b4-observation-collector';
-import { OBSERVED_REFERENCE } from './p23b4-observed-reference';
+import { OBSERVED_REFERENCE, PLANNER_VERDICT_EXPECTATION } from './p23b4-observed-reference';
 import { buildWildRoomFixture, buildWildSharedFixture } from './p23b4-wild-fixtures';
 
 /**
@@ -60,17 +60,35 @@ function observationFixtures(): Array<{ id: string; document: LayoutDocumentWall
 	return entries;
 }
 
+/**
+ * T1.P02.S01 — the format-neutral compiled projection (identical to the one in
+ * `p23b4-sampling-reference.test.ts`): the derived role vocabulary and the
+ * Junction cacheKey that embeds it are excluded, every other compiled fact is
+ * hashed. The pinned digests were recorded from the BASE revision `55683981`
+ * with this projection; the derived role is pinned separately.
+ */
+function neutralCompiledDigest(geometry: ReturnType<typeof compileWallFirstLayoutGeometry>['geometry']): string {
+	const payload = {
+		walls: geometry.walls.map(({ role: _role, cacheKey: _cacheKey, ...rest }) => rest),
+		junctions: (geometry.junctions ?? []).map(({ legs, cacheKey: _cacheKey, ...rest }) => ({
+			...rest,
+			legs: legs.map(({ role: _legRole, ...leg }) => leg)
+		})),
+		rooms: geometry.rooms,
+		queries: geometry.queries
+	};
+	return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
 const WILD_OUTPUTS: Record<string, { faces: string; compiled: string; topology: string }> = {
-	// Generated honestly: multi-knot fixtures run on ca04983a packages and HEAD;
-	// byte-identical on both (verified), admitted with clean compile.
 	'wild-room-curved-v1': {
 		faces: 'faces=1 checksum=5666de32e3fa631649637e3e62d5750c69f7e4691c2ff1e594a65d50e6ec0a68',
-		compiled: '67e2f3e2055340d3325dc3006efeb19765fd5471c5ee1786dd4e7aa217992fa7',
+		compiled: 'e1f81d3f0bcc0838b00b523cead56c1a63593f03ffbfdd30e672b6421aec4051',
 		topology: 'admitted'
 	},
 	'wild-shared-curved-v1': {
 		faces: 'faces=2 checksum=09ae15d1214baf17010acf91243e915571b5c2408174644f1ce885a127ffdb91',
-		compiled: '630d470c020eb531f1052ac09a05b8ac3d4a4d2e01056b158b33f17b3c6c3a69',
+		compiled: '6ce613791bb1d6ca7c57dd97d995147936e941db8916542cb8378753f4baddee',
 		topology: 'admitted'
 	}
 };
@@ -96,7 +114,11 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 			// Real planner: semantic outcomes and consumed arrays are history…
 			expect(live.planner.gateWalls, `${id} planner consumed arrays`).toBe(expected!.planner.gateWalls);
 			expect(live.planner.faceConsumed, `${id} planner face arrays`).toBe(expected!.planner.faceConsumed);
-			expect(live.plannerVerdict, `${id} planner verdict`).toBe(expected!.plannerVerdict);
+			// T1.P02.S01: the verdict is the one history field format 6 moved (the
+			// accepted document lost the authored `role`), so it is asserted against
+			// the HEAD-derived expectation below. Its difference from the frozen
+			// history is pinned by the delta test, never absorbed into the table.
+			expect(live.plannerVerdict, `${id} planner verdict`).toBe(PLANNER_VERDICT_EXPECTATION[id]);
 			// Call multiplicity is NOT asserted: it measured work, not output (§7.2 A″).
 		}
 	});
@@ -176,7 +198,47 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 				plan.kind === 'success'
 					? `success:${createHash('sha256').update(plan.acceptance?.documentJson ?? JSON.stringify(plan.document)).digest('hex')}`
 					: `rejected:${plan.rejection.code}:${createHash('sha256').update(plan.rejection.message).digest('hex')}`;
-			expect(verdict, `${id} real-planner verdict`).toBe(OBSERVED_REFERENCE[id]!.plannerVerdict);
+			expect(verdict, `${id} real-planner verdict`).toBe(PLANNER_VERDICT_EXPECTATION[id]);
+		}
+	});
+
+	it('records the format-6 verdict delta exactly, instead of editing history', () => {
+		// Format 6 removed the authored Wall `role`, so every SUCCESS row's digest
+		// (which hashes the accepted document's canonical JSON) moved, while the
+		// four early-reject rows hash their rejection message and did not. The
+		// frozen history column is left alone; this list is the whole allowed
+		// delta. A row that moves for any other reason fails here rather than being
+		// absorbed by an edited `OBSERVED_REFERENCE` value.
+		const moved = Object.keys(OBSERVED_REFERENCE)
+			.filter((id) => OBSERVED_REFERENCE[id]!.plannerVerdict !== PLANNER_VERDICT_EXPECTATION[id])
+			.sort();
+		expect(moved).toEqual(
+			[
+				'N-2',
+				'bend-10-wall-openings',
+				'bend-3-room-openings',
+				'class4-zero-length-wall-v1',
+				'd12-exact-coincidence-v1',
+				'd12-full-containment-v1',
+				'd12-partial-overlap-v1',
+				'p23b-12-wall-all-curved-v1',
+				'p23b-12-wall-straight-v1',
+				'p23b-12-wall-target-curved-v1',
+				'p23b-40-wall-all-curved-v1',
+				'p23b-40-wall-straight-v1',
+				'p23b-40-wall-target-curved-v1',
+				'wild-room-curved-v1',
+				'wild-shared-curved-v1'
+			].sort()
+		);
+		for (const id of moved) {
+			expect(PLANNER_VERDICT_EXPECTATION[id], `${id} is a moved SUCCESS row`).toMatch(/^success:/);
+		}
+		// Everything else is byte-identical to history: the expectation adds no
+		// second, independent way for a value to drift.
+		for (const id of Object.keys(OBSERVED_REFERENCE)) {
+			if (moved.includes(id)) continue;
+			expect(PLANNER_VERDICT_EXPECTATION[id], id).toBe(OBSERVED_REFERENCE[id]!.plannerVerdict);
 		}
 	});
 
@@ -197,9 +259,7 @@ describe('P23B.4 F1 — observed consumer-sampling reference', () => {
 			const expected = WILD_OUTPUTS[id]!;
 			expect(faceChecksum(document), `${id} face polygons`).toBe(expected.faces);
 			const compiled = compileWallFirstLayoutGeometry(document);
-			expect(createHash('sha256').update(JSON.stringify(compiled.geometry)).digest('hex'), `${id} compiled`).toBe(
-				expected.compiled
-			);
+			expect(neutralCompiledDigest(compiled.geometry), `${id} compiled`).toBe(expected.compiled);
 			expect(validateWallFirstTopology(document)?.code ?? 'admitted', `${id} topology`).toBe(expected.topology);
 			// Nonempty COMPILED Room/Opening outputs (not just document inputs).
 			expect(compiled.geometry.rooms.length, `${id} compiled rooms nonempty`).toBeGreaterThan(0);

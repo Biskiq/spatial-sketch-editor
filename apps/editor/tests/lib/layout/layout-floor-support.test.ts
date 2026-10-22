@@ -36,6 +36,7 @@ import {
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import { baseDocument, p } from '../../helpers/angled-plan-fixtures';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** A 7 m x 6 m rectangle enclosure: one reconciled Room at the floor datum. */
 const RECT = [p(0, -4), p(7, -4), p(7, 2), p(0, 2)];
@@ -52,7 +53,7 @@ function enclosure(floorElevation = 0): LayoutDocumentWallFirst {
 }
 
 function closeChain(baseline: LayoutDocumentWallFirst): LayoutDocumentWallFirst {
-	const plan = planWallChain({ baseline, points: RECT, close: true, role: 'boundary' });
+	const plan = planWallChain({ baseline, points: RECT, close: true, capture: freshCapture() });
 	if (plan.kind !== 'success') throw new Error(`enclosure failed: ${JSON.stringify(plan)}`);
 	return plan.document;
 }
@@ -237,7 +238,12 @@ describe('floor-support query over the canonical compiled Layout', () => {
 
 	it('pins the current single-datum real format so a future multi-datum format fails loudly', () => {
 		const baseline = enclosure(2.5);
-		const addition = planWallChain({ baseline, points: [p(20, -4), p(27, -4), p(27, 2), p(20, 2)], close: true, role: 'boundary' });
+		const addition = planWallChain({
+			baseline,
+			points: [p(20, -4), p(27, -4), p(27, 2), p(20, 2)],
+			close: true,
+			capture: freshCapture()
+		});
 		if (addition.kind !== 'success') throw new Error('second enclosure failed');
 		const { geometry, issues } = compileWallFirstLayoutGeometry(addition.document);
 		expect(issues.filter(issue => issue.severity !== 'warning')).toEqual([]);

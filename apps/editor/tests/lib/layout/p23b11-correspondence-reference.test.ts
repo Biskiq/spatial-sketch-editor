@@ -77,9 +77,21 @@ describe('P23B.11 S2 — the properties the S3 differential reads', () => {
 		// Rows without a planner pass: the direct row, the operation-only precision
 		// row, and rows whose operation was refused before the pass (no planner
 		// reconciliation to compare with).
+		//
+		// T1.P02.S01 format 6 finding: the mirrored D-12 row is now expressed as
+		// Wall deletion (the authored role it used is gone). A deletion also prunes
+		// orphaned Junctions, which the correspondence-only rebuilt pass does not
+		// model, so that one row honestly records `fidelity: false`. The property
+		// still forbids an UNEXPLAINED mismatch: every other planned row must
+		// reproduce the planner's document, and the exception is named here.
+		const DELETION_EXCEPTION = 'f-d12-full-containment-mirror-role-change';
 		const planned = liveRows.filter((row) => row.fidelity !== null);
 		expect(planned.length).toBeGreaterThanOrEqual(18);
 		for (const row of planned) {
+			if (row.id === DELETION_EXCEPTION) {
+				expect(row.fidelity, `${row.id} records the deletion-pruning exception`).toBe(false);
+				continue;
+			}
 			expect(row.fidelity, `${row.id} must reproduce the planner’s document`).toBe(true);
 		}
 	});
@@ -244,5 +256,73 @@ describe('P23B.11 S2 — the properties the S3 differential reads', () => {
 		expect(freezeAnalysis(analyzeCorrespondenceCase(sample))).toEqual(
 			frozenById.get('d-connected-shared-wall-merge')
 		);
+	});
+});
+
+/**
+ * What a case row may NOT change when only the captured nonce changes: every
+ * count, every set (order excluded where identity ordering can move it), the
+ * operation verdict, the reconciliation kind and its Room facts. Identity-bearing
+ * strings are deliberately excluded — that is exactly what the nonce owns.
+ */
+function nonceInvariantFingerprint(row: P23B11FrozenCase) {
+	return {
+		id: row.id,
+		covers: row.covers,
+		operation: {
+			verdict: row.operation.verdict,
+			code: row.operation.verdict === 'rejected' ? row.operation.code : null
+		},
+		fidelity: row.fidelity,
+		counts: row.counts,
+		componentCount: row.components.length,
+		componentShape: row.components.map((component) => ({
+			faceKeyCount: component.candidateFaceKeys.length,
+			predecessors: [...component.predecessorRoomIds].sort()
+		})),
+		faceKeyCount: row.faceKeys.length,
+		reconciliation:
+			row.reconciliation.kind === 'ok'
+				? {
+						kind: 'ok',
+						lineageKinds: row.reconciliation.lineage.map((record) => record.kind).sort(),
+						retired: [...row.reconciliation.retiredRoomIds].sort(),
+						roomCount: row.reconciliation.rooms.length
+					}
+				: { kind: row.reconciliation.kind }
+	};
+}
+
+describe('P23B.11 S2 — nonce locality of the frozen row', () => {
+	it('another capture moves identity only: never a count, a relation or a verdict', () => {
+		// The §1 finding above claims the re-freeze moved ids, not behaviour. That
+		// claim is checked here instead of asserted in prose: the same case table,
+		// analysed under a DIFFERENT capture, must produce the same nonce-invariant
+		// row. A behavioural change smuggled in with the ids fails this property.
+		const plannerCases = P23B11_CORRESPONDENCE_CASES.filter((entry) => entry.kind !== 'direct');
+		expect(plannerCases.length).toBeGreaterThanOrEqual(8);
+		const baseRows = frozenCaseRows(plannerCases);
+		const altRows = frozenCaseRows(plannerCases, (entry) => `p23b11-alt-${entry.id}`);
+
+		for (const [index, entry] of plannerCases.entries()) {
+			expect(nonceInvariantFingerprint(altRows[index]!), entry.id).toEqual(
+				nonceInvariantFingerprint(baseRows[index]!)
+			);
+		}
+
+		// …and the identity-bearing content really does follow the nonce, so the
+		// frozen digests/face keys moving with it is the expected consequence, not
+		// a hidden behavioural change.
+		const identityMoved = plannerCases.filter((entry, index) => {
+			const base = baseRows[index]!;
+			const alt = altRows[index]!;
+			const facesMoved = JSON.stringify(base.faceKeys) !== JSON.stringify(alt.faceKeys);
+			const digestMoved =
+				base.reconciliation.kind === 'ok' &&
+				alt.reconciliation.kind === 'ok' &&
+				base.reconciliation.documentSha256 !== alt.reconciliation.documentSha256;
+			return facesMoved || digestMoved;
+		});
+		expect(identityMoved.length).toBeGreaterThanOrEqual(6);
 	});
 });

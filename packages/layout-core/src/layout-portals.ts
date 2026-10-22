@@ -86,9 +86,10 @@ export function validateWallFirstPortalRelations(
     const adjacent = wall ? wallFirstAdjacentRooms(document, wall.id) : [];
     const pair = [...relation].sort();
     const neighbors = [...adjacent].sort();
+    // Format 6 — adjacency is boundary membership on both sides, never an
+    // authored role: a Wall referenced by exactly two Rooms is a dividing Wall.
     const matched =
       wall !== undefined &&
-      wall.role === 'boundary' &&
       neighbors.length === 2 &&
       pair[0] === neighbors[0] &&
       pair[1] === neighbors[1];
@@ -96,13 +97,11 @@ export function validateWallFirstPortalRelations(
       const expected =
         wall === undefined
           ? `unknown hosting wall '${opening.wallId}'`
-          : wall.role !== 'boundary'
-            ? `a ${wall.role} wall carries no two-room portal relation`
-            : neighbors.length === 1
-              ? `room ${neighbors[0]} references the hosting wall`
-              : neighbors.length === 0
-                ? 'no room references the hosting wall'
-                : `rooms ${neighbors.join(', ')} reference the hosting wall`;
+          : neighbors.length === 1
+            ? `room ${neighbors[0]} references the hosting wall`
+            : neighbors.length === 0
+              ? 'no room references the hosting wall'
+              : `rooms ${neighbors.join(', ')} reference the hosting wall`;
       issues.push({
         openingId: opening.id,
         path,

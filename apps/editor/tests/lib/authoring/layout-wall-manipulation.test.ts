@@ -49,6 +49,7 @@ import {
 	wallFrame,
 	wallManipulationIntent
 } from '$lib/authoring/adapters/layout/precision';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
 	pickWallHandle,
 	pointerWallRequest,
@@ -86,18 +87,22 @@ function fixtureDocument(): { document: LayoutDocumentWallFirst; wallId: string;
 			[0, 4]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (chained.kind !== 'success') throw new Error('the S05 enclosure was refused');
 	const wallId = chained.document.walls[0]!.id;
-	const opening = planCreateWallFirstOpening(chained.document, {
-		wallId,
-		kind: 'window',
-		offset: 1,
-		width: 1.2,
-		height: 1.2,
-		sillHeight: 1
-	});
+	const opening = planCreateWallFirstOpening(
+		chained.document,
+		{
+			wallId,
+			kind: 'window',
+			offset: 1,
+			width: 1.2,
+			height: 1.2,
+			sillHeight: 1
+		},
+		freshCapture()
+	);
 	if (opening.kind === 'rejected') throw new Error(`opening fixture refused: ${opening.rejection.message}`);
 	return { document: opening.document, wallId, openingId: opening.changedOpeningIds[0]! };
 }
@@ -246,7 +251,7 @@ describe('T1.P01.S05 — existing straight-Wall manipulation planners', () => {
 			version: 1 as const,
 			expectedRevision: snapshot.acceptedRevision,
 			targets: [reference],
-			capturedInputs: [],
+			capturedInputs: [{ name: 'layout-working-level', value: snapshot.domain.layoutLevelId }],
 			allocatedIds: []
 		};
 

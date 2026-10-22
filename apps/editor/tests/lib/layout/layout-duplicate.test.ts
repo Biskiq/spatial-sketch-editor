@@ -16,13 +16,13 @@ import {
 	type LayoutWallFirstRoom
 } from '@portfolio/layout-core';
 import type { LayoutVec2 } from '@portfolio/layout-core';
+import { capturedId, freshCapture } from './__fixtures__/layout-id-capture';
 
 type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-};
+	};
 
 function shell(options: {
 	junctions: Array<[string, number, number]>;
@@ -39,7 +39,6 @@ function shell(options: {
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? ('boundary' as const),
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -84,7 +83,7 @@ function isolatedRoomDocument(): LayoutDocumentWallFirst {
 			{ id: 'wall-b', start: 'j-b', end: 'j-c' },
 			{ id: 'wall-c', start: 'j-c', end: 'j-d' },
 			{ id: 'wall-d', start: 'j-d', end: 'j-a' },
-			{ id: 'wall-rl', start: 'j-x', end: 'j-y', role: 'partition' }
+			{ id: 'wall-rl', start: 'j-x', end: 'j-y' }
 		],
 		objects: [
 			{
@@ -180,10 +179,17 @@ function rejection(plan:
 
 describe('P23.4 layout object repeat', () => {
 	it('N copies get unique IDs and exact index × delta positions from the original', () => {
+		// The captured nonce replaces the occupancy suffix: each copy's id is
+		// derived from this operation's nonce plus its own copy index seed.
+		const capture = freshCapture();
 		const plan = success(
-			planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 3, delta: [2, 1] })
+			planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 3, delta: [2, 1] }, capture)
 		);
-		expect(plan.createdObjectIds).toEqual(['obj-1-copy', 'obj-1-copy.2', 'obj-1-copy.3']);
+		expect(plan.createdObjectIds).toEqual([
+			capturedId(capture, 'obj-1-copy-1'),
+			capturedId(capture, 'obj-1-copy-2'),
+			capturedId(capture, 'obj-1-copy-3')
+		]);
 		const copies = plan.document.objects.filter((object) =>
 			plan.createdObjectIds.includes(object.id)
 		);
@@ -204,15 +210,16 @@ describe('P23.4 layout object repeat', () => {
 	});
 
 	it('duplicate is repeat with one copy', () => {
+		const capture = freshCapture();
 		const plan = success(
-			planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 1, delta: [1, 0] })
+			planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 1, delta: [1, 0] }, capture)
 		);
-		expect(plan.createdObjectIds).toEqual(['obj-1-copy']);
+		expect(plan.createdObjectIds).toEqual([capturedId(capture, 'obj-1-copy-1')]);
 		expect(plan.document.objects).toHaveLength(3);
 	});
 
 	it('rejects an unknown object and read-only profile objects', () => {
-		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-none', count: 1, delta: [1, 0] }))).toMatchObject({ code: 'unknown_object' });
+		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-none', count: 1, delta: [1, 0] }, freshCapture()))).toMatchObject({ code: 'unknown_object' });
 		const withProfile: LayoutDocumentWallFirst = {
 			...ISOLATED,
 			objects: [
@@ -230,28 +237,29 @@ describe('P23.4 layout object repeat', () => {
 				}
 			]
 		};
-		expect(rejection(planRepeatLayoutObject(withProfile, { objectId: 'obj-profile', count: 1, delta: [1, 0] }))).toMatchObject({ code: 'profile_object_read_only' });
+		expect(rejection(planRepeatLayoutObject(withProfile, { objectId: 'obj-profile', count: 1, delta: [1, 0] }, freshCapture()))).toMatchObject({ code: 'profile_object_read_only' });
 	});
 
 	it('rejects out-of-range counts and non-finite deltas', () => {
-		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 0, delta: [1, 0] }))).toMatchObject({ code: 'count_out_of_range' });
-		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: LAYOUT_DUPLICATE_MAX_COPIES + 1, delta: [1, 0] }))).toMatchObject({ code: 'count_out_of_range' });
-		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 2.5, delta: [1, 0] }))).toMatchObject({ code: 'count_out_of_range' });
-		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 2, delta: [Number.NaN, 0] }))).toMatchObject({ code: 'invalid_value' });
-		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 2, delta: [1, Number.POSITIVE_INFINITY] }))).toMatchObject({ code: 'invalid_value' });
+		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 0, delta: [1, 0] }, freshCapture()))).toMatchObject({ code: 'count_out_of_range' });
+		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: LAYOUT_DUPLICATE_MAX_COPIES + 1, delta: [1, 0] }, freshCapture()))).toMatchObject({ code: 'count_out_of_range' });
+		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 2.5, delta: [1, 0] }, freshCapture()))).toMatchObject({ code: 'count_out_of_range' });
+		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 2, delta: [Number.NaN, 0] }, freshCapture()))).toMatchObject({ code: 'invalid_value' });
+		expect(rejection(planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: 2, delta: [1, Number.POSITIVE_INFINITY] }, freshCapture()))).toMatchObject({ code: 'invalid_value' });
 	});
 
 	it('accepts exactly 50 copies with unique IDs and no ID collisions', () => {
+		const capture = freshCapture();
 		const plan = success(
-			planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: LAYOUT_DUPLICATE_MAX_COPIES, delta: [0.01, 0] })
+			planRepeatLayoutObject(ISOLATED, { objectId: 'obj-1', count: LAYOUT_DUPLICATE_MAX_COPIES, delta: [0.01, 0] }, capture)
 		);
 		expect(plan.createdObjectIds).toHaveLength(LAYOUT_DUPLICATE_MAX_COPIES);
 		expect(new Set(plan.createdObjectIds).size).toBe(LAYOUT_DUPLICATE_MAX_COPIES);
 		const all = plan.document.objects.map((object) => object.id);
 		expect(new Set(all).size).toBe(all.length);
 		// index × delta from the original: no accumulated drift.
-		const first = plan.document.objects.find((object) => object.id === 'obj-1-copy')!;
-		const last = plan.document.objects.find((object) => object.id === 'obj-1-copy.50')!;
+		const first = plan.document.objects.find((object) => object.id === plan.createdObjectIds[0])!;
+		const last = plan.document.objects.find((object) => object.id === plan.createdObjectIds.at(-1))!;
 		expect(last.position[0] - first.position[0]).toBeCloseTo(49 * 0.01, 12);
 	});
 });
@@ -282,11 +290,15 @@ function withDoor(document: LayoutDocumentWallFirst, offset = 1) {
 describe('P23.4 wall opening repeat', () => {
 	it('copies get exact offsets and unique IDs on the same host Wall', () => {
 		const seeded = withDoor(TWO_ROOM);
+		const capture = freshCapture();
 		const plan = success(
-			planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 2, spacing: 1 })
+			planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 2, spacing: 1 }, capture)
 		);
-		expect(plan.createdOpeningIds).toEqual(['opening:door:1-copy', 'opening:door:1-copy.2']);
-		const copy = plan.document.openings.find((opening) => opening.id === 'opening:door:1-copy')!;
+		expect(plan.createdOpeningIds).toEqual([
+			capturedId(capture, 'opening:door:1-copy-1'),
+			capturedId(capture, 'opening:door:1-copy-2')
+		]);
+		const copy = plan.document.openings.find((opening) => opening.id === plan.createdOpeningIds[0])!;
 		expect(copy.wallId).toBe('wall-e');
 		expect(copy.offset).toBe(2);
 		expect(copy.kind).toBe('door');
@@ -294,7 +306,7 @@ describe('P23.4 wall opening repeat', () => {
 		expect(copy.height).toBe(2.1);
 		expect(copy.sillHeight).toBe(0);
 		expect(copy.profile).toBe('rectangular');
-		const last = plan.document.openings.find((opening) => opening.id === 'opening:door:1-copy.2')!;
+		const last = plan.document.openings.find((opening) => opening.id === plan.createdOpeningIds[1])!;
 		expect(last.offset).toBe(3);
 		expect(validateWallFirstLayoutDocument(plan.document).success).toBe(true);
 	});
@@ -303,7 +315,7 @@ describe('P23.4 wall opening repeat', () => {
 		const seeded = withDoor(TWO_ROOM);
 		// wall-e is 4 m: door at 1 → copies at 2, 3, 4 → the last (4 + 0.9)
 		// overflows the wall. The WHOLE batch rejects, nothing partial commits.
-		const overflowing = planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 3, spacing: 1 });
+		const overflowing = planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 3, spacing: 1 }, freshCapture());
 		expect(rejection(overflowing)).toMatchObject({ code: 'opening_set_invalid' });
 		// The baseline document is untouched.
 		expect(seeded.openings).toHaveLength(1);
@@ -311,16 +323,16 @@ describe('P23.4 wall opening repeat', () => {
 
 	it('rejects same-wall overlap as one batch', () => {
 		const seeded = withDoor(TWO_ROOM);
-		const overlapping = planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 1, spacing: 0.5 });
+		const overlapping = planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 1, spacing: 0.5 }, freshCapture());
 		expect(rejection(overlapping)).toMatchObject({ code: 'opening_set_invalid' });
 	});
 
 	it('rejects out-of-range counts, non-finite spacing and unknown openings', () => {
 		const seeded = withDoor(TWO_ROOM);
-		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 0, spacing: 1 }))).toMatchObject({ code: 'count_out_of_range' });
-		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 51, spacing: 1 }))).toMatchObject({ code: 'count_out_of_range' });
-		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 1, spacing: Number.NaN }))).toMatchObject({ code: 'invalid_value' });
-		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:none', count: 1, spacing: 1 }))).toMatchObject({ code: 'unknown_opening' });
+		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 0, spacing: 1 }, freshCapture()))).toMatchObject({ code: 'count_out_of_range' });
+		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 51, spacing: 1 }, freshCapture()))).toMatchObject({ code: 'count_out_of_range' });
+		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:door:1', count: 1, spacing: Number.NaN }, freshCapture()))).toMatchObject({ code: 'invalid_value' });
+		expect(rejection(planRepeatWallOpening(seeded, { openingId: 'opening:none', count: 1, spacing: 1 }, freshCapture()))).toMatchObject({ code: 'unknown_opening' });
 	});
 
 	it('copies a portal relation only when the new-schema adjacency contract still holds at the copy', () => {
@@ -339,8 +351,8 @@ describe('P23.4 wall opening repeat', () => {
 				connectsRoomIds: ['room-left', 'room-right']
 			}
 		]);
-		const plan = success(planRepeatWallOpening(related, { openingId: 'opening:door:1', count: 1, spacing: 1.5 }));
-		const copy = plan.document.openings.find((opening) => opening.id === 'opening:door:1-copy')!;
+		const plan = success(planRepeatWallOpening(related, { openingId: 'opening:door:1', count: 1, spacing: 1.5 }, freshCapture()));
+		const copy = plan.document.openings.find((opening) => opening.id === plan.createdOpeningIds[0])!;
 		expect(copy.connectsRoomIds).toEqual(['room-left', 'room-right']);
 
 		// A codec-legal but nonadjacent relation on an exterior wall can never
@@ -359,7 +371,7 @@ describe('P23.4 wall opening repeat', () => {
 				connectsRoomIds: ['room-left', 'room-right']
 			}
 		]);
-		expect(rejection(planRepeatWallOpening(nonadjacent, { openingId: 'opening:door:1', count: 1, spacing: 1 }))).toMatchObject({ code: 'portal_relation_invalid' });
+		expect(rejection(planRepeatWallOpening(nonadjacent, { openingId: 'opening:door:1', count: 1, spacing: 1 }, freshCapture()))).toMatchObject({ code: 'portal_relation_invalid' });
 	});
 });
 
@@ -384,8 +396,9 @@ describe('P23.4 isolated Room duplicate', () => {
 				}
 			]
 		};
-		const plan = success(planDuplicateIsolatedRoom(withWindow, { roomId: 'room-1', delta: [10, 0] }));
-		expect(plan.createdRoomId).toBe('room-1-copy');
+		const capture = freshCapture();
+		const plan = success(planDuplicateIsolatedRoom(withWindow, { roomId: 'room-1', delta: [10, 0] }, capture));
+		expect(plan.createdRoomId).toBe(capturedId(capture, 'room-1-copy'));
 		// 4 junctions + 4 walls + 1 opening — exactly once each.
 		expect(plan.createdJunctionIds).toHaveLength(4);
 		expect(plan.createdWallIds).toHaveLength(4);
@@ -397,20 +410,21 @@ describe('P23.4 isolated Room duplicate', () => {
 			expect(sourceIds.has(created)).toBe(false);
 		}
 		// Cloned junction coordinates use the exact delta from the original.
-		const cloneJunction = plan.document.junctions.find((junction) => junction.id === 'j-a-copy')!;
+		const cloneJunction = plan.document.junctions.find((junction) => junction.id === capturedId(capture, 'j-a-copy'))!;
 		expect(cloneJunction.point).toEqual([10, 0]);
 		// Opening offsets stay unchanged (cloned wall geometry moves with them).
-		const cloneOpening = plan.document.openings.find((opening) => opening.id === 'opening:window:1-copy')!;
+		const cloneOpening = plan.document.openings.find((opening) => opening.id === capturedId(capture, 'opening:window:1-copy'))!;
 		expect(cloneOpening.offset).toBe(2);
-		expect(cloneOpening.wallId).toBe('wall-a1-copy');
+		expect(cloneOpening.wallId).toBe(capturedId(capture, 'wall-a1-copy'));
 		// The roomless partition wall was NOT cloned.
 		expect(plan.document.walls.filter((wall) => wall.id === 'wall-rl')).toHaveLength(1);
-		expect(plan.document.walls.filter((wall) => wall.id === 'wall-rl-copy')).toHaveLength(0);
+		expect(plan.document.walls.filter((wall) => wall.id === capturedId(capture, 'wall-rl-copy'))).toHaveLength(0);
 	});
 
 	it('cloned Room identity is new and its boundary references only cloned Walls', () => {
-		const plan = success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] }));
-		const clone = plan.document.rooms.find((room) => room.id === 'room-1-copy')!;
+		const capture = freshCapture();
+		const plan = success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] }, capture));
+		const clone = plan.document.rooms.find((room) => room.id === capturedId(capture, 'room-1-copy'))!;
 		expect(clone).toBeDefined();
 		expect(clone.name).toBe('Alone copy');
 		expect(clone.floorThickness).toBe(0.1);
@@ -420,24 +434,28 @@ describe('P23.4 isolated Room duplicate', () => {
 			expect(cloneWallIds.has(ref.wallId)).toBe(true);
 		}
 		// The source room is untouched and both rooms coexist.
-		expect(plan.document.rooms.map((room) => room.id).sort()).toEqual(['room-1', 'room-1-copy']);
+		expect(plan.document.rooms.map((room) => room.id).sort()).toEqual([
+			'room-1',
+			capturedId(capture, 'room-1-copy')
+		]);
 	});
 
 	it('associated Layout objects copy with translated world transforms and remapped roomIds; unassociated objects do not copy', () => {
-		const plan = success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] }));
+		const capture = freshCapture();
+		const plan = success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] }, capture));
 		const copies = plan.document.objects.filter((object) => plan.createdObjectIds.includes(object.id));
 		expect(copies).toHaveLength(1);
 		const copy = copies[0]!;
-		expect(copy.id).toBe('obj-1-copy');
-		expect(copy.roomId).toBe('room-1-copy');
+		expect(copy.id).toBe(capturedId(capture, 'obj-1-copy'));
+		expect(copy.roomId).toBe(capturedId(capture, 'room-1-copy'));
 		expect(copy.position).toEqual([11, 0.5, 1]);
 		// The unassociated object inside the face never copies.
 		expect(plan.document.objects.filter((object) => object.id === 'obj-free')).toHaveLength(1);
-		expect(plan.document.objects.filter((object) => object.id === 'obj-free-copy')).toHaveLength(0);
+		expect(plan.document.objects.filter((object) => object.id === capturedId(capture, 'obj-free-copy'))).toHaveLength(0);
 	});
 
 	it('rejects shared-boundary Room duplicate with a clear diagnostic and no state change', () => {
-		const rejected = rejection(planDuplicateIsolatedRoom(TWO_ROOM, { roomId: 'room-left', delta: [10, 0] }));
+		const rejected = rejection(planDuplicateIsolatedRoom(TWO_ROOM, { roomId: 'room-left', delta: [10, 0] }, freshCapture()));
 		expect(rejected.code).toBe('room_not_isolated');
 		expect(rejected.message).toContain('wall-e');
 		// No document was produced — the input is untouched.
@@ -459,14 +477,13 @@ describe('P23.4 isolated Room duplicate', () => {
 					id: 'wall-stub',
 					startJunctionId: 'j-a',
 					endJunctionId: 'j-t',
-					role: 'boundary' as const,
 					thickness: 0.2,
 					height: 3,
 					centerline: { kind: 'line' } as const,
 				}
 			]
 		};
-		const rejected = rejection(planDuplicateIsolatedRoom(withStub, { roomId: 'room-1', delta: [10, 0] }));
+		const rejected = rejection(planDuplicateIsolatedRoom(withStub, { roomId: 'room-1', delta: [10, 0] }, freshCapture()));
 		expect(rejected.code).toBe('room_not_isolated');
 		expect(rejected.message).toContain('wall-stub');
 	});
@@ -507,7 +524,7 @@ describe('P23.4 isolated Room duplicate', () => {
 			]
 		};
 		expect(validateWallFirstLayoutDocument(withExternal).success).toBe(true);
-		const rejected = rejection(planDuplicateIsolatedRoom(withExternal, { roomId: 'room-1', delta: [10, 0] }));
+		const rejected = rejection(planDuplicateIsolatedRoom(withExternal, { roomId: 'room-1', delta: [10, 0] }, freshCapture()));
 		expect(rejected.code).toBe('external_portal_relation');
 		expect(rejected.message).toContain('opening:door:1');
 	});
@@ -521,10 +538,11 @@ describe('P23.4 isolated Room duplicate', () => {
 		// PERMITTED independent placement (F1/F5, D-9) rather than a violation. The
 		// pre-policy refusal survives in the P23B.3a reference register as history.
 		const snapshot = JSON.stringify(ISOLATED);
+		const capture = freshCapture();
 		const plan = success(
-			planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [-2, 0] })
+			planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [-2, 0] }, capture)
 		);
-		expect(plan.createdRoomId).toBe('room-1-copy');
+		expect(plan.createdRoomId).toBe(capturedId(capture, 'room-1-copy'));
 		const sourceJunctions = new Set(ISOLATED.junctions.map((junction) => junction.id));
 		const sourceWalls = new Set(ISOLATED.walls.map((wall) => wall.id));
 		expect(plan.createdJunctionIds.every((id) => !sourceJunctions.has(id))).toBe(true);
@@ -556,16 +574,18 @@ describe('P23.4 isolated Room duplicate', () => {
 		// was written to protect is unaffected and is a UI decision rather than a
 		// validity rule: the creator supplies an EXPLICIT delta, and the planner never
 		// invents, defaults or normalizes one on the caller's behalf.
+		const capture = freshCapture();
 		const overlapping = success(
-			planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [1, 0] })
+			planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [1, 0] }, capture)
 		);
-		expect(overlapping.createdRoomId).toBe('room-1-copy');
+		expect(overlapping.createdRoomId).toBe(capturedId(capture, 'room-1-copy'));
 		expect(overlapping.document.rooms.map((room) => room.id)).toEqual([
 			'room-1',
-			'room-1-copy'
+			capturedId(capture, 'room-1-copy')
 		]);
 		expect(validateWallFirstTopology(overlapping.document)).toBeUndefined();
-		expect(success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] })).createdRoomId).toBe('room-1-copy');
+		const far = freshCapture();
+		expect(success(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [10, 0] }, far)).createdRoomId).toBe(capturedId(far, 'room-1-copy'));
 	});
 
 	it('rejects the whole Room batch when an associated object is read-only profile', () => {
@@ -588,7 +608,7 @@ describe('P23.4 isolated Room duplicate', () => {
 			]
 		};
 		expect(validateWallFirstLayoutDocument(withProfileInRoom).success).toBe(true);
-		const rejected = rejection(planDuplicateIsolatedRoom(withProfileInRoom, { roomId: 'room-1', delta: [10, 0] }));
+		const rejected = rejection(planDuplicateIsolatedRoom(withProfileInRoom, { roomId: 'room-1', delta: [10, 0] }, freshCapture()));
 		expect(rejected.code).toBe('profile_object_read_only');
 		expect(rejected.message).toContain('obj-profile-in-room');
 		// The input document is untouched — no partial batch committed.
@@ -601,7 +621,7 @@ describe('P23.4 isolated Room duplicate', () => {
 	});
 
 	it('rejects unknown rooms and non-finite deltas', () => {
-		expect(rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-none', delta: [1, 0] }))).toMatchObject({ code: 'unknown_room' });
-		expect(rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [Number.NaN, 0] }))).toMatchObject({ code: 'invalid_value' });
+		expect(rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-none', delta: [1, 0] }, freshCapture()))).toMatchObject({ code: 'unknown_room' });
+		expect(rejection(planDuplicateIsolatedRoom(ISOLATED, { roomId: 'room-1', delta: [Number.NaN, 0] }, freshCapture()))).toMatchObject({ code: 'invalid_value' });
 	});
 });

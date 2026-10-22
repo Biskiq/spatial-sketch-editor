@@ -20,6 +20,7 @@ import { VIEWPORT_READING_TRANSITION_SECONDS } from '@portfolio/camera-core';
 import { createEmptyWallFirstLayoutDocument, planWallChain, type LayoutVec2 } from '@portfolio/layout-core';
 import type { ProjectEnvelope } from '@portfolio/project-model/units';
 import { stageLayout } from '$lib/authoring/stage/unit-stage-source';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
 import {
 	admitSource,
@@ -48,7 +49,7 @@ async function enclosureProject(id: string, scale: number = 1): Promise<ProjectE
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points,
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
 	return createUnitProject({ id, name: 'Session project', layout: plan.document });
@@ -130,7 +131,10 @@ describe('stage session — one replacement epoch and one teardown', () => {
 
 		// A content change is admitted under the session's own epoch: it is the same
 		// host lifetime, and the session refuses a snapshot from another one.
-		const changed = await admit(await enclosureProject(PROJECT_ID, 0.5), PROJECT_ID, session.sessionEpoch);
+		// One captured project for both admissions: identical content means
+		// identical ids, so the same envelope is re-admitted under a fresh revision.
+		const changedProject = await enclosureProject(PROJECT_ID, 0.5);
+		const changed = await admit(changedProject, PROJECT_ID, session.sessionEpoch);
 		const install = session.installAccepted(changed);
 
 		expect(install.kind).toBe('installed');
@@ -151,7 +155,7 @@ describe('stage session — one replacement epoch and one teardown', () => {
 		// Identical content is not a content change either.
 		expect(
 			session.installAccepted(
-				await admit(await enclosureProject(PROJECT_ID, 0.5), PROJECT_ID, session.sessionEpoch)
+				await admit(changedProject, PROJECT_ID, session.sessionEpoch)
 			)
 		).toEqual({ kind: 'unchanged', sourceContentId: changed.sourceContentId });
 		// A different project identity is a replacement, and the session refuses to

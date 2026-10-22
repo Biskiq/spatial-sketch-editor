@@ -25,6 +25,7 @@ import { createUnitSaveHandler, type ProjectEnvelope } from '@portfolio/project-
 import type { SaveAcknowledgement, SaveRequest } from '@portfolio/project-model/save';
 import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/layout-core';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 import { sceneSurfaceFor } from '$lib/authoring/adapters/scene/placement';
 import { createAdapter } from '$lib/authoring/adapters/scene.adapter';
@@ -74,7 +75,7 @@ function project(position: Vec3 = [2, 0.5, 2]): Promise<ProjectEnvelope> {
 			[0, 6]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({

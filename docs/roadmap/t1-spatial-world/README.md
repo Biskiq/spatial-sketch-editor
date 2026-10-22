@@ -144,7 +144,10 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
   dependency: `layout-types.ts` and `layout-codec.ts` host definitions consumed by 37 and 9
   wall-first modules, so separating them **is** the authored-schema redesign T1 owns (Wall roles
   and levels). Precondition: after PR #115 they are reachable only from wall-first internals and
-  tests, never from a project/API/runtime reader.
+  tests, never from a project/API/runtime reader. **Condition (2026-10-22): the first cutover
+  (format 6) landed without the separation, so it is deferred to its own authorized slice, which
+  must land before T1.P02.S02 starts** — the measured blockers and the remaining work are the
+  [stop-and-report](./t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md).
 - `layout-core` legacy generation (`layout-compat`, `layout-migration`, `layout-migration-math`)
   was removed by PR #115 with no successor detector; nothing here re-introduces one.
 

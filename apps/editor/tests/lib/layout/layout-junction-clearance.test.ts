@@ -39,7 +39,6 @@ function wall(id: string, startJunctionId: string, endJunctionId: string): Layou
 		id,
 		startJunctionId,
 		endJunctionId,
-		role: 'partition',
 		thickness: 0.2,
 		height: 3,
 		centerline: { kind: 'line' }
@@ -49,7 +48,7 @@ function wall(id: string, startJunctionId: string, endJunctionId: string): Layou
 function document(junctions: Array<{ id: string; point: LayoutVec2 }>, walls: LayoutWall[]): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 5,
+		formatVersion: 6,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions,
 		walls,
@@ -88,6 +87,7 @@ function leg(wallId: string, rayDegrees: number, halfThickness = 0.1): CompiledJ
 	return {
 		wallId,
 		end: 'start',
+		role: 'bounding',
 		tangentOut,
 		normalOut: [-tangentOut[1]!, tangentOut[0]!],
 		outwardAngle: radians,
@@ -95,7 +95,6 @@ function leg(wallId: string, rayDegrees: number, halfThickness = 0.1): CompiledJ
 		halfThickness,
 		bottomY: 0,
 		topY: 3,
-		role: 'partition',
 		endpointOpen: false,
 		endpointSolidBands: [{ bottomY: 0, topY: 3, solid: true }]
 	};

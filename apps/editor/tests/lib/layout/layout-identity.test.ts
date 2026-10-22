@@ -72,7 +72,6 @@ function validDocumentWithRooms(count: number): LayoutDocumentWallFirst {
 			id: wallId,
 			startJunctionId: start,
 			endJunctionId: end,
-			role: 'boundary',
 			thickness: 0.16,
 			height: 2.6,
 			centerline: { kind: 'line' }
@@ -166,7 +165,6 @@ describe('P23.12 allocation and ledger', () => {
 				id: 'wall-1',
 				startJunctionId: 'junction-1',
 				endJunctionId: 'junction-2',
-				role: 'boundary',
 				thickness: 0.16,
 				height: 2.6,
 				centerline: { kind: 'line' }
@@ -384,7 +382,6 @@ describe('P23.12 codec round trip', () => {
 					id: 'wall-1',
 					startJunctionId: 'junction-1',
 					endJunctionId: 'junction-2',
-					role: 'boundary',
 					thickness: 0.16,
 					height: 2.6,
 					centerline: { kind: 'line' },

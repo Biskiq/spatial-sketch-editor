@@ -35,6 +35,11 @@ import { validateWallFirstTopology } from './layout-wall-first-precision';
 import { translateWallCenterline } from './layout-wall-centerline';
 import { validateWallFirstLayoutDocument } from './layout-wall-first-codec';
 import {
+	layoutCapturedId,
+	LayoutIdCollisionError,
+	type LayoutIdCapture
+} from './layout-id-capture';
+import {
 	isSupportedLayoutObject,
 	resolveIsolatedRoomSubgraph
 } from './layout-room-isolation';
@@ -69,7 +74,8 @@ export type DuplicateRejectionCode =
 	| 'topology_invalid'
 	| 'opening_set_invalid'
 	| 'portal_relation_invalid'
-	| 'candidate_does_not_compile';
+	| 'candidate_does_not_compile'
+	| 'captured_id_in_use';
 
 export type DuplicateRejection = {
 	code: DuplicateRejectionCode;
@@ -95,12 +101,27 @@ export type DuplicatePlan =
 	  }
 	| { kind: 'rejected'; rejection: DuplicateRejection };
 
-/** Deterministic collision-free ID from a seed (same policy as the noding/room allocators). */
-function allocateId(taken: ReadonlySet<string>, seed: string): string {
-	if (!taken.has(seed)) return seed;
-	let index = 2;
-	while (taken.has(`${seed}.${index}`)) index += 1;
-	return `${seed}.${index}`;
+/** Captured id from a seed; occupancy is only the refusal check (T1.P02.S01 §1). */
+function allocateId(
+	taken: ReadonlySet<string>,
+	seed: string,
+	capture: LayoutIdCapture
+): string {
+	const id = layoutCapturedId(capture, seed);
+	if (taken.has(id)) throw new LayoutIdCollisionError(id);
+	return id;
+}
+
+/** Run one duplicate plan, translating a captured-id collision into its own refusal. */
+function guardedDuplicatePlan(run: () => DuplicatePlan): DuplicatePlan {
+	try {
+		return run();
+	} catch (error) {
+		if (error instanceof LayoutIdCollisionError) {
+			return reject('captured_id_in_use', error.message, [error.id]);
+		}
+		throw error;
+	}
 }
 
 function reject(
@@ -273,7 +294,16 @@ export type LayoutObjectRepeatIntent = {
  */
 export function planRepeatLayoutObject(
 	document: LayoutDocumentWallFirst,
-	intent: LayoutObjectRepeatIntent
+	intent: LayoutObjectRepeatIntent,
+	capture: LayoutIdCapture
+): DuplicatePlan {
+	return guardedDuplicatePlan(() => planRepeatLayoutObjectInternal(document, intent, capture));
+}
+
+function planRepeatLayoutObjectInternal(
+	document: LayoutDocumentWallFirst,
+	intent: LayoutObjectRepeatIntent,
+	capture: LayoutIdCapture
 ): DuplicatePlan {
 	const source = document.objects.find((candidate) => candidate.id === intent.objectId);
 	if (!source) {
@@ -303,7 +333,7 @@ export function planRepeatLayoutObject(
 	const createdObjectIds: string[] = [];
 	const copies: LayoutObject[] = [];
 	for (let index = 1; index <= intent.count; index += 1) {
-		const id = allocateId(taken, `${source.id}-copy`);
+		const id = allocateId(taken, `${source.id}-copy-${index}`, capture);
 		taken.add(id);
 		createdObjectIds.push(id);
 		copies.push({
@@ -344,7 +374,16 @@ export type WallOpeningRepeatIntent = {
  */
 export function planRepeatWallOpening(
 	document: LayoutDocumentWallFirst,
-	intent: WallOpeningRepeatIntent
+	intent: WallOpeningRepeatIntent,
+	capture: LayoutIdCapture
+): DuplicatePlan {
+	return guardedDuplicatePlan(() => planRepeatWallOpeningInternal(document, intent, capture));
+}
+
+function planRepeatWallOpeningInternal(
+	document: LayoutDocumentWallFirst,
+	intent: WallOpeningRepeatIntent,
+	capture: LayoutIdCapture
 ): DuplicatePlan {
 	const source = document.openings.find((candidate) => candidate.id === intent.openingId);
 	if (!source) {
@@ -372,7 +411,7 @@ export function planRepeatWallOpening(
 	const createdOpeningIds: string[] = [];
 	const copies: LayoutWallOpening[] = [];
 	for (let index = 1; index <= intent.count; index += 1) {
-		const id = allocateId(taken, `${source.id}-copy`);
+		const id = allocateId(taken, `${source.id}-copy-${index}`, capture);
 		taken.add(id);
 		createdOpeningIds.push(id);
 		copies.push({
@@ -426,7 +465,16 @@ export type RoomDuplicateIntent = {
  */
 export function planDuplicateIsolatedRoom(
 	document: LayoutDocumentWallFirst,
-	intent: RoomDuplicateIntent
+	intent: RoomDuplicateIntent,
+	capture: LayoutIdCapture
+): DuplicatePlan {
+	return guardedDuplicatePlan(() => planDuplicateIsolatedRoomInternal(document, intent, capture));
+}
+
+function planDuplicateIsolatedRoomInternal(
+	document: LayoutDocumentWallFirst,
+	intent: RoomDuplicateIntent,
+	capture: LayoutIdCapture
 ): DuplicatePlan {
 	const [dx, dz] = intent.delta;
 	if (document.rooms.some((candidate) => candidate.id === intent.roomId)) {
@@ -464,7 +512,7 @@ export function planDuplicateIsolatedRoom(
 		for (const oldJunctionId of [wall.startJunctionId, wall.endJunctionId]) {
 			if (junctionIdMap.has(oldJunctionId)) continue;
 			const oldJunction = junctionById.get(oldJunctionId)!;
-			const newId = allocateId(junctionTaken, `${oldJunctionId}-copy`);
+			const newId = allocateId(junctionTaken, `${oldJunctionId}-copy`, capture);
 			junctionTaken.add(newId);
 			junctionIdMap.set(oldJunctionId, newId);
 			clonedJunctions.push({
@@ -479,14 +527,13 @@ export function planDuplicateIsolatedRoom(
 	const wallTaken = new Set(document.walls.map((wall) => wall.id));
 	for (const wallId of boundaryWallIds) {
 		const wall = wallById.get(wallId)!;
-		const newId = allocateId(wallTaken, `${wallId}-copy`);
+		const newId = allocateId(wallTaken, `${wallId}-copy`, capture);
 		wallTaken.add(newId);
 		wallIdMap.set(wallId, newId);
 		clonedWalls.push({
 			id: newId,
 			startJunctionId: junctionIdMap.get(wall.startJunctionId)!,
 			endJunctionId: junctionIdMap.get(wall.endJunctionId)!,
-			role: wall.role,
 			thickness: wall.thickness,
 			height: wall.height,
 			// P23.12 — explicit duplicate copies the optional authored name
@@ -506,7 +553,7 @@ export function planDuplicateIsolatedRoom(
 	const clonedOpenings: LayoutWallOpening[] = [];
 	const openingTaken = new Set(document.openings.map((opening) => opening.id));
 	for (const opening of hostedOpenings) {
-		const newId = allocateId(openingTaken, `${opening.id}-copy`);
+		const newId = allocateId(openingTaken, `${opening.id}-copy`, capture);
 		openingTaken.add(newId);
 		openingIdMap.set(opening.id, newId);
 		clonedOpenings.push({
@@ -525,7 +572,7 @@ export function planDuplicateIsolatedRoom(
 	}
 
 	const roomTaken = new Set(document.rooms.map((room) => room.id));
-	const newRoomId = allocateId(roomTaken, `${intent.roomId}-copy`);
+	const newRoomId = allocateId(roomTaken, `${intent.roomId}-copy`, capture);
 	const nameTaken = new Set(document.rooms.map((room) => room.name));
 	let nameIndex = 1;
 	let newRoomName = `${source.name} copy`;
@@ -554,7 +601,7 @@ export function planDuplicateIsolatedRoom(
 	const createdObjectIds: string[] = [];
 	for (const object of document.objects) {
 		if (object.roomId !== intent.roomId) continue;
-		const newId = allocateId(objectTaken, `${object.id}-copy`);
+		const newId = allocateId(objectTaken, `${object.id}-copy`, capture);
 		objectTaken.add(newId);
 		createdObjectIds.push(newId);
 		clonedObjects.push({

@@ -50,6 +50,7 @@ import {
 	admitUnitProject,
 	createUnitProject
 } from '../authoring/__fixtures__/unit-envelope-fixtures';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 import {
 	createEmptyWallFirstLayoutDocument,
 	floorSupportSnapshotOf,
@@ -74,7 +75,7 @@ function supportedLayout(elevation = 0) {
 			[0, 6]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (planned.kind !== 'success') throw new Error('the support fixture enclosure was refused');
 	return planned.document;

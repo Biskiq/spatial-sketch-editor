@@ -58,7 +58,6 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 				id: 'wall-p',
 				startJunctionId: 'j-p1',
 				endJunctionId: 'j-p2',
-				role: 'partition',
 				thickness,
 				height: 3,
 				centerline: wallCubicChain([knot], deriveChainSpans([[0, 0], knot.point, [6, 0]]))
@@ -91,7 +90,6 @@ describe('P23.11 fix 6 — clearance predicate audit', () => {
 				id: 'wall-uneven',
 				startJunctionId: 'j-u1',
 				endJunctionId: 'j-u2',
-				role: 'partition',
 				thickness,
 				height: 3,
 				centerline: wallCubicChain([], [

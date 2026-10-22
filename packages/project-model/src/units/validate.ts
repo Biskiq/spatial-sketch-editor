@@ -264,7 +264,7 @@ function samePin(left: ResourcePin | null, right: ResourcePin | null): boolean {
 	return left.hash === right.hash && left.mime === right.mime && left.size === right.size && left.locator === right.locator;
 }
 
-/** Strict read of the landed Layout payload (wall-first format 5). */
+/** Strict read of the landed Layout payload (wall-first format 6). */
 export function validateLayoutPayload(input: unknown): ShapeValidation<LayoutUnitPayload> {
 	const result = validateWallFirstLayoutDocument(input);
 	if (!result.success) return { success: false, issues: delegatedIssues(result.issues) };

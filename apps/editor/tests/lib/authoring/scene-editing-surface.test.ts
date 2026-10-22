@@ -44,6 +44,7 @@ import { createStageAcceptanceHost } from '$lib/authoring/stage/host-acceptance'
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { buildCurrentSourceFixture, FIXTURE_ENTITY_ID, FIXTURE_PROJECT_ID } from './__fixtures__/f4-current-source-fixtures';
 import { admitUnitProject, createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const ENTITY_ID = 'entity-scene-box';
 const PROJECT_ID = 'project-scene-editing';
@@ -60,7 +61,7 @@ async function supportedProject(entities: readonly SceneEntity[]): Promise<Proje
 			[0, 6]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture()
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({
@@ -1035,11 +1036,11 @@ describe('Scene adapter registration', () => {
 				[0, 0],
 				[6.9, 0],
 				[6.9, 5.9],
-				[0, 5.9]
-			],
-			close: true,
-			role: 'boundary'
-		});
+			[0, 5.9]
+		],
+		close: true,
+		capture: freshCapture()
+	});
 		if (planned.kind !== 'success') throw new Error('the snap fixture was refused');
 		const scene: SceneDocument = {
 			formatVersion: 1,

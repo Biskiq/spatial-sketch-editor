@@ -31,7 +31,14 @@ vi.mock('$lib/platform/project-persistence', async (original) => {
 });
 import { mount, tick, unmount } from 'svelte';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
-import { buildStarterEnclosureLayout } from '$lib/authoring/stage/starter-gallery';
+import { layoutCapturedId } from '@portfolio/layout-core';
+import {
+	buildStarterEnclosureLayout,
+	STARTER_TEMPLATE_ID_CAPTURE
+} from '$lib/authoring/stage/starter-gallery';
+
+/** The starter keeps its fixed captured identity across every boot. */
+const STARTER_WALL_2 = layoutCapturedId(STARTER_TEMPLATE_ID_CAPTURE, 'wall-chain-2');
 import { pausedWallProposal } from '$lib/authoring/adapters/layout/paused-proposal';
 import Page from '../../../src/routes/project/[projectId]/spatial/+page.svelte';
 const RECT = { left: 352, top: 73, width: 928, height: 720, right: 1280, bottom: 793, x: 352, y: 73, toJSON() { } };
@@ -139,10 +146,10 @@ describe('mounted Stage pointer lifecycle', () => {
 	it('selects a located Index row without passing a reactive proxy to immutable selection', async () => {
 		button('Close Dimensions').click();
 		await frame();
-		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find(b => b.textContent?.includes('wall-chain-2'))!;
+		const row = [...target.querySelectorAll<HTMLButtonElement>('.item-row')].find(b => b.textContent?.includes(STARTER_WALL_2))!;
 		row.click();
 		await frame();
-		expect(facade().selection()?.sourceId).toBe('wall-chain-2');
+		expect(facade().selection()?.sourceId).toBe(STARTER_WALL_2);
 	});
 	it('hits and echoes the same Wall with an offset Stage', async () => {
 		const plan = facade().plan();
