@@ -17,6 +17,7 @@ Three things to know before reading:
 - **§6c is done, after this report.** A review of `ff117342` found four more corrections (F1–F4); each was
   reproduced with its numbers and then fixed, and §6c now records what is true rather than what was open. The counts
   in §6b are the ones at that commit; after §6c the suite is 186 tests.
+- **Accepted (§7a).** P3 is concluded at `71de0850`. What carries over and what does not are in §7a.
 - **The model, the offer cards, Edit Shape, the pen tips and ink are claimable.** Hold's pointer lifecycle is wired,
   and §6g is the ink commit. Nothing here is a Round 4 acceptance claim.
 
@@ -555,6 +556,37 @@ qualifier. Full browser acceptance and the remaining phase work are still open.
 The acceptance script's steps 1–4 (box and wing with a tip, one grouped cover, the Hold gestures over wings, Edit
 Shape, the mezzanine and its stair) are now wired and each step has browser evidence; the full §11.3 pass in one
 sequence, with its screenshots, is still open.
+
+## 7a. Accepted as P3's proof (2026-10-21)
+
+The owner accepted the implementation at `71de0850`, with no further bug fixing. P3 was meant to prove a workflow
+that feels intuitive. It was never meant to prove precise geometry, and the workflow is now demonstrable end to end:
+22 files and 285 tests pass, typecheck is clean, and the build succeeds on a clean checkout of that commit.
+
+**What carries into production** (as ideas, ported through the canonical compiler; none of the prototype code carries
+over):
+
+- **The interaction grammar.** One pen whose readings are cycled with Tab. Pencil suggestions are inked by accepting
+  them. Peeks spring back. Every gesture is one Undo step.
+- **One-answer qualification.** The chip, its preview and its commit all ask one function, and the op refuses a stale
+  candidate. That holds for covers, offers, joins and Hold.
+- **The plan decides the roof.** Whether a roof gets wings or one span depends on the plan and the section, not on the
+  route that made it. Anything that can't be built is refused with a reason, never placed malformed.
+- **Hold zones and detents. Edit Shape in a second depth**, with the building drawn in pencil behind the section sheet.
+- **Box/Round tips and *Room beside*. Ink from meaning.**
+- **The fixtures and the renderer-free probe** listed in [roof-footprints-final-polish.md](roof-footprints-final-polish.md) §7.
+
+**Not a priority, and left as they are:**
+
+- **Geometry precision in the prototype.** Fitted roofs beside same-storey rooms, the section line across a valley,
+  and a single-room L's pitch following its primary wing all belong to the production compiler. They are not P3
+  proof. An uncommitted working-tree attempt at the first (`fit.ts`, `settle.ts`, `ops.ts`) was deliberately left
+  out.
+- **Phase 7** (room-side push/pull) is cut.
+- **A single uninterrupted §11.3 rerun.** Each step already has browser evidence (§6d–§6g and `screenshots/accept-*`).
+
+**Still worth doing, and not code:** the five-person test. It is the only direct evidence of "intuitive". It runs on
+this merged prototype and does not block closing P3.
 
 ---
 

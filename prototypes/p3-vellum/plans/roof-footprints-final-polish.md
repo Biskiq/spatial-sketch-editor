@@ -1,6 +1,6 @@
 # Roofs on creative footprints — final P3 polish
 
-Status: **implemented, at implementation review** (2026-10-21). Not closed out and not merged. Prototype-only: this
+Status: **implemented and accepted** (2026-10-21, see [round-4-review.md](round-4-review.md) §7a). Prototype-only: this
 records findings for production planning (T1 / RR-2) but is not production authority. Reconciled against `f4d1c7c5`
 (the F1–F4 corrections and Hold wiring).
 
