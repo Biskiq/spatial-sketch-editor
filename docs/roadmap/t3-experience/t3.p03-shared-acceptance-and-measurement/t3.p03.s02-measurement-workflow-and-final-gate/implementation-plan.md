@@ -45,9 +45,10 @@ DevTools evidence and states its limits.
    visitor-reachable modules on a production build. It can assert that a named lazy chunk is absent
    from a route's first-load set, which T3.P02.S01 needs for Preview.
 6. **Results.** Raw results stay outside Git; the acceptance record summarizes machine, browser,
-   power, cache, network, workload, commit, CPU rate and limitations. Developer runs are labelled
-   pre-flight. GPU, frame-time and GPU-memory rows stay unrun until a Reference A run exists on the
-   machine the owner designates under batch E decision E6, which also anchors the calibration.
+   power, cache, network, workload, commit, CPU rate and limitations. The baseline and the
+   calibration-page median are recorded on the designated reference machine, the owner's MacBook
+   Air M2 with 16 GB ([batch E, E6 amendment](../../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); runs on any other machine are pre-flight
+   unless calibrated against it.
 
 No CI job, schedule, registry or Vitest timing assertion is added. The retired P23B bench machinery is
 not restored.

@@ -42,8 +42,7 @@ Nothing here is implemented, authorized or evidenced.
 1. Import, approve and place one own GLB with its maps, then move, turn, resize, duplicate, delete,
    Save and reopen; two instances share one immutable revision with independent identities.
 2. Oversize, malformed, cancelled, stale and project-replaced imports install nothing and say why.
-3. Hard performance rows, on or calibrated against the Reference A machine named under batch E
-   decision E6: F5 import (long tasks during admission, worker time, peak heap, GPU memory delta,
+3. Hard performance rows, on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment): F5 import (long tasks during admission, worker time, peak heap, GPU memory delta,
    chosen → placed), F6 placement at S and M, the GPU-memory row at M, F13 leak cycles with repeated
    import/place/delete, and the Stage first-load delta.
 

@@ -23,6 +23,16 @@ x86 at 15–28 W (Intel Core i5-1135G7 class), integrated **Intel Iris Xe** (80/
 battery, the worse case). **Reference laptop B — Apple M1 MacBook Air, 8 GB**, 2560×1600 at DPR 2
 (the renderer's DPR cap applies), macOS current, Safari and Chrome.
 
+**Designated reference machine (owner amendment, 2026-10-22).** Laptops A and B above stay the
+accessibility target that the budgets describe. Hard rows are run and accepted on one designated
+machine: the owner's **Apple MacBook Air M2** (Mac14,2; 8-core CPU, 4 performance and 4
+efficiency; 10-core GPU; **16 GB** unified memory; 2560×1664 built-in display), on battery with Low
+Power Mode off, operated by the repository owner. Runs on it need no CPU throttling or calibration.
+It is stronger than laptop A, so a pass there is a pass on this machine, not proof on an A-class
+laptop; the owner accepted that trade-off. Wherever this contract says "reference A" for running or
+accepting a hard row, it means this machine. Provenance:
+[batch E record](../decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named).
+
 **Browser matrix.** Chrome stable (pinned major, recorded `chrome://version`) is **primary and
 gating** on A and B. Safari (current, on B) and Firefox stable (on A) are **secondary**: they run
 the same flows and must meet the *hard* gates for correctness-visible behavior (no context loss,
@@ -42,9 +52,10 @@ per request, cache disabled for cold):
    a fresh persistent context per run; extensions off; `--disable-background-timer-throttling`
    off (default) so results match users.
 2. **CPU calibration against the reference:** run a fixed calibration page (the `fixtures.ts`
-   grid-7 compile + the Stage's admission, bundled exactly as production) 20× on reference A in
-   Chrome, record the median; on the developer machine pick the CDP
-   `Emulation.setCPUThrottlingRate` (1.5–4, step 0.25) whose median lands within ±10 % of A's.
+   grid-7 compile + the Stage's admission, bundled exactly as production) 20× on the designated
+   reference machine in Chrome, record the median; on another developer machine pick the CDP
+   `Emulation.setCPUThrottlingRate` (1.5–4, step 0.25) whose median lands within ±10 % of the
+   reference median.
    Recalibrate per browser major and per machine; store the rate with results. If no rate matches,
    report no calibrated equivalence and use reference hardware; do not extrapolate a pass. CPU throttling does
    not emulate GPU, memory bandwidth, or thermal behavior: **GPU, frame-time and GPU-memory gates
@@ -131,7 +142,7 @@ which a pointer event is handled within 50 ms; a lone rAF callback is not proof 
 
 ## Budgets
 
-**Hard** = must pass before the consuming slice's acceptance on reference A (Chrome), else the slice
+**Hard** = must pass before the consuming slice's acceptance on the designated reference machine (Chrome), else the slice
 resolves it (see [acceptance](#acceptance-and-workflow)). **Target** = reported, and a miss
 needs a written disposition in the acceptance record. Continuous latency ends at the matching
 preview's presentation; operation completion ends at the accepted result's presentation, as

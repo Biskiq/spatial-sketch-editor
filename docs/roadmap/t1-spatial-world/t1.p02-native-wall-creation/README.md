@@ -110,10 +110,9 @@ owner call inside S02.
 - **Before implementation:** H0's `T3.P03.S01` merged (S01 changes F4 intent capture; S02 adds
   Layout planners under enforced scope). The policy above is accepted. Nothing waits on C2 or
   T3.P02.
-- **Reference hardware:** hard performance rows are accepted only on, or calibrated against, the
-  Reference A machine the owner designates under batch E decision E6. Until it is named, S01's F2
-  record and S02's drawing rows stay pre-flight and cannot accept those rows; starting needs no
-  machine.
+- **Reference hardware:** hard performance rows are run and accepted on the designated reference
+  machine, the owner's MacBook Air M2 with 16 GB ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)). Laptop A
+  stays the accessibility target the budgets describe.
 - **T1 writes:** layout-core, the Layout unit in project-model, Layout adapters, the Stage host and
   shell, the starter gallery. Changes to shared F4 capture or the Head are reviewed by T3; the rail is
   family-driven so T2 and T3 contribute entries without editing it.

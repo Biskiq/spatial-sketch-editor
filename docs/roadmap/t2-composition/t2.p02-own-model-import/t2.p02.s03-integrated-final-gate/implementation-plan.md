@@ -52,7 +52,7 @@ track or cycle closure is fabricated here.
 
 Recheck the integrated F5 import, F6 placement, GPU-memory, F9 Save and F13 leak flows and the Stage
 first-load delta against the [performance contract](../../../../reference/components/performance.md),
-on or calibrated against the Reference A machine named under batch E decision E6. S02 supplies its own
+on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment). S02 supplies its own
 evidence before its acceptance; S03 verifies integration and cannot defer or erase an earlier
 hard-budget miss.
 

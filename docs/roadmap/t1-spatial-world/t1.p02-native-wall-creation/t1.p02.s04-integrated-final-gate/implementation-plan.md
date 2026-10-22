@@ -56,7 +56,7 @@ track or cycle closure is fabricated here.
 
 Recheck the integrated F2 open, F3 drawing, F4 commit, F8 Undo/Redo and F13 leak flows and the Stage
 first-load delta against the [performance contract](../../../../reference/components/performance.md),
-on or calibrated against the Reference A machine named under batch E decision E6. Each earlier slice
+on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment). Each earlier slice
 supplies its own evidence before its acceptance; S04 verifies integration and cannot defer or erase an
 earlier hard-budget miss.
 

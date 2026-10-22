@@ -33,8 +33,8 @@ ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) �
        ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md
        → ../../roadmap/cross-track-execution.md#authorized-batch-e-2026-10-22 (protocol)
        → ../../reference/decisions/batch-e-authorization-2026-10-22.md (provenance)
-BLOCKER: none for T3.P03.S01. Hard performance rows (S01's F10, S02's baseline) need the Reference A
-         machine and operator the owner still has to name (E6); starting does not.
+BLOCKER: none for T3.P03.S01. Hard performance rows (S01's F10, S02's baseline and calibration)
+         run on the owner's MacBook Air M2, 16 GB, operated by the owner (E6 amendment).
 CARRY:  SEPARATE AND STILL OWED: the owner-run production activation of the F2 epoch (migration 005,
         API and editor deploys, namespace-scoped R2 purge, smoke checks). The S04 merge executed no
         migration against a deployed database. Residuals that move into this phase or beyond: the

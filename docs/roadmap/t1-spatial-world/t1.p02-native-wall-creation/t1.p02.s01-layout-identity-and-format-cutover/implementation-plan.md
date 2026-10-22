@@ -78,8 +78,7 @@ report so it becomes its own slice before S02; do not carry it past the phase.
    suites stay green after their fixtures move to format 6, with no weakened assertion.
 5. **No behavior change for creators.** Existing precision, manipulation, plinth, Scene placement,
    Save and Undo/Redo journeys behave as before; the shared F2 open flow (F2) is recorded at S and M
-   against the H0 baseline. Its hard rows are accepted on, or calibrated against, the Reference A
-   machine named under batch E decision E6; until then the record is pre-flight.
+   against the H0 baseline. Its hard rows are accepted on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment).
 
 Verification: affected fast and heavy contracts, the arch lane, `npm run check`, and `npm run check:api`
 with the DB-backed `npm run test:api` at zero skips, because the API admits Layout units. The complete

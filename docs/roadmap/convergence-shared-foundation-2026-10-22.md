@@ -37,9 +37,10 @@ dependency. S01 retains its historical authorization and all its declared accept
   Permanent workflow authorization is separate from bounded measurements and is already satisfied.
   No timing assertion enters Vitest and no CI, registry or scheduled performance job is added.
 - Capture a production-build baseline on available hardware with exact machine, browser, power,
-  workload, network and cache state. Reference A measurements qualify hard budgets; an M2 or
-  uncalibrated developer run is labelled pre-flight, never a reference-laptop pass. A functional
-  harness acceptance does not claim that the product meets unrun performance budgets.
+  workload, network and cache state. Runs on the owner-designated reference machine, a MacBook Air
+  M2 with 16 GB ([batch E, E6 amendment](../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)), qualify hard budgets; any other uncalibrated
+  developer run is labelled pre-flight. A functional harness acceptance does not claim that the
+  product meets unrun performance budgets.
 
 ## Owned changes and merge boundary
 

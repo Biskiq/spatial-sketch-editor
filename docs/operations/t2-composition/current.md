@@ -33,8 +33,8 @@ ROUTE: ./README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md →
        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md
        → ../../reference/decisions/batch-e-authorization-2026-10-22.md (provenance)
-BLOCKER: T3.P03.S01 not yet merged. S02's hard performance rows also need the Reference A machine
-         the owner still has to name (E6).
+BLOCKER: T3.P03.S01 not yet merged. Hard performance rows run on the owner's MacBook Air M2,
+         16 GB (E6 amendment).
 CARRY: The owner may push the local `closed/T2.P01.S03`, `closed/T2.P01.S04` and the new
         `closed/T2.P01` tags. Cloud Save in a real browser session stays with the host evidence; model
         contact moves to T2.P02 (its placement definition), not the closed gate. T2 track

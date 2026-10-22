@@ -330,11 +330,11 @@ No closed phase is reopened, and no gate, version or capability changes.
 | Capture/Preview | T3. Capture, Guide-free and Cut Preview, Save/history | [T3.P02.S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) with its finalized scope | `T3.P03.S01` merged | Finalized scope accepted (E5) and released (E7); historical authorization retained |
 | C3 follow-on | T3 persistence/API, T1 shell. Rename/delete with conflict and dirty-replacement safety; deletes the project's model revisions | Not yet planned | After the first-wave interfaces settle, by T3 capacity after S01 | Next T3 slice to plan |
 
-**Reference hardware (E6).** The owner designates a Reference A machine and its operator; neither is
-named yet. Starting needs no machine. Hard rows need a run on Reference A, or for CPU rows a
-developer run calibrated against it, so until it is named those rows stay pre-flight and block
-acceptance on them: F2 for `T1.P02.S01`, F10 for `T3.P02.S01`, and the drawing, import and
-placement rows for the S02 slices. Hardware-independent delivery rows need no machine.
+**Reference hardware (E6).** Hard rows are run and accepted on the owner's MacBook Air M2 with
+16 GB, operated by the owner ([E6 amendment](../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); laptop A stays the accessibility target the
+budgets describe. This covers F2 for `T1.P02.S01`, F10 for `T3.P02.S01`, and the drawing, import
+and placement rows for the S02 slices. Another developer machine's CPU run counts only when
+calibrated against it; hardware-independent delivery rows need no machine.
 
 #### Batch E shared files and merge order
 

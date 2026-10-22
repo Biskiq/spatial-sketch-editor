@@ -222,8 +222,8 @@ and nothing in this section is lifecycle or gate readiness.
     import) (E1);
   - authorized and released T3.P03 (E2);
   - accepted the C1 drawing policy, the C2 bounds and T3.P02.S01's finalized scope (E3–E5);
-  - designated Reference A for hard performance rows, with the machine and operator still to be
-    named (E6);
+  - designated the owner's MacBook Air M2 (16 GB) as the machine hard performance rows are run and
+    accepted on, keeping laptop A as the accessibility target (E6 and its amendment);
   - authorized `T1.P02.S01` and `T2.P02.S01` and released them and `T3.P02.S01`, each starting only
     after `T3.P03.S01` merges (E7).
 

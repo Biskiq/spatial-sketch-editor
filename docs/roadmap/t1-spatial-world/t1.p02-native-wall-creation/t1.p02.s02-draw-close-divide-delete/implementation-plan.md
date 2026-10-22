@@ -42,8 +42,7 @@ Nothing here is implemented, authorized or evidenced.
    identities, and Plan and 3D agreeing.
 2. Every unsupported case in the drawing policy refuses in words, with a repair, and leaves no partial
    source.
-3. Hard performance rows, on or calibrated against the Reference A machine named under batch E
-   decision E6: F3 drag (input-to-matching-preview, latest-input age, final-preview completion,
+3. Hard performance rows, on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment): F3 drag (input-to-matching-preview, latest-input age, final-preview completion,
    frames, long tasks), per-move evaluation, F4 commit and F8 Undo/Redo at S and M, F2 open, F13 leak
    cycles and the Stage first-load delta.
 4. The closeout records M4 as re-armed in the

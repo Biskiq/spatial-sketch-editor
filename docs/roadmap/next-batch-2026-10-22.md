@@ -79,5 +79,6 @@ migration decision; no new gate.
 
 The decisions take effect through the [batch E record](../reference/decisions/batch-e-authorization-2026-10-22.md) and the registers it updates, not
 through this page. They ratify no format, accept no milestone and change no gate row, capability
-record, closed phase or architecture-cycle state. E6's Reference A machine and operator are still to
-be named. Every slice re-verifies its prerequisites at its own trusted base when it starts.
+record, closed phase or architecture-cycle state. E6's machine was named the same day: the
+owner's MacBook Air M2 with 16 GB ([amendment](../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)). Every slice re-verifies its prerequisites
+at its own trusted base when it starts.

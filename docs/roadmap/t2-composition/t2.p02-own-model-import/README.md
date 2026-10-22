@@ -111,9 +111,9 @@ cycles with repeated import/place/delete, and the Stage first-load delta (Import
 - **Before implementation:** H0's `T3.P03.S01` merged (the resource-granting placement planner relies
   on per-planner scope). The bounds above are owner-accepted. Nothing waits on C1. Preview evidence
   needs T3.P02.S01; if it has not merged when S02 is accepted, the check moves to S03.
-- **Reference hardware:** S02's import, placement, GPU-memory and leak rows are accepted only on, or
-  calibrated against, the Reference A machine the owner designates under batch E decision E6. S01
-  binds no performance row.
+- **Reference hardware:** S02's import, placement, GPU-memory and leak rows are run and accepted on
+  the designated reference machine, the owner's MacBook Air M2 with 16 GB
+  ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)). S01 binds no performance row.
 - **T2 writes:** `apps/api/**` and its migrations for this batch, the Scene format and planners, the
   resources format, Scene adapters and the Import procedure. Shared `units/**` edits follow the
   batch's serialized merge rule; a Stage host change is a stop-and-report to T1.

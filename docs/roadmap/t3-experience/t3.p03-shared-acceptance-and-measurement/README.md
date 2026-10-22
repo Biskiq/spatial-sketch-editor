@@ -64,9 +64,9 @@ Out of scope: Layout/Scene/Experience formats, native drawing, import, Preview U
 deduplication (C1 owns it), any CI job, schedule or benchmark registry, and any timing assertion
 in Vitest.
 
-**Reference hardware.** S02's calibration and any hard GPU, frame-time or GPU-memory row need the
-Reference A machine that the owner designates under batch E decision E6. Until the machine and
-operator are named, S02 records its baseline as pre-flight and lists those rows as unrun.
+**Reference hardware.** S02 records its baseline and calibration median on the designated
+reference machine, the owner's MacBook Air M2 with 16 GB ([batch E, E6 amendment](../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)).
+Laptop A stays the accessibility target the budgets describe.
 
 T3 has no architecture-cycle window; neither slice is an exposure. Production activation of the F2
 epoch remains a separate owner-run operation and is not touched.

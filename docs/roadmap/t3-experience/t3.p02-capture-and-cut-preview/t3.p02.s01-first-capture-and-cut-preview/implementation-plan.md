@@ -135,9 +135,9 @@ including heavy correctness and `check:api`/`test:api` with zero skips for the S
 Before S01 acceptance, record capture/bind result completion, first/repeated Preview entry and
 return, delivered Preview bytes and repeated enter/exit memory behavior against
 [the ratified performance reference](../../../../reference/components/performance.md). Hard F10 rows
-are accepted on, or calibrated against, the Reference A machine named under batch E decision E6;
-until it is named they are pre-flight, while the lazy-chunk delivery row needs no machine. The phase
-final gate rechecks the integrated result; it does not defer a hard miss.
+are accepted on the designated reference machine, the owner's MacBook Air M2 with 16 GB
+([batch E, E6 amendment](../../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); the lazy-chunk delivery row needs no machine. The phase final
+gate rechecks the integrated result; it does not defer a hard miss.
 
 ## Shared-file ownership
 

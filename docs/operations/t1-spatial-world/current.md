@@ -7,7 +7,7 @@ ACTIVE: none yet. T1.P02.S01 is `approved` and released from the hold (batch E, 
         only after T3.P03.S01 is merged on `main`; S02–S04 are `proposed` and not authorized.
 NEXT: When T3.P03.S01 reads `shipped` in the T3.P03 slice register on `main`, start T1.P02.S01
       through the T1 runbook start step from that base. The drawing policy is owner-accepted (E3).
-      Hard performance rows need the Reference A machine the owner still has to name (E6).
+      Hard performance rows run on the owner's MacBook Air M2, 16 GB (E6 amendment).
 ROUTE: ../../roadmap/t1-spatial-world/README.md#phase-register →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md

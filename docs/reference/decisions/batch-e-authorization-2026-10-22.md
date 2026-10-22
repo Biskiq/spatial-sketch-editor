@@ -122,8 +122,10 @@ The [performance contract](../components/performance.md#reference-baseline) stay
 Reference laptop A is the primary budget machine, and GPU, frame-time and GPU-memory gates are
 accepted only from reference hardware runs.
 
-The owner designates a Reference A machine and its operator. **The specific machine and operator are
-not yet named.**
+The owner designates a Reference A machine and its operator. **Named later the same day:** see the
+[E6 amendment](#amendment-e6-reference-machine-named), which designates the owner's MacBook Air M2
+and keeps laptop A as the accessibility target. The rest of this section is the decision as first
+recorded.
 
 When named, record them as an amendment at the end of this record: make and model, CPU, GPU, RAM,
 display, OS and power plan, plus the operator. `T3.P03.S02`'s calibration then uses that machine.
@@ -203,7 +205,8 @@ Each later child starts only from its own authorization after its predecessor's 
 
 ## Owner-only decisions not resolved here
 
-1. **The Reference A machine and operator** (E6): owed, and recorded here as an amendment when named.
+1. **The Reference A machine and operator** (E6): resolved by the
+   [E6 amendment](#amendment-e6-reference-machine-named).
 2. **Architecture-cycle verdicts:** `owner-verdict-owed`, blocking nothing in this batch.
 3. **Deployed F2 epoch activation:** owner-run and unexecuted.
 4. **Later authorizations:** each lane's next slice after its predecessor's acceptance, and
@@ -218,4 +221,46 @@ E1 approved  E2 approved  E3 approved  E4 approved  E5 approved
 E6 approved — Reference A machine and operator owed
 E7 approved — decided now; each start gated on T3.P03.S01 merged
 Owner: repository owner (approved in the batch E planning review, PR #174)   Date: 2026-10-22
+```
+
+## Amendment: E6 reference machine named
+
+**October 22, 2026, owner instruction in the same session.** The owner named the machine: "use
+macbook air m2 16gb ram. current machine". The owner then kept the ratified laptop A target: "it's
+ok keep the thing, we want to make it as accessible as possible hence the rail. and we assume
+powerful machine get more accessible."
+
+| Field | Value |
+| --- | --- |
+| Machine | Apple MacBook Air, Mac14,2 |
+| CPU | Apple M2, 8 cores (4 performance, 4 efficiency) |
+| GPU | Apple M2 integrated, 10 cores, Metal 3 |
+| Memory | 16 GB unified |
+| Display | Built-in Liquid Retina, 2560×1664 |
+| OS | macOS 15.7.2 (24G325) at designation; each result records the version it ran on |
+| Power | On battery, Low Power Mode off; the contract judges budgets on battery |
+| Browser | Chrome stable, gating; the version is recorded with every result |
+| Operator | The repository owner |
+
+What it changes:
+
+- **The target stays.** The [performance contract's](../components/performance.md#reference-baseline)
+  laptop A and B descriptions stay as written, as the accessibility target that the budgets describe.
+- **Where hard rows are run and accepted.** Hard rows, including GPU, frame-time and GPU-memory rows,
+  are run and accepted on this machine. Runs on it need no CPU throttling or calibration. Another
+  developer machine calibrates against this machine's calibration-page median.
+- **What a pass means.** This machine is stronger than laptop A: a faster CPU and GPU, and 16 GB of
+  unified memory against 8 GB shared. A pass on it is a pass on this machine, not proof on an A-class
+  laptop. The owner accepted that trade-off with the assumption quoted above. Every acceptance
+  record names this machine, and the budgets are unchanged.
+- **The ratified contract is amended** for this designation, with this record as its provenance.
+  Nothing else in the contract changes.
+
+Effect on batch E: no slice's start ever depended on the machine. Acceptance on hard rows is now
+possible on this machine for `T1.P02.S01` (F2), `T3.P02.S01` (F10) and the later slices, and
+`T3.P03.S02` records its baseline on it.
+
+```text
+E6 amendment approved — reference machine: MacBook Air M2 (Mac14,2), 16 GB; operator: repository owner
+Owner: repository owner (same session, PR #174)   Date: 2026-10-22
 ```

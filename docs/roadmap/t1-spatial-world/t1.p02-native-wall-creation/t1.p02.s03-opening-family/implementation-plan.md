@@ -29,7 +29,6 @@ authorized or evidenced.
 1. Add and remove an Opening on drawn and starter Walls, with Undo/Redo, Save and reload keeping
    identities, and Plan and 3D agreeing on the void and caps.
 2. Host refusal and Wall-deletion consequences match the drawing policy.
-3. F4 commit and F8 Undo/Redo for Opening edits at S and M, on or calibrated against the Reference A
-   machine named under batch E decision E6.
+3. F4 commit and F8 Undo/Redo for Opening edits at S and M, on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment).
 
 Excluded: Opening kinds beyond the landed ones, curved hosts and attachments.
