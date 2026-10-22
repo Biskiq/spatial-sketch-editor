@@ -95,7 +95,7 @@ reference promotions:            1   F.4 per-planner scope paragraph in referenc
 renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:      0
 transient artifacts removed:     0   (untracked prototype debug files were never committed)
-historical anchor:               f77d55542806ca66903bc6d880884b1b3ef60ef2 · tag closed/T3.P03.S01 (local only — not pushed)
+historical anchor:               f77d55542806ca66903bc6d880884b1b3ef60ef2 · tag closed/T3.P03.S01 (pushed)
 new live → archive prose links:  0
 manual-owed verification rows:   1   per-merge default-timeout `npm test`
 remaining deferred items:        1   T3.P03.S02 integrated exhaustive proof
@@ -110,7 +110,7 @@ acceptance    PASS — claims match recorded evidence at its tested revisions; m
 tier          PASS — architecture-integration evidence recorded; S02 is the declared integration route
 shims         PASS — no unowned shim; closeout changed no production file
 promotion     PASS — F.4 durable contract lives in reference/composition-execution.md
-preservation  PASS — 1 prose stub; plan retained; anchor computed and tagged locally
+preservation  PASS — 1 prose stub; plan retained; anchor computed, tagged and tag pushed
 routing       PASS — S01 shipped; T3.P03 active; register, release list and baton agree
 baton         PASS — T3 baton names the next released work only; no closed-slice narrative
 stable        PASS — no pending-merge state or branch-head pin in live routers
