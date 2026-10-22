@@ -5,12 +5,20 @@ import { ohFrame, profileH, PSample, hipH, ohH, profilePeak, ohHasSurface } from
 import { V2, add, mul, dot, perp, dist, pointInPoly, polyArea, lerp2, bbox, segIntersect, distToPolyEdge } from '../../model/geom2d';
 import { P, intersection, difference, MPoly } from '../../model/clip';
 import { roofWingsState, type CompoundState, type Wing } from '../../model/wings';
+import { partIndexOf, roofInk, type InkFacet } from './roofInk';
+import { readSection } from '../../model/section';
 
 export interface OverheadMesh {
   top: Geo; // roof surface + fascia
   under: Geo; // underside
   glass: Geo; // clerestory / lantern glazing and skylight caps
+  /** the top surface cut into pieces that each mean one thing: (wing, surface, part) */
+  facets: InkFacet[];
+  /** semantic ink: group boundaries, plus the fascia's bottom edge and corners. Empty when ink was not asked for. */
+  ink: number[];
 }
+
+const emptyMesh = (): OverheadMesh => ({ top: new Geo(), under: new Geo(), glass: new Geo(), facets: [], ink: [] });
 
 function subdivideRing(ring: V2[], d: V2, ws: number[]): V2[] {
   const out: V2[] = [];
@@ -27,18 +35,23 @@ function subdivideRing(ring: V2[], d: V2, ws: number[]): V2[] {
   return out;
 }
 
-export function buildOverhead(oh: Overhead, holes: V2[][]): OverheadMesh {
+/**
+ * `ink` is the semantic line pass. It is expensive (a union per group), so a live drag asks for geometry only: the
+ * last real ink comes back on release rather than being rebuilt behind the hand.
+ */
+export function buildOverhead(oh: Overhead, holes: V2[][], opts: { ink?: boolean } = {}): OverheadMesh {
   // Qualification is shared across every mesher: an unsupported saved/imported roof has no surface, regardless of
   // whether its stale `form` field asks for an extrusion or a revolve.
-  if (!ohHasSurface(oh)) return { top: new Geo(), under: new Geo(), glass: new Geo() };
+  if (!ohHasSurface(oh)) return emptyMesh();
   if (oh.form === 'revolve') return buildRevolve(oh, holes);
   const st = roofWingsState(oh);
-  if (st.kind === 'compound') return buildCompound(oh, holes, st);
-  return buildSingle(oh, holes);
+  if (st.kind === 'compound') return buildCompound(oh, holes, st, opts.ink !== false);
+  return buildSingle(oh, holes, opts.ink !== false);
 }
 
-function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
+function buildSingle(oh: Overhead, holes: V2[][], withInk: boolean): OverheadMesh {
   const top = new Geo(), under = new Geo(), glass = new Geo();
+  const facets: InkFacet[] = [];
   const f = ohFrame(oh);
   const d = f.d, e = perp(d);
   const W = Math.max(f.wmax - f.wmin, 1e-6);
@@ -53,6 +66,10 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
     const h = profileH(S, Math.max(0, Math.min(1, u)));
     return hip > 0 ? Math.min(h, hipH(f, dot(p, e))) : h;
   };
+  // which part of the section a sample interval belongs to; two rows on the same part mean the same thing
+  const partOf = (u: number) => partIndexOf(oh, u);
+  const endAt = (v: number): 'A' | 'B' => (v - f.emin <= f.emax - v ? 'A' : 'B');
+  const hipT = (v: number, end: 'A' | 'B') => Math.max(0, Math.min(1, end === 'A' ? (v - f.emin) / hip : (f.emax - v) / hip));
   // hipped ends: breaks along the ridge where the end slope's samples fall (both ends), the middle stays one piece
   const vs: number[] = [];
   if (hip > 0) {
@@ -73,7 +90,7 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
   const piecesOf = footPieces(foot);
   // on a hip's end slope the height depends only on the position along the ridge, so a row of such cells across
   // neighbouring strips is one plane: it is gathered here and laid as one piece
-  const gRows = new Map<number, { w0: number; w1: number; v0: number; v1: number; g0: number; g1: number }>();
+  const gRows = new Map<number, { w0: number; w1: number; v0: number; v1: number; g0: number; g1: number; end: 'A' | 'B' }>();
   const layG = (j: number) => {
     const g = gRows.get(j);
     if (!g) return;
@@ -83,6 +100,7 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
     const y = (p: V2) => oh.baseY + oh.thick + g.g0 + ((g.g1 - g.g0) * (dot(p, e) - g.v0)) / (g.v1 - g.v0);
     top.flatM(pieces, y, true);
     under.flatM(pieces, (p) => y(p) - oh.thick, false);
+    facets.push({ group: `G${g.end}${partOf(hipT((g.v0 + g.v1) / 2, g.end) * f.hipU)}`, poly: pieces, y });
   };
   // surfaces, planar within each cell (exact for the polyline profile): a cell takes the lower of the cross slope
   // and the end slope, and where they cross inside it, it is cut along the hip line into two flat pieces
@@ -99,6 +117,7 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
       if (pieces.length) {
         top.flatM(pieces, yF, true);
         under.flatM(pieces, (p) => yF(p) - oh.thick, false);
+        facets.push({ group: `F${partOf((S[i].u + S[i + 1].u) / 2)}`, poly: pieces, y: yF });
       }
       pending = null;
     };
@@ -133,7 +152,7 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
         if (g && Math.abs(g.w1 - w0) < 1e-7) g.w1 = w1;
         else {
           layG(j);
-          gRows.set(j, { w0, w1, v0, v1, g0, g1 });
+          gRows.set(j, { w0, w1, v0, v1, g0, g1, end: endAt(vm) });
         }
         continue;
       }
@@ -150,6 +169,10 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
         const yTop = (p: V2) => oh.baseY + oh.thick + part.y(dot(p, d), dot(p, e));
         top.flatM(pieces, yTop, true);
         under.flatM(pieces, (p) => yTop(p) - oh.thick, false);
+        const grp = inHipG(part)
+          ? `G${endAt(vm)}${partOf(hipT(vm, endAt(vm)) * f.hipU)}`
+          : `F${partOf((S[i].u + S[i + 1].u) / 2)}`;
+        facets.push({ group: grp, poly: pieces, y: yTop });
       }
     }
     flush();
@@ -186,7 +209,8 @@ function buildSingle(oh: Overhead, holes: V2[][]): OverheadMesh {
     const hy = Math.max(...h.map((p) => yT(p))) + 0.04;
     glass.flat([h], hy, true);
   }
-  return { top, under, glass };
+  const ink = withInk ? roofInk(facets, { d, e, ws, vs }, (p) => oh.baseY + hAt(p), foot, oh.thick) : [];
+  return { top, under, glass, facets, ink };
 }
 
 function chordsAt(foot: MPoly, d: V2, e: V2, w: number): [V2, V2][] {
@@ -273,7 +297,40 @@ function buildRevolve(oh: Overhead, holes: V2[][]): OverheadMesh {
     }
     glass.flat([Array.from({ length: 32 }, (_, i) => [c[0] + rHole * Math.cos((i / 32) * Math.PI * 2), c[1] + rHole * Math.sin((i / 32) * Math.PI * 2)] as V2)], hy + 0.05, true);
   }
-  return { top, under, glass };
+  // ink from meaning for a revolve: rings only, never meridians. The rim, every authored crease, the lantern's two
+  // rings and the oculus. A dome is not a net of triangles, and ink should not say it is.
+  const ink: number[] = [];
+  const seenRing = new Set<string>();
+  const pushRing = (r: number, y: number) => {
+    if (r < 1e-4) return;
+    const k = `${r.toFixed(4)}|${y.toFixed(4)}`;
+    if (seenRing.has(k)) return;
+    seenRing.add(k);
+    for (let i = 0; i < N; i++) {
+      const a0 = (i / N) * Math.PI * 2, a1 = ((i + 1) / N) * Math.PI * 2;
+      ink.push(c[0] + r * Math.cos(a0), y, c[1] + r * Math.sin(a0), c[0] + r * Math.cos(a1), y, c[1] + r * Math.sin(a1));
+    }
+  };
+  pushRing(R, oh.baseY + rs[0].h);
+  pushRing(R, oh.baseY + rs[0].h - oh.thick);
+  for (const j of readSection(oh.profile).joints) {
+    if (j.u <= 1e-6 || j.u >= 0.5 - 1e-6) continue;
+    if (j.kind !== 'crease' && j.kind !== 'ridge' && j.kind !== 'valley') continue;
+    const r = R * (1 - 2 * j.u);
+    pushRing(r, oh.baseY + hAtR(r));
+  }
+  for (let i = 0; i + 1 < rs.length; i++) {
+    const a = rs[i], b = rs[i + 1];
+    if (Math.abs(a.r - b.r) < 1e-6 && Math.abs(a.h - b.h) > 0.05) {
+      pushRing(a.r, oh.baseY + a.h);
+      pushRing(b.r, oh.baseY + b.h);
+    }
+  }
+  if (rHole > 0) {
+    pushRing(rHole, oh.baseY + hAtR(rHole));
+    pushRing(rHole, oh.baseY + hAtR(rHole) - oh.thick);
+  }
+  return { top, under, glass, facets: [], ink };
 }
 
 /** The part of a convex (w, v) cell where sign(fn) matches `side` (−1: fn ≤ 0, +1: fn ≥ 0); fn is linear in the cell. */
@@ -336,8 +393,9 @@ interface Plane {
 
 const planeAt = (pl: Plane, w: number, v: number) => pl.a + pl.bw * w + pl.bv * v;
 
-function buildCompound(oh: Overhead, holes: V2[][], st: CompoundState): OverheadMesh {
+function buildCompound(oh: Overhead, holes: V2[][], st: CompoundState, withInk: boolean): OverheadMesh {
   const top = new Geo(), under = new Geo(), glass = new Geo();
+  const facets: InkFacet[] = [];
   const f = ohFrame(oh);
   const d = f.d, e: V2 = [-d[1], d[0]];
   const S = f.samples;
@@ -378,20 +436,38 @@ function buildCompound(oh: Overhead, holes: V2[][], st: CompoundState): Overhead
       if (!pointInPoly(at(wm, vm), oh.outline)) continue;
       const cell: V2[] = [[w0, v0], [w1, v0], [w1, v1], [w0, v1]];
       // candidates whose support covers the cell, each cut into the regions where one of its planes is the lowest
-      interface Piece { plane: Plane; domain: V2[] }
+      interface Piece { plane: Plane; domain: V2[]; group: string }
       const pieces: Piece[] = [];
-      for (const wg of st.wings) {
+      for (let wi = 0; wi < st.wings.length; wi++) {
+        const wg = st.wings[wi];
         if (wm < wg.support[0] - 1e-9 || wm > wg.support[1] + 1e-9 || vm < wg.support[2] - 1e-9 || vm > wg.support[3] + 1e-9) continue;
         const planes: Plane[] = [];
+        const groups: string[] = [];
         const cross = crossPlane(wg, S, w0, w1, v0, v1);
         if (!cross) continue;
         planes.push(cross);
         const spanW = wg.span === 'w';
+        const span = spanW ? wg.rect[1] - wg.rect[0] : wg.rect[3] - wg.rect[2];
+        const s0 = spanW ? wg.rect[0] : wg.rect[2];
+        const along = spanW ? vm : wm; // along the ridge, for the hips
+        const across = spanW ? wm : vm; // across the span, for the section part
+        const uMid = (across - s0) / Math.max(span, 1e-9);
+        groups.push(`W${wi}|F${partIndexOf(oh, uMid)}`);
         const cl = spanW ? v0 : w0, ch = spanW ? v1 : w1;
         const lo = hipPlane(wg, S, pkU, 'lo', cl, ch);
         const hi = hipPlane(wg, S, pkU, 'hi', cl, ch);
-        if (lo) planes.push(lo);
-        if (hi) planes.push(hi);
+        const r0 = spanW ? wg.rect[2] : wg.rect[0];
+        const r1 = spanW ? wg.rect[3] : wg.rect[1];
+        if (lo) {
+          const x = Math.max(0, Math.min(1, (along - r0) / Math.max(wg.hipLo, 1e-9)));
+          planes.push(lo);
+          groups.push(`W${wi}|Glo${partIndexOf(oh, x * pkU)}`);
+        }
+        if (hi) {
+          const x = Math.max(0, Math.min(1, (r1 - along) / Math.max(wg.hipHi, 1e-9)));
+          planes.push(hi);
+          groups.push(`W${wi}|Ghi${partIndexOf(oh, x * pkU)}`);
+        }
         for (let p = 0; p < planes.length; p++) {
           let poly = cell;
           for (let q = 0; q < planes.length && poly.length >= 3; q++) {
@@ -399,7 +475,7 @@ function buildCompound(oh: Overhead, holes: V2[][], st: CompoundState): Overhead
             const diff = diffPlane(planes[q], planes[p]);
             poly = clipHalfPlane(poly, (pt) => planeAt(diff, pt[0], pt[1]));
           }
-          if (poly.length >= 3) pieces.push({ plane: planes[p], domain: poly });
+          if (poly.length >= 3) pieces.push({ plane: planes[p], domain: poly, group: groups[p] });
         }
       }
       if (!pieces.length) continue;
@@ -420,6 +496,7 @@ function buildCompound(oh: Overhead, holes: V2[][], st: CompoundState): Overhead
           const yTop = (p: V2) => oh.baseY + oh.thick + planeAt(pieces[a].plane, dot(p, d), dot(p, e));
           top.flatM([m], yTop, true);
           under.flatM([m], (p) => yTop(p) - oh.thick, false);
+          facets.push({ group: pieces[a].group, poly: [m], y: yTop });
         }
       }
     }
@@ -437,7 +514,8 @@ function buildCompound(oh: Overhead, holes: V2[][], st: CompoundState): Overhead
     const hy = Math.max(...h.map((p) => yT(p))) + 0.04;
     glass.flat([h], hy, true);
   }
-  return { top, under, glass };
+  const ink = withInk ? roofInk(facets, { d, e, ws, vs }, (p) => oh.baseY + ohH(oh, p), foot, oh.thick) : [];
+  return { top, under, glass, facets, ink };
 }
 
 /** The cell's cross slope as one plane; null when the cell is outside the wing's span. */

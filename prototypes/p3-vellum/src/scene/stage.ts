@@ -183,6 +183,23 @@ export class Stage {
     part.edges.push(l);
   }
 
+  /**
+   * Semantic ink: the roof's own meaningful lines, not its triangles. It takes the edge slot (so selection and the
+   * red pencil still recolour it) and gets the same ghost twin every other outline has.
+   */
+  private addInk(part: Part, pts: number[]) {
+    if (!pts.length) return;
+    this.addLines(part, pts, this.m.edge);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    const gl = new THREE.LineSegments(g, this.m.ghostEdge);
+    gl.computeLineDistances();
+    gl.visible = false;
+    gl.renderOrder = 3;
+    part.group.add(gl);
+    part.ghosts.push(gl);
+  }
+
   private disposePart(part: Part) {
     part.group.traverse((o: any) => {
       if (o.geometry && o.geometry !== this.personGeo) o.geometry.dispose?.();
@@ -262,9 +279,11 @@ export class Stage {
         key,
         build: () => {
           const part = this.makePart(`roof:${oh.id}`, key, oh.id, 'roof', topLayer);
-          const mesh = buildOverhead(oh, holes);
-          this.addSolid(part, mesh.top.geometry(), see ? this.m.roofSee : this.m.roof, { edges: !live });
+          // ink is deferred while the roof is under the hand: the gesture needs the surface, not a union per group
+          const mesh = buildOverhead(oh, holes, { ink: !live });
+          this.addSolid(part, mesh.top.geometry(), see ? this.m.roofSee : this.m.roof, { edges: false });
           this.addSolid(part, mesh.under.geometry(), see ? this.m.roofSeeUnder : this.m.roofUnder, { edges: false });
+          if (!live) this.addInk(part, mesh.ink);
           this.addGlass(part, mesh.glass);
           return part;
         },
