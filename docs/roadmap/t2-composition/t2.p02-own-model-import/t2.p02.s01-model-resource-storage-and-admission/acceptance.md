@@ -1,7 +1,7 @@
 # T2.P02.S01 — acceptance record: Model resource storage and admission
 
 **Slice:** T2.P02.S01 · **Status:** implemented on `t2/p02-s01-model-resource-storage` at
-`b88cbc95`, evidence recorded, **independent review owed** — not accepted, not merged ·
+`7a90f7d8`, evidence recorded, **independent review in progress** — not accepted, not merged ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T2.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -57,8 +57,8 @@ The slice adds no editor flow, so the batch E performance table's row for it is 
 
 | Plan criterion | Evidence |
 | --- | --- |
-| API DB-backed, zero skips: owner-only, hash/size mismatch, oversize, non-glTF, missing referenced file, one revision for identical bytes, cancellation and expiry delete bytes, bounds at their limit | `apps/api/tests/model-resources.test.mjs` (8 tests) against real Postgres and a real object-store contract, including a streamed 50 MiB source and 25 MiB derivative and an upload after expiry that is refused with its bytes deleted; the whole `npm run test:api` suite green |
-| Save: unknown, foreign, unapproved, or size/type/provenance-disagreeing model pin refuses with no version change; a valid envelope saves and reloads with the same resource | `model-resources.test.mjs` "Save admits a model resource pinned to an approved revision and refuses every other pin" (unknown hash, wrong size, foreign project, staging-only, version stays 2) and "a staged import…" for the accepted save/load path |
+| API DB-backed, zero skips: owner-only, hash/size mismatch, oversize, non-glTF, missing referenced file, one revision for identical bytes, cancellation and expiry delete bytes, bounds at their limit | `apps/api/tests/model-resources.test.mjs` (8 tests) against real Postgres and a real object-store contract, including a streamed 50 MiB source and 25 MiB derivative, an upload after expiry that is refused with its bytes deleted, a missing project and a foreign owner's approve/cancel answering 404, an approved import refusing further bytes, distinct same-length hash and short-stream length refusals, and an image naming an absent `bufferView`; the whole `npm run test:api` suite green |
+| Save: unknown, foreign, unapproved, or size/type/provenance-disagreeing model pin refuses with no version change; a valid envelope saves and reloads with the same resource | `model-resources.test.mjs` "Save admits a model resource pinned to an approved revision and refuses every other pin" (unknown hash, wrong size, foreign project, staging-only, a report-digest disagreement whose issue names the model's own registry index, version stays 2) and "a staged import…" for the accepted save/load path; a type disagreement is refused earlier by the format reader |
 | Formats: old numbers refuse; strict readers reject unknown keys and part fields; resource without lock and lock without resource refuse | `apps/editor/tests/lib/project-model/model-resource-admission.test.ts` (13 tests) |
 | No regression: catalogue/native placement, texture assets, conditional Save, conflict recovery, visitor/public boundary | `save`, `save-units`, `projects`, `assets`, `publication`, `migration*` API files; the affected editor project-model/Scene/stage/museum-asset contracts; the visitor cold-release catalogue-only test; the whole arch lane |
 
@@ -73,7 +73,7 @@ npm run check:api             pass   tsc -p tsconfig.json --noEmit, 0 errors
 npm run check                 pass   svelte-check: 0 errors, 0 warnings
 npm run test:api              pass   12 files / 88 tests, fail 0, skipped 0, cancelled 0 (exit 0)
 npm run test:arch             pass   21 files / 173 tests, default timeout, exit 0
-editor affected contracts     pass   39 files / 482 tests
+editor affected contracts     pass   39 files / 483 tests
   npx vitest run tests/lib/project-model tests/lib/authoring/scene \
     tests/lib/authoring/stage tests/lib/authoring/stage-source-admission.test.ts \
     tests/lib/museum/assets tests/lib/visitor/visitor-cold-runtime.test.ts
@@ -86,19 +86,41 @@ test streams a 50 MiB source file and a 25 MiB derivative through the upload rou
 checks the bytes are gone; the expiry test force-expires a staging import, refuses the next upload
 with 404, and checks its object and row are gone.
 
-The editor run includes the new 13-test model-resource contract, the new 3-test footprint contract,
+The editor run includes the new 13-test model-resource contract, the new 4-test footprint contract,
 the 15-test visitor cold-runtime contract (including the creator-model refusal), and the 13-test
 `stage-source-admission.ts` contract, which carries the end-to-end admission case and the
 `modelFootprints` assertion on the admitted snapshot. The cold release is exercised with a creator
 model and observed to refuse it.
 
-The code and contract evidence is at `b88cbc95`, after a deletion-first pass removed the duplicated
-staging-expiry refusal, the duplicated structure-check signature, a re-exported size bound and the
-copied upload-length refusals, and collapsed one overlapping admission case and a repeated fallback
-assertion into the contracts that already prove them. This record and the T2 baton were updated afterwards;
-the whole arch lane was re-run green on the final documentation tree (21 files / 173 tests at
-default), including the documentation-reference gate and the routing preflight that reads the
-baton.
+The code and contract evidence is at `7a90f7d8`. Two passes shaped it: a deletion-first pass at
+`b88cbc95` (one staging-expiry sweep, one structure-check function, one upload-length read, and no
+overlapping test cases) and a review-fix pass at `7a90f7d8` (the render tolerance, the registry-index
+refusal path, the image `bufferView` bound, and the API proofs listed above). This record and the T2
+baton were updated afterwards; the whole arch lane was re-run green on the final documentation tree
+(21 files / 173 tests at default), including the documentation-reference gate and the routing
+preflight that reads the baton.
+
+## Independent review
+
+Two independent reviewers, separate from the implementation and reading one facet each (API and
+persistence; formats, admission and rendering), reviewed `feb687b1` against the plan and this record.
+Both returned **CHANGES REQUIRED**. Every in-scope finding was fixed at `7a90f7d8`; the rest are
+disclosed in the limits below. A second pass over `7a90f7d8` is recorded at the end of this section.
+
+| Finding | Disposition |
+| --- | --- |
+| The editor stage crashed on a creator-model id: `AssetModel` called the throwing catalogue lookup before the footprint fallback could draw | Fixed: the lookup is tolerant, an absent catalogue entry resolves to `generic`, and the fallback-kind seam is tested with an unknown id |
+| The hash-mismatch API test never reached the hash check (it changed the length) | Fixed: a same-length tampered upload refuses as `invalid_model_file`; a short stream refuses as `invalid_upload` |
+| “Approved bytes never change” was unproven | Fixed: an upload to an approved import answers 400 and the content read is byte-identical afterwards |
+| A Save refusal named the filtered-list index instead of the registry index | Fixed: the walk keeps the registry index, and the provenance refusal asserts `resources[1]` behind a texture |
+| An image could name a nonexistent `bufferView` and pass approval | Fixed: the index is bounds-checked, with a refusal case |
+| Foreign approve/cancel and a missing project were untested | Fixed: each answers 404 in the API suite |
+| Save's provenance comparison was unexercised | Fixed: a report-digest disagreement refuses; a type disagreement is refused earlier by the format reader |
+| Approval is not atomic across object promotion and the revision row; a cancel can race an upload; a re-approval body is ignored; a `.glb` root must be self-contained; the content route trusts the stored length | Disclosed in the limits |
+| A placed creator model has no Plan footprint or collision extent | Recorded as `T2.P02.S02` placement work in the limits |
+| An authored catalogue fallback still draws that catalogue box; every model resource needs its lock even when unplaced | Disclosed in the limits |
+
+**Second pass (independent reviewers, `7a90f7d8`).** [pending]
 
 ## Verification notes and limits
 
@@ -134,6 +156,21 @@ baton.
   50 MiB and 25 MiB through the route; it does not open additional sockets for 50 MiB + 1 byte,
   because a declaration above either bound is already refused before an import exists.
 - **No performance measurement.** The batch E table records "None: no editor flow" for this slice.
+- **Review-disclosed storage edges.** Approval promotes the derivative and source objects before it
+  inserts the revision row, so a crash between them can leave revision-namespace objects without a
+  row; cancellation racing an in-flight upload can leave one staged object without a row. The
+  content route trusts the stored length and the immutable key rather than re-hashing bytes on read.
+  A second approve POST with a different report digest or placement returns the stored revision.
+- **Structure check: a `.glb` root is self-contained.** External buffer or image references are
+  admitted only from a `.gltf` root, which resolves them among the declared files; a `.glb` root that
+  references an external file is refused rather than resolved.
+- **No Plan footprint yet.** `buildPlanSceneFootprintProjection` reads the catalogue, so a placed
+  creator model has no passive Plan footprint or collision extent. Extending it belongs to
+  `T2.P02.S02` placement work, together with source-unit scale and pivot.
+- **Fallback authored by the placement.** A creator-model entity draws the generic footprint box when
+  its placement names `generic`; an authored catalogue fallback still draws that catalogue shape.
+  Every model resource requires its lock entry even when unplaced, which is stricter than the plan's
+  Scene-model wording.
 
 ## Entry points
 
@@ -160,6 +197,6 @@ regressions     apps/api/tests/model-resources.test.mjs
 
 ## Next
 
-Independent review of `b88cbc95` against the plan. Acceptance, closeout and merge are not claimed;
+Independent review of `7a90f7d8` against the plan. Acceptance, closeout and merge are not claimed;
 `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
 [`T2.P02.S03`](../t2.p02.s03-integrated-final-gate/acceptance.md).

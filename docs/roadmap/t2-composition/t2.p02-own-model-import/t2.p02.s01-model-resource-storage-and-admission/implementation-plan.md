@@ -2,7 +2,8 @@
 
 **Slice:** T2.P02.S01 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E7,
 [record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
-hold; starts only after `T3.P03.S01` is merged on `main`; not implemented · **Phase:**
+hold; started after `T3.P03.S01` merged on `main`; implemented 2026-10-22, evidence in
+[acceptance.md](./acceptance.md) · **Phase:**
 [T2.P02](../README.md) · [slice register](../README.md#slice-register) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 
 ```text

@@ -7,9 +7,10 @@ PHASE: T2.P02 Own model import (registered 2026-10-22, batch E) →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
        T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P02.S01 is implemented on `t2/p02-s01-model-resource-storage` at `b88cbc95` and awaits
-        independent review. The phase's later children stay held and are not on the release list;
-        a successor starts only after S01 is accepted and is itself authorized.
+SLICES: T2.P02.S01 is implemented on `t2/p02-s01-model-resource-storage` at `7a90f7d8` and is under
+        independent review: the first pass returned CHANGES REQUIRED and every in-scope finding is
+        fixed at that revision. The phase's later children stay held and are not on the release
+        list; a successor starts only after S01 is accepted and is itself authorized.
 BATON: S01 delivers staged model imports, immutable approved revisions, the resources-2 / Scene-3
        formats with a `model` kind, editor-only admission of a Scene model against the envelope's
        own model registry, the host-staging-plus-planner-`resources` dual grant, and in-transaction
@@ -17,13 +18,14 @@ BATON: S01 delivers staged model imports, immutable approved revisions, the reso
        visitor/cold-release reader stays catalogue-only by construction; the generic fallback is
        sized from the approved footprint. Evidence and limits are in
        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md.
-       Declared tier `architecture-integration`, run at `b88cbc95`: project-model/API/Svelte checks
+       Declared tier `architecture-integration`, run at `7a90f7d8`: project-model/API/Svelte checks
        0 errors; DB-backed API 12 files / 88 tests, 0 fail, 0 skipped, including streamed 50/25 MiB
-       uploads; arch lane 21 / 173; affected editor contracts 39 files / 482. Not accepted and not
-       merged. `b88cbc95` is a deletion-first pass over the slice: no behavior was dropped, the
-       duplicated expiry and upload-length refusals became one owner each, and the overlapping
-       admission case and fallback assertion collapsed into the contracts that already prove them.
-NEXT:  Independent review of `b88cbc95` against the slice plan. Owner acceptance and routine
+       uploads; arch lane 21 / 173; affected editor contracts 39 files / 483. Not accepted and not
+       merged. The review-fix commit renders a creator model through its tolerant catalogue lookup
+       and footprint fallback, and closes the review's refusal-coverage and index-path findings;
+       non-blocking limits are recorded in the acceptance record.
+NEXT:  Second independent review pass at `7a90f7d8`; owner review follows a verdict with no open
+       finding. Owner acceptance and routine
        closeout follow; the complete repository gate runs on then-current `main` before merge.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/README.md (phase register) →
