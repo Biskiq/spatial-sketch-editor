@@ -57,6 +57,7 @@ question by doc order.
 ```text
 reference/decisions = ratified destination direction (normative for new design)
 reference = current intended system (authoritative but falsifiable — see below)
+roadmap/now.md = current release list (an owner release writes it; a closeout does not)
 roadmap = future work (pre-redesign plans are evidence, re-derived against F)
 operations = live work
 prototypes = runnable product hypotheses + QA/reference evidence (never authority)
@@ -78,10 +79,15 @@ performance workflow. Named consumer decisions and the production implementation
 | Need | Read | Code |
 |------|------|------|
 | Run the project locally | [`local-development.md`](./local-development.md) — editor, API, database and worktree setup | Root npm scripts |
+| Tell me about this project | [`orientation.md`](./orientation.md), then stop | — |
+| What's next? | [`roadmap/now.md`](./roadmap/now.md), then stop (no source survey). Open a slice plan only when a lane is named | — |
 | Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md), as refined by the [`2026-09-29 World \| Experience amendment`](./reference/decisions/world-experience-reconciliation-2026-09-29.md) and the [2026-10-15 F-interface ratification](./reference/decisions/f-ratification-2026-10-15.md); promoted concerns live in the routed contracts below | — |
-| What's next? | [`roadmap/README.md`](./roadmap/README.md), then stop (no source survey) | — |
 | Foundation contracts (F) — ratified target contract; F.1–F.5 written, implementation status inside | [`reference/composition-execution.md`](./reference/composition-execution.md) (phase registration/status → [`roadmap/f-foundation-contracts/README.md`](./roadmap/f-foundation-contracts/README.md)) | — |
 | Architecture / ownership | [`reference/architecture.md`](./reference/architecture.md) | — |
+| Layout authority | [`reference/architecture.md`](./reference/architecture.md) §Semantic authorities | `packages/layout-core/src/` |
+| Experience authority | [`reference/architecture.md`](./reference/architecture.md) §Semantic authorities | `packages/project-model/src/units/experience/` · `apps/editor/src/lib/visitor/` |
+| Typed resources | [`reference/architecture.md`](./reference/architecture.md) §Semantic authorities | `packages/project-model/src/units/` · `apps/api/src/asset-persistence.ts` |
+| API | [`local-development.md`](./local-development.md) | `apps/api/src/` |
 | Product direction | [`reference/north-star.md`](./reference/north-star.md) | — |
 | Accepted unified UX / Experience authoring (#114) | [PLATE shared shell](./reference/design-system/editor-shell-and-visual-system.md#shared-shell-08) and [Experience expression/acceptance](./reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression) own the ratified Conservatory destination. [Interactive Conservatory](../prototypes/experience-ux-alternative/README.md) supplies reproducible states and creator journeys; UX3/V3 and earlier Experience shell plans/PNGs are historical. Production behavior and domain contracts remain distinct | — |
 | World Paper authoring design (rail, Card facts, Search vs Find, precision, drafting state, Wall authoring) | [PLATE §0.8.4](./reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) retains accepted authoring depth within the reconciled shared shell; the [Paper shell proposal](../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) keeps rationale/specimens. PA0–PA12 is [inactive evidence](../prototypes/paper-authoring-commission/plans/inactive-adoption-plan.md), not #115's mandate. Wall-role Layout cutover → [`reference/architecture.md`](./reference/architecture.md) §Ownership | — |
@@ -109,10 +115,10 @@ performance workflow. Named consumer decisions and the production implementation
 
 ```text
 START: docs/README.md
-ASSIGNED WORK: operations/current.md → your track's operations/<track>/current.md → exact phase README → exact slice plan
+ASSIGNED WORK: operations/current.md → your track's operations/<track>/current.md → exact phase README → exact slice plan. Do not open another track's baton or the archive.
 UNASSIGNED PLANNING: roadmap/README.md → requested track README → phase plan (when registered)
 F-INTERFACE GAP: slice plan → F amendment / gate register row
-START IMPLEMENTATION: track runbook start step (eligibility + one-line cycle check)
+START IMPLEMENTATION: track runbook start step (eligibility, including the release list, + one-line cycle check). Do not open another track's baton or the archive.
 VERIFY: slice acceptance rows + the test manual (the gates test runs in the arch lane)
 SLICE CLOSE: slice-closeout (final-gate guard; cycle-window check only)
 PHASE CLOSE: explicit owner invocation → phase-closeout
@@ -337,6 +343,7 @@ is fixed rather than declared: the gate is
 ```text
 UPDATE:
 - track/phase lifecycle + gate register + future work → roadmap/README.md
+- release list → roadmap/now.md (owner release only; a closeout does not write it)
 - track objectives/phase register → owning track README
 - phase scope/slice register/FINAL PHASE GATE/PHASE CLOSE → owning phase README
 - track completion / integration acceptance / milestone acceptance / replanning → operations/README.md event sections

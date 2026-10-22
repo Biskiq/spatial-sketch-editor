@@ -1,9 +1,8 @@
 # T3.P03 — Shared acceptance, isolation and measurement
 
-**Phase:** T3.P03 · **Status:** registered 2026-10-22 — `T3.P03.S01` and `T3.P03.S02`
-owner-authorized as batch E (E1/E2,
-[record](../../../reference/decisions/batch-e-authorization-2026-10-22.md)); T3.P03 alone is released
-from the [production hold](../../README.md#production-implementation-hold) · **Track:**
+**Phase:** T3.P03 · **Status:** registered 2026-10-22. Released scopes and their conditions are
+the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
+covers every scope that list omits · **Track:**
 [T3](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [F.4 destination](../../../reference/composition-execution.md#product-convergence-destination),

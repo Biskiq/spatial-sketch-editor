@@ -1,7 +1,7 @@
 # Roadmap — status and registration authority
 
 **Role:** the roadmap owns **track and phase lifecycle**, the **track register**, the
-**gate register** and future work. Operational procedure lives in the track runbooks
+**gate register**, the [release list](./now.md) and future work. Operational procedure lives in the track runbooks
 ([`../operations/`](../operations/)); current assignments live in each track's baton, routed from
 [`../operations/current.md`](../operations/current.md); closed-work procedures live in the
 event sections of [`../operations/README.md`](../operations/README.md).
@@ -22,27 +22,9 @@ phase root holds phase-wide artifacts only.
 
 ## Accepted basis
 
-The ratified decision record
-([`../reference/decisions/northstar-ratification-2026-09-27.md`](../reference/decisions/northstar-ratification-2026-09-27.md)),
-as refined by the later
-[World | Experience amendment](../reference/decisions/world-experience-reconciliation-2026-09-29.md),
-is normative for all new design. Its concerns are promoted into one live normative statement
-per concern:
-
-- product direction → [`../reference/north-star.md`](../reference/north-star.md);
-- ownership and boundaries → [`../reference/architecture.md`](../reference/architecture.md);
-- the ratified cross-domain shapes F.1–F.5 →
-  [`../reference/composition-execution.md`](../reference/composition-execution.md), registered
-  in [`f-foundation-contracts/README.md`](./f-foundation-contracts/README.md); exact shared
-  interfaces ratified 2026-10-15 ([record](../reference/decisions/f-ratification-2026-10-15.md));
-- the ratified shell and visual-system destination (PLATE) →
-  [`../reference/design-system/editor-shell-and-visual-system.md`](../reference/design-system/editor-shell-and-visual-system.md).
-
-The retained prototypes ([`../../prototypes/README.md`](../../prototypes/README.md)) are
-runnable product hypotheses and their QA/reference evidence; they test and challenge these
-contracts but are never production, persisted-format or implementation authority.
 Ratification, planning and prototype acceptance authorize **no** implementation: capability work
-starts only from a registered phase's authorized slice.
+starts only from a registered phase's authorized slice. The router's authority paragraph names
+the live contracts.
 
 Status vocabulary, used by every register below: `proposed | planning | approved |
 in-progress | shipped | archived`. A register row states what is true now; it never
@@ -50,30 +32,19 @@ fabricates a merge, an acceptance or a closure.
 
 ## Production implementation hold
 
-**Owner direction, 2026-10-22:** production implementation is held across tracks, including
-previously authorized slices such as `T3.P02.S01`, while the
+**Owner direction, 2026-10-22:** production implementation is held across tracks, while the
 [convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) resolves direction,
 architectural commitments and the next batch/DAG. Earlier authorization records and accepted
 gate/phase evidence remain valid history; they do not release this hold. Research, documentation
 and bounded disposable probes may proceed within their commissioned step. Research and
-reconciliation are complete; the hold still applies to every implementation scope not named below.
+reconciliation are complete; the hold still applies to every implementation scope absent from
+the [release list](./now.md).
 
 Only explicit owner release permits named implementation scopes to start or resume. A research
 result, contract ratification or merge of PR #173 alone is not that release. Keep existing lifecycle
 vocabulary and registered states; do not invent a new gate or a `held` lifecycle status.
-
-**Named releases (batch E, owner-authorized 2026-10-22, [record](../reference/decisions/batch-e-authorization-2026-10-22.md)):**
-
-| Released scope | May start |
-| --- | --- |
-| `T3.P03.S01` — planner scope and build isolation | Now; merges first |
-| `T3.P03.S02` — measurement workflow and T3.P03's final gate | After `T3.P03.S01` merges |
-| `T1.P02.S01` — Layout identity and format cutover | Only after `T3.P03.S01` is merged on `main` |
-| `T2.P02.S01` — model resource storage and admission | Only after `T3.P03.S01` is merged on `main` |
-| `T3.P02.S01` — first capture and Cut Preview, finalized scope | Only after `T3.P03.S01` is merged on `main` |
-
-Everything else stays held, including `T1.P02.S02`–`S04`, `T2.P02.S02`–`S03` and `T3.P02.S02`; each
-starts only from its own later authorization and release.
+Only an owner release writes the [release list](./now.md), including pruning a row whose slice has shipped.
+A closeout does not.
 
 ## Track register
 
@@ -224,8 +195,7 @@ and nothing in this section is lifecycle or gate readiness.
   - accepted the C1 drawing policy, the C2 bounds and T3.P02.S01's finalized scope (E3–E5);
   - designated the owner's MacBook Air M2 (16 GB) as the machine hard performance rows are run and
     accepted on, keeping laptop A as the accessibility target (E6 and its amendment);
-  - authorized `T1.P02.S01` and `T2.P02.S01` and released them and `T3.P02.S01`, each starting only
-    after `T3.P03.S01` merges (E7).
+  - authorized and released the scopes whose conditions are the [release list](./now.md) (E7).
 
   Rules: [batch E protocol](./cross-track-execution.md#authorized-batch-e-2026-10-22). No gate row,
   version or capability entry changes, and no format is ratified before its slice lands it.

@@ -4,9 +4,7 @@
 overrides implementation launch/resume implied by earlier batch authorizations below. PR #173's
 [convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) reconciled this
 canonical DAG; the core destination and on-demand workflow were owner-ratified on 2026-10-22.
-[Batch E](#authorized-batch-e-2026-10-22) ([record](../reference/decisions/batch-e-authorization-2026-10-22.md)) registered T3.P03, T1.P02 and T2.P02 and
-released named scopes: T3.P03 now, and `T1.P02.S01`, `T2.P02.S01` and `T3.P02.S01` once `T3.P03.S01`
-merges. Every other implementation scope stays held.
+Released scopes and their conditions are the [release list](./now.md).
 Historical evidence and accepted gate identities remain unchanged. Merge alone does not release the hold.
 
 **Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it

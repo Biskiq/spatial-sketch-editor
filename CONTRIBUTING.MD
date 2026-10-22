@@ -19,7 +19,7 @@ The editor runs without the API; cloud save/load and sign-in will be unavailable
 
 - Read [AGENTS.md](./AGENTS.md) for repository rules.
 - Use [docs/README.md](./docs/README.md) to find only the contract relevant to your change.
-- Follow the issue's acceptance criteria and out-of-scope boundaries.
+- Follow the issue's acceptance criteria and out-of-scope boundaries. An issue authorizes only the scope it states. An issue that overlaps a held slice goes to the owner. It does not release that slice.
 - Keep changes focused. Do not introduce new persistence, selection, camera-navigation, or ownership behavior unless the issue explicitly requires it.
 
 ## Verify your change

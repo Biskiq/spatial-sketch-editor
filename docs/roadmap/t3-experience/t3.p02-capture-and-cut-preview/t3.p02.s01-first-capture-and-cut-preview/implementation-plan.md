@@ -1,15 +1,13 @@
 # T3.P02.S01 — First capture and Cut Preview: implementation plan
 
-**Slice:** T3.P02.S01 · **Status:** approved — owner-authorized 2026-10-20 as batch D
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); finalized
-scope owner-accepted and released 2026-10-22 as batch E ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7), starting only after
-`T3.P03.S01` is merged on `main`; **not implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
+**Slice:** T3.P02.S01 · **Status:** approved — historical batch D authorization
+([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) preserved;
+release condition is the [release list](../../../now.md); **not implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
-**Released 2026-10-22, gated on H0.** The [owner hold](../../../README.md#production-implementation-hold)
-held this slice on 2026-10-22; batch E released it ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7). It starts only when
-`T3.P03.S01` is merged on `main`, which the runbook start step checks on the T3.P03 slice register.
-The historical batch D authorization and the registered `approved` state are preserved.
+The [owner hold](../../../README.md#production-implementation-hold) stays in force for every scope
+the release list omits. The runbook start step checks this slice's condition there. The historical
+batch D authorization and the registered `approved` state are preserved.
 
 ## Finalized convergence scope (owner-accepted 2026-10-22)
 
