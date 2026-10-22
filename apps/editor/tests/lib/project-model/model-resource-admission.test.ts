@@ -15,6 +15,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { admitSource } from '$lib/authoring/stage/source-admission';
+
 import { createEmptyWallFirstLayoutDocument } from '@portfolio/project-model';
 import type { PlannerAdmission } from '@portfolio/project-model';
 import {
@@ -281,12 +283,20 @@ describe('admission', () => {
 			resources: [modelResource()],
 			lockEntries: [modelLockEntry()]
 		});
-		const catalogue = { isKnownAssetId: (id: string) => id.startsWith('paris-') };
-		const prepared = prepareUnitRuntime(JSON.parse(JSON.stringify(built)), catalogue);
-		expect(prepared.kind).toBe('ready');
-		if (prepared.kind !== 'ready') return;
-		expect(prepared.closure).toEqual([]);
-		expect(prepared.runtimeScene.objects.map((object) => object.assetId)).toEqual([MODEL_ID]);
+		const admitted = await admitSource(JSON.parse(JSON.stringify(built)), {
+			sessionEpoch: 'session-model-resource',
+			acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }
+		});
+		expect(admitted.kind).toBe('admitted');
+		if (admitted.kind !== 'admitted') return;
+		expect(admitted.snapshot.domain.closure).toEqual([]);
+		expect(admitted.snapshot.domain.scene.objects.map((object) => object.assetId)).toEqual([MODEL_ID]);
+		// The approved footprint reaches rendering as read-projection data.
+		expect(admitted.snapshot.domain.scene.modelFootprints?.get(MODEL_ID)).toEqual({
+			width: PLACEMENT.footprint.width,
+			depth: PLACEMENT.footprint.depth,
+			contactMinY: PLACEMENT.contactMinY
+		});
 	});
 
 	it('refuses a model id that is neither catalogue nor this envelope’s model resource', async () => {

@@ -30,7 +30,7 @@ import {
 	listShippedTextureUris,
 	listShippedModelFiles
 } from '$lib/visitor/shipped-static-registry';
-import { RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
+import { MODEL_RESOURCE_MIME, RESOURCE_UNIT_FORMAT_VERSION, SCENE_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { createUnitProject } from '../authoring/__fixtures__/unit-envelope-fixtures';
 import { Group, Mesh, BoxGeometry, MeshStandardMaterial } from 'three';
 import type { Texture as ThreeTexture } from 'three';
@@ -476,4 +476,78 @@ describe('P22.1 cold runtime + asset seam', () => {
 			expect(existsSync(resolve(clientRoot, file.slice(1))), `build output: ${file}`).toBe(true);
 		}
 	});
+	it('refuses a creator model in a cold release: the visitor reader stays catalogue-only', async () => {
+		const hash = `sha256-${'d'.repeat(64)}`;
+		const base = await createUnitProject({
+			id: 'project:cold-creator-model',
+			name: 'Creator model',
+			scene: {
+				formatVersion: SCENE_UNIT_FORMAT_VERSION,
+				textures: [],
+				materials: [],
+				entities: [
+					{
+						kind: 'model',
+						id: 'entity-creator-model',
+						name: 'Creator model',
+						assetId: 'creator-model',
+						fallback: 'generic',
+						position: [0, 0, 0],
+						rotation: [0, 0, 0]
+					}
+				]
+			},
+			resources: {
+				formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+				resources: [
+					{
+						kind: 'model',
+						id: 'creator-model',
+						contentRevision: hash,
+						pin: { hash, mime: MODEL_RESOURCE_MIME, size: 1024, locator: `/projects/project:cold-creator-model/models/content/${hash}` },
+						unresolved: null,
+						model: {
+							source: { manifestHash: `sha256-${'e'.repeat(64)}`, size: 2048, fileCount: 2 },
+							recipe: { id: 'creator-import', version: 1 },
+							reportDigest: `sha256-${'f'.repeat(64)}`,
+							placement: {
+								metresPerSourceUnit: 0.5,
+								pivot: [0, 0, 0],
+								footprint: { width: 1.2, depth: 0.8 },
+								contactMinY: 0,
+								placement: 'floor'
+							}
+						}
+					}
+				]
+			}
+		});
+		const document = {
+			...base,
+			dependencyLock: {
+				formatVersion: 1 as const,
+				entries: [
+					{
+						domain: 'resource:model' as const,
+						subjectKind: 'resource',
+						subjectId: 'creator-model',
+						instancePath: [],
+						contentRevision: hash,
+						requiredCapabilities: [{ id: 'F2.unit-envelope', version: '1' }],
+						pin: { hash, mime: MODEL_RESOURCE_MIME, size: 1024, locator: `/projects/project:cold-creator-model/models/content/${hash}` }
+					}
+				]
+			}
+		};
+
+		// The cold runtime uses the shipped catalogue predicate, not the editor's
+		// model-registry admission, so the unknown id is refused at preparation.
+		expect(() =>
+			composeColdReleaseBundle({
+				document,
+				manifest: { releaseId: `${base.id}@v1`, bytesByUri: new Map() }
+			})
+		).toThrow(/Unknown asset: creator-model/);
+	});
+
 });

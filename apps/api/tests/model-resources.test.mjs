@@ -445,6 +445,44 @@ test('the declaration enforces the owner-accepted 50 MiB / 25 MiB bounds', async
 	assert.equal(noDerivative.statusCode, 400);
 });
 
+test('streams a source at 50 MiB and a derivative at 25 MiB through the upload route', async () => {
+	const owner = await sessionCookie(app, `google:p02-physical-${randomUUID()}`);
+	const { projectId } = await newProject(owner);
+	// The owner-accepted bounds are upload bounds, not only declaration arithmetic:
+	// these payloads are larger than Fastify's 2 MiB body limit and reach the
+	// streaming route, which is the path a real browser worker uses.
+	const source = Buffer.alloc(SOURCE_SET_MAX, 0x41);
+	const derivative = Buffer.alloc(DERIVATIVE_MAX, 0x42);
+
+	const staged = await stage(projectId, owner, [
+		{ role: 'source', path: 'big.glb', bytes: source },
+		{ role: 'derivative', path: 'big.derivative.glb', bytes: derivative }
+	]);
+	assert.equal(staged.statusCode, 201, JSON.stringify(staged.json()));
+	const created = staged.json();
+	const uploadedSource = await upload(projectId, created, owner, 'big.glb', source);
+	assert.equal(uploadedSource.statusCode, 200, JSON.stringify(uploadedSource.json()));
+	assert.equal(uploadedSource.json().uploadState, 'uploaded');
+	const uploadedDerivative = await upload(projectId, created, owner, 'big.derivative.glb', derivative);
+	assert.equal(uploadedDerivative.statusCode, 200, JSON.stringify(uploadedDerivative.json()));
+	assert.equal(uploadedDerivative.json().uploadState, 'uploaded');
+
+	const states = await pool.query(
+		`SELECT upload_state AS "state" FROM model_import_files WHERE import_id = $1::uuid ORDER BY role`,
+		[created.importId]
+	);
+	assert.deepEqual(states.rows.map((row) => row.state), ['uploaded', 'uploaded']);
+
+	const cancelled = await app.inject({
+		method: 'DELETE',
+		url: `/projects/${projectId}/models/imports/${created.importId}`,
+		headers: { cookie: owner }
+	});
+	assert.equal(cancelled.statusCode, 204);
+	const keys = [...objectStore.objects.keys()].filter((key) => key.includes(`/imports/${created.importId}/`));
+	assert.deepEqual(keys, [], 'the full-size staged bytes are deleted with the import');
+});
+
 test('approval refuses a non-glTF derivative and a source set missing a referenced file', async () => {
 	const owner = await sessionCookie(app, `google:p02-structure-${randomUUID()}`);
 	const { projectId } = await newProject(owner);
@@ -536,7 +574,7 @@ test('cancelling a staging import deletes its bytes and the import', async () =>
 	assert.equal(lateUpload.statusCode, 404);
 });
 
-test('staging past its 24 hour expiry is deleted, bytes included, when the owner next stages', async () => {
+test('staging past its 24 hour expiry refuses further uploads and is deleted with its bytes', async () => {
 	const owner = await sessionCookie(app, `google:p02-expiry-${randomUUID()}`);
 	const { projectId } = await newProject(owner);
 	const source = validSourceGlb();
@@ -553,6 +591,14 @@ test('staging past its 24 hour expiry is deleted, bytes included, when the owner
 	await pool.query(`UPDATE model_imports SET created_at = now() - interval '2 days', expires_at = now() - interval '1 day' WHERE id = $1::uuid`, [
 		created.importId
 	]);
+
+	// An upload is an owner touch: an overdue import refuses it and goes away,
+	// bytes included, before accepting a new byte.
+	const expiredUpload = await upload(projectId, created, owner, 'model.glb.derivative.glb', derivative);
+	assert.equal(expiredUpload.statusCode, 404, JSON.stringify(expiredUpload.json()));
+	assert.deepEqual(importKeys(), [], 'expired staging bytes are deleted on the refused upload');
+	const removed = await pool.query('SELECT count(*)::int AS count FROM model_imports WHERE id = $1::uuid', [created.importId]);
+	assert.equal(removed.rows[0].count, 0);
 
 	const next = await stage(projectId, owner, [
 		{ role: 'source', path: 'model.glb', bytes: source },

@@ -13,7 +13,7 @@
   import type { Vec3 } from '$lib/types/scene';
   import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
   import AssetFallback from './AssetFallback.svelte';
-  import { assetFallbackDimensions } from './fallbacks';
+  import { fallbackDimensionsFor } from './fallbacks';
   import {
     cloneModelScene,
     disposeModelInstance,
@@ -37,6 +37,7 @@
     rotation = ZERO,
     scale = 1,
     fallback,
+    fallbackFootprint,
     enabled = true,
     visible = true,
     wireframe = false,
@@ -57,6 +58,8 @@
     rotation?: Vec3;
     scale?: number;
     fallback?: FallbackKind;
+    /** Approved creator-model footprint (metres); sizes the generic fallback box. */
+    fallbackFootprint?: { width: number; depth: number };
     enabled?: boolean;
     visible?: boolean;
     wireframe?: boolean;
@@ -73,6 +76,7 @@
   // Placement fallback is authoritative. Manifest resolution is compatibility-only
   // for preview/renderer callers that do not provide a scene placement fallback.
   const fallbackKind = $derived(fallback ?? resolveAssetFallback(asset));
+  const fallbackDimensions = $derived(fallbackDimensionsFor(fallbackKind, fallbackFootprint));
 
   let instance = $state<Object3D>();
   let acquiredRemap = $state<RemapKey | null>(null);
@@ -195,7 +199,6 @@
       };
     }
 
-    const fallbackDimensions = assetFallbackDimensions[fallbackKind];
     return {
       dimensions: fallbackDimensions.map((value) => value * scale) as Vec3,
       meshCount: 0,
@@ -216,8 +219,8 @@
     fallbackKind === 'frame'
       ? ZERO
       : fallbackKind === 'chandelier'
-        ? [0, -assetFallbackDimensions[fallbackKind][1] / 2, 0]
-        : [0, assetFallbackDimensions[fallbackKind][1] / 2, 0]
+        ? [0, -fallbackDimensions[1] / 2, 0]
+        : [0, fallbackDimensions[1] / 2, 0]
   );
 
   // Re-apply the remap whenever the effective material changes after the GLTF
@@ -269,13 +272,14 @@
     <T.Group rotation={asset.defaultRotation ?? ZERO} scale={asset.defaultScale}>
       <AssetFallback
         kind={fallbackKind}
+        dimensions={fallbackDimensions}
         {wireframe}
         castShadow={shadows && asset.castShadow}
         receiveShadow={shadows && asset.receiveShadow}
       />
       {#if showBounds}
         <T.Mesh position={fallbackBoundsPosition}>
-          <T.BoxGeometry args={assetFallbackDimensions[fallbackKind]} />
+          <T.BoxGeometry args={fallbackDimensions} />
           <T.MeshBasicMaterial
             color="#d6b35f"
             wireframe

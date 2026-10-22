@@ -2,15 +2,19 @@
   import { T } from '@threlte/core';
   import FallbackMaterial from './FallbackMaterial.svelte';
   import type { AssetFallbackKind } from './fallbacks';
+  import type { Vec3 } from '$lib/types/scene';
 
   let {
     kind,
+    dimensions,
     visible = true,
     wireframe = false,
     castShadow = false,
     receiveShadow = false
   }: {
     kind: AssetFallbackKind;
+    /** Approved footprint box for a creator model; ignored by catalogue kinds. */
+    dimensions?: Vec3;
     visible?: boolean;
     wireframe?: boolean;
     castShadow?: boolean;
@@ -229,10 +233,15 @@
       <FallbackMaterial materialId="velvet-dark" surfaceSize={[2.6, 1.8]} tint="#54232d" {wireframe} />
     </T.Mesh>
   {:else if kind === 'generic'}
-    <!-- Creator model placeholder: a neutral footprint box until placement supplies the approved size. -->
-    <T.Mesh position={[0, 0.5, 0]} {castShadow} {receiveShadow}>
-      <T.BoxGeometry args={[1, 1, 1]} />
-      <FallbackMaterial materialId="plaster-warm" surfaceSize={[1, 1]} tint="#c4b4a0" {wireframe} />
+    <!-- Creator model placeholder: its approved footprint in plan; height is neutral. -->
+    <T.Mesh position={[0, (dimensions?.[1] ?? 1) / 2, 0]} {castShadow} {receiveShadow}>
+      <T.BoxGeometry args={dimensions ?? [1, 1, 1]} />
+      <FallbackMaterial
+        materialId="plaster-warm"
+        surfaceSize={[dimensions?.[0] ?? 1, dimensions?.[2] ?? 1]}
+        tint="#c4b4a0"
+        {wireframe}
+      />
     </T.Mesh>
   {/if}
 </T.Group>

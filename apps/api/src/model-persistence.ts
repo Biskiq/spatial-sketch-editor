@@ -501,6 +501,14 @@ export async function uploadModelFile(
 	if (readString(record.state) !== 'staging') {
 		throw new ModelInputError('invalid_model_import', 400, 'This import is no longer accepting files');
 	}
+	// Expiry is a property of staging, not of the routes that happen to sweep it.
+	// An upload is an owner touch too: an overdue import is deleted with its bytes
+	// before any new byte is accepted, exactly as approval refuses it.
+	if (new Date(readTimestamp(record.expiresAt)).getTime() <= Date.now()) {
+		await deleteStagedObjects(pool, objectStore, [importId]);
+		await pool.query('DELETE FROM model_imports WHERE id = $1::uuid', [importId]);
+		throw new ModelNotFoundError();
+	}
 	const declaredSize = readSafeInteger(file.byteSize);
 	if (contentLength !== declaredSize) {
 		throw new ModelInputError('invalid_upload', 400, 'Upload length does not match the declared file size');
