@@ -3,10 +3,12 @@
 PHASE: T1.P02 Native Wall creation (registered 2026-10-22, batch E) →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21; all its registered slices are shipped.
-ACTIVE: none. T1.P02.S01 (Layout identity and format cutover) is implemented on
-        `t1/p02-s01-layout-identity-format-cutover` as that branch's tip commit (subject:
-        `feat(t1): cut Layout format to 6 with captured identity`), which also carries this baton.
-        Unpushed, unmerged, unreviewed, unaccepted; its verification evidence and deviations are at
+ACTIVE: none. T1.P02.S01 (Layout identity and format cutover) is implemented as commit `8edc6487`
+        (subject: `feat(t1): capture Layout identity per operation and cut the format to 6`) on
+        `t1/p02-s01-layout-identity-format-cutover`; the slice, its acceptance record and the baton's
+        slice entry landed in that commit, and this line's hash was written by the follow-up docs
+        commit that fixes the record. Unpushed, unmerged, unreviewed, unaccepted. Verification
+        evidence and deviations:
         ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md
 NEXT: Review and accept T1.P02.S01, land the §3 retirement slice under its own authorization, then
       merge. The next T1.P02 slice starts only once the owner releases it and its base carries both,
