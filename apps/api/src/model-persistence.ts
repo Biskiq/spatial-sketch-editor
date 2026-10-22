@@ -23,19 +23,22 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { PassThrough, Readable } from 'node:stream';
 
-import { canonicalUnitJson, type ProjectEnvelope } from '@portfolio/project-model/units';
+import {
+	canonicalUnitJson,
+	MODEL_DERIVATIVE_MAX_BYTES,
+	MODEL_RESOURCE_MIME,
+	MODEL_SOURCE_SET_MAX_BYTES,
+	type ModelPlacement,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 
 import type { DatabasePool } from './database.js';
 import { checkModelStructure } from './model-structure.js';
 import type { ObjectStore } from './object-store.js';
 import { queryRows, withTransaction } from './project-persistence.js';
 
-/** Owner-accepted batch E (E4) bounds. */
-export const MODEL_SOURCE_SET_MAX_BYTES = 50 * 1024 * 1024;
-export const MODEL_DERIVATIVE_MAX_BYTES = 25 * 1024 * 1024;
 /** Unapproved staging is deleted after 24 hours, bytes included. */
-export const MODEL_STAGING_TTL_MS = 24 * 60 * 60 * 1000;
-export const MODEL_DERIVATIVE_MIME = 'model/gltf-binary';
+const MODEL_STAGING_TTL_MS = 24 * 60 * 60 * 1000;
 
 const SHA256_PATTERN = /^sha256-[0-9a-f]{64}$/;
 const FILE_PATH_PATTERN = /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
@@ -63,14 +66,6 @@ export type ModelImport = {
 	readonly derivativeBytes: number;
 	readonly recipe: { readonly id: string; readonly version: number };
 	readonly files: readonly ModelStagedFile[];
-};
-
-export type ModelPlacement = {
-	readonly metresPerSourceUnit: number;
-	readonly pivot: readonly [number, number, number];
-	readonly footprint: { readonly width: number; readonly depth: number };
-	readonly contactMinY: number;
-	readonly placement: 'floor';
 };
 
 export type ModelRevision = {
@@ -495,19 +490,14 @@ export async function uploadModelFile(
 	objectNamespace: string
 ): Promise<ModelStagedFile> {
 	if (!objectStore) throw new Error('Object storage is unavailable');
+	// An upload is an owner touch: an overdue import is deleted with its bytes
+	// before any byte is accepted, exactly as creation and approval sweep it.
+	await expireStaleModelImports(pool, objectStore, projectId, ownerId);
 	const { record, files } = await readStagingImport(pool, ownerId, projectId, importId);
 	const file = files.find((candidate) => readString(candidate.fileId) === fileId);
 	if (!file) throw new ModelNotFoundError();
 	if (readString(record.state) !== 'staging') {
 		throw new ModelInputError('invalid_model_import', 400, 'This import is no longer accepting files');
-	}
-	// Expiry is a property of staging, not of the routes that happen to sweep it.
-	// An upload is an owner touch too: an overdue import is deleted with its bytes
-	// before any new byte is accepted, exactly as approval refuses it.
-	if (new Date(readTimestamp(record.expiresAt)).getTime() <= Date.now()) {
-		await deleteStagedObjects(pool, objectStore, [importId]);
-		await pool.query('DELETE FROM model_imports WHERE id = $1::uuid', [importId]);
-		throw new ModelNotFoundError();
 	}
 	const declaredSize = readSafeInteger(file.byteSize);
 	if (contentLength !== declaredSize) {
@@ -625,11 +615,6 @@ export async function approveModelImport(
 		return revisionOf(existing);
 	}
 	if (state !== 'staging') throw new ModelInputError('invalid_model_import', 409, 'This import is not staging');
-	if (new Date(readTimestamp(record.expiresAt)).getTime() <= Date.now()) {
-		await deleteStagedObjects(pool, objectStore, [importId]);
-		await pool.query(`DELETE FROM model_imports WHERE id = $1::uuid`, [importId]);
-		throw new ModelNotFoundError();
-	}
 	if (files.length === 0 || files.some((file) => readString(file.uploadState) !== 'uploaded')) {
 		throw new ModelInputError('model_not_ready', 409, 'Every declared file must be uploaded before approval');
 	}
@@ -669,7 +654,7 @@ export async function approveModelImport(
 	const contentHash = sha256(`model-revision:${canonicalUnitJson(revisionContent)}`);
 	const derivativeKey = modelRevisionKey(projectId, objectNamespace, contentHash, 'derivative.glb');
 
-	await copyObject(objectStore, readString(derivativeFile.objectKey), derivativeKey, MODEL_DERIVATIVE_MIME);
+	await copyObject(objectStore, readString(derivativeFile.objectKey), derivativeKey, MODEL_RESOURCE_MIME);
 	for (const file of files) {
 		if (readString(file.role) !== 'source') continue;
 		const target = modelRevisionKey(projectId, objectNamespace, contentHash, `source/${readString(file.path)}`);
@@ -691,7 +676,7 @@ RETURNING ${REVISION_RETURNING}`,
 			projectId,
 			contentHash,
 			derivativeHash,
-			MODEL_DERIVATIVE_MIME,
+			MODEL_RESOURCE_MIME,
 			revisionContent.derivative.size,
 			derivativeKey,
 			sourceManifestHash,

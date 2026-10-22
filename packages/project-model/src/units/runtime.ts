@@ -133,11 +133,11 @@ export function prepareUnitRuntime(
 
 	// The approved placement is read-projection data, never authored into the
 	// envelope: a model resource's footprint sizes its generic fallback.
-	const modelFootprints = new Map<string, { width: number; depth: number; contactMinY: number }>();
+	const modelFootprints = new Map<string, { width: number; depth: number }>();
 	for (const resource of envelope.units.resources.data.resources) {
 		if (resource.kind !== 'model' || resource.model === undefined) continue;
 		const { width, depth } = resource.model.placement.footprint;
-		modelFootprints.set(resource.id, { width, depth, contactMinY: resource.model.placement.contactMinY });
+		modelFootprints.set(resource.id, { width, depth });
 	}
 	if (modelFootprints.size > 0) runtimeScene = { ...runtimeScene, modelFootprints };
 

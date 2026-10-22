@@ -423,7 +423,7 @@ export type RuntimeScene = {
    * Approved creator-model footprints (metres), keyed by `model` resource id.
    * Read-projection data supplied by the unit runtime; never authored.
    */
-  modelFootprints?: ReadonlyMap<string, { width: number; depth: number; contactMinY: number }>;
+  modelFootprints?: ReadonlyMap<string, { width: number; depth: number }>;
   /** World-space camera poses. */
   navigationNodes: NavigationNodeData[];
   /** World-space waypoints, including fresh node endpoints. */

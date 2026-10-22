@@ -381,6 +381,11 @@ describe('source admission', () => {
 		if (outcome.kind !== 'admitted') return;
 		expect(outcome.snapshot.domain.closure).toEqual([]);
 		expect(outcome.snapshot.domain.scene.objects.map((object) => object.assetId)).toEqual([resource.id]);
+		// The approved footprint reaches rendering as read-projection data.
+		expect(outcome.snapshot.domain.scene.modelFootprints?.get(resource.id)).toEqual({
+			width: resource.model.placement.footprint.width,
+			depth: resource.model.placement.footprint.depth
+		});
 
 		const accepted = await createUnitAcceptanceAdapter({ compound: true, resourceStaging: true }).admit(source, []);
 		expect(accepted.kind).toBe('admitted');

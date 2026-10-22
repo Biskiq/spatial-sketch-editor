@@ -34,7 +34,6 @@ import {
 	approveModelImport,
 	cancelModelImport,
 	createModelImport,
-	MODEL_SOURCE_SET_MAX_BYTES,
 	ModelInputError,
 	ModelNotFoundError,
 	ModelPinRefusalError,
@@ -58,7 +57,7 @@ import {
 	type TestAuthOptions
 } from './test-auth.js';
 import { readSaveRequest } from '@portfolio/project-model/save';
-import { validateProjectEnvelope } from '@portfolio/project-model/units';
+import { MODEL_SOURCE_SET_MAX_BYTES, validateProjectEnvelope } from '@portfolio/project-model/units';
 
 export type ApiAppOptions = {
 	pool: DatabasePool;

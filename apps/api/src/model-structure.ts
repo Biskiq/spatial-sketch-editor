@@ -276,49 +276,42 @@ export function checkModelStructure(input: {
 	readonly derivative: Buffer;
 }): readonly ModelStructureIssue[] {
 	try {
-		checkModelStructureOrThrow(input);
+		const files = new Map<string, number>(input.sourceFiles.map((file) => [file.path, file.bytes.length]));
+		const roots = input.sourceFiles.filter((file) => file.path.endsWith('.glb') || file.path.endsWith('.gltf'));
+		if (roots.length !== 1) {
+			fail('$.sourceFiles', 'ambiguous-root', 'An import declares exactly one .gltf or .glb source document');
+		}
+		const root = roots[0]!;
+		const rootBytes = input.sourceFiles.find((file) => file.path === root.path)!.bytes;
+
+		if (root.path.endsWith('.glb')) {
+			const container = readGlb(rootBytes, root.path);
+			checkGltfDocument({
+				document: container.json,
+				path: root.path,
+				container,
+				files,
+				requireSelfContained: true
+			});
+		} else {
+			const document = readDocument(rootBytes, root.path);
+			checkGltfDocument({ document, path: root.path, container: null, files, requireSelfContained: false });
+		}
+
+		const derivative = readGlb(input.derivative, '$.derivative');
+		if (derivative.binLength === null) {
+			fail('$.derivative', 'missing-glb-bin-chunk', 'The approved derivative carries no GLB binary chunk');
+		}
+		checkGltfDocument({
+			document: derivative.json,
+			path: '$.derivative',
+			container: derivative,
+			files: new Map(),
+			requireSelfContained: true
+		});
 		return [];
 	} catch (error) {
 		if (error instanceof StructureRefusal) return [error.issue];
 		throw error;
 	}
-}
-
-function checkModelStructureOrThrow(input: {
-	readonly sourceFiles: readonly ModelSourceFile[];
-	readonly derivative: Buffer;
-}): void {
-	const files = new Map<string, number>(input.sourceFiles.map((file) => [file.path, file.bytes.length]));
-	const roots = input.sourceFiles.filter((file) => file.path.endsWith('.glb') || file.path.endsWith('.gltf'));
-	if (roots.length !== 1) {
-		fail('$.sourceFiles', 'ambiguous-root', 'An import declares exactly one .gltf or .glb source document');
-	}
-	const root = roots[0]!;
-	const rootBytes = input.sourceFiles.find((file) => file.path === root.path)!.bytes;
-
-	if (root.path.endsWith('.glb')) {
-		const container = readGlb(rootBytes, root.path);
-		checkGltfDocument({
-			document: container.json,
-			path: root.path,
-			container,
-			files,
-			requireSelfContained: true
-		});
-	} else {
-		const document = readDocument(rootBytes, root.path);
-		checkGltfDocument({ document, path: root.path, container: null, files, requireSelfContained: false });
-	}
-
-	const derivative = readGlb(input.derivative, '$.derivative');
-	if (derivative.binLength === null) {
-		fail('$.derivative', 'missing-glb-bin-chunk', 'The approved derivative carries no GLB binary chunk');
-	}
-	checkGltfDocument({
-		document: derivative.json,
-		path: '$.derivative',
-		container: derivative,
-		files: new Map(),
-		requireSelfContained: true
-	});
 }

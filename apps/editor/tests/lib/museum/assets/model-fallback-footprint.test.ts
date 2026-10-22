@@ -18,7 +18,6 @@ describe('creator-model generic fallback', () => {
 
 	it('falls back to the neutral 1 m box when no approved footprint is available', () => {
 		expect(fallbackDimensionsFor('generic')).toEqual([1, 1, 1]);
-		expect(fallbackDimensionsFor('generic', undefined)).toEqual(assetFallbackDimensions.generic);
 	});
 
 	it('leaves every catalogue fallback kind on its catalogue dimensions', () => {
