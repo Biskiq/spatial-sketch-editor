@@ -6,8 +6,8 @@
 
 No acceptance evidence is recorded against this slice. `T3.P03.S01` is an authorized child of T3.P03
 whose implementation is in review on `t3/p03-s01-planner-scope-build-isolation`: it has not been
-reviewed or accepted, so this record claims no result, no tested revision, no gate state, no
-capability entry and no commit. It is not the phase's final gate: its deferred exhaustive proof
+accepted, so this record claims no result, no tested revision, no gate state, no capability entry
+and names no commit. It is not the phase's final gate: its deferred exhaustive proof
 routes to [`T3.P03.S02`](../t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md).
 
 Acceptance records the evidence its declared **architecture-integration** tier requires — plus the
