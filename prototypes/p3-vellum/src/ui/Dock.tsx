@@ -91,6 +91,24 @@ export function Dock() {
         <button class={'btn tool' + (ui.tool === 'pen' ? ' on' : '')} title="Draw (D): drag to draw walls, rooms, openings, stairs and things in the air · hold ⇧ for a straight line. Only draws: shape with Select." onClick={() => (tool('pen'), setPop('none'))}>
           <IPen /> Draw
         </button>
+        {ui.mode === 'make' && ui.tool === 'pen' && (
+          <span class="tip-seg" role="group" aria-label="What the pen draws">
+            {([
+              ['sketch', 'Sketch', 'Sketch: draw as freely as you like'],
+              ['box', 'Box', 'Box: drag corner to corner (⇧ square)'],
+              ['round', 'Round', 'Round: drag out from the centre'],
+            ] as const).map(([k, label, title]) => (
+              <button
+                class={'btn small' + (ui.penTip === k ? ' on' : '')}
+                aria-pressed={ui.penTip === k}
+                title={title}
+                onClick={() => store.set({ penTip: k })}
+              >
+                {label}
+              </button>
+            ))}
+          </span>
+        )}
         <button class={'btn tool' + (ui.tool === 'place' ? ' on' : '')} title="Put things in the building" onClick={() => setPop(pop === 'place' ? 'none' : 'place')}>
           <IPlace /> {ui.tool === 'place' && ui.placeType ? OBJ_NAMES[ui.placeType] : 'Place'}
         </button>

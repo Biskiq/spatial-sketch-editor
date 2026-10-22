@@ -9,6 +9,7 @@ import { derive, elementName, wallTopAt } from '../model/derive';
 import type { Project, SurfaceRef, Obj, Overhead } from '../model/types';
 import { V2, dist, sub, dot, perp, norm, add, mul, pointInPoly, fmtM, closestOnSeg, angleOf, lerp2, round } from '../model/geom2d';
 import { fitStroke } from '../model/strokes';
+import { boxShape, roundShape, tipFit, circleTrail } from '../model/penTips';
 import { readStroke, findMagnet, Magnet, Reading } from '../model/readings';
 import { snapPoint, SnapRes } from '../model/snap';
 import type { StrokeFit } from '../model/strokes';
@@ -52,6 +53,10 @@ interface Stroke {
   line: { a: V2; b: V2; snap: SnapRes } | null;
   /** slice: the oriented, extended cut currently previewed */
   slice: { a: V2; b: V2 } | null;
+  /** Box / Round: the shape the stroke is drawing, and the frozen frame it is measured in */
+  shape?: 'box' | 'round';
+  frame?: number;
+  shapeFit: StrokeFit | null;
 }
 
 export class Interact {
@@ -299,7 +304,7 @@ export class Interact {
       return;
     }
     if (this.state === 'stroke' && this.stroke) {
-      this.addStrokePoint(e.clientX, e.clientY, e.shiftKey);
+      this.addStrokePoint(e.clientX, e.clientY, e.shiftKey, e.altKey);
       return;
     }
     if (e.target === this.el) {
@@ -543,7 +548,7 @@ export class Interact {
     const tool = store.ui.tool;
     const mode = store.ui.mode;
     const purpose: Stroke['purpose'] = tool === 'slice' ? 'slice' : mode === 'tell' ? 'route' : 'draw';
-    const s: Stroke = { wall: null, y: 0, onSheet: false, surface: { kind: 'ground', y: 0 }, surfaceName: 'the ground', onRoof: null, level: 0, pts: [], scr: [], hits: [], sy: [], trail: [], magA: null, lastRead: 0, purpose, a0: null, line: null, slice: null };
+    const s: Stroke = { wall: null, y: 0, onSheet: false, surface: { kind: 'ground', y: 0 }, surfaceName: 'the ground', onRoof: null, level: 0, pts: [], scr: [], hits: [], sy: [], trail: [], magA: null, lastRead: 0, purpose, a0: null, line: null, slice: null, shapeFit: null };
     if (purpose === 'draw' && !v.sheetOut && hit?.kind === 'wall' && hit.normal && Math.abs(hit.normal.y) < 0.3) {
       const n = hit.normal.clone().setY(0).normalize();
       s.wall = { run: hit.id, origin: hit.point.clone(), n };
@@ -596,6 +601,12 @@ export class Interact {
         if (m) s.magA = m;
         s.a0 = m ? m.p : snapPoint(p, q, { level: s.level, tol: this.snapTol(), walls: false }).p;
       }
+      // Box / Round: the tip outlives the stroke. A box freezes its frame on whichever straight wall is nearest, so the
+      // guide does not swing under the hand mid-drag.
+      if (purpose === 'draw' && store.ui.penTip !== 'sketch' && s.a0) {
+        s.shape = store.ui.penTip;
+        s.frame = this.wallFrame(s.a0, s.level);
+      }
     }
     if (s.purpose === 'slice') {
       const q = this.stage.planAt(x, y, s.y);
@@ -605,7 +616,25 @@ export class Interact {
     this.addStrokePoint(x, y, shift);
   }
 
-  private addStrokePoint(x: number, y: number, shift = false) {
+  /** The plan angle of the nearest straight wall within 4 m on this level; 0 when there is none. */
+  private wallFrame(at: V2, level: number): number {
+    let best = 4, angle = 0;
+    for (const r of store.project.runs) {
+      if (r.shape !== 'path' || Math.abs(lvl(r.baseY) - lvl(level)) > 0.04) continue;
+      const g = runGeom(r);
+      for (let i = 0; i + 1 < g.ps.pts.length; i++) {
+        const a = g.ps.pts[i], b = g.ps.pts[i + 1];
+        const c = closestOnSeg(at, a, b);
+        if (c.d < best) {
+          best = c.d;
+          angle = angleOf(sub(b, a));
+        }
+      }
+    }
+    return best <= 4 ? angle : 0;
+  }
+
+  private addStrokePoint(x: number, y: number, shift = false, alt = false) {
     const s = this.stroke!;
     if (s.purpose === 'slice') return this.sliceTo(x, y, shift);
     if (s.wall) {
@@ -638,6 +667,26 @@ export class Interact {
       const h = s.purpose === 'draw' ? this.stage.pick(x, y, { kinds: ['floor', 'deck', 'ground', 'stair'] }) : null;
       s.hits.push(h ? [h.point.x, h.point.z] : null);
       s.trail.push(new THREE.Vector3(q[0], s.y, q[1]));
+    }
+    // Box / Round: the shape is rebuilt from the frozen frame on every move, so the preview and the commit are the
+    // same two plan points. Too small is no shape at all (not a minimum-size surprise).
+    if (s.shape && s.a0) {
+      const q = this.stage.planAt(x, y, s.y);
+      if (!q) return;
+      const sn = snapPoint(store.project, q, { level: s.level, tol: this.snapTol(), anchors: [s.a0] });
+      const shape = s.shape === 'box'
+        ? boxShape(s.a0, sn.p, { frame: s.frame ?? 0, square: shift, fine: alt })
+        : roundShape(s.a0, sn.p, { fine: alt });
+      s.shapeFit = shape ? tipFit(shape) : null;
+      s.pts = shape?.kind === 'box' ? shape.corners : [];
+      const trail = shape
+        ? shape.kind === 'box' ? [...shape.corners, shape.corners[0]] : circleTrail(shape.center, shape.radius)
+        : [];
+      this.ov.setTrail(trail.map((q) => new THREE.Vector3(q[0], s.y, q[1])), '#1f1c19');
+      this.ov.setGuides(null);
+      this.ov.setKnot(null);
+      this.showLive(x, y);
+      return;
     }
     // ⇧: a straight line from where the stroke began to the snapped pen (the raw stroke is kept: let go of ⇧ to draw freely)
     s.line = null;
@@ -699,6 +748,16 @@ export class Interact {
       }
       // it left the face: read it in plan, starting from the wall
       if (!s.magA && s.pts.length) s.magA = findMagnet(p, s.pts[0], s.level, Math.max(0.3, 16 * mpp));
+    }
+    if (s.shape && s.shapeFit) {
+      // the tip already made the fit: read it exactly as previewed, and never offer to keep the wobble
+      const fit = s.shapeFit;
+      const snap = s.onSheet ? d.snaps.find((sn) => Math.abs(sn.y - s.y) < 0.03) ?? null : null;
+      const readings = readStroke({
+        p, d, plane: { y: s.y, onSheet: s.onSheet, surface: s.surface, surfaceName: s.surfaceName }, fit, rawFit: fit,
+        plan: fit.pts, magA: null, magB: null, wallFace: null, stairTo: null, onRoof: s.onRoof, sheetSnap: snap, shape: s.shape,
+      });
+      return { readings: readings.filter((r) => r.id !== 'freehand'), ctx: null, fit };
     }
     if (s.line) {
       // a ruled line: read exactly as drawn (already snapped), its ends touching what they landed on

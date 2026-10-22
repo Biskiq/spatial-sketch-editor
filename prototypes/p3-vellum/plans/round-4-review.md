@@ -469,6 +469,43 @@ context behind the sheet already samples the real surface. Turning a compound L 
 committable, so the control's *enabled* direction on the cottage is the one that adds wings; there is no fixture in
 this scope where a plan qualifies both ways.
 
+## 6f. Phase 3 — pen tips, *Room beside*, and the Platform label
+
+**What landed.**
+
+- **Box and Round.** `UIState.penTip` is session state, with a *Sketch · Box · Round* segmented control after Draw
+  while the pen is picked in Make. `src/model/penTips.ts` is pure: a box is corner to corner in a frame frozen on the
+  nearest straight wall (within 4 m, else 0), sides on 0.05 m steps (⌥ keeps the hand's measurement), ⇧ squares it on
+  the longer side, and a side under 0.6 m is no shape yet. Round grows from the press on 0.05 m steps, nothing under
+  0.4 m. The frame is set once at pointer-down, so the guide cannot swing mid-drag. A tip is ignored on a wall face and
+  for a slice, as before.
+- **The reading.** A tipped stroke builds its `StrokeFit` directly (`tipFit`) and goes through `readStroke` like any
+  other, with the `freehand` alternative filtered out, so the preview under the hand and the commit are the same fit.
+- **Room beside.** When a box has one whole edge in an existing straight wall on the same level (within 5 cm), the
+  first reading becomes *Room beside Room 1*: `opAddRunTouching` builds only the other three sides, its ends touch the
+  host wall without a tie, and the ripple offers *Join*. No doubled wall, one room emerges.
+- **Platform.** The square `plinth` reading is now *Platform* with the detail *a raised floor, 0.6 m up* (*Round
+  platform* was already named that way).
+
+**Evidence.** `npm run typecheck` is clean; `npm test` is **21 files, 275 tests** (new `tips.test.ts` 7: the box and
+round maths, frame and ⇧/⌥, Room-first with Platform, *Room beside* with three new sides and two rooms, a box away
+from walls, and round); `npm run build` succeeds. In the browser on 5191, in plan view (so the wall face did not take
+  the press), with no console errors:
+
+- the *Box · Round* control appeared after Draw and Box stayed picked between strokes;
+- a box drag made *Room* with readings *Room · Platform · Sunken court · Canopy*;
+- a box against Room 1's long wall made *Room beside Room 1* as the first reading, one open 4-point run, two rooms,
+  no issues, and the ripple's *Both ends touch wall. Join…?*;
+- the Round tip made *Round room* (5.0 m across) with *Round platform* among its readings.
+
+Screenshots: `screenshots/phase3-tips-plan.png`, `phase3-tips-model.png`.
+
+**Cut / honest limits.** The host wall is named by the first reading but not highlighted as a guide while drawing; the
+blue preview outlines the whole box, not just the three missing walls. Partial overlap of a box edge with a wall is
+not turned into a partial run: only an edge wholly inside one straight wall qualifies, otherwise the ordinary Room
+reading is offered. Boxes and rounds are read on the ground, on the sheet and on a roof through the existing readings;
+no new tip for openings or stairs (those strokes stay hand-drawn).
+
 ---
 
 ## 7. What is not done
@@ -480,14 +517,13 @@ qualifier. Full browser acceptance and the remaining phase work are still open.
 | Not started | Plan | Size |
 | --- | --- | --- |
 | Ink from meaning: `facets`/`ink`, `roofInk.ts`, revolve rings, ghost twins, `tests/ink.test.ts` | §7 | M |
-| Pen tips (Box/Round, *Room beside*), the Platform label, `tests` for both | §9.1, §9.2, §9.5 | M |
 | Phase 7 (optional) room-sides push/pull | §10 | M |
 | §11 acceptance: per-phase gates, browser checks, the full §11.3 script, screenshots, the five-person test | §11 | M |
 | §12 docs and in-app help | §12 | S |
 
-The acceptance script's steps 2–4 (one grouped cover, the Hold gestures over wings, Edit Shape, the mezzanine and its
-stair) are now wired and were exercised end to end in the browser; the full §11.3 script still needs its own pass,
-including the Box/Round steps that Phase 3 adds.
+The acceptance script's steps 1–4 (box and wing with a tip, one grouped cover, the Hold gestures over wings, Edit
+Shape, the mezzanine and its stair) are now wired and each step has browser evidence; the full §11.3 pass in one
+sequence, with its screenshots, is still open.
 
 ---
 

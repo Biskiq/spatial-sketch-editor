@@ -77,6 +77,8 @@ export interface UIState {
   seeThrough: boolean;
   /** the roof context menu, at client coordinates */
   menu: { at: [number, number]; id: string } | null;
+  /** what a free drag of the pen draws: a sketch, or a box / round room (session only) */
+  penTip: 'sketch' | 'box' | 'round';
 }
 
 type Listener = () => void;
@@ -95,7 +97,7 @@ class Store {
   ui: UIState = {
     mode: 'make', tool: 'pen', baseTool: 'pen', placeType: null, selection: null, hover: null, panel: 'none', start: true, people: true,
     removePreview: null, fixPreview: null, issueFocus: null, readingChip: null, rippleHidden: -1, hint: null, momentFocus: null, toast: null, dragging: false, allHandles: false, sheetPen: false,
-    shaping: null, seeThrough: false, menu: null,
+    shaping: null, seeThrough: false, menu: null, penTip: 'sketch',
   };
   cam: { snap: () => CamSnap; restore: (s: CamSnap) => void } | null = null;
   private listeners = new Set<Listener>();

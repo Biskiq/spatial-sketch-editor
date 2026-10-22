@@ -1,6 +1,6 @@
 // "One pen, read aloud": the same stroke means different things depending on where it was drawn.
 // Every reading is an op; the first is applied, the rest are one tap away and amend the same undo step.
-import { V2, dist, polyArea, ensureCCW, interiorPoint, pointInPoly, pointInPolyHoles, circlePoly, polyCentroid, fmtM, lerp2 } from './geom2d';
+import { V2, dist, polyArea, ensureCCW, interiorPoint, pointInPoly, pointInPolyHoles, circlePoly, polyCentroid, fmtM, lerp2, closestOnSeg, add, mul, norm } from './geom2d';
 import { overlapArea, P, intersection, mpolyArea } from './clip';
 import type { Project, Tie, SurfaceRef, RoomSeed } from './types';
 import { newId } from './types';
@@ -43,6 +43,8 @@ export interface ReadCtx {
   stairTo: { y: number; ref: SurfaceRef; name: string; at: V2 } | null;
   onRoof: string | null;
   sheetSnap: Snap | null;
+  /** a pen tip made the fit: a box can also be a room beside an existing wall */
+  shape?: 'box' | 'round';
 }
 
 const tieOf = (m: Magnet | null): Tie | null => (m ? { host: m.run, t: m.t } : null);
@@ -90,6 +92,55 @@ function withMagnets(f: StrokeFit, a: Magnet | null, b: Magnet | null): StrokeFi
   if (a) pts[0] = a.p;
   if (b) pts[pts.length - 1] = b.p;
   return { ...f, pts };
+}
+
+const straight = (r: { shape: string; closed: boolean }) => r.shape === 'path';
+
+/**
+ * A box with one edge lying in an existing straight wall on the same level is a room beside it: only the other three
+ * sides are built, so no wall is doubled and the new room shares the host's face. The ends only touch the host, exactly
+ * as an open stroke's ends do; the ripple offers Join.
+ */
+function boxBeside(p: Project, d: Derived, outline: V2[], baseY: number): Reading | null {
+  if (outline.length !== 4) return null;
+  for (let i = 0; i < 4; i++) {
+    const a = outline[i], b = outline[(i + 1) % 4];
+    if (dist(a, b) < 0.6) continue;
+    for (const run of p.runs) {
+      if (!straight(run) || Math.abs(lvl(run.baseY) - lvl(baseY)) > 0.04) continue;
+      const g = runGeom(run);
+      for (let k = 0; k + 1 < g.ps.pts.length; k++) {
+        const A = g.ps.pts[k], B = g.ps.pts[k + 1];
+        const ca = closestOnSeg(a, A, B), cb = closestOnSeg(b, A, B);
+        if (ca.d > 0.05 || cb.d > 0.05) continue;
+        if (dist(ca.q, b) < 0.3) continue; // both ends on one straight piece of this run
+        const sA = g.ps.s[k] + ca.t * (g.ps.s[k + 1] - g.ps.s[k]);
+        const sB = g.ps.s[k] + cb.t * (g.ps.s[k + 1] - g.ps.s[k]);
+        const tA = g.L > 0 ? sA / g.L : 0, tB = g.L > 0 ? sB / g.L : 0;
+        // the room on the far side of that wall, if there is one, names the offer
+        const dir = norm([b[0] - a[0], b[1] - a[1]]);
+        const probe = add(lerp2(a, b, 0.5), mul([dir[1], -dir[0]], 0.3));
+        const room = d.rooms.find((r) => Math.abs(r.level - baseY) < 0.05 && pointInPolyHoles(probe, r.poly, r.holes));
+        const hostName = room?.name ?? elementName(p, run.id);
+        // the host edge is c[i]→c[i+1]; the missing run goes from the far end of it, round the other three sides, home
+        const pts = [outline[(i + 1) % 4], outline[(i + 2) % 4], outline[(i + 3) % 4], outline[i]];
+        let length = 0;
+        for (let j = 0; j + 1 < pts.length; j++) length += dist(pts[j], pts[j + 1]);
+        const open: StrokeFit = {
+          kind: 'open', pts, bulge: pts.map(() => 0), closed: false, center: polyCentroid(pts),
+          radius: 0, length, curved: false, corners: 0,
+        };
+        const area = Math.abs(polyArea(outline)).toFixed(0);
+        return {
+          id: 'room-beside',
+          label: `Room beside ${hostName}`,
+          detail: `${area} m² · three walls, sharing ${room ? `${hostName}’s` : 'the'} wall`,
+          op: opAddRunTouching(open, { baseY }, { host: run.id, t: tB }, { host: run.id, t: tA }),
+        };
+      }
+    }
+  }
+  return null;
 }
 
 function roomsUnder(d: Derived, outline: V2[], level?: number) {
@@ -196,10 +247,14 @@ export function readStroke(c: ReadCtx): Reading[] {
       });
       out.push({ id: 'round-canopy', label: 'Round canopy', detail: 'shade above, drawn by its shadow', op: opAddOverhead(poly, baseY + 3, { form: 'revolve', name: nextName(p, 'Canopy') }) });
     } else if (fit.kind === 'closed' && outline) {
+      if (c.shape === 'box') {
+        const beside = boxBeside(p, d, outline, baseY);
+        if (beside) out.push(beside);
+      }
       const enclosing = d.rooms.find((r) => Math.abs(r.level - baseY) < 0.05 && overlapArea(r.poly, outline) > 0.85 * Math.abs(polyArea(outline)));
       out.push({ id: 'room', label: enclosing ? `Room inside ${enclosing.name}` : 'Room', detail: `walls around · ${areaTxt}`, op: opAddRun(fit, { baseY }) });
       out.push({
-        id: 'plinth', label: 'Raised floor', detail: 'a plinth, 0.6 m up',
+        id: 'plinth', label: 'Platform', detail: 'a raised floor, 0.6 m up',
         op: (q) => {
           makeRun(q, fit, { baseY, top: 0.6, thick: 0.3 });
           preseed(q, outline, baseY, { name: nextName(q, 'Platform'), floorY: baseY + 0.6, height: 3 });

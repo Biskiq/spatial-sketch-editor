@@ -160,6 +160,9 @@ input, select, textarea { font: inherit; color: inherit; }
 .dock { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; display: flex; align-items: center; gap: 2px; padding: 5px; z-index: 10; }
 .dock .btn { height: 34px; }
 .dock .tool.on { background: var(--ink); color: var(--card); }
+.tip-seg { display: flex; align-items: center; gap: 1px; margin: 0 2px; padding: 2px; border: 1px solid var(--line); border-radius: 7px; }
+.tip-seg .btn { height: 26px; padding: 0 8px; font-size: 11.5px; }
+.tip-seg .btn.on { background: var(--ink); color: var(--card); }
 .pop { position: absolute; bottom: 52px; padding: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; width: 280px; z-index: 12; }
 .pop .item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; border: 1px solid transparent; background: transparent; cursor: pointer; text-align: left; }
 .pop .item:hover { background: rgba(31, 28, 25, 0.05); }

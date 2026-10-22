@@ -192,6 +192,7 @@ export const testkit = {
     for (const p of pts.slice(1)) {
       ev('pointermove', p[0], p[1], window);
       await wait(6);
+      this.tick(1);
     }
     ev('pointerup', pts[pts.length - 1][0], pts[pts.length - 1][1], window);
     await wait(60);
