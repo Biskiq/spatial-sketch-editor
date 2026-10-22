@@ -110,7 +110,8 @@ no phase closure · no track completion · no cycle transition · no automatic p
    slice README or a status index.
 6. Update the track README or `docs/roadmap/README.md` only if the phase's or track's registration
    changed (a new phase row, a gate version and its provider, a superseded row). A slice close never
-   changes a track's or phase's status.
+   changes a track's or phase's status. A closeout never writes `docs/roadmap/now.md`. Only an owner
+   release does, including pruning a row whose slice has shipped.
 7. Rewrite the **owning track's** baton `docs/operations/<track>/current.md` as the current-state
    snapshot (invariant below); never edit another track's baton. Reconcile
    every existing entry against the repository and the phase README: replace what changed, delete

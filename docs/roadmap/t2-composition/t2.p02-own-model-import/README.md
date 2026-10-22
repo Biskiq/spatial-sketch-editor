@@ -1,9 +1,8 @@
 # T2.P02 — Own model import
 
-**Phase:** T2.P02 · **Status:** registered 2026-10-22 — `T2.P02.S01` owner-authorized as batch E
-(E1/E7, [record](../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from
-the [production hold](../../README.md#production-implementation-hold), starting only after
-`T3.P03.S01` merges; S02 and S03 registered `proposed`, not authorized · **Track:**
+**Phase:** T2.P02 · **Status:** registered 2026-10-22. Released scopes and their conditions are
+the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
+covers every scope that list omits. S02 and S03 stay `proposed` · **Track:**
 [T2](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
 [T2 operations](../../../operations/t2-composition/README.md) · **Design:**
 [shell draft](./shell-draft.md)

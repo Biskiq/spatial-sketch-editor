@@ -5,8 +5,8 @@ architecture, arrange objects, and turn them into interactive presentations and
 guided visits.
 
 **The production editor is being rebuilt.** The prototypes below demonstrate the
-capabilities being brought together. See the [roadmap](docs/roadmap/README.md) for
-current priorities and the next engineering batch.
+capabilities being brought together. See the [release list](docs/roadmap/now.md) for
+the next engineering batch.
 
 ## Explore the prototypes
 
@@ -22,5 +22,5 @@ These are standalone demos with local run instructions in each README. The
 ## Development
 
 - [Run locally](docs/local-development.md) — editor, API and database setup.
-- [Documentation](docs/README.md) — product direction, architecture and planning.
+- [Documentation](docs/orientation.md) — what this project is, then the contracts.
 - [Verification](apps/editor/tests/README.md) — test commands and requirements.

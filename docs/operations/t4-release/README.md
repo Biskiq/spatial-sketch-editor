@@ -31,13 +31,19 @@ EVENTS:  ../README.md                                  (completion · integratio
 
 ```text
 1 ELIGIBILITY  the slice's child row in its phase README is `approved` or `in-progress`, and every
-               `Consumes` Gate@Version already exists and is `accepted` at the trusted base
+               `Consumes` Gate@Version already exists and is `accepted` at the trusted base,
+               and the scope is listed in `docs/roadmap/now.md` with its condition met
 2 CYCLE        "If your slice ID is listed under Exposure slices and `Opened by` is empty, follow
                `open-window` before capability work." (→ ../architecture-cycle.md)
 3 CONTRACT     the slice plan's verification tier and its integration route, with the commands in
                ../../../apps/editor/tests/README.md
 4 SEQUENCE     implementation → review → acceptance → routine closeout → merge
 ```
+
+The change stays in the owning authority (AGENTS.md rules 1, 2 and 6). Add the test that fails
+when the new behavior breaks. Do not copy a gate conformance suite into the slice. Run the
+verification tier the slice plan declares. The [test manual](../../../apps/editor/tests/README.md)
+owns the acceptance bar, and `npm test` is never narrowed.
 
 The prepared-reader cutover consumes the ratified F.5 envelope as an exact gate version before it
 is eligible; it replaces the strict snapshot reader atomically rather than running beside it.
