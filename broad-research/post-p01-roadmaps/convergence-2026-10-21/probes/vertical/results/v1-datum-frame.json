@@ -1,0 +1,318 @@
+{
+  "probe": "v1-datum-frame",
+  "node": "v26.7.0",
+  "tolerance_m": 1e-9,
+  "rows": [
+    {
+      "id": "V1.0 world points match hand calculation",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "got": [
+          21,
+          3,
+          27,
+          3,
+          0,
+          6.024
+        ],
+        "want": [
+          21,
+          3,
+          27,
+          3,
+          0,
+          6.024
+        ]
+      }
+    },
+    {
+      "id": "V1.0b bridge declared connection joined at rest",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "gaps": [
+          {
+            "id": "BR.to.S2",
+            "state": "joined",
+            "gap": 0,
+            "dy": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "V1.1B raise datum (explicit refs)",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "movedB": [
+          "BR.w.rail",
+          "S1.slab.mezz",
+          "S1.w.guard",
+          "S1.w.shelf"
+        ],
+        "expected": [
+          "BR.w.rail",
+          "S1.slab.mezz",
+          "S1.w.guard",
+          "S1.w.shelf"
+        ]
+      }
+    },
+    {
+      "id": "V1.1A raise global storey moves unrelated S2",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "movedA": [
+          "BR.w.rail",
+          "S1.slab.mezz",
+          "S1.w.guard",
+          "S1.w.shelf",
+          "S2.slab.upper",
+          "S2.w.rail"
+        ],
+        "unrelatedMoved": [
+          "S2.slab.upper",
+          "S2.w.rail"
+        ]
+      }
+    },
+    {
+      "id": "V1.1C bin inference splits 3.024/3.026 and captures S2",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "movedC": [
+          "BR.w.rail",
+          "S1.slab.mezz",
+          "S1.w.guard",
+          "S2.slab.upper",
+          "S2.w.rail"
+        ],
+        "bins": {
+          "3.024": 60,
+          "3.026": 61
+        },
+        "missed": [
+          "S1.w.shelf"
+        ],
+        "unrelatedMoved": [
+          "S2.slab.upper",
+          "S2.w.rail"
+        ]
+      }
+    },
+    {
+      "id": "V1.1B bridge reported broken (vertical) after S1 datum raise",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "gaps": [
+          {
+            "id": "BR.to.S2",
+            "state": "broken",
+            "gap": 0,
+            "dy": 0.2999999999999998
+          }
+        ]
+      }
+    },
+    {
+      "id": "V1.2B-isolated rotate moves exactly S2, rigidly; bridge reported broken, not moved",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "moved": [
+          "S2.slab.upper",
+          "S2.w.rail",
+          "S2.w.west"
+        ],
+        "expected": [
+          "S2.slab.upper",
+          "S2.w.rail",
+          "S2.w.west"
+        ],
+        "rigid": true,
+        "gaps": [
+          {
+            "id": "BR.to.S2",
+            "state": "broken",
+            "gap": 3.1622776601683795,
+            "dy": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "V1.2H host expansion with cross-frame shared Junction deforms S2",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "wallLengthBefore": 6,
+        "wallLengthAfter": 5.8309518948453,
+        "note": "a whole-structure rigid transform is not rigid when one Junction belongs to another frame"
+      }
+    },
+    {
+      "id": "V1.3 eave edit moves roof and the one Wall whose top is declared roof-eave",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "moved": [
+          "S1.roof",
+          "S1.w.east"
+        ]
+      }
+    },
+    {
+      "id": "V1.4 roof↔Wall-top cycle refuses",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "cyclic-dependency",
+          "subject": "S1.w.east"
+        }
+      }
+    },
+    {
+      "id": "V1.5 missing parent",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "missing-frame",
+          "subject": "F9"
+        }
+      }
+    },
+    {
+      "id": "V1.5 cycle",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "cyclic-frame",
+          "subject": "F2"
+        }
+      }
+    },
+    {
+      "id": "V1.5 scale 0",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "noninvertible-frame",
+          "subject": "F2"
+        }
+      }
+    },
+    {
+      "id": "V1.5 tilt",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "unsupported-frame-transform",
+          "subject": "F2"
+        }
+      }
+    },
+    {
+      "id": "V1.5 mirror",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "unsupported-frame-transform",
+          "subject": "F2"
+        }
+      }
+    },
+    {
+      "id": "V1.5 delete datum D2u",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "unresolved-datum",
+          "subject": "D2u"
+        }
+      }
+    },
+    {
+      "id": "V1.5b delete datum: exactly its dependants unresolved",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "unresolved": [
+          "S2.slab.upper",
+          "S2.w.rail",
+          "S2.w.west"
+        ]
+      }
+    },
+    {
+      "id": "V1.6 nested instance world point",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "got": [
+          36,
+          40,
+          36,
+          37
+        ],
+        "want": [
+          36,
+          40,
+          36,
+          37
+        ],
+        "ids": [
+          "P1/core",
+          "P1/b1/w",
+          "P1/b2/w",
+          "P2/core",
+          "P2/b1/w",
+          "P2/b2/w"
+        ]
+      }
+    },
+    {
+      "id": "V1.7 serialize/reload: identical qualified ids and coordinates",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "count": 6
+      }
+    },
+    {
+      "id": "V1.8 definition edit vs instance edit moved sets",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "movedDef": [
+          "P1/b1/w",
+          "P1/b2/w",
+          "P2/b1/w",
+          "P2/b2/w"
+        ],
+        "movedInst": [
+          "P2/b1/w",
+          "P2/b2/w",
+          "P2/core"
+        ]
+      }
+    },
+    {
+      "id": "V1.9 undo/redo restores identical expansion",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {}
+    }
+  ]
+}

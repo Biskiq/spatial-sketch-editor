@@ -48,6 +48,20 @@ Status vocabulary, used by every register below: `proposed | planning | approved
 in-progress | shipped | archived`. A register row states what is true now; it never
 fabricates a merge, an acceptance or a closure.
 
+## Production implementation hold
+
+**Owner direction, 2026-10-22:** production implementation is held across tracks, including
+previously authorized slices such as `T3.P02.S01`, while the
+[convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) resolves direction,
+architectural commitments and the next batch/DAG. Earlier authorization records and accepted
+gate/phase evidence remain valid history; they do not release this hold. Research, documentation
+and bounded disposable probes may proceed within their commissioned step. Research and
+reconciliation are complete for owner review; the hold still applies to every implementation scope.
+
+Only explicit owner release permits named implementation scopes to start or resume. A research
+result, contract ratification or merge of PR #173 alone is not that release. Keep existing lifecycle
+vocabulary and registered states; do not invent a new gate or a `held` lifecycle status.
+
 ## Track register
 
 Every track and every repository phase is registered here exactly once. The track or phase
@@ -170,6 +184,23 @@ Each entry here registers no phase or slice of its own: it is either a proposal,
 proposal plus its bounded batch authorization, or a standalone maintenance scope. Registering
 execution stays an owner decision, an authorization recorded here covers only the slices it names,
 and nothing in this section is lifecycle or gate readiness.
+
+- **Product convergence (commissioned 2026-10-21; core ratified 2026-10-22), PR #173.** The
+  [convergence plan](./product-convergence-2026-10-21.md) completes research, owning-contract
+  reconciliation and the canonical roadmap/DAG. The owner accepted the core package and
+  explicitly authorized the permanent on-demand performance workflow
+  ([decision record](../reference/decisions/product-convergence-ratification-2026-10-22.md)).
+  Consumer decisions remain deferred; no new gate readiness, phase registration, milestone
+  acceptance or implementation permission follows. The H0 proposal and conditional C1/C2/S01
+  lanes identify the next scopes to register/authorize. P4, T4 and the production hold remain.
+
+- **H0 shared correction (proposed 2026-10-22).** The
+  [bounded launch scope](./convergence-shared-foundation-2026-10-22.md) prepares declared planner
+  scope enforcement, current public/Preview build boundaries and on-demand performance evidence.
+  T3 coordinates F4, with T1/visitor integration. Its on-demand workflow is authorized; implementation still needs normal provider
+  registration, reviewed scope authorization and release from the hold; it creates no gate or phase by appearing here.
+  C1/C2 planning may proceed in parallel; the [canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave)
+  owns launch and merge sequencing.
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks

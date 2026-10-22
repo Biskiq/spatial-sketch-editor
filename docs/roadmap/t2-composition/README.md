@@ -39,14 +39,35 @@ gate, with Scene ownership, current-format validation and the visitor boundary s
 
 ## Current vs destination contracts
 
-| Concern | Current (post-#115 foundation) | Destination |
+| Concern | Current (landed tree) | Destination |
 | --- | --- | --- |
-| Scene document | world-local `formatVersion: 1`, no `roomId`, Scene-owned entities/materials/lights | unchanged ownership; the Scene unit is codec-bounded under F.2 |
-| Placement | **removed** with the editor shell; the predecessor wiring was defective (TD-1) | one Scene-owned placement intent, Plan and 3D converging on the same commit, Y resolved from support |
+| Scene document | world-local Scene 2 in F2, no `roomId`, Scene-owned entities/materials/lights; Camera and Experience are separate units | unchanged semantic ownership; later formats need an explicit cutover |
+| Placement | T2.P01 places, moves, yaws, uniformly resizes, duplicates and deletes native primitives and admitted models through shared unit F4/history in Plan and 3D; floor support resolves Y | extend the same Scene-owned intent path to declared support/attachment capabilities |
 | Materials / lights | catalogue and kernel validation retained; authoring surfaces removed | truthful units, atomic subset editing, explicit repair instead of silent clamping |
-| Resources | P20 project-scoped texture registry + catalogue; no general resource system | typed resources with logical identity, revision/content identity and dependency locks |
+| Resources | F2 resources 1 with typed definitions/revisions and dependency locks, plus the project texture registry and catalogue; general own-GLB ingest remains absent | resource admission and revision workflows, including bounded creator import and later component admission |
 
+The [current Scene contract](../../reference/components/scene-content.md#current-implementation)
+and [F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)
+describe the landed tree; production epoch activation remains a separate owner-controlled step.
 Landed contracts keep describing current behaviour until their explicit cutover.
+
+## Proposed continuation
+
+The [convergence batch and next planning wave](../cross-track-execution.md#convergence-batch-and-next-planning-wave)
+and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-engineering-batch)
+propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
+baseline, then C1 native Walls, C2 own-GLB import and the held T3 Capture/Preview scope. C2 planning can
+proceed while H0 is planned. It is whole-object editor import with retained original bytes/hash,
+recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
+references keep `componentId: null`, and no T4 dependency is introduced. Its consuming slice carries
+import/placement/memory evidence. This page registers no new phase or slice.
+
+The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
+part selection with T2 component resolver/admission and revision correspondence; T3 annotations
+consume the latter. Attached composition and later architecture choices remain deferred. Feature
+shell design develops in the consuming slice through planning, draft, review, build and revision,
+preserving PLATE's ratified shared invariants; it does not block all first-wave planning. All
+implementation remains under the [owner hold](../README.md#production-implementation-hold).
 
 ## Evidence roles
 
@@ -69,7 +90,7 @@ register owns lifecycle only.
 
 T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
-[interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md). Only
+[interface/reconciliation drafts](./t2.p01-supported-composition/contracts.md).
 **`T2.P01.S01`** shipped 2026-10-16; it consumed the accepted
 `F1.reference@1` alone. **`T2.P01.S02`** shipped 2026-10-17, consuming `F1.reference@1` and
 `F4.intent-acceptance@1`; its authorization is the owner decision of 2026-10-16
@@ -108,26 +129,29 @@ proposes no phase, slice or gate.
 **Deferred-retirement rows with exact conditions** (implementation-plan §5.1)
 
 - `project-model` **Scene types/codec/validation (world-local) and world transforms** — retained as
-  foundation; **refactor later at T2** (the Scene unit) and **T3** (Camera extraction).
-- The P22 authored-snapshot reader is **retired at T4**, not here; T2 must keep producing
-  current-format documents that the strict reader accepts.
+  foundation; T3.P01.S04 cut over the live source to Scene 2 with separate Camera/Experience units.
+  Later Scene capabilities extend that contract through explicit formats and admission.
+- The old-source authored-snapshot reader retired at T3.P01.S04's clean cutover; it is not a
+  public fallback. T2 produces current F2 source, while T4 still owns the prepared delivery reader.
 - The r175–r186 renderer harvest's `Object3D.dispose()` finding stays a **conditional
   implementation recheck**, not an adoption; no renderer/library upgrade follows from T2, and an
   optimization that does not reproduce under measurement is not adopted.
 
-**Capability losses this track owns rebuilding** (implementation-plan §4.4)
+**Capability rebuild and remaining boundary** (implementation-plan §4.4)
 
-Placing, lighting and applying materials to a Scene; importing a single model; asset upload and
-ingest staging. The supply pipeline and normalization/footprint evidence under
-`apps/editor/assets-source/pipeline/` remain evidence, but staging is a T2 rebuild.
+T2.P01 restored supported Scene placement and editing in both readings through shared history and
+Save. Materials/light authoring depth, own-model import, asset upload and ingest staging remain T2
+work. The supply pipeline and normalization/footprint evidence under
+`apps/editor/assets-source/pipeline/` remain evidence; C2 must establish its own source-retention and
+parts-safe derivative proof rather than reuse the catalogue optimizer unchanged.
 
 **Successor obligations carried into T2** (implementation-plan §7.2 and the planning evidence)
 
-- **TD-1**'s five acceptance tests (canonical boot → place → commit; round trip; both surfaces
-  agree; legacy untouched; honest refusal with a reasoned message), with the replaced
-  camera-node placement specifics decided by the re-derived T2/T3 plans;
+- **TD-1**'s bounded Scene successor landed in T2.P01: preserve canonical boot → place → commit,
+  round trip, agreement across readings and honest refusal with a reasoned message. Camera capture
+  remains T3's separate consuming scope;
 - the atomic group/duplicate validation semantics once proven by `history-controller`,
   `document-store` and `mutation-guards`, which are F.4 acceptance criteria;
-- the removed selection/gizmo/interaction seams are **rebuilt as one authority per concern**, never
-  restored verbatim; `tests/README.md` rule 4 is the tool if a composition root needs a targeted
+- selection/gizmo/interaction seams keep **one authority per concern** as the landed shared Stage
+  gains capabilities; `tests/README.md` rule 4 is the tool if a composition root needs a targeted
   boundary proof in its own slice.

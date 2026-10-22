@@ -1064,3 +1064,27 @@ fallback specification that a future designer must reopen or an authority cycle.
 | [World Paper proposal](../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) | Accepted World-only refinements, owner rulings and schematic rationale |
 | [P26 surface calibration acceptance](../../../prototypes/spatial-authoring/design/visual-system-refinement/qa/ACCEPTANCE.md), [specification](../../../prototypes/spatial-authoring/design/visual-system-refinement/specification-plan.md) and [prototype journeys](../../../prototypes/spatial-authoring/README.md) | Mat/vellum/grid/state calibration and deep World interaction evidence; shortcuts are not production mechanisms |
 | [Shell ratifications](../../archive/technical/editor-shell/ratifications.md) and [Atlas](../../archive/technical/editor-shell/atlas/index.html) | Existing role-system and state evidence; the Atlas's landed composition does not redefine this destination |
+
+## Product convergence destination
+
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This prepares feature
+integration within the ratified shell, not a complete new shell design.
+[Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
+
+An object with admitted parts offers part selection as deeper Card capability on invocation,
+keeping the placed subject's identity visible and distinct from Presentation selection. An
+object without admitted parts offers whole-object or point explanation. Experience owns the
+annotation and its uses; the Card makes that reach discoverable without copying Scene state.
+Relationship facts distinguish independent, attached, needs-review and unresolved state. Repair
+controls are truthful about available operations: Detach requires an evaluable pose; Re-pick,
+explicit placement or delete remain available according to the consuming domain's policy.
+Proximity never implies following.
+
+**Feature design loop, owner direction 2026-10-22.** Precise placement, grouping, responsive
+behavior and instrument details are designed in the consuming slice: draft → review → build →
+real browser observation → revise. Carry explicit states for ordinary use, selection, refusal,
+repair, keyboard access and narrow viewports. Keep the ratified shared shell composition,
+material, typography, control metrics, state language, return and accessibility rules. A proposed
+departure is a named design decision for owner review. No full cross-feature layout needs to be
+frozen before the next engineering plans; prototype chrome is reference evidence, not adoption.

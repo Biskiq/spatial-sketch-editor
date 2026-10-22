@@ -1,0 +1,281 @@
+{
+  "probe": "o1-overhead",
+  "node": "v26.7.0",
+  "cell_m": 0.5,
+  "tolerance_m2": 1e-9,
+  "rows": [
+    {
+      "id": "O1.0 room-switch fallback A=48 B=0",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "fallback": {
+          "A": 48,
+          "B": 0
+        },
+        "roofShort": [
+          {
+            "roof": "R1",
+            "uncoveredEnclosure": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "O1.0 per-area fallback A=48 B=0",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "fallback": {
+          "A": 48,
+          "B": 0
+        },
+        "roofShort": [
+          {
+            "roof": "R1",
+            "uncoveredEnclosure": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "O1.1 split",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "fallback": {
+          "A": 24,
+          "A2": 24,
+          "B": 0
+        },
+        "overheadIds": [
+          "C1",
+          "K1",
+          "M1",
+          "N1",
+          "R1"
+        ]
+      }
+    },
+    {
+      "id": "O1.1 merged",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "fallback": {
+          "A": 48
+        },
+        "overheadIds": [
+          "C1",
+          "K1",
+          "M1",
+          "N1",
+          "R1"
+        ]
+      }
+    },
+    {
+      "id": "O1.1 opened",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "fallback": {
+          "A": 48
+        },
+        "overheadIds": [
+          "C1",
+          "K1",
+          "M1",
+          "N1",
+          "R1"
+        ]
+      }
+    },
+    {
+      "id": "O1.1b merged under room-switch: A loses fallback, 48 m² open-above warning",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "result": {
+          "rooms": [
+            {
+              "room": "A",
+              "fallback": 0,
+              "openAbove": 48
+            }
+          ],
+          "roofShort": [
+            {
+              "roof": "R1",
+              "uncoveredEnclosure": 0
+            }
+          ],
+          "ids": [
+            "C1",
+            "K1",
+            "M1",
+            "N1",
+            "R1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "O1.2 overlapping closures",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "result": {
+          "refused": "ambiguous-closure-overlap",
+          "subjects": [
+            "K1",
+            "K2"
+          ],
+          "area": 24
+        },
+        "handOracle_m2": 24
+      }
+    },
+    {
+      "id": "O1.3 un-marked lightwell hole is silently capped by per-area fallback (4 m²)",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "fallback": {
+          "A": 48,
+          "B": 4
+        },
+        "handOracle_m2": 4
+      }
+    },
+    {
+      "id": "O1.3b room-switch leaves the hole open and reports it",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "result": {
+          "rooms": [
+            {
+              "room": "A",
+              "fallback": 48,
+              "openAbove": 0
+            },
+            {
+              "room": "B",
+              "fallback": 0,
+              "openAbove": 4
+            }
+          ],
+          "roofShort": [
+            {
+              "roof": "R1",
+              "uncoveredEnclosure": 0
+            }
+          ],
+          "ids": [
+            "C1",
+            "K1",
+            "M1",
+            "N1",
+            "R1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "O1.3c per-area with explicit intentional gap leaves hole open",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "fallback": {
+          "A": 48,
+          "B": 0
+        }
+      }
+    },
+    {
+      "id": "O1.4 one-shot: roof short 4 m² + B open-above 8 m² as warnings; nothing moved",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "result": {
+          "rooms": [
+            {
+              "room": "A",
+              "fallback": 48,
+              "openAbove": 0
+            },
+            {
+              "room": "B",
+              "fallback": 0,
+              "openAbove": 8
+            }
+          ],
+          "roofShort": [
+            {
+              "roof": "R1",
+              "uncoveredEnclosure": 4
+            }
+          ],
+          "ids": [
+            "C1",
+            "K1",
+            "M1",
+            "N1",
+            "R1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "O1.4b per-area mixes authored K1 (3.0 m) and an 8 m² generated strip in one Room",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "fallback": {
+          "A": 48,
+          "B": 8
+        }
+      }
+    },
+    {
+      "id": "O1.5 following covers the grown Room",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {}
+    },
+    {
+      "id": "O1.6 Room-keyed following after split + B removal drops the born Room (20 m² unroofed)",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "uncovered": 20,
+        "handOracle_m2": 20,
+        "note": "needs an explicit membership/correspondence policy for births"
+      }
+    },
+    {
+      "id": "O1.7 no Rooms at all: every overhead still evaluates",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "result": {
+          "rooms": [],
+          "roofShort": [
+            {
+              "roof": "R1",
+              "uncoveredEnclosure": 0
+            }
+          ],
+          "ids": [
+            "C1",
+            "K1",
+            "M1",
+            "N1",
+            "R1"
+          ]
+        }
+      }
+    }
+  ]
+}

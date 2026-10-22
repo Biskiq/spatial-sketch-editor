@@ -5,6 +5,31 @@
 implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
+**Implementation held, 2026-10-22:** the [owner hold](../../../README.md#production-implementation-hold)
+overrides launch/resume under the earlier authorization. PR #173 must reconcile this plan with
+the selected convergence decisions; explicit owner release is required before implementation.
+The historical authorization and registered `approved` state are preserved. The clarifications
+below are core-destination ratified 2026-10-22; exact formats still need first-consumer review,
+and implementation remains held.
+
+**Convergence clarifications accepted 2026-10-22 (destination; implementation held).**
+- Capture stores a qualified F.1 subject reference; no Room or clone is invented to host it.
+- Presentation text is a closed first-consumer content kind, with exact version/capability and
+  older-reader behavior declared before implementation. Do not pre-label the format change additive
+  or introduce part/annotation fields into the current codec implicitly.
+- Preview can enter a Presentation with zero Guides and zero Stops, then exit through the same
+  Camera return ticket. The Guide path remains fully in scope. Presentation entry uses the one
+  lowering/interpreter and an explicitly versioned/negotiated extension if required.
+- Preview loads lazily and preserves the public/Preview isolation guarantees. Draft its exact
+  controls within PLATE; review and revise after browser observation instead of importing prototype
+  chrome. Ordinary text, holds, continuation, both Experiences and dense fixtures remain in scope.
+- H0's shared acceptance/build-boundary correction merges before new implementation. Existing
+  accepted gate identities remain unchanged. Record this slice's matching-result/capture/Preview
+  performance evidence before slice acceptance, with phase integration rechecks separately.
+
+These statements complete the accepted P1 optional-Guide direction; they do not add rich controls,
+part annotations, vertical architecture or a second Camera authority.
+
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1
 REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
@@ -54,17 +79,18 @@ that can produce a candidate has a truthful refusal path.
 choice grammar, conditional branching), advanced path/anchor authoring and Camera path editing tools,
 a second Camera controller or a second navigation graph, a second Experience timeline or sequence
 editor, general animation orchestration, media authoring/playback, publication or prepared readers,
-and any change to Layout/Scene ownership. The richer interaction grammar is the
-[PR #154 prototype's](../../../../../prototypes/README.md) exploration; this slice neither invents it nor
-imports it.
+and any change to Layout/Scene ownership. The accepted P1 finding and
+[retained prototype evidence](../../../../../prototypes/README.md) motivate later capability
+consumers; this slice does not import their implementations or shell composition.
 
 ## Sequence
 
 1. **Experience unit surface.** Reconcile the accepted F2 Experience unit and F1 resolution with what
    capture needs: Experience create/select, Presentation and Stop identity, Guide order as one list of
-   stable Stop IDs, holds/continuation. Where the accepted unit needs an additive, compatible
+   stable Stop IDs, holds/continuation. Where the accepted unit needs an
    extension for the authored Cut/Travel selector or presentation text, propose it as an **AM-9
-   amendment draft** in the phase artifacts; do not change a ratified shape unilaterally. An
+   amendment draft** in the phase artifacts; declare compatibility and older-reader behavior rather
+   than assuming it. Do not change a ratified shape unilaterally. An
    incompatible change is a new gate major and a re-declared consumer, which stops and reports.
 2. **Capture and binding.** View capture through the Camera unit + `camera-core` evaluation; one typed
    F4 intent carrying the new View/Presentation/Stop IDs, captured frame and precondition; one
@@ -72,7 +98,8 @@ imports it.
 3. **Guide and editorial fields.** Order by stable identity, holds/continuation resolution by
    occurrence, and one order writer.
 4. **Preview.** Isolated session over the shared interpreter, with entry/exit through the Camera
-   return token, and no editor machinery in the preview chunk.
+   return token, no editor machinery in the lazy preview chunk, and entry for a standalone
+   Presentation with no Guide or Stop as well as the full Guide path.
 5. **Save/reload.** Unit conditional Save with receipts and conflict preservation; strict admission for
    pre-epoch or unknown-version sources.
 6. **Surface review.** Real-route browser review in both readings, narrow viewport and reduced motion,
@@ -96,8 +123,11 @@ declared integration route, recorded in
 [its acceptance](../t3.p02.s02-integrated-final-gate/acceptance.md). Focused iteration never
 substitutes for that gate, and every implementation-PR merge keeps the complete repository gate,
 including heavy correctness and `check:api`/`test:api` with zero skips for the Save path.
+Before S01 acceptance, record capture/bind result completion, first/repeated Preview entry and
+return, delivered Preview bytes and repeated enter/exit memory behavior against
+[the ratified performance reference](../../../../reference/components/performance.md). The phase final gate rechecks the integrated result; it does not defer a hard miss.
 
-## Shared-file ownership (batch D)
+## Shared-file ownership (batch D provenance; convergence review)
 
 | Area | Writer in batch D |
 | --- | --- |
@@ -109,7 +139,10 @@ including heavy correctness and `check:api`/`test:api` with zero skips for the S
 | Boundary tests and lane lists | additive assertions only; no existing assertion is weakened |
 | Gate register, phase registers, batons | each slice edits only its own rows and its own track's baton |
 
-A file outside the slice's row is read-only. A needed host change is a stop-and-report to T1, not an
+T1.P01.S06 has since shipped and closed. Its row records historical batch-D ownership; new
+Stage/shell changes are coordinated with the T1 Stage owner through
+[the convergence merge protocol](../../../cross-track-execution.md#convergence-batch-and-next-planning-wave).
+No closed-phase permission is reused. A file outside the slice's row is read-only. A needed host change is a stop-and-report to T1, not an
 edit.
 
 ## Readiness declaration

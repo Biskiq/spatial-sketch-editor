@@ -101,7 +101,10 @@ establish identity across revisions or re-exports.
 
 **Current implementation:** the F2 Stage uses unit-qualified F1 resolution for selection and
 operations. Resource IDs and locks retain exact revision/pin identity. Publication reads remain
-unavailable under AM-9 until T4's prepared reader.
+unavailable under AM-9 until T4's prepared reader. Unit resolvers resolve a placed Scene entity but
+refuse a non-null `componentId`; no component provider is landed. Landed Layout planners allocate
+Wall, Junction and Layout-object IDs by current occupancy, so a delete or Undo followed by a new
+create can re-mint an earlier ID.
 
 **Extension point:** reference kinds, each declaring target scope, validation
 and resolution/repair semantics.
@@ -218,10 +221,14 @@ domain-owned composition operators.
   supported combination. The execution graph stays an advanced diagnostic
   surface, not the default authoring UI.
 
-**Current behavior:** no general channel system is landed. Current mechanisms
-are domain-internal (scene transforms/materials, Camera motion evaluation); the
-former editor-side layout representation was removed by #115 and is a T1 rebuild.
-They are replaceable mechanisms under these shapes.
+**Current behavior:** `inspection-v1` (AM-3) is a landed, family-generic negotiation.
+Any registered channel family is admitted through the channel host. Addresses are instance- and
+component-qualified, exclusive conflicts reject, and contributions are fenced by run epoch and
+expire on a source or resource revision. The landed families are the Layout ordinary Plan family
+and Camera session inspection; no Scene object, material, clip or component family is admitted.
+Negotiation validates an address against its owner reference only and does not check that a
+`componentId` exists. Other mechanisms (scene transforms/materials, Camera motion evaluation) stay
+domain-internal and replaceable under these shapes.
 
 **Extension point:** channel families and operators, each declaring semantics,
 validation, conflict/arbitration rules and conformance.
@@ -284,6 +291,12 @@ bounded chronological history across Layout and Scene; Undo/Redo mint fresh revi
 expected revision and durable saved-base CAS remain separate preconditions. Head Save captures
 exact source/revision/operation identity, preserves conflicts and ambiguous retries, and offers
 captured F2 sign-in recovery explicitly. See [persistence](./components/persistence.md).
+The Stage host admits compound installs through `unit-acceptance-v1`. Landed Layout and Scene
+planners declare single-domain scope; the landed compound planner is the Experience/Camera
+Presentation-and-Stop create. Changed units are checked against the adapter-wide
+compound flag, not against a planner's own declared scope, so a planner declared single-domain is
+not yet held to that scope. History reinstalls accepted states, so Undo restores a many-to-one
+migration exactly.
 
 ## Session state and declarative logic
 
@@ -314,8 +327,13 @@ are part of this foundation.
 - Syntax, UI and the initial operator set are planning choices. Scripts remain
   the separately governed extension-module exception.
 
-**Current behavior:** no typed session declarations, reducer or expression
-evaluator exist. The earlier blanket rejection of variables/conditions is
+**Current behavior:** the AM-6 shared interpreter is landed (T3.P01). It has typed
+boolean/choice declarations with initial/reset values, a deterministic reducer over explicit
+events, bounded literal/state-read/equality/conjunction guards, and `runId`/`runEpoch` rejection of
+stale events. A same-run reset rewinds the current run without a new epoch, so a completion issued
+before the reset is accepted afterwards; no landed asynchronous effect family exposes this. The event
+set has no Presentation-entry event, and `navigate` requires a Stop, so a Stop-free Presentation
+lowers but cannot be shown. The earlier blanket rejection of variables/conditions is
 superseded (see [`north-star.md`](./north-star.md) §Composition, behavior, and
 direction model).
 
@@ -796,3 +814,43 @@ Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelo
 - Motion/continuation parity, session/handoff independence and accessibility parity.
 - One evaluation authority and one order writer.
 - No retired-scope caller, and no editor machinery in public chunks.
+
+## Product convergence destination
+
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). These obligations
+prepare the next consumers; landed codecs, admitted versions, capabilities and behavior above
+remain current. [Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+
+- **Non-reused identity (F.1).** Every addressable subject, occurrence, component, resource and
+  location has stable identity distinct from its label. An allocated identity is never re-minted
+  for a different subject within a project's lineage, across Undo branches, reloads and identical
+  recreation. Undo may restore the same subject. Equal content does not establish continuity.
+- **Owner-published correspondence (F.1).** Affected identities or addressed intervals migrate only
+  through their owner's published correspondence. Unchanged surviving identities resolve normally;
+  unrelated edits require no identity maps. Absent required correspondence, retain the original
+  reference for repair without guessed retargeting. Each domain keeps its admitted unresolved
+  representation: typed-resource AM-2 records and retained Experience IDs with derived diagnostics
+  are both valid. A new Scene attachment representation needs a versioned consumer extension.
+  Evaluation status is recomputed, never written back as an automatic repair.
+- **Component validity (F.3).** A component-qualified family declares an owner validator resolving
+  the component through its provider at the contribution's revision. Negotiation alone cannot
+  admit a nonexistent component.
+- **Captured allocation and enforced scope (F.4).** Allocate identities and capture external
+  inputs before evaluation, as explicit intent inputs. No accepted operation falls back to current
+  occupancy. Acceptance compares actual changed units with the individual planner's declared
+  domain/compound scope. A cross-domain write requires its registered joint planner, not merely
+  an adapter-wide compound flag. Failed validation preserves source, revision and history.
+- **Removal policies (F.4).** Acceptance accounts for affected references through their domains'
+  declared policies: transport, detach, delete or an admitted repairable reference with an explicit
+  outcome. Existing retained IDs and derived diagnostics need no invented wrapper or read-time
+  write. A consequence that changes another domain's authored data is one joint acceptance.
+- **Reset fences (session execution).** Reset or re-entry that can outlive asynchronous work starts
+  a new run epoch. Earlier completions, cleanup and contributions cannot apply after it. This
+  changes existing AM-6 instruction semantics and needs a versioned interpreter/profile consumer.
+
+**First-consumer compatibility.** Component/source/derivative resource data, annotation records,
+Presentation entry, datum-qualified capture readings and Scene attachments each need their own
+version/capability and older-reader behavior decision. None is pre-labelled additive. Preserve
+accepted provider identities and history; a new incompatible interface receives its own version
+and normal gate registration/conformance. Ratified shapes never manufacture implemented readiness.

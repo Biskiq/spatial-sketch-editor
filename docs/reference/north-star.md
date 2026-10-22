@@ -15,13 +15,22 @@ target capability below is presented as shipped. Open mechanism decisions (encod
 kernel implementation, level mechanism, channel operators) are named as open, not
 invented here.
 
-**Current shell (post-#115 and T1.P01.S02):** PR #115 removed the earlier editable
-`Spatial` workspace (`Scene | Camera` × `Plan | 3D`). T1.P01.S02 restores a read-only
-Stage at `/project/:id/spatial`, with source inspection, selection and an Index; it writes
-nothing back. The product still has no Layout/Scene editing, history, gizmo, Camera
-authoring, preview takeover, publish surface or import/export. The surviving product
-capability is sign-in, the project hub, cloud Save/Load, the API and the cold public visitor
-runtime. `Experience`, `Assets`
+**Current shell (after T1.P01, T2.P01 and T3.P01):** PR #115 removed the earlier editable
+`Spatial` workspace (`Scene | Camera` × `Plan | 3D`). The rebuilt Stage at
+`/project/:id/spatial` offers an explicit starter gallery or a genuinely empty start, Plan/3D
+inspection and selection, a native Layout plinth, dimension edits of existing Walls and
+Openings, and straight-Wall pose
+([T1.P01](../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary)).
+It also places upright native and verified catalogue objects on compiled floor support and
+moves, yaws, resizes, duplicates and deletes them
+([T2.P01](../roadmap/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
+One local accepted history with Undo/Redo, unit F4 acceptance and conditional cloud Save runs
+over the Camera/Experience source cutover and its shared execution interpreter
+([T3.P01](../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
+The product still has no Wall drawing or topology editing, no model import, no Camera or
+Experience authoring UI, no Preview takeover and no publish surface. Publication reads stay
+unavailable under AM-9 until T4's prepared reader. Sign-in, the project hub and the API remain.
+`Experience`, `Assets`
 and `Publish` are the project-level concerns from the 2026-08-31 shell ratification —
 **Experience authoring is destination, not shipped**, and Assets/Publish retain only
 partial backend implementations (P20/P22) with no product authoring UI. Composition,
@@ -1093,3 +1102,39 @@ canonical visitor runtime executes the prepared release
 different authoring lenses.** Domain document count and storage layout do not
 define the product; semantic authorities do. Human and agent clients operate the
 same inspectable capabilities, and the destination is never presented as shipped.
+
+## Product convergence destination
+
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). The accepted P1–P3
+creative findings motivate this direction; they do not adopt prototype encodings or chrome.
+[Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+
+**Draw, arrange, explain, revise.** A creator can build architecture, compose their own objects,
+explain an object or an admitted part, and revise that work without losing identity or unrelated
+intent. A meaningful Presentation needs no Room, Guide or Stop. An explanation is reusable
+standalone, among other content in a Room/exhibition, and within a Guide, without copying Scene
+truth. One Presentation over one placed instance is a bounded first-consumer choice; definition
+reuse and multiple Presentations remain open growth paths.
+
+**Expressive architecture.** Named datums live in explicit structure-local frames; conventional
+storeys are an optional workflow. Walls have one base and one top definition; floor steps belong
+to slabs. Roofs, canopies, ceilings, slabs and voids are independent Layout elements, usable without
+Rooms. Native forms grow family by family in the canonical compiler, with honest qualification
+and supported imports. The first single-datum Wall loop does not cap that ambition.
+
+**Intelligent, capable interaction.** Gestures expose the intended result, scope and repair before
+acceptance, with precision and keyboard equivalents. Independent placement and deliberate
+following are distinct authored choices. An observed part, clip or variant is offered as a
+capability only after its owner admits and validates it. Experience owns explanations and actions;
+Camera remains the one viewing authority. Source and resource revisions preserve correspondence
+or explain an unresolved reference without silently guessing a replacement.
+
+**Performance and design development.** Editor and viewer usability is judged in a browser on a
+regular laptop through [the proposed performance contract](./components/performance.md).
+Resolve demonstrated material costs inside the consuming slice, preserving architectural
+expressiveness. Copyleft aligns with the product direction; established libraries are welcome
+when justified by correctness, capability and performance. Shared shell rules remain PLATE-owned.
+Precise integration of new prototype capabilities develops in each consuming slice through a
+reviewable draft, build, browser observation and revision; unfinished feature layout does not
+block unrelated capability planning.

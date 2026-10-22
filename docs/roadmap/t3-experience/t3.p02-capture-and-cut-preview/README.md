@@ -9,6 +9,12 @@ implementation as batch D (D3, [record](../../../reference/decisions/batch-d-aut
 [Camera contract](../../../reference/components/camera-tour.md), [PLATE Experience
 expression](../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 
+**Implementation held by owner direction, 2026-10-22.** The
+[production hold](../../README.md#production-implementation-hold) includes S01 despite its earlier
+authorization. PR #173 reconciles the existing scope against the selected architectural decisions
+before recommending a batch. Registered states and historical authorizations stay unchanged;
+starting/resuming needs explicit owner release. This note does not re-scope either slice.
+
 This phase is registered by the owner decision of 2026-10-20, after `T3.P01` closed with
 `T3.camera-experience-cutover@1` `accepted` at `06a8aac8` and merged as `9a457f6b` (PR #158). The
 2026-10-16 [proposal](#registration-basis) is its starting scope, reconciled against the accepted F2
@@ -34,6 +40,16 @@ The proposal's candidate scope is preserved; what changed is the substrate. Capt
 Presentations into F2 units, Preview executes the one shared Experience interpreter built in
 `T3.P01.S06`/`S04`, and Save uses `conditional-save-units-v1`. No slice here consumes a retired
 current-source adapter, and none may re-introduce one.
+
+## Convergence review and hold
+
+PR #173 records owner-accepted S01 destination clarifications: qualified subject references, explicitly
+versioned text/entry formats, a Guide-free Presentation Preview, lazy isolated delivery and
+performance evidence before consuming-slice acceptance. It preserves the complete approved
+capture/Guide/history/Save scope and S02's exhaustive final gate. H0's shared correction precedes
+new implementation; the [canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave)
+owns current sequencing. Exact feature controls develop through a PLATE-conforming draft,
+review, build and browser revision. No historical authorization releases the production hold.
 
 ## Bounded outcome
 
@@ -129,7 +145,7 @@ stay green and are not re-owned here. This phase adds:
   first Cut Guide), advanced path/anchor tools, a second Camera controller, a second Experience
   timeline, general animation orchestration, media authoring, and publication. A later T3 phase owns
   advanced Camera/path tools; they are never hidden inside this first surface.
-- **Prototype boundary.** The [PR #154 P1 Interactive Presentation Studio prototype](../../../../prototypes/README.md)
+- **Prototype boundary.** The [retained P1 prototype evidence](../../../../prototypes/README.md)
   owns the exploration of the richer interaction grammar. This phase neither commissions, schedules
   nor waits on that program, and it never promotes a prototype mechanism into a production contract.
 

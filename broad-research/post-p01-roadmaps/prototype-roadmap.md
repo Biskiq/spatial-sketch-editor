@@ -9,6 +9,13 @@ The [coordination record](./README.md) owns capability dispositions, research tr
 routes. This document defines the creative questions and the evidence needed to judge them.
 The [engineering roadmap](./engineering-authorization-roadmap.md) keeps justified foundations moving.
 
+**Later owner verdict, 2026-10-21:** P1's Guide-free Presentation finding, P2 Smart Wall's intelligent
+manipulation/revision and P3 Vellum's expressive sketching are accepted; P4 is deferred. This file
+preserves the commissioning questions, not a demand to repeat the prototypes or evidence that every
+listed feature was accepted. The [convergence proposal](../../docs/roadmap/product-convergence-2026-10-21.md)
+and the coordination record now route the next work. In particular, the original early-P4 sequencing
+below is inactive while P4 remains deferred.
+
 The proposition to test is broader than a museum editor: a creator should be able to shape a spatial
 world, explain something within it, invite meaningful interaction, and revise the result without
 rebuilding it. Imported objects, imported architecture and native construction are equally legitimate
@@ -201,6 +208,9 @@ it is not a second architectural reconstruction or Camera evaluator. Full P3 dep
 prerequisite for useful near-term World/Experience work.
 
 ### P4 — Agent Authoring Harness
+
+**Deferred by the owner, 2026-10-21.** The original proof brief below is retained for future use;
+it is not commissioned or a prerequisite for convergence. Human/agent parity remains an invariant.
 
 **Proof question.** Can a user's chosen supported LLM operate Biskiq as a controlled creative engine,
 leaving ordinary human-editable state? A chat interface or conversational animation proves little.

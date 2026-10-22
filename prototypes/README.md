@@ -47,13 +47,15 @@ path such as `prototypes/spatial-authoring/README.md` resolves from the reposito
 root and is verified like `docs/` and `apps/` paths. Prototypes are outside
 production authority; their documentation is still a route a reader follows.
 
-| Reference | Role after #114 | Entry |
+| Reference | Role | Entry |
 | --- | --- | --- |
+| **Smart Wall (P2)** | Accepted intuitive spatial manipulation and revision: reshape a wall while artwork arrangement and lighting respond | [p2-smart-wall](./p2-smart-wall/README.md) |
+| **Vellum (P3)** | Accepted expressive architectural sketching and revision; Make/Tell/Visit also demonstrates a visitor walk | [p3-vellum](./p3-vellum/README.md) |
 | **Conservatory** | Accepted unified UX, Experience authoring and shared visual shell; interactive states/journeys are the primary Experience UX acceptance language | [experience-ux-alternative](./experience-ux-alternative/README.md) |
 | **World Paper design** | Accepted 2D authoring-depth and precision contract: tools, drafting, dimensions, discovery and advanced procedures; shared shell reconciled with Conservatory | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
 | **V2 Spatial Authoring** | World Spatial Interaction Reference: Plan ↔ 3D continuity, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look/return and World journeys A–F/QA. Experience V2 is historical functional/regression evidence | [spatial-authoring](./spatial-authoring/README.md) · [#114 branch-diff disposition](./spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) |
 | **Object Composition** | Supporting unratified inspection, assembly, provenance, reach and repair research; no product/model/shell authority | [object-composition-prototype](./object-composition-prototype/README.md) |
-| **Product foundation** | Actual implemented kernels and runtime: the Layout/Scene/Camera contracts, the canonical compiler, the generic renderer and the cold visitor runtime. #115 removed the authoring shell, placement and transform editing, Camera authoring and the publish surfaces; a capability is reused only where a ratified contract already covers it, never because a prototype resembles it | [architecture](../docs/reference/architecture.md) · [shell destination](../docs/reference/design-system/editor-shell-and-visual-system.md) |
+| **Product foundation** | Current production implementation and its contracts; the linked references distinguish landed capabilities from the destination. Prototype resemblance alone never authorizes reuse | [architecture](../docs/reference/architecture.md) · [shell destination](../docs/reference/design-system/editor-shell-and-visual-system.md) |
 
 Other retained evidence stays in its existing directories:
 

@@ -42,14 +42,35 @@ reconciliation, precision) still proven and the visitor/public boundary still gr
 
 ## Current vs destination contracts
 
-| Concern | Current (post-#115 foundation) | Destination |
+| Concern | Current (landed tree) | Destination |
 | --- | --- | --- |
-| Layout document | wall-first `formatVersion: 5`, one floor datum, authored `role: 'boundary' \| 'partition'` | Wall is the authored primitive and its spatial role is derived; levels and structures are first-class ([`architecture.md`](../../reference/architecture.md) §Ownership) |
-| Plan/3D presentation | **removed** with the editor shell; the Plan grammar returns as a T1 capability | Layout-owned, runtime-safe representation over canonical compiled geometry, parameterized by F.3 channels |
+| Layout document | F2 Layout unit, wall-first `formatVersion: 5`, one floor datum, authored `role: 'boundary' \| 'partition'` | Wall is the authored primitive and its spatial role is derived; levels and structures are first-class ([`architecture.md`](../../reference/architecture.md) §Ownership) |
+| Plan/3D presentation | shared Stage, inspection/selection and Layout-owned Plan representation shipped in T1.P01 | extend the runtime-safe representation over canonical compiled geometry through F.3 channels |
+| Layout authoring | native plinth, Wall/Opening precision and existing straight-Wall length/angle/move shipped; shared F4 Undo/Redo and conditional Save | bounded native Wall creation and its role/schema cutover, followed by later architectural capabilities |
 | Compiler | one canonical compiler in `@portfolio/layout-core` | unchanged ownership; representation consumes its output and never reconstructs topology |
 
-Landed contracts keep describing current behaviour until their explicit cutover; nothing in the
-destination column is shipped.
+The [closed P01 outcome](./t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary) and
+[F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)
+describe this landed tree; production epoch activation remains a separate owner-controlled step.
+Future schema/authoring changes remain proposals until their explicit cutover.
+
+## Proposed continuation
+
+The [convergence batch and next planning wave](../cross-track-execution.md#convergence-batch-and-next-planning-wave)
+and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-engineering-batch)
+propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
+baseline, then C1 native Walls alongside C2 own-model import and the held T3 Capture/Preview scope.
+T1 can plan C1 while H0 is planned: C1 keeps one datum, captures non-reusing IDs, resolves the Wall-role
+cutover and carries its compile/drag/commit/Undo performance proof. It registers no new phase here.
+
+After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
+T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component
+table, resolver and admission operations. T3 annotations follow those admitted parts. The vertical foundation cutover follows C1; a qualified overhead family follows that
+cutover and its tolerance/kernel evidence. These are proposed dependencies, not new F gates.
+Feature-specific shell integration develops in its consuming slice through planning, draft, review,
+build and revision under PLATE's ratified shared invariants; a complete design for every feature is
+not a prerequisite to first-wave planning. All implementation remains under the
+[owner hold](../README.md#production-implementation-hold).
 
 ## Evidence roles
 
@@ -102,10 +123,10 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
   and [`apps/editor/src/lib/render/wall-geometry-adapter.ts`](../../../apps/editor/src/lib/render/wall-geometry-adapter.ts)
   — junction-aware mesh built from compiled geometry, adapter-owned buffers/materials/lifetime.
 - `apps/editor/src/lib/authoring/layout/` — hit resolution against compiled query records with a
-  locked priority, and exact-value parsing/validation; the later owner is the T1
-  viewport/precision slice.
+  locked priority, and exact-value parsing/validation, consumed by the landed T1 Stage/precision
+  adapters.
 - `apps/editor/src/lib/authoring/a11y/` — the keyboard roving-focus primitive; the later owner is
-  the T1 shell.
+  the T1 shell for further accessibility depth.
 - Architecture gates already enforcing this track's boundaries:
   `tests/lib/layout/layout-geometry-boundary.test.ts`,
   `tests/lib/museum/layout/wall-mesh-shell-boundary.test.ts`,
@@ -123,21 +144,20 @@ scope, and shipped 2026-10-18 (PR #148). **T1.P01.S05** is owner-authorized 2026
 - `layout-core` legacy generation (`layout-compat`, `layout-migration`, `layout-migration-math`)
   was removed by PR #115 with no successor detector; nothing here re-introduces one.
 
-**Capability losses this track owns rebuilding** (implementation-plan §4.4)
+**Capability rebuild and remaining boundary** (implementation-plan §4.4)
 
-Plan and 3D viewing/authoring of a project: the shell, Stage, viewport, Layout authoring,
-placement of architectural reality, and the removal notice at `/project/:id/spatial` standing in
-for it today. Each is a T1 capability, not a regression.
+T1.P01 restored the shell, shared Plan/3D Stage, viewport, bounded Layout editing and native plinth.
+General native Wall creation and the derived-role/schema cutover remain the next proposed boundary;
+levels, structures and overhead forms remain later work.
 
 **Successor obligations carried into T1** (implementation-plan §7.2)
 
-- editor/visitor mesh parity — re-established at the first editor Stage renderer, honouring the
+- editor/visitor mesh parity — preserve the shared Stage renderer's parity, honouring the
   rule that no editor helper enters `MuseumScene` or visitor imports;
-- **M1** Layout semantic mutation call-site proof — the editor mutation runner and its call-site
-  test were removed; core planner tests remain. Re-armed by the first T1 slice that introduces
-  Layout mutation wiring, which supplies the call-site proof;
-- **M5** project-replacement / Navigator guard — dormant likewise, re-armed by the first T1 or T3
-  slice introducing project/session replacement;
+- **M1** Layout semantic mutation call-site proof — retain the proof for the landed Layout
+  adapters and shared F4 acceptance path, alongside core planner tests;
+- **M5** project-replacement / Navigator guard — preserve the landed host's unsaved-work and
+  session-lifetime guards when adding new replacement paths;
 - the Plan-representation invariant — the retained grammar must not own a second camera/world
   transform;
 - **TD-2** non-recurrence — the PLATE number field must not reproduce the numeric-field

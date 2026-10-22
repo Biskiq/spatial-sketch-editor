@@ -1,6 +1,6 @@
 ---
 kind: coordinated product and engineering roadmap proposal
-status: "For owner review. No prototype acceptance, contract amendment, phase registration or production authorization."
+status: "Convergence draft; scope expanded 2026-10-22 to research, contract reconciliation and roadmap/DAG in PR #173. Production implementation held; no new architectural ratification or implementation authorization."
 ---
 
 # Two tracks toward a more capable Biskiq
@@ -13,37 +13,57 @@ composable, interactive, revisable and reusable, through visual and semantic aut
 This is the single coordination record for the
 [engineering roadmap](./engineering-authorization-roadmap.md) and
 [prototype program](./prototype-roadmap.md). The directory's historical “post-P01” name is not a
-requirement to finish all foundations before exploring design. The tracks run concurrently and meet
-at a concrete production consumer.
+requirement to finish all foundations before exploring design. The two concerns meet at a concrete
+production consumer; implementation currently follows the owner hold below.
+
+The owner has now accepted **P1** (meaningful interactive Presentation without a Room, Guide or
+Stop), **P2 Smart Wall** (intuitive intelligent manipulation and revision), and **P3 Vellum**
+(intuitive expressive architectural sketching), and **deferred P4**. These are creative findings,
+not blanket acceptance of each prototype feature or its implementation. The
+[convergence planning proposal](../../docs/roadmap/product-convergence-2026-10-21.md) owns this
+round's proposed synthesis, exact next-batch scopes and owner decision packet. This record keeps
+the single capability disposition ledger and RR question index; neither is a live work register.
+
+**Current commission, 2026-10-22:** follow the [five-step scope](../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence)
+in PR #173: revise scope/briefs → independent research → product/design/architecture and contract
+reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
+The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
+includes previously authorized work. Step 2's research results (2026-10-22) are in the three
+packets indexed in §5; they amend no contract. Step 3's core destination is owner-ratified 2026-10-22
+([record](../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)); step 4 now updates the [canonical batch/DAG](../../docs/roadmap/cross-track-execution.md#convergence-batch-and-next-planning-wave)
+and affected roadmaps. The owning references carry the ratified core destination, with named consumer choices
+still deferred in the ratification manifest. Reconciliation stays in this PR. Merging alone does
+not release implementation.
 
 ## 1. Recommendation and independent assessment
 
-Preserve the prior proposal's strongest distinction: engineering can progress on justified foundations
-while prototypes discover unsettled creative interactions. Replace its copied P01 status/authorization
-schedule and fragmented X1–X18 dependency graph. Neither was a durable program.
+Preserve the distinction between independently justified engineering and unsettled creative choices.
+The owner has temporarily held implementation of both while convergence makes the next work clear.
+Do not revive the copied P01 schedule or fragmented X1–X18 graph as another execution authority.
 
-The revised program has **three creative experiences and one shared-engine proof**:
+The creative program supplied **three accepted findings and one deferred proof**:
 
-- **P1 Interactive Presentation Studio:** turn a capability-bearing imported object into an interactive
-  explanation; design controls, bind supported actions, Preview, revise and reuse it in an exhibition.
-- **P2 Adaptive Spatial Composition:** arrange a curved gallery and substantially revise its supporting
-  geometry without losing authorship; compare intelligent placement and explicit attachment policies.
-- **P3 Vertical Pavilion:** explore expressive elevation, roof/ceiling and representation gestures,
-  judged against the option of importing architecture.
-- **P4 Agent Authoring Harness:** prove that an authoring client can inspect, propose, apply and refine
-  canonical edits. It joins P1/P2 as real operations become available; it is not a fourth simulated UX
-  flagship or a prerequisite for their exploration.
+- **P1 Interactive Presentation:** Guide-free explanation is a meaningful complete outcome. Specific
+  visitor controls, capability bindings and reuse still need a truthful production consumer.
+- **P2 Smart Wall:** carry intuitive manipulation and legible revision into composition. Distinguish
+  solve-once placement, declared following and arrangement before persisting their semantics.
+- **P3 Vellum:** preserve expressive sketching and contextual shape/height instruments. Research
+  vertical references and bounded overhead families without adopting Room-owned architecture.
+- **P4 Agent Authoring Harness:** deferred. Human/agent intent parity remains ratified; no harness
+  work or model connection is scheduled by this convergence round.
 
-This retains the brief's four concerns but changes their dependency structure. P1 is the first
-substantial creative deliverable. P2 and P3 need no prior prototype verdict to explore. P4 starts with
-a useful supported subset and states the remaining interface gaps; it must not claim the full watch
-workflow from a scripted facade. Composition and revision are tested inside each journey, not saved
-for a final integration experiment.
+The provisional next consumer is the ordinary creative spine, with focused research at three seams.
+The convergence plan carries batch hypotheses; the linked commissions carry initial investigation
+and remaining probes. Re-derive the recommendation after the findings and architectural decisions;
+earlier C1–C3 candidates are not a fixed batch. Do not replay accepted creative experiments or turn
+every advanced question into a permanent gate. Production remains held until explicit owner release.
+Composition and revision stay inside each consuming journey, not a final integration afterthought.
 
-Conservatory remains the strong accepted design reference. Requiring every experiment to inherit its
-Card/Stage arrangement would preselect the answer. Explore different surfaces first; synthesize the
-owner-selected ideas into Biskiq afterward. Conversely, “engineering never waits” is too broad:
-authorized foundations continue, but design-dependent formats stop at their actual unresolved boundary.
+Conservatory remains the strong accepted design reference. The prototypes could diverge from its
+Card/Stage arrangement; convergence now reconciles their owner-selected findings with PLATE and
+proposes exact departures where needed. No second full creative contest is required. Conversely,
+"engineering never waits" is too broad: independent justification does not override the owner hold,
+and design-dependent formats still stop at their actual unresolved boundary after implementation resumes.
 
 ## 2. Settled direction and evidence authority
 
@@ -76,13 +96,14 @@ schemas, solver proposals and numerical UX claims are not ratified by reuse here
 
 ## 3. Boundary test and convergence
 
-**Track A — engineering foundations:** continue within existing authorizations and accepted contracts.
-A desirable capability, a proposed milestone criterion or a BUILD disposition is not permission to
-start a new slice.
+**Track A — engineering foundations:** retain the existing accepted evidence, authorizations and
+bounded scope rationale, but keep implementation held. A desirable capability, proposed milestone,
+BUILD disposition or historical authorization cannot release it.
 
-**Track B — creative exploration:** test demanding end-to-end tasks with divergent editing surfaces.
-Only the owner accepts or rejects product UX. Tests establish technical claims; reviewers identify
-risks and recommend decisions. Neither substitutes for that verdict.
+**Track B — creative convergence:** synthesize the accepted findings into World | Experience and
+resolve only the technical/design choices that remain. Only the owner accepts new product UX or
+contract departures. Tests establish technical claims; reviewers identify risks and recommend
+decisions. Neither expands the supplied P1–P3 verdict.
 
 For each proposed engineering increment, ask:
 
@@ -94,9 +115,10 @@ For each proposed engineering increment, ask:
 4. **Boundary:** what useful bounded operation can ship without that commitment, and what exact
    question prevents the remainder?
 
-Build the common useful part when a consumer and authorization exist. Do not build a general mechanism
-merely because several imagined directions might use it. Where accepted evidence already settles the
-question, neither a new prototype nor a research round is compulsory.
+After explicit owner release, build the common useful part where a consumer and authorization exist.
+Do not build a general mechanism merely because several imagined directions might use it. Where
+accepted evidence already settles the question, neither a new prototype nor another research round
+is compulsory; that independence does not release the current hold.
 
 The convergence route is:
 
@@ -125,17 +147,17 @@ capability, not competing status records.
 | Native straight-Wall creation and Openings; flat GLB import; project rename/delete | BUILD candidates under existing K1/K3/K4 rulings | T1 Layout, T2 ingest, T3 persistence/API with T1 shell; normal registration/authorization |
 | Empty-Layout support, image resources/panels, ordinary transforms and material/light editing | BUILD candidates where a concrete consumer and bounded contract suffice | T2, with T1 support query where needed; not automatic additions to K1 |
 | Curved-Wall authoring, Section and Unroll as World readings; Camera path/anchor editing | BUILD candidates from accepted design and canonical kernels | T1/T3; capability extensions and production plans, not a fresh UX contest |
-| Visitor controls, event/target/action binding, supported 3D interaction and capability discovery | PROTOTYPE P1; RESEARCH only for missing UI/content, invocation or asset semantics | T3 with owning domains/resources; RR-3/5/6 when triggered |
-| Present this and reviewable framing proposal | PROTOTYPE P1; ordinary Camera frame/refit remains a bounded foundation candidate | T3 with T2 as needed; ordinary editable View/Presentation output and atomic acceptance |
-| Supported activity invocation, interruption and baseline reset | PROTOTYPE P1 plus execution proof; RESEARCH only for actual contract/evaluator gaps | T3 plus channel owners; RR-3. No mandatory master timeline or history simulator |
-| Surface-aware dragging, contact and deliberate offsets | PROTOTYPE P2 for feel; bounded solve-once placement can proceed independently | T2 consumes owner-provided Layout/Scene surface geometry; precise controls stay available |
-| Declared attachment following, provenance and repair | PROTOTYPE P2; RESEARCH for any persisted relationship/correspondence | T2 attachment, T1 architectural correspondence; RR-4. Best-effort following is preferred UX, not an approved schema |
+| Visitor controls, event/target/action binding, supported 3D interaction and capability discovery | P1 establishes the product outcome; DESIGN/RESEARCH for the selected control grammar and absent UI/content, invocation or asset semantics | T3 with owning domains/resources; combined RR-3/5/6 commission below |
+| Present this and reviewable framing proposal | DESIGN from accepted intelligent-manipulation direction; ordinary Camera frame/refit remains a bounded foundation candidate | T3 with T2 as needed; ordinary editable View/Presentation output and atomic acceptance |
+| Supported activity invocation, interruption and baseline reset | RESEARCH only for actual contract/evaluator gaps in the selected P1 consumer; retain landed lifecycle proof | T3 plus channel owners; RR-3. No mandatory master timeline or history simulator |
+| Surface-aware dragging, contact and deliberate offsets | P2 feel accepted; BUILD candidate for bounded solve-once placement | T2 consumes owner-provided Layout/Scene surface geometry; precise controls stay available |
+| Declared attachment following, provenance and repair | P2 revision intent accepted; RESEARCH for persisted relationship/correspondence | T2 attachment, T1 architectural correspondence; RR-4. Best-effort following is preferred UX, not an approved schema |
 | Light this | PROTOTYPE within P2, also useful in P3 | T2; editable Scene light proposal, not an inverse-lighting platform |
-| Levels, irregular elevations, atriums, mezzanines and skybridges | PROTOTYPE P3 → RESEARCH for the first native consumer | T1; RR-1. No Room-owned volumes or global floor stack assumed |
-| Roofs, ceilings, lightwells and separate interior/exterior overhead treatment | PROTOTYPE P3 → RESEARCH for a selected bounded geometry family | T1 and any explicitly resolved domain owner; RR-2, one compiler |
+| Levels, irregular elevations, atriums, mezzanines and skybridges | P3 sketching accepted; RESEARCH for the first native consumer's datums/frames | T1; RR-1. No Room-owned volumes or global floor stack assumed |
+| Roofs, ceilings, lightwells and separate interior/exterior overhead treatment | P3 expressive sketching accepted; RESEARCH for a selected bounded geometry family | T1; RR-2, one compiler; PR #171 informs library probes, not representation ownership |
 | Inspection/Section/Reveal/Exploded representation captured for visitors | PROTOTYPE P3 with P1 Presentation reuse; RESEARCH only for unsupported representation/execution parameters | T1 representation, Camera view, T3 invocation; RR-3/6 as needed |
-| Imported components, clips, reusable explanations and role binding | PROTOTYPE P1/P4 plus real-file evidence; RESEARCH for durable addressing and reuse | T2/resources with T3 uses; RR-5. Mesh separation or names do not invent capability |
-| Early semantic agent authoring | RESEARCH through the bounded P4 proof, starting early; canonical data and registered operations, no agent-only format | T1 host, T2/T3 domain owners; gap-specific consumer, no general platform prerequisite |
+| Imported components, clips, reusable explanations and role binding | P1 outcome plus real-file evidence; RESEARCH for durable addressing and reuse; P4 remains deferred | T2/resources with T3 uses; RR-5. Mesh separation or names do not invent capability |
+| Semantic agent authoring | DEFER P4 under the 2026-10-21 owner commission; preserve canonical typed-intent parity | T1 host, T2/T3 domain owners; no harness or model-connection work in this round |
 | Accessible controls, spatial labels, contextual text and rich media | Supporting P1/P3 cases; RESEARCH when selected UI/content exceeds admitted formats | T3, Scene/resources where appropriate; RR-6. Accessibility is not optional polish |
 | Guide-free discovery, visitor orientation, optional Guide and multiple readings of one World | Supporting P1/P3; BUILD the contracted semantic access independently | T3; compare spatial/contextual discovery without inventing another editorial order |
 | Advanced conditions, counts, participation, independent performances and local timing | DEFER beyond the simple supported workflow; preserve the richer destination | T3/channel owners; actual conditional or independent-run consumer opens RR-7 or RR-3 |
@@ -147,6 +169,14 @@ capability, not competing status records.
 | Physics staging, puppeteering, general mesh/CSG/SDF editing, universal solvers and custom scripting | Outside the active program | A concrete failed creator task may motivate bounded reconsideration; cannot bypass ratified authority |
 
 ## 5. Focused research triggers
+
+The accepted findings open three consolidated commissions, each with initial independent findings,
+alternatives, falsifiers and executable remaining probes:
+[RR-4 relationships/revision](./convergence-2026-10-21/relationships-and-revision.md),
+[RR-1/2 vertical/overhead architecture](./convergence-2026-10-21/vertical-and-overhead.md), and
+[RR-3/5/6 capability-aware interaction](./convergence-2026-10-21/capability-aware-interaction.md).
+The owner's step-3 review added a [performance and delivery](./convergence-2026-10-21/performance-and-delivery.md)
+packet (CD-10). This index identifies questions; those packets own the research work. RR-7 remains unopened.
 
 These are a question index, not seven mandatory projects or a sequence. Combine questions when one
 consumer needs them; close with existing evidence if it suffices. Each opened inquiry produces a small
@@ -183,12 +213,22 @@ the [gate register](../../docs/roadmap/README.md#gate-register) and
 [bounded replanning](../../docs/operations/README.md#bounded-replanning). No speculative amendment
 catalogue is required before a first consumer exposes a real gap.
 
-The owner decisions remaining here are bounded: accept/revise this program as planning direction;
-authorize a concrete prototype/proof scope; judge its demonstrated UX; and later authorize the named
-production consumer and any necessary contract change. These are different decisions, not compulsory
-repeat approvals for ordinary reversible work within an already authorized scope.
+The owning contract/design amendments and the canonical roadmap/DAG reconciliation are deliverables
+of this PR after research, rather than a separate follow-up PR. Researchers propose exact deltas;
+the lead resolves conflicts and prepares the owning-document diffs. Owner review explicitly accepts
+selected normative changes before merge. Step 1 only updates this scope and the briefs.
+
+The remaining owner decisions are in the convergence packet: judge the proposed common design,
+select batch scopes and first consumers, and decide precise domain/F/PLATE changes where evidence
+requires them. The supplied creative findings do not need a repeat vote. Ratification, authorization
+and explicit release of the production hold remain distinct acts that can share the final review.
 
 ## 7. Evidence and limits
+
+The 2026-10-21 convergence commission supplies the later owner findings at the top of this page;
+the proposal/commissions inspect baseline `78cafc3a`. Earlier review provenance below is retained
+for lineage, not as today's status. The prototype program remains the original brief with its
+P4 section explicitly deferred; its unbuilt hypotheses are not new acceptance requirements.
 
 Review baseline: PR #154 at `f358d389`, compared with and reconciled onto main `a4f15897`.
 These identifiers are provenance, not a live status snapshot. The later AM-9 and batch-C rulings
