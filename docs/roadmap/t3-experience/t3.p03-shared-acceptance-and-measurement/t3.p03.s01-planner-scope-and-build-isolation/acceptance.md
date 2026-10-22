@@ -19,7 +19,11 @@ acceptance, readiness or implementation evidence until that record replaces this
 
 For that review: the implemented change also retargets the two static surface gate scripts (the same
 dead deleted-tree token) and corrects the F.4 current-implementation paragraph, neither of which the
-plan's change list names, so acceptance must disclose both. The Preview-injection and both-build
-mutation proofs are session evidence, not repository tests. The default-timeout `npm test` gate ran
+plan's change list names, so acceptance must disclose both. The plugin-level mutation proofs (an
+authoring module imported by each root, directly and through a leaf, plus runtime-safe controls)
+are repository tests; only the real `vite build` injections and the Preview-closure injection are
+session evidence. Review hardening also refuses, at registration, a compound write set that is
+empty, repeats an entry, names the planner's own domain or a domain the profile does not admit, and
+adds a Layout-only control beside the Scene-only one in the RR-4 regression. The default-timeout `npm test` gate ran
 green at `ffff320d` once host load fell; two earlier runs timed out untouched suites under unrelated
 load average 47, and the per-merge rerun remains as the contract requires.

@@ -582,9 +582,9 @@ explicit.
 **Per-planner scope is current behavior.** `PlannerAdmission` states the planner's `domain` and
 `compound`, plus an optional `writes` list of the extra unit domains a compound planner may change,
 using the same domain identifiers as `domain`; the permitted semantic write set is
-`domain` ∪ `writes`. A compound planner must declare `writes` — an empty list is an explicit
-single-domain write set — or registration refuses it, and a single-domain planner that declares
-`writes` is refused rather than silently ignored. Acceptance derives the changed unit domains from
+`domain` ∪ `writes`. A compound planner must declare at least one `writes` domain, each distinct,
+other than its own `domain` and admitted by the registry's profile, or registration refuses it; a
+single-domain planner that declares `writes` is refused rather than silently ignored. Acceptance derives the changed unit domains from
 the candidate's unit content revisions, not from the intent's targets, so an untargeted operation is
 checked too, and refuses any candidate outside that planner's write set with one typed rejection.
 The adapter-wide compound flag is only the host's grant, never a planner's licence. Resource-unit and

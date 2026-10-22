@@ -567,12 +567,18 @@ describe('F.4 acceptance coordinator — unit scope', () => {
 			expect(coordinator.history().depth).toBe(1);
 		}
 
-		// The control: the same fixture confined to Scene still installs, so the
-		// refusal is the extra domain and not the operation.
+		// The controls: the same fixture confined to Layout, then to Scene, still
+		// installs, so the refusal is the extra domain and not the operation.
+		const layoutOnly = await coordinator.accept(
+			layoutIntent(fixture, before.revision, before.source, 'op-layout-only', [3, 0.5, 0])
+		);
+		expect(layoutOnly.kind).toBe('accepted');
+		const afterLayout = coordinator.current();
 		const sceneOnly = await coordinator.accept(
-			sceneIntent(before.revision, before.source, 'op-scene-only', true)
+			sceneIntent(afterLayout.revision, afterLayout.source, 'op-scene-only', true)
 		);
 		expect(sceneOnly.kind).toBe('accepted');
+		expect(coordinator.history().depth).toBe(3);
 	});
 });
 

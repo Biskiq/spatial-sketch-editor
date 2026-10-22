@@ -1,6 +1,6 @@
 # T3.P03.S01 — Planner scope and build isolation: implementation plan
 
-**Slice:** T3.P03.S01 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E2,
+**Slice:** T3.P03.S01 · **Status:** in-progress — owner-authorized 2026-10-22 as batch E (E2,
 [record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
 hold; implemented on `t3/p03-s01-planner-scope-build-isolation`, awaiting review and acceptance ·
 **Phase:** [T3.P03](../README.md) ·

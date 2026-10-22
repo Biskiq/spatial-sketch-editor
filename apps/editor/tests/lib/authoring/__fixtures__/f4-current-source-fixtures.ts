@@ -579,7 +579,7 @@ export function createOverreachingPlanner(scope: {
 	// A compound planner must declare its write set and a single-domain planner
 	// must not, so the default declaration follows the requested admission. These
 	// fixtures never prepare.
-	const writes = scope.writes ?? (compound ? [] : undefined);
+	const writes = scope.writes ?? (compound ? (['layout'] as const) : undefined);
 	return {
 		id: 'conformance.overreaching',
 		kind: 'conformance-overreaching',
