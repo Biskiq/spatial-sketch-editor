@@ -10,6 +10,11 @@ product or technical decision. The [coordination record](./README.md) owns the s
 disposition ledger and research triggers; the [prototype program](./prototype-roadmap.md) supplies
 creative evidence. Neither replaces a live plan.
 
+**Convergence follow-on, 2026-10-21:** the [next-batch proposal](../../docs/roadmap/product-convergence-2026-10-21.md)
+uses this rationale after the owner accepted the P1–P3 findings and deferred P4. Its scopes supersede
+older scheduling suggestions here; the source/gap map below remains dated evidence, not an activation
+checklist. No P4 harness or model connection is in the next batch.
+
 ## 1. Independent progress, bounded commitments
 
 Continue T1/T2/T3 work whose consumer, contracts and authorization already exist. Core Editor Stability,

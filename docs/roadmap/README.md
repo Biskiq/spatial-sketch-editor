@@ -171,6 +171,13 @@ proposal plus its bounded batch authorization, or a standalone maintenance scope
 execution stays an owner decision, an authorization recorded here covers only the slices it names,
 and nothing in this section is lifecycle or gate readiness.
 
+- **Product convergence (2026-10-21), draft for owner review.** The
+  [planning proposal](./product-convergence-2026-10-21.md) connects the owner's accepted P1–P3
+  creative findings to a common interaction direction, three focused research commissions and
+  bounded native-Wall/import/project-lifecycle batch proposals. P4 remains deferred. It changes
+  no contract, phase/slice registration, gate readiness, milestone criterion or implementation
+  authorization; existing T3.P02.S01 authorization remains separate.
+
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks
   re-derive against; owner-confirmed 2026-10-15. It registers no gate, phase or slice, and its exact

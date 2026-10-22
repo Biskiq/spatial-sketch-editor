@@ -70,11 +70,16 @@ Capabilities and failure modes:
 - **Straight skeleton (CGAL)**: an exact or inexact kernel choice (EPICK is recommended; str8 retries with EPECK on
   failure, using boost::multiprecision `cpp_int`, so no GMP is linked, as the wasm symbols show). It supports
   holes, **positive** multiplicative weights and exterior skeletons, and offset contours come from the skeleton.
-  `extrude_skeleton` gives a closed 2-manifold roof mesh in C++ (the npm wrappers do not expose it). Excluded inputs
+  `extrude_skeleton` gives a closed 2-manifold roof mesh in C++ (the npm wrappers do not expose it). The
+  [official extrusion API](https://doc.cgal.org/latest/Straight_skeleton_2/group__PkgStraightSkeleton2Extrusion.html)
+  warns of possible non-local self-intersections when a maximum height is supplied. Excluded inputs
   are non-simple ones: a vertex touching an edge, touching holes. Near-collinear vertices derail event scheduling;
-  str8 pre-drops vertices within 1e-6 of collinear. **Gables, vaults, stepped sections and per-wing sections are not
-  skeleton outputs.** Gable ends need a post-process or zero-weight edges, which CGAL's positive weights do not
-  admit **[zero-weight handling unverified]**. Curved sections are not planar faces.
+  str8 pre-drops vertices within 1e-6 of collinear. Vaults, arbitrary stepped sections and per-wing profile editing
+  are not supplied by a skeleton alone. **Convergence correction, 2026-10-21:** unlike weighted skeleton
+  constructors, `extrude_skeleton` explicitly permits zero-weight vertical edges, so a categorical exclusion of
+  gables was too broad. Npm-wrapper exposure and an actual gable fixture remain unverified. Curved sections are
+  not planar faces. The [vertical/overhead commission](./post-p01-roadmaps/convergence-2026-10-21/vertical-and-overhead.md)
+  carries the bounded follow-on probes; historical measurements here were not rerun.
 - **Manifold**: a guaranteed-manifold 3D mesh boolean, documented as "guaranteed manifold output without caveats or
   edge cases". Its 2D `CrossSection` **embeds Clipper2**: `Clipper2Lib` symbols appear in `manifold.wasm`. The WASM
   build is serial-only (README), and in the probe a rerun was byte-identical. It is a mesh-domain tool. It neither

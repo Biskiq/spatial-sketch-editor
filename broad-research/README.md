@@ -69,4 +69,8 @@ verbatim report untouched.
 
 ## After P01
 
-- **Coordinated roadmaps:** [`post-p01-roadmaps/`](./post-p01-roadmaps/README.md) — concurrent [engineering foundations](./post-p01-roadmaps/engineering-authorization-roadmap.md) and a [divergent creative program](./post-p01-roadmaps/prototype-roadmap.md): Interactive Presentation Studio, Adaptive Spatial Composition, Vertical Pavilion and an early semantic agent proof. One disposition ledger joins owner direction, Research 6 evidence and production boundaries; live registers retain operational state. For owner review; it registers, authorizes and ratifies nothing.
+- **Coordinated roadmaps:** [`post-p01-roadmaps/`](./post-p01-roadmaps/README.md) — [engineering foundations](./post-p01-roadmaps/engineering-authorization-roadmap.md), the [original creative briefs](./post-p01-roadmaps/prototype-roadmap.md), one capability disposition ledger and focused research triggers. Live registers retain operational state; these proposals register, authorize and ratify nothing.
+- **P1–P3 convergence (2026-10-21):** [draft planning proposal](../docs/roadmap/product-convergence-2026-10-21.md)
+  and three executable research commissions, routed from the coordinated roadmaps above. The owner
+  accepted Guide-free Presentation, Smart Wall manipulation/revision and Vellum sketching; P4 is now
+  deferred. The proposal prepares batch and contract decisions without ratifying or authorizing them.
