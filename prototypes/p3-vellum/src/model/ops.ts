@@ -14,7 +14,7 @@ import { roofWingsState } from './wings';
 import { chooseSpan, type SpanChoice } from './roofSpan';
 import { presetProfile, ProfilePreset, ohSpan, ohUndersideAt, ohHasSurface } from './overheadGeom';
 import type { StrokeFit } from './strokes';
-import { isRoundish, fittedOutline } from './fit';
+import { isRoundish, fittedOutline, reachesEave } from './fit';
 import { mezzanineCandidates, stairCandidates, POST_SIZE, type MezzCandidate, type StairPlan } from './offers';
 
 export interface Decision {
@@ -480,10 +480,10 @@ export function coverOutline(rooms: DRoom[], thick = 0.24, overhang = 0.45): V2[
 function coverRoof(p: Project, d: Derived, rooms: DRoom[], roomIds: string[], preset: ProfilePreset): { oh: Overhead; span: SpanChoice } {
   const round = rooms.length === 1 && isRoundish(rooms[0].poly);
   const base = Math.max(...rooms.map((r) => r.topY));
-  // stop short of taller rooms next door, so their walls rise past the eave
-  const taller = d.rooms.filter((r) => !roomIds.includes(r.id) && r.topY > base + 0.05 && r.floorY < base);
+  // stop short of the rooms next door whose walls reach this eave, so the roof never overhangs across their floor
+  const blocking = d.rooms.filter((r) => !roomIds.includes(r.id) && reachesEave(r, base));
   const overhang = round ? 0.35 : 0.45;
-  const outline = fittedOutline(rooms.map((r) => r.poly), overhang, taller.map((r) => r.poly)) ?? coverOutline(rooms);
+  const outline = fittedOutline(rooms.map((r) => r.poly), overhang, blocking.map((r) => r.poly)) ?? coverOutline(rooms);
   return draftOverhead(p, outline, base, {
     fit: { rooms: rooms.map((r) => r.id), overhang },
     preset: round && preset === 'flat' ? 'flat' : preset, restsOn: roomIds, form: round ? 'revolve' : 'extrude',
