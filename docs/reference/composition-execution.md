@@ -293,10 +293,11 @@ exact source/revision/operation identity, preserves conflicts and ambiguous retr
 captured F2 sign-in recovery explicitly. See [persistence](./components/persistence.md).
 The Stage host admits compound installs through `unit-acceptance-v1`. Landed Layout and Scene
 planners declare single-domain scope; the landed compound planner is the Experience/Camera
-Presentation-and-Stop create. Changed units are checked against the adapter-wide
-compound flag, not against a planner's own declared scope, so a planner declared single-domain is
-not yet held to that scope. History reinstalls accepted states, so Undo restores a many-to-one
-migration exactly.
+Presentation-and-Stop create, which declares Camera as its extra write domain. Acceptance holds a
+candidate's actual changed unit domains to the producing planner's own declared scope — its
+`domain` plus a compound planner's `writes` — so a single-domain planner cannot change a
+neighbouring authority even where the host admits compound installs (AM-4). History reinstalls
+accepted states, so Undo restores a many-to-one migration exactly.
 
 ## Session state and declarative logic
 
@@ -577,6 +578,18 @@ explicit.
 | History | One 100-entry chronological snapshot stack through the same boundary. Undo/Redo validates, installs once with fresh identity, preserves unrelated contents and truncates redo after new edits. No-op, refusal, cancel and stale results add nothing. Replacement starts a new baseline. |
 | `conditional-save-current-v1` | `SaveAcceptedSource@1` captures an immutable locally accepted source/revision/digest, source-kind/version, stable operation ID and a `create-only` or `expected-saved-base {token}` precondition. The server compares the durable saved-base token, runs full source/domain/reference/lock validation and atomically records the captured revision/contents with a new saved-base token. The digest is recomputed server-side; revision identity reused for different contents rejects. Identical retries return the original receipt without another version; changed-payload retries refuse. Acknowledgment marks only the captured contents saved; newer local edits stay dirty. Conflicts preserve local work/history and remote data pending reload or explicit resolution — no automatic merge, no cloud Undo stack. It requires `local-single-domain-v1` and retires with the current-source adapter at T3.P01.S04. |
 | `unit-acceptance-v1` / `conditional-save-units-v1` | Same acceptance and Save semantics over F.2 candidates with full lock validation, admitted resource staging and whole-operation history (provided by T3.P01.S05 and used by the live T3.P01.S04 callers). They require F.2 and the enduring `acceptance-invariants-v1`, never the retiring `local-single-domain-v1`/`conditional-save-current-v1`, so unit acceptance stays eligible after the source transition. |
+
+**Per-planner scope is current behavior.** `PlannerAdmission` states the planner's `domain` and
+`compound`, plus an optional `writes` list of the extra unit domains a compound planner may change,
+using the same domain identifiers as `domain`; the permitted write set is `domain` ∪ `writes`. A
+compound planner must declare `writes` — an empty list is an explicit single-domain write set — or
+registration refuses it, and a non-compound planner writes only its own domain. Acceptance derives
+the changed unit domains from the candidate's unit content revisions, not from the intent's targets,
+so an untargeted operation is checked too, and refuses any candidate outside that planner's write
+set with one typed rejection. The adapter-wide compound flag is only the host's grant, never a
+planner's licence. Resource and lock changes still require both the host's staging grant and the
+planner's `resources` grant. A scope refusal installs nothing: source, revision and history are
+unchanged.
 
 **Current-source content identity.** The single project-model export hashes UTF-8 canonical
 authored-content JSON with `sha256Bytes` (`sha256-<hex>`): strict normalized source, ID-keyed

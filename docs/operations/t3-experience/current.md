@@ -21,12 +21,15 @@ PHASE: T3.P03 Shared acceptance, isolation and measurement (H0; registered 2026-
        T3.P02 First Capture and Cut Preview (registered 2026-10-20; S01 released, gated on H0) →
        ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
        T3.P01 is CLOSED 2026-10-20 (final gate `06a8aac8`, merged `9a457f6b`, PR #158).
-ACTIVE: none yet. T3.P03.S01 and S02 are `approved` and released (batch E, E1/E2). T3.P02.S01 is
-        `approved` with its finalized scope owner-accepted (E5) and released (E7), starting only
-        after T3.P03.S01 is merged on `main`. T3.P02.S02 stays `proposed` and held.
-BATON: Start T3.P03.S01 now through the T3 runbook start step: per-planner scope enforcement and
-       build isolation. It merges first, and its merge is the start gate for T1.P02.S01,
-       T2.P02.S01 and T3.P02.S01. T3.P03.S02 (measurement workflow, final gate) starts after it.
+ACTIVE: T3.P03.S01 `in-progress` on `t3/p03-s01-planner-scope-build-isolation`: per-planner write
+        sets enforced in the F4 unit adapter, the public/Preview predicate retargeted to the live
+        authoring tree, and the Preview closure proof added — awaiting review and acceptance at the
+        declared `architecture-integration` tier. T3.P03.S02 stays `approved` and released (E2);
+        T3.P02.S01 is `approved` with its finalized scope owner-accepted (E5) and released (E7),
+        starting only after T3.P03.S01 is merged on `main`. T3.P02.S02 stays `proposed` and held.
+BATON: Review and accept T3.P03.S01 against its three acceptance rows, close it out, then merge:
+       its merge is the start gate for T1.P02.S01, T2.P02.S01 and T3.P02.S01. T3.P03.S02
+       (measurement workflow, final gate) starts after it.
 NEXT:  T3.P03.S01 → merge → T3.P02.S01 and T3.P03.S02 in parallel. S01 settles the format draft's
        two open points (text bound, entryViewId) at implementation review.
 ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →
