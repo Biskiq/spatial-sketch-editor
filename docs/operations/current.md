@@ -1,6 +1,7 @@
 # Current — baton navigation
 
-**Navigation only.** This file routes current work; it holds no status. Authoritative status lives in
+**Navigation only.** This file routes current work; it holds no status. The program release list is
+[`../roadmap/now.md`](../roadmap/now.md). A baton is one track. Authoritative status lives in
 each phase README (slice child status and order) and the
 [gate register](../roadmap/README.md#gate-register). Never synchronize another track's handoff, and
 never treat stale baton text as a blocker.

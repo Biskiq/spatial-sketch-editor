@@ -3,10 +3,10 @@
 PHASE: T1.P02 Native Wall creation (registered 2026-10-22, batch E) →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md
        T1.P01 closed 2026-10-21; all its registered slices are shipped.
-ACTIVE: none yet. T1.P02.S01 is `approved` and released from the hold (batch E, E7), but it starts
-        only after T3.P03.S01 is merged on `main`; S02–S04 are `proposed` and not authorized.
-NEXT: When T3.P03.S01 reads `shipped` in the T3.P03 slice register on `main`, start T1.P02.S01
-      through the T1 runbook start step from that base. The drawing policy is owner-accepted (E3).
+ACTIVE: none yet. T1.P02.S01 is the released T1 scope. Whether it may start is its condition in
+        ../../roadmap/now.md.
+NEXT: When that condition is met, start T1.P02.S01 through the T1 runbook start step from that base.
+      The drawing policy is owner-accepted (E3).
       Hard performance rows run on the owner's MacBook Air M2, 16 GB (E6 amendment).
 ROUTE: ../../roadmap/t1-spatial-world/README.md#phase-register →
        ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md →
@@ -18,5 +18,5 @@ records the owner ratification; its final-gate stub carries the exact recovery a
 in merged `main` ancestry.
 
 BOUNDARIES: P1 merge commit and preservation ancestry verified. Card-over-Compose remains owned
-by T1 shell composition (T1.P02.S02's Card/instrument arbitration); Layout-plinth dimension editing is not claimed. No T1 TRACK COMPLETE
+by T1 shell composition in the later drawing slice; Layout-plinth dimension editing is not claimed. No T1 TRACK COMPLETE
 event or architecture verdict is recorded.

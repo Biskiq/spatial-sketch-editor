@@ -1,19 +1,13 @@
 # T3.P02 — First Capture and Cut Preview
 
-**Phase:** T3.P02 · **Status:** registered 2026-10-20 — `T3.P02.S01` owner-authorized for
-implementation as batch D (D3, [record](../../../reference/decisions/batch-d-authorization-2026-10-20.md));
-`T3.P02.S02` registered `proposed`, not authorized · **Track:** [T3](../README.md) · **Roadmap:**
+**Phase:** T3.P02 · **Status:** registered 2026-10-20. Released scopes and their conditions are
+the [release list](../../now.md). The [production hold](../../README.md#production-implementation-hold)
+covers every scope that list omits. S02 stays `proposed` · **Track:** [T3](../README.md) · **Roadmap:**
 [gate register](../../README.md#gate-register) · **Runbook:**
 [T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
 [AM-9](../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover),
 [Camera contract](../../../reference/components/camera-tour.md), [PLATE Experience
 expression](../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
-
-**Held 2026-10-22, then released for S01 by batch E.** The
-[production hold](../../README.md#production-implementation-hold) included S01 despite its earlier
-authorization while PR #173 reconciled its scope. Batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7) accepted the
-finalized S01 scope and released S01, starting only after `T3.P03.S01` is merged on `main`. S02 stays
-under the hold. Registered states and historical authorizations stay unchanged.
 
 This phase is registered by the owner decision of 2026-10-20, after `T3.P01` closed with
 `T3.camera-experience-cutover@1` `accepted` at `06a8aac8` and merged as `9a457f6b` (PR #158). The

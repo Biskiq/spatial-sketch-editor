@@ -107,7 +107,9 @@ Rewrite the **owning track's** baton `docs/operations/<track>/current.md` as the
 current-state snapshot: the phase that now holds the work, its active slice, and the next real step;
 never edit another track's baton. **Never assume a next phase** — read the
 track's phase register and the global roadmap, and if no phase is registered, say so and leave the
-baton on the track's next planning decision. The baton stays product-only here.
+baton on the track's next planning decision. The baton stays product-only here. A phase close never
+writes `docs/roadmap/now.md`. Only an owner release does, including pruning a row whose slice has
+shipped.
 
 ### Step 7 — Closed work
 

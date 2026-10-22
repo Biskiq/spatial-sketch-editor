@@ -1063,6 +1063,78 @@ export function skillProblems(skills: { closeout: string; phase: string }): stri
 	return problems;
 }
 
+const RELEASE_SLICE_ID = /^T[1-4]\.P\d+\.S\d+$/;
+const RELEASE_STATUSES = new Set(['approved', 'in-progress', 'shipped']);
+
+/**
+ * The release list is the only permission list. Rows state conditions. A slice note that says
+ * released without a row is a silent release, and a baton may not name a non-shipped slice the
+ * list does not contain. Closeouts do not edit the list; this check does not schedule work.
+ */
+export function releaseListProblems(input: {
+	nowSource: string;
+	slices: Array<{ id: string; status: string; authorization: string }>;
+	batons: Array<{ track: string; source: string }>;
+	runbooks: Array<{ track: string; source: string }>;
+	router: string;
+}): string[] {
+	const problems: string[] = [];
+	const table = tableUnderHeading(input.nowSource, 'Release list');
+	if (table === null) return ['release list: docs/roadmap/now.md has no Release list table'];
+	problems.push(...columnProblems(table, 'docs/roadmap/now.md', ['Scope', 'Condition', 'Plan']));
+	const listed = new Set<string>();
+	for (const row of rowObjects(table, 'docs/roadmap/now.md').rows) {
+		const id = stripDecoration(row['Scope'] ?? '');
+		const condition = stripDecoration(row['Condition'] ?? '').toLowerCase();
+		if (condition === 'now') problems.push(`release list: ${id} evaluates the condition as Now`);
+		if (!RELEASE_SLICE_ID.test(id)) problems.push(`release list: ${id} is not a slice id`);
+		listed.add(id);
+		const slice = input.slices.find((entry) => entry.id === id);
+		if (slice === undefined) {
+			problems.push(`release list: ${id} is not a slice in any phase README`);
+		} else if (!RELEASE_STATUSES.has(slice.status)) {
+			problems.push(
+				`release list: ${id} is ${slice.status}; a listed slice is approved, in-progress or shipped`
+			);
+		}
+	}
+	for (const slice of input.slices) {
+		if (/\breleased\b/i.test(slice.authorization) && !listed.has(slice.id)) {
+			problems.push(`release list: ${slice.id} says released and has no row`);
+		}
+	}
+	const byId = new Map(input.slices.map((slice) => [slice.id, slice]));
+	for (const baton of input.batons) {
+		const ids = baton.source.match(/\bT[1-4]\.P\d+\.S\d+\b/g) ?? [];
+		for (const id of new Set(ids)) {
+			const slice = byId.get(id);
+			if (slice === undefined) {
+				problems.push(`release list: ${baton.track} baton names ${id}, which is not a registered slice`);
+				continue;
+			}
+			if (slice.status !== 'shipped' && !listed.has(id)) {
+				problems.push(`release list: ${baton.track} baton names ${id}, which is not on the release list`);
+			}
+		}
+	}
+	for (const runbook of input.runbooks) {
+		const body = /1 ELIGIBILITY[\s\S]*?(?=\n2 CYCLE)/.exec(runbook.source)?.[0] ?? '';
+		if (!body.includes('now.md')) {
+			problems.push(`release list: the ${runbook.track} eligibility step does not require now.md`);
+		}
+	}
+	const routerTable = tableUnderHeading(input.router, 'Where truth lives');
+	const next =
+		routerTable === null
+			? undefined
+			: rowObjects(routerTable, ROUTER).rows.find((row) => stripDecoration(row['Need'] ?? '') === "What's next?");
+	const target = next === undefined ? null : linkTarget(next['Read'] ?? '');
+	if (target === null || !target.includes('roadmap/now.md')) {
+		problems.push("release list: What's next? must link to roadmap/now.md");
+	}
+	return problems;
+}
+
 // ---------------------------------------------------------------- real-tree model
 
 /**
@@ -2359,6 +2431,82 @@ describe('routing and skill preflights', () => {
 			).join('\n')
 		).toContain('its own ./current.md');
 		expect(batonProblems([{ ...batons[0]!, exists: false }], global).join('\n')).toContain('has no operations/');
+	});
+
+	it('keeps the release list, slice notes, batons and eligibility on the same scopes', () => {
+		const model = readStructure();
+		const slices = model.phases.flatMap((phase) =>
+			phase.slices.map((slice) => ({
+				id: slice.id,
+				status: slice.status,
+				authorization: slice.authorization
+			}))
+		);
+		const batons = TRACK_RUNBOOKS.map((track) => ({
+			track,
+			source: readFile(`docs/operations/${track}/current.md`)
+		}));
+		const runbooks = TRACK_RUNBOOKS.map((track) => ({
+			track,
+			source: readFile(`docs/operations/${track}/README.md`)
+		}));
+		const nowSource = readFile('docs/roadmap/now.md');
+		const live = { nowSource, slices, batons, runbooks, router };
+		expect(releaseListProblems(live)).toEqual([]);
+
+		const withoutRow = nowSource.replace(/^\| `T3\.P03\.S01`.*\n/m, '');
+		expect(releaseListProblems({ ...live, nowSource: withoutRow }).join('\n')).toContain(
+			'T3.P03.S01 says released and has no row'
+		);
+		expect(releaseListProblems({ ...live, nowSource: nowSource.replace('released; no prior merge', 'Now') }).join('\n')).toContain(
+			'evaluates the condition as Now'
+		);
+		expect(releaseListProblems({ ...live, nowSource: nowSource.replaceAll('T3.P03.S01', 'T9.P09.S09') }).join('\n')).toContain(
+			'is not a slice in any phase README'
+		);
+		expect(
+			releaseListProblems({
+				...live,
+				slices: slices.map((slice) => (slice.id === 'T3.P03.S01' ? { ...slice, status: 'proposed' } : slice))
+			}).join('\n')
+		).toContain('is proposed');
+		expect(
+			releaseListProblems({
+				...live,
+				slices: slices.map((slice) => (slice.id === 'T3.P03.S01' ? { ...slice, status: 'shipped' } : slice))
+			})
+		).toEqual([]);
+		expect(
+			releaseListProblems({
+				...live,
+				slices: slices.map((slice) =>
+					slice.id === 'T1.P02.S02' ? { ...slice, authorization: 'released from the hold' } : slice
+				)
+			}).join('\n')
+		).toContain('T1.P02.S02 says released and has no row');
+		expect(
+			releaseListProblems({
+				...live,
+				batons: batons.map((baton) =>
+					baton.track === 't4-release' ? { ...baton, source: `${baton.source}\nT1.P02.S02` } : baton
+				)
+			}).join('\n')
+		).toContain('t4-release baton names T1.P02.S02');
+		expect(
+			releaseListProblems({
+				...live,
+				runbooks: runbooks.map((runbook) => ({
+					...runbook,
+					source: runbook.source.replaceAll('docs/roadmap/now.md', 'the hold')
+				}))
+			}).join('\n')
+		).toContain('eligibility step does not require now.md');
+		expect(
+			releaseListProblems({
+				...live,
+				router: router.replace('[`roadmap/now.md`](./roadmap/now.md)', '[`roadmap/README.md`](./roadmap/README.md)')
+			}).join('\n')
+		).toContain("What's next? must link to roadmap/now.md");
 	});
 
 	it('carries the evidence preflight in both closeout skills', () => {
