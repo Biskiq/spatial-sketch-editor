@@ -57,6 +57,10 @@ verbatim report untouched.
   slabs, ceilings and roofs, lists the owner decisions this would need, and gives
   falsification experiments for P3. Review input for the owner, not a contract, roadmap change
   or ratification.
+- **Geometry library harvest:** [`geometry-library-harvest.md`](./geometry-library-harvest.md)
+  compares P3 Vellum's roof/footprint algorithms with polygon-clipping, Clipper2, straight-skeleton
+  solvers (CGAL and ports) and Manifold, with measured probes on the P3 fixtures, for T1 / RR-2
+  library choices. Evidence, not a dependency decision.
 
 ## Cross-domain synthesis
 
