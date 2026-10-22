@@ -11,6 +11,7 @@ import {
 } from '../model/section';
 import { describeProfile, maxRise, ohRidge, ohSpan, presetProfile, sampleProfile, type ProfilePreset } from '../model/overheadGeom';
 import { opOverhead } from '../model/ops';
+import { roofWingsState } from '../model/wings';
 import { MIN_HEADROOM, sectionContext } from '../model/sectionContext';
 import { fmtM } from '../model/geom2d';
 import { enterShaping, exitShaping, faceSection, toggleSeeThrough } from './shaping';
@@ -62,13 +63,17 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
   const profile = shown.profile;
   const span = ohSpan(shown);
   const baseY = shown.baseY;
+  // a compound roof builds its primary wing at the authored section's own heights (scale 1); the multiply keeps the
+  // sheet honest if a saved or edited roof ever gives the primary a different scale
+  const wingState = roofWingsState(shown);
+  const kH = wingState.kind === 'compound' ? Math.max(wingState.wings[wingState.primary]?.scale ?? 1, 1e-6) : 1;
   const sec = readSection(profile);
   const ctxData = sectionContext(store.shown, derive(store.shown), shown);
 
   // vertical range: the building below the roof, and the roof above it
   const lowLines = ctxData.lines.filter((l) => l.kind === 'floor' || l.kind === 'deck').flatMap((l) => l.pts.map((q) => q[1]));
   const yMinLive = Math.min(0, ...lowLines) - 0.3;
-  const yMaxLive = baseY + Math.max(2, ...profile.map((q) => q.h)) + 1.0;
+  const yMaxLive = baseY + Math.max(2, ...profile.map((q) => q.h * kH)) + 1.0;
   const yMin = frozen.current?.yMin ?? yMinLive;
   const yMax = frozen.current?.yMax ?? yMaxLive;
   const xMin = -0.15 * span, xMax = 1.15 * span;
@@ -89,7 +94,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
   };
 
   const hitAt = (px: number, py: number): Hit => {
-    const du = (u: number, h: number) => Math.hypot(sx(u * span) - px, sy(baseY + h) - py);
+    const du = (u: number, h: number) => Math.hypot(sx(u * span) - px, sy(baseY + h * kH) - py);
     // step bars first, then the slide grip between them, then ordinary joints
     for (const j of sec.joints) {
       if (j.kind !== 'step') continue;
@@ -110,8 +115,8 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
       const A = sec.joints[p.a], B = sec.joints[p.b];
       for (let i = 0; i + 1 < s.length; i++) {
         if (s[i].u < A.u - 1e-9 || s[i + 1].u > B.u + 1e-9) continue;
-        const ax = sx(s[i].u * span), ay = sy(baseY + s[i].h);
-        const bx = sx(s[i + 1].u * span), by = sy(baseY + s[i + 1].h);
+        const ax = sx(s[i].u * span), ay = sy(baseY + s[i].h * kH);
+        const bx = sx(s[i + 1].u * span), by = sy(baseY + s[i + 1].h * kH);
         const vx = bx - ax, vy = by - ay;
         const L2 = vx * vx + vy * vy;
         const t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * vx + (py - ay) * vy) / L2)) : 0;
@@ -222,7 +227,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
       const half = s.filter((q) => q.u <= 0.5 + 1e-9);
       s = [...half, ...half.slice().reverse().map((q) => ({ u: 1 - q.u, h: q.h }))];
     }
-    const top: [number, number][] = s.map((q) => [q.u * span, baseY + q.h]);
+    const top: [number, number][] = s.map((q) => [q.u * span, baseY + q.h * kH]);
     const band: [number, number][] = [...top, ...top.slice().reverse().map(([x, y]) => [x, y - shown.thick] as [number, number])];
     g.beginPath();
     band.forEach(([x, y], i) => (i ? g.lineTo(sx(x), sy(y)) : g.moveTo(sx(x), sy(y))));
@@ -240,7 +245,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
       g.strokeStyle = hot ? BLUE : INK;
       g.lineWidth = hot ? 2 : 1.2;
       if (j.kind === 'step') {
-        const x = sx(j.u * span), y0 = sy(baseY + j.h), y1 = sy(baseY + j.h2);
+        const x = sx(j.u * span), y0 = sy(baseY + j.h * kH), y1 = sy(baseY + j.h2 * kH);
         g.beginPath();
         g.moveTo(x, y0);
         g.lineTo(x, y1);
@@ -253,7 +258,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
         }
       } else {
         g.beginPath();
-        g.rect(sx(j.u * span) - 3.2, sy(baseY + j.h) - 3.2, 6.4, 6.4);
+        g.rect(sx(j.u * span) - 3.2, sy(baseY + j.h * kH) - 3.2, 6.4, 6.4);
         g.fill();
         g.stroke();
       }
@@ -269,8 +274,8 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
         let first = true;
         for (const q of s) {
           if (q.u < A.u - 1e-9 || q.u > B.u + 1e-9) continue;
-          if (first) (g.moveTo(sx(q.u * span), sy(baseY + q.h)), (first = false));
-          else g.lineTo(sx(q.u * span), sy(baseY + q.h));
+          if (first) (g.moveTo(sx(q.u * span), sy(baseY + q.h * kH)), (first = false));
+          else g.lineTo(sx(q.u * span), sy(baseY + q.h * kH));
         }
         g.stroke();
       }
@@ -320,7 +325,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
         const sm = sampleProfile(start);
         const i = Math.max(0, sm.findIndex((q) => q.u >= hit.u) - 1);
         const a = sm[Math.min(i, sm.length - 2)], b = sm[Math.min(i + 1, sm.length - 1)];
-        const dx = (b.u - a.u) * span, dy = b.h - a.h;
+        const dx = (b.u - a.u) * span, dy = (b.h - a.h) * kH;
         const L = Math.hypot(dx, dy) || 1;
         n = [-dy / L, dx / L];
       }
@@ -358,7 +363,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
     if (d.kind === 'draw') {
       const raw = d.raw
         .filter(([x, y]) => x >= -1e-6 && x <= span + 1e-6)
-        .map(([x, y]) => ({ u: Math.max(0, Math.min(1, x / span)), h: Math.max(0, Math.min(maxRise(shown), y - baseY)) }));
+        .map(([x, y]) => ({ u: Math.max(0, Math.min(1, x / span)), h: Math.max(0, Math.min(maxRise(shown), (y - baseY) / kH)) }));
       const width = raw.length ? Math.max(...raw.map((q) => q.u)) - Math.min(...raw.map((q) => q.u)) : 0;
       if (raw.length < 3 || width < 0.05) {
         store.setPreview(null);
@@ -456,14 +461,14 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
             }
             d.moved = true;
             if (d.kind === 'joint') {
-              const r = moveJoint(d.start, d.id, x / span, y - baseY, { ...opts(), free: e.altKey, solo: e.shiftKey });
+              const r = moveJoint(d.start, d.id, x / span, (y - baseY) / kH, { ...opts(), free: e.altKey, solo: e.shiftKey });
               preview(r.profile, `${fmtM(x)} across · ${fmtM(y - baseY)} above the eave`);
             } else if (d.kind === 'step') {
               const j = sec.joints.find((q) => q.id === d.id);
               const firstIsLow = !j || j.h <= j.h2;
               // moveStepEdge names its edges by profile index; the sheet names them by height
               const edge = (d.edge === 'lo') === firstIsLow ? 'lo' : 'hi';
-              const r = moveStepEdge(d.start, d.id, edge, y - baseY, opts());
+              const r = moveStepEdge(d.start, d.id, edge, (y - baseY) / kH, opts());
               preview(r.profile, r.label ?? `step ${fmtM(Math.abs(y - baseY))}`);
             } else if (d.kind === 'stepslide') {
               const j = sec.joints.find((q) => q.id === d.id);
@@ -472,7 +477,7 @@ export function SectionSheet({ oh: committed }: { oh: Overhead }) {
                 preview(r.profile, `step at ${fmtM(x)}`);
               }
             } else {
-              const s = (x - d.grab[0]) * d.n[0] + (y - d.grab[1]) * d.n[1];
+              const s = ((x - d.grab[0]) * d.n[0] + (y - d.grab[1]) * d.n[1]) / kH;
               const r = pullPart(d.start, d.id, s, { ...opts(), free: e.altKey, solo: e.shiftKey, uGrab: d.uGrab });
               preview(r, `${s >= 0 ? 'fuller' : 'pointier'} by ${fmtM(Math.abs(s))}`);
             }
@@ -656,6 +661,11 @@ export function ShapeCard({ oh }: { oh: Overhead }) {
       <div class="facts">
         {describeProfile(shown)} · eave at <span class="num">{fmtM(shown.baseY)}</span> · highest point <span class="num">{fmtM(ohRidge(shown))}</span>
       </div>
+      {roofWingsState(shown).kind === 'compound' && (
+        <div class="note" style={{ marginTop: '-4px' }}>
+          This is the primary wing’s section. Every wing follows this section.
+        </div>
+      )}
       <SectionSheet oh={oh} />
     </>
   );

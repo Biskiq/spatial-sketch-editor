@@ -2,12 +2,13 @@
 // The caller owns the gesture snapshot; this module only checks the settled candidate and returns any profile
 // normalization that must be replayed identically for preview and commit.
 import { ohH, ohHasSurface, ohSpan, nextRidgeDir } from './overheadGeom';
+import { spanCliff } from './roofSpan';
+import { fmtM, pointInPoly } from './geom2d';
 import { cleanSection, readSection } from './section';
 import type { Op } from './ops';
 import { opOverhead, runTxn } from './ops';
 import type { Overhead, ProfilePt, Project } from './types';
 import { continuedWings, roofWingsState } from './wings';
-import { pointInPoly } from './geom2d';
 
 export interface RoofEditQualification {
   profiles: Map<string, ProfilePt[]>;
@@ -184,6 +185,54 @@ function requireCoverage(oh: Overhead, q: [number, number]): boolean {
   // Avoid making a rejected/no-surface compound look like the single-span fallback in the comparison below.
   if (!ohHasSurface(oh)) return false;
   return pointInPoly(q, oh.outline);
+}
+
+/**
+ * One answer for the Settings control that chooses wings or one span. Listed only when the plan has a compound
+ * candidate or the roof already uses one, and never offered as a clean commit when the alternative would produce a
+ * cliff or a roof without a surface.
+ */
+export interface CoverageChoice {
+  shown: boolean;
+  /** the roof's current choice: true when it covers the outline as one span */
+  oneSpan: boolean;
+  available: boolean;
+  op?: Op;
+  reason: string;
+}
+
+export function qualifyCoverage(project: Project, id: string): CoverageChoice {
+  const oh = project.overheads.find((o) => o.id === id);
+  if (!oh || oh.form !== 'extrude') return { shown: false, oneSpan: true, available: false, reason: '' };
+  const oneSpan = oh.oneSpan !== false;
+  const wings = roofWingsState({ ...oh, oneSpan: false });
+  const shown = wings.kind === 'compound' || oneSpan === false;
+  if (!shown) return { shown: false, oneSpan, available: false, reason: '' };
+  if (oneSpan) {
+    // already one span: the alternative is the wings this plan can carry
+    if (wings.kind !== 'compound')
+      return {
+        shown, oneSpan, available: false,
+        reason: wings.kind === 'unsupported' ? wings.reason : 'this plan is one rectangle, so it has no wings to divide',
+      };
+    const raw = opOverhead(id, { oneSpan: false });
+    const next = runTxn(project, raw).after.overheads.find((o) => o.id === id);
+    if (!next || !ohHasSurface(next))
+      return { shown, oneSpan, available: false, reason: 'the wings cannot carry this section' };
+    return { shown, oneSpan, available: true, op: raw, reason: '' };
+  }
+  // already wings: the alternative is one span, and a cliff is not a clean result to commit
+  const cliff = spanCliff({ ...oh, oneSpan: undefined });
+  if (cliff)
+    return {
+      shown, oneSpan, available: false,
+      reason: `as one span it would stop ${fmtM(cliff.h)} up at an inner eave`,
+    };
+  const raw = opOverhead(id, { oneSpan: true });
+  const next = runTxn(project, raw).after.overheads.find((o) => o.id === id);
+  if (!next || !ohHasSurface(next))
+    return { shown, oneSpan, available: false, reason: 'one span would leave this roof without a surface' };
+  return { shown, oneSpan, available: true, op: raw, reason: '' };
 }
 
 export interface RidgeTurn {

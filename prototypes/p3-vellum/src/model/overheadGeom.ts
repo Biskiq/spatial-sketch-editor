@@ -124,7 +124,10 @@ export function ohRidge(oh: Overhead): number {
 
 export function ohSpan(oh: Overhead) {
   const st = roofWingsState(oh);
-  if (st.kind === 'compound') return st.primarySpan;
+  if (st.kind === 'compound') {
+    const wg = st.wings[st.primary] ?? st.wings[0];
+    return Math.min(wg.rect[1] - wg.rect[0], wg.rect[3] - wg.rect[2]);
+  }
   const f = ohFrame(oh);
   return oh.form === 'revolve' ? f.R * 2 : f.wmax - f.wmin;
 }
@@ -149,6 +152,23 @@ export function ohSection(oh: Overhead) {
     const at = (u: number, h: number) => ({ plan: [f.center[0] + f.d[0] * (u - 0.5) * 2 * f.R, f.center[1] + f.d[1] * (u - 0.5) * 2 * f.R] as V2, y: top + h });
     const uh = (q: V2, y: number) => ({ u: clamp((1 - Math.abs(dot([q[0] - f.center[0], q[1] - f.center[1]], f.d)) / Math.max(f.R, 1e-6)) / 2, 0, 0.5), h: y - top });
     return { origin: f.center, tan: f.d, at, uh, revolve: true };
+  }
+  // A compound roof's authored section sits on its primary wing: the line across the real wing, at that wing's
+  // scale, not across the whole outline through its centroid. Callers that read or drag a height see the surface the
+  // primary wing actually built, while the authored profile stays the one value every wing shares.
+  const st = roofWingsState(oh);
+  if (st.kind === 'compound') {
+    const wg = st.wings[st.primary] ?? st.wings[0];
+    const scale = Math.max(wg.scale, 1e-6);
+    const spanW = wg.span === 'w';
+    const s0 = spanW ? wg.rect[0] : wg.rect[2];
+    const s1 = spanW ? wg.rect[1] : wg.rect[3];
+    const rm = spanW ? (wg.rect[2] + wg.rect[3]) / 2 : (wg.rect[0] + wg.rect[1]) / 2;
+    const tan = spanW ? f.d : e;
+    const world = (s: number) => (spanW ? ([f.d[0] * s + e[0] * rm, f.d[1] * s + e[1] * rm] as V2) : ([f.d[0] * rm + e[0] * s, f.d[1] * rm + e[1] * s] as V2));
+    const at = (u: number, h: number) => ({ plan: world(s0 + u * (s1 - s0)), y: top + h * scale });
+    const uh = (q: V2, y: number) => ({ u: clamp((dot(q, tan) - s0) / Math.max(s1 - s0, 1e-6), 0, 1), h: (y - top) / scale });
+    return { origin: at(0, 0).plan, tan, at, uh, revolve: false };
   }
   const k = dot(f.center, e);
   const at = (u: number, h: number) => {

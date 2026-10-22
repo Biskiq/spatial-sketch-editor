@@ -8,6 +8,8 @@ import { V2, bbox, pointInPoly, polyArea, distToPolyEdge, fromAngle } from '../s
 import { derive } from '../src/model/derive';
 import type { StrokeFit } from '../src/model/strokes';
 import { buildOverhead } from '../src/scene/build/overheads';
+import { qualifyCoverage } from '../src/model/roofEdits';
+import { ohSection } from '../src/model/overheadGeom';
 
 const poly = (pts: V2[], closed = true): StrokeFit => ({
   kind: closed ? 'closed' : 'open', pts, bulge: pts.map(() => 0).slice(0, closed ? pts.length : pts.length - 1),
@@ -461,5 +463,65 @@ describe('Phase 0 · what the candidate refuses, and why', () => {
     expect(a && b).toBeTruthy();
     // both are valid roofs, but the same plan grew a different primary wing
     expect(a!.primary).not.toEqual(b!.primary);
+  });
+});
+
+describe('Phase 2 · wings in Hold and Edit Shape, and the coverage choice', () => {
+  it('puts Edit Shape’s section on the primary wing, at that wing’s own heights', () => {
+    const p = roofOn(outlineOf([L.A, L.B]));
+    const oh = oh0(p);
+    const st = roofWingsState(oh);
+    expect(st.kind).toBe('compound');
+    if (st.kind !== 'compound') return;
+    const wg = st.wings[st.primary];
+    expect(wg.scale).toBeCloseTo(1, 9);
+    expect(ohSpan(oh)).toBeCloseTo(st.primarySpan, 6);
+    const f = ohFrame(oh);
+    const e: V2 = [-f.d[1], f.d[0]];
+    const sec = ohSection(oh);
+    const peak = presetProfile('gable', ohSpan(oh)).find((q) => q.h > 0)!;
+    for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+      const at = sec.at(u, peak.h);
+      const w = at.plan[0] * f.d[0] + at.plan[1] * f.d[1];
+      const v = at.plan[0] * e[0] + at.plan[1] * e[1];
+      // the section line runs across the primary rectangle, not the outline's centroid
+      expect(w).toBeGreaterThanOrEqual(wg.rect[0] - 1e-6);
+      expect(w).toBeLessThanOrEqual(wg.rect[1] + 1e-6);
+      expect(v).toBeGreaterThanOrEqual(wg.rect[2] - 1e-6);
+      expect(v).toBeLessThanOrEqual(wg.rect[3] + 1e-6);
+      const back = sec.uh(at.plan, at.y);
+      expect(back.u).toBeCloseTo(u, 6);
+      expect(back.h).toBeCloseTo(peak.h, 6);
+    }
+  });
+
+  it('offers the coverage choice on a compound roof, and refuses one span with its reason', () => {
+    const p = roofOn(outlineOf([L.A, L.B]));
+    const choice = qualifyCoverage(p, oh0(p).id);
+    expect(choice.shown).toBe(true);
+    expect(choice.oneSpan).toBe(false);
+    expect(choice.available).toBe(false);
+    expect(choice.reason).toMatch(/inner eave/);
+    expect(choice.op).toBeUndefined();
+  });
+
+  it('offers the wings to a legacy one-span L, and commits them as one step', () => {
+    const p = roofOn(outlineOf([L.A, L.B]));
+    const legacy = runTxn(p, opOverhead(oh0(p).id, { oneSpan: true })).after;
+    expect(roofWingsState(oh0(legacy)).kind).toBe('single');
+    const choice = qualifyCoverage(legacy, oh0(legacy).id);
+    expect(choice.shown).toBe(true);
+    expect(choice.oneSpan).toBe(true);
+    expect(choice.available).toBe(true);
+    expect(choice.op).toBeTruthy();
+    const after = runTxn(legacy, choice.op!).after;
+    expect(roofWingsState(oh0(after)).kind).toBe('compound');
+    // and the choice disappears again: the plan is now covered by its wings
+    expect(qualifyCoverage(after, oh0(after).id).oneSpan).toBe(false);
+  });
+
+  it('lists nothing on a rectangle, which has no wings to choose between', () => {
+    const p = runTxn(emptyProject(), opAddOverhead(rect(0, 0, 8, 6), 3, { dir: 0, profile: presetProfile('gable', 6) })).after;
+    expect(qualifyCoverage(p, oh0(p).id)).toMatchObject({ shown: false, oneSpan: true });
   });
 });

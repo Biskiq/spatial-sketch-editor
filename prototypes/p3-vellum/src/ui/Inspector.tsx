@@ -15,7 +15,7 @@ import {
   opRoom, opConfirmRoom, opAddFloorAbove, opRunPatch, opRunTop, opAddOpening, openingDefaults, opOpening, opOverhead, opDeck, opVoid, opStair, opObj,
   opRemove, removalReach, opCoverRooms, coverCheck, isRoundish, opProject, opAddMezzanine, opAddStairTo, Op, OBJ_NAMES, runTxn,
 } from '../model/ops';
-import { qualifyRidgeTurn } from '../model/roofEdits';
+import { qualifyCoverage, qualifyRidgeTurn } from '../model/roofEdits';
 import { mezzanineOffer, stairCandidates } from '../model/offers';
 import { joinCheck, joinNeighbours, opJoinRoofs } from '../model/roofJoin';
 import { surfaceName } from '../scene/interact';
@@ -497,6 +497,36 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
             </button>
           </div>
         )}
+        {(() => {
+          const cov = qualifyCoverage(store.project, oh.id);
+          if (!cov.shown) return null;
+          const label = 'Cover the whole outline as one span';
+          const why = cov.available
+            ? cov.oneSpan
+              ? 'Give the plan a wing per rectangle instead'
+              : 'The legacy geometry: one span across the whole outline'
+            : `Not offered: ${cov.reason}`;
+          return (
+            <div class="chips" style={{ marginTop: '8px' }} title={why}>
+              <button
+                class={'chip' + (cov.oneSpan ? ' on' : '')}
+                disabled={!cov.available}
+                title={why}
+                onPointerEnter={() => !store.ui.dragging && cov.available && cov.op && store.setPreview(cov.op)}
+                onPointerLeave={() => !store.ui.dragging && store.setPreview(null)}
+                onFocus={() => !store.ui.dragging && cov.available && cov.op && store.setPreview(cov.op)}
+                onBlur={() => store.setPreview(null)}
+                onClick={() => {
+                  store.setPreview(null);
+                  if (cov.available && cov.op) store.commit(cov.oneSpan ? 'Covered the plan with wings' : 'Covered the whole outline as one span', cov.op);
+                }}
+              >
+                {label}
+              </button>
+              {!cov.available && <span class="note" style={{ alignSelf: 'center' }}>{cov.reason}</span>}
+            </div>
+          );
+        })()}
         {oh.form === 'extrude' && (
           <Slider label="Span direction" value={((oh.dir * 180) / Math.PI + 360) % 180} min={0} max={179} step={1} fmt={(v) => `${Math.round(v)}°`} commit="Turned the span" make={(v) => opOverhead(oh.id, { dir: (v * Math.PI) / 180 })} />
         )}

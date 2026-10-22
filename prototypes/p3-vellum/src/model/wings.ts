@@ -211,10 +211,9 @@ function decompose(oh: Overhead): WingState {
     if (nearSquare(b)) return isPrimary ? (Math.abs(primaryBox[1] - primaryBox[0]) <= Math.abs(primaryBox[3] - primaryBox[2]) ? 'w' : 'v') : 'w';
     return b[1] - b[0] <= b[3] - b[2] ? 'w' : 'v';
   };
-  const refSpan = Math.max(...pieces.map((p, i) => {
-    const b = box(p.r);
-    return spanOf(b, i === 0) === 'w' ? b[1] - b[0] : b[3] - b[2];
-  }));
+  // The authored section is carried at the primary wing's span, so scale is that wing's span over this one: the
+  // primary always has scale 1, which is what lets the section sheet and the 3D section line agree.
+  const refSpan = spanOf(primaryBox, true) === 'w' ? primaryBox[1] - primaryBox[0] : primaryBox[3] - primaryBox[2];
   const wings: Wing[] = pieces.map((p, index) => {
     const b = box(p.r);
     const span = spanOf(b, index === 0);

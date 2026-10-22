@@ -124,7 +124,8 @@ export function zoneHandle(stage: Stage, _project: Project, oh: Overhead, zone: 
         const height = flat ? flatLevel + local / scale : local / scale;
         const next = peakProfile(height);
         const word = height > (flat ? flatLevel : peak.h) + 0.01 ? 'taller' : height < (flat ? flatLevel : peak.h) - 0.01 ? 'flatter' : 'as it was';
-        return make({ profile: next }, peakReadout(height, snapped.label, limit), `Made ${oh.name} ${word}`);
+        const shared = state.kind === 'compound' ? 'All wings · same pitch · ' : '';
+        return make({ profile: next }, `${shared}${peakReadout(height, snapped.label, limit)}`, `Made ${oh.name} ${word}`);
       }
 
       if (zone.kind === 'ridgeEnd' || zone.kind === 'endFace') {

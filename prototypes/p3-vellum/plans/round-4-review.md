@@ -425,6 +425,50 @@ the name “small underneath”. Entering saves focus but no inspection state, b
 state; only *Face the section* changes the view, and that has its own back step. Hold gestures inside Edit Shape use
 the existing zone path and were not separately re-scripted beyond what §5 already covers.
 
+## 6e. Phase 2 — wings in Hold and Edit Shape, and the coverage choice
+
+**What landed.**
+
+- **One section, one pitch.** `wings.ts` now scales every wing from the **primary** wing's span (the plan's §8.1 rule),
+  so the primary always has `scale = 1`. `ohSpan` reports the primary wing's own span, which is what the section sheet,
+  `maxRise` and the section overlay already assumed.
+- **Edit Shape on the wing.** `ohSection` now places a compound roof's section across the **primary wing's rectangle**
+  (through its middle, at its own scale) instead of across the whole outline's centroid. `at`/`uh` scale and unscale
+  the authored height, so the blue line sits on the built surface and a drag returns the authored value. The sheet
+  draws at that scale too, and the shape card says *“This is the primary wing’s section. Every wing follows this
+  section.”*
+- **Hold says what it changes.** A ridge drag on a compound roof reads *All wings · same pitch · …*; ends and slopes
+  keep their linked wording. The affected-wing highlight already covered every wing, and exposed ends only hip.
+- **Settings → *Cover the whole outline as one span*.** `qualifyCoverage` in `roofEdits.ts` is the one answer for the
+  chip, its hover preview and the commit. It is listed when the plan has a compound candidate or the roof already
+  uses one. A legacy one-span L offers the wings and commits them in one step; a wing roof offers the legacy one span
+  only when `spanCliff` finds no inner-eave cliff, and otherwise the chip is disabled with *“as one span it would stop
+  2.8 m up at an inner eave”*. A rectangle lists nothing.
+- `__t.cottage()` was added to the dev testkit: the §11.3 cottage (10 × 6 room, 4 × 8 wing, one grouped cover) built
+  with the model operations the pen commits, so the browser can revise it with real pointer events.
+
+**Evidence.** `npm run typecheck` is clean; `npm test` is **20 files, 268 tests** (4 new in `wings.test.ts`: the
+section line on the primary wing, the wing/one-span choice in both directions, and the rectangle listing nothing);
+`npm run build` succeeds. In the named browser session on 5191, with no console errors:
+
+- the compound L: a ridge drag read *All wings · same pitch · ridge 3.5 m · 50°* and moved both wings' heights by the
+  shared section (primary 3.54 m, 4 m wing 2.36 m); one transaction;
+- Edit Shape showed the note, put the section line and its joints on the primary wing, and *Done* returned;
+- Settings showed *Cover the whole outline as one span* disabled with the inner-eave reason; forcing the legacy one
+  span made the chip available, and one click committed *Covered the plan with wings* — one Undo step, compound again;
+- the cottage ran end to end: one grouped gable cover, ridge raised and hipped (*All wings · linked ends · hip 0.7 m*),
+  a slope made fuller, the overhang pulled out (the one invalid in-between massing was reported and the last valid roof
+  kept), then *+ Add a mezzanine* and *+ Add a stair* — five commits, no issues, no console errors.
+
+Screenshots: `screenshots/phase2-hold-wings.png`, `phase2-wings-highlight.png`, `phase2-edit-wings.png`,
+`phase2-coverage.png`, `phase2-cottage.png`, `phase2-cottage-journey.png`.
+
+**Cut / honest limits.** The sheet's primary metric is still metres across the authored section; it was not turned
+into a per-wing sheet with a separate “resulting cut” strip, because the primary wing is the authored one and the
+context behind the sheet already samples the real surface. Turning a compound L into one span is deliberately not
+committable, so the control's *enabled* direction on the cottage is the one that adds wings; there is no fixture in
+this scope where a plan qualifies both ways.
+
 ---
 
 ## 7. What is not done
@@ -437,14 +481,13 @@ qualifier. Full browser acceptance and the remaining phase work are still open.
 | --- | --- | --- |
 | Ink from meaning: `facets`/`ink`, `roofInk.ts`, revolve rings, ghost twins, `tests/ink.test.ts` | §7 | M |
 | Pen tips (Box/Round, *Room beside*), the Platform label, `tests` for both | §9.1, §9.2, §9.5 | M |
-| Hold zones and Edit Shape over wings; the Settings *one span* toggle | §8.4–8.6 | S/M |
 | Phase 7 (optional) room-sides push/pull | §10 | M |
 | §11 acceptance: per-phase gates, browser checks, the full §11.3 script, screenshots, the five-person test | §11 | M |
 | §12 docs and in-app help | §12 | S |
 
-The acceptance script's step 2 (*Cover Room 1 and Room 2* → one roof), step 3's Hold gestures, and half of step 4
-(mezzanine, then stair) are wired. Step 3 has focused automated regressions, but still needs the full browser journey
-and screenshots required by §11.
+The acceptance script's steps 2–4 (one grouped cover, the Hold gestures over wings, Edit Shape, the mezzanine and its
+stair) are now wired and were exercised end to end in the browser; the full §11.3 script still needs its own pass,
+including the Box/Round steps that Phase 3 adds.
 
 ---
 

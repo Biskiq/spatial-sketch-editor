@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { store } from '../store';
 import { SAMPLES } from '../samples/samples';
 import { emptyProject } from '../model/types';
-import { opAddOverhead, runTxn } from '../model/ops';
+import { opAddOverhead, opAddRun, opCoverRooms, opRoom, runTxn } from '../model/ops';
+import { derive } from '../model/derive';
 import { roofZoneAt } from '../model/roofZones';
 import { ohTopAt, presetProfile } from '../model/overheadGeom';
 import { pointInPoly } from '../model/geom2d';
@@ -57,6 +58,27 @@ const trace = {
 
 export const testkit = {
   trace,
+  /**
+   * The §11.3 cottage: a 10 × 6 room with a 4 × 8 wing on its long wall, one accepted grouped gable cover. Built with
+   * the model operations the pen commits; the gestures that revise it are the browser's own pointer events.
+   */
+  async cottage(opts: { wallTop?: number; ceiling?: 'flat' | 'follow' } = {}) {
+    const fit = (pts: [number, number][], closed = true): import('../model/strokes').StrokeFit => ({
+      kind: closed ? 'closed' : 'open', pts, bulge: pts.map(() => 0).slice(0, closed ? pts.length : pts.length - 1),
+      closed, center: [0, 0], radius: 0, length: 0, curved: false, corners: 0,
+    });
+    let p = runTxn(emptyProject('The cottage'), opAddRun(fit([[0, 0], [10, 0], [10, 6], [0, 6]]), { baseY: 0 })).after;
+    p = runTxn(p, opAddRun(fit([[10, 6], [10, 14], [6, 14], [6, 6]], false), { baseY: 0 })).after;
+    for (const r of derive(p).rooms) p = runTxn(p, opRoom(r.id, { height: opts.wallTop ?? 3, ceiling: opts.ceiling ?? 'follow' })).after;
+    p = runTxn(p, opCoverRooms(derive(p).rooms.map((r) => r.id), 'gable')).after;
+    store.load(p);
+    store.set({ start: false });
+    await wait(50);
+    this.tick(2);
+    (window as any).__app.ix.frameAll();
+    await wait(200);
+    return this.state();
+  },
   /** Minimal L-shaped roof for pointer-driven grouped-roof evidence. */
   async compoundFixture() {
     const p = runTxn(emptyProject('Hold · compound wings'), opAddOverhead(
@@ -229,6 +251,9 @@ export const testkit = {
     const st = (window as any).__app.stage;
     const v = st.camera.position.clone().set(x, y, z);
     return st.screenOf(v);
+  },
+  shaping() {
+    return store.ui.shaping;
   },
   state() {
     const s = store;
