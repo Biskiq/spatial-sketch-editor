@@ -56,11 +56,24 @@ previously authorized slices such as `T3.P02.S01`, while the
 architectural commitments and the next batch/DAG. Earlier authorization records and accepted
 gate/phase evidence remain valid history; they do not release this hold. Research, documentation
 and bounded disposable probes may proceed within their commissioned step. Research and
-reconciliation are complete for owner review; the hold still applies to every implementation scope.
+reconciliation are complete; the hold still applies to every implementation scope not named below.
 
 Only explicit owner release permits named implementation scopes to start or resume. A research
 result, contract ratification or merge of PR #173 alone is not that release. Keep existing lifecycle
 vocabulary and registered states; do not invent a new gate or a `held` lifecycle status.
+
+**Named releases (batch E, owner-authorized 2026-10-22, [record](../reference/decisions/batch-e-authorization-2026-10-22.md)):**
+
+| Released scope | May start |
+| --- | --- |
+| `T3.P03.S01` — planner scope and build isolation | Now; merges first |
+| `T3.P03.S02` — measurement workflow and T3.P03's final gate | After `T3.P03.S01` merges |
+| `T1.P02.S01` — Layout identity and format cutover | Only after `T3.P03.S01` is merged on `main` |
+| `T2.P02.S01` — model resource storage and admission | Only after `T3.P03.S01` is merged on `main` |
+| `T3.P02.S01` — first capture and Cut Preview, finalized scope | Only after `T3.P03.S01` is merged on `main` |
+
+Everything else stays held, including `T1.P02.S02`–`S04`, `T2.P02.S02`–`S03` and `T3.P02.S02`; each
+starts only from its own later authorization and release.
 
 ## Track register
 
@@ -194,22 +207,28 @@ and nothing in this section is lifecycle or gate readiness.
   acceptance or implementation permission follows. The H0 proposal and conditional C1/C2/S01
   lanes identify the next scopes to register/authorize. P4, T4 and the production hold remain.
 
-- **H0 shared correction (proposed 2026-10-22).** The
+- **H0 shared correction (proposed 2026-10-22; registered as T3.P03 in batch E).** The
   [bounded launch scope](./convergence-shared-foundation-2026-10-22.md) prepares declared planner
   scope enforcement, current public/Preview build boundaries and on-demand performance evidence.
-  T3 coordinates F4, with T1/visitor integration. Its on-demand workflow is authorized; implementation still needs normal provider
-  registration, reviewed scope authorization and release from the hold; it creates no gate or phase by appearing here.
-  Its registration-ready draft is [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md).
+  T3 coordinates F4, with T1/visitor integration. It is registered as
+  [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md), authorized and released
+  by batch E; it creates no gate.
 
-- **Proposed batch E (2026-10-22), for owner review.** The
-  [coordination proposal](./next-batch-2026-10-22.md) presents registration-ready drafts for
-  T3.P03 (H0), [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) (C1 native Walls)
-  and [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) (C2 own GLB import), with launch
-  plans and shell drafts, and the finalized T3.P02.S01 scope. It lists the blocking gaps found
-  and owner decisions E1–E7. None of the drafts is a registered phase; the phase registers, gate
-  register and hold are unchanged until the owner acts. The
-  [canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave) owns lanes,
-  shared files, merge order and per-slice gates.
+- **Batch E (2026-10-22), owner-authorized** ([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1–E7). The
+  [coordination proposal](./next-batch-2026-10-22.md) found the blocking gaps and framed the
+  decisions. The owner:
+  - registered T3.P03 (H0), [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) (C1
+    native Walls) and [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) (C2 own GLB
+    import) (E1);
+  - authorized and released T3.P03 (E2);
+  - accepted the C1 drawing policy, the C2 bounds and T3.P02.S01's finalized scope (E3–E5);
+  - designated Reference A for hard performance rows, with the machine and operator still to be
+    named (E6);
+  - authorized `T1.P02.S01` and `T2.P02.S01` and released them and `T3.P02.S01`, each starting only
+    after `T3.P03.S01` merges (E7).
+
+  Rules: [batch E protocol](./cross-track-execution.md#authorized-batch-e-2026-10-22). No gate row,
+  version or capability entry changes, and no format is ratified before its slice lands it.
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks

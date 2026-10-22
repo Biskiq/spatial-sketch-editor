@@ -1,7 +1,7 @@
 # T1 — Spatial world
 
-**Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; T1 remains open with
-no next phase registered; `T1.P01.S01` shipped (shared F1/F3
+**Track:** T1 · **Status:** approved — T1.P01 closed 2026-10-21 after S06; `T1.P02` (native Wall
+creation) registered 2026-10-22 as batch E with `T1.P02.S01` authorized; `T1.P01.S01` shipped (shared F1/F3
 providers accepted); S02, S03, S04 and S07 shipped (S07 accepted `viewport-projection-v1`); S05
 shipped; S06 accepted and shipped 2026-10-21 by scoped owner-override in PR #168. The T1 track is
 not complete ([track register](../README.md#track-register)) · **Runbook:**
@@ -61,9 +61,10 @@ and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-e
 propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
 baseline, then C1 native Walls alongside C2 own-model import and the held T3 Capture/Preview scope.
 T1 can plan C1 while H0 is planned: C1 keeps one datum, captures non-reusing IDs, resolves the Wall-role
-cutover and carries its compile/drag/commit/Undo performance proof. Its registration-ready draft is
-[T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md), with the launch plan for
-`T1.P02.S01`, the drawing policy the owner must accept and a shell draft. It registers no new phase here.
+cutover and carries its compile/drag/commit/Undo performance proof. It is registered as
+[T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) (batch E,
+[record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the owner accepted its drawing policy, authorized `T1.P02.S01` and released it from
+the hold, starting only after `T3.P03.S01` merges; S02–S04 stay `proposed`.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component
@@ -71,8 +72,8 @@ table, resolver and admission operations. T3 annotations follow those admitted p
 cutover and its tolerance/kernel evidence. These are proposed dependencies, not new F gates.
 Feature-specific shell integration develops in its consuming slice through planning, draft, review,
 build and revision under PLATE's ratified shared invariants; a complete design for every feature is
-not a prerequisite to first-wave planning. All implementation remains under the
-[owner hold](../README.md#production-implementation-hold).
+not a prerequisite to first-wave planning. All implementation not released by batch E remains under
+the [owner hold](../README.md#production-implementation-hold).
 
 ## Evidence roles
 
@@ -95,6 +96,7 @@ register owns lifecycle only.
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | T1.P01 | shipped | — | [T1.P01 — Stage and authoring foundation](./t1.p01-stage-foundation/README.md) |
+| T1.P02 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md) |
 
 The `Depends on` column stays empty for T1.P01: the phase's first slice, `T1.P01.S01`, is itself
 the sole provider of `F1.reference@1` and `F3.channels@1`, so listing either as a phase dependency

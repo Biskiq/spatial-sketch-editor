@@ -1,13 +1,15 @@
-# T3.P03.S01 — Planner scope and build isolation: implementation plan (draft)
+# T3.P03.S01 — Planner scope and build isolation: implementation plan
 
-**Slice:** T3.P03.S01 · **Status:** draft for registration; not registered, not authorized, held ·
-**Phase:** [T3.P03 draft](../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
+**Slice:** T3.P03.S01 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E2,
+[record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
+hold; not implemented · **Phase:** [T3.P03](../README.md) ·
+[slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
 ```text
 CONSUMES: F2.unit-envelope@1, F4.intent-acceptance@1
 REQUIRES: F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1
 VERIFICATION: architecture-integration
-INTEGRATION ROUTE: T3.P03.S02 final gate (its acceptance path is written at phase registration)
+INTEGRATION ROUTE: ../t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md
 ```
 
 The first-wave merge prerequisite: C1, C2 and T3.P02.S01 implementation starts from the base where

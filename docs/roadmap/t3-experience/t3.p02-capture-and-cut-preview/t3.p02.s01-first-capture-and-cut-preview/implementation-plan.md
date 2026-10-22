@@ -1,24 +1,30 @@
 # T3.P02.S01 — First capture and Cut Preview: implementation plan
 
 **Slice:** T3.P02.S01 · **Status:** approved — owner-authorized 2026-10-20 as batch D
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); **not
-implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
+([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); finalized
+scope owner-accepted and released 2026-10-22 as batch E ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7), starting only after
+`T3.P03.S01` is merged on `main`; **not implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
-**Implementation held, 2026-10-22:** the [owner hold](../../../README.md#production-implementation-hold)
-overrides launch/resume under the earlier authorization; resuming needs explicit owner release. The
-historical authorization and registered `approved` state are preserved.
+**Released 2026-10-22, gated on H0.** The [owner hold](../../../README.md#production-implementation-hold)
+held this slice on 2026-10-22; batch E released it ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7). It starts only when
+`T3.P03.S01` is merged on `main`, which the runbook start step checks on the T3.P03 slice register.
+The historical batch D authorization and the registered `approved` state are preserved.
 
-**Finalized convergence scope (for owner review with the
-[next batch](../../../next-batch-2026-10-22.md); implementation held).** The 2026-10-22 ratified
-clarifications are resolved against the landed code as follows:
+## Finalized convergence scope (owner-accepted 2026-10-22)
+
+The owner accepted this scope, the Experience format draft and the shell draft's Preview entry rule
+in batch E ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5). The 2026-10-22 ratified clarifications are resolved against the
+landed code as follows:
 
 - **Formats.** The [Experience format draft](./experience-format-draft.md) is the slice's format:
   Experience unit format 2 with Presentation `viewIds`/`defaultViewId`, an F.1 `subject` (component
   null, no Room or clone invented), closed `plain` text, Stop-local `entryViewId` and a Cut/Travel
   selector on the continuation edge, plus a Presentation-entry event in the program. Under the
   pre-baseline rule the numbers bump and readers refuse older formats; nothing is migrated or
-  negotiated. No part or annotation field enters.
+  negotiated. No part or annotation field enters. The draft's two open points — the text length
+  bound and whether `entryViewId` alone suffices — are settled at implementation review. The format
+  becomes current contract when this slice lands it.
 - **Guide-free Preview.** Preview enters a Presentation with zero Guides and zero Stops through the
   one lowering/interpreter and exits through the same Camera return. The Guide path stays fully in
   scope.
@@ -128,12 +134,15 @@ substitutes for that gate, and every implementation-PR merge keeps the complete 
 including heavy correctness and `check:api`/`test:api` with zero skips for the Save path.
 Before S01 acceptance, record capture/bind result completion, first/repeated Preview entry and
 return, delivered Preview bytes and repeated enter/exit memory behavior against
-[the ratified performance reference](../../../../reference/components/performance.md). The phase final gate rechecks the integrated result; it does not defer a hard miss.
+[the ratified performance reference](../../../../reference/components/performance.md). Hard F10 rows
+are accepted on, or calibrated against, the Reference A machine named under batch E decision E6;
+until it is named they are pre-flight, while the lazy-chunk delivery row needs no machine. The phase
+final gate rechecks the integrated result; it does not defer a hard miss.
 
 ## Shared-file ownership
 
 Batch D's ownership rows are historical: `T1.P01.S06` has shipped and its phase is closed, and no
-closed-phase permission is reused. On resumption this slice runs under the proposed
+closed-phase permission is reused. On resumption this slice runs under the authorized
 [batch E shared-file and merge rules](../../../cross-track-execution.md#batch-e-shared-files-and-merge-order).
 T3 writes the Experience and Camera units, lowering, interpreter, the Preview surface and T3 authoring
 adapters. Edits to the shared unit type and validation modules are confined to the Experience entries

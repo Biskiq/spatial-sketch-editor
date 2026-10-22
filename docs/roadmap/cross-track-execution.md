@@ -3,10 +3,10 @@
 **Owner production hold, 2026-10-22:** the [roadmap hold](./README.md#production-implementation-hold)
 overrides implementation launch/resume implied by earlier batch authorizations below. PR #173's
 [convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) reconciled this
-canonical DAG; the core destination and on-demand workflow were owner-ratified on 2026-10-22. The
-[proposed batch E](#convergence-batch-and-next-planning-wave) adds registration-ready drafts and launch
-plans for H0, C1 and C2 and the finalized T3.P02.S01 scope; it grants no implementation permission,
-and named releases remain pending.
+canonical DAG; the core destination and on-demand workflow were owner-ratified on 2026-10-22.
+[Batch E](#authorized-batch-e-2026-10-22) ([record](../reference/decisions/batch-e-authorization-2026-10-22.md)) registered T3.P03, T1.P02 and T2.P02 and
+released named scopes: T3.P03 now, and `T1.P02.S01`, `T2.P02.S01` and `T3.P02.S01` once `T3.P03.S01`
+merges. Every other implementation scope stays held.
 Historical evidence and accepted gate identities remain unchanged. Merge alone does not release the hold.
 
 **Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it
@@ -22,7 +22,9 @@ T1.P01 (S01–S05 and S07 shipped, S04 through batch B and S05 through batch C; 
 2026-10-20 as batch D**), T2.P01 (**closed 2026-10-20**; S01–S04 shipped, S03 through batch B and S04
 through batch C) and T3.P01 (**closed 2026-10-20**; S01–S06 shipped, S03 reconciled through its
 owner-authorized split halves and S04 through the AM-9 two-phase authorization), plus
-**T3.P02 registered 2026-10-20** with `S01` authorized and `S02` `proposed`. All T4 work is deferred
+**T3.P02 registered 2026-10-20** with `S01` authorized and `S02` `proposed`, and **T3.P03, T1.P02
+and T2.P02 registered 2026-10-22 as batch E** with their launch slices authorized and the rest
+`proposed`. All T4 work is deferred
 by ruling R1-D. Batch B shipped under the [batch B protocol](#authorized-batch-b-2026-10-17); batch C
 (`T1.P01.S05` ∥ `T2.P01.S04`, authorized 2026-10-19) and the two-phase T3.P01.S04 (authorized
 2026-10-19 under AM-9) shipped under the [batch C protocol](#authorized-batch-c-2026-10-19), and
@@ -212,34 +214,34 @@ with fresh OCC revisions. No permanent dual-format reader/writer or source fallb
 
 **Current evidence, 2026-10-22:** T1.P01, T2.P01 and T3.P01 are shipped and closed. Their
 accepted providers remain exactly those in the [gate register](./README.md#gate-register).
-T3.P02.S01 is historically authorized, unimplemented and subject to the owner hold; S02 still
-needs its own authorization. H0, C1 and C2 now have registration-ready drafts (T3.P03, T1.P02,
-T2.P02) whose registration is proposed in the [next-batch coordination proposal](./next-batch-2026-10-22.md).
-The graph below is the one current execution recommendation. Earlier dated batch sections retain
-their authorization provenance, not current launch permission.
+[Batch E](#authorized-batch-e-2026-10-22) registered H0, C1 and C2 as T3.P03, T1.P02 and T2.P02.
+T3.P03 is authorized and released. `T1.P02.S01`, `T2.P02.S01` and the finalized `T3.P02.S01` are
+authorized and released, each starting only after `T3.P03.S01` merges. Every later child is
+registered `proposed` and held. The graph below is the one current execution recommendation.
+Earlier dated batch sections retain their authorization provenance, not current launch permission.
 
 ```mermaid
 flowchart TD
   BASE["Accepted F1–F4, viewport and Camera/Experience cutover; P01 phases closed (main f516e1ff)"]
-  H0A["T3.P03.S01 draft: planner scope + build isolation (merges first)"]
-  H0B["T3.P03.S02 draft: measurement workflow + phase final gate"]
-  C1A["T1.P02.S01 draft: Layout format 6 + captured identity"]
+  H0A["T3.P03.S01: planner scope + build isolation (merges first)"]
+  H0B["T3.P03.S02: measurement workflow + phase final gate"]
+  C1A["T1.P02.S01: Layout format 6 + captured identity"]
   C1B["T1.P02.S02: Draw, close, divide, delete; rail; dedupe"]
   C1C["T1.P02.S03: Opening family"]
   C1G["T1.P02.S04: final gate"]
-  C2A["T2.P02.S01 draft: model storage, formats, Save verification"]
+  C2A["T2.P02.S01: model storage, formats, Save verification"]
   C2B["T2.P02.S02: import, approve, place, reopen"]
   C2G["T2.P02.S03: final gate"]
-  PV["T3.P02.S01 held: capture + Guide-free and Cut Preview (finalized scope)"]
+  PV["T3.P02.S01: capture + Guide-free and Cut Preview (finalized scope)"]
   PG["T3.P02.S02: integrated final gate"]
   LC["C3 proposal: rename/delete; T3 API + T1 shell"]
   CES["Core Editor Stability: owner-approved criteria and integrated acceptance"]
   REL["T4 deferred by R1-D: request planning after milestone acceptance"]
   BASE --> H0A
-  H0A --> H0B
-  H0A --> C1A
-  H0A --> C2A
-  H0A --> PV
+  H0A -->|merged| H0B
+  H0A -->|merged| C1A
+  H0A -->|merged| C2A
+  H0A -->|merged| PV
   C1A --> C1B --> C1C --> C1G
   C2A --> C2B --> C2G
   PV --> PG
@@ -284,21 +286,24 @@ flowchart TD
   PART -.->|only for part-qualified attachment| ATT
 
   classDef accepted fill:#d8ecd8,stroke:#3c7a3c,color:#1e3d1e
-  classDef draft fill:#f3e2c4,stroke:#9b7621,color:#4c3b13,stroke-width:2px
+  classDef released fill:#cfe8d6,stroke:#2d7a4a,color:#16391f,stroke-width:2px
+  classDef gated fill:#d6e4f5,stroke:#2f5f99,color:#17304d,stroke-width:2px
+  classDef registered fill:#f3e2c4,stroke:#9b7621,color:#4c3b13
   classDef proposed fill:#fff2ce,stroke:#9b7621,color:#4c3b13
-  classDef held fill:#d6e4f5,stroke:#2f5f99,color:#17304d
   classDef deferred fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3
   class BASE accepted
-  class H0A,H0B,C1A,C2A draft
-  class C1B,C1C,C1G,C2B,C2G,PG,LC,FACE,PLACE,PART,PICK,ANNO,VERT,TOL,E2,E1,ROOF,ATT proposed
-  class PV held
+  class H0A,H0B released
+  class C1A,C2A,PV gated
+  class C1B,C1C,C1G,C2B,C2G,PG registered
+  class LC,FACE,PLACE,PART,PICK,ANNO,VERT,TOL,E2,E1,ROOF,ATT proposed
   class CES,REL deferred
 ```
 
 Solid arrows are actual provider or integration prerequisites. Dashed arrows carry a stated
-condition or capacity preference; they do not invent an accepted gate. "Draft" nodes have a
-registration-ready phase draft and a reviewed launch plan; every node still needs registration,
-explicit implementation authorization and named release from the hold. H0 corrects existing
+condition or capacity preference; they do not invent an accepted gate. Node states: *released* —
+authorized and released from the hold (T3.P03); *gated* — authorized and released, starting only
+after `T3.P03.S01` merges; *registered* — a registered `proposed` child that still needs its own
+authorization; *proposed* — not yet registered; *deferred* — owner-deferred. H0 corrects existing
 accepted mechanisms; it creates no new F gate or accepted capability. `T3.P03.S01` is the only
 merge prerequisite shared by the product lanes, which otherwise consume nothing from one another.
 No release slice depends on advanced vertical, attachment or annotation work unless the owner
@@ -306,23 +311,30 @@ changes the milestone criteria.
 
 ### Convergence batch and next planning wave
 
-**Proposed batch E, for owner review; not an authorization record.** H0's correctness slice merges
-first, then three product lanes run in parallel with H0's measurement slice. The launch slices have
-reviewed plans and registration-ready phase drafts; the owner acts are listed as E1–E7 in the
-[coordination proposal](./next-batch-2026-10-22.md#owner-decisions). No closed phase is reopened.
+#### Authorized batch E (2026-10-22)
+
+**Owner-authorized 2026-10-22** ([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1–E7, from the
+[coordination proposal](./next-batch-2026-10-22.md#owner-decisions)). H0's correctness slice
+`T3.P03.S01` merges first; then `T1.P02.S01`, `T2.P02.S01` and `T3.P02.S01` run in parallel with
+H0's measurement slice `T3.P03.S02`. T3.P03, T1.P02 and T2.P02 are registered; the four launch
+slices and `T3.P03.S02` are authorized and released, and every later child stays `proposed` and held.
+No closed phase is reopened, and no gate, version or capability changes.
 
 #### Batch E lanes and launch plans
 
 | Lane | Owner and outcome | Launch slice | Before implementation | Readiness |
 | --- | --- | --- | --- | --- |
-| H0 | T3 F4 owner, T1 boundary review. Per-planner scope, current build isolation, the on-demand harness and baseline | [T3.P03.S01](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md), then [S02](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | E1 registration, E2 authorization and release | Plans ready; startable on owner acts |
-| C1 | T1. Empty → draw → close → divide → Opening → delete with captured identity and derived roles | [T1.P02.S01](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md); S02–S04 outlined in the [phase draft](./t1-spatial-world/t1.p02-native-wall-creation/README.md) | `T3.P03.S01` merged; E1, E3, E7 | Launch plan ready; later plans written after each predecessor's acceptance |
-| C2 | T2 ingest/API owner, T1 host review. Import → approve → place → Save → reopen one own GLB | [T2.P02.S01](./t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md); S02–S03 outlined in the [phase draft](./t2-composition/t2.p02-own-model-import/README.md) | `T3.P03.S01` merged; E1, E4, E7 | Launch plan ready |
-| Capture/Preview | T3. Capture, Guide-free and Cut Preview, Save/history | [T3.P02.S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) with its finalized scope | `T3.P03.S01` merged; E5, E7 (release) | Plan ready; historical authorization retained |
+| H0 | T3 F4 owner, T1 boundary review. Per-planner scope, current build isolation, the on-demand harness and baseline | [T3.P03.S01](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md), then [S02](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | Nothing further: registered (E1), authorized and released (E2) | S01 startable now; S02 after S01 merges |
+| C1 | T1. Empty → draw → close → divide → Opening → delete with captured identity and derived roles | [T1.P02.S01](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md); S02–S04 registered in [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) | `T3.P03.S01` merged | S01 authorized and released (E7) with the drawing policy accepted (E3); later plans written after each predecessor's acceptance |
+| C2 | T2 ingest/API owner, T1 host review. Import → approve → place → Save → reopen one own GLB | [T2.P02.S01](./t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md); S02–S03 registered in [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) | `T3.P03.S01` merged | S01 authorized and released (E7) with the bounds accepted (E4) |
+| Capture/Preview | T3. Capture, Guide-free and Cut Preview, Save/history | [T3.P02.S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) with its finalized scope | `T3.P03.S01` merged | Finalized scope accepted (E5) and released (E7); historical authorization retained |
 | C3 follow-on | T3 persistence/API, T1 shell. Rename/delete with conflict and dirty-replacement safety; deletes the project's model revisions | Not yet planned | After the first-wave interfaces settle, by T3 capacity after S01 | Next T3 slice to plan |
 
-E6 names the reference hardware. Until then, hard GPU, frame-time and GPU-memory rows stay unrun and
-block C1/C2 acceptance on those rows; developer runs remain pre-flight.
+**Reference hardware (E6).** The owner designates a Reference A machine and its operator; neither is
+named yet. Starting needs no machine. Hard rows need a run on Reference A, or for CPU rows a
+developer run calibrated against it, so until it is named those rows stay pre-flight and block
+acceptance on them: F2 for `T1.P02.S01`, F10 for `T3.P02.S01`, and the drawing, import and
+placement rows for the S02 slices. Hardware-independent delivery rows need no machine.
 
 #### Batch E shared files and merge order
 
@@ -340,7 +352,7 @@ One writer per row; everything else is read-only for the other lanes.
 | `apps/api/**` and migrations | T2.P02 | Read-only. T1.P02.S01 changes API behavior only through the shared Layout validation and runs the API gates |
 | Experience and Camera units, lowering, interpreter, the Preview surface, T3 authoring adapters | T3.P02.S01 | Read-only |
 | Root barrels, `package.json` exports, [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | Append-only | The second merger resolves |
-| Gate register, phase registers, batons | Each slice's own rows and its own track's baton | No cross-track register edits |
+| Gate register, phase registers, batons | Each slice's own rows and its own track's baton | No cross-track register edits; a lane reads `T3.P03.S01`'s row for its start gate and never edits it |
 | `docs/roadmap/t4-release/**`, `prototypes/**` | Nobody | Frozen (R1-D); prototypes stay evidence |
 
 **Merge order.**

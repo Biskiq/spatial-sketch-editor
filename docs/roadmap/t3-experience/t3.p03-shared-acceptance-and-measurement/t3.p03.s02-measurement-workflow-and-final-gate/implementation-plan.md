@@ -1,7 +1,9 @@
-# T3.P03.S02 — Measurement workflow and final gate: implementation plan (draft)
+# T3.P03.S02 — Measurement workflow and final gate: implementation plan
 
-**Slice:** T3.P03.S02 · **Status:** draft for registration; not registered, not authorized, held ·
-**Phase:** [T3.P03 draft](../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md) ·
+**Slice:** T3.P03.S02 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E2,
+[record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
+hold; starts after S01 merges; not implemented · **Phase:** [T3.P03](../README.md) ·
+[slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md) ·
 **Contracts:** [performance](../../../../reference/components/performance.md),
 [test workflow](../../../../../apps/editor/tests/README.md#product-convergence-performance-workflow)
 
@@ -44,7 +46,8 @@ DevTools evidence and states its limits.
    from a route's first-load set, which T3.P02.S01 needs for Preview.
 6. **Results.** Raw results stay outside Git; the acceptance record summarizes machine, browser,
    power, cache, network, workload, commit, CPU rate and limitations. Developer runs are labelled
-   pre-flight. GPU, frame-time and GPU-memory rows stay unrun until a Reference A run exists.
+   pre-flight. GPU, frame-time and GPU-memory rows stay unrun until a Reference A run exists on the
+   machine the owner designates under batch E decision E6, which also anchors the calibration.
 
 No CI job, schedule, registry or Vitest timing assertion is added. The retired P23B bench machinery is
 not restored.

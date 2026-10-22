@@ -743,7 +743,9 @@ the owner also explicitly releases named scopes. This task performs neither merg
 2. In parallel, T1 prepares the C1 phase/launch plan and T2 prepares the C2 phase/launch plan;
    T3 finalizes the S01 format/entry compatibility and feature draft within its clarified plan.
    Planning is already within this convergence mandate; no production work starts from it.
-   Prepared in the [batch E proposal](./next-batch-2026-10-22.md).
+   Prepared in the [batch E proposal](./next-batch-2026-10-22.md) and decided in the
+   [batch E record](../reference/decisions/batch-e-authorization-2026-10-22.md): T3.P03 (H0), T1.P02 and T2.P02 registered; T3.P03 released now, and
+   `T1.P02.S01`, `T2.P02.S01` and `T3.P02.S01` released to start once `T3.P03.S01` merges.
 3. After H0 merges and launch plans pass review, the owner authorizes/releases the named
    C1/C2/S01 scopes. Their lanes can execute concurrently under the canonical file/merge protocol.
    S01 acceptance is followed by separate S02 authorization and its exhaustive integration proof.

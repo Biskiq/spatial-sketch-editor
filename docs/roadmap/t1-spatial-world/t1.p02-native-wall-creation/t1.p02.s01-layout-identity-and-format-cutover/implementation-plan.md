@@ -1,17 +1,21 @@
-# T1.P02.S01 — Layout identity and format cutover: implementation plan (draft)
+# T1.P02.S01 — Layout identity and format cutover: implementation plan
 
-**Slice:** T1.P02.S01 · **Status:** draft for registration; not registered, not authorized, held ·
-**Phase:** [T1.P02 draft](../README.md) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
+**Slice:** T1.P02.S01 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E7,
+[record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
+hold; starts only after `T3.P03.S01` is merged on `main`; not implemented · **Phase:**
+[T1.P02](../README.md) · [slice register](../README.md#slice-register) · **Runbook:** [T1 operations](../../../../operations/t1-spatial-world/README.md)
 
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: architecture-integration
-INTEGRATION ROUTE: T1.P02.S04 final gate (its acceptance path is written at phase registration)
+INTEGRATION ROUTE: ../t1.p02.s04-integrated-final-gate/acceptance.md
 ```
 
-Starts from a base where `T3.P03.S01` has merged and the phase's drawing policy is accepted. It ships
-no creator-visible drawing; it makes every later drawing operation safe to persist.
+Starts from a base where `T3.P03.S01` has merged; the phase's
+[drawing policy](../README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22) is
+owner-accepted. It ships no creator-visible drawing; it makes every later drawing operation safe to
+persist.
 
 ## 1. Captured, non-reusing Layout identity
 
@@ -74,7 +78,8 @@ report so it becomes its own slice before S02; do not carry it past the phase.
    suites stay green after their fixtures move to format 6, with no weakened assertion.
 5. **No behavior change for creators.** Existing precision, manipulation, plinth, Scene placement,
    Save and Undo/Redo journeys behave as before; the shared F2 open flow (F2) is recorded at S and M
-   against the H0 baseline.
+   against the H0 baseline. Its hard rows are accepted on, or calibrated against, the Reference A
+   machine named under batch E decision E6; until then the record is pre-flight.
 
 Verification: affected fast and heavy contracts, the arch lane, `npm run check`, and `npm run check:api`
 with the DB-backed `npm run test:api` at zero skips, because the API admits Layout units. The complete

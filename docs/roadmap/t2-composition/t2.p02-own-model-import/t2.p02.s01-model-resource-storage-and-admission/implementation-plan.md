@@ -1,17 +1,20 @@
-# T2.P02.S01 — Model resource storage and admission: implementation plan (draft)
+# T2.P02.S01 — Model resource storage and admission: implementation plan
 
-**Slice:** T2.P02.S01 · **Status:** draft for registration; not registered, not authorized, held ·
-**Phase:** [T2.P02 draft](../README.md) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
+**Slice:** T2.P02.S01 · **Status:** approved — owner-authorized 2026-10-22 as batch E (E7,
+[record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
+hold; starts only after `T3.P03.S01` is merged on `main`; not implemented · **Phase:**
+[T2.P02](../README.md) · [slice register](../README.md#slice-register) · **Runbook:** [T2 operations](../../../../operations/t2-composition/README.md)
 
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1
 REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1
 VERIFICATION: architecture-integration
-INTEGRATION ROUTE: T2.P02.S03 final gate (its acceptance path is written at phase registration)
+INTEGRATION ROUTE: ../t2.p02.s03-integrated-final-gate/acceptance.md
 ```
 
-Starts from a base where `T3.P03.S01` has merged and the upload bounds and derivative location are
-accepted. It gives the editor a trustworthy place to put a model and a source format that can name
+Starts from a base where `T3.P03.S01` has merged; the phase's
+[bounds](../README.md#upload-retention-and-derivative-bounds-owner-accepted-2026-10-22) are
+owner-accepted. It gives the editor a trustworthy place to put a model and a source format that can name
 it. It adds no editor UI.
 
 ## 1. API: staged, approved and immutable model revisions
@@ -25,6 +28,10 @@ it. It adds no editor UI.
   Approve checks GLB/glTF structure (magic, version, chunk and buffer bounds, JSON parse, referenced
   files present) for source and derivative, then creates or reuses the content-addressed approved
   revision atomically and returns its pins. Unapproved staging expires, and its bytes are deleted.
+- The owner-accepted bounds apply: a source file set of at most 50 MiB per import, a derivative of
+  at most 25 MiB, deletion of unapproved staging and its bytes after 24 hours, and retention of an
+  approved revision while any stored project version references it. The server checks structure only;
+  it never produces or transforms a derivative.
 - Object keys follow the existing project namespace. Approved bytes are served through the private
   content route as immutable, cacheable responses keyed by hash, so repeat loads in the editor and
   Preview hit the cache.
@@ -51,8 +58,8 @@ it. It adds no editor UI.
 
 1. **API (DB-backed, zero skips).** Owner-only access; a foreign or missing project refuses. A
    mismatched hash or size, an oversize file, a non-glTF file, a missing referenced file, and a
-   derivative failing the structure check each refuse with nothing approved. Cancel and expiry delete
-   staged bytes. Approving identical bytes twice yields one revision. Approved bytes never change.
+   derivative failing the structure check each refuse with nothing approved; a source set over 50 MiB
+   or a derivative over 25 MiB refuses at its limit. Cancel and the 24-hour expiry delete staged bytes. Approving identical bytes twice yields one revision. Approved bytes never change.
 2. **Save.** A model pin that is unknown, belongs to another project, is not approved or disagrees in
    hash, size or type refuses Save with no stored version change. A valid envelope saves and reloads
    byte-identically.

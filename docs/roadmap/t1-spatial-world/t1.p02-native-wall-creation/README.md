@@ -1,12 +1,17 @@
-# T1.P02 — Native Wall creation: registration draft
+# T1.P02 — Native Wall creation
 
-**Status:** registration-ready draft, 2026-10-22 (C1). It is **not registered**: no row exists in the
-[T1 phase register](../README.md#phase-register), and nothing here is a phase, slice, gate version,
-authorization or release from the [production hold](../../README.md#production-implementation-hold).
-Sequencing, shared files and the owner decisions live in the
-[canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave) and its
-[coordination proposal](../../next-batch-2026-10-22.md). Routes: [T1](../README.md) ·
-[runbook](../../../operations/t1-spatial-world/README.md) · [shell draft](./shell-draft.md).
+**Phase:** T1.P02 · **Status:** registered 2026-10-22 — `T1.P02.S01` owner-authorized as batch E
+(E1/E7, [record](../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from
+the [production hold](../../README.md#production-implementation-hold), starting only after
+`T3.P03.S01` merges; S02–S04 registered `proposed`, not authorized · **Track:** [T1](../README.md) ·
+**Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
+[T1 operations](../../../operations/t1-spatial-world/README.md) · **Design:**
+[shell draft](./shell-draft.md)
+
+This phase is C1 of the convergence first wave. The
+[batch E protocol](../../cross-track-execution.md#authorized-batch-e-2026-10-22) owns sequencing,
+shared files and merge order, and the [coordination proposal](../../next-batch-2026-10-22.md) keeps
+the gap findings behind it.
 
 ## Outcome
 
@@ -36,10 +41,12 @@ reference hardware.
   carrying a `family`; no pointer rail exists. Junctions are not selectable subjects, Stage input
   has no finish key, and the live-proposal Undo block names two gesture owners by hand.
 
-## Drawing and enclosure policy (owner call before authorization)
+## Drawing and enclosure policy (owner-accepted 2026-10-22)
 
 The [architecture destination](../../../reference/architecture.md#product-convergence-destination)
-leaves these to C1. Recommended policy, for the owner to accept or edit:
+leaves these to C1. The owner accepted this policy as written (batch E, E3,
+[record](../../../reference/decisions/batch-e-authorization-2026-10-22.md)); every slice of this
+phase implements it, and a change to it is a new owner decision:
 
 1. **Every closed ring encloses.** A closed ring at the working level derives a Room. An
    intentionally non-enclosing ring is not supported in this phase.
@@ -65,22 +72,29 @@ starter, fixtures and evidence JSON are regenerated. This settles the "migrate e
 Walls" question the architecture contract carried. As T1's first Layout schema cutover, format 6
 also triggers the [legacy types/codec retirement row](../planning-evidence.md#17-legacy-layout-typescodec-retirement-row).
 
-## Proposed slice register (applies on registration)
+## Slice register
 
-| Slice | Outcome | Tier and route | Plan |
-| --- | --- | --- | --- |
-| T1.P02.S01 | Format 6, captured non-reusing Layout identity, explicit working level, legacy retirement; no creator UI | `architecture-integration`, route S04 | [Launch plan](./t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md) |
-| T1.P02.S02 | Draw, close, divide and delete on the Stage; the first pointer rail; compile/admission deduplication and drag performance; Card/instrument arbitration | `architecture-integration`, route S04 | written after S01 acceptance |
-| T1.P02.S03 | Opening family: place and remove a Wall-hosted Opening with host preference and refusal | `architecture-integration`, route S04 | written after S02 acceptance |
-| T1.P02.S04 | Integrated final gate | `exhaustive` | written at registration |
+Each slice's scope, exit evidence and verification tier live in its plan; this register owns
+lifecycle and prerequisites only.
 
-All four would consume `F1.reference@1`, `F2.unit-envelope@1`, `F4.intent-acceptance@1` and
-`T1.viewport-projection@1`, requiring `unit-resolution-v1`, `unit-envelope-v1`,
-`unit-acceptance-v1`, `conditional-save-units-v1` and `viewport-projection-v1`. All are accepted
-and active on `main` `f516e1ff`; each slice rechecks them at its trusted base. No slice provides a gate.
+| Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| T1.P02.S01 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Layout identity and format cutover](./t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md) | [record](./t1.p02.s01-layout-identity-and-format-cutover/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7); released from the hold; starts only after `T3.P03.S01` is merged on `main` |
+| T1.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Draw, close, divide and delete](./t1.p02.s02-draw-close-divide-delete/implementation-plan.md) (outline) | [record](./t1.p02.s02-draw-close-divide-delete/acceptance.md) | not authorized — starts only from its own owner authorization after S01 is accepted |
+| T1.P02.S03 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Opening family](./t1.p02.s03-opening-family/implementation-plan.md) (outline) | [record](./t1.p02.s03-opening-family/acceptance.md) | not authorized — starts only from its own owner authorization after S02 is accepted |
+| T1.P02.S04 | proposed | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t1.p02.s04-integrated-final-gate/implementation-plan.md) | [record](./t1.p02.s04-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01–S03 are accepted |
+
+Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
+slice rechecks them at its own trusted base through the runbook start step. No slice here provides a
+gate. S02 and S03 carry outline plans: each writes its complete plan after its predecessor's
+acceptance, for review with its own authorization. The S01 plan carries the format and identity
+work, S02 the first creator-visible drawing, and S03 the Opening family.
 
 ```text
-PROPOSED FINAL PHASE GATE: T1.P02.S04 (exhaustive; empty → draw → close → divide → Opening → delete → Save → reload)
+FINAL PHASE GATE: T1.P02.S04 → ./t1.p02.s04-integrated-final-gate/acceptance.md
+
+PHASE CLOSE
+Stage:        active
 ```
 
 **S02 performance obligations.** Record F3 drag (input-to-matching-preview, latest-input age,
@@ -94,8 +108,12 @@ owner call inside S02.
 ## Dependencies and boundaries
 
 - **Before implementation:** H0's `T3.P03.S01` merged (S01 changes F4 intent capture; S02 adds
-  Layout planners under enforced scope), plus the policy above accepted. Nothing waits on C2 or
+  Layout planners under enforced scope). The policy above is accepted. Nothing waits on C2 or
   T3.P02.
+- **Reference hardware:** hard performance rows are accepted only on, or calibrated against, the
+  Reference A machine the owner designates under batch E decision E6. Until it is named, S01's F2
+  record and S02's drawing rows stay pre-flight and cannot accept those rows; starting needs no
+  machine.
 - **T1 writes:** layout-core, the Layout unit in project-model, Layout adapters, the Stage host and
   shell, the starter gallery. Changes to shared F4 capture or the Head are reviewed by T3; the rail is
   family-driven so T2 and T3 contribute entries without editing it.

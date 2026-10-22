@@ -1,13 +1,18 @@
-# T3.P03 — Shared acceptance, isolation and measurement: registration draft
+# T3.P03 — Shared acceptance, isolation and measurement
 
-**Status:** registration-ready draft, 2026-10-22, for the H0 shared correction. It is **not
-registered**: no row exists in the [T3 phase register](../README.md#phase-register), and nothing
-here is a phase, slice, gate version, authorization or release from the
-[production hold](../../README.md#production-implementation-hold). Scope rationale stays in the
-[H0 proposal](../../convergence-shared-foundation-2026-10-22.md); sequencing, shared files and the
-owner decisions stay in the [canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave)
-and its [coordination proposal](../../next-batch-2026-10-22.md). Routes: [T3](../README.md) ·
-[runbook](../../../operations/t3-experience/README.md) · [gate register](../../README.md#gate-register).
+**Phase:** T3.P03 · **Status:** registered 2026-10-22 — `T3.P03.S01` and `T3.P03.S02`
+owner-authorized as batch E (E1/E2,
+[record](../../../reference/decisions/batch-e-authorization-2026-10-22.md)); T3.P03 alone is released
+from the [production hold](../../README.md#production-implementation-hold) · **Track:**
+[T3](../README.md) · **Roadmap:** [gate register](../../README.md#gate-register) · **Runbook:**
+[T3 operations](../../../operations/t3-experience/README.md) · **Contracts:**
+[F.4 destination](../../../reference/composition-execution.md#product-convergence-destination),
+[performance](../../../reference/components/performance.md)
+
+This phase is the H0 shared correction. The [H0 launch scope](../../convergence-shared-foundation-2026-10-22.md)
+keeps its rationale. The [batch E protocol](../../cross-track-execution.md#authorized-batch-e-2026-10-22)
+owns sequencing and shared files, and the [coordination proposal](../../next-batch-2026-10-22.md)
+keeps the gap findings behind it.
 
 ## Why a T3 phase with two slices
 
@@ -25,25 +30,26 @@ No product feature, source encoding or accepted capability changes. The one expo
 [F.4 destination](../../../reference/composition-execution.md#product-convergence-destination)
 "declared domain/compound scope" and is an optional field of the existing accepted interface.
 
-## Registration is not authorization
+## Slice register
 
-| Act | What it does | What it does not do |
-| --- | --- | --- |
-| **Register T3.P03** | Adds the T3 phase-register row, turns this page into the phase README with a real slice register (both rows `proposed`) and `FINAL PHASE GATE: T3.P03.S02`, and creates the two acceptance stubs | Authorizes no slice, releases nothing from the hold, changes no gate row or capability entry, opens no architecture-cycle window |
-| **Authorize S01/S02 and release T3.P03** | Flips both rows to `approved`, names T3.P03 alone as released from the hold | Releases no C1, C2 or T3.P02 scope; installs nothing before its own implementation starts |
+Each slice's scope, exit evidence and verification tier live in its plan; this register owns
+lifecycle and prerequisites only.
 
-## Proposed slice register (applies on registration)
+| Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| T3.P03.S01 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Planner scope and build isolation](./t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) | [record](./t3.p03.s01-planner-scope-and-build-isolation/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); released from the hold; merges first |
+| T3.P03.S02 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | — | [Measurement workflow and final gate](./t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | [record](./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md) | owner-authorized 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E2); released from the hold; starts after S01 merges |
 
-| Slice | Consumes | Requires | Tier and route | Plan |
-| --- | --- | --- | --- | --- |
-| T3.P03.S01 | F2.unit-envelope@1, F4.intent-acceptance@1 | F2.unit-envelope@1:unit-envelope-v1, F4.intent-acceptance@1:unit-acceptance-v1 | `architecture-integration`, route S02 | [Planner scope and build isolation](./t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) |
-| T3.P03.S02 | as S01 | as S01 | `exhaustive` — the final gate | [Measurement workflow and final gate](./t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) |
-
-Every consumed gate is `accepted` and every required scope `active` on `main` `f516e1ff`. Each slice
-rechecks them at its own trusted base through the runbook start step. Neither slice provides a gate.
+Every consumed gate is `accepted` and every required scope is `active` on `main` `f516e1ff`; each
+slice rechecks them at its own trusted base through the runbook start step. Neither slice provides a
+gate. `T3.P03.S01` merged on `main` is the start gate for `T1.P02.S01`, `T2.P02.S01` and
+`T3.P02.S01` (batch E, E7).
 
 ```text
-PROPOSED FINAL PHASE GATE: T3.P03.S02 (exhaustive; rechecks S01 on the integrated tree)
+FINAL PHASE GATE: T3.P03.S02 → ./t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md
+
+PHASE CLOSE
+Stage:        active
 ```
 
 ## Ownership and boundaries
@@ -57,6 +63,10 @@ PROPOSED FINAL PHASE GATE: T3.P03.S02 (exhaustive; rechecks S01 on the integrate
 Out of scope: Layout/Scene/Experience formats, native drawing, import, Preview UI, compile
 deduplication (C1 owns it), any CI job, schedule or benchmark registry, and any timing assertion
 in Vitest.
+
+**Reference hardware.** S02's calibration and any hard GPU, frame-time or GPU-memory row need the
+Reference A machine that the owner designates under batch E decision E6. Until the machine and
+operator are named, S02 records its baseline as pre-flight and lists those rows as unrun.
 
 T3 has no architecture-cycle window; neither slice is an exposure. Production activation of the F2
 epoch remains a separate owner-run operation and is not touched.

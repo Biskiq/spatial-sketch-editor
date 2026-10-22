@@ -1,17 +1,18 @@
 # Next batch — H0 and first-wave launch plans (coordination proposal, 2026-10-22)
 
-**Status: proposal for owner review.** It registers, authorizes, ratifies and releases nothing, and
-production stays [held](./README.md#production-implementation-hold). Base: `origin/main` `f516e1ff`,
-the merge of PR #173. The [canonical DAG and batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave)
-own lanes, dependencies, shared files, merge order and per-slice gates; this page owns the gap
-findings and the decisions the owner is asked to make.
+**Status: decided 2026-10-22.** The owner approved E1–E7 as recommended below, deciding E7 now with
+each start gated on `T3.P03.S01` merging; the [batch E record](../reference/decisions/batch-e-authorization-2026-10-22.md) is the decision provenance.
+This page itself registers, authorizes, ratifies and releases nothing; it keeps the gap findings and
+the decision framing. Base: `origin/main` `f516e1ff`, the merge of PR #173. The
+[canonical DAG and batch](./cross-track-execution.md#authorized-batch-e-2026-10-22) own lanes,
+dependencies, shared files, merge order and per-slice gates.
 
-| Lane | Registration-ready draft | Launch plan |
+| Lane | Phase | Launch plan |
 | --- | --- | --- |
 | H0 shared correction | [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md) | [S01 planner scope and build isolation](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md) · [S02 measurement and final gate](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) |
 | C1 native Walls | [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) · [shell draft](./t1-spatial-world/t1.p02-native-wall-creation/shell-draft.md) | [S01 identity and format cutover](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md) |
 | C2 own GLB import | [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) · [shell draft](./t2-composition/t2.p02-own-model-import/shell-draft.md) | [S01 storage and admission](./t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md) |
-| Capture and Preview | registered [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) | [S01 finalized scope](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) · [format draft](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md) · [shell draft](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/shell-draft.md) |
+| Capture and Preview | [T3.P02](./t3-experience/t3.p02-capture-and-cut-preview/README.md) | [S01 finalized scope](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) · [format draft](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md) · [shell draft](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/shell-draft.md) |
 
 ## Verified state at `f516e1ff`
 
@@ -32,12 +33,12 @@ deferred (R1-D) and P4 deferred.
 | G4 | Hard GPU, frame-time and GPU-memory rows can only be accepted from Reference A hardware, and none is named | H0 installs the workflow; decision E6 names the hardware |
 | G5 | Every Layout allocator is occupancy-based; the only cursor rewinds with Undo; the envelope has no counter | T1.P02.S01 captures one nonce per accepted operation as intent input |
 | G6 | Authored Wall `role` lives in fourteen modules and seventy-eight test files; the first schema cutover also triggers legacy-type retirement | T1.P02.S01: format 6 without `role`, derived roles, legacy retirement; no migration (pre-baseline) |
-| G7 | Native drawing reaches nested, overlapping, collinear and non-enclosing cases the destination leaves to C1 | Decision E3 (policy in the T1.P02 draft) |
+| G7 | Native drawing reaches nested, overlapping, collinear and non-enclosing cases the destination leaves to C1 | Decision E3 (policy in T1.P02) |
 | G8 | Per-move full finalization, a second compile at install, re-admission on Undo/Redo | T1.P02.S02 deduplicates first, then a bounded experiment only if F3 misses |
 | G9 | The asset registry is image-only and mutable; Save never checks stored bytes | T2.P02.S01: immutable model revisions, staging/approval, Save verification of model pins |
 | G10 | Admission accepts only catalogue `assetId`s, the fallback is a furniture enum, and model contact is unknown | T2.P02 formats: a `model` resource kind with a placement definition and a generic fallback; contact from the definition |
 | G11 | The live host never grants resource staging | One resource-granted placement planner in T2.P02.S02, safe once H0 enforces scope |
-| G12 | The closed T2.P01 deferred table says K1 needs T4 and publish | Superseded by K1; recorded in the T2.P02 draft; the closed record is not rewritten |
+| G12 | The closed T2.P01 deferred table says K1 needs T4 and publish | Superseded by K1; recorded in T2.P02; the closed record is not rewritten |
 | G13 | A Presentation is `{id, label, viewId}`: no subject, text, Default/Stop-local entry or Cut/Travel | The S01 Experience format draft (format 2) |
 | G14 | The interpreter cannot enter a Presentation without a Stop | A Presentation-entry event in the program; lowering and interpreter change together |
 | G15 | Same-run Reset keeps its run epoch while Travel is asynchronous | S01 gives every Preview entry a fresh runtime and epoch, offers no same-run Reset, and stops and reports if one is needed |
@@ -53,13 +54,13 @@ anything else, regenerate fixtures, migrate nothing. That fully answers the rati
 
 ## Owner decisions
 
-**Now, at this PR's review:**
+**Decided at this PR's review** (all approved as recommended; [record](../reference/decisions/batch-e-authorization-2026-10-22.md)):
 
 | # | Decision | Recommendation |
 | --- | --- | --- |
 | E1 | Register T3.P03, T1.P02 and T2.P02 as drafted, with every row `proposed` | Register all three. Registration authorizes nothing |
 | E2 | Authorize T3.P03.S01 and S02 and release T3.P03 alone from the hold | Yes. It changes no product behavior, format or gate |
-| E3 | C1 drawing and enclosure policy: every closed ring encloses; roles follow geometry; deliberate connection only; crossings, collinear overlaps and unconnected nested rings refuse with a repair; Wall deletion takes its Openings and leaves references retained | Accept the [T1.P02 policy](./t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-call-before-authorization) as written |
+| E3 | C1 drawing and enclosure policy: every closed ring encloses; roles follow geometry; deliberate connection only; crossings, collinear overlaps and unconnected nested rings refuse with a repair; Wall deletion takes its Openings and leaves references retained | Accept the [T1.P02 policy](./t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22) as written |
 | E4 | C2 bounds: source file set ≤ 50 MiB per import, derivative ≤ 25 MiB, unapproved staging deleted after 24 h, approved revisions kept while any stored project version references them (C3 deletes them with the project); derivative made in the creator's browser worker with server-side structure checks | Accept. The alternative, server-side derivative processing, adds API CPU and infrastructure for no first-wave benefit |
 | E5 | Accept T3.P02.S01's finalized scope: Guide-free Preview entry included, the Experience format draft, and the shell draft's Preview entry rule | Accept, with the two open points in the format draft settled at implementation review |
 | E6 | Reference hardware for the hard GPU, frame-time and GPU-memory rows | Designate a Reference A machine and who runs it. Without one, C1 and C2 cannot be accepted on those rows. Using Reference B in the meantime would amend the ratified performance contract |
@@ -76,6 +77,7 @@ migration decision; no new gate.
 
 ## Non-implications
 
-Merging this PR registers no phase, authorizes no slice, releases nothing from the hold, ratifies no
-format, accepts no milestone and changes no gate row, capability record, closed phase or architecture
-cycle state. Every draft re-verifies its prerequisites at its own trusted base when it starts.
+The decisions take effect through the [batch E record](../reference/decisions/batch-e-authorization-2026-10-22.md) and the registers it updates, not
+through this page. They ratify no format, accept no milestone and change no gate row, capability
+record, closed phase or architecture-cycle state. E6's Reference A machine and operator are still to
+be named. Every slice re-verifies its prerequisites at its own trusted base when it starts.

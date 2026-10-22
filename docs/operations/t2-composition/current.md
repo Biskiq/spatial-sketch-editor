@@ -16,27 +16,27 @@ track's baton, and never treat stale baton text as a blocker — verify Git stat
 prerequisites instead.
 
 ```text
-PHASE: T2.P01 Supported object composition — CLOSED 2026-10-20, all four children shipped →
+PHASE: T2.P02 Own model import (registered 2026-10-22, batch E) →
+       ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
+       T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: none open. S01, S02, S03 and the final gate S04 are shipped; the phase README's slice
-        register is authoritative.
-BATON: No active T2 work and no authorized T2 slice. The phase closed 2026-10-20 by
-       `phase-closeout` under explicit owner authorization; its PHASE CLOSE block records the gate
-       (`S04`, accepted 2026-10-19, merged in PR #157 as `99c38033`) and the integration it rests on.
-       The declared gate artifact is now a closed-work stub at its own path; the accepted evidence,
-       review history and residuals are recoverable at `5d1a7573`.
-NEXT:  Owner decisions on proposed batch E (../../roadmap/next-batch-2026-10-22.md): register the
-       T2.P02 own-model import draft (K1 bounded editor-side GLB import, no T4), accept its upload
-       bounds, then authorize T2.P02.S01 to start after T3.P03.S01 merges. Nothing is authorized by
-       this baton.
+SLICES: T2.P02.S01 `approved` and released from the hold (batch E, E7), starting only after
+        T3.P03.S01 is merged on `main`; S02 and S03 `proposed`, not authorized. The phase README's
+        slice register is authoritative.
+BATON: No active T2 work yet. The upload, retention and derivative bounds are owner-accepted (E4):
+       50 MiB source set, 25 MiB derivative, 24 h staging, revisions kept while referenced, the
+       derivative made in the creator's browser worker with server-side structure checks.
+NEXT:  When T3.P03.S01 reads `shipped` in the T3.P03 slice register on `main`, start T2.P02.S01
+       through the T2 runbook start step from that base.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/README.md (phase register) →
-       ../../roadmap/t2-composition/t2.p02-own-model-import/README.md (draft) →
-       ../../roadmap/t2-composition/t2.p01-supported-composition/README.md (PHASE CLOSE and
-       deferred table) → ../../roadmap/core-editor-stability.md (K1)
-BLOCKER: the owner hold; T2 has no registered phase until the owner registers T2.P02.
+       ../../roadmap/t2-composition/t2.p02-own-model-import/README.md →
+       ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md
+       → ../../reference/decisions/batch-e-authorization-2026-10-22.md (provenance)
+BLOCKER: T3.P03.S01 not yet merged. S02's hard performance rows also need the Reference A machine
+         the owner still has to name (E6).
 CARRY: The owner may push the local `closed/T2.P01.S03`, `closed/T2.P01.S04` and the new
-        `closed/T2.P01` tags. Cloud Save in a real browser session and a model-contact capability
-        stay with the host evidence and a future T2 phase, not with the closed gate. T2 track
+        `closed/T2.P01` tags. Cloud Save in a real browser session stays with the host evidence; model
+        contact moves to T2.P02 (its placement definition), not the closed gate. T2 track
         completion remains a separate owner event.
 ```

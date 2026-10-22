@@ -313,7 +313,11 @@ that drew a chain and planned role changes was removed by #115, so nothing in
 the product writes the authored role today; the cutover retires creator-chosen
 roles as creator-facing operations, and Layout must decide two things then:
 migrating existing `partition` Walls, and whether a closed ring may ever be
-intentionally non-enclosing. Division keeps the landed Room reconciliation (P23.8 lineage:
+intentionally non-enclosing. The owner decided both for C1 on 2026-10-22
+([batch E](./decisions/batch-e-authorization-2026-10-22.md), E3): Layout format 6 drops the
+authored role with no migration under the pre-baseline rule, and every closed ring encloses.
+They take effect when `T1.P02.S01` lands format 6; until then the encoding above is current.
+Division keeps the landed Room reconciliation (P23.8 lineage:
 split survivor by evidence order, one Room born). The creator-facing expression is
 [PLATE §0.8.4](./design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
 
@@ -424,7 +428,9 @@ latency as well as main-thread responsiveness, within the one compiler.
 
 **Decisions intentionally left to consumers.** Native drawing must explicitly decide nested,
 overlapping, collinear and intentionally non-enclosing cases before C1 implementation; silent
-duplicate floors/solids are unacceptable. The current per-area generated-ceiling fallback remains
+duplicate floors/solids are unacceptable. C1's answer is the owner-accepted
+[T1.P02 drawing policy](../roadmap/t1-spatial-world/t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)
+(batch E, E3), which applies as T1.P02's slices land it. The current per-area generated-ceiling fallback remains
 until an explicit closure-policy decision. Room-switch is a proposed alternative that removes a
 whole Room's fallback, including after merges; mandatory explicit gaps preserve the per-area
 alternative. Wall parameter/straddle policies, attachment removal defaults, mezzanine undersides

@@ -1,7 +1,9 @@
 # T3.P02.S01 — Experience format draft (AM-9 authored homes, Presentation entry)
 
-**Status:** draft for owner review with S01's finalized scope, 2026-10-22. Not ratified, not
-implemented. [AM-9](../../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover)
+**Status:** owner-accepted 2026-10-22 as the format S01 implements (batch E,
+[record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5); not ratified as
+a contract and not implemented. The open points below are settled at S01's implementation review,
+and the format becomes current contract when S01 lands it. [AM-9](../../../../reference/composition-execution.md#am-9-shared-camera-and-experience-cutover)
 leaves the authored homes for presentation text and the Cut/Travel selector to their first authoring
 consumer, T3.P02; this is that consumer's proposal. It changes [AM-6](../../../../reference/composition-execution.md#am-6-execution-program-and-visitor-profile-v1)
 only by adding Presentation entry. Plan: [S01](./implementation-plan.md).

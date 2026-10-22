@@ -1,6 +1,7 @@
 # T3.P02.S01 — Shell draft: capture, Guide and Preview
 
-**Status:** first draft for review, 2026-10-22, under PLATE's
+**Status:** first draft, 2026-10-22; its Preview entry rule is owner-accepted (batch E,
+[record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5), and the rest is reviewed before build, under PLATE's
 [feature design loop](../../../../reference/design-system/editor-shell-and-visual-system.md#product-convergence-destination).
 It sets no pixel, keymap or format and is revised after browser observation. Authority stays in
 [PLATE Experience expression](../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
