@@ -72,7 +72,9 @@ function cameraViewPlanner(kind = 'camera-view', id = kind): DomainPlanner<Sourc
 		kind,
 		sourceKinds: [adapter.sourceKind],
 		sourceVersions: [1],
-		admission: { domain: 'camera', compound: true, units: true, resources: false },
+		// Compound admission over its own domain only: an empty write set is the
+		// declaration a compound planner must state.
+		admission: { domain: 'camera', compound: true, writes: [], units: true, resources: false },
 		prepare({ snapshot, intent }) {
 			return {
 				kind: 'prepared',
@@ -207,6 +209,22 @@ describe('F.4 unit acceptance — the enduring lifecycle with a wider admission'
 		expect(coordinator.planners()).toHaveLength(0);
 	});
 
+	it('refuses a compound planner that declares no write set', () => {
+		// A compound planner's scope is its own declaration, not whatever the host
+		// grants: without `writes` the admission names no boundary to enforce, so
+		// registration refuses it instead of accepting every later candidate.
+		const registry = createUnitPlannerRegistry<Source>();
+		const undeclared: DomainPlanner<Source> = {
+			...cameraViewPlanner('compound-without-writes', 'compound-without-writes'),
+			admission: { domain: 'camera', compound: true, units: true, resources: false }
+		};
+		expect(registry.register(undeclared)).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
+		expect(registry.planners()).toHaveLength(0);
+		// The declared empty write set is admitted, so the refusal is about the
+		// missing declaration rather than compound admission itself.
+		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });
+	});
+
 	it('refuses a duplicate operation kind and a resource planner it was not configured for', () => {
 		const registry = createUnitPlannerRegistry<Source>();
 		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });
@@ -327,7 +345,7 @@ describe('F.4 unit acceptance — the enduring lifecycle with a wider admission'
 		const registry = createUnitPlannerRegistry<Source>({ resourceStaging: true });
 		const planner: DomainPlanner<Source> = {
 			...cameraViewPlanner('staging-unit', 'staging-unit'),
-			admission: { domain: 'camera', compound: true, units: true, resources: true }
+			admission: { domain: 'camera', compound: true, writes: [], units: true, resources: true }
 		};
 		expect(registry.register(planner)).toEqual({ kind: 'registered' });
 		// A resource-bearing intent, so dispatch really takes the resource-admission

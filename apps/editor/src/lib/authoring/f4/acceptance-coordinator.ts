@@ -237,7 +237,9 @@ export function createAcceptanceCoordinator<Source>(
 			const planner = registry.plannerFor(intent.kind);
 			if (!planner) return rejection(intent, 'unsupported-operation', null, 'The operation has no registered planner', [], null);
 			let scopeIssues: readonly ShapeIssue[];
-			try { scopeIssues = adapter.validateChange?.(before.source, admission.source, planner.admission.domain) ?? []; } catch {
+			// The producing planner's whole admission, not only its primary domain: the
+			// adapter holds the candidate to what this planner declared it may write.
+			try { scopeIssues = adapter.validateChange?.(before.source, admission.source, planner.admission) ?? []; } catch {
 				return rejection(intent, 'admission-refused', 'scope-check-failed', 'Candidate scope validation failed');
 			}
 			if (scopeIssues.length) return rejection(intent, 'admission-refused', 'unsupported-change', 'Candidate changes contents outside its admitted domain', scopeIssues);

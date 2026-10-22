@@ -34,6 +34,7 @@ import {
 	type SceneModelEntity,
 	type ScenePrimitiveEntity,
 	type SceneValidationOptions,
+	type SemanticDomain,
 	type SemanticReference,
 	type Vec3
 } from '@portfolio/project-model';
@@ -507,10 +508,72 @@ export function createInvalidCandidatePlanner(): DomainPlanner<ProjectEnvelope> 
 	};
 }
 
+/** The RR-4 overreach operation kind: declared Scene, its candidate also writes Layout. */
+export const PROOF_SCENE_WALL_MOVE_KIND = 'conformance-scene-with-layout-write';
+
+/**
+ * The RR-4 counterexample, kept as the scope-regression fixture: a planner that
+ * declares single-domain Scene and produces an **envelope-valid** candidate that
+ * moves a Layout object as well. Nothing about its shape is wrong — one
+ * operation, one install, valid source — so only per-planner scope enforcement
+ * can refuse it, targeted or untargeted.
+ */
+export function createSceneWithLayoutWritePlanner(fallbackObjectId: string): DomainPlanner<ProjectEnvelope> {
+	return {
+		id: 'conformance.scene-with-layout-write',
+		kind: PROOF_SCENE_WALL_MOVE_KIND,
+		admission: { domain: 'scene', compound: false, units: false, resources: false },
+		sourceKinds: [UNIT_SOURCE_KIND],
+		sourceVersions: [UNIT_SOURCE_VERSION],
+		prepare({ snapshot, intent }) {
+			const project = snapshot.domain.source;
+			const index = project.units.scene.data.entities.findIndex((entity) => entity.id === FIXTURE_ENTITY_ID);
+			const entity = index < 0 ? undefined : project.units.scene.data.entities[index];
+			if (entity === undefined || entity.kind !== 'primitive') {
+				return {
+					kind: 'rejected',
+					code: 'unsupported_entity',
+					message: `The overreach fixture needs primitive "${FIXTURE_ENTITY_ID}"`,
+					diagnostics: []
+				};
+			}
+			const plan = planExactLayoutObjectTransform(project.units.layout.data, fallbackObjectId, {
+				position: [3, 0.5, 0]
+			});
+			if (plan.kind === 'rejected') {
+				return { kind: 'rejected', code: plan.rejection.code, message: plan.rejection.message, diagnostics: [] };
+			}
+			const entities = [...project.units.scene.data.entities];
+			entities[index] = { ...entity, receiveShadow: true };
+			return {
+				kind: 'prepared',
+				candidate: {
+					operationId: intent.operationId,
+					sourceKind: UNIT_SOURCE_KIND,
+					sourceVersion: UNIT_SOURCE_VERSION,
+					source: replaceUnitData(
+						replaceUnitData(project, 'layout', plan.document),
+						'scene',
+						{ ...project.units.scene.data, entities }
+					),
+					changes: [
+						{ kind: 'layout-object-transform', subjectIds: [fallbackObjectId], fields: ['position'] },
+						{ kind: 'scene-entity-scalar', subjectIds: [FIXTURE_ENTITY_ID], fields: ['receiveShadow'] }
+					],
+					correspondence: [],
+					diagnostics: []
+				}
+			};
+		}
+	};
+}
+
 /** A planner asking for a wider scope than `local-single-domain-v1` grants. */
 export function createOverreachingPlanner(scope: {
 	readonly compound?: boolean;
-	readonly units?: boolean;			readonly resources?: boolean;
+	readonly units?: boolean;
+	readonly resources?: boolean;
+	readonly writes?: readonly SemanticDomain[];
 }): DomainPlanner<ProjectEnvelope> {
 	return {
 		id: 'conformance.overreaching',
@@ -518,6 +581,8 @@ export function createOverreachingPlanner(scope: {
 		admission: {
 			domain: 'scene',
 			compound: scope.compound ?? false,
+			// A compound planner must declare its write set; these fixtures never prepare.
+			writes: scope.writes ?? [],
 			units: scope.units ?? false,
 			resources: scope.resources ?? false
 		},

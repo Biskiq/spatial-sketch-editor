@@ -12,7 +12,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createAcceptanceCoordinator } from '$lib/authoring/f4/acceptance-coordinator';
-import { createEmptyWallFirstLayoutDocument } from '@portfolio/layout-core';
+import { createEmptyWallFirstLayoutDocument, planCommitLayoutObjectPreset } from '@portfolio/layout-core';
 import {
 	resolveReference,
 	type AcceptedRevision,
@@ -30,9 +30,11 @@ import {
 	UNIT_SAVE_SOURCE_KIND,
 	captureUnitSave,
 	computeEnvelopeSourceContentId,
+	createPresentationStopCreatePlanner,
 	createUnitAcceptanceAdapter,
 	createUnitAcceptanceProfile,
 	normalizeUnitEnvelope,
+	replaceUnitData,
 	serializeProjectEnvelope,
 	stageUnitResources,
 	type ProjectEnvelope,
@@ -229,6 +231,47 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 		const redone = await coordinator.redo();
 		expect(redone.kind).toBe('restored');
 		expect(coordinator.acceptedSnapshot().domain.source.units.experience.data.experiences[0]!.stops.map((stop) => stop.id)).toEqual(['stop-entry', 'stop-new']);
+	});
+
+	it('refuses the joint Experience/Camera operation when its candidate also writes Layout', async () => {
+		const source = await envelope();
+		const coordinator = await boot(source, { compound: true });
+		const joint = createPresentationStopCreatePlanner();
+		// The declared write set is what makes the joint operation legitimate.
+		expect(joint.admission).toMatchObject({ domain: 'experience', compound: true, writes: ['camera'] });
+		coordinator.register({
+			...joint,
+			id: 'unit.experience-presentation-stop-create-with-layout-write',
+			kind: 'experience-presentation-stop-create-with-layout-write',
+			prepare(request) {
+				const outcome = joint.prepare(request);
+				if (outcome.kind !== 'prepared') return outcome;
+				const plan = planCommitLayoutObjectPreset(outcome.candidate.source.units.layout.data, 'plinth', [0, 0], 0);
+				if (plan.kind !== 'success') throw new Error(`the Layout write fixture was refused: ${plan.kind}`);
+				return {
+					kind: 'prepared',
+					candidate: {
+						...outcome.candidate,
+						source: replaceUnitData(outcome.candidate.source, 'layout', plan.document),
+						changes: [
+							...outcome.candidate.changes,
+							{ kind: 'layout-object-preset', subjectIds: [plan.createdObjectId ?? ''], fields: ['objects'] }
+						]
+					}
+				};
+			}
+		});
+		const refused = await coordinator.accept(
+			compoundIntent(source, { kind: 'experience-presentation-stop-create-with-layout-write' })
+		);
+		expect(refused).toMatchObject({ kind: 'rejected', code: 'admission-refused', reason: 'unsupported-change' });
+		if (refused.kind !== 'rejected') return;
+		expect(refused.diagnostics.some((entry) => entry.code === 'out-of-scope-domain')).toBe(true);
+		// One atomic result or nothing: the Camera, Experience and Layout change is
+		// not partially installed and leaves no history entry.
+		expect(coordinator.acceptedSnapshot().domain.source).toEqual(source);
+		expect(coordinator.installs()).toBe(1);
+		expect(coordinator.canUndo()).toBe(false);
 	});
 
 	it('updates one Camera View without touching another domain', async () => {
@@ -615,7 +658,14 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 			...source,
 			acceptedRevision: { ...source.acceptedRevision, revisionId: 'revision-forged' }
 		};
-		const issues = adapter.validateChange?.(source, forged, 'experience') ?? [];
+		const issues =
+			adapter.validateChange?.(source, forged, {
+				domain: 'experience',
+				compound: true,
+				writes: ['camera'],
+				units: true,
+				resources: false
+			}) ?? [];
 		expect(issues.some((entry) => entry.code === 'baseline-revision-mismatch')).toBe(true);
 	});
 

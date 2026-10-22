@@ -185,6 +185,16 @@ export type PlannerAdmission = {
 	readonly domain: SemanticDomain;
 	/** Compound (multi-domain) acceptance, e.g. a Camera View + Presentation. */
 	readonly compound: boolean;
+	/**
+	 * The extra unit domains a compound planner may change, using the same domain
+	 * identifiers as `domain`: its permitted write set is `domain` ∪ `writes`.
+	 * Only a compound planner's declaration widens it — a single-domain planner
+	 * writes its own domain — and a compound planner must declare the field, so
+	 * "one extra domain" is a stated scope rather than an adapter-wide licence.
+	 * Resources stay outside it: a resource or lock change still needs the
+	 * planner's `resources` grant.
+	 */
+	readonly writes?: readonly SemanticDomain[];
 	/** F.2 unit creation, which needs `T3.P01.S03`'s `unit-acceptance-v1`. */
 	readonly units: boolean;
 	/** Resource staging or lock mutation, which this adapter never performs. */
@@ -253,8 +263,13 @@ export type AcceptanceSourceAdapter<Source> = {
 	readonly sourceKind: string;
 	readonly sourceVersion: number;
 	admit(candidate: unknown, baselineBlockingIssues: readonly AdmissionIssue[]): Promise<SourceAdmission<Source>>;
-	/** Adapter-owned unchanged-domain/resource guard; applied to the admitted candidate. */
-	validateChange?(before: Source, after: Source, domain: SemanticDomain): readonly ShapeIssue[];
+	/**
+	 * Adapter-owned unchanged-domain/resource guard, applied to the admitted
+	 * candidate. It receives the **producing planner's whole admission**, not only
+	 * its primary domain, so the guard can hold the candidate to that planner's
+	 * declared write set instead of to what the host grants.
+	 */
+	validateChange?(before: Source, after: Source, admission: PlannerAdmission): readonly ShapeIssue[];
 };
 
 /**
