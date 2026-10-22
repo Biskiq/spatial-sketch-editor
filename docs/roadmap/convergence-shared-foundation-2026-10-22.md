@@ -1,11 +1,11 @@
 # H0 — shared acceptance, isolation and performance foundation
 
-**Status: proposed launch scope, 2026-10-22.** Local label H0, not a registered phase, slice,
-gate or authorization. This is the concrete shared prerequisite recommended by
-[the canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave).
-Production remains under the [owner hold](./README.md#production-implementation-hold).
-The owner reviews this bounded scope, assigns its normal provider registration and releases
-that named implementation scope before work starts. Do not reopen a closed P01 phase.
+**Status: launch scope, 2026-10-22; registered, authorized and released as T3.P03 in batch E**
+([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E2). Local label H0. Its registered form is
+[T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md), whose slice plans carry
+the exact implementation scope and acceptance. This page keeps the rationale. It is the concrete
+shared prerequisite of [batch E](./cross-track-execution.md#authorized-batch-e-2026-10-22). Do not
+reopen a closed P01 phase.
 
 ## Outcome and integration owner
 
@@ -37,9 +37,10 @@ dependency. S01 retains its historical authorization and all its declared accept
   Permanent workflow authorization is separate from bounded measurements and is already satisfied.
   No timing assertion enters Vitest and no CI, registry or scheduled performance job is added.
 - Capture a production-build baseline on available hardware with exact machine, browser, power,
-  workload, network and cache state. Reference A measurements qualify hard budgets; an M2 or
-  uncalibrated developer run is labelled pre-flight, never a reference-laptop pass. A functional
-  harness acceptance does not claim that the product meets unrun performance budgets.
+  workload, network and cache state. Runs on the owner-designated reference machine, a MacBook Air
+  M2 with 16 GB ([batch E, E6 amendment](../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)), qualify hard budgets; any other uncalibrated
+  developer run is labelled pre-flight. A functional harness acceptance does not claim that the
+  product meets unrun performance budgets.
 
 ## Owned changes and merge boundary
 
@@ -55,7 +56,9 @@ Compile deduplication and any incremental/worker implementation stay in C1's mea
 
 ## Acceptance and verification
 
-Declared tier for normal registration: **architecture-integration**. Use
+T3.P03 splits this into `T3.P03.S01` (scope and isolation, **architecture-integration**)
+and `T3.P03.S02` (measurement, the **exhaustive** final gate), so the narrowed tier has its
+integration route. Use
 [the test contract](../../apps/editor/tests/README.md) for the implementation's complete repository
 verification and required final gate; this proposal does not narrow it to the files above.
 
@@ -82,10 +85,10 @@ verification and required final gate; this proposal does not narrow it to the fi
 
 ## Owner decision and follow-through
 
-The immediate owner act is to accept or edit this launch scope, register its provider through
-the owning track, and explicitly release H0 from the hold. Those acts authorize H0 alone. They authorize neither C1/C2 nor S01
-resumption. After H0 merges, the next batch review can release the clarified S01 and authorize
-reviewed/registered C1/C2 launch plans. Each track updates only its own operational baton.
+The owner accepted this launch scope, registered it through T3 as T3.P03, authorized both slices and
+released T3.P03 from the hold on 2026-10-22 ([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E2). In the same batch (E7) the owner
+authorized `T1.P02.S01` and `T2.P02.S01` and released them and the finalized `T3.P02.S01`, each
+starting only after `T3.P03.S01` merges. Each track updates only its own operational baton.
 
 Evidence: [RR-4 scope counterexample](../../broad-research/post-p01-roadmaps/convergence-2026-10-21/relationships-and-revision.md),
 [performance and delivery packet](../../broad-research/post-p01-roadmaps/convergence-2026-10-21/performance-and-delivery.md),

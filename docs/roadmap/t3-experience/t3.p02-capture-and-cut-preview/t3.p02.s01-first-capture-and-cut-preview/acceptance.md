@@ -1,7 +1,7 @@
 # T3.P02.S01 — acceptance record: First capture and Cut Preview
 
-**Slice:** T3.P02.S01 · **Status:** authorized 2026-10-20 as batch D, not implemented — no acceptance
-recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
+**Slice:** T3.P02.S01 · **Status:** authorized 2026-10-20 as batch D and released 2026-10-22 as batch
+E, not implemented — no acceptance recorded · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T3.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
 No evidence is recorded against this slice. `T3.P02.S01` is an authorized, unimplemented child of

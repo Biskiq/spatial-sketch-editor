@@ -2,11 +2,11 @@
 
 **Owner production hold, 2026-10-22:** the [roadmap hold](./README.md#production-implementation-hold)
 overrides implementation launch/resume implied by earlier batch authorizations below. PR #173's
-[expanded convergence scope](./product-convergence-2026-10-21.md#scope-and-sequence) will reconcile
-this canonical DAG, affected roadmaps and the next batch. The 2026-10-22 convergence update below
-replaces stale scheduling with a proposed next batch and explicit planning triggers; it grants no
-implementation permission. The core destination and on-demand workflow were owner-ratified
-on 2026-10-22; named implementation releases remain pending.
+[convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) reconciled this
+canonical DAG; the core destination and on-demand workflow were owner-ratified on 2026-10-22.
+[Batch E](#authorized-batch-e-2026-10-22) ([record](../reference/decisions/batch-e-authorization-2026-10-22.md)) registered T3.P03, T1.P02 and T2.P02 and
+released named scopes: T3.P03 now, and `T1.P02.S01`, `T2.P02.S01` and `T3.P02.S01` once `T3.P03.S01`
+merges. Every other implementation scope stays held.
 Historical evidence and accepted gate identities remain unchanged. Merge alone does not release the hold.
 
 **Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it
@@ -22,7 +22,9 @@ T1.P01 (S01–S05 and S07 shipped, S04 through batch B and S05 through batch C; 
 2026-10-20 as batch D**), T2.P01 (**closed 2026-10-20**; S01–S04 shipped, S03 through batch B and S04
 through batch C) and T3.P01 (**closed 2026-10-20**; S01–S06 shipped, S03 reconciled through its
 owner-authorized split halves and S04 through the AM-9 two-phase authorization), plus
-**T3.P02 registered 2026-10-20** with `S01` authorized and `S02` `proposed`. All T4 work is deferred
+**T3.P02 registered 2026-10-20** with `S01` authorized and `S02` `proposed`, and **T3.P03, T1.P02
+and T2.P02 registered 2026-10-22 as batch E** with their launch slices authorized and the rest
+`proposed`. All T4 work is deferred
 by ruling R1-D. Batch B shipped under the [batch B protocol](#authorized-batch-b-2026-10-17); batch C
 (`T1.P01.S05` ∥ `T2.P01.S04`, authorized 2026-10-19) and the two-phase T3.P01.S04 (authorized
 2026-10-19 under AM-9) shipped under the [batch C protocol](#authorized-batch-c-2026-10-19), and
@@ -212,33 +214,44 @@ with fresh OCC revisions. No permanent dual-format reader/writer or source fallb
 
 **Current evidence, 2026-10-22:** T1.P01, T2.P01 and T3.P01 are shipped and closed. Their
 accepted providers remain exactly those in the [gate register](./README.md#gate-register).
-T3.P02.S01 is historically authorized, unimplemented and subject to the owner hold; S02 still
-needs its own authorization. The graph below is the one current execution recommendation.
+[Batch E](#authorized-batch-e-2026-10-22) registered H0, C1 and C2 as T3.P03, T1.P02 and T2.P02.
+T3.P03 is authorized and released. `T1.P02.S01`, `T2.P02.S01` and the finalized `T3.P02.S01` are
+authorized and released, each starting only after `T3.P03.S01` merges. Every later child is
+registered `proposed` and held. The graph below is the one current execution recommendation.
 Earlier dated batch sections retain their authorization provenance, not current launch permission.
 
 ```mermaid
 flowchart TD
-  BASE["Accepted F1–F4, viewport and Camera/Experience cutover; P01 phases closed"]
-  H0["H0 proposal: acceptance scope, isolation builds, performance baseline"]
-  CW["C1 proposal: native Walls; single datum; nonreuse; measured optimization"]
-  IM["C2 proposal: own GLB; retained source; whole-object admission"]
-  PV["T3.P02.S01 held: capture + Guide-free and Cut Preview"]
-  PG["T3.P02.S02: separate integrated final gate"]
+  BASE["Accepted F1–F4, viewport and Camera/Experience cutover; P01 phases closed (main f516e1ff)"]
+  H0A["T3.P03.S01: planner scope + build isolation (merges first)"]
+  H0B["T3.P03.S02: measurement workflow + phase final gate"]
+  C1A["T1.P02.S01: Layout format 6 + captured identity"]
+  C1B["T1.P02.S02: Draw, close, divide, delete; rail; dedupe"]
+  C1C["T1.P02.S03: Opening family"]
+  C1G["T1.P02.S04: final gate"]
+  C2A["T2.P02.S01: model storage, formats, Save verification"]
+  C2B["T2.P02.S02: import, approve, place, reopen"]
+  C2G["T2.P02.S03: final gate"]
+  PV["T3.P02.S01: capture + Guide-free and Cut Preview (finalized scope)"]
+  PG["T3.P02.S02: integrated final gate"]
   LC["C3 proposal: rename/delete; T3 API + T1 shell"]
   CES["Core Editor Stability: owner-approved criteria and integrated acceptance"]
   REL["T4 deferred by R1-D: request planning after milestone acceptance"]
-  BASE --> H0
-  BASE --> CW
-  BASE --> IM
-  BASE --> PV
-  H0 -->|shared fixes merged before new consumers| CW
-  H0 --> IM
-  H0 --> PV
+  BASE --> H0A
+  H0A -->|merged| H0B
+  H0A -->|merged| C1A
+  H0A -->|merged| C2A
+  H0A -->|merged| PV
+  C1A --> C1B --> C1C --> C1G
+  C2A --> C2B --> C2G
   PV --> PG
-  BASE --> LC
+  H0B -.->|harness before consuming acceptance; manual evidence meanwhile| C1B
+  H0B -.-> C2B
+  H0B -.-> PV
+  PV -.->|Preview evidence; else checked in C2's final gate| C2G
   PV -.->|preferred T3 capacity order| LC
-  CW --> CES
-  IM --> CES
+  C1G --> CES
+  C2G --> CES
   PG --> CES
   LC --> CES
   CES --> REL
@@ -256,65 +269,119 @@ flowchart TD
   ATT["Optional attachment: versioned Scene format, transport and joint planners"]
   BASE --> FACE
   FACE --> PLACE
-  IM --> PART
+  C2G --> PART
   PART --> PICK
   PICK --> ANNO
   PV --> ANNO
-  CW --> VERT
+  C1G --> VERT
   BASE --> TOL
   TOL --> E2
   TOL --> E1
   E2 --> ROOF
   VERT --> ROOF
   E1 -.->|only if area booleans or offsets are used| ROOF
-  H0 --> ATT
+  H0A --> ATT
   FACE --> ATT
-  CW -->|non-reusing Layout allocation| ATT
+  C1A -->|non-reusing Layout allocation| ATT
   PART -.->|only for part-qualified attachment| ATT
 
   classDef accepted fill:#d8ecd8,stroke:#3c7a3c,color:#1e3d1e
+  classDef released fill:#cfe8d6,stroke:#2d7a4a,color:#16391f,stroke-width:2px
+  classDef gated fill:#d6e4f5,stroke:#2f5f99,color:#17304d,stroke-width:2px
+  classDef registered fill:#f3e2c4,stroke:#9b7621,color:#4c3b13
   classDef proposed fill:#fff2ce,stroke:#9b7621,color:#4c3b13
-  classDef held fill:#d6e4f5,stroke:#2f5f99,color:#17304d
   classDef deferred fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3
   class BASE accepted
-  class H0,CW,IM,PG,LC,FACE,PLACE,PART,PICK,ANNO,VERT,TOL,E2,E1,ROOF,ATT proposed
-  class PV held
+  class H0A,H0B released
+  class C1A,C2A,PV gated
+  class C1B,C1C,C1G,C2B,C2G,PG registered
+  class LC,FACE,PLACE,PART,PICK,ANNO,VERT,TOL,E2,E1,ROOF,ATT proposed
   class CES,REL deferred
 ```
 
 Solid arrows are actual provider or integration prerequisites. Dashed arrows carry a stated
-condition or capacity preference; they do not invent an accepted gate. All proposed nodes need
-normal planning, registration where required, explicit implementation authorization and named
-release from the hold. H0 corrects existing accepted mechanisms; it creates no new F gate or
-accepted capability. The direct BASE edges mean C1/C2 planning can proceed in parallel with H0;
-implementation starts from its merged shared corrections. No release slice depends on advanced
-vertical, attachment or annotation work unless the owner changes the milestone criteria.
+condition or capacity preference; they do not invent an accepted gate. Node states: *released* —
+authorized and released from the hold (T3.P03); *gated* — authorized and released, starting only
+after `T3.P03.S01` merges; *registered* — a registered `proposed` child that still needs its own
+authorization; *proposed* — not yet registered; *deferred* — owner-deferred. H0 corrects existing
+accepted mechanisms; it creates no new F gate or accepted capability. `T3.P03.S01` is the only
+merge prerequisite shared by the product lanes, which otherwise consume nothing from one another.
+No release slice depends on advanced vertical, attachment or annotation work unless the owner
+changes the milestone criteria.
 
 ### Convergence batch and next planning wave
 
-**Recommendation for owner authorization, not a new authorization record.** The next useful
-batch is shared corrections followed by three parallel product lanes. C1/C2 still need their
-launch plans and normal phase registration; this PR does not present them as implementation-ready.
-H0 has a [bounded launch proposal](./convergence-shared-foundation-2026-10-22.md), while S01 has
-an existing reviewed plan with explicit convergence clarifications. No closed phase is reopened.
+#### Authorized batch E (2026-10-22)
 
-| Scope | Owner and concrete outcome | Prerequisites / next act | Authorization readiness |
-| --- | --- | --- | --- |
-| H0 shared correction | T3 F4 integration owner; T1 Stage and visitor-boundary support. Enforce each planner's declared scope, align public/Preview build patterns with current authoring machinery, establish browser/bundle measurements | Accepted F4 unit scopes and viewport; review the launch proposal, assign its normal provider registration and release H0 implementation; the permanent on-demand workflow is already authorized | Concrete bounded proposal ready for owner review; implementation held |
-| T1 planning lane → C1 | T1. Empty → draw → close/divide → Opening → delete with one datum, non-reused IDs and role cutover; resolve measured performance costs | Plan native-Wall phase now; H0 before implementation, explicit encoding and enclosure policy, performance evidence at slice acceptance | Planning can proceed; implementation needs reviewed plans, registration and hold release |
-| T2 planning lane → C2 | T2 ingest/API owner, T1 host integration. Upload/approve/place/Save/reopen one own GLB, retaining source and a parts-safe derivative | Plan bounded ingest phase now; H0 before implementation, exact resource locks and stale/cancelled staging; no T4 dependency | Planning can proceed; implementation needs reviewed plans, registration and hold release |
-| T3.P02.S01 → S02 | T3. Capture and explain without a Guide, plus Cut Guide and isolated Preview, Save/history intact | Owner accepts the scope clarifications and releases S01 after H0; S02's separate authorization follows S01 acceptance | Existing S01 plan ready for final review; historical approval alone cannot resume it |
-| C3 lifecycle follow-on | T3 persistence/API, T1 shell. Rename/delete with conflict and dirty-replacement safety | Plan after the first-wave interfaces settle; execute after S01 by T3 capacity preference, with no fabricated data dependency | Next slice to plan in the T3 lane after capture/Preview |
+**Owner-authorized 2026-10-22** ([record](../reference/decisions/batch-e-authorization-2026-10-22.md), E1–E7, from the
+[coordination proposal](./next-batch-2026-10-22.md#owner-decisions)). H0's correctness slice
+`T3.P03.S01` merges first; then `T1.P02.S01`, `T2.P02.S01` and `T3.P02.S01` run in parallel with
+H0's measurement slice `T3.P03.S02`. T3.P03, T1.P02 and T2.P02 are registered; the four launch
+slices and `T3.P03.S02` are authorized and released, and every later child stays `proposed` and held.
+No closed phase is reopened, and no gate, version or capability changes.
 
-**Merge and shared-file protocol.** H0 merges first. C1, C2 and S01 then build independently on
-that base and accepted gates. T1 owns `stage/**`, Stage shell/route integration, layout-core and
-Wall geometry; T2 owns ingest, Scene placement/resource adapters and its API resource changes;
-T3 owns the F4 coordinator/shared acceptance, Camera/Experience units, lowering and Preview.
-Cross-track changes are prepared as owned integration patches and reviewed by the named owner.
-No lane independently rewrites shared Stage registration, `units/**`, API source admission,
-root exports or package scripts. Merge those changes serially and rebase the next lane; run its
-required verification on the integrated tree. T3's H0 owner coordinates the permanent measurement
-harness; each consuming slice owns its workload and result. Each track replaces only its own baton.
+#### Batch E lanes and launch plans
+
+| Lane | Owner and outcome | Launch slice | Before implementation | Readiness |
+| --- | --- | --- | --- | --- |
+| H0 | T3 F4 owner, T1 boundary review. Per-planner scope, current build isolation, the on-demand harness and baseline | [T3.P03.S01](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md), then [S02](./t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md) | Nothing further: registered (E1), authorized and released (E2) | S01 startable now; S02 after S01 merges |
+| C1 | T1. Empty → draw → close → divide → Opening → delete with captured identity and derived roles | [T1.P02.S01](./t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/implementation-plan.md); S02–S04 registered in [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) | `T3.P03.S01` merged | S01 authorized and released (E7) with the drawing policy accepted (E3); later plans written after each predecessor's acceptance |
+| C2 | T2 ingest/API owner, T1 host review. Import → approve → place → Save → reopen one own GLB | [T2.P02.S01](./t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/implementation-plan.md); S02–S03 registered in [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) | `T3.P03.S01` merged | S01 authorized and released (E7) with the bounds accepted (E4) |
+| Capture/Preview | T3. Capture, Guide-free and Cut Preview, Save/history | [T3.P02.S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) with its finalized scope | `T3.P03.S01` merged | Finalized scope accepted (E5) and released (E7); historical authorization retained |
+| C3 follow-on | T3 persistence/API, T1 shell. Rename/delete with conflict and dirty-replacement safety; deletes the project's model revisions | Not yet planned | After the first-wave interfaces settle, by T3 capacity after S01 | Next T3 slice to plan |
+
+**Reference hardware (E6).** Hard rows are run and accepted on the owner's MacBook Air M2 with
+16 GB, operated by the owner ([E6 amendment](../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); laptop A stays the accessibility target the
+budgets describe. This covers F2 for `T1.P02.S01`, F10 for `T3.P02.S01`, and the drawing, import
+and placement rows for the S02 slices. Another developer machine's CPU run counts only when
+calibrated against it; hardware-independent delivery rows need no machine.
+
+#### Batch E shared files and merge order
+
+One writer per row; everything else is read-only for the other lanes.
+
+| Area | Writer | Rule for everyone else |
+| --- | --- | --- |
+| F4 host: `packages/project-model/src/f4/`, the unit acceptance adapter, editor `lib/authoring/f4/` | `T3.P03.S01` | Read-only afterwards; a later need is a T3-reviewed change |
+| Public/Preview boundary predicate, both Vite boundary plugins, boundary tests | `T3.P03.S01` | Later lanes add assertions only; none is weakened |
+| Harness, its config, bundle report, editor devDependencies and `perf` scripts | `T3.P03.S02` | Consumers add their own flow marks and specs in their own files |
+| Shared unit type, validation and envelope-closure modules in `packages/project-model/src/units/` | Each lane edits only its own entries: T1 Layout, T2 resources and Scene closure, T3 Experience and program | Merged serially; T3's F2 owner reviews each change; the later merger rebases and reruns the full gate |
+| `@portfolio/layout-core`, the Layout unit, Layout adapters, the starter gallery | T1.P02 | Read-only |
+| Stage host, `stage/shell/`, the spatial route | T1.P02 | T2/T3 contribute through the adapter contract. T3's Head Preview entry and takeover is an owned integration patch reviewed by T1. Any other host need is a stop-and-report |
+| Scene format, Scene planning, Scene adapters, the Import procedure | T2.P02 | Read-only |
+| `apps/api/**` and migrations | T2.P02 | Read-only. T1.P02.S01 changes API behavior only through the shared Layout validation and runs the API gates |
+| Experience and Camera units, lowering, interpreter, the Preview surface, T3 authoring adapters | T3.P02.S01 | Read-only |
+| Root barrels, `package.json` exports, [`test-lanes.ts`](../../apps/editor/test-lanes.ts) | Append-only | The second merger resolves |
+| Gate register, phase registers, batons | Each slice's own rows and its own track's baton | No cross-track register edits; a lane reads `T3.P03.S01`'s row for its start gate and never edits it |
+| `docs/roadmap/t4-release/**`, `prototypes/**` | Nobody | Frozen (R1-D); prototypes stay evidence |
+
+**Merge order.**
+
+1. `T3.P03.S01` merges first. Every product lane starts from a base containing it.
+2. `T1.P02.S01`, `T2.P02.S01`, `T3.P02.S01` and `T3.P03.S02` then run in parallel and merge in
+   acceptance order, each as its own P1 merge commit. A later merger rebases and reruns the complete
+   merge gate on then-current `main`. No lane imposes an order on another.
+3. Each lane's next slice starts only after its predecessor's acceptance and its own authorization.
+   No acceptance record may include another lane's unaccepted implementation.
+4. Each phase's final gate rechecks its integrated flows. The Core Editor Stability acceptance plan
+   follows the [milestone route](./core-editor-stability.md#acceptance-route) after the lanes ship.
+
+#### Batch E acceptance and performance gates
+
+Each slice records the [performance contract](../reference/components/performance.md) rows below
+before acceptance. Hard misses are resolved inside the slice; target misses get a written disposition.
+A final gate cannot defer a slice's hard miss.
+
+| Slice | Acceptance core | Performance evidence before acceptance |
+| --- | --- | --- |
+| `T3.P03.S01` | RR-4 refusal; joint planner admitted within `writes`; both build mutation proofs; Preview closure test | None: no product flow changes |
+| `T3.P03.S02` (final gate) | Correlated input-to-frame measurement; bundle report; baseline with unrun rows named; S01 rechecked | Baseline F1, F2, F7, F9, F13 and the F3/F4/F8 method on the shipped drag |
+| `T1.P02.S01` | Identity guards; derived-role differential; strict format 6; unchanged creator journeys | F2 open at S and M against the H0 baseline |
+| `T1.P02.S02` | Empty → draw → close → divide → delete; policy refusals; Undo/Redo, Save, reload | F3 drag and per-move evaluation, F4 commit and F8 Undo/Redo (hard S/M, L reported), F13, Stage first-load delta |
+| `T1.P02.S03` | Opening place/remove, host preference, refusal | F4 for Opening commit |
+| `T2.P02.S01` | DB-backed API at zero skips; model pins verified at Save; strict formats | None: no editor flow |
+| `T2.P02.S02` | Import → approve → place → duplicate → Save → reopen → Preview | F5 (hard long-task rows), F6 at S/M, GPU memory at M, F13, Stage first-load delta with Import lazy |
+| `T3.P02.S01` | Capture/bind as one accepted result; Guide-free and Guide Preview; Save/reload | F10 capture/bind and Preview entry (hard S/M), Preview chunk lazy, F13 Preview enter/exit cycles |
 
 **Next capability wave.** T1 plans the Wall face-frame query and T2 solve-once surface placement;
 that consumer can use existing objects and has no artificial own-GLB or vertical dependency.
@@ -327,10 +394,13 @@ a relevant dependency ships, and attachment removal/parameter policies remain co
 owner calls. No broad research program or geometry library is required for the first wave.
 
 **Design development.** Feature-level placement of prototype capabilities in the shell is a
-consuming-slice design task: draft → review → build → browser observation → revise. Keep PLATE's
-ratified shared composition, identity, material, metrics, return and accessibility rules. A slice
-records a proposed departure for owner review; detailed controls do not need to be frozen for all
-future features before C1/C2 planning. Prototype chrome never becomes the production shell by default.
+consuming-slice design task: draft → review → build → browser observation → revise. The first
+drafts are the [C1](./t1-spatial-world/t1.p02-native-wall-creation/shell-draft.md),
+[C2](./t2-composition/t2.p02-own-model-import/shell-draft.md) and
+[S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/shell-draft.md)
+shell drafts. Keep PLATE's ratified shared composition, identity, material, metrics, return and
+accessibility rules. A slice records a proposed departure for owner review; prototype chrome never
+becomes the production shell by default.
 
 **After the lanes ship:** request the Core Editor Stability integrated acceptance plan through
 its [milestone route](./core-editor-stability.md#acceptance-route). Do not create that workspace

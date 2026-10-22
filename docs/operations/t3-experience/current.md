@@ -16,38 +16,31 @@ track's baton, and never treat stale baton text as a blocker — verify Git stat
 prerequisites instead.
 
 ```text
-PHASE: T3.P02 First Capture and Cut Preview (registered 2026-10-20; S01 authorized) →
+PHASE: T3.P03 Shared acceptance, isolation and measurement (H0; registered 2026-10-22, batch E) →
+       ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md
+       T3.P02 First Capture and Cut Preview (registered 2026-10-20; S01 released, gated on H0) →
        ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
-       T3.P01 is CLOSED 2026-10-20 — all six children shipped, final gate accepted at `06a8aac8`,
-       merged as `9a457f6b` (PR #158). →
-       ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
-ACTIVE: T3.P02.S01 — First capture and Cut Preview, owner-authorized 2026-10-20 as batch D (D3,
-        [record](../../reference/decisions/batch-d-authorization-2026-10-20.md)). It declares
-        architecture-integration verification with its integration route at `T3.P02.S02`. S02 is
-        registered `proposed` and is NOT authorized.
-BATON: Build the first authoring surface on the accepted F2 cutover: Experience create/select, View
-       capture from the shared Stage, one-operation Presentation/Stop binding, Presentation reuse
-       across distinct Stops, reorder by stable identity, bounded labels/text/holds/continuation, a
-       first Cut Guide, isolated Preview with Camera return, and Undo/Redo/Save/reload through F2/F4.
-       One Camera authority, Experience-owned order, Camera-owned View identity, shared output/return
-       tickets, visitor isolation and room-local frame semantics all bind it. It contributes through
-       AM-5's task/Find/instrument points and the accepted viewport facade; a new host seam is a
-       stop-and-report to T1. Rich interaction grammar belongs to the PR #154 prototype and is not
-       imported here.
-NEXT:  Start S01 through the runbook start step at its own trusted base, implement, then independent
-       review, `slice-closeout` and a P1 merge commit. Its acceptance is not the phase gate:
-       `T3.P02.S02` needs its own authorization after S01 lands.
+       T3.P01 is CLOSED 2026-10-20 (final gate `06a8aac8`, merged `9a457f6b`, PR #158).
+ACTIVE: none yet. T3.P03.S01 and S02 are `approved` and released (batch E, E1/E2). T3.P02.S01 is
+        `approved` with its finalized scope owner-accepted (E5) and released (E7), starting only
+        after T3.P03.S01 is merged on `main`. T3.P02.S02 stays `proposed` and held.
+BATON: Start T3.P03.S01 now through the T3 runbook start step: per-planner scope enforcement and
+       build isolation. It merges first, and its merge is the start gate for T1.P02.S01,
+       T2.P02.S01 and T3.P02.S01. T3.P03.S02 (measurement workflow, final gate) starts after it.
+NEXT:  T3.P03.S01 → merge → T3.P02.S01 and T3.P03.S02 in parallel. S01 settles the format draft's
+       two open points (text bound, entryViewId) at implementation review.
 ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →
-       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md →
-       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-d-2026-10-20
-BLOCKER: none. S01 consumes only accepted gates; it does not wait for `T1.P01.S06`, and no
-         architecture-cycle window applies to T3.
+       ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md
+       → ../../roadmap/cross-track-execution.md#authorized-batch-e-2026-10-22 (protocol)
+       → ../../reference/decisions/batch-e-authorization-2026-10-22.md (provenance)
+BLOCKER: none for T3.P03.S01. Hard performance rows (S01's F10, S02's baseline and calibration)
+         run on the owner's MacBook Air M2, 16 GB, operated by the owner (E6 amendment).
 CARRY:  SEPARATE AND STILL OWED: the owner-run production activation of the F2 epoch (migration 005,
         API and editor deploys, namespace-scoped R2 purge, smoke checks). The S04 merge executed no
         migration against a deployed database. Residuals that move into this phase or beyond: the
-        authored Cut/Travel selector and presentation text/state/lifecycle homes (AM-9 amendment
-        drafts, S01), resource bytes host-asserted until storage verifies them, the envelope's
+        authored Cut/Travel selector and presentation text homes (now S01's Experience format
+        draft; state/lifecycle homes stay later), model resource bytes (T2.P02.S01 verifies them)
+        and other resource bytes host-asserted until storage verifies them, the envelope's
         acceptedRevision as baseline provenance only, and T4's prepared public reader under the
         approved empty publication gap. T3 track completion remains a separate owner event.
 ```

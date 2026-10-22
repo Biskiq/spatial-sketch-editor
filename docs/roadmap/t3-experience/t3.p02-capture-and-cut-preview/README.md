@@ -9,11 +9,11 @@ implementation as batch D (D3, [record](../../../reference/decisions/batch-d-aut
 [Camera contract](../../../reference/components/camera-tour.md), [PLATE Experience
 expression](../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 
-**Implementation held by owner direction, 2026-10-22.** The
-[production hold](../../README.md#production-implementation-hold) includes S01 despite its earlier
-authorization. PR #173 reconciles the existing scope against the selected architectural decisions
-before recommending a batch. Registered states and historical authorizations stay unchanged;
-starting/resuming needs explicit owner release. This note does not re-scope either slice.
+**Held 2026-10-22, then released for S01 by batch E.** The
+[production hold](../../README.md#production-implementation-hold) included S01 despite its earlier
+authorization while PR #173 reconciled its scope. Batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7) accepted the
+finalized S01 scope and released S01, starting only after `T3.P03.S01` is merged on `main`. S02 stays
+under the hold. Registered states and historical authorizations stay unchanged.
 
 This phase is registered by the owner decision of 2026-10-20, after `T3.P01` closed with
 `T3.camera-experience-cutover@1` `accepted` at `06a8aac8` and merged as `9a457f6b` (PR #158). The
@@ -41,15 +41,18 @@ Presentations into F2 units, Preview executes the one shared Experience interpre
 `T3.P01.S06`/`S04`, and Save uses `conditional-save-units-v1`. No slice here consumes a retired
 current-source adapter, and none may re-introduce one.
 
-## Convergence review and hold
+## Convergence review and release
 
 PR #173 records owner-accepted S01 destination clarifications: qualified subject references, explicitly
 versioned text/entry formats, a Guide-free Presentation Preview, lazy isolated delivery and
 performance evidence before consuming-slice acceptance. It preserves the complete approved
-capture/Guide/history/Save scope and S02's exhaustive final gate. H0's shared correction precedes
-new implementation; the [canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave)
-owns current sequencing. Exact feature controls develop through a PLATE-conforming draft,
-review, build and browser revision. No historical authorization releases the production hold.
+capture/Guide/history/Save scope and S02's exhaustive final gate. The S01 plan carries the
+finalized scope, its [Experience format draft](./t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md)
+and its [shell draft](./t3.p02.s01-first-capture-and-cut-preview/shell-draft.md); the owner accepted
+them and released S01 from the production hold on 2026-10-22 (batch E, [record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7).
+S01 starts only after H0's shared correction, `T3.P03.S01`, is merged on `main`; the
+[batch E protocol](../../cross-track-execution.md#authorized-batch-e-2026-10-22) owns current
+sequencing. S02 stays held and unauthorized.
 
 ## Bounded outcome
 
@@ -103,7 +106,7 @@ lifecycle and prerequisites only.
 
 | Slice | Status | Consumes | Requires | Effects | Plan | Acceptance | Authorization |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| T3.P02.S01 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](./t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](./t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) |
+| T3.P02.S01 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | camera-authoring-migration | [First capture and Cut Preview](./t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md) | [record](./t3.p02.s01-first-capture-and-cut-preview/acceptance.md) | owner-authorized 2026-10-20 as batch D ([record](../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); finalized scope accepted and released 2026-10-22 as batch E ([record](../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7); starts only after `T3.P03.S01` is merged on `main` |
 | T3.P02.S02 | proposed | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1 | — | [Integrated final gate](./t3.p02.s02-integrated-final-gate/implementation-plan.md) | [record](./t3.p02.s02-integrated-final-gate/acceptance.md) | not authorized — starts only from its own owner authorization after S01 is accepted |
 
 Every consumed gate is `accepted` and every required scope is `active` on `main` `9a457f6b`; each
@@ -152,9 +155,9 @@ stay green and are not re-owned here. This phase adds:
 ## Verification and coordination
 
 Verification commands and tiers are owned by
-[the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). Implementation runs
-under the [batch D protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20) alongside
-`T1.P01.S06`: one writer per shared file, additive registration elsewhere, the complete merge gate
-rerun on then-current `main`, independent review per slice, and each slice's own closeout and P1 merge
-commit. No architecture-cycle window is proposed: the T1.P01 window is closed, T3 slices are not
+[the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). S01 was authorized
+under the [batch D protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20); on
+resumption it runs under the authorized [batch E rules](../../cross-track-execution.md#batch-e-shared-files-and-merge-order):
+one writer per shared file, additive registration elsewhere, the complete merge gate rerun on
+then-current `main`, independent review per slice, and each slice's own closeout and P1 merge commit. No architecture-cycle window is proposed: the T1.P01 window is closed, T3 slices are not
 exposures of it, and this phase claims no mechanism verdict.

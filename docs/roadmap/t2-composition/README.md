@@ -2,7 +2,8 @@
 
 **Track:** T2 · **Status:** approved — `T2.P01` registered 2026-10-16 and **closed 2026-10-20**, with
 all four children shipped (`T2.P01.S01` 2026-10-16, `S02` 2026-10-17, `S03` 2026-10-18 (batch B),
-`S04` final gate 2026-10-20, PR #157) ([track register](../README.md#track-register)) · **Runbook:**
+`S04` final gate 2026-10-20, PR #157); `T2.P02` (own model import) registered 2026-10-22 as batch E
+with `T2.P02.S01` authorized ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t2-composition/README.md`](../../operations/t2-composition/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) ·
 **Contracts:** [`scene-content.md`](../../reference/components/scene-content.md),
@@ -60,14 +61,18 @@ baseline, then C1 native Walls, C2 own-GLB import and the held T3 Capture/Previe
 proceed while H0 is planned. It is whole-object editor import with retained original bytes/hash,
 recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
 references keep `componentId: null`, and no T4 dependency is introduced. Its consuming slice carries
-import/placement/memory evidence. This page registers no new phase or slice.
+import/placement/memory evidence. It is registered as
+[T2.P02 — Own model import](./t2.p02-own-model-import/README.md) (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md)): the
+owner accepted its upload, retention and derivative bounds, authorized `T2.P02.S01` and released it
+from the hold, starting only after `T3.P03.S01` merges; S02 and S03 stay `proposed`.
 
 The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
 part selection with T2 component resolver/admission and revision correspondence; T3 annotations
 consume the latter. Attached composition and later architecture choices remain deferred. Feature
 shell design develops in the consuming slice through planning, draft, review, build and revision,
 preserving PLATE's ratified shared invariants; it does not block all first-wave planning. All
-implementation remains under the [owner hold](../README.md#production-implementation-hold).
+implementation not released by batch E remains under the
+[owner hold](../README.md#production-implementation-hold).
 
 ## Evidence roles
 
@@ -87,6 +92,7 @@ register owns lifecycle only.
 | Phase | Status | Depends on | Workspace |
 | --- | --- | --- | --- |
 | T2.P01 | shipped | F1.reference@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P01 — Supported object composition](./t2.p01-supported-composition/README.md) |
+| T2.P02 | approved | F1.reference@1, F2.unit-envelope@1, F4.intent-acceptance@1, T1.viewport-projection@1 | [T2.P02 — Own model import](./t2.p02-own-model-import/README.md) |
 
 T2.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)), with its
@@ -104,9 +110,11 @@ shipped in PR #157 (`99c38033`), and the owner closed the phase on 2026-10-20 (i
 
 **T2 is not complete.** Phase closure ends one bounded phase; the track's remaining objectives
 (materials/lights depth, attachments, definitions, and the K1 bounded editor-side GLB import) stay
-ahead of it. The next T2 phase is the K1 single-model ingest boundary described in the closed
-phase's deferred table, and it registers only through a later owner decision — this register
-proposes no phase, slice or gate.
+ahead of it. **`T2.P02` is registered 2026-10-22** as that K1 bounded editor-side import (batch E,
+[record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E4/E7), superseding the closed phase's deferred-table sentence that tied it to
+T4 delivery; the closed record is left as written. `T2.P02.S01` is authorized and released from the
+hold, starting only after `T3.P03.S01` merges; S02 and S03 are registered `proposed`. `Depends on`
+lists the external gates its slices consume. No slice provides a gate.
 
 ## Starting foundation
 

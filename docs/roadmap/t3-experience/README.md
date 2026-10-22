@@ -3,7 +3,8 @@
 **Track:** T3 · **Status:** approved — `T3.P01` registered 2026-10-16 and **closed 2026-10-20**, with
 all six children shipped (`T3.P01.S01` 2026-10-16 (PR #131), `S02` 2026-10-16 (PR #133), `S03`
 through its split halves `S05` (PR #140) and `S06` (PR #141), and the final gate `S04` 2026-10-20
-(PR #158, `9a457f6b`)) ([track register](../README.md#track-register)) · **Runbook:**
+(PR #158, `9a457f6b`)); `T3.P02` registered 2026-10-20, and `T3.P03` (H0) registered 2026-10-22 as
+batch E ([track register](../README.md#track-register)) · **Runbook:**
 [`../../operations/t3-experience/README.md`](../../operations/t3-experience/README.md)
 **Evidence:** [`planning-evidence.md`](./planning-evidence.md) · **Gates owned:**
 `T3.camera-experience-cutover` ([gate register](../README.md#gate-register)) ·
@@ -63,15 +64,17 @@ baseline, then C1 native Walls, C2 own-GLB import and the existing T3.P02.S01 sc
 clarification proves Guide-free Capture/Preview by entering a Presentation without fabricating a
 Stop, keeps subjects as F1 references and text as a closed v1 kind for later extension, and carries lazy
 Preview delivery plus capture/entry/exit performance evidence. It adds no new gate/capability
-prerequisite; H0's shared correction precedes implementation.
+prerequisite; H0's shared correction precedes implementation. The S01 plan carries the finalized
+scope and its Experience format and shell drafts, owner-accepted in batch E. H0 itself is registered
+through T3 as [T3.P03](./t3.p03-shared-acceptance-and-measurement/README.md).
 
 After the first wave, C3 gives T3 persistence/API ownership of rename/delete with T1 shell
 integration. Part annotations follow T2's component resolver/admission and T1 Stage part selection;
 later interaction and attached-composition choices stay deferred. Feature-specific shell design
 develops in its consuming slice through planning, draft, review, build and revision while preserving
-PLATE's ratified shared invariants; it need not be complete before first-wave planning. All
-implementation, including the previously authorized T3.P02.S01, remains under the
-[owner hold](../README.md#production-implementation-hold).
+PLATE's ratified shared invariants; it need not be complete before first-wave planning. Batch E
+released `T3.P03` and, once `T3.P03.S01` merges, `T3.P02.S01`; all other implementation remains under
+the [owner hold](../README.md#production-implementation-hold).
 
 ## Evidence roles
 
@@ -92,6 +95,7 @@ register owns lifecycle only.
 | --- | --- | --- | --- |
 | T3.P01 | shipped | F1.reference@1, F3.channels@1, F4.intent-acceptance@1 | [T3.P01 — Camera/Experience cutover foundation](./t3.p01-camera-experience-foundation/README.md) |
 | T3.P02 | approved | F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1 | [T3.P02 — First Capture and Cut Preview](./t3.p02-capture-and-cut-preview/README.md) |
+| T3.P03 | approved | F2.unit-envelope@1, F4.intent-acceptance@1 | [T3.P03 — Shared acceptance, isolation and measurement](./t3.p03-shared-acceptance-and-measurement/README.md) |
 
 T3.P01 is registered by the owner decision of 2026-10-16
 ([record](../../reference/decisions/parallel-slice-authorization-2026-10-16.md)) as the
@@ -113,11 +117,19 @@ external gates its slices consume; `F2.unit-envelope@1` is provided inside the p
 **`T3.P02` is registered 2026-10-20** (owner-authorized as batch D,
 [record](../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) once its registration
 precondition — an accepted `T3.camera-experience-cutover@1` — was met by `T3.P01.S04`. Its
-`T3.P02.S01` (first capture and Cut Preview) was authorized for implementation; that permission is
-subject to the current [production hold](../README.md#production-implementation-hold). `T3.P02.S02`, the
-phase's final gate, is registered `proposed` and holds no permission. `Depends on` lists the external
-gates its slices consume; `F2.unit-envelope@1`, `F3.channels@1` and the F4 unit scopes come from
-`T3.P01`'s accepted outputs, and `T3.camera-experience-cutover@1` from `T3.P01.S04`.
+`T3.P02.S01` (first capture and Cut Preview) was authorized for implementation, then held by the
+2026-10-22 [production hold](../README.md#production-implementation-hold). Batch E
+([record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7) accepted its finalized convergence scope and released it, starting only
+after `T3.P03.S01` merges. `T3.P02.S02`, the phase's final gate, is registered `proposed` and holds no
+permission. `Depends on` lists the external gates its slices consume; `F2.unit-envelope@1`,
+`F3.channels@1` and the F4 unit scopes come from `T3.P01`'s accepted outputs, and
+`T3.camera-experience-cutover@1` from `T3.P01.S04`.
+
+**`T3.P03` is registered 2026-10-22** (batch E, [record](../../reference/decisions/batch-e-authorization-2026-10-22.md), E1/E2) as the H0 shared correction:
+per-planner scope enforcement and build isolation (`T3.P03.S01`) and the on-demand measurement
+workflow as its final gate (`T3.P03.S02`). Both are authorized, and T3.P03 is released from the hold.
+`T3.P03.S01` merges first; its merge is the start gate for `T1.P02.S01`, `T2.P02.S01` and
+`T3.P02.S01`. No slice provides a gate.
 
 ## Starting foundation
 

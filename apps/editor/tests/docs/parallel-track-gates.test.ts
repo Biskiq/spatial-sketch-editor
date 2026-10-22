@@ -1957,7 +1957,26 @@ describe('the capability-readiness rule', () => {
 				'F4.intent-acceptance@1:unit-acceptance-v1',
 				'F4.intent-acceptance@1:conditional-save-units-v1',
 				viewport
-			]
+			],
+			// Batch E registration (2026-10-22): H0 (T3.P03) consumes only the unit envelope and
+			// unit acceptance it corrects; C1 (T1.P02) and C2 (T2.P02) consume the unit, acceptance,
+			// Save and viewport scopes. No slice provides a gate.
+			'T3.P03.S01': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
+			'T3.P03.S02': ['F2.unit-envelope@1:unit-envelope-v1', 'F4.intent-acceptance@1:unit-acceptance-v1'],
+			...Object.fromEntries(
+				['T1.P02.S01', 'T1.P02.S02', 'T1.P02.S03', 'T1.P02.S04', 'T2.P02.S01', 'T2.P02.S02', 'T2.P02.S03'].map(
+					(id) => [
+						id,
+						[
+							'F1.reference@1:unit-resolution-v1',
+							'F2.unit-envelope@1:unit-envelope-v1',
+							'F4.intent-acceptance@1:unit-acceptance-v1',
+							'F4.intent-acceptance@1:conditional-save-units-v1',
+							viewport
+						]
+					]
+				)
+			)
 		});
 		expect(capabilityProblems(model)).toEqual([]);
 	});

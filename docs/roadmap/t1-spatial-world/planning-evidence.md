@@ -144,7 +144,7 @@ by choosing a nearby entity.
   editor. Ratify any deltas into the durable contract at that time; keep it unchanged now.
 - **D8 — circular Room / single-Wall enclosure: already accepted** (see §2).
 
-## 11. Wall-role ruling, and its two open decisions
+## 11. Wall-role ruling, and its two decisions
 
 **Destination (owner ruling 2026-10-03).** The Wall is the authored primitive and its spatial
 role is **derived**: Walls taking part in a closed enclosure bound it, a Wall that encloses
@@ -159,8 +159,15 @@ geometry becomes editable. The current encoding stores an authored
 1. how to migrate existing `partition` Walls; and
 2. whether a closed ring may ever be intentionally non-enclosing.
 
-Both stay open. Division keeps the landed Room reconciliation (one splits survivor by evidence
-order, one Room born).
+**Decided 2026-10-22** ([batch E](../../reference/decisions/batch-e-authorization-2026-10-22.md),
+E3, in the [T1.P02 drawing policy](./t1.p02-native-wall-creation/README.md#drawing-and-enclosure-policy-owner-accepted-2026-10-22)):
+
+1. no migration — Layout format 6 drops the authored role, readers refuse format 5, and fixtures that
+   encoded a deliberate `partition` are rebuilt as geometry (pre-baseline rule);
+2. every closed ring encloses; an intentionally non-enclosing ring is not supported in T1.P02.
+
+Both take effect when `T1.P02.S01` lands format 6. Division keeps the landed Room reconciliation
+(one splits survivor by evidence order, one Room born).
 
 ## 12. Slab and ceiling ownership kept open
 

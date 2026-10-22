@@ -1,34 +1,45 @@
 # T3.P02.S01 — First capture and Cut Preview: implementation plan
 
 **Slice:** T3.P02.S01 · **Status:** approved — owner-authorized 2026-10-20 as batch D
-([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); **not
-implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
+([record](../../../../reference/decisions/batch-d-authorization-2026-10-20.md), D3); finalized
+scope owner-accepted and released 2026-10-22 as batch E ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5/E7), starting only after
+`T3.P03.S01` is merged on `main`; **not implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
-**Implementation held, 2026-10-22:** the [owner hold](../../../README.md#production-implementation-hold)
-overrides launch/resume under the earlier authorization. PR #173 must reconcile this plan with
-the selected convergence decisions; explicit owner release is required before implementation.
-The historical authorization and registered `approved` state are preserved. The clarifications
-below are core-destination ratified 2026-10-22; exact formats still need first-consumer review,
-and implementation remains held.
+**Released 2026-10-22, gated on H0.** The [owner hold](../../../README.md#production-implementation-hold)
+held this slice on 2026-10-22; batch E released it ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E7). It starts only when
+`T3.P03.S01` is merged on `main`, which the runbook start step checks on the T3.P03 slice register.
+The historical batch D authorization and the registered `approved` state are preserved.
 
-**Convergence clarifications accepted 2026-10-22 (destination; implementation held).**
-- Capture stores a qualified F.1 subject reference; no Room or clone is invented to host it.
-- Presentation text is a closed first-consumer content kind, with exact version/capability and
-  older-reader behavior declared before implementation. Do not pre-label the format change additive
-  or introduce part/annotation fields into the current codec implicitly.
-- Preview can enter a Presentation with zero Guides and zero Stops, then exit through the same
-  Camera return ticket. The Guide path remains fully in scope. Presentation entry uses the one
-  lowering/interpreter and an explicitly versioned/negotiated extension if required.
-- Preview loads lazily and preserves the public/Preview isolation guarantees. Draft its exact
-  controls within PLATE; review and revise after browser observation instead of importing prototype
-  chrome. Ordinary text, holds, continuation, both Experiences and dense fixtures remain in scope.
-- H0's shared acceptance/build-boundary correction merges before new implementation. Existing
-  accepted gate identities remain unchanged. Record this slice's matching-result/capture/Preview
-  performance evidence before slice acceptance, with phase integration rechecks separately.
+## Finalized convergence scope (owner-accepted 2026-10-22)
 
-These statements complete the accepted P1 optional-Guide direction; they do not add rich controls,
-part annotations, vertical architecture or a second Camera authority.
+The owner accepted this scope, the Experience format draft and the shell draft's Preview entry rule
+in batch E ([record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md), E5). The 2026-10-22 ratified clarifications are resolved against the
+landed code as follows:
+
+- **Formats.** The [Experience format draft](./experience-format-draft.md) is the slice's format:
+  Experience unit format 2 with Presentation `viewIds`/`defaultViewId`, an F.1 `subject` (component
+  null, no Room or clone invented), closed `plain` text, Stop-local `entryViewId` and a Cut/Travel
+  selector on the continuation edge, plus a Presentation-entry event in the program. Under the
+  pre-baseline rule the numbers bump and readers refuse older formats; nothing is migrated or
+  negotiated. No part or annotation field enters. The draft's two open points — the text length
+  bound and whether `entryViewId` alone suffices — are settled at implementation review. The format
+  becomes current contract when this slice lands it.
+- **Guide-free Preview.** Preview enters a Presentation with zero Guides and zero Stops through the
+  one lowering/interpreter and exits through the same Camera return. The Guide path stays fully in
+  scope.
+- **Run epochs.** Each Preview entry is a fresh runtime and run epoch; stale Camera completions refuse
+  by ticket. S01 exposes no same-run Reset; a need for one stops and reports.
+- **Delivery.** Preview is a lazy chunk loaded on first use, inside the Preview surface boundary.
+  H0's bundle report proves it is absent from the Stage first-load set.
+- **Shell.** The [shell draft](./shell-draft.md) proposes homes, the Preview entry rule and the Guide
+  breadth claim. It is reviewed before build and revised after browser observation; prototype chrome
+  is not imported.
+- **Order.** H0's `T3.P03.S01` merges first. Capture-and-bind uses the joint Camera/Experience
+  planner, whose write set H0 declares.
+
+These complete the accepted P1 optional-Guide direction; they add no rich controls, part annotations,
+vertical architecture or second Camera authority.
 
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1
@@ -85,13 +96,11 @@ consumers; this slice does not import their implementations or shell composition
 
 ## Sequence
 
-1. **Experience unit surface.** Reconcile the accepted F2 Experience unit and F1 resolution with what
-   capture needs: Experience create/select, Presentation and Stop identity, Guide order as one list of
-   stable Stop IDs, holds/continuation. Where the accepted unit needs an
-   extension for the authored Cut/Travel selector or presentation text, propose it as an **AM-9
-   amendment draft** in the phase artifacts; declare compatibility and older-reader behavior rather
-   than assuming it. Do not change a ratified shape unilaterally. An
-   incompatible change is a new gate major and a re-declared consumer, which stops and reports.
+1. **Experience unit surface.** Land the reviewed [format draft](./experience-format-draft.md):
+   Experience create/select, Presentation and Stop identity, `viewIds`/Default and Stop-local entry,
+   subject and text, Guide order as one list of stable Stop IDs, holds, continuation and its
+   Cut/Travel selector. Anything beyond the reviewed draft stops and reports rather than changing a
+   ratified shape unilaterally.
 2. **Capture and binding.** View capture through the Camera unit + `camera-core` evaluation; one typed
    F4 intent carrying the new View/Presentation/Stop IDs, captured frame and precondition; one
    planner result; one history entry.
@@ -125,30 +134,27 @@ substitutes for that gate, and every implementation-PR merge keeps the complete 
 including heavy correctness and `check:api`/`test:api` with zero skips for the Save path.
 Before S01 acceptance, record capture/bind result completion, first/repeated Preview entry and
 return, delivered Preview bytes and repeated enter/exit memory behavior against
-[the ratified performance reference](../../../../reference/components/performance.md). The phase final gate rechecks the integrated result; it does not defer a hard miss.
+[the ratified performance reference](../../../../reference/components/performance.md). Hard F10 rows
+are accepted on the designated reference machine, the owner's MacBook Air M2 with 16 GB
+([batch E, E6 amendment](../../../../reference/decisions/batch-e-authorization-2026-10-22.md#amendment-e6-reference-machine-named)); the lazy-chunk delivery row needs no machine. The phase final
+gate rechecks the integrated result; it does not defer a hard miss.
 
-## Shared-file ownership (batch D provenance; convergence review)
+## Shared-file ownership
 
-| Area | Writer in batch D |
-| --- | --- |
-| Stage host (`stage-facade.ts`, `stage-session.ts`, `stage-input.ts`, `stage-contributions.ts`, adapter host, `stage/shell/**`) and the spatial route | `T1.P01.S06` (which also lands the narrow TD-10 repair) |
-| `packages/project-model/src/units/**` (Experience unit, lowering, runtime) and `camera-core` | `T3.P02.S01`, additive and stopping-and-reporting on any incompatible change; `T1.P01.S06` is read-only |
-| Editor `lib/authoring/adapters/**` and new T3 authoring surface directories | `T3.P02.S01`; additive registration only where a host contract exists |
-| `apps/api/**` and migrations | neither slice — read-only for batch D |
-| Root barrels, `package.json` exports, `test-lanes.ts` | append-only; the second merger resolves |
-| Boundary tests and lane lists | additive assertions only; no existing assertion is weakened |
-| Gate register, phase registers, batons | each slice edits only its own rows and its own track's baton |
-
-T1.P01.S06 has since shipped and closed. Its row records historical batch-D ownership; new
-Stage/shell changes are coordinated with the T1 Stage owner through
-[the convergence merge protocol](../../../cross-track-execution.md#convergence-batch-and-next-planning-wave).
-No closed-phase permission is reused. A file outside the slice's row is read-only. A needed host change is a stop-and-report to T1, not an
-edit.
+Batch D's ownership rows are historical: `T1.P01.S06` has shipped and its phase is closed, and no
+closed-phase permission is reused. On resumption this slice runs under the authorized
+[batch E shared-file and merge rules](../../../cross-track-execution.md#batch-e-shared-files-and-merge-order).
+T3 writes the Experience and Camera units, lowering, interpreter, the Preview surface and T3 authoring
+adapters. Edits to the shared unit type and validation modules are confined to the Experience entries
+and merge serially. The Head's Preview entry and the Preview takeover are an owned integration patch
+reviewed by T1. Any other host change is a stop-and-report to T1, not an edit. A file outside these
+rows is read-only.
 
 ## Readiness declaration
 
 This slice starts only from a trusted base where every consumed gate is `accepted` and every
-`Requires` scope is `active` (all true on `main` `9a457f6b` after `T3.P01.S04`), and in which
+`Requires` scope is `active` (true on `main` `9a457f6b` after `T3.P01.S04` and still true on `f516e1ff`), in
+which `T3.P03.S01` has merged, and in which
 `T3.camera-experience-cutover@1` is `accepted` rather than `ratified`. The runbook start step re-checks
 it. It does not wait for `T1.P01.S06`: S06 is the integrated gate for the authoring foundation that
 already shipped and its evidence excludes unaccepted T3.P02 work. No gate state, capability entry,
