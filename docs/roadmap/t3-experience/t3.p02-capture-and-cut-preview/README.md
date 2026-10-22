@@ -46,10 +46,11 @@ current-source adapter, and none may re-introduce one.
 PR #173 records owner-accepted S01 destination clarifications: qualified subject references, explicitly
 versioned text/entry formats, a Guide-free Presentation Preview, lazy isolated delivery and
 performance evidence before consuming-slice acceptance. It preserves the complete approved
-capture/Guide/history/Save scope and S02's exhaustive final gate. H0's shared correction precedes
-new implementation; the [canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave)
-owns current sequencing. Exact feature controls develop through a PLATE-conforming draft,
-review, build and browser revision. No historical authorization releases the production hold.
+capture/Guide/history/Save scope and S02's exhaustive final gate. The S01 plan now carries the
+finalized scope for owner review: its [Experience format draft](./t3.p02.s01-first-capture-and-cut-preview/experience-format-draft.md)
+and [shell draft](./t3.p02.s01-first-capture-and-cut-preview/shell-draft.md). H0's shared correction
+(`T3.P03.S01`) precedes new implementation; the [canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave)
+owns current sequencing. No historical authorization releases the production hold.
 
 ## Bounded outcome
 
@@ -152,9 +153,9 @@ stay green and are not re-owned here. This phase adds:
 ## Verification and coordination
 
 Verification commands and tiers are owned by
-[the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). Implementation runs
-under the [batch D protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20) alongside
-`T1.P01.S06`: one writer per shared file, additive registration elsewhere, the complete merge gate
-rerun on then-current `main`, independent review per slice, and each slice's own closeout and P1 merge
-commit. No architecture-cycle window is proposed: the T1.P01 window is closed, T3 slices are not
+[the test manual](../../../../apps/editor/tests/README.md#what-a-change-requires). S01 was authorized
+under the [batch D protocol](../../cross-track-execution.md#authorized-batch-d-2026-10-20); on
+resumption it runs under the proposed [batch E rules](../../cross-track-execution.md#batch-e-shared-files-and-merge-order):
+one writer per shared file, additive registration elsewhere, the complete merge gate rerun on
+then-current `main`, independent review per slice, and each slice's own closeout and P1 merge commit. No architecture-cycle window is proposed: the T1.P01 window is closed, T3 slices are not
 exposures of it, and this phase claims no mechanism verdict.

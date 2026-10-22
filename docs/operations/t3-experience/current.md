@@ -16,38 +16,31 @@ track's baton, and never treat stale baton text as a blocker — verify Git stat
 prerequisites instead.
 
 ```text
-PHASE: T3.P02 First Capture and Cut Preview (registered 2026-10-20; S01 authorized) →
+PHASE: T3.P02 First Capture and Cut Preview (registered 2026-10-20; S01 authorized, held) →
        ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
        T3.P01 is CLOSED 2026-10-20 — all six children shipped, final gate accepted at `06a8aac8`,
        merged as `9a457f6b` (PR #158). →
        ../../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md
-ACTIVE: T3.P02.S01 — First capture and Cut Preview, owner-authorized 2026-10-20 as batch D (D3,
-        [record](../../reference/decisions/batch-d-authorization-2026-10-20.md)). It declares
-        architecture-integration verification with its integration route at `T3.P02.S02`. S02 is
-        registered `proposed` and is NOT authorized.
-BATON: Build the first authoring surface on the accepted F2 cutover: Experience create/select, View
-       capture from the shared Stage, one-operation Presentation/Stop binding, Presentation reuse
-       across distinct Stops, reorder by stable identity, bounded labels/text/holds/continuation, a
-       first Cut Guide, isolated Preview with Camera return, and Undo/Redo/Save/reload through F2/F4.
-       One Camera authority, Experience-owned order, Camera-owned View identity, shared output/return
-       tickets, visitor isolation and room-local frame semantics all bind it. It contributes through
-       AM-5's task/Find/instrument points and the accepted viewport facade; a new host seam is a
-       stop-and-report to T1. Rich interaction grammar belongs to the PR #154 prototype and is not
-       imported here.
-NEXT:  Start S01 through the runbook start step at its own trusted base, implement, then independent
-       review, `slice-closeout` and a P1 merge commit. Its acceptance is not the phase gate:
-       `T3.P02.S02` needs its own authorization after S01 lands.
+ACTIVE: none. T3.P02.S01 is registered `approved` (batch D, D3) but HELD by the owner's 2026-10-22
+        production hold and unimplemented; S02 is `proposed` and not authorized.
+BATON: Planning only. Proposed batch E presents the H0 draft (T3.P03: planner scope, build
+       isolation, measurement) and S01's finalized scope: the Experience format draft (format 2,
+       Guide-free Presentation entry) and a shell draft. Nothing is registered, authorized or
+       released until the owner acts on E1-E7.
+NEXT:  Owner decisions in ../../roadmap/next-batch-2026-10-22.md. Only after explicit release:
+       T3.P03.S01 first; S01 then resumes through the runbook start step on a base containing it.
 ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →
-       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md →
-       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md →
-       ../../roadmap/cross-track-execution.md#authorized-batch-d-2026-10-20
-BLOCKER: none. S01 consumes only accepted gates; it does not wait for `T1.P01.S06`, and no
-         architecture-cycle window applies to T3.
+       ../../roadmap/next-batch-2026-10-22.md →
+       ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/README.md (draft) →
+       ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md
+BLOCKER: the owner hold. S01 consumes only accepted gates and no architecture-cycle window applies
+         to T3; its start also waits for T3.P03.S01 to merge.
 CARRY:  SEPARATE AND STILL OWED: the owner-run production activation of the F2 epoch (migration 005,
         API and editor deploys, namespace-scoped R2 purge, smoke checks). The S04 merge executed no
         migration against a deployed database. Residuals that move into this phase or beyond: the
-        authored Cut/Travel selector and presentation text/state/lifecycle homes (AM-9 amendment
-        drafts, S01), resource bytes host-asserted until storage verifies them, the envelope's
+        authored Cut/Travel selector and presentation text homes (now S01's Experience format
+        draft; state/lifecycle homes stay later), model resource bytes (T2.P02.S01 verifies them)
+        and other resource bytes host-asserted until storage verifies them, the envelope's
         acceptedRevision as baseline provenance only, and T4's prepared public reader under the
         approved empty publication gap. T3 track completion remains a separate owner event.
 ```

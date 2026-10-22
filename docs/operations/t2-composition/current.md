@@ -25,16 +25,16 @@ BATON: No active T2 work and no authorized T2 slice. The phase closed 2026-10-20
        (`S04`, accepted 2026-10-19, merged in PR #157 as `99c38033`) and the integration it rests on.
        The declared gate artifact is now a closed-work stub at its own path; the accepted evidence,
        review history and residuals are recoverable at `5d1a7573`.
-NEXT:  Owner decision only: register the next T2 phase — the K1 bounded editor-side GLB import
-       (one flat GLB plus maps, explicit scale/pivot/footprint, stage/approve, place/reload/preview)
-       — or leave T2 without a registered phase. Its prerequisites are the accepted F.1/F.2
-       resource/lock interfaces and F.4 staged acceptance; it needs no T4 release closure. Nothing
-       is authorized by this baton.
+NEXT:  Owner decisions on proposed batch E (../../roadmap/next-batch-2026-10-22.md): register the
+       T2.P02 own-model import draft (K1 bounded editor-side GLB import, no T4), accept its upload
+       bounds, then authorize T2.P02.S01 to start after T3.P03.S01 merges. Nothing is authorized by
+       this baton.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/README.md (phase register) →
+       ../../roadmap/t2-composition/t2.p02-own-model-import/README.md (draft) →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md (PHASE CLOSE and
        deferred table) → ../../roadmap/core-editor-stability.md (K1)
-BLOCKER: none. T2 has no start gate to satisfy until a next phase is registered.
+BLOCKER: the owner hold; T2 has no registered phase until the owner registers T2.P02.
 CARRY: The owner may push the local `closed/T2.P01.S03`, `closed/T2.P01.S04` and the new
         `closed/T2.P01` tags. Cloud Save in a real browser session and a model-contact capability
         stay with the host evidence and a future T2 phase, not with the closed gate. T2 track

@@ -60,7 +60,9 @@ baseline, then C1 native Walls, C2 own-GLB import and the held T3 Capture/Previe
 proceed while H0 is planned. It is whole-object editor import with retained original bytes/hash,
 recipe identity/version and a parts-safe derivative; no components are admitted or addressable, qualified
 references keep `componentId: null`, and no T4 dependency is introduced. Its consuming slice carries
-import/placement/memory evidence. This page registers no new phase or slice.
+import/placement/memory evidence. Its registration-ready draft is
+[T2.P02 — Own model import](./t2.p02-own-model-import/README.md), with the launch plan for `T2.P02.S01`
+and a shell draft. This page registers no new phase or slice.
 
 The next planning wave pairs T1's face-frame query with T2 solve-once wall placement, and T1 Stage
 part selection with T2 component resolver/admission and revision correspondence; T3 annotations

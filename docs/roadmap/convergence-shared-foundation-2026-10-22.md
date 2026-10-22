@@ -1,7 +1,9 @@
 # H0 — shared acceptance, isolation and performance foundation
 
 **Status: proposed launch scope, 2026-10-22.** Local label H0, not a registered phase, slice,
-gate or authorization. This is the concrete shared prerequisite recommended by
+gate or authorization. Its registration-ready form is the
+[T3.P03 draft](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md), whose slice
+plans carry the exact implementation scope and acceptance. This page keeps the rationale. This is the concrete shared prerequisite recommended by
 [the canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave).
 Production remains under the [owner hold](./README.md#production-implementation-hold).
 The owner reviews this bounded scope, assigns its normal provider registration and releases
@@ -55,7 +57,9 @@ Compile deduplication and any incremental/worker implementation stay in C1's mea
 
 ## Acceptance and verification
 
-Declared tier for normal registration: **architecture-integration**. Use
+The T3.P03 draft splits this into `T3.P03.S01` (scope and isolation, **architecture-integration**)
+and `T3.P03.S02` (measurement, the **exhaustive** final gate), so the narrowed tier has its
+integration route. Use
 [the test contract](../../apps/editor/tests/README.md) for the implementation's complete repository
 verification and required final gate; this proposal does not narrow it to the files above.
 

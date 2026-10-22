@@ -199,8 +199,17 @@ and nothing in this section is lifecycle or gate readiness.
   scope enforcement, current public/Preview build boundaries and on-demand performance evidence.
   T3 coordinates F4, with T1/visitor integration. Its on-demand workflow is authorized; implementation still needs normal provider
   registration, reviewed scope authorization and release from the hold; it creates no gate or phase by appearing here.
-  C1/C2 planning may proceed in parallel; the [canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave)
-  owns launch and merge sequencing.
+  Its registration-ready draft is [T3.P03](./t3-experience/t3.p03-shared-acceptance-and-measurement/README.md).
+
+- **Proposed batch E (2026-10-22), for owner review.** The
+  [coordination proposal](./next-batch-2026-10-22.md) presents registration-ready drafts for
+  T3.P03 (H0), [T1.P02](./t1-spatial-world/t1.p02-native-wall-creation/README.md) (C1 native Walls)
+  and [T2.P02](./t2-composition/t2.p02-own-model-import/README.md) (C2 own GLB import), with launch
+  plans and shell drafts, and the finalized T3.P02.S01 scope. It lists the blocking gaps found
+  and owner decisions E1–E7. None of the drafts is a registered phase; the phase registers, gate
+  register and hold are unchanged until the owner acts. The
+  [canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave) owns lanes,
+  shared files, merge order and per-slice gates.
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks

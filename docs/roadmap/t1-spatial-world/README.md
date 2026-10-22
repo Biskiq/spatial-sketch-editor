@@ -61,7 +61,9 @@ and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-e
 propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
 baseline, then C1 native Walls alongside C2 own-model import and the held T3 Capture/Preview scope.
 T1 can plan C1 while H0 is planned: C1 keeps one datum, captures non-reusing IDs, resolves the Wall-role
-cutover and carries its compile/drag/commit/Undo performance proof. It registers no new phase here.
+cutover and carries its compile/drag/commit/Undo performance proof. Its registration-ready draft is
+[T1.P02 — Native Wall creation](./t1.p02-native-wall-creation/README.md), with the launch plan for
+`T1.P02.S01`, the drawing policy the owner must accept and a shell draft. It registers no new phase here.
 
 After that first wave, T1 supplies C3's rename/delete shell integration, the face-frame query for
 T2's solve-once wall placement, and Stage part-selection/admission UI consuming T2's component

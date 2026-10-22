@@ -63,7 +63,9 @@ baseline, then C1 native Walls, C2 own-GLB import and the existing T3.P02.S01 sc
 clarification proves Guide-free Capture/Preview by entering a Presentation without fabricating a
 Stop, keeps subjects as F1 references and text as a closed v1 kind for later extension, and carries lazy
 Preview delivery plus capture/entry/exit performance evidence. It adds no new gate/capability
-prerequisite; H0's shared correction precedes implementation.
+prerequisite; H0's shared correction precedes implementation. The S01 plan carries the finalized
+scope and its Experience format and shell drafts. H0 itself registers through T3 as the
+[T3.P03 draft](./t3.p03-shared-acceptance-and-measurement/README.md).
 
 After the first wave, C3 gives T3 persistence/API ownership of rename/delete with T1 shell
 integration. Part annotations follow T2's component resolver/admission and T1 Stage part selection;
