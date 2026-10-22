@@ -11,17 +11,26 @@ export type StageAdapterServices = {
 
 export type StageAdapterFactory = (services: StageAdapterServices) => StageAdapter;
 
-export function mountStageAdapter(
-	stage: StageFacade,
-	host: StageAcceptanceHost,
-	factory: StageAdapterFactory
-): StageAdapterRegistration {
-	return stage.registerStageAdapter(factory({
+/**
+ * One epoch's adapter-facing ports. Constructing a second value over the same
+ * facade and host is safe: it is access, not state, so a lens surface and the
+ * adapter mount edit through the same Stage and the same F.4 boundary.
+ */
+export function createStageAdapterServices(stage: StageFacade, host: StageAcceptanceHost): StageAdapterServices {
+	return {
 		stage,
 		authoring: {
 			registerPlanner: (planner) => host.registerPlanner(planner),
 			accept: (intent) => host.accept(intent),
 			acceptedRevision: () => host.acceptedRevision()
 		}
-	}));
+	};
+}
+
+export function mountStageAdapter(
+	stage: StageFacade,
+	host: StageAcceptanceHost,
+	factory: StageAdapterFactory
+): StageAdapterRegistration {
+	return stage.registerStageAdapter(factory(createStageAdapterServices(stage, host)));
 }

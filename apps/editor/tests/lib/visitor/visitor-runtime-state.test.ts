@@ -9,19 +9,32 @@ import { createVisitorRuntimeState } from '$lib/visitor/visitor-runtime-state.sv
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 1,
+		formatVersion: 2,
 		capabilities: [],
 		experienceId: 'experience-1',
 		entryStopId: 'stop-1',
 		presentations: [
-			{ id: 'presentation-1', label: 'Piano', viewId: 'view-1', content: [{ id: 'content-1', kind: 'text', text: 'The piano.' }] },
-			{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] },
-			{ id: 'presentation-guide-free', label: 'Study', viewId: 'view-3', content: [] }
+			{
+				id: 'presentation-1',
+				label: 'Piano',
+				viewIds: ['view-1'],
+				defaultViewId: 'view-1',
+				content: [{ id: 'content-1', kind: 'text', text: 'The piano.' }]
+			},
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] },
+			{
+				id: 'presentation-guide-free',
+				label: 'Study',
+				viewIds: ['view-3'],
+				defaultViewId: 'view-3',
+				content: []
+			}
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
+				viewId: 'view-1',
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				holdSeconds: null,
 				continuation: { kind: 'sequence-next' }
@@ -29,6 +42,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
+				viewId: 'view-2',
 				invocation: { kind: 'cut', viewId: 'view-2' },
 				holdSeconds: null,
 				continuation: { kind: 'end' }
@@ -83,7 +97,8 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		expect(companion.presentations).toContainEqual({
 			presentationId: 'presentation-guide-free',
 			label: 'Study',
-			viewId: 'view-3',
+			viewIds: ['view-3'],
+			defaultViewId: 'view-3',
 			stopIds: []
 		});
 	});
@@ -94,6 +109,7 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
+					viewId: 'view-1',
 					invocation: { kind: 'cut', viewId: 'view-1' },
 					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
@@ -101,6 +117,7 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-2',
 					presentationId: 'presentation-2',
+					viewId: 'view-2',
 					invocation: { kind: 'cut', viewId: 'view-2' },
 					holdSeconds: null,
 					continuation: { kind: 'end' }
@@ -129,20 +146,21 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		visitor.navigate('stop-2');
 		expect(visitor.currentPresentation?.id).toBe('presentation-2');
 		expect(visitor.currentViewId).toBe('view-2');
-		// Re-entering clears the detached selection. `enter()` is idempotent, so the
-		// run stays where the explicit Stop navigation put it.
+		// `enter()` is idempotent: it never restarts an entered run, so a detached
+		// Presentation stays until a real arrival replaces it.
 		visitor.selectPresentation('presentation-guide-free');
 		visitor.enter();
-		expect(visitor.currentPresentation?.id).toBe('presentation-2');
-		expect(visitor.currentViewId).toBe('view-2');
+		expect(visitor.currentPresentation?.id).toBe('presentation-guide-free');
+		expect(visitor.currentViewId).toBe('view-3');
 	});
 
-	it('clears a Stop-free selection only when the run actually advances', () => {
+	it('keeps a detached Presentation until a real arrival replaces it', () => {
 		const visitor = runtime({
 			stops: [
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
+					viewId: 'view-1',
 					invocation: { kind: 'cut', viewId: 'view-1' },
 					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
@@ -150,6 +168,7 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-2',
 					presentationId: 'presentation-2',
+					viewId: 'view-2',
 					invocation: { kind: 'cut', viewId: 'view-2' },
 					holdSeconds: null,
 					continuation: { kind: 'end' }
@@ -161,24 +180,20 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 		visitor.selectPresentation('presentation-guide-free');
 		expect(visitor.currentViewId).toBe('view-3');
 
-		// Continue during a hold is ignored, so the detached View survives it.
+		// Presentation entry ends the occurrence: no Stop and no hold remain, so
+		// Continue has nothing to advance and the explicit clock cannot move it.
+		expect(visitor.state.stopId).toBeNull();
+		expect(visitor.state.phase).toBe('ready');
 		visitor.continue();
 		expect(visitor.currentViewId).toBe('view-3');
-		expect(visitor.state.stopId).toBe('stop-1');
-
-		// When the hold expires, the auto-advance returns to the Guide; the overlay
-		// must not keep the Camera on the detached Presentation.
 		visitor.tick(600);
-		expect(visitor.state.stopId).toBe('stop-2');
-		expect(visitor.selectedPresentationId).toBeNull();
-		expect(visitor.currentViewId).toBe('view-2');
-
-		// An explicit Continue that advances clears the selection the same way.
-		visitor.selectPresentation('presentation-guide-free');
 		expect(visitor.currentViewId).toBe('view-3');
-		visitor.continue();
-		expect(visitor.state.phase).toBe('completed');
-		expect(visitor.selectedPresentationId).toBeNull();
+
+		// A real arrival replaces the detached Presentation and its View.
+		visitor.navigate('stop-2');
+		expect(visitor.state.stopId).toBe('stop-2');
+		expect(visitor.state.presentationId).toBe('presentation-2');
+		expect(visitor.currentViewId).toBe('view-2');
 	});
 
 	it('accumulates fractional frame milliseconds so a hold actually expires', () => {
@@ -187,6 +202,7 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-1',
 					presentationId: 'presentation-1',
+					viewId: 'view-1',
 					invocation: { kind: 'cut', viewId: 'view-1' },
 					holdSeconds: 0.5,
 					continuation: { kind: 'sequence-next' }
@@ -194,6 +210,7 @@ describe('Experience visitor runtime (no node-keyed orchestration)', () => {
 				{
 					id: 'stop-2',
 					presentationId: 'presentation-2',
+					viewId: 'view-2',
 					invocation: { kind: 'cut', viewId: 'view-2' },
 					holdSeconds: null,
 					continuation: { kind: 'end' }

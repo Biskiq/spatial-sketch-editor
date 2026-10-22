@@ -45,7 +45,7 @@ export const UNIT_ENVELOPE_FORMAT_VERSION = 1 as const;
 export const LAYOUT_UNIT_FORMAT_VERSION = LAYOUT_WALL_FIRST_FORMAT_VERSION;
 export const SCENE_UNIT_FORMAT_VERSION = 2 as const;
 export const CAMERA_UNIT_FORMAT_VERSION = 1 as const;
-export const EXPERIENCE_UNIT_FORMAT_VERSION = 1 as const;
+export const EXPERIENCE_UNIT_FORMAT_VERSION = 2 as const;
 export const RESOURCE_UNIT_FORMAT_VERSION = 1 as const;
 
 /** The five admitted unit domains, in stable order. */
@@ -172,25 +172,59 @@ export type CameraUnitPayload = {
 	connections: SceneConnection[];
 };
 
+/** The closed Presentation text kinds; plain text is the only member so far. */
+export const EXPERIENCE_TEXT_KINDS = ['plain'] as const;
+
 /**
- * A labelled Presentation: the visitor-facing use of one Camera view. Two
- * Presentations may share one view, and one Presentation may be used by several
- * Stops.
+ * One Presentation's Information-panel text, bounded and kind-closed.
+ *
+ * The bound is measured in code points, so an authoring surface and the reader
+ * count the same text. A longer body is a structural refusal, never truncated.
+ */
+export const EXPERIENCE_TEXT_MAX_LENGTH = 4000;
+
+export type ExperiencePresentationText = {
+	kind: 'plain';
+	body: string;
+};
+
+/**
+ * A labelled Presentation: the visitor-facing use of the Camera Views it names.
+ *
+ * `viewIds` is display order only — it is never Guide order and never
+ * connectivity. `defaultViewId` is one of them or `null`; an unset Default is an
+ * honest state that cannot be entered. `subject` is an F.1 semantic reference
+ * with no component (a Scene entity or a Layout element), or `null` for an
+ * environment or region Presentation; no Room or clone is invented to host it.
+ * Two Presentations may share one View, and one Presentation may be used by
+ * several Stops.
  */
 export type ExperiencePresentation = {
 	id: string;
 	label: string;
-	viewId: string;
+	viewIds: readonly string[];
+	defaultViewId: string | null;
+	subject: SemanticReference | null;
+	text: ExperiencePresentationText | null;
 };
+
+/** The authored approach to a Stop: a Cut (the default) or a supported Travel. */
+export const EXPERIENCE_TRANSITIONS = ['cut', 'travel'] as const;
+
+export type ExperienceTransitionKind = (typeof EXPERIENCE_TRANSITIONS)[number];
 
 /**
  * How execution continues after a Stop. `sequence-next` follows the guide's
  * order; an explicit `stop` overrides it once, including a nonadjacent target;
  * `end` finishes the run.
+ *
+ * The edge's `transition` is the authored Cut/Travel selector for arriving at
+ * its target: absent means `cut`. Experience never silently cuts when a Travel
+ * is unsupported and never searches the Camera graph; the gap is reported.
  */
 export type ExperienceContinuation =
-	| { kind: 'sequence-next' }
-	| { kind: 'stop'; stopId: string }
+	| { kind: 'sequence-next'; transition?: ExperienceTransitionKind }
+	| { kind: 'stop'; stopId: string; transition?: ExperienceTransitionKind }
 	| { kind: 'end' };
 
 /**
@@ -201,6 +235,12 @@ export type ExperienceContinuation =
 export type ExperienceStop = {
 	id: string;
 	presentationId: string;
+	/**
+	 * The View this occurrence enters at; one of its Presentation's `viewIds`.
+	 * Absent means the Presentation's `defaultViewId`. It is the Stop's whole entry
+	 * role: hold and continuation already differ per Stop.
+	 */
+	entryViewId?: string;
 	/** An editorial station hold: finite, non-negative seconds. */
 	holdSeconds?: number;
 	/** Default continuation is the guide sequence; this field overrides it. */

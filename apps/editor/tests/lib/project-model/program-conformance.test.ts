@@ -1,5 +1,5 @@
 /**
- * `ExecutionProgram@1` conformance (AM-6).
+ * `ExecutionProgram@2` conformance (AM-6).
  *
  * The codec freezes before the interpreter and the first authoring surface
  * exist, so the fixtures here are hand-authored and non-empty: they cover
@@ -22,7 +22,7 @@ import {
 function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 	return {
 		kind: 'execution-program',
-		formatVersion: 1,
+		formatVersion: 2,
 		capabilities: [
 			{ id: 'profile.reduced-motion', required: true },
 			{ id: 'panel.info', required: false }
@@ -33,15 +33,17 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'presentation-1',
 				label: 'Piano',
-				viewId: 'view-1',
+				viewIds: ['view-1'],
+				defaultViewId: 'view-1',
 				content: [{ id: 'content-1', kind: 'text', text: 'A restored piano.' }]
 			},
-			{ id: 'presentation-2', label: 'Gallery', viewId: 'view-2', content: [] }
+			{ id: 'presentation-2', label: 'Gallery', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] }
 		],
 		stops: [
 			{
 				id: 'stop-1',
 				presentationId: 'presentation-1',
+				viewId: 'view-1',
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				holdSeconds: 2,
 				continuation: { kind: 'sequence-next' }
@@ -49,6 +51,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-2',
 				presentationId: 'presentation-2',
+				viewId: 'view-2',
 				invocation: { kind: 'travel', connectionId: 'connection-1' },
 				holdSeconds: null,
 				continuation: { kind: 'stop', stopId: 'stop-1' }
@@ -57,6 +60,7 @@ function program(overrides: Partial<ExecutionProgram> = {}): ExecutionProgram {
 			{
 				id: 'stop-3',
 				presentationId: 'presentation-1',
+				viewId: 'view-1',
 				invocation: { kind: 'cut', viewId: 'view-1' },
 				holdSeconds: 0,
 				continuation: { kind: 'end' }
@@ -136,7 +140,7 @@ describe('the program round trips', () => {
 describe('required kind, version and capability negotiation', () => {
 	it('refuses an unknown kind, an unsupported version and an unknown key', () => {
 		expect(codes({ ...program(), kind: 'visitor-program' })).toContain('unknown-tag');
-		expect(codes({ ...program(), formatVersion: 2 })).toContain('unsupported_format_version');
+		expect(codes({ ...program(), formatVersion: 3 })).toContain('unsupported_format_version');
 		expect(codes({ ...program(), extra: true })).toContain('unknown-key');
 	});
 

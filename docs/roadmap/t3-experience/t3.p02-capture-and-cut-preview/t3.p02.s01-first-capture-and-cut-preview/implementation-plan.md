@@ -20,9 +20,11 @@ landed code as follows:
   null, no Room or clone invented), closed `plain` text, Stop-local `entryViewId` and a Cut/Travel
   selector on the continuation edge, plus a Presentation-entry event in the program. Under the
   pre-baseline rule the numbers bump and readers refuse older formats; nothing is migrated or
-  negotiated. No part or annotation field enters. The draft's two open points — the text length
-  bound and whether `entryViewId` alone suffices — are settled at implementation review. The format
-  becomes current contract when this slice lands it.
+  negotiated. No part or annotation field enters. The draft's two open points are settled at
+  implementation review: text is bounded at 4,000 code points and stays Presentation-only (no
+  Stop-local text), and `entryViewId` alone carries a Stop's entry role because hold, continuation
+  target and Cut/Travel already differ per Stop. The format becomes current contract when this slice
+  lands it.
 - **Guide-free Preview.** Preview enters a Presentation with zero Guides and zero Stops through the
   one lowering/interpreter and exits through the same Camera return. The Guide path stays fully in
   scope.

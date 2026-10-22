@@ -30,7 +30,7 @@ import {
 	UNIT_SAVE_SOURCE_KIND,
 	captureUnitSave,
 	computeEnvelopeSourceContentId,
-	createPresentationStopCreatePlanner,
+	createCaptureBindPlanner,
 	createUnitAcceptanceAdapter,
 	createUnitAcceptanceProfile,
 	normalizeUnitEnvelope,
@@ -88,7 +88,16 @@ async function envelope(): Promise<ProjectEnvelope> {
 							id: 'experience-main',
 							label: 'Main',
 							entryGuideId: 'guide-main',
-							presentations: [{ id: 'presentation-entry', label: 'Entry', viewId: 'view-entry' }],
+							presentations: [
+							{
+								id: 'presentation-entry',
+								label: 'Entry',
+								viewIds: ['view-entry'],
+								defaultViewId: 'view-entry',
+								subject: null,
+								text: null
+							}
+						],
 							// The validator's admitted form states the default continuation explicitly;
 					// a raw fixture that omits it would hash differently from the same
 					// envelope after admission.
@@ -96,7 +105,7 @@ async function envelope(): Promise<ProjectEnvelope> {
 						{
 							id: 'stop-entry',
 							presentationId: 'presentation-entry',
-							continuation: { kind: 'sequence-next' }
+							continuation: { kind: 'sequence-next', transition: 'cut' }
 						}
 					],
 							guides: [{ id: 'guide-main', label: 'Guide', stopIds: ['stop-entry'], entryStopId: 'stop-entry' }],
@@ -185,13 +194,13 @@ function staged(resources: readonly StagedUnitResource[]): readonly StagedUnitRe
 function compoundIntent(source: ProjectEnvelope, overrides: Partial<AuthoringIntent> = {}): AuthoringIntent {
 	return {
 		version: 1,
-		kind: 'experience-presentation-stop-create',
+		kind: 'experience-capture-bind',
 		operationId: 'op-compound',
 		expectedRevision: REVISION,
 		targets: [experienceReference(source)],
 		payload: {
 			view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-			presentationLabel: 'New presentation',
+			presentation: { label: 'New presentation', subject: null, text: null },
 			stop: { guideId: 'guide-main', afterStopId: 'stop-entry' }
 		},
 		capturedInputs: [],
@@ -236,13 +245,13 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 	it('refuses the joint Experience/Camera operation when its candidate also writes Layout', async () => {
 		const source = await envelope();
 		const coordinator = await boot(source, { compound: true });
-		const joint = createPresentationStopCreatePlanner();
+		const joint = createCaptureBindPlanner();
 		// The declared write set is what makes the joint operation legitimate.
 		expect(joint.admission).toMatchObject({ domain: 'experience', compound: true, writes: ['camera'] });
 		coordinator.register({
 			...joint,
-			id: 'unit.experience-presentation-stop-create-with-layout-write',
-			kind: 'experience-presentation-stop-create-with-layout-write',
+			id: 'unit.experience-capture-bind-with-layout-write',
+			kind: 'experience-capture-bind-with-layout-write',
 			prepare(request) {
 				const outcome = joint.prepare(request);
 				if (outcome.kind !== 'prepared') return outcome;
@@ -262,7 +271,7 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 			}
 		});
 		const refused = await coordinator.accept(
-			compoundIntent(source, { kind: 'experience-presentation-stop-create-with-layout-write' })
+			compoundIntent(source, { kind: 'experience-capture-bind-with-layout-write' })
 		);
 		expect(refused).toMatchObject({ kind: 'rejected', code: 'admission-refused', reason: 'unsupported-change' });
 		if (refused.kind !== 'rejected') return;
@@ -301,7 +310,7 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 			compoundIntent(source, {
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation'
+					presentation: { label: 'New presentation', subject: null, text: null }
 				},
 				allocatedIds: [
 					{ kind: 'view', id: 'view-new' },
@@ -344,7 +353,7 @@ describe('F.2 unit acceptance — one install, one history entry', () => {
 			compoundIntent(source, {
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					stop: { guideId: 'guide-absent' }
 				}
 			})
@@ -381,7 +390,7 @@ describe('F.2 unit acceptance — staged resources and the dependency lock', () 
 				targets: [experienceReference(source), resourceReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					resource: { contentRevision: 'rev-paper-2' }
 				},
 				allocatedIds: [
@@ -416,7 +425,7 @@ describe('F.2 unit acceptance — staged resources and the dependency lock', () 
 				targets: [experienceReference(source), resourceReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					stop: { guideId: 'guide-absent' },
 					resource: { contentRevision: 'rev-paper-2' }
 				},
@@ -578,7 +587,7 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 				targets: [experienceReference(source), pinReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					resource: { pin: PIN }
 				},
 				allocatedIds: [
@@ -608,7 +617,7 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 				targets: [experienceReference(source), pinReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					resource: { pin: PIN }
 				},
 				capturedInputs: [
@@ -635,7 +644,7 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 				targets: [experienceReference(source), resourceReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					resource: { contentRevision: 'rev-paper-2', pin: malformed }
 				},
 				capturedInputs: [
@@ -695,7 +704,7 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 				targets: [experienceReference(source), resourceReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					resource: { contentRevision: 'rev-paper-2' }
 				},
 				capturedInputs: [
@@ -735,10 +744,10 @@ describe('F.2 unit acceptance — derived identity and one admission profile', (
 		const staging = createUnitAcceptanceProfile({ compound: true, resourceStaging: true });
 		expect(staging.registry.admission).toMatchObject({ compound: true, units: true, resources: true });
 		expect(staging.adapter.sourceKind).toBe(UNIT_ENVELOPE_SOURCE_KIND);
-		expect(staging.planners[1]!.admission.resources).toBe(true);
+		expect(staging.planners.find((planner) => planner.kind === 'experience-capture-bind')!.admission.resources).toBe(true);
 		const plain = createUnitAcceptanceProfile({ compound: true });
 		expect(plain.registry.admission).toMatchObject({ compound: true, units: true, resources: false });
-		expect(plain.planners[1]!.admission.resources).toBe(false);
+		expect(plain.planners.find((planner) => planner.kind === 'experience-capture-bind')!.admission.resources).toBe(false);
 	});
 });
 
@@ -858,7 +867,7 @@ describe('F.1 accepted-read identity over an accepted unit source', () => {
 				targets: [experienceReference(source), resourceReference()],
 				payload: {
 					view: { label: 'New view', eye: [1, 1.6, 0], target: [1, 1.6, -1], fov: 55 },
-					presentationLabel: 'New presentation',
+					presentation: { label: 'New presentation', subject: null, text: null },
 					resource: { contentRevision: 'rev-paper-2' }
 				},
 				capturedInputs: [
@@ -882,7 +891,7 @@ describe('F.1 accepted-read identity over an accepted unit source', () => {
 				targets: [experienceReference(acceptedSource), pinned],
 				payload: {
 					view: { label: 'Second view', eye: [2, 1.6, 0], target: [2, 1.6, -1], fov: 50 },
-					presentationLabel: 'Second presentation',
+					presentation: { label: 'Second presentation', subject: null, text: null },
 					resource: { contentRevision: 'rev-paper-3' }
 				},
 				allocatedIds: [

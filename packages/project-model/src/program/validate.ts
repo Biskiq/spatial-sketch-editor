@@ -47,9 +47,9 @@ const PROGRAM_KEYS = [
 	'profile'
 ] as const;
 const CAPABILITY_KEYS = ['id', 'required'] as const;
-const PRESENTATION_KEYS = ['id', 'label', 'viewId', 'content'] as const;
+const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'defaultViewId', 'content'] as const;
 const CONTENT_KEYS = ['id', 'kind', 'text'] as const;
-const STOP_KEYS = ['id', 'presentationId', 'invocation', 'holdSeconds', 'continuation'] as const;
+const STOP_KEYS = ['id', 'presentationId', 'viewId', 'invocation', 'holdSeconds', 'continuation'] as const;
 const INVOCATION_KEYS = ['kind', 'viewId', 'connectionId'] as const;
 const CONTINUATION_KEYS = ['kind', 'stopId'] as const;
 const STATE_KEYS = ['id', 'type', 'values', 'initial', 'reset'] as const;
@@ -119,13 +119,27 @@ function readPresentation(reader: ShapeReader, input: unknown, path: string): Pr
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const label = reader.string(record.label, `${path}.label`);
-	const viewId = reader.opaqueId(record.viewId, `${path}.viewId`);
+	const viewIds = reader.opaqueIdArray(record.viewIds, `${path}.viewIds`);
+	const defaultViewId = reader.opaqueId(record.defaultViewId, `${path}.defaultViewId`);
 	const content = readArray(reader, record.content, `${path}.content`, (entry, entryPath) =>
 		readContent(reader, entry, entryPath)
 	);
-	if (id === null || label === null || viewId === null || content === null) return null;
+	if (id === null || label === null || viewIds === null || defaultViewId === null || content === null) return null;
+	if (!uniqueIds(reader, viewIds, `${path}.viewIds`, 'view')) return null;
+	if (viewIds.length === 0) {
+		reader.problem(`${path}.viewIds`, 'out-of-range', `${path}.viewIds must name at least one Camera view`);
+		return null;
+	}
+	if (!viewIds.includes(defaultViewId)) {
+		reader.problem(
+			`${path}.defaultViewId`,
+			'default-not-in-views',
+			`${path}.defaultViewId "${defaultViewId}" is not one of this Presentation's views`
+		);
+		return null;
+	}
 	if (!uniqueIds(reader, content.map((entry) => entry.id), `${path}.content`, 'content record')) return null;
-	return { id, label, viewId, content };
+	return { id, label, viewIds, defaultViewId, content };
 }
 
 function readInvocation(reader: ShapeReader, input: unknown, path: string): ProgramInvocation | null {
@@ -332,8 +346,11 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 			reader.problem(`${path}.presentationId`, 'missing-presentation', `${path}.presentationId names no presentation`);
 		}
 		const presentation = presentations.find((entry) => entry.id === stop.presentationId);
-		if (stop.invocation.kind === 'cut' && presentation !== undefined && stop.invocation.viewId !== presentation.viewId) {
-			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize its Presentation view');
+		if (presentation !== undefined && !presentation.viewIds.includes(stop.viewId)) {
+			reader.problem(`${path}.viewId`, 'view-mismatch', `${path}.viewId must be one of its Presentation's views`);
+		}
+		if (stop.invocation.kind === 'cut' && stop.invocation.viewId !== stop.viewId) {
+			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize the View this Stop presents');
 		}
 		if (stop.continuation.kind === 'stop' && !stopIds.has(stop.continuation.stopId)) {
 			reader.problem(`${path}.continuation.stopId`, 'missing-stop', `${path}.continuation.stopId names no stop`);
@@ -390,13 +407,14 @@ function readStop(reader: ShapeReader, input: unknown, path: string): ProgramSto
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const presentationId = reader.opaqueId(record.presentationId, `${path}.presentationId`);
+	const viewId = reader.opaqueId(record.viewId, `${path}.viewId`);
 	const invocation = readInvocation(reader, record.invocation, `${path}.invocation`);
 	const holdSeconds =
 		record.holdSeconds === null ? null : reader.numberAtLeast(record.holdSeconds, `${path}.holdSeconds`, 0, false);
 	const continuation = readContinuation(reader, record.continuation, `${path}.continuation`);
-	if (id === null || presentationId === null || invocation === null || continuation === null) return null;
+	if (id === null || presentationId === null || viewId === null || invocation === null || continuation === null) return null;
 	if (record.holdSeconds !== null && holdSeconds === null) return null;
-	return { id, presentationId, invocation, holdSeconds, continuation };
+	return { id, presentationId, viewId, invocation, holdSeconds, continuation };
 }
 
 function readState(reader: ShapeReader, input: unknown, path: string): ProgramStateDeclaration | null {
