@@ -722,47 +722,46 @@ function isJsonContentType(value: string | undefined): boolean {
 	return value?.split(';', 1)[0]?.trim().toLowerCase() === 'application/json';
 }
 
-/** Model files have their own role bounds; only the route-level ceiling lives here. */
-function readModelUploadContentLength(request: FastifyRequest): number | ModelInputError {
+type DeclaredLengthRefusal = {
+	readonly code: 'length_required' | 'invalid_upload' | 'payload_too_large' | 'unsupported_media_type';
+	readonly statusCode: 400 | 411 | 413 | 415;
+	readonly message: string;
+};
+
+/**
+ * The declared `Content-Length` an upload route accepts. Both upload families
+ * share these refusals and differ only in their ceiling and their error type.
+ */
+function readDeclaredLength(request: FastifyRequest, maxBytes: number): number | DeclaredLengthRefusal {
 	if (!isOctetStream(request.headers['content-type'])) {
-		return new ModelInputError('unsupported_media_type', 415, 'Unsupported Media Type');
+		return { code: 'unsupported_media_type', statusCode: 415, message: 'Unsupported Media Type' };
 	}
 	const value = request.headers['content-length'];
 	if (typeof value !== 'string') {
-		return new ModelInputError('length_required', 411, 'Content-Length is required');
+		return { code: 'length_required', statusCode: 411, message: 'Content-Length is required' };
 	}
 	if (!/^\d+$/.test(value)) {
-		return new ModelInputError('invalid_upload', 400, 'Invalid Content-Length');
+		return { code: 'invalid_upload', statusCode: 400, message: 'Invalid Content-Length' };
 	}
 	const declaredLength = BigInt(value);
 	if (declaredLength === 0n) {
-		return new ModelInputError('invalid_upload', 400, 'Invalid upload length');
+		return { code: 'invalid_upload', statusCode: 400, message: 'Invalid upload length' };
 	}
-	if (declaredLength > BigInt(MODEL_SOURCE_SET_MAX_BYTES)) {
-		return new ModelInputError('payload_too_large', 413, 'Payload Too Large');
+	if (declaredLength > BigInt(maxBytes)) {
+		return { code: 'payload_too_large', statusCode: 413, message: 'Payload Too Large' };
 	}
 	return Number(declaredLength);
 }
 
+/** Model files have their own role bounds; only the route-level ceiling lives here. */
+function readModelUploadContentLength(request: FastifyRequest): number | ModelInputError {
+	const read = readDeclaredLength(request, MODEL_SOURCE_SET_MAX_BYTES);
+	return typeof read === 'number' ? read : new ModelInputError(read.code, read.statusCode, read.message);
+}
+
 function readUploadContentLength(request: FastifyRequest): number | AssetInputError {
-	if (!isOctetStream(request.headers['content-type'])) {
-		return new AssetInputError('unsupported_media_type', 415, 'Unsupported Media Type');
-	}
-	const value = request.headers['content-length'];
-	if (typeof value !== 'string') {
-		return new AssetInputError('length_required', 411, 'Content-Length is required');
-	}
-	if (!/^\d+$/.test(value)) {
-		return new AssetInputError('invalid_upload', 400, 'Invalid Content-Length');
-	}
-	const declaredLength = BigInt(value);
-	if (declaredLength === 0n) {
-		return new AssetInputError('invalid_upload', 400, 'Invalid upload length');
-	}
-	if (declaredLength > BigInt(MAX_ASSET_BYTES)) {
-		return new AssetInputError('payload_too_large', 413, 'Payload Too Large');
-	}
-	return Number(declaredLength);
+	const read = readDeclaredLength(request, MAX_ASSET_BYTES);
+	return typeof read === 'number' ? read : new AssetInputError(read.code, read.statusCode, read.message);
 }
 
 function sessionUserId(request: FastifyRequest, sessionsEnabled: boolean): string | null {
