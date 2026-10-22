@@ -1,7 +1,8 @@
 # T2.P02.S01 — acceptance record: Model resource storage and admission
 
 **Slice:** T2.P02.S01 · **Status:** implemented on `t2/p02-s01-model-resource-storage` at
-`7a90f7d8`, evidence recorded, **independent review in progress** — not accepted, not merged ·
+`7a90f7d8`, evidence recorded, **independent review ACCEPT** (`5a3451fb`) — owner acceptance and merge
+owed ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T2.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -62,7 +63,7 @@ The slice adds no editor flow, so the batch E performance table's row for it is 
 | Formats: old numbers refuse; strict readers reject unknown keys and part fields; resource without lock and lock without resource refuse | `apps/editor/tests/lib/project-model/model-resource-admission.test.ts` (13 tests) |
 | No regression: catalogue/native placement, texture assets, conditional Save, conflict recovery, visitor/public boundary | `save`, `save-units`, `projects`, `assets`, `publication`, `migration*` API files; the affected editor project-model/Scene/stage/museum-asset contracts; the visitor cold-release catalogue-only test; the whole arch lane |
 
-## Evidence at `b88cbc95`
+## Evidence at `7a90f7d8`
 
 Environment: the owner's local checkout; `DATABASE_URL=postgresql://localhost:5432/biskiq`
 (reachable, no skip guards); Node 26.7.0; Vitest 3.2.7.
@@ -120,7 +121,13 @@ disclosed in the limits below. A second pass over `7a90f7d8` is recorded at the 
 | A placed creator model has no Plan footprint or collision extent | Recorded as `T2.P02.S02` placement work in the limits |
 | An authored catalogue fallback still draws that catalogue box; every model resource needs its lock even when unplaced | Disclosed in the limits |
 
-**Second pass (independent reviewers, `7a90f7d8`).** [pending]
+**Second pass (two independent reviewers, `5a3451fb`; code `7a90f7d8`).** Both facets returned
+**ACCEPT** with no blocker or major finding. Their remaining notes are dispositioned here: the
+evidence heading now names `7a90f7d8`; the lock rule is stated against the plan's acceptance list
+rather than its narrower §2 sentence; the tolerant render lookup is recorded as an allowance; and the
+route-level declared-length refusals and the render seam's test boundary are disclosed in the limits.
+The reviewers verified from source and tests, not by execution; the gate counts below are the owner
+runs recorded in this file.
 
 ## Verification notes and limits
 
@@ -169,8 +176,18 @@ disclosed in the limits below. A second pass over `7a90f7d8` is recorded at the 
   `T2.P02.S02` placement work, together with source-unit scale and pivot.
 - **Fallback authored by the placement.** A creator-model entity draws the generic footprint box when
   its placement names `generic`; an authored catalogue fallback still draws that catalogue shape.
-  Every model resource requires its lock entry even when unplaced, which is stricter than the plan's
-  Scene-model wording.
+  Every model resource requires its lock entry even when unplaced: the plan's acceptance list says so,
+  while its §2 Scene-model sentence only names a model a Scene places.
+- **Tolerant render lookup.** A Scene model id absent from the catalogue resolves to the generic
+  footprint box, so a misspelled catalogue id renders that neutral box instead of failing. Format
+  admission and the cold-release reader keep this unreachable for authored and visitor documents.
+- **Coverage boundaries.** The model upload route's declared-length refusals (over-ceiling, missing
+  length, wrong media type, zero length) share the asset route's reader and are not separately tested
+  for the model route; the definition-level bounds and the exact-size stream are. The render fix is
+  proven at the fallback-resolution seam, not by rendering `AssetModel`.
+- **Save reload identity.** Whole-document save/reload byte identity is the landed `save`/`projects`
+  contract's assertion; this slice's Save test asserts the stored model resource's pin and detail and
+  the unchanged version.
 
 ## Entry points
 
@@ -197,6 +214,6 @@ regressions     apps/api/tests/model-resources.test.mjs
 
 ## Next
 
-Independent review of `7a90f7d8` against the plan. Acceptance, closeout and merge are not claimed;
-`T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
+Owner review of the branch tip, whose code revision is `7a90f7d8`. Acceptance, closeout and merge are
+not claimed; `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
 [`T2.P02.S03`](../t2.p02.s03-integrated-final-gate/acceptance.md).
