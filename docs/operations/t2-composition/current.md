@@ -25,8 +25,9 @@ BATON: S01 delivers staged model imports, immutable approved revisions, the reso
        merged. The review-fix commit renders a creator model through its tolerant catalogue lookup
        and footprint fallback, and closes the review's refusal-coverage and index-path findings;
        non-blocking limits are recorded in the acceptance record.
-NEXT:  Push the branch and hand it to the owner for review at the branch tip; owner acceptance, the
-       complete repository gate on then-current `main`, and merge follow. Owner acceptance and routine
+NEXT:  Owner review of PR #177 (https://github.com/Biskiq/spatial-sketch-editor/pull/177) at the
+       branch tip; owner acceptance, the complete repository gate on then-current `main`, and merge
+       follow. Owner acceptance and routine
        closeout follow; the complete repository gate runs on then-current `main` before merge.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/README.md (phase register) →

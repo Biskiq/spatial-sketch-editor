@@ -214,6 +214,6 @@ regressions     apps/api/tests/model-resources.test.mjs
 
 ## Next
 
-Owner review of the branch tip, whose code revision is `7a90f7d8`. Acceptance, closeout and merge are
-not claimed; `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
+Owner review of PR #177 at the branch tip, whose code revision is `7a90f7d8`. Acceptance, closeout
+and merge are not claimed; `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
 [`T2.P02.S03`](../t2.p02.s03-integrated-final-gate/acceptance.md).
