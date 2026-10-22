@@ -228,7 +228,7 @@ const assetCategories: readonly AssetCategory[] = [
 ];
 const assetStatuses: readonly AssetStatus[] = ['placeholder', 'testing', 'approved', 'rejected'];
 const fallbackKinds: readonly FallbackKind[] = [
-  'piano', 'chair', 'sofa', 'table', 'chandelier', 'desk', 'lamp', 'frame', 'books', 'clock', 'rug'
+  'piano', 'chair', 'sofa', 'table', 'chandelier', 'desk', 'lamp', 'frame', 'books', 'clock', 'rug', 'generic'
 ];
 const placementSurfaces: readonly PlacementSurface[] = ['floor', 'wall', 'ceiling', 'surface'];
 const FOOTPRINT_EPSILON = 1e-9;

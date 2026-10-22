@@ -189,7 +189,7 @@ describe('normalization is applied exactly once', () => {
 	it('places a native block whose declared footprint matches the retained Plan projection at scale 1', async () => {
 		const definition = await nativePlacementDefinition('box');
 		const result = preparePlaceObjectCandidate({
-			document: { formatVersion: 2, textures: [], materials: [], entities: [] },
+			document: { formatVersion: 3, textures: [], materials: [], entities: [] },
 			entityId: 'entity-1',
 			snapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },
 			supportSnapshot: { acceptedRevision: { projectId: 'project-1', revisionId: 'revision-1' }, sourceContentId: 'content-1' },

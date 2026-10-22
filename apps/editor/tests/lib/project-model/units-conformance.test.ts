@@ -417,7 +417,7 @@ describe('independent AM-2 regressions', () => {
 		const entry = { domain: 'camera' as const, subjectKind: 'view', subjectId: 'view-1', instancePath: [],
 			contentRevision: 'r', requiredCapabilities: [{ id: 'f', version: '1' }, { id: 'f', version: '2' }], pin: null };
 		expect(validateDependencyLock(lock([entry])).success).toBe(false);
-		expect(validateResourcePayload({ formatVersion: 1, resources: [{ kind: 'texture', id: 't',
+		expect(validateResourcePayload({ formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [{ kind: 'texture', id: 't',
 			contentRevision: null, pin: { ...PIN, size: 1e30 }, unresolved: null }] }).success).toBe(false);
 	});
 
@@ -427,7 +427,7 @@ describe('independent AM-2 regressions', () => {
 			{ contentRevision: 'other', pin: PIN },
 			{ contentRevision: PIN.hash, pin: null }
 		]) {
-			const built = await envelope({ resources: { formatVersion: 1, resources: [resource] }, dependencyLock: lock([{
+			const built = await envelope({ resources: { formatVersion: RESOURCE_UNIT_FORMAT_VERSION, resources: [resource] }, dependencyLock: lock([{
 				domain: 'resource:texture', subjectKind: 'resource', subjectId: 'texture-1', instancePath: [],
 				requiredCapabilities: [], ...entry
 			}]) });

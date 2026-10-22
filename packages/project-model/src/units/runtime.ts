@@ -99,6 +99,32 @@ function sceneProjectionForRuntime(
 }
 
 /**
+ * Admit this envelope's own creator models into the host's asset admission.
+ *
+ * The host supplies the catalogue predicate (which ids it ships bytes for); a
+ * `model` resource is this envelope's own admitted bytes. A Scene model id
+ * therefore resolves against the catalogue **or** the same envelope's resource
+ * registry, and never against an ambient lookup. With no model resources the
+ * supplied options pass through unchanged.
+ */
+function sceneOptionsForEnvelope(
+	envelope: ProjectEnvelope,
+	sceneOptions: SceneValidationOptions
+): SceneValidationOptions {
+	const modelIds = new Set(
+		envelope.units.resources.data.resources
+			.filter((resource) => resource.kind === 'model')
+			.map((resource) => resource.id)
+	);
+	const catalogue = sceneOptions.isKnownAssetId;
+	if (modelIds.size === 0 || catalogue === undefined) return sceneOptions;
+	return {
+		...sceneOptions,
+		isKnownAssetId: (id: string) => catalogue(id) || modelIds.has(id)
+	};
+}
+
+/**
  * Validate and prepare one envelope for a live runtime.
  *
  * Structural validation is `validateProjectEnvelope`; preparation is the one
@@ -120,7 +146,7 @@ export function prepareUnitRuntime(
 	try {
 		runtimeScene = resolveSceneDocument(
 			sceneProjectionForRuntime(envelope.units.scene.data, envelope.units.camera.data),
-			sceneOptions
+			sceneOptionsForEnvelope(envelope, sceneOptions)
 		);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Scene preparation failed';

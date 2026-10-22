@@ -25,7 +25,9 @@ export type SceneObjectFallback =
   | 'frame'
   | 'books'
   | 'clock'
-  | 'rug';
+  | 'rug'
+  /** A creator model's approved footprint box; never a catalogue object shape. */
+  | 'generic';
 
 export type CameraConnectionDirection = 'forward' | 'reverse';
 export type CameraEasing =

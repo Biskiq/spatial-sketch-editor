@@ -478,7 +478,10 @@ export function createPresentationStopCreatePlanner(
 					id: previousResource.id,
 					contentRevision: resourceUpdate.contentRevision,
 					pin: resourceUpdate.pin,
-					unresolved: null
+					unresolved: null,
+					// The retained model detail (source pin, recipe, report, placement) is
+					// not the staged-byte update's to drop.
+					...(previousResource.model === undefined ? {} : { model: previousResource.model })
 				};
 				resources = resources.map((candidate, index) => (index === resourceIndex ? updatedResource! : candidate));
 				const previousLock = dependencyEntries.find(

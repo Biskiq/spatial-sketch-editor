@@ -30,6 +30,17 @@ import {
 	registerAsset,
 	uploadAsset
 } from './asset-persistence.js';
+import {
+	approveModelImport,
+	cancelModelImport,
+	createModelImport,
+	MODEL_SOURCE_SET_MAX_BYTES,
+	ModelInputError,
+	ModelNotFoundError,
+	ModelPinRefusalError,
+	readModelRevisionContent,
+	uploadModelFile
+} from './model-persistence.js';
 import type { ObjectStore } from './object-store.js';
 import { listProjects, loadProject, ProjectNotFoundError } from './project-persistence.js';
 import { SaveRefusalError, saveAcceptedSource } from './save-persistence.js';
@@ -363,7 +374,7 @@ export function createApp({
 			return await saveAcceptedSource(pool, userId, parsed.request);
 		} catch (error) {
 			if (error instanceof ProjectNotFoundError) return notFound(reply);
-			if (error instanceof SaveRefusalError) return saveRefusal(reply, error);
+			if (error instanceof SaveRefusalError || error instanceof ModelPinRefusalError) return saveRefusal(reply, error);
 			return databaseFailure(app, reply, error, 'Project save failed');
 		}
 	});
@@ -448,6 +459,120 @@ export function createApp({
 			}
 			if (error instanceof PublicationConflictError) return publicationConflict(reply, error);
 			return databaseFailure(app, reply, error, 'Project unpublish failed');
+		}
+	});
+
+	// T2.P02.S01 — creator model staging and the immutable approved revision.
+	// Owner-only throughout: an import the owner does not own is not-found, so no
+	// route reveals another project's import or revision.
+	const requireModelSession = async (request: FastifyRequest, reply: FastifyReply) => {
+		if (!sessionUserId(request, sessionsEnabled)) return unauthorized(reply);
+	};
+
+	app.post('/projects/:projectId/models/imports', { onRequest: requireModelSession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const projectId = (request.params as { projectId?: unknown }).projectId;
+		if (!userId) return unauthorized(reply);
+		if (!isValidProjectId(projectId)) return modelInputFailure(reply, new ModelInputError('invalid_model_import', 400, 'Invalid project ID'));
+		try {
+			if (!isJsonContentType(request.headers['content-type'])) {
+				return modelInputFailure(reply, new ModelInputError('unsupported_media_type', 415, 'Unsupported Media Type'));
+			}
+			const imported = await createModelImport(pool, userId, projectId, request.body, objectStore);
+			return reply.code(201).send(imported);
+		} catch (error) {
+			return modelFailure(app, reply, error, 'Model staging failed');
+		}
+	});
+
+	app.put('/projects/:projectId/models/imports/:importId/files/:fileId/content', { onRequest: requireModelSession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const { projectId, importId, fileId } = request.params as { projectId?: unknown; importId?: unknown; fileId?: unknown };
+		if (!userId) return unauthorized(reply);
+		if (!isValidProjectId(projectId) || !isValidAssetId(importId) || !isValidAssetId(fileId)) {
+			return modelInputFailure(reply, new ModelInputError('invalid_model_file', 400, 'Invalid model file identifier'));
+		}
+		const contentLength = readModelUploadContentLength(request);
+		if (contentLength instanceof ModelInputError) return modelInputFailure(reply, contentLength);
+		if (!(request.body instanceof Readable)) {
+			return modelInputFailure(reply, new ModelInputError('invalid_upload', 400, 'Invalid upload body'));
+		}
+		try {
+			return await uploadModelFile(
+				pool,
+				userId,
+				projectId,
+				importId,
+				fileId,
+				contentLength,
+				request.body,
+				objectStore,
+				objectNamespace
+			);
+		} catch (error) {
+			return modelFailure(app, reply, error, 'Model file upload failed');
+		}
+	});
+
+	app.delete('/projects/:projectId/models/imports/:importId', { onRequest: requireModelSession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const { projectId, importId } = request.params as { projectId?: unknown; importId?: unknown };
+		if (!userId) return unauthorized(reply);
+		if (!isValidProjectId(projectId) || !isValidAssetId(importId)) {
+			return modelInputFailure(reply, new ModelInputError('invalid_model_file', 400, 'Invalid model import identifier'));
+		}
+		try {
+			await cancelModelImport(pool, userId, projectId, importId, objectStore);
+			return reply.code(204).send();
+		} catch (error) {
+			return modelFailure(app, reply, error, 'Model staging cancel failed');
+		}
+	});
+
+	app.post('/projects/:projectId/models/imports/:importId/approve', { onRequest: requireModelSession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const { projectId, importId } = request.params as { projectId?: unknown; importId?: unknown };
+		if (!userId) return unauthorized(reply);
+		if (!isValidProjectId(projectId) || !isValidAssetId(importId)) {
+			return modelInputFailure(reply, new ModelInputError('invalid_model_file', 400, 'Invalid model import identifier'));
+		}
+		try {
+			if (!isJsonContentType(request.headers['content-type'])) {
+				return modelInputFailure(reply, new ModelInputError('unsupported_media_type', 415, 'Unsupported Media Type'));
+			}
+			const revision = await approveModelImport(pool, userId, projectId, importId, request.body, objectStore, objectNamespace);
+			return reply.code(200).send(revision);
+		} catch (error) {
+			return modelFailure(app, reply, error, 'Model approval failed');
+		}
+	});
+
+	// Approved bytes are immutable: the read is keyed by the derivative's hash and
+	// is cacheable, so repeat loads in the editor and Preview hit the cache. It is
+	// still owner-only and never a public delivery route.
+	app.get('/projects/:projectId/models/content/:hash', { onRequest: requireModelSession }, async (request, reply) => {
+		const userId = sessionUserId(request, sessionsEnabled);
+		const { projectId, hash } = request.params as { projectId?: unknown; hash?: unknown };
+		if (!userId) return unauthorized(reply);
+		if (!isValidProjectId(projectId) || typeof hash !== 'string') {
+			return notFound(reply);
+		}
+		try {
+			const content = await readModelRevisionContent(pool, userId, projectId, hash);
+			if (!objectStore) throw new Error('Object storage is unavailable');
+			const stored = await objectStore.get(content.objectKey);
+			if (!stored || stored.contentLength !== content.size) {
+				return reply.code(503).send(errorBody('service_unavailable', 'Service Unavailable'));
+			}
+			reply
+				.header('Content-Type', content.mime)
+				.header('Content-Length', String(content.size))
+				.header('ETag', `"${hash}"`)
+				.header('Cache-Control', 'private, max-age=31536000, immutable');
+			return reply.send(stored.body);
+		} catch (error) {
+			if (error instanceof ModelNotFoundError) return notFound(reply);
+			return databaseFailure(app, reply, error, 'Model content failed');
 		}
 	});
 
@@ -571,6 +696,16 @@ function assetInputFailure(reply: FastifyReply, error: AssetInputError) {
 	return reply.code(error.statusCode).send(errorBody(error.code, error.message));
 }
 
+function modelInputFailure(reply: FastifyReply, error: ModelInputError) {
+	return reply.code(error.statusCode).send(errorBody(error.code, error.message));
+}
+
+function modelFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {
+	if (error instanceof ModelInputError) return modelInputFailure(reply, error);
+	if (error instanceof ModelNotFoundError) return notFound(reply);
+	return databaseFailure(app, reply, error, message);
+}
+
 function assetFailure(app: FastifyInstance, reply: FastifyReply, error: unknown, message: string) {
 	if (error instanceof AssetInputError) return assetInputFailure(reply, error);
 	if (error instanceof AssetNotFoundError) return notFound(reply);
@@ -586,6 +721,28 @@ function isOctetStream(value: string | undefined): boolean {
 
 function isJsonContentType(value: string | undefined): boolean {
 	return value?.split(';', 1)[0]?.trim().toLowerCase() === 'application/json';
+}
+
+/** Model files have their own role bounds; only the route-level ceiling lives here. */
+function readModelUploadContentLength(request: FastifyRequest): number | ModelInputError {
+	if (!isOctetStream(request.headers['content-type'])) {
+		return new ModelInputError('unsupported_media_type', 415, 'Unsupported Media Type');
+	}
+	const value = request.headers['content-length'];
+	if (typeof value !== 'string') {
+		return new ModelInputError('length_required', 411, 'Content-Length is required');
+	}
+	if (!/^\d+$/.test(value)) {
+		return new ModelInputError('invalid_upload', 400, 'Invalid Content-Length');
+	}
+	const declaredLength = BigInt(value);
+	if (declaredLength === 0n) {
+		return new ModelInputError('invalid_upload', 400, 'Invalid upload length');
+	}
+	if (declaredLength > BigInt(MODEL_SOURCE_SET_MAX_BYTES)) {
+		return new ModelInputError('payload_too_large', 413, 'Payload Too Large');
+	}
+	return Number(declaredLength);
 }
 
 function readUploadContentLength(request: FastifyRequest): number | AssetInputError {
@@ -729,8 +886,14 @@ function publicationConflict(
 
 function saveRefusal(
 	reply: { code(statusCode: number): { send(body: unknown): unknown } },
-	error: SaveRefusalError
+	error: SaveRefusalError | ModelPinRefusalError
 ) {
+	if (error instanceof ModelPinRefusalError) {
+		return reply.code(400).send({
+			error: { code: error.code, message: error.message },
+			...(error.issues.length > 0 ? { issues: error.issues } : {})
+		});
+	}
 	if (error.code === 'conflict') {
 		// A conflict carries no remote contents; the client reloads explicitly.
 		return reply.code(409).send(errorBody('conflict', error.message));

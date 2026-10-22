@@ -17,5 +17,8 @@ export const assetFallbackDimensions: Record<AssetFallbackKind, Vec3> = {
   books: [0.48, 0.15, 0.3],
   clock: [0.38, 2.11, 0.5],
   decor: [0.22, 0.38, 0.22],
-  rug: [2.6, 0.015, 1.8]
+  rug: [2.6, 0.015, 1.8],
+  // Neutral 1 m box. A creator model's approved footprint sizing is placement
+  // work (T2.P02.S02); the format value itself is admitted here.
+  generic: [1, 1, 1]
 };

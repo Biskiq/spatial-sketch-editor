@@ -228,5 +228,11 @@
       <T.PlaneGeometry args={[2.6, 1.8]} />
       <FallbackMaterial materialId="velvet-dark" surfaceSize={[2.6, 1.8]} tint="#54232d" {wireframe} />
     </T.Mesh>
+  {:else if kind === 'generic'}
+    <!-- Creator model placeholder: a neutral footprint box until placement supplies the approved size. -->
+    <T.Mesh position={[0, 0.5, 0]} {castShadow} {receiveShadow}>
+      <T.BoxGeometry args={[1, 1, 1]} />
+      <FallbackMaterial materialId="plaster-warm" surfaceSize={[1, 1]} tint="#c4b4a0" {wireframe} />
+    </T.Mesh>
   {/if}
 </T.Group>

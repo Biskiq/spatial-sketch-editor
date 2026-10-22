@@ -17,7 +17,11 @@
  */
 
 import type { AcceptedRevision, ProjectIssue } from '@portfolio/project-model';
-import { createUnitSaveHandler, UNIT_ENVELOPE_SOURCE_FORMAT } from '@portfolio/project-model/units';
+import {
+	createUnitSaveHandler,
+	UNIT_ENVELOPE_SOURCE_FORMAT,
+	type ProjectEnvelope
+} from '@portfolio/project-model/units';
 import {
 	SAVE_CONTENT_IDENTITY_SCHEME,
 	createSavedBaseToken,
@@ -34,6 +38,7 @@ import {
 } from '@portfolio/project-model/save';
 
 import type { DatabaseClient, DatabasePool } from './database.js';
+import { verifyModelResourcePins } from './model-persistence.js';
 import { ProjectNotFoundError, queryRows, withTransaction } from './project-persistence.js';
 
 /** The one Save source handler this build admits. */
@@ -266,6 +271,11 @@ LIMIT 1`,
 		) {
 			throw new SaveRefusalError('content-identity-mismatch', 'Admission produced a different source than the capture');
 		}
+		// T2.P02.S01: a `model` resource is host-asserted no longer. Every model in
+		// the admitted source must name an approved revision of this project whose
+		// retained bytes and provenance agree with the resource's pins; the refusal
+		// rolls the transaction back, so no stored version changes.
+		await verifyModelResourcePins(db, capture.projectId, finalSource.document as ProjectEnvelope);
 
 		const nextVersion = latestVersion + 1;
 		const savedBaseToken = createSavedBaseToken();
