@@ -745,10 +745,13 @@ export async function verifyModelResourcePins(
 	projectId: string,
 	envelope: ProjectEnvelope
 ): Promise<void> {
-	const modelResources = envelope.units.resources.data.resources.filter((resource) => resource.kind === 'model');
-	if (modelResources.length === 0) return;
+	const resources = envelope.units.resources.data.resources;
+	if (!resources.some((resource) => resource.kind === 'model')) return;
 	const issues: { path: string; code: string; message: string }[] = [];
-	for (const [index, resource] of modelResources.entries()) {
+	// The issue path names the registry index, so every resource is walked and
+	// only models are checked.
+	for (const [index, resource] of resources.entries()) {
+		if (resource.kind !== 'model') continue;
 		const path = `$.units.resources.data.resources[${index}]`;
 		const pin = resource.pin;
 		const model = resource.model;

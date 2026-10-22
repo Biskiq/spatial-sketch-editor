@@ -8,7 +8,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { assetFallbackDimensions, fallbackDimensionsFor } from '$lib/museum/assets/fallbacks';
+import { getAssetById } from '$lib/content/assets';
+import { assetFallbackDimensions, fallbackDimensionsFor, fallbackKindFor } from '$lib/museum/assets/fallbacks';
 
 describe('creator-model generic fallback', () => {
 	it('uses the approved footprint width and depth', () => {
@@ -18,6 +19,13 @@ describe('creator-model generic fallback', () => {
 
 	it('falls back to the neutral 1 m box when no approved footprint is available', () => {
 		expect(fallbackDimensionsFor('generic')).toEqual([1, 1, 1]);
+	});
+
+	it('resolves an id the catalogue cannot know to the generic footprint box', () => {
+		expect(getAssetById('creator-model-1')).toBeUndefined();
+		expect(fallbackKindFor(undefined, getAssetById('creator-model-1'))).toBe('generic');
+		expect(fallbackKindFor(undefined, getAssetById('paris-grand-piano'))).toBe('piano');
+		expect(fallbackKindFor('chair', getAssetById('paris-grand-piano'))).toBe('chair');
 	});
 
 	it('leaves every catalogue fallback kind on its catalogue dimensions', () => {

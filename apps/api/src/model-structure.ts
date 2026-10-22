@@ -252,7 +252,13 @@ function checkGltfDocument(input: {
 	for (const [index, image] of images.entries()) {
 		const imagePath = `${path}.images[${index}]`;
 		const uri = image.uri;
-		if (uri === undefined) continue; // a bufferView-backed image is checked by its view
+		if (uri === undefined) {
+			const view = image.bufferView;
+			if (typeof view !== 'number' || !Number.isSafeInteger(view) || view < 0 || view >= views.length) {
+				fail(`${imagePath}.bufferView`, 'invalid-buffer-view-index', `${imagePath}.bufferView must name one of the document's bufferViews`);
+			}
+			continue;
+		}
 		if (typeof uri !== 'string' || uri.length === 0) {
 			fail(`${imagePath}.uri`, 'invalid-uri', `${imagePath}.uri must be a non-empty string`);
 		}

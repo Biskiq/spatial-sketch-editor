@@ -3,7 +3,7 @@
   import { T } from '@threlte/core';
   import { useGltf, useMeshopt } from '@threlte/extras';
   import { Box3, type Object3D } from 'three';
-  import { getAsset, resolveAssetFallback } from '$lib/content/assets';
+  import { getAssetById } from '$lib/content/assets';
   import type {
     AssetId,
     AssetLoadStatus,
@@ -13,7 +13,7 @@
   import type { Vec3 } from '$lib/types/scene';
   import type { EffectiveSceneMaterial } from '$lib/museum/materials/scene-instance-material';
   import AssetFallback from './AssetFallback.svelte';
-  import { fallbackDimensionsFor } from './fallbacks';
+  import { fallbackDimensionsFor, fallbackKindFor } from './fallbacks';
   import {
     cloneModelScene,
     disposeModelInstance,
@@ -72,10 +72,12 @@
   } = $props();
 
   const loader = useGltf({ meshoptDecoder: useMeshopt() });
-  const asset = $derived(getAsset(assetId));
+  // A creator-model id is deliberately absent from the catalogue: it has no
+  // production GLB in this build, so the approved footprint box is its render.
+  const asset = $derived(getAssetById(assetId));
   // Placement fallback is authoritative. Manifest resolution is compatibility-only
   // for preview/renderer callers that do not provide a scene placement fallback.
-  const fallbackKind = $derived(fallback ?? resolveAssetFallback(asset));
+  const fallbackKind = $derived(fallbackKindFor(fallback, asset));
   const fallbackDimensions = $derived(fallbackDimensionsFor(fallbackKind, fallbackFootprint));
 
   let instance = $state<Object3D>();
@@ -88,9 +90,9 @@
   $effect(() => {
     const shouldLoad =
       enabled &&
-      Boolean(asset.productionFile) &&
-      (asset.status === 'approved' || asset.status === 'testing');
-    const url = asset.productionFile;
+      Boolean(asset?.productionFile) &&
+      (asset?.status === 'approved' || asset?.status === 'testing');
+    const url = asset?.productionFile;
 
     if (!shouldLoad || !url) {
       instance = undefined;
@@ -159,7 +161,7 @@
         error = loadError.message;
       });
       if (import.meta.env.DEV) {
-        console.warn(`[AssetModel] Failed to load ${asset.id} from ${url}`, loadError);
+        console.warn(`[AssetModel] Failed to load ${assetId} from ${url}`, loadError);
       }
     });
 
@@ -191,7 +193,7 @@
 
   const computedMetrics = $derived.by((): AssetMetrics => {
     const sourceMetrics = rawMetrics;
-    const factor = asset.defaultScale * scale;
+    const factor = (asset?.defaultScale ?? 1) * scale;
     if (sourceMetrics) {
       return {
         ...sourceMetrics,
@@ -269,13 +271,13 @@
 
 <T.Group position={rootPosition} rotation={rootRotation} scale={rootScale} {visible}>
   {#if loadStatus !== 'ready'}
-    <T.Group rotation={asset.defaultRotation ?? ZERO} scale={asset.defaultScale}>
+    <T.Group rotation={asset?.defaultRotation ?? ZERO} scale={asset?.defaultScale ?? 1}>
       <AssetFallback
         kind={fallbackKind}
         dimensions={fallbackDimensions}
         {wireframe}
-        castShadow={shadows && asset.castShadow}
-        receiveShadow={shadows && asset.receiveShadow}
+        castShadow={shadows && (asset?.castShadow ?? false)}
+        receiveShadow={shadows && (asset?.receiveShadow ?? false)}
       />
       {#if showBounds}
         <T.Mesh position={fallbackBoundsPosition}>
@@ -293,7 +295,7 @@
   {/if}
 
   {#if instance}
-    <T.Group rotation={asset.defaultRotation ?? ZERO} scale={asset.defaultScale}>
+    <T.Group rotation={asset?.defaultRotation ?? ZERO} scale={asset?.defaultScale ?? 1}>
       <T is={instance} />
       {#if showBounds && rawBounds}
         <T.Box3Helper args={[rawBounds, 0xd6b35f]} />

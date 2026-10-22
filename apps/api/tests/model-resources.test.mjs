@@ -304,15 +304,35 @@ test('a staged import is owner-only and adopts only bytes that match its declara
 	]);
 	assert.equal(foreignStage.statusCode, 404, 'a foreign owner cannot stage into this project');
 
-	// The bytes disagree with the declared hash: they are refused and not adopted.
-	const tampered = Buffer.concat([source, Buffer.from([0])]);
-	const mismatched = await upload(projectId, created, owner, 'model.glb', tampered);
-	assert.equal(mismatched.statusCode, 400, JSON.stringify(mismatched.json()));
+	const missingProject = await stage(`p02missing${Date.now().toString(36)}`, owner, [
+		{ role: 'source', path: 'model.glb', bytes: source },
+		{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: derivative }
+	]);
+	assert.equal(missingProject.statusCode, 404, 'a missing project cannot be staged into');
+
+	// Same length, different bytes: the declared hash is what refuses it.
+	const tampered = Buffer.from(source);
+	tampered[tampered.length - 1] ^= 0xff;
+	const mismatchedHash = await upload(projectId, created, owner, 'model.glb', tampered);
+	assert.equal(mismatchedHash.statusCode, 400, JSON.stringify(mismatchedHash.json()));
+	assert.equal(mismatchedHash.json().error.code, 'invalid_model_file');
+	// A stream shorter than its declaration is refused by the length check.
+	const mismatchedSize = await upload(projectId, created, owner, 'model.glb', source.subarray(0, source.length - 1));
+	assert.equal(mismatchedSize.statusCode, 400, JSON.stringify(mismatchedSize.json()));
+	assert.equal(mismatchedSize.json().error.code, 'invalid_upload');
 	const notReady = await approve(projectId, created.importId, owner);
 	assert.equal(notReady.statusCode, 409, 'a refused upload leaves the import incomplete');
 
 	const rejectedStranger = await upload(projectId, created, stranger, 'model.glb', source);
 	assert.equal(rejectedStranger.statusCode, 404);
+	const rejectedStrangerApprove = await approve(projectId, created.importId, stranger);
+	assert.equal(rejectedStrangerApprove.statusCode, 404, 'a foreign owner cannot approve');
+	const rejectedStrangerCancel = await app.inject({
+		method: 'DELETE',
+		url: `/projects/${projectId}/models/imports/${created.importId}`,
+		headers: { cookie: stranger }
+	});
+	assert.equal(rejectedStrangerCancel.statusCode, 404, 'a foreign owner cannot cancel');
 
 	const uploadedSource = await upload(projectId, created, owner, 'model.glb', source);
 	assert.equal(uploadedSource.statusCode, 200, JSON.stringify(uploadedSource.json()));
@@ -367,6 +387,14 @@ test('a staged import is owner-only and adopts only bytes that match its declara
 	assert.equal(foreignContent.statusCode, 404);
 	const anonymousContent = await app.inject({ method: 'GET', url: contentUrl });
 	assert.equal(anonymousContent.statusCode, 401);
+
+	// An approved import accepts no further bytes, and the retained derivative the
+	// content route serves does not change.
+	const lateUpload = await upload(projectId, created, owner, 'model.glb', source);
+	assert.equal(lateUpload.statusCode, 400, JSON.stringify(lateUpload.json()));
+	assert.equal(lateUpload.json().error.code, 'invalid_model_import');
+	const reread = await app.inject({ method: 'GET', url: contentUrl, headers: { cookie: owner } });
+	assert.deepEqual(reread.rawPayload, derivative, 'approved bytes are unchanged');
 
 	const stagedKeysAfterApproval = [...objectStore.objects.keys()].filter((key) => key.includes(`/imports/${created.importId}/`));
 	assert.deepEqual(stagedKeysAfterApproval, [], 'promotion deletes the staging copies');
@@ -517,6 +545,28 @@ test('approval refuses a non-glTF derivative and a source set missing a referenc
 	assert.equal(missingApproval.statusCode, 400, JSON.stringify(missingApproval.json()));
 	assert.equal(missingApproval.json().error.code, 'model_structure_refused');
 	assert.match(missingApproval.json().error.message, /missing-referenced-file/);
+
+	// An image that names a bufferView the document does not carry is a bound
+	// failure, not a valid image.
+	const danglingImage = glb(
+		{
+			asset: { version: '2.0' },
+			buffers: [{ byteLength: 4 }],
+			bufferViews: [{ buffer: 0, byteLength: 4 }],
+			images: [{ bufferView: 9, mimeType: 'image/png' }]
+		},
+		Buffer.alloc(4, 1)
+	);
+	const dangling = await stage(projectId, owner, [
+		{ role: 'source', path: 'model.glb', bytes: source },
+		{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: danglingImage }
+	]);
+	const danglingCreated = dangling.json();
+	await upload(projectId, danglingCreated, owner, 'model.glb', source);
+	await upload(projectId, danglingCreated, owner, 'model.glb.derivative.glb', danglingImage);
+	const danglingApproval = await approve(projectId, danglingCreated.importId, owner);
+	assert.equal(danglingApproval.statusCode, 400, JSON.stringify(danglingApproval.json()));
+	assert.match(danglingApproval.json().error.message, /invalid-buffer-view-index/);
 });
 
 test('a glTF source set with its referenced buffer and a self-contained derivative is approved', async () => {
@@ -688,6 +738,38 @@ test('Save admits a model resource pinned to an approved revision and refuses ev
 	);
 	assert.equal(refusedSize.statusCode, 400, JSON.stringify(refusedSize.json()));
 	assert.equal(refusedSize.json().error.code, 'unapproved_model_resource');
+
+	// The approved bytes, but a retained source digest that disagrees with the
+	// revision. An unrelated texture resource precedes it so the refusal names the
+	// model's own registry index.
+	const wrongProvenance = modelResources(revision);
+	const refusedProvenance = await save(
+		projectId,
+		owner,
+		await saveRequestBody(
+			await envelopeFor(projectId, {
+				resources: [
+					{
+						kind: 'texture',
+						id: 'unused-texture',
+						contentRevision: null,
+						pin: { hash: `sha256-${'1'.repeat(64)}`, mime: 'image/png', size: 8, locator: `/projects/${projectId}/assets/unused-texture` },
+						unresolved: null
+					},
+					{
+						...wrongProvenance.resource,
+						model: { ...wrongProvenance.resource.model, reportDigest: `sha256-${'0'.repeat(64)}` }
+					}
+				],
+				lockEntries: [wrongProvenance.lockEntry],
+				entities: [modelEntity(resource.id)]
+			}),
+			{ precondition: atBase }
+		)
+	);
+	assert.equal(refusedProvenance.statusCode, 400, JSON.stringify(refusedProvenance.json()));
+	assert.equal(refusedProvenance.json().error.code, 'unapproved_model_resource');
+	assert.equal(refusedProvenance.json().issues?.[0]?.path, '$.units.resources.data.resources[1]', 'the refusal names the model entry');
 
 	// The approved derivative in *another* project cannot satisfy this project's Save.
 	const otherOwner = await sessionCookie(app, `google:p02-save-other-${randomUUID()}`);

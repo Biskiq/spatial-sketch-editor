@@ -1,5 +1,6 @@
 import type { Vec3 } from '$lib/types/scene';
-import type { FallbackKind } from '$lib/types/assets';
+import type { Asset, FallbackKind } from '$lib/types/assets';
+import { resolveAssetFallback } from '$lib/content/assets';
 
 export type AssetFallbackKind = FallbackKind | 'book' | 'decor';
 
@@ -33,4 +34,17 @@ export function fallbackDimensionsFor(
 ): Vec3 {
   if (kind !== 'generic' || footprint === undefined) return assetFallbackDimensions[kind];
   return [footprint.width, 1, footprint.depth];
+}
+
+/**
+ * The fallback a Scene model draws. An authored value wins; otherwise the
+ * catalogue's own fallback applies. A creator-model id is not in the catalogue
+ * at all, and its fallback is the approved footprint box — never an error.
+ */
+export function fallbackKindFor(
+  authored: AssetFallbackKind | undefined,
+  catalogueAsset: Asset | undefined
+): AssetFallbackKind {
+  if (authored !== undefined) return authored;
+  return catalogueAsset === undefined ? 'generic' : resolveAssetFallback(catalogueAsset);
 }
