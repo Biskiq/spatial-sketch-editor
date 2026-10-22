@@ -144,7 +144,9 @@ describe('visitor isolation from editor machinery', () => {
 				const text = readFileSync(file, 'utf8');
 				for (const match of text.matchAll(/from\s+'([^']+)'/g)) {
 					const specifier = match[1]!;
-					if (specifier.includes('apps/editor') || specifier.startsWith('$lib/editor')) {
+					// `$lib/authoring/` is the live editor tree; the deleted `$lib/editor/`
+					// prefix it replaced could never match a real import again.
+					if (specifier.includes('apps/editor') || specifier.startsWith('$lib/authoring')) {
 						offenders.push(`${file.slice(SRC.length + 1)} → ${specifier}`);
 					}
 				}

@@ -267,8 +267,10 @@ describe('P22.3 public release client', () => {
 			'shipped-static-registry.ts'
 		].map((file) => readFileSync(resolve(testDir, '../../../src/lib/visitor', file), 'utf8'));
 		for (const source of sources) {
+			// `$lib/authoring/` is the live editor tree; the token it replaced named
+			// the deleted `$lib/editor/` and could never match a real import again.
 			for (const token of [
-				'$lib/editor/',
+				'$lib/authoring/',
 				'content/materials',
 				'content/assets',
 				'content/scene',
@@ -285,7 +287,7 @@ describe('P22.3 public release client', () => {
 			resolve(testDir, '../../../src/routes/p/[publicationId]/+page.svelte'),
 			'utf8'
 		);
-		for (const token of ['$lib/editor/', 'project-codec', 'export-store', 'binary-texture-store', 'chopin-project']) {
+		for (const token of ['$lib/authoring/', 'project-codec', 'export-store', 'binary-texture-store', 'chopin-project']) {
 			expect(route, token).not.toContain(token);
 		}
 	});
@@ -293,8 +295,8 @@ describe('P22.3 public release client', () => {
 	it('rejects an indirect editor import through the public loader (closure fixture)', () => {
 		const root = '/src/routes/p/[publicationId]/+page.svelte';
 		const loader = '/src/lib/visitor/public-release-client.ts';
-		const forbidden = '/src/lib/editor/editor-store.svelte';
-		expect(isForbiddenPreviewSurfaceModule(forbidden)).toContain('editor');
+		const forbidden = '/src/lib/authoring/f4/acceptance-coordinator.ts';
+		expect(isForbiddenPreviewSurfaceModule(forbidden)).toContain('authoring');
 		const result = validatePreviewSurfaceGraph({
 			rootId: root,
 			modules: new Map([

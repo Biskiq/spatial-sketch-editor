@@ -85,7 +85,9 @@ describe('G1 geometry boundary', () => {
 			const approvedExternal = approvedExternalByFile.get(fileName) ?? new Set<string>();
 			const source = sourceOf(file);
 			for (const specifier of importSpecifiers(source)) {
-				expect(specifier.startsWith('$lib/editor')).toBe(false);
+				// The live editor tree is `$lib/authoring/`; layout-core stays free of
+				// editor machinery (and of the deleted `$lib/editor/` name).
+				expect(specifier.startsWith('$lib/authoring')).toBe(false);
 				expect(specifier.startsWith('$lib/museum')).toBe(false);
 				expect(specifier).not.toMatch(/^(svelte|three|@threlte|\$app)/);
 				if (specifier.startsWith('.') || specifier.startsWith('$lib/types')) continue;

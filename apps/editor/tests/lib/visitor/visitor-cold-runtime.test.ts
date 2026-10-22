@@ -401,8 +401,10 @@ describe('P22.1 cold runtime + asset seam', () => {
 			'shipped-static-registry.ts'
 		].map((file) => readFileSync(resolve(testDir, '../../../src/lib/visitor', file), 'utf8'));
 		for (const source of sources) {
+			// The live editor tree is `$lib/authoring/`; the deleted `$lib/editor/`
+			// token this replaces could never match again.
 			for (const token of [
-				'$lib/editor/',
+				'$lib/authoring/',
 				'content/materials',
 				'content/assets',
 				'content/scene',

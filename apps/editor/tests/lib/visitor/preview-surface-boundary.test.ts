@@ -79,24 +79,26 @@ describe('preview-surface-boundary validator', () => {
 		expect(result.forbidden[0]!.via).toBe(leaf);
 	});
 
-	it('rejects editor session modules in the closure', () => {
+	it('rejects editor authoring machinery in the closure', () => {
 		const root = '/src/lib/visitor/VisitorPreviewSurface.svelte';
-		const editorStore = '/src/lib/editor/editor-store.svelte';
-		expect(isForbiddenPreviewSurfaceModule(editorStore)).toContain('editor');
+		// The live authoring tree is what the predicate must name: the deleted
+		// `src/lib/editor/` pattern it replaced matched nothing to reject.
+		const coordinator = '/src/lib/authoring/f4/acceptance-coordinator.ts';
+		expect(isForbiddenPreviewSurfaceModule(coordinator)).toContain('authoring');
 		const result = validatePreviewSurfaceGraph(
 			graphFrom(root, {
-				[root]: { imports: [editorStore] },
-				[editorStore]: { imports: [] }
+				[root]: { imports: [coordinator] },
+				[coordinator]: { imports: [] }
 			})
 		);
 		expect(result.ok).toBe(false);
 	});
 
-	it('rejects a two-hop indirect editor import through a generic leaf (P22.1)', () => {
+	it('rejects a two-hop indirect authoring import through a generic leaf (P22.1)', () => {
 		const root = '/src/lib/visitor/VisitorPreviewSurface.svelte';
 		const mid = '/src/lib/visitor/visitor-cold-runtime.ts';
 		const leaf = '/src/lib/visitor/visitor-texture-scope.ts';
-		const forbidden = '/src/lib/editor/store/binary-texture-store.svelte';
+		const forbidden = '/src/lib/authoring/save/save-state.ts';
 		const result = validatePreviewSurfaceGraph(
 			graphFrom(root, {
 				[root]: { imports: [mid] },
