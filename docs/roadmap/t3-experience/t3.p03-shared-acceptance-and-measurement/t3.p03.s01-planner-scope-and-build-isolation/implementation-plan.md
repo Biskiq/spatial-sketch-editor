@@ -3,7 +3,7 @@
 **Slice:** T3.P03.S01 · **Status:** shipped — owner-authorized 2026-10-22 as batch E (E2,
 [record](../../../../reference/decisions/batch-e-authorization-2026-10-22.md)) and released from the
 hold; implemented on `t3/p03-s01-planner-scope-build-isolation`, closed out with acceptance
-`owner-override` ([acceptance record](./acceptance.md)), awaiting the owner's merge ·
+`owner-override` ([closed acceptance stub](./acceptance.md)) ·
 **Phase:** [T3.P03](../README.md) ·
 [slice register](../README.md#slice-register) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 

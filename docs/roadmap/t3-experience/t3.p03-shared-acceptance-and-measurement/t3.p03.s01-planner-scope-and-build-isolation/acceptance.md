@@ -1,80 +1,120 @@
-# T3.P03.S01 — acceptance record: Planner scope and build isolation
+# T3.P03.S01 — acceptance record: Planner scope and build isolation — CLOSED STUB
 
-**Slice:** T3.P03.S01 · **Status:** closed out 2026-10-22, awaiting the owner's merge of
-`t3/p03-s01-planner-scope-build-isolation` · **Acceptance:** `owner-override` — the independent-review
-verdict prerequisite was waived by the owner ruling below, for revision `95dc052e` only ·
-**Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
-**Phase:** [T3.P03](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
+```text
+AUTHORITY: NONE — this is closed evidence. The live slice criteria remain in
+           ./implementation-plan.md; phase status/order → ../README.md#slice-register; F.4 semantics →
+           ../../../../reference/composition-execution.md#product-convergence-destination.
+STATUS:    ACCEPTED (`owner-override`) and CLOSED 2026-10-22. The owner waived the independent-review
+           verdict for revision `95dc052e` only (ruling below). S01 is shipped; T3.P03 stays active
+           and its final gate is T3.P03.S02.
+SCOPE:     No gate row, capability record or source format changed. The one exported-shape addition is
+           the optional `PlannerAdmission.writes` field of the accepted F4 interface.
+```
 
-**Basis.** Accepted by the owner's explicit closeout request and the waiver ruling in this record
-(see [Owner ruling](#owner-ruling--independent-review-verdict-waived-2026-10-22)). Acceptance covers the
-plan's criteria and its declared **architecture-integration** tier at the tested revision below. No
-independent-review verdict exists for this revision; none is claimed.
+## Delivered
 
-**Tested revisions.** Review-fix head `5f82c638` (on top of `b36ab624`), and merged head `95dc052e`
-(merge of `origin/main` through PR #175). The merged head is the revision this record and the phase
-register name.
+- **Per-planner scope.** Unit acceptance holds a candidate's changed unit domains (from content
+  revisions, not intent targets) to the producing planner's write set — `domain`, plus `writes` for a
+  compound planner. The host-wide compound flag is only the grant. The RR-4 overreach is refused
+  targeted and untargeted with source, revision and history unchanged.
+- **Registration.** A compound planner whose `writes` is missing, empty, names its own domain,
+  repeats an entry or names an ungranted domain is refused (`compound-write-set`), as is a
+  single-domain planner declaring `writes`. The one compound planner,
+  `unit.experience-presentation-stop-create`, declares `writes: ['camera']`.
+- **Build isolation.** The shared public/Preview predicate, both Vite boundary plugins and both static
+  surface gate scripts forbid the live `src/lib/authoring/` tree (the replaced token named the
+  deleted `src/lib/editor/`). A Preview-surface source-closure test joined the arch lane.
+- **Promotion.** The F.4 current-behavior paragraph in `reference/composition-execution.md` owns the
+  durable contract.
 
-**Verification evidence** (run in session; numbers are as recorded, not re-run for this close):
+## Evidence and residuals
 
-| Check | At `5f82c638` | At `95dc052e` |
-| --- | --- | --- |
-| `npm run check` | 0 errors, 0 warnings | not re-run |
-| `npm run test:arch` | 21 files, 171 tests passing | 21 files, 172 tests passing |
-| `npm run test:fast` | 1947 tests passing | not re-run |
-| `npm run test:heavy` | 118 tests passing | not re-run |
-| F4 suites (`f4-acceptance`, `f4-unit-acceptance`, `unit-acceptance-conformance`) | 73 tests passing | not re-run |
+At `5f82c638`: `npm run check` 0 errors / 0 warnings; arch lane 21 files / 171 tests; fast lane 1,947;
+heavy lane 118; F4 suites 73. At `95dc052e` (after merging `main` through PR #175): arch lane 21 / 172.
+The plugin-level mutation proofs are repository tests; the real `vite build` injections and the
+Preview-closure injection are session evidence only. Disclosed beyond the plan's change list: the two
+static surface gate scripts and the F.4 paragraph correction.
 
-Acceptance rows covered:
+Manual-owed: the per-merge default-timeout `npm test` rerun (last green at `ffff320d`; two earlier
+runs timed out untouched suites under unrelated load). Residual: T3.P03.S02 owns the phase's
+integrated exhaustive proof.
 
-1. The RR-4 overreach planner is refused both untargeted and Scene-targeted, with source, revision and
-   history unchanged. Layout-only and Scene-only controls succeed. The joint Experience planner
-   succeeds. The same planner with a Layout write is refused. A compound planner with a missing, empty,
-   self, repeated or ungranted write set cannot register.
-2. Plugin mutation tests: an authoring import from the public root and from the Preview root each fails
-   its plugin; the runtime-safe controls pass. The Preview closure test is in the arch lane.
-3. The existing proofs still pass, per the lanes above.
+## Entry points
 
-**Owed.** The full default-timeout `npm test` gate is a per-merge rerun the owner runs at the merged
-head. It is not claimed here. Per the disclosure below, the last green `npm test` ran at `ffff320d`.
-
-**Not in this record.** No capability entry, gate row or source format changes. `T3.P03.S01` is not the
-phase's final gate: the phase's exhaustive proof routes to
-[`T3.P03.S02`](../t3.p03.s02-measurement-workflow-and-final-gate/acceptance.md).
-
-Acceptance records the evidence its declared **architecture-integration** tier requires — plus the
-named integration-route obligations — in the form
-[the tests README](../../../../../apps/editor/tests/README.md#what-a-change-requires) requires.
-
-**Disclosures.**
-
-For that review: the implemented change also retargets the two static surface gate scripts (the same
-dead deleted-tree token) and corrects the F.4 current-implementation paragraph, neither of which the
-plan's change list names, so acceptance must disclose both. The plugin-level mutation proofs (an
-authoring module imported by each root, directly and through a leaf, plus runtime-safe controls)
-are repository tests; only the real `vite build` injections and the Preview-closure injection are
-session evidence. Review hardening also refuses, at registration, a compound write set that is
-empty, repeats an entry, names the planner's own domain or a domain the profile does not admit, and
-adds a Layout-only control beside the Scene-only one in the RR-4 regression. The default-timeout `npm test` gate ran
-green at `ffff320d` once host load fell; two earlier runs timed out untouched suites under unrelated
-load average 47, and the per-merge rerun remains as the contract requires.
+```text
+implementation  packages/project-model/src/units/acceptance.ts            (validateChange write set)
+                packages/project-model/src/f4/prepare.ts                  (registration refusals)
+                packages/project-model/src/f4/types.ts                    (PlannerAdmission.writes)
+                apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts
+                apps/editor/src/lib/visitor/preview-surface-boundary.ts   (shared forbidden predicate)
+regressions     apps/editor/tests/lib/authoring/f4-acceptance.test.ts     (RR-4 + Layout/Scene controls)
+                apps/editor/tests/lib/authoring/f4-unit-acceptance.test.ts
+                apps/editor/tests/lib/authoring/unit-acceptance-conformance.test.ts
+                apps/editor/tests/vite/public-surface-boundary-plugin.test.ts
+                apps/editor/tests/vite/preview-surface-boundary-plugin.test.ts
+                apps/editor/tests/lib/visitor/preview-surface-closure.test.ts
+```
 
 ## Owner ruling — independent-review verdict waived (2026-10-22)
 
 ```text
-DATE:     2026-10-22
-RULING:   owner waiver (explicit, recorded here per the slice-closeout skill)
-SCOPE:    T3.P03.S01 only, at implementation revision `95dc052e`
-          (review-fix commit `5f82c638` + merge of `main` through PR #175)
-WAIVED:   the independent-review verdict prerequisite for acceptance
+DATE:       2026-10-22
+RULING:     owner waiver (explicit, recorded per the slice-closeout skill)
+SCOPE:      T3.P03.S01 only, at implementation revision `95dc052e`
+            (review-fix commit `5f82c638` + merge of `main` through PR #175)
+WAIVED:     the independent-review verdict prerequisite for acceptance
 NOT WAIVED: the plan's acceptance criteria, the declared architecture-integration tier,
-          and the per-merge default-timeout `npm test` rerun
-STATE:    register and baton read `owner-override`, never `reviewed`
+            and the per-merge default-timeout `npm test` rerun
+STATE:      register and baton read `owner-override`, never `reviewed`
 ```
 
-Context: a review of the implementation at `b36ab624` raised four findings: compound `writes`
-unvalidated at registration, an empty compound write set admitted, a missing Layout-only control in
-the RR-4 regression, and stale evidence wording here and in the plan status. The same session fixed
-all four in `5f82c638`, so no reviewer independent of that fix commit has issued a verdict on the
-current revision. The owner waives that verdict for this slice and revision only. The waiver does not
-carry to any other slice or to any later revision of this one.
+A review at `b36ab624` raised four findings (unvalidated compound `writes`, an admitted empty write
+set, a missing Layout-only RR-4 control, stale evidence wording); the same session fixed all four in
+`5f82c638`, so no reviewer independent of that commit issued a verdict on the current revision.
+
+## Recovery
+
+```text
+plan (retained live because the phase gate checker reads its VERIFICATION / INTEGRATION ROUTE):
+  ./implementation-plan.md
+
+full acceptance and closeout body:
+  git show f77d55542806ca66903bc6d880884b1b3ef60ef2:docs/roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/acceptance.md
+```
+
+P1 requires PR #176 to land as a **merge commit**; squash/rebase invalidates the recovery anchor.
+After merge, verify the anchor is an ancestor of `main` and run the `git show` command above. No merge
+or post-merge check is claimed here.
+
+## Closed-work preservation report
+
+```text
+CLOSEOUT PRESERVATION — T3.P03.S01 (2026-10-22)
+prose compacted:                 1   acceptance; plan retained for gate-checker routing
+reference promotions:            1   F.4 per-planner scope paragraph in reference/composition-execution.md
+renderable evidence archived:    0 files / 0 bytes
+evidence stubs / manifests:      0
+transient artifacts removed:     0   (untracked prototype debug files were never committed)
+historical anchor:               f77d55542806ca66903bc6d880884b1b3ef60ef2 · tag closed/T3.P03.S01 (local only — not pushed)
+new live → archive prose links:  0
+manual-owed verification rows:   1   per-merge default-timeout `npm test`
+remaining deferred items:        1   T3.P03.S02 integrated exhaustive proof
+permanent stubs added:           1   the owner-ratified hybrid preservation policy's accepted cost
+required merge method:           merge commit (P1); post-merge anchor verification remains owed
+```
+
+## Closeout self-check
+
+```text
+acceptance    PASS — claims match recorded evidence at its tested revisions; manual-owed row explicit
+tier          PASS — architecture-integration evidence recorded; S02 is the declared integration route
+shims         PASS — no unowned shim; closeout changed no production file
+promotion     PASS — F.4 durable contract lives in reference/composition-execution.md
+preservation  PASS — 1 prose stub; plan retained; anchor computed and tagged locally
+routing       PASS — S01 shipped; T3.P03 active; register, release list and baton agree
+baton         PASS — T3 baton names the next released work only; no closed-slice narrative
+stable        PASS — no pending-merge state or branch-head pin in live routers
+report        PASS — preservation counts, residual owners and recovery recorded above
+scope         PASS — no implementation code changed during closeout
+P1            PASS — merge method recorded; post-merge anchor verification owed
+```
