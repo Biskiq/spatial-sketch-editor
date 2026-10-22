@@ -49,9 +49,9 @@ The slice adds no editor flow, so the batch E performance table's row for it is 
   live host keeps refusing resource changes.
 - **Save verification.** `saveAcceptedSource` runs `verifyModelResourcePins` inside the Save
   transaction for every `model` resource: an approved revision of that project must agree on
-  derivative hash, MIME, size and locator, source manifest hash/size/file count, recipe, report
-  digest and placement. A refusal rolls back, so no stored version changes. Catalogue and texture
-  resources keep their landed rule.
+  derivative hash, MIME and size, source manifest hash/size/file count, recipe, report digest and
+  placement. A refusal rolls back, so no stored version changes. Catalogue and texture resources
+  keep their landed rule.
 
 ## Criteria and their evidence
 
@@ -79,9 +79,9 @@ editor affected contracts     pass   39 files / 482 tests
     tests/lib/museum/assets tests/lib/visitor/visitor-cold-runtime.test.ts
 ```
 
-The API suite includes the new 8-test file and the unchanged Save, Save-units, assets, publication,
-migration and migration-fence contracts. The migration-fence expectation was extended to include
-version 6 because this slice adds one migration; no assertion was weakened. The physical bound
+The API suite includes the new 8-test file and the unchanged Save, Save-units, assets, publication
+and migration contracts. The migration-fence expectation was extended to include version 6 because
+this slice adds one migration; no assertion was weakened. The physical bound
 test streams a 50 MiB source file and a 25 MiB derivative through the upload route, then cancels and
 checks the bytes are gone; the expiry test force-expires a staging import, refuses the next upload
 with 404, and checks its object and row are gone.
