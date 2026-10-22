@@ -32,9 +32,10 @@ import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-f
  *
  * The comparison is therefore a pre/post differential: the expected values were
  * produced by the base revision's code through the procedure below, not by the
- * code under test. That provenance is recorded, not re-derivable in-tree — the
- * base tree is not part of this checkout — so read the header as the procedure
- * that produced them. If format 6
+ * code under test. That provenance is recorded, and re-derivable only by
+ * checking the base commit out and following the procedure below — the base tree
+ * is not part of the working checkout — so read this header as the record of how
+ * they were produced. If format 6
  * changed a polygon, a sample, a face key, a Room boundary or a portal relation
  * for an all-boundary kernel, this test fails.
  *

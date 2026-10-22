@@ -10,13 +10,13 @@ owner-accepted, no acceptance recorded ·
 This record carries the verification evidence for the implemented slice: the plan's declared tier
 with the exact commands and their actual counts, the plan items with the evidence that proves each,
 and the deviations a reviewer must judge. It records **no acceptance**: `T1.P02.S01` has not been
-reviewed or accepted, so it claims no gate state, no capability entry and no acceptance. It is not
+owner-reviewed or accepted, so it claims no gate state, no capability entry and no acceptance. It is not
 the phase's final gate either — the deferred exhaustive proof routes to
 [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/acceptance.md).
 
-The command counts below describe the tree that carries this record: the cutover commit `8edc6487`
-plus the review-pass commit that lands this text, each lane re-run after the review pass's last
-edit.
+The command counts below describe the tree that carries this record: the cutover commit `8edc6487`,
+the review-pass commits `9be24c65` and `c4a5f60f`, and the docs commit that lands this text. Each
+lane was re-run after the last code or test edit, and the full suite again on the final tip.
 
 ## Stop-and-report: legacy Layout type retirement (§3)
 
@@ -144,7 +144,7 @@ intent today:
 1. `planDissolveJunction` already threads a capture but mints its joined chain's knot with
    `nextWallCurveKnotId` (the allocator above); no production caller wires dissolve.
 2. `planCreateWallFirstOpening` accepts an optional caller-supplied `intent.id` and then skips
-derivation, refusing only an id already in use; that path is for snapshot restore/import and no
+   derivation, refusing only an id already in use; that path is for snapshot restore/import and no
    editor intent reaches it.
 3. Starter-gallery boot fixes the nonce to `'starter-template'`, so two independently booted projects
    derive the same template ids. The plan sanctions this: template boot is deterministic by design
@@ -224,7 +224,7 @@ requires every lane such a change reaches plus the full suite at acceptance. `te
   (`layoutWallRoomMemberships`, `packages/layout-core/src/layout-wall-role.ts`); face extraction is
   the reason those boundaries are the reconciled faces, not a second authority the role reads. The
   authored field is gone from the Wall shape and codec keys — a payload that still carries `role`
-  fails as `unknown_key`, pinned in  `layout-wall-height.test.ts` — and `planWallRoleChange` /
+  fails as `unknown_key`, pinned in `layout-wall-height.test.ts` — and `planWallRoleChange` /
   `planPartitionToBoundaryRoomBirth` are retired, with no code reference left.
 - The pre/post differential holds: `t1s01-format6-differential.test.ts` compiles the six CLASS 5
   matrix fixtures and compares a neutral digest against values the header records as taken from the
@@ -255,8 +255,8 @@ five blocking findings and the successor slice's scope.
 in the fast lane, green with the fixtures moved to format 6. No assertion was weakened where it
 matters: the freeze test still asserts full per-row equality, P23B.4's moved rows are pinned by an
 exact delta list and its historical table is untouched, and the OR-1 table's one-time re-emission is
-declared as an exception whose base-revision comparison is recorded prose (see the evidence-integrity
-deviation below) — its moved rows are not machine-distinguishable from a behavioural change, so the
+declared as an exception whose base-revision comparison is recorded prose (see deviation 3 below) —
+its moved rows are not machine-distinguishable from a behavioural change, so the
 nonce-locality property is the compensating evidence there. One reference table was re-emitted (OR-1);
 the P23B.4 table was **restored**, not re-frozen, with a separate expectation column carrying its
 format-6 delta.
@@ -275,9 +275,9 @@ stays open and is listed under outstanding obligations.
 2. **Two allocators stay occupancy-derived** — `nextWallCurveKnotId` and `nextInteriorAnchorId`, with
    the unreachability evidence and the retirement condition in the §1 scope section above. That
    condition is now enforced by an arch boundary test, so a future caller fails the lane instead of
-   inheriting the hole. Two further id paths are named in that section: dissolve's curve knot (the
-   planner already threads a capture but mints this knot from occupancy) and the Opening intent's
-   optional caller-supplied id.
+   inheriting the hole. That section lists the three identity paths outside the capture: dissolve's
+   curve knot (the planner already threads a capture but mints this knot from occupancy), the
+   Opening intent's optional caller-supplied id, and the plan-sanctioned starter-template nonce.
 3. **One frozen table was re-emitted, one was restored** — the OR-1 correspondence table
    (`p23b11-correspondence-reference.ts`) was re-emitted once at the cutover, because captured
    identity changes every planner-minted id. That is a declared exception to the module's own

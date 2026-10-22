@@ -5,7 +5,7 @@ PHASE: T1.P02 Native Wall creation (registered 2026-10-22, batch E) →
        T1.P01 closed 2026-10-21; all its registered slices are shipped.
 ACTIVE: none. T1.P02.S01 (Layout identity and format cutover) is implemented on
         `t1/p02-s01-layout-identity-format-cutover` as `8edc6487` (the cutover) plus
-        `9be24c65` and `c4a5f60f` (two adversarial review passes that closed record and test
+        `9be24c65` and `c4a5f60f` (the recorded adversarial review passes that closed record and test
         findings). The branch is pushed for owner review with this baton's follow-up record
         commit on top; unmerged, unaccepted. Verification evidence and deviations:
         ../../roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md
