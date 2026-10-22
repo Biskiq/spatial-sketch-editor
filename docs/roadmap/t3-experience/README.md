@@ -35,21 +35,43 @@ with the one-Camera-authority, visitor-isolation and current-format invariants s
 - **Does not own:** Camera route/motion evaluation itself (retained under `@portfolio/camera-core`),
   Layout/Scene domain ownership (T1/T2), release packaging and the prepared reader (T4). The
   Experience unit's envelope is F.2 territory; T3 is its first consumer.
-- **Ordering:** the order cutover lands **before** T1 migrates Camera authoring onto the new
-  ownership contract; node links and Experience order are never coequal writable authorities.
+- **Ordering:** the landed order cutover precedes any T1 migration of Camera authoring onto the
+  ownership contract; retired Camera node-order fields have no live writer or read fallback.
   Exact `Gate@Version` prerequisites govern eligibility.
 
 ## Current vs destination contracts
 
-| Concern | Current (post-#115 foundation) | Destination |
+| Concern | Current (landed tree) | Destination |
 | --- | --- | --- |
-| Camera data | inside `project.scene`; `@portfolio/camera-core` evaluates | its own codec-bounded unit (F.2), split in the same cutover as the order move |
-| Editorial order | `nextNodeId` / `previousNodeId` / `holdSeconds` / `detourOfNodeId` / `lockInteraction` on Camera nodes | Experience-owned occurrences and order; the legacy fields are migration **input**, never a live writer |
-| Experience document | none — not designed | collection-capable unit over one shared world (F.2) |
-| History / acceptance | **removed** with the editor shell; no product history today and no expected-revision precondition | F.4: one expected revision, typed intents, one atomic accepted result and one undo result |
-| Preview | **removed** with the editor shell | the same runtime and evaluation as the visitor, isolated; never writes source |
+| Camera data | F2 Camera 1 owns Views/connections; `@portfolio/camera-core` evaluates | new authoring surfaces consume that same authority and codec boundary |
+| Editorial order | Experience-owned Presentations, Stops and Guides; retired Camera node-order fields are rejected | richer authored composition preserves Experience ownership and one Camera evaluation authority |
+| Experience document | F2 Experience 1 is collection-capable over the shared world; resources 1 and dependency locks are separate | extend explicit versioned formats for later annotation, interaction and invocation capabilities |
+| History / acceptance | shared F4 unit acceptance: expected revision, atomic accepted/undo results, one bounded chronological history and conditional unit Save | new consuming scopes preserve these invariants and add explicit domain admission |
+| Capture / Preview | source/runtime foundations shipped; creator Capture and isolated Preview surfaces remain unimplemented | T3.P02's first capture/Cut Preview through shared lowering/evaluation; never writes source from Preview |
 
-Landed contracts keep describing current behaviour until their explicit cutover.
+The [Camera contract](../../reference/components/camera-tour.md#current-vs-destination-ratified-2026-09-27-reconciled-2026-09-29)
+and [F2 persistence contract](../../reference/components/persistence.md#one-source-format-f2-clean-epoch)
+describe this landed tree; production epoch activation remains a separate owner-controlled step.
+No old-source converter, dual writer or Camera-order authority remains.
+
+## Proposed continuation
+
+The [convergence batch and next planning wave](../cross-track-execution.md#convergence-batch-and-next-planning-wave)
+and [main convergence plan](../product-convergence-2026-10-21.md#proposed-next-engineering-batch)
+propose H0 shared F4 scope enforcement, build-boundary repairs and the on-demand performance/bundle
+baseline, then C1 native Walls, C2 own-GLB import and the existing T3.P02.S01 scope. The proposed P1
+clarification proves Guide-free Capture/Preview by entering a Presentation without fabricating a
+Stop, keeps subjects as F1 references and text as a closed v1 kind for later extension, and carries lazy
+Preview delivery plus capture/entry/exit performance evidence. It adds no new gate/capability
+prerequisite; H0's shared correction precedes implementation.
+
+After the first wave, C3 gives T3 persistence/API ownership of rename/delete with T1 shell
+integration. Part annotations follow T2's component resolver/admission and T1 Stage part selection;
+later interaction and attached-composition choices stay deferred. Feature-specific shell design
+develops in its consuming slice through planning, draft, review, build and revision while preserving
+PLATE's ratified shared invariants; it need not be complete before first-wave planning. All
+implementation, including the previously authorized T3.P02.S01, remains under the
+[owner hold](../README.md#production-implementation-hold).
 
 ## Evidence roles
 
@@ -91,7 +113,8 @@ external gates its slices consume; `F2.unit-envelope@1` is provided inside the p
 **`T3.P02` is registered 2026-10-20** (owner-authorized as batch D,
 [record](../../reference/decisions/batch-d-authorization-2026-10-20.md), D3) once its registration
 precondition — an accepted `T3.camera-experience-cutover@1` — was met by `T3.P01.S04`. Its
-`T3.P02.S01` (first capture and Cut Preview) is authorized for implementation; `T3.P02.S02`, the
+`T3.P02.S01` (first capture and Cut Preview) was authorized for implementation; that permission is
+subject to the current [production hold](../README.md#production-implementation-hold). `T3.P02.S02`, the
 phase's final gate, is registered `proposed` and holds no permission. `Depends on` lists the external
 gates its slices consume; `F2.unit-envelope@1`, `F3.channels@1` and the F4 unit scopes come from
 `T3.P01`'s accepted outputs, and `T3.camera-experience-cutover@1` from `T3.P01.S04`.
@@ -115,32 +138,31 @@ gates its slices consume; `F2.unit-envelope@1`, `F3.channels@1` and the F4 unit 
   `tests/lib/visitor/preview-surface-boundary.test.ts`, plus the vite public/preview
   surface-boundary plugin tests.
 
-**Deferred-retirement rows with exact conditions** (implementation-plan §5.1)
+**Retirement and successor status** (implementation-plan §5.1)
 
 - **Scene/Camera editorial order fields and `camera-core` main-flow/node-order orchestration** —
-  *retire at the T3 camera-experience cutover*. Concrete dependency: the retained visitor guided
-  runtime consumes order, and Experience order is its successor representation. The new product
-  has no writer for these fields after PR #115. Blocked until the replacement representation
-  exists; it is never "later cleanup".
+  retired at T3.P01.S04's clean source cutover. The shared Experience interpreter owns editorial
+  execution; old fields refuse rather than load through a migration/fallback path.
 - **`apps/editor/src/lib/platform/project-persistence.ts` and its asset helpers** — retained as
-  foundation; **refactor later at T3**, which adds expected-revision acceptance (F.4).
-- **`apps/api`** — retained as foundation; **refactor later at T3/T4** (expected-revision Save at
-  T3, prepared release at T4).
+  foundation, with conditional unit Save and expected-revision acceptance landed in T3.P01.
+- **`apps/api`** — conditional Save and the F2 source fence landed in T3.P01; prepared release
+  remains T4 work. Production activation is owner-controlled.
 
-**Capability losses this track owns rebuilding** (implementation-plan §4.4)
+**Capability rebuild and remaining boundary** (implementation-plan §4.4)
 
-Directing Camera, preview, and the authoring acceptance/history system, together with the
-Experience surface that does not exist yet. Each is a T3 capability, not a regression. The
-`/project/:id/preview` and `/project/:id/publish` routes are removed with no replacement until
-these land.
+T3.P01 landed the Camera/Experience source split, shared interpreter, unit acceptance/history and
+conditional Save. Creator Camera/Experience authoring and isolated Preview remain the held
+T3.P02 boundary. Publication remains unavailable until T4's prepared reader; no old public reader
+is a fallback.
 
 **Successor obligations carried into T3** (implementation-plan §7.2)
 
 - **the F.4 acceptance criteria** — one logical result, no-op writes nothing, rollback on failure,
-  bounded history depth, atomic group/duplicate validation — previously proven by the deleted
-  `history-controller`, `document-store` and `mutation-guards` suites;
+  bounded history depth and atomic group/duplicate validation — preserve the landed unit
+  acceptance/history proof as new consuming scopes are introduced;
 - **stale-writer rejection** — the expected-revision precondition for local *and* cloud writers.
-  Today's cloud Save takes a row lock and appends versions but accepts no expected revision;
-- **M5** project-replacement / Navigator guard — re-armed by the first T1 or T3 slice introducing
-  project/session replacement;
+  Conditional Save compares create-only or expected-saved-base under a row lock and preserves a
+  losing writer's local work;
+- **M5** project-replacement / Navigator guard — preserve the shared host's landed unsaved-work
+  and session-lifetime guards;
 - the visitor/public isolation guarantees (AGENTS rule 4) stay green throughout.

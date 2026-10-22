@@ -131,3 +131,30 @@ they do not prove continuity across re-export.
 [`../composition-execution.md`](../composition-execution.md), subject to its interface-ownership
 rule): the definition/instance schema, component-identity mechanics, resource storage/container
 encoding, and the correspondence algorithm for ingest derivatives.
+
+## Product convergence destination
+
+**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** This is destination
+wording for new consumers; Scene unit format 2 still refuses attachments and components.
+[Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
+
+**Placement and attachment.** Solve-once surface placement writes an ordinary world pose and
+creates no following relationship. Deliberate attachment, if selected by the owner, has a host
+reference and surface parameters whose evaluated pose is the sole pose authority. Layout owns
+the frame query and transport; Scene owns the binding. Shape edits may remain Layout-only;
+a topology edit needing binding rewrites is a registered joint Layout/Scene acceptance.
+
+Out-of-span, over-Opening and frame-unavailable status is derived. Detach captures the evaluated
+pose only while available. The first attachment consumer must decide deletion policy. Proposed:
+detach at deletion time by default; explicit alternatives delete dependents or retain a repairable
+binding. If any dependent's pose cannot evaluate, default detach refuses the whole candidate
+without changes and offers explicit keep/delete. A kept binding without recovery data renders
+nothing and needs Re-pick, explicit placement or deletion. Its codec, any AM-2 diagnostic reuse
+and compatibility are part of the versioned attachment extension, not a change to all domains.
+
+**Parts and annotations.** An admitted component receives a non-reused opaque identity in its
+owning definition/resource table, mapping to source and derivative locators pinned to the exact
+revision. A changed component migrates only with explicit preserved/retired/replaced
+correspondence; an unchanged identity resolves normally. Names and node order do not establish
+continuity. Annotation records belong to Experience. C2 imports whole objects with `componentId`
+null; later component providers and admission operations precede part-selection/admission UI.

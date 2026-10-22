@@ -97,6 +97,7 @@ shipped.
 | Operational runbook for a track | [`operations/t1-spatial-world/README.md`](./operations/t1-spatial-world/README.md) · [`operations/t2-composition/README.md`](./operations/t2-composition/README.md) · [`operations/t3-experience/README.md`](./operations/t3-experience/README.md) · [`operations/t4-release/README.md`](./operations/t4-release/README.md) — eligibility, start step, test families, routes and debt handling | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
 | Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — stage, bounded exposure window and mechanism register; loaded only by its three hooks (phase planning, implementation start, slice closeout) | — |
+| Browser performance / delivery | [`reference/components/performance.md`](./reference/components/performance.md) — proposed PR #173 destination awaiting owner ratification; metrics, baseline, budgets and consuming-slice evidence; current benchmark policy stays in the test contract | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
 | Prototype / QA reference — runnable product hypotheses and their specimens | [`../prototypes/README.md`](../prototypes/README.md) — durable executable artifacts; they test and challenge contracts but are **not** production, persisted-format or implementation authority | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |

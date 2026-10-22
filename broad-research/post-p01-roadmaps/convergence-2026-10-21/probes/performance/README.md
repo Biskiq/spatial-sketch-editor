@@ -64,6 +64,8 @@ slightly. Timings are a fast developer machine's relative-cost and scaling evide
 reference-laptop budgets.
 
 **Lead verification rerun (2026-10-22).** The convergence lead reran `compile.probe.ts` at `3e8342a3`
-on the same M2 machine, which regenerated `results/compile-warm.json`. The packet's tables cite the
-original run. The rerun stayed within a few percent of them: for example, the 420-Wall full compile
-median was 138 ms against 141 ms, and the drag-preview solve 187 ms against 184 ms.
+on the same M2 machine, which regenerated `results/compile-warm.json` at
+`2026-10-22T10:10:42.901Z`. The packet's warm table now cites this checked-in rerun, including its
+tails: for example, the 420-Wall full-compile median/p95 is 138.30/158.33 ms and the drag-preview
+solve 186.70/226.81 ms. Earlier measurements are historical comparisons, not extra samples in
+this file. Sums of component medians are labelled estimates, never end-to-end percentiles.

@@ -373,3 +373,58 @@ document because it has storage space · per-mode resource stores ·
 `ExperienceScene` / `ExperienceCameraGraph` / `ExperienceCameraPath` /
 `ExperienceRenderer` as a second spatial authority · visitor chunks containing
 editor session/selection/history/gizmo code.
+
+## Product convergence destination
+
+**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** This section prepares
+architecture changes in their owning reference. It adds no shipped capability, changes no accepted
+gate identity and grants no implementation permission. Review disposition is in the
+[amendment manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+
+**Identity and revision.** The owner of a semantic fact publishes correspondence when an edit
+changes an addressed identity, interval or parameterization. Layout transport maps affected input
+intervals to output IDs, offsets and orientation, including side reversal. Surviving unchanged
+identities resolve normally. Consumers never infer a replacement by name, order or proximity.
+A cross-domain authored consequence uses a registered joint planner and one F.4 acceptance;
+readers report repairable state without writing repairs.
+
+**Vertical architecture.** Layout owns structure-local named datums, placed structures and
+independently identified roof, canopy, ceiling, slab and void elements. World-local placement
+has explicit qualified internal frames and never requires a Room frame. A structure initially
+supports translation and yaw; tilt, scale and reflection refuse until explicitly supported.
+Each structure has its own Junctions and datums. A connection between structures is declared,
+checked and reported broken after an incompatible edit; it never silently follows or shares a
+Junction across independently moving frames. Qualified expansion into one compile versus local
+compilation remains a mechanism comparison in the vertical cutover plan.
+
+A Wall has one base reference and one authoritative top definition (height, datum or supported
+roof-fit), with cycles refused. Floor steps belong to slabs. Rooms derive within a level context
+and never own overheads. Fitting is one-shot unless an explicit membership/following policy is
+accepted. The cutover must qualify per-level face extraction and 3D duplicate-solid detection;
+plan-component independence alone does not establish those properties. C1 can retain the current
+single datum losslessly while planning the later versioned Layout cutover.
+
+**Geometry and execution.** One canonical compiler owns persisted family parameters,
+qualification, refusal, identity and correspondence. Established geometry libraries, including
+higher-level roof and mesh kernels, may evaluate Layout-declared families inside that compiler.
+Consumers share the resulting runtime-safe mathematics and compiled output. A kernel exception
+is a typed refusal; legitimate empty results remain results. Numerical precision is declared
+against a supported coordinate range or local frame. Generated meshes and caches stay outside
+authored documents; reproducible compiled delivery derivatives are permitted. A solver reaches
+the viewer only where viewer execution requires it. Kernels and families are qualified before
+their consuming slice; no new geometry dependency is required by the first batch.
+
+**Delivery and performance.** Editor machinery stays out of public and Preview chunks.
+Optional decoders and Preview load when needed. A bundle report justifies runtime-safe solver
+modules and compares delivered bytes. The [proposed performance contract](./components/performance.md)
+owns browser baselines, workloads, budgets and consuming-slice evidence. C1 profiles duplicated
+compile/admission work and qualifies incremental or worker mechanisms against complete result
+latency as well as main-thread responsiveness, within the one compiler.
+
+**Decisions intentionally left to consumers.** Native drawing must explicitly decide nested,
+overlapping, collinear and intentionally non-enclosing cases before C1 implementation; silent
+duplicate floors/solids are unacceptable. The current per-area generated-ceiling fallback remains
+until an explicit closure-policy decision. Room-switch is a proposed alternative that removes a
+whole Room's fallback, including after merges; mandatory explicit gaps preserve the per-area
+alternative. Wall parameter/straddle policies, attachment removal defaults, mezzanine undersides
+and compound-roof massing are deferred owner calls, not first-batch prerequisites.

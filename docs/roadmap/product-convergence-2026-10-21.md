@@ -29,15 +29,19 @@ proceed within their commissioned step. Merging this PR alone does not release t
 
 **Step 2 executed 2026-10-22 at `ce9b7156`** (no inspected source changed from the baseline).
 Each packet records its probe ledger, corrections, proposed amendments, missing providers and
-next slice; its probes are reproducible under its `probes/` folder. Those are unreconciled
-researcher handoffs. **Step 3 prepared 2026-10-22:** the
+next slice; its probes are reproducible under its `probes/` folder. Those packets retain the independent evidence behind the reconciled decisions below. **Step 3 prepared 2026-10-22:** the
 [proposed decision set](#proposed-decision-set-step-3-unratified) and its
 [exact amendments](./product-convergence-2026-10-21-amendments.md). It applies only descriptive
-corrections; every normative amendment awaits owner acceptance. A first owner review the same day
+corrections. Proposed destination wording is now prepared directly in the owning references,
+explicitly marked unratified; every normative amendment awaits owner acceptance. A first owner review the same day
 revised it: stored versus derived unresolved state, deletion of a host, compiler organization, the
 closure and annotation scope, extension compatibility, the reconciled geometry harvest under the
-copyleft model, and browser performance (CD-10). The DAG and roadmap updates (step 4) remain **pending**.
-Do not mark this PR ready merely because briefs and research results exist.
+copyleft model, and browser performance (CD-10). **Step 4 is prepared:** the canonical DAG,
+affected track/phase roadmaps and milestone descriptions now agree on H0, the three first-wave
+lanes, shared-file ownership and the next planning triggers. Later peer-review corrections cover
+domain-specific unresolved forms, unavailable-pose deletion, matching-result performance metrics,
+network-aware Save receipt and existing isolation coverage. **Step 5 remains owner review:**
+ratification and any named implementation authorization/hold release are separate decisions.
 Keep results in their commission packets and fold their conclusions into this proposal and the
 existing owning documents. Avoid another synthesis ledger or parallel execution roadmap.
 
@@ -124,8 +128,9 @@ before merge. Do not merge an unaccepted proposal as a normative contract. Prese
 descriptions until an actual cutover and label the new destination honestly. An incompatible
 accepted interface requires a new version; an accepted gate row never implies new capabilities
 without the required implementation/acceptance evidence. The step-3 wording is in the
-[proposed amendments](./product-convergence-2026-10-21-amendments.md): normative text there stays
-unapplied until the owner accepts it.
+[proposed amendments](./product-convergence-2026-10-21-amendments.md): the manifest now routes proposed wording prepared directly in each owning reference. Those
+sections remain explicitly unratified until the owner accepts them; there is no second live copy
+of their exact text.
 
 **Descriptive reconciliation, separate from ratification.** At this baseline, T1.P01, T2.P01 and
 T3.P01 are closed; T3.P02.S01 remains authorized and unimplemented. The North Star's opening
@@ -136,7 +141,7 @@ shipped. Step 3 applied the reference-contract part of this correction: the Nort
 current-shell paragraph and the stale F status notes, listed as descriptive in the
 [amendments](./product-convergence-2026-10-21-amendments.md#applied-descriptive-corrections).
 The track READMEs' tables, the milestone cells and the stale "PR #154 prototype" citations in T3.P02
-belong to step 4's roadmap updates. Do not rewrite current truth to match P1–P3. The Card-over-Compose residual in
+are corrected in step 4's roadmap updates. Do not rewrite current truth to match P1–P3. The Card-over-Compose residual in
 [S06 acceptance](./t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/acceptance.md#residual)
 remains a T1 shell obligation, not an accepted solution or a reason to reopen the completed phase.
 
@@ -193,9 +198,9 @@ supplies a captured, non-reusing allocator through F.4 step 1. Native Wall creat
 first Layout consumer. *Rejected:* content-addressed identity, which cannot detect the recreation,
 and a persisted cursor inside undoable history, which rewinds. *Engineering recommendation (not an
 owner call):* a captured per-operation nonce prefixing each planner's seed. It replays
-deterministically, needs no persisted state, and the ID pattern already admits it. C1's plan confirms
-it with Q3-style guards. Move to a persisted allocator outside undoable history only if concurrent
-writers later need operation-independent IDs.
+deterministically, needs no persisted allocator state, and the ID pattern already admits it. C1's plan confirms
+it with Q3-style guards. Reassess a persisted allocator outside undoable history if a later consumer needs
+operation-independent allocation; concurrency is one possible trigger.
 
 **CD-2 — Correspondence is owner-published. Unresolved state is derived. References carry
 qualification.**
@@ -206,16 +211,20 @@ qualification.**
     land on the opposite face (RR-4 Q1).
   - Resource-revision correspondence at re-admission: preserved, retired or replaced components.
 
-  When neither exists, the reference stays unresolved and offers repair.
+  Surviving identities with unchanged addressed parameterization resolve normally. Transport is
+  required for affected targets or intervals; an unrelated edit does not invalidate a reference.
+  When required correspondence is absent, the reference stays unresolved and offers repair.
 - **Unresolved status has two layers.**
   - *Evaluation status* (out of span, over an Opening, target not currently resolvable) is derived
     from the authored reference and the accepted owner state on every evaluation, and is never
     written back.
   - *An authored unresolved reference* is different. An accepted operation that deliberately keeps a
-    dependent whose target it removes records the ratified AM-2 `UnresolvedBinding` in the owning
-    domain. It retains the original F.1 reference and the repair status.
+    dependent uses its owning domain's admitted repairable representation, retaining the original
+    identity and repair outcome. AM-2 `UnresolvedBinding` is one such representation, currently
+    embedded by typed resources. Experience retains a `viewId` with a derived diagnostic; it needs
+    no new wrapper. Reusing the AM-2 type for attachments is a proposed versioned Scene extension.
 
-  The record is cleared only by an explicit repair: Re-pick, explicit placement or delete. Today
+  An authored repair record is cleared only by an explicit repair or snapshot Undo. Today
   `UnresolvedBinding` is validated in `units/validate.ts` and used by typed resources without a
   pin; Experience's unresolved View/Presentation/Stop findings are derived. The step-2 wording
   "never stored" was imprecise (RR-4 Corr-4). AM-2 records stay; eliminating them would need an
@@ -237,13 +246,17 @@ qualification.**
   the evaluated pose, so it is available only while the host resolves.
 - **Deleting a referenced host** is one joint Layout+Scene acceptance that resolves every dependent
   explicitly. The default detaches it at its evaluated pose. The alternatives offered at delete time
-  are deleting the dependent, or keeping it as an authored `UnresolvedBinding`. A kept binding
+  are deleting the dependent, or keeping it in the attachment format's authored repairable form. A kept binding
   renders nothing and is repaired by Re-pick, explicit placement or delete. An acceptance-time
-  reverse-reference check refuses a Layout-only delete that would leave a dependent dangling.
+  reverse-reference check applies domain-owned removal policies. If default detachment cannot
+  evaluate any dependent's pose, the entire candidate refuses without changes; the creator may
+  explicitly choose keep-unresolved or delete. Other domains retain their existing admitted
+  unresolved representations; their derived diagnostics require no cross-domain write.
 
-*Evidence:* RR-4 Q1, Q2, Q6 and Q8. In Q8 (delete the host, JSON round trip, fresh reader), only
-deletion-time detachment recovers the pose cold, with a 0 m residual. A kept binding has no pose to
-detach against, and Detach against the pre-delete revision resolves `missing`. Storing a last pose as
+*Evidence:* RR-4 Q1, Q2, Q6 and Q8. In Q8 (delete the host, JSON round trip, fresh reader),
+deletion-time detachment recovers the pose cold, with a 0 m residual. Keeping a diagnostic last pose
+also permits exact explicit recovery. A binding kept without it has no pose to detach against,
+and Detach against the unavailable pre-delete revision resolves `missing`. Storing a last pose as
 diagnostic data was considered and not recommended: it is a pose-shaped field that invites being read
 as authority. Compound acceptance is **landed** (`unit-acceptance-v1`, compound
 host; its one compound planner is Experience/Camera). What is missing is the joint planners, a Scene attachment format (Scene unit format 2
@@ -303,7 +316,8 @@ reopen segmentation.
   pinned to the exact revision. Names and node indices locate parts; they never identify them.
 - **Single-mesh objects** are annotated by an instance-local point.
 
-*Evidence:* every catalogue derivative has lost its source parts. The repo's normalize recipe deletes
+*Evidence:* the audited catalogue has no admitted component identity, and several derivatives lose
+source hierarchy, markers or clips; single-mesh sources do not all lose separable parts. The repo's normalize recipe deletes
 markers, merges parts and misattributes variants. Loader names are renamed and sanitized, and node
 indices are lost on clone (capability probes 1–3). *Rejected:* reusing the catalogue recipe for
 creator import. *Falsifier:* producer-verified source identity becomes correspondence evidence rather
@@ -346,7 +360,8 @@ That is a scope clarification for step 4 and the release decision, not a new res
 **CD-8 — Established geometry kernels inside the compiler, qualified before their consuming slice.**
 The reconciled [geometry harvest](../../broad-research/geometry-library-harvest.md#5-recommendation-matrix-reconciled-2026-10-22)
 holds the per-area matrix.
-- **No library enters the first wave.** C1, C2 and T3.P02.S01 need none.
+- **No new geometry library enters the first wave.** C1, C2 and T3.P02.S01 need none.
+  The proposed performance harness has its own explicit workflow/devDependency authorization.
 - **A library can run inside the canonical compiler.** It evaluates a Layout-declared family and never
   becomes another authority, provided the compiler owns persisted parameters, family qualification,
   refusal, identity and correspondence, and every consumer reads compiled output.
@@ -393,10 +408,14 @@ fixed in the consuming slice.** Evidence and the full proposal are in the
 Probes are in its `probes/performance/`, measured on an M2 in Node, so they show relative cost
 rather than laptop budgets.
 
-- **Measured problem: C1's mechanism already misses its budgets at medium and large sizes.** Every
-  Wall-drag pointer move runs a full planner solve: 5.7 / 36 / 184 ms at 24 / 112 / 420 Walls. An
-  accepted edit compiles twice, and Undo/Redo re-admits, so a commit costs 21 / 112 / 471 ms. The
-  per-move evaluation budget at M is 8 ms on the reference laptop.
+- **Measured costs, with a reference-laptop risk to resolve in C1.** Every
+  Wall-drag pointer move runs a full planner solve: 5.6 / 36 / 187 ms at 24 / 112 / 420 Walls in the retained rerun. An
+  accepted edit compiles twice and Undo/Redo re-admits. Separate accept/admission/mesh median sums
+  are about 21 / 113 / 479 ms.
+  These sums are not a measured end-to-end commit percentile. The
+  per-move evaluation budget at M is 8 ms on the reference laptop. These are Node measurements
+  on an M2, not measured browser failures on laptop A. They trigger deduplication and a bounded
+  optimization experiment; browser calibration confirms the remaining gap and selects the mechanism.
 - **Measured delivery:** first-load JS (brotli) is about 212 KiB for `/` and the hub, 376 KiB for
   the Stage and 301 KiB for the visitor. Three's core (156 KiB) loads on every route, including the
   landing page, through project-persistence → camera-core. No `lib/authoring/**` code reaches the
@@ -420,13 +439,15 @@ rather than laptop budgets.
   Undo/Redo, Save, capture and Preview entry, viewer cold load and navigation, and repeated open/close
   for leaks.
 - **Hard budgets on laptop A (selected):**
-  - drag input-to-next-paint p95 ≤ 33 / 50 / 100 ms at S/M/L;
+  - drag input-to-matching-preview-frame p95 ≤ 33 / 50 / 100 ms at S/M/L, with input identity
+    correlated to its rendered result (Event Timing excludes continuous pointer moves);
   - commit and Undo ≤ 100 ms at S/M and ≤ 200 ms at L;
   - per-move Layout evaluation ≤ 8 ms at M;
   - orbit frame p95 ≤ 16.7 ms at S/M;
   - Stage first-load JS ≤ 400 KiB br (no growth over 25 KiB per slice without a reason);
   - Preview loaded lazily;
   - leak growth ≤ 5 MiB over 10 cycles;
+  - Save local feedback ≤ 100 ms; durable receipt includes payload upload, RTT and server work;
   - visitor first-load JS ≤ 250 KiB br and first architectural frame ≤ 2.5 s at N1, both hard from
     the T4 cutover.
 - **Resolution ladder inside the slice:** profile first; remove duplicated work; incremental
@@ -435,8 +456,8 @@ rather than laptop budgets.
   splitting. Any change to a contract, such as F.4 preview semantics or package contents, returns to
   the owner.
 - **Viewer-delivery gate:** the boundary build gates pass with their forbidden set repointed to
-  `src/lib/authoring/**`. A bundle report lists every editor or solver module in the visitor load
-  set, each justified by visitor execution. Bytes are compared with the last accepted record.
+  `src/lib/authoring/**`. A bundle report proves editor machinery absent and lists every runtime-safe solver module in
+  the visitor load set, each justified by visitor execution. Bytes are compared with the last accepted record.
 
 *Retain:* the structural boundary gates (repointed), one shared compiler with optimization inside
 it, immutable hashed assets and compiled derivatives, correctness oracles in `test:heavy`, and
@@ -462,13 +483,13 @@ editor and 17/17 P3 tests, all passing).
 
 | Gap | Where | Exposure | Owner |
 | --- | --- | --- | --- |
-| Per-planner scope is not enforced: a planner declared single-domain Scene was accepted while also moving a Wall | `unit-acceptance-v1` adapter `validateChange` and the dispatcher | Any registered planner; must be closed before the first joint planner | F4 host owner |
+| Per-planner scope is not enforced: a planner declared single-domain Scene was accepted while also moving a Wall | `unit-acceptance-v1` adapter `validateChange` and the dispatcher | Any registered planner; must be closed before new first-wave authoring consumers | F4 host owner |
 | Layout IDs are re-minted after delete or Undo | `defaultChainAllocator`, `nodingAllocatorAdapter`, `nextLayoutPresetObjectId` | Latent until a persisted reference names a Layout ID; C1 makes it reachable for Walls | T1 |
 | Same-run reset accepts a pre-reset completion | AM-6 interpreter | Latent until an asynchronous effect family exists | T3 |
 | F.3 negotiation admits a nonexistent `componentId` | `inspection-v1` channel host | Latent until a component-qualified family exists | Family owner |
 | A Stop-free Presentation cannot be entered | AM-6 events and `navigate` | Blocks a Guide-free Preview | T3 |
-| The visitor boundary gates' editor pattern names the deleted `src/lib/editor/` tree; only `lib/authoring/f4` is protected | `lib/visitor/preview-surface-boundary.ts`, visitor route/identity tests | A new `lib/authoring/**` import into the visitor would pass every gate | Visitor/boundary owner; first visitor-touching slice |
-| Full planner solve on every drag move; double compile per accepted edit; re-admission on Undo/Redo | Layout drag preview, Stage post-install admission | Misses drag/commit/Undo budgets at M and L (CD-10) | T1, inside C1 |
+| Build-plugin patterns name the deleted `src/lib/editor/` tree; the public source-closure test already rejects all `lib/authoring/` | `lib/visitor/preview-surface-boundary.ts`, public/preview build plugins, `f4-public-isolation.test.ts` | Build coverage must be aligned with the current authoring tree; preserve the existing source-closure protection | Visitor/boundary owner; H0 before visitor-touching work |
+| Full planner solve on every drag move; double compile per accepted edit; re-admission on Undo/Redo | Layout drag preview, Stage post-install admission | Measured Node costs predict M/L drag and commit risk; calibrated browser flows decide remaining optimization (CD-10) | T1, inside C1 |
 | Delivery residue: Three on landing/hub; `GLTFLoader`/meshopt and `@threlte/extras` residue in the visitor | Persistence → camera-core edge; visitor imports | Bytes on every cold load | The first slice touching those files |
 
 ### Missing providers and their dependencies (input to step 4)
@@ -476,15 +497,15 @@ editor and 17/17 P3 tests, all passing).
 | Provider | Owner | Needed by | Depends on |
 | --- | --- | --- | --- |
 | Captured non-reusing allocation (CD-1) | T1 + F4 host | C1; every persisted reference to Layout | — |
-| Per-planner scope enforcement | F4 host | Any joint planner | — |
+| Per-planner scope enforcement | F4 host, coordinated by T3 | Every first-wave authoring consumer, including joint planners | H0 shared correction; preserve existing gate identity |
 | Wall face-frame query with occupied intervals | T1 | Solve-once surface placement; attachment | — |
 | Topology transport records | T1 | Joint split/dissolve-with-bindings planners | — |
 | Scene attachment format (F extension) | T2 | Attached composition | Owner selects CD-3 attachment |
-| Reverse-reference check at acceptance | F4 host | Any Layout delete or retirement while references to it can exist | — |
+| Domain-owned removal-policy check at acceptance | F4 host + affected domains | Attached-host deletion; other references keep their admitted repairable forms | Versioned attachment consumer for new Scene writes |
 | Joint split/dissolve/delete-with-bindings planners | T2 + T1, named integration owner | Attached composition | Transport, scope, reverse-reference check, attachment format, allocation |
 | Creator-import retention (CD-5) | T2 | Inside C2 | — |
-| Component admission, resolver and revision correspondence | T2 | Part annotation; part-hosted attachment | C2; allocation; Stage part selection |
-| Stage part selection and a node map that survives the clone | T1 Stage | Component admission UI | — |
+| Component table, resolver, admission operations and revision correspondence | T2 | Part selection, annotation and part-hosted attachment | C2; captured allocation; versioned component capability |
+| Stage part selection and admission UI; node map surviving clone | T1 Stage with T2 | Explicit part admission by the creator; part annotation | Component provider; C2 source/derivative correspondence; no provider/UI cycle |
 | Experience annotation records and lowering | T3 | Part-annotated Presentation | T3.P02.S01 text home; component admission for part targets |
 | Presentation-entry run path | T3 | Guide-free Preview | — |
 | Vertical foundation cutover (structures, datums, base/top, slabs, connections, per-level faces) | T1 | Pavilion/mezzanine consumer; support surfaces | C1 accepted; CD-4 owner calls; tolerance contract |
@@ -494,8 +515,8 @@ editor and 17/17 P3 tests, all passing).
 | Overhead family (single-span roof/canopy, closure/suspended ceiling) | T1 | Expressive roofs | Vertical cutover; tolerance; E2 (E1 if the family uses booleans/offsets) |
 | Generalized support-surface query | T1 | Placement on slab/deck/roof | Vertical cutover |
 | Plan source kinds for new elements, and a Section evaluation | T1 | Capture of vertical readings | Overhead family |
-| Browser performance harness and bundle report (CD-10) | Test-contract owner | Final-gate performance evidence for every first-wave slice | Owner authorization |
-| Incremental canonical compile, and compile/admission dedupe | T1 | C1's drag and commit budgets | Correctness differential in `test:heavy` |
+| Browser performance harness and bundle report (CD-10) | Test-contract owner; T3 coordination, T1 browser integration | Consuming-slice performance evidence; phase integration recheck | Owner authorization for permanent workflow; equivalent manual measurements remain available |
+| Compile/admission dedupe; measured incremental/worker experiment | T1 with F4 host owner | C1's drag and commit budgets | Browser baseline; correctness differential in `test:heavy`; final-result as well as responsiveness budgets |
 | Repointed visitor boundary gates | Visitor/boundary owner | Viewer-delivery gate | — |
 
 ### Consequences for step 4
@@ -506,15 +527,17 @@ editor and 17/17 P3 tests, all passing).
   - holds `floor.id`, `height` as the only Wall-top writer, and Junction-ID connectivity;
   - takes the working level as an explicit planner parameter;
   - decides the nested/overlapping/collinear behaviour, along with the non-enclosing ring;
-  - carries the compile/admission dedupe and incremental compile (or worker planning), because the
-    landed mechanism is measured to miss drag, commit and Undo budgets at M and L;
+  - carries compile/admission dedupe and a bounded incremental/worker experiment, because the
+    measured Node costs expose significant risk; calibrated browser measurements choose the
+    additional mechanism and prove both responsive feedback and timely final results;
   - records a performance evidence row (delivery; open, drag, commit, Undo, orbit; heap after 100
     edits; leak cycle).
 - **C2 own-GLB import:** adds the CD-5 retention constraints, lazy decoders loaded only for assets
   that need them, and import/placement/GPU-memory performance rows. It must not reuse `normalize-asset.sh`
   or the catalogue optimizer unchanged, must not add part fields to `SceneModelEntity`, and keeps
   `componentId` null.
-- **T3.P02.S01 (held):** has no new technical prerequisite. Its clarifications:
+- **T3.P02.S01 (held):** has no new gate/capability prerequisite; H0's shared correction
+  precedes implementation. Its clarifications:
   - store the subject as an F.1 reference;
   - keep its text a closed v1 kind that a later annotation kind extends;
   - include the CD-7 Presentation-entry path (recommended scope clarification);
@@ -536,28 +559,37 @@ editor and 17/17 P3 tests, all passing).
 | --- | --- | --- |
 | Default placement gesture and attachment format (CD-3) | Independent by default; attachment adopted for deliberate following | Before the attached-composition slice |
 | Coordinate, straddle and spacing policies (CD-3) | Start distance; review on straddle; spacing deferred | Same |
+| Attached-host removal (CD-3) | Detach when the current pose evaluates; otherwise refuse atomically and offer explicit keep-unresolved/delete | With the attachment format; not a first-wave prerequisite |
 | Closure policy and mezzanine underside (CD-4) | Room-switch; underside decided with the cutover | Before the vertical cutover |
-| Nested/overlapping/collinear drawing behaviour (CD-4) | Refuse or explain, with a repair path, rather than derive silent duplicate floors | Before C1 is planned |
+| Nested/overlapping/collinear drawing behaviour (CD-4) | Refuse or explain, with a repair path, rather than derive silent duplicate floors | Before C1 implementation authorization |
 | Stop-free Preview inside T3.P02.S01 (CD-7) | Include it, as completion of the P1 direction | When S01 is released from the hold |
 | Hip massing for plus/Z plans (CD-8) | Decided with the first compound-wing family | Not needed for the first wave |
 | Exact product licence (CD-8) | Record a GPLv3-family copyleft licence | Before any GPL-only dependency ships |
-| Performance budgets, baseline and harness (CD-10) | Accept the hard budgets and the reference laptop; authorize the on-demand harness and the bundle report | Before C1 is planned |
+| Performance budgets, baseline and harness (CD-10) | Accept the hard budgets and the reference laptop; authorize the on-demand harness and the bundle report | Owner review here; permanent workflow before H0 implementation |
 | Drag-preview semantics, if incremental compile misses at L (CD-10) | Keep "preview = planner output"; decide only if the experiment fails | Inside C1, if triggered |
 
 ## Proposed next engineering batch
 
-**Provisional inputs for step 4, not a fixed batch.** Re-derive the recommendation after the
-research and architectural reconciliation. The current first-wave hypothesis is T1 native Wall
-creation, T2 own-model GLB admission and T3 capture/Guide-free Preview, with project rename/delete
-as a bounded follow-on. An exposed shared prerequisite may need to precede those lanes. Do not
-preserve C1–C3 automatically or start any lane while the owner hold applies. The candidate labels
-below are local proposal labels, not registered slice IDs or implementation permission.
+**Step-4 recommendation, prepared for owner review.** First authorize the bounded
+[H0 shared correction](./convergence-shared-foundation-2026-10-22.md): per-planner acceptance
+scope, public/Preview build isolation and reproducible performance/bundle measurement. T1 plans
+C1 native Walls and T2 plans C2 own-model admission in parallel with that preparation. After H0
+merges, the owner can release the clarified T3.P02.S01 and authorize reviewed, registered C1/C2
+launch slices as a parallel product batch. No C1/C2 launch plan or registration is fabricated here.
+C3 project lifecycle is the next T3 planning target after capture/Preview, by capacity rather
+than a new data dependency.
+
+The [canonical batch table](./cross-track-execution.md#convergence-batch-and-next-planning-wave)
+is the one owner of the concrete lanes, prerequisites, merge order and next capability wave.
+Local labels H0/C1/C2/C3 are proposals, not gate or slice IDs. All implementation remains held.
+The feature-level shell develops in its consuming plan through draft → review → build → browser
+observation → revise, preserving PLATE; this PR does not claim a finished design for every feature.
 
 ### Existing capture and Preview scope to reconcile
 
 [T3.P02.S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md)
-has historical implementation authorization and is **held**. Step 3/4 must check its plan against
-the chosen decisions and propose any precise scope/prerequisite correction. Preserve its full capture/Presentation/optional Stop,
+has historical implementation authorization and is **held**. Its plan now carries the precise
+convergence clarifications for renewed owner review: Preserve its full capture/Presentation/optional Stop,
 ordinary text/hold/continuation, Camera handoff, isolated Cut Preview and F2/F4 Save/recovery scope.
 P1 rich controls are a successor consumer; they are not added to this slice. Its
 [S02 integrated final gate](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md)
@@ -574,8 +606,8 @@ from canonical topology; the creator never chooses boundary/partition before dra
 declare the F2 Layout unit version and explicit role-encoding cutover/legacy retirement; capture
 IDs and expected revision through unit acceptance. The bounded creation increment need not implement
 levels, closed circles, overheads or attachments, but its identity/frame and encoding choices must
-fit the reconciled architecture. Reassess the single-datum starting scope after RR-1/RR-2 rather
-than freezing a conflicting format before that decision. Role derivation remains established direction.
+fit the reconciled architecture. Keep the lossless single-datum starting scope established by RR-1/RR-2; plan the later
+vertical cutover separately. Role derivation remains established direction.
 
 **Acceptance:** empty → draw → close → divide → Opening → delete; no implicit coordinate adoption;
 invalid crossing/topology refuses without partial source; Undo/Redo and Save/reload preserve IDs;
@@ -605,8 +637,9 @@ consuming phase final gate is exhaustive. Capability research is not a prerequis
 
 ### C3 — Project rename/delete (K4), T3 persistence/API with T1 shell
 
-**Provisional placement:** bounded follow-on to the first-wave hypothesis above; step 4 decides
-its actual priority and concurrency from milestone need, dependencies and shared-file contention.
+**Recommended placement:** bounded follow-on in the T3 lane after capture/Preview, with T1
+shell integration. Planning may overlap; execution order reflects capacity and shared-file
+contention rather than a fabricated technical prerequisite.
 
 **Outcome:** rename an owned project and delete it through a deliberate confirmation, from Hub
 and the supported project context. Define the canonical project-name home and how unsaved work,
@@ -629,8 +662,8 @@ Camera/Experience consumers additionally declare their cutover and Camera-handof
 C3's final declaration follows the project-name/replacement impact; no claim that every API action
 is a source edit. These are prerequisite candidates, not gate readiness supplied by this document.
 
-Step 4 must update [the canonical cross-track DAG](./cross-track-execution.md#execution-dag-and-earliest-product-milestones)
-and the affected track/phase roadmaps, not create a second live graph here. Distinguish accepted
+Step 4 updates [the canonical cross-track DAG](./cross-track-execution.md#execution-dag-and-earliest-product-milestones)
+and the affected track/phase roadmaps; no second live graph is created here. Distinguish accepted
 providers from merely ratified interfaces; add missing provider nodes and genuine prerequisites
 instead of assuming current F4 admission supports a new compound operation. Show proposed
 parallel lanes, shared Stage/codec/API file ownership and merge/integration order. Disposition
@@ -644,7 +677,7 @@ dependencies, deferred decisions and planning triggers. No production dispatch o
 this convergence round; normal eligibility and explicit owner hold release precede implementation.
 
 Surface-aware **solve-once placement**, ordinary materials/lights and Camera frame/refit are justified
-next candidates under existing authority. Step 4 chooses their position from a concrete consumer;
+next candidates under existing authority. The canonical next-wave table places them by their concrete consumers;
 do not add them as speculative foundations. Persistent following, new datums/overheads and rich
 interaction bindings consume their specific decided interfaces. The temporary owner hold is
 distinct from an invented requirement to finish every advanced research question.
@@ -659,7 +692,7 @@ unrelated research expansion.
 | --- | --- | --- |
 | P2 → mounted composition, T2 with T1 support | Chosen host/parameter policy, finite contact, hard/preferred spacing, split/reversal correspondence and cold repair; if migration crosses domains, jointly scoped Layout/Scene intent, planner admission and named integration owner | Place four panels on a canonical curved Wall, deliberately attach or keep independent, revise the Wall, explain infeasible spacing, repair one lost host; one accepted result per edit, Undo/reload without guessed retargeting |
 | P3 → contextual vertical pavilion, T1 | Chosen datum/frame/Wall-top and independent overhead/closure model; qualified geometry family and tolerances | Draw at unequal heights, add an open canopy/partial floor and an expressive selected roof family with independent ceiling intent; revise height/section and keep identity; supported cases agree in Plan/Section/3D, unsupported cases refuse honestly |
-| P1 → interactive explanation, T3 with admitted T2/native capability | Chosen finite offer/action grammar, truthful positive capability fixture, scoped lifecycle and component/role binding | Guide-free Presentation in an empty World with text, Views and a meaningful control; keyboard access, cancel/re-entry/stale completion, compatible reuse and explicit incompatible repair; no hidden Scene clone |
+| P1 → reusable object explanation, T3 with T2 component admission | Qualified subject/part/point and annotation formats, explicit component admission, scoped lifecycle and revision correspondence | Explain one object or admitted part standalone, in a Room context and within a Guide; reuse annotations without copying Scene truth; keyboard access, cancel/re-entry and explicit repair. Rich mechanism controls are a later capability consumer |
 
 These acceptance targets are proposals, not a claim that all constituent prototype features were
 accepted. The research packets compare alternatives before fixing the first consumer's exact scope.
@@ -699,8 +732,27 @@ does not record that verdict, configure another exposure window or close any pha
 After merge, the owner must be able to identify the accepted direction, next batch to authorize,
 next slice to plan in each lane and the dependencies that permit concurrency from the existing
 roadmap routes. No separate reconciliation round is required for those near-term decisions.
-This PR stays draft until its expanded review is complete; merging alone leaves production held
+The technical preparation is ready for final owner review; it stays draft until the explicit
+ratification requirement is satisfied. A ready-for-review transition is not ratification; merging alone leaves production held
 unless the owner has also explicitly released named scopes. This task performs neither merge nor implementation.
+
+## Immediate steps after merge
+
+1. Register the reviewed H0 provider through its owning track, authorize the selected permanent
+   measurement workflow, and explicitly release H0 alone from the production hold. Implement and
+   accept the shared correction without changing gate identities or reopening closed phases.
+2. In parallel, T1 prepares the C1 phase/launch plan and T2 prepares the C2 phase/launch plan;
+   T3 finalizes the S01 format/entry compatibility and feature draft within its clarified plan.
+   Planning is already within this convergence mandate; no production work starts from it.
+3. After H0 merges and launch plans pass review, the owner authorizes/releases the named
+   C1/C2/S01 scopes. Their lanes can execute concurrently under the canonical file/merge protocol.
+   S01 acceptance is followed by separate S02 authorization and its exhaustive integration proof.
+4. Plan C3 lifecycle next in T3, the face-frame/solve-once placement consumer in T1/T2, component
+   admission/selection then annotations in T2/T1/T3, and the vertical cutover after C1. Trigger
+   geometry experiments only for their first consumer. Precise shell details iterate per slice.
+5. Once required basic loops ship, request the Core Editor Stability acceptance plan. Its criteria
+   remain proposed until explicitly owner-confirmed. Only recorded milestone acceptance permits
+   renewed T4 planning; P4 remains deferred.
 
 ## Verification and provenance
 

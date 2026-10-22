@@ -33,7 +33,8 @@ starter or composed subject:
 - a first coherent Cut Guide with supported existing Travel and truthful gap reporting;
 - **two Experiences over one world**, switching between them with shared-Camera reach disclosed;
 - source Undo, conditional unit Save, conflict preservation and reload;
-- isolated visitor Preview entry and return through the Camera return token, with authoring identity,
+- a standalone Presentation with zero Guides/Stops entering and leaving Preview, plus the
+  complete Guide path; isolated visitor Preview entry and return through the Camera return token, with authoring identity,
   selection and history preserved and no editor machinery in the visitor/public chunks;
 - the accessibility and reduced-motion contract, DOM reach to every admitted destination, and the
   Info Panel without raycast.
@@ -54,6 +55,13 @@ probes. Use [tests/README](../../../../../apps/editor/tests/README.md) for lane 
 The phase's [acceptance evidence](../README.md#acceptance-evidence-to-carry) table is the requirement;
 this record owns the result. Passing makes T3.P02 **closable**; only an explicit owner phase-close
 request closes it, and no phase, track or cycle closure is fabricated here.
+
+## Convergence performance recheck
+
+Recheck the integrated capture, Guide-free/Guide Preview, Save/history, lazy delivery and repeated
+entry/exit flows against the owner-accepted performance contract. S01 supplies its own evidence
+before acceptance; S02 verifies integration and cannot defer or erase an S01 hard-budget miss.
+This planning clarification releases no implementation scope and preserves the declared full gate.
 
 ## Readiness declaration
 

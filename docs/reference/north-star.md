@@ -1102,3 +1102,38 @@ canonical visitor runtime executes the prepared release
 different authoring lenses.** Domain document count and storage layout do not
 define the product; semantic authorities do. Human and agent clients operate the
 same inspectable capabilities, and the destination is never presented as shipped.
+
+## Product convergence destination
+
+**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** The accepted P1–P3
+creative findings motivate this direction; they do not adopt prototype encodings or chrome.
+[Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+
+**Draw, arrange, explain, revise.** A creator can build architecture, compose their own objects,
+explain an object or an admitted part, and revise that work without losing identity or unrelated
+intent. A meaningful Presentation needs no Room, Guide or Stop. An explanation is reusable
+standalone, among other content in a Room/exhibition, and within a Guide, without copying Scene
+truth. One Presentation over one placed instance is a bounded first-consumer choice; definition
+reuse and multiple Presentations remain open growth paths.
+
+**Expressive architecture.** Named datums live in explicit structure-local frames; conventional
+storeys are an optional workflow. Walls have one base and one top definition; floor steps belong
+to slabs. Roofs, canopies, ceilings, slabs and voids are independent Layout elements, usable without
+Rooms. Native forms grow family by family in the canonical compiler, with honest qualification
+and supported imports. The first single-datum Wall loop does not cap that ambition.
+
+**Intelligent, capable interaction.** Gestures expose the intended result, scope and repair before
+acceptance, with precision and keyboard equivalents. Independent placement and deliberate
+following are distinct authored choices. An observed part, clip or variant is offered as a
+capability only after its owner admits and validates it. Experience owns explanations and actions;
+Camera remains the one viewing authority. Source and resource revisions preserve correspondence
+or explain an unresolved reference without silently guessing a replacement.
+
+**Performance and design development.** Editor and viewer usability is judged in a browser on a
+regular laptop through [the proposed performance contract](./components/performance.md).
+Resolve demonstrated material costs inside the consuming slice, preserving architectural
+expressiveness. Copyleft aligns with the product direction; established libraries are welcome
+when justified by correctness, capability and performance. Shared shell rules remain PLATE-owned.
+Precise integration of new prototype capabilities develops in each consuming slice through a
+reviewable draft, build, browser observation and revision; unfinished feature layout does not
+block unrelated capability planning.

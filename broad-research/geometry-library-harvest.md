@@ -218,6 +218,8 @@ approximation error** (analytic family vs facets) **separately** from clipping/s
 
 **E2 — chosen roof-family qualification.** Consumer: the **overhead-family slice** after the vertical cutover
 (single-span roof/canopy and closure/suspended ceiling first; a compound family only after its massing is chosen).
+The disposable qualification needs the tolerance contract and chosen family semantics; it may run
+before the vertical cutover implementation. The production overhead consumer still waits for that cutover.
 - Oracle independent of the family evaluator: analytic planes and sections, ridge/hip/valley lines, boundary-edge
   incidence (every interior edge shared by exactly two faces, boundary edges on the outline), seam vertices, normals.
 - Cases: eave boundaries, seams and gaps, double surfaces, undersides and fascia, translated (up to the declared

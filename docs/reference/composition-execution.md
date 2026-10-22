@@ -814,3 +814,42 @@ Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelo
 - Motion/continuation parity, session/handoff independence and accessibility parity.
 - One evaluation authority and one order writer.
 - No retired-scope caller, and no editor machinery in public chunks.
+
+## Product convergence destination
+
+**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** These obligations
+prepare the next consumers; landed codecs, admitted versions, capabilities and behavior above
+remain current. [Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
+
+- **Non-reused identity (F.1).** Every addressable subject, occurrence, component, resource and
+  location has stable identity distinct from its label. An allocated identity is never re-minted
+  for a different subject within a project's lineage, across Undo branches, reloads and identical
+  recreation. Undo may restore the same subject. Equal content does not establish continuity.
+- **Owner-published correspondence (F.1).** Affected identities or addressed intervals migrate only
+  through their owner's published correspondence. Unchanged surviving identities resolve normally;
+  unrelated edits require no identity maps. Absent required correspondence, retain the original
+  reference for repair without guessed retargeting. Each domain keeps its admitted unresolved
+  representation: typed-resource AM-2 records and retained Experience IDs with derived diagnostics
+  are both valid. A new Scene attachment representation needs a versioned consumer extension.
+  Evaluation status is recomputed, never written back as an automatic repair.
+- **Component validity (F.3).** A component-qualified family declares an owner validator resolving
+  the component through its provider at the contribution's revision. Negotiation alone cannot
+  admit a nonexistent component.
+- **Captured allocation and enforced scope (F.4).** Allocate identities and capture external
+  inputs before evaluation, as explicit intent inputs. No accepted operation falls back to current
+  occupancy. Acceptance compares actual changed units with the individual planner's declared
+  domain/compound scope. A cross-domain write requires its registered joint planner, not merely
+  an adapter-wide compound flag. Failed validation preserves source, revision and history.
+- **Removal policies (F.4).** Acceptance accounts for affected references through their domains'
+  declared policies: transport, detach, delete or an admitted repairable reference with an explicit
+  outcome. Existing retained IDs and derived diagnostics need no invented wrapper or read-time
+  write. A consequence that changes another domain's authored data is one joint acceptance.
+- **Reset fences (session execution).** Reset or re-entry that can outlive asynchronous work starts
+  a new run epoch. Earlier completions, cleanup and contributions cannot apply after it. This
+  changes existing AM-6 instruction semantics and needs a versioned interpreter/profile consumer.
+
+**First-consumer compatibility.** Component/source/derivative resource data, annotation records,
+Presentation entry, datum-qualified capture readings and Scene attachments each need their own
+version/capability and older-reader behavior decision. None is pre-labelled additive. Preserve
+accepted provider identities and history; a new incompatible interface receives its own version
+and normal gate registration/conformance. Ratified shapes never manufacture implemented readiness.

@@ -3,8 +3,9 @@
 **Owner production hold, 2026-10-22:** the [roadmap hold](./README.md#production-implementation-hold)
 overrides implementation launch/resume implied by earlier batch authorizations below. PR #173's
 [expanded convergence scope](./product-convergence-2026-10-21.md#scope-and-sequence) will reconcile
-this canonical DAG, affected roadmaps and the next batch after focused research and architectural
-decisions. Step 1 adds this routing/hold notice only; no new DAG or batch has been decided yet.
+this canonical DAG, affected roadmaps and the next batch. The 2026-10-22 convergence update below
+replaces stale scheduling with a proposed next batch and explicit planning triggers; it grants no
+implementation permission and awaits final owner review.
 Historical evidence and accepted gate identities remain unchanged. Merge alone does not release the hold.
 
 **Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it
@@ -208,87 +209,133 @@ with fresh OCC revisions. No permanent dual-format reader/writer or source fallb
 
 ## Execution DAG and earliest product milestones
 
+**Current evidence, 2026-10-22:** T1.P01, T2.P01 and T3.P01 are shipped and closed. Their
+accepted providers remain exactly those in the [gate register](./README.md#gate-register).
+T3.P02.S01 is historically authorized, unimplemented and subject to the owner hold; S02 still
+needs its own authorization. The graph below is the one current execution recommendation.
+Earlier dated batch sections retain their authorization provenance, not current launch permission.
+
 ```mermaid
 flowchart TD
-  R["landed r186 + exact ratifications"] --> A["T1 S01: F1/F3 + readiness enforcement"]
-  A --> V["T1 S02: core viewport + starter boot"]
-  A --> L["T1 S03: local F4"]
-  A --> U["T3 S01: F2 + shared program codec"]
-  A --> O["T2 S01: pure candidates/support"]
-  V --> B["T1 S07: Stage↔F4 bridge → viewport-projection-v1"]
-  L --> B
-  L --> S["T3 S02: conditional Save"]
-  L --> C["T2 S02: Scene acceptance"]
-  O --> C
-  C --> UI["T2 S03: Place/Move/Yaw/Undo"]
-  B --> UI
-  B --> P["T1 S04: Layout precision + Head Save"]
-  S --> P
-  P --> W["T1 S05: Wall manipulation"]
-  W --> CUT
-  T2F --> CUT
-  CUT --> G["T1 S06: T1.P01 final gate"]
-  P --> T2F["T2 S04: bounded loop + T2.P01 final gate"]
-  UI --> T2F
-  U --> X5["T3 S05: unit acceptance + Save"]
-  S --> X5
-  U --> X6["T3 S06: Experience runtime + Camera handoff"]
-  X5 --> X["T3 S03: umbrella reconciliation"]
-  X6 --> X
-  U --> F["T4 S02: F5 codec"]
-  X --> CUT["T3 S04: source/runtime cutover"]
-  X --> OFF["T4 S03/S04: offline delivery + storage"]
-  F --> OFF
-  CUT --> PRE["T3.P02: capture/Cut Preview"]
-  V --> PRE
-  CUT --> PUB["T4 S05: public prepared cutover"]
-  OFF --> PUB
-  PUB --> UX["T4 follow-on: thin publication UI"]
+  BASE["Accepted F1–F4, viewport and Camera/Experience cutover; P01 phases closed"]
+  H0["H0 proposal: acceptance scope, isolation builds, performance baseline"]
+  CW["C1 proposal: native Walls; single datum; nonreuse; measured optimization"]
+  IM["C2 proposal: own GLB; retained source; whole-object admission"]
+  PV["T3.P02.S01 held: capture + Guide-free and Cut Preview"]
+  PG["T3.P02.S02: separate integrated final gate"]
+  LC["C3 proposal: rename/delete; T3 API + T1 shell"]
+  CES["Core Editor Stability: owner-approved criteria and integrated acceptance"]
+  REL["T4 deferred by R1-D: request planning after milestone acceptance"]
+  BASE --> H0
+  BASE --> CW
+  BASE --> IM
+  BASE --> PV
+  H0 -->|shared fixes merged before new consumers| CW
+  H0 --> IM
+  H0 --> PV
+  PV --> PG
+  BASE --> LC
+  PV -.->|preferred T3 capacity order| LC
+  CW --> CES
+  IM --> CES
+  PG --> CES
+  LC --> CES
+  CES --> REL
 
-  classDef shipped fill:#d8ecd8,stroke:#3c7a3c,color:#1e3d1e
-  classDef authorized fill:#d6e4f5,stroke:#2f5f99,color:#17304d
+  FACE["T1 provider: Wall face-frame query"]
+  PLACE["T2: solve-once surface placement"]
+  PART["T2: component table, resolver and admission operations"]
+  PICK["T1 + T2: part selection and admission UI"]
+  ANNO["T3: reusable part-annotated Presentation"]
+  VERT["T1: vertical cutover; datums, structures, per-level faces"]
+  TOL["T1: coordinate and tolerance contract"]
+  E2["E2: selected overhead-family qualification"]
+  E1["E1: 2D kernel qualification when needed"]
+  ROOF["T1: first qualified overhead family"]
+  ATT["Optional attachment: versioned Scene format, transport and joint planners"]
+  BASE --> FACE
+  FACE --> PLACE
+  IM --> PART
+  PART --> PICK
+  PICK --> ANNO
+  PV --> ANNO
+  CW --> VERT
+  BASE --> TOL
+  TOL --> E2
+  TOL --> E1
+  E2 --> ROOF
+  VERT --> ROOF
+  E1 -.->|only if area booleans or offsets are used| ROOF
+  H0 --> ATT
+  FACE --> ATT
+  CW -->|non-reusing Layout allocation| ATT
+  PART -.->|only for part-qualified attachment| ATT
+
+  classDef accepted fill:#d8ecd8,stroke:#3c7a3c,color:#1e3d1e
+  classDef proposed fill:#fff2ce,stroke:#9b7621,color:#4c3b13
+  classDef held fill:#d6e4f5,stroke:#2f5f99,color:#17304d
   classDef deferred fill:#eeeeee,stroke:#999999,color:#555555,stroke-dasharray:4 3
-  class A,V,L,U,O,B,S,C,X5,X6,X,P,UI,W,T2F,CUT shipped
-  class G,PRE authorized
-  class F,OFF,PUB,UX deferred
+  class BASE accepted
+  class H0,CW,IM,PG,LC,FACE,PLACE,PART,PICK,ANNO,VERT,TOL,E2,E1,ROOF,ATT proposed
+  class PV held
+  class CES,REL deferred
 ```
 
-Status key (2026-10-20): green nodes are shipped — batch B (`P`, `UI`) in PRs #148/#147, batch C
-(`W`, `T2F`) and `CUT` (T3 S04) in PR #158. Blue nodes are batch D's authorized work: `G`
-(`T1.P01.S06`) and `PRE` (`T3.P02.S01`) are authorized and unimplemented. The `W → CUT`, `T2F → CUT`
-and `CUT → G`/`CUT → PRE` edges are the batch C current-source freeze and the post-cutover route for
-S06 and T3.P02. Grey dashed nodes are T4 work deferred by ruling R1-D until
-[Core Editor Stability](./core-editor-stability.md) is accepted. The status key restates the phase
-registers; it never overrides them. Every edge is a real capability or ownership dependency. `S → P`
-is the Head Save integration mounting T3's client Save state, and no batch adds another cross-track
-edge. **No edge leaves the owner-run deployment**: batch D corrected the batch C diagram's
-`owner-run activation → S06/T3.P02` arrows, because activation is an operational step on already
-accepted code, not a readiness gate.
+Solid arrows are actual provider or integration prerequisites. Dashed arrows carry a stated
+condition or capacity preference; they do not invent an accepted gate. All proposed nodes need
+normal planning, registration where required, explicit implementation authorization and named
+release from the hold. H0 corrects existing accepted mechanisms; it creates no new F gate or
+accepted capability. The direct BASE edges mean C1/C2 planning can proceed in parallel with H0;
+implementation starts from its merged shared corrections. No release slice depends on advanced
+vertical, attachment or annotation work unless the owner changes the milestone criteria.
 
-T4 S01 was docs-only drafting that could run early; under R1-D it waits, with the rest of T4, for
-Core Editor Stability. After the shared providers merged, independent
-viewport, local acceptance, unit-codec and Scene-candidate work proceeds in parallel. Save waits
-for local F4, not F2. T4 F5 waits for the shared program codec, not the T3 runtime cutover. Actual
-consumer starts require the precise capabilities accepted on main at trusted base; sibling plans,
-ratified text, offline harnesses and a consumer's own register edits are not readiness.
+### Convergence batch and next planning wave
 
-T2 simple transform payloads use domain types, not a general F3 execution system. T1 local F4
-needs neither F2 nor F3. T2/T3 UI waits for the viewport, not all of T1. T4 final activation waits
-for T3 S04, not T3 authoring/phase closure. Shared-file integration ownership: T3 owns source/Save
-and visitor semantic changes through S04; T4 then owns delivery/publication changes, reusing T3
-execution. Storage additions can merge inactive beforehand; overlapping callers are reviewed
-against each new main rather than merged as independent competing implementations.
+**Recommendation for owner authorization, not a new authorization record.** The next useful
+batch is shared corrections followed by three parallel product lanes. C1/C2 still need their
+launch plans and normal phase registration; this PR does not present them as implementation-ready.
+H0 has a [bounded launch proposal](./convergence-shared-foundation-2026-10-22.md), while S01 has
+an existing reviewed plan with explicit convergence clarifications. No closed phase is reopened.
 
-1. Starter gallery → T2 Place/Move/Yaw/Undo → early conditional Save/reload is the first creator
-   journey. T2 S04 integrates its complete bounded phase with Save; JSON recovery is also available.
-2. T3 capture View/Presentation/optional Stop → Cut Guide → isolated Preview is next; existing
-   supported Travel is evaluated, while advanced path authoring is a named T3 follow-on.
-3. T4 prepare/activate → cold public link → update/unpublish proves delivery. API-driven foundation
-   precedes the T4-owned thin publication UI. Bounded single-model ingest is the T2-owned next phase,
-   requires F2/unit acceptance and T4 resource delivery, and precedes the promised creator/audience trial.
+| Scope | Owner and concrete outcome | Prerequisites / next act | Authorization readiness |
+| --- | --- | --- | --- |
+| H0 shared correction | T3 F4 integration owner; T1 Stage and visitor-boundary support. Enforce each planner's declared scope, align public/Preview build patterns with current authoring machinery, establish browser/bundle measurements | Accepted F4 unit scopes and viewport; review the launch proposal, assign its normal provider registration and authorize the permanent harness separately | Concrete bounded proposal ready for owner review; implementation held |
+| T1 planning lane → C1 | T1. Empty → draw → close/divide → Opening → delete with one datum, non-reused IDs and role cutover; resolve measured performance costs | Plan native-Wall phase now; H0 before implementation, explicit encoding and enclosure policy, performance evidence at slice acceptance | Planning can proceed; implementation needs reviewed plans, registration and hold release |
+| T2 planning lane → C2 | T2 ingest/API owner, T1 host integration. Upload/approve/place/Save/reopen one own GLB, retaining source and a parts-safe derivative | Plan bounded ingest phase now; H0 before implementation, exact resource locks and stale/cancelled staging; no T4 dependency | Planning can proceed; implementation needs reviewed plans, registration and hold release |
+| T3.P02.S01 → S02 | T3. Capture and explain without a Guide, plus Cut Guide and isolated Preview, Save/history intact | Owner accepts the scope clarifications and releases S01 after H0; S02's separate authorization follows S01 acceptance | Existing S01 plan ready for final review; historical approval alone cannot resume it |
+| C3 lifecycle follow-on | T3 persistence/API, T1 shell. Rename/delete with conflict and dirty-replacement safety | Plan after the first-wave interfaces settle; execute after S01 by T3 capacity preference, with no fabricated data dependency | Next slice to plan in the T3 lane after capture/Preview |
 
-These phases do not complete the full creator-to-visitor product. Durable external links require
-an explicit Release Baseline; Source Baseline follows stabilized source formats, not these merges.
+**Merge and shared-file protocol.** H0 merges first. C1, C2 and S01 then build independently on
+that base and accepted gates. T1 owns `stage/**`, Stage shell/route integration, layout-core and
+Wall geometry; T2 owns ingest, Scene placement/resource adapters and its API resource changes;
+T3 owns the F4 coordinator/shared acceptance, Camera/Experience units, lowering and Preview.
+Cross-track changes are prepared as owned integration patches and reviewed by the named owner.
+No lane independently rewrites shared Stage registration, `units/**`, API source admission,
+root exports or package scripts. Merge those changes serially and rebase the next lane; run its
+required verification on the integrated tree. T3's H0 owner coordinates the permanent measurement
+harness; each consuming slice owns its workload and result. Each track replaces only its own baton.
+
+**Next capability wave.** T1 plans the Wall face-frame query and T2 solve-once surface placement;
+that consumer can use existing objects and has no artificial own-GLB or vertical dependency.
+C2 feeds T2 component identity/resolution/admission, then T1 part-selection/admission UI and T3
+reusable annotations; the provider precedes its UI, avoiding a dependency cycle. T1 plans the
+vertical cutover after C1: decide enclosure/closure policy, test per-level face derivation and
+compare compiler organizations fairly. E2 qualifies the selected overhead family; E1 is needed
+only where that family uses booleans/offsets. Compound roof massing, exact copyleft licence before
+a relevant dependency ships, and attachment removal/parameter policies remain consumer-triggered
+owner calls. No broad research program or geometry library is required for the first wave.
+
+**Design development.** Feature-level placement of prototype capabilities in the shell is a
+consuming-slice design task: draft → review → build → browser observation → revise. Keep PLATE's
+ratified shared composition, identity, material, metrics, return and accessibility rules. A slice
+records a proposed departure for owner review; detailed controls do not need to be frozen for all
+future features before C1/C2 planning. Prototype chrome never becomes the production shell by default.
+
+**After the lanes ship:** request the Core Editor Stability integrated acceptance plan through
+its [milestone route](./core-editor-stability.md#acceptance-route). Do not create that workspace
+now, declare the milestone accepted from slice merges, or resume T4 early. Earlier foundation
+DAG detail remains in the dated batch provenance and phase acceptances below; readiness is always
+rechecked at trusted base, never inferred from this diagram.
 
 ## Parallel batch 2026-10-16
 

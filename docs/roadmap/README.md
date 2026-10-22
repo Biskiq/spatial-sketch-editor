@@ -55,8 +55,8 @@ previously authorized slices such as `T3.P02.S01`, while the
 [convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) resolves direction,
 architectural commitments and the next batch/DAG. Earlier authorization records and accepted
 gate/phase evidence remain valid history; they do not release this hold. Research, documentation
-and bounded disposable probes may proceed within their commissioned step. Step 1 revises scope
-and briefs only; it does not launch the remaining research.
+and bounded disposable probes may proceed within their commissioned step. Research and
+reconciliation are complete for owner review; the hold still applies to every implementation scope.
 
 Only explicit owner release permits named implementation scopes to start or resume. A research
 result, contract ratification or merge of PR #173 alone is not that release. Keep existing lifecycle
@@ -187,13 +187,22 @@ and nothing in this section is lifecycle or gate readiness.
 
 - **Product convergence (commissioned 2026-10-21; scope expanded 2026-10-22), draft PR #173.** The
   [convergence plan](./product-convergence-2026-10-21.md) covers focused research, reconciliation
-  of product/design/architecture and the owning contract amendments, followed by the canonical
+  of product/design/architecture and proposed wording directly in the owning references, plus the canonical
   roadmap/DAG and next-batch recommendation in the same PR. Step 1 records the scope/briefs and
   [production hold](#production-implementation-hold); step 2 research has run (results in its
   commission packets) and step 3 has prepared an unratified decision set and exact amendments (only
-  descriptive corrections applied), while DAG revision remains pending. Final owner review ratifies only selected decisions and may
+  descriptive corrections applied). Step 4 now updates the canonical DAG, track/phase routes and
+  milestone descriptions, with a concrete H0 shared launch proposal and conditional C1/C2/S01 lanes. Final owner review ratifies only selected decisions and may
   explicitly authorize/release named scopes. No new gate readiness, milestone acceptance or
   implementation permission follows from this entry. P4 and T4 retain their deferrals.
+
+- **H0 shared correction (proposed 2026-10-22).** The
+  [bounded launch scope](./convergence-shared-foundation-2026-10-22.md) prepares declared planner
+  scope enforcement, current public/Preview build boundaries and on-demand performance evidence.
+  T3 coordinates F4, with T1/visitor integration. It needs normal provider registration, explicit
+  workflow authorization and release from the hold; it creates no gate or phase by appearing here.
+  C1/C2 planning may proceed in parallel; the [canonical batch](./cross-track-execution.md#convergence-batch-and-next-planning-wave)
+  owns launch and merge sequencing.
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks

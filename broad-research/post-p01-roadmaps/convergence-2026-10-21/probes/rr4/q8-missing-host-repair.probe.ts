@@ -12,22 +12,55 @@
  *         diagnostic-only data (never rendered as authored pose);
  *   (iii) Detach later against the exact pre-delete Layout revision (F.1 `exact`);
  *   (v)   step-2 matrix: Layout-only delete, binding left dangling (derived status only).
- * Scene shapes here are probe JSON: Scene unit format 2 refuses an attachment (Q6).
+ * A second case keeps the host present but makes one curved-host frame unavailable:
+ * default detach refuses before producing a candidate; explicit keep/delete can proceed.
+ * Scene shapes here are proposed probe JSON: Scene unit format 2 refuses an attachment (Q6).
+ * Reusing AM-2's record needs a versioned Scene slot; other domains keep their own binding forms.
  */
 import { describe, expect, it } from 'vitest';
 import { createEmptyWallFirstLayoutDocument, planDeleteWall, planWallSegment, type LayoutDocumentWallFirst } from '@portfolio/layout-core';
 import { REFERENCES_VERSION, type SemanticReference } from '@portfolio/project-model';
-import { createEmptyUnitEnvelope } from '@portfolio/project-model/units';
+import { createEmptyUnitEnvelope, validateUnresolvedBinding, type UnresolvedBinding } from '@portfolio/project-model/units';
 import { resolveUnitReference } from '@portfolio/project-model/references/unit-resolution';
-import { evaluate, residual, type Binding, type Pose } from './rr4-support';
+import { arcLength, curvedWall, emptyDoc, evaluate, residual, type Binding, type Pose } from './rr4-support';
 
 const log = (label: string, value: unknown) => console.log(`RR4 Q8 ${label} ${JSON.stringify(value)}`);
 
-type UnresolvedBinding = { reference: SemanticReference; domain: 'scene'; status: 'missing' | 'removed'; message: string };
 type Entity =
 	| { id: string; kind: 'independent'; pose: Pose }
 	| { id: string; kind: 'attached'; binding: Binding; host: SemanticReference }
 	| { id: string; kind: 'unresolved'; parameters: Omit<Binding, 'hostWallId'>; unresolved: UnresolvedBinding; diagnosticLastPose?: Pose };
+type ProbeProject = { layout: LayoutDocumentWallFirst; scene: Entity[] };
+type DeletePolicy = 'detach' | 'keep-unresolved' | 'delete-dependents';
+
+/** Probe candidate preparation only: it does not admit the proposed Scene format through live F.4. */
+function prepareHostDeletion(before: ProbeProject, wallId: string, policy: DeletePolicy):
+	| { kind: 'refused'; code: 'dependent-pose-unavailable'; entityIds: string[] }
+	| { kind: 'prepared'; candidate: ProbeProject } {
+	const poses = new Map<string, Pose>();
+	const unavailable: string[] = [];
+	for (const entity of before.scene) {
+		if (entity.kind !== 'attached' || entity.binding.hostWallId !== wallId) continue;
+		const pose = evaluate(before.layout, entity.binding);
+		if (pose) poses.set(entity.id, pose); else unavailable.push(entity.id);
+	}
+	// Evaluate every dependent before preparing either unit; never install a partial detach.
+	if (policy === 'detach' && unavailable.length) return { kind: 'refused', code: 'dependent-pose-unavailable', entityIds: unavailable };
+	const layout = must(planDeleteWall(before.layout, wallId)).document;
+	const scene = before.scene.flatMap((entity): Entity[] => {
+		if (entity.kind !== 'attached' || entity.binding.hostWallId !== wallId) return [entity];
+		if (policy === 'delete-dependents') return [];
+		if (policy === 'detach') return [{ id: entity.id, kind: 'independent', pose: poses.get(entity.id)! }];
+		const { hostWallId: _host, ...parameters } = entity.binding;
+		return [{
+			id: entity.id,
+			kind: 'unresolved',
+			parameters,
+			unresolved: { reference: entity.host, domain: 'scene', status: 'removed', message: `host wall ${wallId} deleted at the accepted revision` }
+		}];
+	});
+	return { kind: 'prepared', candidate: { layout, scene } };
+}
 
 function must<T extends { kind: string }>(plan: T): Extract<T, { kind: 'success' }> {
 	if (plan.kind !== 'success') throw new Error(JSON.stringify(plan));
@@ -53,14 +86,14 @@ function wallRef(layout: LayoutDocumentWallFirst, wallId: string, contentRevisio
 }
 
 /** Fresh cold reader: what can be rendered and which repairs are available, from persisted JSON only. */
-function coldRead(project: { layout: LayoutDocumentWallFirst; scene: Entity[] }) {
+function coldRead(project: ProbeProject) {
 	return project.scene.map((entity) => {
 		if (entity.kind === 'independent') return { id: entity.id, renders: 'authored-pose', repairs: [] as string[] };
 		if (entity.kind === 'attached') {
 			const pose = evaluate(project.layout, entity.binding);
 			return pose
 				? { id: entity.id, renders: 'evaluated-pose', repairs: ['detach'] }
-				: { id: entity.id, renders: 'nothing (host-missing, derived)', repairs: ['re-pick', 'place-explicitly', 'delete'] };
+				: { id: entity.id, renders: 'nothing (pose unavailable, derived)', repairs: ['re-pick', 'place-explicitly', 'delete'] };
 		}
 		return {
 			id: entity.id,
@@ -85,6 +118,9 @@ describe('RR-4 Q8 missing-host repair after cold load', () => {
 		const sceneBefore: Entity[] = bindings.map((binding) => ({ id: binding.id, kind: 'attached', binding, host }));
 		const after = must(planDeleteWall(before, wallId)).document;
 		const { envelope: afterEnvelope } = await layoutRevision(after);
+		const detached = prepareHostDeletion({ layout: before, scene: sceneBefore }, wallId, 'detach');
+		const kept = prepareHostDeletion({ layout: before, scene: sceneBefore }, wallId, 'keep-unresolved');
+		if (detached.kind !== 'prepared' || kept.kind !== 'prepared') throw new Error('healthy-host policies must prepare');
 
 		const unresolved = (binding: Binding, withPose: boolean): Entity => {
 			const { hostWallId: _host, ...parameters } = binding;
@@ -97,8 +133,8 @@ describe('RR-4 Q8 missing-host repair after cold load', () => {
 			};
 		};
 		const policies: Record<string, Entity[]> = {
-			'i-detach-at-delete': bindings.map((binding) => ({ id: binding.id, kind: 'independent', pose: evaluate(before, binding)! })),
-			'ii-keep-unresolved': bindings.map((binding) => unresolved(binding, false)),
+			'i-detach-at-delete': detached.candidate.scene,
+			'ii-keep-unresolved': kept.candidate.scene,
 			"ii'-keep-with-diagnostic-pose": bindings.map((binding) => unresolved(binding, true)),
 			'v-layout-only-dangling': sceneBefore
 		};
@@ -130,5 +166,42 @@ describe('RR-4 Q8 missing-host repair after cold load', () => {
 		expect(riip.poseRecoverableResidual).toEqual([0, 0]);
 		expect(rv.poseRecoverableResidual).toEqual([null, null]);
 		expect(exactOld.kind).toBe('failed');
+	});
+
+	it('refuses default detach atomically when a present curved host cannot evaluate a dependent pose', async () => {
+		const points: Record<string, [number, number]> = { A: [0, 0], B: [4, 0] };
+		const before = emptyDoc(points, [curvedWall('W', 'A', 'B', points, [[2, 0.5]])]);
+		const { revision } = await layoutRevision(before);
+		const host = wallRef(before, 'W', revision);
+		const bindings: Binding[] = [
+			{ id: 'e1', hostWallId: 'W', s: 1, side: 'left', width: 0.6, standoff: 0.02 },
+			{ id: 'e2', hostWallId: 'W', s: 6, side: 'right', width: 0.6, standoff: 0.02 }
+		];
+		const project: ProbeProject = { layout: before, scene: bindings.map((binding) => ({ id: binding.id, kind: 'attached', binding, host })) };
+		const previousJson = JSON.stringify(project);
+		expect(before.walls.some((wall) => wall.id === 'W')).toBe(true);
+		expect(arcLength(before, 'W')).toBeLessThan(bindings[1]!.s);
+		expect(evaluate(before, bindings[0]!)).not.toBeNull();
+		expect(evaluate(before, bindings[1]!)).toBeNull();
+
+		const detach = prepareHostDeletion(project, 'W', 'detach');
+		expect(detach).toEqual({ kind: 'refused', code: 'dependent-pose-unavailable', entityIds: ['e2'] });
+		expect(JSON.stringify(project)).toBe(previousJson);
+
+		const keep = prepareHostDeletion(project, 'W', 'keep-unresolved');
+		const remove = prepareHostDeletion(project, 'W', 'delete-dependents');
+		if (keep.kind !== 'prepared' || remove.kind !== 'prepared') throw new Error('explicit alternatives must prepare');
+		const keptCold = JSON.parse(JSON.stringify(keep.candidate)) as ProbeProject;
+		const removedCold = JSON.parse(JSON.stringify(remove.candidate)) as ProbeProject;
+		expect(keptCold.layout.walls).toEqual([]);
+		expect(removedCold.layout.walls).toEqual([]);
+		expect(removedCold.scene).toEqual([]);
+		for (const entity of keptCold.scene) {
+			expect(entity.kind).toBe('unresolved');
+			if (entity.kind === 'unresolved') expect(validateUnresolvedBinding(entity.unresolved).success).toBe(true);
+		}
+		expect(coldRead(keptCold).every((entity) => entity.renders === 'nothing' && !entity.repairs.includes('detach'))).toBe(true);
+		expect(JSON.stringify(project)).toBe(previousJson);
+		log('unavailable-before-delete', { hostPresent: true, hostLength: arcLength(before, 'W'), detach, previousJsonPreserved: true, keep: coldRead(keptCold), delete: coldRead(removedCold) });
 	});
 });

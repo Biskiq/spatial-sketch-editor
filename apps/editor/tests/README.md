@@ -368,3 +368,23 @@ ids). Ownership and permission checks apply unchanged.
   not exist (404).
 - Non-browser POSTs need the `Origin` header matching the API's editor origin;
   pass `origin` to `loginAs`.
+
+
+## Product convergence performance proposal
+
+**Prepared in PR #173, 2026-10-22; pending explicit owner acceptance.** The existing on-demand
+benchmark policy above remains current. This proposal authorizes no workflow by being present.
+
+Proposed: each consuming slice records performance evidence against
+[the owning browser-performance contract](../../../docs/reference/components/performance.md)
+before its acceptance; hard misses are resolved inside the slice, targets receive a disposition.
+The phase final gate separately rechecks integrated flows. Record reference profile, workload,
+browser/build/commit, power/cache/network state, results and limitations. Continuous gestures
+correlate input with the matching presented result; discrete INP and asynchronous final-result
+completion are separate measurements. No Vitest timing gate replaces a correctness oracle.
+
+The permanent on-demand Playwright/CDP harness and bundle report require the owner's explicit
+workflow authorization. They have their own config outside the default lanes and add no CI job,
+schedule or benchmark registry. Equivalent manual DevTools measurements can supply evidence until
+then, with limitations stated. Ratifying targets or installing a harness releases no production
+scope from the owner hold.

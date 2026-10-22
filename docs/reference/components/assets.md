@@ -157,3 +157,23 @@ normalized. Invalid metadata is rejected by manifest validation; missing or
 invalid model metadata is ineligible for Scene Plan projection. `defaultScale`
 and `defaultRotation` are already reflected in canonical footprint values and
 are not applied again.
+
+## Product convergence destination
+
+**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** Existing catalogue
+preparation remains a current procedure; it does not define creator-import capability.
+[Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
+
+A creator import retains source bytes, content hash, and recipe identity/version. Its render
+derivative preserves addressable source structure and capability meaning, or carries sufficient
+source-to-derivative correspondence. Pruning, deduplication, joining or flattening qualifies only
+when that preservation is demonstrated. The ingest report distinguishes observed hierarchy,
+clips, variants and extensions from capabilities actually admitted by Biskiq. C2 admits a whole
+object; retaining parts enables a later component consumer without declaring those parts admitted.
+A single-mesh source can still be annotated at a point. Catalogue optimizers are not reused for
+creator import unchanged without that qualification.
+
+Copyleft is aligned with the owner-directed product model. Evaluate established libraries on
+correctness, capability and measured browser cost inside the canonical ownership boundaries.
+Record the exact product/dependency licence and shipped build before a relevant dependency ships;
+this planning round selects no licence file and installs no dependency.

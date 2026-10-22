@@ -41,6 +41,16 @@ Presentations into F2 units, Preview executes the one shared Experience interpre
 `T3.P01.S06`/`S04`, and Save uses `conditional-save-units-v1`. No slice here consumes a retired
 current-source adapter, and none may re-introduce one.
 
+## Convergence review and hold
+
+PR #173 prepares S01 clarifications for owner review: qualified subject references, explicitly
+versioned text/entry formats, a Guide-free Presentation Preview, lazy isolated delivery and
+performance evidence before consuming-slice acceptance. It preserves the complete approved
+capture/Guide/history/Save scope and S02's exhaustive final gate. H0's shared correction precedes
+new implementation; the [canonical batch](../../cross-track-execution.md#convergence-batch-and-next-planning-wave)
+owns current sequencing. Exact feature controls develop through a PLATE-conforming draft,
+review, build and browser revision. No historical authorization releases the production hold.
+
 ## Bounded outcome
 
 A creator working on the shared Stage can **create or select an Experience**, **capture a Camera View**
@@ -135,7 +145,7 @@ stay green and are not re-owned here. This phase adds:
   first Cut Guide), advanced path/anchor tools, a second Camera controller, a second Experience
   timeline, general animation orchestration, media authoring, and publication. A later T3 phase owns
   advanced Camera/path tools; they are never hidden inside this first surface.
-- **Prototype boundary.** The [PR #154 P1 Interactive Presentation Studio prototype](../../../../prototypes/README.md)
+- **Prototype boundary.** The [retained P1 prototype evidence](../../../../prototypes/README.md)
   owns the exploration of the richer interaction grammar. This phase neither commissions, schedules
   nor waits on that program, and it never promotes a prototype mechanism into a production contract.
 
