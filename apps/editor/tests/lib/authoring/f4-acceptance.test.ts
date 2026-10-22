@@ -594,8 +594,9 @@ describe('F.4 adversarial boundary regressions', () => {
 	});
 
 	it('enforces resource and project ownership on actual candidates', async () => {
-		// Compound Layout/Camera changes are admitted by this profile; the resource
-		// unit and the project identity remain outside what a unit operation owns.
+		// The host profile grants compound installs, but each candidate is checked
+		// against the producing planner's own declaration; the resource unit and the
+		// project identity remain outside what any unit operation owns.
 		for (const change of ['resources', 'project'] as const) {
 			const { coordinator } = await boot();
 			const before = coordinator.current();
