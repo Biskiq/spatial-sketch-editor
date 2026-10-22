@@ -13,7 +13,9 @@
     "test:fast": "vitest run --config vitest.fast.config.ts",
     "test:arch": "vitest run --config vitest.arch.config.ts",
     "test:heavy": "vitest run --config vitest.heavy.config.ts",
-    "test:full": "vitest run --config vitest.config.ts"
+    "test:full": "vitest run --config vitest.config.ts",
+    "perf": "playwright test --config perf/playwright.config.ts",
+    "perf:bundle": "node perf/bundle-report.mjs"
   },
   "dependencies": {
     "@portfolio/camera-core": "*",
@@ -25,6 +27,7 @@
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.4.1",
+    "@playwright/test": "1.63.0",
     "@sveltejs/adapter-auto": "^6.0.0",
     "@sveltejs/adapter-vercel": "^5.10.3",
     "@sveltejs/kit": "^2.22.0",

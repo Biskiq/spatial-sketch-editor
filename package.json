@@ -31,7 +31,9 @@
     "test:arch": "npm run test:arch -w @portfolio/editor",
     "test:heavy": "npm run test:heavy -w @portfolio/editor",
     "test:full": "npm run test:full -w @portfolio/editor",
-    "test:api": "npm run test -w @biskiq/api"
+    "test:api": "npm run test -w @biskiq/api",
+    "perf": "npm run perf -w @portfolio/editor",
+    "perf:bundle": "npm run perf:bundle -w @portfolio/editor"
   },
   "engines": {
     "node": ">=20"

@@ -50,3 +50,7 @@ prototypes/spatial-authoring/qa/out/
 
 # `build` above is output; this directory is source (its files were tracked before the pattern).
 !prototypes/p3-vellum/src/scene/build/
+
+# on-demand performance harness artifacts (raw results stay outside Git)
+apps/editor/.perf-results/
+apps/editor/perf/.perf-results/
