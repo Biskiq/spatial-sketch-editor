@@ -220,6 +220,15 @@ describe('F.4 unit acceptance — the enduring lifecycle with a wider admission'
 		};
 		expect(registry.register(undeclared)).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
 		expect(registry.planners()).toHaveLength(0);
+		// The inverse contradiction is refused too: on a single-domain planner the
+		// field would widen nothing, so accepting it would silently ignore it.
+		expect(
+			registry.register({
+				...cameraViewPlanner('single-domain-with-writes', 'single-domain-with-writes'),
+				admission: { domain: 'camera', compound: false, writes: ['experience'], units: false, resources: false }
+			})
+		).toMatchObject({ kind: 'refused', reason: 'compound-write-set' });
+		expect(registry.planners()).toHaveLength(0);
 		// The declared empty write set is admitted, so the refusal is about the
 		// missing declaration rather than compound admission itself.
 		expect(registry.register(cameraViewPlanner())).toEqual({ kind: 'registered' });

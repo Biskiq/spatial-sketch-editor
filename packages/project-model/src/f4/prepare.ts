@@ -178,6 +178,15 @@ export function createPlannerRegistry<Source>(
 					`planner "${planner.id}" declares compound acceptance and must declare the unit domains it writes (\`writes\`, empty when it writes only its own domain)`
 				);
 			}
+			if (!planner.admission.compound && planner.admission.writes !== undefined) {
+				// The opposite contradiction: a write set only widens a compound
+				// planner's declared scope, so accepting one here would silently ignore a
+				// declaration its author believed was enforced.
+				return registrationRefusal(
+					'compound-write-set',
+					`planner "${planner.id}" declares a write set without compound acceptance; a single-domain planner writes only its own domain`
+				);
+			}
 			if (planner.admission.units && !admission.units) {
 				return registrationRefusal(
 					'unit-acceptance',

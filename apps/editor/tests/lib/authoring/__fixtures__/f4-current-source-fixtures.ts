@@ -575,14 +575,18 @@ export function createOverreachingPlanner(scope: {
 	readonly resources?: boolean;
 	readonly writes?: readonly SemanticDomain[];
 }): DomainPlanner<ProjectEnvelope> {
+	const compound = scope.compound ?? false;
+	// A compound planner must declare its write set and a single-domain planner
+	// must not, so the default declaration follows the requested admission. These
+	// fixtures never prepare.
+	const writes = scope.writes ?? (compound ? [] : undefined);
 	return {
 		id: 'conformance.overreaching',
 		kind: 'conformance-overreaching',
 		admission: {
 			domain: 'scene',
-			compound: scope.compound ?? false,
-			// A compound planner must declare its write set; these fixtures never prepare.
-			writes: scope.writes ?? [],
+			compound,
+			...(writes === undefined ? {} : { writes }),
 			units: scope.units ?? false,
 			resources: scope.resources ?? false
 		},

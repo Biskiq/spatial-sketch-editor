@@ -191,8 +191,10 @@ export type PlannerAdmission = {
 	 * Only a compound planner's declaration widens it — a single-domain planner
 	 * writes its own domain — and a compound planner must declare the field, so
 	 * "one extra domain" is a stated scope rather than an adapter-wide licence.
-	 * Resources stay outside it: a resource or lock change still needs the
-	 * planner's `resources` grant.
+	 * Declaring `writes` without `compound`, or omitting it with `compound`, is
+	 * refused at registration rather than silently ignored. Resources stay outside
+	 * it: a resource-unit or resource-lock change still needs the planner's
+	 * `resources` grant.
 	 */
 	readonly writes?: readonly SemanticDomain[];
 	/** F.2 unit creation, which needs `T3.P01.S03`'s `unit-acceptance-v1`. */
