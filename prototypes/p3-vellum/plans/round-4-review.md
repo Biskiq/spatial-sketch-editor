@@ -17,8 +17,9 @@ Three things to know before reading:
 - **§6c is done, after this report.** A review of `ff117342` found four more corrections (F1–F4); each was
   reproduced with its numbers and then fixed, and §6c now records what is true rather than what was open. The counts
   in §6b are the ones at that commit; after §6c the suite is 186 tests.
-- **Only the model and the offer cards are claimable.** Hold's pointer lifecycle, the Edit Shape sheet, ink and the
-  pen tips are designed in the plan and absent from the code. Nothing here is a Round 4 acceptance claim.
+- **The model, the offer cards and (since `6d`) Edit Shape are claimable.** Hold's pointer lifecycle is wired; ink
+  and the pen tips are still designed in the plan and absent from the code. Nothing here is a Round 4 acceptance
+  claim.
 
 ---
 
@@ -365,6 +366,67 @@ translations.
 
 ---
 
+## 6d. Phase 1 — Edit Shape
+
+The commit after `b375d3a3` lands §6: the sheet, the context behind it, and one session state for the depth. It is a
+prototype interaction, not a Round 4 acceptance claim; the five-person test is still the owner's.
+
+**What landed.**
+
+- **Entry and exit.** `UIState.shaping`, `seeThrough` and `menu` are session state, never authored and never a history
+  step. Edit Shape opens from the roof card's *Edit shape*, the new section thumbnail, a roof double-click, **Enter**,
+  or the roof context menu (a right press that moves under 4 px and lasts under 350 ms). It closes on *Done*,
+  **Enter**, **Esc**, or a click on anything else; that click only leaves, it does not select. `store.select(other)`,
+  choosing Draw, and losing the roof also leave. Undo and redo keep shaping while the roof exists. Keyboard focus is
+  saved on entry and restored on exit.
+- **The 3D view.** Nothing dims. While shaping, only the shaping roof can be picked, so other elements neither hover
+  nor take a click. The blue section line now draws only in Edit Shape; a picked roof keeps its Hold zones instead.
+  The joint vocabulary is every section joint, both bars and the slide grip of a step, the outline's corners and
+  edges (with the fitted-outline warning), and the eave bead — all at primary tier. Hold zones stay active on the
+  surface. **X** or *See through* draws the shaping roof at 0.28 opacity with `depthWrite false` (a separate build
+  key, so nothing else changes). *Face the section* pushes one back step for the session and glides perpendicular to
+  the section, from whichever side the camera is already on.
+- **The sheet.** `SectionSheet.tsx` replaces `ProfilePad.tsx` at 352 × 232 CSS px with one uniform metres-to-pixels
+  scale and a vertical range frozen during a drag. It draws the grid, floors, dashed flat ceilings, walls, neighbour
+  roofs, 1.75 m people and red-pencil headroom bands; then the eave, the roof band `thick` deep, and the joints.
+  Hit testing puts a step's two bars first, then its slide grip, then ordinary joints, then parts. Joints use
+  `moveJoint`, step bars use `moveStepEdge`, parts use `pullPart`, and a stroke on paper becomes `readSectionStroke`'s
+  first reading with the other readings on chips (**Tab** cycles). Every move is validated by one `validateGesture`
+  (the new name for `cleanSection` from the gesture-start profile), previews that exact profile, and release commits
+  that same value; an invalid move keeps the last valid preview and names the limit. Double-click sharpens a joint;
+  double-click a part offers *Crease here* / *Step here (glazing)*; ⌥-click or Delete removes a joint.
+- **The context.** `src/model/sectionContext.ts` is pure: it samples the section line every 5 cm, gets room, deck,
+  wall, neighbour and roof obstructions from the real model, and emits the same clearance values the sheet hatches.
+  Three tests cover a 3 m room under a gable (two walls, floor, flat ceiling, one person), a 2.4 m deck under a
+  2.6 m eave (a headroom band whose clear height is below 2.0 m), and a 10 × 10 room under an L roof (the floor line
+  is faint outside the outline). `tests/section.test.ts` adds the short-step case: the previewed closed profile and
+  its ids are exactly what the commit carries.
+
+**Evidence.** `npm run typecheck` is clean; `npm test` is **20 files, 264 tests** (new: `sectionContext.test.ts` 3,
+`shaping.test.ts` 4, one in `section.test.ts`); `npm run build` succeeds at 1,033 kB (305 kB gzipped). The dev server
+on 5191, in a named browser session, produced:
+
+- entry by card, **Enter**, roof double-click and the context menu; `Done`, **Esc** and a click on the ground all
+  leave; the ground click left the roof selected;
+- a right-eave drag from 4.55 m to 2.83 m: the previewed profile string equalled the committed profile string exactly,
+  one transaction (`Moved Clerestory roof’s eave`), and ⌘Z restored 4.55 m while `shaping` stayed `h19`;
+- a drawn replacement section committed one *As drawn* reading in one step;
+- *Face the section* set `az −1.57`, `pol 1.18`, added exactly one back step, and a second press added none; after
+  leaving, **Esc** restored `az −0.75` and emptied the stack;
+- *See through* made the room's wall lines visible through the roof; no page errors and no console errors.
+
+Screenshots (untracked evidence): `screenshots/phase1-entry.png`, `phase1-preview.png`, `phase1-drawn.png`,
+`phase1-menu.png`, `phase1-see-through.png`, `phase1-face.png`.
+
+**Cut from the prose, not the gate.** The thumbnail and hint were left simple: no hover state on the thumbnail and no
+hover/focus over the words in *“Hold the ridge, a slope, an end or an edge”* to reveal zones (the zones still reveal
+on the roof itself). The shape head puts the family name as the eyebrow and the roof name as the heading, rather than
+the name “small underneath”. Entering saves focus but no inspection state, because entering changes no inspection
+state; only *Face the section* changes the view, and that has its own back step. Hold gestures inside Edit Shape use
+the existing zone path and were not separately re-scripted beyond what §5 already covers.
+
+---
+
 ## 7. What is not done
 
 Held against the plan's own phase table. §6c's F1–F4 and the Hold runtime review corrections above are done. Hold
@@ -373,7 +435,6 @@ qualifier. Full browser acceptance and the remaining phase work are still open.
 
 | Not started | Plan | Size |
 | --- | --- | --- |
-| Edit Shape: entry/exit, 3D view while shaping, `SectionSheet.tsx`, `sectionContext.ts` | §6 | L |
 | Ink from meaning: `facets`/`ink`, `roofInk.ts`, revolve rings, ghost twins, `tests/ink.test.ts` | §7 | M |
 | Pen tips (Box/Round, *Room beside*), the Platform label, `tests` for both | §9.1, §9.2, §9.5 | M |
 | Hold zones and Edit Shape over wings; the Settings *one span* toggle | §8.4–8.6 | S/M |
@@ -393,7 +454,7 @@ From `prototypes/p3-vellum`:
 
 ```sh
 npm run typecheck     # tsc --noEmit
-npm test              # 16 files, 203 tests with the §6b, §6c and Hold review fixes in the working tree
+npm test              # 20 files, 264 tests with §6b, §6c, the Hold review fixes and §6d
 npm run build         # tsc --noEmit && vite build
 ```
 

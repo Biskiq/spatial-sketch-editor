@@ -23,6 +23,7 @@ import { holeOutline } from './build/walls';
 import { routeHeights } from '../story/route';
 import { opRoute, opAddMoment, opMoment } from '../story/storyOps';
 import { wheelSource } from './wheel';
+import { enterShaping, exitShaping, toggleSeeThrough } from '../ui/shaping';
 
 export interface WheelIn { t: number; dx: number; dy: number; mode: number; ctrl: boolean; shift: boolean; x: number; y: number; wdy?: number }
 export interface TraceEv { kind: string; ev: any; read: string; cam: { az: number; pol: number; dist: number } }
@@ -68,6 +69,8 @@ export class Interact {
   private handleZone: RoofZone | null = null;
   private zonePending: { oh: Overhead; zone: RoofZone; plan: V2; y: number; startProject: Project } | null = null;
   private handleLabel: string | undefined;
+  private gestureShaping: string | null = null;
+  private menuPress: { x: number; y: number; t: number; hit: Hit | null } | null = null;
   private queuedMove: PointerEvent | null = null;
   private moveRaf = 0;
   camDrag: { x: number; y: number; pan: boolean } | null = null;
@@ -146,7 +149,8 @@ export class Interact {
       store.project !== startProject ||
       store.ui.mode !== 'make' ||
       store.ui.tool !== 'select' ||
-      store.ui.selection !== target
+      store.ui.selection !== target ||
+      store.ui.shaping !== this.gestureShaping
     ) this.cancelGesture();
   }
 
@@ -169,6 +173,7 @@ export class Interact {
     this.handleStartSelection = store.ui.selection;
     this.handleChanged = false;
     this.handleZone = zone;
+    this.gestureShaping = store.ui.shaping;
     this.ov.activeHandle = h.id;
     store.set({ dragging: true });
   }
@@ -215,14 +220,16 @@ export class Interact {
     if (cameraBtn) {
       this.state = 'camera';
       this.camDrag = { x: e.clientX, y: e.clientY, pan: e.button === 1 || this.space || (e.button === 2 && e.shiftKey) };
+      // a right press may become the roof menu, if it neither moves nor lingers
+      this.menuPress = e.button === 2 && !this.space ? { x: e.clientX, y: e.clientY, t: performance.now(), hit: this.stage.pick(e.clientX, e.clientY) } : null;
       return;
     }
     if (e.button !== 0) return;
-    store.set({ readingChip: null });
+    store.set({ readingChip: null, menu: null });
     const h = store.ui.mode === 'make' ? this.handleAt(e.clientX, e.clientY) : null;
-    const hit = this.stage.pick(e.clientX, e.clientY);
+    const hit = this.hitForPointer(e.clientX, e.clientY);
     const overheadSelected = store.project.overheads.some((o) => o.id === store.ui.selection);
-    const precise = !!h && (!overheadSelected || h.id.startsWith('pp:') || h.id.startsWith('n:'));
+    const precise = !!h && (!!store.ui.shaping || !overheadSelected || h.id.startsWith('pp:') || h.id.startsWith('n:'));
     if (precise && h) {
       this.down = null;
       this.beginHandle(h);
@@ -232,6 +239,7 @@ export class Interact {
     if (target && !(target.zone.kind === 'slope' && target.zone.locked)) {
       this.down = { x: e.clientX, y: e.clientY, button: e.button, hit, time: performance.now(), alt: e.altKey };
       this.zonePending = { oh: target.oh, zone: target.zone, plan: [hit!.point.x, hit!.point.z], y: hit!.point.y, startProject: store.project };
+      this.gestureShaping = store.ui.shaping;
       this.state = 'zonepending';
       return;
     }
@@ -301,11 +309,12 @@ export class Interact {
     if (this.state === 'idle' && e.target === this.el) {
       const h = store.ui.mode === 'make' ? this.handleAt(e.clientX, e.clientY) : null;
       const selectedOverhead = store.project.overheads.some((o) => o.id === store.ui.selection);
-      const precise = !!h && (!selectedOverhead || h.id.startsWith('pp:') || h.id.startsWith('n:'));
+      const precise = !!h && (!!store.ui.shaping || !selectedOverhead || h.id.startsWith('pp:') || h.id.startsWith('n:'));
       const id = precise ? h!.id : null;
       if (id !== this.ov.hoverHandle) this.ov.hoverHandle = id;
       const tool = store.ui.tool;
-      const hit = this.stage.pick(e.clientX, e.clientY);
+      // while shaping, nothing but the roof itself is picked: other elements neither hover nor take a click
+      const hit = this.hitForPointer(e.clientX, e.clientY);
       const target = precise ? null : this.zoneAt(hit);
       if (target) {
         const lift = this.stage.liftOf(target.oh.id);
@@ -385,8 +394,16 @@ export class Interact {
     const st = this.state;
     this.state = 'idle';
     if (st === 'camera') {
+      const press = this.menuPress;
+      this.menuPress = null;
       this.camDrag = null;
       this.el.style.cursor = '';
+      if (
+        press && e.button === 2 &&
+        Math.hypot(e.clientX - press.x, e.clientY - press.y) < 4 &&
+        performance.now() - press.t < 350 &&
+        press.hit?.kind === 'roof'
+      ) store.set({ menu: { at: [e.clientX, e.clientY], id: press.hit.id } });
       return;
     }
     if (st === 'handle' && this.handle) {
@@ -464,6 +481,8 @@ export class Interact {
   cancelGesture() {
     const state = this.state;
     this.state = 'idle';
+    this.gestureShaping = null;
+    this.menuPress = null;
     if (state === 'stroke' && this.stroke) {
       if (this.stroke.purpose === 'slice') store.cancelPeek();
       this.stroke = null;
@@ -804,10 +823,22 @@ export class Interact {
     return best;
   }
 
+  /** While shaping, only the shaping roof is a target; anything else is empty so a click only exits. */
+  private hitForPointer(x: number, y: number): Hit | null {
+    const hit = this.stage.pick(x, y);
+    const shaping = store.ui.shaping;
+    return shaping && hit && hit.id !== shaping ? null : hit;
+  }
+
   private click(hit: Hit | null, e: PointerEvent) {
     const p = store.project;
     const mode = store.ui.mode;
     const tool = store.ui.tool;
+    // Edit Shape's ground rule: a click on anything but the roof leaves the shape; it never selects instead
+    if (store.ui.shaping) {
+      if (!hit || hit.id !== store.ui.shaping) exitShaping();
+      return;
+    }
     // a pencil suggestion: clicking it inks it
     if (mode === 'make') {
       const ray = this.stage.ray(e.clientX, e.clientY);
@@ -844,7 +875,13 @@ export class Interact {
 
   private onDbl(e: MouseEvent) {
     if (store.ui.mode !== 'make') return;
+    if (store.ui.shaping) return;
     const hit = this.stage.pick(e.clientX, e.clientY);
+    // a roof double-click enters Edit Shape; every other double-click still isolates
+    if (hit?.kind === 'roof' && store.ui.tool === 'select' && store.project.overheads.some((o) => o.id === hit.id)) {
+      enterShaping(hit.id);
+      return;
+    }
     if (this.stage.ctl.mode === 'eye' && hit && (hit.kind === 'floor' || hit.kind === 'deck' || hit.kind === 'ground' || hit.kind === 'stair')) {
       const c = this.stage.ctl;
       const dir = new THREE.Vector3().subVectors(hit.point, c.eyePos).setY(0);
@@ -1033,6 +1070,25 @@ export class Interact {
     }
     if (!down) return;
     const mod = e.metaKey || e.ctrlKey;
+    if (store.ui.menu && k === 'escape') return store.set({ menu: null });
+    if (k === 'enter' && !mod) {
+      if (store.ui.shaping) {
+        e.preventDefault();
+        exitShaping();
+        return;
+      }
+      const oh = store.ui.mode === 'make' && store.ui.tool === 'select' ? store.project.overheads.find((o) => o.id === store.ui.selection) : null;
+      if (oh) {
+        e.preventDefault();
+        enterShaping(oh.id);
+        return;
+      }
+    }
+    if (k === 'x' && !mod && store.ui.shaping) {
+      e.preventDefault();
+      toggleSeeThrough();
+      return;
+    }
     if (mod && k === 'z') {
       e.preventDefault();
       if (e.shiftKey) store.redo();
@@ -1064,6 +1120,9 @@ export class Interact {
     if (k === 'escape') {
       if (this.stroke || this.state === 'handle' || this.state === 'zonepending' || this.state === 'objdrag') return this.cancelGesture();
       if (store.ui.readingChip) return store.set({ readingChip: null });
+      if (store.ui.menu) return store.set({ menu: null });
+      // Esc leaves Edit Shape before the view's own back step, so it never strands the sheet behind an old camera
+      if (store.ui.shaping) return exitShaping();
       const base = store.ui.mode === 'make' ? store.ui.baseTool : 'pen';
       // a pen picked up for the sheet goes down with the sheet (store.back below), so Esc never strands it out
       if (store.ui.tool !== base && !store.ui.sheetPen) return store.set({ tool: base, placeType: null });

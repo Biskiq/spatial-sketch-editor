@@ -5,8 +5,11 @@ import { profileH, sampleProfile } from '../src/model/profileCurve';
 import {
   readSection, sectionFamily, cleanSection, moveJoint, moveStepEdge, pullPart, splitPart, removeJoint,
   setJointSharp, readSectionStroke, sameProfile, minPartU, MIN_STEP, MAX_SLOPE_DEG, FAMILY_NAMES,
-  PRESET_TOL, nearestPreset, presetError,
+  PRESET_TOL, nearestPreset, presetError, validateGesture,
 } from '../src/model/section';
+import { emptyProject, type Project } from '../src/model/types';
+import { runTxn, opAddOverhead, opOverhead } from '../src/model/ops';
+import { ohSpan } from '../src/model/overheadGeom';
 
 const SPAN = 8;
 const MAX_RISE_H = 1.5 * SPAN;
@@ -322,6 +325,28 @@ describe('moving a joint', () => {
     expect(r.profile).toHaveLength(pts.length - 1);
     expect(r.label).toBe('Close this step');
     expect(readSection(r.profile).joints.some((j) => j.kind === 'step')).toBe(false);
+  });
+});
+
+describe('the sheet’s one gesture validator', () => {
+  it('shows a short step closing in the preview, and commits exactly that profile and its ids', () => {
+    const p: Project = runTxn(emptyProject(), opAddOverhead([[0, 0], [8, 0], [8, 6], [0, 6]], 3, { preset: 'clerestory', dir: 0 })).after;
+    const oh = p.overheads[0];
+    const span = ohSpan(oh);
+    const start = oh.profile;
+    const step = readSection(start).joints.find((j) => j.kind === 'step')!;
+    const candidate = moveStepEdge(start, step.id, 'hi', step.h + MIN_STEP * 0.5, { span, form: 'extrude' });
+    const edited = [step.id, start[step.j].id!];
+    const clean = validateGesture(start, candidate.profile, edited, { span, form: 'extrude' });
+    expect(candidate.label).toBe('Close this step');
+    expect(clean.valid).toBe(true);
+    expect(clean.profile).toHaveLength(start.length - 1);
+    // the previewed profile is the committed one, ids and all (the sheet previews and commits this same value)
+    const previewed = runTxn(p, opOverhead(oh.id, { profile: clean.profile })).after.overheads[0].profile;
+    const committed = runTxn(p, opOverhead(oh.id, { profile: clean.profile })).after.overheads[0].profile;
+    expect(committed).toStrictEqual(previewed);
+    expect(committed.some((q) => q.id === step.id)).toBe(true);
+    expect(readSection(committed).joints.some((j) => j.kind === 'step')).toBe(false);
   });
 });
 

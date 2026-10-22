@@ -296,9 +296,9 @@ export class Overlays {
         this.handleMeshes.push(grp);
       }
     }
-    // the picked roof's section — but only where there is a surface to show it on: a roof with no surface would draw
-    // a ridge line across thin air, which is the one thing that state is not allowed to do
-    const picked = store.ui.mode === 'make' ? p.overheads.find((o) => o.id === store.ui.selection) : undefined;
+    // the blue section line belongs to Edit Shape only: a picked roof shows its Hold zones, not its section.
+    // And only where there is a surface to show it on: a roof with no surface would draw a ridge line across thin air.
+    const picked = store.ui.mode === 'make' ? p.overheads.find((o) => o.id === store.ui.shaping) : undefined;
     const ohSel = picked && ohHasSurface(picked) ? picked : undefined;
     this.section.visible = !!ohSel;
     if (ohSel) {

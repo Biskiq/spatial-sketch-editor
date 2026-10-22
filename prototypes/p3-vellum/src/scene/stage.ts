@@ -255,14 +255,16 @@ export class Stage {
       const holes = p.voids.filter((v) => v.toY >= oh.baseY - 0.01).map((v) => v.outline);
       // the roof being sculpted skips its ink edges (the costliest part of a rebuild); they come back on release
       const live = store.ui.dragging && store.ui.selection === oh.id;
-      const key = JSON.stringify([oh.outline, oh.baseY, oh.profile, oh.dir, oh.form, oh.thick, oh.hip ?? 0, holes, live]);
+      // Edit Shape's see-through is a view, not a change: the same roof, drawn thinner so its section reads inside it
+      const see = store.ui.shaping === oh.id && store.ui.seeThrough;
+      const key = JSON.stringify([oh.outline, oh.baseY, oh.profile, oh.dir, oh.form, oh.thick, oh.hip ?? 0, holes, live, see]);
       want.set(`roof:${oh.id}`, {
         key,
         build: () => {
           const part = this.makePart(`roof:${oh.id}`, key, oh.id, 'roof', topLayer);
           const mesh = buildOverhead(oh, holes);
-          this.addSolid(part, mesh.top.geometry(), this.m.roof, { edges: !live });
-          this.addSolid(part, mesh.under.geometry(), this.m.roofUnder, { edges: false });
+          this.addSolid(part, mesh.top.geometry(), see ? this.m.roofSee : this.m.roof, { edges: !live });
+          this.addSolid(part, mesh.under.geometry(), see ? this.m.roofSeeUnder : this.m.roofUnder, { edges: false });
           this.addGlass(part, mesh.glass);
           return part;
         },

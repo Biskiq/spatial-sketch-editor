@@ -87,6 +87,9 @@ export interface MatSet {
   plinth: THREE.MeshStandardMaterial;
   roof: THREE.MeshStandardMaterial;
   roofUnder: THREE.MeshStandardMaterial;
+  /** the shaping roof, seen through (Edit Shape) */
+  roofSee: THREE.MeshStandardMaterial;
+  roofSeeUnder: THREE.MeshStandardMaterial;
   deck: THREE.MeshStandardMaterial;
   stair: THREE.MeshStandardMaterial;
   post: THREE.MeshStandardMaterial;
@@ -126,6 +129,8 @@ export function mats(p: Palette = 'card'): MatSet {
     current.plinth.color.set(c.plinth);
     current.roof.color.set(c.roof);
     current.roofUnder.color.set(c.roofUnder);
+    current.roofSee.color.set(c.roof);
+    current.roofSeeUnder.color.set(c.roofUnder);
     current.deck.color.set(c.deck);
     current.stair.color.set(c.stair);
     current.post.color.set(c.post);
@@ -144,6 +149,8 @@ export function mats(p: Palette = 'card'): MatSet {
     plinth: solid(c.plinth),
     roof: solid(c.roof),
     roofUnder: solid(c.roofUnder),
+    roofSee: solid(c.roof, { transparent: true, opacity: 0.28, depthWrite: false }),
+    roofSeeUnder: solid(c.roofUnder, { transparent: true, opacity: 0.28, depthWrite: false }),
     deck: solid(c.deck),
     stair: solid(c.stair),
     post: solid(c.post),

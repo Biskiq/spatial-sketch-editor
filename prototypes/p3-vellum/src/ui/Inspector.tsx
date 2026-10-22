@@ -19,7 +19,8 @@ import { qualifyRidgeTurn } from '../model/roofEdits';
 import { mezzanineOffer, stairCandidates } from '../model/offers';
 import { joinCheck, joinNeighbours, opJoinRoofs } from '../model/roofJoin';
 import { surfaceName } from '../scene/interact';
-import { ProfilePad, ProfilePresets } from './ProfilePad';
+import { SectionThumb, ShapeCard } from './SectionSheet';
+import { enterShaping } from './shaping';
 import { detachImport } from '../import/importer';
 import { IClose, ITrash } from './icons';
 
@@ -470,13 +471,17 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
           ))}
         </div>
       )}
-      <Sec label="Section — drag the roof's blue handles, or here">
-        <ProfilePad oh={oh} />
+      <Sec label="Section">
+        <SectionThumb oh={oh} />
+        <div class="row" style={{ marginTop: '8px' }}>
+          <button class="btn small blue" onClick={() => enterShaping(oh.id)} title="Shape the section, with the building behind it">
+            Edit shape
+          </button>
+        </div>
+        <div class="note" style={{ marginTop: '6px' }}>Or double-click the roof, or press Enter while it is selected.</div>
       </Sec>
       <details class="more">
-        <summary>Shapes &amp; settings</summary>
-        <div class="lab">Start from a shape</div>
-        <ProfilePresets oh={oh} />
+        <summary>Settings</summary>
         {round && (
           <div class="chips" style={{ marginTop: '8px' }}>
             <button class={'chip' + (oh.form === 'extrude' ? ' on' : '')} onClick={() => store.commit('Spanned it one way', opOverhead(oh.id, { form: 'extrude' }))}>
@@ -514,9 +519,6 @@ function OverheadCard({ oh, p }: { oh: Overhead; p: Project }) {
           </div>
         ) : null}
         <Slider label="Thickness" value={oh.thick} min={0.05} max={0.8} step={0.01} fmt={(v) => `${Math.round(v * 100)} cm`} commit="Changed the thickness" make={(v) => opOverhead(oh.id, { thick: v })} />
-        <div class="note" style={{ marginTop: '6px' }}>
-          In the pad: ⌥-click a point to remove it · double-click a point: ■ sharp ↔ ○ smooth · draw on empty paper to start over. The roof's precise profile points appear as the pointer nears them.
-        </div>
       </details>
       <Remember
         items={[
@@ -723,7 +725,7 @@ export function Inspector() {
       case 'room': body = <RoomCard s={e} dr={d.roomById.get(e.id)} dc={derive(p)} p={p} />; break;
       case 'run': body = <RunCard r={e} p={shown} />; break;
       case 'opening': body = <OpeningCard o={e} p={shown} />; break;
-      case 'overhead': body = <OverheadCard oh={e} p={shown} />; break;
+      case 'overhead': body = ui.shaping === e.id ? <ShapeCard oh={e} /> : <OverheadCard oh={e} p={shown} />; break;
       case 'deck': body = <DeckCard dk={e} p={p} />; break;
       case 'void': body = <VoidCard vd={e} />; break;
       case 'stair': body = <StairCard st={e} p={shown} />; break;
@@ -733,7 +735,7 @@ export function Inspector() {
   }
   if (!body) return null;
   return (
-    <div class="card inspector" onPointerDown={(e) => e.stopPropagation()}>
+    <div class={'card inspector' + (ui.shaping ? ' shaping' : '')} onPointerDown={(e) => e.stopPropagation()}>
       {body}
       {app.ov?.handles.some((h) => h.tier === 'detail') && (
         <label class="all-points" title="Corners, bends and fine handles otherwise appear as the pointer comes near">

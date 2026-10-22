@@ -322,6 +322,15 @@ export function cleanSection(pts: ProfilePt[], o: CleanOpts): CleanResult {
   return { profile: out, notes, valid: true };
 }
 
+/**
+ * One validator for every gesture: clean a candidate from the gesture-start profile. `edited` names the ids the
+ * gesture is allowed to change, and the caller previews and commits the returned profile itself, so a preview and
+ * its commit are the same function on the same input (including ids).
+ */
+export function validateGesture(start: ProfilePt[], candidate: ProfilePt[], edited: string[], o: EditOpts): CleanResult {
+  return cleanSection(candidate, { span: o.span, form: o.form, before: start, edited, maxRise: o.maxRise });
+}
+
 export function sameProfile(a: ProfilePt[], b: ProfilePt[], tol = 1e-9): boolean {
   return a.length === b.length && a.every((p, i) => p.id === b[i].id && Math.abs(p.u - b[i].u) < tol && Math.abs(p.h - b[i].h) < tol);
 }
@@ -479,7 +488,8 @@ export function moveStepEdge(pts0: ProfilePt[], jointId: string, edge: 'lo' | 'h
   const gap = Math.abs(out[J.i].h - out[J.j].h);
   if (gap < MIN_STEP) {
     const hi = out[J.i].h > out[J.j].h ? out[J.i] : out[J.j];
-    out[J.i] = { ...hi, u: J.u, crease: true };
+    // the first point keeps its id, exactly as cleanSection's R3 does: preview and commit must agree on identity
+    out[J.i] = { ...hi, u: J.u, crease: true, id: out[J.i].id };
     out.splice(J.j, 1);
     return { profile: ensureIds(out), label: 'Close this step' };
   }

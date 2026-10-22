@@ -71,6 +71,12 @@ export interface UIState {
   allHandles: boolean;
   /** the sheet came out while selecting, so the pen was picked up for it; putting the sheet away puts it down */
   sheetPen: boolean;
+  /** the roof being shaped in Edit Shape, or null (session only, never authored) */
+  shaping: string | null;
+  /** see the shaping roof through its own surfaces (X) */
+  seeThrough: boolean;
+  /** the roof context menu, at client coordinates */
+  menu: { at: [number, number]; id: string } | null;
 }
 
 type Listener = () => void;
@@ -89,6 +95,7 @@ class Store {
   ui: UIState = {
     mode: 'make', tool: 'pen', baseTool: 'pen', placeType: null, selection: null, hover: null, panel: 'none', start: true, people: true,
     removePreview: null, fixPreview: null, issueFocus: null, readingChip: null, rippleHidden: -1, hint: null, momentFocus: null, toast: null, dragging: false, allHandles: false, sheetPen: false,
+    shaping: null, seeThrough: false, menu: null,
   };
   cam: { snap: () => CamSnap; restore: (s: CamSnap) => void } | null = null;
   private listeners = new Set<Listener>();
@@ -245,6 +252,9 @@ class Store {
     this.preview = null;
     this.ui.selection = null;
     this.ui.readingChip = null;
+    this.ui.shaping = null;
+    this.ui.seeThrough = false;
+    this.ui.menu = null;
     this.ui.start = false;
     // a fresh table invites drawing; a building you open is first looked at, so nothing is drawn by accident
     const base: BaseTool = q.runs.length || q.imported || q.overheads.length ? 'select' : 'pen';
@@ -258,10 +268,17 @@ class Store {
 
   private validateSelection() {
     const s = this.ui.selection;
+    this.validateShaping();
     if (!s || s === 'building') return;
     const p = this.project;
     const all = [p.runs, p.openings, p.rooms.filter((r) => !r.dormant), p.overheads, p.decks, p.voids, p.stairs, p.posts, p.objs] as { id: string }[][];
     if (!all.some((c) => c.some((e) => e.id === s))) this.ui.selection = null;
+  }
+
+  /** Shaping follows the roof: it survives undo and redo, and ends when the roof does. */
+  private validateShaping() {
+    const id = this.ui.shaping;
+    if (id && !this.project.overheads.some((o) => o.id === id)) this.ui = { ...this.ui, shaping: null, seeThrough: false };
   }
 
   // ---------------------------------------------------------------- view (temporary; never touches the building)
@@ -343,12 +360,14 @@ class Store {
   // ---------------------------------------------------------------- ui
   set(patch: Partial<UIState>) {
     // choosing a tool by hand ends the sheet's borrowed pen
-    this.ui = { ...this.ui, ...('tool' in patch ? { sheetPen: false } : {}), ...patch };
+    const leavesShape = ('tool' in patch && patch.tool !== 'select') || ('mode' in patch && patch.mode !== 'make');
+    this.ui = { ...this.ui, ...('tool' in patch ? { sheetPen: false } : {}), ...patch, ...(leavesShape ? { shaping: null, seeThrough: false, menu: null } : {}) };
     this.emit();
   }
 
   select(id: string | null) {
-    this.ui = { ...this.ui, selection: id, removePreview: null, fixPreview: null };
+    const leavesShape = this.ui.shaping !== null && id !== this.ui.shaping;
+    this.ui = { ...this.ui, selection: id, removePreview: null, fixPreview: null, ...(leavesShape ? { shaping: null, seeThrough: false, menu: null } : {}) };
     this.emit();
   }
 

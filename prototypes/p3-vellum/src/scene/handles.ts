@@ -17,6 +17,7 @@ import { lvl } from '../model/settle';
 import type { RoofZone } from '../model/roofZones';
 import { detent, gestureStartStop, hipStops, OVERHANG_STOPS, pitchStops, straighteningStop } from '../model/detents';
 import { roofWingsState, type Wing } from '../model/wings';
+import { moveJoint, moveStepEdge, readSection, validateGesture } from '../model/section';
 
 export type DragMode = { type: 'plan'; y: number } | { type: 'vertical'; at: V2 } | { type: 'surface'; origin: V2; tan: V2; y0: number };
 
@@ -213,12 +214,141 @@ function zoneTipFor(oh: Overhead, zone: RoofZone) {
   return oh.fit ? 'Drag out for more overhang' : 'Push or pull this edge';
 }
 
+const changedIds = (start: { id?: string; u: number; h: number }[], cand: { id?: string; u: number; h: number }[]): string[] => {
+  const before = new Map(start.map((q) => [q.id, q]));
+  const out: string[] = [];
+  for (const q of cand) {
+    const s = before.get(q.id);
+    if (!s || Math.abs(s.u - q.u) > 1e-9 || Math.abs(s.h - q.h) > 1e-9) if (q.id) out.push(q.id);
+  }
+  for (const q of start) if (q.id && !cand.some((c) => c.id === q.id)) out.push(q.id);
+  return out;
+};
+
+/** Edit Shape's vocabulary: every joint, both edges of a step and its grip, the outline, and the eave. */
+function shapingHandles(stage: Stage, oh: Overhead): Handle[] {
+  const lift = stage.liftOf(oh.id);
+  const sec = ohSection(oh);
+  const prof = oh.profile;
+  const span = ohSpan(oh);
+  const maxR = maxRise(oh);
+  const mpp = Math.max(1e-4, stage.mpp());
+  const opts = {
+    span, form: oh.form, maxRise: maxR,
+    tolU: Math.max(1e-4, (8 * mpp) / Math.max(span, 1e-6)),
+    tolH: Math.max(1e-4, 8 * mpp),
+  };
+  const out: Handle[] = [];
+  const at = (u: number, h: number) => {
+    const a = sec.at(u, h);
+    return new THREE.Vector3(a.plan[0], a.y + lift + 0.04, a.plan[1]);
+  };
+  const result = (start: typeof prof, cand: typeof prof, measure: string, commit: string) => {
+    const clean = validateGesture(start, cand, changedIds(start, cand), opts);
+    if (!clean.valid) return { reason: clean.notes[0] ?? 'not possible here', measure };
+    return { op: opOverhead(oh.id, { profile: clean.profile }), measure: clean.notes.length ? clean.notes.join(' · ') : measure, commit };
+  };
+  for (const j of readSection(prof).joints) {
+    if (j.kind === 'step') continue;
+    out.push({
+      id: `j:${j.id}`, pos: at(j.u, j.h), shape: 'dot', tier: 'primary',
+      mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: '',
+      title: j.kind === 'ridge' ? 'Drag the ridge up or down' : j.kind === 'eave' ? 'Drag this eave up or down' : 'Drag this joint of the section',
+      drag: (pt, ev) => {
+        const r = sec.uh(pt.plan, pt.y - lift);
+        const cand = moveJoint(prof, j.id, r.u, r.h, { ...opts, free: ev.altKey, solo: ev.shiftKey });
+        const word = j.kind === 'ridge' ? `Moved ${oh.name}’s ridge` : j.kind === 'eave' ? `Moved ${oh.name}’s eave` : `Moved a joint on ${oh.name}’s section`;
+        return result(prof, cand.profile, cand.label ?? `${fmtM(r.h)} above the eave`, word);
+      },
+    });
+  }
+  for (const j of readSection(prof).joints) {
+    if (j.kind !== 'step') continue;
+    const firstIsLow = j.h <= j.h2;
+    for (const edge of ['lo', 'hi'] as const) {
+      const isFirst = (edge === 'lo') === firstIsLow;
+      out.push({
+        id: `j${edge}:${j.id}`, pos: at(j.u, isFirst ? j.h : j.h2), shape: 'dot', tier: 'primary',
+        mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: '',
+        title: edge === 'lo' ? 'Drag the lower edge of the step (onto the upper edge to close it)' : 'Drag the upper edge of the step (onto the lower edge to close it)',
+        drag: (pt) => {
+          const r = sec.uh(pt.plan, pt.y - lift);
+          const cand = moveStepEdge(prof, j.id, isFirst ? 'lo' : 'hi', r.h, opts);
+          return result(prof, cand.profile, cand.label ?? `step ${fmtM(Math.abs(j.h2 - j.h))}`, `Changed ${oh.name}’s step`);
+        },
+      });
+    }
+    out.push({
+      id: `j:${j.id}`, pos: at(j.u, (j.h + j.h2) / 2), shape: 'move', tier: 'primary',
+      mode: { type: 'surface', origin: sec.origin, tan: sec.tan, y0: 0 }, label: '', title: 'Drag the step sideways',
+      drag: (pt, ev) => {
+        const r = sec.uh(pt.plan, pt.y - lift);
+        const cand = moveJoint(prof, j.id, r.u, j.h, { ...opts, free: ev.altKey, solo: ev.shiftKey });
+        return result(prof, cand.profile, `step at ${fmtM(r.u * span)}`, `Moved ${oh.name}’s step`);
+      },
+    });
+  }
+  out.push(...outlineControls(oh, lift, 'primary', store.project, Math.max(0.3, 16 * mpp)));
+  const c = polyCentroid(oh.outline);
+  const k0 = oh.outline.reduce((b, q, i) => (dist(q, c) > dist(oh.outline[b], c) ? i : b), 0);
+  const ec = add(oh.outline[k0], mul(norm(sub(oh.outline[k0], c)), 0.6));
+  out.push({
+    id: 'eave', pos: new THREE.Vector3(ec[0], oh.baseY + lift, ec[1]), shape: 'bead', tier: 'primary',
+    mode: { type: 'vertical', at: ec }, label: 'height', title: 'Drag to raise or lower the whole roof',
+    drag: (pt) => {
+      const yy = Math.max(1.0, snapY(pt.y));
+      return { op: opOverhead(oh.id, { baseY: yy }), measure: `eave at ${fmtM(yy)}`, commit: `Moved ${oh.name}` };
+    },
+  });
+  return out;
+}
+
+/** Corners and edges: the same outline controls in every depth of Edit Shape and in Select. */
+function outlineControls(e: Overhead, lift: number, tier: 'primary' | 'detail', p: Project, magR: number): Handle[] {
+  const out: Handle[] = [];
+  const outline = e.outline;
+  const y = e.baseY + e.thick;
+  const yAt = (q: V2) => (ohHasSurface(e) ? ohTopAt(e, q) : y);
+  const set = (ol: V2[]): Op => opOverhead(e.id, { outline: ol });
+  outline.forEach((q, i) => {
+    out.push({
+      tier, id: `n:${i}`, pos: new THREE.Vector3(q[0], yAt(q) + 0.04 + lift, q[1]), shape: 'dot', mode: { type: 'plan', y }, label: '', title: 'Drag the corner',
+      drag: (pt, ev) => {
+        const ol = outline.slice();
+        const n = ol.length;
+        const s = snapPoint(p, pt.plan, { level: y, tol: magR, anchors: [ol[(i - 1 + n) % n], ol[(i + 1) % n]], own: ol.filter((_, k) => k !== i), free: ev.altKey, fine: ev.shiftKey, anyLevel: true });
+        ol[i] = s.p;
+        return { op: set(ol), measure: '', guides: s.guides, snap: s.label, at: s.p };
+      },
+    });
+  });
+  outline.forEach((q, i) => {
+    const b = outline[(i + 1) % outline.length];
+    if (dist(q, b) < 0.8 || outline.length > 24) return;
+    const mid = lerp2(q, b, 0.5);
+    const nn = perp(norm(sub(b, q)));
+    out.push({
+      tier, id: `e:${i}`, pos: new THREE.Vector3(mid[0], yAt(mid) + 0.04 + lift, mid[1]), shape: 'ring', mode: { type: 'plan', y }, label: '',
+      title: e.fit ? 'Pull to give it its own outline (it stops following the walls)' : 'Push or pull this edge',
+      drag: (pt) => {
+        const dd = round(dot(sub(pt.plan, mid), nn), 0.05);
+        const ol = outline.slice();
+        ol[i] = add(q, mul(nn, dd));
+        ol[(i + 1) % outline.length] = add(b, mul(nn, dd));
+        return { op: set(ol), measure: `${dd >= 0 ? '+' : ''}${fmtM(-dd)}` };
+      },
+    });
+  });
+  return out;
+}
+
 export function handlesFor(stage: Stage, p: Project, d: Derived, sel: string | null): Handle[] {
   // handles belong to Select: in Draw a stroke that starts on a wall's middle or end must draw, never reshape
   if (!sel || store.ui.mode !== 'make' || store.ui.tool !== 'select') return [];
   if (sel === 'building') return buildingHandles(p, d);
   const e = findEl(p, sel);
   if (!e) return [];
+  if (store.ui.shaping === sel && e.kind === 'overhead') return shapingHandles(stage, e);
   const lift = stage.liftOf(sel);
   const out: Handle[] = [];
   const mpp = stage.mpp();

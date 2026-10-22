@@ -9,6 +9,7 @@ import { Ripple, ReadingChip, Hint, Toast } from './Feedback';
 import { Panels } from './Panels';
 import { Start } from './Start';
 import { Visit } from './Visit';
+import { ContextMenu } from './ContextMenu';
 
 export function App() {
   const store = useStore();
@@ -51,6 +52,7 @@ export function App() {
           <Ripple />
           <Dock />
           <Hint />
+          <ContextMenu />
         </>
       )}
       <Visit />
