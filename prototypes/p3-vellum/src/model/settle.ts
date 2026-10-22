@@ -1,7 +1,7 @@
 // After every edit the project "settles": ties are followed, rooms keep their identity, tied heights follow.
 // Everything settle does is reported as notes, so nothing changes without the creator being told.
 import { V2, interiorPoint, pointInPoly, pointInPolyHoles, bbox, bboxOverlap, polyArea, fmtM } from './geom2d';
-import { fittedOutline } from './fit';
+import { fittedOutline, reachesEave } from './fit';
 import { overlapArea } from './clip';
 import { arrange, Arrangement } from './arrangement';
 import { resolveTies, runGeom } from './runs';
@@ -239,8 +239,8 @@ export function settle(p: Project): Note[] {
     }
     if (rooms.length < oh.fit.rooms.length) oh.fit = { ...oh.fit, rooms: rooms.map((r) => r.id) };
     const ids = oh.fit.rooms;
-    const taller = p.rooms.filter((r) => !r.dormant && !ids.includes(r.id) && roomTop(r) > oh.baseY + 0.05 && r.floorY < oh.baseY);
-    const ol = fittedOutline(rooms.map((r) => r.poly), oh.fit.overhang, taller.map((r) => r.poly));
+    const blocking = p.rooms.filter((r) => !r.dormant && !ids.includes(r.id) && reachesEave({ floorY: r.floorY, topY: roomTop(r) }, oh.baseY));
+    const ol = fittedOutline(rooms.map((r) => r.poly), oh.fit.overhang, blocking.map((r) => r.poly));
     if (!ol) continue;
     if (Math.abs(Math.abs(polyArea(ol)) - Math.abs(polyArea(oh.outline))) > 0.05)
       notes.push({ kind: 'info', text: `${oh.name} followed ${rooms.map((r) => r.name).join(', ')}'s walls.`, ids: [oh.id] });
