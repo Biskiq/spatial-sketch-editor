@@ -27,11 +27,12 @@ ACTIVE: T3.P03.S01 `in-progress` on `t3/p03-s01-planner-scope-build-isolation`: 
         declared `architecture-integration` tier. T3.P03.S02 stays `approved` and released (E2);
         T3.P02.S01 is `approved` with its finalized scope owner-accepted (E5) and released (E7),
         starting only after T3.P03.S01 is merged on `main`. T3.P02.S02 stays `proposed` and held.
-BATON: Review and accept T3.P03.S01 against its three acceptance rows, close it out, then merge:
-       its merge is the start gate for T1.P02.S01, T2.P02.S01 and T3.P02.S01. T3.P03.S02
-       (measurement workflow, final gate) starts after it.
-NEXT:  T3.P03.S01 → merge → T3.P02.S01 and T3.P03.S02 in parallel. S01 settles the format draft's
-       two open points (text bound, entryViewId) at implementation review.
+BATON: Review and accept T3.P03.S01 against its three acceptance rows — T1 (Stage/Layout) and T2
+       (Scene) confirm their single-domain planners still admit — then close it out and merge: its
+       merge is the start gate for T1.P02.S01, T2.P02.S01 and T3.P02.S01. T3.P03.S02 (measurement
+       workflow, final gate) starts after it.
+NEXT:  T3.P03.S01 → merge → T3.P02.S01 and T3.P03.S02 in parallel. T3.P02.S01 settles its format
+       draft's two open points (text bound, entryViewId) at implementation review.
 ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →
        ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/implementation-plan.md
        → ../../roadmap/cross-track-execution.md#authorized-batch-e-2026-10-22 (protocol)

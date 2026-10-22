@@ -229,7 +229,40 @@ Tests        `tests/lib/authoring/stage-host-acceptance.test.ts`:
 
 ## Open
 
-No entry is open. TD-10 was the last one and is fixed above.
+## TD-14 — envelope metadata moves outside a planner's content-derived scope check
+
+Status        open
+Found         2026-10-22, T3.P03.S01 review of `createUnitAcceptanceAdapter`'s `validateChange`
+Owner         T3 F4 acceptance (`unit-acceptance-v1`); no current consumer is blocked
+Symptom       An accepted operation can change envelope metadata that no unit payload owns — a unit
+              header's `unitId`, or a unit-scoped lock entry's `requiredCapabilities` — while every
+              changed-domain comparison reports nothing, so the change is attributed to no planner
+              and no declared scope.
+Reproduce     Take a normalized `unit-envelope-v1` project and (a) rewrite `units.layout.header.unitId`
+              only, or (b) append a resolvable `layout`/`object` lock entry whose
+              `requiredCapabilities` name an uncatalogued capability. Both are admitted by
+              `createUnitAcceptanceAdapter().admit`, and `validateChange` with a Layout-only planner
+              returns no issue for either — confirmed by a temporary probe against the conformance
+              fixture on 2026-10-22 (the probe was deleted; rebuild it from this recipe).
+Root cause    `changedDomains` compares `units[domain].header.contentRevision`, and `lockChanged`
+              compares only `resource:` lock entries. `normalizeUnitEnvelope` recomputes the
+              `contentRevision` field but preserves the rest of each header, every non-revision lock
+              field, and the lock's `requiredCapabilities`; lock-resolution verification re-checks
+              subject revisions only. Layered: a unit header is authored-adjacent bookkeeping no
+              planner is meant to write, so no check existed to widen.
+Why green     No test builds a metadata-only candidate. Every scope test changes at least one unit
+              payload, which is exactly what the content-revision comparison can see.
+Fix options   1) Extend `validateChange` to compare the authored envelope shape it owns — unit
+              headers other than `contentRevision` against a recomputed canonical value, and unit
+              lock `requiredCapabilities`/`pin` against the planner's grants — the correct fix, once
+              a consumer decides whether a unit-scoped lock entry is planner-writable at all.
+              2) Compare a whole-envelope digest — do NOT: derived rewrites would become scope
+              failures and it duplicates the source-content identity. Keep the typed refusal
+              surface unchanged until an option is chosen.
+Then add      A refusal test per metadata field the chosen option covers, with the unchanged
+              source/revision/history assertions the other scope refusals already use.
+
+No other entry is open. TD-10 was open before it and is fixed above.
 
 ---
 
