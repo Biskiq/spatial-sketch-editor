@@ -1,0 +1,2136 @@
+{
+  "probe": "g1-wings-chebyshev",
+  "node": "v26.7.0",
+  "evaluatorTol_m": 1e-9,
+  "meshTol_m": 0.00001,
+  "source": "prototypes/p3-vellum @ HEAD (read-only)",
+  "rows": [
+    {
+      "id": "G1 L / as-is",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              10,
+              0,
+              6
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              6,
+              10,
+              6,
+              14
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.56,
+        "samples": 9200,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          0.314,
+          5.721
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0,
+        "mesh": {
+          "samples": 452,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 8.881784197001252e-16
+        }
+      }
+    },
+    {
+      "id": "G1 L / rot30°",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              10,
+              0,
+              6
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              6,
+              10,
+              6,
+              14
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.56,
+        "samples": 9200,
+        "overTol": 0,
+        "maxErr_m": 8.881784197001252e-16,
+        "worstAt": [
+          2.714,
+          6.121
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 7.042977312465837e-16,
+        "mesh": {
+          "samples": 443,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "id": "G1 L / translated 1e3",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1000,
+              1010,
+              1000,
+              1006
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              1006,
+              1010,
+              1006,
+              1014
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.56,
+        "samples": 9200,
+        "overTol": 0,
+        "maxErr_m": 2.3592239273284576e-16,
+        "worstAt": [
+          1000.214,
+          1005.821
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 8.673617379884035e-19,
+        "mesh": {
+          "samples": 452,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.1723955140041653e-13
+        }
+      }
+    },
+    {
+      "id": "G1 L / reversed winding",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              10,
+              0,
+              6
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              6,
+              10,
+              6,
+              14
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.56,
+        "samples": 9200,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          0.314,
+          5.721
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0,
+        "mesh": {
+          "samples": 452,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 8.881784197001252e-16
+        }
+      }
+    },
+    {
+      "id": "G1 unequal L / as-is",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              10,
+              0,
+              6
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              7,
+              10,
+              6,
+              14
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 1.5
+          }
+        ],
+        "k": 0.56,
+        "samples": 8400,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          0.314,
+          5.721
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0,
+        "mesh": {
+          "samples": 401,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.3322676295501878e-15
+        }
+      }
+    },
+    {
+      "id": "G1 unequal L / rot30°",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              10,
+              0,
+              6
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              7,
+              10,
+              6,
+              14
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 1.5
+          }
+        ],
+        "k": 0.56,
+        "samples": 8399,
+        "overTol": 0,
+        "maxErr_m": 5.551115123125783e-16,
+        "worstAt": [
+          -0.086,
+          15.221
+        ],
+        "nearBoundarySamples": 238,
+        "nearBoundaryMaxErr_m": 4.996003610813204e-16,
+        "mesh": {
+          "samples": 403,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 2.220446049250313e-15
+        }
+      }
+    },
+    {
+      "id": "G1 unequal L / translated 1e3",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1000,
+              1010,
+              1000,
+              1006
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              1007,
+              1010,
+              1006,
+              1014
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 1.5
+          }
+        ],
+        "k": 0.56,
+        "samples": 8400,
+        "overTol": 0,
+        "maxErr_m": 2.3592239273284576e-16,
+        "worstAt": [
+          1000.214,
+          1005.821
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 8.673617379884035e-19,
+        "mesh": {
+          "samples": 401,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 9.814371537686384e-14
+        }
+      }
+    },
+    {
+      "id": "G1 unequal L / reversed winding",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              10,
+              0,
+              6
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 3,
+            "hipHi": 3
+          },
+          {
+            "rect": [
+              7,
+              10,
+              6,
+              14
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 1.5
+          }
+        ],
+        "k": 0.56,
+        "samples": 8400,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          0.314,
+          5.721
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0,
+        "mesh": {
+          "samples": 401,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.3322676295501878e-15
+        }
+      }
+    },
+    {
+      "id": "G1 T / as-is",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              11,
+              0,
+              5
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              3.5,
+              7.5,
+              5,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 8300,
+        "overTol": 0,
+        "maxErr_m": 2.7755575615628914e-16,
+        "worstAt": [
+          0.714,
+          4.321
+        ],
+        "nearBoundarySamples": 229,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 426,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "id": "G1 T / rot30°",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              11,
+              0,
+              5
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              3.5,
+              7.5,
+              5,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 8301,
+        "overTol": 0,
+        "maxErr_m": 1.3322676295501878e-15,
+        "worstAt": [
+          -0.255,
+          11.921
+        ],
+        "nearBoundarySamples": 228,
+        "nearBoundaryMaxErr_m": 1.1934897514720433e-15,
+        "mesh": {
+          "samples": 399,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 2.220446049250313e-15
+        }
+      }
+    },
+    {
+      "id": "G1 T / translated 1e3",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1000,
+              1011,
+              1000,
+              1005
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              1003.5,
+              1007.5,
+              1005,
+              1012
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 8300,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          1000.614,
+          1004.421
+        ],
+        "nearBoundarySamples": 229,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 426,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.1013412404281553e-13
+        }
+      }
+    },
+    {
+      "id": "G1 T / reversed winding",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              11,
+              0,
+              5
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              3.5,
+              7.5,
+              5,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 8300,
+        "overTol": 0,
+        "maxErr_m": 2.7755575615628914e-16,
+        "worstAt": [
+          0.714,
+          4.321
+        ],
+        "nearBoundarySamples": 229,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 426,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "id": "G1 U / as-is",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              11,
+              0,
+              5
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              0,
+              4,
+              5,
+              11
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              7,
+              11,
+              5,
+              11
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 10300,
+        "overTol": 0,
+        "maxErr_m": 2.7755575615628914e-16,
+        "worstAt": [
+          3.414,
+          4.321
+        ],
+        "nearBoundarySamples": 279,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 502,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "id": "G1 U / rot30°",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              11,
+              0,
+              5
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              0,
+              4,
+              5,
+              11
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              7,
+              11,
+              5,
+              11
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 10300,
+        "overTol": 0,
+        "maxErr_m": 1.2212453270876722e-15,
+        "worstAt": [
+          1.514,
+          13.021
+        ],
+        "nearBoundarySamples": 278,
+        "nearBoundaryMaxErr_m": 1.1937065919065404e-15,
+        "mesh": {
+          "samples": 495,
+          "gaps": 13,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [
+            [
+              -1.063,
+              2.091
+            ],
+            [
+              -0.633,
+              1.621
+            ],
+            [
+              -0.633,
+              2.091
+            ],
+            [
+              -0.203,
+              0.681
+            ],
+            [
+              -0.203,
+              1.151
+            ]
+          ],
+          "double": 0,
+          "maxErr_m": 3.1086244689504383e-15
+        }
+      }
+    },
+    {
+      "id": "G1 U / translated 1e3",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1000,
+              1011,
+              1000,
+              1005
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              1000,
+              1004,
+              1005,
+              1011
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              1007,
+              1011,
+              1005,
+              1011
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 10300,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          1001.514,
+          1002.521
+        ],
+        "nearBoundarySamples": 279,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 502,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.1013412404281553e-13
+        }
+      }
+    },
+    {
+      "id": "G1 U / reversed winding",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              11,
+              0,
+              5
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              0,
+              4,
+              5,
+              11
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              7,
+              11,
+              5,
+              11
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.672,
+        "samples": 10300,
+        "overTol": 0,
+        "maxErr_m": 2.7755575615628914e-16,
+        "worstAt": [
+          3.414,
+          4.321
+        ],
+        "nearBoundarySamples": 279,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 502,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "id": "G1 plus / as-is",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              12,
+              2,
+              7
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              4,
+              9,
+              7,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              4,
+              9,
+              0,
+              2
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.672,
+        "samples": 9500,
+        "overTol": 1025,
+        "maxErr_m": 1.344,
+        "worstAt": [
+          6.114,
+          2.021
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 462,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.3440000000000003
+        }
+      }
+    },
+    {
+      "id": "G1 plus / rot30°",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              12,
+              2,
+              7
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              4,
+              9,
+              7,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              4,
+              9,
+              0,
+              2
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.672,
+        "samples": 9500,
+        "overTol": 1025,
+        "maxErr_m": 1.3440000000000003,
+        "worstAt": [
+          4.414,
+          5.053
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 1.1969591984239969e-15,
+        "mesh": {
+          "samples": 456,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.3440000000000003
+        }
+      }
+    },
+    {
+      "id": "G1 plus / translated 1e3",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1000,
+              1012,
+              1002,
+              1007
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              1004,
+              1009,
+              1007,
+              1012
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              1004,
+              1009,
+              1000,
+              1002
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.672,
+        "samples": 9500,
+        "overTol": 1025,
+        "maxErr_m": 1.344,
+        "worstAt": [
+          1006.114,
+          1002.021
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 462,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.344000000000002
+        }
+      }
+    },
+    {
+      "id": "G1 plus / reversed winding",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              12,
+              2,
+              7
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2.5,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              4,
+              9,
+              7,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2.5
+          },
+          {
+            "rect": [
+              4,
+              9,
+              0,
+              2
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.672,
+        "samples": 9500,
+        "overTol": 1025,
+        "maxErr_m": 1.344,
+        "worstAt": [
+          6.114,
+          2.021
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 1.734723475976807e-18,
+        "mesh": {
+          "samples": 462,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.3440000000000003
+        }
+      }
+    },
+    {
+      "id": "G1 staircase / as-is",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "a wing would end in a step where it is the higher roof (wing 0 at 9.90, 8.00: 0.88 over 0.80)"
+      }
+    },
+    {
+      "id": "G1 staircase / rot30°",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "a wing would end in a step where it is the higher roof (wing 0 at 9.90, 8.00: 0.88 over 0.80)"
+      }
+    },
+    {
+      "id": "G1 staircase / translated 1e3",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "a wing would end in a step where it is the higher roof (wing 0 at 1009.90, 1008.00: 0.88 over 0.80)"
+      }
+    },
+    {
+      "id": "G1 staircase / reversed winding",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "a wing would end in a step where it is the higher roof (wing 0 at 9.90, 8.00: 0.88 over 0.80)"
+      }
+    },
+    {
+      "id": "G1 Z / as-is",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              8,
+              0,
+              4
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              4,
+              8,
+              4,
+              8
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              8,
+              12,
+              4,
+              8
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.8400000000000001,
+        "samples": 6400,
+        "overTol": 800,
+        "maxErr_m": 1.6507680000000144,
+        "worstAt": [
+          8.014,
+          6.021
+        ],
+        "nearBoundarySamples": 199,
+        "nearBoundaryMaxErr_m": 0.006216000000012373,
+        "mesh": {
+          "samples": 305,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.4515199999999968
+        }
+      }
+    },
+    {
+      "id": "G1 Z / rot30°",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              8,
+              0,
+              4
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              4,
+              8,
+              4,
+              8
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              8,
+              12,
+              4,
+              8
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.8400000000000001,
+        "samples": 6398,
+        "overTol": 799,
+        "maxErr_m": 1.6556876884417635,
+        "worstAt": [
+          3.914,
+          9.221
+        ],
+        "nearBoundarySamples": 199,
+        "nearBoundaryMaxErr_m": 7.494005416219807e-16,
+        "mesh": {
+          "samples": 306,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.4660843096852822
+        }
+      }
+    },
+    {
+      "id": "G1 Z / translated 1e3",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1000,
+              1008,
+              1000,
+              1004
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              1004,
+              1008,
+              1004,
+              1008
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              1008,
+              1012,
+              1004,
+              1008
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.8400000000000001,
+        "samples": 6400,
+        "overTol": 800,
+        "maxErr_m": 1.6507679999973108,
+        "worstAt": [
+          1008.014,
+          1006.021
+        ],
+        "nearBoundarySamples": 199,
+        "nearBoundaryMaxErr_m": 0.006215999999299131,
+        "mesh": {
+          "samples": 305,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.4515199999994848
+        }
+      }
+    },
+    {
+      "id": "G1 Z / reversed winding",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              0,
+              8,
+              0,
+              4
+            ],
+            "span": "v",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              4,
+              8,
+              4,
+              8
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "joined",
+              "hi": "exposed"
+            },
+            "hipLo": 0,
+            "hipHi": 2
+          },
+          {
+            "rect": [
+              8,
+              12,
+              4,
+              8
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 2,
+            "hipHi": 2
+          }
+        ],
+        "k": 0.8400000000000001,
+        "samples": 6400,
+        "overTol": 800,
+        "maxErr_m": 1.6507680000000144,
+        "worstAt": [
+          8.014,
+          6.021
+        ],
+        "nearBoundarySamples": 199,
+        "nearBoundaryMaxErr_m": 0.006216000000012373,
+        "mesh": {
+          "samples": 305,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.4515199999999968
+        }
+      }
+    },
+    {
+      "id": "G1 wide-stem T / as-is",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              2,
+              10,
+              0,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 4,
+            "hipHi": 4
+          },
+          {
+            "rect": [
+              0,
+              2,
+              0,
+              4
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          },
+          {
+            "rect": [
+              10,
+              12,
+              0,
+              4
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.42000000000000004,
+        "samples": 11200,
+        "overTol": 1400,
+        "maxErr_m": 0.825384000000008,
+        "worstAt": [
+          10.014,
+          2.021
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0.0031080000000081893,
+        "mesh": {
+          "samples": 530,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 0.7904400000000011
+        }
+      }
+    },
+    {
+      "id": "G1 wide-stem T / rot30°",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              2,
+              10,
+              0,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 4,
+            "hipHi": 4
+          },
+          {
+            "rect": [
+              0,
+              2,
+              0,
+              4
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          },
+          {
+            "rect": [
+              10,
+              12,
+              0,
+              4
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.42000000000000004,
+        "samples": 11201,
+        "overTol": 1401,
+        "maxErr_m": 0.8314875945394937,
+        "worstAt": [
+          7.646,
+          6.721
+        ],
+        "nearBoundarySamples": 240,
+        "nearBoundaryMaxErr_m": 0.01447077726193256,
+        "mesh": {
+          "samples": 544,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 0.7269758505380626
+        }
+      }
+    },
+    {
+      "id": "G1 wide-stem T / translated 1e3",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              1002,
+              1010,
+              1000,
+              1012
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 4,
+            "hipHi": 4
+          },
+          {
+            "rect": [
+              1000,
+              1002,
+              1000,
+              1004
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          },
+          {
+            "rect": [
+              1010,
+              1012,
+              1000,
+              1004
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.42000000000000004,
+        "samples": 11200,
+        "overTol": 1400,
+        "maxErr_m": 0.8253839999996103,
+        "worstAt": [
+          1002.014,
+          1002.021
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0.0031079999998405586,
+        "mesh": {
+          "samples": 530,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 0.7904400000004563
+        }
+      }
+    },
+    {
+      "id": "G1 wide-stem T / reversed winding",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "compound",
+        "wings": [
+          {
+            "rect": [
+              2,
+              10,
+              0,
+              12
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 4,
+            "hipHi": 4
+          },
+          {
+            "rect": [
+              0,
+              2,
+              0,
+              4
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          },
+          {
+            "rect": [
+              10,
+              12,
+              0,
+              4
+            ],
+            "span": "w",
+            "ends": {
+              "lo": "exposed",
+              "hi": "exposed"
+            },
+            "hipLo": 1,
+            "hipHi": 1
+          }
+        ],
+        "k": 0.42000000000000004,
+        "samples": 11200,
+        "overTol": 1400,
+        "maxErr_m": 0.825384000000008,
+        "worstAt": [
+          10.014,
+          2.021
+        ],
+        "nearBoundarySamples": 239,
+        "nearBoundaryMaxErr_m": 0.0031080000000081893,
+        "mesh": {
+          "samples": 530,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 0.7904400000000011
+        }
+      }
+    },
+    {
+      "id": "G1 slit courtyard / as-is",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "the plan needs 5 wings; at most 4 are supported"
+      }
+    },
+    {
+      "id": "G1 slit courtyard / rot30°",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "the plan needs 5 wings; at most 4 are supported"
+      }
+    },
+    {
+      "id": "G1 slit courtyard / translated 1e3",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "the plan needs 5 wings; at most 4 are supported"
+      }
+    },
+    {
+      "id": "G1 slit courtyard / reversed winding",
+      "verdict": "untested",
+      "expected": "untested",
+      "detail": {
+        "state": "unsupported",
+        "reason": "the plan needs 5 wings; at most 4 are supported"
+      }
+    },
+    {
+      "id": "G1 rectangle (control) / as-is",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "single",
+        "wings": null,
+        "k": 0.56,
+        "samples": 6000,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          2.014,
+          1.921
+        ],
+        "nearBoundarySamples": 159,
+        "nearBoundaryMaxErr_m": 0,
+        "mesh": {
+          "samples": 294,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 8.881784197001252e-16
+        }
+      }
+    },
+    {
+      "id": "G1 rectangle (control) / rot30°",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "single",
+        "wings": null,
+        "k": 0.56,
+        "samples": 6000,
+        "overTol": 0,
+        "maxErr_m": 2.3592239273284576e-16,
+        "worstAt": [
+          0.214,
+          11.321
+        ],
+        "nearBoundarySamples": 158,
+        "nearBoundaryMaxErr_m": 2.3245294578089215e-16,
+        "mesh": {
+          "samples": 289,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.7763568394002505e-15
+        }
+      }
+    },
+    {
+      "id": "G1 rectangle (control) / translated 1e3",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "state": "single",
+        "wings": null,
+        "k": 0.56,
+        "samples": 6000,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          1001.914,
+          1008.121
+        ],
+        "nearBoundarySamples": 159,
+        "nearBoundaryMaxErr_m": 8.673617379884035e-19,
+        "mesh": {
+          "samples": 294,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 1.4795200000002207
+        }
+      }
+    },
+    {
+      "id": "G1 rectangle (control) / reversed winding",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "state": "single",
+        "wings": null,
+        "k": 0.56,
+        "samples": 6000,
+        "overTol": 0,
+        "maxErr_m": 2.220446049250313e-16,
+        "worstAt": [
+          2.014,
+          1.921
+        ],
+        "nearBoundarySamples": 159,
+        "nearBoundaryMaxErr_m": 0,
+        "mesh": {
+          "samples": 294,
+          "gaps": 0,
+          "gapsOnTriangleEdges": 0,
+          "trueHoleSamples": [],
+          "double": 0,
+          "maxErr_m": 8.881784197001252e-16
+        }
+      }
+    },
+    {
+      "id": "G1.T single-span hipped mesh vs translation",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "rows": [
+          {
+            "translation_m": 0,
+            "meshMaxErr_m": 8.881784197001252e-16,
+            "localAt": [
+              1.427,
+              5.851,
+              1
+            ],
+            "triangles": 32
+          },
+          {
+            "translation_m": 10,
+            "meshMaxErr_m": 8.881784197001252e-16,
+            "localAt": [
+              1.857,
+              2.091,
+              1
+            ],
+            "triangles": 32
+          },
+          {
+            "translation_m": 100,
+            "meshMaxErr_m": 8.881784197001252e-16,
+            "localAt": [
+              1.427,
+              1.621,
+              1
+            ],
+            "triangles": 32
+          },
+          {
+            "translation_m": 300,
+            "meshMaxErr_m": 8.881784197001252e-16,
+            "localAt": [
+              1.427,
+              2.091,
+              1
+            ],
+            "triangles": 32
+          },
+          {
+            "translation_m": 1000,
+            "meshMaxErr_m": 1.4795200000002207,
+            "localAt": [
+              3.147,
+              0.211,
+              1
+            ],
+            "triangles": 24
+          }
+        ],
+        "failingTranslations": [
+          1000
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "probe": "p0-format5",
+  "node": "v26.7.0",
+  "source": "packages/layout-core @ HEAD",
+  "rows": [
+    {
+      "id": "P0.1 low ring inside hall accepted",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "components": 2,
+        "faces": 2,
+        "rooms": [
+          {
+            "roomId": "hall-room",
+            "floor": 0,
+            "ceiling": 4
+          },
+          {
+            "roomId": "ring-room",
+            "floor": 0,
+            "ceiling": 1
+          }
+        ],
+        "blockingIssues": [],
+        "floorSupportAt_4_4": [
+          {
+            "elevation": 0,
+            "witnesses": [
+              "hall-room",
+              "ring-room"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "P0.2 overlapping independent enclosures accepted",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "components": 2,
+        "faces": 2,
+        "rooms": [
+          [
+            "a-room",
+            0,
+            3
+          ],
+          [
+            "b-room",
+            0,
+            3
+          ]
+        ],
+        "blockingIssues": [],
+        "floorSupportAt_5_3": [
+          {
+            "elevation": 0,
+            "witnesses": [
+              "a-room",
+              "b-room"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "P0.3 one datum raise moves all walls",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "bottoms0": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "bottoms1": [
+          1.2,
+          1.2,
+          1.2,
+          1.2
+        ],
+        "compiledIdsStableUnderRaise": true,
+        "compiledIdsStableUnderFloorIdChange": false,
+        "sampleCompiledId": "3:13:physical-wall5:floor4:a-w0"
+      }
+    },
+    {
+      "id": "P0.4 collinear overlap across components accepted (3 m shared run, two solids)",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "components": 2,
+        "topologyIssue": null,
+        "compiledWalls": [
+          {
+            "id": "wa",
+            "x": [
+              -0.1,
+              6.1
+            ],
+            "y": [
+              0,
+              3
+            ]
+          },
+          {
+            "id": "wb",
+            "x": [
+              2.9,
+              9.1
+            ],
+            "y": [
+              0,
+              3
+            ]
+          }
+        ],
+        "blockingIssues": []
+      }
+    }
+  ]
+}

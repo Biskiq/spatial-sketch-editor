@@ -189,8 +189,8 @@ and nothing in this section is lifecycle or gate readiness.
   [convergence plan](./product-convergence-2026-10-21.md) covers focused research, reconciliation
   of product/design/architecture and the owning contract amendments, followed by the canonical
   roadmap/DAG and next-batch recommendation in the same PR. Step 1 records the scope/briefs and
-  [production hold](#production-implementation-hold); research execution, contract reconciliation
-  and DAG revision remain pending. Final owner review ratifies only selected decisions and may
+  [production hold](#production-implementation-hold); step 2 research has run (results in its
+  commission packets), while contract reconciliation and DAG revision remain pending. Final owner review ratifies only selected decisions and may
   explicitly authorize/release named scopes. No new gate readiness, milestone acceptance or
   implementation permission follows from this entry. P4 and T4 retain their deferrals.
 

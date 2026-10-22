@@ -115,7 +115,15 @@ rectangles, which is exactly what P3's wing envelope computes for equal-pitch hi
 | @proc-geo/core: skeleton vertices (str8 had) | 10 (10) | 10 (10) | 12 (**13**) | 15 (**14**) | 17 (17) |
 
 str8 degenerate cases: a 12×12 courtyard with a 4×4 hole worked (maximum height 2.000, correct). A collinear
-midpoint and 1e-12 noise both worked. **A hole sharing an edge with the outer ring returned `null`** with no
+midpoint and 1e-12 noise both worked.
+
+**Convergence correction, 2026-10-22 (vertical commission step 2, G1):** the equivalence between P3's wing
+envelope and the L∞ oracle holds only for L, unequal L, T, U and a rectangle. P3's greedy largest-first cover
+deviates by 1.344 m on this plus fixture, 1.651 m on a Z and 0.825 m on a wide-stem T. So "agrees by
+construction" (§5) is false in general, and a skeleton kernel would reshape those roofs. The P3 mesh's "0.000 m"
+also holds only when the frame is aligned and the coordinates are near the origin. Rotated and far-translated
+cases show real mesh holes. See the [vertical packet](./post-p01-roadmaps/convergence-2026-10-21/vertical-and-overhead.md)
+and its `probes/vertical/`. **A hole sharing an edge with the outer ring returned `null`** with no
 diagnostic: the touching-ring check only catches coincident vertices. StrandedKitty's build could not run in Node
 at all. @proc-geo/core exposes a graph, not faces. Its vertex counts disagree with CGAL on T and U; I did not
 adjudicate which is correct, and it is **not verified**.

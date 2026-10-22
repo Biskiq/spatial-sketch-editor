@@ -28,8 +28,9 @@ the single capability disposition ledger and RR question index; neither is a liv
 in PR #173: revise scope/briefs → independent research → product/design/architecture and contract
 reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
 The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
-includes previously authorized work. Step 1 does not launch research or amend contracts; later
-research results and reconciliation stay in this PR. Merging alone does not release implementation.
+includes previously authorized work. Step 2's research results (2026-10-22) are in the three
+packets indexed in §5; they amend no contract. Reconciliation stays in this PR. Merging alone does
+not release implementation.
 
 ## 1. Recommendation and independent assessment
 

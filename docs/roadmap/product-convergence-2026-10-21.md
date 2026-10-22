@@ -27,8 +27,11 @@ proceed within their commissioned step. Merging this PR alone does not release t
 | 4 — reconcile roadmap and DAG | Update the canonical cross-track DAG and affected roadmap/phase routes; re-derive the next batch and next slice to plan in each lane | Dependencies, concurrent lanes, provider prerequisites, shared-file ownership, near-term outcomes and planning triggers; detail only launch slices needed for immediate authorization |
 | 5 — owner review before merge | Record acceptance of selected architectural/design decisions and any selected batch authorization | Unaccepted commitments stay explicitly unresolved/deferred; only the owner ratifies changes or releases named implementation scopes |
 
-The remaining probe executions, contract reconciliation and DAG updates are **pending**, not
-results of step 1. Do not mark this PR ready merely because briefs and initial findings exist.
+**Step 2 executed 2026-10-22 at `ce9b7156`** (no inspected source changed from the baseline).
+Each packet records its probe ledger, corrections, proposed amendments, missing providers and
+next slice; its probes are reproducible under its `probes/` folder. Those are unreconciled
+researcher handoffs. Contract reconciliation and DAG updates (steps 3–4) remain **pending**.
+Do not mark this PR ready merely because briefs and research results exist.
 Keep results in their commission packets and fold their conclusions into this proposal and the
 existing owning documents. Avoid another synthesis ledger or parallel execution roadmap.
 
@@ -143,8 +146,9 @@ remains a T1 shell obligation, not an accepted solution or a reason to reopen th
 These three packets contain initial independent investigation and executable remaining questions.
 They consolidate RR-1–RR-6; they do not add three mandatory sequential research phases. Each can run
 from the recorded baseline, read only its listed inputs and return a bounded decision packet.
-Step 2 execution has not started under this revised scope. Record the actual source revision for
-each later run, and recheck only evidence affected by a changed baseline.
+Step 2 ran all three at `ce9b7156`; each packet names its run revision. Recheck only the
+evidence a later baseline change affects. The owner's P1 clarification (imported parts kept,
+annotated, and viewed standalone, in a Room or in a Guide) re-centred the capability packet.
 
 | Commission | First production consumer and decision | Required handoff |
 | --- | --- | --- |

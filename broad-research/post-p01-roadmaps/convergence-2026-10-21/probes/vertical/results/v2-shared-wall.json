@@ -1,0 +1,198 @@
+{
+  "probe": "v2-shared-wall",
+  "node": "v26.7.0",
+  "tolerance_m2": 1e-9,
+  "rows": [
+    {
+      "id": "V2.1S façade gap m² (rest, De=1.5)",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "gap0": 5,
+        "gap1": 6.499999999999999,
+        "handOracle": [
+          5,
+          6.5
+        ],
+        "overlap": [
+          0,
+          0
+        ],
+        "extraJunctions": 1,
+        "wallIds": [
+          "south.w",
+          "south.e"
+        ]
+      }
+    },
+    {
+      "id": "V2.1I façade gap m² (rest, De=1.5)",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "gap0": 5,
+        "gap1": 6.499999999999999,
+        "handOracle": [
+          5,
+          6.5
+        ],
+        "overlap": [
+          0,
+          0
+        ],
+        "extraJunctions": 0,
+        "wallIds": [
+          "south"
+        ]
+      }
+    },
+    {
+      "id": "V2.1U façade gap m² (rest, De=1.5)",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "gap0": 0,
+        "gap1": 0,
+        "handOracle": [
+          0,
+          0
+        ],
+        "overlap": [
+          0,
+          0
+        ],
+        "extraJunctions": 0,
+        "wallIds": [
+          "south"
+        ]
+      }
+    },
+    {
+      "id": "V2.1I-patched base De−1.2 closes at rest, reopens 1.5 m² after De move",
+      "verdict": "fail",
+      "expected": "fail",
+      "detail": {
+        "gap0": 0,
+        "gap1": 1.4999999999999991
+      }
+    },
+    {
+      "id": "V2.2 window across step",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "S.datumSill": {
+          "refused": "opening-spans-several-walls"
+        },
+        "S.hostBaseSill": {
+          "refused": "opening-spans-several-walls"
+        },
+        "I.datumSill": {
+          "ok": true
+        },
+        "I.hostBaseSill": {
+          "refused": "ambiguous-sill-reference"
+        },
+        "U.datumSill": {
+          "ok": true
+        },
+        "U.hostBaseSill": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "V2.3 door across the step refuses (slab edge)",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "U": {
+          "refused": "opening-intersects-slab"
+        },
+        "I": {
+          "refused": "opening-outside-solid"
+        },
+        "S": {
+          "refused": "opening-spans-several-walls"
+        }
+      }
+    },
+    {
+      "id": "V2.4 Dw raised 0.6: datum-sill window still valid under U",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "moved": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "V2.5 delete De",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "S": [
+          "south.e/all"
+        ],
+        "I": [
+          "south/ie"
+        ],
+        "U": [
+          "south/te"
+        ]
+      }
+    },
+    {
+      "id": "V2.6 stacked abutting Walls: no duplicate solid",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "overlap": 0
+      }
+    },
+    {
+      "id": "V2.7 stacked clashing Walls: duplicate solid detected (must refuse or be one Wall)",
+      "verdict": "refuse",
+      "expected": "refuse",
+      "detail": {
+        "overlap_m2": 3,
+        "handOracle": 3
+      }
+    },
+    {
+      "id": "V2.8I reverse: same section totals, same span ids",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "a": {
+          "gap": 5,
+          "overlap": 0,
+          "unresolved": []
+        },
+        "b": {
+          "gap": 5,
+          "overlap": 0,
+          "unresolved": []
+        }
+      }
+    },
+    {
+      "id": "V2.8U reverse: same section totals, same span ids",
+      "verdict": "pass",
+      "expected": "pass",
+      "detail": {
+        "a": {
+          "gap": 0,
+          "overlap": 0,
+          "unresolved": []
+        },
+        "b": {
+          "gap": 0,
+          "overlap": 0,
+          "unresolved": []
+        }
+      }
+    }
+  ]
+}

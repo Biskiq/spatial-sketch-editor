@@ -8,8 +8,12 @@ date: 2026-10-21
 # RR-4 — Relationships that survive revision
 
 **Round boundary, revised 2026-10-22:** follow the [convergence sequence](../../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence).
-This step revises the brief only; remaining research execution is pending. Keep its later results
-and decision handoff in PR #173, for combined contract and roadmap/DAG reconciliation. The
+Step 1 revised the brief only. **Step 2 executed at revision `ce9b7156`**; `git diff 78cafc3a ce9b7156 --stat`
+touches only `broad-research/` and `docs/` prose, so every inspected source is unchanged from the
+`78cafc3a` baseline. Results are in [Step 2 results](#step-2-results) and the
+[handoff](#handoff-to-the-convergence-lead); the sections before them keep the step 1 brief, with
+falsified findings corrected there rather than silently rewritten. Keep the decision handoff in
+PR #173, for combined contract and roadmap/DAG reconciliation. The
 [owner production hold](../../../docs/roadmap/README.md#production-implementation-hold) includes
 previously authorized work; neither a research result nor merge releases it.
 
@@ -35,8 +39,8 @@ Read the following sections/symbols first; expand only for a failed claim. Paths
 | `broad-research/research-6-unified-reconciliation.md` §§2.3, 4.2–4.3 | **Earlier evidence, not rerun here:** E2 reports exact curve arc-length mapping but missing published parametric correspondence and cold continuity. Its A1-first recommendation predates the accepted P2 direction. Its rejection of compound rebasing is a judgment, not an F.4 prohibition. |
 | `prototypes/p2-smart-wall/src/core/{types,RelationalSolver,WallSplineEngine}.ts`; `src/App.tsx` | **Source finding:** one sampled Catmull–Rom wall; meter/proportional/apex anchors and gap clusters; first cluster member controls anchor mode. `solveWallReshape` compresses positions when locked gaps cannot fit, while reporting a warning and offering resolutions. Snapshot UI uses local React state and random/time IDs, not the canonical acceptance seam. This proves a concrete interaction hypothesis, not cross-domain/cold persistence. |
 | `prototypes/p3-vellum/src/model/{types,runs,settle}.ts`, symbols `Tie`, `resolveTies`, `carryStanding`, `settle` | **Source finding:** explicit endpoint ties coexist with inferred carrying by footprint/height tests. Ties receive three ordered passes; missing hosts clear ties. Overheads follow maximum supporting Room top; loss of all Rooms clears `restsOn`. Room continuity uses overlap/order, dormant seeds and revival. These policies are prototype choices, not proof of convergence, ownership or durable repair. |
-| `packages/project-model/src/f4/types.ts` `CorrespondenceEntry`; `apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts` `invertCorrespondence`, `qualifyCorrespondence` | **Current source finding:** correspondence holds before/after semantic references and preserved/created/retired/replaced relation. It supplies no face orientation, interval map, ambiguity or parameter transport. Undo exchanges before/after pairs; that alone cannot invert a lossy many-to-one attachment migration. |
-| `packages/layout-core/src/layout-wall-chain.ts` `defaultChainAllocator`; `layout-wall-first-types.ts` `LayoutIdentityLedger` | **Current source finding:** default allocation checks currently occupied IDs, not lifetime tombstones. The ledger explicitly concerns presentation references; its cursor is not a canonical entity non-reuse guarantee. Caller-supplied IDs need a separate audit before claiming all accepted operations can re-mint IDs. |
+| `packages/project-model/src/f4/types.ts` `CorrespondenceEntry`; `apps/editor/src/lib/authoring/f4/acceptance-coordinator.ts` `invertCorrespondence`, `qualifyCorrespondence` | **Current source finding:** correspondence holds before/after semantic references and preserved/created/retired/replaced relation. It supplies no face orientation, interval map, ambiguity or parameter transport. Undo exchanges before/after pairs; that alone cannot invert a lossy many-to-one attachment migration. **Corrected in step 2 (Corr-1):** Undo restores the recorded whole-envelope state, so it does not depend on inverting correspondence. |
+| `packages/layout-core/src/layout-wall-chain.ts` `defaultChainAllocator`; `layout-wall-first-types.ts` `LayoutIdentityLedger` | **Current source finding:** default allocation checks currently occupied IDs, not lifetime tombstones. The ledger explicitly concerns presentation references; its cursor is not a canonical entity non-reuse guarantee. Caller-supplied IDs need a separate audit before claiming all accepted operations can re-mint IDs. **Audited in step 2 (Corr-3).** |
 
 **Known gap, not a newly established defect:** the older E2 numerical results and full production delete/recreate path have not been re-executed in this commission. Existing identity-pair correspondence supports selection; it does not establish persistent surface correspondence. Unit F.4 readiness does not discharge that missing domain obligation.
 
@@ -59,7 +63,7 @@ Sources verified for this packet; cited mechanisms are evidence for alternatives
 | C — acceptance-time compound rebase to ordinary world poses | Layout intent prepares Layout plus dependent Scene changes and accepts them together. Every accepted snapshot contains direct inspectable transforms; no read-time following graph for those poses. | Couples host edits to dependent planning/validation; larger change/undo results and dependency enumeration. Loses continued intent unless separately retained. Nevertheless valid F.4 architecture, and useful when policies rewrite bindings/poses; reject only with measured cost or a simpler complete model. |
 | D — bounded constraint composition, with optional general solver | A declared fixed-order equal-gap group can satisfy simultaneous requirements/preferences more coherently than sequential pushes. Cassowary supplies a real linear candidate. | Priority, tie-break, infeasibility, units, determinism and cycle semantics must be specified. General 3D/contact/topology solving is much larger and outside the active program; a successful linear spacing probe does not authorize it. |
 
-**Provisional recommendation (proposal):** offer independent placement (A0/A1) and deliberately attached following (B) as explicit intent, not a mandatory global mode. Favor B for accepted P2 attached objects. Permit C narrowly for binding transport or operations whose meaning is explicitly a coordinated rewrite. Prototype one bounded spacing group before choosing a solver; retain hard/soft distinctions even without a library. Do not make a universal graph, physics system or CAD constraint language a prerequisite.
+**Provisional recommendation (step 1 proposal; revised in [Step 2 results](#revised-alternatives-recommendation-and-falsifiers)):** offer independent placement (A0/A1) and deliberately attached following (B) as explicit intent, not a mandatory global mode. Favor B for accepted P2 attached objects. Permit C narrowly for binding transport or operations whose meaning is explicitly a coordinated rewrite. Prototype one bounded spacing group before choosing a solver; retain hard/soft distinctions even without a library. Do not make a universal graph, physics system or CAD constraint language a prerequisite.
 
 The earlier synthesis conflates **no continuous Scene pose rebasing** with **no cross-domain mutation ever needed**. A Layout shape edit can remain single-domain when a stable host identity still evaluates. A split retiring a referenced host needs either durable owner-provided correspondence resolution, stable component continuity, or an explicit F.4 binding migration. None may mutate a reference as a read effect. This boundary, rather than “B versus C” as exclusive platforms, is the consequential design decision.
 
@@ -76,7 +80,7 @@ The earlier synthesis conflates **no continuous Scene pose rebasing** with **no 
 
 ## Unexecuted probes — implementable oracles and stop boundaries
 
-No new probes or product tests were executed for this documentation packet. The commands below are reproducible baseline controls, **not** evidence of attachment readiness. From the repository root:
+Step 1 executed no probes. Step 2 executed Q1–Q3 and Q6 and deferred Q4, Q5 and Q7 with their triggers; see the [disposition ledger](#q1q7-disposition-ledger). The commands below are reproducible baseline controls, **not** evidence of attachment readiness. From the repository root:
 
 ```sh
 npm exec -w @portfolio/editor -- vitest run tests/lib/layout/layout-curve-split-primitives.test.ts tests/lib/layout/layout-dissolve-curves.test.ts tests/lib/authoring/f4-acceptance.test.ts
@@ -114,6 +118,216 @@ folds the chosen amendments and scheduling consequences into this same PR before
 
 Owner decisions are distinct: choose UX semantics (attached/independent, hard/preferred, repair/freeze/refusal); choose first supported host/edit families; accept the research recommendation; authorize any production consumer. T1 owns canonical identity/frame/correspondence and architectural validity; T2 owns Scene attachment/pose/spacing and repair; Camera and Experience owners choose their dependent consequences. Project coordination reviews composed validation/history and cold source closure. No track receives blanket scope from this packet.
 
-Current Scene planners declare `compound: false` in `packages/project-model/src/scene-planning/planners.ts`. A proposal for Layout/Scene binding migration must therefore name a jointly scoped intent, planner admission and integration owner before production work. Existing F4 unit acceptance is a reusable boundary, not that missing operation or authorization; the closed T2.P01 scope is not widened by this brief.
+Current Scene planners declare `compound: false` in `packages/project-model/src/scene-planning/planners.ts`. A proposal for Layout/Scene binding migration must therefore name a jointly scoped intent, planner admission and integration owner before production work. Existing F4 unit acceptance is a reusable boundary, not that missing operation or authorization; the closed T2.P01 scope is not widened by this brief. **Corrected in step 2 (Corr-2):** the compound *admission* provider is landed and live; the missing pieces are the joint operation, a Scene attachment format and per-planner scope enforcement.
 
 New persisted relationship shape or transport semantics goes through the owning domain contract plus [F extension/version negotiation](../../../docs/reference/composition-execution.md#extension-points-and-version-negotiation), with the [gate register](../../../docs/roadmap/README.md#gate-register) where an interface changes. New Layout support/geometry remains Layout-owned. A changed authoring surface follows [PLATE conformance](../../../docs/reference/design-system/editor-shell-and-visual-system.md#conformance-test-for-future-design); changed phase scope follows owner-authorized [bounded replanning](../../../docs/operations/README.md#bounded-replanning). Research completion does not ratify any sketch, reopen delivery, or authorize implementation.
+
+## Step 2 results
+
+Executed at `ce9b7156` with disposable probes in [`probes/rr4/`](./probes/rr4/README.md) (exact
+commands, isolation proof and raw output lines there). Baseline controls: editor 57/57 passed;
+P3 Vellum 17/17 passed. Probes: 4 files, 14/14 cases passed. The probe binding,
+evaluator and transport are **unratified probe constructs** composed only from exported
+`layout-core` primitives; their passing proves feasibility of the measured arithmetic, not a design.
+
+### Q1–Q7 disposition ledger
+
+| Probe | Disposition | Result (observed unless labelled) |
+| --- | --- | --- |
+| Q1 surface transport | **Executed** (`q1-transport.probe.ts`) | Straight 8 m Wall, panels at 1/3/6 m both sides, split at 4 m: world residual 0 m, facing dot 1. Canonical cubic Wall (L = 9.1347 m): split residual 1.04e-12 m; owner-resolved split distance differs from the request by 4.97e-13 m (within `CURVE_ARC_LENGTH_TOLERANCE` = 1e-6) and is **not returned** by `planWallSplit` — the probe reads it back as the retained fragment's owner arc length. Dissolve, forward survivor: 0 m. Dissolve, reversed survivor: 0 m straight / 4.4e-16 m curved **only with side transport**; keeping canonical `side` lands every panel on the opposite face (0.24 m = thickness + 2 × stand-off, facing dot −1). Footprint straddling the split: owner gives no answer for a Scene subject; the consumer must return review. Opening witness: the owner moved the Opening to `W-b` offset 1.5, identical to the consumer rule (panel `s` = 2), and the overlap was consumer-detected only; the owner refuses a split through an Opening interior but has no Scene-footprint equivalent. |
+| Q2 cold continuity | **Executed** (`q2-cold-continuity.probe.ts`), depth: one 4-edit chain, 4 bindings, JSON round trip, fresh evaluator | See [comparison](#evaluated-versus-rebased-cold-continuity). (ii) stable owner component identity: **blocked** — no owner identity survives split (`W` keeps `A→X`) or dissolve (one ID retires); missing interface: a Layout-owned run/component identity persisting across both. |
+| Q3 identity ABA | **Executed** (`q3-identity-aba.probe.ts`) | Default chain allocation: draw → delete → redraw re-mints `wall-chain-1`, both at identical geometry and at a different location. Identical redraw is **byte-identical**, so an F.1 `exact` reference to the original Layout content revision resolves the recreated Wall (`resolved`): content identity cannot detect this ABA. Occupancy noding: split at 4 → Undo → split at 6 re-mints `W-b` and `W-split` for a different interval ([4,8] vs [6,8]). Undo of a deletion restores the same subject at the same content revision (legitimate). P23.12 presentation ledger: with the document cursor as base, the undone Wall's token `W-7V24` is re-issued; only the in-memory session high-water base (`W-FJSK`) prevents it. Captured-nonce sketch: recreate and Undo-branch IDs differ; replay with the same nonce is identical. **Live path:** plinth placement captures `nextLayoutPresetObjectId` (occupancy), and `planCommitLayoutObjectPresetWithId` refuses any other captured ID (`invalid_value` for a nonce ID); create → Undo → create elsewhere re-mints `layout-object-1`. |
+| Q4 infeasible composition | **Deferred** | Trigger: the owner promises persistent hard or preferred spacing for the first mounted consumer. Solve-once placement and following do not need it; the 5.55 m vs 5.0 m arithmetic is trivial, the decision is semantic (hard/preferred, priority). |
+| Q5 support versus parenting | **Deferred** | Trigger: P3 architectural-support consumer opens (RR-1/RR-2 seam). |
+| Q6 atomic migration and history | **Executed** (`q6-atomic-migration.probe.ts`) on the live unit-host shape | All five probe planners register under `createUnitPlannerRegistry` (no refusals). Injections leave canonical JSON and history depth unchanged: stale R → `stale-revision`; throw after Layout preparation → `planner-rejected/planner-failed`; NaN Scene pose → `admission-refused/invalid-envelope`; unresolvable target → `unsupported-operation/unresolved-target`. **Persisting a binding is blocked**: an `attachment` field on a Scene entity is refused at `$.units.scene.data.entities[1].attachment` (Scene unit format 2 has no attachment). A compound Layout move + Scene pose rebase accepted once, changing exactly the `layout` and `scene` units. Split then many-to-one dissolve (captured IDs) accepted; three Undos restored each recorded state byte-exactly; Redo minted a fresh revision. **Scope gap:** a planner declaring the landed Scene admission (`domain: 'scene', compound: false`) that also moves a Wall is **accepted**, untargeted and Scene-targeted alike. Camera locked/assisted framing not exercised (Q7 trigger). |
+| Q7 dependency boundary | **Deferred** | Trigger: a claimed dependent capability (aimed light, assisted View) on an attached subject. Ordinary cycle rejection remains an obligation of any admitted family. |
+
+### Verified and corrected findings
+
+- **Verified:** correspondence is identity pairs only; `planWallSplit` returns
+  `{document, junctionId, createdWallIds, splitWallIds}` and `planDissolveJunction`
+  `{document, survivorWallId, retiredWallId, retiredJunctionId, createdKnotId?}`. Interval offsets
+  and orientation exist only inside the planners (Opening rebasing). They are **derivable** from
+  `(before, after, returned IDs)` plus owner arc length without nearest matching (Q1), but the
+  dissolve mirror rule then exists twice — a second-authority risk. Research 6's E2 arc-length
+  figure is consistent (4.6e-13 m then; 4.97e-13 m split-distance delta now, on a different curve).
+- **Verified:** no exported Wall face-frame query exists; the probe composes one from
+  `resolveWallCurveSplit` and `cubicBezierDerivative`.
+- **Corr-1 (correction):** step 1 said Undo "cannot invert a lossy many-to-one attachment migration".
+  `AuthoringHistory` stores accepted states and Undo reinstalls them (`acceptance-coordinator.ts`
+  `restore`); only the returned correspondence is inverted, as advisory data. Q6 measured exact
+  restoration. History is therefore not the risk; the risks are non-persisted transport and
+  references living outside the snapshot.
+- **Corr-2 (correction):** step 1 (and the convergence doc) framed `compound: false` in
+  `scene-planning/planners.ts` as the missing provider. `unit-acceptance-v1` is landed and live:
+  `createStageAcceptanceHost` builds `createUnitPlannerRegistry` (compound, units) with
+  `createUnitAcceptanceAdapter({ compound: true })`. A Layout+Scene planner can register today.
+  What is missing is the operation itself, a persistable Scene attachment, and enforcement:
+  the dispatcher checks a planner's `compound` against intent **targets**, while the adapter's
+  `validateChange` checks changed units only against the adapter-wide flag, so a planner's own
+  single-domain declaration is not enforced on its candidate (Q6). Research 6's "compound
+  acceptance arrives with the cutover" is likewise superseded.
+- **Corr-3 (audit, refines step 1):** no production F4 path creates, splits, dissolves or deletes a
+  Wall today (`adapters/layout/precision.ts` edits existing Walls). The live plinth path does
+  capture a Layout-object ID, but the capture is the occupancy ID and the planner refuses any
+  other, so production already re-mints Layout-object IDs after Undo; the exposure stays latent
+  only while no persisted reference names a Layout object (not exhaustively searched here).
+  Scene placement captures `entity-${crypto.randomUUID()}`. Every landed Wall-creating planner
+  falls back to occupancy allocation (`defaultChainAllocator`, `nodingAllocatorAdapter`), and
+  `promoteLayoutIdentity` has no production caller. C1 is therefore the first production
+  consumer of Layout identity allocation.
+- **Strengthened:** Research 6 named ID re-minting; Q3 adds that byte-identical recreation
+  defeats `exact` content qualification, that any allocator state stored inside the undoable
+  snapshot rewinds with Undo, and that the presentation cursor alone rewinds on reload.
+
+### Policy matrix for the selected first operations
+
+Proposal. "Attached" is the B-mig family below; "independent" is A0 (A1 adds diagnostics only).
+Reports use the ratified revision vocabulary.
+
+| Edit | Independent | Attached: authored effect | Attached: report |
+| --- | --- | --- | --- |
+| Wall shape edit (move, length, angle, curve) | Pose unchanged | Layout-only acceptance; pose re-evaluates at the same `(host, s, side)` | `recomputed`; `needs review` when out of span or over an Opening |
+| Split, footprint wholly on one fragment | Pose unchanged | One compound acceptance: bindings on `X→B` move to the new ID with `s − d` | `unchanged` (world pose preserved, Q1) |
+| Split through a footprint | Pose unchanged | Binding stays on the retained ID | `needs review` (re-pick, Detach) |
+| Dissolve, either survivor orientation | Pose unchanged | Compound: interval offset; reversed side flips and `s' = L − s` | `unchanged` |
+| Delete host | Pose unchanged | Layout-only; binding retained unresolved | `unresolved` (re-pick, Detach) |
+| Recreate at the same place | Pose unchanged | New ID; old binding stays unresolved — no revival | `unresolved` |
+| Opening inserted at contact | Pose unchanged | Layout-only; evaluates over-opening | `needs review` |
+| Undo / Redo / reload | Snapshot / stored pose | Exact snapshot; fresh revision; cold evaluation from Layout + binding | Same derived diagnostics |
+
+### Evaluated versus rebased cold continuity
+
+Measured on one chain (move `P` → split `Q` at 1.5 m → dissolve `X` with reversed survivor `P` →
+move `P`), four bindings, JSON round trip, fresh evaluator. Bytes are probe-shaped JSON, illustrative only.
+
+| Strategy | Scene records rewritten per edit (E1/E2/E3/E4) | Persisted after E4 | Cold result |
+| --- | --- | --- | --- |
+| B-mig: evaluated, bindings migrated in a topology acceptance | 0 / 1 / 3 / 0 | 317 B Scene | Poses agree, 0 m; equals in-session poses exactly |
+| B-lin: evaluated, never rewritten, Layout lineage | 0 / 0 / 0 / 0 | 313 B Scene + 179 B lineage (49 B split, 127 B dissolve; must snapshot geometry such as lengths) | 0 m; 2 fold steps per binding; **0 records compactable** while any binding names a retired ID |
+| C-pose without intent | 4 / 0 / 0 / — | 216 B | E4 leaves all 4 objects behind: following is lost |
+| C-pose with A1 provenance | 4 / 1 / 3 / 4 | 620 B (pose + binding) | 0 m, but transports bindings exactly like B-mig **and** rewrites poses |
+
+Findings: rebasing (C) moves the cost to shape edits (every move rewrites dependents) and still
+needs the same binding transport once intent is retained; B-lin keeps edits single-domain only by
+persisting Scene-motivated, uncompactable history in Layout. B-mig confines cross-domain work to
+the topology edits that retire or split a referenced host.
+
+### Unratified schema and operation sketch
+
+One pose authority: while `attachment` is present the evaluated pose is authoritative and the
+entity carries no writable world pose; Detach writes the evaluated pose and removes `attachment`.
+
+```ts
+// UNRATIFIED — Scene entity extension (needs F extension/version negotiation; Scene unit format 2 refuses it today)
+attachment?: {
+  host: SemanticReference;          // layout:wall, revision via dependency-lock context, layout-location
+  s: number;                        // meters from the host's canonical start, centreline arc length
+  side: 'left' | 'right';           // relative to the canonical start→end tangent
+  standoff: number;                 // meters from the face
+  footprint: { width: number; height: number; bottom: number };
+};
+// Unresolved state is DERIVED, never stored: host-missing | out-of-span | over-opening | frame-unavailable,
+// computed by the Scene evaluator from (binding, accepted Layout) with cause and affected identity.
+```
+
+Operations (unratified): `scene.attach-to-surface` and `scene.detach` / `scene.repick-host`
+(single-domain Scene, values captured from the owner frame query at the expected revision);
+`layout.split-wall` and `layout.dissolve-junction` gain compound variants that apply the
+owner-published transport to referencing bindings in one acceptance, returning wall and binding
+correspondence plus `needs review` diagnostics; `layout.delete-wall` stays Layout-only.
+
+### Revised alternatives, recommendation and falsifiers
+
+**Recommendation (proposal):** (1) Ship **A0 solve-once surface placement** first; it needs only
+an owner face-frame query and no relationship schema. (2) For deliberately attached content choose
+**B-mig**: evaluated attachment as the sole pose authority; shape edits stay single-domain Layout;
+a topology edit that retires or splits a referenced host is one compound acceptance applying
+owner-published transport; ambiguity stays a typed review on the original binding. (3) Every
+persisted cross-domain reference needs **non-reusing captured allocation** first.
+
+**Strongest rejected alternative: B-lin** (persisted lineage, never cross-domain). It is the only
+option that keeps every Layout edit single-domain, but its lineage is Scene-motivated history inside
+Layout, needs geometry snapshots and cannot compact without a global reference scan (Q2).
+**C-pose** stays the fallback if the owner declines a Scene attachment format: it is executable on
+landed formats today (Q6), but without retained intent it does not follow (Q2 E4).
+
+**Falsifiers:** prefer B-lin if topology edits must remain single-unit (for example, unit-partitioned
+concurrent writers). Prefer C-pose/A1 if creators do not want following, or if the attachment
+format is refused. B-mig fails for an edit family whose owner cannot publish a unique interval and
+orientation map; that family refuses following and returns review. Captured-nonce allocation fails
+if persistence later needs operation-independent IDs (for example, merging concurrent writers),
+which would require a persisted allocator outside undoable history.
+
+**Remaining owner calls:** attached versus independent as the default gesture; coordinate policy
+(start distance followed by the moved start Junction in Q2 E1, versus end, normalized or landmark);
+split-straddle policy (review versus keep on the retained fragment); hard versus preferred spacing
+(Q4); Layout ID policy for C1 (captured nonce versus persisted cursor outside history); A1-versus-B
+creator comparison (deliverable (e) remains **unexecuted**; no UX numbers are claimed).
+
+## Handoff to the convergence lead
+
+**Owning contract sections** (amend or retain; not edited here):
+
+| Location | Proposed amendment (one or two sentences) |
+| --- | --- |
+| `docs/reference/composition-execution.md` [§F.1 Identity and reference](../../../docs/reference/composition-execution.md#f1-identity-and-reference), "Stable internal IDs" | Amend: an allocated identity is never re-minted for a different subject within a project's lineage, including undone branches, saved revisions and byte-identical recreation; content identity is not continuity. |
+| Same file, [§F.4 Compound acceptance](../../../docs/reference/composition-execution.md#f4-compound-acceptance), step 1 and its current-implementation note | Amend: identity allocation is captured and non-reusing (no occupancy fallback in an accepted operation); acceptance enforces each planner's declared domain/compound scope against the units its candidate changes, not only against intent targets. |
+| Same file, [AM-4](../../../docs/reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | Retain: snapshot history already restores many-to-one migrations exactly (Q6). |
+| `docs/reference/architecture.md` [§Ownership](../../../docs/reference/architecture.md#ownership-current-source-of-truth), "Layout semantic mutation" | Amend: topology planners also return a transport record (input interval → output ID, offset, orientation) beside created/split lineage; restate that compound acceptance is landed and a Layout+Scene operation needs a registered joint planner, not a new admission provider. |
+| `docs/reference/components/scene-content.md` [§Validation and transform contract](../../../docs/reference/components/scene-content.md#validation-and-transform-contract-current), "Placement, transforms and attachment" | Amend when the owner selects B: attachment is a host reference plus surface parameters with the evaluated pose as sole authority, derived unresolved state and Detach capturing the pose; keep the destination label until cutover. |
+| `docs/reference/decisions/northstar-ratification-2026-09-27.md` §§Dependencies, invalidation, and deterministic evaluation; Representation, revision, and atomic authoring | Retain: the four report states and rebuildable reverse index map directly onto the policy matrix. |
+| `docs/roadmap/product-convergence-2026-10-21.md` §C1 "Implementation contract to finalize"; §Creative successors P2 row | Retain C1's no-recycling acceptance; add the allocation policy to its contract. Replace the P2 row's "planner admission" prerequisite with the joint planner, Scene attachment format and scope enforcement. |
+
+**Missing providers and dependency edges:**
+
+- **P-ID** (T1, with the F4 host capture): non-reusing captured Layout allocation, e.g. one captured
+  operation nonce prefixing each planner seed (`ID_PATTERN` admits it), including the live
+  Layout-object path (`nextLayoutPresetObjectId` / `planCommitLayoutObjectPresetWithId`). C1 ← P-ID;
+  every persisted cross-domain reference to Layout ← P-ID.
+- **P-FRAME** (T1): `wallSurfaceFrameAt(wall, s, side)` with occupied intervals (Openings).
+  A0 surface placement ← P-FRAME; B ← P-FRAME.
+- **P-TRANSPORT** (T1): split/dissolve results publish the interval/orientation map they already compute.
+  B-mig joint planners ← P-TRANSPORT.
+- **P-SCOPE** (owner of `unit-acceptance-v1`): enforce per-planner changed-unit scope. Any registered
+  Layout+Scene planner ← P-SCOPE (a small provider fix; report only, not made here).
+- **P-SCENE-ATTACH** (T2, F extension/version negotiation, gate register): Scene attachment format.
+  B-mig ← P-SCENE-ATTACH ← owner choice of B.
+- **P-JOINT** (T2 lead, T1 support, named integration owner): compound split/dissolve-with-bindings
+  planners. ← P-TRANSPORT, P-SCOPE, P-SCENE-ATTACH, P-ID.
+
+**First-wave dependency changes:** C1 need not wait for a separate provider slice, but **its scope
+grows**: it must choose and land P-ID and always pass the captured allocator, with Q3-style guards
+(delete/recreate, Undo branch, reload); otherwise its divide and delete operations recreate exactly
+the measured ABA. C2 (own GLB) has no RR-4 dependency; its instances already use captured random
+IDs. T3 capture/Preview has no RR-4 dependency; Camera framing of attached subjects stays behind Q7.
+
+**Next consuming slice to plan:** T2 lead with T1 support — *Wall-surface solve-once placement*:
+place a finite-footprint panel on a straight or canonical curved Wall face, refuse Opening overlap,
+no persisted relationship. Prerequisites: P-FRAME; P-ID wherever it creates Layout identity.
+Planning trigger for attached composition: owner selects B and its semantics, then P-SCENE-ATTACH,
+P-TRANSPORT and P-SCOPE.
+
+**Explicit uncertainties:** Q2 covers one chain and four bindings; T-junction noding, X crossings,
+curve edits, Room merges and level qualification are untested. B-mig migration cost grows with
+bindings per retired host and is unmeasured at scale. Captured-nonce allocation is a sketch with no
+persistence or concurrency review. The face frame uses centreline arc length; face-length effects on
+curves are a coordinate-policy call. Creator preference is unmeasured.
+
+**Cross-seam — owner-qualified support/correspondence (RR-1/RR-2):** a binding's host reference must
+carry level/structure `layout-location`; the unit resolver currently answers the single floor. Level,
+datum and overhead identities need the same P-ID non-reuse. Vertical edits that retire or split a
+supporting element need the same owner transport shape (interval → output ID, orientation) or an
+explicit review.
+
+**Cross-seam — capability identity/revision (RR-3/5/6), including the owner's P1 clarification**
+(imported parts annotated once, reused standalone, in a Room or in a Guide): Q3's non-reuse finding
+applies **equally** to part-qualified references (`componentId`, `capabilityId` on a placed instance's
+resource). Component IDs derived from node names, indices or occupancy would recur across resource
+revisions; an `exact` resource revision then fails safe, but a dependency-lock reference that follows
+a new pin silently retargets. Byte-identical re-upload legitimately yields the same revision. Q1/Q2
+transport (arc intervals, orientation, side flip, split/dissolve) is **Layout-specific**. Part
+correspondence across resource revisions is a discrete preserved/retired/replaced map produced at
+re-import admission, which the in-acceptance, unpersisted `CorrespondenceEntry` does not cover.
+Migrating annotations on a resource revision is compound plus resource staging, which the live Stage
+host does not grant. Q6's exact snapshot Undo and the scope gap apply unchanged.

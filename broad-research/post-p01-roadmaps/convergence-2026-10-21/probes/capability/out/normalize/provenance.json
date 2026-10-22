@@ -1,0 +1,14 @@
+{
+  "tool": "@gltf-transform/cli",
+  "toolVersionExpected": "4.4.1",
+  "toolVersionActual": "4.4.1",
+  "recipe": "furniture-floor",
+  "recipeVersion": 1,
+  "recipeHash": "f1d3129a05173534f2c81683048bc705dd99cc7fedc9e409c4a1cbad6a48a6eb",
+  "steps": ["prune", "dedup", "center --pivot below"],
+  "sourceUnitPolicy": "recorded-not-baked",
+  "unitScaleToMeters": 1,
+  "sourceSha256": "48a24ffc4a6d2798022e4ae9015da8eb0948460b53b8eba0dad6412c91998bee",
+  "contentSha256": "4b48926365cbf3202ce714f13dc4f8e5f4413e65ab3b569684c64926e23b24af",
+  "input": "broad-research/post-p01-roadmaps/convergence-2026-10-21/probes/capability/fixtures/part-specimen.glb"
+}
