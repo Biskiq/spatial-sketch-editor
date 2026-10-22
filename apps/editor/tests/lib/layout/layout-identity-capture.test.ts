@@ -87,10 +87,33 @@ describe('T1.P02.S01 §1 — captured identity guards', () => {
 		expect(rebuilt.kind).toBe('success');
 		if (rebuilt.kind !== 'success') return;
 		expect(rebuilt.createdWallIds).not.toContain(deletedWallId);
-		expect(rebuilt.createdJunctionIds).not.toContain(deletedStart);
-		expect(rebuilt.createdJunctionIds).not.toContain(deletedEnd);
+		// The snapped endpoints are the SURVIVING Junctions, so reuse is the correct
+		// outcome here and the assertion says that rather than pretending to test a
+		// mint. The mint is tested by the no-snap rebuild below.
+		expect(rebuilt.createdJunctionIds).toEqual([]);
+		expect(rebuilt.document.junctions.map((junction) => junction.id)).toEqual(
+			expect.arrayContaining([deletedStart, deletedEnd])
+		);
 		expect(rebuilt.document.rooms).toHaveLength(1);
 		expect(rebuilt.document.rooms[0]!.id).not.toBe(roomId);
+
+		// The same gap rebuilt WITHOUT snaps: independent placement mints both
+		// endpoints, so the minted ids can actually be compared with the deleted
+		// ones (they are the same coordinates, never the same identities).
+		const rebuiltGap = gap(deleted.document, deletedStart, deletedEnd);
+		const minted = planWallSegment({
+			baseline: deleted.document,
+			start: rebuiltGap.start,
+			end: rebuiltGap.end,
+			capture: freshCapture()
+		});
+		expect(minted.kind).toBe('success');
+		if (minted.kind !== 'success') return;
+		expect(minted.createdJunctionIds.length).toBeGreaterThan(0);
+		for (const id of minted.createdJunctionIds) {
+			expect([deletedStart, deletedEnd], 'a minted Junction reuses a deleted id').not.toContain(id);
+		}
+		expect(minted.createdWallIds).not.toContain(deletedWallId);
 
 		// An Opening deleted and recreated on the rebuilt Wall also receives a new id.
 		const wallId = rebuilt.createdWallIds[0]!;

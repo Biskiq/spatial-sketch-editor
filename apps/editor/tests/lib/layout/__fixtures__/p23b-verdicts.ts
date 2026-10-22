@@ -7,7 +7,9 @@
  * shipped codec/topology/compiler verdict.
  *
  * The values were transcribed from the P23B measurement ledger document under
- * the P23B roadmap when the suite stopped reading it (plan §7.6 area 4), so that
+ * the P23B roadmap when the suite stopped reading it (plan §7.6 area 4) — the 12
+ * `canonicalSha256` digests excepted, because the format-6 cutover re-shaped what
+ * they hash; see the note at the end of this header — so that
  * its measurement provenance — machine, browser session, sampling, commit, date
  * and the class/role bookkeeping that belongs to a recorded measurement — is no
  * longer part of any test. WP4 may now delete that document, and no test under

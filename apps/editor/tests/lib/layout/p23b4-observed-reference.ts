@@ -22,8 +22,8 @@
  * `role` (plan §2), so the canonical document an accepted planner returns lost
  * that field. The planner verdict digest hashes that document, so 15 of the 19
  * fixtures moved; the four early-reject fixtures are unchanged because their
- * digest hashes the rejection message instead. Nothing above was overwritten —
- * every `planner` row and every moved `plannerVerdict` still records the
+ * digest hashes the rejection message instead. Nothing in this table was
+ * overwritten: every `planner` row and every `plannerVerdict` below is the
  * pre-optimization observation. The post-change values live in
  * `PLANNER_VERDICT_EXPECTATION` below, and the historical test asserts the live
  * value equals it while pinning the 15-row delta, so a history column can never

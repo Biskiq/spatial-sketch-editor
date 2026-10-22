@@ -154,6 +154,25 @@ describe('P23.5 small architectural preset set', () => {
 		expect(second.capturedObjectId).not.toBe(first.capturedObjectId);
 	});
 
+	it('a deleted preset object is never reused when the same placement is replaced', () => {
+		// Acceptance criterion 1 on the plinth path: the allocator's seed is
+		// occupancy-shaped (`layout-object-N`), so after a deletion the capture is
+		// the only thing between the author and a recycled identity. Delete then
+		// place at the SAME point, and the object id must still be new.
+		const first = planPreset(emptyDocument(), 'column', [2, 2]);
+		if (first.plan.kind !== 'success') throw new Error('first commit rejected');
+		const deleted = planDeleteLayoutObject(first.plan.document, first.capturedObjectId);
+		if (deleted.kind !== 'success') throw new Error('delete rejected');
+		expect(deleted.document.objects).toHaveLength(0);
+
+		const replaced = planPreset(deleted.document, 'column', [2, 2]);
+		if (replaced.plan.kind !== 'success') throw new Error('replace commit rejected');
+		expect(replaced.capturedObjectId).not.toBe(first.capturedObjectId);
+		expect(replaced.plan.document.objects.map((object) => object.id)).toEqual([
+			replaced.capturedObjectId
+		]);
+	});
+
 	it('rejects unknown presets, non-finite points and non-finite elevations', () => {
 		const unknown = planPreset(
 			emptyDocument(),

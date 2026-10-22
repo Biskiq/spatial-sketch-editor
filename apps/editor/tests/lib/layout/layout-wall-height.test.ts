@@ -341,6 +341,28 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		expect('height' in layoutCore.createEmptyWallFirstLayoutDocument().floor).toBe(false);
 	});
 
+	it('rejects a Wall that still carries the retired authored role', () => {
+		// Format 6 removed the field, so a payload carrying it is `unknown_key`, not
+		// a tolerated extra: no reader can keep a dual vocabulary alive. Pinned here
+		// because re-adding `role` to the codec's Wall keys would otherwise pass
+		// every test silently (a format-5 payload still refuses on its version).
+		const canonical = rectangleDocument();
+		const withRole = {
+			...canonical,
+			walls: canonical.walls.map((wall) => ({ ...wall, role: 'boundary' }))
+		};
+		const result = validateWallFirstLayoutDocument(withRole);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(
+			result.issues.some(
+				(issue) => issue.code === 'unknown_key' && String(issue.path).endsWith('.role')
+			)
+		).toBe(true);
+		// And the canonical writer never re-emits one.
+		expect(serializeWallFirstLayoutDocument(rectangleDocument())).not.toContain('"role"');
+	});
+
 	it('exposes no historical v4 decoder, normalizer or version constant', () => {
 		// A regression guard for the policy itself: re-adding a `4` path means
 		// re-adding these names and failing here first.

@@ -85,8 +85,16 @@ describe('P23B.11 S2 — the properties the S3 differential reads', () => {
 		// still forbids an UNEXPLAINED mismatch: every other planned row must
 		// reproduce the planner's document, and the exception is named here.
 		const DELETION_EXCEPTION = 'f-d12-full-containment-mirror-role-change';
+		// The three rows whose case runs no planner pass, pinned BY NAME: `null`
+		// removes a row from `planned`, so an unnamed null would be a way to widen
+		// the exemption above silently. A fourth null fails here.
+		expect(liveRows.filter((row) => row.fidelity === null).map((row) => row.id)).toEqual([
+			'e-exact-coincidence-collinear-chain',
+			'f-d12-whole-boundary-replacement',
+			'h-connected-shared-run-junction-move'
+		]);
 		const planned = liveRows.filter((row) => row.fidelity !== null);
-		expect(planned.length).toBeGreaterThanOrEqual(18);
+		expect(planned).toHaveLength(21);
 		for (const row of planned) {
 			if (row.id === DELETION_EXCEPTION) {
 				expect(row.fidelity, `${row.id} records the deletion-pruning exception`).toBe(false);

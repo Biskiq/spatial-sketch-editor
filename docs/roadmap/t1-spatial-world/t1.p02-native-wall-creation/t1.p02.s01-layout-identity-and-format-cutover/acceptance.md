@@ -13,8 +13,9 @@ reviewed or accepted, so it claims no gate state, no capability entry and no acc
 the phase's final gate either — the deferred exhaustive proof routes to
 [`T1.P02.S04`](../t1.p02.s04-integrated-final-gate/acceptance.md).
 
-The command counts below are the committed tree's, each lane re-run after the last edit of the
-commit that carries this record.
+The command counts below describe the tree that carries this record: the cutover commit `8edc6487`
+plus the review-pass commit that lands this text, each lane re-run after the review pass's last
+edit.
 
 ## Stop-and-report: legacy Layout type retirement (§3)
 
@@ -128,7 +129,9 @@ by an undo/redo cycle, and a shape no operation can produce has no such cycle.
 curve-authoring slice must take a capture there and derive `{n}` from the operation's nonce before
 that intent ships. Counting occupancy re-mints a `{wallId}:knot:{n}` an earlier operation already
 retired, which a captured tombstone would then refuse — the exact defect §1 removes for Walls,
-Openings, Objects and Rooms.
+Openings, Objects and Rooms. The condition is enforced by
+`apps/editor/tests/lib/layout/layout-identity-boundary.test.ts` in the arch lane: it fails if editor or
+project-model source references either allocator or the curve/dissolve planners that call them.
 
 ## Verification evidence
 
@@ -146,66 +149,99 @@ the API admits Layout units through the shared package.
 | `npm run check:layout-core` | clean (`tsc --noEmit`) |
 | `npm run check:project-model` | clean (`tsc --noEmit`) |
 | `npm run check:api` | clean (`tsc --noEmit`) |
-| `npm run test:fast` | 143 files, 1952 tests passed |
+| `npm run test:fast` | 143 files, 1954 tests passed |
 | `npm run test:heavy` | 9 files, 124 tests passed |
-| `npm run test:arch` | 21 files, 172 tests passed |
-| `npm test` (full suite) | 173 files, 2248 tests passed |
+| `npm run test:arch` | 22 files, 173 tests passed |
+| `npm test` (full suite) | 174 files, 2251 tests passed |
 | `npm run test:api` | 11 files, 80 tests passed, 0 skipped (DB target `postgresql://localhost:5432/biskiq`, the default the API suites declare) |
 
 The full suite is required, not optional: `apps/editor/test-lanes.ts` and
 `apps/editor/tests/helpers/angled-plan-fixtures.ts` are in the change set, and
 [the tests README's change-impact table](../../../../../apps/editor/tests/README.md#what-a-change-requires)
 requires every lane such a change reaches plus the full suite at acceptance. `test:fast`,
-`test:heavy` and `test:arch` sum exactly to the full suite (143 + 9 + 21 = 173 files; 1952 + 124 +
-172 = 2248 tests), so no test sits outside a lane.
+`test:heavy` and `test:arch` sum exactly to the full suite (143 + 9 + 22 = 174 files; 1954 + 124 +
+173 = 2251 tests), so no test sits outside a lane.
 
 ## What the plan asked, and what proves it
 
 **§1 — captured, non-reusing identity.**
 
 - One capture per operation, minted outside the document (`packages/layout-core/src/layout-id-capture.ts`),
-  with every planner-reachable layout id derived from it. Proven by
-  `apps/editor/tests/lib/layout/layout-identity-capture.test.ts` (5 tests, all five guards from
-  acceptance criterion 1): delete then recreate a Wall, an Opening and a Room-birthing chain with no
-  identity returning; Undo then a different edit cannot recycle an id while replaying returns the
-  captured ids; save/reload/edit neither refuses nor reuses a captured id; a byte-identical
-  recreation still gets a new id; and occupancy *refuses* a captured id instead of suffixing it.
+  with every layout id an **accepted operation can create** derived from it. Proven by
+  `apps/editor/tests/lib/layout/layout-identity-capture.test.ts` (5 tests covering all five guards
+  from acceptance criterion 1): delete then recreate a Wall, an Opening and a Room-birthing chain
+  with no identity returning; Undo then a different edit cannot recycle an id while replaying
+  returns the captured ids; save/reload/edit neither refuses nor reuses a captured id; a
+  byte-identical recreation still gets a new id; and occupancy *refuses* a captured id instead of
+  suffixing it. The recreate step now also rebuilds the same gap *without* snaps, so the Junction
+  ids it mints are genuinely compared with the deleted ones — the snapped rebuild reuses the
+  surviving endpoints, and that is asserted as reuse rather than as a missed mint.
 - The plinth path moves to the same capture: `nextLayoutPresetObjectId` derives the id and
   `planCommitLayoutObjectPresetWithId` refuses any disagreement between captured and derived id
   (`packages/layout-core/src/layout-preset-explicit.ts`), exercised by `layout-presets.test.ts`,
   `layout-precision-adapter.test.ts`, `scene-operation-acceptance.test.ts` and
-  `unit-acceptance-conformance.test.ts`.
-- The working level is an explicit captured intent input on the adapter path
-  (`readLayoutWorkingLevel` in the Layout precision adapter), which refuses when the captured
-  `levelId` is not the accepted Layout floor; the retained planners then read `document.floor`,
-  whose `id` stays stable.
+  `unit-acceptance-conformance.test.ts`. `layout-presets.test.ts` also deletes a placed preset and
+  re-places it at the same point, because that allocator's seed is occupancy-shaped
+  (`layout-object-N`) and only the capture prevents a recycled identity there.
+- The working level is an explicit captured intent input (`readLayoutWorkingLevel`,
+  `packages/layout-core/src/layout-id-capture.ts`), which the Layout precision adapter enforces by
+  refusing when the captured `levelId` is not the accepted Layout floor; the retained planners then
+  read `document.floor`, whose `id` stays stable.
+- The stale-capture guarantee does not rest on the nonce alone: an accepted edit moves the revision,
+  and the acceptance coordinator refuses `stale-revision` before any planner runs, so a captured id
+  from a superseded state cannot be replayed onto a newer document. Two id paths stay outside the
+  capture by design and are named in the §1 scope section: `planDissolveJunction`'s curve knot, and
+  `planCreateWallFirstOpening`'s optional caller-supplied `intent.id` (snapshot restore/import). The
+  starter gallery's fixed `'starter-template'` nonce is the third, plan-sanctioned exception: template
+  boot is deterministic by design and nonce-suffixed ids cannot collide with it.
+- The condition that keeps the two occupancy allocators harmless is enforced, not remembered:
+  `apps/editor/tests/lib/layout/layout-identity-boundary.test.ts` (arch lane) fails if
+  `apps/editor/src` or `packages/project-model/src` ever references `nextWallCurveKnotId`,
+  `nextInteriorAnchorId` or any of the curve/dissolve planners that call them.
 
 **§2 — format 6 with a derived Wall role.**
 
 - `LAYOUT_WALL_FIRST_FORMAT_VERSION = 6` and `KNOWN_LAYOUT_FORMAT_VERSIONS = [6]`
   (`packages/layout-core/src/layout-wall-first-types.ts`), so every other version fails
   `unsupported_format_version` rather than negotiating.
-- The derived role is compiled from face membership (`packages/layout-core/src/layout-wall-role.ts`,
-  `layout-face-extraction.ts`), the authored field is gone from the Wall shape and codec keys, and
-  `planWallRoleChange` / `planPartitionToBoundaryRoomBirth` are retired with no remaining reference.
+- The derived role comes from Room boundary membership as the reconciled document carries it
+  (`layoutWallRoomMemberships`, `packages/layout-core/src/layout-wall-role.ts`); face extraction is
+  the reason those boundaries are the reconciled faces, not a second authority the role reads. The
+  authored field is gone from the Wall shape and codec keys — a payload that still carries `role`
+  fails as `unknown_key`, pinned in `layout-wall-height.test.ts` — and `planWallRoleChange` /
+  `planPartitionToBoundaryRoomBirth` are retired with no code reference (two comments still name the
+  old planner by history).
 - The pre/post differential holds: `t1s01-format6-differential.test.ts` compiles the six CLASS 5
-  matrix fixtures and compares a role- and cacheKey-neutral digest against values recorded from the
+  matrix fixtures and compares a neutral digest against values the header records as taken from the
   base revision `55683981` (format-5 code), while asserting the derived role is `bounding` and every
-  portal relation stays admitted. This is the acceptance criterion 2 differential; it is a
-  whole-table kernel comparison, so it is a `heavy` file (`apps/editor/test-lanes.ts`) and runs in
-  the heavy lane recorded above.
-- Strict format (criterion 3): the refusal is pinned in both readers — the wall-first codec and
-  `packages/project-model/src/units/validate.ts`, which validates a Layout payload through the codec —
-  and the API Save path is covered by `apps/api/tests/save-units.test.mjs` in the `test:api` run
-  above.
+  portal relation stays admitted. What the digest excludes is deliberate and worth reading: `role`
+  everywhere, and `cacheKey` because the Junction key embeds the role vocabulary. It is a regression
+  guard whose expected values cannot be re-derived in-tree, not independent proof of the base
+  revision's output. It is a whole-table kernel comparison, so it is a `heavy` file
+  (`apps/editor/test-lanes.ts`) and runs in the heavy lane recorded above.
+- Format 6's regeneration scope is covered: the starter gallery's fixed template ids
+  (`apps/editor/src/lib/authoring/stage/starter-gallery.ts`), the curved-correspondence fixture
+  (`apps/editor/tests/lib/layout/fixtures/curved-correspondence-repro.json`) and the affected suites
+  are in the change set, and the fast/heavy lanes exercise them.
+- Strict format (criterion 3): the version refusal is pinned at the shared reader and the editor
+  admission path — `layout-wall-height.test.ts` (codec, by name, pure read) and
+  `stage-source-admission.test.ts` (a Layout unit at `LAYOUT_WALL_FIRST_FORMAT_VERSION - 1`, i.e.
+  format 5, refused through both `validateProjectEnvelope` and editor admission). The API Save path
+  goes through the same `packages/project-model/src/units/validate.ts` reader and therefore inherits
+  the refusal, but **no API-level test asserts a format-5 Layout refusal**: `save-units.test.mjs`
+  proves the transaction and envelope contract, not the payload version. That gap is stated rather
+  than papered over.
 
 **§3 — legacy Layout type retirement.** Not implemented: filed as a stop-and-report below, with the
 five blocking findings and the successor slice's scope.
 
 **Criterion 4 — kernel invariants** are the heavy lane (9 files, 124 tests) plus the layout contracts
-in the fast lane, all green with fixtures moved to format 6 and no assertion weakened: the two frozen
-reference tables were re-frozen as recorded findings (see the evidence-integrity deviation below),
-and their tests now pin the delta rather than absorbing it.
+in the fast lane, green with the fixtures moved to format 6. No assertion was weakened where it
+matters: the freeze test still asserts full per-row equality, the moved columns are pinned by exact
+delta lists, and the OR-1 table's one-time re-emission is declared as an exception whose base-revision
+comparison is recorded (see the evidence-integrity deviation below). One reference table was
+re-emitted (OR-1); the P23B.4 table was **restored**, not re-frozen, with a separate expectation
+column carrying its format-6 delta.
 
 **Criterion 5 — no behaviour change for creators** is evidenced by the authoring journeys in the fast
 lane (precision, manipulation, plinth, Scene placement, Save, Undo/Redo) and by the format-6
@@ -219,19 +255,29 @@ stays open and is listed under outstanding obligations.
 1. **§3 stop-and-report** — the legacy retirement is larger than this slice and becomes its own
    authorized slice before S02. See the five blockers and the successor scope above.
 2. **Two allocators stay occupancy-derived** — `nextWallCurveKnotId` and `nextInteriorAnchorId`, with
-   the unreachability evidence and the retirement condition in the §1 scope section above.
-3. **A frozen reference was re-frozen as a recorded finding** — the OR-1 correspondence table
-   (`p23b11-correspondence-reference.ts`) moved because captured identity changes ids; every moved
-   row is enumerated with its justification in that module's header, and a nonce-locality property
-   in its test now proves that a different nonce moves identity-bearing content only. The P23B.4
-   observed reference keeps its pre-optimization columns untouched and records the format-6 verdict
-   delta in a separate expectation table with an exact moved-row list
-   (`p23b4-consumer-observations.test.ts`); the P23B verdict fixture says where its 12 re-derived
-   digests came from. This is the one place a reviewer should look hardest: a reference that silently
-   becomes a snapshot of the code under test stops being evidence.
+   the unreachability evidence and the retirement condition in the §1 scope section above. That
+   condition is now enforced by an arch boundary test, so a future caller fails the lane instead of
+   inheriting the hole. Two further id paths are named in that section: dissolve's curve knot (the
+   planner already threads a capture but mints this knot from occupancy) and the Opening intent's
+   optional caller-supplied id.
+3. **One frozen table was re-emitted, one was restored** — the OR-1 correspondence table
+   (`p23b11-correspondence-reference.ts`) was re-emitted once at the cutover, because captured
+   identity changes every planner-minted id. That is a declared exception to the module's own
+   "never regenerate over changed code" rule: the module states the exception, then records the
+   field-by-field comparison of all 24 rows against base revision `55683981` (9 rows identity-only,
+   2 lineage-order, 1 fidelity flip, 15 unchanged apart from trailing commas), and a nonce-locality
+   property in the test proves a different nonce moves identity-bearing content only. The P23B.4
+   observed reference was **restored**, not re-frozen: its pre-optimization columns are back
+   byte-identical to `HEAD` and the format-6 verdicts live in a separate expectation column with an
+   exact 15-row delta test (`p23b4-consumer-observations.test.ts`). The P23B verdict fixture says
+   where its 12 re-derived digests came from. This is the one place a reviewer should look hardest: a
+   reference that silently becomes a snapshot of the code under test stops being evidence.
 4. **The working level is enforced at the intent seam**, not as a new parameter on every planner
    signature: the adapter refuses a captured level that is not the accepted floor, and the retained
    planners keep reading `document.floor`. Same guarantee, narrower diff.
+5. **The API's format-5 refusal is inherited, not API-tested** — the Save path shares the units
+   reader, but no `apps/api` test feeds a format-5 Layout payload. Adding that one case is the obvious
+   follow-up if criterion 3 must be proved end-to-end rather than at the shared reader.
 
 ## Outstanding obligations
 

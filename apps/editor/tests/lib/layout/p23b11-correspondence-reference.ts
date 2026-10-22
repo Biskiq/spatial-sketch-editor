@@ -18,7 +18,8 @@
  * 2026-09-27, node v26.7.0, darwin arm64, by running a temporary generator that
  * executed `frozenCaseRows()` from `p23b11-correspondence-cases.ts` over the
  * UNOPTIMIZED code and serialized the result in this file's style; the generator
- * was removed once the freeze was written, and nothing regenerates this module.
+ * was removed once the freeze was written, and nothing regenerates this module
+ * (the cutover's one-time re-emission recorded below is the single exception).
  * Two consecutive generator runs produced byte-identical output before the file
  * was written, and the S2 freeze test was green on landing because it asserts
  * exactly this code. A future step that needs to move a row must change it as a
@@ -27,11 +28,14 @@
  * T1.P02.S01 §1 FINDING (2026-10-22) — CAPTURED IDENTITY, REVIEWED ROW BY ROW.
  *
  * Every planner now derives its ids from the operation's captured nonce, so a
- * row whose case runs a real planner contains different ids. Under the rule
- * above this is a finding about the live behaviour, NOT a licence to re-run a
- * generator over changed code, so every row that differs from the base revision
- * (`git show HEAD:` these rows — the pre-cutover module) was compared field by
- * field before the values were written here. The comparison is exact: 24 rows,
+ * row whose operation mints ids carries different ones. This table is the ONE
+ * RECORDED EXCEPTION to the rule above, and it is recorded as an exception, not
+ * as a precedent: its rows were re-emitted once at the cutover (which is why they
+ * now carry trailing commas the base table did not), and every row was then
+ * compared field by field against the base revision `55683981`
+ * (`git show 55683981:` this module), not against the cutover, which would
+ * compare the table with itself. No row was edited by hand outside that
+ * comparison. The comparison is exact: 24 rows,
  * matched by id, field by field (counts, operation verdict/code, component
  * shape, face-key set, reconciliation kind, lineage kinds, retired/surviving
  * Room ids, fidelity). It found exactly three kinds of difference:

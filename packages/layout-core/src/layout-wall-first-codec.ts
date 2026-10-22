@@ -53,7 +53,7 @@ import type { LayoutObject, LayoutVec2 } from './layout-types';
  * Validation result carrying the wall-first document type, not the legacy one.
  *
  * A success is **always** the canonical current-format document. There is one
- * recognized version (`5`) and no historical variant: a payload declaring anything
+ * recognized version (`6`) and no historical variant: a payload declaring anything
  * else fails as `unsupported_format_version` (P23.6I pre-baseline policy).
  */
 export type WallFirstLayoutValidationResult =

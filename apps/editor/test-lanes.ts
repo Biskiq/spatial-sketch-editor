@@ -97,7 +97,13 @@ export const ARCH_FILES: string[] = [
 	// imports an `OrbitControls`, no build fails when a second renderer appears, and
 	// the shell is mountable only in a browser, so only the unconditional lane can
 	// own the guarantee.
-	'tests/lib/authoring/stage-shell-composition.test.ts'
+	'tests/lib/authoring/stage-shell-composition.test.ts',
+	// T1.P02.S01 §1: the two occupancy-derived identity allocators stay
+	// unreachable from production code. Their exclusion is only legitimate while
+	// no accepted intent reaches the curve planners that call them, and an
+	// uncalled planner is invisible to every build, type check and lane report,
+	// so only a call-site boundary can hold the condition.
+	'tests/lib/layout/layout-identity-boundary.test.ts'
 ];
 
 /**

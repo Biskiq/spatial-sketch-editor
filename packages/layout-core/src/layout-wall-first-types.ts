@@ -211,7 +211,8 @@ export type LayoutWallOpening = {
    */
   name?: string;
 };/**
- * Floor descriptor — **canonical current (format 5)** shape after P23.6I.
+ * Floor descriptor — **canonical current (format 6)** shape after P23.6I, the
+ * Working-level owner T1.P02.S01 threads as a captured intent input.
  *
  * The Floor owns the horizontal *datum* only: `elevation` is authoritative for
  * Wall bottoms (`bottomY = floor.elevation`) and the Room floor plane. It carries
