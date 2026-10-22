@@ -173,7 +173,8 @@ alternatives, falsifiers and executable remaining probes:
 [RR-4 relationships/revision](./convergence-2026-10-21/relationships-and-revision.md),
 [RR-1/2 vertical/overhead architecture](./convergence-2026-10-21/vertical-and-overhead.md), and
 [RR-3/5/6 capability-aware interaction](./convergence-2026-10-21/capability-aware-interaction.md).
-This index identifies questions; those packets own the research work. RR-7 remains unopened.
+The owner's step-3 review added a [performance and delivery](./convergence-2026-10-21/performance-and-delivery.md)
+packet (CD-10). This index identifies questions; those packets own the research work. RR-7 remains unopened.
 
 These are a question index, not seven mandatory projects or a sequence. Combine questions when one
 consumer needs them; close with existing evidence if it suffices. Each opened inquiry produces a small

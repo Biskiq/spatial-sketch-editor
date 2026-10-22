@@ -1,0 +1,35 @@
+{
+ "node": "v26.7.0",
+ "date": "2026-10-22T10:01:19.337Z",
+ "gcExposed": true,
+ "rows": [
+  {
+   "label": "grid-3+openings",
+   "walls": 24,
+   "historyLimit": 100,
+   "edits": 120,
+   "retainedHeapMiBAfterEdits": {
+    "10": 1.1,
+    "50": 3.5,
+    "100": 5.8,
+    "120": 5.8
+   },
+   "acceptMedianFirst10Ms": 8.3,
+   "acceptMedianLast10Ms": 6.6
+  },
+  {
+   "label": "grid-7+openings",
+   "walls": 112,
+   "historyLimit": 100,
+   "edits": 120,
+   "retainedHeapMiBAfterEdits": {
+    "10": -2.4,
+    "50": 5.9,
+    "100": 16.2,
+    "120": 16.1
+   },
+   "acceptMedianFirst10Ms": 40.4,
+   "acceptMedianLast10Ms": 40.9
+  }
+ ]
+}

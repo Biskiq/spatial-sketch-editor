@@ -126,7 +126,7 @@ New persisted relationship shape or transport semantics goes through the owning 
 
 Executed at `ce9b7156` with disposable probes in [`probes/rr4/`](./probes/rr4/README.md) (exact
 commands, isolation proof and raw output lines there). Baseline controls: editor 57/57 passed;
-P3 Vellum 17/17 passed. Probes: 4 files, 14/14 cases passed. The probe binding,
+P3 Vellum 17/17 passed. Probes: 4 files, 14/14 cases passed; the step 3 follow-up added Q8 (5 files, 15/15, run from the repository root). The probe binding,
 evaluator and transport are **unratified probe constructs** composed only from exported
 `layout-core` primitives; their passing proves feasibility of the measured arithmetic, not a design.
 
@@ -141,6 +141,7 @@ evaluator and transport are **unratified probe constructs** composed only from e
 | Q5 support versus parenting | **Deferred** | Trigger: P3 architectural-support consumer opens (RR-1/RR-2 seam). |
 | Q6 atomic migration and history | **Executed** (`q6-atomic-migration.probe.ts`) on the live unit-host shape | All five probe planners register under `createUnitPlannerRegistry` (no refusals). Injections leave canonical JSON and history depth unchanged: stale R → `stale-revision`; throw after Layout preparation → `planner-rejected/planner-failed`; NaN Scene pose → `admission-refused/invalid-envelope`; unresolvable target → `unsupported-operation/unresolved-target`. **Persisting a binding is blocked**: an `attachment` field on a Scene entity is refused at `$.units.scene.data.entities[1].attachment` (Scene unit format 2 has no attachment). A compound Layout move + Scene pose rebase accepted once, changing exactly the `layout` and `scene` units. Split then many-to-one dissolve (captured IDs) accepted; three Undos restored each recorded state byte-exactly; Redo minted a fresh revision. **Scope gap:** a planner declaring the landed Scene admission (`domain: 'scene', compound: false`) that also moves a Wall is **accepted**, untargeted and Scene-targeted alike. Camera locked/assisted framing not exercised (Q7 trigger). |
 | Q7 dependency boundary | **Deferred** | Trigger: a claimed dependent capability (aimed light, assisted View) on an attached subject. Ordinary cycle rejection remains an obligation of any admitted family. |
+| Q8 missing-host repair, cold (step 3 follow-up) | **Executed** (`q8-missing-host-repair.probe.ts`) | One 8 m Wall, two attached panels, `planDeleteWall`, JSON round trip, fresh reader. (i) deletion-time detach: both panels render at an authored pose equal to the last evaluated pose (residual 0 m); no repair pending. (ii) kept as an AM-2-shaped `UnresolvedBinding` plus retained surface parameters: renders nothing; Re-pick, explicit placement or delete only; no pose is recoverable. (ii′) as (ii) with the last evaluated pose as diagnostic-only data: renders nothing (editor ghost only); an explicit "detach at last known pose" recovers 0 m; costs a pose-shaped non-authoritative field. (iii) Detach against the exact pre-delete Layout revision: the F.1 resolver answers `missing` with `reacquire-reference` after reload — the old content is not in the project. (v) the step-2 matrix (Layout-only delete, dangling binding): renders nothing, no pose recoverable, and nothing records that the break was accepted deliberately. Undo before reload restores the host and re-resolves both bindings under every policy (snapshot). Probe-shaped Scene JSON; the Scene format still refuses attachments (Q6). |
 
 ### Verified and corrected findings
 
@@ -191,8 +192,8 @@ Reports use the ratified revision vocabulary.
 | Split, footprint wholly on one fragment | Pose unchanged | One compound acceptance: bindings on `X→B` move to the new ID with `s − d` | `unchanged` (world pose preserved, Q1) |
 | Split through a footprint | Pose unchanged | Binding stays on the retained ID | `needs review` (re-pick, Detach) |
 | Dissolve, either survivor orientation | Pose unchanged | Compound: interval offset; reversed side flips and `s' = L − s` | `unchanged` |
-| Delete host | Pose unchanged | Layout-only; binding retained unresolved | `unresolved` (re-pick, Detach) |
-| Recreate at the same place | Pose unchanged | New ID; old binding stays unresolved — no revival | `unresolved` |
+| Delete host (corrected, Q8) | Pose unchanged | Joint Layout+Scene acceptance. Default: detach at the evaluated pose (ordinary world pose). Alternatives chosen at delete time: delete dependents, or keep as an authored `UnresolvedBinding` with its surface parameters | Detach: `unchanged` world pose. Keep: `unresolved` — renders nothing; Re-pick, place explicitly or delete; Detach unavailable |
+| Recreate at the same place | Pose unchanged | New ID; a kept `UnresolvedBinding` stays unresolved — no revival | `unresolved` |
 | Opening inserted at contact | Pose unchanged | Layout-only; evaluates over-opening | `needs review` |
 | Undo / Redo / reload | Snapshot / stored pose | Exact snapshot; fresh revision; cold evaluation from Layout + binding | Same derived diagnostics |
 
@@ -227,15 +228,38 @@ attachment?: {
   standoff: number;                 // meters from the face
   footprint: { width: number; height: number; bottom: number };
 };
-// Unresolved state is DERIVED, never stored: host-missing | out-of-span | over-opening | frame-unavailable,
-// computed by the Scene evaluator from (binding, accepted Layout) with cause and affected identity.
+// Evaluation status is DERIVED, never stored: resolved | host-unresolvable | out-of-span | over-opening |
+// frame-unavailable, computed by the Scene evaluator from (binding, accepted Layout) with cause and identity.
+// An unresolved REFERENCE kept by an explicit acceptance is AUTHORED (AM-2 UnresolvedBinding), replacing `host`:
+//   attachment?: { unresolved: UnresolvedBinding; s; side; standoff; footprint }   // renders nothing
 ```
+
+**Correction (step 3 follow-up, Corr-4):** the step 2 sketch and report said "unresolved state is
+derived, never stored". That was **imprecise, and wrong for the explicit case**. Landed source has
+two forms. (a) A stored AM-2 `UnresolvedBinding` (`units/types.ts`: `{reference, domain, status,
+message}`, strictly validated by `validateUnresolvedBinding`). Its only consumer today is
+`TypedResource.unresolved`, which is required when a resource has neither revision nor pin.
+(b) Derived envelope diagnostics: `unresolved-view`, `unresolved-presentation` and `unresolved-stop`
+are recomputed by `envelopeFindings` over retained IDs and never stored. For attachments, evaluation
+status is always derived. The F.1 "Repairable authored bindings" case is stored: an accepted
+operation that deliberately keeps a dependent whose host it removes writes an `UnresolvedBinding`.
+Lifecycle:
+- **Creates the record:** an accepted host deletion or retirement without published transport, when
+  the creator chooses keep-unresolved; an import or resource replacement that retires a referenced
+  component (cross-seam).
+- **Clears the record:** Re-pick, explicit placement or delete.
+- **Restores the resolved binding:** Undo, by snapshot.
+- **Never creates the record:** out-of-span, over-Opening, frame-unavailable, a split straddle (the
+  host still resolves), or a dangling reference with no deliberate acceptance.
 
 Operations (unratified): `scene.attach-to-surface` and `scene.detach` / `scene.repick-host`
 (single-domain Scene, values captured from the owner frame query at the expected revision);
 `layout.split-wall` and `layout.dissolve-junction` gain compound variants that apply the
 owner-published transport to referencing bindings in one acceptance, returning wall and binding
-correspondence plus `needs review` diagnostics; `layout.delete-wall` stays Layout-only.
+correspondence plus `needs review` diagnostics. Deleting a referenced Wall (Q8) becomes a joint
+`layout.delete-wall` variant that resolves every dependent explicitly (default detach at the
+evaluated pose; delete dependents; or keep as `UnresolvedBinding`). An unreferenced Wall deletion
+stays Layout-only.
 
 ### Revised alternatives, recommendation and falsifiers
 
@@ -243,7 +267,9 @@ correspondence plus `needs review` diagnostics; `layout.delete-wall` stays Layou
 an owner face-frame query and no relationship schema. (2) For deliberately attached content choose
 **B-mig**: evaluated attachment as the sole pose authority; shape edits stay single-domain Layout;
 a topology edit that retires or splits a referenced host is one compound acceptance applying
-owner-published transport; ambiguity stays a typed review on the original binding. (3) Every
+owner-published transport; ambiguity stays a typed review on the original binding. Deleting a
+referenced host is a joint acceptance that detaches dependents at their evaluated pose by default
+(Q8 (i)). Keep-unresolved and delete-dependents are explicit delete-time alternatives. (3) Every
 persisted cross-domain reference needs **non-reusing captured allocation** first.
 
 **Strongest rejected alternative: B-lin** (persisted lineage, never cross-domain). It is the only
@@ -259,7 +285,21 @@ orientation map; that family refuses following and returns review. Captured-nonc
 if persistence later needs operation-independent IDs (for example, merging concurrent writers),
 which would require a persisted allocator outside undoable history.
 
-**Remaining owner calls:** attached versus independent as the default gesture; coordinate policy
+**Delete-host policy (Q8):**
+- **Recommended: (i) detach at deletion.** It is the only policy that leaves every dependent
+  renderable and needs no repair after reload, and it needs no pose-shaped secondary field.
+- **(ii) keep-unresolved:** a deliberate delete-time alternative for creators who will re-pick.
+- **(ii′) diagnostic last pose:** credible and single-authority only if typed as diagnostic,
+  excluded from release lowering and the visitor runtime, and promoted only by an explicit
+  operation. It is not recommended: it duplicates (i)'s data as a pose-shaped field that invites
+  being read as authority, and AM-2's record has no payload slot, so it would need an F extension.
+- **Rejected:** (iii), which depends on unpersisted prior content; and (v), the step 2 row, which
+  is an undeliberate break with nothing recoverable.
+- **Falsifiers:** prefer (ii) as the default if creators commonly delete and redraw a host and
+  re-pick with the retained parameters, saving material effort. Prefer (ii′) only if deferred
+  detach after reload is a demonstrated need and the owner accepts the extension.
+
+**Remaining owner calls:** the delete-host default and which delete-time alternatives to offer; attached versus independent as the default gesture; coordinate policy
 (start distance followed by the moved start Junction in Q2 E1, versus end, normalized or landmark);
 split-straddle policy (review versus keep on the retained fragment); hard versus preferred spacing
 (Q4); Layout ID policy for C1 (captured nonce versus persisted cursor outside history); A1-versus-B
@@ -275,7 +315,9 @@ creator comparison (deliverable (e) remains **unexecuted**; no UX numbers are cl
 | Same file, [§F.4 Compound acceptance](../../../docs/reference/composition-execution.md#f4-compound-acceptance), step 1 and its current-implementation note | Amend: identity allocation is captured and non-reusing (no occupancy fallback in an accepted operation); acceptance enforces each planner's declared domain/compound scope against the units its candidate changes, not only against intent targets. |
 | Same file, [AM-4](../../../docs/reference/composition-execution.md#am-4-f4-local-acceptance-save-and-retirement-v1) | Retain: snapshot history already restores many-to-one migrations exactly (Q6). |
 | `docs/reference/architecture.md` [§Ownership](../../../docs/reference/architecture.md#ownership-current-source-of-truth), "Layout semantic mutation" | Amend: topology planners also return a transport record (input interval → output ID, offset, orientation) beside created/split lineage; restate that compound acceptance is landed and a Layout+Scene operation needs a registered joint planner, not a new admission provider. |
-| `docs/reference/components/scene-content.md` [§Validation and transform contract](../../../docs/reference/components/scene-content.md#validation-and-transform-contract-current), "Placement, transforms and attachment" | Amend when the owner selects B: attachment is a host reference plus surface parameters with the evaluated pose as sole authority, derived unresolved state and Detach capturing the pose; keep the destination label until cutover. |
+| `docs/reference/components/scene-content.md` [§Validation and transform contract](../../../docs/reference/components/scene-content.md#validation-and-transform-contract-current), "Placement, transforms and attachment" | Amend when the owner selects B: attachment is a host reference plus surface parameters with the evaluated pose as sole authority, derived unresolved state and Detach capturing the pose; keep the destination label until cutover. **Superseded by the N-S1 gist below.** |
+| Lead's step 3 wording: CD-2 / N-F2 (`docs/roadmap/product-convergence-2026-10-21.md` §Proposed decision set; `…-amendments.md` N-F2) | Replace "unresolved state is derived … never stored" with: *"Evaluation status is derived from the authored reference and the accepted owner state and is never stored. A reference that an accepted operation deliberately leaves unresolved is authored state: an AM-2 `UnresolvedBinding` in the owning domain, retaining the original F.1 reference and its repair status, cleared only by an explicit repair (Re-pick, explicit placement, delete)."* No AM-2 change is needed. |
+| Lead's step 3 wording: CD-3 / N-S1 delete-host part | Replace "host-missing, out-of-span and over-Opening states are derived …, never stored. Detach captures the evaluated pose." with: *"Out-of-span, over-Opening and frame-unavailable states are derived from the binding and the accepted Layout, never stored. Deleting or retiring a referenced host without published transport is one joint Layout+Scene acceptance that resolves every dependent explicitly: detach at the evaluated pose (default), delete the dependent, or keep it as an authored `UnresolvedBinding` with its surface parameters, which renders nothing and is repaired only by Re-pick, explicit placement or deletion. Detach is available only while the host resolves."* |
 | `docs/reference/decisions/northstar-ratification-2026-09-27.md` §§Dependencies, invalidation, and deterministic evaluation; Representation, revision, and atomic authoring | Retain: the four report states and rebuildable reverse index map directly onto the policy matrix. |
 | `docs/roadmap/product-convergence-2026-10-21.md` §C1 "Implementation contract to finalize"; §Creative successors P2 row | Retain C1's no-recycling acceptance; add the allocation policy to its contract. Replace the P2 row's "planner admission" prerequisite with the joint planner, Scene attachment format and scope enforcement. |
 
@@ -294,7 +336,12 @@ creator comparison (deliverable (e) remains **unexecuted**; no UX numbers are cl
 - **P-SCENE-ATTACH** (T2, F extension/version negotiation, gate register): Scene attachment format.
   B-mig ← P-SCENE-ATTACH ← owner choice of B.
 - **P-JOINT** (T2 lead, T1 support, named integration owner): compound split/dissolve-with-bindings
-  planners. ← P-TRANSPORT, P-SCOPE, P-SCENE-ATTACH, P-ID.
+  planners **and the joint delete-referenced-host planner** (Q8). ← P-TRANSPORT (split/dissolve
+  only), P-SCOPE, P-SCENE-ATTACH, P-ID, P-DEP.
+- **P-DEP** (F4 provider with T1/T2): acceptance-time reverse-reference check, rebuildable from
+  authored references (the ratified reverse dependency index; unbuilt). A Layout-only candidate
+  that removes a subject referenced from another unit is refused unless a joint planner resolves
+  every dependent; otherwise (v) recurs. P-JOINT delete ← P-DEP.
 
 **First-wave dependency changes:** C1 need not wait for a separate provider slice, but **its scope
 grows**: it must choose and land P-ID and always pass the captured allocator, with Q3-style guards

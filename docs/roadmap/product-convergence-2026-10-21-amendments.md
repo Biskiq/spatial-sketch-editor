@@ -50,9 +50,11 @@ the milestone's Today cells, and the "PR #154 prototype" citations in the T3.P02
 
 > - **Owner-published correspondence.** Continuity across a topology edit or a resource revision
 >   comes only from correspondence published by the owning domain (Layout transport records;
->   component preserved/retired/replaced maps at re-admission). Without it a reference stays
->   unresolved with a repair offer; unresolved state is derived from the reference and the
->   accepted owner state and is never stored.
+>   component preserved/retired/replaced maps at re-admission), never from names, indices or
+>   nearest geometry. Without it the reference is not retargeted: its evaluation status reports it
+>   unresolvable, and an accepted operation that keeps the dependent records an AM-2
+>   `UnresolvedBinding` with the original reference and repair status. Evaluation status is
+>   derived on every evaluation and never written back.
 
 **N-F3 — F.3, new bullet after "Conflict rules" (CD-7).**
 
@@ -72,6 +74,10 @@ the milestone's Today cells, and the "PR #154 prototype" citations in the T3.P02
 >   planner's own declared domain and compound scope, not only against the intent's targets or an
 >   adapter-wide flag. A cross-domain consequence is a registered joint planner, never a read-time
 >   mutation.
+> - **Removal resolves its dependents.** A candidate that removes or retires a subject another unit
+>   references is refused unless a registered joint planner resolves each dependent explicitly in
+>   the same acceptance (re-target through published correspondence, detach, delete, or record an
+>   AM-2 `UnresolvedBinding`).
 
 **N-F6 — Session state, new bullet after "Isolation" (CD-7).**
 
@@ -79,8 +85,11 @@ the milestone's Today cells, and the "PR #154 prototype" citations in the T3.P02
 >   outlive asynchronous work starts a new run epoch; no completion, cleanup or contribution from
 >   an earlier epoch applies after it.
 
-**Deferred F extensions (named here, drafted by their first consumer).** Each is additive, through
-an AM-style amendment and gate-register entry:
+**Deferred F extensions (named here, drafted by their first consumer).** None is pre-classified as
+additive. Each needs its own compatibility decision, made by its first consumer: a new or bumped
+version, negotiation as required or optional capability, and the behaviour of an older reader
+(refuse, ignore an optional part, or report unsupported). Each lands through an AM-style amendment
+and a gate-register entry:
 - F.2: a model resource revision carries source and derivative pins, recipe identity/version and a
   component table; the Experience unit gains annotation records and Presentation subject and
   annotation uses (CD-5/CD-6).
@@ -89,6 +98,8 @@ an AM-style amendment and gate-register entry:
 - F.3: a datum-qualified Plan reading for capture (`layout.plan@1` takes a numeric `datumMeters`);
   this waits for a capture consumer (CD-2).
 - Scene attachment as an F extension, once the owner selects it (CD-3).
+- The reset/re-entry fence (N-F6) changes the meaning of an existing AM-6 instruction. If accepted,
+  it is a versioned interpreter/profile change, not an optional addition.
 
 **Retain:** AM-1 `layout-location` and `FrameReference@1` (`levelId` = datum ID; no F change for
 datums); AM-4 snapshot history; the open-mechanism entries "level mechanism … expansion versus
@@ -119,18 +130,30 @@ intentionally non-enclosing." with:
 > *Vertical destination:* each placed structure has one frame (translation and yaw; tilt, scale
 > and mirror refuse until supported) with its own named datums and Junctions. A join between
 > structures is a declared connection evaluated as validity and reported when broken, never a
-> shared Junction. A Wall has one base reference and one top definition (height, datum reference
+> shared Junction. Whether structures expand into one compile with qualified, disjoint topology
+> or compile in isolation is an open compiler-organization mechanism, decided by the cutover plan. A Wall has one base reference and one top definition (height, datum reference
 > or an explicit roof eave, with cycles refused); floor steps belong to slabs. Roof, canopy,
 > ceiling (closure or suspended), slab and void are independently identified Layout elements that
 > Rooms never own; fitting is one-shot unless a membership policy is accepted. Plan-only component
-> independence is complemented by a 3D duplicate-solid gate. A geometry kernel runs only inside
-> the compiler; its failure is a typed refusal, never fallback geometry, and numerical tolerances
-> are declared for a stated coordinate range or local frame.
+> independence is complemented by a 3D duplicate-solid gate. A geometry library, including a
+> higher-level one such as a skeleton or mesh-boolean package, runs only inside the compiler as the
+> evaluator of a Layout-declared family. The compiler keeps persisted parameters, family
+> qualification, refusal, identity and correspondence. A kernel exception is a typed refusal, never
+> fallback geometry; a valid empty result is a result. Numerical tolerances are declared for a
+> stated coordinate range or local frame. Consumers, including the viewer, read compiled output;
+> a solver ships to the viewer only if viewer execution requires it.
 
-The closure sentence depends on the owner's CD-4 call. Recommended wording:
+The closure sentence depends on the owner's CD-4 call. Recommended (room-switch) wording, which
+supersedes T1 planning evidence D2/§12 "generated fallback only for uncovered enclosure":
 
-> An authored closure meeting a derived Room replaces that Room's generated fallback and
-> reports any uncovered remainder.
+> An authored closure meeting a derived Room switches off that Room's whole generated fallback
+> and reports any uncovered remainder, including after a Room merge spreads the switch to the
+> merged Room.
+
+Alternative (per-area) wording, if the owner keeps the accepted planning rule:
+
+> Generated fallback closes only the uncovered part of a Room; every intentional gap must be
+> marked explicitly, and an unmarked gap is closed by fallback.
 
 **Retain:** Semantic authorities; the current format-5 single-datum encoding until the cutover.
 
@@ -150,11 +173,14 @@ The closure sentence depends on the owner's CD-4 call. Recommended wording:
 2026-10-22).**
 
 > **Object explanation (destination).** An imported object keeps its admitted parts. A creator
-> annotates the object or a part and explains it standalone in an otherwise empty World, among
-> other content in a Room, or as one Stop of a Guide — the same placed subject, annotations and
-> Presentation, with Rooms, Guides and Stops optional. Parts are admitted explicitly per resource
-> revision; names and node order never establish them, and an object without separable parts is
-> annotated at a point.
+> annotates the object or a part, and the explanation is reusable across contexts: standalone in
+> an otherwise empty World, among other content in a Room or exhibition, or within a Guide,
+> without copying Scene data and with Rooms, Guides and Stops optional. Parts are admitted
+> explicitly per resource revision; names and node order never establish them, and an object
+> without separable parts is annotated at a point.
+
+The first consumer's narrower choice (one Presentation over one placed instance) belongs in its
+slice plan, not in the North Star.
 
 **N-N3 — Authority paragraph, "Open mechanism decisions" list.** No change until the T1 cutover
 plan records the level mechanism; then remove "level mechanism" from the open list.
@@ -166,10 +192,15 @@ Attachment sentence (CD-3; only once the owner selects attachment).**
 
 > Solve-once surface placement writes an ordinary world pose and creates no relationship. An
 > attachment is a host reference plus surface parameters (distance along the host, side,
-> stand-off, footprint) whose evaluated pose is the sole pose authority while it exists;
-> host-missing, out-of-span and over-Opening states are derived from the binding and the accepted
-> Layout, never stored. Detach captures the evaluated pose. A host topology edit migrates
-> bindings only through a registered joint operation that applies Layout-published transport.
+> stand-off, footprint) whose evaluated pose is the sole pose authority while it exists.
+> Out-of-span, over-Opening and frame-unavailable states are derived from the binding and the
+> accepted Layout, never stored. A host topology edit migrates bindings only through a registered
+> joint operation that applies Layout-published transport. Deleting or retiring a referenced host
+> without published transport is one joint Layout+Scene acceptance that resolves every dependent
+> explicitly: detach at the evaluated pose (default), delete the dependent, or keep it as an
+> authored `UnresolvedBinding` with its surface parameters, which renders nothing and is repaired
+> only by Re-pick, explicit placement or deletion. Detach is available only while the host
+> resolves.
 
 **N-S2 — Ratified destination › "Resources, identity, and ingest", append (CD-5).**
 
@@ -213,6 +244,51 @@ conformance review.
 
 **N-P2 — §0.8.1 › Information homes, Scene subject row, "What it shows" cell.** Append: "part
 selection and annotation on invocation; relationship state".
+
+### Performance and delivery (CD-10)
+
+**N-T1 — [Test contract](../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks)
+§Correctness tests vs performance benchmarks, append.** Owner acceptance of this wording is the
+separate authorization that the section itself requires.
+
+> **Performance evidence in final gates.** Benchmarks stay on demand
+> and outside CI. A phase final gate whose slices touch a budgeted flow records a performance
+> evidence row from the browser harness (`perf:browser`: Playwright + CDP, Apache-2.0
+> devDependency, own config outside the default lanes) and from the bundle report. The row
+> records reference profile, workload id, browser, commit and pass/target/disposition for each
+> budget line. Report at least 10 runs per measurement as p75/p95/p99, cold and repeated. Records
+> live beside the acceptance record. Timing never substitutes for a correctness oracle, and a
+> correctness suite never substitutes for timing.
+
+**N-N4 — [North Star › Technology gates](../reference/north-star.md#technology-gates), replace
+"Optimization work follows measured large-scene/runtime bottlenecks." with:**
+
+> Optimization work follows measured bottlenecks against a declared baseline: reference laptop A
+> (a 4-core mid-range x86 laptop with integrated graphics, 8 GB, 1080p at 60 Hz, Chrome) and B (M1,
+> 8 GB), with Safari and Firefox secondary, and stated network profiles. Editor and viewer flows
+> carry explicit budgets for input-to-next-paint latency, frame-time tails, compilation, memory and
+> delivered bytes, owned by the performance contract. A slice that misses a hard budget resolves it
+> within its scope: profile first, then remove duplicated work, compute incrementally, cache, move
+> whole pure stages to workers, use compiled derivatives and split delivery. Each step keeps one
+> canonical authority and the intended architectural expressiveness.
+
+**N-A4 — [Architecture › Release packages](../reference/architecture.md#release-packages-destination),
+new paragraph "Delivery budget and visitor closure".**
+
+> The visitor's first-load set carries a byte budget, and model decoders, Preview and other optional
+> capabilities load lazily, only when content needs them. Editor machinery never reaches visitor
+> chunks. A solver or the Layout compiler reaches them only while visitor execution requires it. A
+> prepared package may replace runtime compilation with a compiled derivative without changing
+> ownership. Each acceptance that touches visitor-reachable code lists the visitor load set's
+> editor and solver modules, justifies each one, and compares bytes with the last accepted record.
+
+**Where the budget table lives.** The budget and workload tables in the performance packet move to
+a new durable reference section once accepted. Recommended: a new `performance.md` component contract under `docs/reference/components/`,
+routed from the docs router. Until then the packet is the proposal.
+
+**Code-level corrections (held; not documentation).** Repointing the visitor boundary gates'
+forbidden set from the deleted `src/lib/editor/` tree to `src/lib/authoring/**` is a code change for
+the first visitor-touching slice. AGENTS rule 5 needs no wording change.
 
 ## Not amended here
 

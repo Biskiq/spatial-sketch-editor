@@ -1,0 +1,696 @@
+{
+ "probe": "compile.probe.ts (warm, in-process, vitest forks --expose-gc)",
+ "date": "2026-10-22T10:10:42.901Z",
+ "node": "v26.7.0",
+ "v8": "14.6.202.34-node.28",
+ "platform": "darwin 24.6.0 arm64",
+ "cpu": "Apple M2",
+ "cpus": 8,
+ "memGiB": 16,
+ "gcExposed": true,
+ "rows": [
+  {
+   "label": "starter-enclosure",
+   "shape": {
+    "walls": 4,
+    "junctions": 4,
+    "openings": 0,
+    "rooms": 1,
+    "blockingIssues": 0,
+    "firstBlocking": null
+   },
+   "fixtureBuildMs": 10,
+   "compileMs": {
+    "n": 40,
+    "first": 1.8,
+    "median": 0.724,
+    "p95": 1.417,
+    "max": 2.068,
+    "min": 0.59
+   },
+   "compiledRetainedMiB": 0.26,
+   "planEvaluateMs": {
+    "n": 30,
+    "first": 1.054,
+    "median": 0.093,
+    "p95": 0.205,
+    "max": 0.215,
+    "min": 0.053
+   },
+   "layoutJsonBytes": 2282,
+   "layoutSerializeMs": {
+    "n": 30,
+    "first": 0.086,
+    "median": 0.028,
+    "p95": 0.074,
+    "max": 0.086,
+    "min": 0.017
+   },
+   "layoutParseValidateMs": {
+    "n": 30,
+    "first": 0.092,
+    "median": 0.024,
+    "p95": 0.04,
+    "max": 0.092,
+    "min": 0.023
+   },
+   "envelopeJsonBytes": 4890,
+   "envelopeSerializeMs": {
+    "n": 20,
+    "first": 0.1,
+    "median": 0.055,
+    "p95": 0.079,
+    "max": 0.1,
+    "min": 0.038
+   },
+   "envelopeContentIdMs": {
+    "n": 20,
+    "first": 0.154,
+    "median": 0.059,
+    "p95": 0.138,
+    "max": 0.154,
+    "min": 0.044
+   },
+   "stageAdmitJsonMs": {
+    "n": 12,
+    "first": 2.409,
+    "median": 1.295,
+    "p95": 3.027,
+    "max": 3.027,
+    "min": 1.099
+   },
+   "admittedSnapshotRetainedMiB": 0.3,
+   "dragPreviewSolveMs": {
+    "n": 60,
+    "first": 2.998,
+    "median": 0.794,
+    "p95": 1.165,
+    "max": 2.998,
+    "min": 0.674,
+    "outcomes": {
+     "planned": 60
+    }
+   },
+   "wallChainIndependentMs": {
+    "n": 10,
+    "first": 2.343,
+    "median": 1.008,
+    "p95": 2.343,
+    "max": 2.343,
+    "min": 0.91
+   },
+   "f4AcceptMs": {
+    "n": 16,
+    "first": 9.241,
+    "median": 1.703,
+    "p95": 9.241,
+    "max": 9.241,
+    "min": 1.386
+   },
+   "stagePostInstallAdmitMs": {
+    "n": 16,
+    "first": 1.395,
+    "median": 1.261,
+    "p95": 1.874,
+    "max": 1.874,
+    "min": 1.138
+   },
+   "f4UndoMs": {
+    "n": 6,
+    "first": 0.582,
+    "median": 0.398,
+    "p95": 0.582,
+    "max": 0.582,
+    "min": 0.37
+   },
+   "f4RedoMs": {
+    "n": 6,
+    "first": 0.429,
+    "median": 0.427,
+    "p95": 0.437,
+    "max": 0.437,
+    "min": 0.403
+   }
+  },
+  {
+   "label": "grid-3+openings",
+   "shape": {
+    "walls": 24,
+    "junctions": 16,
+    "openings": 24,
+    "rooms": 9,
+    "blockingIssues": 0,
+    "firstBlocking": null
+   },
+   "fixtureBuildMs": 177,
+   "openingCreatePlannerMs": {
+    "n": 24,
+    "first": 9.674,
+    "median": 5.476,
+    "p95": 6.795,
+    "max": 9.674,
+    "min": 4.968
+   },
+   "compileMs": {
+    "n": 40,
+    "first": 5.077,
+    "median": 4.622,
+    "p95": 6.166,
+    "max": 7.595,
+    "min": 4.149
+   },
+   "compiledRetainedMiB": 1.68,
+   "planEvaluateMs": {
+    "n": 30,
+    "first": 2.023,
+    "median": 0.463,
+    "p95": 0.975,
+    "max": 1.24,
+    "min": 0.219
+   },
+   "layoutJsonBytes": 19168,
+   "layoutSerializeMs": {
+    "n": 30,
+    "first": 0.126,
+    "median": 0.106,
+    "p95": 0.127,
+    "max": 0.131,
+    "min": 0.091
+   },
+   "layoutParseValidateMs": {
+    "n": 30,
+    "first": 0.238,
+    "median": 0.146,
+    "p95": 0.158,
+    "max": 0.238,
+    "min": 0.124
+   },
+   "envelopeJsonBytes": 26196,
+   "envelopeSerializeMs": {
+    "n": 20,
+    "first": 0.141,
+    "median": 0.135,
+    "p95": 0.141,
+    "max": 0.141,
+    "min": 0.129
+   },
+   "envelopeContentIdMs": {
+    "n": 20,
+    "first": 0.843,
+    "median": 0.179,
+    "p95": 0.452,
+    "max": 0.843,
+    "min": 0.157
+   },
+   "stageAdmitJsonMs": {
+    "n": 12,
+    "first": 8.046,
+    "median": 7.498,
+    "p95": 8.679,
+    "max": 8.679,
+    "min": 7.158
+   },
+   "admittedSnapshotRetainedMiB": 1.79,
+   "dragPreviewSolveMs": {
+    "n": 60,
+    "first": 6.7,
+    "median": 5.558,
+    "p95": 6.7,
+    "max": 6.953,
+    "min": 4.935,
+    "outcomes": {
+     "planned": 60
+    }
+   },
+   "wallChainIndependentMs": {
+    "n": 10,
+    "first": 6.261,
+    "median": 5.463,
+    "p95": 6.261,
+    "max": 6.261,
+    "min": 5.22
+   },
+   "wallChainRoomSplitMs": {
+    "n": 10,
+    "first": 8.838,
+    "median": 7.981,
+    "p95": 9.593,
+    "max": 9.593,
+    "min": 6.253
+   },
+   "wallChainRoomSplitOutcomes": {
+    "success": 10
+   },
+   "f4AcceptMs": {
+    "n": 16,
+    "first": 9.721,
+    "median": 6.949,
+    "p95": 9.721,
+    "max": 9.721,
+    "min": 6.596
+   },
+   "stagePostInstallAdmitMs": {
+    "n": 16,
+    "first": 7.512,
+    "median": 7.093,
+    "p95": 8.141,
+    "max": 8.141,
+    "min": 6.573
+   },
+   "f4UndoMs": {
+    "n": 6,
+    "first": 1.059,
+    "median": 1.059,
+    "p95": 1.322,
+    "max": 1.322,
+    "min": 1.006
+   },
+   "f4RedoMs": {
+    "n": 6,
+    "first": 1.184,
+    "median": 1.017,
+    "p95": 1.184,
+    "max": 1.184,
+    "min": 0.986
+   }
+  },
+  {
+   "label": "grid-7+openings",
+   "shape": {
+    "walls": 112,
+    "junctions": 64,
+    "openings": 112,
+    "rooms": 49,
+    "blockingIssues": 0,
+    "firstBlocking": null
+   },
+   "fixtureBuildMs": 3671,
+   "openingCreatePlannerMs": {
+    "n": 30,
+    "first": 27.402,
+    "median": 30.33,
+    "p95": 38.556,
+    "max": 44.653,
+    "min": 27.402
+   },
+   "compileMs": {
+    "n": 40,
+    "first": 29.966,
+    "median": 31.355,
+    "p95": 38.962,
+    "max": 47.547,
+    "min": 28.178
+   },
+   "compiledRetainedMiB": 7.88,
+   "planEvaluateMs": {
+    "n": 30,
+    "first": 3.009,
+    "median": 1.189,
+    "p95": 2.17,
+    "max": 3.587,
+    "min": 0.843
+   },
+   "layoutJsonBytes": 97849,
+   "layoutSerializeMs": {
+    "n": 30,
+    "first": 0.512,
+    "median": 0.456,
+    "p95": 0.552,
+    "max": 0.63,
+    "min": 0.425
+   },
+   "layoutParseValidateMs": {
+    "n": 30,
+    "first": 0.943,
+    "median": 0.666,
+    "p95": 0.816,
+    "max": 0.943,
+    "min": 0.63
+   },
+   "envelopeJsonBytes": 123741,
+   "envelopeSerializeMs": {
+    "n": 20,
+    "first": 0.591,
+    "median": 0.591,
+    "p95": 0.708,
+    "max": 0.923,
+    "min": 0.579
+   },
+   "envelopeContentIdMs": {
+    "n": 20,
+    "first": 0.676,
+    "median": 0.537,
+    "p95": 0.676,
+    "max": 0.683,
+    "min": 0.511
+   },
+   "stageAdmitJsonMs": {
+    "n": 12,
+    "first": 42.65,
+    "median": 46.001,
+    "p95": 123.524,
+    "max": 123.524,
+    "min": 41.26
+   },
+   "admittedSnapshotRetainedMiB": 8.41,
+   "dragPreviewSolveMs": {
+    "n": 60,
+    "first": 37.528,
+    "median": 36.147,
+    "p95": 44.276,
+    "max": 49.481,
+    "min": 31.362,
+    "outcomes": {
+     "planned": 60
+    }
+   },
+   "wallChainIndependentMs": {
+    "n": 10,
+    "first": 36.948,
+    "median": 36.257,
+    "p95": 44.068,
+    "max": 44.068,
+    "min": 33.629
+   },
+   "wallChainRoomSplitMs": {
+    "n": 10,
+    "first": 38.937,
+    "median": 36.846,
+    "p95": 45.802,
+    "max": 45.802,
+    "min": 34.174
+   },
+   "wallChainRoomSplitOutcomes": {
+    "success": 10
+   },
+   "f4AcceptMs": {
+    "n": 16,
+    "first": 40.624,
+    "median": 43.168,
+    "p95": 62.174,
+    "max": 62.174,
+    "min": 39.045
+   },
+   "stagePostInstallAdmitMs": {
+    "n": 16,
+    "first": 40.222,
+    "median": 41.649,
+    "p95": 62.402,
+    "max": 62.402,
+    "min": 37.768
+   },
+   "f4UndoMs": {
+    "n": 6,
+    "first": 6.108,
+    "median": 3.598,
+    "p95": 6.108,
+    "max": 6.108,
+    "min": 3.499
+   },
+   "f4RedoMs": {
+    "n": 6,
+    "first": 3.581,
+    "median": 3.581,
+    "p95": 4.149,
+    "max": 4.149,
+    "min": 3.467
+   }
+  },
+  {
+   "label": "grid-14+openings",
+   "shape": {
+    "walls": 420,
+    "junctions": 225,
+    "openings": 420,
+    "rooms": 196,
+    "blockingIssues": 0,
+    "firstBlocking": null
+   },
+   "fixtureBuildMs": 64845,
+   "openingCreatePlannerMs": {
+    "n": 30,
+    "first": 152.023,
+    "median": 142.637,
+    "p95": 176.136,
+    "max": 186.634,
+    "min": 132.894
+   },
+   "compileMs": {
+    "n": 15,
+    "first": 134.524,
+    "median": 138.298,
+    "p95": 158.329,
+    "max": 158.329,
+    "min": 128.831
+   },
+   "compiledRetainedMiB": 32.02,
+   "planEvaluateMs": {
+    "n": 30,
+    "first": 13.751,
+    "median": 4.432,
+    "p95": 6.534,
+    "max": 6.901,
+    "min": 3.143
+   },
+   "layoutJsonBytes": 408286,
+   "layoutSerializeMs": {
+    "n": 30,
+    "first": 1.999,
+    "median": 1.578,
+    "p95": 2.534,
+    "max": 3.827,
+    "min": 1.36
+   },
+   "layoutParseValidateMs": {
+    "n": 30,
+    "first": 2.759,
+    "median": 2.235,
+    "p95": 2.564,
+    "max": 2.759,
+    "min": 2.094
+   },
+   "envelopeJsonBytes": 500917,
+   "envelopeSerializeMs": {
+    "n": 20,
+    "first": 2.131,
+    "median": 2.123,
+    "p95": 2.422,
+    "max": 2.494,
+    "min": 1.904
+   },
+   "envelopeContentIdMs": {
+    "n": 20,
+    "first": 2.461,
+    "median": 2.055,
+    "p95": 2.461,
+    "max": 2.507,
+    "min": 1.951
+   },
+   "stageAdmitJsonMs": {
+    "n": 6,
+    "first": 178.957,
+    "median": 179.203,
+    "p95": 201.87,
+    "max": 201.87,
+    "min": 176.332
+   },
+   "admittedSnapshotRetainedMiB": 33.61,
+   "dragPreviewSolveMs": {
+    "n": 60,
+    "first": 186.688,
+    "median": 186.701,
+    "p95": 226.811,
+    "max": 238.484,
+    "min": 172.291,
+    "outcomes": {
+     "planned": 60
+    }
+   },
+   "wallChainIndependentMs": {
+    "n": 10,
+    "first": 187.896,
+    "median": 164.042,
+    "p95": 214.18,
+    "max": 214.18,
+    "min": 160.162
+   },
+   "wallChainRoomSplitMs": {
+    "n": 10,
+    "first": 174.925,
+    "median": 174.925,
+    "p95": 212.128,
+    "max": 212.128,
+    "min": 163.622
+   },
+   "wallChainRoomSplitOutcomes": {
+    "success": 10
+   },
+   "f4AcceptMs": {
+    "n": 8,
+    "first": 195.617,
+    "median": 195.368,
+    "p95": 218.547,
+    "max": 218.547,
+    "min": 188.255
+   },
+   "stagePostInstallAdmitMs": {
+    "n": 8,
+    "first": 178.067,
+    "median": 179.788,
+    "p95": 212.674,
+    "max": 212.674,
+    "min": 175.734
+   },
+   "f4UndoMs": {
+    "n": 6,
+    "first": 17.013,
+    "median": 14.106,
+    "p95": 17.013,
+    "max": 17.013,
+    "min": 13.21
+   },
+   "f4RedoMs": {
+    "n": 6,
+    "first": 13.509,
+    "median": 13.509,
+    "p95": 14.151,
+    "max": 14.151,
+    "min": 13.306
+   }
+  },
+  {
+   "label": "grid-20-walls-only-stress",
+   "shape": {
+    "walls": 840,
+    "junctions": 441,
+    "openings": 0,
+    "rooms": 400,
+    "blockingIssues": 0,
+    "firstBlocking": null
+   },
+   "fixtureBuildMs": 8776,
+   "compileMs": {
+    "n": 15,
+    "first": 574.658,
+    "median": 294.848,
+    "p95": 352.264,
+    "max": 352.264,
+    "min": 267.769
+   },
+   "compiledRetainedMiB": 68.12,
+   "planEvaluateMs": {
+    "n": 30,
+    "first": 28.075,
+    "median": 12.766,
+    "p95": 26.127,
+    "max": 37.498,
+    "min": 8.392
+   },
+   "layoutJsonBytes": 680143,
+   "layoutSerializeMs": {
+    "n": 30,
+    "first": 3.183,
+    "median": 3.024,
+    "p95": 4.239,
+    "max": 5.423,
+    "min": 2.683
+   },
+   "layoutParseValidateMs": {
+    "n": 30,
+    "first": 4.75,
+    "median": 4.444,
+    "p95": 9.026,
+    "max": 9.722,
+    "min": 3.527
+   },
+   "envelopeJsonBytes": 813745,
+   "envelopeSerializeMs": {
+    "n": 20,
+    "first": 3.871,
+    "median": 4.05,
+    "p95": 8.13,
+    "max": 9.613,
+    "min": 3.308
+   },
+   "envelopeContentIdMs": {
+    "n": 20,
+    "first": 4.327,
+    "median": 3.583,
+    "p95": 5.012,
+    "max": 5.763,
+    "min": 3.107
+   },
+   "stageAdmitJsonMs": {
+    "n": 6,
+    "first": 445.278,
+    "median": 468.485,
+    "p95": 531.826,
+    "max": 531.826,
+    "min": 431.706
+   },
+   "admittedSnapshotRetainedMiB": 70.81,
+   "dragPreviewSolveMs": {
+    "n": 60,
+    "first": 449.457,
+    "median": 518.842,
+    "p95": 835.756,
+    "max": 1267.069,
+    "min": 420.806,
+    "outcomes": {
+     "planned": 60
+    }
+   },
+   "wallChainIndependentMs": {
+    "n": 10,
+    "first": 428.439,
+    "median": 428.439,
+    "p95": 565.739,
+    "max": 565.739,
+    "min": 381.77
+   },
+   "wallChainRoomSplitMs": {
+    "n": 10,
+    "first": 494.838,
+    "median": 424.806,
+    "p95": 592.09,
+    "max": 592.09,
+    "min": 379.447
+   },
+   "wallChainRoomSplitOutcomes": {
+    "success": 10
+   },
+   "f4AcceptMs": {
+    "n": 8,
+    "first": 464.647,
+    "median": 464.647,
+    "p95": 743.931,
+    "max": 743.931,
+    "min": 410.981
+   },
+   "stagePostInstallAdmitMs": {
+    "n": 8,
+    "first": 410.244,
+    "median": 403.219,
+    "p95": 620.829,
+    "max": 620.829,
+    "min": 356.8
+   },
+   "f4UndoMs": {
+    "n": 6,
+    "first": 26.576,
+    "median": 21.611,
+    "p95": 26.576,
+    "max": 26.576,
+    "min": 20.857
+   },
+   "f4RedoMs": {
+    "n": 6,
+    "first": 22.622,
+    "median": 22.622,
+    "p95": 23.839,
+    "max": 23.839,
+    "min": 20.016
+   }
+  }
+ ]
+}

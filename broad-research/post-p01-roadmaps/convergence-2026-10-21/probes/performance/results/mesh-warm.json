@@ -1,0 +1,51 @@
+{
+ "node": "v26.7.0",
+ "date": "2026-10-22T09:50:30.874Z",
+ "rows": [
+  {
+   "label": "grid-3+openings",
+   "walls": 24,
+   "openings": 24,
+   "meshes": 24,
+   "vertices": 7320,
+   "triangles": 8304,
+   "materialGroups": 24,
+   "bufferMiB": 0.32,
+   "rebuildMs": {
+    "median": 6.604,
+    "p95": 8.814,
+    "max": 8.823
+   }
+  },
+  {
+   "label": "grid-7+openings",
+   "walls": 112,
+   "openings": 112,
+   "meshes": 112,
+   "vertices": 31976,
+   "triangles": 35504,
+   "materialGroups": 112,
+   "bufferMiB": 1.38,
+   "rebuildMs": {
+    "median": 28.19,
+    "p95": 29.483,
+    "max": 30.988
+   }
+  },
+  {
+   "label": "grid-14+openings",
+   "walls": 420,
+   "openings": 420,
+   "meshes": 420,
+   "vertices": 116088,
+   "triangles": 127456,
+   "materialGroups": 420,
+   "bufferMiB": 5,
+   "rebuildMs": {
+    "median": 103.724,
+    "p95": 113.517,
+    "max": 114.407
+   }
+  }
+ ]
+}

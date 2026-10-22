@@ -1,0 +1,142 @@
+{
+ "probe": "cold-compile.mjs (fresh node process per run)",
+ "date": "2026-10-22T10:03:19.814Z",
+ "node": "v26.7.0",
+ "v8": "14.6.202.34-node.28",
+ "platform": "darwin 24.6.0 arm64",
+ "cpu": "Apple M2",
+ "cpus": 8,
+ "memGiB": 16,
+ "fixtureBuildMs": 76295,
+ "coldEntryBundleBytes": 190098,
+ "rows": [
+  {
+   "fixture": "grid-3",
+   "walls": 24,
+   "openings": 24,
+   "rooms": 9,
+   "jsonBytes": 19168,
+   "runs": 7,
+   "parseValidateMs": {
+    "median": 1.18,
+    "max": 1.28
+   },
+   "compileFirstColdMs": {
+    "median": 18.53,
+    "max": 19.72
+   },
+   "compileSecondMs": {
+    "median": 9.7,
+    "max": 10.81
+   },
+   "compileTenthMs": {
+    "median": 7.4,
+    "max": 8.03
+   },
+   "planFirstMs": {
+    "median": 2.61,
+    "max": 3.11
+   },
+   "processWallMs": {
+    "median": 133.46,
+    "max": 139.27
+   }
+  },
+  {
+   "fixture": "grid-7",
+   "walls": 112,
+   "openings": 112,
+   "rooms": 49,
+   "jsonBytes": 97849,
+   "runs": 7,
+   "parseValidateMs": {
+    "median": 2.9,
+    "max": 3.24
+   },
+   "compileFirstColdMs": {
+    "median": 58.33,
+    "max": 60.61
+   },
+   "compileSecondMs": {
+    "median": 43.51,
+    "max": 54.05
+   },
+   "compileTenthMs": {
+    "median": 36.41,
+    "max": 47.48
+   },
+   "planFirstMs": {
+    "median": 6.68,
+    "max": 9.66
+   },
+   "processWallMs": {
+    "median": 446.85,
+    "max": 466.98
+   }
+  },
+  {
+   "fixture": "grid-14",
+   "walls": 420,
+   "openings": 420,
+   "rooms": 196,
+   "jsonBytes": 408286,
+   "runs": 7,
+   "parseValidateMs": {
+    "median": 5.75,
+    "max": 6.24
+   },
+   "compileFirstColdMs": {
+    "median": 198.61,
+    "max": 211.83
+   },
+   "compileSecondMs": {
+    "median": 145.05,
+    "max": 153.51
+   },
+   "compileTenthMs": {
+    "median": 127.97,
+    "max": 131.44
+   },
+   "planFirstMs": {
+    "median": 19.06,
+    "max": 20.74
+   },
+   "processWallMs": {
+    "median": 1594.24,
+    "max": 1614.22
+   }
+  },
+  {
+   "fixture": "grid-20-walls",
+   "walls": 840,
+   "openings": 0,
+   "rooms": 400,
+   "jsonBytes": 680143,
+   "runs": 7,
+   "parseValidateMs": {
+    "median": 7.66,
+    "max": 8.33
+   },
+   "compileFirstColdMs": {
+    "median": 339.46,
+    "max": 519.21
+   },
+   "compileSecondMs": {
+    "median": 279.05,
+    "max": 293.58
+   },
+   "compileTenthMs": {
+    "median": 273.33,
+    "max": 397.9
+   },
+   "planFirstMs": {
+    "median": 21.61,
+    "max": 30.59
+   },
+   "processWallMs": {
+    "median": 3183.31,
+    "max": 3479.96
+   }
+  }
+ ]
+}

@@ -33,8 +33,10 @@ next slice; its probes are reproducible under its `probes/` folder. Those are un
 researcher handoffs. **Step 3 prepared 2026-10-22:** the
 [proposed decision set](#proposed-decision-set-step-3-unratified) and its
 [exact amendments](./product-convergence-2026-10-21-amendments.md). It applies only descriptive
-corrections; every normative amendment awaits owner acceptance. The DAG and roadmap updates (step 4)
-remain **pending**.
+corrections; every normative amendment awaits owner acceptance. A first owner review the same day
+revised it: stored versus derived unresolved state, deletion of a host, compiler organization, the
+closure and annotation scope, extension compatibility, the reconciled geometry harvest under the
+copyleft model, and browser performance (CD-10). The DAG and roadmap updates (step 4) remain **pending**.
 Do not mark this PR ready merely because briefs and research results exist.
 Keep results in their commission packets and fold their conclusions into this proposal and the
 existing owning documents. Avoid another synthesis ledger or parallel execution roadmap.
@@ -189,9 +191,11 @@ The live plinth path already behaves this way. Name- or index-derived part IDs w
 resource revisions in the same way (capability cross-seam). *Consequence:* each owning domain
 supplies a captured, non-reusing allocator through F.4 step 1. Native Wall creation (C1) is its
 first Layout consumer. *Rejected:* content-addressed identity, which cannot detect the recreation,
-and a persisted cursor inside undoable history, which rewinds. *Owner call:* a captured per-operation
-nonce (deterministic replay; no persistence) or a persisted allocator outside history (needed only
-if concurrent writers later merge).
+and a persisted cursor inside undoable history, which rewinds. *Engineering recommendation (not an
+owner call):* a captured per-operation nonce prefixing each planner's seed. It replays
+deterministically, needs no persisted state, and the ID pattern already admits it. C1's plan confirms
+it with Q3-style guards. Move to a persisted allocator outside undoable history only if concurrent
+writers later need operation-independent IDs.
 
 **CD-2 — Correspondence is owner-published. Unresolved state is derived. References carry
 qualification.**
@@ -203,8 +207,19 @@ qualification.**
   - Resource-revision correspondence at re-admission: preserved, retired or replaced components.
 
   When neither exists, the reference stays unresolved and offers repair.
-- **Unresolved state is derived.** It is computed from the authored reference and the accepted owner
-  state; it is never stored. Repair (Re-pick, Detach, Rebind) is an ordinary F.4 operation.
+- **Unresolved status has two layers.**
+  - *Evaluation status* (out of span, over an Opening, target not currently resolvable) is derived
+    from the authored reference and the accepted owner state on every evaluation, and is never
+    written back.
+  - *An authored unresolved reference* is different. An accepted operation that deliberately keeps a
+    dependent whose target it removes records the ratified AM-2 `UnresolvedBinding` in the owning
+    domain. It retains the original F.1 reference and the repair status.
+
+  The record is cleared only by an explicit repair: Re-pick, explicit placement or delete. Today
+  `UnresolvedBinding` is validated in `units/validate.ts` and used by typed resources without a
+  pin; Experience's unresolved View/Presentation/Stop findings are derived. The step-2 wording
+  "never stored" was imprecise (RR-4 Corr-4). AM-2 records stay; eliminating them would need an
+  explicit migration decision, and none is proposed.
 - **References carry qualification.** Persisted references keep `layout-location` (`levelId` is the
   datum ID, today `floor.id`) and instance/component qualification. A captured representation
   reading stores a level ID plus an offset, never a numeric datum (RR-1/2 cross-seam).
@@ -219,13 +234,24 @@ qualification.**
 - **Deliberate following:** an evaluated attachment, a host reference plus surface parameters, is the
   sole pose authority. Shape edits stay Layout-only. A topology edit that splits or retires a
   referenced host migrates bindings in one compound acceptance, using CD-2 transport. Detach captures
-  the evaluated pose.
+  the evaluated pose, so it is available only while the host resolves.
+- **Deleting a referenced host** is one joint Layout+Scene acceptance that resolves every dependent
+  explicitly. The default detaches it at its evaluated pose. The alternatives offered at delete time
+  are deleting the dependent, or keeping it as an authored `UnresolvedBinding`. A kept binding
+  renders nothing and is repaired by Re-pick, explicit placement or delete. An acceptance-time
+  reverse-reference check refuses a Layout-only delete that would leave a dependent dangling.
 
-*Evidence:* RR-4 Q1, Q2 and Q6. Compound acceptance is **landed** (`unit-acceptance-v1`, compound
+*Evidence:* RR-4 Q1, Q2, Q6 and Q8. In Q8 (delete the host, JSON round trip, fresh reader), only
+deletion-time detachment recovers the pose cold, with a 0 m residual. A kept binding has no pose to
+detach against, and Detach against the pre-delete revision resolves `missing`. Storing a last pose as
+diagnostic data was considered and not recommended: it is a pose-shaped field that invites being read
+as authority. Compound acceptance is **landed** (`unit-acceptance-v1`, compound
 host; its one compound planner is Experience/Camera). What is missing is the joint planners, a Scene attachment format (Scene unit format 2
 refuses one) and per-planner scope enforcement.
 
-*Rejected:* B-lin, and a general constraint solver. *Fallback:* acceptance-time pose rebasing if the
+*Rejected:* B-lin, a general constraint solver, and a Layout-only host delete that leaves bindings
+unrecorded. *Falsifier for the delete default:* creators commonly delete, redraw and re-pick, which
+would favour keep-unresolved. *Fallback:* acceptance-time pose rebasing if the
 owner declines an attachment format; it does not follow later edits. *Owner calls:* the default
 gesture (independent or attached); the coordinate policy (start distance, end, normalized or
 landmark); the policy for a footprint straddling a split; hard or preferred spacing.
@@ -234,6 +260,11 @@ landmark); the policy for a footprint straddling a split; hard or preferred spac
 - **Structures and datums.** Each structure has one frame (translation and yaw; tilt, scale and
   mirror refuse) with its own named datums and Junctions. A join between structures is a declared
   connection, checked and reported broken, never followed and never a shared Junction.
+- **Compiler organization stays open.** V1.2H rejects sharing a Junction across independently moving
+  frames. It does not reject expanding every structure into one compile with qualified, disjoint
+  topology, as opposed to compiling isolated structures and composing their results. The vertical
+  cutover plan chooses between them through a fair comparison: same fixtures, identity and reload
+  behaviour, incremental cost of a one-structure edit, and cross-structure validity checks.
 - **Walls.** A Wall has one base reference and one top definition: height, a datum reference, or an
   explicit roof eave with cycles refused. Floor steps belong to slabs. An Opening's sill defaults to
   the Wall base and may name a datum.
@@ -245,7 +276,17 @@ landmark); the policy for a footprint straddling a split; hard or preferred spac
 
 *Evidence:* RR-1/2 V1, V2, O1, P0 and correction C-5. *Rejected:* global storeys as the source; per-datum
 Wall segmentation; sharing Junctions across structures. *Owner calls:*
-- Closure policy: room-switch (recommended) or per-area with mandatory explicit gaps.
+- **Closure policy.** Room-switch is recommended. It **supersedes** the accepted planning rule that
+  generated fallback closes only the uncovered part of an enclosure
+  ([T1 evidence D2 and §12](./t1-spatial-world/planning-evidence.md#9-focused-mechanisms-carried-forward)).
+  Once an authored closure meets a Room, that Room's whole generated fallback switches off, and any
+  uncovered remainder is reported rather than capped.
+  - *Room-merge consequence:* the switch spreads to the merged Room. In O1.1b the merged 48 m² Room
+    lost its entire fallback because the closure met one former part, leaving a 48 m² open-above
+    warning.
+  - *Alternative:* keep per-area fallback, but require every intentional gap, such as a lightwell, to
+    be marked explicitly. Otherwise an unmarked gap is silently capped (O1.3, 4 m²), and authored and
+    generated closure mix in one Room (O1.4b, 8 m²).
 - Whether a mezzanine underside closes the Room below.
 - What native drawing does with nested or overlapping enclosures and collinear overlaps. Today these
   validate silently, and C1 is the first writer that can create them; it is decided together with
@@ -268,26 +309,29 @@ indices are lost on clone (capability probes 1–3). *Rejected:* reusing the cat
 creator import. *Falsifier:* producer-verified source identity becomes correspondence evidence rather
 than a competing ID.
 
-**CD-6 — Annotations belong to Experience and are reused across three contexts.** This applies the
-owner's direction: keep the parts of an imported object, annotate them, and view the object on its
-own, in a Room or exhibition, or within a Guide.
+**CD-6 — Annotations belong to Experience and are reused across contexts.**
+
+*Requirement (owner direction):* keep the parts of an imported object, annotate them, and view the
+object on its own, in a Room or exhibition, or within a Guide. An explanation authored once is
+reusable across those contexts. It copies no Scene data and needs no Room, Guide or Stop.
 - **Annotation records.** An annotation is an Experience record targeting a qualified instance, part
   or point.
-- **Presentations use, never copy.** A Presentation uses annotations and Views; it never copies Scene
-  data.
-- **The three contexts are one Presentation.** Standalone, among other content in a Room, or as one
-  Stop of a Guide, it is the same Presentation over the same placed subject. "In a Room" is a View of
-  that instance, not a Room subject. Rooms, Guides and Stops stay optional.
+- **Uses, never copies.** Presentations use annotations and Views; they never copy Scene data.
 
-*Strongest alternative:* a typed explanation resource keyed to definition component IDs, so
-annotations travel with the object to every instance and project. *Owner call:* do annotations belong
-to one placed instance (recommended first) or to the object definition? Also: should annotations
-appear during free exploration without an invoked Presentation? That needs Experience-wide
-Interaction, which is deferred unless required.
+*First-consumer choice (proposal, not a universal rule):* one Presentation over one placed
+instance, reused standalone and as a Stop's Presentation. "In a Room" is a View of that instance,
+not a Room subject.
+
+Later consumers may reuse annotations across several Presentations or instances, or attach them to
+the object definition through a typed explanation resource. Neither changes the requirement. Which
+reach comes next is a later product call, not a prerequisite. Annotations visible during free
+exploration, without an invoked Presentation, need Experience-wide Interaction; that stays deferred
+unless a consumer requires it.
 
 **CD-7 — Execution stays on the landed interpreter, with three bounded additions.**
 1. **Stop-free entry.** A Presentation-entry path, so that a Stop-free Presentation can be shown in
-   Preview. Today it lowers but cannot be entered.
+   Preview. Today it lowers but cannot be entered. This completes the accepted P1 direction that a
+   Presentation works without a Guide or Stop.
 2. **Fenced reset.** A visitor Reset or re-entry starts a new run epoch. Today a same-run reset
    accepts a completion that was in flight before it.
 3. **Validated components.** A component-qualified channel family resolves `componentId` through its
@@ -295,19 +339,43 @@ Interaction, which is deferred unless required.
 
 Material variants, clips and mechanism actions are later action families on F.3 negotiation, with
 owner validators. *Rejected:* a statechart or visual-scripting runtime, and direct Three mutation.
-*Owner call:* does held T3.P02.S01 include the Stop-free entry path (recommended, since a Guide-free
-Presentation is the accepted P1 outcome) or leave Preview Guide-only until a successor?
+*Recommendation:* include the entry path in held T3.P02.S01 when it is released. Its scope already
+covers Presentations with optional Stops, and without the entry path its Preview would be Guide-only.
+That is a scope clarification for step 4 and the release decision, not a new research question.
 
-**CD-8 — No geometry library in the first wave; a kernel spike is triggered later.**
-- **Wing envelope:** P3's wing envelope matches the L∞ oracle only on L/T/U shapes, and is wrong by
-  up to 1.65 m on plus/Z/T shapes. Its mesh fails under rotation and far translation (RR-1/2
-  correction C-1/C-2).
-- **Tolerances:** production needs tolerances declared for a coordinate range or local frame.
-- **Kernel spike:** the Clipper2 spike (S-A/S-B) runs once, after the first overhead family and the
-  tolerance contract are chosen and before that slice is planned. A CGAL skeleton stays gated on a
-  licence decision and on non-rectilinear hips being in scope.
+**CD-8 — Established geometry kernels inside the compiler, qualified before their consuming slice.**
+The reconciled [geometry harvest](../../broad-research/geometry-library-harvest.md#5-recommendation-matrix-reconciled-2026-10-22)
+holds the per-area matrix.
+- **No library enters the first wave.** C1, C2 and T3.P02.S01 need none.
+- **A library can run inside the canonical compiler.** It evaluates a Layout-declared family and never
+  becomes another authority, provided the compiler owns persisted parameters, family qualification,
+  refusal, identity and correspondence, and every consumer reads compiled output.
+- **Retain:** `robust-predicates` for exact orientation; the planar-envelope join approach with
+  shared-edge adjacency; the one-answer qualification pattern (a kernel exception is a typed refusal,
+  a valid empty result is a result); earcut-class triangulation of compiled floors and ceilings.
+- **Adopt after qualification:** Clipper2 for 2D booleans and offsets, once **E1** passes. E1 checks
+  the 2D kernel under the declared precision/range contract: holes, touching boundaries, near-collinear
+  edges, inset collapse, transforms, legitimate empty results, and TS port against upstream C++. CGAL
+  2D booleans are the fallback only if Clipper2 fails E1. The single-span profile/hip roof is the first
+  overhead family, once **E2** passes. E2 qualifies the chosen roof family with independent
+  plane/section and edge-incidence checks, in transformed coordinates.
+- **Choose the massing before any compound roof.** P3's wing massing differs from skeleton/L∞ massing
+  by up to 1.65 m on plus/Z/wide-stem T. That difference is not automatically a defect. Its mesh fails
+  under rotation (U at 30°) and far translation (1.48 m error at (1000, 1000) m). E2 then runs against
+  an oracle for the chosen massing; the equivalence question is closed and not recommissioned.
+- **Skeleton under the copyleft model:** CGAL `Straight_skeleton_2` with `extrude_skeleton`, built from
+  upstream source, is the strongest candidate. Its experiment opens only if the chosen roof semantics
+  need skeleton massing (off-axis hips, courtyards, or skeleton plus/Z). WASM initialisation, delivery
+  cost, worker placement and corresponding-source checks run only for that actual candidate.
+- **Delivery:** solvers run at edit/compile time, on the main thread or in a worker, and the viewer
+  consumes compiled derivatives. A solver reaches the viewer only if viewer execution requires it
+  (CD-10).
 
-*Owner call:* do plus/Z-shaped hip roofs follow P3's wing massing or skeleton/L∞ massing?
+*Owner calls:*
+- Which massing plus/Z-shaped hip roofs should have (P3 wing massing or skeleton/L∞).
+- The exact product licence. CGAL's GPL-3.0-or-later packages combine with a GPL-3.0-or-later or
+  AGPL-3.0-or-later product, not with GPL-2.0-only. The repository has no LICENSE file today, so the
+  licence must be recorded before any GPL-only dependency ships. Not legal advice.
 
 **CD-9 — The interaction grammar extends PLATE without new chrome.**
 - **Parts on the Card:** part selection and annotation are deeper capability on the Scene subject's
@@ -318,6 +386,74 @@ Presentation is the accepted P1 outcome) or leave Preview Guide-only until a suc
 
 *Rejected:* copying the P1/P2/P3 shell composition. The exact placement needs PLATE conformance
 review.
+
+**CD-10 — Performance on a regular laptop is an acceptance criterion, and measured problems are
+fixed in the consuming slice.** Evidence and the full proposal are in the
+[performance and delivery packet](../../broad-research/post-p01-roadmaps/convergence-2026-10-21/performance-and-delivery.md).
+Probes are in its `probes/performance/`, measured on an M2 in Node, so they show relative cost
+rather than laptop budgets.
+
+- **Measured problem: C1's mechanism already misses its budgets at medium and large sizes.** Every
+  Wall-drag pointer move runs a full planner solve: 5.7 / 36 / 184 ms at 24 / 112 / 420 Walls. An
+  accepted edit compiles twice, and Undo/Redo re-admits, so a commit costs 21 / 112 / 471 ms. The
+  per-move evaluation budget at M is 8 ms on the reference laptop.
+- **Measured delivery:** first-load JS (brotli) is about 212 KiB for `/` and the hub, 376 KiB for
+  the Stage and 301 KiB for the visitor. Three's core (156 KiB) loads on every route, including the
+  landing page, through project-persistence → camera-core. No `lib/authoring/**` code reaches the
+  visitor today. The Layout compiler and scene codec do, and the current cold path needs them until
+  T4's prepared reader. `GLTFLoader`/meshopt and `@threlte/extras` residue also reach it without
+  being needed.
+- **Reference baseline:**
+  - Laptop A: an i5-1135G7/Iris Xe-class 8 GB laptop, 1080p at 60 Hz, Chrome. It gates.
+  - Laptop B: an M1 MacBook Air with 8 GB.
+  - Safari and Firefox are secondary.
+  - Network: N1 at 20 Mbit/s and 40 ms gates; N2 at 1.6 Mbit/s and 150 ms is reported.
+  - Developer machines calibrate CPU throttling against A within ±10 %. Frame and GPU gates count
+    only on real reference hardware.
+  - At least 10 runs per measurement, reported as p75/p95/p99, cold and repeated.
+- **Workloads:** S (starter), M (pavilion gallery, about 112 Walls and 60 objects), L (museum wing,
+  about 420 Walls, 200 objects, 50 Views, 30 Stops), and XL stress (report-only, must degrade
+  gracefully). Structure, datum, overhead and annotation counts apply only once those slices exist.
+  The P3 vertical foundation is not being built now, so its rows bind its future slices, not the
+  first wave.
+- **Flows:** editor startup, project open, Wall drag and commit, import and placement, orbit,
+  Undo/Redo, Save, capture and Preview entry, viewer cold load and navigation, and repeated open/close
+  for leaks.
+- **Hard budgets on laptop A (selected):**
+  - drag input-to-next-paint p95 ≤ 33 / 50 / 100 ms at S/M/L;
+  - commit and Undo ≤ 100 ms at S/M and ≤ 200 ms at L;
+  - per-move Layout evaluation ≤ 8 ms at M;
+  - orbit frame p95 ≤ 16.7 ms at S/M;
+  - Stage first-load JS ≤ 400 KiB br (no growth over 25 KiB per slice without a reason);
+  - Preview loaded lazily;
+  - leak growth ≤ 5 MiB over 10 cycles;
+  - visitor first-load JS ≤ 250 KiB br and first architectural frame ≤ 2.5 s at N1, both hard from
+    the T4 cutover.
+- **Resolution ladder inside the slice:** profile first; remove duplicated work; incremental
+  computation inside the one compiler, proved equal to a full compile by a correctness differential;
+  bounded caching by content revision; workers for whole pure stages; compiled derivatives; delivery
+  splitting. Any change to a contract, such as F.4 preview semantics or package contents, returns to
+  the owner.
+- **Viewer-delivery gate:** the boundary build gates pass with their forbidden set repointed to
+  `src/lib/authoring/**`. A bundle report lists every editor or solver module in the visitor load
+  set, each justified by visitor execution. Bytes are compared with the last accepted record.
+
+*Retain:* the structural boundary gates (repointed), one shared compiler with optimization inside
+it, immutable hashed assets and compiled derivatives, correctness oracles in `test:heavy`, and
+on-demand benchmarking.
+*Adopt:*
+- a reproducible Playwright (Apache-2.0) + CDP harness, on demand and in final gates, never a CI
+  job;
+- the bundle report as a final-gate step;
+- the slice-local delivery fixes;
+- deduplicated compile and admission in C1.
+
+The harness and the bundle report need owner authorization under the
+[test contract](../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks).
+*Bounded experiments, each with a trigger:* incremental compile (already triggered for C1),
+worker-hosted planning, drag-preview semantics (a contract call), a compiled visitor derivative (at
+T4), BVH picking, batching/instancing, KTX2 textures, LOD/streaming, and a WASM kernel. The
+falsifiers are in the packet.
 
 ### Landed gaps found by the research
 
@@ -331,6 +467,9 @@ editor and 17/17 P3 tests, all passing).
 | Same-run reset accepts a pre-reset completion | AM-6 interpreter | Latent until an asynchronous effect family exists | T3 |
 | F.3 negotiation admits a nonexistent `componentId` | `inspection-v1` channel host | Latent until a component-qualified family exists | Family owner |
 | A Stop-free Presentation cannot be entered | AM-6 events and `navigate` | Blocks a Guide-free Preview | T3 |
+| The visitor boundary gates' editor pattern names the deleted `src/lib/editor/` tree; only `lib/authoring/f4` is protected | `lib/visitor/preview-surface-boundary.ts`, visitor route/identity tests | A new `lib/authoring/**` import into the visitor would pass every gate | Visitor/boundary owner; first visitor-touching slice |
+| Full planner solve on every drag move; double compile per accepted edit; re-admission on Undo/Redo | Layout drag preview, Stage post-install admission | Misses drag/commit/Undo budgets at M and L (CD-10) | T1, inside C1 |
+| Delivery residue: Three on landing/hub; `GLTFLoader`/meshopt and `@threlte/extras` residue in the visitor | Persistence → camera-core edge; visitor imports | Bytes on every cold load | The first slice touching those files |
 
 ### Missing providers and their dependencies (input to step 4)
 
@@ -341,7 +480,8 @@ editor and 17/17 P3 tests, all passing).
 | Wall face-frame query with occupied intervals | T1 | Solve-once surface placement; attachment | — |
 | Topology transport records | T1 | Joint split/dissolve-with-bindings planners | — |
 | Scene attachment format (F extension) | T2 | Attached composition | Owner selects CD-3 attachment |
-| Joint split/dissolve-with-bindings planners | T2 + T1, named integration owner | Attached composition | Transport, scope, attachment format, allocation |
+| Reverse-reference check at acceptance | F4 host | Any Layout delete or retirement while references to it can exist | — |
+| Joint split/dissolve/delete-with-bindings planners | T2 + T1, named integration owner | Attached composition | Transport, scope, reverse-reference check, attachment format, allocation |
 | Creator-import retention (CD-5) | T2 | Inside C2 | — |
 | Component admission, resolver and revision correspondence | T2 | Part annotation; part-hosted attachment | C2; allocation; Stage part selection |
 | Stage part selection and a node map that survives the clone | T1 Stage | Component admission UI | — |
@@ -349,9 +489,14 @@ editor and 17/17 P3 tests, all passing).
 | Presentation-entry run path | T3 | Guide-free Preview | — |
 | Vertical foundation cutover (structures, datums, base/top, slabs, connections, per-level faces) | T1 | Pavilion/mezzanine consumer; support surfaces | C1 accepted; CD-4 owner calls; tolerance contract |
 | Tolerance and coordinate-range contract | T1 | Overhead family; any kernel | — |
-| Overhead family (single-span roof/canopy, closure/suspended ceiling) | T1 | Expressive roofs | Vertical cutover; tolerance; kernel spike if needed |
+| E1 2D kernel qualification (disposable) | T1 | First slice needing area booleans or offsets | Tolerance contract |
+| E2 chosen roof-family qualification (disposable) | T1 | Overhead-family slice | Tolerance contract; chosen massing for compound families |
+| Overhead family (single-span roof/canopy, closure/suspended ceiling) | T1 | Expressive roofs | Vertical cutover; tolerance; E2 (E1 if the family uses booleans/offsets) |
 | Generalized support-surface query | T1 | Placement on slab/deck/roof | Vertical cutover |
 | Plan source kinds for new elements, and a Section evaluation | T1 | Capture of vertical readings | Overhead family |
+| Browser performance harness and bundle report (CD-10) | Test-contract owner | Final-gate performance evidence for every first-wave slice | Owner authorization |
+| Incremental canonical compile, and compile/admission dedupe | T1 | C1's drag and commit budgets | Correctness differential in `test:heavy` |
+| Repointed visitor boundary gates | Visitor/boundary owner | Viewer-delivery gate | — |
 
 ### Consequences for step 4
 
@@ -360,15 +505,22 @@ editor and 17/17 P3 tests, all passing).
   - adds captured non-reusing allocation with delete/recreate, Undo-branch and reload guards;
   - holds `floor.id`, `height` as the only Wall-top writer, and Junction-ID connectivity;
   - takes the working level as an explicit planner parameter;
-  - decides the nested/overlapping/collinear behaviour, along with the non-enclosing ring.
-- **C2 own-GLB import:** adds the CD-5 retention constraints. It must not reuse `normalize-asset.sh`
+  - decides the nested/overlapping/collinear behaviour, along with the non-enclosing ring;
+  - carries the compile/admission dedupe and incremental compile (or worker planning), because the
+    landed mechanism is measured to miss drag, commit and Undo budgets at M and L;
+  - records a performance evidence row (delivery; open, drag, commit, Undo, orbit; heap after 100
+    edits; leak cycle).
+- **C2 own-GLB import:** adds the CD-5 retention constraints, lazy decoders loaded only for assets
+  that need them, and import/placement/GPU-memory performance rows. It must not reuse `normalize-asset.sh`
   or the catalogue optimizer unchanged, must not add part fields to `SceneModelEntity`, and keeps
   `componentId` null.
 - **T3.P02.S01 (held):** has no new technical prerequisite. Its clarifications:
   - store the subject as an F.1 reference;
   - keep its text a closed v1 kind that a later annotation kind extends;
-  - resolve the CD-7 entry-path owner call;
-  - drop the "PR #154 prototype" citation.
+  - include the CD-7 Presentation-entry path (recommended scope clarification);
+  - drop the "PR #154 prototype" citation;
+  - make Preview a lazy chunk that passes the preview-surface boundary, with capture and Preview
+    entry/exit performance rows.
 - **C3 rename/delete:** unaffected.
 - **Next slices to plan:**
   - T2 *Wall-surface solve-once placement* (needs the face-frame query);
@@ -376,20 +528,21 @@ editor and 17/17 P3 tests, all passing).
     Presentation in three contexts;
   - T1 *vertical foundation cutover* (after C1).
 - **Defer:** attached composition waits for the owner's CD-3 choice. The overhead family waits for
-  the cutover and the tolerance contract.
+  the cutover, the tolerance contract and E2 (plus E1 if it uses booleans or offsets).
 
 ### Owner calls to settle at review
 
 | Call | Recommendation | Decided by |
 | --- | --- | --- |
-| Layout allocation mechanism (CD-1) | Captured per-operation nonce | Before C1 is planned |
 | Default placement gesture and attachment format (CD-3) | Independent by default; attachment adopted for deliberate following | Before the attached-composition slice |
 | Coordinate, straddle and spacing policies (CD-3) | Start distance; review on straddle; spacing deferred | Same |
 | Closure policy and mezzanine underside (CD-4) | Room-switch; underside decided with the cutover | Before the vertical cutover |
 | Nested/overlapping/collinear drawing behaviour (CD-4) | Refuse or explain, with a repair path, rather than derive silent duplicate floors | Before C1 is planned |
-| Annotation reach (CD-6) | Per placed instance first; definition-level resource later | Before the part-annotation slices |
-| Stop-free Preview inside T3.P02.S01 (CD-7) | Inside S01 | When S01 is released from the hold |
+| Stop-free Preview inside T3.P02.S01 (CD-7) | Include it, as completion of the P1 direction | When S01 is released from the hold |
 | Hip massing for plus/Z plans (CD-8) | Decided with the first compound-wing family | Not needed for the first wave |
+| Exact product licence (CD-8) | Record a GPLv3-family copyleft licence | Before any GPL-only dependency ships |
+| Performance budgets, baseline and harness (CD-10) | Accept the hard budgets and the reference laptop; authorize the on-demand harness and the bundle report | Before C1 is planned |
+| Drag-preview semantics, if incremental compile misses at L (CD-10) | Keep "preview = planner output"; decide only if the experiment fails | Inside C1, if triggered |
 
 ## Proposed next engineering batch
 
