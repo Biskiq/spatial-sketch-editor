@@ -77,6 +77,7 @@ performance workflow. Named consumer decisions and the production implementation
 
 | Need | Read | Code |
 |------|------|------|
+| Run the project locally | [`local-development.md`](./local-development.md) — editor, API, database and worktree setup | Root npm scripts |
 | Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md), as refined by the [`2026-09-29 World \| Experience amendment`](./reference/decisions/world-experience-reconciliation-2026-09-29.md) and the [2026-10-15 F-interface ratification](./reference/decisions/f-ratification-2026-10-15.md); promoted concerns live in the routed contracts below | — |
 | What's next? | [`roadmap/README.md`](./roadmap/README.md), then stop (no source survey) | — |
 | Foundation contracts (F) — ratified target contract; F.1–F.5 written, implementation status inside | [`reference/composition-execution.md`](./reference/composition-execution.md) (phase registration/status → [`roadmap/f-foundation-contracts/README.md`](./roadmap/f-foundation-contracts/README.md)) | — |

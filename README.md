@@ -1,188 +1,26 @@
-# Spatial Sketch Editor
+# Biskiq
 
-Layout-first editor for indoor 3D — **currently mid-foundation-reset.**
+Biskiq is a browser-based tool for creating spatial experiences: sketch
+architecture, arrange objects, and turn them into interactive presentations and
+guided visits.
 
-PR #115 removed the previous authoring shell (Plan/3D editing, placement, materials,
-Camera tour authoring, preview, publish, import/export) so the spatial foundation
-could be rebuilt on one camera authority, one architectural compiler, separate
-Layout/Scene authorities and a ratified set of cross-domain contracts. What runs
-today is the durable remainder: sign-in, the project hub, cloud persistence and the
-cold public visitor runtime. Authoring capability returns through the T1–T4 tracks;
-it is not merely disabled behind a flag.
+**The production editor is being rebuilt.** The prototypes below demonstrate the
+capabilities being brought together. See the [roadmap](docs/roadmap/README.md) for
+current priorities and the next engineering batch.
 
-This is a deliberate, recorded capability loss, not a regression: see
-[`docs/roadmap/parallel-track-cutover/implementation-plan.md`](docs/roadmap/parallel-track-cutover/implementation-plan.md)
-§4.4 and the capability-loss list it records.
+## Explore the prototypes
 
-## What runs today
-
-| Route | Behavior |
+| Family | What you can try |
 | --- | --- |
-| `/` | Public entry — guest start or Google sign-in |
-| `/projects` | Owned project hub (cloud project list) |
-| `/editor` | Redirect to a minted project at `/project/:id/spatial?create=1` |
-| `/project/:id/spatial` | Read-only Stage for a stored source, a minted project's starter gallery, an empty project, or explicitly opened source JSON. One Canvas; no write path |
-| `/p/:publicationId` | Cold public visitor runtime (strict reader). There are currently no published releases |
+| [Visitor experiences · Conservatory](prototypes/experience-ux-alternative/README.md) | Compose presentations and Guides, then preview a guided visit or free exploration. |
+| [Spatial arrangement · Smart Wall](prototypes/p2-smart-wall/README.md) | Reshape a wall, arrange artworks and lighting, and explore how the composition adapts across revisions. |
+| [Architectural sketching · Vellum](prototypes/p3-vellum/README.md) | Draw and revise buildings, work with heights and roofs, then create a visitor walk. |
 
-Removed routes: `/project/:id/preview`, `/project/:id/publish` (404), and the
-`/museum` + `/museum/editor` routes. The frozen Chopin museum project that served
-them is an independent, separately versioned project outside this repository; this
-product does not serve it and does not import it.
+These are standalone demos with local run instructions in each README. The
+[prototype index](prototypes/README.md) links the wider families and their evidence.
 
-The API (`apps/api`) is functional and current-format only: Save/Load, assets and
-publication work against the wall-first Layout (`formatVersion: 5`) and world-local
-Scene (`formatVersion: 1`) documents. There is no legacy-format reader, detector or
-migration path.
+## Development
 
-## Start here
-
-- [`AGENTS.md`](AGENTS.md) — bootstrap and hard rules for agents.
-- [`docs/README.md`](docs/README.md) — the documentation router; read the smallest
-  routed context that can answer the task.
-- [`apps/editor/tests/README.md`](apps/editor/tests/README.md) — the test manual:
-  lanes, doctrine and what a given change requires.
-
-## Run locally
-
-Needs Node.js 20+ and a WebGL browser.
-
-Create the local environment file once if it does not exist, then set the local
-values in [`.env`](.env) (do not commit it):
-
-```bash
-cp .env.example .env
-```
-
-Keep valid local Google OAuth credentials, a 32-byte `SESSION_KEY` and the
-`R2_*` values in `.env`, with the editor's API origin:
-
-```env
-PUBLIC_API_ORIGIN=http://localhost:8787
-```
-
-Google must allow:
-
-```text
-Authorized JavaScript origin: http://localhost:5173
-Authorized redirect URI:     http://localhost:8787/auth/callback
-```
-
-### Backend in Docker (recommended)
-
-Needs Docker with Compose v2. One command builds the API image, starts
-PostgreSQL 16, applies every migration and returns once the API reports ready
-(`/health/ready` reaches the database):
-
-```bash
-npm run stack:up
-```
-
-That starts the backend only. Then run the editor natively, with Vite hot reload
-(two commands by design: the editor is never containerized):
-
-```bash
-npm run dev
-```
-
-Open <http://localhost:5173>. The Compose stack ([`docker-compose.yml`](docker-compose.yml))
-reads the secrets from `.env` but always uses its own database and origins:
-the API serves `http://localhost:8787` and restarts when `apps/api/src` or
-`packages/*/src` change. Data lives in the `biskiq_pgdata` volume and survives
-restarts; the database is also reachable from the host at
-`postgresql://biskiq:biskiq@localhost:5433/biskiq`. `BISKIQ_DB_PORT` and
-`BISKIQ_API_PORT` change the host ports; with a different API port, set
-`PUBLIC_API_ORIGIN` and the Google redirect URI to match.
-
-```bash
-npm run stack:logs      # follow API, migration and database logs
-npm run stack:migrate   # re-apply migrations after adding one (idempotent)
-npm run stack:down      # stop; data is kept
-npm run stack:reset     # stop and delete the database volume
-npm run test:api:stack  # API suite against the Compose database
-```
-
-**Object storage is not isolated.** Compose replaces the database, but the API
-still uses the `R2_*` values from `.env` for real uploads and reads. Point them at
-a development-only R2 bucket with credentials scoped to it — never the
-production bucket or keys.
-
-**Parallel worktrees.** By default every checkout shares one stack (project,
-image and volume `biskiq`); `stack:up` from another worktree rebuilds the shared
-API from that checkout and `stack:reset` deletes the shared database. For an
-isolated stack per worktree, set a distinct name and host ports in that
-worktree's environment before every `stack:*` command, and point its editor at
-the matching API origin:
-
-```bash
-export BISKIQ_STACK=biskiq-t2 BISKIQ_DB_PORT=5434 BISKIQ_API_PORT=8788
-npm run stack:up
-```
-
-Its `.env` then needs `PUBLIC_API_ORIGIN=http://localhost:8788`, and Google must
-allow `http://localhost:8788/auth/callback`.
-
-The image is for local development only; deployment (`render.yaml`,
-`vercel.json`) does not use it.
-
-### Backend on a host Postgres
-
-Use a local Postgres database:
-
-```bash
-brew services start postgresql@14
-createdb biskiq
-```
-
-Set these local values in `.env`:
-
-```env
-DATABASE_URL=postgresql://localhost:5432/biskiq
-PORT=8787
-EDITOR_ORIGIN=http://localhost:5173
-API_ORIGIN=http://localhost:8787
-PUBLIC_API_ORIGIN=http://localhost:8787
-```
-
-Apply the database schema once:
-
-```bash
-npm run migrate:api
-```
-
-Start the backend and frontend in separate terminals:
-
-```bash
-# Terminal 1
-npm run api
-```
-
-```bash
-# Terminal 2
-npm run dev
-```
-
-Open <http://localhost:5173>. The root scripts load `.env` automatically.
-
-Stop Postgres when finished:
-
-```bash
-brew services stop postgresql@14
-```
-
-The editor alone can still run without the API; cloud Save/Load and Google
-sign-in stay disabled until `PUBLIC_API_ORIGIN` and the backend are configured.
-
-## Other commands
-
-```bash
-npm install
-npm run build   # production build (editor)
-npm run check   # svelte + TS checks
-npm test        # the complete editor suite (all lanes)
-```
-
-The API has its own gates: `npm run check:api` and `npm run test:api` (build plus
-every API contract; the persistence, Save, publication and auth-seam contracts
-need a reachable Postgres — `npm run test:api:stack` uses the Compose database).
-Kernel packages have `check:layout-core`, `check:project-model` and
-`check:camera-core`.
+- [Run locally](docs/local-development.md) — editor, API and database setup.
+- [Documentation](docs/README.md) — product direction, architecture and planning.
+- [Verification](apps/editor/tests/README.md) — test commands and requirements.
