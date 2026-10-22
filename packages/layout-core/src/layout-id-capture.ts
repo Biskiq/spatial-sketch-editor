@@ -1,9 +1,9 @@
 /**
  * T1.P02.S01 §1 — captured, non-reusing Layout identity.
  *
- * Every Layout identity an accepted operation mints is **captured before
- * evaluation**: the operation carries one fresh opaque nonce as an explicit
- * intent input, and every allocator it reaches derives its id from that nonce
+ * Every Layout identity an accepted operation can create today is **captured
+ * before evaluation**: the operation carries one fresh opaque nonce as an
+ * explicit intent input, and every allocator it reaches derives its id from that nonce
  * plus its own existing seed. The document's occupancy is never an allocation
  * source: it is only the refusal check that a captured id is unused.
  *

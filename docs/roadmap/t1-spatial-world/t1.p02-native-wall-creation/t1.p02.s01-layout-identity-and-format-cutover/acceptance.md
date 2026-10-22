@@ -2,7 +2,8 @@
 
 **Slice:** T1.P02.S01 · **Status:** implemented 2026-10-22 on
 `t1/p02-s01-layout-identity-format-cutover` (batch E, E7) — §1 and §2 complete, §3 filed as a
-stop-and-report; verification recorded below; not reviewed, not accepted, no acceptance recorded ·
+stop-and-report; verification recorded below; independently reviewed by two adversarial passes, not
+owner-accepted, no acceptance recorded ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T1.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -129,9 +130,25 @@ by an undo/redo cycle, and a shape no operation can produce has no such cycle.
 curve-authoring slice must take a capture there and derive `{n}` from the operation's nonce before
 that intent ships. Counting occupancy re-mints a `{wallId}:knot:{n}` an earlier operation already
 retired, which a captured tombstone would then refuse — the exact defect §1 removes for Walls,
-Openings, Objects and Rooms. The condition is enforced by
+Openings, Objects and Rooms. The condition is enforced at the direct-reference level by
 `apps/editor/tests/lib/layout/layout-identity-boundary.test.ts` in the arch lane: it fails if editor or
-project-model source references either allocator or the curve/dissolve planners that call them.
+project-model source references either allocator or the curve/dissolve planners that call them. It
+scans those two roots only — a new `layout-core` wrapper that reached these names and was imported by
+the editor would still pass — so it is a tripwire on the wiring, not a proof of the whole graph.
+
+### Paths outside the capture
+
+Three identity paths do not derive from an operation capture, and none is reachable from an accepted
+intent today:
+
+1. `planDissolveJunction` already threads a capture but mints its joined chain's knot with
+   `nextWallCurveKnotId` (the allocator above); no production caller wires dissolve.
+2. `planCreateWallFirstOpening` accepts an optional caller-supplied `intent.id` and then skips
+derivation, refusing only an id already in use; that path is for snapshot restore/import and no
+   editor intent reaches it.
+3. Starter-gallery boot fixes the nonce to `'starter-template'`, so two independently booted projects
+   derive the same template ids. The plan sanctions this: template boot is deterministic by design
+   and nonce-suffixed ids cannot collide with it.
 
 ## Verification evidence
 
@@ -167,7 +184,9 @@ requires every lane such a change reaches plus the full suite at acceptance. `te
 **§1 — captured, non-reusing identity.**
 
 - One capture per operation, minted outside the document (`packages/layout-core/src/layout-id-capture.ts`),
-  with every layout id an **accepted operation can create** derived from it. Proven by
+  with every id a planner derives from its own seed captured from that nonce. The three identity
+  paths outside the capture are listed in *Paths outside the capture* above; none is reachable from
+  an accepted intent. Proven by
   `apps/editor/tests/lib/layout/layout-identity-capture.test.ts` (5 tests covering all five guards
   from acceptance criterion 1): delete then recreate a Wall, an Opening and a Room-birthing chain
   with no identity returning; Undo then a different edit cannot recycle an id while replaying
@@ -189,15 +208,12 @@ requires every lane such a change reaches plus the full suite at acceptance. `te
   read `document.floor`, whose `id` stays stable.
 - The stale-capture guarantee does not rest on the nonce alone: an accepted edit moves the revision,
   and the acceptance coordinator refuses `stale-revision` before any planner runs, so a captured id
-  from a superseded state cannot be replayed onto a newer document. Two id paths stay outside the
-  capture by design and are named in the §1 scope section: `planDissolveJunction`'s curve knot, and
-  `planCreateWallFirstOpening`'s optional caller-supplied `intent.id` (snapshot restore/import). The
-  starter gallery's fixed `'starter-template'` nonce is the third, plan-sanctioned exception: template
-  boot is deterministic by design and nonce-suffixed ids cannot collide with it.
-- The condition that keeps the two occupancy allocators harmless is enforced, not remembered:
-  `apps/editor/tests/lib/layout/layout-identity-boundary.test.ts` (arch lane) fails if
+  from a superseded state cannot be replayed onto a newer document.
+- The condition that keeps the two occupancy allocators harmless is enforced at the direct-reference
+  level: `apps/editor/tests/lib/layout/layout-identity-boundary.test.ts` (arch lane) fails if
   `apps/editor/src` or `packages/project-model/src` ever references `nextWallCurveKnotId`,
-  `nextInteriorAnchorId` or any of the curve/dissolve planners that call them.
+  `nextInteriorAnchorId` or any of the curve/dissolve planners that call them (scope limit: those two
+  roots only).
 
 **§2 — format 6 with a derived Wall role.**
 
@@ -208,14 +224,14 @@ requires every lane such a change reaches plus the full suite at acceptance. `te
   (`layoutWallRoomMemberships`, `packages/layout-core/src/layout-wall-role.ts`); face extraction is
   the reason those boundaries are the reconciled faces, not a second authority the role reads. The
   authored field is gone from the Wall shape and codec keys — a payload that still carries `role`
-  fails as `unknown_key`, pinned in `layout-wall-height.test.ts` — and `planWallRoleChange` /
-  `planPartitionToBoundaryRoomBirth` are retired with no code reference (two comments still name the
-  old planner by history).
+  fails as `unknown_key`, pinned in  `layout-wall-height.test.ts` — and `planWallRoleChange` /
+  `planPartitionToBoundaryRoomBirth` are retired, with no code reference left.
 - The pre/post differential holds: `t1s01-format6-differential.test.ts` compiles the six CLASS 5
   matrix fixtures and compares a neutral digest against values the header records as taken from the
   base revision `55683981` (format-5 code), while asserting the derived role is `bounding` and every
   portal relation stays admitted. What the digest excludes is deliberate and worth reading: `role`
-  everywhere, and `cacheKey` because the Junction key embeds the role vocabulary. It is a regression
+  everywhere, and `cacheKey` at every level — uniformly, because the Junction key embeds the role
+  vocabulary (the cost is that the role-free Wall/Opening keys are not guarded either). It is a regression
   guard whose expected values cannot be re-derived in-tree, not independent proof of the base
   revision's output. It is a whole-table kernel comparison, so it is a `heavy` file
   (`apps/editor/test-lanes.ts`) and runs in the heavy lane recorded above.
@@ -237,11 +253,13 @@ five blocking findings and the successor slice's scope.
 
 **Criterion 4 — kernel invariants** are the heavy lane (9 files, 124 tests) plus the layout contracts
 in the fast lane, green with the fixtures moved to format 6. No assertion was weakened where it
-matters: the freeze test still asserts full per-row equality, the moved columns are pinned by exact
-delta lists, and the OR-1 table's one-time re-emission is declared as an exception whose base-revision
-comparison is recorded (see the evidence-integrity deviation below). One reference table was
-re-emitted (OR-1); the P23B.4 table was **restored**, not re-frozen, with a separate expectation
-column carrying its format-6 delta.
+matters: the freeze test still asserts full per-row equality, P23B.4's moved rows are pinned by an
+exact delta list and its historical table is untouched, and the OR-1 table's one-time re-emission is
+declared as an exception whose base-revision comparison is recorded prose (see the evidence-integrity
+deviation below) — its moved rows are not machine-distinguishable from a behavioural change, so the
+nonce-locality property is the compensating evidence there. One reference table was re-emitted (OR-1);
+the P23B.4 table was **restored**, not re-frozen, with a separate expectation column carrying its
+format-6 delta.
 
 **Criterion 5 — no behaviour change for creators** is evidenced by the authoring journeys in the fast
 lane (precision, manipulation, plinth, Scene placement, Save, Undo/Redo) and by the format-6
@@ -264,12 +282,13 @@ stays open and is listed under outstanding obligations.
    (`p23b11-correspondence-reference.ts`) was re-emitted once at the cutover, because captured
    identity changes every planner-minted id. That is a declared exception to the module's own
    "never regenerate over changed code" rule: the module states the exception, then records the
-   field-by-field comparison of all 24 rows against base revision `55683981` (9 rows identity-only,
-   2 lineage-order, 1 fidelity flip, 15 unchanged apart from trailing commas), and a nonce-locality
-   property in the test proves a different nonce moves identity-bearing content only. The P23B.4
-   observed reference was **restored**, not re-frozen: its pre-optimization columns are back
-   byte-identical to `HEAD` and the format-6 verdicts live in a separate expectation column with an
-   exact 15-row delta test (`p23b4-consumer-observations.test.ts`). The P23B verdict fixture says
+   field-by-field comparison of all 24 rows against base revision `55683981`. 9 rows moved identity
+   (two of them also reorder lineage and one also flips fidelity); the other 15 differ only by the
+   trailing commas the re-emission emitted. A nonce-locality property in the test proves a different
+   nonce moves identity-bearing content only. The P23B.4 observed reference was **restored**, not
+   re-frozen: its pre-optimization columns are byte-identical to the committed table at the branch
+   base `55683981`, and the format-6 verdicts live in a separate expectation column with an exact
+   15-row delta test (`p23b4-consumer-observations.test.ts`). The P23B verdict fixture says
    where its 12 re-derived digests came from. This is the one place a reviewer should look hardest: a
    reference that silently becomes a snapshot of the code under test stops being evidence.
 4. **The working level is enforced at the intent seam**, not as a new parameter on every planner

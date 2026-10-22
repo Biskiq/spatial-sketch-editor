@@ -23,13 +23,18 @@ import { P23B_MATRIX_SPECS, buildP23BMatrixFixture } from './__fixtures__/p23b-f
  * - every compiled Wall's `role` and every compiled Junction leg's `role` are
  *   excluded (that field is the cutover itself; its new value is asserted
  *   separately below), and
- * - `cacheKey` is excluded because it is an input digest that embeds the role
- *   vocabulary (it therefore changes for every Wall/Junction when the
- *   vocabulary changes). Compiled ids, geometry, faces, Rooms, queries and
- *   portal facts are all included.
+ * - `cacheKey` is excluded at EVERY level, uniformly. It is an input digest, and
+ *   the Junction key embeds the role vocabulary, so it changes with the cutover;
+ *   the exclusion is applied uniformly rather than per level so the digest has
+ *   one rule, at the cost of not also guarding the role-free Wall/Opening keys.
+ *   Compiled ids, geometry, faces, Rooms, queries and portal facts are all
+ *   included.
  *
- * The comparison is therefore a real pre/post differential: the expected values
- * come from the base revision's code, not from the code under test. If format 6
+ * The comparison is therefore a pre/post differential: the expected values were
+ * produced by the base revision's code through the procedure below, not by the
+ * code under test. That provenance is recorded, not re-derivable in-tree — the
+ * base tree is not part of this checkout — so read the header as the procedure
+ * that produced them. If format 6
  * changed a polygon, a sample, a face key, a Room boundary or a portal relation
  * for an all-boundary kernel, this test fails.
  *
@@ -60,7 +65,8 @@ const canonical = (value: unknown): string => {
 function formatNeutralDigest(document: LayoutDocumentWallFirst): string {
 	const { geometry } = compileWallFirstLayoutGeometry(document);
 	const faces = extractBoundaryCandidateFaces(document).faces;
-	// The two fields the cutover renames, removed so what remains is geometry.
+	// The cutover's field (`role`) and the input digest that embeds its
+	// vocabulary (`cacheKey`), removed so what remains is geometry.
 	const walls = geometry.walls.map(({ role: _role, ...rest }) => rest);
 	const junctions = (geometry.junctions ?? []).map(({ legs, ...rest }) => ({
 		...rest,

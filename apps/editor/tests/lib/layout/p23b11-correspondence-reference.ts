@@ -34,8 +34,11 @@
  * now carry trailing commas the base table did not), and every row was then
  * compared field by field against the base revision `55683981`
  * (`git show 55683981:` this module), not against the cutover, which would
- * compare the table with itself. No row was edited by hand outside that
- * comparison. The comparison is exact: 24 rows,
+ * compare the table with itself. What the freeze equality below CANNOT prove is
+ * behavioural stability on the nine moved rows: it asserts today's code against
+ * this table, so for those rows the field-by-field comparison against `55683981`
+ * is the evidence, and the nonce-locality property is what keeps it checkable.
+ * The comparison is exact: 24 rows,
  * matched by id, field by field (counts, operation verdict/code, component
  * shape, face-key set, reconciliation kind, lineage kinds, retired/surviving
  * Room ids, fidelity). It found exactly three kinds of difference:

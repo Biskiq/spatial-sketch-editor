@@ -53,9 +53,15 @@ function walk(dir: string): string[] {
 describe('T1.P02.S01 §1 identity boundary', () => {
 	it('no production caller reaches an occupancy-derived identity allocator', () => {
 		const offenders: string[] = [];
+		let scanned = 0;
 		for (const root of SOURCE_ROOTS) {
-			for (const file of walk(root)) {
-				if (file.includes('.test.') || file.includes(`node_modules`)) continue;
+			const files = walk(root);
+			// A moved directory must fail loudly, not turn this into a green
+			// scan over nothing.
+			expect(files.length, `no source files under ${root}`).toBeGreaterThan(0);
+			for (const file of files) {
+				if (file.includes('.test.')) continue;
+				scanned += 1;
 				const source = readFileSync(file, 'utf8');
 				for (const name of UNCAPTURED_IDENTITY_NAMES) {
 					if (new RegExp(`\\b${name}\\b`).test(source)) {
@@ -64,9 +70,11 @@ describe('T1.P02.S01 §1 identity boundary', () => {
 				}
 			}
 		}
+		expect(scanned).toBeGreaterThan(0);
 		// A failure here is not "delete the test": it means an operation can now
 		// reach an id that is not captured. Take a capture (layout-id-capture.ts)
-		// and derive the id from it before wiring that intent.
+		// and derive the id from it before wiring that intent. A mention in a
+		// comment counts as a reference, which is deliberate.
 		expect(offenders).toEqual([]);
 	});
 });
