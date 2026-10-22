@@ -47,3 +47,6 @@ docs/roadmap/p23b-geometry-performance/pre-p23b.8-follow-up/2026-09-28-room-labe
 
 # prototype QA captures
 prototypes/spatial-authoring/qa/out/
+
+# `build` above is output; this directory is source (its files were tracked before the pattern).
+!prototypes/p3-vellum/src/scene/build/
