@@ -7,8 +7,7 @@ product test, schema or contract. Delete with the packet's research round; nothi
 **Run** (repo root, installed root Vitest 3.2.7, no install or download):
 
 ```sh
-cd apps/editor
-npx vitest run --config ../../broad-research/post-p01-roadmaps/convergence-2026-10-21/probes/vertical/vitest.config.ts
+npx vitest run --config broad-research/post-p01-roadmaps/convergence-2026-10-21/probes/vertical/vitest.config.ts
 ```
 
 - Source revision: `ce9b7156` (`git diff 78cafc3a ce9b7156 --stat -- packages prototypes apps` is empty).

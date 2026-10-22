@@ -297,9 +297,9 @@ type, base class or command framework is neither required nor implied. The
 editor that owned interaction, transient preview, selection and the single
 history transaction was removed by #115; a rebuilt authoring surface owns
 interaction, transient preview and selection, and F.4 owns the accepted result.
-Scene edits are outside this rule. F.4's compound acceptance generalizes the
-acceptance boundary across domains at the Experience cutover; it does not
-retrofit this layering rule.
+Scene edits are outside this rule. F.4's compound acceptance, landed with
+`unit-acceptance-v1` at the T3.P01 cutover, generalizes the acceptance boundary
+across domains; it does not retrofit this layering rule.
 
 **Wall role (destination, owner ruling 2026-10-03).** The Wall is the authored
 primitive, and its spatial role is derived: Walls taking part in a closed

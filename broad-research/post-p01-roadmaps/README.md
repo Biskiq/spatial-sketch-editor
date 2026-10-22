@@ -29,7 +29,8 @@ in PR #173: revise scope/briefs → independent research → product/design/arch
 reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
 The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
 includes previously authorized work. Step 2's research results (2026-10-22) are in the three
-packets indexed in §5; they amend no contract. Reconciliation stays in this PR. Merging alone does
+packets indexed in §5; they amend no contract. Step 3's unratified decision set is in the
+convergence proposal. Reconciliation stays in this PR. Merging alone does
 not release implementation.
 
 ## 1. Recommendation and independent assessment

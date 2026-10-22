@@ -101,7 +101,10 @@ establish identity across revisions or re-exports.
 
 **Current implementation:** the F2 Stage uses unit-qualified F1 resolution for selection and
 operations. Resource IDs and locks retain exact revision/pin identity. Publication reads remain
-unavailable under AM-9 until T4's prepared reader.
+unavailable under AM-9 until T4's prepared reader. Unit resolvers resolve a placed Scene entity but
+refuse a non-null `componentId`; no component provider is landed. Landed Layout planners allocate
+Wall, Junction and Layout-object IDs by current occupancy, so a delete or Undo followed by a new
+create can re-mint an earlier ID.
 
 **Extension point:** reference kinds, each declaring target scope, validation
 and resolution/repair semantics.
@@ -218,10 +221,14 @@ domain-owned composition operators.
   supported combination. The execution graph stays an advanced diagnostic
   surface, not the default authoring UI.
 
-**Current behavior:** no general channel system is landed. Current mechanisms
-are domain-internal (scene transforms/materials, Camera motion evaluation); the
-former editor-side layout representation was removed by #115 and is a T1 rebuild.
-They are replaceable mechanisms under these shapes.
+**Current behavior:** `inspection-v1` (AM-3) is a landed, family-generic negotiation.
+Any registered channel family is admitted through the channel host. Addresses are instance- and
+component-qualified, exclusive conflicts reject, and contributions are fenced by run epoch and
+expire on a source or resource revision. The landed families are the Layout ordinary Plan family
+and Camera session inspection; no Scene object, material, clip or component family is admitted.
+Negotiation validates an address against its owner reference only and does not check that a
+`componentId` exists. Other mechanisms (scene transforms/materials, Camera motion evaluation) stay
+domain-internal and replaceable under these shapes.
 
 **Extension point:** channel families and operators, each declaring semantics,
 validation, conflict/arbitration rules and conformance.
@@ -284,6 +291,12 @@ bounded chronological history across Layout and Scene; Undo/Redo mint fresh revi
 expected revision and durable saved-base CAS remain separate preconditions. Head Save captures
 exact source/revision/operation identity, preserves conflicts and ambiguous retries, and offers
 captured F2 sign-in recovery explicitly. See [persistence](./components/persistence.md).
+The Stage host admits compound installs through `unit-acceptance-v1`. Landed Layout and Scene
+planners declare single-domain scope; the landed compound planner is the Experience/Camera
+Presentation-and-Stop create. Changed units are checked against the adapter-wide
+compound flag, not against a planner's own declared scope, so a planner declared single-domain is
+not yet held to that scope. History reinstalls accepted states, so Undo restores a many-to-one
+migration exactly.
 
 ## Session state and declarative logic
 
@@ -314,8 +327,13 @@ are part of this foundation.
 - Syntax, UI and the initial operator set are planning choices. Scripts remain
   the separately governed extension-module exception.
 
-**Current behavior:** no typed session declarations, reducer or expression
-evaluator exist. The earlier blanket rejection of variables/conditions is
+**Current behavior:** the AM-6 shared interpreter is landed (T3.P01). It has typed
+boolean/choice declarations with initial/reset values, a deterministic reducer over explicit
+events, bounded literal/state-read/equality/conjunction guards, and `runId`/`runEpoch` rejection of
+stale events. A same-run reset rewinds the current run without a new epoch, so a completion issued
+before the reset is accepted afterwards; no landed asynchronous effect family exposes this. The event
+set has no Presentation-entry event, and `navigate` requires a Stop, so a Stop-free Presentation
+lowers but cannot be shown. The earlier blanket rejection of variables/conditions is
 superseded (see [`north-star.md`](./north-star.md) §Composition, behavior, and
 direction model).
 

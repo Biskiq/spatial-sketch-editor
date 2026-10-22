@@ -6,10 +6,10 @@ evidence baseline `78cafc3a`; `git diff 78cafc3a ce9b7156 --stat` touches no ins
 
 ## Reproduce
 
-From `apps/editor` (uses the editor workspace's installed Vitest 3.2.7):
+From the repository root (uses the installed Vitest 3.2.7):
 
 ```sh
-npx vitest run --config ../../broad-research/post-p01-roadmaps/convergence-2026-10-21/probes/rr4/vitest.config.ts
+npx vitest run --config broad-research/post-p01-roadmaps/convergence-2026-10-21/probes/rr4/vitest.config.ts
 ```
 
 Append `q1`, `q2`, `q3` or `q6` to run one file. Each case prints one `RR4 Q<n> <label> {json}`

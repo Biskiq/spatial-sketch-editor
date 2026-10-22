@@ -30,7 +30,11 @@ proceed within their commissioned step. Merging this PR alone does not release t
 **Step 2 executed 2026-10-22 at `ce9b7156`** (no inspected source changed from the baseline).
 Each packet records its probe ledger, corrections, proposed amendments, missing providers and
 next slice; its probes are reproducible under its `probes/` folder. Those are unreconciled
-researcher handoffs. Contract reconciliation and DAG updates (steps 3–4) remain **pending**.
+researcher handoffs. **Step 3 prepared 2026-10-22:** the
+[proposed decision set](#proposed-decision-set-step-3-unratified) and its
+[exact amendments](./product-convergence-2026-10-21-amendments.md). It applies only descriptive
+corrections; every normative amendment awaits owner acceptance. The DAG and roadmap updates (step 4)
+remain **pending**.
 Do not mark this PR ready merely because briefs and research results exist.
 Keep results in their commission packets and fold their conclusions into this proposal and the
 existing owning documents. Avoid another synthesis ledger or parallel execution roadmap.
@@ -98,46 +102,39 @@ or architectural commitments are already sufficient.
 
 | Concern | Existing authority | Proposed commitment or precise unresolved choice | Disposition |
 | --- | --- | --- | --- |
-| First useful creator loop | North Star; K1/K3/K4; T3.P02 | Draw/import → arrange → capture → isolated Preview → Save/reopen, with a successful revision | Bounded engineering and later integrated acceptance; no new research gate |
-| Intelligent operations and revision feedback | PLATE precision/refusal, source/reach/repair; spatial instrument grammar | Common interaction grammar above; ordinary precision/keyboard equivalents, discoverable interpretation alternatives and proportional impact feedback | Focused design reconciliation; owner accepts any PLATE departure |
-| Placement versus attachment versus arrangement | Scene owns composition/attachments; Layout owns support; F1/F4 own qualified references/acceptance | Which intent persists, parameter/face correspondence, overconstraint/refusal and deliberate repair; groups/containment never imply attachment | Relationship brief; resolve before persisting following |
-| Vertical architecture | Layout owns levels/structures; world-local placement with explicit internal frames; Rooms derived | Stable datums and irregular elevations, structure placement, Wall base/top authority and invalidation | Vertical brief; a Layout cutover, not a Scene hierarchy |
-| Overheads | Layout owns architecture and the canonical compiler; independent interior intent already retained in T1 evidence | Independent roof/ceiling/slab/void semantics, supported geometry families, Wall-top agreement, joins and tolerances | Vertical brief; library choice follows representation and failure policy |
-| Interactive Presentation | Experience owns visitor content/interactions; domains own capabilities; Camera owns movement | Minimal event/target/action grammar, admitted capability evidence, durable component roles/rebinding and scoped execution/reset | Capability brief; first consumer determines exact F/domain extensions |
-| Inspection used for explanation | Layout runtime-safe readings; Camera capture; Experience invocation | Which representation parameters can be captured and how a missing/unsupported contribution is exposed | Capability + vertical briefs share only the representation-channel seam |
-| Reliable revision as product quality | North Star, F1/F4 and PLATE already require it | A creator can predict the affected scope, preserve unrelated work, repair a real break and reopen the result | Put observable journeys in each consuming plan; no new universal engine |
+| First useful creator loop | North Star; K1/K3/K4; T3.P02 | Draw/import → arrange → capture → isolated Preview → Save/reopen, with a successful revision | Bounded engineering and later integrated acceptance; no new research gate. Step 3: C1 gains CD-1 allocation; C2 gains CD-5 retention |
+| Intelligent operations and revision feedback | PLATE precision/refusal, source/reach/repair; spatial instrument grammar | Common interaction grammar above; ordinary precision/keyboard equivalents, discoverable interpretation alternatives and proportional impact feedback | Focused design reconciliation; owner accepts any PLATE departure. Step 3: CD-9 |
+| Placement versus attachment versus arrangement | Scene owns composition/attachments; Layout owns support; F1/F4 own qualified references/acceptance | Which intent persists, parameter/face correspondence, overconstraint/refusal and deliberate repair; groups/containment never imply attachment | Step 3: CD-3 (solve-once first; evaluated attachment proposed) |
+| Vertical architecture | Layout owns levels/structures; world-local placement with explicit internal frames; Rooms derived | Stable datums and irregular elevations, structure placement, Wall base/top authority and invalidation | Step 3: CD-4 (a Layout cutover after C1, not a Scene hierarchy) |
+| Overheads | Layout owns architecture and the canonical compiler; independent interior intent already retained in T1 evidence | Independent roof/ceiling/slab/void semantics, supported geometry families, Wall-top agreement, joins and tolerances | Step 3: CD-4/CD-8; library choice deferred to a triggered kernel spike |
+| Interactive Presentation | Experience owns visitor content/interactions; domains own capabilities; Camera owns movement | Minimal event/target/action grammar, admitted capability evidence, durable component roles/rebinding and scoped execution/reset | Step 3: CD-5–CD-7; first consumer re-centred on part annotation |
+| Inspection used for explanation | Layout runtime-safe readings; Camera capture; Experience invocation | Which representation parameters can be captured and how a missing/unsupported contribution is exposed | Step 3: CD-2 qualification; capture amendment waits for its consumer |
+| Reliable revision as product quality | North Star, F1/F4 and PLATE already require it | A creator can predict the affected scope, preserve unrelated work, repair a real break and reopen the result | Step 3: CD-1/CD-2 shared rules; journeys stay in each consuming plan |
 
-The initial investigation supports three **provisional architecture recommendations**, each
-subject to the linked falsifiers:
+Step 2 replaced the three provisional architecture recommendations made here with evidence.
+The [proposed decision set](#proposed-decision-set-step-3-unratified) below reconciles them.
 
-- Offer independent poses and explicit evaluated attachment. Favor attachment for intentional
-  following, with owner-provided parameter/face correspondence; compare bounded binding migration
-  against stable owner identity or persisted lineage where topology changes. A universal constraint
-  solver is not the default answer to spacing, contact and identity together.
-- Favor local datums and structure frames with independently identified architectural surface
-  families. Keep conventional storeys as an optional workflow. Roof, ceiling, slab and void have
-  distinct meaning; bounded analytic/profile/envelope kernels can coexist inside the one compiler.
-  Compare retained parametric definitions and skeleton/import expansion at demonstrated limits.
-- Favor explicit, revision-pinned capability admission and finite Experience offer/action records
-  over heuristic execution or a page/behavior engine. Reuse the existing interpreter and Camera
-  handoff; reusable roles declare requirements and bind to concrete identities explicitly.
-
-Step 3 must prepare the exact reconciliation in this PR: North Star for product commitments;
+Step 3 prepares the exact reconciliation in this PR: North Star for product commitments;
 PLATE for interaction/shell changes; architecture and Layout/Scene/assets/Camera contracts for
 domain semantics; F for cross-domain shapes and negotiation. Proposed contract diffs remain
 unratified during review; record the owner's accepted decisions and integrate their final wording
 before merge. Do not merge an unaccepted proposal as a normative contract. Preserve landed
 descriptions until an actual cutover and label the new destination honestly. An incompatible
 accepted interface requires a new version; an accepted gate row never implies new capabilities
-without the required implementation/acceptance evidence.
+without the required implementation/acceptance evidence. The step-3 wording is in the
+[proposed amendments](./product-convergence-2026-10-21-amendments.md): normative text there stays
+unapplied until the owner accepts it.
 
 **Descriptive reconciliation, separate from ratification.** At this baseline, T1.P01, T2.P01 and
 T3.P01 are closed; T3.P02.S01 remains authorized and unimplemented. The North Star's opening
 “read-only/no editing/history” paragraph, the track READMEs' removed-surface tables, and the
 milestone's older Today cells lag their owning acceptance records. This is router triage **B**
 (landed change with stale prose) for those specific descriptions, not evidence that new capabilities
-shipped. Step 3 includes a bounded docs correction citing phase acceptances and keeping destination labels;
-do not rewrite current truth to match P1–P3. The Card-over-Compose residual in
+shipped. Step 3 applied the reference-contract part of this correction: the North Star's
+current-shell paragraph and the stale F status notes, listed as descriptive in the
+[amendments](./product-convergence-2026-10-21-amendments.md#applied-descriptive-corrections).
+The track READMEs' tables, the milestone cells and the stale "PR #154 prototype" citations in T3.P02
+belong to step 4's roadmap updates. Do not rewrite current truth to match P1–P3. The Card-over-Compose residual in
 [S06 acceptance](./t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/acceptance.md#residual)
 remains a T1 shell obligation, not an accepted solution or a reason to reopen the completed phase.
 
@@ -171,6 +168,228 @@ A documented unsupported boundary is a valid result. Stop
 research when existing contracts plus the focused evidence decide the first consumer. Broader studies,
 a general constraint engine, universal roof generation and semantic ingest for every asset are not
 prerequisites for that outcome.
+
+## Proposed decision set (step 3, unratified)
+
+This section reconciles the three step-2 handoffs into one direction. Nothing here is ratified,
+registered or authorized. Each decision names its evidence, the strongest rejected alternative and
+the owner call it leaves open. The exact wording for the owning contracts is in the
+[proposed amendments](./product-convergence-2026-10-21-amendments.md). Steps 4–5 consume this
+section for the DAG, the batch and owner review.
+
+### Shared rules across the three seams
+
+**CD-1 — An allocated identity is never re-minted for a different subject.** This covers Layout
+Walls, Junctions, Openings and objects; later datums, structures and overheads; Scene entities; and
+resource components. It holds across undone branches, reloads and byte-identical recreation. Undo may
+restore the same subject. Content identity proves equal bytes, not continuity.
+*Evidence:* landed Layout planners allocate by occupancy, so delete or Undo followed by a new create
+re-mints the ID. An identical recreation resolves an `exact` reference to the original (RR-4 Q3).
+The live plinth path already behaves this way. Name- or index-derived part IDs would recur across
+resource revisions in the same way (capability cross-seam). *Consequence:* each owning domain
+supplies a captured, non-reusing allocator through F.4 step 1. Native Wall creation (C1) is its
+first Layout consumer. *Rejected:* content-addressed identity, which cannot detect the recreation,
+and a persisted cursor inside undoable history, which rewinds. *Owner call:* a captured per-operation
+nonce (deterministic replay; no persistence) or a persisted allocator outside history (needed only
+if concurrent writers later merge).
+
+**CD-2 — Correspondence is owner-published. Unresolved state is derived. References carry
+qualification.**
+- **Owner-published correspondence.** Consumers never infer correspondence from names, indices or
+  nearest geometry. It comes in two kinds:
+  - Layout topology transport. A split or dissolve publishes each input interval's output ID, offset
+    and orientation, including the side flip on a reversed survivor. Without the side flip, panels
+    land on the opposite face (RR-4 Q1).
+  - Resource-revision correspondence at re-admission: preserved, retired or replaced components.
+
+  When neither exists, the reference stays unresolved and offers repair.
+- **Unresolved state is derived.** It is computed from the authored reference and the accepted owner
+  state; it is never stored. Repair (Re-pick, Detach, Rebind) is an ordinary F.4 operation.
+- **References carry qualification.** Persisted references keep `layout-location` (`levelId` is the
+  datum ID, today `floor.id`) and instance/component qualification. A captured representation
+  reading stores a level ID plus an offset, never a numeric datum (RR-1/2 cross-seam).
+- *Rejected:* persisted Layout lineage as the general transport (B-lin). It is uncompactable,
+  Scene-motivated history inside Layout (RR-4 Q2).
+
+### Domain decisions
+
+**CD-3 — Placement first; attachment only when explicitly chosen.**
+- **First:** solve-once surface placement writes an ordinary world pose. It needs only a Layout
+  Wall face-frame query.
+- **Deliberate following:** an evaluated attachment, a host reference plus surface parameters, is the
+  sole pose authority. Shape edits stay Layout-only. A topology edit that splits or retires a
+  referenced host migrates bindings in one compound acceptance, using CD-2 transport. Detach captures
+  the evaluated pose.
+
+*Evidence:* RR-4 Q1, Q2 and Q6. Compound acceptance is **landed** (`unit-acceptance-v1`, compound
+host; its one compound planner is Experience/Camera). What is missing is the joint planners, a Scene attachment format (Scene unit format 2
+refuses one) and per-planner scope enforcement.
+
+*Rejected:* B-lin, and a general constraint solver. *Fallback:* acceptance-time pose rebasing if the
+owner declines an attachment format; it does not follow later edits. *Owner calls:* the default
+gesture (independent or attached); the coordinate policy (start distance, end, normalized or
+landmark); the policy for a footprint straddling a split; hard or preferred spacing.
+
+**CD-4 — Structure-local datums and independent overhead elements, after C1.**
+- **Structures and datums.** Each structure has one frame (translation and yaw; tilt, scale and
+  mirror refuse) with its own named datums and Junctions. A join between structures is a declared
+  connection, checked and reported broken, never followed and never a shared Junction.
+- **Walls.** A Wall has one base reference and one top definition: height, a datum reference, or an
+  explicit roof eave with cycles refused. Floor steps belong to slabs. An Opening's sill defaults to
+  the Wall base and may name a datum.
+- **Overheads.** Roof, canopy, ceiling (closure or suspended), slab and void are independently
+  identified Layout elements. Rooms never own them. Fitting is one-shot by default. Room-keyed
+  following is rejected.
+- **C1 keeps the single datum.** Format 5 is an exact special case, so the later cutover maps
+  `floor` to the first datum losslessly.
+
+*Evidence:* RR-1/2 V1, V2, O1, P0 and correction C-5. *Rejected:* global storeys as the source; per-datum
+Wall segmentation; sharing Junctions across structures. *Owner calls:*
+- Closure policy: room-switch (recommended) or per-area with mandatory explicit gaps.
+- Whether a mezzanine underside closes the Room below.
+- What native drawing does with nested or overlapping enclosures and collinear overlaps. Today these
+  validate silently, and C1 is the first writer that can create them; it is decided together with
+  the owed non-enclosing-ring decision.
+
+*Uncertainty:* per-level face extraction for a Wall that spans two datums is unprobed, and could
+reopen segmentation.
+
+**CD-5 — Imported parts are retained at import and admitted explicitly.**
+- **Kept at import (C2):** the original bytes and hash, the recipe identity and version, a render
+  derivative that preserves nodes (or records a source-to-derivative node map), and a truthful ingest
+  report that separates observed from admitted.
+- **Admitted later:** components only by explicit action, with opaque IDs (CD-1) mapped to locators
+  pinned to the exact revision. Names and node indices locate parts; they never identify them.
+- **Single-mesh objects** are annotated by an instance-local point.
+
+*Evidence:* every catalogue derivative has lost its source parts. The repo's normalize recipe deletes
+markers, merges parts and misattributes variants. Loader names are renamed and sanitized, and node
+indices are lost on clone (capability probes 1–3). *Rejected:* reusing the catalogue recipe for
+creator import. *Falsifier:* producer-verified source identity becomes correspondence evidence rather
+than a competing ID.
+
+**CD-6 — Annotations belong to Experience and are reused across three contexts.** This applies the
+owner's direction: keep the parts of an imported object, annotate them, and view the object on its
+own, in a Room or exhibition, or within a Guide.
+- **Annotation records.** An annotation is an Experience record targeting a qualified instance, part
+  or point.
+- **Presentations use, never copy.** A Presentation uses annotations and Views; it never copies Scene
+  data.
+- **The three contexts are one Presentation.** Standalone, among other content in a Room, or as one
+  Stop of a Guide, it is the same Presentation over the same placed subject. "In a Room" is a View of
+  that instance, not a Room subject. Rooms, Guides and Stops stay optional.
+
+*Strongest alternative:* a typed explanation resource keyed to definition component IDs, so
+annotations travel with the object to every instance and project. *Owner call:* do annotations belong
+to one placed instance (recommended first) or to the object definition? Also: should annotations
+appear during free exploration without an invoked Presentation? That needs Experience-wide
+Interaction, which is deferred unless required.
+
+**CD-7 — Execution stays on the landed interpreter, with three bounded additions.**
+1. **Stop-free entry.** A Presentation-entry path, so that a Stop-free Presentation can be shown in
+   Preview. Today it lowers but cannot be entered.
+2. **Fenced reset.** A visitor Reset or re-entry starts a new run epoch. Today a same-run reset
+   accepts a completion that was in flight before it.
+3. **Validated components.** A component-qualified channel family resolves `componentId` through its
+   owner. Negotiation alone admitted a nonexistent part.
+
+Material variants, clips and mechanism actions are later action families on F.3 negotiation, with
+owner validators. *Rejected:* a statechart or visual-scripting runtime, and direct Three mutation.
+*Owner call:* does held T3.P02.S01 include the Stop-free entry path (recommended, since a Guide-free
+Presentation is the accepted P1 outcome) or leave Preview Guide-only until a successor?
+
+**CD-8 — No geometry library in the first wave; a kernel spike is triggered later.**
+- **Wing envelope:** P3's wing envelope matches the L∞ oracle only on L/T/U shapes, and is wrong by
+  up to 1.65 m on plus/Z/T shapes. Its mesh fails under rotation and far translation (RR-1/2
+  correction C-1/C-2).
+- **Tolerances:** production needs tolerances declared for a coordinate range or local frame.
+- **Kernel spike:** the Clipper2 spike (S-A/S-B) runs once, after the first overhead family and the
+  tolerance contract are chosen and before that slice is planned. A CGAL skeleton stays gated on a
+  licence decision and on non-rectilinear hips being in scope.
+
+*Owner call:* do plus/Z-shaped hip roofs follow P3's wing massing or skeleton/L∞ massing?
+
+**CD-9 — The interaction grammar extends PLATE without new chrome.**
+- **Parts on the Card:** part selection and annotation are deeper capability on the Scene subject's
+  Card. An object without admitted parts shows no part affordance.
+- **Relationship state:** independent, attached, needs review and unresolved, shown with Detach or
+  Re-pick as ordinary repairs. Proximity never implies following.
+- **Precise equivalents:** precision and keyboard routes accompany every interpreted gesture.
+
+*Rejected:* copying the P1/P2/P3 shell composition. The exact placement needs PLATE conformance
+review.
+
+### Landed gaps found by the research
+
+Reported, not fixed; the owner hold applies. The research also ran the existing controls (57/57
+editor and 17/17 P3 tests, all passing).
+
+| Gap | Where | Exposure | Owner |
+| --- | --- | --- | --- |
+| Per-planner scope is not enforced: a planner declared single-domain Scene was accepted while also moving a Wall | `unit-acceptance-v1` adapter `validateChange` and the dispatcher | Any registered planner; must be closed before the first joint planner | F4 host owner |
+| Layout IDs are re-minted after delete or Undo | `defaultChainAllocator`, `nodingAllocatorAdapter`, `nextLayoutPresetObjectId` | Latent until a persisted reference names a Layout ID; C1 makes it reachable for Walls | T1 |
+| Same-run reset accepts a pre-reset completion | AM-6 interpreter | Latent until an asynchronous effect family exists | T3 |
+| F.3 negotiation admits a nonexistent `componentId` | `inspection-v1` channel host | Latent until a component-qualified family exists | Family owner |
+| A Stop-free Presentation cannot be entered | AM-6 events and `navigate` | Blocks a Guide-free Preview | T3 |
+
+### Missing providers and their dependencies (input to step 4)
+
+| Provider | Owner | Needed by | Depends on |
+| --- | --- | --- | --- |
+| Captured non-reusing allocation (CD-1) | T1 + F4 host | C1; every persisted reference to Layout | — |
+| Per-planner scope enforcement | F4 host | Any joint planner | — |
+| Wall face-frame query with occupied intervals | T1 | Solve-once surface placement; attachment | — |
+| Topology transport records | T1 | Joint split/dissolve-with-bindings planners | — |
+| Scene attachment format (F extension) | T2 | Attached composition | Owner selects CD-3 attachment |
+| Joint split/dissolve-with-bindings planners | T2 + T1, named integration owner | Attached composition | Transport, scope, attachment format, allocation |
+| Creator-import retention (CD-5) | T2 | Inside C2 | — |
+| Component admission, resolver and revision correspondence | T2 | Part annotation; part-hosted attachment | C2; allocation; Stage part selection |
+| Stage part selection and a node map that survives the clone | T1 Stage | Component admission UI | — |
+| Experience annotation records and lowering | T3 | Part-annotated Presentation | T3.P02.S01 text home; component admission for part targets |
+| Presentation-entry run path | T3 | Guide-free Preview | — |
+| Vertical foundation cutover (structures, datums, base/top, slabs, connections, per-level faces) | T1 | Pavilion/mezzanine consumer; support surfaces | C1 accepted; CD-4 owner calls; tolerance contract |
+| Tolerance and coordinate-range contract | T1 | Overhead family; any kernel | — |
+| Overhead family (single-span roof/canopy, closure/suspended ceiling) | T1 | Expressive roofs | Vertical cutover; tolerance; kernel spike if needed |
+| Generalized support-surface query | T1 | Placement on slab/deck/roof | Vertical cutover |
+| Plan source kinds for new elements, and a Section evaluation | T1 | Capture of vertical readings | Overhead family |
+
+### Consequences for step 4
+
+- **C1 native Walls:**
+  - keeps one datum;
+  - adds captured non-reusing allocation with delete/recreate, Undo-branch and reload guards;
+  - holds `floor.id`, `height` as the only Wall-top writer, and Junction-ID connectivity;
+  - takes the working level as an explicit planner parameter;
+  - decides the nested/overlapping/collinear behaviour, along with the non-enclosing ring.
+- **C2 own-GLB import:** adds the CD-5 retention constraints. It must not reuse `normalize-asset.sh`
+  or the catalogue optimizer unchanged, must not add part fields to `SceneModelEntity`, and keeps
+  `componentId` null.
+- **T3.P02.S01 (held):** has no new technical prerequisite. Its clarifications:
+  - store the subject as an F.1 reference;
+  - keep its text a closed v1 kind that a later annotation kind extends;
+  - resolve the CD-7 entry-path owner call;
+  - drop the "PR #154 prototype" citation.
+- **C3 rename/delete:** unaffected.
+- **Next slices to plan:**
+  - T2 *Wall-surface solve-once placement* (needs the face-frame query);
+  - T2 *Admit and address parts of an imported model* (after C2), then T3's part-annotated
+    Presentation in three contexts;
+  - T1 *vertical foundation cutover* (after C1).
+- **Defer:** attached composition waits for the owner's CD-3 choice. The overhead family waits for
+  the cutover and the tolerance contract.
+
+### Owner calls to settle at review
+
+| Call | Recommendation | Decided by |
+| --- | --- | --- |
+| Layout allocation mechanism (CD-1) | Captured per-operation nonce | Before C1 is planned |
+| Default placement gesture and attachment format (CD-3) | Independent by default; attachment adopted for deliberate following | Before the attached-composition slice |
+| Coordinate, straddle and spacing policies (CD-3) | Start distance; review on straddle; spacing deferred | Same |
+| Closure policy and mezzanine underside (CD-4) | Room-switch; underside decided with the cutover | Before the vertical cutover |
+| Nested/overlapping/collinear drawing behaviour (CD-4) | Refuse or explain, with a repair path, rather than derive silent duplicate floors | Before C1 is planned |
+| Annotation reach (CD-6) | Per placed instance first; definition-level resource later | Before the part-annotation slices |
+| Stop-free Preview inside T3.P02.S01 (CD-7) | Inside S01 | When S01 is released from the hold |
+| Hip massing for plus/Z plans (CD-8) | Decided with the first compound-wing family | Not needed for the first wave |
 
 ## Proposed next engineering batch
 
@@ -291,9 +510,11 @@ unrelated research expansion.
 
 These acceptance targets are proposals, not a claim that all constituent prototype features were
 accepted. The research packets compare alternatives before fixing the first consumer's exact scope.
-Current Scene planners are single-domain (`compound: false`); accepted F4 unit capability does not
-supply a new compound operation or authorize widening T2.P01. Stable-host evaluated following can
-leave a shape edit Layout-only; an acceptance-time binding migration needs its own joint consumer.
+Current Scene planners declare themselves single-domain (`compound: false`). The compound host
+behind `unit-acceptance-v1` is landed, but it supplies no new compound operation, does not yet
+enforce each planner's declared scope (CD-3) and does not authorize widening T2.P01. Stable-host
+evaluated following can leave a shape edit Layout-only. An acceptance-time binding migration needs
+its own joint planner, the Scene attachment format and scope enforcement.
 
 ## Owner review and exit
 

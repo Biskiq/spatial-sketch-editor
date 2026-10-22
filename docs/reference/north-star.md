@@ -15,13 +15,22 @@ target capability below is presented as shipped. Open mechanism decisions (encod
 kernel implementation, level mechanism, channel operators) are named as open, not
 invented here.
 
-**Current shell (post-#115 and T1.P01.S02):** PR #115 removed the earlier editable
-`Spatial` workspace (`Scene | Camera` × `Plan | 3D`). T1.P01.S02 restores a read-only
-Stage at `/project/:id/spatial`, with source inspection, selection and an Index; it writes
-nothing back. The product still has no Layout/Scene editing, history, gizmo, Camera
-authoring, preview takeover, publish surface or import/export. The surviving product
-capability is sign-in, the project hub, cloud Save/Load, the API and the cold public visitor
-runtime. `Experience`, `Assets`
+**Current shell (after T1.P01, T2.P01 and T3.P01):** PR #115 removed the earlier editable
+`Spatial` workspace (`Scene | Camera` × `Plan | 3D`). The rebuilt Stage at
+`/project/:id/spatial` offers an explicit starter gallery or a genuinely empty start, Plan/3D
+inspection and selection, a native Layout plinth, dimension edits of existing Walls and
+Openings, and straight-Wall pose
+([T1.P01](../roadmap/t1-spatial-world/t1.p01-stage-foundation/README.md#outcome-and-deliberate-boundary)).
+It also places upright native and verified catalogue objects on compiled floor support and
+moves, yaws, resizes, duplicates and deletes them
+([T2.P01](../roadmap/t2-composition/t2.p01-supported-composition/README.md#outcome-and-boundary)).
+One local accepted history with Undo/Redo, unit F4 acceptance and conditional cloud Save runs
+over the Camera/Experience source cutover and its shared execution interpreter
+([T3.P01](../roadmap/t3-experience/t3.p01-camera-experience-foundation/README.md#bounded-outcome)).
+The product still has no Wall drawing or topology editing, no model import, no Camera or
+Experience authoring UI, no Preview takeover and no publish surface. Publication reads stay
+unavailable under AM-9 until T4's prepared reader. Sign-in, the project hub and the API remain.
+`Experience`, `Assets`
 and `Publish` are the project-level concerns from the 2026-08-31 shell ratification —
 **Experience authoring is destination, not shipped**, and Assets/Publish retain only
 partial backend implementations (P20/P22) with no product authoring UI. Composition,
