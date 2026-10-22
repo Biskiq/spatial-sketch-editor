@@ -48,6 +48,20 @@ Status vocabulary, used by every register below: `proposed | planning | approved
 in-progress | shipped | archived`. A register row states what is true now; it never
 fabricates a merge, an acceptance or a closure.
 
+## Production implementation hold
+
+**Owner direction, 2026-10-22:** production implementation is held across tracks, including
+previously authorized slices such as `T3.P02.S01`, while the
+[convergence round](./product-convergence-2026-10-21.md#scope-and-sequence) resolves direction,
+architectural commitments and the next batch/DAG. Earlier authorization records and accepted
+gate/phase evidence remain valid history; they do not release this hold. Research, documentation
+and bounded disposable probes may proceed within their commissioned step. Step 1 revises scope
+and briefs only; it does not launch the remaining research.
+
+Only explicit owner release permits named implementation scopes to start or resume. A research
+result, contract ratification or merge of PR #173 alone is not that release. Keep existing lifecycle
+vocabulary and registered states; do not invent a new gate or a `held` lifecycle status.
+
 ## Track register
 
 Every track and every repository phase is registered here exactly once. The track or phase
@@ -171,12 +185,14 @@ proposal plus its bounded batch authorization, or a standalone maintenance scope
 execution stays an owner decision, an authorization recorded here covers only the slices it names,
 and nothing in this section is lifecycle or gate readiness.
 
-- **Product convergence (2026-10-21), draft for owner review.** The
-  [planning proposal](./product-convergence-2026-10-21.md) connects the owner's accepted P1–P3
-  creative findings to a common interaction direction, three focused research commissions and
-  bounded native-Wall/import/project-lifecycle batch proposals. P4 remains deferred. It changes
-  no contract, phase/slice registration, gate readiness, milestone criterion or implementation
-  authorization; existing T3.P02.S01 authorization remains separate.
+- **Product convergence (commissioned 2026-10-21; scope expanded 2026-10-22), draft PR #173.** The
+  [convergence plan](./product-convergence-2026-10-21.md) covers focused research, reconciliation
+  of product/design/architecture and the owning contract amendments, followed by the canonical
+  roadmap/DAG and next-batch recommendation in the same PR. Step 1 records the scope/briefs and
+  [production hold](#production-implementation-hold); research execution, contract reconciliation
+  and DAG revision remain pending. Final owner review ratifies only selected decisions and may
+  explicitly authorize/release named scopes. No new gate readiness, milestone acceptance or
+  implementation permission follows from this entry. P4 and T4 retain their deferrals.
 
 - **Cross-track execution proposal** — the [proposed T1–T4 allocation, capability dependencies and
   execution DAG](./cross-track-execution.md). The coordinated provider/capability model the tracks

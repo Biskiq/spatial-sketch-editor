@@ -10,24 +10,27 @@ product or technical decision. The [coordination record](./README.md) owns the s
 disposition ledger and research triggers; the [prototype program](./prototype-roadmap.md) supplies
 creative evidence. Neither replaces a live plan.
 
-**Convergence follow-on, 2026-10-21:** the [next-batch proposal](../../docs/roadmap/product-convergence-2026-10-21.md)
-uses this rationale after the owner accepted the P1–P3 findings and deferred P4. Its scopes supersede
-older scheduling suggestions here; the source/gap map below remains dated evidence, not an activation
-checklist. No P4 harness or model connection is in the next batch.
+**Convergence scope, revised 2026-10-22:** the [convergence plan](../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence)
+includes research, product/design/architecture and contract reconciliation, and the canonical
+roadmap/DAG with a re-derived next batch, all in PR #173. The
+[owner production hold](../../docs/roadmap/README.md#production-implementation-hold) includes
+existing authorizations. Step 1 updates scope/briefs only. The source/gap map below remains dated
+evidence, not an activation checklist; P4 remains deferred.
 
 ## 1. Independent progress, bounded commitments
 
-Continue T1/T2/T3 work whose consumer, contracts and authorization already exist. Core Editor Stability,
-ordinary editing, persistence, Camera/Experience foundations and truthful ingest do not wait for
-speculative UX. Conversely, an “independent foundation” must not smuggle in the model a prototype is
-supposed to choose.
+T1/T2/T3 work with an existing consumer, contract and authorization remains independently justified,
+but implementation is held until explicit owner release. Core Editor Stability, ordinary editing,
+persistence, Camera/Experience foundations and truthful ingest need no speculative UX dependency.
+An "independent foundation" must still not preselect an unresolved model.
 
 A useful increment has a named consumer, a domain owner, a bounded interface and verification through
 the applicable plan. It should survive the plausible answers to the nearby open design question.
 A present need for contact placement does not justify an attachment framework; a rich explanation
 does not justify a universal behavior graph; an agent proof does not justify a general agent platform.
 
-Capabilities below are rationale and candidates. Only an existing authorization permits implementation.
+Capabilities below are rationale and candidates. Implementation needs its authorization and explicit
+owner release from the current hold.
 New scope follows the normal phase/slice procedure even when no prototype or research is necessary.
 No ordinary operation acquires a new UX gate merely because it appears in a creative prototype.
 

@@ -7,6 +7,12 @@ date: 2026-10-21
 
 # RR-4 — Relationships that survive revision
 
+**Round boundary, revised 2026-10-22:** follow the [convergence sequence](../../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence).
+This step revises the brief only; remaining research execution is pending. Keep its later results
+and decision handoff in PR #173, for combined contract and roadmap/DAG reconciliation. The
+[owner production hold](../../../docs/roadmap/README.md#production-implementation-hold) includes
+previously authorized work; neither a research result nor merge releases it.
+
 ## Decision and first consumer
 
 Decide the smallest explicit relationship model that preserves P2 Smart Wall's accepted promise of intuitive, intelligent spatial manipulation **and revision**, including deliberate spacing, surface offsets and understandable repair. Do not reduce that promise to successful first placement, or assume the prototype's solver is the production design. P3 Vellum supplies a second consumer: architectural support and joining during sketch revision. P1's meaningful interactive Presentation requires neither Room, Guide nor Stop; neither consumer may restore those prerequisites. P4 is deferred.
@@ -96,6 +102,13 @@ Numerical tolerances come from canonical owner contracts (for curves, use export
 **Execution order and bound:** use Q1–Q3 plus Q6 to decide the selected attachment/edit family; include Q4 when persistent spacing is promised. Q5's architectural-support comparison opens only for the P3 support consumer. Q7's Camera/light chain opens only for a claimed dependent capability; ordinary cycle rejection still belongs to any admitted relationship family. Compare creator interventions in A1 versus B only while that interaction choice remains unresolved. Record unneeded probes as deferred with their trigger; do not execute the whole catalogue merely to close this commission.
 
 Deliver **one decision packet** containing: (a) policy matrix for the selected operations/relationships; (b) a Q1–Q7 disposition ledger with results for triggered probes and explicit deferred/blocked interfaces; (c) evaluated-versus-rebased cold-continuity comparison with data/cost measurements; (d) schema/operation sketches with one pose authority and explicit unresolved state; (e) any still-needed A1/B creator comparison, documenting interventions and owner verdict without fabricated numerical UX claims; (f) exact contract departures and a smallest consuming production scope. Disposable tests and raw results are evidence, not new authority.
+
+For the combined reconciliation, name the exact owning contract sections to amend or retain,
+the strongest rejected alternative and remaining owner call, any new provider/capability and its
+dependency edges, and the next consuming slice to plan. Assess whether native Wall creation or
+another proposed first-wave scope must change or wait for a provider. Hand these to the lead;
+do not independently edit normative contracts, canonical roadmap/DAG or registration. The lead
+folds the chosen amendments and scheduling consequences into this same PR before owner review.
 
 **Pass:** owner can choose the attachment/failure model from competing demonstrated alternatives; each promised automatic operation has unique owner-provided transport or an explicit refusal; cold load, Undo branches, hard conflicts and atomic failures meet the stated oracles. **Stop:** no honest geometry provider, ambiguous correspondence, missing unit/provider, uncontrolled cycle, or a proposed format exceeding the agreed consumer. Return the missing interface and bounded alternatives; do not compensate with nearest matching, independent geometry reconstruction, hidden mutable caches or silent constraint relaxation. A blocked probe is a useful completed finding, not permission to invent its provider.
 

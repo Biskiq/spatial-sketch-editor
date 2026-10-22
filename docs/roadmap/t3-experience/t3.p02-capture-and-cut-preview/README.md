@@ -9,6 +9,12 @@ implementation as batch D (D3, [record](../../../reference/decisions/batch-d-aut
 [Camera contract](../../../reference/components/camera-tour.md), [PLATE Experience
 expression](../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 
+**Implementation held by owner direction, 2026-10-22.** The
+[production hold](../../README.md#production-implementation-hold) includes S01 despite its earlier
+authorization. PR #173 reconciles the existing scope against the selected architectural decisions
+before recommending a batch. Registered states and historical authorizations stay unchanged;
+starting/resuming needs explicit owner release. This note does not re-scope either slice.
+
 This phase is registered by the owner decision of 2026-10-20, after `T3.P01` closed with
 `T3.camera-experience-cutover@1` `accepted` at `06a8aac8` and merged as `9a457f6b` (PR #158). The
 2026-10-16 [proposal](#registration-basis) is its starting scope, reconciled against the accepted F2

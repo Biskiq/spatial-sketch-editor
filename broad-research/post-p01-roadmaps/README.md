@@ -1,6 +1,6 @@
 ---
 kind: coordinated product and engineering roadmap proposal
-status: "Convergence draft for owner review. Owner accepted P1–P3 findings and deferred P4 on 2026-10-21; no contract amendment, phase registration or new production authorization."
+status: "Convergence draft; scope expanded 2026-10-22 to research, contract reconciliation and roadmap/DAG in PR #173. Production implementation held; no new architectural ratification or implementation authorization."
 ---
 
 # Two tracks toward a more capable Biskiq
@@ -13,8 +13,8 @@ composable, interactive, revisable and reusable, through visual and semantic aut
 This is the single coordination record for the
 [engineering roadmap](./engineering-authorization-roadmap.md) and
 [prototype program](./prototype-roadmap.md). The directory's historical “post-P01” name is not a
-requirement to finish all foundations before exploring design. The tracks run concurrently and meet
-at a concrete production consumer.
+requirement to finish all foundations before exploring design. The two concerns meet at a concrete
+production consumer; implementation currently follows the owner hold below.
 
 The owner has now accepted **P1** (meaningful interactive Presentation without a Room, Guide or
 Stop), **P2 Smart Wall** (intuitive intelligent manipulation and revision), and **P3 Vellum**
@@ -24,11 +24,18 @@ not blanket acceptance of each prototype feature or its implementation. The
 round's proposed synthesis, exact next-batch scopes and owner decision packet. This record keeps
 the single capability disposition ledger and RR question index; neither is a live work register.
 
+**Current commission, 2026-10-22:** follow the [five-step scope](../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence)
+in PR #173: revise scope/briefs → independent research → product/design/architecture and contract
+reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
+The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
+includes previously authorized work. Step 1 does not launch research or amend contracts; later
+research results and reconciliation stay in this PR. Merging alone does not release implementation.
+
 ## 1. Recommendation and independent assessment
 
-Preserve the prior proposal's strongest distinction: engineering can progress on justified foundations
-while prototypes discover unsettled creative interactions. Replace its copied P01 status/authorization
-schedule and fragmented X1–X18 dependency graph. Neither was a durable program.
+Preserve the distinction between independently justified engineering and unsettled creative choices.
+The owner has temporarily held implementation of both while convergence makes the next work clear.
+Do not revive the copied P01 schedule or fragmented X1–X18 graph as another execution authority.
 
 The creative program supplied **three accepted findings and one deferred proof**:
 
@@ -41,17 +48,18 @@ The creative program supplied **three accepted findings and one deferred proof**
 - **P4 Agent Authoring Harness:** deferred. Human/agent intent parity remains ratified; no harness
   work or model connection is scheduled by this convergence round.
 
-The next consumer is the ordinary creative spine, with focused research at three unsettled seams.
-The convergence proposal carries the batch details; the linked commissions below carry initial
-investigation and exact remaining probes. Do not replay accepted creative experiments or wait for
-all research before proceeding with already authorized work. Composition and revision stay inside
-each consuming journey, not a final integration afterthought.
+The provisional next consumer is the ordinary creative spine, with focused research at three seams.
+The convergence plan carries batch hypotheses; the linked commissions carry initial investigation
+and remaining probes. Re-derive the recommendation after the findings and architectural decisions;
+earlier C1–C3 candidates are not a fixed batch. Do not replay accepted creative experiments or turn
+every advanced question into a permanent gate. Production remains held until explicit owner release.
+Composition and revision stay inside each consuming journey, not a final integration afterthought.
 
 Conservatory remains the strong accepted design reference. The prototypes could diverge from its
 Card/Stage arrangement; convergence now reconciles their owner-selected findings with PLATE and
 proposes exact departures where needed. No second full creative contest is required. Conversely,
-“engineering never waits” is too broad: authorized foundations continue, but design-dependent
-formats stop at their actual unresolved boundary.
+"engineering never waits" is too broad: independent justification does not override the owner hold,
+and design-dependent formats still stop at their actual unresolved boundary after implementation resumes.
 
 ## 2. Settled direction and evidence authority
 
@@ -84,9 +92,9 @@ schemas, solver proposals and numerical UX claims are not ratified by reuse here
 
 ## 3. Boundary test and convergence
 
-**Track A — engineering foundations:** continue within existing authorizations and accepted contracts.
-A desirable capability, a proposed milestone criterion or a BUILD disposition is not permission to
-start a new slice.
+**Track A — engineering foundations:** retain the existing accepted evidence, authorizations and
+bounded scope rationale, but keep implementation held. A desirable capability, proposed milestone,
+BUILD disposition or historical authorization cannot release it.
 
 **Track B — creative convergence:** synthesize the accepted findings into World | Experience and
 resolve only the technical/design choices that remain. Only the owner accepts new product UX or
@@ -103,9 +111,10 @@ For each proposed engineering increment, ask:
 4. **Boundary:** what useful bounded operation can ship without that commitment, and what exact
    question prevents the remainder?
 
-Build the common useful part when a consumer and authorization exist. Do not build a general mechanism
-merely because several imagined directions might use it. Where accepted evidence already settles the
-question, neither a new prototype nor a research round is compulsory.
+After explicit owner release, build the common useful part where a consumer and authorization exist.
+Do not build a general mechanism merely because several imagined directions might use it. Where
+accepted evidence already settles the question, neither a new prototype nor another research round
+is compulsory; that independence does not release the current hold.
 
 The convergence route is:
 
@@ -199,10 +208,15 @@ the [gate register](../../docs/roadmap/README.md#gate-register) and
 [bounded replanning](../../docs/operations/README.md#bounded-replanning). No speculative amendment
 catalogue is required before a first consumer exposes a real gap.
 
+The owning contract/design amendments and the canonical roadmap/DAG reconciliation are deliverables
+of this PR after research, rather than a separate follow-up PR. Researchers propose exact deltas;
+the lead resolves conflicts and prepares the owning-document diffs. Owner review explicitly accepts
+selected normative changes before merge. Step 1 only updates this scope and the briefs.
+
 The remaining owner decisions are in the convergence packet: judge the proposed common design,
 select batch scopes and first consumers, and decide precise domain/F/PLATE changes where evidence
-requires them. The supplied creative findings do not need a repeat vote. These remain different
-decisions, not compulsory repeat approvals for ordinary reversible work within authorized scope.
+requires them. The supplied creative findings do not need a repeat vote. Ratification, authorization
+and explicit release of the production hold remain distinct acts that can share the final review.
 
 ## 7. Evidence and limits
 

@@ -2,9 +2,15 @@
 
 **Status:** research/planning proposal, 2026-10-21; inspected baseline `78cafc3acaad0f9919855901a7ea4d98aeecd85f`. No ratification, phase registration, implementation authorization or production change. Owner acceptance of P1's meaningful interactive Presentation, P2 Smart Wall and P3 Vellum is an input; P4 is explicitly deferred. Earlier roadmap language about P4 starting early does not reopen it.
 
+**Round boundary, revised 2026-10-22:** follow the [convergence sequence](../../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence).
+This step revises the brief only; remaining research execution is pending. Results feed combined
+contract/design and canonical roadmap/DAG reconciliation in PR #173. The
+[owner production hold](../../../docs/roadmap/README.md#production-implementation-hold) includes
+T3.P02 despite its earlier authorization; research or merge cannot release that hold.
+
 ## Decision and first consumer
 
-Decide the smallest honest contract that lets a creator discover an object's supported operations, compose visitor offers around it, bind typed actions, Preview, interrupt, revise and reuse the explanation. The first production consumer would be a **separately scoped later T3 interaction increment**, consuming T2's truthful resource/component admission and F's execution seams. T3.P02 continues its already bounded capture/text/Cut Preview work; this commission does not expand it.
+Decide the smallest honest contract that lets a creator discover an object's supported operations, compose visitor offers around it, bind typed actions, Preview, interrupt, revise and reuse the explanation. The first production consumer would be a **separately scoped later T3 interaction increment**, consuming T2's truthful resource/component admission and F's execution seams. T3.P02's bounded capture/text/Cut Preview scope remains held; this commission supplies evidence for its reconciliation rather than silently expanding or resuming it.
 
 Proposed acceptance specimen: an object in an empty World, one Guide-free Presentation, explanatory text, two Camera Views, a visitor control and a meaningful object capability such as an admitted material variant or component reveal. The creator changes both framing and a binding, then reuses the explanation on another explicitly compatible instance. Add an optional Guide only afterward. A supplied clip is another action family, not the definition of interaction. Static files must remain useful for framing/text and truthfully refuse unsupported mechanism actions.
 
@@ -135,9 +141,16 @@ Run probes in a disposable research harness outside production workspaces. Save 
 
 Deliver one decision packet containing (a) P1 evidence/provenance and capability inventory; (b) pinned asset/admission matrix and source→derivative loss report; (c) the four alternative decisions with falsifiers resolved or explicitly open; (d) minimal proposed records/types and domain ownership map; (e) deterministic lifecycle traces plus rendered/input/accessibility evidence; (f) exact contract/design deltas and first consuming slice proposal. A schema sketch must be labelled unratified and distinguish authored records, compiled derivatives and session state.
 
+Name exact North Star/design/architecture/domain/F sections to amend or retain, rejected alternatives
+and remaining owner calls, missing provider/capability nodes and dependency edges, and the next slice
+to plan. Distinguish consequences for static K1 admission and existing T3.P02.S01 from prerequisites
+of richer interaction/reuse. The lead reconciles these with the other packets and folds the selected
+owning-document amendments and canonical roadmap/DAG into this same PR. Researchers do not
+independently ratify contracts or change registration/implementation authority.
+
 **Pass to planning:** demonstrate one non-animation interaction or prove why the accepted first task specifically needs a supplied clip; truthful unsupported results; two-instance targeting; incompatible-revision repair; cancellation/re-entry/stale-callback safety; one shared semantic input path with DOM access; source unchanged by rehearsal; reuse without Scene/page cloning. Existing F/Camera guarantees are reused and only exact absent interfaces remain proposed. This enables owner review of amendments and production scope, not automatic authorization.
 
-**Stop narrowly:** no truthful positive capability fixture (imported or native), unusable pivot, missing semantic provider, impossible correspondence or unproven lifecycle means that claim remains blocked. Identify the missing provider/API/fixture and preserve useful text/View/static work. If new independent clocks, arbitrary code, site layout, publication, libraries or the deferred P4 agent harness become necessary, record a scope decision rather than silently adding them. Do not hold unrelated T3.P02 work for these proofs.
+**Stop narrowly:** no truthful positive capability fixture (imported or native), unusable pivot, missing semantic provider, impossible correspondence or unproven lifecycle means that claim remains blocked. Identify the missing provider/API/fixture and preserve useful text/View/static work. If new independent clocks, arbitrary code, site layout, publication, libraries or the deferred P4 agent harness become necessary, record a scope decision rather than silently adding them. Unrelated proofs create no technical prerequisite for T3.P02; its owner hold still applies.
 
 | Proposed amendment after evidence, only if needed | Owner / precise scope and risk |
 | --- | --- |
@@ -147,4 +160,7 @@ Deliver one decision packet containing (a) P1 evidence/provenance and capability
 | Reusable typed explanation interface | T3 + independently versioned resource owner, only after concrete reuse needs it: role requirements, explicit bindings, revision locks, local/shared edit reach and incompatibility. No parallel component identity scheme. Risk: premature packaging or automatic semantic matching. |
 | PLATE interaction extension | Propose placement of invoked control/binding procedure, preview/return, selected identity and availability/repair states through PLATE conformance. Do not copy P1 chrome or silently create a third lens. Risk: rich permanent inspector inventory obscures ordinary composition. |
 
-Research records alternatives and proposed deltas here. Ratification belongs to owning contracts/design decisions; registration and implementation authorization belong to normal consuming-track routes. No authoritative docs or production formats are amended by this commission.
+Research records alternatives and proposed deltas here. The combined reconciliation in PR #173 prepares
+the owning contract/design amendments for explicit owner ratification before merge; registration,
+implementation authorization and release from the hold remain distinct. This researcher commission
+does not itself amend authoritative docs or production formats.

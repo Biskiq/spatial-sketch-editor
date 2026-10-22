@@ -1,12 +1,36 @@
 # Product convergence — draw, arrange, explain, revise
 
-**Draft for owner review, 2026-10-21.** This is the next-batch proposal, commissioned after the
-owner accepted the P1–P3 creative findings and deferred P4. It registers no phase, changes no
-contract, authorizes no implementation and accepts no product milestone. Review baseline:
+**Draft convergence round, scope revised by the owner 2026-10-22.** PR #173 now covers focused
+research, product/design/architecture reconciliation, proposed amendments to the owning contracts,
+and the concurrent roadmap/DAG with the next batch recommendation. These outcomes belong in this
+PR before merge; no separate reconciliation PR is planned. The owner accepted the P1–P3 creative
+findings and deferred P4. This scope revision makes no architectural decision, registers no phase,
+authorizes no implementation and accepts no product milestone. Initial evidence baseline:
 `78cafc3acaad0f9919855901a7ea4d98aeecd85f` (includes PR #171 and Vellum's latest polish).
 The [coordination record](../../broad-research/post-p01-roadmaps/README.md) owns the capability
 disposition ledger and research index; phase registers and the [gate register](./README.md#gate-register)
 remain the operational authorities. No track baton changes in this round.
+
+## Scope and sequence
+
+**Production implementation is held**, including previously authorized work such as T3.P02.S01.
+The [owner hold](./README.md#production-implementation-hold) preserves historical authorizations
+and accepted evidence but prevents implementation from starting or resuming until the owner
+explicitly releases named scopes. Research, documentation and bounded disposable probes may
+proceed within their commissioned step. Merging this PR alone does not release the hold.
+
+| Step | Work in this PR | Completion boundary |
+| --- | --- | --- |
+| 1 — revise scope and briefs | Record the hold, the expanded scope, research handoffs and merge criteria | This documentation revision only; no new research execution, contract amendment or DAG redesign |
+| 2 — independent research | Run the three focused commissions in parallel where useful, reusing existing studies and PR #171 | Decision-relevant evidence, strong alternatives, falsifiers and explicit unsupported/deferred boundaries; not every listed probe |
+| 3 — reconcile direction and architecture | Combine findings; resolve shared seams and remaining product/design/architecture gaps; prepare exact amendments in the owning North Star, PLATE, architecture, domain and F contracts where justified | One coherent proposed decision set in this PR, with explicit owner calls and preserved landed-versus-destination distinctions |
+| 4 — reconcile roadmap and DAG | Update the canonical cross-track DAG and affected roadmap/phase routes; re-derive the next batch and next slice to plan in each lane | Dependencies, concurrent lanes, provider prerequisites, shared-file ownership, near-term outcomes and planning triggers; detail only launch slices needed for immediate authorization |
+| 5 — owner review before merge | Record acceptance of selected architectural/design decisions and any selected batch authorization | Unaccepted commitments stay explicitly unresolved/deferred; only the owner ratifies changes or releases named implementation scopes |
+
+The remaining probe executions, contract reconciliation and DAG updates are **pending**, not
+results of step 1. Do not mark this PR ready merely because briefs and initial findings exist.
+Keep results in their commission packets and fold their conclusions into this proposal and the
+existing owning documents. Avoid another synthesis ledger or parallel execution roadmap.
 
 ## Proposed direction
 
@@ -52,7 +76,8 @@ are useful evidence, including explicit touching/joining and preview/commit qual
 Neither proves the production boundaries. No retained P1 executable was located in the bounded
 repository inspection; the owner's P1 finding is accepted as supplied, while asset and lifecycle
 claims still need the concrete evidence specified in the capability brief. Locating that artifact
-does not block settled Guide-free capture work.
+does not introduce a technical prerequisite for settled Guide-free capture; the owner hold still
+applies to its implementation.
 
 The existing studies, Research 6 reconciliation and procedural assessment remain inputs. Their
 older schedules, confidence numbers and speculative schemas are not acceptance criteria. PR #171
@@ -63,8 +88,10 @@ and identifies which measurements lack a retained reproducible harness.
 
 The [North Star](../reference/north-star.md#ratified-north-star) already establishes the ambitious
 category: optional Rooms/tours, native and imported starts, capability-aware composition, explicit
-relationships, revision/reuse, typed intent parity and separate lifetimes. **Do not commission a new
-North Star rewrite to rediscover these promises.** The following decisions make them actionable.
+relationships, revision/reuse, typed intent parity and separate lifetimes. Reconcile those promises
+with the findings and amend concrete missing or contradictory commitments; avoid restating the
+whole vision. The following questions are the starting boundary, not a presumption that all product
+or architectural commitments are already sufficient.
 
 | Concern | Existing authority | Proposed commitment or precise unresolved choice | Disposition |
 | --- | --- | --- | --- |
@@ -92,18 +119,21 @@ subject to the linked falsifiers:
   over heuristic execution or a page/behavior engine. Reuse the existing interpreter and Camera
   handoff; reusable roles declare requirements and bind to concrete identities explicitly.
 
-After owner decisions, promote each normative statement into its existing owner: North Star only
-for new product promises; PLATE for interaction/shell changes; Layout/Scene/assets/Camera contracts
-for domain semantics; F for cross-domain shapes and negotiation. Keep proposal text here until
-ratified, and landed descriptions until an actual cutover. An incompatible accepted interface
-requires a new version; an accepted gate row is never rewritten to imply new capabilities.
+Step 3 must prepare the exact reconciliation in this PR: North Star for product commitments;
+PLATE for interaction/shell changes; architecture and Layout/Scene/assets/Camera contracts for
+domain semantics; F for cross-domain shapes and negotiation. Proposed contract diffs remain
+unratified during review; record the owner's accepted decisions and integrate their final wording
+before merge. Do not merge an unaccepted proposal as a normative contract. Preserve landed
+descriptions until an actual cutover and label the new destination honestly. An incompatible
+accepted interface requires a new version; an accepted gate row never implies new capabilities
+without the required implementation/acceptance evidence.
 
 **Descriptive reconciliation, separate from ratification.** At this baseline, T1.P01, T2.P01 and
 T3.P01 are closed; T3.P02.S01 remains authorized and unimplemented. The North Star's opening
 “read-only/no editing/history” paragraph, the track READMEs' removed-surface tables, and the
 milestone's older Today cells lag their owning acceptance records. This is router triage **B**
 (landed change with stale prose) for those specific descriptions, not evidence that new capabilities
-shipped. A bounded docs correction should cite the phase acceptances and keep destination labels;
+shipped. Step 3 includes a bounded docs correction citing phase acceptances and keeping destination labels;
 do not rewrite current truth to match P1–P3. The Card-over-Compose residual in
 [S06 acceptance](./t1-spatial-world/t1.p01-stage-foundation/t1.p01.s06-integrated-final-gate/acceptance.md#residual)
 remains a T1 shell obligation, not an accepted solution or a reason to reopen the completed phase.
@@ -113,6 +143,8 @@ remains a T1 shell obligation, not an accepted solution or a reason to reopen th
 These three packets contain initial independent investigation and executable remaining questions.
 They consolidate RR-1–RR-6; they do not add three mandatory sequential research phases. Each can run
 from the recorded baseline, read only its listed inputs and return a bounded decision packet.
+Step 2 execution has not started under this revised scope. Record the actual source revision for
+each later run, and recheck only evidence affected by a changed baseline.
 
 | Commission | First production consumer and decision | Required handoff |
 | --- | --- | --- |
@@ -128,26 +160,33 @@ simple controls do not justify advanced conditions, visit memory or an unrestric
 
 Each handoff must separate observed repository facts, externally verified facts, proposals and
 unexecuted experiments; compare a strong alternative; state a falsifier and a useful fallback;
-and name its first consuming scope. A documented unsupported boundary is a valid result. Stop
+and name its first consuming scope. Also identify exact contract amendment locations, dependency
+changes, any missing provider/capability, and the next slice to plan. Researchers hand these to
+the convergence lead; they do not independently ratify contracts or edit the canonical DAG.
+A documented unsupported boundary is a valid result. Stop
 research when existing contracts plus the focused evidence decide the first consumer. Broader studies,
 a general constraint engine, universal roof generation and semantic ingest for every asset are not
 prerequisites for that outcome.
 
 ## Proposed next engineering batch
 
-**Recommendation:** complete the ordinary creative spine while the three research seams mature.
-The batch below is concrete scope for owner authorization, not new permission supplied by this PR.
-Existing authorizations continue independently; no work is assigned by changing a baton here.
-The candidate labels are local proposal labels, not registered slice IDs.
+**Provisional inputs for step 4, not a fixed batch.** Re-derive the recommendation after the
+research and architectural reconciliation. The current first-wave hypothesis is T1 native Wall
+creation, T2 own-model GLB admission and T3 capture/Guide-free Preview, with project rename/delete
+as a bounded follow-on. An exposed shared prerequisite may need to precede those lanes. Do not
+preserve C1–C3 automatically or start any lane while the owner hold applies. The candidate labels
+below are local proposal labels, not registered slice IDs or implementation permission.
 
-### Existing work that can proceed
+### Existing capture and Preview scope to reconcile
 
 [T3.P02.S01](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/implementation-plan.md)
-already has implementation authorization. Preserve its full capture/Presentation/optional Stop,
+has historical implementation authorization and is **held**. Step 3/4 must check its plan against
+the chosen decisions and propose any precise scope/prerequisite correction. Preserve its full capture/Presentation/optional Stop,
 ordinary text/hold/continuation, Camera handoff, isolated Cut Preview and F2/F4 Save/recovery scope.
 P1 rich controls are a successor consumer; they are not added to this slice. Its
 [S02 integrated final gate](./t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s02-integrated-final-gate/implementation-plan.md)
-still needs its separate owner authorization after S01 acceptance. Do not report either as shipped.
+still needs its separate owner authorization after S01 acceptance. Starting or resuming S01 needs
+explicit owner release from the hold; the earlier authorization alone is insufficient. Neither is shipped.
 
 ### C1 — Native straight-Wall creation (K3), T1
 
@@ -157,9 +196,10 @@ from canonical topology; the creator never chooses boundary/partition before dra
 
 **Implementation contract to finalize:** extend the one Layout planner/compiler and Stage task;
 declare the F2 Layout unit version and explicit role-encoding cutover/legacy retirement; capture
-IDs and expected revision through unit acceptance. Keep the current single floor datum. Add no
-levels, closed-circle representation, overhead family or persisted attachment by implication.
-The role cutover is a bounded schema/design decision under existing direction, not RR-1/RR-2.
+IDs and expected revision through unit acceptance. The bounded creation increment need not implement
+levels, closed circles, overheads or attachments, but its identity/frame and encoding choices must
+fit the reconciled architecture. Reassess the single-datum starting scope after RR-1/RR-2 rather
+than freezing a conflicting format before that decision. Role derivation remains established direction.
 
 **Acceptance:** empty → draw → close → divide → Opening → delete; no implicit coordinate adoption;
 invalid crossing/topology refuses without partial source; Undo/Redo and Save/reload preserve IDs;
@@ -189,6 +229,9 @@ consuming phase final gate is exhaustive. Capability research is not a prerequis
 
 ### C3 — Project rename/delete (K4), T3 persistence/API with T1 shell
 
+**Provisional placement:** bounded follow-on to the first-wave hypothesis above; step 4 decides
+its actual priority and concurrency from milestone need, dependencies and shared-file contention.
+
 **Outcome:** rename an owned project and delete it through a deliberate confirmation, from Hub
 and the supported project context. Define the canonical project-name home and how unsaved work,
 an open editor and a deleted remote project behave. Preserve guarded replacement and Save conflict
@@ -210,17 +253,25 @@ Camera/Experience consumers additionally declare their cutover and Camera-handof
 C3's final declaration follows the project-name/replacement impact; no claim that every API action
 is a source edit. These are prerequisite candidates, not gate readiness supplied by this document.
 
-C1 ∥ C2 can prepare in parallel; T3.P02.S01 proceeds under its existing authorization. C3's API
-work can be isolated, but coordinate its shell changes with T1 and its source/name/Save changes
-with T3.P02. Before dispatch, register reviewed phase/slice plans with exact consumes/requires,
-effects, verification tier and exhaustive integration route; assign one editor for shared Stage,
-project codec and API route files. Merge one change at a time and rerun affected integration on
-the combined tree. No global caller freeze or branch-order dependency is invented here.
+Step 4 must update [the canonical cross-track DAG](./cross-track-execution.md#execution-dag-and-earliest-product-milestones)
+and the affected track/phase roadmaps, not create a second live graph here. Distinguish accepted
+providers from merely ratified interfaces; add missing provider nodes and genuine prerequisites
+instead of assuming current F4 admission supports a new compound operation. Show proposed
+parallel lanes, shared Stage/codec/API file ownership and merge/integration order. Disposition
+obsolete scheduling text without changing historical accepted identities or gate readiness.
+
+Each recommended batch row must name its owner, concrete outcome, prerequisites, next slice to
+plan (or existing reviewed plan), verification/integration route and readiness for authorization.
+If immediate implementation authorization is requested, its launch slices need reviewed plans and
+normal registration; otherwise label the next act as planning. Later slices need only outcomes,
+dependencies, deferred decisions and planning triggers. No production dispatch occurs during
+this convergence round; normal eligibility and explicit owner hold release precede implementation.
 
 Surface-aware **solve-once placement**, ordinary materials/lights and Camera frame/refit are justified
-next candidates under existing authority. Keep them out of this batch unless a consuming plan
-shows they are required; persistent following, new datums/overheads and rich interaction bindings
-wait only for their own research/design decisions. No universal “all research finished” gate.
+next candidates under existing authority. Step 4 chooses their position from a concrete consumer;
+do not add them as speculative foundations. Persistent following, new datums/overheads and rich
+interaction bindings consume their specific decided interfaces. The temporary owner hold is
+distinct from an invented requirement to finish every advanced research question.
 
 ### Creative successors opened by individual decisions
 
@@ -242,32 +293,42 @@ leave a shape edit Layout-only; an acceptance-time binding migration needs its o
 
 ## Owner review and exit
 
-The decisions requested by this packet are independently selectable:
+This PR's merge review must have all of the following, at the depth needed for the selected batch:
 
-1. Endorse or revise the common creative grammar and the next-batch priority above.
-2. Authorize the bounded C1/C2/C3 scopes through their reviewed registration/plans, or select a
-   subset. Existing T3.P02.S01 authorization needs no repeat vote; S02 retains its separate gate.
-3. Judge the three research recommendations and the specific remaining experiments. Choose
-   correspondence/following policy, datum/top/overhead semantics and capability/action admission
-   only when their first-consumer evidence is sufficient. Endorsement of a brief is not ratification.
-4. Accept the focused World/Experience design reconciliation, or name exact PLATE amendments;
-   then ratify only the concrete domain/F changes required for the selected successor consumers.
-5. Confirm the exact Core Editor Stability criteria and later authorize its integrated acceptance
-   plan through the [milestone route](./core-editor-stability.md#acceptance-route). Do not create
-   that acceptance workspace early or add P3 depth to the milestone. T4 remains deferred under R1-D.
+- The three research packets contain decision-relevant results or explicit bounded deferrals,
+  with reproducible evidence and no unexecuted probe presented as a result.
+- One coherent product/design/architecture decision set resolves cross-packet conflicts and
+  names the remaining owner calls. Required amendments and stale descriptive corrections are
+  folded into their existing owning documents in this PR; no reconciliation PR remains queued.
+- The canonical DAG and affected roadmaps agree on current evidence, proposed concurrent lanes,
+  real dependencies, shared-file ownership, inherited residuals and the next capability waves.
+- The recommended batch states exactly what the owner can authorize now, what needs its next
+  slice planned, and what stays held/deferred. Launch slices have the required reviewed plans
+  if immediate implementation authorization is requested; later slices are not overplanned.
+- The owner explicitly accepts the selected contract/design decisions before their normative
+  wording merges. Architecture ratification, slice authorization and release from the hold are
+  distinct acts that can be recorded during the same final review; one never implies the others.
+
+Review the exact Core Editor Stability criteria as part of roadmap reconciliation, retaining
+their current proposed status until the owner confirms them. Its later integrated acceptance
+plan still follows the [milestone route](./core-editor-stability.md#acceptance-route); do not create
+that workspace early or silently add P3 depth. T4 remains deferred under R1-D, and P4 remains deferred.
 
 The [architecture cycle](../operations/architecture-cycle.md) still awaits the owner's mechanism
 verdict; its protocol explicitly says the pending verdict blocks only its own handoff. This proposal
 does not record that verdict, configure another exposure window or close any phase/track.
 
-Convergence exits with a chosen first consumer per unresolved seam, an evidence-backed decision
-and exact amendment scope where needed, plus registered/authorized consuming plans. The planning
-PR stays draft until owner review; no merge or implementation is performed by this round.
+After merge, the owner must be able to identify the accepted direction, next batch to authorize,
+next slice to plan in each lane and the dependencies that permit concurrency from the existing
+roadmap routes. No separate reconciliation round is required for those near-term decisions.
+This PR stays draft until its expanded review is complete; merging alone leaves production held
+unless the owner has also explicitly released named scopes. This task performs neither merge nor implementation.
 
 ## Verification and provenance
 
-This round changes documentation only. Run the focused documentation gates during editing and
-the complete `npm run test:arch` before the draft PR, per the
+Step 1 changes documentation only. Later research may add bounded disposable/reproducible probe
+evidence outside production code; it does not implement the product. Run the focused documentation
+gates during editing and the complete `npm run test:arch` before each PR update, per the
 [test contract](../../apps/editor/tests/README.md#focused-verification). These checks prove document
 and boundary integrity, not the new interactions, roof algorithms, capability lifecycle or product
 acceptance. The independent briefs label their actual inspections and remaining unrun probes.

@@ -5,6 +5,11 @@
 implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README.md#slice-register) ·
 **Track:** [T3](../../README.md) · **Runbook:** [T3 operations](../../../../operations/t3-experience/README.md)
 
+**Implementation held, 2026-10-22:** the [owner hold](../../../README.md#production-implementation-hold)
+overrides launch/resume under the earlier authorization. PR #173 must reconcile this plan with
+the selected convergence decisions; explicit owner release is required before implementation.
+The scope and registered `approved` state below are preserved, not silently widened or revoked.
+
 ```text
 CONSUMES: F1.reference@1, F2.unit-envelope@1, F3.channels@1, F4.intent-acceptance@1, T1.viewport-projection@1, T3.camera-experience-cutover@1
 REQUIRES: F1.reference@1:unit-resolution-v1, F2.unit-envelope@1:unit-envelope-v1, F3.channels@1:camera-handoff-v1, F4.intent-acceptance@1:unit-acceptance-v1, F4.intent-acceptance@1:conditional-save-units-v1, T1.viewport-projection@1:viewport-projection-v1

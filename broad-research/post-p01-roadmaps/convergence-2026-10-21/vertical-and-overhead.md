@@ -2,6 +2,12 @@
 
 Status: decision input, 2026-10-21. Planning/research only; no ratification, dependency adoption, implementation authorization or production-format change. Owner acceptance supplied for this commission: P3's intuitive expressive architectural sketching, P2's intelligent spatial revision and P1's optional Room/Guide/Stop starting point; P4 remains deferred.
 
+**Round boundary, revised 2026-10-22:** follow the [convergence sequence](../../../docs/roadmap/product-convergence-2026-10-21.md#scope-and-sequence).
+This step revises the brief only; remaining research execution is pending. Results feed combined
+product/design/architecture amendments and the canonical roadmap/DAG in PR #173, not a separate
+reconciliation PR. The [owner production hold](../../../docs/roadmap/README.md#production-implementation-hold)
+includes previously authorized work and remains until explicit release of named scopes.
+
 ## Decision and first consumer
 
 Decide which canonical Layout model can preserve P3's expressive drawing and trustworthy revision across irregular elevations, multiple structures, partial floors and independent interior/exterior overheads. Select a first native family and a credible expansion path, rather than freezing the prototype schema or treating flat caps as the product ceiling.
@@ -96,10 +102,18 @@ Failure/refusal vocabulary is a probe deliverable, not new F type names: invalid
 
 Deliver: (1) decision table for datums/frames, structure topology and Wall segmentation; (2) overhead/closure/void/support ownership diagram and validity matrix; (3) reproducible fixture harness with independent oracles, counterexamples and measured approximation limits; (4) identity/correspondence tables through revision and reload; (5) native/import task comparison; (6) smallest first-consumer interface/codec delta and a bounded expansion list. All artifacts distinguish passed, refused, failed and untested. Ship no general framework from a successful spike.
 
+The handoff must identify exact North Star/design/architecture/domain/F sections to amend or
+retain, rejected alternatives and remaining owner calls, required provider/capability nodes and
+dependency changes, and the next slice to plan. In particular, say which identity/datum/top
+decisions must precede native Wall creation and which geometry families may follow independently.
+Researchers supply evidence and proposed deltas; the lead reconciles them with the other packets
+and folds the owning-document amendments and canonical roadmap/DAG into this PR. Do not preplan
+every later family or independently alter normative contracts/registration.
+
 Pass to production planning only when the selected first-consumer script has coherent frame conversion, source identity, deterministic qualification, honest closure/cut geometry, and revision/Undo/reload behavior; all adversarial inputs either pass declared invariants or give typed refusals; no silent fallback or second evaluator exists. Define numerical tolerances before execution with units, local coordinate range and analytic-vs-faceted error budgets. Historical `1e-9` bars and sampled zeros are proposals to review, not inherited product guarantees. Performance is reported against a named environment and consumer budget chosen for that plan.
 
 Stop and return a bounded decision if a common accepted task fails; a dependency cannot be reproducibly tested; persistent fit requires an unapproved identity/correspondence policy; shared-Wall or closure ambiguity cannot be explained; or the model needs general mesh editing. A failed family can be refused/imported without invalidating the whole direction, provided that does not remove an owner-accepted ordinary task. No production authorization follows automatically from passing research.
 
 Proposed lead: T1/Layout for RR-1/RR-2, canonical compiler, representation and validity. T2/Scene supplies the first support-query consumer and attachment/correspondence requirements; it must not reconstruct roofs from render meshes. Camera reviews frame/projection consumption; T3 joins only for a concrete representation-capture/invocation consumer. P3 supplies creator journeys; owner judges fidelity to accepted sketching and any changed design promise. P4 is not a prerequisite.
 
-Persisted datum/frame/top/surface changes require explicit Layout codec/version or repository-approved fresh-authority cutover; preserve current format-5 descriptions until landing. Reuse F.1/AM-1 reference and frame shapes, F.2 units and F.4 acceptance. Draft/ratify an F amendment only for a genuinely absent cross-domain reference/channel/acceptance shape; geometric family growth within existing guarantees is domain planning. Unsupported required families reject explicitly. New representation parameters declare F.3 semantics, units, ranges, arbitration and invalidation; no editor recipe becomes a visitor format. Register consuming production work/gates separately, and route any shell departure through PLATE. This commission changes none of those authorities.
+Persisted datum/frame/top/surface changes require explicit Layout codec/version or repository-approved fresh-authority cutover; preserve current format-5 descriptions until landing. Reuse F.1/AM-1 reference and frame shapes, F.2 units and F.4 acceptance. Propose an F amendment only for a genuinely absent cross-domain reference/channel/acceptance shape; geometric family growth within existing guarantees is domain planning. Unsupported required families reject explicitly. New representation parameters declare F.3 semantics, units, ranges, arbitration and invalidation; no editor recipe becomes a visitor format. Ratification belongs to explicit owner review; production registration/authorization remains distinct, and shell departures route through PLATE. This researcher commission changes none of those authorities; the combined reconciliation prepares the selected amendments in PR #173.

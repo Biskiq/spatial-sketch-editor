@@ -1,5 +1,12 @@
 # Cross-track execution — proposed allocation, readiness and DAG
 
+**Owner production hold, 2026-10-22:** the [roadmap hold](./README.md#production-implementation-hold)
+overrides implementation launch/resume implied by earlier batch authorizations below. PR #173's
+[expanded convergence scope](./product-convergence-2026-10-21.md#scope-and-sequence) will reconcile
+this canonical DAG, affected roadmaps and the next batch after focused research and architectural
+decisions. Step 1 adds this routing/hold notice only; no new DAG or batch has been decided yet.
+Historical evidence and accepted gate identities remain unchanged. Merge alone does not release the hold.
+
 **Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it
 references (AM-1–AM-8) and the capability-readiness rule are owner-ratified
 ([decision record](../reference/decisions/f-ratification-2026-10-15.md)); this artifact owns the
