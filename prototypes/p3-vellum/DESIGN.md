@@ -34,6 +34,11 @@ Revision is where tools usually break trust, so the whole surface uses the marks
    A circle drawn in perspective is read on screen, as the hand meant it, so it becomes one continuous round wall
    rather than a wobbly polygon. Hold ⇧ and the stroke becomes a ruled, straight line instead.
 
+   **Tips are still readings, not tools.** *Sketch* reads the hand; *Box* and *Round* read the drag as a rectangle or a
+   circle and then go through the same reading. A box with one whole edge in an existing straight wall becomes *Room
+   beside* it (the other three walls, touching, not tied); a round room still offers *Round platform*, sunken court or
+   canopy. The tip outlives the stroke, so a row of rooms is a row of boxes, and the chip still says what it read.
+
    **Snapping explains itself and never decides for you.** Ends, wall faces, square / 45° / parallel to nearby walls
    and lining up with corners all show as blue guides with a few words ("⊥ Gallery wall · 4.20 m"); ⌥ turns them off.
    A snap is only a position. A wall end that lands on another wall *touches* it, and the ripple asks whether to
@@ -51,20 +56,29 @@ Revision is where tools usually break trust, so the whole surface uses the marks
      room is never moved by itself: when it is in the way, the ripple offers to lift it, in the same step. Freehand
      floors on the sheet stay for mezzanines and odd platforms.
 3. **Draw the shape you mean.**
-   - Roofs come from a drawn section profile: a rise with a step makes clerestory glazing, an arch makes a vault, and
-     on a round room the profile spins into a dome or cone. The drawing then stays editable without redrawing: drag
-     a point, drag the line to bend it (the pull fades across the smooth stretch and stops at creases and steps, and
-     adds no points), double-click to add a point, ⌥-click to remove one. The pad and the blue section drawn on the
-     roof are two views of the *same* authored points, so editing either updates both live, and every gesture is one
-     undo step.
-   - Ordinary roof changes use highlighted Hold zones: pull the ridge or flat top up and down, pull a slope for
-     fullness, pull a ridge end or end face to hip both ends, and pull an eave for overhang or an independent edge.
-     Detents make common pitches and overhangs easy to reach; ⌥ gives a free edit, while hard geometry limits keep
-     the last valid roof. A roof made by covering rooms fits their walls plus an overhang and follows when they grow
-     or move, until its own edge is pulled. **R** or the roof card turns the ridge.
-   - Precise section work remains in the ProfilePad and its near-pointer 3D point handles; outline corners likewise
-     appear as the pointer nears them, or all at once with *Show every point*. The full isolated Edit Shape mode is
-     still future work in this prototype.
+   - **One kind of roof, however it arrives.** Covering rooms fits the walls plus an overhang; a section drawn on the
+     sheet makes a canopy; both are the same editable roof. On an L, T, U or plus plan the section is carried by
+     wings, so eaves stay level and valleys meet; a section the wings cannot carry is refused with the reason instead
+     of being stretched into one span that stops in mid-air. *Cover the whole outline as one span* is the deliberate
+     opt-out, and it says when a one-span roof would strand an inner eave.
+   - **Hold it.** Hover a picked roof for its zones: pull the ridge or flat top for height, a slope for fullness, a
+     ridge end or end face to hip both ends, an eave for overhang or an independent edge. Structural stops (centred,
+     level with the other side) win over pitch stops (30°, 45°, 60°); ⌥ turns the soft stops off and hard geometry
+     limits keep the last valid roof. Every drag is one undo step, and an invalid one keeps the last valid roof and
+     names the limit. **R** turns the ridge. A roof made by covering rooms fits their walls plus an overhang and
+     follows when they grow or move, until its own edge is pulled.
+   - **Edit its shape in context.** Enter, double-click or the card opens Edit Shape: the building stays, only that
+     roof is editable, and the section sheet shows its joints and parts with the floors, walls, neighbours, people and
+     headroom behind it. A joint moves, a part bends, a double-click sharpens or adds, ⌥-click removes, a step's bar
+     and grip move and slide. A drawn section is read as *tidy* or *as drawn*, with Tab to choose; **X** sees through
+     the roof, *Face the section* looks along it. Every candidate runs through the clean rules, so an invalid edit is
+     never committed and preview equals commit. The authored points also stay reachable as precise handles near the
+     pointer on the roof, and starting shapes, span, eave and thickness are under *Shapes & settings*.
+   - **Ink from meaning.** A roof's lines are the boundaries between pieces that mean different things — ridge, hip,
+     valley, crease, step, edge, and the fascia's own edge and corners — never its triangles. A vault has no lines
+     across it, a dome has rings and no meridians, and a join between two wings that is genuinely coplanar is not a
+     line. Curved boundaries are followed at half-metre steps and lifted onto the real surface, so a line never
+     disguises a seam that is not there.
    - Canopies come from their shadow; stairs from their walk.
    - Heights are given in people as well as metres ("4.2 m · about 2½ people tall"), and scale figures stand in the
      rooms.
@@ -124,6 +138,12 @@ rooms inside them, and no section fill when cut.
 - *Focus height* is a lightweight experiment: a height band, not a floor. Two wings at the same height focus together,
   and there are no per-element exceptions (a stair through the band is cut like everything else). A real floor
   workspace and 2D drafting belong to production (PLATE).
+- Wing roofs qualify per family and outline: right-angled plans (every edge within 2° of the frame), at most four
+  rectangles, a single-crown symmetric section, and no wing that would end above the roof it joins. Outside those
+  rules the roof is refused with the reason rather than approximated. Edit Shape draws and edits the **primary
+  wing's** section; every wing follows it, so a per-wing pitch is not offered.
+- Automatic offers (mezzanine, stair, posts) use fit heuristics. When no candidate fits, the card says what would have
+  to change ("Needs more headroom over a usable floor area") rather than placing something broken.
 - Support is a geometric rule of thumb, not structure.
 
 ## What I would do next
@@ -134,3 +154,7 @@ rooms inside them, and no section fill when cut.
 3. Draggable tray items (put an opening back by dropping it on a wall) instead of menus.
 4. Touch: two-finger orbit, and a long press for the reading chip.
 5. A shareable, read-only Visit link (today Visit plays locally only).
+6. Room-level push and pull: pull a room's side and let its walls, roof and openings follow. The optional phase this
+   round cut, because a whole side needs tie and touch semantics that a single wall handle does not yet carry safely.
+7. Lifting a room on stilts, and moving a whole building across storeys: both want real levels, not just per-element
+   heights.
