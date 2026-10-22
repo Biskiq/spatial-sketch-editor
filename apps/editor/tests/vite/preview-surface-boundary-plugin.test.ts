@@ -118,4 +118,21 @@ describe('preview-surface boundary plugin (actual generateBundle)', () => {
 		});
 		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/authoring/);
 	});
+
+	it('rejects an authoring module imported directly by the Preview root', () => {
+		// The plan's literal fixture shape: the surface root itself importing
+		// authoring machinery, not only through an intermediate visitor leaf.
+		const plugin = previewSurfaceBoundaryPlugin() as unknown as {
+			transform: (this: unknown, code: string, id: string) => unknown;
+			generateBundle: (this: unknown, options: unknown, bundle: unknown) => void;
+		};
+		const coordinator = '/src/lib/authoring/f4/acceptance-coordinator.ts';
+		plugin.transform.call({}, `import '../../authoring/f4/acceptance-coordinator';`, ROOT);
+		plugin.transform.call({}, `export default 1;`, coordinator);
+		const ctx = stubContext({
+			[ROOT]: { importedIds: [coordinator], dynamicallyImportedIds: [] },
+			[coordinator]: { importedIds: [], dynamicallyImportedIds: [] }
+		});
+		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/authoring/);
+	});
 });

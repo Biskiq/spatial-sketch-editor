@@ -86,7 +86,23 @@ describe('public-surface boundary plugin (actual generateBundle)', () => {
 		};
 		const ctx = stubContext({
 			'/src/lib/visitor/VisitorPreviewSurface.svelte': { importedIds: [], dynamicallyImportedIds: [] }
+		});		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/missing root/);
+	});
+
+	it('rejects an authoring module imported directly by the public root', () => {
+		// The plan's literal fixture shape: the route root itself importing authoring
+		// machinery, not only through the release loader.
+		const plugin = publicSurfaceBoundaryPlugin() as unknown as {
+			transform: (this: unknown, code: string, id: string) => unknown;
+			generateBundle: (this: unknown, options: unknown, bundle: unknown) => void;
+		};
+		const coordinator = '/src/lib/authoring/f4/acceptance-coordinator.ts';
+		plugin.transform.call({}, `import '$lib/authoring/f4/acceptance-coordinator';`, ROOT);
+		plugin.transform.call({}, `export default 1;`, coordinator);
+		const ctx = stubContext({
+			[ROOT]: { importedIds: [coordinator], dynamicallyImportedIds: [] },
+			[coordinator]: { importedIds: [], dynamicallyImportedIds: [] }
 		});
-		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/missing root/);
+		expect(() => plugin.generateBundle.call(ctx, {}, {})).toThrow(/authoring/);
 	});
 });

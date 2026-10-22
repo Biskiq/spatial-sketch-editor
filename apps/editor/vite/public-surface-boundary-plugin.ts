@@ -14,9 +14,9 @@ import { collectUnresolvedDynamics } from './preview-surface-dynamic-scan';
  * `/p/:publicationId` page root through `importedIds` +
  * `dynamicallyImportedIds`. Missing root, unresolved internal edges and
  * forbidden runtime modules fail the build. Reuses the preview-surface
- * forbidden set (editor session/selection/history/gizmo/inspector, Chopin
- * runtime, editor codecs/stores) so the public cold bootstrap stays
- * independently visitor-safe. Computed `import(variable)` dynamics leave no
+ * forbidden set (the editor `src/lib/authoring/` tree, Chopin runtime, editor
+ * codecs/stores) so the public cold bootstrap stays independently
+ * visitor-safe. Computed `import(variable)` dynamics leave no
  * graph edge, so the `transform` hook records transformed sources and the
  * closure walk additionally rejects expression-form dynamics.
  *
