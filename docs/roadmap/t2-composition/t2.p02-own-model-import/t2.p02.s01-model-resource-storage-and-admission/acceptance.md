@@ -1,7 +1,7 @@
 # T2.P02.S01 — acceptance record: Model resource storage and admission
 
 **Slice:** T2.P02.S01 · **Status:** implemented on `t2/p02-s01-model-resource-storage` at
-`440bb690`, evidence recorded, **independent review owed** — not accepted, not merged ·
+`b88cbc95`, evidence recorded, **independent review owed** — not accepted, not merged ·
 **Plan:** [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T2.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -62,7 +62,7 @@ The slice adds no editor flow, so the batch E performance table's row for it is 
 | Formats: old numbers refuse; strict readers reject unknown keys and part fields; resource without lock and lock without resource refuse | `apps/editor/tests/lib/project-model/model-resource-admission.test.ts` (13 tests) |
 | No regression: catalogue/native placement, texture assets, conditional Save, conflict recovery, visitor/public boundary | `save`, `save-units`, `projects`, `assets`, `publication`, `migration*` API files; the affected editor project-model/Scene/stage/museum-asset contracts; the visitor cold-release catalogue-only test; the whole arch lane |
 
-## Evidence at `440bb690`
+## Evidence at `b88cbc95`
 
 Environment: the owner's local checkout; `DATABASE_URL=postgresql://localhost:5432/biskiq`
 (reachable, no skip guards); Node 26.7.0; Vitest 3.2.7.
@@ -92,9 +92,10 @@ the 15-test visitor cold-runtime contract (including the creator-model refusal),
 `modelFootprints` assertion on the admitted snapshot. The cold release is exercised with a creator
 model and observed to refuse it.
 
-The code and contract evidence is at `440bb690`, after a deletion-first pass removed the duplicated
-staging-expiry refusal, the duplicated structure-check signature, a re-exported size bound and three
-overlapping test cases. This record and the T2 baton were updated afterwards;
+The code and contract evidence is at `b88cbc95`, after a deletion-first pass removed the duplicated
+staging-expiry refusal, the duplicated structure-check signature, a re-exported size bound and the
+copied upload-length refusals, and collapsed one overlapping admission case and a repeated fallback
+assertion into the contracts that already prove them. This record and the T2 baton were updated afterwards;
 the whole arch lane was re-run green on the final documentation tree (21 files / 173 tests at
 default), including the documentation-reference gate and the routing preflight that reads the
 baton.
@@ -159,6 +160,6 @@ regressions     apps/api/tests/model-resources.test.mjs
 
 ## Next
 
-Independent review of `440bb690` against the plan. Acceptance, closeout and merge are not claimed;
+Independent review of `b88cbc95` against the plan. Acceptance, closeout and merge are not claimed;
 `T2.P02.S02` and `T2.P02.S03` stay held, and the phase's integrated proof remains
 [`T2.P02.S03`](../t2.p02.s03-integrated-final-gate/acceptance.md).

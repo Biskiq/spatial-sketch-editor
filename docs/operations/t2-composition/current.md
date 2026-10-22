@@ -7,7 +7,7 @@ PHASE: T2.P02 Own model import (registered 2026-10-22, batch E) →
        ../../roadmap/t2-composition/t2.p02-own-model-import/README.md
        T2.P01 Supported object composition is CLOSED 2026-10-20, all four children shipped →
        ../../roadmap/t2-composition/t2.p01-supported-composition/README.md
-SLICES: T2.P02.S01 is implemented on `t2/p02-s01-model-resource-storage` at `440bb690` and awaits
+SLICES: T2.P02.S01 is implemented on `t2/p02-s01-model-resource-storage` at `b88cbc95` and awaits
         independent review. The phase's later children stay held and are not on the release list;
         a successor starts only after S01 is accepted and is itself authorized.
 BATON: S01 delivers staged model imports, immutable approved revisions, the resources-2 / Scene-3
@@ -17,12 +17,13 @@ BATON: S01 delivers staged model imports, immutable approved revisions, the reso
        visitor/cold-release reader stays catalogue-only by construction; the generic fallback is
        sized from the approved footprint. Evidence and limits are in
        ../../roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md.
-       Declared tier `architecture-integration`, run at `440bb690`: project-model/API/Svelte checks
+       Declared tier `architecture-integration`, run at `b88cbc95`: project-model/API/Svelte checks
        0 errors; DB-backed API 12 files / 88 tests, 0 fail, 0 skipped, including streamed 50/25 MiB
        uploads; arch lane 21 / 173; affected editor contracts 39 files / 482. Not accepted and not
-       merged. `440bb690` is a deletion-first pass over the slice: no behavior was dropped, three
-       duplicated expiry refusals became one sweep, and three overlapping test cases collapsed.
-NEXT:  Independent review of `440bb690` against the slice plan. Owner acceptance and routine
+       merged. `b88cbc95` is a deletion-first pass over the slice: no behavior was dropped, the
+       duplicated expiry and upload-length refusals became one owner each, and the overlapping
+       admission case and fallback assertion collapsed into the contracts that already prove them.
+NEXT:  Independent review of `b88cbc95` against the slice plan. Owner acceptance and routine
        closeout follow; the complete repository gate runs on then-current `main` before merge.
 ROUTE: ./README.md →
        ../../roadmap/t2-composition/README.md (phase register) →
