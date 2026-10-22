@@ -6,9 +6,12 @@
  * bytes/requests per route. Cold clears cache/cookies before every measured
  * navigation; warm is a second navigation in the same context.
  *
- * These are pre-flight numbers on a developer machine. F1's Stage first
- * interactive frame is a hard row accepted only from the designated reference
- * machine, operated by the owner.
+ * These are pre-flight numbers on a developer machine. F1's Stage **first
+ * architectural frame** is the rAF rendering opportunity after activation; it is
+ * not the contract's first interactive frame (a frame after which a pointer is
+ * handled within 50 ms). The hard row is accepted only from the designated
+ * reference machine, operated by the owner, and must be reported under this
+ * label rather than as first-interactive.
  */
 
 import { expect, test } from '@playwright/test';

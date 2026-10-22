@@ -32,8 +32,8 @@ uses a fresh context, never a user profile.
 
 | Spec | Flow | What it records |
 | --- | --- | --- |
-| `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first frame, FCP, LCP, long tasks, script bytes/requests, cold and warm |
-| `flows/project-open.spec.ts` | F2 open | S (grid-3) and M (grid-7) admission → first architectural frame, cold and warm |
+| `flows/startup.spec.ts` | F1 startup | hub interactive, Stage first **architectural** frame (rAF proxy, not the contract's first interactive frame), FCP, LCP, long tasks, script bytes/requests, cold and warm |
+| `flows/project-open.spec.ts` | F2 open | S (grid-3) and M (grid-7) admission → first **architectural** frame (rAF proxy), cold and warm |
 | `flows/orbit.spec.ts` | F7 orbit | 10 s scripted orbit + dolly (extended only until the run reaches 600 frames), frame-interval p50/p95/p99, dropped frames, long tasks, cold and warm |
 | `flows/save.spec.ts` | F9 Save | save:submit → local feedback presented → durable receipt → saved, through the API test-auth seam on a local stack, cold and warm |
 | `flows/cycles.spec.ts` | F13 repeated open/close | 10 cycles × (open + 20 edits + close), JS heap after forced GC, cold and repeat-use |
@@ -54,9 +54,20 @@ and asserts that all 60 samples still exist and the presented latency distributi
 shifts beyond the baseline.
 
 Presentation is attributed to the rendering-opportunity frame (rAF). That is an
-approximation for the hard presentation gate: the traced-image proof belongs to
-the owner-run reference rows. Page INP is reported separately from operation
-completion; with ten milestone samples p95/p99 are coarse and the report says so.
+approximation for the hard presentation gate, not the plan's trace-of-presented-
+frame proof; the deviation is recorded in
+[the decision record](../../../docs/reference/decisions/t3p03s02-trace-correlation-deviation-2026-10-22.md)
+and must be accepted by the owner before this harness can be the final-gate
+evidence for presentation.
+
+**First interactive frame is not measured.** The contract's F1/F2
+"first interactive frame" means the first architectural frame after which a
+pointer event is handled within 50 ms. This harness records the first
+architectural rAF frame after the activation/admission mark. Reports must call
+that row **first architectural frame (rAF proxy)** and must not present it as
+the contract's first-interactive row. Page INP is reported separately from
+operation completion; with ten milestone samples p95/p99 are coarse and the
+report says so.
 
 ## Environment
 
