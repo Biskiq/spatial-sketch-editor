@@ -252,8 +252,9 @@ Root cause    `packages/project-model/src/units/acceptance.ts`: `changedDomains`
               lock's `requiredCapabilities`; `verifyUnitDependencyLocks` re-checks subject
               revisions only. Layered: a unit header is authored-adjacent bookkeeping no planner is
               meant to write, so no check existed to widen.
-Why green     No test builds a metadata-only candidate. Every scope test changes at least one unit
-              payload, which is exactly what the content-revision comparison can see.
+Why green     No scope test builds a metadata-only candidate expecting acceptance. Every scope test
+              changes at least one unit payload, which is exactly what the content-revision
+              comparison can see.
 Fix options   1) Extend `validateChange` to compare the authored envelope shape it owns — unit
               headers other than `contentRevision` against a recomputed canonical value, and unit
               lock `requiredCapabilities`/`pin` against the planner's grants — the correct fix, once

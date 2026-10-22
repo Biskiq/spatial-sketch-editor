@@ -29,7 +29,8 @@ ACTIVE: T3.P03.S01 `in-progress` on `t3/p03-s01-planner-scope-build-isolation`: 
         starting only after T3.P03.S01 is merged on `main`. T3.P02.S02 stays `proposed` and held.
 BATON: Review and accept T3.P03.S01 against its three acceptance rows — T1 (Stage/Layout) and T2
        (Scene) confirm their single-domain planners still admit — then close it out and merge: its
-       merge is the start gate for T1.P02.S01, T2.P02.S01 and T3.P02.S01. T3.P03.S02       (measurement workflow, final gate) starts after it; the default-timeout `npm test` merge
+       merge is the start gate for T1.P02.S01, T2.P02.S01 and T3.P02.S01. T3.P03.S02
+       (measurement workflow, final gate) starts after it; the default-timeout `npm test` merge
        gate is still owed on an unloaded host (the complete suite passed with timeout headroom
        while unrelated applications held the machine at load average 47).
 NEXT:  T3.P03.S01 → merge → T3.P02.S01 and T3.P03.S02 in parallel. T3.P02.S01 settles its format
