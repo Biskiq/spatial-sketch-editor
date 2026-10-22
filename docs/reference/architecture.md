@@ -376,8 +376,9 @@ editor session/selection/history/gizmo code.
 
 ## Product convergence destination
 
-**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** This section prepares
-architecture changes in their owning reference. It adds no shipped capability, changes no accepted
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). This section records
+the architecture destination in its owning reference. It adds no shipped capability, changes no accepted
 gate identity and grants no implementation permission. Review disposition is in the
 [amendment manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
 

@@ -9,9 +9,10 @@ implemented** · **Phase:** [T3.P02](../README.md) · [slice register](../README
 overrides launch/resume under the earlier authorization. PR #173 must reconcile this plan with
 the selected convergence decisions; explicit owner release is required before implementation.
 The historical authorization and registered `approved` state are preserved. The clarifications
-below are prepared for renewed owner review, not an implementation release.
+below are core-destination ratified 2026-10-22; exact formats still need first-consumer review,
+and implementation remains held.
 
-**Convergence clarifications proposed 2026-10-22.**
+**Convergence clarifications accepted 2026-10-22 (destination; implementation held).**
 - Capture stores a qualified F.1 subject reference; no Room or clone is invented to host it.
 - Presentation text is a closed first-consumer content kind, with exact version/capability and
   older-reader behavior declared before implementation. Do not pre-label the format change additive
@@ -124,8 +125,7 @@ substitutes for that gate, and every implementation-PR merge keeps the complete 
 including heavy correctness and `check:api`/`test:api` with zero skips for the Save path.
 Before S01 acceptance, record capture/bind result completion, first/repeated Preview entry and
 return, delivered Preview bytes and repeated enter/exit memory behavior against
-[the proposed performance reference](../../../../reference/components/performance.md), once
-owner-accepted. The phase final gate rechecks the integrated result; it does not defer a hard miss.
+[the ratified performance reference](../../../../reference/components/performance.md). The phase final gate rechecks the integrated result; it does not defer a hard miss.
 
 ## Shared-file ownership (batch D provenance; convergence review)
 

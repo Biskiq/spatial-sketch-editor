@@ -29,10 +29,10 @@ in PR #173: revise scope/briefs → independent research → product/design/arch
 reconciliation → canonical roadmap/DAG and batch recommendation → owner review before merge.
 The [production implementation hold](../../docs/roadmap/README.md#production-implementation-hold)
 includes previously authorized work. Step 2's research results (2026-10-22) are in the three
-packets indexed in §5; they amend no contract. Step 3's unratified decision set is in the
-convergence proposal; step 4 now updates the [canonical batch/DAG](../../docs/roadmap/cross-track-execution.md#convergence-batch-and-next-planning-wave)
-and affected roadmaps. Proposed wording is prepared directly in the owning references, with an
-explicit owner-review manifest. Reconciliation stays in this PR. Merging alone does
+packets indexed in §5; they amend no contract. Step 3's core destination is owner-ratified 2026-10-22
+([record](../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)); step 4 now updates the [canonical batch/DAG](../../docs/roadmap/cross-track-execution.md#convergence-batch-and-next-planning-wave)
+and affected roadmaps. The owning references carry the ratified core destination, with named consumer choices
+still deferred in the ratification manifest. Reconciliation stays in this PR. Merging alone does
 not release implementation.
 
 ## 1. Recommendation and independent assessment

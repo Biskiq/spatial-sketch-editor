@@ -31,9 +31,10 @@ dependency. S01 retains its historical authorization and all its declared accept
 - Align public/Preview build forbidden patterns with `src/lib/authoring/**`. Retain the existing
   public source-closure test, which already rejects that whole tree. Keep runtime-safe evaluators
   shared; do not classify layout-core or Camera math as editor machinery.
-- Add the on-demand browser measurement harness and bundle report only after the owner accepts
-  the [proposed performance contract](../reference/components/performance.md). Permanent workflow
-  authorization is separate from running bounded measurements under the existing test contract.
+- The on-demand browser measurement harness and bundle report have explicit owner authorization
+  under the [ratified performance contract](../reference/components/performance.md). Install them
+  only after H0 provider registration, implementation authorization and named hold release.
+  Permanent workflow authorization is separate from bounded measurements and is already satisfied.
   No timing assertion enters Vitest and no CI, registry or scheduled performance job is added.
 - Capture a production-build baseline on available hardware with exact machine, browser, power,
   workload, network and cache state. Reference A measurements qualify hard budgets; an M2 or
@@ -46,7 +47,7 @@ dependency. S01 retains its historical authorization and all its declared accept
 | --- | --- | --- |
 | T3 F4 integration owner | Existing `packages/project-model/src/f4/` and unit-acceptance contracts, editor `lib/authoring/f4/` wiring and their owning tests | T1/T2 consumers verify admitted single-domain behavior; preserve the existing joint planner |
 | Visitor-boundary owner with T1 | Public/Preview build plugins, shared boundary predicates and existing boundary tests | T3 Preview consumer; mutation proof distinguishes editor machinery from allowed runtime math |
-| Test-contract owner with T1 | One browser harness, its own config outside default lanes, bundle report and explicit package scripts/devDependency | Owner authorization for the permanent workflow; consume the existing shared import readers |
+| Test-contract owner with T1 | One browser harness, its own config outside default lanes, bundle report and explicit package scripts/devDependency | Workflow authorized 2026-10-22; consume existing shared import readers; H0 implementation still held |
 
 No Layout schema change, native drawing, own-model ingest, annotations, attachment format,
 Camera mechanism replacement, API migration, T4 release reader or shell redesign enters H0.
@@ -75,15 +76,14 @@ verification and required final gate; this proposal does not narrow it to the fi
    required for a visual report. Every editor module is refused; solver/runtime inclusion is
    justified by visitor execution.
 5. The acceptance record names baseline limitations and all unrun reference/GPU rows. Manual
-   DevTools evidence can substitute until the permanent harness is approved, with its limitations
+   DevTools evidence can substitute until the authorized permanent harness is installed, with its limitations
    stated. Each later consuming slice must meet its own hard budgets before acceptance; the phase
    final gate rechecks integrated behavior rather than deferring a slice's miss.
 
 ## Owner decision and follow-through
 
 The immediate owner act is to accept or edit this launch scope, register its provider through
-the owning track, authorize the permanent measurement workflow if selected, and explicitly
-release H0 from the hold. Those acts authorize H0 alone. They authorize neither C1/C2 nor S01
+the owning track, and explicitly release H0 from the hold. Those acts authorize H0 alone. They authorize neither C1/C2 nor S01
 resumption. After H0 merges, the next batch review can release the clarified S01 and authorize
 reviewed/registered C1/C2 launch plans. Each track updates only its own operational baton.
 

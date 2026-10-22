@@ -817,7 +817,8 @@ Prerequisites at the provider's trusted base: `unit-resolution-v1`, `unit-envelo
 
 ## Product convergence destination
 
-**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** These obligations
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). These obligations
 prepare the next consumers; landed codecs, admitted versions, capabilities and behavior above
 remain current. [Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
 

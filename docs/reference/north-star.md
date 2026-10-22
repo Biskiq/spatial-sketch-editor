@@ -1105,7 +1105,8 @@ same inspectable capabilities, and the destination is never presented as shipped
 
 ## Product convergence destination
 
-**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** The accepted P1–P3
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](./decisions/product-convergence-ratification-2026-10-22.md). The accepted P1–P3
 creative findings motivate this direction; they do not adopt prototype encodings or chrome.
 [Review manifest](../roadmap/product-convergence-2026-10-21-amendments.md).
 

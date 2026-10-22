@@ -71,6 +71,10 @@ is normative for all new design and outranks conflicting pre-ratification
 behavior until their explicit cutover; the destination is never presented as
 shipped.
 
+The [2026-10-22 convergence ratification](./reference/decisions/product-convergence-ratification-2026-10-22.md)
+refines the core destination in the owning references and authorizes the bounded on-demand
+performance workflow. Named consumer decisions and the production implementation hold remain.
+
 | Need | Read | Code |
 |------|------|------|
 | Ratified direction / decision provenance | [`reference/decisions/northstar-ratification-2026-09-27.md`](./reference/decisions/northstar-ratification-2026-09-27.md), as refined by the [`2026-09-29 World \| Experience amendment`](./reference/decisions/world-experience-reconciliation-2026-09-29.md) and the [2026-10-15 F-interface ratification](./reference/decisions/f-ratification-2026-10-15.md); promoted concerns live in the routed contracts below | — |
@@ -97,7 +101,7 @@ shipped.
 | Operational runbook for a track | [`operations/t1-spatial-world/README.md`](./operations/t1-spatial-world/README.md) · [`operations/t2-composition/README.md`](./operations/t2-composition/README.md) · [`operations/t3-experience/README.md`](./operations/t3-experience/README.md) · [`operations/t4-release/README.md`](./operations/t4-release/README.md) — eligibility, start step, test families, routes and debt handling | — |
 | Tech debt | [`operations/tech-debt/`](./operations/tech-debt/) | — |
 | Architecture cycle (meta) | [`operations/architecture-cycle.md`](./operations/architecture-cycle.md) — stage, bounded exposure window and mechanism register; loaded only by its three hooks (phase planning, implementation start, slice closeout) | — |
-| Browser performance / delivery | [`reference/components/performance.md`](./reference/components/performance.md) — proposed PR #173 destination awaiting owner ratification; metrics, baseline, budgets and consuming-slice evidence; current benchmark policy stays in the test contract | — |
+| Browser performance / delivery | [`reference/components/performance.md`](./reference/components/performance.md) — owner-ratified PR #173 destination; metrics, baseline, budgets and consuming-slice evidence; current benchmark policy stays in the test contract | — |
 | Tests | [`../apps/editor/tests/README.md`](../apps/editor/tests/README.md) | — |
 | Prototype / QA reference — runnable product hypotheses and their specimens | [`../prototypes/README.md`](../prototypes/README.md) — durable executable artifacts; they test and challenge contracts but are **not** production, persisted-format or implementation authority | — |
 | History | [`archive/`](./archive/) (opt-in; nothing here is current truth) | — |

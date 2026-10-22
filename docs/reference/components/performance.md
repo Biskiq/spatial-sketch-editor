@@ -1,7 +1,8 @@
 # Browser performance and delivery
 
-**Status: proposed destination for PR #173 owner review, 2026-10-22; not yet ratified.**
-This is the single proposed owner of performance profiles, workloads, metric definitions and
+**Status: owner-ratified destination, 2026-10-22, PR #173.**
+[Decision record](../decisions/product-convergence-ratification-2026-10-22.md).
+This is the single owner of performance profiles, workloads, metric definitions and
 budget tables. No harness is installed and no browser/GPU/reference-laptop result is claimed.
 The [review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md) separates
 ratification, permanent workflow authorization and production hold release.
@@ -34,7 +35,7 @@ per request, cache disabled for cold):
 - **N1 broadband** — 20 Mbit/s down, 5 Mbit/s up, 40 ms RTT. Gating profile for viewer and editor.
 - **N2 constrained** — 1.6 Mbit/s down, 750 kbit/s up, 150 ms RTT (a proposed constrained profile). Reported for the viewer only; a target, not a gate.
 
-**Reproducing on a developer machine (proposal; Not run).**
+**Reproducing on a developer machine (workflow authorized; not yet installed or run).**
 
 1. **Pinned browser:** Playwright-managed Chromium *and* branded Chrome stable (`channel: 'chrome'`),
    versions recorded with every result; Playwright's own browser cache, never the user's profile;
@@ -90,7 +91,7 @@ successor, enabled only by a harness flag, never shipped as a dependency) plus C
 frame and memory data. "First interactive frame" = first presented architectural frame after
 which a pointer event is handled within 50 ms; a lone rAF callback is not proof of presentation.
 
-**Measurement contract (proposal; API constraints checked 2026-10-22).**
+**Measurement contract (ratified; API constraints checked 2026-10-22).**
 
 - **Continuous drag:** Event Timing excludes `pointermove`, `touchmove`, `wheel` and `drag`
   ([W3C events exposed](https://www.w3.org/TR/event-timing/#sec-events-exposed)). Assign a monotonic
@@ -137,7 +138,7 @@ preview's presentation; operation completion ends at the accepted result's prese
 defined above. Discrete Event Timing/INP is reported separately. Frame budgets use rAF-to-rAF
 intervals on a 60 Hz display and do not substitute for matching-result presentation latency.
 
-**Budget basis.** These are proposed Biskiq acceptance targets, not claims that browser
+**Budget basis.** These are owner-ratified Biskiq acceptance targets, not claims that browser
 performance has already been measured on the reference hardware. The research packet retains
 the measured Node/build evidence and its limitations.
 
@@ -162,7 +163,7 @@ the measured Node/build evidence and its limitations.
 | Object import F5: chosen → placed (local file, excl. upload) | ≤ 2 s for 5 MiB | ≤ 5 s for 25 MiB | — | Target |
 | Placement F6: input-to-matching-preview / completion latency p95; picking per event | ≤ 33 ms; ≤ 2 ms | ≤ 50 ms; ≤ 4 ms | ≤ 100 ms; ≤ 8 ms | **Hard** S/M |
 | Save F9: main-thread work; local feedback presented p95 | ≤ 50 ms; ≤ 100 ms | same | ≤ 100 ms; ≤ 100 ms | **Hard** |
-| Save F9: click → durable receipt p95 at N1 | ≤ 8 × B_wire / R_up + 2 × RTT + 500 ms | same formula | same formula | Target pending service baseline/owner acceptance |
+| Save F9: click → durable receipt p95 at N1 | ≤ 8 × B_wire / R_up + 2 × RTT + 500 ms | same formula | same formula | Target; hard promotion requires service baseline and owner decision |
 | Capture/bind F10 final-result completion p95; Preview entry first frame (repeat / first use) | ≤ 100 ms; ≤ 300 ms / ≤ 800 ms | same | ≤ 200 ms; ≤ 500 ms / ≤ 1.2 s | **Hard** S/M |
 | Viewer cold F11: first architectural frame (LCP-like) at N1 | ≤ 2.5 s | ≤ 2.5 s | ≤ 4.0 s | **Hard** S/M from T4, Target L; N2 reported |
 | Viewer cold F11: first navigable frame at N1 | ≤ 3.0 s | ≤ 3.5 s | ≤ 6 s | **Hard** S/M from T4 |
@@ -173,9 +174,9 @@ the measured Node/build evidence and its limitations.
 | GPU memory estimate (textures + buffers) | ≤ 128 MiB | ≤ 384 MiB | ≤ 768 MiB | **Hard** M on A 8 GB (shared memory) |
 | Leaks F13: heap growth over 10 cycles (after GC); GPU resources | ≤ 5 MiB; geometries/textures back to baseline; 1 live context | same | ≤ 10 MiB | **Hard** |
 
-**Save receipt proposal.** `B_wire` is the actual request-body byte count; `R_up` is the declared
+**Save receipt target.** `B_wire` is the actual request-body byte count; `R_up` is the declared
 upload bit rate in bits/ms and RTT is in ms. The formula explicitly allows upload time, two RTTs
-for transport overhead and a proposed 500 ms local/server allowance; record those components and
+for transport overhead and a 500 ms local/server target allowance; record those components and
 confirm the allowance against the API before accepting a hard receipt gate. Production currently
 sends the full canonical source as an uncompressed JSON PUT
 (the current project persistence client). The ≤ 100 ms hard requirement concerns visible
@@ -195,10 +196,10 @@ Preserve one compiler and prove equal output for optimized paths with meaningful
 differentials. A worker must meet matching-result completion deadlines as well as main-thread
 budgets; moving a slow solve off-thread alone does not establish timely results.
 
-The permanent on-demand Playwright/CDP harness and bundle report require explicit owner
-acceptance under [the test contract](../../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks).
+The permanent on-demand Playwright/CDP harness and bundle report are explicitly owner-authorized
+by the decision record above under [the test contract](../../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks).
 They live outside default test lanes and add no CI timing gate, schedule or benchmark registry.
-Equivalent manual DevTools measurements may supply evidence until the workflow is authorized,
+Equivalent manual DevTools measurements may supply evidence until the authorized workflow is installed,
 with limitations stated. Existing public source-closure coverage already excludes all authoring
 machinery; align the public and Preview build patterns without weakening that protection.
 

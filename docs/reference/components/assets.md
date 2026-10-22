@@ -160,7 +160,8 @@ are not applied again.
 
 ## Product convergence destination
 
-**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** Existing catalogue
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](../decisions/product-convergence-ratification-2026-10-22.md). Existing catalogue
 preparation remains a current procedure; it does not define creator-import capability.
 [Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
 

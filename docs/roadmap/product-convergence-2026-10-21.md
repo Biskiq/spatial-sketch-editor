@@ -1,11 +1,13 @@
 # Product convergence — draw, arrange, explain, revise
 
-**Draft convergence round, scope revised by the owner 2026-10-22.** PR #173 now covers focused
-research, product/design/architecture reconciliation, proposed amendments to the owning contracts,
-and the concurrent roadmap/DAG with the next batch recommendation. These outcomes belong in this
-PR before merge; no separate reconciliation PR is planned. The owner accepted the P1–P3 creative
-findings and deferred P4. This scope revision makes no architectural decision, registers no phase,
-authorizes no implementation and accepts no product milestone. Initial evidence baseline:
+**Convergence round completed for merge review, 2026-10-22.** PR #173 covers focused research,
+product/design/architecture reconciliation, owning-contract amendments and the concurrent
+roadmap/DAG with the next batch recommendation. The owner ratified the core destination prepared
+at `88d93128` and explicitly authorized the permanent on-demand performance workflow
+([decision record](../reference/decisions/product-convergence-ratification-2026-10-22.md)).
+Named consumer decisions remain deferred. No phase, implementation scope or product milestone is
+authorized/accepted by this ratification; production stays held. P1–P3 creative findings remain
+accepted and P4 deferred. Initial evidence baseline:
 `78cafc3acaad0f9919855901a7ea4d98aeecd85f` (includes PR #171 and Vellum's latest polish).
 The [coordination record](../../broad-research/post-p01-roadmaps/README.md) owns the capability
 disposition ledger and research index; phase registers and the [gate register](./README.md#gate-register)
@@ -30,18 +32,17 @@ proceed within their commissioned step. Merging this PR alone does not release t
 **Step 2 executed 2026-10-22 at `ce9b7156`** (no inspected source changed from the baseline).
 Each packet records its probe ledger, corrections, proposed amendments, missing providers and
 next slice; its probes are reproducible under its `probes/` folder. Those packets retain the independent evidence behind the reconciled decisions below. **Step 3 prepared 2026-10-22:** the
-[proposed decision set](#proposed-decision-set-step-3-unratified) and its
-[exact amendments](./product-convergence-2026-10-21-amendments.md). It applies only descriptive
-corrections. Proposed destination wording is now prepared directly in the owning references,
-explicitly marked unratified; every normative amendment awaits owner acceptance. A first owner review the same day
+[reconciled decision set](#reconciled-decision-set-step-3) and its
+[exact amendments](./product-convergence-2026-10-21-amendments.md). The owner-ratified core destination is now directly in the owning references; descriptive
+corrections remain distinct from new destination obligations. A first owner review the same day
 revised it: stored versus derived unresolved state, deletion of a host, compiler organization, the
 closure and annotation scope, extension compatibility, the reconciled geometry harvest under the
-copyleft model, and browser performance (CD-10). **Step 4 is prepared:** the canonical DAG,
+copyleft model, and browser performance (CD-10). **Step 4 is complete:** the canonical DAG,
 affected track/phase roadmaps and milestone descriptions now agree on H0, the three first-wave
 lanes, shared-file ownership and the next planning triggers. Later peer-review corrections cover
 domain-specific unresolved forms, unavailable-pose deletion, matching-result performance metrics,
-network-aware Save receipt and existing isolation coverage. **Step 5 remains owner review:**
-ratification and any named implementation authorization/hold release are separate decisions.
+network-aware Save receipt and existing isolation coverage. **Step 5 core review is complete:** the owner ratified the core package and authorized the
+on-demand workflow. No implementation authorization or hold release was selected.
 Keep results in their commission packets and fold their conclusions into this proposal and the
 existing owning documents. Avoid another synthesis ledger or parallel execution roadmap.
 
@@ -118,19 +119,15 @@ or architectural commitments are already sufficient.
 | Reliable revision as product quality | North Star, F1/F4 and PLATE already require it | A creator can predict the affected scope, preserve unrelated work, repair a real break and reopen the result | Step 3: CD-1/CD-2 shared rules; journeys stay in each consuming plan |
 
 Step 2 replaced the three provisional architecture recommendations made here with evidence.
-The [proposed decision set](#proposed-decision-set-step-3-unratified) below reconciles them.
+The [reconciled decision set](#reconciled-decision-set-step-3) below reconciles them.
 
-Step 3 prepares the exact reconciliation in this PR: North Star for product commitments;
-PLATE for interaction/shell changes; architecture and Layout/Scene/assets/Camera contracts for
-domain semantics; F for cross-domain shapes and negotiation. Proposed contract diffs remain
-unratified during review; record the owner's accepted decisions and integrate their final wording
-before merge. Do not merge an unaccepted proposal as a normative contract. Preserve landed
-descriptions until an actual cutover and label the new destination honestly. An incompatible
-accepted interface requires a new version; an accepted gate row never implies new capabilities
-without the required implementation/acceptance evidence. The step-3 wording is in the
-[proposed amendments](./product-convergence-2026-10-21-amendments.md): the manifest now routes proposed wording prepared directly in each owning reference. Those
-sections remain explicitly unratified until the owner accepts them; there is no second live copy
-of their exact text.
+Step 3 places the accepted core reconciliation directly in its owning North Star, PLATE,
+architecture, Scene/assets and F references. The [ratification manifest](./product-convergence-2026-10-21-amendments.md)
+records accepted core IDs and deferred consumer choices. Preserve landed descriptions until the
+actual cutover; destination ratification is not a shipped capability. Each first consumer still
+classifies exact format/interpreter compatibility, obtains normal versions and conformance, and
+uses accepted providers at trusted base. Camera's contract remains unchanged. No second live
+copy of exact contract text or later reconciliation PR is needed.
 
 **Descriptive reconciliation, separate from ratification.** At this baseline, T1.P01, T2.P01 and
 T3.P01 are closed; T3.P02.S01 remains authorized and unimplemented. The North Star's opening
@@ -176,13 +173,14 @@ research when existing contracts plus the focused evidence decide the first cons
 a general constraint engine, universal roof generation and semantic ingest for every asset are not
 prerequisites for that outcome.
 
-## Proposed decision set (step 3, unratified)
+## Reconciled decision set (step 3)
 
-This section reconciles the three step-2 handoffs into one direction. Nothing here is ratified,
-registered or authorized. Each decision names its evidence, the strongest rejected alternative and
-the owner call it leaves open. The exact wording for the owning contracts is in the
-[proposed amendments](./product-convergence-2026-10-21-amendments.md). Steps 4–5 consume this
-section for the DAG, the batch and owner review.
+This section reconciles the three step-2 handoffs. Its core destination is owner-ratified
+2026-10-22; exact text lives in the owning references. Consumer alternatives explicitly marked
+proposed/deferred remain unratified. No phase, implementation or accepted provider is created.
+Each decision names evidence, rejected alternatives and the remaining consumer calls. The
+[ratification manifest](./product-convergence-2026-10-21-amendments.md) routes exact text in the
+owning references. The completed DAG/batch reconciliation and owner decision consume this set.
 
 ### Shared rules across the three seams
 
@@ -361,7 +359,8 @@ That is a scope clarification for step 4 and the release decision, not a new res
 The reconciled [geometry harvest](../../broad-research/geometry-library-harvest.md#5-recommendation-matrix-reconciled-2026-10-22)
 holds the per-area matrix.
 - **No new geometry library enters the first wave.** C1, C2 and T3.P02.S01 need none.
-  The proposed performance harness has its own explicit workflow/devDependency authorization.
+  The on-demand performance harness has explicit workflow/devDependency authorization;
+  installation still waits for H0 registration and named hold release.
 - **A library can run inside the canonical compiler.** It evaluates a Layout-declared family and never
   becomes another authority, provided the compiler owns persisted parameters, family qualification,
   refusal, identity and correspondence, and every consumer reads compiled output.
@@ -469,7 +468,7 @@ on-demand benchmarking.
 - the slice-local delivery fixes;
 - deduplicated compile and admission in C1.
 
-The harness and the bundle report need owner authorization under the
+The harness and permanent bundle-report workflow have explicit owner authorization under the
 [test contract](../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks).
 *Bounded experiments, each with a trigger:* incremental compile (already triggered for C1),
 worker-hosted planning, drag-preview semantics (a contract call), a compiled visitor derivative (at
@@ -515,7 +514,7 @@ editor and 17/17 P3 tests, all passing).
 | Overhead family (single-span roof/canopy, closure/suspended ceiling) | T1 | Expressive roofs | Vertical cutover; tolerance; E2 (E1 if the family uses booleans/offsets) |
 | Generalized support-surface query | T1 | Placement on slab/deck/roof | Vertical cutover |
 | Plan source kinds for new elements, and a Section evaluation | T1 | Capture of vertical readings | Overhead family |
-| Browser performance harness and bundle report (CD-10) | Test-contract owner; T3 coordination, T1 browser integration | Consuming-slice performance evidence; phase integration recheck | Owner authorization for permanent workflow; equivalent manual measurements remain available |
+| Browser performance harness and bundle report (CD-10) | Test-contract owner; T3 coordination, T1 browser integration | Consuming-slice performance evidence; phase integration recheck | Workflow authorized 2026-10-22; H0 registration/implementation release still required; manual measurements remain available |
 | Compile/admission dedupe; measured incremental/worker experiment | T1 with F4 host owner | C1's drag and commit budgets | Browser baseline; correctness differential in `test:heavy`; final-result as well as responsiveness budgets |
 | Repointed visitor boundary gates | Visitor/boundary owner | Viewer-delivery gate | — |
 
@@ -565,7 +564,6 @@ editor and 17/17 P3 tests, all passing).
 | Stop-free Preview inside T3.P02.S01 (CD-7) | Include it, as completion of the P1 direction | When S01 is released from the hold |
 | Hip massing for plus/Z plans (CD-8) | Decided with the first compound-wing family | Not needed for the first wave |
 | Exact product licence (CD-8) | Record a GPLv3-family copyleft licence | Before any GPL-only dependency ships |
-| Performance budgets, baseline and harness (CD-10) | Accept the hard budgets and the reference laptop; authorize the on-demand harness and the bundle report | Owner review here; permanent workflow before H0 implementation |
 | Drag-preview semantics, if incremental compile misses at L (CD-10) | Keep "preview = planner output"; decide only if the experiment fails | Inside C1, if triggered |
 
 ## Proposed next engineering batch
@@ -732,15 +730,16 @@ does not record that verdict, configure another exposure window or close any pha
 After merge, the owner must be able to identify the accepted direction, next batch to authorize,
 next slice to plan in each lane and the dependencies that permit concurrency from the existing
 roadmap routes. No separate reconciliation round is required for those near-term decisions.
-The technical preparation is ready for final owner review; it stays draft until the explicit
-ratification requirement is satisfied. A ready-for-review transition is not ratification; merging alone leaves production held
-unless the owner has also explicitly released named scopes. This task performs neither merge nor implementation.
+The owner ratified the core package and authorized the on-demand workflow on 2026-10-22.
+The verified PR can leave draft for merge review. Merging alone leaves production held unless
+the owner also explicitly releases named scopes. This task performs neither merge nor implementation.
 
 ## Immediate steps after merge
 
-1. Register the reviewed H0 provider through its owning track, authorize the selected permanent
-   measurement workflow, and explicitly release H0 alone from the production hold. Implement and
-   accept the shared correction without changing gate identities or reopening closed phases.
+1. Register and authorize the reviewed H0 implementation scope through its owning track, then
+   explicitly release H0 alone from the production hold. Implement and
+   accept the shared correction without changing gate identities or reopening closed phases. The
+   permanent on-demand measurement workflow is already authorized; do not request that choice again.
 2. In parallel, T1 prepares the C1 phase/launch plan and T2 prepares the C2 phase/launch plan;
    T3 finalizes the S01 format/entry compatibility and feature draft within its clarified plan.
    Planning is already within this convergence mandate; no production work starts from it.

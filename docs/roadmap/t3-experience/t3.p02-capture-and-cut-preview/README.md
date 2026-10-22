@@ -43,7 +43,7 @@ current-source adapter, and none may re-introduce one.
 
 ## Convergence review and hold
 
-PR #173 prepares S01 clarifications for owner review: qualified subject references, explicitly
+PR #173 records owner-accepted S01 destination clarifications: qualified subject references, explicitly
 versioned text/entry formats, a Guide-free Presentation Preview, lazy isolated delivery and
 performance evidence before consuming-slice acceptance. It preserves the complete approved
 capture/Guide/history/Save scope and S02's exhaustive final gate. H0's shared correction precedes

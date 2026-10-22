@@ -134,7 +134,8 @@ encoding, and the correspondence algorithm for ingest derivatives.
 
 ## Product convergence destination
 
-**Proposed in PR #173, 2026-10-22; awaiting explicit owner ratification.** This is destination
+**Owner-ratified destination, 2026-10-22, PR #173.** See the
+[ratification record](../decisions/product-convergence-ratification-2026-10-22.md). This is destination
 wording for new consumers; Scene unit format 2 still refuses attachments and components.
 [Review manifest](../../roadmap/product-convergence-2026-10-21-amendments.md).
 

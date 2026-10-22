@@ -5,7 +5,8 @@ overrides implementation launch/resume implied by earlier batch authorizations b
 [expanded convergence scope](./product-convergence-2026-10-21.md#scope-and-sequence) will reconcile
 this canonical DAG, affected roadmaps and the next batch. The 2026-10-22 convergence update below
 replaces stale scheduling with a proposed next batch and explicit planning triggers; it grants no
-implementation permission and awaits final owner review.
+implementation permission. The core destination and on-demand workflow were owner-ratified
+on 2026-10-22; named implementation releases remain pending.
 Historical evidence and accepted gate identities remain unchanged. Merge alone does not release the hold.
 
 **Status:** coordinated cross-track allocation, owner-confirmed 2026-10-15. The F amendments it
@@ -299,7 +300,7 @@ an existing reviewed plan with explicit convergence clarifications. No closed ph
 
 | Scope | Owner and concrete outcome | Prerequisites / next act | Authorization readiness |
 | --- | --- | --- | --- |
-| H0 shared correction | T3 F4 integration owner; T1 Stage and visitor-boundary support. Enforce each planner's declared scope, align public/Preview build patterns with current authoring machinery, establish browser/bundle measurements | Accepted F4 unit scopes and viewport; review the launch proposal, assign its normal provider registration and authorize the permanent harness separately | Concrete bounded proposal ready for owner review; implementation held |
+| H0 shared correction | T3 F4 integration owner; T1 Stage and visitor-boundary support. Enforce each planner's declared scope, align public/Preview build patterns with current authoring machinery, establish browser/bundle measurements | Accepted F4 unit scopes and viewport; review the launch proposal, assign its normal provider registration and release H0 implementation; the permanent on-demand workflow is already authorized | Concrete bounded proposal ready for owner review; implementation held |
 | T1 planning lane → C1 | T1. Empty → draw → close/divide → Opening → delete with one datum, non-reused IDs and role cutover; resolve measured performance costs | Plan native-Wall phase now; H0 before implementation, explicit encoding and enclosure policy, performance evidence at slice acceptance | Planning can proceed; implementation needs reviewed plans, registration and hold release |
 | T2 planning lane → C2 | T2 ingest/API owner, T1 host integration. Upload/approve/place/Save/reopen one own GLB, retaining source and a parts-safe derivative | Plan bounded ingest phase now; H0 before implementation, exact resource locks and stale/cancelled staging; no T4 dependency | Planning can proceed; implementation needs reviewed plans, registration and hold release |
 | T3.P02.S01 → S02 | T3. Capture and explain without a Guide, plus Cut Guide and isolated Preview, Save/history intact | Owner accepts the scope clarifications and releases S01 after H0; S02's separate authorization follows S01 acceptance | Existing S01 plan ready for final review; historical approval alone cannot resume it |

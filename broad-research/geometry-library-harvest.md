@@ -1,7 +1,7 @@
 # Geometry library harvest for production roofs and footprints (T1 / RR-2 input)
 
 Status: research handoff, first written 2026-10-21 (PR #171); **reconciled in place 2026-10-22** with the
-convergence decision set ([CD-4, CD-8](../docs/roadmap/product-convergence-2026-10-21.md#proposed-decision-set-step-3-unratified)),
+convergence decision set ([CD-4, CD-8](../docs/roadmap/product-convergence-2026-10-21.md#reconciled-decision-set-step-3)),
 the RR-1/RR-2 [vertical commission](./post-p01-roadmaps/convergence-2026-10-21/vertical-and-overhead.md) and the
 owner's stated copyleft model. **Not** a contract, plan, roadmap change or dependency decision; nothing here is
 adopted. It gives T1 planning evidence for choosing kernels for the one canonical Layout compiler (AGENTS rules 4–6).

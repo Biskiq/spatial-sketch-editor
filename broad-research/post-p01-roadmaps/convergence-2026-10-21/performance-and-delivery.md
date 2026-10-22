@@ -24,6 +24,12 @@ drawn from the above. **Proposal** — unratified
 recommendation. **Not run** — specified only (all browser runtime flows: no Playwright/Puppeteer is
 installed and no browser was launched).
 
+**Ratification update, 2026-10-22:** the owner accepted the core performance contract and explicitly
+authorized its permanent on-demand browser/bundle workflow
+([record](../../../docs/reference/decisions/product-convergence-ratification-2026-10-22.md)).
+The proposal labels below retain research provenance; the owning reference now governs. The
+workflow is not installed, browser/GPU results remain unrun, and H0 implementation stays held.
+
 ## Authority this packet works under
 
 - **Observed** [`apps/editor/tests/README.md` §Correctness tests vs performance benchmarks](../../../apps/editor/tests/README.md#correctness-tests-vs-performance-benchmarks):
@@ -291,7 +297,7 @@ extrapolation to ≈ 60 MiB (inference).
 
 The single proposed baseline, calibration procedure and browser/network profiles now live in
 [the owning performance reference](../../../docs/reference/components/performance.md#reference-baseline),
-prepared directly for PR #173 owner review. No reference-A browser measurement is claimed here.
+owner-ratified 2026-10-22 in PR #173. No reference-A browser measurement is claimed here.
 
 ## Representative workloads (proposal)
 
@@ -308,8 +314,8 @@ presented result. All browser/GPU flows remain unrun in this research round.
 
 ## Budgets (proposal)
 
-[The owning budget table](../../../docs/reference/components/performance.md#budgets) is prepared
-for owner review; it is the one source for proposed hard/target values. The measured M/L envelopes
+[The owning budget table](../../../docs/reference/components/performance.md#budgets) is owner-ratified
+2026-10-22; it is the one source for proposed hard/target values. The measured M/L envelopes
 are 123,741 / 500,917 bytes. At N1's 5 Mbit/s upload they need at least 198 / 801 ms just to upload,
 before escaping, RTT and server work. Save's 100 ms hard proposal concerns local visible feedback;
 durable receipt has a separate payload/network-aware target pending service baseline acceptance.
@@ -325,7 +331,8 @@ pass/target/disposition for each touched budget. A hard miss blocks that slice's
 is resolved there. A phase final gate separately rechecks integrated behavior required by its
 plan; it does not defer earlier slice evidence or authorize phase closure.
 
-The harness and permanent bundle-report workflow still need explicit owner authorization under
+The harness and permanent bundle-report workflow received explicit owner authorization on
+2026-10-22 under
 the current test contract. If budget/slice obligations are accepted before that tooling is
 authorized, equivalent manual DevTools measurements and the disposable bundle report may supply
 the row, with their coverage and repeatability limits stated. Missing presentation/completion
@@ -396,9 +403,9 @@ first-load and per-chunk br bytes are compared with the previous accepted record
 - **R-5** On-demand benchmarking as the default posture (tests README) — the harness below runs when a
   consuming slice's acceptance, a phase integration recheck or an investigation needs it.
 
-### Adopt (needs owner authorization where marked)
+### Adopt (on-demand workflow authorized; implementation held)
 
-- **A-1 (owner authorization: harness + devDependency).** A reproducible browser harness:
+- **A-1 (owner-authorized: harness + devDependency; H0 implementation held).** A reproducible browser harness:
   **Playwright** (`@playwright/test`, Apache-2.0) driving pinned Chromium/Chrome (+ WebKit/Firefox for
   secondary) with **CDP** for `Emulation.setCPUThrottlingRate`, `Network.emulateNetworkConditions`,
   `Tracing` (devtools.timeline, blink.user_timing, v8, gpu categories), `Performance.getMetrics`,
@@ -410,7 +417,7 @@ first-load and per-chunk br bytes are compared with the previous accepted record
   acceptance, with phase integration rechecks separately. Writes JSON beside that acceptance
   record. **Not** a CI gate or scheduled job unless the owner separately authorizes that too. Workload fixtures are
   generated through public planners (as here) and real pavilion fixtures, versioned with the harness.
-- **A-2 (owner authorization: script only, no dependency).** Bundle analysis before affected-slice
+- **A-2 (owner-authorized: script only, no dependency; H0 implementation held).** Bundle analysis before affected-slice
   acceptance and at a phase integration recheck:
   promote `bundle-analysis.mjs` (Node built-ins + already-present `@jridgewell/sourcemap-codec`) or an
   equivalent, with a `--sourcemap` build in a temp outDir; outputs route load sets, br bytes and the
@@ -522,6 +529,6 @@ first-load and per-chunk br bytes are compared with the previous accepted record
 - **Proposal:** reference laptop A (i5-1135G7/Iris Xe, 8 GB, 1080p60, Chrome) + B (M1 8 GB);
   S/M/L/XL workloads; 13 flows with continuous/discrete/completion metrics; the budget table;
   evidence before each consuming slice's acceptance and separate phase integration rechecks; the
-  viewer-delivery gate; explicit owner authorization for a Playwright + CDP harness and permanent
+  viewer-delivery gate; recorded owner authorization for a Playwright + CDP harness and permanent
   bundle-report workflow. Save's ≤ 100 ms is local feedback; its receipt target accounts for
   payload/upload, RTT and server time.

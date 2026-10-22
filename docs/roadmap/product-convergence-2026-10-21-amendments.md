@@ -1,16 +1,12 @@
-# Product convergence — owning-contract review manifest
+# Product convergence — owning-contract ratification manifest
 
-**Status: prepared for explicit owner ratification, 2026-10-22; not yet ratified.** PR #173 now
-places the proposed destination wording directly in the owning references listed below, marked
-unratified. This manifest routes review and records disposition; it does not duplicate the
-contract text or supply implementation authority. Existing ratified sections, landed codecs,
-accepted gate identities and historical authorization remain in force. No new source encoding,
-capability, phase closure, permanent harness or production work is accepted by this file.
-
-The owner reviews one concrete decision package in this PR. On explicit acceptance, record the
-accepted IDs/edits here and mark the owning sections ratified destinations before merge. A later
-consumer still needs version/capability decisions, normal registration, implementation
-acceptance and named release from the hold. There is no separate reconciliation PR.
+**Status: core destination ratified and on-demand performance workflow authorized, 2026-10-22.**
+The owner explicitly accepted the package prepared at `88d93128`; see the durable
+[decision record](../reference/decisions/product-convergence-ratification-2026-10-22.md).
+This manifest routes the exact owning sections and records disposition without duplicating their
+contracts. Current codecs, accepted gate identities and historical evidence remain unchanged.
+No implementation scope, new phase, milestone acceptance or release from the production hold is
+created by this ratification. The named consumer decisions below remain deferred.
 
 ## Applied descriptive corrections
 
@@ -26,17 +22,17 @@ acceptance and named release from the hold. There is no separate reconciliation 
 Roadmap-side corrections are now folded into the track READMEs, Core Editor Stability and
 T3.P02's current planning routes. They describe landed P01 outcomes without shipping the next work.
 
-## Proposed normative amendments
+## Ratified core amendments
 
 | Review IDs | Concern and exact owning section | Disposition |
 | --- | --- | --- |
-| N-F1–N-F6 | [F convergence destination](../reference/composition-execution.md#product-convergence-destination): non-reused captured identity; correspondence for affected references; domain-specific repairable forms; component validation; per-planner scope and removal policies; versioned reset fence | Prepared, pending owner ratification; current codecs and scopes retained |
-| N-A1–N-A4 | [Architecture convergence destination](../reference/architecture.md#product-convergence-destination): transport ownership, drawing policy, structure-local datums, independent overheads, one compiler with libraries, explicit delivery placement | Prepared, pending owner ratification; closure alternatives remain deferred |
-| N-N1–N-N4 | [North Star convergence destination](../reference/north-star.md#product-convergence-destination): draw/arrange/explain/revise; reusable explanations; expressive architecture; capability honesty; laptop performance and iterative feature design | Prepared, pending owner ratification; accepted P1–P3 findings retained |
-| N-S1–N-S2 | [Scene convergence destination](../reference/components/scene-content.md#product-convergence-destination): solve-once placement, optional evaluated attachment, parts and annotation ownership | Prepared; attachment codec and deletion/parameter choices are deferred to their first consumer |
-| N-R1 | [Assets convergence destination](../reference/components/assets.md#product-convergence-destination): retained source and qualified derivative correspondence; observed versus admitted capability | Prepared, pending owner ratification; catalogue procedure remains scoped to catalogue |
-| N-P1–N-P2 | [PLATE convergence destination](../reference/design-system/editor-shell-and-visual-system.md#product-convergence-destination): deeper Card capability, relationship facts and feature-level draft/review/build/revise loop | Prepared, pending owner review; precise feature composition is consuming-slice design |
-| N-T1 | [Performance contract](../reference/components/performance.md) and [test-contract proposal](../../apps/editor/tests/README.md#product-convergence-performance-proposal): matching-result metrics, baseline/budgets and evidence before consuming-slice acceptance | Prepared; owner acceptance must separately identify permanent harness/bundle workflow authorization |
+| N-F1–N-F6 | [F convergence destination](../reference/composition-execution.md#product-convergence-destination): non-reused captured identity; correspondence for affected references; domain-specific repairable forms; component validation; per-planner scope and removal policies; versioned reset fence | Ratified core; current codecs and scopes retained |
+| N-A1–N-A4 | [Architecture convergence destination](../reference/architecture.md#product-convergence-destination): transport ownership, drawing policy, structure-local datums, independent overheads, one compiler with libraries, explicit delivery placement | Ratified core; closure alternatives remain deferred |
+| N-N1–N-N4 | [North Star convergence destination](../reference/north-star.md#product-convergence-destination): draw/arrange/explain/revise; reusable explanations; expressive architecture; capability honesty; laptop performance and iterative feature design | Ratified core; accepted P1–P3 findings retained |
+| N-S1–N-S2 | [Scene convergence destination](../reference/components/scene-content.md#product-convergence-destination): solve-once placement, optional evaluated attachment, parts and annotation ownership | Ratified core boundaries; attachment codec and deletion/parameter choices remain deferred |
+| N-R1 | [Assets convergence destination](../reference/components/assets.md#product-convergence-destination): retained source and qualified derivative correspondence; observed versus admitted capability | Ratified core; catalogue procedure remains scoped to catalogue |
+| N-P1–N-P2 | [PLATE convergence destination](../reference/design-system/editor-shell-and-visual-system.md#product-convergence-destination): deeper Card capability, relationship facts and feature-level draft/review/build/revise loop | Ratified core; precise feature composition is consuming-slice design |
+| N-T1 | [Performance contract](../reference/components/performance.md) and [test-contract workflow](../../apps/editor/tests/README.md#product-convergence-performance-workflow): matching-result metrics, baseline/budgets and evidence before consuming-slice acceptance | Ratified; permanent on-demand harness/bundle workflow explicitly authorized, implementation still held |
 
 **No premature compatibility claim.** Each first consumer classifies new resource/component and
 annotation formats, Presentation entry, datum-qualified capture and Scene attachment extensions.
@@ -58,16 +54,19 @@ provider/evidence identities; a new incompatible interface receives a normal new
 
 ## Owner decision record
 
-**Pending.** The instruction to finish this PR authorizes documentation, planning, verification and
-PR preparation; it is not recorded as ratification of these new destination rules or as production
-hold release. The final review can accept the core package while leaving the consumer decisions
-above deferred. The precise shell layout is explicitly iterative under the owner's 2026-10-22
-steering; no full shell redesign is a prerequisite to the next planning wave.
+The owner selected **“Ratify core package and authorize the on-demand performance workflow
+(recommended)”** in direct response to the explicit package question for PR #173 at `88d93128`.
+The [durable decision record](../reference/decisions/product-convergence-ratification-2026-10-22.md)
+binds that acceptance to the core sections above and preserves every named consumer deferral.
 
-Separately state whether the permanent on-demand browser harness and bundle report are authorized.
-Their proposal is concrete in the performance contract and [H0 launch scope](./convergence-shared-foundation-2026-10-22.md).
-Approve/release named implementation scopes only through their normal reviewed plan/registration.
-Merging this PR alone never releases the hold.
+The permanent on-demand Playwright/CDP browser harness and bundle report are authorized under
+the test contract. Do not ask for that same workflow authorization again. H0's provider still
+needs normal registration, reviewed implementation authorization and named hold release before
+installation or production work. No CI job, schedule or benchmark registry is authorized.
+
+Precise shell layout remains an iterative consuming-slice task under the owner's 2026-10-22
+steering. Core Editor Stability's exact criteria retain their separate proposed status.
+Merging this PR alone releases no implementation scope.
 
 ## Retained authorities
 
