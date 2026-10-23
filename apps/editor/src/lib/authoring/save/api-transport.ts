@@ -5,6 +5,7 @@
  */
 
 import { ProjectPersistenceError, type ProjectApi } from '$lib/platform/project-persistence';
+import { perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
 import type { SaveRefusalCode } from '@portfolio/project-model/save';
 
 import type { SaveTransport, SaveTransportResult } from './save-state';
@@ -26,7 +27,17 @@ const REFUSAL_CODES: readonly SaveRefusalCode[] = [
 export function createApiSaveTransport(api: ProjectApi): SaveTransport {
 	return async (request, signal): Promise<SaveTransportResult> => {
 		try {
-			return { kind: 'saved', acknowledgement: await api.saveAcceptedSource(request, signal) };
+			const acknowledgement = await api.saveAcceptedSource(request, signal);
+			// This is the first point where the successful response body has been
+			// parsed as a Save acknowledgement. Keep it distinct from the later
+			// visible "Saved" state, and identify the exact request for the harness.
+			if (perfMarksEnabled()) {
+				perfMark('save:receipt', {
+					projectId: request.capture.projectId,
+					operationId: request.capture.operationId
+				});
+			}
+			return { kind: 'saved', acknowledgement };
 		} catch (failure) {
 			if (!(failure instanceof ProjectPersistenceError)) {
 				return {

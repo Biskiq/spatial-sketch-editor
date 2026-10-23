@@ -50,6 +50,8 @@ const DRAG_DISTANCE = 6;
 const DELAYED_FRAME_MS = 500;
 const DELAYED_RUNS = 3;
 const UNDO_REDO_CYCLES = 20;
+const HANDLER_INPUT_CLOCK_LIMITATION =
+	'input-to-matching-preview uses the pointermove handler mark (performance.now()), not the event timestamp; time queued before handler entry is omitted';
 
 type DragRun = {
 	readonly dispatched: number;
@@ -183,7 +185,7 @@ test.describe('F3/F4/F8 methodology', () => {
 			const row: ResultRow = {
 				id: `F3-methodology-S-${cacheState}`,
 				flow: 'F3/F4/F8 methodology on the shipped straight-Wall drag',
-				workload: 'S fixture, 60 pointer samples, exact length, 20 Undo/Redo cycles',
+				workload: 'S fixture, 60 pointer samples (pointermove handler-mark input clock), exact length, 20 Undo/Redo cycles',
 				cacheState,
 				network: NETWORK,
 				browser: `${testInfo.project.name} ${facts.chromeVersion}`,
@@ -207,6 +209,7 @@ test.describe('F3/F4/F8 methodology', () => {
 				},
 				limitations: [
 					...limitations,
+					HANDLER_INPUT_CLOCK_LIMITATION,
 					'no drawing feature exists in this slice: F3 measures the methodology on the shipped Wall drag',
 					'GPU, frame-time and GPU-memory rows stay unrun and owner-run on the reference machine'
 				]
@@ -251,7 +254,7 @@ test.describe('F3/F4/F8 methodology', () => {
 		const row: ResultRow = {
 			id: 'F3-correlation-delay-proof',
 			flow: 'F3 correlation proof (harness-injected frame delay)',
-			workload: `S fixture, ${INPUT_SAMPLES} samples per run; baseline runs=${baseline.length}, delayed runs=${delayed.length}`,
+			workload: `S fixture, ${INPUT_SAMPLES} samples per run (pointermove handler-mark input clock); baseline runs=${baseline.length}, delayed runs=${delayed.length}`,
 			cacheState: 'warm',
 			network: NETWORK,
 			browser: `${testInfo.project.name}`,
@@ -272,6 +275,7 @@ test.describe('F3/F4/F8 methodology', () => {
 			},
 			limitations: [
 				...limitations,
+				HANDLER_INPUT_CLOCK_LIMITATION,
 				`delay is a harness init script that defers every application rAF callback by ${DELAYED_FRAME_MS} ms`,
 				'the injected delay coalesces presentations: most delayed samples are recorded as superseded, not presented',
 				'the accepted commit refreshes the overlay synchronously, so the final presented sample can be earlier than the injected delay; the delayed tail is a lower bound of that delay',

@@ -1,129 +1,148 @@
 # T3.P03.S02 — reviewer hand-off
 
-**Slice:** T3.P03.S02 · Measurement workflow and final gate (T3.P03's declared final gate)
-**Branch:** `t3/p03-s02-measurement-final-gate` → `main`
-**Base:** `55683981` (merge of PR #176, T3.P03.S01)
-**HEAD at hand-off:** `4db6e4dc`; measured harness code is `bfc4fc91`
-**Status:** acceptance criteria 1–5 met as recorded; **not accepted**. Owner decisions and owner-run
-hard rows remain. [Acceptance record](./acceptance.md) is the authority; this page is an orientation.
+**PR:** #180 · **Branch:** `t3/p03-s02-measurement-final-gate` → `main`
+**Base:** `55683981` (PR #176 / S01) · **Reviewed head:** `ca2aa4c99b69fb010b9c2e2dfc180387d2752503`
+**Corrections:** local, uncommitted. **Slice acceptance:** pending.
 
-## What this PR is
+The review follow-up fixes invalid Save receipt timing, document-reloading lifecycle measurements,
+fail-open bundle assertions, retained renderers, stale Dimensions callbacks and Svelte route-head
+anchors. A separate trace-image/compositor-feedback diagnostic now demonstrates the requested
+correlation method. Targeted validation and the final integrated repository gate pass, including
+real Rollup module proof despite generated empty source maps. The first matrix attempt's invalid
+Chromium trace-delay comparison is preserved; its causal replacement passes both browsers.
+Final combined coverage is **62/62 unique passing cases, zero skips**, and parent developer review
+passes. [Acceptance record](./acceptance.md) owns exact commands, raw paths, historical
+withdrawals and criterion postures.
 
-It installs the owner-authorized on-demand performance workflow and records T3.P03's integrated
-result. It does **not** add a product feature or claim a product budget. The only product-source
-change is a runtime-gated mark helper and its call sites: inert unless the harness sets a flag before
-application code evaluates. Everything else is the `perf/` harness, its regression test, scripts and
-documentation.
+## Review order
 
-Review the **acceptance record first**. If a claim there cannot be traced to a command result, treat
-that as the blocking finding.
+1. **Cache and application lifetime.** `perf/lib/browser.ts` creates a fresh context for each cold
+   measured run; warm/repeat-use reuse one context. Other navigation/drag flows still reload
+   documents and establish cache reuse. F13 instead uses New Project and browser Back, preserving
+   a sentinel and time origin. Its cold-entry row is ten cache-cleared lifecycle cycles with resident
+   modules/V8; warm is one discarded plus one measured cycle; repeat-use is one discarded plus ten
+   measured cycles. Entry heap stays separate from the warmed baseline. All cycles have twenty
+   accepted edits: 460 including discarded cycles. Heap metric unavailability fails closed.
+2. **Save milestones.** `api-transport.ts` marks the matching parsed successful acknowledgement;
+   `save.spec.ts` subtracts `save:submit` on the same clock and requires complete sample counts.
+   Project/operation identity, pre-submit delay exclusion and delayed-receipt sensitivity are tested.
+   Saving/Saved label timestamps mean DOM updates, not presented feedback. Wire size is encoded bytes.
+3. **Renderer and callback ownership.** `managed-webgl-renderer.ts` observes Three's actual shared
+   DFG texture through public material hooks and releases it during Canvas teardown. All four Canvas
+   sites use it. The original render method returns after discovery; survivor target/face/mip/
+   viewport/scissor state is preserved. Dimensions uses a lifetime-owned controller reference for
+   events, async completions and RAF callbacks. Focused blur/removal and stale-completion tests cover
+   teardown. Source upload disposes its public chooser handle without Playwright's extra retainer.
+4. **Route-head ownership.** The contained Svelte 5.56.4→5.57.0 upgrade applies the first released
+   upstream anchor-ownership fix, preserving original route metadata. Head regressions cover exact
+   connected-node counts, native growth, SSR/hydration, dynamic publication titles and noindex.
+   The old-version control fails after one return. No private framework patch or head-node sweep.
+5. **Labels and inertness.** F1/F2 report the first architectural frame, explicitly an rAF proxy;
+   the contract's first-interactive probe remains unrun. Every input keeps a status row. Throwing
+   detail/geometry getters and clock/mark spies prove disabled helpers do not evaluate their details.
+6. **Two correlation proofs.** The ordinary 500 ms delayed-rAF proof preserves every input and
+   exposes delay from a handler-mark clock; pre-handler queueing is omitted. Separate
+   `trace-proof.spec.ts` uses normalized event timestamps and requires the installed
+   sequence, geometry identity, marker pixel and exact trace mark in real Chrome JPEGs. Exact image
+   source/frame IDs join one host and one nonforked ALL reporter with an unambiguous span completion.
+   Missing/duplicate completions, PARTIAL-only feedback and ambiguous hosts/reporters refuse timing.
+   Screenshot observation, compositor feedback and physical display time remain separate. Sampling
+   cannot rule out an earlier uncaptured matching frame; physical scanout time stays null.
+   Separate cold-run maxima reversed under different rendering load; the replacement checks a real
+   500 ms held-input/release and zero-hold negative. Original slow observations remain disclosed.
+7. **Bundle assertions.** Source-path `--forbid` requires usable maps for every emitted JS file or
+   explicit Rollup provenance from the same trusted build. The latter records actual module/facade
+   IDs and validates the complete JS inventory and exact hashes. Missing/stale/malformed/partial
+   evidence fails closed. Module identity is separate from map byte attribution; `--forbid-file`
+   checks filenames only. Known-present, known-absent and unavailable-evidence controls are required.
+8. **Record honesty.** Review the criterion table, explicitly historical values, value-free hard-row
+   section and unrun inventory in [acceptance.md](./acceptance.md). The runtime workflow, lifetime
+   repairs and diagnostic tooling do not grant owner budget/method acceptance or phase closure.
 
-## What to review, in order
+## Current validation
 
-1. **Cold/warm/repeat semantics** — [`perf/lib/browser.ts`](../../../../../apps/editor/perf/lib/browser.ts).
-   Cold creates a **new context per measured run** (contract definition), warm and repeat-use reuse
-   one context. F13 is the stated exception: one fresh context for its ten-cycle cold row, per-open
-   cache/cookie clears, no V8 reset. Check that no row claims a state it did not run.
-2. **Flow assertions and labels** — [`perf/flows/`](../../../../../apps/editor/perf/flows). F1/F2
-   rows are **first architectural frame (rAF proxy)**, never the contract's first-interactive frame.
-   Check that every dispatched input keeps a ledger row, and that "presented" is not overclaimed.
-3. **Mark helper inertness** — [`perf-marks.ts`](../../../../../apps/editor/src/lib/platform/perf-marks.ts)
-   and [`perf-marks.test.ts`](../../../../../apps/editor/tests/lib/platform/perf-marks.test.ts).
-   The ordinary build must not evaluate the detail object or call `performance.now`/`mark`; the
-   throwing-getter regression is the proof.
-4. **Delayed-preview proof** — `drag-correlation.spec.ts` injects a 500 ms frame delay and asserts
-   every input keeps a row, delayed p95 > baseline p95, delayed max > 2× baseline max, and
-   superseded > 0. It does **not** prove which pixels presented.
-5. **Record honesty** — [acceptance.md](./acceptance.md) and
-   [perf/README.md](../../../../../apps/editor/perf/README.md). Check the criterion postures, the
-   unrun inventory, the hard-row section (must stay value-free) and the trace deviation.
+- Final combined browser validation: **62/62 unique cases across thirteen files**, 31 per browser,
+  zero skips. Nine unchanged Chromium diagnostics and 24 repaired trace checks are explicitly reused;
+  the newly executed nine Chrome diagnostics and twenty flow cases all pass. Parent independently
+  matched every case to its current inventory and actual passing log. This is combined coverage,
+  not a claim that one fresh command ran all 62.
+- Corrected local-stack F9: **2/2 per browser, zero skips**, ten complete samples per state plus delay control.
+  API check and **80 DB-backed tests across eleven reports, zero failures/skips** pass. The guarded
+  loopback database/API/preview/browser and generated helper credentials were cleaned up.
+- Renderer/Dimensions: **47 focused tests**, **six lifecycle/real-WebGL overlap cases**, and the
+  historical **440-edit F13** pass. Retired owners collect and survivor pixels/state remain exact.
+  Final F13 runs **460 accepted edits per browser**. Warmed ten-cycle growth is **1.622818 MiB
+  Chromium / 1.728813 MiB Chrome**; all warmed repeat-use native counts stay constant within each
+  browser. Cold entry growth includes module/runtime loading; no hard budget is accepted. Old
+  document-reloading heap evidence is withdrawn.
+- Earlier targeted Chrome trace diagnostic: **8/8**. Ordinary trace matches **60/60** real image/ALL completions. Delayed
+  trace retains **60 rows**, three matches and 57 explicit supersessions. Final input matches;
+  wrong identities/pixels and real-trace completion/host mutations refuse unsupported evidence.
+- Head fix: **6/6 head tests and 4/4 lifecycle tests across both browsers, zero skips**. All edited
+  retired-project samples keep nodes 596/documents 2/listeners 57/head 43/Text 7 exact; Stage/Canvas
+  collect.
+- Final integrated lanes: **176 editor files / 2,264 tests**, architecture **21/172**, heavy
+  **8/118**, S01 **6/88**, check **0 errors/warnings**, both static surface gates, strict all-perf
+  TypeScript, seven pure trace controls and ordinary build pass.
+- Bundle proof: real authoring absence passes with **233 Rollup module identities**; known visitor
+  presence refuses **11 hits**. Maps-only, ordinary/no-evidence, malformed/partial/stale/edited and
+  invalid CLI selections refuse. Source-map byte attribution remains incomplete and separate.
+- Historical first matrix attempt: **Chromium diagnostics 16 pass / 1 fail / 0 skips**, then stopped.
+  Its images/feedback match all 60 baseline inputs, but independent-mode maximum ordering fails
+  under different rendering load. The causal held-input/release replacement below passes;
+  raw slow observations and the failed-attempt record remain. That stopped attempt's remaining
+  cases were subsequently completed; its failed trace assertion is not counted as a pass.
+- Causal repair: both actual browser proofs and **22/22 pure controls** pass. Positive holds are
+  501.9 / 501.7 ms, with exact post-release image/ALL feedback; real 0.1 ms zero-holds are rejected.
+  Parent affected typing/controls pass; production output remains byte-identical. Runtime health
+  records Chromium SwiftShader and Chrome M2 Metal, with one healthy context per condition.
+- Parent independently verified **18 raw flow reports / 46 rows / 114 statistic distributions**,
+  default counts, source/output identities and runtime cleanup. Source remains 528 editor/shared
+  files plus 25 API files; all 118 ordinary output files remain unchanged. Final evidence and the
+  per-case ledger are `/tmp/pr180-final-matrix-evidence.md` and
+  `/private/tmp/pr180-final-matrix-rerun/coverage-ledger.csv`; independent audit is
+  `/tmp/pr180-parent-final/final-matrix-independent-review.json`.
+- Actual binaries are Chromium 153 and Chrome 155; the Desktop Chrome device profile reports UA
+  153 in both row labels. Reviewed renderer health is SwiftShader versus Apple M2 Metal, not GPU
+  equivalent. Chromium flows take about 1.4 h versus Chrome 18.4 min; their F7 p95 is 100–116.6 ms
+  versus 16.7 ms. Power is AC, 88% charging→100% charged, Low Power Mode 0. Timing observations
+  remain pre-flight, with no accepted hard budget or supplied reference calibration median.
 
-## Evidence on this tree
+These are agent-operated pre-flight/correctness observations. All raw artifacts remain outside Git;
+the acceptance record supplies their locations. Historical numbers from `bfc4fc91` are retained there,
+with invalid F9 receipts and document-reloading F13 explicitly withdrawn.
 
-Measured on `bfc4fc91`, one clean preview built from this tree, Chrome 153, N1, 1920×1080 @ DPR 1,
-AC power, Low Power Mode off:
+## Remaining owner work
 
-```text
-Chrome matrix       9 tests passed in 18.9 m   (7 flow specs × cold/warm/repeat-use
-                                                + calibration + delayed-preview diagnostic)
-F1 cold/warm/repeat 1,307.9 / 792.75 / 790.9 ms median (p95 1,320 / 793 / 792)
-F2 S                144.05 / 27.1 / 26.3 ms median
-F2 M                533.2 / 459.25 / 476.15 ms median
-F3 matching preview 600/600 inputs each state; p95 16.3 / 16.0 / 16.3 ms
-Delayed proof       180/180 rows, 8 presented, 172 superseded; p95 126.14 vs 16.2 ms
-F7 M orbit          603 frames/run, 10.07 s, p95 16.7 ms, p99 16.8 ms, 0 dropped
-F9 local feedback   p95 0.96 / 1.06 / 1.11 ms; durable receipt 1,525.9 / 607.5 / 601.7 ms
-F13 heap growth     +3.13 / +0.0009 / +3.15 MiB (cold / warm / repeat-use)
-Calibration         53.35 ms median, 58.35 p95
-```
+- Assess the demonstrated trace method and its limits against the plan, then resolve the
+  [proposed deviation](../../../../reference/decisions/t3p03s02-trace-correlation-deviation-2026-10-22.md).
+  Implementation was already authorized; method acceptance is separate.
+- Operate the designated reference machine for hard rows and calibration; record dispositions.
+- Review the final developer verdict/evidence and accept or return the slice. Developer correction
+  review is complete; owner acceptance is separate. The human will run slice close-out and merge
+  personally. No agent close-out, commit, push, merge or T3 phase closure was performed.
 
-```text
-npm run check        0 errors, 0 warnings
-npm test             172 files / 2,243 tests
-npm run test:arch    21 files / 172 tests
-npm run test:heavy   8 files / 118 tests
-npm run build        ordinary production build; both surface gates ran
-npm run check:api    tsc --noEmit
-npm run test:api     80 tests / 11 suites / 0 failures / 0 skips (local Postgres)
-S01 focused recheck  6 files / 88 tests; both static surface gates exit 0
-bundle report        / 212.0, /editor 211.2, /projects 214.8, Stage 376.6, /p 300.6 KiB br
-                     (unchanged); injected-module refusal exercised on a sourcemap build
-tsc --noEmit         clean
-```
+First-interactive probes, page INP, GPU counters, L/XL, S orbit, M/L drags, Safari/Firefox and
+later-slice flows remain explicitly inventoried with reasons and reproduction routes. Both current
+Chromium and Chrome matrices are complete; those additional measurements remain unrun.
 
-Raw results stay outside Git (default `$TMPDIR/biskiq-perf-results`); the record carries the summary.
-The measured sequence ran on `bfc4fc91`; the later harness change is a setup-error context close, and
-the rest is documentation.
+## Reproduction
 
-## What is intentionally not claimed
-
-- **Trace correlation.** The plan's scope 2 asks for the presented frame in a trace. The harness pairs
-  the `overlay:updated` mark with the first rAF tick and runs `trace: 'off'`. This is an explicit
-  deviation with options A/B/C in
-  [the decision record](../../../../../docs/reference/decisions/t3p03s02-trace-correlation-deviation-2026-10-22.md).
-  A reviewer should not read any rAF number as trace proof.
-- **Hard rows.** F1/F2/F3/F4/F7/F8/F9/F13 budgets and the calibration median are owner-run on the
-  designated MacBook Air M2; the record contains pre-flight observations only, with no disposition.
-- **Coverage gaps.** Page INP, Chromium on this tree, L/XL workloads, S orbit, M/L drags, Safari,
-  Firefox, renderer/GPU probes and the F10/F11/F12 flows of later slices are listed in the
-  criterion-3 inventory with reasons and owner commands.
-
-## Review history
-
-Two independent reviewer passes were run on the branch; findings were addressed before this hand-off.
-
-- Round 1 caught the reused-context "cold" shortcut, a false page-INP claim, the F13 labels, a broken
-  self-check fence and provenance overstatements. Cold contexts and the error-path close were built;
-  the rest was corrected in the record.
-- Round 2 confirmed the cold rewrite and cookie/session handling, then found the review-status
-  contradiction, a placeholder INP command, an outdated Chromium reason and the missing F13 carve-out.
-  All are corrected; no material finding remains open.
-
-A reviewer should still reach an independent verdict. Do not treat these rounds as acceptance.
-
-## Open decisions for the owner
-
-1. **Trace:** accept the deviation for T3.P03 (Option A), authorize a tracing slice (B), or amend the
-   contract (C).
-2. **Hard rows / calibration:** run the owner-operated reference pass; record dispositions. No budget
-   is accepted until then.
-3. **Acceptance:** mark the slice accepted, or send it back with findings.
-
-## Reproduce
+Build/preview uses the ordinary production bundle. Run with a disposable local API/database,
+configured test-auth secret and preview public API origin; never a production service:
 
 ```sh
-# from apps/editor, with a local API and DB for F9
-PERF_BASE_URL=http://127.0.0.1:4173 PERF_RESULTS_DIR=/tmp/t3p03s02-review \
-PERF_API_ORIGIN=http://127.0.0.1:8792 E2E_TEST_AUTH_SECRET=... \
-  npx playwright test --config perf/playwright.config.ts --project=chrome
+# From apps/editor; the config owns its preview/browser when PERF_BASE_URL is unset.
+PUBLIC_API_ORIGIN=http://127.0.0.1:8792 \
+PERF_API_ORIGIN=http://127.0.0.1:8792 E2E_TEST_AUTH_SECRET="$LOCAL_STACK_SECRET" \
+PERF_RESULTS_DIR=/tmp/t3p03s02-review PERF_POWER_STATE="$ACTUAL_POWER_STATE" \
+  npx playwright test --config perf/playwright.config.ts --project=chrome --project=chromium
 ```
 
-A reduced pass (`PERF_RUNS=2 PERF_SAMPLES=5`) exercises every state in about six minutes and is
-labelled pre-flight in every row; it is not acceptance evidence. F9 skips with its reason when the
-local stack variables are absent. No production endpoint is used.
-
-## Merge / closeout
-
-Merge only after the owner's trace decision and the reference pass. After merge, close T3.P03.S01's
-integration route through this record and update the T3 handoff; do not mark the phase closed from
-this page alone.
+For a reduced smoke pass, add `PERF_RUNS=2 PERF_SAMPLES=5`; every row is labelled pre-flight and
+cannot replace default-count evidence. F13's fixed lifecycle workload and correctness diagnostics
+are not reduced by those two variables. If reusing a running preview, set `PERF_BASE_URL` and ensure
+that server received `PUBLIC_API_ORIGIN`. F9 skips with a reason if its local API/auth prerequisites
+are absent; a complete local-stack validation must report zero skips. The dynamic publication-title
+regression also needs a nonempty loopback preview API origin, with read-only responses intercepted.
+See [perf/README.md](../../../../../apps/editor/perf/README.md) for stack requirements and metric limits.

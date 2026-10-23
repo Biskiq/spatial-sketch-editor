@@ -20,7 +20,7 @@
 import { expect, test } from '@playwright/test';
 
 import { loginAs, TEST_AUTH_SESSION_COOKIE } from '../../tests/e2e/test-auth';
-import { collectMeasuredRuns, type MeasuredSession } from '../lib/browser';
+import { collectMeasuredRuns, newMeasuredSession, type MeasuredSession } from '../lib/browser';
 import { DEVICE_SCALE_FACTOR, NETWORK, RUNS, VIEWPORT, WARMUP_RUNS, passLimitations } from '../lib/config';
 import { fixtureProject } from '../lib/fixtures';
 import {
@@ -41,13 +41,42 @@ const apiOrigin = process.env.PERF_API_ORIGIN;
 const secret = process.env.E2E_TEST_AUTH_SECRET;
 
 type SaveRun = {
-	readonly submitToSavingLabel: number | null;
-	readonly submitToReceipt: number | null;
-	readonly submitToSavedLabel: number | null;
+	readonly submitToSavingLabelDomUpdate: number | null;
+	readonly submitToReceipt: number;
+	readonly submitToSavedLabelDomUpdate: number | null;
 	readonly wireBytes: number;
 };
 
-async function saveOnce(session: MeasuredSession, origin: string): Promise<SaveRun> {
+type SaveDelayOptions = {
+	/** Delay before the Save command, which must not enter submit-to-receipt. */
+	readonly beforeSubmitMs?: number;
+	/** Delay delivery of a successful local API response to the browser. */
+	readonly successfulReceiptMs?: number;
+};
+
+function isLoopbackOrigin(origin: string | undefined): boolean {
+	if (origin === undefined) return false;
+	try {
+		const hostname = new URL(origin).hostname;
+		return (
+			hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]' || hostname === '::1'
+		);
+	} catch {
+		return false;
+	}
+}
+
+function requireCompleteSamples(
+	label: string,
+	values: readonly (number | null)[],
+	expectedCount: number
+): number[] {
+	const samples = values.filter((value): value is number => value !== null);
+	expect(samples, `${label} must be measured for every run`).toHaveLength(expectedCount);
+	return samples;
+}
+
+async function saveOnce(session: MeasuredSession, origin: string, delays: SaveDelayOptions = {}): Promise<SaveRun> {
 	const { page } = session;
 	const projectId = uniqueProjectId('f9');
 	const project = await fixtureProject('S', projectId);
@@ -58,8 +87,8 @@ async function saveOnce(session: MeasuredSession, origin: string): Promise<SaveR
 	await commitPrecisionLength(page, 4.5);
 	await waitForAcceptedResult(page, beforeEdit);
 
-	// Record the Head's own status transitions with in-page timestamps; a polling
-	// wait would be coarser than the ≤ 100 ms local-feedback row.
+	// Record Head status-attribute DOM updates with in-page timestamps. They do
+	// not identify paint or presentation; a polling wait would be coarser still.
 	await page.evaluate(() => {
 		const target = document.querySelector('[data-head-save]');
 		const target_ = window as Window & { __BISKIQ_SAVE_TRANSITIONS__?: { status: string | null; time: number }[] };
@@ -74,9 +103,22 @@ async function saveOnce(session: MeasuredSession, origin: string): Promise<SaveR
 		record();
 	});
 
-	const submitMark = await page.evaluate(() => performance.now());
+	const recordStart = await page.evaluate(
+		() => (window as Window & { __BISKIQ_PERF_RECORDS__?: { name: string }[] }).__BISKIQ_PERF_RECORDS__?.length ?? 0
+	);
+	const requestUrl = `${origin}/projects/${projectId}`;
+	if ((delays.successfulReceiptMs ?? 0) > 0) {
+		const delayMs = delays.successfulReceiptMs!;
+		await page.route(requestUrl, async (route) => {
+			if (route.request().method() !== 'PUT') return route.continue();
+			const upstream = await route.fetch();
+			if (upstream.ok()) await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+			await route.fulfill({ response: upstream });
+		});
+	}
+	if ((delays.beforeSubmitMs ?? 0) > 0) await page.waitForTimeout(delays.beforeSubmitMs!);
 	const receipt = page.waitForResponse(
-		(response) => response.url() === `${origin}/projects/${projectId}` && response.request().method() === 'PUT',
+		(response) => response.url() === requestUrl && response.request().method() === 'PUT',
 		{ timeout: 60_000 }
 	);
 	await page.locator('[data-head-save] button').first().click();
@@ -86,29 +128,54 @@ async function saveOnce(session: MeasuredSession, origin: string): Promise<SaveR
 		{ timeout: 60_000 }
 	);
 	const response = await receipt;
-	const receiptAt = await page.evaluate(() => performance.now());
+	expect(response.ok()).toBe(true);
+	if ((delays.successfulReceiptMs ?? 0) > 0) await page.unroute(requestUrl);
 	const transitions = await page.evaluate(
 		() =>
 			(window as Window & { __BISKIQ_SAVE_TRANSITIONS__?: { status: string | null; time: number }[] })
 				.__BISKIQ_SAVE_TRANSITIONS__ ?? []
 	);
-	const saving = transitions.find((entry) => entry.status === 'saving');
-	const saved = transitions.find((entry) => entry.status === 'saved');
+	const savingDomUpdate = transitions.find((entry) => entry.status === 'saving');
+	const savedDomUpdate = transitions.find((entry) => entry.status === 'saved');
 	const ledger = await readLedger(page);
-	const submit = [...ledger.records].reverse().find((record) => record.name === 'save:submit');
-	const submitTime = submit?.time ?? submitMark;
+	const saveRecords = ledger.records.slice(recordStart);
+	const submit = saveRecords.find((record) => record.kind === 'mark' && record.name === 'save:submit');
+	// Both times come from product marks on this page's monotonic clock. The
+	// Playwright response verifies HTTP success/request identity and supplies bytes.
+	const requestBody = response.request().postData();
+	if (requestBody === null) throw new Error('The successful Save request has no body');
+	const operationId = (JSON.parse(requestBody) as { capture?: { operationId?: unknown } }).capture?.operationId;
+	if (typeof operationId !== 'string') throw new Error('The successful Save request has no operation ID');
+	const saveReceipt = saveRecords.find(
+		(record) =>
+			record.kind === 'mark' &&
+			record.name === 'save:receipt' &&
+			record.detail?.projectId === projectId &&
+			record.detail?.operationId === operationId
+	);
+	if (submit === undefined || saveReceipt === undefined) {
+		throw new Error('The Save submit mark or its matching successful receipt mark is missing');
+	}
 	return {
-		submitToSavingLabel: saving === undefined ? null : saving.time - submitTime,
-		submitToReceipt: receiptAt,
-		submitToSavedLabel: saved === undefined ? null : saved.time - submitTime,
-		wireBytes: Number(response.request().postData()?.length ?? 0)
+		submitToSavingLabelDomUpdate: savingDomUpdate === undefined ? null : savingDomUpdate.time - submit.time,
+		submitToReceipt: saveReceipt.time - submit.time,
+		submitToSavedLabelDomUpdate: savedDomUpdate === undefined ? null : savedDomUpdate.time - submit.time,
+		wireBytes: Number(response.request().postDataBuffer()?.byteLength ?? 0)
 	};
 }
 
 test.describe('F9 Save', () => {
 	test.setTimeout(900_000);
 	test.skip(apiOrigin === undefined || secret === undefined, 'requires PERF_API_ORIGIN + E2E_TEST_AUTH_SECRET (local stack only)');
+	test.skip(
+		apiOrigin !== undefined && !isLoopbackOrigin(apiOrigin),
+		'PERF_API_ORIGIN must be a loopback local API; production is never used'
+	);
 	test('save against the local test-auth stack, cold, warm and repeat-use', async ({ browser, baseURL }, testInfo) => {
+		test.skip(
+			!isLoopbackOrigin(baseURL),
+			'PERF_BASE_URL must be a loopback local preview; production is never used'
+		);
 		const origin = apiOrigin!;
 		const report = startReport(`f9-save-${testInfo.project.name.replace(/\s+/g, '-')}`);
 		const login = await loginAs({
@@ -144,15 +211,22 @@ test.describe('F9 Save', () => {
 				},
 				(session) => saveOnce(session, origin)
 			);
-			const feedback = runs
-				.map((run) => run.submitToSavingLabel)
-				.filter((value): value is number => value !== null);
-			const receipt = runs
-				.map((run) => run.submitToReceipt)
-				.filter((value): value is number => value !== null);
-			const saved = runs
-				.map((run) => run.submitToSavedLabel)
-				.filter((value): value is number => value !== null);
+			expect(runs, `${cacheState} measured run count`).toHaveLength(RUNS);
+			const savingLabelDomUpdate = requireCompleteSamples(
+				'saving-label DOM update',
+				runs.map((run) => run.submitToSavingLabelDomUpdate),
+				runs.length
+			);
+			const durableReceipt = requireCompleteSamples(
+				'durable receipt',
+				runs.map((run) => run.submitToReceipt),
+				runs.length
+			);
+			const savedLabelDomUpdate = requireCompleteSamples(
+				'saved-label DOM update',
+				runs.map((run) => run.submitToSavedLabelDomUpdate),
+				runs.length
+			);
 			const row: ResultRow = {
 				id: `F9-save-local-${cacheState}`,
 				flow: 'F9 Save',
@@ -167,22 +241,74 @@ test.describe('F9 Save', () => {
 					runs: runs.length
 				},
 				stats: {
-					localFeedback: summarize(feedback),
-					durableReceipt: summarize(receipt),
-					savedLabel: summarize(saved)
+					savingLabelDomUpdate: summarize(savingLabelDomUpdate),
+					durableReceipt: summarize(durableReceipt),
+					savedLabelDomUpdate: summarize(savedLabelDomUpdate)
 				},
 				limitations: [
 					...passLimitations(),
-					'loopback unthrottled transport: the durable-receipt target formula is not evaluated here',
+					'save-status DOM updates are not paint/presentation timestamps and cannot establish the contract\'s presented-local-feedback gate',
+					'local loopback test API under the configured CDP network profile; no production-service baseline and the durable-receipt target formula is not accepted here',
 					'main-thread work during Save is not split out by this pass'
 				]
 			};
 			report.rows.push(row);
 			console.log(formatRow(row));
-			expect(feedback.length).toBeGreaterThan(0);
 		}
 		const path = fileReport(report);
 		console.log(`raw results: ${path}`);
 		expect(report.rows).toHaveLength(3);
+	});
+
+	test('receipt latency excludes pre-Save delay and includes delayed local receipt', async ({ browser, baseURL }) => {
+		test.skip(
+			!isLoopbackOrigin(baseURL),
+			'PERF_BASE_URL must be a loopback local preview; production is never used'
+		);
+		const origin = apiOrigin!;
+		const login = await loginAs({
+			user: 'agent-admin',
+			apiOrigin: origin,
+			secret: secret!,
+			origin: baseURL
+		});
+		const pair = login.cookie;
+		const equals = pair.indexOf('=');
+		const name = pair.slice(0, equals);
+		const value = pair.slice(equals + 1);
+		expect(name).toBe(TEST_AUTH_SESSION_COOKIE);
+		const cookie = {
+			name,
+			value,
+			domain: new URL(baseURL!).hostname,
+			path: '/',
+			httpOnly: true,
+			secure: false
+		};
+
+		const session = await newMeasuredSession(browser, {
+			viewport: VIEWPORT,
+			deviceScaleFactor: DEVICE_SCALE_FACTOR,
+			network: 'N0',
+			cacheState: 'warm'
+		});
+		try {
+			await session.context.addCookies([cookie]);
+			const baseline = await saveOnce(session, origin);
+			await closeToHub(session.page);
+
+			const preSaveDelayMs = 2_000;
+			const withPreSaveDelay = await saveOnce(session, origin, { beforeSubmitMs: preSaveDelayMs });
+			await closeToHub(session.page);
+
+			const receiptDelayMs = 600;
+			const withDelayedReceipt = await saveOnce(session, origin, { successfulReceiptMs: receiptDelayMs });
+			expect(Math.abs(withPreSaveDelay.submitToReceipt - baseline.submitToReceipt)).toBeLessThan(
+				preSaveDelayMs / 2
+			);
+			expect(withDelayedReceipt.submitToReceipt - baseline.submitToReceipt).toBeGreaterThan(receiptDelayMs / 2);
+		} finally {
+			await session.close();
+		}
 	});
 });

@@ -1,12 +1,13 @@
 /**
  * Runtime-gated performance marks (T3.P03.S02).
  *
- * The on-demand Playwright/CDP harness measures complete presented results, not
- * isolated kernel time. To correlate a continuous input with the frame that
- * presents its result, the product carries a monotonic sequence from the input
- * that started the work through preview installation and result installation.
- * The harness reads those records and pairs each one with the first presented
- * frame at or after it.
+ * The product carries a monotonic sequence from continuous input through
+ * preview installation and result installation. The ordinary timing harness
+ * pairs overlay marks with rAF scheduling opportunities: that is an estimate,
+ * not proof of presentation. A separate traceProof diagnostic matches captured
+ * image identity and reports screenshot-event latency for supported trace clocks,
+ * plus trace-reported presentation when exact compositor span evidence exists.
+ * Physical display presentation remains unproved by either path.
  *
  * **Inert unless the harness enables it.** Playwright sets
  * `window.__BISKIQ_PERF__ = { enabled: true }` through an init script before any
@@ -39,7 +40,7 @@ export type PerfRecord = {
 };
 
 type PerfGlobal = typeof globalThis & {
-	__BISKIQ_PERF__?: { readonly enabled?: unknown };
+	__BISKIQ_PERF__?: { readonly enabled?: unknown; readonly traceProof?: unknown };
 	__BISKIQ_PERF_RECORDS__?: PerfRecord[];
 };
 
@@ -65,14 +66,15 @@ export function perfMarksEnabled(): boolean {
 function record(
 	kind: PerfRecordKind,
 	name: string,
-	detail?: Readonly<Record<string, unknown>>
+	detail?: Readonly<Record<string, unknown>>,
+	sequence = latestSequence
 ): PerfRecord | null {
 	if (!perfMarksEnabled()) return null;
 	const entry: PerfRecord = {
 		kind,
 		name,
 		time: performance.now(),
-		sequence: latestSequence,
+		sequence,
 		...(detail === undefined ? {} : { detail })
 	};
 	const target = perfGlobal();
@@ -111,8 +113,9 @@ export function perfSequence(): number {
 /**
  * Record that a preview for the latest input was installed.
  *
- * Installation is not presentation: the harness pairs this timestamp with the
- * next presented frame, which is what the latency budgets describe.
+ * Installation is not presentation. The baseline uses the later overlay mark
+ * with an rAF scheduling proxy. The separate trace diagnostic requires a matching
+ * preview image and supported screenshot-event clock; neither proves physical scanout.
  */
 export function perfInstall(name: string, detail?: Readonly<Record<string, unknown>>): void {
 	// Check before building the sequence-carrying detail object: spreading the
@@ -131,4 +134,36 @@ export function perfResult(name: string, detail?: Readonly<Record<string, unknow
 /** Record a general milestone (command start, admission, refusal, release). */
 export function perfMark(name: string, detail?: Readonly<Record<string, unknown>>): void {
 	record('mark', name, detail);
+}
+
+/** Diagnostic only: never enabled in untraced timing runs or ordinary UI. */
+export type PerfTracePreview = {
+	readonly sequence: number;
+	readonly signature: number;
+	readonly bits: readonly number[];
+	readonly css: readonly [number, number];
+};
+
+export function perfTracePreview(
+	markers: readonly { id: string; css: readonly [number, number]; label: string }[]
+): PerfTracePreview | null {
+	if (!perfMarksEnabled() || perfGlobal().__BISKIQ_PERF__?.traceProof !== true) return null;
+	// Svelte may proxy $state arrays: user-timing detail must be structured-cloneable.
+	const serialized = JSON.stringify(markers);
+	const snapshot = JSON.parse(serialized) as typeof markers;
+	const preview = snapshot.find((marker) => marker.id === 'layout-wall-preview');
+	if (!preview) return null;
+	const install = perfGlobal().__BISKIQ_PERF_RECORDS__?.findLast(
+		(entry) => entry.kind === 'install' && entry.name === 'wall-preview'
+	);
+	if (!install || install.sequence < 1 || install.sequence > 65535) return null;
+	// Hash the actual overlay snapshot, not a separately scheduled token. The
+	// full geometry remains in the ledger; the image also checks the marker pixel.
+	let signature = 0;
+	for (const character of serialized) signature = (signature * 31 + character.charCodeAt(0)) & 65535;
+	const words = [0xb17e, install.sequence, signature, 0xb17e ^ install.sequence ^ signature];
+	const bits = words.flatMap((word) => Array.from({ length: 16 }, (_, index) => (word >>> (15 - index)) & 1));
+	const result = { sequence: install.sequence, signature, bits, css: preview.css };
+	record('mark', `trace:overlay:${install.sequence}:${signature}`, { ...result, markers: snapshot }, install.sequence);
+	return result;
 }

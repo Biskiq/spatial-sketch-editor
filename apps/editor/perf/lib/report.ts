@@ -11,7 +11,8 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { cpus, totalmem, platform, release } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { Stats } from './stats';
 import { formatStats } from './stats';
@@ -37,7 +38,7 @@ export type RunReport = {
 	readonly rows: ResultRow[];
 };
 
-const REPO_ROOT = resolve(import.meta.dirname, '../../../..');
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 
 export function resultsDirectory(): string {
 	return process.env.PERF_RESULTS_DIR ?? join(process.env.TMPDIR ?? '/tmp', 'biskiq-perf-results');
@@ -63,7 +64,7 @@ export function machineFacts(): Record<string, unknown> {
 		// Power/thermal state cannot be read from Node portably. The contract's
 		// reference rows are owner-run on battery with Low Power Mode off; the
 		// operator declares it here and the acceptance record repeats it.
-		powerState: process.env.PERF_POWER_STATE ?? 'owner-declared (battery preferred; Low Power Mode off)'
+		powerState: process.env.PERF_POWER_STATE ?? 'not recorded (PERF_POWER_STATE unset)'
 	};
 }
 

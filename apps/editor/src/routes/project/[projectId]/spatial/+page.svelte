@@ -32,7 +32,7 @@
 		ProjectPersistenceError,
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
-	import { perfInput, perfMark, perfMarksEnabled } from '$lib/platform/perf-marks';
+	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
 	import {
 		discardPendingCapture,
 		persistPendingCapture,
@@ -836,6 +836,7 @@
 	 * install timestamp.
 	 */
 	let lastOverlayKey = '';
+	let tracePreview = $state<PerfTracePreview | null>(null);
 
 	function refresh(): void {
 		const stage = facade;
@@ -880,6 +881,7 @@
 				.join('|');
 			if (overlayKey !== lastOverlayKey) {
 				lastOverlayKey = overlayKey;
+				tracePreview = perfTracePreview(markers);
 				// The preview is presented by the frame that paints this overlay state; the
 				// ledger's sequence says which input sample it belongs to. `preview` keeps a
 				// later overlay change (release, selection) from being counted as the
@@ -1378,7 +1380,7 @@
 			if (stage === null || id === null) return;
 			// T3.P03.S02: one monotonic sequence per continuous input sample. The
 			// adapter's preview installation and the accepted result inherit it.
-			perfInput('pointermove', { wallMode: true });
+			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
 			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
@@ -1839,7 +1841,7 @@
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay {markers} {selectionMarker} />
+					<StageOverlay {markers} {selectionMarker} {tracePreview} />
 				</div>
 
 				{#if boot.status === 'empty'}

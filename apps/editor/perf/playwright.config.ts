@@ -27,10 +27,10 @@ export default defineConfig({
 	reporter: [['list']],
 	use: {
 		baseURL,
-		// The plan asks for a presented-frame trace, but this harness uses an rAF
-		// attribution only. Recording traces on every measured run would perturb
-		// the frame timing it is meant to measure; the gap is an explicit owner
-		// decision (docs/reference/decisions/t3p03s02-trace-correlation-deviation-2026-10-22.md).
+		// Ordinary timing runs use the rAF scheduling proxy. The separate
+		// trace-proof diagnostic explicitly records Chrome CDP trace images;
+		// Playwright tracing stays off so it adds no workload to ordinary runs.
+		// Method limits and owner disposition live in the trace deviation record.
 		trace: 'off',
 		video: 'off',
 		screenshot: 'only-on-failure',

@@ -117,6 +117,18 @@ export function perfInitScript(options: HarnessOptions): void {
 	}
 }
 
+/** Release harness-owned observations before F13's GC; never clear application state. */
+export async function clearObservations(page: import('@playwright/test').Page): Promise<void> {
+	await page.evaluate(() => {
+		const target = window as HarnessWindow;
+		for (const entries of [target.__BISKIQ_PERF_RECORDS__, target.__BISKIQ_PERF_TICKS__,
+			target.__BISKIQ_PERF_LONG_TASKS__, target.__BISKIQ_PERF_EVENTS__]) {
+			if (entries) entries.length = 0;
+		}
+		performance.clearMarks();
+	});
+}
+
 /** Read the ledger after the measured work has settled. */
 export async function readLedger(page: import('@playwright/test').Page): Promise<PerfLedger> {
 	return page.evaluate(() => {

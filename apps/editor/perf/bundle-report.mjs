@@ -21,6 +21,13 @@
  *                                  check T3.P02.S01 needs for Preview, and the
  *                                  editor-module-in-visitor-set refusal.
  *
+ * --forbid requires usable maps for every JS file, OR explicitly selected
+ * --provenance <client/bundle-provenance.json> from BUNDLE_PROVENANCE=1 npm run build.
+ * Provenance proves Rollup module membership, never source-map byte attribution.
+ * Invalid provenance fails closed even if maps are complete. Evidence is a trusted
+ * build artifact with an integrity digest, not a signature against deliberate forgery.
+ * --forbid-file <route>=<substring> checks only emitted file names (no maps).
+ *
  * It never builds, never writes into the repository and needs no dependency
  * beyond `@jridgewell/sourcemap-codec` (already present transitively).
  *
@@ -34,6 +41,7 @@ import { join, resolve, dirname } from 'node:path';
 import { gzipSync, brotliCompressSync, constants as zc } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { readProvenance } from './bundle-provenance.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const editor = resolve(here, '..');
@@ -53,18 +61,49 @@ const optAll = (name) => {
 };
 const outDir = resolve(opt('--out', join(editor, '.svelte-kit/output')));
 const jsonOut = opt('--json', null);
-const forbidden = optAll('--forbid').map((entry) => {
+const forbidden = [...optAll('--forbid').map((entry) => ({ entry, filesOnly: false })),
+	...optAll('--forbid-file').map((entry) => ({ entry, filesOnly: true }))].map(({ entry, filesOnly }) => {
 	const separator = entry.indexOf('=');
 	if (separator <= 0) {
 		console.error(`--forbid needs <route>=<substring>, got: ${entry}`);
 		process.exit(2);
 	}
-	return { route: entry.slice(0, separator), substring: entry.slice(separator + 1) };
+	return { route: entry.slice(0, separator), substring: entry.slice(separator + 1), filesOnly };
 });
 const client = join(outDir, 'client');
 const server = join(outDir, 'server');
 
 const ROUTES = ['/', '/editor', '/projects', '/project/[projectId]/spatial', '/p/[publicationId]', '/dev/assets', '/dev/materials'];
+
+// Explicit selection prevents silently upgrading incomplete maps to module evidence.
+// Reject an empty/missing value even if usable maps would otherwise let the
+// report complete, so selecting provenance can never silently fall back.
+const provenanceOptionIndex = args.findIndex((arg) => arg === '--provenance' || arg.startsWith('--provenance='));
+const provenanceOption = provenanceOptionIndex < 0 ? null : args[provenanceOptionIndex];
+const provenanceValue = provenanceOption === null
+	? null
+	: provenanceOption.startsWith('--provenance=')
+		? provenanceOption.slice('--provenance='.length)
+		: args[provenanceOptionIndex + 1];
+const missingProvenanceValue = provenanceOption !== null && (
+	typeof provenanceValue !== 'string' ||
+	provenanceValue.trim() === '' ||
+	(provenanceOption === '--provenance' && provenanceValue.startsWith('--'))
+);
+if (missingProvenanceValue) {
+	console.error('--provenance requires a non-empty path');
+	process.exit(2);
+}
+const provenancePath = provenanceOption === null ? null : provenanceValue;
+let provenance = null;
+let provenanceError = null;
+if (provenancePath) {
+	try { provenance = readProvenance(resolve(provenancePath), client); }
+	catch (error) {
+		provenanceError = error.message;
+		console.error(`PROVENANCE UNAVAILABLE: ${provenanceError}`);
+	}
+}
 
 // ---- route -> node table (server manifest) ----
 const manifestSrc = readFileSync(join(server, 'manifest.js'), 'utf8');
@@ -167,7 +206,7 @@ function attribute(relative) {
 }
 
 const format = (n) => (n / 1024).toFixed(1);
-const report = { outDir, routes: {}, chunks: {}, forbidden: [] };
+const report = { outDir, moduleEvidence: provenancePath ? { kind: 'rollup-module-identity', path: resolve(provenancePath), error: provenanceError } : { kind: 'source-map' }, routes: {}, chunks: {}, forbidden: [] };
 const allFiles = new Set();
 
 for (const route of ROUTES) {
@@ -181,28 +220,37 @@ for (const route of ROUTES) {
 	const packages = new Map();
 	const packageText = new Map();
 	const modules = new Set();
-	let attributed = true;
+	const mappedModules = new Set();
+	// A missing emitted JS file cannot provide source-absence evidence either.
+	const jsFiles = [...files].filter((file) => file.endsWith('.js'));
+	let attributed = jsFiles.length > 0 && jsFiles.every((file) => existsSync(join(client, file)));
 	for (const file of list) {
 		allFiles.add(file);
 		const size = sizeOf(file);
 		for (const key of Object.keys(total)) total[key] += size[key];
 		if (file.endsWith('.js')) for (const key of Object.keys(js)) js[key] += size[key];
 		const attribution = attribute(file);
-		if (file.endsWith('.js') && !attribution) attributed = false;
+		if (file.endsWith('.js') && (!attribution || ![...attribution.keys()].some((source) => source !== '(unmapped)'))) attributed = false;
 		if (attribution)
 			for (const [source, { n, text }] of attribution) {
 				const bucketName = source === '(unmapped)' ? '(unmapped)' : bucket(source);
 				packages.set(bucketName, (packages.get(bucketName) ?? 0) + n);
 				packageText.set(bucketName, (packageText.get(bucketName) ?? '') + text);
-				if (source !== '(unmapped)') modules.add(source.replace(/^(\.\.\/)+/, ''));
+				if (source !== '(unmapped)') mappedModules.add(source.replace(/^(\.\.\/)+/, ''));
 			}
 	}
+	const moduleAttributed = provenancePath
+		? Boolean(provenance && jsFiles.length && jsFiles.every((file) => provenance.get(file)?.length))
+		: attributed;
+	for (const source of provenancePath ? jsFiles.flatMap((file) => provenance?.get(file) ?? []) : mappedModules) modules.add(source);
+
 	report.routes[route] = {
 		leafNode: nodes.leaf,
 		files: list,
 		total,
 		js,
 		attributed,
+		moduleAttributed,
 		packages: Object.fromEntries(
 			[...packages]
 				.sort((a, b) => b[1] - a[1])
@@ -225,9 +273,13 @@ for (const rule of forbidden) {
 	}
 	const hits = [
 		...route.files.filter((file) => file.includes(rule.substring)).map((file) => `file ${file}`),
-		...route.modules.filter((module) => module.includes(rule.substring)).map((module) => `module ${module}`)
+		...(rule.filesOnly ? [] : route.modules).filter((module) => module.includes(rule.substring)).map((module) => `module ${module}`)
 	];
-	report.forbidden.push({ ...rule, hits });
+	const unavailable = !rule.filesOnly && !route.moduleAttributed;
+	report.forbidden.push({ ...rule, hits, unavailable });
+	if (unavailable) {
+		console.error(`SOURCE ATTRIBUTION UNAVAILABLE for ${rule.route}: ${provenancePath ? provenanceError ?? 'missing module identities in route JS' : '--forbid requires usable maps for every JS file; use an opt-in BUNDLE_PROVENANCE=1 build with --provenance <client/bundle-provenance.json> for Rollup module identity, or --forbid-file for names only'}`);
+	}
 	if (hits.length > 0) {
 		console.error(`\nFORBIDDEN LOAD-SET ENTRY on ${rule.route} matching "${rule.substring}":`);
 		for (const hit of hits) console.error(`  ${hit}`);
@@ -237,6 +289,7 @@ for (const rule of forbidden) {
 // ---- text report ----
 const out = [];
 out.push(`client output: ${client}`);
+out.push(`module identity evidence: ${report.moduleEvidence.kind}${provenanceError ? ` (unavailable: ${provenanceError})` : ''}`);
 for (const [route, routeReport] of Object.entries(report.routes)) {
 	out.push(`\n## ${route} (leaf node ${routeReport.leafNode}) — ${routeReport.files.length} files`);
 	out.push(`  total  raw ${format(routeReport.total.raw)} KiB | gzip ${format(routeReport.total.gzip)} KiB | br ${format(routeReport.total.br)} KiB`);
@@ -246,7 +299,7 @@ for (const [route, routeReport] of Object.entries(report.routes)) {
 		out.push(`    ${'package'.padEnd(44)} ${'raw'.padStart(8)} ${'br*'.padStart(8)}`);
 		for (const [key, value] of Object.entries(routeReport.packages))
 			if (value.raw > 512) out.push(`    ${key.padEnd(44)} ${format(value.raw).padStart(8)} ${format(value.brStandalone).padStart(8)}`);
-	} else out.push('  (no sourcemaps: package attribution unavailable)');
+	} else out.push('  (incomplete/absent sourcemaps: package byte attribution unavailable)');
 }
 out.push('\n## emitted but in no product/dev route load set');
 const emitted = [];
@@ -263,4 +316,4 @@ for (const entry of emitted.filter((file) => !file.endsWith('.map') && !allFiles
 console.log(out.join('\n'));
 
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(report, null, 1));
-if (report.forbidden.some((entry) => entry.hits.length > 0)) process.exit(1);
+if (provenanceError || report.forbidden.some((entry) => entry.hits.length > 0 || entry.unavailable)) process.exit(1);

@@ -8,6 +8,7 @@ import {
 	perfMarksEnabled,
 	perfResult,
 	perfSequence,
+	perfTracePreview,
 	type PerfRecord
 } from '$lib/platform/perf-marks';
 
@@ -110,5 +111,32 @@ describe('enabled correlation records', () => {
 		enable();
 		for (let index = 0; index < PERF_RECORD_LIMIT + 10; index++) perfMark('tick');
 		expect(records()).toHaveLength(PERF_RECORD_LIMIT);
+	});
+});
+
+
+describe('diagnostic overlay identity', () => {
+	it('does not inspect marker geometry without the separate diagnostic flag', () => {
+		const markers = new Proxy([], { get() { throw new Error('geometry inspected'); } });
+		expect(perfTracePreview(markers)).toBeNull();
+		enable();
+		expect(perfTracePreview(markers)).toBeNull();
+	});
+
+	it('names the installed preview and exact geometry rather than the newest unrelated input', () => {
+		Object.assign(perfGlobal, { __BISKIQ_PERF__: { enabled: true, traceProof: true } });
+		const sequence = perfInput('pointermove');
+		perfInstall('wall-preview');
+		perfInput('unrelated');
+		const markers = [{ id: 'layout-wall-preview', css: [20, 30] as const, label: 'preview' }];
+		const token = perfTracePreview(markers);
+		expect(token?.sequence).toBe(sequence);
+		expect(token?.css).toEqual([20, 30]);
+		expect(token?.bits).toHaveLength(64);
+		const detail = records().at(-1)?.detail;
+		expect(structuredClone(detail)).toEqual(detail);
+		expect(performance.getEntriesByName(`biskiq:mark:trace:overlay:${sequence}:${token?.signature}`).length).toBeGreaterThan(0);
+		expect(perfTracePreview([{ ...markers[0]!, css: [21, 30] }])?.signature).not.toBe(token?.signature);
+		expect(perfTracePreview([])).toBeNull();
 	});
 });

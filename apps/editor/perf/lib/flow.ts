@@ -7,11 +7,7 @@
  * injection is reached — the harness observes the same UI a creator does.
  */
 
-import { writeFileSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-
-import { expect, type Page } from '@playwright/test';
+import { expect, type Dialog, type Page } from '@playwright/test';
 
 import type { FixtureProject } from './fixtures';
 import { readLedger, type LedgerRecord } from './ledger';
@@ -20,13 +16,44 @@ export function uniqueProjectId(size: string): string {
 	return `perf-${size.toLowerCase()}-${Date.now().toString(36)}`;
 }
 
-/** Leave the Stage for the hub, ending this repeat-use cycle in the same context. */
+/** Full document navigation: cache reuse only, not a persistent-app lifecycle check. */
 export async function closeToHub(page: Page): Promise<void> {
 	await page.goto('/projects');
 	await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
 }
 
-/** Navigate to a fresh create-intent project (the absent row offers the starter). */
+/** Open from the hub through Svelte client navigation; return the UI-generated identity. */
+export async function openProjectFromHub(page: Page): Promise<string> {
+	// SSR exposes the button before hydration installs its click handler. The
+	// sign-in bootstrap leaves this state only after the hub's onMount.
+	await expect(page.getByText('Checking sign-in…', { exact: true })).toBeHidden();
+	const origin = await page.evaluate(() => performance.timeOrigin);
+	await page.getByRole('button', { name: 'New Project' }).click();
+	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
+	expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin);
+	const match = /\/project\/([^/]+)\/spatial/.exec(new URL(page.url()).pathname);
+	if (match === null) throw new Error('New Project did not open a project');
+	return decodeURIComponent(match[1]!);
+}
+
+/** Return along the history entry created by New Project, preserving the app realm. */
+export async function closeProjectToHub(page: Page): Promise<void> {
+	const origin = await page.evaluate(() => performance.timeOrigin);
+	// Edited projects use the shipped unsaved-changes confirmation. Accept the
+	// discard only for this close, and remove the listener even for a clean project.
+	const discard = (dialog: Dialog) => dialog.type() === 'confirm' ? dialog.accept() : dialog.dismiss();
+	page.on('dialog', discard);
+	try {
+		await page.goBack({ timeout: 20_000 });
+		await expect(page.getByRole('button', { name: 'New Project' })).toBeVisible();
+		expect(new URL(page.url()).pathname).toBe('/projects');
+		expect(await page.evaluate(() => performance.timeOrigin)).toBe(origin);
+	} finally {
+		page.off('dialog', discard);
+	}
+}
+
+/** Full document navigation to a fresh create intent; preserves cache, not app state. */
 export async function gotoCreateIntent(page: Page, projectId: string): Promise<void> {
 	await page.goto(`/project/${encodeURIComponent(projectId)}/spatial?create=1`);
 	await expect(page.getByRole('dialog', { name: 'Start a project' })).toBeVisible();
@@ -39,24 +66,32 @@ export async function startStarterGallery(page: Page): Promise<void> {
 	await expect(page.locator('canvas').first()).toBeVisible();
 }
 
-function writeFixtureFile(project: FixtureProject): string {
-	const directory = mkdtempSync(join(tmpdir(), 'biskiq-perf-fixture-'));
-	const path = join(directory, `${project.size}.json`);
-	writeFileSync(path, project.canonicalJson);
-	return path;
-}
-
 /**
  * F2's explicit Open: the source-JSON entry, a real file chooser and the
  * canonical admission path. The returned ledger slice covers the open.
  */
 export async function openSourceJson(page: Page, project: FixtureProject): Promise<void> {
-	const path = writeFixtureFile(project);
 	const [chooser] = await Promise.all([
 		page.waitForEvent('filechooser'),
 		page.getByRole('button', { name: 'Open source JSON' }).click()
 	]);
-	await chooser.setFiles(path);
+	const input = chooser.element();
+	try {
+		// Playwright 1.63's setFiles/setInputFiles retains an additional retargeted
+		// ElementHandle internally. Use the public handle and the same DOM File /
+		// input / change semantics for this bounded JSON payload, then release the
+		// only remote handle we own. The shipped chooser and admission stay real.
+		await input.evaluate((element, file) => {
+			if (!(element instanceof HTMLInputElement)) throw new Error('The source chooser is not an input');
+			const transfer = new DataTransfer();
+			transfer.items.add(new File([file.json], file.name, { type: 'application/json' }));
+			element.files = transfer.files;
+			element.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+			element.dispatchEvent(new Event('change', { bubbles: true }));
+		}, { name: `${project.size}.json`, json: project.canonicalJson });
+	} finally {
+		await input.dispose();
+	}
 	await waitForMark(page, 'f2:open-admitted');
 	await expect(page.locator('canvas').first()).toBeVisible();
 }
@@ -128,7 +163,8 @@ export async function dragWallHandle(
 	}
 	// A delayed presentation needs its frame to paint before release clears the
 	// preview; the correlation proof passes the harness delay here.
-	if ((options.settleMs ?? 0) > 0) await page.waitForTimeout(options.settleMs);
+	const settleMs = options.settleMs ?? 0;
+	if (settleMs > 0) await page.waitForTimeout(settleMs);
 	await page.mouse.up();
 	return {
 		start,
