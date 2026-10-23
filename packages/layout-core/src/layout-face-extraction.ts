@@ -2,8 +2,9 @@
  * `layout-face-extraction.ts` — P23.8 boundary-Wall candidate-face
  * extraction (H3 §10).
  *
- * Runs over `role: 'boundary'` walls only; partitions are excluded entirely
- * from semantic face extraction. Emits deterministic **candidate faces**
+ * Runs over **every Wall** (format 6): there is no authored `role`, so a ring
+ * encloses because of its topology, not because a field permits it. Emits
+ * deterministic **candidate faces**
  * only — this module never allocates, retires or otherwise owns persistent
  * `LayoutRoom` identity (hard H3/H5 boundary). Room correspondence happens
  * in `layout-room-reconciliation.ts` on top of these candidates.
@@ -105,14 +106,18 @@ export function extractBoundaryCandidateFaces(
 	const diagnostics: TopologyDiagnostic[] = [];
 	const junctionById = new Map(document.junctions.map((junction) => [junction.id, junction]));
 	const wallById = new Map(document.walls.map((wall) => [wall.id, wall]));
-	const boundaryWalls = document.walls.filter((wall) => wall.role === 'boundary');
+	// Format 6 — every Wall participates. There is no authored `role` to filter on:
+	// a closed ring encloses whatever Walls form it, and a Wall that closes no ring
+	// simply produces no face. This is the same membership the derived role reads
+	// (`deriveLayoutWallRole`), so face extraction and the Card fact cannot disagree.
+	const boundaryWalls = document.walls;
 
 	// --- dangle detection (recursive degree-1 boundary edges) -------------
 	const { faceGraphWalls, danglingWallIds } = stripDangles(boundaryWalls, junctionById);
 	for (const wallId of danglingWallIds) {
 		diagnostics.push({
 			code: 'boundary_dangle',
-			message: `Boundary wall '${wallId}' has a degree-1 endpoint and is excluded from face extraction`,
+			message: `Wall '${wallId}' has a degree-1 endpoint and is excluded from face extraction`,
 			wallId
 		});
 	}

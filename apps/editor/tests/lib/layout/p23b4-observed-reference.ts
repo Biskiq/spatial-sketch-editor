@@ -5,14 +5,32 @@
  *   1. `git checkout ca04983a -- packages/layout-core/src` (genuine
  *      pre-optimization production code, no mechanisms).
  *   2. Backport ONLY the four test-only observers (wall seam, kernel,
- *      topology gate, face consumption) + run the collector over the 20
+ *      topology gate, face consumption) + run the collector over the
  *      fixtures below. Observers only record; they change no result.
  *   3. Restore HEAD packages and re-run: the standalone consumer records,
  *      planner verdicts and planner consumed-array digests below are
- *      byte-identical (20/20); ONLY the planner call-multiplicity digests
- *      differ on 16/20 fixtures, which is the INTENDED M-1 work reduction
- *      (sharing inside the real planner chain), captured separately in
- *      PLANNER_WORK_EXPECTATION. Provenance: node v26.7.0, darwin arm64.
+ *      byte-identical; ONLY the planner call-multiplicity digests differ,
+ *      which is the INTENDED M-1 work reduction (sharing inside the real
+ *      planner chain), captured separately in PLANNER_WORK_EXPECTATION.
+ *      Provenance: node v26.7.0, darwin arm64. The generator reported this as
+ *      20/20 identical with 16/20 multiplicity differences; the table holds 19
+ *      keys and call multiplicity is no longer asserted (PR #115 §7.2
+ *      category A″ removed that half), so neither ratio is a claim this suite
+ *      checks. It is recorded as reported rather than restated as a fact.
+ *
+ * T1.P02.S01 — FORMAT 6 FINDING (2026-10-22). Format 6 removed the authored Wall
+ * `role` (plan §2), so the canonical document an accepted planner returns lost
+ * that field. The planner verdict digest hashes that document, so 15 of the 19
+ * fixtures moved; the four early-reject fixtures are unchanged because their
+ * digest hashes the rejection message instead. Nothing in this table was
+ * overwritten: every `planner` row and every `plannerVerdict` below is the
+ * pre-optimization observation. The post-change values live in
+ * `PLANNER_VERDICT_EXPECTATION` below, and the historical test asserts the live
+ * value equals it while pinning the 15-row delta, so a history column can never
+ * quietly become a snapshot of today's code. Table order is the base
+ * revision's order, unchanged by this slice: every assertion is keyed by
+ * fixture id, and the delta test names the moved rows explicitly, so order
+ * cannot be used to carry a change.
  *
  * Each entry freezes what each REAL consumer derived/consumed: wallCalls
  * (seam inputs+results during the real consumer run), gateWalls (topology
@@ -229,3 +247,42 @@ export const PLANNER_WORK_EXPECTATION: Record<string, { wallCalls: string; kerne
 
 /** Fixtures whose planner multiplicity intentionally differs from pre-opt (M-1 sharing). */
 export const PLANNER_WORK_REDUCED_FIXTURES: readonly string[] = ['N-2', 'bend-10-wall-openings', 'bend-3-room-openings', 'class4-zero-length-wall-v1', 'd12-exact-coincidence-v1', 'd12-full-containment-v1', 'd12-partial-overlap-v1', 'p23b-12-wall-all-curved-v1', 'p23b-12-wall-straight-v1', 'p23b-12-wall-target-curved-v1', 'p23b-40-wall-all-curved-v1', 'p23b-40-wall-straight-v1', 'p23b-40-wall-target-curved-v1', 'wild-room-curved-v1', 'wild-shared-curved-v1'];
+
+/**
+ * T1.P02.S01 — format-6 planner-verdict expectation (HEAD-derived, NOT history).
+ *
+ * Format 6 removed the authored Wall `role` (plan §2). The planner verdict digest
+ * hashes the ACCEPTED document's canonical JSON, which therefore lost that field,
+ * so every success row's digest moved. 15 of the 19 fixtures moved; the four
+ * early-reject fixtures (`N-2i`, `class4-self-intersection-v1`,
+ * `class4-open-room-boundary-v1`, `class4-component-duplicate-junction-v1`) are
+ * unchanged because their digest hashes the rejection message, not a document.
+ *
+ * `OBSERVED_REFERENCE.plannerVerdict` above still records what the
+ * pre-optimization collector observed; it was not replaced. This table states
+ * what the current code returns. The historical test asserts live equals this
+ * expectation AND that the rows where history and expectation disagree are
+ * exactly the moved set, so the delta stays visible instead of being absorbed
+ * into the history column.
+ */
+export const PLANNER_VERDICT_EXPECTATION: Record<string, string> = {
+	'p23b-12-wall-straight-v1': 'success:4e3246a5b7d1079fa7dbd422efba2d96ad74bfb3ad79726ff9f99f505000a7ab',
+	'p23b-12-wall-target-curved-v1': 'success:b47e59b1fda602d74aa3bd690d04e3e39162e28d0248e07e7c63fa0d23342b8e',
+	'p23b-12-wall-all-curved-v1': 'success:d71343d22c10bbff2a48153d3db20e896a6516212293a9cf06f6dfef52ede854',
+	'p23b-40-wall-straight-v1': 'success:886ca2ea3524be2b40821cdf9f6bab2168785bd2a5c5a1f565df3d4567bde043',
+	'p23b-40-wall-target-curved-v1': 'success:b16adcadc572ed94f79b36a85c246946addc7decd634d2fa9a3b603c5e11ac89',
+	'p23b-40-wall-all-curved-v1': 'success:79dc93945ce19de580ade6a12e756405418825ca15de098a061d4ba4e17810f5',
+	'bend-10-wall-openings': 'success:a211b9b335a7c629e861ababd43a7c3e562c462cbc96c3325d696187234e7a4b',
+	'bend-3-room-openings': 'success:1dde8fbb752e9d4ea8cfff29c69c5944cf4049df88ee28ce03f3afa2e97eddd7',
+	'd12-exact-coincidence-v1': 'success:ad52f4935a3e544c8c1a0a8e8f8f892f8caefbd7cdb05f5e6699d2662e80a33c',
+	'd12-partial-overlap-v1': 'success:9b00d1454cf64a494a69e6d76b6de154b87220cd260703be765c29e39985ed76',
+	'd12-full-containment-v1': 'success:0e294b06cf289b85973d0d5dc19c1c650b33de5f5409b36eaa4e678e3a2cda3e',
+	'N-2': 'success:05125f8ba0e2add409c137d669e02873dbba1a7243338970067c30bc228cdc2d',
+	'N-2i': 'rejected:topology_invalid:a634c2998b8e8fea9b5001983ed9ca107577c951da39e26ec1427a59a719dec6',
+	'class4-self-intersection-v1': 'rejected:topology_invalid:8ef8659198189cc04b92753ebaceae6c9750ab8dc1561a0faed4bef928fc6e05',
+	'class4-zero-length-wall-v1': 'success:b12625e0b874e1976a5edd80d4c51efa2e5d81f0721b401446f7c446d888142e',
+	'class4-open-room-boundary-v1': 'rejected:topology_invalid:56625da9666d088f799ccba081de1c4d11d7d01ab3a032c5ead0ad0cc940572c',
+	'class4-component-duplicate-junction-v1': 'rejected:topology_invalid:0219e2ac250159dcbd0cada333baa6f0563b949682e2d3419a10348a0b8f9efe',
+	'wild-room-curved-v1': 'success:1513e4eaa00de5b206d41269419b3256fed9f062b7b2559b0991618a61516ca0',
+	'wild-shared-curved-v1': 'success:3789a7ff89319b202c4eff1a6f630f5b98c04ac9a7cbedbfc9df823324eb032c',
+};

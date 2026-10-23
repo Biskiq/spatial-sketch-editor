@@ -217,6 +217,17 @@ export function legacyBezierToAutoBezier(segment: LegacyBezierSegment): AutoBezi
 	};
 }
 
+/**
+ * Deterministic interior-anchor ID: `{segmentId}:anchor:{n}` for the first free
+ * `n`.
+ *
+ * T1.P02.S01 §1 scope — deliberately NOT capture-derived, and unreachable: its
+ * only call site is `legacyBezierToAutoBezier`, which has no caller anywhere in
+ * `packages/` or `apps/` (it is not on any adapter path). No accepted intent
+ * allocates an interior anchor, so nothing can replay one. A curve-authoring
+ * slice that makes legacy auto-bezier documents editable must capture this id
+ * first, for the same occupancy-re-mint reason as `nextWallCurveKnotId`.
+ */
 export function nextInteriorAnchorId(segmentId: string, existing: readonly LayoutInteriorAnchor[]): string {
 	const used = new Set(existing.map((anchor) => anchor.id));
 	let index = existing.length + 1;

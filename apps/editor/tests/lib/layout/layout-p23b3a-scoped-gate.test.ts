@@ -72,6 +72,7 @@ import {
 	type LayoutWallFirstRoom,
 	type TopologySegment
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const LINE: LayoutWallCenterline = { kind: 'line' };
 
@@ -79,7 +80,6 @@ type SeededWall = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
 	centerline?: LayoutWallCenterline;
 };
 
@@ -99,7 +99,6 @@ function documentOf(options: {
 				id: seed.id,
 				startJunctionId: seed.start,
 				endJunctionId: seed.end,
-				role: seed.role ?? 'boundary',
 				thickness: 0.2,
 				height: 3,
 				centerline: seed.centerline ?? LINE
@@ -218,10 +217,10 @@ const ORDERED_FAILURES = documentOf({
 		['late-c', 3, 10]
 	],
 	walls: [
-		{ id: 'solo-long', start: 'solo-a', end: 'solo-b', role: 'partition' },
-		{ id: 'solo-short', start: 'solo-c', end: 'solo-b', role: 'partition' },
-		{ id: 'late-long', start: 'late-a', end: 'late-b', role: 'partition' },
-		{ id: 'late-short', start: 'late-c', end: 'late-b', role: 'partition' }
+		{ id: 'solo-long', start: 'solo-a', end: 'solo-b' },
+		{ id: 'solo-short', start: 'solo-c', end: 'solo-b' },
+		{ id: 'late-long', start: 'late-a', end: 'late-b' },
+		{ id: 'late-short', start: 'late-c', end: 'late-b' }
 	]
 });
 
@@ -235,13 +234,12 @@ const CURVE_FAILURE_BEHIND_A_CLEAN_COMPONENT = documentOf({
 		['curve-b', 6, 24]
 	],
 	walls: [
-		{ id: 'clean-h', start: 'clean-a', end: 'clean-b', role: 'partition' },
-		{ id: 'curve-straight', start: 'curve-a', end: 'curve-m', role: 'partition' },
+		{ id: 'clean-h', start: 'clean-a', end: 'clean-b' },
+		{ id: 'curve-straight', start: 'curve-a', end: 'curve-m' },
 		{
 			id: 'curve-bowed',
 			start: 'curve-m',
 			end: 'curve-b',
-			role: 'partition',
 			centerline: curved([6, 20], [6, 24], [[1, 18]], 'curve-bowed')
 		}
 	]
@@ -257,7 +255,7 @@ const ROOM_FAILURE_BEHIND_A_CLEAN_COMPONENT = documentOf({
 		['thin-c', 4, 14]
 	],
 	walls: [
-		{ id: 'clean-wall', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'clean-wall', start: 'clean-a', end: 'clean-b' },
 		{ id: 'thin-1', start: 'thin-a', end: 'thin-b' },
 		{ id: 'thin-2', start: 'thin-b', end: 'thin-c' }
 	],
@@ -285,13 +283,12 @@ const NEAR_TANGENT_CURVE_FAILURE = documentOf({
 		['near-b', 6, 4]
 	],
 	walls: [
-		{ id: 'clean-near', start: 'clean-a', end: 'clean-b', role: 'partition' },
-		{ id: 'near-straight', start: 'near-a', end: 'near-m', role: 'partition' },
+		{ id: 'clean-near', start: 'clean-a', end: 'clean-b' },
+		{ id: 'near-straight', start: 'near-a', end: 'near-m' },
 		{
 			id: 'near-bowed',
 			start: 'near-m',
 			end: 'near-b',
-			role: 'partition',
 			centerline: curved([6, 0], [6, 4], [[3, -0.001]], 'near-bowed')
 		}
 	]
@@ -307,9 +304,9 @@ const REVERSED_WALL_OVERLAP = documentOf({
 		['reverse-c', 3, 10]
 	],
 	walls: [
-		{ id: 'clean-reverse', start: 'clean-a', end: 'clean-b', role: 'partition' },
-		{ id: 'reverse-long', start: 'reverse-j', end: 'reverse-a', role: 'partition' },
-		{ id: 'reverse-short', start: 'reverse-j', end: 'reverse-c', role: 'partition' }
+		{ id: 'clean-reverse', start: 'clean-a', end: 'clean-b' },
+		{ id: 'reverse-long', start: 'reverse-j', end: 'reverse-a' },
+		{ id: 'reverse-short', start: 'reverse-j', end: 'reverse-c' }
 	]
 });
 
@@ -323,13 +320,12 @@ const DEGENERATE_BOX_CURVE_FAILURE = documentOf({
 		['box-c', 10, 0]
 	],
 	walls: [
-		{ id: 'clean-box', start: 'clean-a', end: 'clean-b', role: 'partition' },
-		{ id: 'box-vertical', start: 'box-v-a', end: 'box-v-b', role: 'partition' },
+		{ id: 'clean-box', start: 'clean-a', end: 'clean-b' },
+		{ id: 'box-vertical', start: 'box-v-a', end: 'box-v-b' },
 		{
 			id: 'box-bowed',
 			start: 'box-v-a',
 			end: 'box-c',
-			role: 'partition',
 			centerline: curved([4, 0], [10, 0], [[4, 6]], 'box-bowed')
 		}
 	]
@@ -345,9 +341,9 @@ const REVERSED_DEGENERATE_VALID_COMPONENT = documentOf({
 		['valid-up', 4, 4]
 	],
 	walls: [
-		{ id: 'clean-valid', start: 'clean-a', end: 'clean-b', role: 'partition' },
-		{ id: 'valid-reversed-horizontal', start: 'valid-j', end: 'valid-left', role: 'partition' },
-		{ id: 'valid-vertical', start: 'valid-j', end: 'valid-up', role: 'partition' }
+		{ id: 'clean-valid', start: 'clean-a', end: 'clean-b' },
+		{ id: 'valid-reversed-horizontal', start: 'valid-j', end: 'valid-left' },
+		{ id: 'valid-vertical', start: 'valid-j', end: 'valid-up' }
 	]
 });
 
@@ -364,7 +360,7 @@ const TWO_ROOMS_SHARED_COMPONENT = documentOf({
 		['clean-b', 24, 0]
 	],
 	walls: [
-		{ id: 'clean-room', start: 'clean-a', end: 'clean-b', role: 'partition' },
+		{ id: 'clean-room', start: 'clean-a', end: 'clean-b' },
 		{ id: 'room-south-left', start: 'room-a', end: 'room-m' },
 		{ id: 'room-south-right', start: 'room-m', end: 'room-b' },
 		{ id: 'room-east', start: 'room-b', end: 'room-c' },
@@ -413,8 +409,8 @@ const INDEPENDENT_STRAIGHT_CROSSING = documentOf({
 		['v-b', 4, 3]
 	],
 	walls: [
-		{ id: 'wall-h', start: 'h-a', end: 'h-b', role: 'partition' },
-		{ id: 'wall-v', start: 'v-a', end: 'v-b', role: 'partition' }
+		{ id: 'wall-h', start: 'h-a', end: 'h-b' },
+		{ id: 'wall-v', start: 'v-a', end: 'v-b' }
 	]
 });
 
@@ -426,8 +422,8 @@ const INDEPENDENT_COLLINEAR_OVERLAP = documentOf({
 		['r-b', 9, 0]
 	],
 	walls: [
-		{ id: 'wall-left', start: 'l-a', end: 'l-b', role: 'partition' },
-		{ id: 'wall-right', start: 'r-a', end: 'r-b', role: 'partition' }
+		{ id: 'wall-left', start: 'l-a', end: 'l-b' },
+		{ id: 'wall-right', start: 'r-a', end: 'r-b' }
 	]
 });
 
@@ -443,8 +439,8 @@ const INDEPENDENT_TEE = documentOf({
 		['stub-b', 4, 3]
 	],
 	walls: [
-		{ id: 'wall-host', start: 'host-a', end: 'host-b', role: 'partition' },
-		{ id: 'wall-stub', start: 'stub-a', end: 'stub-b', role: 'partition' }
+		{ id: 'wall-host', start: 'host-a', end: 'host-b' },
+		{ id: 'wall-stub', start: 'stub-a', end: 'stub-b' }
 	]
 });
 
@@ -460,14 +456,12 @@ const INDEPENDENT_CURVE_CROSSING = documentOf({
 			id: 'wall-up',
 			start: 'up-a',
 			end: 'up-b',
-			role: 'partition',
 			centerline: curved([0, 0], [10, 0], [[5, 3.6]], 'wall-up')
 		},
 		{
 			id: 'wall-down',
 			start: 'dn-a',
 			end: 'dn-b',
-			role: 'partition',
 			centerline: curved([0, 6], [10, 6], [[5, 2.6]], 'wall-down')
 		}
 	]
@@ -493,8 +487,7 @@ function stubAcrossRoomBoundary(attached: boolean): LayoutDocumentWallFirst {
 			{
 				id: 'wall-stub',
 				start: attached ? 'r-c' : 'stub-in',
-				end: 'stub-far',
-				role: 'partition'
+				end: 'stub-far'
 			}
 		],
 		rooms: [room]
@@ -529,12 +522,11 @@ describe('P23B.3a S4/S5 — the sampled authority has exactly ONE subject', () =
 				['c-b', 6, 4]
 			],
 			walls: [
-				{ id: 'c-straight', start: 'c-a', end: 'c-m', role: 'partition' },
+				{ id: 'c-straight', start: 'c-a', end: 'c-m' },
 				{
 					id: 'c-bowed',
 					start: 'c-m',
 					end: 'c-b',
-					role: 'partition',
 					centerline: curved([6, 0], [6, 4], [[1, -2]], 'c-bowed')
 				}
 			]
@@ -737,8 +729,8 @@ describe('P23B.3a S4 / OR-3b — permitted overlap BETWEEN groups, preserved fai
 				['j-c', 3, 0]
 			],
 			walls: [
-				{ id: 'wall-long', start: 'j-a', end: 'j-b', role: 'partition' },
-				{ id: 'wall-short', start: 'j-c', end: 'j-b', role: 'partition' }
+				{ id: 'wall-long', start: 'j-a', end: 'j-b' },
+				{ id: 'wall-short', start: 'j-c', end: 'j-b' }
 			]
 		});
 		expect(
@@ -759,9 +751,9 @@ describe('P23B.3a S4 / OR-3b — permitted overlap BETWEEN groups, preserved fai
 				['stub-b', 4, 3]
 			],
 			walls: [
-				{ id: 'wall-host', start: 'host-a', end: 'host-b', role: 'partition' },
-				{ id: 'wall-stub', start: 'stub-a', end: 'stub-b', role: 'partition' },
-				{ id: 'wall-brace', start: 'stub-b', end: 'host-b', role: 'partition' }
+				{ id: 'wall-host', start: 'host-a', end: 'host-b' },
+				{ id: 'wall-stub', start: 'stub-a', end: 'stub-b' },
+				{ id: 'wall-brace', start: 'stub-b', end: 'host-b' }
 			]
 		});
 		expect(wallsShareTopologyComponent(tee, 'wall-host', 'wall-stub')).toBe(true);
@@ -784,7 +776,6 @@ describe('P23B.3a S4 / OR-3b — permitted overlap BETWEEN groups, preserved fai
 					id: 'wall-self',
 					start: 's-a',
 					end: 's-b',
-					role: 'partition',
 					centerline: curved([0, 0], [1, 0], [[5, 0]], 'wall-self')
 				}
 			]
@@ -813,7 +804,8 @@ describe('P23B.3a S5 / R-3 — the WALL-CHAIN gate takes the SAME subject in bot
 				[-1, 10]
 			],
 			close: false,
-			role: 'partition'
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -846,7 +838,8 @@ describe('P23B.3a S5 / R-3 — the WALL-CHAIN gate takes the SAME subject in bot
 				[11, 3]
 			],
 			close: false,
-			role: 'partition'
+			capture: freshCapture(),
+			levelId: INDEPENDENT_CURVE_CROSSING.floor.id
 		});
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') return;
@@ -902,7 +895,7 @@ describe('P23B.3a S5 / D-9 — the COINCIDENCE rule is component-scoped', () => 
 		const near = enclosure('p', 0, 0, 6, 4);
 		const folded = documentOf({
 			junctions: [...near.junctions, ['p-dup', 6, 0]],
-			walls: [...near.walls, { id: 'p-fold', start: 'p-a', end: 'p-dup', role: 'partition' }],
+			walls: [...near.walls, { id: 'p-fold', start: 'p-a', end: 'p-dup' }],
 			rooms: [near.room]
 		});
 		expect(junctionsShareTopologyComponent(folded, 'p-b', 'p-dup')).toBe(true);
@@ -962,7 +955,7 @@ describe('P23B.3a S5 / D-9 — the COINCIDENCE rule is component-scoped', () => 
 				// No Wall references this Junction, and it sits exactly on `w-a`.
 				['w-dangling', 0, 0]
 			],
-			walls: [{ id: sentinelWallId, start: 'w-a', end: 'w-b', role: 'partition' }]
+			walls: [{ id: sentinelWallId, start: 'w-a', end: 'w-b' }]
 		});
 		expect(validateWallFirstLayoutDocument(coincidentDangling).success).toBe(true);
 		const keyByJunctionId = topologyComponentKeyByJunctionId(coincidentDangling);
@@ -982,7 +975,7 @@ describe('P23B.3a S5 / D-9 — the COINCIDENCE rule is component-scoped', () => 
 				['w-orphan-1', 40, 40],
 				['w-orphan-2', 40, 40]
 			],
-			walls: [{ id: sentinelWallId, start: 'w-a', end: 'w-b', role: 'partition' }]
+			walls: [{ id: sentinelWallId, start: 'w-a', end: 'w-b' }]
 		});
 		expect(validateWallFirstLayoutDocument(danglingPair).success).toBe(true);
 		expect(junctionsShareTopologyComponent(danglingPair, 'w-orphan-1', 'w-orphan-2')).toBe(true);
@@ -1001,8 +994,8 @@ describe('P23B.3a S5 / D-9 — the COINCIDENCE rule is component-scoped', () => 
 				['w-dup', 6, 0]
 			],
 			walls: [
-				{ id: sentinelWallId, start: 'w-a', end: 'w-b', role: 'partition' },
-				{ id: 'w-fold', start: 'w-a', end: 'w-dup', role: 'partition' }
+				{ id: sentinelWallId, start: 'w-a', end: 'w-b' },
+				{ id: 'w-fold', start: 'w-a', end: 'w-dup' }
 			]
 		});
 		expect(validateWallFirstLayoutDocument(folded).success).toBe(true);
@@ -1026,7 +1019,7 @@ describe('P23B.3a S4 / OR-4a — atomicity on refusal, and a pure read', () => {
 			junctions: [...junctions, ['stub-far', 10, 4]],
 			walls: [
 				...walls,
-				{ id: 'wall-stub', start: 'r-c', end: 'stub-far', role: 'partition' }
+				{ id: 'wall-stub', start: 'r-c', end: 'stub-far' }
 			],
 			rooms: [room]
 		});

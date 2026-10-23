@@ -30,8 +30,10 @@
 import { describe, expect, it } from 'vitest';
 
 import * as layoutCore from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 import {
 	compileWallFirstLayoutGeometry,
+	deriveLayoutWallRole,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
 	planDuplicateIsolatedRoom,
 	planExactWallHeight,
@@ -97,7 +99,6 @@ function rectangleDocument(options: {
 			id,
 			startJunctionId,
 			endJunctionId,
-			role: 'boundary' as const,
 			thickness: 0.2,
 			height: options.wallHeights?.[index] ?? wallHeight,
 			centerline: { kind: 'line' } as const
@@ -163,6 +164,15 @@ function wallById(document: LayoutDocumentWallFirst, wallId: string) {
 	return wall;
 }
 
+type ChainOptions = Omit<Parameters<typeof planWallChain>[0], 'capture'>;
+function planWallChainCaptured(options: ChainOptions) {
+	return planWallChain({ ...options, capture: freshCapture() });
+}
+type SegmentOptions = Omit<Parameters<typeof planWallSegment>[0], 'capture'>;
+function planWallSegmentCaptured(options: SegmentOptions) {
+	return planWallSegment({ ...options, capture: freshCapture() });
+}
+
 describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-derived height', () => {
 	it('gives every chain Wall the named authoring default, with no Floor involvement', () => {
 		const baseline: LayoutDocumentWallFirst = {
@@ -172,7 +182,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			rooms: [],
 			openings: []
 		};
-		const plan = planWallChain({
+		const plan = planWallChainCaptured({
 			baseline,
 			points: [
 				[0, 0],
@@ -181,7 +191,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 				[0, 3]
 			],
 			close: true,
-			role: 'boundary'
+			levelId: baseline.floor.id,
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls.length).toBeGreaterThan(0);
@@ -200,11 +210,11 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			rooms: [],
 			openings: []
 		};
-		const plan = planWallSegment({
+		const plan = planWallSegmentCaptured({
 			baseline,
 			start: [0, 0],
 			end: [3, 0],
-			role: 'partition'
+			levelId: baseline.floor.id,
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls.map((wall) => wall.height)).toEqual([
@@ -220,12 +230,12 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			rooms: [],
 			openings: []
 		};
-		const plan = planWallSegment({
+		const plan = planWallSegmentCaptured({
 			baseline,
 			start: [0, 0],
 			end: [3, 0],
-			role: 'partition',
-			height: 1.2
+			height: 1.2,
+			levelId: baseline.floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.document.walls[0]!.height).toBe(1.2);
@@ -239,7 +249,7 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 			rooms: [],
 			openings: []
 		};
-		const plan = planWallSegment({ baseline, start: [0, 0], end: [3, 0], role: 'partition' });
+		const plan = planWallSegmentCaptured({ baseline, start: [0, 0], end: [3, 0], levelId: baseline.floor.id });
 		expect(plan.kind).toBe('success');
 	});
 
@@ -255,7 +265,12 @@ describe('P23.6H/P23.6I creation rule — a new Wall is never born at a Floor-de
 
 	it('preserves the source height through an isolated Room duplicate', () => {
 		const document = rectangleDocument({ wallHeight: 1.5 });
-		const plan = planDuplicateIsolatedRoom(document, { roomId: 'room-a', delta: [10, 0] });
+		const plan = planDuplicateIsolatedRoom(
+			document,
+			{ roomId: 'room-a', delta: [10, 0] },
+			freshCapture(),
+			document.floor.id
+		);
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(plan.createdWallIds.length).toBeGreaterThan(0);
 		for (const wallId of plan.createdWallIds) {
@@ -330,6 +345,28 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 		expect('height' in layoutCore.createEmptyWallFirstLayoutDocument().floor).toBe(false);
 	});
 
+	it('rejects a Wall that still carries the retired authored role', () => {
+		// Format 6 removed the field, so a payload carrying it is `unknown_key`, not
+		// a tolerated extra: no reader can keep a dual vocabulary alive. Pinned here
+		// because re-adding `role` to the codec's Wall keys would otherwise pass
+		// every test silently (a format-5 payload still refuses on its version).
+		const canonical = rectangleDocument();
+		const withRole = {
+			...canonical,
+			walls: canonical.walls.map((wall) => ({ ...wall, role: 'boundary' }))
+		};
+		const result = validateWallFirstLayoutDocument(withRole);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		expect(
+			result.issues.some(
+				(issue) => issue.code === 'unknown_key' && String(issue.path).endsWith('.role')
+			)
+		).toBe(true);
+		// And the canonical writer never re-emits one.
+		expect(serializeWallFirstLayoutDocument(rectangleDocument())).not.toContain('"role"');
+	});
+
 	it('exposes no historical v4 decoder, normalizer or version constant', () => {
 		// A regression guard for the policy itself: re-adding a `4` path means
 		// re-adding these names and failing here first.
@@ -348,7 +385,7 @@ describe('P23.6I pre-baseline policy — the wall-first `4` generation is not mi
 			'unsupported_format_version'
 		);
 		expect(() => serializeWallFirstLayoutDocument(historical)).toThrowError(
-			/Canonical Layout Save requires formatVersion 5/
+			/Canonical Layout Save requires formatVersion 6/
 		);
 		// A canonical document round-trips through the same writer unchanged.
 		expect(serializeWallFirstLayoutDocument(rectangleDocument())).toContain(
@@ -419,7 +456,7 @@ describe('P23.6I standalone (non-room-bounding) Walls have the same unbounded ru
 		return {
 			...document,
 			rooms: [],
-			walls: [{ ...document.walls[0]!, role: 'partition', height: wallHeight }]
+			walls: [{ ...document.walls[0]!, height: wallHeight }]
 		};
 	}
 
@@ -656,7 +693,12 @@ describe('P23.6H topology purity — height is not topology', () => {
 		expect(plan.document.openings).toEqual(document.openings);
 		expect(plan.document.junctions).toEqual(document.junctions);
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-a']);
-		expect(plan.document.walls.map((wall) => wall.role)).toEqual(['boundary', 'boundary', 'boundary', 'boundary']);
+		expect(plan.document.walls.map((wall) => deriveLayoutWallRole(plan.document, wall.id))).toEqual([
+			'bounding',
+			'bounding',
+			'bounding',
+			'bounding'
+		]);
 		expect(plan.document.walls.map((wall) => wall.id)).toEqual(['w1', 'w2', 'w3', 'w4']);
 		// Exactly one Wall height changed; every other Wall keeps its value.
 		expect(plan.document.walls.map((wall) => wall.height)).toEqual([1.2, 2.8, 1.2, 1.2]);

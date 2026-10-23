@@ -40,6 +40,7 @@ import {
 	type StageFacade
 } from '$lib/authoring/stage/stage-facade';
 import { STARTER_ENCLOSURE_POINTS } from '$lib/authoring/stage/starter-gallery';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-stage-facade';
 const RECT = { left: 0, top: 0, width: 1280, height: 720, devicePixelRatio: 1 };
@@ -50,7 +51,8 @@ async function enclosureProject(points: readonly LayoutVec2[], id: string = PROJ
 		baseline: createEmptyWallFirstLayoutDocument(),
 		points: points.map((point) => [point[0], point[1]] as LayoutVec2),
 		close: true,
-		role: 'boundary'
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`the enclosure no longer plans: ${plan.rejection.code}`);
 	return createUnitProject({ id, name: 'Stage facade project', layout: plan.document });
@@ -61,14 +63,19 @@ async function enclosureWithDoor(): Promise<ProjectEnvelope> {
 	const base = await enclosureProject(STARTER_ENCLOSURE_POINTS);
 	const baseLayout = base.units.layout.data;
 	const wallId = baseLayout.walls[0]!.id;
-	const door = planCreateWallFirstOpening(baseLayout, {
-		wallId,
-		kind: 'door',
-		offset: 0.5,
-		width: 1,
-		height: 2.1,
-		sillHeight: 0
-	});
+	const door = planCreateWallFirstOpening(
+		baseLayout,
+		{
+			wallId,
+			kind: 'door',
+			offset: 0.5,
+			width: 1,
+			height: 2.1,
+			sillHeight: 0
+		},
+		freshCapture(),
+		baseLayout.floor.id
+	);
 	if (door.kind !== 'success') throw new Error(`the door fixture no longer plans: ${door.rejection.code}`);
 	return createUnitProject({ id: base.id, name: base.name, layout: door.document });
 }

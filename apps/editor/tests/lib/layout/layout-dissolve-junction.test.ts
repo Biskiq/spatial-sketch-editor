@@ -20,7 +20,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-	planDissolveJunction,
+	planDissolveJunction as planDissolveJunctionWithCapture,
 	planWallSplit,
 	validateWallFirstLayoutDocument,
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
@@ -30,6 +30,11 @@ import {
 	type LayoutWall,
 	type NodingIdAllocator
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/** One captured dissolve operation: every call is a new edit with a new nonce. */
+const dissolve = (document: LayoutDocumentWallFirst, junctionId: string): DissolvePlan =>
+	planDissolveJunctionWithCapture(document, junctionId, freshCapture(), document.floor.id);
 
 const allocator: NodingIdAllocator = {
 	nextWallId: (_document, seed) => `${seed}-frag`,
@@ -40,7 +45,6 @@ type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
 	thickness?: number;
 	height?: number;
 	name?: string;
@@ -62,7 +66,6 @@ function buildDocument(options: {
 				id: wall.id,
 				startJunctionId: wall.start,
 				endJunctionId: wall.end,
-				role: wall.role ?? 'boundary',
 				thickness: wall.thickness ?? 0.2,
 				height: wall.height ?? 3,
 				centerline: { kind: 'line' },
@@ -136,7 +139,7 @@ describe('dissolve preconditions', () => {
 	it('rejects an unknown junction', () => {
 		const document = splitRectDocument();
 		const before = JSON.stringify(document);
-		const rejection = rejectionOf(planDissolveJunction(document, 'nope'));
+		const rejection = rejectionOf(dissolve(document, 'nope'));
 		expect(rejection.code).toBe('unknown_junction');
 		expect(JSON.stringify(document)).toBe(before);
 	});
@@ -155,21 +158,21 @@ describe('dissolve preconditions', () => {
 			walls: [
 				{ id: 'w1a', start: 'A', end: 'M' },
 				{ id: 'w1b', start: 'M', end: 'B' },
-				{ id: 'stem', start: 'M', end: 'P', role: 'partition' },
-				{ id: 'stub', start: 'Q', end: 'R', role: 'partition' }
+				{ id: 'stem', start: 'M', end: 'P' },
+				{ id: 'stub', start: 'Q', end: 'R' }
 			]
 		});
 		// M has three incident walls.
-		const three = rejectionOf(planDissolveJunction(document, 'M'));
+		const three = rejectionOf(dissolve(document, 'M'));
 		expect(three.code).toBe('junction_degree_not_two');
 		// R has one incident wall.
-		const one = rejectionOf(planDissolveJunction(document, 'R'));
+		const one = rejectionOf(dissolve(document, 'R'));
 		expect(one.code).toBe('junction_degree_not_two');
 		// P has one incident wall (partition stem endpoint).
-		const stemEnd = rejectionOf(planDissolveJunction(document, 'P'));
+		const stemEnd = rejectionOf(dissolve(document, 'P'));
 		expect(stemEnd.code).toBe('junction_degree_not_two');
 		// An orphan junction has none.
-		const orphan = rejectionOf(planDissolveJunction(document, 'orphan'));
+		const orphan = rejectionOf(dissolve(document, 'orphan'));
 		expect(orphan.code).toBe('junction_degree_not_two');
 	});
 
@@ -184,7 +187,7 @@ describe('dissolve preconditions', () => {
 				{ id: 'w', start: 'E', end: 'J' }
 			]
 		});
-		const rejection = rejectionOf(planDissolveJunction(document, 'J'));
+		const rejection = rejectionOf(dissolve(document, 'J'));
 		expect(rejection.code).toBe('degenerate_wall_pair');
 	});
 
@@ -199,7 +202,7 @@ describe('dissolve preconditions', () => {
 				{ id: 'w2', start: 'A', end: 'J' }
 			]
 		});
-		const rejection = rejectionOf(planDissolveJunction(document, 'J'));
+		const rejection = rejectionOf(dissolve(document, 'J'));
 		expect(rejection.code).toBe('degenerate_wall_pair');
 	});
 
@@ -216,19 +219,20 @@ describe('dissolve preconditions', () => {
 				{ id: 'wAB', start: 'A', end: 'B' }
 			]
 		});
-		const rejection = rejectionOf(planDissolveJunction(document, 'M'));
+		const rejection = rejectionOf(dissolve(document, 'M'));
 		expect(rejection.code).toBe('duplicate_joined_wall');
 	});
 
+	// Format 6 has no authored role, so role no longer has a mismatch case: the
+	// joined Wall's role is derived from the Rooms the merged Wall ends up bounding.
 	it.each([
-		['role', { role: 'partition' as const }],
 		['thickness', { thickness: 0.3 }],
 		['height', { height: 2.5 }]
 	])('rejects %s mismatch', (_label, override) => {
 		const document = splitRectDocument();
 		const w1b = document.walls.find((wall) => wall.id === 'w1b')!;
 		Object.assign(w1b, override);
-		const rejection = rejectionOf(planDissolveJunction(document, 'M'));
+		const rejection = rejectionOf(dissolve(document, 'M'));
 		expect(rejection.code).toBe('incompatible_wall_pair');
 	});
 
@@ -236,11 +240,11 @@ describe('dissolve preconditions', () => {
 		const conflict = splitRectDocument();
 		conflict.walls.find((wall) => wall.id === 'w1a')!.name = 'South A';
 		conflict.walls.find((wall) => wall.id === 'w1b')!.name = 'South B';
-		expect(rejectionOf(planDissolveJunction(conflict, 'M')).code).toBe('incompatible_wall_pair');
+		expect(rejectionOf(dissolve(conflict, 'M')).code).toBe('incompatible_wall_pair');
 
 		const single = splitRectDocument();
 		single.walls.find((wall) => wall.id === 'w1b')!.name = 'South';
-		const plan = planDissolveJunction(single, 'M');
+		const plan = dissolve(single, 'M');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.document.walls.find((wall) => wall.id === 'w1a')!.name).toBe('South');
@@ -249,7 +253,7 @@ describe('dissolve preconditions', () => {
 	it('rejects an angled straight pair', () => {
 		const document = splitRectDocument();
 		// Corner B: w1b ends at B, w2 starts at B — through-configuration, 90°.
-		const rejection = rejectionOf(planDissolveJunction(document, 'B'));
+		const rejection = rejectionOf(dissolve(document, 'B'));
 		expect(rejection.code).toBe('non_collinear_straight_pair');
 	});
 
@@ -266,7 +270,7 @@ describe('dissolve preconditions', () => {
 				{ id: 'w2', start: 'J', end: 'B' }
 			]
 		});
-		const rejection = rejectionOf(planDissolveJunction(document, 'J'));
+		const rejection = rejectionOf(dissolve(document, 'J'));
 		expect(rejection.code).toBe('non_collinear_straight_pair');
 	});
 });
@@ -274,7 +278,7 @@ describe('dissolve preconditions', () => {
 describe('straight dissolve', () => {
 	it('dissolves a through-configuration pair into the surviving wall', () => {
 		const document = splitRectDocument();
-		const plan = planDissolveJunction(document, 'M');
+		const plan = dissolve(document, 'M');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('w1a');
@@ -331,7 +335,7 @@ describe('straight dissolve', () => {
 				}
 			]
 		});
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('w1');
@@ -369,7 +373,7 @@ describe('straight dissolve', () => {
 				}
 			]
 		});
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('w1');
@@ -395,7 +399,7 @@ describe('straight dissolve', () => {
 			sillHeight: 1,
 			profile: 'rectangular'
 		});
-		const plan = planDissolveJunction(document, 'M');
+		const plan = dissolve(document, 'M');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		const win = plan.document.openings.find((opening) => opening.id === 'win')!;
@@ -466,7 +470,7 @@ describe('straight dissolve', () => {
 				}
 			]
 		});
-		const plan = planDissolveJunction(document, 'w');
+		const plan = dissolve(document, 'w');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('wall-w1');
@@ -554,7 +558,7 @@ describe('straight dissolve', () => {
 				}
 			]
 		});
-		const plan = planDissolveJunction(document, 's');
+		const plan = dissolve(document, 's');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('wall-ea');
@@ -585,7 +589,7 @@ describe('straight dissolve', () => {
 		expect(portal.connectsRoomIds).toEqual(['left', 'right']);
 	});
 
-	it('joins roomless partition walls with no rooms', () => {
+	it('joins roomless free-standing walls with no rooms', () => {
 		const document = buildDocument({
 			junctions: [
 				['A', 0, 0],
@@ -593,11 +597,11 @@ describe('straight dissolve', () => {
 				['B', 4, 0]
 			],
 			walls: [
-				{ id: 'p1', start: 'A', end: 'J', role: 'partition' },
-				{ id: 'p2', start: 'J', end: 'B', role: 'partition' }
+				{ id: 'p1', start: 'A', end: 'J' },
+				{ id: 'p2', start: 'J', end: 'B' }
 			]
 		});
-		const plan = planDissolveJunction(document, 'J');
+		const plan = dissolve(document, 'J');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('p1');
@@ -657,7 +661,7 @@ describe('dissolve round trips', () => {
 		expect(split.kind).toBe('success');
 		if (split.kind !== 'success') throw new Error('unreachable');
 
-		const plan = planDissolveJunction(split.document, split.junctionId);
+		const plan = dissolve(split.document, split.junctionId);
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		expect(plan.survivorWallId).toBe('w1');
@@ -681,7 +685,7 @@ describe('dissolve round trips', () => {
 		angled.walls.find((wall) => wall.id === 'w1b')!.thickness = 0.5;
 		for (const [document, junctionId] of cases) {
 			const before = JSON.stringify(document);
-			const plan = planDissolveJunction(document, junctionId);
+			const plan = dissolve(document, junctionId);
 			expect(plan.kind).toBe('rejected');
 			expect(JSON.stringify(document)).toBe(before);
 		}
@@ -702,7 +706,7 @@ describe('dissolve room tripwire and codec round trip', () => {
 			ceilingThickness: 0.1
 		});
 		const before = JSON.stringify(document);
-		const plan = planDissolveJunction(document, 'M');
+		const plan = dissolve(document, 'M');
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind !== 'rejected') throw new Error('unreachable');
 		expect(plan.rejection.code).toBe('room_identity_lost');
@@ -710,7 +714,7 @@ describe('dissolve room tripwire and codec round trip', () => {
 	});
 
 	it('a dissolved document round-trips through the canonical codec', () => {
-		const plan = planDissolveJunction(splitRectDocument(), 'M');
+		const plan = dissolve(splitRectDocument(), 'M');
 		expect(plan.kind).toBe('success');
 		if (plan.kind !== 'success') throw new Error('unreachable');
 		const revived = validateWallFirstLayoutDocument(

@@ -27,23 +27,54 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	LAYOUT_WALL_FIRST_FORMAT_VERSION,
-	planDuplicateIsolatedRoom,
-	planWallChain,
-	planWallSegment,
+	planDuplicateIsolatedRoom as planDuplicateIsolatedRoomRaw,
+	planWallChain as planWallChainRaw,
+	planWallSegment as planWallSegmentRaw,
 	resolveWallBirthHeight,
 	uniqueIncidentWallHeight,
 	WALL_AUTHORING_DEFAULT_HEIGHT,
 	type LayoutDocumentWallFirst,
-	type LayoutVec2
+	type LayoutVec2,
+	type WallChainPlanOptions
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/** T1.P02.S01 §1 — every simulated operation casts its own captured nonce. */
+function planWallSegment(
+	options: Omit<Parameters<typeof planWallSegmentRaw>[0], 'capture' | 'levelId'> & { readonly levelId?: string }
+): ReturnType<typeof planWallSegmentRaw> {
+	return planWallSegmentRaw({
+		...options,
+		capture: freshCapture(),
+		levelId: options.levelId ?? options.baseline.floor.id
+	});
+}
+
+function planWallChain(
+	options: Omit<WallChainPlanOptions, 'capture' | 'levelId'> & { readonly levelId?: string }
+): ReturnType<typeof planWallChainRaw> {
+	return planWallChainRaw({
+		...options,
+		capture: freshCapture(),
+		levelId: options.levelId ?? options.baseline.floor.id
+	});
+}
+
+type RoomDuplicateArgs = Parameters<typeof planDuplicateIsolatedRoomRaw>;
+
+function planDuplicateIsolatedRoom(
+	document: RoomDuplicateArgs[0],
+	intent: RoomDuplicateArgs[1]
+): ReturnType<typeof planDuplicateIsolatedRoomRaw> {
+	return planDuplicateIsolatedRoomRaw(document, intent, freshCapture(), document.floor.id);
+}
 
 type WallSpec = { id: string; start: string; end: string; height: number };
 
 /** Minimal wall-first document: named junction points plus explicit Wall heights. */
 function documentWith(
 	points: Record<string, LayoutVec2>,
-	walls: WallSpec[],
-	role: 'boundary' | 'partition' = 'partition'
+	walls: WallSpec[]
 ): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
@@ -54,7 +85,6 @@ function documentWith(
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role,
 			thickness: 0.2,
 			height: wall.height,
 			centerline: { kind: 'line' } as const,
@@ -74,8 +104,7 @@ function roomDocument(wallHeights: [number, number, number, number]): LayoutDocu
 			{ id: 'w2', start: 'j2', end: 'j3', height: wallHeights[1] },
 			{ id: 'w3', start: 'j3', end: 'j4', height: wallHeights[2] },
 			{ id: 'w4', start: 'j4', end: 'j1', height: wallHeights[3] }
-		],
-		'boundary'
+		]
 	);
 	return {
 		...document,
@@ -164,7 +193,7 @@ describe('P23.6I Wall birth height — the segment-first planner applies the rul
 		const baseline = documentWith({ a: [0, 0], b: [4, 0] }, [
 			{ id: 'w1', start: 'a', end: 'b', height: 4 }
 		]);
-		const plan = planWallSegment({ baseline, start: [0, 0], end: [0, 3], role: 'partition' });
+		const plan = planWallSegment({ baseline, start: [0, 0], end: [0, 3] });
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		expect(authoredHeight(plan.document, plan.authoredWallIds)).toBe(4);
 	});
@@ -178,7 +207,6 @@ describe('P23.6I Wall birth height — the segment-first planner applies the rul
 			baseline: agreeing,
 			start: [0, 0],
 			end: [0, -3],
-			role: 'partition'
 		});
 		if (inherited.kind !== 'success') throw new Error('expected success');
 		expect(authoredHeight(inherited.document, inherited.authoredWallIds)).toBe(4);
@@ -191,7 +219,6 @@ describe('P23.6I Wall birth height — the segment-first planner applies the rul
 			baseline: mixed,
 			start: [0, 0],
 			end: [0, -3],
-			role: 'partition'
 		});
 		if (defaulted.kind !== 'success') throw new Error('expected success');
 		expect(authoredHeight(defaulted.document, defaulted.authoredWallIds)).toBe(
@@ -210,7 +237,6 @@ describe('P23.6I Wall birth height — the segment-first planner applies the rul
 			baseline,
 			start: [0, 0.0001],
 			end: [0, 3],
-			role: 'partition'
 		});
 		if (nearMiss.kind !== 'success') throw new Error('expected success');
 		expect(authoredHeight(nearMiss.document, nearMiss.authoredWallIds)).toBe(
@@ -226,7 +252,6 @@ describe('P23.6I Wall birth height — the segment-first planner applies the rul
 			baseline,
 			start: [0, 0],
 			end: [0, 3],
-			role: 'partition',
 			height: 1.2
 		});
 		if (plan.kind !== 'success') throw new Error('expected success');
@@ -252,7 +277,6 @@ describe('P23.6I Wall birth height — bounded compound gestures stay uniform', 
 				[4, 0]
 			],
 			close: true,
-			role: 'partition'
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		const authored = plan.document.walls.filter((wall) => plan.authoredWallIds.includes(wall.id));
@@ -273,7 +297,6 @@ describe('P23.6I Wall birth height — bounded compound gestures stay uniform', 
 				[0, 3]
 			],
 			close: true,
-			role: 'partition',
 			height: 1.2
 		});
 		if (plan.kind !== 'success') throw new Error('expected success');
@@ -288,7 +311,6 @@ describe('P23.6I Wall birth height — existing Walls keep their authored height
 			baseline,
 			start: [0, 0],
 			end: [-3, 0],
-			role: 'partition'
 		});
 		if (plan.kind !== 'success') throw new Error('expected success');
 		const heights = new Map(plan.document.walls.map((wall) => [wall.id, wall.height]));

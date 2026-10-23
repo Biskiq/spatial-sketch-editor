@@ -11,14 +11,22 @@
  * semantics it proved are recorded as a T3 F.4 acceptance obligation.
  */
 import { describe, expect, it } from 'vitest';
-import { planDissolveJunction, validateWallFirstLayoutDocument } from '@portfolio/layout-core';
+import {
+	planDissolveJunction as planDissolveJunctionWithCapture,
+	validateWallFirstLayoutDocument
+} from '@portfolio/layout-core';
 import type { LayoutDocumentWallFirst, LayoutVec2 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/** One captured dissolve operation: every call is a new edit with a new nonce. */
+const dissolve = (document: LayoutDocumentWallFirst, junctionId: string) =>
+	planDissolveJunctionWithCapture(document, junctionId, freshCapture(), document.floor.id);
 
 /** 4×3 Room with a pre-split south edge (M) and a door on the survivor side. */
 function seed(): LayoutDocumentWallFirst {
 	return {
 		units: 'meters',
-		formatVersion: 5,
+		formatVersion: 6,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] as LayoutVec2 },
@@ -28,11 +36,11 @@ function seed(): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] as LayoutVec2 }
 		],
 		walls: [
-			{ id: 'w1a', startJunctionId: 'A', endJunctionId: 'M', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w1b', startJunctionId: 'M', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
+			{ id: 'w1a', startJunctionId: 'A', endJunctionId: 'M', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w1b', startJunctionId: 'M', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: { kind: 'line' } },
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: { kind: 'line' } }
 		],
 		rooms: [
 			{
@@ -62,7 +70,7 @@ describe('planDissolveJunction — kernel output', () => {
 	});
 
 	it('retires the degree-2 Junction, joins the survivor Wall and rebases the Opening', () => {
-		const plan = planDissolveJunction(seed(), 'M');
+		const plan = dissolve(seed(), 'M');
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		const after = plan.document;
 
@@ -74,28 +82,28 @@ describe('planDissolveJunction — kernel output', () => {
 	});
 
 	it('rejects a repeated dissolve of the retired Junction', () => {
-		const plan = planDissolveJunction(seed(), 'M');
+		const plan = dissolve(seed(), 'M');
 		if (plan.kind !== 'success') throw new Error('expected first dissolve to succeed');
 		// The retired junction is gone from the committed document.
-		const repeated = planDissolveJunction(plan.document, 'M');
+		const repeated = dissolve(plan.document, 'M');
 		expect(repeated.kind).toBe('rejected');
 	});
 
 	it('rejects an angled pair at corner B and leaves the input document untouched', () => {
 		const document = seed();
 		const before = JSON.stringify(document);
-		const plan = planDissolveJunction(document, 'B');
+		const plan = dissolve(document, 'B');
 		expect(plan.kind).toBe('rejected');
 		expect(JSON.stringify(document)).toBe(before);
 	});
 
 	it('surfaces the planner rejection message per code', () => {
-		const angled = planDissolveJunction(seed(), 'B');
+		const angled = dissolve(seed(), 'B');
 		expect(angled.kind).toBe('rejected');
 		if (angled.kind !== 'rejected') throw new Error('unreachable');
 		expect(angled.rejection.message).toContain('angle');
 
-		const unknown = planDissolveJunction(seed(), 'missing');
+		const unknown = dissolve(seed(), 'missing');
 		expect(unknown.kind).toBe('rejected');
 		if (unknown.kind !== 'rejected') throw new Error('unreachable');
 		expect(unknown.rejection.message).toContain('missing');

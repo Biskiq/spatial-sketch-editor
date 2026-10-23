@@ -58,7 +58,8 @@ Recheck the integrated F2 open, F3 drawing, F4 commit, F8 Undo/Redo and F13 leak
 first-load delta against the [performance contract](../../../../reference/components/performance.md),
 on the designated reference machine (MacBook Air M2, 16 GB; batch E, E6 amendment). Each earlier slice
 supplies its own evidence before its acceptance; S04 verifies integration and cannot defer or erase an
-earlier hard-budget miss.
+earlier hard-budget miss. One owner-ruled exception (2026-10-22): `T1.P02.S01`'s F2 open timings at S
+and M are first recorded here, against the H0 baseline.
 
 ## Readiness declaration
 

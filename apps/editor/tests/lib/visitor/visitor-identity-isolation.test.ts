@@ -32,7 +32,7 @@ const LINE = { kind: 'line' } as const;
 function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 	const base: LayoutDocumentWallFirst = {
 		units: 'meters',
-		formatVersion: 5,
+		formatVersion: 6,
 		floor: { id: 'floor', name: 'Floor', elevation: 0 },
 		junctions: [
 			{ id: 'A', point: [0, 0] },
@@ -41,10 +41,10 @@ function squareDocument(withMetadata: boolean): LayoutDocumentWallFirst {
 			{ id: 'D', point: [0, 3] }
 		],
 		walls: [
-			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'w1', startJunctionId: 'A', endJunctionId: 'B', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'w2', startJunctionId: 'B', endJunctionId: 'C', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'w3', startJunctionId: 'C', endJunctionId: 'D', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'w4', startJunctionId: 'D', endJunctionId: 'A', thickness: 0.2, height: 3, centerline: LINE }
 		],
 		rooms: [
 			{

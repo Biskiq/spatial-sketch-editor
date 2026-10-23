@@ -55,7 +55,6 @@ function straightWallDocument(): LayoutDocumentWallFirst {
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' }

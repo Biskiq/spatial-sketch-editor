@@ -15,6 +15,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+	deriveLayoutWallRole,
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
 	deriveChainSpans,
@@ -90,19 +91,18 @@ function documentOf(
 			id: 'wall-a',
 			startJunctionId: 'j-a',
 			endJunctionId: 'j-b',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline
 		},
-		{ id: 'wall-x', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'partition', thickness: 0.2, height: 3, centerline: LINE }
+		{ id: 'wall-x', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: LINE }
 	];
 	if (options.withRoom) {
 		document.walls = [
 			document.walls[0]!,
-			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE },
-			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', role: 'boundary', thickness: 0.2, height: 3, centerline: LINE }
+			{ id: 'wall-b', startJunctionId: 'j-b', endJunctionId: 'j-c', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'wall-c', startJunctionId: 'j-c', endJunctionId: 'j-d', thickness: 0.2, height: 3, centerline: LINE },
+			{ id: 'wall-d', startJunctionId: 'j-d', endJunctionId: 'j-a', thickness: 0.2, height: 3, centerline: LINE }
 		];
 		document.rooms = [
 			{
@@ -568,7 +568,8 @@ describe('P23.11 slice 5 — exact curved-Wall split', () => {
 		expect(first.endJunctionId).toBe(plan.junctionId);
 		expect(second.startJunctionId).toBe(plan.junctionId);
 		expect(second.endJunctionId).toBe('j-b');
-		expect(second.role).toBe(first.role);
+		/* Format 6: role is derived, so the split fragment keeps the same derived role. */
+		expect(deriveLayoutWallRole(next, second.id)).toBe(deriveLayoutWallRole(document, first.id));
 		expect(second.thickness).toBe(first.thickness);
 		expect(second.height).toBe(first.height);
 		expect(first.centerline.kind).toBe('cubic-chain');
@@ -732,7 +733,6 @@ describe('P23.11 slice 5 — exact curved-Wall split', () => {
 			id: 'wall-e',
 			startJunctionId: 'j-d',
 			endJunctionId: 'j-c',
-			role: 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: LINE

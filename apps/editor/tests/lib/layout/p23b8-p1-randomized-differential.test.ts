@@ -5,22 +5,23 @@
  * `canonicalBoundaryCycleKey` ⇒ unchanged geometry". The key is Wall ids +
  * directions alone, so it holds today only because no caller moves an existing
  * Junction or reshapes an existing curve. This differential runs all three
- * callers of the shared function (wall-chain, role change, dissolve) under a
- * deterministic seed and asserts the DEV-only invariant: flag a surviving key
- * whose Junction moved or whose curve changed shape. It is an invariant
- * assertion, not a production mechanism.
+ * callers of the shared function (wall-chain, Wall deletion, junction dissolve)
+ * under a deterministic seed and asserts the DEV-only invariant: flag a
+ * surviving key whose Junction moved or whose curve changed shape. It is an
+ * invariant assertion, not a production mechanism.
  */
 import { describe, expect, it } from 'vitest';
 
 import {
 	canonicalBoundaryCycleKey,
 	createEmptyWallFirstLayoutDocument,
+	planDeleteWall,
 	planDissolveJunction,
 	planWallChain,
-	planWallRoleChange,
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const SEED = 0x23b80001;
 const ITERATIONS = 96;
@@ -57,7 +58,8 @@ function rectBaseline(): LayoutDocumentWallFirst {
 			[0, 4]
 		] as LayoutVec2[],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture(),
+		levelId: baseline.floor.id
 	});
 	if (plan.kind !== 'success') throw new Error(`rect baseline rejected: ${plan.rejection.code}`);
 	return plan.document;
@@ -159,7 +161,8 @@ describe('p23b.8 S1 — P1 seeded differential over the three M-3 callers', () =
 						[origin[0], origin[1] + size]
 					],
 					close: true,
-					role: 'boundary'
+					capture: freshCapture(),
+					levelId: document.floor.id
 				});
 				if (plan.kind === 'success') {
 					accepted[0]! += 1;
@@ -174,11 +177,10 @@ describe('p23b.8 S1 — P1 seeded differential over the three M-3 callers', () =
 					rejected[1]! += 1;
 					return;
 				}
-				const plan = planWallRoleChange(
-					document,
-					wall.id,
-					wall.role === 'boundary' ? 'partition' : 'boundary'
-				);
+				// Format 6 — the role-change caller is gone; the same shared function is
+				// reached by removing the Wall instead (the geometry the old partition
+				// flip expressed).
+				const plan = planDeleteWall(document, wall.id, freshCapture(), document.floor.id);
 				if (plan.kind === 'success') {
 					accepted[1]! += 1;
 					expect(flagSurvivingKeyWithChangedGeometry(document, plan.document)).toEqual([]);
@@ -197,7 +199,7 @@ describe('p23b.8 S1 — P1 seeded differential over the three M-3 callers', () =
 					rejected[2]! += 1;
 					return;
 				}
-				const plan = planDissolveJunction(document, degreeTwo.id);
+				const plan = planDissolveJunction(document, degreeTwo.id, freshCapture(), document.floor.id);
 				if (plan.kind === 'success') {
 					accepted[2]! += 1;
 					expect(flagSurvivingKeyWithChangedGeometry(document, plan.document)).toEqual([]);

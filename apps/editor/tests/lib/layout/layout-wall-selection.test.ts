@@ -20,10 +20,12 @@ import { describe, expect, it } from 'vitest';
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
+	deriveLayoutWallRole,
 	planWallChain,
 	type LayoutDocumentWallFirst
 } from '@portfolio/layout-core';
 import { resolvePlanHit } from '$lib/authoring/layout/plan-hit';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 /** Empty wall-first document with a real floor record (P23.9 precedent). */
 function baseDocument(): LayoutDocumentWallFirst {
@@ -38,29 +40,30 @@ const p = (x: number, z: number): [number, number] => [x, z];
 
 function commitChain(
 	baseline: LayoutDocumentWallFirst,
-	points: [number, number][],
-	role: 'boundary' | 'partition'
+	points: [number, number][]
 ): LayoutDocumentWallFirst {
-	const plan = planWallChain({ baseline, points, close: false, role });
+	const plan = planWallChain({ baseline, points, close: false, capture: freshCapture(), levelId: baseline.floor.id });
 	if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 	return plan.document;
 }
 
-/** One boundary Wall + one partition Wall, no Rooms. */
+/** Two open Walls that close no ring, so both are free-standing (no Rooms). */
 function twoWallDocument(): LayoutDocumentWallFirst {
-	const first = commitChain(baseDocument(), [p(0, 0), p(4, 0)], 'boundary');
-	return commitChain(first, [p(0, 2), p(4, 2)], 'partition');
+	const first = commitChain(baseDocument(), [p(0, 0), p(4, 0)]);
+	return commitChain(first, [p(0, 2), p(4, 2)]);
 }
 
 describe('P23.6 canonical Wall selection — compiler contract', () => {
-	it('emits both Walls with roles and no Rooms', () => {
+	it('emits both Walls with their derived (free-standing) role and no Rooms', () => {
 		const document = twoWallDocument();
 		expect(document.rooms).toHaveLength(0);
+		expect(document.walls.map((wall) => deriveLayoutWallRole(document, wall.id))).toEqual([
+			'free-standing',
+			'free-standing'
+		]);
 		const { geometry } = compileWallFirstLayoutGeometry(document);
 		expect(geometry.walls).toHaveLength(2);
-		expect(new Set(geometry.walls.map((wall) => wall.role))).toEqual(
-			new Set(['boundary', 'partition'])
-		);
+		expect(new Set(geometry.walls.map((wall) => wall.role))).toEqual(new Set(['free-standing']));
 	});
 });
 
@@ -77,10 +80,12 @@ describe('P23.6 canonical Wall hit resolution', () => {
 	});
 });
 
-describe('P23.6 single-Wall chain role mapping', () => {
-	it('keeps partition-chain a valid tool with its role mapping', () => {
-		const document = commitChain(baseDocument(), [p(0, 0), p(2, 0)], 'partition');
-		expect(document.walls.every((wall) => wall.role === 'partition')).toBe(true);
+describe('P23.6 single-Wall chain role derivation', () => {
+	it('derives free-standing for a single Wall that closes no ring', () => {
+		const document = commitChain(baseDocument(), [p(0, 0), p(2, 0)]);
+		expect(
+			document.walls.every((wall) => deriveLayoutWallRole(document, wall.id) === 'free-standing')
+		).toBe(true);
 		expect(document.rooms).toHaveLength(0);
 	});
 });
@@ -90,8 +95,9 @@ describe('P23.6 wall-first Room selection', () => {
 		const plan = planWallChain({
 			baseline: baseDocument(),
 			points: [p(0, 0), p(4, 0), p(4, 3), p(0, 3)],
-			role: 'boundary',
-			close: true
+			close: true,
+			capture: freshCapture(),
+			levelId: baseDocument().floor.id
 		});
 		if (plan.kind !== 'success') throw new Error(`expected success: ${JSON.stringify(plan)}`);
 		return plan.document;

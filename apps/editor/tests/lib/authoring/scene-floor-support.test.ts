@@ -15,6 +15,7 @@ import { createEmptyWallFirstLayoutDocument, planWallChain } from '@portfolio/la
 import { floorSupport, supportOccluders } from '$lib/authoring/adapters/scene/support-occlusion';
 import { admitSource } from '$lib/authoring/stage/source-admission';
 import { createUnitProject } from './__fixtures__/unit-envelope-fixtures';
+import { freshCapture } from '../layout/__fixtures__/layout-id-capture';
 
 const PROJECT_ID = 'project-floor-support';
 
@@ -28,7 +29,8 @@ function project(entities: readonly SceneEntity[]): Promise<ProjectEnvelope> {
 			[0, 6]
 		],
 		close: true,
-		role: 'boundary'
+		capture: freshCapture(),
+		levelId: createEmptyWallFirstLayoutDocument().floor.id
 	});
 	if (planned.kind !== 'success') throw new Error('the wall fixture was refused');
 	return createUnitProject({

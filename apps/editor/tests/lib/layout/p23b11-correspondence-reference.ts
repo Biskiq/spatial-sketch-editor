@@ -18,11 +18,65 @@
  * 2026-09-27, node v26.7.0, darwin arm64, by running a temporary generator that
  * executed `frozenCaseRows()` from `p23b11-correspondence-cases.ts` over the
  * UNOPTIMIZED code and serialized the result in this file's style; the generator
- * was removed once the freeze was written, and nothing regenerates this module.
+ * was removed once the freeze was written, and nothing regenerates this module
+ * (the cutover's one-time re-emission recorded below is the single exception).
  * Two consecutive generator runs produced byte-identical output before the file
  * was written, and the S2 freeze test was green on landing because it asserts
  * exactly this code. A future step that needs to move a row must change it as a
  * reviewable finding — never by re-running a generator over changed code.
+ *
+ * T1.P02.S01 §1 FINDING (2026-10-22) — CAPTURED IDENTITY, REVIEWED ROW BY ROW.
+ *
+ * Every planner now derives its ids from the operation's captured nonce, so a
+ * row whose operation mints ids carries different ones. This table is the ONE
+ * RECORDED EXCEPTION to the rule above, and it is recorded as an exception, not
+ * as a precedent: its rows were re-emitted once at the cutover (which is why they
+ * now carry trailing commas the base table did not), and every row was then
+ * compared field by field against the base revision `55683981`
+ * (`git show 55683981:` this module), not against the cutover, which would
+ * compare the table with itself. What the freeze equality below CANNOT prove is
+ * behavioural stability on the nine moved rows: it asserts today's code against
+ * this table, so for those rows the field-by-field comparison against `55683981`
+ * is the evidence, and the nonce-locality property is what keeps it checkable.
+ * The comparison is exact: 24 rows,
+ * matched by id, field by field (counts, operation verdict/code, component
+ * shape, face-key set, reconciliation kind, lineage kinds, retired/surviving
+ * Room ids, fidelity). It found exactly three kinds of difference:
+ *
+ * 1. IDENTITY, 9 rows: `b-straight-40-rect-room`, `b-all-curved-40-rect-room`,
+ *    `c-straight-12-room-division`, `c-all-curved-12-room-division`,
+ *    `f-d12-full-containment-mirror-role-change`, `f-d12-whole-boundary-replacement`,
+ *    `g-empty-closed-chain`, `g-faces-only-clear-gap`, `h-connected-room-division`.
+ *    Planner-created Wall/Junction/Room ids gained `.<case nonce>` (the case
+ *    table pins the nonce as `p23b11-<case id>`); the face keys that embed those
+ *    ids gained the same suffix and their length prefixes, and each accepted
+ *    document digest moved with them. The two 40-face rows additionally re-sort
+ *    their component array, because component order is face-key order. In all
+ *    nine: the component SET, the predecessor sets, the pair and predicate
+ *    counts, the surviving Room set and the retired Room set are unchanged.
+ * 2. ORDER, 2 rows: `lineage` in `b-straight-40-rect-room` and
+ *    `b-all-curved-40-rect-room` (`created` moved from first to last) because
+ *    lineage follows Room order, which follows id order. The lineage KIND SET,
+ *    the surviving Room ids and the retired Room set are unchanged.
+ * 3. FIDELITY, 1 row: `f-d12-full-containment-mirror-role-change` records
+ *    `fidelity: false`. This is the format-6 change, not captured identity: the
+ *    authored role is gone, so the D-12 mirror is expressed as `planDeleteWall`,
+ *    and a deletion prunes orphaned Junctions that the correspondence-only
+ *    rebuilt pass does not model. The freeze test names this row as
+ *    `DELETION_EXCEPTION` and asserts the recorded `false` THERE, so the
+ *    exemption cannot silently widen; every other planned row must still
+ *    reproduce the planner's document.
+ *
+ * The other 15 rows are identical to the base revision apart from the trailing
+ * commas the regeneration emitted (an object/array formatting difference only;
+ * no count, set, verdict or kind differs on them). The nonce locality property
+ * in `p23b11-correspondence-reference.test.ts` keeps the general claim checkable:
+ * re-running a case under a DIFFERENT nonce changes identity-bearing content
+ * only — never a count, a relation, a lineage kind, a retired set or a verdict —
+ * so "the ids moved" cannot hide a behavioural change.
+ *
+ * A future move is expected to be recorded the same way: state the category, the
+ * verification and the row names, and add the property that makes it checkable.
  *
  * NO VALUE IN THIS MODULE MAY CHANGE. A change here silently moves what both the
  * freeze test and the differential treat as the reference. If a row has to move,
@@ -468,7 +522,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(b)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'ca87c760853ac9d17ece89a6e0d8762642c5f65fd2e5022b34690da4b516d807'
+			documentSha256: '0724d371b4350f127f10cc682c2753fc3f8eed7c5e8e2bc8963c52321fd32044',
 		},
 		fidelity: true,
 		counts: {
@@ -479,98 +533,97 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 100,
 			undefinedPairs: 0,
 			insideEvaluations: 110,
-			overlapEvaluations: 110
+			overlapEvaluations: 110,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F'
+					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F',
 				],
-				predecessorRoomIds: []
+				predecessorRoomIds: [
+					'room-0',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F'
+					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-0'
-				]
+					'room-1',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F'
+					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-1'
-				]
+					'room-2',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F'
+					'5:4:face15:room-3:wall-0~F15:room-3:wall-1~F15:room-3:wall-2~F15:room-3:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-2'
-				]
+					'room-3',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-3:wall-0~F15:room-3:wall-1~F15:room-3:wall-2~F15:room-3:wall-3~F'
+					'5:4:face15:room-4:wall-0~F15:room-4:wall-1~F15:room-4:wall-2~F15:room-4:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-3'
-				]
+					'room-4',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-4:wall-0~F15:room-4:wall-1~F15:room-4:wall-2~F15:room-4:wall-3~F'
+					'5:4:face15:room-5:wall-0~F15:room-5:wall-1~F15:room-5:wall-2~F15:room-5:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-4'
-				]
+					'room-5',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-5:wall-0~F15:room-5:wall-1~F15:room-5:wall-2~F15:room-5:wall-3~F'
+					'5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-5'
-				]
+					'room-6',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F'
+					'5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-6'
-				]
+					'room-7',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F'
+					'5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-7'
-				]
+					'room-8',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F'
+					'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-8'
-				]
+					'room-9',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F'
+					'5:4:face45:wall-chain-1.p23b11-b-straight-40-rect-room~F45:wall-chain-2.p23b11-b-straight-40-rect-room~F45:wall-chain-3.p23b11-b-straight-40-rect-room~F45:wall-chain-4.p23b11-b-straight-40-rect-room~F',
 				],
-				predecessorRoomIds: [
-					'room-9'
-				]
-			}
+				predecessorRoomIds: [],
+			},
 		],
 		faceKeys: [
-			'5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F',
 			'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F',
 			'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 			'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
@@ -580,123 +633,124 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			'5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F',
 			'5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F',
 			'5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F',
-			'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F'
+			'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F',
+			'5:4:face45:wall-chain-1.p23b11-b-straight-40-rect-room~F45:wall-chain-2.p23b11-b-straight-40-rect-room~F45:wall-chain-3.p23b11-b-straight-40-rect-room~F45:wall-chain-4.p23b11-b-straight-40-rect-room~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
-					faceKey: '5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F',
-					roomId: 'room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F',
-					kind: 'created'
-				},
-				{
 					faceKey: '5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F',
 					roomId: 'room-0',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 					roomId: 'room-1',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 					roomId: 'room-2',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-3:wall-0~F15:room-3:wall-1~F15:room-3:wall-2~F15:room-3:wall-3~F',
 					roomId: 'room-3',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-4:wall-0~F15:room-4:wall-1~F15:room-4:wall-2~F15:room-4:wall-3~F',
 					roomId: 'room-4',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-5:wall-0~F15:room-5:wall-1~F15:room-5:wall-2~F15:room-5:wall-3~F',
 					roomId: 'room-5',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F',
 					roomId: 'room-6',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F',
 					roomId: 'room-7',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F',
 					roomId: 'room-8',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F',
 					roomId: 'room-9',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
+				{
+					faceKey: '5:4:face45:wall-chain-1.p23b11-b-straight-40-rect-room~F45:wall-chain-2.p23b11-b-straight-40-rect-room~F45:wall-chain-3.p23b11-b-straight-40-rect-room~F45:wall-chain-4.p23b11-b-straight-40-rect-room~F',
+					roomId: 'room.5:4:face45:wall-chain-1.p23b11-b-straight-40-rect-room-F45:wall-chain-2.p23b11-b-straight-40-rect-room-F45:wall-chain-3.p23b11-b-straight-40-rect-room-F45:wall-chain-4.p23b11-b-straight-40-rect-room-F.p23b11-b-straight-40-rect-room',
+					kind: 'created',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
-					id: 'room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F',
-					name: 'Draft Room 1'
-				},
-				{
 					id: 'room-0',
-					name: 'Room 0'
+					name: 'Room 0',
 				},
 				{
 					id: 'room-1',
-					name: 'Room 1'
+					name: 'Room 1',
 				},
 				{
 					id: 'room-2',
-					name: 'Room 2'
+					name: 'Room 2',
 				},
 				{
 					id: 'room-3',
-					name: 'Room 3'
+					name: 'Room 3',
 				},
 				{
 					id: 'room-4',
-					name: 'Room 4'
+					name: 'Room 4',
 				},
 				{
 					id: 'room-5',
-					name: 'Room 5'
+					name: 'Room 5',
 				},
 				{
 					id: 'room-6',
-					name: 'Room 6'
+					name: 'Room 6',
 				},
 				{
 					id: 'room-7',
-					name: 'Room 7'
+					name: 'Room 7',
 				},
 				{
 					id: 'room-8',
-					name: 'Room 8'
+					name: 'Room 8',
 				},
 				{
 					id: 'room-9',
-					name: 'Room 9'
-				}
+					name: 'Room 9',
+				},
+				{
+					id: 'room.5:4:face45:wall-chain-1.p23b11-b-straight-40-rect-room-F45:wall-chain-2.p23b11-b-straight-40-rect-room-F45:wall-chain-3.p23b11-b-straight-40-rect-room-F45:wall-chain-4.p23b11-b-straight-40-rect-room-F.p23b11-b-straight-40-rect-room',
+					name: 'Draft Room 1',
+				},
 			],
-			documentSha256: 'ca87c760853ac9d17ece89a6e0d8762642c5f65fd2e5022b34690da4b516d807'
-		}
+			documentSha256: '0724d371b4350f127f10cc682c2753fc3f8eed7c5e8e2bc8963c52321fd32044',
+		},
 	},
 	{
 		id: 'b-all-curved-40-rect-room',
 		covers: 'OR-1(b)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'ca87c760853ac9d17ece89a6e0d8762642c5f65fd2e5022b34690da4b516d807'
+			documentSha256: 'a6d1450df14389e3584ac9285f328093a9d1e326db143d2b4966ad683e15b476',
 		},
 		fidelity: true,
 		counts: {
@@ -707,98 +761,97 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 100,
 			undefinedPairs: 0,
 			insideEvaluations: 110,
-			overlapEvaluations: 110
+			overlapEvaluations: 110,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F'
+					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F',
 				],
-				predecessorRoomIds: []
+				predecessorRoomIds: [
+					'room-0',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F'
+					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-0'
-				]
+					'room-1',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F'
+					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-1'
-				]
+					'room-2',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F'
+					'5:4:face15:room-3:wall-0~F15:room-3:wall-1~F15:room-3:wall-2~F15:room-3:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-2'
-				]
+					'room-3',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-3:wall-0~F15:room-3:wall-1~F15:room-3:wall-2~F15:room-3:wall-3~F'
+					'5:4:face15:room-4:wall-0~F15:room-4:wall-1~F15:room-4:wall-2~F15:room-4:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-3'
-				]
+					'room-4',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-4:wall-0~F15:room-4:wall-1~F15:room-4:wall-2~F15:room-4:wall-3~F'
+					'5:4:face15:room-5:wall-0~F15:room-5:wall-1~F15:room-5:wall-2~F15:room-5:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-4'
-				]
+					'room-5',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-5:wall-0~F15:room-5:wall-1~F15:room-5:wall-2~F15:room-5:wall-3~F'
+					'5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-5'
-				]
+					'room-6',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F'
+					'5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-6'
-				]
+					'room-7',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F'
+					'5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-7'
-				]
+					'room-8',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F'
+					'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-8'
-				]
+					'room-9',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F'
+					'5:4:face47:wall-chain-1.p23b11-b-all-curved-40-rect-room~F47:wall-chain-2.p23b11-b-all-curved-40-rect-room~F47:wall-chain-3.p23b11-b-all-curved-40-rect-room~F47:wall-chain-4.p23b11-b-all-curved-40-rect-room~F',
 				],
-				predecessorRoomIds: [
-					'room-9'
-				]
-			}
+				predecessorRoomIds: [],
+			},
 		],
 		faceKeys: [
-			'5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F',
 			'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F',
 			'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 			'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
@@ -808,123 +861,124 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			'5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F',
 			'5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F',
 			'5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F',
-			'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F'
+			'5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F',
+			'5:4:face47:wall-chain-1.p23b11-b-all-curved-40-rect-room~F47:wall-chain-2.p23b11-b-all-curved-40-rect-room~F47:wall-chain-3.p23b11-b-all-curved-40-rect-room~F47:wall-chain-4.p23b11-b-all-curved-40-rect-room~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
-					faceKey: '5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F',
-					roomId: 'room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F',
-					kind: 'created'
-				},
-				{
 					faceKey: '5:4:face15:room-0:wall-0~F15:room-0:wall-1~F15:room-0:wall-2~F15:room-0:wall-3~F',
 					roomId: 'room-0',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 					roomId: 'room-1',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 					roomId: 'room-2',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-3:wall-0~F15:room-3:wall-1~F15:room-3:wall-2~F15:room-3:wall-3~F',
 					roomId: 'room-3',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-4:wall-0~F15:room-4:wall-1~F15:room-4:wall-2~F15:room-4:wall-3~F',
 					roomId: 'room-4',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-5:wall-0~F15:room-5:wall-1~F15:room-5:wall-2~F15:room-5:wall-3~F',
 					roomId: 'room-5',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-6:wall-0~F15:room-6:wall-1~F15:room-6:wall-2~F15:room-6:wall-3~F',
 					roomId: 'room-6',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-7:wall-0~F15:room-7:wall-1~F15:room-7:wall-2~F15:room-7:wall-3~F',
 					roomId: 'room-7',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-8:wall-0~F15:room-8:wall-1~F15:room-8:wall-2~F15:room-8:wall-3~F',
 					roomId: 'room-8',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-9:wall-0~F15:room-9:wall-1~F15:room-9:wall-2~F15:room-9:wall-3~F',
 					roomId: 'room-9',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
+				{
+					faceKey: '5:4:face47:wall-chain-1.p23b11-b-all-curved-40-rect-room~F47:wall-chain-2.p23b11-b-all-curved-40-rect-room~F47:wall-chain-3.p23b11-b-all-curved-40-rect-room~F47:wall-chain-4.p23b11-b-all-curved-40-rect-room~F',
+					roomId: 'room.5:4:face47:wall-chain-1.p23b11-b-all-curved-40-rect-room-F47:wall-chain-2.p23b11-b-all-curved-40-rect-room-F47:wall-chain-3.p23b11-b-all-curved-40-rect-room-F47:wall-chain-4.p23b11-b-all-curved-40-rect-room-F.p23b11-b-all-curved-40-rect-room',
+					kind: 'created',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
-					id: 'room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F',
-					name: 'Draft Room 1'
-				},
-				{
 					id: 'room-0',
-					name: 'Room 0'
+					name: 'Room 0',
 				},
 				{
 					id: 'room-1',
-					name: 'Room 1'
+					name: 'Room 1',
 				},
 				{
 					id: 'room-2',
-					name: 'Room 2'
+					name: 'Room 2',
 				},
 				{
 					id: 'room-3',
-					name: 'Room 3'
+					name: 'Room 3',
 				},
 				{
 					id: 'room-4',
-					name: 'Room 4'
+					name: 'Room 4',
 				},
 				{
 					id: 'room-5',
-					name: 'Room 5'
+					name: 'Room 5',
 				},
 				{
 					id: 'room-6',
-					name: 'Room 6'
+					name: 'Room 6',
 				},
 				{
 					id: 'room-7',
-					name: 'Room 7'
+					name: 'Room 7',
 				},
 				{
 					id: 'room-8',
-					name: 'Room 8'
+					name: 'Room 8',
 				},
 				{
 					id: 'room-9',
-					name: 'Room 9'
-				}
+					name: 'Room 9',
+				},
+				{
+					id: 'room.5:4:face47:wall-chain-1.p23b11-b-all-curved-40-rect-room-F47:wall-chain-2.p23b11-b-all-curved-40-rect-room-F47:wall-chain-3.p23b11-b-all-curved-40-rect-room-F47:wall-chain-4.p23b11-b-all-curved-40-rect-room-F.p23b11-b-all-curved-40-rect-room',
+					name: 'Draft Room 1',
+				},
 			],
-			documentSha256: 'ca87c760853ac9d17ece89a6e0d8762642c5f65fd2e5022b34690da4b516d807'
-		}
+			documentSha256: 'a6d1450df14389e3584ac9285f328093a9d1e326db143d2b4966ad683e15b476',
+		},
 	},
 	{
 		id: 'c-straight-12-room-division',
 		covers: 'OR-1(c)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'f10a145da5e261aedd0b063ffb1bc6729941a4d477593eda818e4fc5b0c0e49a'
+			documentSha256: '55265e4bb38f458ab0b91f5eea2c92c27720d5db84d4db1ae1c9f0949c1805aa',
 		},
 		fidelity: true,
 		counts: {
@@ -935,93 +989,93 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 8,
 			undefinedPairs: 0,
 			insideEvaluations: 12,
-			overlapEvaluations: 12
+			overlapEvaluations: 12,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F14:wall-chain-1~R17:room-0:wall-3-b~F',
-					'5:4:face17:room-0:wall-1-b~F15:room-0:wall-2~F15:room-0:wall-3~F14:wall-chain-1~F'
+					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F49:wall-chain-1.p23b11-c-straight-12-room-division~R52:room-0:wall-3-b.p23b11-c-straight-12-room-division~F',
+					'5:4:face52:room-0:wall-1-b.p23b11-c-straight-12-room-division~F15:room-0:wall-2~F15:room-0:wall-3~F49:wall-chain-1.p23b11-c-straight-12-room-division~F',
 				],
 				predecessorRoomIds: [
-					'room-0'
-				]
+					'room-0',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F'
+					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-1'
-				]
+					'room-1',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F'
+					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-2'
-				]
-			}
+					'room-2',
+				],
+			},
 		],
 		faceKeys: [
-			'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F14:wall-chain-1~R17:room-0:wall-3-b~F',
+			'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F49:wall-chain-1.p23b11-c-straight-12-room-division~R52:room-0:wall-3-b.p23b11-c-straight-12-room-division~F',
 			'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 			'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
-			'5:4:face17:room-0:wall-1-b~F15:room-0:wall-2~F15:room-0:wall-3~F14:wall-chain-1~F'
+			'5:4:face52:room-0:wall-1-b.p23b11-c-straight-12-room-division~F15:room-0:wall-2~F15:room-0:wall-3~F49:wall-chain-1.p23b11-c-straight-12-room-division~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
-					faceKey: '5:4:face17:room-0:wall-1-b~F15:room-0:wall-2~F15:room-0:wall-3~F14:wall-chain-1~F',
+					faceKey: '5:4:face52:room-0:wall-1-b.p23b11-c-straight-12-room-division~F15:room-0:wall-2~F15:room-0:wall-3~F49:wall-chain-1.p23b11-c-straight-12-room-division~F',
 					roomId: 'room-0',
-					kind: 'split-survivor'
+					kind: 'split-survivor',
 				},
 				{
-					faceKey: '5:4:face15:room-0:wall-0~F15:room-0:wall-1~F14:wall-chain-1~R17:room-0:wall-3-b~F',
-					roomId: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F14:wall-chain-1-R17:room-0:wall-3-b-F',
-					kind: 'created'
+					faceKey: '5:4:face15:room-0:wall-0~F15:room-0:wall-1~F49:wall-chain-1.p23b11-c-straight-12-room-division~R52:room-0:wall-3-b.p23b11-c-straight-12-room-division~F',
+					roomId: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F49:wall-chain-1.p23b11-c-straight-12-room-division-R52:room-0:wall-3-b.p23b11-c-straight-12-room-division-F.p23b11-c-straight-12-room-division',
+					kind: 'created',
 				},
 				{
 					faceKey: '5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 					roomId: 'room-1',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 					roomId: 'room-2',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
 					id: 'room-0',
-					name: 'Room 0'
+					name: 'Room 0',
 				},
 				{
-					id: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F14:wall-chain-1-R17:room-0:wall-3-b-F',
-					name: 'Draft Room 1'
+					id: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F49:wall-chain-1.p23b11-c-straight-12-room-division-R52:room-0:wall-3-b.p23b11-c-straight-12-room-division-F.p23b11-c-straight-12-room-division',
+					name: 'Draft Room 1',
 				},
 				{
 					id: 'room-1',
-					name: 'Room 1'
+					name: 'Room 1',
 				},
 				{
 					id: 'room-2',
-					name: 'Room 2'
-				}
+					name: 'Room 2',
+				},
 			],
-			documentSha256: 'f10a145da5e261aedd0b063ffb1bc6729941a4d477593eda818e4fc5b0c0e49a'
-		}
+			documentSha256: '55265e4bb38f458ab0b91f5eea2c92c27720d5db84d4db1ae1c9f0949c1805aa',
+		},
 	},
 	{
 		id: 'c-all-curved-12-room-division',
 		covers: 'OR-1(c)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'f10a145da5e261aedd0b063ffb1bc6729941a4d477593eda818e4fc5b0c0e49a'
+			documentSha256: '1c790bc592f11a14ce40488c41d4b15215a3437ed600211fdb6d8bf0415e6275',
 		},
 		fidelity: true,
 		counts: {
@@ -1032,86 +1086,86 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 8,
 			undefinedPairs: 0,
 			insideEvaluations: 12,
-			overlapEvaluations: 12
+			overlapEvaluations: 12,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F14:wall-chain-1~R17:room-0:wall-3-b~F',
-					'5:4:face17:room-0:wall-1-b~F15:room-0:wall-2~F15:room-0:wall-3~F14:wall-chain-1~F'
+					'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F51:wall-chain-1.p23b11-c-all-curved-12-room-division~R54:room-0:wall-3-b.p23b11-c-all-curved-12-room-division~F',
+					'5:4:face54:room-0:wall-1-b.p23b11-c-all-curved-12-room-division~F15:room-0:wall-2~F15:room-0:wall-3~F51:wall-chain-1.p23b11-c-all-curved-12-room-division~F',
 				],
 				predecessorRoomIds: [
-					'room-0'
-				]
+					'room-0',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F'
+					'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-1'
-				]
+					'room-1',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F'
+					'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 				],
 				predecessorRoomIds: [
-					'room-2'
-				]
-			}
+					'room-2',
+				],
+			},
 		],
 		faceKeys: [
-			'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F14:wall-chain-1~R17:room-0:wall-3-b~F',
+			'5:4:face15:room-0:wall-0~F15:room-0:wall-1~F51:wall-chain-1.p23b11-c-all-curved-12-room-division~R54:room-0:wall-3-b.p23b11-c-all-curved-12-room-division~F',
 			'5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 			'5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
-			'5:4:face17:room-0:wall-1-b~F15:room-0:wall-2~F15:room-0:wall-3~F14:wall-chain-1~F'
+			'5:4:face54:room-0:wall-1-b.p23b11-c-all-curved-12-room-division~F15:room-0:wall-2~F15:room-0:wall-3~F51:wall-chain-1.p23b11-c-all-curved-12-room-division~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
-					faceKey: '5:4:face17:room-0:wall-1-b~F15:room-0:wall-2~F15:room-0:wall-3~F14:wall-chain-1~F',
+					faceKey: '5:4:face54:room-0:wall-1-b.p23b11-c-all-curved-12-room-division~F15:room-0:wall-2~F15:room-0:wall-3~F51:wall-chain-1.p23b11-c-all-curved-12-room-division~F',
 					roomId: 'room-0',
-					kind: 'split-survivor'
+					kind: 'split-survivor',
 				},
 				{
-					faceKey: '5:4:face15:room-0:wall-0~F15:room-0:wall-1~F14:wall-chain-1~R17:room-0:wall-3-b~F',
-					roomId: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F14:wall-chain-1-R17:room-0:wall-3-b-F',
-					kind: 'created'
+					faceKey: '5:4:face15:room-0:wall-0~F15:room-0:wall-1~F51:wall-chain-1.p23b11-c-all-curved-12-room-division~R54:room-0:wall-3-b.p23b11-c-all-curved-12-room-division~F',
+					roomId: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F51:wall-chain-1.p23b11-c-all-curved-12-room-division-R54:room-0:wall-3-b.p23b11-c-all-curved-12-room-division-F.p23b11-c-all-curved-12-room-division',
+					kind: 'created',
 				},
 				{
 					faceKey: '5:4:face15:room-1:wall-0~F15:room-1:wall-1~F15:room-1:wall-2~F15:room-1:wall-3~F',
 					roomId: 'room-1',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face15:room-2:wall-0~F15:room-2:wall-1~F15:room-2:wall-2~F15:room-2:wall-3~F',
 					roomId: 'room-2',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
 					id: 'room-0',
-					name: 'Room 0'
+					name: 'Room 0',
 				},
 				{
-					id: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F14:wall-chain-1-R17:room-0:wall-3-b-F',
-					name: 'Draft Room 1'
+					id: 'room.5:4:face15:room-0:wall-0-F15:room-0:wall-1-F51:wall-chain-1.p23b11-c-all-curved-12-room-division-R54:room-0:wall-3-b.p23b11-c-all-curved-12-room-division-F.p23b11-c-all-curved-12-room-division',
+					name: 'Draft Room 1',
 				},
 				{
 					id: 'room-1',
-					name: 'Room 1'
+					name: 'Room 1',
 				},
 				{
 					id: 'room-2',
-					name: 'Room 2'
-				}
+					name: 'Room 2',
+				},
 			],
-			documentSha256: 'f10a145da5e261aedd0b063ffb1bc6729941a4d477593eda818e4fc5b0c0e49a'
-		}
+			documentSha256: '1c790bc592f11a14ce40488c41d4b15215a3437ed600211fdb6d8bf0415e6275',
+		},
 	},
 	{
 		id: 'd-connected-shared-wall-merge',
@@ -1734,9 +1788,9 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '6f99981c6212e726c16991a3d2d4287b3ede302e0660cbad86a33e9d905dd3dc'
+			documentSha256: 'a6dbb5c28a099fff32a10fd25c903ea5c2affc03412bc8fb2b0b1a97d670db56',
 		},
-		fidelity: true,
+		fidelity: false,
 		counts: {
 			faces: 1,
 			predecessors: 2,
@@ -1745,20 +1799,20 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 1,
 			undefinedPairs: 0,
 			insideEvaluations: 2,
-			overlapEvaluations: 2
+			overlapEvaluations: 2,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face6:c-a1~F6:c-b1~F6:c-c1~F6:c-d1~F'
+					'5:4:face6:c-a1~F6:c-b1~F6:c-c1~F6:c-d1~F',
 				],
 				predecessorRoomIds: [
-					'room-c'
-				]
-			}
+					'room-c',
+				],
+			},
 		],
 		faceKeys: [
-			'5:4:face6:c-a1~F6:c-b1~F6:c-c1~F6:c-d1~F'
+			'5:4:face6:c-a1~F6:c-b1~F6:c-c1~F6:c-d1~F',
 		],
 		reconciliation: {
 			kind: 'ok',
@@ -1766,27 +1820,27 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 				{
 					faceKey: '5:4:face6:c-a1~F6:c-b1~F6:c-c1~F6:c-d1~F',
 					roomId: 'room-c',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
 			],
 			retiredRoomIds: [
-				'room-k'
+				'room-k',
 			],
 			rooms: [
 				{
 					id: 'room-c',
-					name: 'Room c'
-				}
+					name: 'Room c',
+				},
 			],
-			documentSha256: '6f99981c6212e726c16991a3d2d4287b3ede302e0660cbad86a33e9d905dd3dc'
-		}
+			documentSha256: '6f99981c6212e726c16991a3d2d4287b3ede302e0660cbad86a33e9d905dd3dc',
+		},
 	},
 	{
 		id: 'f-d12-whole-boundary-replacement',
 		covers: 'OR-1(f)',
 		operation: {
 			verdict: 'not-run',
-			reason: 'direct pass row: no planner operation'
+			reason: 'direct pass row: no planner operation',
 		},
 		fidelity: null,
 		counts: {
@@ -1797,64 +1851,64 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 1,
 			undefinedPairs: 2,
 			insideEvaluations: 4,
-			overlapEvaluations: 4
+			overlapEvaluations: 4,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face15:c-a1-replaced~F15:c-b1-replaced~F15:c-c1-replaced~F15:c-d1-replaced~F'
+					'5:4:face15:c-a1-replaced~F15:c-b1-replaced~F15:c-c1-replaced~F15:c-d1-replaced~F',
 				],
-				predecessorRoomIds: []
+				predecessorRoomIds: [],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face6:k-a1~F6:k-b1~F6:k-c1~F6:k-d1~F'
+					'5:4:face6:k-a1~F6:k-b1~F6:k-c1~F6:k-d1~F',
 				],
 				predecessorRoomIds: [
-					'room-k'
-				]
-			}
+					'room-k',
+				],
+			},
 		],
 		faceKeys: [
 			'5:4:face15:c-a1-replaced~F15:c-b1-replaced~F15:c-c1-replaced~F15:c-d1-replaced~F',
-			'5:4:face6:k-a1~F6:k-b1~F6:k-c1~F6:k-d1~F'
+			'5:4:face6:k-a1~F6:k-b1~F6:k-c1~F6:k-d1~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
 					faceKey: '5:4:face15:c-a1-replaced~F15:c-b1-replaced~F15:c-c1-replaced~F15:c-d1-replaced~F',
-					roomId: 'room.5:4:face15:c-a1-replaced-F15:c-b1-replaced-F15:c-c1-replaced-F15:c-d1-replaced-F',
-					kind: 'created'
+					roomId: 'room.5:4:face15:c-a1-replaced-F15:c-b1-replaced-F15:c-c1-replaced-F15:c-d1-replaced-F.p23b11-f-d12-whole-boundary-replacement',
+					kind: 'created',
 				},
 				{
 					faceKey: '5:4:face6:k-a1~F6:k-b1~F6:k-c1~F6:k-d1~F',
 					roomId: 'room-k',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
 			],
 			retiredRoomIds: [
-				'room-c'
+				'room-c',
 			],
 			rooms: [
 				{
-					id: 'room.5:4:face15:c-a1-replaced-F15:c-b1-replaced-F15:c-c1-replaced-F15:c-d1-replaced-F',
-					name: 'Draft Room 1'
+					id: 'room.5:4:face15:c-a1-replaced-F15:c-b1-replaced-F15:c-c1-replaced-F15:c-d1-replaced-F.p23b11-f-d12-whole-boundary-replacement',
+					name: 'Draft Room 1',
 				},
 				{
 					id: 'room-k',
-					name: 'Room k'
-				}
+					name: 'Room k',
+				},
 			],
-			documentSha256: '1e46a18ccc756c122a3ed54e6d9768da291f334b497b6c47b33b0d8f4e6cedf9'
-		}
+			documentSha256: '34d231649ce32ed17899ed9e12bf83edecb64f824114b7bf6d8c87b7b7e7ea66',
+		},
 	},
 	{
 		id: 'g-empty-closed-chain',
 		covers: 'OR-1(g)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '1a9bb719c3de6d5c51f731f67822cf4081f5b6e84b46c3c5ec0aadbf36154175'
+			documentSha256: '0fe36356eeee4e13973933f9a87cc5cf7a22c45d62062e48f78bc64a9da8ced3',
 		},
 		fidelity: true,
 		counts: {
@@ -1865,44 +1919,44 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 0,
 			undefinedPairs: 0,
 			insideEvaluations: 0,
-			overlapEvaluations: 0
+			overlapEvaluations: 0,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F'
+					'5:4:face42:wall-chain-1.p23b11-g-empty-closed-chain~F42:wall-chain-2.p23b11-g-empty-closed-chain~F42:wall-chain-3.p23b11-g-empty-closed-chain~F42:wall-chain-4.p23b11-g-empty-closed-chain~F',
 				],
-				predecessorRoomIds: []
-			}
+				predecessorRoomIds: [],
+			},
 		],
 		faceKeys: [
-			'5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F'
+			'5:4:face42:wall-chain-1.p23b11-g-empty-closed-chain~F42:wall-chain-2.p23b11-g-empty-closed-chain~F42:wall-chain-3.p23b11-g-empty-closed-chain~F42:wall-chain-4.p23b11-g-empty-closed-chain~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
-					faceKey: '5:4:face14:wall-chain-1~F14:wall-chain-2~F14:wall-chain-3~F14:wall-chain-4~F',
-					roomId: 'room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F',
-					kind: 'created'
-				}
+					faceKey: '5:4:face42:wall-chain-1.p23b11-g-empty-closed-chain~F42:wall-chain-2.p23b11-g-empty-closed-chain~F42:wall-chain-3.p23b11-g-empty-closed-chain~F42:wall-chain-4.p23b11-g-empty-closed-chain~F',
+					roomId: 'room.5:4:face42:wall-chain-1.p23b11-g-empty-closed-chain-F42:wall-chain-2.p23b11-g-empty-closed-chain-F42:wall-chain-3.p23b11-g-empty-closed-chain-F42:wall-chain-4.p23b11-g-empty-closed-chain-F.p23b11-g-empty-closed-chain',
+					kind: 'created',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
-					id: 'room.5:4:face14:wall-chain-1-F14:wall-chain-2-F14:wall-chain-3-F14:wall-chain-4-F',
-					name: 'Draft Room 1'
-				}
+					id: 'room.5:4:face42:wall-chain-1.p23b11-g-empty-closed-chain-F42:wall-chain-2.p23b11-g-empty-closed-chain-F42:wall-chain-3.p23b11-g-empty-closed-chain-F42:wall-chain-4.p23b11-g-empty-closed-chain-F.p23b11-g-empty-closed-chain',
+					name: 'Draft Room 1',
+				},
 			],
-			documentSha256: '1a9bb719c3de6d5c51f731f67822cf4081f5b6e84b46c3c5ec0aadbf36154175'
-		}
+			documentSha256: '0fe36356eeee4e13973933f9a87cc5cf7a22c45d62062e48f78bc64a9da8ced3',
+		},
 	},
 	{
 		id: 'g-faces-only-clear-gap',
 		covers: 'OR-1(g)',
 		operation: {
 			verdict: 'success',
-			documentSha256: '5ab24c1ca0b2c7f55195195bdd774b4e892d5c44f7c7011ca6cb243b4696e98f'
+			documentSha256: 'e068d9f12d1f9a206c0d45b7388614b7fb2be6b8fb2cc915fc6ded7322df9e8d',
 		},
 		fidelity: true,
 		counts: {
@@ -1913,37 +1967,37 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 0,
 			undefinedPairs: 0,
 			insideEvaluations: 0,
-			overlapEvaluations: 0
+			overlapEvaluations: 0,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face5:f-1~F5:f-2~F5:f-3~F5:f-4~F'
+					'5:4:face5:f-1~F5:f-2~F5:f-3~F5:f-4~F',
 				],
-				predecessorRoomIds: []
-			}
+				predecessorRoomIds: [],
+			},
 		],
 		faceKeys: [
-			'5:4:face5:f-1~F5:f-2~F5:f-3~F5:f-4~F'
+			'5:4:face5:f-1~F5:f-2~F5:f-3~F5:f-4~F',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
 					faceKey: '5:4:face5:f-1~F5:f-2~F5:f-3~F5:f-4~F',
-					roomId: 'room.5:4:face5:f-1-F5:f-2-F5:f-3-F5:f-4-F',
-					kind: 'created'
-				}
+					roomId: 'room.5:4:face5:f-1-F5:f-2-F5:f-3-F5:f-4-F.p23b11-g-faces-only-clear-gap',
+					kind: 'created',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
-					id: 'room.5:4:face5:f-1-F5:f-2-F5:f-3-F5:f-4-F',
-					name: 'Draft Room 1'
-				}
+					id: 'room.5:4:face5:f-1-F5:f-2-F5:f-3-F5:f-4-F.p23b11-g-faces-only-clear-gap',
+					name: 'Draft Room 1',
+				},
 			],
-			documentSha256: '5ab24c1ca0b2c7f55195195bdd774b4e892d5c44f7c7011ca6cb243b4696e98f'
-		}
+			documentSha256: 'e068d9f12d1f9a206c0d45b7388614b7fb2be6b8fb2cc915fc6ded7322df9e8d',
+		},
 	},
 	{
 		id: 'h-connected-authoring-inside',
@@ -2054,7 +2108,7 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 		covers: 'OR-1(c) + OR-1(h)',
 		operation: {
 			verdict: 'success',
-			documentSha256: 'f7f767838a08696388cd0bc6963957708401964bd9cf2c82ec834d90bdcf6155'
+			documentSha256: 'e2206914b98615437feec2d26e35538c3ac033e5d0d52a6b4ceec7e81f5f5b9e',
 		},
 		fidelity: true,
 		counts: {
@@ -2065,104 +2119,104 @@ export const P23B11_OR1_REFERENCE: readonly P23B11FrozenCase[] = [
 			crossGroupPairs: 0,
 			undefinedPairs: 0,
 			insideEvaluations: 20,
-			overlapEvaluations: 20
+			overlapEvaluations: 20,
 		},
 		components: [
 			{
 				candidateFaceKeys: [
-					'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F14:wall-chain-1~R12:grid:v-0-0~R',
-					'5:4:face12:grid:h-0-1~R14:grid:v-0-0-b~R14:wall-chain-1~F14:grid:v-1-0-b~F'
+					'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F47:wall-chain-1.p23b11-h-connected-room-division~R12:grid:v-0-0~R',
+					'5:4:face12:grid:h-0-1~R47:grid:v-0-0-b.p23b11-h-connected-room-division~R47:wall-chain-1.p23b11-h-connected-room-division~F47:grid:v-1-0-b.p23b11-h-connected-room-division~F',
 				],
 				predecessorRoomIds: [
-					'grid:room-0-0'
-				]
+					'grid:room-0-0',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R'
+					'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
 				],
 				predecessorRoomIds: [
-					'grid:room-0-1'
-				]
+					'grid:room-0-1',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R'
+					'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R',
 				],
 				predecessorRoomIds: [
-					'grid:room-1-1'
-				]
+					'grid:room-1-1',
+				],
 			},
 			{
 				candidateFaceKeys: [
-					'6:4:face12:grid:h-1-0~F12:grid:v-2-0~F12:grid:h-1-1~R14:grid:v-1-0-b~R12:grid:v-1-0~R'
+					'6:4:face12:grid:h-1-0~F12:grid:v-2-0~F12:grid:h-1-1~R47:grid:v-1-0-b.p23b11-h-connected-room-division~R12:grid:v-1-0~R',
 				],
 				predecessorRoomIds: [
-					'grid:room-1-0'
-				]
-			}
+					'grid:room-1-0',
+				],
+			},
 		],
 		faceKeys: [
-			'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F14:wall-chain-1~R12:grid:v-0-0~R',
+			'5:4:face12:grid:h-0-0~F12:grid:v-1-0~F47:wall-chain-1.p23b11-h-connected-room-division~R12:grid:v-0-0~R',
 			'5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
-			'5:4:face12:grid:h-0-1~R14:grid:v-0-0-b~R14:wall-chain-1~F14:grid:v-1-0-b~F',
+			'5:4:face12:grid:h-0-1~R47:grid:v-0-0-b.p23b11-h-connected-room-division~R47:wall-chain-1.p23b11-h-connected-room-division~F47:grid:v-1-0-b.p23b11-h-connected-room-division~F',
 			'5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R',
-			'6:4:face12:grid:h-1-0~F12:grid:v-2-0~F12:grid:h-1-1~R14:grid:v-1-0-b~R12:grid:v-1-0~R'
+			'6:4:face12:grid:h-1-0~F12:grid:v-2-0~F12:grid:h-1-1~R47:grid:v-1-0-b.p23b11-h-connected-room-division~R12:grid:v-1-0~R',
 		],
 		reconciliation: {
 			kind: 'ok',
 			lineage: [
 				{
-					faceKey: '5:4:face12:grid:h-0-1~R14:grid:v-0-0-b~R14:wall-chain-1~F14:grid:v-1-0-b~F',
+					faceKey: '5:4:face12:grid:h-0-1~R47:grid:v-0-0-b.p23b11-h-connected-room-division~R47:wall-chain-1.p23b11-h-connected-room-division~F47:grid:v-1-0-b.p23b11-h-connected-room-division~F',
 					roomId: 'grid:room-0-0',
-					kind: 'split-survivor'
+					kind: 'split-survivor',
 				},
 				{
-					faceKey: '5:4:face12:grid:h-0-0~F12:grid:v-1-0~F14:wall-chain-1~R12:grid:v-0-0~R',
-					roomId: 'room.5:4:face12:grid:h-0-0-F12:grid:v-1-0-F14:wall-chain-1-R12:grid:v-0-0-R',
-					kind: 'created'
+					faceKey: '5:4:face12:grid:h-0-0~F12:grid:v-1-0~F47:wall-chain-1.p23b11-h-connected-room-division~R12:grid:v-0-0~R',
+					roomId: 'room.5:4:face12:grid:h-0-0-F12:grid:v-1-0-F47:wall-chain-1.p23b11-h-connected-room-division-R12:grid:v-0-0-R.p23b11-h-connected-room-division',
+					kind: 'created',
 				},
 				{
 					faceKey: '5:4:face12:grid:h-0-1~F12:grid:v-1-1~F12:grid:h-0-2~R12:grid:v-0-1~R',
 					roomId: 'grid:room-0-1',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
 					faceKey: '5:4:face12:grid:h-1-1~F12:grid:v-2-1~F12:grid:h-1-2~R12:grid:v-1-1~R',
 					roomId: 'grid:room-1-1',
-					kind: 'preserved'
+					kind: 'preserved',
 				},
 				{
-					faceKey: '6:4:face12:grid:h-1-0~F12:grid:v-2-0~F12:grid:h-1-1~R14:grid:v-1-0-b~R12:grid:v-1-0~R',
+					faceKey: '6:4:face12:grid:h-1-0~F12:grid:v-2-0~F12:grid:h-1-1~R47:grid:v-1-0-b.p23b11-h-connected-room-division~R12:grid:v-1-0~R',
 					roomId: 'grid:room-1-0',
-					kind: 'preserved'
-				}
+					kind: 'preserved',
+				},
 			],
 			retiredRoomIds: [],
 			rooms: [
 				{
 					id: 'grid:room-0-0',
-					name: 'Grid Room 0-0'
+					name: 'Grid Room 0-0',
 				},
 				{
-					id: 'room.5:4:face12:grid:h-0-0-F12:grid:v-1-0-F14:wall-chain-1-R12:grid:v-0-0-R',
-					name: 'Draft Room 1'
+					id: 'room.5:4:face12:grid:h-0-0-F12:grid:v-1-0-F47:wall-chain-1.p23b11-h-connected-room-division-R12:grid:v-0-0-R.p23b11-h-connected-room-division',
+					name: 'Draft Room 1',
 				},
 				{
 					id: 'grid:room-0-1',
-					name: 'Grid Room 0-1'
+					name: 'Grid Room 0-1',
 				},
 				{
 					id: 'grid:room-1-1',
-					name: 'Grid Room 1-1'
+					name: 'Grid Room 1-1',
 				},
 				{
 					id: 'grid:room-1-0',
-					name: 'Grid Room 1-0'
-				}
+					name: 'Grid Room 1-0',
+				},
 			],
-			documentSha256: 'f7f767838a08696388cd0bc6963957708401964bd9cf2c82ec834d90bdcf6155'
-		}
+			documentSha256: 'e2206914b98615437feec2d26e35538c3ac033e5d0d52a6b4ceec7e81f5f5b9e',
+		},
 	},
 	{
 		id: 'h-connected-shared-run-junction-move',

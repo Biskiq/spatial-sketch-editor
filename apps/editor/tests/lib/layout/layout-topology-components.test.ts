@@ -43,12 +43,11 @@ import {
 
 const LINE: LayoutWallCenterline = { kind: 'line' };
 
-function wall(id: string, start: string, end: string, role: 'boundary' | 'partition' = 'partition') {
+function wall(id: string, start: string, end: string) {
 	return {
 		id,
 		startJunctionId: start,
 		endJunctionId: end,
-		role,
 		thickness: 0.2,
 		height: 3,
 		centerline: LINE
@@ -78,13 +77,13 @@ function sharedWallDocument(): LayoutDocumentWallFirst {
 			['j-d', 0, 4]
 		],
 		[
-			wall('wall-a1', 'j-a', 'j-m', 'boundary'),
-			wall('wall-a2', 'j-m', 'j-b', 'boundary'),
-			wall('wall-b', 'j-b', 'j-c', 'boundary'),
-			wall('wall-c1', 'j-c', 'j-n', 'boundary'),
-			wall('wall-c2', 'j-n', 'j-d', 'boundary'),
-			wall('wall-d', 'j-d', 'j-a', 'boundary'),
-			wall('wall-e', 'j-m', 'j-n', 'boundary')
+			wall('wall-a1', 'j-a', 'j-m'),
+			wall('wall-a2', 'j-m', 'j-b'),
+			wall('wall-b', 'j-b', 'j-c'),
+			wall('wall-c1', 'j-c', 'j-n'),
+			wall('wall-c2', 'j-n', 'j-d'),
+			wall('wall-d', 'j-d', 'j-a'),
+			wall('wall-e', 'j-m', 'j-n')
 		]
 	);
 	base.rooms = [

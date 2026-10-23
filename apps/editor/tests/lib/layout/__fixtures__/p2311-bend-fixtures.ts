@@ -31,13 +31,13 @@ export const P2311_FIXTURES: BendFixtureSpec[] = [
 
 export function p2311Fixture(spec: BendFixtureSpec): LayoutDocumentWallFirst {
 	const document = createEmptyWallFirstLayoutDocument();
-	const makeWall = (index: number, a: LayoutVec2, b: LayoutVec2, role: 'boundary' | 'partition') => {
+	const makeWall = (index: number, a: LayoutVec2, b: LayoutVec2) => {
 		const startJunctionId = `j${index}a`;
 		const endJunctionId = `j${index}b`;
 		document.junctions.push({ id: startJunctionId, point: a }, { id: endJunctionId, point: b });
 		const id = `w${index}`;
 		document.walls.push({
-			id, startJunctionId, endJunctionId, role, thickness: 0.2, height: 3,
+			id, startJunctionId, endJunctionId, thickness: 0.2, height: 3,
 			centerline: { kind: 'line' }
 		});
 		return id;
@@ -58,17 +58,17 @@ export function p2311Fixture(spec: BendFixtureSpec): LayoutDocumentWallFirst {
 				if (edge < 3) document.junctions.push({ id: bId, point: vertices[edge + 1]! });
 				const id = `w${base + edge}`;
 				ids.push(id);
-				document.walls.push({ id, startJunctionId: aId, endJunctionId: bId, role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } });
+				document.walls.push({ id, startJunctionId: aId, endJunctionId: bId, thickness: 0.2, height: 3, centerline: { kind: 'line' } });
 			}
 			document.rooms.push({ id: `room${roomIndex}`, name: `Room ${roomIndex}`, boundary: ids.map((wallId) => ({ wallId, direction: 'forward' })), floorThickness: 0.1, ceilingThickness: 0.1 });
 		}
 	} else {
-		makeWall(0, [0, 0], [12, 0], 'partition');
+		makeWall(0, [0, 0], [12, 0]);
 	}
 	while (document.walls.length < spec.walls) {
 		const index = document.walls.length;
 		const z = spec.rooms * 20 + 20 + index * 5;
-		makeWall(index, [0, z], [12, z], 'partition');
+		makeWall(index, [0, z], [12, z]);
 	}
 	if (spec.knots > 0) {
 		const points: LayoutVec2[] = [[0, 0]];

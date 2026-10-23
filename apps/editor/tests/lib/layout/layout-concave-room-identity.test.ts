@@ -21,6 +21,7 @@ import {
 	type LayoutDocumentWallFirst,
 	type LayoutVec2
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
 
 const p = (x: number, z: number): LayoutVec2 => [x, z];
 
@@ -104,7 +105,7 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 		// is a genuine reconciled cycle, exactly as the editor produces it.
 		const shell = {
 			units: 'meters' as const,
-			formatVersion: 5 as const,
+			formatVersion: 6 as const,
 			floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 			junctions: [
 				{ id: 'j1', point: p(0, 0) },
@@ -115,12 +116,12 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 				{ id: 'j6', point: p(0, 12) }
 			],
 			walls: [
-				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j5', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w5', startJunctionId: 'j5', endJunctionId: 'j6', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
-				{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j1', role: 'boundary', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
+				{ id: 'w1', startJunctionId: 'j1', endJunctionId: 'j2', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w2', startJunctionId: 'j2', endJunctionId: 'j3', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w3', startJunctionId: 'j3', endJunctionId: 'j4', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w4', startJunctionId: 'j4', endJunctionId: 'j5', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w5', startJunctionId: 'j5', endJunctionId: 'j6', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const},
+				{ id: 'w6', startJunctionId: 'j6', endJunctionId: 'j1', thickness: 0.2, height: 3, centerline: { kind: 'line' } as const}
 			],
 			openings: [],
 			objects: [
@@ -163,7 +164,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline,
 			start: p(20, 0),
 			end: p(22, 0),
-			role: 'boundary'
+			capture: freshCapture(),
+			levelId: baseline.floor.id
 		});
 		if (withWall.kind !== 'success') {
 			throw new Error(`wall draw should succeed: ${JSON.stringify(withWall.rejection)}`);
@@ -172,7 +174,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline: withWall.document,
 			start: p(22, 0),
 			end: p(22, 2),
-			role: 'boundary'
+			capture: freshCapture(),
+			levelId: withWall.document.floor.id
 		});
 		if (candidate.kind !== 'success') {
 			throw new Error(`second wall draw should succeed: ${JSON.stringify(candidate.rejection)}`);
@@ -181,7 +184,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline: candidate.document,
 			start: p(22, 2),
 			end: p(20, 2),
-			role: 'boundary'
+			capture: freshCapture(),
+			levelId: candidate.document.floor.id
 		});
 		if (final.kind !== 'success') {
 			throw new Error(`third wall draw should succeed: ${JSON.stringify(final.rejection)}`);
@@ -190,7 +194,8 @@ describe('P23.6e review — unchanged concave Room keeps its ID end-to-end', () 
 			baseline: final.document,
 			start: p(20, 2),
 			end: p(20, 0),
-			role: 'boundary'
+			capture: freshCapture(),
+			levelId: final.document.floor.id
 		});
 		if (closed.kind !== 'success') {
 			throw new Error(`closing wall draw should succeed: ${JSON.stringify(closed.rejection)}`);

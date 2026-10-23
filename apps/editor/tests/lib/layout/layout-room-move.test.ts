@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	canonicalBoundaryCycleKey,
+	deriveLayoutWallRole,
 	extractBoundaryCandidateFaces
 } from '@portfolio/layout-core';
 import {
@@ -39,8 +40,7 @@ type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-	thickness?: number;
+		thickness?: number;
 	height?: number;
 };
 
@@ -60,7 +60,6 @@ function shell(options: {
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? ('boundary' as const),
 			thickness: wall.thickness ?? 0.2,
 			height: wall.height ?? 3,
 			centerline: { kind: 'line' } as const,
@@ -108,7 +107,7 @@ function isolatedRoomDocument(): LayoutDocumentWallFirst {
 			{ id: 'wall-b', start: 'j-b', end: 'j-c', height: 4.5 },
 			{ id: 'wall-c', start: 'j-c', end: 'j-d', height: 2.4 },
 			{ id: 'wall-d', start: 'j-d', end: 'j-a' },
-			{ id: 'wall-rl', start: 'j-x', end: 'j-y', role: 'partition' }
+			{ id: 'wall-rl', start: 'j-x', end: 'j-y' }
 		],
 		openings: [
 			{
@@ -177,8 +176,7 @@ function twoRoomDocument(extra?: {
 						{
 							id: 'wall-rl',
 							start: 'j-x',
-							end: 'j-y',
-							role: 'partition' as const
+							end: 'j-y'
 						}
 					]
 				: [])
@@ -358,7 +356,7 @@ describe('P23.6a — isolated Room rigid move', () => {
 		}
 		expect(plan.document.walls.find((wall) => wall.id === 'wall-b')!.height).toBe(4.5);
 		expect(plan.document.walls.find((wall) => wall.id === 'wall-c')!.height).toBe(2.4);
-		expect(plan.document.walls.find((wall) => wall.id === 'wall-rl')!.role).toBe('partition');
+		expect(deriveLayoutWallRole(plan.document, 'wall-rl')).toBe('free-standing');
 	});
 
 	it('preserves Opening identity and authored semantics across the move', () => {
@@ -600,7 +598,6 @@ describe('P23.6a — isolation policy (shared with P23.4 duplicate)', () => {
 					id: 'wall-stub',
 					startJunctionId: 'j-a',
 					endJunctionId: 'j-t',
-					role: 'boundary',
 					thickness: 0.2,
 					height: 3,
 					centerline: { kind: 'line' } as const,
@@ -865,10 +862,12 @@ describe('planWallFirstRoomRotation — the same motion, rigidly rotated', () =>
 			baseline.rooms.map((room) => room.id).sort()
 		);
 		expect(plan.document.rooms[0]!.name).toBe(baseline.rooms[0]!.name);
-		// Wall identity, role, thickness and height are untouched — the rotation
-		// moves Junctions, it does not rewrite Wall records.
-		expect(plan.document.walls.map((wall) => [wall.id, wall.role, wall.thickness, wall.height])).toEqual(
-			baseline.walls.map((wall) => [wall.id, wall.role, wall.thickness, wall.height])
+		// Wall identity, derived role, thickness and height are untouched — the
+		// rotation moves Junctions, it does not rewrite Wall records.
+		expect(
+			plan.document.walls.map((wall) => [wall.id, deriveLayoutWallRole(plan.document, wall.id), wall.thickness, wall.height])
+		).toEqual(
+			baseline.walls.map((wall) => [wall.id, deriveLayoutWallRole(baseline, wall.id), wall.thickness, wall.height])
 		);
 		// The Room's boundary lineage is the same cycle: the key is Wall ids and
 		// directions, so an orientation-preserving motion cannot change it.

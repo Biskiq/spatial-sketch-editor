@@ -232,3 +232,12 @@ T1 owns the retained pure Layout and accessibility seams relocated by #115
 *is* the authored-schema redesign T1 owns (Wall roles and levels). After #115 they are reachable
 only from wall-first internals and tests, never from a project/API/runtime reader. `layout-compat`,
 `layout-migration` and `layout-migration-math` were removed in #115 with no successor detector.
+
+**T1.P02.S01 outcome (2026-10-22):** the first Layout schema cutover reached format 6 without the
+separation. Retiring these modules is larger than the slice, so it is deferred to its own authorized
+slice, which must land before T1.P02.S02 starts: the definitions are live compiler and wall-first
+codec vocabulary rather than dead legacy residue, eight test files exercise the legacy compiler
+adapter through fixtures the tests README forbids deleting, the arch lane pins the current module
+map, and one room type is still referenced by the parallel-track reader owner. The measured
+blockers, the remaining work and the state left intact are the
+[stop-and-report](t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md).

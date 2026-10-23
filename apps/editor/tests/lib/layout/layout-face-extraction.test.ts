@@ -16,8 +16,7 @@ type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-};	/** Document from junction coordinates + wall seeds (all boundary unless told otherwise). */
+	};	/** Document from junction coordinates + wall seeds (all boundary unless told otherwise). */
 	function document(
 		junctions: Array<[string, number, number]>,
 		walls: WallSeed[]
@@ -31,7 +30,6 @@ type WallSeed = {
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? 'boundary',
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -137,7 +135,7 @@ describe('candidate-face extraction (P23.8 / H3 §10)', () => {
 		expect(left!.key).not.toBe(right!.key);
 	});
 
-	it('excludes partition walls from face extraction entirely', () => {
+	it('considers every Wall but excludes a dangle from the face graph', () => {
 		const doc = document(
 			[
 				['j-a', 0, 0],
@@ -152,12 +150,16 @@ describe('candidate-face extraction (P23.8 / H3 §10)', () => {
 				{ id: 'wall-b', start: 'j-b', end: 'j-c' },
 				{ id: 'wall-c', start: 'j-c', end: 'j-d' },
 				{ id: 'wall-d', start: 'j-d', end: 'j-a' },
-				{ id: 'wall-partition', start: 'j-x', end: 'j-y', role: 'partition' }
+				{ id: 'wall-partition', start: 'j-x', end: 'j-y' }
 			]
 		);
 		const result = extractBoundaryCandidateFaces(doc);
 		expect(result.faces).toHaveLength(1);
-		expect(result.diagnostics).toEqual([]);
+		// Format 6 — no authored role filters the graph, so the non-enclosing Wall is
+		// simply a dangle: diagnosed and excluded, never deleted.
+		expect(result.diagnostics.map((issue) => [issue.code, issue.wallId])).toEqual([
+			['boundary_dangle', 'wall-partition']
+		]);
 	});
 
 	it('diagnoses dangling boundary walls and keeps them out of the face graph', () => {

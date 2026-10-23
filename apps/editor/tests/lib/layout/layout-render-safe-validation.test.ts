@@ -79,7 +79,6 @@ function thickWallDocument(anchor: LayoutVec2, thickness = THICK): LayoutDocumen
 			id: 'wall-p',
 			startJunctionId: 'j-p1',
 			endJunctionId: 'j-p2',
-			role: 'partition',
 			thickness,
 			height: 3,
 			centerline: wallCubicChain([knot], deriveChainSpans([[0, 0], knot.point, [CHORD, 0]]))

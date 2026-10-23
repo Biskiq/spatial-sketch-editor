@@ -43,6 +43,7 @@ function leg(
 	const height = options.height ?? 3;
 	return {
 		wallId,
+		role: 'bounding',
 		end: options.end ?? 'start',
 		tangentOut: t,
 		normalOut: [-t[1], t[0]],
@@ -51,7 +52,6 @@ function leg(
 		halfThickness: thickness / 2,
 		bottomY: 0,
 		topY: height,
-		role: 'partition',
 		endpointOpen: false,
 		endpointSolidBands: [{ bottomY: 0, topY: height, solid: true }]
 	};

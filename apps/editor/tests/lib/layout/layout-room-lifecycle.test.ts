@@ -35,19 +35,27 @@ import type {
 } from '@portfolio/layout-core';
 import type { LayoutVec2 } from '@portfolio/layout-core';
 import {
-	planDeleteWall,
-	planRemoveRoom,
+	planDeleteWall as planDeleteWallWithCapture,
+	planRemoveRoom as planRemoveRoomWithCapture,
 	planRoomMetadataUpdate,
 	roomExclusiveBoundaryWallIds,
 	type WallFirstOpPlan
 } from '@portfolio/layout-core';
+import { freshCapture } from './__fixtures__/layout-id-capture';
+
+/** One captured Room removal: every call is a new edit with a new nonce. */
+const removeRoom = (document: LayoutDocumentWallFirst, roomId: string): WallFirstOpPlan =>
+	planRemoveRoomWithCapture(document, roomId, freshCapture(), document.floor.id);
+
+/** One captured single-Wall delete: every call is a new edit with a new nonce. */
+const deleteWall = (document: LayoutDocumentWallFirst, wallId: string): WallFirstOpPlan =>
+	planDeleteWallWithCapture(document, wallId, freshCapture(), document.floor.id);
 
 type WallSeed = {
 	id: string;
 	start: string;
 	end: string;
-	role?: 'boundary' | 'partition';
-};
+	};
 
 /**
  * Two-room wall-first fixture: a 6×4 enclosure split at x=3 by the shared
@@ -76,18 +84,17 @@ function twoRoomDocument(): LayoutDocumentWallFirst {
 		{ id: 'wall-c2', start: 'j-n', end: 'j-d' },
 		{ id: 'wall-d', start: 'j-d', end: 'j-a' },
 		{ id: 'wall-e', start: 'j-m', end: 'j-n' },
-		{ id: 'wall-rl', start: 'j-x', end: 'j-y', role: 'partition' }
+		{ id: 'wall-rl', start: 'j-x', end: 'j-y' }
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 5 as const,
+		formatVersion: 6 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: wall.role ?? ('boundary' as const),
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -162,14 +169,13 @@ function nestedOuterInnerDocument(): LayoutDocumentWallFirst {
 	];
 	const shell = {
 		units: 'meters' as const,
-		formatVersion: 5 as const,
+		formatVersion: 6 as const,
 		floor: { id: 'floor-1', name: 'Floor 1', elevation: 0 },
 		junctions: junctions.map(([id, x, z]) => ({ id, point: [x, z] as LayoutVec2 })),
 		walls: walls.map((wall) => ({
 			id: wall.id,
 			startJunctionId: wall.start,
 			endJunctionId: wall.end,
-			role: 'boundary' as const,
 			thickness: 0.2,
 			height: 3,
 			centerline: { kind: 'line' } as const,
@@ -334,7 +340,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 	});
 
 	it('removes the whole Room and all its own Walls in one operation (no leftover shell)', () => {
-		const plan = success(planRemoveRoom(BASE, 'room-right'));
+		const plan = success(removeRoom(BASE, 'room-right'));
 		// The Room and every Wall it owns alone are gone.
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-left']);
 		expect(plan.retiredRoomIds).toEqual(['room-right']);
@@ -355,7 +361,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 	});
 
 	it('keeps a Wall shared with a neighbour (one physical Wall the neighbour needs)', () => {
-		const plan = success(planRemoveRoom(BASE, 'room-right'));
+		const plan = success(removeRoom(BASE, 'room-right'));
 		expect(plan.document.walls.map((wall) => wall.id)).toContain('wall-e');
 		// room-left is completely untouched.
 		expect(plan.document.rooms.find((room) => room.id === 'room-left')!.boundary).toEqual(
@@ -378,7 +384,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 		expect(roomExclusiveBoundaryWallIds(single, 'room-left').sort()).toEqual(
 			['wall-a1', 'wall-c2', 'wall-d', 'wall-e'].sort()
 		);
-		const plan = success(planRemoveRoom(single, 'room-left'));
+		const plan = success(removeRoom(single, 'room-left'));
 		expect(plan.document.rooms).toEqual([]);
 		expect(plan.document.walls).toEqual([]);
 		expect(plan.document.junctions).toEqual([]);
@@ -389,7 +395,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 	it('delegates to the shared planDeleteWall pipeline (never a forked path)', () => {
 		// Removing the Room's exclusive Walls is exactly the same candidate as
 		// deleting those Walls: pinned through the single-Wall planner below.
-		const viaRoom = success(planRemoveRoom(BASE, 'room-right'));
+		const viaRoom = success(removeRoom(BASE, 'room-right'));
 		expect(viaRoom.document.walls.map((wall) => wall.id)).not.toContain('wall-b');
 		expect(validateWallFirstLayoutDocument(viaRoom.document).success).toBe(true);
 	});
@@ -406,16 +412,16 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 			)
 		};
 		expect(roomExclusiveBoundaryWallIds(allShared, 'room-right')).toEqual([]);
-		expect(rejection(planRemoveRoom(allShared, 'room-right')).code).toBe('ambiguous_room_removal');
+		expect(rejection(removeRoom(allShared, 'room-right')).code).toBe('ambiguous_room_removal');
 	});
 
 	it('rejects an unknown Room and a boundary referencing a missing Wall', () => {
-		expect(rejection(planRemoveRoom(BASE, 'room-missing')).code).toBe('unknown_room');
+		expect(rejection(removeRoom(BASE, 'room-missing')).code).toBe('unknown_room');
 		const missingWall: LayoutDocumentWallFirst = {
 			...BASE,
 			walls: BASE.walls.filter((wall) => wall.id !== 'wall-b')
 		};
-		expect(rejection(planRemoveRoom(missingWall, 'room-right')).code).toBe(
+		expect(rejection(removeRoom(missingWall, 'room-right')).code).toBe(
 			'wall_not_in_room_boundary'
 		);
 	});
@@ -446,7 +452,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 				}
 			]
 		};
-		const plan = success(planRemoveRoom(hosted, 'room-right'));
+		const plan = success(removeRoom(hosted, 'room-right'));
 		expect(plan.document.openings.map((opening) => opening.id)).toEqual(['opening:door:2']);
 	});
 
@@ -472,7 +478,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 				}
 			]
 		};
-		const plan = success(planRemoveRoom(withObjects, 'room-right'));
+		const plan = success(removeRoom(withObjects, 'room-right'));
 		const byId = new Map(plan.document.objects.map((object) => [object.id, object]));
 		expect(byId.get('obj-1')!.roomId).toBeUndefined();
 		expect(byId.get('obj-2')!.roomId).toBe('room-left');
@@ -498,7 +504,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 				}
 			]
 		};
-		const plan = planRemoveRoom(related, 'room-right');
+		const plan = removeRoom(related, 'room-right');
 		expect(plan.kind).toBe('rejected');
 		if (plan.kind === 'rejected') {
 			expect(['room_reconciliation_rejected', 'unresolved_portal_remap']).toContain(
@@ -512,7 +518,7 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 			...BASE,
 			junctions: [...BASE.junctions, { id: 'j-orphan', point: [20, 20] }]
 		};
-		const plan = success(planRemoveRoom(withOrphan, 'room-right'));
+		const plan = success(removeRoom(withOrphan, 'room-right'));
 		const ids = new Set(plan.document.junctions.map((junction) => junction.id));
 		// j-b / j-c belonged only to room-right's Walls → pruned; j-m / j-n are
 		// shared with surviving Walls → kept; the unrelated orphan is never swept.
@@ -525,9 +531,9 @@ describe('P23.6d planRemoveRoom — Room removal over the Wall pipeline', () => 
 
 	it('is input-pure and rejects leave zero partial mutation', () => {
 		const snapshot = JSON.stringify(BASE);
-		success(planRemoveRoom(BASE, 'room-right'));
-		success(planRemoveRoom(BASE, 'room-left'));
-		rejection(planRemoveRoom(BASE, 'room-missing'));
+		success(removeRoom(BASE, 'room-right'));
+		success(removeRoom(BASE, 'room-left'));
+		rejection(removeRoom(BASE, 'room-missing'));
 		expect(JSON.stringify(BASE)).toBe(snapshot);
 	});
 });
@@ -541,7 +547,7 @@ describe('P23B.3a D-12 — nested Room identity follows authored Walls', () => {
 		// removes, so `room-a` retires and the nested `room-z` keeps its identity.
 		const nested = nestedOuterInnerDocument();
 		expect(roomExclusiveBoundaryWallIds(nested, 'room-a')).toEqual(['wall-o1', 'wall-o2', 'wall-o3', 'wall-o4']);
-		const plan = success(planRemoveRoom(nested, 'room-a'));
+		const plan = success(removeRoom(nested, 'room-a'));
 		expect(plan.retiredRoomIds).toEqual(['room-a']);
 		expect(plan.document.rooms.map((room) => room.id)).toEqual(['room-z']);
 	});
@@ -549,7 +555,7 @@ describe('P23B.3a D-12 — nested Room identity follows authored Walls', () => {
 
 describe('P23.6d legacy single-Wall delete stays intact', () => {
 	it('planDeleteWall still deletes exactly one Wall', () => {
-		const plan = success(planDeleteWall(BASE, 'wall-e'));
+		const plan = success(deleteWall(BASE, 'wall-e'));
 		expect(plan.document.walls.map((wall) => wall.id)).not.toContain('wall-e');
 		expect(plan.document.rooms).toHaveLength(1);
 	});
