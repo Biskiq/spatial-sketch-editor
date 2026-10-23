@@ -138,7 +138,7 @@ export function renderOverlay() {
   if (S.ink && S.ink.pts.length) {
     const pts = S.ink.pts.map((p) => (S.ink.px ? p : wpx([p[0], p[1], S.ink.h]))).filter(Boolean);
     if (S.ink.cursor) { const c = wpx([...S.ink.cursor, S.ink.h]); if (c) pts.push(c); }
-    s += `<polyline class="ink-live" points="${pts.map((p) => p.join(',')).join(' ')}"/>` + (S.ink.px ? '' : pts.map((p) => `<circle class="ink-pt" cx="${p[0]}" cy="${p[1]}" r="3"/>`).join(''));
+    s += `<polyline class="ink-live" points="${pts.map((p) => p.join(',')).join(' ')}"/>` + (S.ink.px || S.inkTip !== 'line' ? '' : pts.map((p) => `<circle class="ink-pt" cx="${p[0]}" cy="${p[1]}" r="3"/>`).join(''));
     if (S.ink.tag && pts.length) s += tag(pts.at(-1)[0] + 12, pts.at(-1)[1] - 12, S.ink.tag);
   }
   if (S.ink && S.ink.opening && S.ink.opening.round) { const o = S.ink.opening; s += `<circle class="ink-live" cx="${o.c[0]}" cy="${o.c[1]}" r="${o.rpx}"/>` + tag(o.c[0] + o.rpx + 8, o.c[1], o.label); }
