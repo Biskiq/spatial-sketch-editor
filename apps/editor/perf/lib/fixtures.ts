@@ -17,6 +17,8 @@
 import {
 	compileWallFirstLayoutGeometry,
 	createEmptyWallFirstLayoutDocument,
+	deriveLayoutWallRole,
+	mintLayoutIdCapture,
 	planCreateWallFirstOpening,
 	planWallChain,
 	type LayoutDocumentWallFirst,
@@ -63,7 +65,8 @@ function chain(
 		baseline: document,
 		points,
 		close: options.close,
-		role: 'boundary',
+		capture: mintLayoutIdCapture(),
+		levelId: document.floor.id,
 		...(options.hostSnapEnds
 			? {
 					endpointHostSnaps: [
@@ -106,19 +109,18 @@ export function buildGrid(k: number): LayoutDocumentWallFirst {
 /** One Opening per Wall of length ≥ 3 m: interior Walls get a door, others a window. */
 export function addOpenings(document: LayoutDocumentWallFirst): LayoutDocumentWallFirst {
 	let current = document;
-	const roomCount = new Map<string, number>();
-	for (const room of document.rooms) {
-		for (const reference of room.boundary) {
-			roomCount.set(reference.wallId, (roomCount.get(reference.wallId) ?? 0) + 1);
-		}
-	}
 	for (const wall of document.walls) {
 		const a = point(current, wall.startJunctionId);
 		const b = point(current, wall.endJunctionId);
 		const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
 		if (length < 3) continue;
-		const kind = (roomCount.get(wall.id) ?? 0) >= 2 ? 'door' : 'window';
-		const plan = planCreateWallFirstOpening(current, { wallId: wall.id, kind, offset: length / 2 - 0.5 });
+		const kind = deriveLayoutWallRole(current, wall.id) === 'dividing' ? 'door' : 'window';
+		const plan = planCreateWallFirstOpening(
+			current,
+			{ wallId: wall.id, kind, offset: length / 2 - 0.5 },
+			mintLayoutIdCapture(),
+			current.floor.id
+		);
 		if (plan.kind !== 'success') throw new Error(`opening refused on ${wall.id}`);
 		current = plan.document;
 	}

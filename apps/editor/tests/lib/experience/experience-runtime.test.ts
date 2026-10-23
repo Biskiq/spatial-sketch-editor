@@ -21,6 +21,7 @@ import {
 	type ExperienceEvent,
 	type ExperienceInterpreterOptions
 } from '@portfolio/project-model/units';
+import { CAMERA_UNIT_FORMAT_VERSION } from '@portfolio/project-model/units';
 import { CONNECTIONS, EXPERIENCE, experienceEnvelope, LOWERING_OPTIONS, VIEWS } from './fixtures';
 
 const OPTIONS = { runId: 'run-1', runEpoch: 1 } as const;
@@ -79,12 +80,25 @@ async function threeStopLowering(jumpFromEntry = false) {
 			experiences: [
 				{
 					...base,
-					presentations: [...base.presentations, { id: 'presentation-3', label: 'Study', viewId: 'view-3' }],
+					presentations: [
+						...base.presentations,
+						{
+							id: 'presentation-3',
+							label: 'Study',
+							viewIds: ['view-3'],
+							defaultViewId: 'view-3',
+							subject: null,
+							text: null
+						}
+					],
 					stops: [
 						jumpFromEntry
-							? { ...base.stops[0]!, continuation: { kind: 'stop' as const, stopId: 'stop-3' } }
+							? {
+									...base.stops[0]!,
+									continuation: { kind: 'stop' as const, stopId: 'stop-3', transition: 'travel' as const }
+								}
 							: base.stops[0]!,
-						base.stops[1]!,
+						{ ...base.stops[1]!, continuation: { kind: 'sequence-next' as const, transition: 'travel' as const } },
 						{ id: 'stop-3', presentationId: 'presentation-3', continuation: { kind: 'end' as const } }
 					],
 					guides: [{ ...base.guides[0]!, stopIds: ['stop-1', 'stop-2', 'stop-3'] }]
@@ -92,19 +106,17 @@ async function threeStopLowering(jumpFromEntry = false) {
 			]
 		}
 	});
-	return lowerExperienceProgram(envelope, {
-		...LOWERING_OPTIONS,
-		bindings: [
-			{ stopId: 'stop-2', invocation: { kind: 'travel' as const, connectionId: 'connection-1' } },
-			{ stopId: 'stop-3', invocation: { kind: 'travel' as const, connectionId: 'connection-2' } }
-		]
-	});
+	return lowerExperienceProgram(envelope, LOWERING_OPTIONS);
 }
 
 describe('Experience lowering', () => {
-	it('derives the entry guide order, the explicit travel binding and the panel content', async () => {
+	it('derives the entry guide order, the authored Travel and the panel content', async () => {
 		const lowered = await program();
 		expect(validateExecutionProgram(lowered).success).toBe(true);
+		expect(lowered.presentations.find((entry) => entry.id === 'presentation-1')).toMatchObject({
+			viewIds: ['view-1'],
+			defaultViewId: 'view-1'
+		});
 		expect(lowered.entryStopId).toBe('stop-1');
 		expect(lowered.stops.map((stop) => stop.id)).toEqual(['stop-1', 'stop-2']);
 		expect(lowered.stops[0]).toMatchObject({
@@ -118,7 +130,7 @@ describe('Experience lowering', () => {
 		});
 		expect(lowered.localTime).toEqual([{ stopId: 'stop-1', holdSeconds: 0.5 }]);
 		expect(lowered.presentations.find((entry) => entry.id === 'presentation-1')?.content).toEqual([
-			{ id: 'content-1', kind: 'text', text: 'The piano.' }
+			{ id: 'presentation-1:text', kind: 'text', text: 'The piano.' }
 		]);
 		expect(lowered.presentations.find((entry) => entry.id === 'presentation-2')?.content).toEqual([]);
 		expect(lowered.profile).toEqual({ reducedMotion: 'required', semanticDomNavigation: 'required' });
@@ -137,7 +149,14 @@ describe('Experience lowering', () => {
 						...base,
 						presentations: [
 							...base.presentations,
-							{ id: 'presentation-study', label: 'Study', viewId: 'view-2' }
+							{
+								id: 'presentation-study',
+								label: 'Study',
+								viewIds: ['view-2'],
+								defaultViewId: 'view-2',
+								subject: null,
+								text: null
+							}
 						]
 					}
 				]
@@ -152,18 +171,37 @@ describe('Experience lowering', () => {
 		expect(companion.presentations).toContainEqual({
 			presentationId: 'presentation-study',
 			label: 'Study',
-			viewId: 'view-2',
+			viewIds: ['view-2'],
+			defaultViewId: 'view-2',
 			stopIds: []
 		});
 	});
 
-	it('refuses a non-entry occurrence without an invocation binding instead of inferring a Cut', async () => {
-		const envelope = await experienceEnvelope();
-		const lowered = lowerExperienceProgram(envelope, { ...LOWERING_OPTIONS, bindings: [] });
-		expect(lowered).toMatchObject({ kind: 'refused', code: 'missing-binding', stopId: 'stop-2' });
+	it('uses the authored default Cut when a non-entry Stop authors no Travel', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						stops: [
+							{ ...base.stops[0]!, continuation: { kind: 'sequence-next' as const } },
+							base.stops[1]!
+						]
+					}
+				]
+			}
+		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		expect(lowered.kind).toBe('lowered');
+		if (lowered.kind !== 'lowered') return;
+		// Cut is the authored default on the edge, not a silent fallback from a
+		// Travel: no connection is consulted and there is no host binding to omit.
+		expect(lowered.program.stops[1]).toMatchObject({ invocation: { kind: 'cut', viewId: 'view-2' } });
 	});
 
-	it('treats a non-first authored entry Stop as the first arrival, not a Travel', async () => {
+	it('enters a non-first entry Stop with a Cut and keeps its authored approach as a transition', async () => {
 		const base = EXPERIENCE.experiences[0]!;
 		const envelope = await experienceEnvelope({
 			experience: {
@@ -176,34 +214,35 @@ describe('Experience lowering', () => {
 				]
 			}
 		});
-		// stop-1 precedes the entry in the Guide order and still needs its Cut
-		// binding; the entry itself defaults to a Cut rather than borrowing an edge.
-		const cutEntry = lowerExperienceProgram(envelope, {
-			...LOWERING_OPTIONS,
-			bindings: [{ stopId: 'stop-1', invocation: { kind: 'cut', viewId: 'view-1' } }]
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		expect(lowered.kind).toBe('lowered');
+		if (lowered.kind !== 'lowered') return;
+		expect(lowered.program.entryStopId).toBe('stop-2');
+		// The run has visited nothing before its first arrival, so there is no pose a
+		// Travel could start from: the entry occurrence cuts to its own View. The
+		// authored approach stays in the transition table, so a later navigation
+		// from stop-1 still realizes its Travel.
+		expect(lowered.program.stops[1]).toMatchObject({
+			invocation: { kind: 'cut', viewId: 'view-2' }
 		});
-		expect(cutEntry.kind).toBe('lowered');
-		if (cutEntry.kind !== 'lowered') return;
-		expect(cutEntry.program.entryStopId).toBe('stop-2');
-		expect(cutEntry.program.stops[1]).toMatchObject({ invocation: { kind: 'cut', viewId: 'view-2' } });
-
-		// A Travel binding on the entry has no predecessor to travel from.
-		const travelEntry = lowerExperienceProgram(envelope, {
-			...LOWERING_OPTIONS,
-			bindings: [
-				{ stopId: 'stop-1', invocation: { kind: 'cut', viewId: 'view-1' } },
-				{ stopId: 'stop-2', invocation: { kind: 'travel', connectionId: 'connection-1' } }
-			]
+		expect(lowered.transitions).toContainEqual({
+			fromStopId: 'stop-1',
+			toStopId: 'stop-2',
+			invocation: { kind: 'travel', connectionId: 'connection-1' }
 		});
-		expect(travelEntry).toMatchObject({ kind: 'refused', code: 'invalid-binding', stopId: 'stop-2' });
 	});
 
 	it('reports a travel gap when no Camera connection joins the adjacent views', async () => {
-		const envelope = await experienceEnvelope();
-		const lowered = lowerExperienceProgram(envelope, {
-			...LOWERING_OPTIONS,
-			bindings: [{ stopId: 'stop-2', invocation: { kind: 'travel', connectionId: 'connection-absent' } }]
+		// Connectivity is a Camera fact: with no connection and no adjacency, the
+		// authored Travel has no route and must refuse rather than become a Cut.
+		const envelope = await experienceEnvelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: VIEWS.map((view) => ({ ...view, connectedViewIds: [] })),
+				connections: []
+			}
 		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
 		expect(lowered).toMatchObject({ kind: 'refused', code: 'travel-gap', stopId: 'stop-2' });
 	});
 
@@ -233,11 +272,13 @@ describe('Experience lowering', () => {
 				experience: {
 					...envelope.units.experience,
 					data: {
-						formatVersion: 1 as const,
+						formatVersion: 2 as const,
 						experiences: envelope.units.experience.data.experiences.map((experience) => ({
 							...experience,
 							presentations: experience.presentations.map((presentation) =>
-								presentation.id === 'presentation-2' ? { ...presentation, viewId: 'view-absent' } : presentation
+								presentation.id === 'presentation-2'
+									? { ...presentation, viewIds: ['view-absent'], defaultViewId: 'view-absent' }
+									: presentation
 							)
 						}))
 					}
@@ -246,6 +287,28 @@ describe('Experience lowering', () => {
 		};
 		const lowered = lowerExperienceProgram(broken, LOWERING_OPTIONS);
 		expect(lowered).toMatchObject({ kind: 'refused', code: 'unknown-view' });
+	});
+
+	it('refuses a Stop whose Presentation has no Default View, even with its own entry View', async () => {
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						presentations: base.presentations.map((presentation) =>
+							presentation.id === 'presentation-1' ? { ...presentation, defaultViewId: null } : presentation
+						),
+						stops: base.stops.map((stop) =>
+							stop.id === 'stop-1' ? { ...stop, entryViewId: 'view-1' } : stop
+						)
+					}
+				]
+			}
+		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
+		expect(lowered).toMatchObject({ kind: 'refused', code: 'missing-entry' });
 	});
 
 	it('refuses an explicit order no authored Guide carries', async () => {
@@ -329,6 +392,106 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 		const completed = interpreter.continue();
 		expect(completed.state.phase).toBe('completed');
 		expect(completed.effects).toContainEqual({ kind: 'completed' });
+	});
+
+	/**
+	 * A three-Stop Guide with two extra Presentations that carry no Stop. Stop-1 holds
+	 * for the explicit clock; every other occurrence is ready, so the tests drive
+	 * only the events they name.
+	 */
+	async function guidedWithExtras(): Promise<ExecutionProgram> {
+		const base = await program();
+		return {
+			...base,
+			presentations: [
+				...base.presentations,
+				{ id: 'presentation-extra', label: 'Extra', viewIds: ['view-1'], defaultViewId: 'view-1', content: [] },
+				{ id: 'presentation-extra-2', label: 'Extra two', viewIds: ['view-2'], defaultViewId: 'view-2', content: [] }
+			],
+			stops: [
+				{ ...base.stops[0]!, holdSeconds: 0.5 },
+				{ ...base.stops[1]!, holdSeconds: null, continuation: { kind: 'sequence-next' as const } },
+				{ ...base.stops[0]!, id: 'stop-3', holdSeconds: null, continuation: { kind: 'end' as const } }
+			]
+		};
+	}
+
+	it('suspends the Guide on a Presentation entry and returns only through the explicit resume', async () => {
+		const extended = await guidedWithExtras();
+		const interpreter = createExperienceInterpreter(extended, OPTIONS);
+		interpreter.enter();
+		interpreter.tick(500);
+		interpreter.continue();
+		expect(interpreter.state()).toMatchObject({ stopId: 'stop-2', resume: null });
+
+		expect(interpreter.enterPresentation('presentation-extra').outcome).toBe('accepted');
+		expect(interpreter.state()).toMatchObject({
+			stopId: null,
+			presentationId: 'presentation-extra',
+			resume: { stopId: 'stop-2', returnToStopId: null }
+		});
+
+		// Continue during a Presentation is still ignored: it never returns to the tour.
+		expect(interpreter.continue().outcome).toBe('ignored');
+		expect(interpreter.state()).toMatchObject({ stopId: null, presentationId: 'presentation-extra' });
+
+		const resumed = interpreter.resume();
+		expect(resumed.outcome).toBe('accepted');
+		expect(resumed.state).toMatchObject({ stopId: 'stop-2', phase: 'ready', resume: null });
+		expect(resumed.effects).toContainEqual({ kind: 'ready', stopId: 'stop-2' });
+		expect(resumed.state.visited.at(-1)?.stopId).toBe('stop-2');
+
+		// Continue then moves on as authored, from the resumed Stop.
+		const advanced = interpreter.continue();
+		expect(advanced.state).toMatchObject({ stopId: 'stop-3', resume: null });
+	});
+
+	it('ignores resume when no Guide position is suspended', async () => {
+		const extended = await guidedWithExtras();
+		const interpreter = createExperienceInterpreter(extended, OPTIONS);
+		interpreter.enter();
+		const before = interpreter.state();
+		expect(interpreter.resume()).toMatchObject({ outcome: 'ignored', effects: [] });
+		expect(interpreter.state()).toBe(before);
+	});
+
+	it('keeps the original Guide position when moving between Presentations', async () => {
+		const extended = await guidedWithExtras();
+		const interpreter = createExperienceInterpreter(extended, OPTIONS);
+		interpreter.enter();
+		interpreter.tick(500);
+		interpreter.continue();
+		interpreter.enterPresentation('presentation-extra');
+		interpreter.enterPresentation('presentation-extra-2');
+		expect(interpreter.state().resume).toEqual({ stopId: 'stop-2', returnToStopId: null });
+		expect(interpreter.resume().state).toMatchObject({ stopId: 'stop-2', resume: null });
+	});
+
+	it('clears the suspended Guide position when the visitor navigates to a Stop', async () => {
+		const extended = await guidedWithExtras();
+		const interpreter = createExperienceInterpreter(extended, OPTIONS);
+		interpreter.enter();
+		interpreter.tick(500);
+		interpreter.continue();
+		interpreter.enterPresentation('presentation-extra');
+		const navigated = interpreter.navigate('stop-1');
+		expect(navigated.state).toMatchObject({ stopId: 'stop-1', resume: null });
+		expect(interpreter.resume().outcome).toBe('ignored');
+	});
+
+	it('clears the suspended Guide position when the run finishes', async () => {
+		const extended = await guidedWithExtras();
+		const interpreter = createExperienceInterpreter(extended, OPTIONS);
+		interpreter.enter();
+		interpreter.tick(500);
+		interpreter.continue();
+		interpreter.enterPresentation('presentation-extra');
+		const finished = interpreter.dispatch({
+			kind: 'cancel',
+			runId: interpreter.state().runId,
+			runEpoch: interpreter.state().runEpoch
+		});
+		expect(finished.state).toMatchObject({ phase: 'cancelled', resume: null });
 	});
 
 	it('treats an arrival confirmation as no second Camera write', async () => {
@@ -444,26 +607,37 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 	});
 
 	it('does not place another Presentation\'s content in the active panel', async () => {
-		const envelope = await experienceEnvelope();
-		const lowered = lowerExperienceProgram(envelope, {
-			...LOWERING_OPTIONS,
-			content: [
-				...LOWERING_OPTIONS.content,
-				{ presentationId: 'presentation-2', records: [{ id: 'content-2', text: 'The gallery.' }] }
-			]
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						presentations: base.presentations.map((presentation) =>
+							presentation.id === 'presentation-2'
+								? { ...presentation, text: { kind: 'plain' as const, body: 'The gallery.' } }
+								: presentation
+						)
+					}
+				]
+			}
 		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
 		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
 		const selected: ExecutionProgram = {
 			...lowered.program,
-			lifecycle: [{ event: 'arrival', guard: null, action: { kind: 'show-content', contentId: 'content-2' } }]
+			lifecycle: [
+				{ event: 'arrival', guard: null, action: { kind: 'show-content', contentId: 'presentation-2:text' } }
+			]
 		};
 		const entered = reduceExperience(selected, createExperienceRun(selected, OPTIONS), event('enter'));
 		expect(entered.state.panel).toMatchObject({
 			presentationId: 'presentation-1',
-			content: [{ id: 'content-1', text: 'The piano.' }]
+			content: [{ id: 'presentation-1:text', text: 'The piano.' }]
 		});
-		expect(entered.state.panel?.content.some((record) => record.id === 'content-2')).toBe(false);
-		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('content-2'))).toBe(true);
+		expect(entered.state.panel?.content.some((record) => record.id === 'presentation-2:text')).toBe(false);
+		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('presentation-2:text'))).toBe(true);
 	});
 
 	it('ignores Continue while a hold is still running', async () => {
@@ -673,23 +847,32 @@ describe('Experience interpreter — occurrence, holds and continuation', () => 
 	});
 
 	it('reports a selection from another Presentation instead of showing an empty panel', async () => {
-		const envelope = await experienceEnvelope();
-		const lowered = lowerExperienceProgram(envelope, {
-			...LOWERING_OPTIONS,
-			content: [
-				...LOWERING_OPTIONS.content,
-				{ presentationId: 'presentation-2', records: [{ id: 'content-2', text: 'The gallery.' }] }
-			]
+		const base = EXPERIENCE.experiences[0]!;
+		const envelope = await experienceEnvelope({
+			experience: {
+				...EXPERIENCE,
+				experiences: [
+					{
+						...base,
+						presentations: base.presentations.map((presentation) =>
+							presentation.id === 'presentation-2'
+								? { ...presentation, text: { kind: 'plain' as const, body: 'The gallery.' } }
+								: presentation
+						)
+					}
+				]
+			}
 		});
+		const lowered = lowerExperienceProgram(envelope, LOWERING_OPTIONS);
 		if (lowered.kind !== 'lowered') throw new Error(lowered.message);
-		// content-2 belongs to presentation-2; the entry arrival is presentation-1.
+		// presentation-2:text belongs to presentation-2; the entry arrival is presentation-1.
 		const selected: ExecutionProgram = {
 			...lowered.program,
-			lifecycle: [{ event: 'enter', guard: null, action: { kind: 'show-content', contentId: 'content-2' } }]
+			lifecycle: [{ event: 'enter', guard: null, action: { kind: 'show-content', contentId: 'presentation-2:text' } }]
 		};
 		const entered = reduceExperience(selected, createExperienceRun(selected, OPTIONS), event('enter'));
-		expect(entered.state.panel?.content).toEqual([{ id: 'content-1', text: 'The piano.' }]);
-		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('content-2'))).toBe(true);
+		expect(entered.state.panel?.content).toEqual([{ id: 'presentation-1:text', text: 'The piano.' }]);
+		expect(entered.effects.some((effect) => effect.kind === 'gap' && effect.message.includes('presentation-2:text'))).toBe(true);
 	});
 
 	it('resolves a lifecycle continue after arrival, but never through a hold or Gate', async () => {

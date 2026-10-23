@@ -118,5 +118,5 @@ baton         PASS — T3 baton names the next released work only; no closed-sli
 stable        PASS — no pending-merge state or branch-head pin in live routers
 report        PASS — preservation counts, residual owners and recovery recorded above
 scope         PASS — no implementation code changed during closeout
-P1            PASS — merge method recorded; post-merge anchor verification owed
+P1            PASS — merge commit 55683981 preserves the anchor; post-merge recovery verified 2026-10-23
 ```

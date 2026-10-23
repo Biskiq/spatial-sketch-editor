@@ -71,7 +71,11 @@
 	type StageSourceHit
 } from '$lib/authoring/stage/stage-facade';
 	import { stageAdapterFactories } from '$lib/authoring/adapters/catalog';
-	import { mountStageAdapter } from '$lib/authoring/stage/stage-adapter-host';
+	import {
+		createStageAdapterServices,
+		mountStageAdapter,
+		type StageAdapterServices
+	} from '$lib/authoring/stage/stage-adapter-host';
 	import { stageCardFacts, stageContributionGroups } from '$lib/authoring/stage/stage-contributions';
 	import {
 		createStageAcceptanceHost,
@@ -99,6 +103,10 @@
 	import StageInstrumentHost from '$lib/authoring/stage/shell/StageInstrumentHost.svelte';
 	import StageCanvas from '$lib/authoring/stage/shell/StageCanvas.svelte';
 	import StageOverlay from '$lib/authoring/stage/shell/StageOverlay.svelte';
+	import ExperienceSurface from '$lib/authoring/experience/ExperienceSurface.svelte';
+	import { experienceFocus } from '$lib/authoring/experience/focus.svelte';
+	import { previewEntryFor, type EnterablePreviewEntry } from '$lib/authoring/experience/preview-entry';
+	import { isAllowedShippedTextureUri } from '$lib/visitor/shipped-static-registry';
 
 	const projectId = decodeURIComponent(page.params.projectId ?? '');
 	const intent: BootIntent = bootIntentFromSearch(page.url.searchParams);
@@ -193,6 +201,8 @@
 		return (lifecycle.task.lens ?? 'world') === lens ? lifecycle.task : null;
 	});
 	function changeLens(next: 'world' | 'experience'): void {
+		// Preview returns to the lens it was entered from; a lens switch ends it.
+		closePreview();
 		abortGesture();
 		// A notice describes the previous context; the lens is the new one.
 		notice = '';
@@ -213,6 +223,61 @@
 	let indexOpen = $state(true);
 	let query = $state('');
 	let reducedMotion = $state(false);
+	/**
+	 * Preview takeover. The visitor surface is a lazy chunk loaded on the first
+	 * entry; a repeat entry reuses the loaded component. `epoch` is the run
+	 * identity Preview hands the interpreter, so a completion from an earlier
+	 * entry is stale rather than accepted by the current one.
+	 */
+	let preview = $state<{ readonly entry: EnterablePreviewEntry; readonly epoch: number } | null>(null);
+	type VisitorSurface = (typeof import('$lib/visitor/VisitorPreviewSurface.svelte'))['default'];
+	let previewSurface = $state.raw<VisitorSurface | null>(null);
+	let previewEpoch = 0;
+	let previewBusy = $state(false);
+	/** The adapter services the Experience lens surface edits through. */
+	let adapterServices = $state.raw<StageAdapterServices | null>(null);
+	const currentEnvelope = $derived.by((): ProjectEnvelope | null =>
+		boot.status === 'ready' || boot.status === 'empty' ? stageEnvelope(boot.snapshot) : null
+	);
+	const previewRead = $derived(
+		boot.status === 'ready' || boot.status === 'empty' ? boot.snapshot.domain : null
+	);
+	const previewAvailable = $derived(
+		currentEnvelope !== null && currentEnvelope.units.experience.data.experiences.length > 0
+	);
+
+	function closePreview(): void {
+		preview = null;
+	}
+
+	async function openPreview(): Promise<void> {
+		if (previewBusy || (boot.status !== 'ready' && boot.status !== 'empty')) return;
+		const snapshot = boot.snapshot;
+		previewBusy = true;
+		try {
+			const entry = previewEntryFor({
+				envelope: stageEnvelope(snapshot),
+				sourceContentId: snapshot.sourceContentId,
+				sessionEpoch: snapshot.sessionEpoch,
+				epoch: ++previewEpoch,
+				focus: experienceFocus.read()
+			});
+			if (entry.kind === 'unavailable') {
+				notice = entry.message;
+				return;
+			}
+			// The visitor surface is its own chunk: the Stage first-load set never
+			// carries it, and a second entry reuses what the first loaded.
+			if (previewSurface === null) {
+				const module = await import('$lib/visitor/VisitorPreviewSurface.svelte');
+				previewSurface = module.default;
+			}
+			notice = '';
+			preview = { entry, epoch: previewEpoch };
+		} finally {
+			previewBusy = false;
+		}
+	}
 	let evaluation = $state<ViewportEvaluation | null>(null);
 	// Generated Plan evaluations are replaced whole; raw data keeps their references
 	// cloneable when Index selection crosses the immutable selection boundary.
@@ -344,6 +409,10 @@
 		// Replacement: validate first (the snapshot is already admitted), then the
 		// session atomically cancels writers, clears selection/task and swaps.
 		session.replace(snapshot);
+		// A Preview run and the lens focus name identities from the replaced source.
+		preview = null;
+		adapterServices = null;
+		experienceFocus.reset();
 		// The previous facade's listeners are dropped before its replacement exists,
 		// so a disposal-time notification cannot write through the new facade.
 		unsubscribeContributions?.();
@@ -382,8 +451,11 @@
 		// performance harness uses for the first architectural frame (F1/F2).
 		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
+		adapterServices = createStageAdapterServices(facade, mounted);
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			if (acceptance !== mounted || tornDown) return;
+			// A source change invalidates the isolated run entered over the old one.
+			preview = null;
 			refreshHistory();
 			// The Save state derives its status from the accepted source, so an
 			// accepted edit is what makes the project dirty. Without this refresh
@@ -1536,6 +1608,11 @@
 	}
 
 	function handleKey(event: KeyboardEvent): void {
+		// Preview is an isolated visitor run: Stage viewing keys do not apply there.
+		if (preview !== null) {
+			if (event.key === 'Escape') closePreview();
+			return;
+		}
 		// Typing in the Index's subject search must never move the camera.
 		if (stageKeyFromTextEntry(event.target)) return;
 		const action = stageKeyAction(event.key);
@@ -1733,7 +1810,11 @@
 		save={headSave}
 		onReloadRemote={(offer) => void applyReloadOffer(offer)}
 		saveUnavailableReason="Conditional Save needs the cloud client; this session has none."
-		previewUnavailableReason="Visitor Preview arrives with T3."
+		canPreview={previewAvailable}
+		onPreview={() => void openPreview()}
+		previewUnavailableReason={currentEnvelope === null
+			? 'Preview needs an admitted project source.'
+			: 'Create an Experience in the Experience lens to Preview it.'}
 		{reducedMotion}
 		onToggleReducedMotion={() => (reducedMotion = !reducedMotion)}
 	/>
@@ -1810,6 +1891,7 @@
 		/>
 
 		<div class="stage-frame">
+			{#if preview === null}
 			<!--
 				The Stage surface is a pointer-driven viewport, not a widget: it handles
 				click (selection through eligible Plan fragments) and wheel (zoom), while
@@ -1866,34 +1948,64 @@
 				</div>
 
 				{#if lens === 'experience'}
-					<!-- The Experience lens has a real unavailable posture until T3 mounts
-						its adapter on this Stage: never a mock editable Experience, and never a
-						silent no-op that looks like a broken switch. -->
 					<!--
 						Like the toolbar, this panel stops its own pointer/click events: the
 						Stage surface below is pointer-driven and captures the pointer on press,
-						so a bubbled press would move the click onto the Stage and the button
-						would never receive it.
+						so a bubbled press would move the click onto the Stage and a control
+						inside the lens would never receive it.
 					-->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 					<div
-						class="lens-unavailable"
+						class="lens-surface"
 						role="region"
-						aria-label="Experience lens unavailable"
+						aria-label="Experience lens"
 						onpointerdown={(event) => event.stopPropagation()}
 						onclick={(event) => event.stopPropagation()}
 					>
-						<h2>Experience is not available yet</h2>
-						<p aria-live="polite">
-							The Experience lens arrives with T3, which mounts its own adapter on this
-							Stage. Pending work is cancelled. Return to World for ordinary viewing; a parked task is resumed there.
-						</p>
-						<button type="button" onclick={() => changeLens('world')}>Back to World</button>
+						{#if adapterServices !== null && currentEnvelope !== null}
+							<ExperienceSurface
+								services={adapterServices}
+								snapshot={currentEnvelope}
+								onEnterPreview={() => void openPreview()}
+							/>
+						{:else}
+							<p class="lens-pending" role="status">The Experience lens mounts with the admitted project source.</p>
+						{/if}
 					</div>
 				{/if}
 
 				{#if notice}<p class="stage-note" role="status">{notice}</p>{/if}
 			</div>
+			{/if}
+
+			{#if preview !== null && previewSurface !== null && previewRead !== null}
+				{@const Surface = previewSurface}
+				{@const entry = preview.entry}
+				<!--
+					The Preview takeover replaces the Stage rather than sitting on top of
+					a live one: the authoring canvas is unmounted, so no inspection claim,
+					gesture or overlay survives into the isolated visitor run.
+				-->
+				<div class="preview-takeover" role="region" aria-label="Visitor preview">
+					{#key preview.epoch}
+						<Surface
+							geometry={previewRead.geometry}
+							scene={previewRead.scene}
+							rooms={previewRead.rooms}
+							graph={previewRead.graph}
+							program={entry.kind === 'presentations' ? entry.program ?? null : entry.program}
+							experienceOptions={entry.kind === 'presentations' ? entry.options ?? null : entry.options}
+							entryPresentationId={entry.kind === 'program' ? entry.entryPresentationId : null}
+							resolveTexture={(uri: string) => (isAllowedShippedTextureUri(uri) ? uri : null)}
+							{reducedMotion}
+							title={entry.title}
+							onExit={closePreview}
+						/>
+					{/key}
+				</div>
+			{:else if preview !== null}
+				<p class="stage-note" role="status">Loading the visitor Preview…</p>
+			{/if}
 
 			<EditorCard
 				identity={cardOpen ? cardIdentity : null}
@@ -2059,36 +2171,31 @@
 		border-color: #d4ad45;
 		color: #f4d98a;
 	}
-	.lens-unavailable {
+	.lens-surface {
 		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		width: min(26rem, calc(100% - 2rem));
-		padding: 1.1rem 1.25rem;
-		border: 1px solid #4d4655;
-		border-radius: 0.6rem;
-		background: rgb(25 24 31 / 96%);
-		box-sizing: border-box;
+		top: 3.25rem;
+		right: 0.75rem;
+		bottom: 0.75rem;
+		width: min(42rem, calc(100% - 1.5rem));
+		display: flex;
+		min-height: 0;
 	}
-	.lens-unavailable h2 {
-		margin: 0 0 0.4rem;
-		font-size: 1rem;
+	.lens-surface :global(.experience-surface) {
+		flex: 1;
+		min-height: 0;
 	}
-	.lens-unavailable p {
-		margin: 0 0 0.75rem;
+	.lens-pending {
+		margin: 0;
+		padding: 0.6rem 0.75rem;
 		color: #bcb5c4;
 		font-size: 0.86rem;
 		line-height: 1.45;
 	}
-	.lens-unavailable button {
-		padding: 0.4rem 0.7rem;
-		border: 1px solid #635a6f;
-		border-radius: 0.35rem;
-		background: #292632;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
+	.preview-takeover {
+		position: absolute;
+		inset: 0;
+		z-index: 20;
+		background: #050508;
 	}
 	.stage-note {
 		position: absolute;

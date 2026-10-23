@@ -54,7 +54,7 @@ describe('project-model package boundary', () => {
 			camera: { unitId: 'project:camera', data: { formatVersion: 1, views: [], connections: [] } },
 			experience: {
 				unitId: 'project:experience',
-				data: { formatVersion: 1, experiences: [] }
+				data: { formatVersion: 2, experiences: [] }
 			},
 			resources: { unitId: 'project:resources', data: { formatVersion: units.RESOURCE_UNIT_FORMAT_VERSION, resources: [] } }
 		});

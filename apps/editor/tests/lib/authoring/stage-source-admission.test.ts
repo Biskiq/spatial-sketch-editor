@@ -400,7 +400,16 @@ describe('source admission', () => {
 					id: 'experience-a',
 					label: 'Experience A',
 					entryGuideId: 'guide-1',
-					presentations: [{ id: 'presentation-1', label: 'Entry', viewId: 'view-absent' }],
+					presentations: [
+						{
+							id: 'presentation-1',
+							label: 'Entry',
+							viewIds: ['view-absent'],
+							defaultViewId: 'view-absent',
+							subject: null,
+							text: null
+						}
+					],
 					stops: [
 						{
 							id: 'stop-1',

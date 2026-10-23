@@ -2,7 +2,7 @@
  * Derive the runtime policy the interpreter needs from the **authored**
  * Experience unit (T3.P01.S06).
  *
- * `ExecutionProgram@1` has no Gate or detour slot, so the interpreter takes them
+ * `ExecutionProgram@2` has no Gate or detour slot, so the interpreter takes them
  * as explicit policy. That policy is not a second authoring surface: this module
  * reads the selected Experience's own `gates` and `detours`, checks their
  * occurrence/Presentation closure, and returns exactly what the unit declares. A

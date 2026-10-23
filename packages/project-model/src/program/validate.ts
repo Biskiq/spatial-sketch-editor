@@ -1,5 +1,5 @@
 /**
- * Strict validation for `ExecutionProgram@1` (AM-6).
+ * Strict validation for `ExecutionProgram@2` (AM-6).
  *
  * The program is a delivery format, so the reader refuses anything a consumer
  * could misread: unknown keys, non-finite or negative holds, an unregistered
@@ -47,9 +47,9 @@ const PROGRAM_KEYS = [
 	'profile'
 ] as const;
 const CAPABILITY_KEYS = ['id', 'required'] as const;
-const PRESENTATION_KEYS = ['id', 'label', 'viewId', 'content'] as const;
+const PRESENTATION_KEYS = ['id', 'label', 'viewIds', 'defaultViewId', 'content'] as const;
 const CONTENT_KEYS = ['id', 'kind', 'text'] as const;
-const STOP_KEYS = ['id', 'presentationId', 'invocation', 'holdSeconds', 'continuation'] as const;
+const STOP_KEYS = ['id', 'presentationId', 'viewId', 'invocation', 'holdSeconds', 'continuation'] as const;
 const INVOCATION_KEYS = ['kind', 'viewId', 'connectionId'] as const;
 const CONTINUATION_KEYS = ['kind', 'stopId'] as const;
 const STATE_KEYS = ['id', 'type', 'values', 'initial', 'reset'] as const;
@@ -104,6 +104,17 @@ function readCapability(reader: ShapeReader, input: unknown, path: string): Prog
 	return { id, required };
 }
 
+/**
+ * The delivery bound is the authored one — `EXPERIENCE_TEXT_MAX_LENGTH` in
+ * `units/types.ts`, 4,000 code points. The literal is repeated because this
+ * codec is the delivery entry and deliberately imports no authoring module
+ * (`units/experience/lowering.ts` already imports this reader, so the reverse
+ * import would close a cycle). Lowering copies only bounded text, so this
+ * refuses a hand-authored delivery program that a prepared reader would
+ * otherwise accept and display more of than the authoring format allows.
+ */
+const PROGRAM_TEXT_MAX_CODE_POINTS = 4000;
+
 function readContent(reader: ShapeReader, input: unknown, path: string): ProgramContentRecord | null {
 	const record = reader.object(input, path, CONTENT_KEYS);
 	if (record === null) return null;
@@ -111,6 +122,15 @@ function readContent(reader: ShapeReader, input: unknown, path: string): Program
 	const kind = reader.tag(record.kind, `${path}.kind`, ['text']);
 	const text = reader.string(record.text, `${path}.text`);
 	if (id === null || kind === null || text === null) return null;
+	const length = [...text].length;
+	if (length > PROGRAM_TEXT_MAX_CODE_POINTS) {
+		reader.problem(
+			`${path}.text`,
+			'text-too-long',
+			`${path}.text carries ${length} code points; presentation text is bounded at ${PROGRAM_TEXT_MAX_CODE_POINTS}`
+		);
+		return null;
+	}
 	return { id, kind: 'text', text };
 }
 
@@ -119,13 +139,27 @@ function readPresentation(reader: ShapeReader, input: unknown, path: string): Pr
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const label = reader.string(record.label, `${path}.label`);
-	const viewId = reader.opaqueId(record.viewId, `${path}.viewId`);
+	const viewIds = reader.opaqueIdArray(record.viewIds, `${path}.viewIds`);
+	const defaultViewId = reader.opaqueId(record.defaultViewId, `${path}.defaultViewId`);
 	const content = readArray(reader, record.content, `${path}.content`, (entry, entryPath) =>
 		readContent(reader, entry, entryPath)
 	);
-	if (id === null || label === null || viewId === null || content === null) return null;
+	if (id === null || label === null || viewIds === null || defaultViewId === null || content === null) return null;
+	if (!uniqueIds(reader, viewIds, `${path}.viewIds`, 'view')) return null;
+	if (viewIds.length === 0) {
+		reader.problem(`${path}.viewIds`, 'out-of-range', `${path}.viewIds must name at least one Camera view`);
+		return null;
+	}
+	if (!viewIds.includes(defaultViewId)) {
+		reader.problem(
+			`${path}.defaultViewId`,
+			'default-not-in-views',
+			`${path}.defaultViewId "${defaultViewId}" is not one of this Presentation's views`
+		);
+		return null;
+	}
 	if (!uniqueIds(reader, content.map((entry) => entry.id), `${path}.content`, 'content record')) return null;
-	return { id, label, viewId, content };
+	return { id, label, viewIds, defaultViewId, content };
 }
 
 function readInvocation(reader: ShapeReader, input: unknown, path: string): ProgramInvocation | null {
@@ -249,7 +283,7 @@ function readAction(reader: ShapeReader, input: unknown, path: string): ProgramA
 }
 
 /**
- * Read one `ExecutionProgram@1`.
+ * Read one `ExecutionProgram@2`.
  *
  * Cross-field rules are validated here rather than left to the interpreter:
  * an entry stop must be one of the program's stops (or explicitly `null` with no
@@ -332,8 +366,20 @@ export function validateExecutionProgram(input: unknown): ShapeValidation<Execut
 			reader.problem(`${path}.presentationId`, 'missing-presentation', `${path}.presentationId names no presentation`);
 		}
 		const presentation = presentations.find((entry) => entry.id === stop.presentationId);
-		if (stop.invocation.kind === 'cut' && presentation !== undefined && stop.invocation.viewId !== presentation.viewId) {
-			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize its Presentation view');
+		if (presentation !== undefined && !presentation.viewIds.includes(stop.viewId)) {
+			reader.problem(`${path}.viewId`, 'view-mismatch', `${path}.viewId must be one of its Presentation's views`);
+		}
+		if (stop.invocation.kind === 'cut' && stop.invocation.viewId !== stop.viewId) {
+			reader.problem(`${path}.invocation.viewId`, 'view-mismatch', 'a Cut must realize the View this Stop presents');
+		}
+		// The entry Stop is the run's first arrival: no pose precedes it, so a Travel
+		// there names a route the runtime cannot start. Lowering always emits a Cut.
+		if (stop.id === entryStopId && stop.invocation.kind === 'travel') {
+			reader.problem(
+				`${path}.invocation.kind`,
+				'entry-travel',
+				'the entry Stop is the first arrival and must Cut, not Travel from an unvisited predecessor'
+			);
 		}
 		if (stop.continuation.kind === 'stop' && !stopIds.has(stop.continuation.stopId)) {
 			reader.problem(`${path}.continuation.stopId`, 'missing-stop', `${path}.continuation.stopId names no stop`);
@@ -390,13 +436,14 @@ function readStop(reader: ShapeReader, input: unknown, path: string): ProgramSto
 	if (record === null) return null;
 	const id = reader.opaqueId(record.id, `${path}.id`);
 	const presentationId = reader.opaqueId(record.presentationId, `${path}.presentationId`);
+	const viewId = reader.opaqueId(record.viewId, `${path}.viewId`);
 	const invocation = readInvocation(reader, record.invocation, `${path}.invocation`);
 	const holdSeconds =
 		record.holdSeconds === null ? null : reader.numberAtLeast(record.holdSeconds, `${path}.holdSeconds`, 0, false);
 	const continuation = readContinuation(reader, record.continuation, `${path}.continuation`);
-	if (id === null || presentationId === null || invocation === null || continuation === null) return null;
+	if (id === null || presentationId === null || viewId === null || invocation === null || continuation === null) return null;
 	if (record.holdSeconds !== null && holdSeconds === null) return null;
-	return { id, presentationId, invocation, holdSeconds, continuation };
+	return { id, presentationId, viewId, invocation, holdSeconds, continuation };
 }
 
 function readState(reader: ShapeReader, input: unknown, path: string): ProgramStateDeclaration | null {
@@ -498,7 +545,7 @@ function checkGuard(reader: ShapeReader, guard: ProgramGuard, path: string, stat
 	}
 }
 
-/** Parse `ExecutionProgram@1` JSON. Invalid JSON is a reported issue, never a throw. */
+/** Parse `ExecutionProgram@2` JSON. Invalid JSON is a reported issue, never a throw. */
 export function parseExecutionProgram(json: string): ShapeValidation<ExecutionProgram> {
 	let input: unknown;
 	try {

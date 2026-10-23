@@ -819,11 +819,19 @@ final-gate artifact retained live: acceptance.md (phase-close evidence)
 prose compacted:                 1   review-handoff.md → stub + exact Git recovery
 renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:      0
-historical anchor:               eabd4b888974127d891cedf840e5e056ad0c016a · tag closed/T3.P03.S02 (local)
+historical anchor:               eabd4b888974127d891cedf840e5e056ad0c016a · tag closed/T3.P03.S02 (pushed)
 manual-owed/unrun rows:          retained as unrun; no hard budget or calibration claimed
 new live → archive prose links:  0
-required merge method:           merge commit per P1; parent owns PR integration and post-merge checks
+required merge method:           P1 merge c1e4e030; anchor ancestry and full handoff recovery verified 2026-10-23
 P03.S01 post-merge anchor:        verified 2026-10-23 against PR #176 merge 55683981; tag peels to
                                   f77d55542806ca66903bc6d880884b1b3ef60ef2 and `git show` recovery resolves
 phase state:                     closable; owner phase-close decision remains pending
 ```
+
+## Subsequent Batch E integration verification
+
+After the Layout, resource-storage and capture changes were combined, the PR #178 candidate `2fbf0ed2e75fa4435956cf10a012e3a6a89798af` passes the complete **183-file / 2,383-test** editor gate, architecture **22/176**, heavy **9/125**, all package/editor/API checks, production build, and fresh DB-backed API **95 tests / twelve reports / zero skips or failures**. Evidence: `/tmp/batch-e-closeout/pr178-gate/results.json`.
+
+These are later functional integration results. The 62-case browser coverage and timings above retain their original source/output identities; they are not relabelled as a new benchmark of the integrated tree. Owner-overridden reference/GPU/calibration and method rows remain explicit, unrun or unratified as recorded.
+
+Final harness compatibility: the isolated fixture adaptation in `36ebc9bde9225d74ade38c6e502cea0ccf25ece4` updates only `apps/editor/perf/lib/fixtures.ts` for the accepted Layout API. All **27 perf TypeScript sources** pass strict checking. Runtime probes compile and admit S/grid-3 with 24 Walls / 24 Openings / 9 Rooms and M/grid-7 with 112 / 112 / 49, preserving the workloads. No editor/API implementation, test configuration or ordinary build input changed after the full gate; those passing results remain tied to `2fbf0ed2`. The browser timing matrix was not rerun or relabelled.
