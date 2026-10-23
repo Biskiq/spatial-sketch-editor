@@ -1170,6 +1170,20 @@ export function createExperiencePresentationUpdatePlanner(): DomainPlanner<Proje
 					defaultView = defaultViewId;
 				}
 			}
+			// Clearing the Default would orphan a Stop that names no entry View: the
+			// run has no View to arrive at, and the whole Experience would stop lowering.
+			// Only a clear is refused: an edit that never touched the Default is not
+			// blocked by a Stop the source already left without an entry View.
+			if (
+				previous.defaultViewId !== null &&
+				defaultView === null &&
+				container.stops.some((stop) => stop.presentationId === previous.id && stop.entryViewId === undefined)
+			) {
+				return refuse(
+					'invalid-payload',
+					`presentation "${previous.id}" has Stops that enter at its Default View; give those Stops an entry View or keep a Default View`
+				);
+			}
 			const updated: ExperiencePresentation = {
 				id: previous.id,
 				label: label ?? previous.label,
@@ -1315,6 +1329,15 @@ export function createExperienceStopUpdatePlanner(): DomainPlanner<ProjectEnvelo
 			}
 			if (entryPresent && entryViewId !== null && entryViewId !== undefined && !presentation.viewIds.includes(entryViewId)) {
 				return refuse('invalid-payload', `entry view "${entryViewId}" is not one of presentation "${presentation.id}"'s views`);
+			}
+			// The mirror of the Presentation guard: clearing the Stop's own entry View
+			// while its Presentation has no Default would leave the Stop with no View to
+			// enter, and lowering would refuse the whole Experience.
+			if (entryPresent && entryViewId === null && previous.entryViewId !== undefined && presentation.defaultViewId === null) {
+				return refuse(
+					'invalid-payload',
+					`stop "${previous.id}" would enter at no View: presentation "${presentation.id}" has no Default View, so the Stop needs its own entry View`
+				);
 			}
 			if (
 				continuationPresent &&

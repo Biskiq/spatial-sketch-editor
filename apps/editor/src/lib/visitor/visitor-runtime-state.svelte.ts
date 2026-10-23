@@ -1,7 +1,7 @@
 /**
  * Visitor runtime — Experience-unit orchestration (AM-9, T3.P01.S04).
  *
- * The visitor executes one lowered `ExecutionProgram@1` through the single
+ * The visitor executes one lowered `ExecutionProgram@2` through the single
  * Experience interpreter. There is no node-keyed order, no main-flow walk and no
  * Scene `nextNodeId`/`previousNodeId` traversal: Guide order is authored in the
  * Experience unit, lowering produces the program, and this store only dispatches

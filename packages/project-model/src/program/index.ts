@@ -1,5 +1,5 @@
 /**
- * `@portfolio/project-model/program` — the standalone `ExecutionProgram@1`
+ * `@portfolio/project-model/program` — the standalone `ExecutionProgram@2`
  * codec (AM-6).
  *
  * This entry's import closure is delivery validation only: `./types`, `./validate`

@@ -2,9 +2,11 @@
  * T3.P02.S01 — the Experience adapter.
  *
  * It registers the slice's Experience planners with the one F.4 coordinator and
- * contributes the Experience lens's authoring surface through T1.P01.S07's AM-5
- * points. It edits no host core, route or shell module, and it owns no selection,
- * history or order store: the surface edits one accepted source through the public
+ * contributes the Experience task and Find entry through T1.P01.S07's AM-5 points.
+ * The authoring surface itself is mounted once by the route's Experience lens, not
+ * here: a second contribution would put two draft editors over one accepted
+ * source. It edits no host core, route or shell module, and it owns no selection,
+ * history or order store: the lens edits one accepted source through the public
  * acceptance port, and Guide order stays the only order writer.
  *
  * The adapter is mounted for every project epoch; a binding that outlives a source
@@ -16,9 +18,7 @@ import type { StageAdapterFactory } from '../stage/stage-adapter-host';
 import type { StageAdapter } from '../stage/stage-facade';
 import { createUnitCandidatePlanners } from '@portfolio/project-model/units';
 
-import ExperienceSurface from '../experience/ExperienceSurface.svelte';
-
-/** The one contributed task; every Find entry opens this surface. */
+/** The one contributed task; the Experience lens is its authoring surface. */
 const EXPERIENCE_TASK = 'experience-edit';
 
 export const createAdapter: StageAdapterFactory = (services) => {
@@ -57,9 +57,10 @@ export const createAdapter: StageAdapterFactory = (services) => {
 			}
 		],
 		instrument() {
+			// Exactly one writable Experience surface exists: the lens. Contributing a
+			// second copy here would put two draft editors over one accepted source.
 			return {
-				summary: 'Experience',
-				view: { component: ExperienceSurface, services }
+				summary: 'Experience authoring is edited in the Experience lens.'
 			};
 		}
 	};

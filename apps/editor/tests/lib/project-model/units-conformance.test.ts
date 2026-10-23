@@ -85,6 +85,10 @@ async function envelope(overrides: {
 
 const PIN = { hash: 'sha256-paper', mime: 'image/png', size: 512, locator: 'objects/paper' };
 
+function entryView(id: string): CameraView {
+	return { id, label: id, eye: [0, 1.6, 2], target: [0, 1.4, 0], fov: 54, connectedViewIds: [] };
+}
+
 function readBack(value: ProjectEnvelope) {
 	return JSON.parse(serializeProjectEnvelope(value)) as unknown;
 }
@@ -390,6 +394,175 @@ describe('references, lock diagnostics and closure', () => {
 		expect(reported.success).toBe(true);
 		if (!reported.success) return;
 		expect(reported.closure.map((entry) => entry.code)).toEqual(['resource-revision-mismatch']);
+	});
+
+	it('discloses a Layout-element Presentation subject Preview cannot present', async () => {
+		const base = experience('experience-a', 'view-1');
+		const built = await envelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: [entryView('view-1')],
+				connections: []
+			},
+			experience: {
+				formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							{
+								...base.presentations[0]!,
+								subject: {
+									version: 1,
+									domain: 'layout',
+									revision: { kind: 'project-lock', projectId: 'project-1' },
+									subject: { kind: 'level', id: 'level-1' },
+									instancePath: [],
+									location: { kind: 'project-root' },
+									componentId: null,
+									capabilityId: null
+								}
+							}
+						]
+					}
+				]
+			}
+		});
+		const validated = validateProjectEnvelope(readBack(built));
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		// Admitted by the format, unresolved by Preview: the author is told instead of
+		// being left to assume the run presents it.
+		expect(validated.diagnostics).toHaveLength(1);
+		expect(validated.diagnostics[0]).toMatchObject({
+			path: '$.units.experience.data.experiences[0].presentations[0].subject',
+			code: 'unresolved-subject'
+		});
+		expect(validated.diagnostics[0]!.message).toContain('does not resolve yet');
+		expect(validated.closure).toEqual([]);
+	});
+
+	it('resolves a sequence-next Travel through the Guide order, not the Stop array order', async () => {
+		const base = experience('experience-a', 'view-1');
+		const presentation = (id: string, viewId: string) => ({
+			id,
+			label: id,
+			viewIds: [viewId],
+			defaultViewId: viewId,
+			subject: null,
+			text: null
+		});
+		const built = await envelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: [
+					{ ...entryView('view-1'), connectedViewIds: ['view-3'] },
+					entryView('view-2'),
+					{ ...entryView('view-3'), connectedViewIds: ['view-1'] }
+				],
+				connections: [{
+					id: 'connection-1',
+					fromNodeId: 'view-1',
+					toNodeId: 'view-3',
+					positionPath: { kind: 'rounded-polyline', anchors: [] },
+					clearance: 0.35
+				}]
+			},
+			experience: {
+				formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							presentation('presentation-1', 'view-1'),
+							presentation('presentation-2', 'view-2'),
+							presentation('presentation-3', 'view-3')
+						],
+						// The array order puts stop-2 after stop-1; the Guide order does not.
+						stops: [
+							{
+								id: 'stop-1',
+								presentationId: 'presentation-1',
+								continuation: { kind: 'sequence-next', transition: 'travel' }
+							},
+							{ id: 'stop-2', presentationId: 'presentation-2', continuation: { kind: 'end' } },
+							{
+								id: 'stop-3',
+								presentationId: 'presentation-3',
+								continuation: { kind: 'sequence-next', transition: 'travel' }
+							}
+						],
+						guides: [
+							{
+								id: 'guide-1',
+								label: 'Guide',
+								stopIds: ['stop-1', 'stop-3', 'stop-2'],
+								entryStopId: 'stop-1'
+							}
+						]
+					}
+				]
+			}
+		});
+		const validated = validateProjectEnvelope(readBack(built));
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		// stop-1 travels to stop-3 (connected, no finding); stop-3 travels to
+		// stop-2 under the Guide order (no connection, one finding). Under the array
+		// order the same source would report stop-1 → stop-2 and miss stop-3's edge.
+		expect(validated.diagnostics.map((entry) => entry.path)).toEqual([
+			'$.units.experience.data.experiences[0].stops[2].continuation.transition'
+		]);
+		expect(validated.diagnostics[0]!.code).toBe('travel-gap');
+		expect(validated.diagnostics[0]!.message).toContain('stop "stop-2"');
+	});
+
+	it('reports no Travel gap when a guided Stop is the last of its Guide', async () => {
+		const base = experience('experience-a', 'view-1');
+		const presentation = (id: string, viewId: string) => ({
+			id,
+			label: id,
+			viewIds: [viewId],
+			defaultViewId: viewId,
+			subject: null,
+			text: null
+		});
+		const built = await envelope({
+			camera: {
+				formatVersion: CAMERA_UNIT_FORMAT_VERSION,
+				views: [entryView('view-1'), entryView('view-2'), entryView('view-3')],
+				connections: []
+			},
+			experience: {
+				formatVersion: EXPERIENCE_UNIT_FORMAT_VERSION,
+				experiences: [
+					{
+						...base,
+						presentations: [
+							presentation('presentation-1', 'view-1'),
+							presentation('presentation-2', 'view-2'),
+							presentation('presentation-3', 'view-3')
+						],
+						stops: [
+							{ id: 'stop-1', presentationId: 'presentation-1', continuation: { kind: 'end' } },
+							// stop-2 is the last Stop of the Guide and still authors a Travel: its
+							// `sequence-next` edge ends the run. stop-3 follows it only in the array.
+							{
+								id: 'stop-2',
+								presentationId: 'presentation-2',
+								continuation: { kind: 'sequence-next', transition: 'travel' }
+							},
+							{ id: 'stop-3', presentationId: 'presentation-3', continuation: { kind: 'end' } }
+						],
+						guides: [{ id: 'guide-1', label: 'Guide', stopIds: ['stop-1', 'stop-2'], entryStopId: 'stop-1' }]
+					}
+				]
+			}
+		});
+		const validated = validateProjectEnvelope(readBack(built));
+		expect(validated.success).toBe(true);
+		if (!validated.success) return;
+		expect(validated.diagnostics).toEqual([]);
 	});
 
 	it('keeps the envelope source-content digest independent of the accepted revision', async () => {

@@ -18,6 +18,7 @@
 	import { experienceFocus } from './focus.svelte';
 	import {
 		captureBindIntent,
+		capturedFovDegrees,
 		capturedViewPose,
 		createExperienceIntent,
 		guideOrderIntent,
@@ -142,12 +143,22 @@
 		return services.stage.snapshot().acceptedRevision;
 	}
 
-	async function run(builder: () => Parameters<StageAdapterServices['authoring']['accept']>[0]): Promise<void> {
-		if (busy) return;
+	/** Submit one command; `true` only when the source actually changed. */
+	async function run(builder: () => Parameters<StageAdapterServices['authoring']['accept']>[0]): Promise<boolean> {
+		if (busy) return false;
 		busy = true;
 		try {
 			const outcome = await services.authoring.accept(builder());
-			message = outcome.kind === 'refused' ? `${outcome.code}: ${outcome.message}` : 'Accepted.';
+			if (outcome.kind === 'refused') {
+				message = `${outcome.code}: ${outcome.message}`;
+				return false;
+			}
+			if (outcome.kind !== 'installed') {
+				message = 'No change to accept.';
+				return false;
+			}
+			message = 'Accepted.';
+			return true;
 		} finally {
 			busy = false;
 		}
@@ -155,14 +166,16 @@
 
 	async function createExperience(): Promise<void> {
 		const experienceId = newId();
-		await run(() =>
+		const accepted = await run(() =>
 			createExperienceIntent({
 				revision: revision(),
 				ids: { operation: newId(), experience: experienceId },
 				label: `Experience ${experiences.length + 1}`
 			})
 		);
-		experienceFocus.openExperience(experienceId);
+		// Focus never names an identity the source does not carry: a refused create
+		// must not point Preview at a non-existent Experience.
+		if (accepted) experienceFocus.openExperience(experienceId);
 	}
 
 	function selectionSubjectEntityId(): string | null {
@@ -177,10 +190,22 @@
 			message = 'The Stage has not evaluated a reading yet; wait for the reading to settle.';
 			return null;
 		}
+		// Plan is orthographic: its eye/target would record a perspective View the
+		// creator never saw. Capture is a 3D-reading action.
+		if (evaluation.projectionKind !== 'perspective-3d') {
+			message = 'Capture needs the 3D reading: switch to 3D, frame the View, then capture.';
+			return null;
+		}
+		const fov = capturedFovDegrees(evaluation.projectionMatrix);
+		if (fov === null) {
+			message = 'The Stage projection is degenerate; frame the View again.';
+			return null;
+		}
 		return capturedViewPose({
 			label: `View ${snapshot.units.camera.data.views.length + 1}`,
 			eye: evaluation.eye,
-			target: evaluation.target
+			target: evaluation.target,
+			fov
 		});
 	}
 
@@ -190,7 +215,7 @@
 		if (view === null) return;
 		const presentationId = newId();
 		const subjectEntityId = selectionSubjectEntityId();
-		await run(() =>
+		const accepted = await run(() =>
 			captureBindIntent({
 				envelope: snapshot,
 				revision: revision(),
@@ -204,7 +229,7 @@
 				afterStopId: selectedStop?.id ?? null
 			})
 		);
-		experienceFocus.selectPresentation(presentationId);
+		if (accepted) experienceFocus.selectPresentation(presentationId);
 	}
 
 	async function rebindToCapturedView(): Promise<void> {
@@ -256,7 +281,7 @@
 	async function insertStop(): Promise<void> {
 		if (current === null || currentGuide === null || selectedPresentation === null) return;
 		const stopId = newId();
-		await run(() =>
+		const accepted = await run(() =>
 			stopCreateIntent({
 				envelope: snapshot,
 				revision: revision(),
@@ -270,7 +295,8 @@
 				continuation: { kind: 'sequence-next', transition: 'cut' }
 			})
 		);
-		experienceFocus.selectStop(stopId);
+		// A refused insert must not select a Stop the accepted source does not carry.
+		if (accepted) experienceFocus.selectStop(stopId);
 	}
 
 	async function moveStop(stopId: string, direction: -1 | 1): Promise<void> {
@@ -431,8 +457,8 @@
 								<input bind:value={presentationLabelDraft} />
 							</label>
 							<label class="grow">
-								<span>Information text (plain, 4,000 characters)</span>
-								<textarea rows="3" maxlength="4000" bind:value={presentationTextDraft}></textarea>
+								<span>Information text (plain, 4,000 code points)</span>
+								<textarea rows="3" bind:value={presentationTextDraft}></textarea>
 							</label>
 						</div>
 						<div class="actions">

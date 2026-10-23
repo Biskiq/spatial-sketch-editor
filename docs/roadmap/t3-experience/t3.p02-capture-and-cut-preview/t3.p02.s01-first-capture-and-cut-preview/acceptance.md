@@ -1,7 +1,8 @@
 # T3.P02.S01 — acceptance record: First capture and Cut Preview
 
 **Slice:** T3.P02.S01 · **Status:** implemented on `t3/p02-s01-capture-cut-preview` from base
-`55683981`; **awaiting independent review — no acceptance recorded** · **Plan:**
+`55683981`; independently reviewed over three rounds, review fixes applied, **awaiting owner
+acceptance — no acceptance recorded** · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T3.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -25,6 +26,40 @@ implementation review; both are settled there, in its **Implementation-review de
    already differ per Stop; a second per-Stop field would duplicate one of them. A role that needs
    different text or subject is a different Presentation, per decision 1.
 
+## Implementation-review fixes (working tree)
+
+Independent review of the implemented branch ran in three rounds. The first two raised the findings
+below and a third closed the loop with no blocking finding left open; each item is fixed in the
+working tree this record describes, not deferred:
+
+1. **The captured View records the framing the creator saw.** `STAGE_CAPTURE_FOV = 50` is gone;
+   `capturedFovDegrees` reads the Stage's evaluated `projectionMatrix[5]`, and the lens refuses a
+   capture in the Plan (orthographic) reading or from a degenerate projection instead of recording
+   a perspective View nobody saw.
+2. **One writable Experience surface.** The domain adapter's instrument no longer mounts a second
+   `ExperienceSurface`; the lens is the only draft editor over the accepted source.
+3. **A non-first entry Stop arrives with a Cut.** The run has no pose before its first arrival, so
+   the entry occurrence's own invocation is a Cut to its View; the authored approach stays in the
+   transition table, so navigating from the real predecessor still travels. This replaces the
+   earlier "entry keeps its authored Travel" reading, which emitted a Travel with no origin. The
+   program codec refuses an entry occurrence that Travels, so a hand-authored or persisted program
+   cannot carry the same unrealizable route.
+4. **The delivery program's text bound is the authored one.** The codec refuses a Presentation
+   content text over 4,000 code points and counts code points, so a hand-authored program cannot
+   carry text the authoring format would refuse.
+5. **Envelope findings agree with lowering.** `sequence-next` Travel adjacency follows the Guide
+   orders lowering reads (the Stop array only orders Stops no Guide orders, and the last Stop of a
+   Guide has no successor), and a Layout-element Presentation subject is disclosed as unresolved
+   rather than implied presentable.
+6. **A Stop can never be left with no entry View.** `experience-presentation-update` refuses to
+   clear a Default View that a Stop enters at with no `entryViewId` of its own, and the mirror
+   guard refuses to clear that Stop's `entryViewId` once no Default remains.
+7. **The lens claims only what it did.** Focus follows a capture, create or Stop insert only after
+   an accepted result; a no-op or unchanged outcome reports *No change to accept.* instead of
+   *Accepted.*, and a refusal still reports its own code and message. The Presentation text input
+   no longer carries `maxlength`, because the bound is code points rather than UTF-16 units: the
+   cap is enforced at acceptance, and an over-long body is reported as a refusal.
+
 ## Delivered
 
 - **Experience format 2** (`packages/project-model/src/units/types.ts`, `validate.ts`,
@@ -47,11 +82,12 @@ implementation review; both are settled there, in its **Implementation-review de
   `experience-stop-update` — each one admitted domain, one candidate source, one undo payload,
   with `guide-order` the only order writer. The camera View update planner is unchanged in
   behavior.
-- **Editor surface** (`apps/editor/src/lib/authoring/experience/`): the Experience lens surface
+- **Editor surface** (`apps/editor/src/lib/authoring/experience/`): the one Experience lens surface
   (Presentations with Views/Default/subject/text/Used-in, Guide Stop list with insert, reorder by
   stable id and Cut/Travel + gap hint), the one focus owner, the command builders, and the Preview
   entry rule over the shared lowering. The domain adapter registers the planners and contributes
-  the Experience task/Find entry through AM-5.
+  the Experience task/Find entry through AM-5; its instrument states where authoring happens and
+  mounts no second surface.
 - **Head Preview and takeover** (owned integration patch): the Head's Preview control now enters
   the shell draft's rule — selected Stop of an open Guide, otherwise that Guide's entry Stop, a
   selected Presentation alone, the Experience's entry Guide, or the visitor list — and mounts the
@@ -69,8 +105,8 @@ one carrying this record. Commands ran from the repository root unless stated.
 ```text
 type checks        npm run check:project-model   pass
                    npm run check                 pass — svelte-check 0 errors, 0 warnings
-                   npm run check:api             pass
-fast lane          npm run test:fast             143 files / 1957 tests pass
+                   npm run check:api             pass (re-run on the review-fixed tree)
+fast lane          npm run test:fast             143 files / 1965 tests pass
 arch lane          npm run test:arch             21 files / 172 tests pass
 heavy lane         npm run test:heavy            8 files / 118 tests pass
 bundle             npm run build                  pass (SvelteKit + adapter-vercel)
@@ -79,8 +115,11 @@ bundle             npm run build                  pass (SvelteKit + adapter-verc
 Focused contracts for the changed behavior:
 
 ```text
-tests/lib/experience/experience-authoring.test.ts      10 tests (new: capture/bind/order/text bound + Preview entry rule)
+tests/lib/experience/experience-authoring.test.ts      13 tests (capture/bind/order/text bound, Default clearing, captured FOV, Preview entry rule)
 tests/lib/experience/experience-runtime.test.ts        44 tests (format-2 lowering, interpreter, companion)
+tests/lib/project-model/units-conformance.test.ts      24 tests (Layout-subject disclosure, Guide-order Travel adjacency,
+                                                      no gap past a Guide's last Stop)
+tests/lib/project-model/program-conformance.test.ts    23 tests (program-2 codec, code-point text bound, entry Cut rule)
 tests/lib/authoring/unit-acceptance-conformance.test.ts 25 tests (F.4 one-install/one-history, refusal, undo)
 tests/lib/visitor/visitor-runtime-state.test.ts         8 tests (Presentation entry, holds, run identity)
 tests/lib/visitor/visitor-camera-director.test.ts       7 tests (program-2 handoff)
@@ -128,12 +167,17 @@ the narrow check ran at 760 × 900 with reduced motion **on**.
   Guide journey needs an authored Guide and belongs to `T3.P02.S02`'s integrated gate.
 - **Save/conflict/reload with the API lane.** The slice does not change the Save path: it reuses
   T3.P01.S02's conditional Save unchanged, and this session has no cloud client or
-  `DATABASE_URL`, so `npm run test:api` was not run. The implementation-PR merge gate still owes
-  `check:api` (run, pass) and `test:api` with zero skips (not run) as the plan records.
+  `DATABASE_URL`, so `npm run test:api` was not run. `check:api` passes on this tree; the
+  implementation-PR merge gate still owes `test:api` with zero skips as the plan records.
 - **F10 performance rows.** Owner-run on the MacBook Air M2 with 16 GB (batch E, E6 amendment):
   first/repeated Preview entry and return timing, repeated enter/exit memory behavior, and any
   frame-time or disclosure row remain **owner-run**, not filled in here. The lazy-chunk delivery
   row above needs no designated machine and is recorded.
+- **The lens's own wiring.** The review fixes to `ExperienceSurface.svelte` (Plan capture refusal,
+  evaluated-FOV read, focus gating after an accepted result) sit in a component the route mounts;
+  no test mounts it. The command builders they call are unit-tested and the browser rows above were
+  observed before these fixes, so the changed call site is reviewed code, not test- or
+  browser-proven in this record.
 
 ## Environment notes / flakes
 
