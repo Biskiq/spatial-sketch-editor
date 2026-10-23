@@ -6,15 +6,22 @@
 	 * value, the edit buffer, and the refusal reason. Enter commits, Esc and blur
 	 * discard, and the DOM never turns an empty field into zero.
 	 */
+	import { onDestroy } from 'svelte';
 	import type { StageAdapterServices } from '$lib/authoring/stage/stage-adapter-host';
-	import type { LayoutFieldState } from './instrument';
+	import type { LayoutFieldState, LayoutInstrument } from './instrument';
 	import type { PausedWallProposal } from './paused-proposal';
 	import { createDimensionsInstrument } from './adapter-support';
 
 	let { services }: { services: StageAdapterServices } = $props();
+	// Check this before reading any derived state in an async continuation: a
+	// successful install can destroy the panel before acceptance resolves.
+	let alive = true;
+	onDestroy(() => { alive = false; });
 
 	let fields = $state<readonly LayoutFieldState[]>([]);
 	let error = $state<string | null>(null);
+	// Event continuations use this lifetime-owned reference, never an inert derived.
+	let currentController: LayoutInstrument | null = null;
 	/** A parameter a reading change preserved; Resume applies the captured value exactly. */
 	let paused = $state<PausedWallProposal | null>(null);
 	/** The explicit endpoint an exact length/angle edit keeps fixed. */
@@ -39,13 +46,22 @@
 				: 'Read-only here: the hosting Wall and profile conversion have no supported writer.'
 	);
 
-	function refresh(): void {
-		fields = instrument?.fields() ?? [];
-		paused = instrument?.pausedProposal() ?? null;
+	function refresh(current = currentController): void {
+		fields = current?.fields() ?? [];
+		paused = current?.pausedProposal() ?? null;
 	}
 
+	// One owner publishes the live controller to events and invalidates that
+	// reference before disposing it. A new subject restores its explicit endpoint.
 	$effect(() => {
-		refresh();
+		const current = instrument;
+		currentController = current;
+		refresh(current);
+		fixedEndpoint = current?.fixedEndpoint() ?? 'start';
+		return () => {
+			if (currentController === current) currentController = null;
+			current?.dispose();
+		};
 	});
 
 	/**
@@ -54,11 +70,12 @@
 	 * when the proposal itself changes.
 	 */
 	$effect(() => {
+		const current = instrument;
 		let frame = 0;
 		let seen: string | null = null;
 		const watch = () => {
 			frame = requestAnimationFrame(watch);
-			const next = instrument?.pausedProposal() ?? null;
+			const next = current?.pausedProposal() ?? null;
 			const key = next === null ? null : `${next.wallId}\u0000${next.label}`;
 			if (key !== seen) {
 				seen = key;
@@ -69,29 +86,16 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	// A new subject rebuilds the controller, and the controller's default fixed
-	// endpoint is explicit: the control follows it instead of keeping the previous
-	// subject's choice.
-	$effect(() => {
-		void selectionKey;
-		fixedEndpoint = instrument?.fixedEndpoint() ?? 'start';
-	});
-
-	// Unmount is the last cancel path: a proposal's host gesture lease must be
-	// released exactly once, and nothing may be committed by leaving.
-	$effect(() => {
-		const current = instrument;
-		return () => current?.dispose();
-	});
-
 	function chooseFixedEndpoint(next: 'start' | 'end'): void {
 		fixedEndpoint = next;
-		instrument?.setFixedEndpoint(next);
+		currentController?.setFixedEndpoint(next);
 	}
 
 	async function commit(id: string): Promise<void> {
 		error = null;
-		const outcome = await instrument?.commit(id);
+		const current = currentController;
+		const outcome = await current?.commit(id);
+		if (!alive || current !== currentController) return;
 		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
 			error = outcome.message;
 		}
@@ -100,7 +104,9 @@
 
 	async function resumePaused(): Promise<void> {
 		error = null;
-		const outcome = await instrument?.resumePaused();
+		const current = currentController;
+		const outcome = await current?.resumePaused();
+		if (!alive || current !== currentController) return;
 		if (outcome !== undefined && (outcome.kind === 'invalid' || outcome.kind === 'refused')) {
 			error = outcome.message;
 		}
@@ -109,7 +115,7 @@
 
 	function discardPaused(): void {
 		error = null;
-		instrument?.discardPaused();
+		currentController?.discardPaused();
 		refresh();
 	}
 
@@ -123,18 +129,18 @@
 	 * Esc or blur. The element is synced from the controller explicitly.
 	 */
 	function restoreText(id: string, input: HTMLInputElement): void {
-		input.value = instrument?.fields().find((field) => field.id === id)?.text ?? '';
+		input.value = currentController?.fields().find((field) => field.id === id)?.text ?? '';
 	}
 
 	function discard(id: string, input?: HTMLInputElement): void {
 		error = null;
-		instrument?.cancel(id);
+		currentController?.cancel(id);
 		refresh();
 		if (input !== undefined) restoreText(id, input);
 	}
 
 	function onInput(id: string, event: Event): void {
-		instrument?.edit(id, (event.currentTarget as HTMLInputElement).value);
+		currentController?.edit(id, (event.currentTarget as HTMLInputElement).value);
 	}
 </script>
 
@@ -197,9 +203,15 @@
 						}
 					}}
 					onblur={(event) => {
-						instrument?.blur(field.id);
+						// Removing the focused input during an accepted install can blur
+						// it after this panel or its keyed field row has retired. Read the
+						// captured DOM identity, never the row's destroyed derived value.
+						const input = event.currentTarget;
+						const id = input.dataset.field;
+						if (!alive || !input.isConnected || id === undefined) return;
+						currentController?.blur(id);
 						refresh();
-						restoreText(field.id, event.currentTarget as HTMLInputElement);
+						restoreText(id, input);
 					}}
 				/>
 				<span class="unit">{field.unit === 'm' ? 'm' : field.unit === 'deg' ? '°' : ''}</span>

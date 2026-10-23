@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { createManagedWebGLRenderer } from '$lib/render/managed-webgl-renderer';
   import { page } from '$app/state';
   import { Canvas, T } from '@threlte/core';
   import { computeTextureRepeat, getMaterial } from '$lib/content/materials';
@@ -85,7 +86,7 @@
   </aside>
 
   <div class="canvas-shell">
-    <Canvas dpr={[1, 1.5]} shadows={false}>
+    <Canvas createRenderer={createManagedWebGLRenderer} dpr={[1, 1.5]} shadows={false}>
       <T.PerspectiveCamera makeDefault position={[2.2, 2.4, 8.5]} fov={45} />
       <T.AmbientLight intensity={0.35} />
       <T.HemisphereLight args={['#f0e6d4', '#1a1814', 0.55]} />

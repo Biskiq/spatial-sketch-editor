@@ -27,6 +27,7 @@ import {
 	type LayoutVec2
 } from '@portfolio/layout-core';
 import type { AuthoringIntent, SemanticReference } from '@portfolio/project-model';
+import { perfMark } from '$lib/platform/perf-marks';
 
 import {
 	clearPausedProposal,
@@ -232,6 +233,9 @@ export function createLayoutInstrument(options: LayoutInstrumentOptions): Layout
 	}
 
 	async function submit(intent: AuthoringIntent): Promise<LayoutInstrumentOutcome> {
+		// T3.P03.S02: an explicit typed command starts here; the accepted result it
+		// produces is marked by the host's acceptance path.
+		perfMark('command:instrument', { taskKind: intent.kind });
 		inFlight = true;
 		try {
 			const outcome = await options.port.accept(intent);

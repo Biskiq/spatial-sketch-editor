@@ -32,6 +32,7 @@
 		ProjectPersistenceError,
 		type ProjectApi
 	} from '$lib/platform/project-persistence';
+	import { perfInput, perfMark, perfMarksEnabled, perfTracePreview, type PerfTracePreview } from '$lib/platform/perf-marks';
 	import {
 		discardPendingCapture,
 		persistPendingCapture,
@@ -377,6 +378,9 @@
 			facade
 		});
 		unsubscribeAcceptance?.();
+		// The mounted facade is the epoch's source. The mark is the anchor the
+		// performance harness uses for the first architectural frame (F1/F2).
+		perfMark('stage:activated', { sourceContentId: snapshot.sourceContentId });
 		acceptance = mounted;
 		unsubscribeAcceptance = mounted.onChanged(() => {
 			if (acceptance !== mounted || tornDown) return;
@@ -500,6 +504,7 @@
 			remoteSavedCanonicalJson = next.snapshot.canonicalJson;
 		}
 		applyState(next);
+		perfMark(next.status === 'ready' || next.status === 'empty' ? 'f2:cloud-admitted' : `f2:cloud-${next.status}`);
 		// A loaded source is offered with whatever precondition its capture states.
 		// An absent row is different: only a create-only capture can describe a Save
 		// the server could still accept, so the offer is deliberately narrowed there.
@@ -780,6 +785,8 @@
 		// A cancelled dialog changes nothing — including the saved base the current
 		// Head is still saving against.
 		if (file === null) return;
+		// F2 starts when the file actually exists: the dialog itself is not the flow.
+		perfMark('f2:open-requested', { bytes: file.size });
 		// TD-10: reading and admitting the chosen file is asynchronous, and the epoch
 		// this Open belongs to is the one captured here — not whichever project is
 		// mounted when the admission resolves. A superseded Open is abandoned rather
@@ -799,6 +806,7 @@
 		pendingSavedBase = null;
 		remoteSavedCanonicalJson = null;
 		applyState(next);
+		perfMark('f2:open-admitted');
 	}
 
 	/* --- viewport measurement and evaluation -------------------------------- */
@@ -821,6 +829,14 @@
 	}
 
 	let planKey = '';
+	/**
+	 * The last overlay marker set the route painted, as a cheap identity key.
+	 * T3.P03.S02 marks a change only: the harness pairs the newest dragged input with
+	 * the frame that carried its preview, so a presentation is never inferred from an
+	 * install timestamp.
+	 */
+	let lastOverlayKey = '';
+	let tracePreview = $state<PerfTracePreview | null>(null);
 
 	function refresh(): void {
 		const stage = facade;
@@ -855,6 +871,27 @@
 		// the selection echo are CSS points from `projectWorld`, never a second
 		// projection.
 		markers = stage.overlays();
+		// The key is only evidence for the harness, so it must cost nothing in the
+		// ordinary build: no string building or marker scan when the flag is absent.
+		if (perfMarksEnabled()) {
+			// Tenths of a CSS pixel: a slow drag moves a preview by less than one pixel
+			// per sample, and a coarse key would make those presentations invisible.
+			const overlayKey = markers
+				.map((marker) => `${marker.id}:${Math.round(marker.css[0] * 10)},${Math.round(marker.css[1] * 10)}`)
+				.join('|');
+			if (overlayKey !== lastOverlayKey) {
+				lastOverlayKey = overlayKey;
+				tracePreview = perfTracePreview(markers);
+				// The preview is presented by the frame that paints this overlay state; the
+				// ledger's sequence says which input sample it belongs to. `preview` keeps a
+				// later overlay change (release, selection) from being counted as the
+				// presentation of the drag that produced it.
+				perfMark('overlay:updated', {
+					markers: markers.length,
+					preview: markers.some((marker) => marker.id.endsWith('-preview'))
+				});
+			}
+		}
 		ghosts = stage.ghosts();
 		const selected = selection;
 		selectionMarker = selected === null ? null : selectionEcho(selected);
@@ -890,6 +927,7 @@
 	}
 
 	onMount(() => {
+		perfMark('stage:route-mounted');
 		const initial = measure();
 		acceptRect(initial);
 		let frame = 0;
@@ -1060,6 +1098,7 @@
 	async function undo(): Promise<void> {
 		const host = acceptance;
 		if (host === null) return;
+		perfMark('command:undo');
 		const outcome = await host.undo();
 		if (acceptance !== host || tornDown) return;
 		if (outcome.kind === 'installed') {
@@ -1086,6 +1125,7 @@
 	async function redo(): Promise<void> {
 		const host = acceptance;
 		if (host === null) return;
+		perfMark('command:redo');
 		const outcome = await host.redo();
 		if (acceptance !== host || tornDown) return;
 		if (outcome.kind === 'installed') {
@@ -1338,6 +1378,9 @@
 			const stage = facade;
 			const id = adapterEvaluationId ?? stage?.evaluationId() ?? null;
 			if (stage === null || id === null) return;
+			// T3.P03.S02: one monotonic sequence per continuous input sample. The
+			// adapter's preview installation and the accepted result inherit it.
+			if (perfMarksEnabled()) perfInput('pointermove', { wallMode: true, eventTimeStamp: event.timeStamp, timeOrigin: performance.timeOrigin });
 			stage.pointerIntent({ phase: 'move', css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			drag = { x: event.clientX, y: event.clientY, mode: 'adapter' };
 			return;
@@ -1400,6 +1443,7 @@
 				// After a reading change the lease is already gone: the press is cancelled
 				// rather than released, so no stale projection commits.
 				const phase = session.gesture() === null ? 'cancel' : 'up';
+				perfMark('input:release', { phase });
 				stage.pointerIntent({ phase, css: stageCss(event), evaluationId: id, shift: event.shiftKey });
 			}
 			return;
@@ -1797,7 +1841,7 @@
 					/>
 				{/if}
 				<div class="overlay-layer">
-					<StageOverlay {markers} {selectionMarker} />
+					<StageOverlay {markers} {selectionMarker} {tracePreview} />
 				</div>
 
 				{#if boot.status === 'empty'}
