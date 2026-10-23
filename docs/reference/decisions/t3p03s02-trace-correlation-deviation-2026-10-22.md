@@ -1,9 +1,13 @@
 # T3.P03.S02 — trace-correlation deviation decision
 
-**Status: proposed — owner decision required. Not ratified, not accepted.**
+**Status: method remains proposed and unratified; its slice-acceptance prerequisite was waived by owner override on 2026-10-23.**
 **Date:** 2026-10-22 · **Implementation update:** 2026-10-23 · **Slice:** T3.P03.S02
 **Plan:** [measurement workflow and final gate](../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s02-measurement-workflow-and-final-gate/implementation-plan.md)
 **Contract:** [browser performance and delivery](../components/performance.md)
+
+The Batch E owner ruling, “owner overide, everything is accepted,” accepts T3.P03.S02 without
+requiring resolution of this proposal. It does not select an A/B/C method option, ratify the
+technical method, or claim an unrun reference measurement or hard budget.
 
 ## What the plan asks
 

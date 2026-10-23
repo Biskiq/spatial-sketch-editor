@@ -22,8 +22,8 @@ NOT WAIVED: T3.P02.S02 remains the phase's proposed, unauthorized final integrat
             merge gates and post-merge preservation verification remain outstanding. T3.P02 stays
             active; no phase closure or new slice release is recorded.
 RECOVERY:   git show closed/T3.P02.S01:docs/roadmap/t3-experience/t3.p02-capture-and-cut-preview/t3.p02.s01-first-capture-and-cut-preview/acceptance.md
-ANCHOR:     tag `closed/T3.P02.S01` → `11bd77b958978e82436a62ca65601f06cb301481`
-HISTORY:    tag `historical/T3.P02.S01-original-owner-override` →
+ANCHOR:     pushed tag `closed/T3.P02.S01` → `11bd77b958978e82436a62ca65601f06cb301481`
+HISTORY:    pushed tag `historical/T3.P02.S01-original-owner-override` →
             `56dc86f6d6d1d14b51a6c0096802f4465113345b` (parent `26531059ff1bc51bbb352ae7f351071858b501fa`)
 ```
 

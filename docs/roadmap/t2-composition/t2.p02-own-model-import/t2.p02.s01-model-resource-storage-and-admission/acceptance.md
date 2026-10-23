@@ -71,7 +71,7 @@ renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:      0
 transient artifacts removed:     0
 historical anchor:               cc617234f432c7c4b751728cd69867adb06a3637
-                                  tag closed/T2.P02.S01 (local only — not pushed)
+                                  tag closed/T2.P02.S01 (pushed)
 new live → archive prose links:  0
 manual-owed verification rows:   0   S01 has no editor-flow or performance row
 remaining deferred items:        4   S02 import/placement flow; S03/C3 project-deletion cleanup;
@@ -90,3 +90,7 @@ gate is still owed before that merge.
 ```text
 git show cc617234f432c7c4b751728cd69867adb06a3637:docs/roadmap/t2-composition/t2.p02-own-model-import/t2.p02.s01-model-resource-storage-and-admission/acceptance.md
 ```
+
+## Recorded merge gate and preservation
+
+On `3d7eefa06626937f8fa6f9e9cdb3445acb18a389`, based on PR #179 merge `8501e7bf`, the complete editor suite passes **181 files / 2,341 tests**, architecture **22/174**, heavy **9/125**, all package/editor/API checks and the production build. Fresh DB-backed API verification passes **95 tests / twelve reports / zero failures or skips**. Documentation checks pass **56/56**. P1 merge `86033b4d` preserves both recovery anchors; their ancestry and full-body recovery were verified after merge on 2026-10-23. Exact commands/results: `/tmp/batch-e-closeout/pr177-gate/results.json`.

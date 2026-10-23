@@ -59,7 +59,7 @@ residuals       T1.P02 phase owner: separately scope/register/authorize the §3 
 ```text
 git show 302f966d48faf1f63d2b089cec31bca43582f178:docs/roadmap/t1-spatial-world/t1.p02-native-wall-creation/t1.p02.s01-layout-identity-and-format-cutover/acceptance.md
 anchor  302f966d48faf1f63d2b089cec31bca43582f178
- tag    closed/T1.P02.S01 (local only — not pushed)
+ tag    closed/T1.P02.S01 (pushed)
 ```
 
 ## Closeout preservation — T1.P02.S01 (2026-10-23)
@@ -72,7 +72,7 @@ evidence stubs / manifests:      0
 transient artifacts removed:     0
 historical anchors:              401b612f562e3a57d305ae3f831b24beba2dc6ae (plan),
                                  302f966d48faf1f63d2b089cec31bca43582f178 (acceptance);
-                                 closed/T1.P02.S01 → acceptance anchor (local only — not pushed)
+                                 closed/T1.P02.S01 → acceptance anchor (pushed)
 new live → archive prose links:  0
 manual-owed verification rows:   1   F2 S/M measurements remain unrun and assigned to S04
 remaining deferred items:        2   §3 retirement before S02; F2 S/M measurements at S04
@@ -93,5 +93,14 @@ baton         PASS — T1 baton names the immediate §3 successor authorization 
 stable        PASS — no branch-head or pending-merge claim in live status; recovery is anchor-based
 report        PASS — counts, residual owners, deferred measurements, tag and P1 method recorded
 scope         PASS — documentation-only closeout; no implementation or test source changed
-P1            PASS — merge commit required; post-merge anchor verification belongs to merge owner
+P1            PASS — merge 8501e7bf preserves both anchors; post-merge ancestry/recovery verified 2026-10-23
 ```
+
+## Recorded merge gate
+
+On `aebbe2708aaae49a82cb45dadfc6b436b98658d9`, based on PR #180 merge `c1e4e030`, the complete
+editor suite passes **179 files / 2,321 tests**, architecture **22/173**, heavy **9/125**, all
+package/editor/API checks and the production build. Fresh DB-backed API verification passes
+**82 tests / eleven reports / zero failures or skips**. The documentation gate passes **56/56**.
+The initial baton-routing failure was corrected and the full suite rerun; no product code changed
+for that correction. Exact commands/results: `/tmp/batch-e-closeout/pr179-gate-2/results.json`.

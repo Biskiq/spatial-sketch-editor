@@ -819,10 +819,10 @@ final-gate artifact retained live: acceptance.md (phase-close evidence)
 prose compacted:                 1   review-handoff.md → stub + exact Git recovery
 renderable evidence archived:    0 files / 0 bytes
 evidence stubs / manifests:      0
-historical anchor:               eabd4b888974127d891cedf840e5e056ad0c016a · tag closed/T3.P03.S02 (local)
+historical anchor:               eabd4b888974127d891cedf840e5e056ad0c016a · tag closed/T3.P03.S02 (pushed)
 manual-owed/unrun rows:          retained as unrun; no hard budget or calibration claimed
 new live → archive prose links:  0
-required merge method:           merge commit per P1; parent owns PR integration and post-merge checks
+required merge method:           P1 merge c1e4e030; anchor ancestry and full handoff recovery verified 2026-10-23
 P03.S01 post-merge anchor:        verified 2026-10-23 against PR #176 merge 55683981; tag peels to
                                   f77d55542806ca66903bc6d880884b1b3ef60ef2 and `git show` recovery resolves
 phase state:                     closable; owner phase-close decision remains pending
