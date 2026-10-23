@@ -358,7 +358,7 @@ export function modelSourceManifestHash(files: readonly DeclaredModelFile[]): st
 	const manifest = files
 		.filter((file) => file.role === 'source')
 		.map((file) => ({ path: file.path, size: file.size, hash: file.hash }))
-		.sort((left, right) => left.path.localeCompare(right.path));
+		.sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0));
 	return sha256(`model-source-manifest:${canonicalUnitJson(manifest)}`);
 }
 
@@ -515,11 +515,12 @@ SET object_key = $4, upload_state = 'uploading', uploaded_at = NULL
 FROM model_imports i
 WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid AND i.id = f.import_id
 	AND i.project_id = $3 AND i.owner_id = $5 AND i.state = 'staging'
+	AND f.upload_state IN ('declared','failed')
 RETURNING ${FILE_COLUMNS}`,
 		[importId, fileId, projectId, objectKey, ownerId]
 	);
 	if (!claimed[0]) {
-		throw new ModelInputError('invalid_model_import', 400, 'This import is no longer accepting files');
+		throw new ModelInputError('invalid_model_import', 409, 'This file is already uploaded or uploading');
 	}
 
 	let uploaded: { byteSize: number; sha256: string };
@@ -551,12 +552,19 @@ WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid`,
 			'The uploaded bytes disagree with the declared hash or size'
 		);
 	}
-	await pool.query(
+	const marked = await queryRows<FileRow>(
+		pool,
 		`UPDATE model_import_files f
 SET upload_state = 'uploaded', uploaded_at = now()
-WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid`,
-		[importId, fileId]
+WHERE f.import_id = $1::uuid AND f.file_id = $2::uuid
+	AND f.upload_state = 'uploading' AND f.object_key = $3
+RETURNING ${FILE_COLUMNS}`,
+		[importId, fileId, objectKey]
 	);
+	if (!marked[0]) {
+		await deleteObject(objectStore, objectKey);
+		throw new ModelNotFoundError();
+	}
 	return {
 		fileId,
 		role: declaredRole as ModelFileRole,
@@ -624,7 +632,11 @@ export async function approveModelImport(
 		const key = readNullableString(file.objectKey);
 		if (key === null) throw new ModelInputError('model_not_ready', 409, 'A declared file has no staged bytes');
 		const limit = readString(file.role) === 'derivative' ? MODEL_DERIVATIVE_MAX_BYTES : MODEL_SOURCE_SET_MAX_BYTES;
-		bytes.set(key, await readObjectBytes(objectStore, key, limit));
+		const buffer = await readObjectBytes(objectStore, key, limit);
+		if (buffer.length !== readSafeInteger(file.byteSize) || bufferSha256(buffer) !== readString(file.sha256)) {
+			throw new ModelInputError('model_not_ready', 409, 'A staged file no longer matches its declaration');
+		}
+		bytes.set(key, buffer);
 	}
 	const sourceFiles = files
 		.filter((file) => readString(file.role) === 'source')
@@ -654,47 +666,57 @@ export async function approveModelImport(
 	const contentHash = sha256(`model-revision:${canonicalUnitJson(revisionContent)}`);
 	const derivativeKey = modelRevisionKey(projectId, objectNamespace, contentHash, 'derivative.glb');
 
-	await copyObject(objectStore, readString(derivativeFile.objectKey), derivativeKey, MODEL_RESOURCE_MIME);
-	for (const file of files) {
-		if (readString(file.role) !== 'source') continue;
-		const target = modelRevisionKey(projectId, objectNamespace, contentHash, `source/${readString(file.path)}`);
-		await copyObject(objectStore, readString(file.objectKey), target, 'application/octet-stream');
-	}
+	// An identical revision is already approved: reuse it and write no bytes again.
+	let row = (
+		await queryRows<RevisionRow>(
+			pool,
+			`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2`,
+			[projectId, contentHash]
+		)
+	)[0];
+	if (!row) {
+		await putBytes(objectStore, derivativeKey, derivativeBytes, MODEL_RESOURCE_MIME);
+		for (const file of files) {
+			if (readString(file.role) !== 'source') continue;
+			const target = modelRevisionKey(projectId, objectNamespace, contentHash, `source/${readString(file.path)}`);
+			await putBytes(objectStore, target, bytes.get(readString(file.objectKey))!, 'application/octet-stream');
+		}
 
-	const revisionId = randomUUID();
-	const inserted = await queryRows<RevisionRow>(
-		pool,
-		`INSERT INTO model_revisions (
+		const revisionId = randomUUID();
+		const inserted = await queryRows<RevisionRow>(
+			pool,
+			`INSERT INTO model_revisions (
 	id, project_id, content_hash, derivative_hash, derivative_mime, derivative_bytes, derivative_key,
 	source_manifest_hash, source_bytes, source_file_count, recipe_id, recipe_version, report_digest, placement
 )
 VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 ON CONFLICT (project_id, content_hash) DO NOTHING
 RETURNING ${REVISION_RETURNING}`,
-		[
-			revisionId,
-			projectId,
-			contentHash,
-			derivativeHash,
-			MODEL_RESOURCE_MIME,
-			revisionContent.derivative.size,
-			derivativeKey,
-			sourceManifestHash,
-			revisionContent.source.size,
-			revisionContent.source.fileCount,
-			revisionContent.recipe.id,
-			revisionContent.recipe.version,
-			approval.reportDigest,
-			JSON.stringify(approval.placement)
-		]
-	);
-	const row =
-		inserted[0] ??
-		(await queryRows<RevisionRow>(
-			pool,
-			`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2`,
-			[projectId, contentHash]
-		))[0];
+			[
+				revisionId,
+				projectId,
+				contentHash,
+				derivativeHash,
+				MODEL_RESOURCE_MIME,
+				revisionContent.derivative.size,
+				derivativeKey,
+				sourceManifestHash,
+				revisionContent.source.size,
+				revisionContent.source.fileCount,
+				revisionContent.recipe.id,
+				revisionContent.recipe.version,
+				approval.reportDigest,
+				JSON.stringify(approval.placement)
+			]
+		);
+		row =
+			inserted[0] ??
+			(await queryRows<RevisionRow>(
+				pool,
+				`SELECT ${REVISION_COLUMNS} FROM model_revisions r WHERE r.project_id = $1 AND r.content_hash = $2`,
+				[projectId, contentHash]
+			))[0];
+	}
 	if (!row) throw new Error('Model revision approval returned no row');
 
 	await pool.query(
@@ -780,7 +802,8 @@ WHERE r.project_id = $1 AND r.derivative_hash = $2`,
 				canonicalUnitJson(placement) === canonicalUnitJson(model.placement)
 			);
 		});
-		if (!match) {
+		const locatorMatches = pin.locator === modelRevisionLocator(projectId, pin.hash);
+		if (!match || !locatorMatches) {
 			issues.push({
 				path,
 				code: 'unapproved_model_resource',
@@ -845,10 +868,12 @@ async function deleteObject(objectStore: ObjectStore, key: string): Promise<void
 	}
 }
 
-async function copyObject(objectStore: ObjectStore, from: string, to: string, contentType: string): Promise<void> {
-	const stored = await objectStore.get(from);
-	if (!stored) throw new ModelInputError('model_not_ready', 409, 'A staged byte stream is missing');
-	await objectStore.put(to, stored.body, { contentType, contentLength: stored.contentLength });
+async function putBytes(objectStore: ObjectStore, key: string, bytes: Buffer, contentType: string): Promise<void> {
+	await objectStore.put(key, Readable.from(bytes), { contentType, contentLength: bytes.length });
+}
+
+function bufferSha256(bytes: Buffer): string {
+	return `sha256-${createHash('sha256').update(bytes as unknown as Uint8Array<ArrayBuffer>).digest('hex')}`;
 }
 
 async function readObjectBytes(objectStore: ObjectStore, key: string, limit: number): Promise<Buffer> {

@@ -675,12 +675,13 @@ export function validateResourcePayload(input: unknown): ShapeValidation<Resourc
 			}
 			unresolved = binding.value;
 		}
-		const model =
-			value.model === undefined || value.model === null
-				? undefined
-				: readModelDetail(reader, value.model, `${path}.model`);
+		if (value.model === null) {
+			reader.problem(`${path}.model`, 'invalid-type', `${path}.model must be a model detail object when present, not null`);
+			return failed(reader);
+		}
+		const model = value.model === undefined ? undefined : readModelDetail(reader, value.model, `${path}.model`);
 		if (kind === null || id === null || (value.pin !== null && pin === null)) return failed(reader);
-		if (value.model !== undefined && value.model !== null && model === undefined) return failed(reader);
+		if (value.model !== undefined && model === undefined) return failed(reader);
 		if (contentRevision === null && pin === null && unresolved === null) {
 			reader.problem(path, 'unresolved-resource-without-diagnostic', `${path} is neither pinned nor revised and carries no diagnostic`);
 			return failed(reader);

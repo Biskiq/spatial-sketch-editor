@@ -23,10 +23,12 @@ import {
 	MODEL_RESOURCE_MIME,
 	RESOURCE_UNIT_FORMAT_VERSION,
 	SCENE_UNIT_FORMAT_VERSION,
+	canonicalUnitJson,
 	createProjectEnvelope
 } from '@portfolio/project-model/units';
 
 import { createApp } from '../dist/app.js';
+import { modelSourceManifestHash } from '../dist/model-persistence.js';
 import { runMigrations } from '../dist/migrate.js';
 
 import { SESSION_KEY, memoryObjectStore, saveRequestBody, sessionCookie } from './test-support.mjs';
@@ -824,4 +826,160 @@ test('Save admits a model resource pinned to an approved revision and refuses ev
 	// Every refusal rolled back: the project is still at the accepted version.
 	const versions = await pool.query('SELECT latest_version AS "latest" FROM projects WHERE id = $1', [projectId]);
 	assert.equal(versions.rows[0].latest, 2);
+});
+
+test('a second upload to an already-uploaded file answers 409 and leaves the staged bytes unchanged', async () => {
+	const owner = await sessionCookie(app, `google:p02-reupload-${randomUUID()}`);
+	const { projectId } = await newProject(owner);
+	const source = validSourceGlb();
+	const derivative = validDerivative();
+	const created = (
+		await stage(projectId, owner, [
+			{ role: 'source', path: 'model.glb', bytes: source },
+			{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: derivative }
+		])
+	).json();
+	const fileId = fileIdOf(created, 'model.glb');
+	assert.equal((await upload(projectId, created, owner, 'model.glb', source)).statusCode, 200);
+	const stagedKey = [...objectStore.objects.keys()].find((key) => key.endsWith(`/${fileId}`));
+	assert.ok(stagedKey, 'the first upload stages its bytes');
+	const stagedBefore = Buffer.from(objectStore.objects.get(stagedKey).bytes);
+
+	const replacement = Buffer.alloc(source.length, 0x5a);
+	const second = await upload(projectId, created, owner, 'model.glb', replacement);
+	assert.equal(second.statusCode, 409, JSON.stringify(second.json()));
+	assert.equal(second.json().error.code, 'invalid_model_import');
+	assert.ok(objectStore.objects.get(stagedKey).bytes.equals(stagedBefore), 'the staged bytes are unchanged');
+
+	await app.inject({ method: 'DELETE', url: `/projects/${projectId}/models/imports/${created.importId}`, headers: { cookie: owner } });
+});
+
+test('approving identical content under two imports writes no revision object the second time', async () => {
+	const owner = await sessionCookie(app, `google:p02-dedupe-${randomUUID()}`);
+	const { projectId } = await newProject(owner);
+	const source = validSourceGlb(16);
+	const derivative = validDerivative(16);
+	const revisionPuts = () => objectStore.puts.filter((put) => put.key.includes(`/models/revisions/`)).length;
+
+	const firstImport = (
+		await stage(projectId, owner, [
+			{ role: 'source', path: 'model.glb', bytes: source },
+			{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: derivative }
+		])
+	).json();
+	await upload(projectId, firstImport, owner, 'model.glb', source);
+	await upload(projectId, firstImport, owner, 'model.glb.derivative.glb', derivative);
+	const first = await approve(projectId, firstImport.importId, owner);
+	assert.equal(first.statusCode, 200, JSON.stringify(first.json()));
+	const putsAfterFirst = revisionPuts();
+	assert.ok(putsAfterFirst > 0, 'the first approval writes its revision bytes');
+
+	const secondImport = (
+		await stage(projectId, owner, [
+			{ role: 'source', path: 'model.glb', bytes: source },
+			{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: derivative }
+		])
+	).json();
+	await upload(projectId, secondImport, owner, 'model.glb', source);
+	await upload(projectId, secondImport, owner, 'model.glb.derivative.glb', derivative);
+	const second = await approve(projectId, secondImport.importId, owner);
+	assert.equal(second.statusCode, 200, JSON.stringify(second.json()));
+	assert.equal(second.json().revisionId, first.json().revisionId, 'identical content reuses its revision');
+	assert.equal(revisionPuts(), putsAfterFirst, 'the second approval writes no revision object');
+});
+
+test('Save refuses a model resource and its lock pin whose locator names a foreign project', async () => {
+	const owner = await sessionCookie(app, `google:p02-foreign-locator-${randomUUID()}`);
+	const { projectId, savedBaseToken } = await newProject(owner);
+	const source = validSourceGlb(16);
+	const derivative = validDerivative(16);
+	const created = (
+		await stage(projectId, owner, [
+			{ role: 'source', path: 'model.glb', bytes: source },
+			{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: derivative }
+		])
+	).json();
+	await upload(projectId, created, owner, 'model.glb', source);
+	await upload(projectId, created, owner, 'model.glb.derivative.glb', derivative);
+	const revision = (await approve(projectId, created.importId, owner)).json();
+
+	const foreignLocator = `/projects/p02-other-project/models/content/${revision.derivative.hash}`;
+	const foreign = modelResources(revision, { overrides: { locator: foreignLocator } });
+	const refused = await save(
+		projectId,
+		owner,
+		await saveRequestBody(
+			await envelopeFor(projectId, {
+				resources: [foreign.resource],
+				lockEntries: [foreign.lockEntry],
+				entities: [modelEntity(foreign.resource.id)]
+			}),
+			{ precondition: { kind: 'expected-saved-base', token: savedBaseToken } }
+		)
+	);
+	assert.equal(refused.statusCode, 400, JSON.stringify(refused.json()));
+	assert.equal(refused.json().error.code, 'unapproved_model_resource');
+
+	const versions = await pool.query('SELECT latest_version AS "latest" FROM projects WHERE id = $1', [projectId]);
+	assert.equal(versions.rows[0].latest, 1, 'a refused Save leaves the project version unchanged');
+});
+
+test('an upload whose import is cancelled while its body streams answers 404 and leaves no staged bytes', async () => {
+	const owner = await sessionCookie(app, `google:p02-midstream-cancel-${randomUUID()}`);
+	const { projectId } = await newProject(owner);
+	const source = validSourceGlb(16);
+	const derivative = validDerivative(16);
+	const created = (
+		await stage(projectId, owner, [
+			{ role: 'source', path: 'model.glb', bytes: source },
+			{ role: 'derivative', path: 'model.glb.derivative.glb', bytes: derivative }
+		])
+	).json();
+	const fileId = fileIdOf(created, 'model.glb');
+	const address = await app.listen({ port: 0, host: '127.0.0.1' });
+
+	// A body the test controls: the first bytes arrive, the rest only after the import is cancelled.
+	let push;
+	const body = new ReadableStream({
+		start(controller) {
+			push = controller;
+		}
+	});
+	push.enqueue(new Uint8Array(source.subarray(0, 8)));
+	const pending = fetch(`${address}/projects/${projectId}/models/imports/${created.importId}/files/${fileId}/content`, {
+		method: 'PUT',
+		headers: { cookie: owner, 'content-type': 'application/octet-stream', 'content-length': String(source.length) },
+		body,
+		duplex: 'half'
+	});
+	for (let attempt = 0; attempt < 500; attempt += 1) {
+		const row = await pool.query('SELECT upload_state FROM model_import_files WHERE file_id = $1::uuid', [fileId]);
+		if (row.rows[0]?.upload_state === 'uploading') break;
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+
+	const cancelled = await app.inject({
+		method: 'DELETE',
+		url: `/projects/${projectId}/models/imports/${created.importId}`,
+		headers: { cookie: owner }
+	});
+	assert.equal(cancelled.statusCode, 204);
+	push.enqueue(new Uint8Array(source.subarray(8)));
+	push.close();
+
+	const response = await pending;
+	assert.equal(response.status, 404, await response.text());
+	const leftovers = [...objectStore.objects.keys()].filter((key) => key.includes(`/imports/${created.importId}/`));
+	assert.deepEqual(leftovers, [], 'no staged object survives the cancelled import');
+});
+
+test('the source manifest hash orders paths by code unit', () => {
+	const declared = (path) => ({ role: 'source', path, size: 4, hash: hashOf(Buffer.from(path)) });
+	const input = [declared('B.bin'), declared('a.gltf'), declared('_x.png')];
+	const codeUnitOrder = ['B.bin', '_x.png', 'a.gltf'].map((path) => {
+		const { path: name, size, hash } = input.find((file) => file.path === path);
+		return { path: name, size, hash };
+	});
+	const expected = hashOf(Buffer.from(`model-source-manifest:${canonicalUnitJson(codeUnitOrder)}`));
+	assert.equal(modelSourceManifestHash(input), expected);
 });

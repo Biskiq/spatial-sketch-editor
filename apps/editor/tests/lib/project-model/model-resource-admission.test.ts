@@ -169,6 +169,35 @@ describe('the model resource format', () => {
 		expect(noDetail.issues.map((issue) => issue.code)).toContain('missing-model-detail');
 	});
 
+	it('refuses a null model detail on a model resource and on a texture resource', () => {
+		const nullModel = validateResourcePayload({
+			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+			resources: [{ ...modelResource(), model: null }]
+		});
+		expect(nullModel.success).toBe(false);
+		if (!nullModel.success) {
+			expect(nullModel.issues.map((issue) => issue.code)).toContain('invalid-type');
+		}
+
+		const nullTexture = validateResourcePayload({
+			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
+			resources: [
+				{
+					kind: 'texture',
+					id: 'unused-texture',
+					contentRevision: null,
+					pin: { hash: DERIVATIVE_HASH, mime: 'image/png', size: 8, locator: `/projects/project-1/assets/unused-texture` },
+					unresolved: null,
+					model: null
+				}
+			]
+		});
+		expect(nullTexture.success).toBe(false);
+		if (!nullTexture.success) {
+			expect(nullTexture.issues.map((issue) => issue.code)).toContain('invalid-type');
+		}
+	});
+
 	it('refuses a content revision that is not the derivative pin hash and a non-GLB derivative type', () => {
 		const mismatched = validateResourcePayload({
 			formatVersion: RESOURCE_UNIT_FORMAT_VERSION,
