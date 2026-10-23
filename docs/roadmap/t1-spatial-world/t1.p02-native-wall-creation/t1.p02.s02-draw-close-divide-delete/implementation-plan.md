@@ -28,7 +28,7 @@ Nothing here is implemented, authorized or evidenced.
   closes an enclosure, divides a Room and deletes a Wall, with typed refusal and repair text for the
   unsupported cases. Junctions become selectable subjects, Stage input gains a finish key, and the
   live-proposal Undo block stops naming its gesture owners by hand.
-- **Shell.** The first pointer rail, family-driven so T2 and T3 contribute entries without editing it,
+- **Shell.** The first pointer rail, family-driven so T2 and T3 contribute entries without editing it (Round 2: read as the dock's Select and Ink tools, reconciled at the [shell draft](../shell-draft.md) review; scope unchanged),
   plus Card/instrument arbitration for the lower surface. The [shell draft](../shell-draft.md) is the
   starting design; browser review revises it before acceptance.
 - **Performance.** Deduplicate the install compile and Undo/Redo re-admission first, proving equal

@@ -20,7 +20,7 @@ authorized or evidenced.
 ## Outline scope
 
 - Wire layout-core's existing Opening create and delete planners as F4 Layout planners.
-- The Opening family on the S02 rail: place an Opening on a Wall with host preference, and remove it.
+- The Opening family on the S02 rail (Round 2: an Ink reading on a wall face, reconciled at the [shell draft](../shell-draft.md) review; scope unchanged): place an Opening on a Wall with host preference, and remove it.
   An Opening that cannot fit its host refuses in words with a repair.
 - Deleting a Wall still takes its Openings in the same undo step, as the drawing policy requires.
 

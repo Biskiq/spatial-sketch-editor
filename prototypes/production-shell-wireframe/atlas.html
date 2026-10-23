@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Biskiq shell atlas</title>
+  <style>
+    :root { --forest: #11291f; --mat: #1d3a33; --ivory: #f3f0e4; --gold: #d4ad45; --slice: #f2d000; --erase: #d0412d; --line: rgba(255,255,255,.12); --text: #e9eee8; --muted: #a9bcb0; --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0f241b; color: var(--text); font: 14px/1.45 var(--sans); }
+    header { display: flex; align-items: center; gap: 18px; padding: 22px 28px 8px; flex-wrap: wrap; }
+    header .mark { font: 30px var(--serif); color: #fff; }
+    header .bar { width: 1px; height: 34px; background: var(--line); }
+    header .ttl { font: 11.5px/1.5 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: #cfdcd2; }
+    header .sp { flex: 1; }
+    header .kw { font: 11px var(--sans); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+    .intro { max-width: 900px; padding: 0 28px 10px; color: var(--muted); }
+    .intro b { color: var(--text); font-weight: 600; }
+    nav { position: sticky; top: 0; z-index: 5; display: flex; gap: 4px; flex-wrap: wrap; padding: 8px 28px; background: rgba(15,36,27,.94); border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+    nav a { color: #cfdcd2; text-decoration: none; font-size: 12.5px; padding: 4px 9px; border-radius: 7px; }
+    nav a:hover { background: rgba(255,255,255,.07); color: #fff; }
+    section { padding: 18px 28px 8px; }
+    section > h2 { display: flex; align-items: baseline; gap: 12px; margin: 10px 0 4px; font: 400 22px var(--serif); color: #fff; }
+    section > h2 .n { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 1px solid rgba(255,255,255,.35); border-radius: 50%; font: 13px var(--sans); }
+    section > p { margin: 0 0 12px; max-width: 900px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+    .grid.two { grid-template-columns: repeat(auto-fill, minmax(560px, 1fr)); }
+    .tile { margin: 0; background: #132e23; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+    .tile.rec { border-color: rgba(243,240,228,.45); }
+    .vp { position: relative; overflow: hidden; background: var(--mat); }
+    .vp iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .vp a.live { position: absolute; right: 8px; top: 8px; font-size: 11px; color: #fff; text-decoration: none; background: rgba(10,24,18,.75); padding: 2px 8px; border-radius: 6px; opacity: 0; transition: opacity .15s; }
+    .tile:hover .vp a.live { opacity: 1; }
+    figcaption { padding: 10px 14px 12px; }
+    figcaption b { color: #fff; font-weight: 600; }
+    figcaption .tag { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 9px; font-size: 11px; background: var(--ivory); color: var(--forest); font-weight: 600; vertical-align: 1px; }
+    figcaption .tag.open { background: rgba(255,255,255,.12); color: #e9eee8; }
+    figcaption .tag.spec { background: rgba(242,208,0,.18); color: #f6e27a; }
+    figcaption p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+    .spec { background: var(--mat); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .spec svg { display: block; width: 100%; height: 120px; }
+    .spec div { padding: 8px 12px 10px; font-size: 12.5px; color: var(--muted); }
+    .spec div b { display: block; color: #fff; font-weight: 600; font-size: 13px; }
+    .dont { border-style: dashed; }
+    footer { padding: 24px 28px 40px; color: var(--muted); font-size: 12.5px; }
+    footer a { color: #cfdcd2; }
+    @media (max-width: 640px) { .grid, .grid.two { grid-template-columns: 1fr; } header .sp, header .kw { display: none; } }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="mark">Biskiq</span><span class="bar"></span>
+    <span class="ttl">Production shell<br>Visual-language atlas — round 2</span>
+    <span class="sp"></span>
+    <span class="kw">Simple / Elegant / Clear / Lightweight</span>
+  </header>
+  <p class="intro">Every frame below is the <b>live wireframe</b> opened in one scripted state (<code>index.html?atlas=…</code>), so the atlas cannot drift from the build. Hover a frame for a link that opens it full size and interactive. <b>Ratified Round 2 evidence</b> (promoted into PLATE; this board is not itself authority or production). Read <a href="DESIGN-NOTE.md" style="color:#cfdcd2">DESIGN-NOTE.md</a> for the reasoning, the open choices and the proposed departures.</p>
+  <nav>
+    <a href="#lang">Language</a><a href="#rest">Workspace</a><a href="#dock">Dock</a><a href="#obj">Objects</a><a href="#arch">Architecture</a><a href="#roof">Roof</a><a href="#slice">Slice</a><a href="#erase">Eraser</a><a href="#index">Index</a><a href="#narrow">Narrow screens</a><a href="#pen">One Pen</a>
+  </nav>
+
+  <section id="lang">
+    <h2><span class="n">0</span>The language</h2>
+    <p>Four marks do all the work. Colour says what kind of state you are looking at; it never decorates.</p>
+    <div class="legend">
+      <div class="spec"><svg viewBox="0 0 200 120"><polygon points="70,40 120,25 150,45 100,62" fill="#e9d79c" fill-opacity=".82" stroke="#d4ad45" stroke-width="2"/><polygon points="70,40 100,62 100,98 70,76" fill="#d8c27f" fill-opacity=".82" stroke="#d4ad45" stroke-width="2"/><polygon points="100,62 150,45 150,81 100,98" fill="#c9b26e" fill-opacity=".82" stroke="#d4ad45" stroke-width="2"/></svg><div><b>Gold: selected geometry</b>Outline and a translucent volume. Only selection is gold.</div></div>
+      <div class="spec"><svg viewBox="0 0 200 120"><line x1="40" y1="80" x2="150" y2="40" stroke="rgba(8,22,16,.4)" stroke-width="3.4"/><line x1="40" y1="80" x2="150" y2="40" stroke="#fff" stroke-width="1.3" stroke-dasharray="4 3.5"/><path d="M141,38 L150,40 L144,47" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><div><b>White dashes and an arrowhead: a change you can make</b>The dash says “available”, the arrowhead says which way to drag.</div></div>
+      <div class="spec"><svg viewBox="0 0 200 120"><ellipse cx="100" cy="64" rx="70" ry="30" fill="none" stroke="#fff" stroke-width="1.3" stroke-dasharray="3 4"/><path d="M146,40 L154,43 L148,49" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M54,88 L46,85 L52,79" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/><path d="M100,64 m-9,0 h18 m-9,-9 v18" stroke="#fff" stroke-width="1.4"/></svg><div><b>The floor ring turns, the cross slides</b>Planar by default; the ring is the handle, not a button on it.</div></div>
+      <div class="spec"><svg viewBox="0 0 200 120"><line x1="40" y1="84" x2="160" y2="84" stroke="#fff" stroke-width="1.3" stroke-dasharray="1.5 5" opacity=".6"/><circle cx="100" cy="84" r="6" fill="rgba(8,22,16,.25)"/><circle cx="100" cy="84" r="4.4" fill="#fff"/><circle cx="60" cy="40" r="4.4" fill="#fff"/><circle cx="140" cy="40" r="5.6" fill="#d4ad45" stroke="#fff" stroke-width="1.5"/></svg><div><b>White points: anchors that need one</b>Wall ends, joints, a hosted item on its wall’s track. Gold when active.</div></div>
+      <div class="spec"><svg viewBox="0 0 200 120"><polygon points="40,90 150,50 150,20 40,60" fill="rgba(242,208,0,.30)" stroke="rgba(242,208,0,.95)"/><polygon points="150,50 175,65 175,35 150,20" fill="rgba(242,208,0,.07)" stroke="rgba(242,208,0,.75)" stroke-dasharray="4 4"/><line x1="40" y1="90" x2="150" y2="50" stroke="#fff" stroke-width="2"/><circle cx="40" cy="90" r="4.6" fill="#fff"/><circle cx="150" cy="50" r="4.6" fill="#fff"/></svg><div><b>Yellow: temporary inspection</b>Slice plane and depth volume. Never source, always Put back.</div></div>
+      <div class="spec"><svg viewBox="0 0 200 120"><rect x="60" y="30" width="80" height="60" fill="#f6d9d3" stroke="#d0412d" stroke-width="2.5" stroke-dasharray="5 3"/></svg><div><b>Red dashes: marked for erasing</b>Only the Eraser uses red.</div></div>
+      <div class="spec dont"><svg viewBox="0 0 200 120"><circle cx="70" cy="60" r="18" fill="#d4ad45" stroke="#fff" stroke-width="2"/><line x1="120" y1="80" x2="170" y2="80" stroke="#d0412d" stroke-width="3"/><line x1="120" y1="80" x2="120" y2="30" stroke="#2fb36b" stroke-width="3"/><line x1="120" y1="80" x2="150" y2="96" stroke="#2f8cff" stroke-width="3"/><line x1="40" y1="20" x2="190" y2="110" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/></svg><div><b>Retired</b>Large gold knob disks, XYZ gizmos, permanent W / D / H text.</div></div>
+    </div>
+  </section>
+
+  <section id="rest">
+    <h2><span class="n">1</span>Resting workspace</h2>
+    <p>The Stage is the workspace. Head, Index, Height Sheet and the dark forest dock frame it; nothing else is open.</p>
+    <div class="grid two"><figure class="tile" data-k="rest"><figcaption><b>Resting</b><p>Boathouse gallery, nothing selected, the dock in forest green with the armed instrument in ivory.</p></figcaption></figure></div>
+  </section>
+
+  <section id="dock">
+    <h2><span class="n">2</span>Dock and palettes</h2>
+    <p>Arming a tool opens its icon-only palette directly above it. Picking an option or drawing keeps it open; clicking the tool again, the small chevron or Esc collapses it, and the choice is remembered.</p>
+    <div class="grid two">
+      <figure class="tile" data-k="pal-open"><figcaption><b>Ink armed, palette expanded</b><p>Sketch · Line · Box · Round, a <code>⋯</code> for future pens, a chevron to collapse.</p></figcaption></figure>
+      <figure class="tile rec" data-k="pal-collapsed"><figcaption><b>Ink armed, palette collapsed</b><span class="tag">recommended cue</span><p>A faint caret on the armed tool is the only trace; Box is still the pen. The alternative is no cue at all.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="obj">
+    <h2><span class="n">3</span>Object transformation</h2>
+    <p>The floor ring turns, the cross slides, the small corner point scales in proportion. Clicking the point reveals width, depth and height. Values appear only on hover or while dragging. Guides keep a minimum on-screen size, so a small object at overview zoom still has room for them.</p>
+    <div class="grid">
+      <figure class="tile rec" data-k="obj-rays"><figcaption><b>A · Axis rays</b><span class="tag">recommended</span><p>Reference B. Dashed rays leave each face and the top; drag one face, the other stays. Hovering the width ray of the bench reads “Length 1.80 · extends”.</p></figcaption></figure>
+      <figure class="tile" data-k="obj-dims"><figcaption><b>B · Dimension lines</b><span class="tag open">open</span><p>Reference A. Lines beside the edges they measure, with a grip in the middle. Reads as drafting; costs more ink and hides behind tall neighbours.</p></figcaption></figure>
+      <figure class="tile" data-k="obj-rays-closed"><figcaption><b>Progressive, before the click</b><p>Only ring, cross and scale point. Hovering the point explains the click.</p></figcaption></figure>
+      <figure class="tile" data-k="obj-small"><figcaption><b>Small object at overview zoom</b><p>Dense museum. The ring has a minimum radius; rays start past it, so handles no longer stack.</p></figcaption></figure>
+      <figure class="tile" data-k="obj-knobs"><figcaption><b>C · Round 1.1 knobs</b><span class="tag open">for comparison</span><p>The heavy disks this round retires.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="arch">
+    <h2><span class="n">4</span>Architecture</h2>
+    <p>The same marks, but each subject shows what is geometrically meaningful for it. Hosted things move in relation to their wall.</p>
+    <div class="grid">
+      <figure class="tile rec" data-k="wall-rays"><figcaption><b>Wall · A · rays and points</b><span class="tag">recommended</span><p>Ends are points (length), the top is a ray (height), a two-way arrow at the base moves it parallel, a short one on the cap sets thickness.</p></figcaption></figure>
+      <figure class="tile" data-k="wall-grips"><figcaption><b>Wall · B · edge grips</b><span class="tag open">open</span><p>The top edge, the end edges and the base line are the handles; arrows appear on hover. Quieter at rest, but less discoverable.</p></figcaption></figure>
+      <figure class="tile" data-k="opening"><figcaption><b>Opening on its wall</b><p>A faint track the length of the host, a slide point, side rays for width and a ray at the head; refusals name the reason.</p></figcaption></figure>
+      <figure class="tile" data-k="platform"><figcaption><b>Platform</b><p>A height ray from the middle snapping to the Sheet, white points at the outline corners.</p></figcaption></figure>
+      <figure class="tile" data-k="roof-select"><figcaption><b>Roof, selected</b><p>Ridge ray up, eave ray down on the eave nearer the viewer. Enter or double-click edits the section.</p></figcaption></figure>
+      <figure class="tile" data-k="spec-curve"><figcaption><b>Wall curve</b><span class="tag spec">specimen, not live</span><p>A hollow point at the middle of a free wall would bend it; the dashed arc previews the curve. Not built: rooms and hosted openings would need curved geometry first.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="roof">
+    <h2><span class="n">5</span>Roof Edit Shape</h2>
+    <p>Edit Shape always opens as direct 3D editing on the roof. The 2D | 3D control becomes <b>3D | Section</b> (keys 1 and 2). Both readings share one selection, one profile, one history and one Camera.</p>
+    <div class="grid">
+      <figure class="tile rec" data-k="roof-3d"><figcaption><b>3D on the roof</b><span class="tag">default</span><p>Joints are white points, the profile gold, the section plane a thin white frame. The Card holds presets and the active joint’s numbers.</p></figcaption></figure>
+      <figure class="tile rec" data-k="roof-section"><figcaption><b>A · Section 2D takes the Stage</b><span class="tag">recommended</span><p>The same Camera looks along the ridge at the roof’s own section; the building is cut behind it for context. Not the floor Plan.</p></figcaption></figure>
+      <figure class="tile" data-k="roof-inset"><figcaption><b>B · Section 2D as an inset</b><span class="tag open">open</span><p>Reference A’s dark inset editor over the 3D Stage. Keeps the building in view; the pad is small for long profiles.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="slice">
+    <h2><span class="n">6</span>Slice</h2>
+    <p>Drawn like a Pen line: a finite, straight cut with a start and an end, a live section while drawing, a translucent yellow inspection volume and a depth ray. Flip, Face and Put back stay in the pill.</p>
+    <div class="grid two">
+      <figure class="tile rec" data-k="slice"><figcaption><b>Drawn slice with depth, in 3D</b><p>Only the drawn stretch is opened; the rest of the building is untouched.</p></figcaption></figure>
+      <figure class="tile" data-k="slice-plan"><figcaption><b>The same slice in 2D</b><p>The volume reads as a yellow band beside the line.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="erase">
+    <h2><span class="n">7</span>Eraser</h2>
+    <p>Immediate for simple things, one acceptance beside a bulk gesture, review only across domains. Kind filters sit behind one compact funnel, and an active filter stays visible.</p>
+    <div class="grid two">
+      <figure class="tile rec" data-k="erase-filter"><figcaption><b>Filter disclosure</b><span class="tag">owner choice</span><p>Funnel at the top of the palette opens a small grid. Red dots on the funnel and on the Eraser itself; the cursor says when a kind is filtered out.</p></figcaption></figure>
+      <figure class="tile" data-k="erase-bulk"><figcaption><b>Bulk acceptance</b><p>Lasso in the dense museum: one bar near the gesture saying what goes and what follows.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="index">
+    <h2><span class="n">8</span>Index</h2>
+    <p>Scope and facets is the Index: breadcrumbs with sibling menus, kind facets, capped lists. Collapsed, it takes no width.</p>
+    <div class="grid">
+      <figure class="tile rec" data-k="index-open"><figcaption><b>Open · scope and facets</b><span class="tag">chosen</span><p>Main hall › First floor, with sibling switches on each crumb.</p></figcaption></figure>
+      <figure class="tile rec" data-k="index-chip"><figcaption><b>Collapsed · A · location chip</b><span class="tag">recommended</span><p>The location stays in the Head and brings the Index back. Works the same on touch.</p></figcaption></figure>
+      <figure class="tile" data-k="index-peek"><figcaption><b>Collapsed · B · edge arrow</b><span class="tag open">open</span><p>A translucent arrow at the left edge on hover or focus, no rail. On touch it stays faintly visible and a tap on the edge opens the Index.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="narrow">
+    <h2><span class="n">9</span>Narrow screens</h2>
+    <p>The editor targets small laptops and iPad. Phones are out of scope for the editor; Preview has a Phone frame for visitors.</p>
+    <div class="grid two">
+      <figure class="tile" data-k="ipad-portrait" data-w="820" data-h="1180"><figcaption><b>iPad portrait, overlay Index open</b><p>The overlay stops above the dock row, so tools stay reachable.</p></figcaption></figure>
+      <figure class="tile" data-k="ipad-landscape" data-w="1180" data-h="820"><figcaption><b>iPad landscape, Ink armed, wall selected</b><p>Index collapsed by default at this width.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <section id="pen">
+    <h2><span class="n">10</span>One Pen, ordinary shapes</h2>
+    <p>Forward compatibility only: no shape modelling is designed here. The question is how an ordinary profile fits the one Pen, the palette, the Card and the manipulation language without a second permanent tool.</p>
+    <div class="grid">
+      <figure class="tile rec" data-k="pen-chip"><figcaption><b>A · Context first</b><span class="tag">recommended</span><p>The Pen reads the surface as before; “Shape” is always one more reading on the chip.</p></figcaption></figure>
+      <figure class="tile" data-k="pen-intent"><figcaption><b>B · Shape intent</b><span class="tag open">open</span><p>A temporary toggle at the top of the Ink palette for sustained profile drawing; it ends when Ink is put down.</p></figcaption></figure>
+      <figure class="tile" data-k="pen-pulled"><figcaption><b>A profile, pulled up</b><p>The ordinary height ray pulls a drawn outline into a solid; the outline stays editable.</p></figcaption></figure>
+    </div>
+  </section>
+
+  <footer>Wireframe chrome, not product. Frames are rendered at their simulated size and scaled to fit. <a href="index.html">Open the wireframe</a>.</footer>
+
+  <template id="spec-curve"><svg viewBox="0 0 1280 800" style="width:100%;height:100%;display:block;background:#1d3a33"><polygon points="300,560 860,330 860,190 300,420" fill="#cdd3c8" stroke="#d4ad45" stroke-width="3"/><path d="M300,560 Q600,380 860,330" fill="none" stroke="#fff" stroke-width="1.6" stroke-dasharray="5 5"/><path d="M300,420 Q600,240 860,190" fill="none" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 5" opacity=".6"/><circle cx="580" cy="445" r="9" fill="rgba(8,22,16,.3)"/><circle cx="580" cy="445" r="7" fill="none" stroke="#fff" stroke-width="2"/><line x1="580" y1="445" x2="560" y2="395" stroke="#fff" stroke-width="1.4" stroke-dasharray="4 4"/><path d="M556,404 L560,395 L567,402" fill="none" stroke="#fff" stroke-width="1.6"/><circle cx="300" cy="560" r="7" fill="#fff"/><circle cx="860" cy="330" r="7" fill="#fff"/><g transform="translate(600,398)"><rect x="0" y="-18" width="150" height="24" rx="6" fill="rgba(10,24,18,.85)"/><text x="10" y="-1" fill="#fff" font-family="ui-monospace,Menlo,monospace" font-size="13">bend · rise 1.20 m</text></g></svg></template>
+
+  <script>
+    const tiles = [...document.querySelectorAll('.tile[data-k]')];
+    for (const t of tiles) {
+      const k = t.dataset.k, w = +(t.dataset.w || 1280), h = +(t.dataset.h || 800);
+      const vp = document.createElement('div'); vp.className = 'vp'; t.prepend(vp);
+      if (k.startsWith('spec-')) { vp.innerHTML = document.getElementById(k).innerHTML; vp.style.aspectRatio = `${w} / ${h}`; continue; }
+      const f = document.createElement('iframe'); f.loading = 'lazy'; f.src = `index.html?atlas=${k}`; f.width = w; f.height = h; f.title = t.querySelector('b').textContent; f.tabIndex = -1;
+      vp.append(f); const a = document.createElement('a'); a.className = 'live'; a.href = `index.html?atlas=${k}`; a.target = '_blank'; a.textContent = 'Open live ↗'; vp.append(a);
+      t._fit = () => { const s = vp.clientWidth / w; f.style.transform = `scale(${s})`; f.style.width = w + 'px'; f.style.height = h + 'px'; vp.style.height = h * s + 'px'; };
+    }
+    const fit = () => tiles.forEach((t) => t._fit?.());
+    new ResizeObserver(fit).observe(document.body); fit();
+  </script>
+<script>/* ES modules do not load from file://: say so instead of showing a blank page */
+if (location.protocol === 'file:') document.addEventListener('DOMContentLoaded', () => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:auto 16px 16px 16px;z-index:999;padding:14px 16px;border-radius:10px;background:#f3f0e4;color:#14261f;font:14px/1.45 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.35)'; d.innerHTML = '<b>This page needs its local server.</b> Browsers block the wireframe\'s modules on <code>file://</code>, so every frame stays blank. Run <code>python3 serve.py 8850</code> in <code>prototypes/production-shell-wireframe</code> and open <code>http://127.0.0.1:8850/atlas.html</code>.'; document.body.appendChild(d); });
+</script>
+</body>
+</html>

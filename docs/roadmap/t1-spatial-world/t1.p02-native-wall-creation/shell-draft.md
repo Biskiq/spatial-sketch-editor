@@ -7,6 +7,8 @@ not the production shell until S02/S03 build it and the browser review revises i
 [PLATE World Paper authoring](../../../reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
 and the [lower-surface span](../../../reference/design-system/editor-shell-and-visual-system.md#contextual-lower-surface-span).
 
+> **Round 2 alignment (2026-10-23).** [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) is now the destination. Read "pointer rail", "Draw family" and "Opening family" below as the dock's **Select** and **Ink** tools (an opening is an Ink reading on a wall face), with Find in the Head and settled facts in the Card (the Dimensions Instrument is retired once a slice moves its fields; the landed one stays current until then). S02/S03 approved scope is unchanged; the naming and the order of the Ink readings are decided at the slice's shell-draft review, which this note does not preempt.
+
 ## Starting point (landed partial shell)
 
 Head (Undo/Redo, Save, a disabled Preview), a collapsible Index, the Stage, an overlay Card anchored

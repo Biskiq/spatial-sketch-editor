@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "prototypes/p3-vellum", "run", "dev"],
       "port": 5191
+    },
+    {
+      "name": "shell-wireframe",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["prototypes/production-shell-wireframe/serve.py", "8850"],
+      "port": 8850
     }
   ]
 }

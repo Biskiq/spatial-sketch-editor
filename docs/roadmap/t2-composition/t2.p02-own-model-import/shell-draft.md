@@ -1,5 +1,7 @@
 # T2.P02 — Shell draft: import, review and place an own model
 
+> **Round 2 alignment (2026-10-23).** [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) is the destination: read "Place family" as the Library, "Dimensions" as the Card's fields and Stage rays and points, and Find as Find in the Head. Approved scope is unchanged; reconciliation happens at this draft's review.
+
 **Status:** first draft for review, 2026-10-22, under PLATE's
 [feature design loop](../../../reference/design-system/editor-shell-and-visual-system.md#product-convergence-destination).
 It sets no pixel, keymap or format, and it is revised after S02's browser observation. Authority stays

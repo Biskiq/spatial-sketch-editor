@@ -10,8 +10,8 @@ V2 authoring, visitor execution and both-lens continuity remain **historical
 functional/regression evidence**, not the accepted Experience UX. The owner accepts
 [Conservatory](../experience-ux-alternative/README.md); the promoted
 [PLATE contract](../../docs/reference/design-system/editor-shell-and-visual-system.md)
-owns shared shell and Experience authoring. [Paper §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
-retains World 2D authoring depth; Conservatory's World mock does not replace it.
+owns the shared shell (Production shell Round 2) and Experience authoring. [World authoring §0.8.4](../../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination)
+owns World 2D authoring depth; Conservatory's World mock does not replace it.
 
 **Preservation, not further V2 development.** UX1–UX6 and their review corrections
 remain in this branch with their tests, helpers and captures.

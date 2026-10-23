@@ -35,6 +35,8 @@ contract ([`prototypes/README.md`](../../../prototypes/README.md)):
   dimensions, discovery and advanced procedures, reconciled with Conservatory into PLATE
   §0.8.4. PA0–PA12 is inactive and unimplemented.
 
+**Round 2 alignment (2026-10-23).** [Production shell Round 2](../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) supersedes the shell treatment of Conservatory and Paper in this section. Conservatory remains Experience-semantics and scenario evidence, Paper remains rationale for Wall semantics and drafting, and the [Round 2 wireframe](../../../prototypes/production-shell-wireframe/README.md) is the accepted visual and behavioral evidence. No scope or sequence here changes.
+
 A prototype records interaction intent and its own shortcuts; its geometry, module choices and
 parameterizations are not requirements.
 

@@ -93,7 +93,7 @@ Prototype evidence has different roles:
   inform the ratified [shared shell](../../../reference/design-system/editor-shell-and-visual-system.md)
   and [spatial instrument grammar](../../../reference/design-system/spatial-instrument-grammar.md).
   Earlier permanent inspector/chrome treatment is superseded. Detailed 3D object tools remain a
-  declared non-blocking coverage gap to resolve in S03/S04's real surface review.
+  declared non-blocking coverage gap to resolve in S03/S04's real surface review; [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md) (D14, rays and points) now supplies the vocabulary, and the slices still build and review the real adapters (no scope change).
 
 No historical editor source is restored by this plan, and prototype QA is not production evidence.
 
