@@ -37,7 +37,7 @@ reference hardware.
   Openings, portals, compile) per pointer move; an accepted edit compiles again at install; Undo/Redo
   re-admits and recompiles.
 - The Stage registers tasks through the adapter contract. Contributed tasks render as Index groups
-  carrying a `family`; no pointer rail exists. Junctions are not selectable subjects, Stage input
+  carrying a `family`; no pointer rail exists (destination: the Round 2 dock; see the shell-draft alignment note). Junctions are not selectable subjects, Stage input
   has no finish key, and the live-proposal Undo block names two gesture owners by hand.
 
 ## Drawing and enclosure policy (owner-accepted 2026-10-22)

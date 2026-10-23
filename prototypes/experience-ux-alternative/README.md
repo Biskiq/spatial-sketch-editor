@@ -1,12 +1,14 @@
 # Museum Editor — "Conservatory" (World + Experience)
 
 **Status:** owner-accepted unified Museum Editor design, 2026-10-13 (#114).
-Conservatory Round 2 is the minimum shared UX/visual direction. The owner reviewed
+Conservatory Round 2 was the minimum shared UX/visual direction (shell part superseded 2026-10-23). The owner reviewed
 initial, dense Presentation/View, long Guide and representative World states.
 Round 2 delivery: `8ead6b148e404f38a6ff91db7801ad1a6fa35426`; exact ratification
 revision: `426698573e883bc3a16b265ff9efc5be744c5fec`, including subsequent Index
 highlight CSS changes at `41a4c4dd` and `42669857`; interaction code is unchanged
 since Round 2.
+
+> **Superseded for shell chrome (2026-10-23).** [Production shell Round 2](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md) replaces this prototype's shell composition, rail, material and visual treatment. This prototype remains evidence for Experience semantics (Presentation, View, Guide, Stop, Cut/Travel) and reproducible scenario fixtures; "minimum UX/visual direction" above is historical.
 
 The promoted [PLATE contract](../../docs/reference/design-system/editor-shell-and-visual-system.md)
 owns accepted principles, shell treatment, Experience authoring and

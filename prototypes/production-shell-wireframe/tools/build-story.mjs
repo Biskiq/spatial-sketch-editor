@@ -71,6 +71,6 @@ main{max-width:1180px;margin:0 auto;padding:48px 16px 96px}header h1{font-size:3
 .step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin:0 0 28px}.meta{display:flex;gap:10px;align-items:center;font-size:13px}
 .n{font-weight:700;color:var(--acc)}.ch{text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}.step h2{margin:6px 0 4px;font-size:22px}.step p{margin:0 0 14px;color:var(--mut);max-width:760px}
 .step img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--line)}
-</style></head><body><main><header><h1>Biskiq, start to finish</h1><p>Biskiq is a spatial editor for exhibitions: you sketch a building in <b>World</b>, then compose what visitors see and how they move through it in <b>Experience</b>, and preview it as they will.</p><p>Wireframe captures from the production-shell prototype — unratified, not product.</p>
+</style></head><body><main><header><h1>Biskiq, start to finish</h1><p>Biskiq is a spatial editor for exhibitions: you sketch a building in <b>World</b>, then compose what visitors see and how they move through it in <b>Experience</b>, and preview it as they will.</p><p>Wireframe captures from the production-shell prototype — ratified Round 2 evidence, not product.</p>
 <div class="flow">${[...new Set(FRAMES.map((f) => f[1]))].map((c) => `<span>${c}</span>`).join('')}</div></header>${cards.join('\n')}</main></body></html>`;
 await writeFile(join(ROOT, 'story.html'), html); console.log('story.html', html.length);

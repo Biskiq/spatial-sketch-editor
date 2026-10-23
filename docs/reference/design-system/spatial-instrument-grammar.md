@@ -1,9 +1,11 @@
 # Museum Editor — spatial-instrument grammar
 
-> **#114 design reconciliation (2026-10-13):** the
-> [shell contract](./editor-shell-and-visual-system.md) owns the ratified
-> Conservatory direction. Camera markers, direct path editing and playback below
-> consume that shell; UX3/V3 and split Path/Journey surfaces are historical.
+> **Round 2 reconciliation (2026-10-23, PR #181):** the
+> [shell contract](./editor-shell-and-visual-system.md) owns the ratified Round 2 shell.
+> Its [mark language](./editor-shell-and-visual-system.md#spatial-mark-language) is
+> expressed here as [rays and points](#rays-and-points), replacing the earlier knob and
+> gizmo handles. Camera markers, direct path editing and playback below consume that shell
+> (from the #114 reconciliation); UX3/V3 and split Path/Journey surfaces are historical.
 > Truthful geometry, hit/manipulation laws, Camera evaluation and World readings
 > remain intact. Advanced precision is capability depth, not permanent chrome.
 
@@ -25,8 +27,9 @@ It does not declare implementation or a production cutover.
 | QA specimens | Falsifiable examples and calibration, not missing specification or mandatory drawing techniques |
 
 These responsibilities compose; neither shell nor instrument grammar outranks a
-domain about what an operation means. This is not a universal gizmo schema,
-renderer/API prescription, new operation registry or navigation authority.
+domain about what an operation means. Rays and points are a shared representation
+vocabulary, not a universal gizmo framework, schema, renderer/API prescription, new
+operation registry or navigation authority.
 Layout, Scene, Camera and Experience may require different instruments.
 The editor's domain-specific graphics and input policies were removed with the editor
 shell in #115; related T-track slices re-establish their own conformant policies here.
@@ -63,8 +66,9 @@ exists; it must then read as a helper, not a disabled-looking mystery grip.
 Use the shell's [semantic color/state roles](./editor-shell-and-visual-system.md#semantic-color-64)
 and [state hierarchy](./editor-shell-and-visual-system.md#state-and-control-hierarchy-183).
 This document assigns their spatial expression; it does not define another palette.
-Domain accents, axis hues and selection are separate roles. Existing axis conventions
-may identify X/Y/Z; they do not become arbitrary feature-selection colors.
+Domain accents and selection are separate roles. Transformation marks are white, not axis
+coloured: the axis a ray addresses is named by its direction and its live tag, and axis
+conventions never become feature-selection colours.
 
 | Species/state | Stage expression |
 | --- | --- |
@@ -73,9 +77,11 @@ may identify X/Y/Z; they do not become arbitrary feature-selection colors.
 | **Hover** | Restrained preview below selection emphasis; does not grant selection or unsupported handles |
 | **Reference/context** | Quiet line/shape/label, not the selected-identity treatment |
 | **Authored control** | Distinct operative glyph and interaction where supported |
+| **Available transformation** | Thin white dashed line (axis ray, ring, track, dimension line) with a small open arrowhead for the drag direction and a small white anchor point; dark halo beneath; revealed on selection, value only on hover or drag |
 | **Derived helper** | Lighter/hollow/dashed or explicitly read-only treatment; cannot masquerade as an authored control |
 | **Active manipulation** | Strong local emphasis on the active grip, edited edge/relationship and affected measure, rather than every value or the whole model |
-| **Temporary inspection** | Explicit reading/state label and retained as-built relationship; neither damage nor a second authored object |
+| **Temporary inspection** | Explicit reading/state label and retained as-built relationship; neither damage nor a second authored object. The Slice is a translucent yellow plane and depth volume with its state pill |
+| **Marked for erasing** | Red dashes, only while the Eraser is in use, cleared on accept, cancel or tool change |
 | **Proposal/refusal** | Separate transient geometry and local reason; accepted source and selection remain visible |
 | **Snap/guide** | Relation shape and text at the winning location, with state distinct from selection and refusal |
 
@@ -90,6 +96,54 @@ reachable. Passive helpers are restrained; active work gains local contrast and
 rank. Avoid glowing graph blankets, opaque full-frustum fills or a field of equally
 strong measurements. Surface-relative ink/halos preserve contrast on both mat and
 vellum without flooding the drawing.
+
+## Rays and points
+
+<a id="rays-and-points"></a>
+
+Every transformation on Stage reads as the same small vocabulary. It is quiet at rest,
+scales from a 0.6 m plinth to a 24 m roof, and shows its value only on hover or drag
+("Height 1.10 · base stays"). The vocabulary draws what a domain operation already allows;
+admission still follows [affordance admission](#spatial-truth-and-affordance-admission).
+
+| Mark | Role |
+| --- | --- |
+| **Ray** | A dashed white line out of the addressed face or edge, past any ring, ending in an open arrowhead that shows which way it drags |
+| **Ring** | A dashed rotation ring, planar; radius calibrated at implementation |
+| **Track** | A dashed line along a host the subject slides on |
+| **Point** | A small white anchor: an end, a joint, a slide position, the scale point; gold while held |
+| **Dimension line** | A dashed measure line, only where a measured relationship is the operation |
+| **Tag** | A dark mono tag with the live value and the verb, only on hover or drag |
+
+Each subject keeps its own handles; **the shared language stops at anchors and rays**.
+There is no single universal handle, and a subject gets only the marks its domain supports:
+
+| Subject | Marks (when its domain supports the operation) |
+| --- | --- |
+| **Object** | Move cross at the base; planar rotation ring; a scale point that, when clicked, opens a ray from each face (width, depth) and from the top (height) past the ring; corner proportional scale. Resizing keeps the base on its support and riders follow |
+| **Wall** | End points (length); a top ray (height, snapping to Sheet heights); a two-way base ray (move parallel); a two-way thickness arrow on the cap, symmetric about the wall's line |
+| **Opening** | A dashed track along the host with a slide point; side rays (width); a head ray; a sill ray |
+| **Platform** | Corner points and a height ray |
+| **Roof** | A ridge ray up and an eave ray down on the nearer eave; a roof-local section with joint points, midpoint **＋** and a gold profile for Edit shape |
+| **Slice** | End points redraw the line, the line moves it, a depth ray sets how deep it reads; a 45° soft snap and a live length tag while drawing |
+
+A curved-Wall midpoint (a hollow point that would bend a free Wall) is specified but not
+admitted until Layout has curved geometry. The thickness arrow's usefulness at overview
+zoom is an open usability problem; the Card field is its precise path.
+
+**Targets and touch.** Marks stay visually small; every point and ray has a larger
+invisible hit area so adjacent targets never overlap, even on a 0.6 m plinth, with rays
+deliberately extending past the ring. The wireframe used 22–26 px discs and 14 px bands
+for a fine pointer; a coarse pointer needs at least 44 px or an equivalent control. Every
+reveal on hover has a touch path: tags during a drag, a tap on the scale point, the snap
+name while dragging, and no affordance that exists only on hover.
+
+**Progressive or immediate size.** Width, depth and height rays appear when the scale
+point is clicked (default); an always-shown mode and a zoom-dependent rule are retained
+candidates. Never show so many rays at overview zoom that targets stack.
+
+**Contrast.** The halo keeps white marks legible on pale walls, the gold selection and
+the dark grid. A product pass must measure 3:1 non-text contrast for every mark.
 
 ## Direct manipulation and precision
 
@@ -109,8 +163,8 @@ share an unexplained appearance.
 At precise Camera depth, **only the active grip displays its numeric tape**. Other
 passive grip geometry and quiet accepted facts may remain visible. This does not
 ban multiple useful architectural dimensions: the general rule is one active writer
-with local emphasis, not one label on the entire Stage. World Paper's live tags and
-Dimensions follow the [Paper precision contract](./editor-shell-and-visual-system.md#084-world-paper-authoring-destination).
+with local emphasis, not one label on the entire Stage. World's value tags and Card
+fields follow the [precision ladder](./editor-shell-and-visual-system.md#world-authoring-084).
 
 Each precision operation has a non-pointer path to the same domain writer. A
 surface may open that writer or display its value, never expose a second simultaneous
@@ -283,7 +337,7 @@ disclosed; this rule does not delete canonical generated world geometry or erase
 valid contextual facts when one gesture ends.
 
 Temporary World inspection communicates its changed reading and as-built relationship
-and stays coupled to its World Instrument. Lens parking deactivates that procedure;
+and stays coupled to its state pill. Lens parking deactivates that reading;
 Resume revalidates it. Preview removes authoring infrastructure and restores its
 entry authoring context on exit. The shell's
 [return/parking/Preview contract](./editor-shell-and-visual-system.md#082-parked-procedure-and-lens-return)
@@ -310,15 +364,20 @@ techniques are optional within the semantic species and distinctions above:
   and [Design-QAs](../../../prototypes/integrated-experience-authoring/Design-QAs/):
   historical Camera/coordination distinctions and advanced Outside/Through
   precision specimens; their old shell/constellation layouts are superseded.
+- [Production shell wireframe, Round 2](../../../prototypes/production-shell-wireframe/README.md)
+  and its [atlas](../../../prototypes/production-shell-wireframe/atlas.html): the accepted
+  mark language and manipulation vocabulary, one live scripted state per frame; its
+  painter's-algorithm SVG, centroid Slice cut and heuristic stroke reading are not contracts.
 - [Conservatory](../../../prototypes/experience-ux-alternative/README.md): accepted
   visual Camera authoring, direct Stage paths, contextual visibility and integrated
-  Guide playback, promoted into PLATE; its mock evaluator is not a contract.
+  Guide playback, promoted into PLATE; its chrome is superseded by Round 2 and its mock
+  evaluator is not a contract.
 - Landed visual specifications (removed with the editor shell in #115), the
   [Camera graphics/input contract](../components/camera-tour.md) and the
   [Scene transform adapters](../components/scene-content.md): exact geometry,
   selection, hit arbitration and cancellation policies belong to their domain
   contracts, not to this grammar.
 
-No universal orbit, gizmo, hit priority, all-values rig or new domain constraint is
-introduced. Exact instrument geometry and domain-specific alternatives remain
+No universal orbit, gizmo framework, hit priority, all-values rig or new domain constraint
+is introduced; rays and points are vocabulary, not machinery. Exact instrument geometry and domain-specific alternatives remain
 feature design choices within the truthful and legible relationship requirements.

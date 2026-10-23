@@ -6,7 +6,7 @@
 It sets no pixel, keymap or format and is revised after browser observation. Authority stays in
 [PLATE Experience expression](../../../../reference/design-system/editor-shell-and-visual-system.md#081-finalized-experience-shell-expression)
 and [Preview takeover](../../../../reference/design-system/editor-shell-and-visual-system.md#preview-takeover);
-the [Conservatory scenarios](../../../../reference/design-system/editor-shell-and-visual-system.md#experience-design-acceptance)
+the Experience scenarios (originally Conservatory's; shell chrome follows [Production shell Round 2](../../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md): Experience tools in the shared dock) — the [scenarios](../../../../reference/design-system/editor-shell-and-visual-system.md#experience-design-acceptance)
 are the acceptance language. Prototype chrome is not adopted.
 
 ## Starting point (landed partial shell)

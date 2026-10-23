@@ -51,11 +51,11 @@ production authority; their documentation is still a route a reader follows.
 | --- | --- | --- |
 | **Smart Wall (P2)** | Accepted intuitive spatial manipulation and revision: reshape a wall while artwork arrangement and lighting respond | [p2-smart-wall](./p2-smart-wall/README.md) |
 | **Vellum (P3)** | Accepted expressive architectural sketching and revision; Make/Tell/Visit also demonstrates a visitor walk | [p3-vellum](./p3-vellum/README.md) |
-| **Conservatory** | Accepted unified UX, Experience authoring and shared visual shell; interactive states/journeys are the primary Experience UX acceptance language | [experience-ux-alternative](./experience-ux-alternative/README.md) |
-| **World Paper design** | Accepted 2D authoring-depth and precision contract: tools, drafting, dimensions, discovery and advanced procedures; shared shell reconciled with Conservatory | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
+| **Conservatory** | Experience authoring semantics and reproducible scenario fixtures; its shell chrome and visual treatment are superseded by Production shell Round 2 (below) | [experience-ux-alternative](./experience-ux-alternative/README.md) |
+| **World Paper design** | Historical rationale for 2D authoring depth; its rail, families and Dimensions Instrument are superseded by Round 2 (the PLATE anchor is kept) | [PLATE §0.8.4](../docs/reference/design-system/editor-shell-and-visual-system.md#084-world-paper-authoring-destination) · [original proposal](./paper-authoring-commission/PAPER-SHELL-PROPOSAL.md) |
 | **V2 Spatial Authoring** | World Spatial Interaction Reference: Plan ↔ 3D continuity, Rotunda Unroll/partial readings, Section/Cut, Ceiling Lift, nested Look/return and World journeys A–F/QA. Experience V2 is historical functional/regression evidence | [spatial-authoring](./spatial-authoring/README.md) · [#114 branch-diff disposition](./spatial-authoring/qa/EXPERIENCE-UX-EVIDENCE.md#114-v2-branch-diff-disposition) |
 | **Object Composition** | Supporting unratified inspection, assembly, provenance, reach and repair research; no product/model/shell authority | [object-composition-prototype](./object-composition-prototype/README.md) |
-| **Production shell wireframe** | Unratified round-2 wireframe (visual-language pass, with an atlas board) of the integrated World and Experience production shell, with live A/B alternatives and guided tours, pending owner review; no authority, no contract | [README](./production-shell-wireframe/README.md) · [DESIGN-NOTE](./production-shell-wireframe/DESIGN-NOTE.md) |
+| **Production shell wireframe** | Round 2 wireframe (visual-language pass, atlas board, tours, live A/B alternatives) of the integrated World and Experience production shell: **owner-ratified 2026-10-23 as the destination shell** and kept as accepted visual/behavioral evidence; promoted into PLATE, not itself authority or a contract ([record](../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md)) | [README](./production-shell-wireframe/README.md) · [DESIGN-NOTE](./production-shell-wireframe/DESIGN-NOTE.md) |
 | **Product foundation** | Current production implementation and its contracts; the linked references distinguish landed capabilities from the destination. Prototype resemblance alone never authorizes reuse | [architecture](../docs/reference/architecture.md) · [shell destination](../docs/reference/design-system/editor-shell-and-visual-system.md) |
 
 Other retained evidence stays in its existing directories:
@@ -67,8 +67,8 @@ Other retained evidence stays in its existing directories:
   and [earlier Design-QAs](./integrated-experience-authoring/Design-QAs/README.md):
   historical Experience design and functional evidence.
 - [World shell round](./world-experience-shell-round/README.md): earlier accepted
-  discovery/procedure/return rationale and specimens; Conservatory supersedes
-  conflicting shell treatment.
+  discovery/procedure/return rationale and specimens; Production shell Round 2
+  supersedes conflicting shell treatment.
 - [Experience Authoring donor](./experience-authoring/README.md): runnable
   behavioral/regression evidence, no current UX authority.
 - [Paper commission](./paper-authoring-commission/designer-packet/COMMISSION.md):
@@ -78,7 +78,7 @@ Other retained evidence stays in its existing directories:
 ## Authority semantics
 
 [PLATE](../docs/reference/design-system/editor-shell-and-visual-system.md) owns
-the promoted destination shell/Experience design and reconciled Paper depth.
+the promoted destination shell (Production shell Round 2) and Experience design.
 Prototype acceptance supplies UX/behavioral evidence, not mock data formats,
 Camera evaluators, snapshot Undo or renderer architecture.
 [F](../docs/reference/composition-execution.md), [architecture](../docs/reference/architecture.md)
@@ -100,7 +100,7 @@ its accepted direction is adopted by the spatial-authoring prototype in #112.
 # Conservatory — accepted interactive design, no build step
 cd prototypes/experience-ux-alternative && python3 -m http.server 8841
 
-# Production shell wireframe — unratified exploration, no build step
+# Production shell wireframe — ratified Round 2 evidence, no build step
 cd prototypes/production-shell-wireframe && python3 serve.py 8850
 
 # World Spatial Interaction Reference — no build step, vendored Three.js

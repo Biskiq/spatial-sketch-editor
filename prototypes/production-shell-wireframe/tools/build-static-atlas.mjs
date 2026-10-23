@@ -195,7 +195,7 @@ async function main() {
         'Every frame below is a <b>static snapshot of round 2</b> (regenerate with <code>tools/build-static-atlas.mjs</code>). ' +
         'Each frame is the wireframe in one scripted state (<code>index.html?atlas=…</code>), captured as HTML and stored inside this file. ' +
         'It needs no server, no scripts and no network, and it does not respond to hover or clicks. ' +
-        '<b>Unratified exploration</b>: nothing here amends PLATE or production. Read ' +
+        '<b>Ratified Round 2 evidence</b> (promoted into PLATE; this board is not itself authority or production). Read ' +
         '<a href="DESIGN-NOTE.md" style="color:#cfdcd2">DESIGN-NOTE.md</a> for the reasoning, the open choices and the proposed departures.';
       document.querySelector('footer').innerHTML =
         'Wireframe chrome, not product. Frames are rendered at their simulated size and scaled to fit. ' +

@@ -3,6 +3,8 @@
 **Audience:** agents + humans.
 **Hub:** [`../README.md`](../README.md) (prototype family) · [`../../docs/README.md`](../../docs/README.md) (documentation router).
 
+**Round 2 reconciliation (2026-10-23):** [Production shell Round 2](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md) now supersedes any shell treatment below that conflicts with PLATE (Instrument-hosted Find, Look and Dimensions, permanent Deck/Card treatment). Discovery, procedure and return rationale remain evidence.
+
 **#114 reconciliation (2026-10-13):** [Conservatory](../experience-ux-alternative/README.md)
 is the accepted unified UX/shared visual shell, promoted into
 [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md).

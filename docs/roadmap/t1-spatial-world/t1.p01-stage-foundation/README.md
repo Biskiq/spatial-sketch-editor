@@ -77,7 +77,7 @@ sequence. [Architecture](../../../reference/architecture.md#semantic-authorities
 [F](../../../reference/composition-execution.md), [PLATE](../../../reference/design-system/editor-shell-and-visual-system.md)
 and the [spatial instrument grammar](../../../reference/design-system/spatial-instrument-grammar.md)
 govern the new design. [Conservatory](../../../../prototypes/experience-ux-alternative/README.md)
-supplies shared-shell evidence; [World A–F](../../../../prototypes/spatial-authoring/README.md)
+supplies Experience-semantics evidence (its shell treatment is superseded by [Production shell Round 2](../../../reference/decisions/production-shell-round-2-ratification-2026-10-23.md), whose [wireframe](../../../../prototypes/production-shell-wireframe/README.md) is the accepted shell evidence); [World A–F](../../../../prototypes/spatial-authoring/README.md)
 supplies continuity/interaction evidence; [Paper](../../../../prototypes/paper-authoring-commission/PAPER-SHELL-PROPOSAL.md)
 supplies authoring depth. None supplies a production renderer, schema, camera evaluator or
 history implementation. In particular, the prototype's sub-degree perspective Plan and

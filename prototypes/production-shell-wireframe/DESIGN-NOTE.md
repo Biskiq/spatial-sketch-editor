@@ -1,10 +1,14 @@
 # Integrated production shell — design note (wireframe round 2)
 
-**Status: unratified design exploration for owner review.** Nothing here amends
-[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md), the
-[spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md),
-domain contracts or production. Proposed departures are listed in
-[§6](#6-proposed-departures-from-ratified-plate) for an explicit ruling. How to run the
+**Status: Round 2 ratified by the owner (2026-10-23); accepted visual and behavioral evidence.**
+The promoted design is in
+[PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md) and the
+[spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md);
+dispositions of D1–D16 (D3 and D5 withdrawn) are in the
+[ratification record](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md).
+This note is historical reasoning, not authority: where it differs from `docs/`, `docs/` wins,
+and its wording of "proposed" below records the proposal as reviewed. Prototype shortcuts
+(§8) are not promoted. How to run the
 wireframe, its tours, its Compare menu and the atlas is in the [README](./README.md).
 
 Round 2 continues round 1.1 (commit `a7aa0cd1`, PR #181). Its brief was a visual language:
@@ -104,7 +108,7 @@ the Ink palette makes every closed stroke an ordinary shape until Ink is put dow
   default never changes and the chip states the reading before anything is committed.
 
 **Recommendation: A.** Keep B as a candidate if field use shows long runs of ordinary
-shapes, e.g. furniture blocking. Unratified.
+shapes, e.g. furniture blocking. (A is ratified; B is a retained alternative.)
 
 **Future intelligent Pen (fit only, not implemented).** It fits A naturally: smarter
 interpretation is only a better first reading and a better-ordered chip, with Shape always

@@ -1,5 +1,7 @@
 # Paper authoring shell — destination proposal
 
+> **Superseded in part (2026-10-23).** [Production shell Round 2](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md) replaces this proposal's pointer rail and Select/Draw/Opening/Place/Measure/More families, the Dimensions Instrument, Find-lists-no-subjects, the Paper reading switch and the Sheet-as-configuration-home. Its Wall semantics, drafting words, precision ladder intent and rationale remain evidence. PLATE wins wherever this differs.
+
 > **Status: accepted by the owner 2026-10-03 and promoted.** The four refinement reviews (§21) are
 > accepted; every owner call takes its recommended option, with the Wall-semantics ruling of §9 and
 > §20 call 9 (§20). The durable destination contract is now

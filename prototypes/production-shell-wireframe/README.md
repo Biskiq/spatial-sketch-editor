@@ -1,6 +1,6 @@
 # Production shell wireframe
 
-**Status: round 2 (continuing round 1.1), unratified exploration for owner review.** Not authority. Prototype shortcuts never become contracts, and nothing here amends [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md).
+**Status: Round 2 ratified by the owner (2026-10-23); this prototype is accepted visual and behavioral evidence.** The promoted design lives in [PLATE](../../docs/reference/design-system/editor-shell-and-visual-system.md) and the [spatial-instrument grammar](../../docs/reference/design-system/spatial-instrument-grammar.md); provenance and the D1–D16 dispositions are in the [ratification record](../../docs/reference/decisions/production-shell-round-2-ratification-2026-10-23.md). This folder is still not authority and not an npm workspace: prototype shortcuts (listed below and in DESIGN-NOTE §8) never become contracts, and where this folder and `docs/` differ, `docs/` wins.
 
 ## Purpose
 
@@ -119,6 +119,8 @@ Every file in this folder, with its role from the module header.
 | [styles.css](./styles.css) | PLATE-role tokens on `:root`, wireframe chrome and tour styles |
 | [serve.py](./serve.py) | Local static server on 127.0.0.1 with `Cache-Control: no-store` |
 | [DESIGN-NOTE.md](./DESIGN-NOTE.md) | Substance: the visual language, changes from round 1.1, recommendations, open decisions with verdicts, accessibility, proposed PLATE departures, usability problems |
+| [story.html](./story.html) | Generated walkthrough storyboard (built by `tools/build-story.mjs`) |
+| [atlas-static.html](./atlas-static.html) | Offline static atlas snapshot (built by `tools/build-static-atlas.mjs`) |
 | [README.md](./README.md) | This file |
 
 ## Prototype shortcuts
