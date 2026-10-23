@@ -3,7 +3,7 @@
 import { S, M, R, CMP0, camState, commit, findRaw, uid } from './core.js';
 import * as T from './tools.js';
 import * as X from './exp.js';
-import { render, setTool, selectId, loadScenario, setSheet, runCap } from './app.js';
+import { render, setTool, selectId, loadScenario, setSheet, pinHeight, runCap } from './app.js';
 
 const base = (k = 'boathouse') => { loadScenario(k); Object.assign(S, { lens: 'world', reading: '3d', projection: 'axo', az: 35, tool: 'select', indexOpen: true, palOpen: true, inkShape: false, cmp: { ...CMP0 } }); };
 /** Centre the Stage on an entity at a zoom factor (viewing state only). */
@@ -13,6 +13,9 @@ function zoomOn(id, z) {
   cs.pan = [cs.pan[0] + c[0] - (R.V.x + R.V.w / 2), cs.pan[1] + c[1] - (R.V.y + R.V.h / 2)]; render();
 }
 const blank = () => { base(); for (const k of ['walls', 'rooms', 'openings', 'roofs', 'objects', 'artworks', 'views', 'presentations', 'pins']) M[k] = []; M.guides[0].stops = []; M.guides[0].edges = []; S.indexOpen = false; };
+const layout = () => { blank(); setTool('ink'); S.inkTip = 'box'; S.palOpen = false; T.finishInk([[2, 1], [9, 1]], false); T.finishInk([[2, 1], [9, 1], [9, 6], [2, 6]], true); T.finishInk([[9, 1], [14, 1], [14, 6], [9, 6]], true); };
+/** A box east of the rooms, re-read as a raised platform (the chip's second reading). */
+const deck = () => { T.finishInk([[15, 1], [19, 1], [19, 4], [15, 4]], true); const i = S.readChip?.readings.findIndex((r) => r.make === 'platform'); if (i >= 0) T.reread(i); };
 const platform = () => { const id = 'room-deck'; M.rooms.push({ id, name: 'Reading deck', type: 'platform', walls: [], poly: [[13, 4.5], [17, 4.5], [17, 7.5], [13, 7.5]], z: 0.45, level: 'lv-g', structure: 'st-boat' }); return id; };
 
 export const ATLAS = {
@@ -48,7 +51,9 @@ export const ATLAS = {
   'st-blank': () => { blank(); },
   'st-wall-draw': () => { blank(); setTool('ink'); S.inkTip = 'line'; S.palOpen = false; S.ink = { pts: [[2, 1]], h: 0, cursor: [9, 1], tag: '7.00 m' }; },
   'st-wall-done': () => { blank(); setTool('ink'); S.inkTip = 'line'; S.palOpen = false; T.finishInk([[2, 1], [9, 1]], false); },
-  'st-layout': () => { blank(); setTool('ink'); S.inkTip = 'box'; S.palOpen = false; T.finishInk([[2, 1], [9, 1]], false); T.finishInk([[2, 1], [9, 1], [9, 6], [2, 6]], true); T.finishInk([[9, 1], [14, 1], [14, 6], [9, 6]], true); },
+  'st-layout': () => layout(),
+  'st-sheet': () => { layout(); deck(); pinHeight(0.45); setSheet(0.45); zoomOn(M.rooms.at(-1).id, 0.55); },
+  'st-sheet-draw': () => { layout(); deck(); pinHeight(0.45); setSheet(0.45); S.inkTip = 'line'; T.finishInk([[15.5, 3.5], [18.5, 3.5]], false); zoomOn(M.rooms.at(-1).id, 0.55); },
   'st-elev': () => { base(); S.indexOpen = false; S.reading = 'elev'; S.elevFace = 'S'; },
   'st-exp': () => { base(); S.lens = 'experience'; selectId('p-torso'); },
   'st-look': () => { base(); S.lens = 'experience'; selectId('p-torso'); X.lookThrough('v-torso'); },

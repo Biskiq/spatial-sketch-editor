@@ -23,6 +23,8 @@ const FRAMES = [
   ['st-wall-draw', 'Sketch', 'Draw the first wall', 'Arm Ink with the Line pen and click along the ground. The live tag reads the length as you go.'],
   ['st-wall-done', 'Sketch', 'The stroke becomes a wall', 'A line on the ground is read as a wall, risen to the next Level up. No dialog, no type picker.'],
   ['st-layout', 'Layout', 'Box out the rooms', 'Box strokes become Rooms. The reading chip appears only when a closed shape is ambiguous — room, platform or Shape.'],
+  ['st-sheet', 'Sheet', 'Raise the Sheet', 'A box re-read as a raised platform gets its height pinned. The Sheet on the right is the drawing height: long ticks are Levels, short ticks found surfaces, round heads pins. Here it sits at 0.45.'],
+  ['st-sheet-draw', 'Sheet', 'Draw on the raised surface', 'With the Sheet at 0.45, a Line stroke stands its wall on the platform, not on the ground.'],
   ['rest', 'Layout', 'A finished gallery', 'Skipping ahead: the Boathouse — a long gallery and a studio, with openings, a roof and objects placed.'],
   ['obj-rays', 'Arrange', 'Move and size objects directly', 'Select the bench: rays leave its faces. Drag one to stretch that side; the size read-out follows the hand.'],
   ['obj-rays-closed', 'Arrange', 'Some objects keep their proportions', 'A sculpture has one size ray that scales it as a whole. Exact numbers stay in the Card.'],
