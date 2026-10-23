@@ -1,8 +1,8 @@
 # T3.P02.S01 — acceptance record: First capture and Cut Preview
 
-**Slice:** T3.P02.S01 · **Status:** accepted as `owner-override` at revision
-`26531059ff1bc51bbb352ae7f351071858b501fa`; implementation was independently reviewed over three
-rounds and fixes were applied · **Plan:**
+**Slice:** T3.P02.S01 · **Status:** accepted as `owner-override` on the integrated branch at revision
+`1bb281bb16dc839588e4174514b240de6c52bf79`; the original PR178 source revision and first owner
+ruling are retained below · **Plan:**
 [implementation-plan.md](./implementation-plan.md) (owns the scope and criteria) ·
 **Phase:** [T3.P02](../README.md) · **Register:** [phase slice register](../README.md#slice-register)
 
@@ -27,6 +27,28 @@ NOT CLAIMED: waived rows were run; F10 measurements, API results, or post-fix br
 NOT WAIVED:  T3.P02.S02's declared exhaustive integration route and the parent's PR merge gates;
              those remain separate and must be completed before phase closure
 STATE:      slice acceptance is owner-override at this revision; no merge or phase closure claimed
+```
+
+## Owner ruling — integrated revision accepted (2026-10-23)
+
+```text
+DATE:       2026-10-23
+RULING:     explicit Batch E owner override of the integrated current revision; accepted as
+            `owner-override`, not reviewed
+SCOPE:      T3.P02.S01 at integrated revision 1bb281bb16dc839588e4174514b240de6c52bf79,
+            rebased on main 86033b4d29e42f9f3dbfab79c1ab0a1bfae5d53d
+SOURCE HISTORY: original PR178 source revision 26531059ff1bc51bbb352ae7f351071858b501fa and
+                original owner-ruling commit 56dc86f6d6d1d14b51a6c0096802f4465113345b
+WAIVED:     any outstanding or missing/stale independent verdict and test-evidence prerequisites
+            for S01 acceptance, including owner F10 rows and DB-backed API evidence; the original
+            source revision 26531059ff1bc51bbb352ae7f351071858b501fa remains provenance, not the
+            accepted integrated revision
+EVIDENCE:   existing evidence and its limits remain as written; the rebase itself adds no test or
+            measurement evidence. F10 and DB-backed test:api remain unrun; post-fix lens wiring and
+            route-level Guide journey remain unverified here.
+NOT CLAIMED: no F10 measurement, API result, or new independent review was produced by this ruling.
+NEXT:       T3.P02.S02 remains proposed and unauthorized; its exhaustive integrated gate is separate.
+STATE:      accepted at this integrated revision as owner-override; no merge or phase closure claimed
 ```
 
 ## Settled implementation-review decisions
@@ -219,7 +241,8 @@ the measurement workflow and its harness are untouched.
 ```text
 integration     exhaustive integrated result routes to T3.P02.S02 (two Experiences, full editorial matrix,
                 DOM reach with gap explanation, complete repository gate)
-review          independent review of this branch decides acceptance; no merge performed
+review          original implementation reviewed in three rounds; integrated revision accepted by
+                owner-override, not independently reviewed; no merge performed
 api lane        DB-backed test:api not run in this session (no DATABASE_URL / cloud client); Save path unchanged
 owner-run       F10 performance rows on the MacBook Air M2 (E6); Preview delivery row recorded above
 experience-ui   no Guide-creation action in this slice, so a route-level Guide journey needs an authored Guide
