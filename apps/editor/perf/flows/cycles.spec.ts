@@ -3,11 +3,12 @@
  *
  * One context per row: open the S fixture, accept 20 exact-length edits, close
  * to the hub, then force GC and read the JS heap. The repeat-use row cycles the
- * same context ten times; the cold row clears cache and cookies before every
- * open; the warm row measures one cycle after a discarded cycle has warmed the
- * Stage in that context. Geometry/texture counts, live WebGL contexts and
- * detached nodes need a renderer probe the shipped Stage does not expose; those
- * rows stay unrun and owner-run on the reference machine.
+ * same context ten times; the cold row starts in one fresh context and clears
+ * cache and cookies before every open (it cannot reset the renderer's V8 code
+ * cache inside the ten-cycle run); the warm row measures one cycle after a
+ * discarded cycle has warmed the Stage in that context. Geometry/texture counts,
+ * live WebGL contexts and detached nodes need a renderer probe the shipped Stage
+ * does not expose; those rows stay unrun and owner-run on the reference machine.
  */
 
 import { expect, test } from '@playwright/test';

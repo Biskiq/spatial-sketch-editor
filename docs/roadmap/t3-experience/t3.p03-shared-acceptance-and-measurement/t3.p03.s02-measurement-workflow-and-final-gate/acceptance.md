@@ -4,19 +4,21 @@
 acceptance criteria 1–5 are met on this tree; the plan's trace-correlation method is **not
 implemented** and is an explicit
 [deviation decision](../../../../reference/decisions/t3p03s02-trace-correlation-deviation-2026-10-22.md)
-awaiting the owner; independent review and the owner-operated hard-row pass are **pending** — no hard
-product budget is accepted here · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns
+awaiting the owner; two independent review rounds are complete and their findings are addressed; the
+owner-operated hard-row pass and owner acceptance are **pending** — no hard product budget is accepted
+here · **Plan:** [implementation-plan.md](./implementation-plan.md) (owns
 the criteria) · **Phase:** [T3.P03](../README.md) · **Declared** `FINAL PHASE GATE` artifact of T3.P03
 
 ```text
 VERIFICATION: exhaustive   (declared by the plan; this record is the phase's final gate and S01's
                             declared integration route)
 BASE:         55683981       merge of PR #176 (T3.P03.S01 via main) on t3/p03-s02-measurement-final-gate
-STATUS:       implemented; repository gate green; all nine Chrome tests green in one clean
-              sequence on this tree at default counts, with cold, warm and repeat-use for
-              every flow row; trace correlation is a documented deviation awaiting the owner;
-              first-interactive rows are labelled as the rAF proxy they are; unrun rows are
-              inventoried below; hard rows owner-run pending; not reviewed; not accepted
+STATUS:       implemented; repository gate green; nine Chrome tests green in one clean sequence
+              on this tree at default counts: seven flow specs in cold, warm and repeat-use,
+              plus the calibration and delayed-preview diagnostics; trace correlation is a
+              documented deviation awaiting the owner; first-interactive rows are labelled as
+              the rAF proxy they are; unrun rows are inventoried below; two independent review
+              rounds completed with findings addressed; hard rows and owner acceptance pending
 ```
 
 The trace deviation is recorded at
@@ -36,7 +38,7 @@ proves that the ordinary build neither evaluates that detail nor calls `performa
 
 | Criterion | Posture |
 | --- | --- |
-| 1. Cold, warm and repeat-use runs with declared statistics; delayed-preview correlation proof | **Met as written.** Every flow row ran cold, warm and repeat-use. F1, F2 (S and M), F3/F4/F8, F7 and F9 ran 10 measured runs per state (60 pointer samples per drag run); F13 is one ten-cycle run per cold/repeat-use state and one measured cycle after a discarded one for warm. Cold creates a fresh context for every run. The delayed-preview proof passes (180/180 delayed inputs kept rows, delayed p95 126.14 ms / max 149.8 ms against baseline p95 16.2 ms / max 16.5 ms). This does **not** satisfy scope 2's "presented frame in the trace": no trace is recorded, and the rAF attribution remains the owner's deviation decision. |
+| 1. Cold, warm and repeat-use runs with declared statistics; delayed-preview correlation proof | **Met as written.** Every flow row ran cold, warm and repeat-use. F1, F2 (S and M), F3/F4/F8, F7 and F9 ran 10 measured runs per state (60 pointer samples per drag run); F13 is one ten-cycle run per cold/repeat-use state and one measured cycle after a discarded one for warm. Cold creates a fresh context for every run; F13's ten-cycle cold row is one fresh context for the run, and its per-open clears cannot reset the V8 code cache. The delayed-preview proof passes (180/180 delayed inputs kept rows, delayed p95 126.14 ms / max 149.8 ms against baseline p95 16.2 ms / max 16.5 ms). This does **not** satisfy scope 2's "presented frame in the trace": no trace is recorded, and the rAF attribution remains the owner's deviation decision. |
 | 2. Bundle report reproduces route sets and refuses an injected module | **Met** on the current build; the `--forbid` checks exit 0/1 as intended. |
 | 3. Baseline record names every unrun reference/GPU row | **Met as an inventory**; the rows themselves remain unrun and no value is claimed for them. |
 | 4. S01 integrated result rechecked | **Met** on this tree: 6 files / 88 tests and both static gates rerun. |
@@ -65,7 +67,9 @@ warm row measures a cycle after a discarded one rather than a disguised cold loa
   Undo/Redo — each in **cold, warm and repeat-use**. Cold creates a fresh browser context for every
   measured run; warm and repeat-use reuse one context and never clear. For the navigation/drag flows
   repeat-use is sampled as ten cycles in that context, one measured cycle per run, closing back to
-  the hub before the next open. F13's repeat-use row is the contract's ten-cycle state in a single
+  the hub before the next open. F1 closes implicitly: `startOnce` navigates to the hub at the start of
+  the next run, while the other flows close explicitly with `closeToHub`. F13's repeat-use row is the
+  contract's ten-cycle state in a single
   run; its cold row starts in one fresh context and clears cache/cookies before each open (the
   renderer's V8 code cache is not reset inside that run). F13's warm row measures one cycle after a
   discarded cycle has warmed the Stage, so it is not a disguised cold load. The delayed-preview proof
@@ -118,9 +122,10 @@ static surface gates          PASS   verify-public-surface (2 public files), ver
                                      (12 visitor files), both exit 0 (rerun after the harness edits)
 ```
 
-All gates above were rerun after this pass's harness edits.
+All gates above are green on this branch. The final perf-only cleanup was checked with `tsc --noEmit`;
+no root lane collects `perf/`.
 
-**Clean harness sequence (final code).** Built with `node perf/serve.mjs` (production `vite build`
+**Clean harness sequence (measured on `bfc4fc91`).** Built with `node perf/serve.mjs` (production `vite build`
 plus `vite preview` on `127.0.0.1:4173`), then, from `apps/editor`:
 
 ```sh
@@ -136,13 +141,14 @@ database `biskiq_t3p03s02_gate` and the API's test-auth seam on `127.0.0.1:8792`
 production). The preview was built with `PUBLIC_API_ORIGIN=http://127.0.0.1:8792` so the shipped
 Save transport reaches that local API. All rows below are from this one sequence; no earlier number
 is carried forward. A reduced-count smoke pass (`PERF_RUNS=2`, `PERF_SAMPLES=5`) preceded it and is
-not cited here except as evidence that each new state executes.
+not cited here except as evidence that each new state executes. The only later behavioural harness
+change is a setup-error cleanup in `newMeasuredSession`; it touches no measured path.
 
 `PERF_BASE_URL` made the config reuse the already-running preview instead of building a second one.
-The report header records `browserVersion`, `chromeVersion`, platform and `powerState`; each row
-records the browser string it ran on. Chromium (Playwright's managed build) was exercised on the
-previous tree; it was not rerun here, so this record does not claim a Chromium result for these
-exact sources.
+The report header records platform, CPU, Node, power state and the commit; each row records the
+browser/version string, cache state, network and CPU rate. Chromium (Playwright's managed build) was
+exercised on an earlier tree; it was not rerun here, so this record does not claim a Chromium result
+for these exact sources.
 
 ## Measured pre-flight rows (no budget accepted)
 
@@ -223,12 +229,12 @@ that slice rather than inventing a command here.
 | F7 S and L orbits, draw calls/triangles/GPU time, presented-frame trace | Only M runs here, on a 60 Hz clock (603 frames in 10.07 s). No renderer probe; trace deviation applies. | `... flows/orbit.spec.ts --project=chrome` for S/L once fixtures exist; GPU probe/trace separately. |
 | F8 recompile/admission split, discrete responsiveness | Only restored-result completion is captured. | `... flows/drag-correlation.spec.ts --project=chrome`. |
 | F9 main-thread blocking, serialize/hash split, upload/RTT/server split, production-service receipt | Runs against the local test-auth stack on loopback; client marks do not split those phases. | `... flows/save.spec.ts --project=chrome` against a controlled service, with server timing. |
-| Page INP from Event Timing | The ledger buffers event entries at a 16 ms duration threshold, but no row computes INP; per-operation completion is reported instead. | `...` plus an owner Event Timing/DevTools pass; state the threshold and its censoring limit. |
+| Page INP from Event Timing | The ledger buffers event entries at a 16 ms duration threshold, but no row computes INP; per-operation completion is reported instead. | No in-repo command: a manual Chrome DevTools Performance / Event Timing probe at a stated threshold, recording the censoring limit. |
 | F13 `renderer.info.memory` geometries/textures, live WebGL contexts, detached DOM nodes, viewer/Preview enter-exit cycles | The shipped Stage exposes no renderer probe; viewer/Preview cycles are not in this slice. | `... flows/cycles.spec.ts --project=chrome` plus a renderer probe; viewer/Preview in their slices. |
 | L and XL workloads; S orbit; M/L drag; Safari and Firefox | The matrix beyond S/M and Chrome was not run. | `PERF_RUNS=10 PERF_SAMPLES=60 ... --project=<browser>` per flow/workload; L/XL fixtures are not built. |
-| Chromium on this tree | The last Chromium evidence predates the harness edits that added warm/repeat-use rows; Chromium was not rerun after them. | `cd apps/editor && PERF_RUNS=10 PERF_SAMPLES=60 npx playwright test --config perf/playwright.config.ts --project=chromium` (one flow at a time if needed). |
+| Chromium on this tree | The last Chromium evidence predates the warm/repeat-use rows and the cold-context rewrite; Chromium was not rerun after either. | `cd apps/editor && PERF_RUNS=10 PERF_SAMPLES=60 npx playwright test --config perf/playwright.config.ts --project=chromium` (one flow at a time if needed). |
 | Calibration reference median | Owner-operated reference machine only; no `PERF_REFERENCE_CALIBRATION_MS` was supplied. | `... flows/calibration.spec.ts --project=chrome` on the designated MacBook Air M2. |
-| Per-row build hash and display Hz | Rows record commit, browser, CPU rate and power; the build hash and display Hz (60 Hz this pass) are stated globally, not per row. | Owner records both when producing reference rows. |
+| Per-row build hash and display Hz | Rows record the browser string and CPU rate; commit, power and display Hz (60 Hz this pass) are report/global, not per row. | Owner records both when producing reference rows. |
 | S01 focused recheck and static surface gates | **Rerun on this tree on 2026-10-22**: 6 files / 88 tests passed; both static gates exited 0. Not unrun. | `npx vitest run tests/lib/visitor/preview-surface-closure.test.ts tests/lib/authoring/f4-acceptance.test.ts tests/lib/authoring/f4-unit-acceptance.test.ts tests/lib/authoring/unit-acceptance-conformance.test.ts tests/vite/public-surface-boundary-plugin.test.ts tests/vite/preview-surface-boundary-plugin.test.ts`; `node scripts/verify-public-surface.mjs`; `node scripts/verify-preview-surface.mjs`. |
 
 ## Iterations a reviewer should know
@@ -287,7 +293,7 @@ contracts       docs/reference/components/performance.md · apps/editor/tests/RE
 ## Residuals
 
 ```text
-review          independent implementation review of this branch is not recorded
+review          two independent review rounds completed; findings addressed; owner acceptance pending
 trace           scope-2 trace-of-presented-frame method not implemented; owner decision pending
 hard rows       owner-operated reference pass pending (E6); no budget accepted here
 calibration     reference median not recorded; other machines cannot claim equivalence yet
@@ -311,5 +317,5 @@ bundle        PASS — route sets reproduced; a present module is refused, an ab
 hygiene       PASS — no probe, debug flag, tuned absolute threshold or formatting residue left
 owner-run     PENDING — hard baseline and calibration rows await the owner's reference run
 trace         PENDING — owner must accept the deviation or authorize the tracing slice
-review        PENDING — no independent verdict on this revision; status is not `reviewed`
+review        PASS — two independent review rounds; all material findings addressed; owner acceptance pending
 ```

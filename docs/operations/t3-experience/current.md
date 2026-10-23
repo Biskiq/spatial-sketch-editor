@@ -9,13 +9,14 @@ PHASE: T3.P03 Shared acceptance, isolation and measurement (H0; registered 2026-
        ../../roadmap/t3-experience/t3.p02-capture-and-cut-preview/README.md
        T3.P01 is CLOSED 2026-10-20 (final gate `06a8aac8`, merged `9a457f6b`, PR #158).
 ACTIVE: T3.P03.S02 implemented and verified on `t3/p03-s02-measurement-final-gate`; acceptance
-        criteria 1–5 are green at default counts (cold, warm and repeat-use for every flow). Not
-        reviewed or accepted: the scope-2 trace deviation needs the owner's decision and the hard
-        baseline/calibration rows are owner-run. T3.P03.S01 is shipped (acceptance `owner-override`;
+        criteria 1–5 are green at default counts (cold, warm and repeat-use for every flow). Two
+        independent review rounds are complete and their findings are addressed; not accepted: the
+        scope-2 trace deviation needs the owner's decision and the hard baseline/calibration rows
+        are owner-run. T3.P03.S01 is shipped (acceptance `owner-override`;
         closed stub at ../../roadmap/t3-experience/t3.p03-shared-acceptance-and-measurement/t3.p03.s01-planner-scope-and-build-isolation/acceptance.md).
-BATON: Independent review of T3.P03.S02, then the owner's trace decision and reference-machine
-       pass; T3.P02.S01 (first capture and Cut Preview) can proceed in parallel once its release-list
-       condition (T3.P03.S01 merged on `main`) holds.
+BATON: Owner's trace decision and reference-machine pass for T3.P03.S02 (independent review is
+       complete); T3.P02.S01 (first capture and Cut Preview) can proceed in parallel once its
+       release-list condition (T3.P03.S01 merged on `main`) holds.
 NEXT:  the release list order. The capture slice settles the format draft's two open points (text
        bound, entryViewId) at implementation review.
 ROUTE: ./README.md → ../../roadmap/t3-experience/README.md (phase register) →

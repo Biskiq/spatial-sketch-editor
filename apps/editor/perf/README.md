@@ -94,7 +94,8 @@ Every flow row runs **cold, warm and repeat-use**. Cold creates a fresh browser
 context for every measured run (the contract's definition); warm and repeat-use
 reuse one context and never clear. For the navigation and drag flows, repeat-use
 is ten cycles in that context, one measured cycle per run, closing back to the
-hub before the next open. F13's repeat-use row is the contract's ten-cycle state
+hub before the next open (F1's next run begins at the hub; the others close
+explicitly). F13's repeat-use row is the contract's ten-cycle state
 in a single run; its cold row starts in one fresh context and clears
 cache/cookies before each open, but does not reset the renderer's V8 code cache
 inside the run. F13's warm row measures one cycle after a discarded cycle has

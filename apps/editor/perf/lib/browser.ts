@@ -60,30 +60,35 @@ export async function newMeasuredSession(
 		locale: 'en-US',
 		timezoneId: 'UTC'
 	});
-	await context.addInitScript(perfInitScript, options.harness ?? {});
-	const page = await context.newPage();
-	const cdp = await context.newCDPSession(page);
-	await cdp.send('Network.enable');
-	const profile = NETWORK_PROFILES[network];
-	await cdp.send('Network.emulateNetworkConditions', {
-		offline: false,
-		latency: profile.latency,
-		downloadThroughput: profile.downloadThroughput,
-		uploadThroughput: profile.uploadThroughput
-	});
-	if (cpuRate !== 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
-	if (cacheState === 'cold') await clearBrowserState(cdp);
-	return {
-		context,
-		page,
-		cdp,
-		cacheState,
-		network,
-		cpuRate,
-		async close() {
-			await context.close();
-		}
-	};
+	try {
+		await context.addInitScript(perfInitScript, options.harness ?? {});
+		const page = await context.newPage();
+		const cdp = await context.newCDPSession(page);
+		await cdp.send('Network.enable');
+		const profile = NETWORK_PROFILES[network];
+		await cdp.send('Network.emulateNetworkConditions', {
+			offline: false,
+			latency: profile.latency,
+			downloadThroughput: profile.downloadThroughput,
+			uploadThroughput: profile.uploadThroughput
+		});
+		if (cpuRate !== 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
+		if (cacheState === 'cold') await clearBrowserState(cdp);
+		return {
+			context,
+			page,
+			cdp,
+			cacheState,
+			network,
+			cpuRate,
+			async close() {
+				await context.close();
+			}
+		};
+	} catch (error) {
+		await context.close();
+		throw error;
+	}
 }
 
 /**
