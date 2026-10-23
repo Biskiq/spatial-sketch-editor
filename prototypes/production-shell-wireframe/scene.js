@@ -4,6 +4,9 @@
 
 export function seedModel() {
   return {
+    structures: [{ id: 'st-boat', name: 'Boathouse' }],
+    levels: [{ id: 'lv-g', name: 'Ground', structure: 'st-boat', z: 0 }],
+    pins: [{ id: 'pin-eave', z: 4.2, label: 'Gallery eave' }],
     walls: [
       { id: 'w-s1', name: 'South wall', a: [0, 0], b: [12, 0], base: 0, top: 4.2 },
       { id: 'w-d', name: 'Studio divider', a: [12, 0], b: [12, 6], base: 0, top: 4.2 },
@@ -13,11 +16,11 @@ export function seedModel() {
       { id: 'w-e', name: 'Studio east wall', a: [18, 0], b: [18, 8], base: 0, top: 3.6 },
       { id: 'w-n2', name: 'Studio north wall', a: [18, 8], b: [12, 8], base: 0, top: 3.6 },
       { id: 'w-r', name: 'Studio return wall', a: [12, 8], b: [12, 6], base: 0, top: 3.6 },
-    ],
+    ].map((w) => ({ ...w, level: 'lv-g', structure: 'st-boat' })),
     rooms: [
       { id: 'room-gal', name: 'Long gallery', walls: ['w-s1', 'w-d', 'w-n1', 'w-w'], poly: [[0, 0], [12, 0], [12, 6], [0, 6]], z: 0 },
       { id: 'room-stu', name: 'Studio', walls: ['w-s2', 'w-e', 'w-n2', 'w-r', 'w-d'], poly: [[12, 0], [18, 0], [18, 8], [12, 8]], z: 0 },
-    ],
+    ].map((r) => ({ ...r, kind: 'room', level: 'lv-g', structure: 'st-boat' })),
     openings: [
       { id: 'o-entry', name: 'Entry arch', host: 'w-s1', at: 3.2, w: 1.6, h: 2.8, sill: 0, arch: true },
       { id: 'o-pass', name: 'Studio passage', host: 'w-d', at: 3.0, w: 2.0, h: 2.6, sill: 0 },
@@ -25,25 +28,20 @@ export function seedModel() {
       { id: 'o-clere', name: 'Clerestory', host: 'w-n1', at: 6, w: 6, h: 0.5, sill: 3.4 },
     ],
     roofs: [
-      { id: 'r-gal', name: 'Gallery roof', kind: 'gable', x0: -0.4, x1: 12.4, y0: -0.4, y1: 6.4, eave: 4.2, ridge: 6.6, over: ['w-s1', 'w-n1', 'w-w', 'w-d'] },
-      { id: 'r-stu', name: 'Studio roof', kind: 'flat', x0: 12, x1: 18, y0: 0, y1: 8, eave: 3.6, ridge: 3.6, over: ['w-s2', 'w-e', 'w-n2'] },
+      { id: 'r-gal', name: 'Gallery roof', x0: -0.4, x1: 12.4, y0: -0.4, y1: 6.4, prof: [[0, 4.2], [3.4, 6.6], [6.8, 4.2]], over: ['w-s1', 'w-n1', 'w-w', 'w-d'], structure: 'st-boat' },
+      { id: 'r-stu', name: 'Studio roof', x0: 12, x1: 18, y0: 0, y1: 8, prof: [[0, 3.6], [8, 3.6]], over: ['w-s2', 'w-e', 'w-n2'], structure: 'st-boat' },
     ],
     objects: [
-      { id: 'b-bench', name: 'Oak bench', kind: 'bench', x: 5, y: 2.6, w: 1.8, d: 0.5, h: 0.45, rot: 0, z: 0 },
-      { id: 'b-sculpt', name: 'Torso on plinth', kind: 'sculpture', x: 9, y: 3, w: 0.6, d: 0.6, h: 1.6, rot: 0, z: 0, scalable: true },
-      { id: 'b-piano', name: 'Pleyel piano', kind: 'piano', x: 15, y: 4.6, w: 1.5, d: 2.0, h: 1.0, rot: 20, z: 0 },
-    ],
+      { id: 'b-bench', name: 'Oak bench', kind: 'bench', fit: 'extend', x: 5, y: 2.6, w: 1.8, d: 0.5, h: 0.45, rot: 0, z: 0 },
+      { id: 'b-sculpt', name: 'Torso', kind: 'sculpture', fit: 'proportional', x: 9, y: 3, w: 0.5, d: 0.5, h: 0.9, rot: 0, z: 1.0 },
+      { id: 'b-plinth', name: 'Plinth', kind: 'plinth', fit: 'stretch', x: 9, y: 3, w: 0.6, d: 0.6, h: 1.0, rot: 0, z: 0 },
+      { id: 'b-piano', name: 'Pleyel piano', kind: 'piano', fit: 'fixed', x: 15, y: 4.6, w: 1.5, d: 2.0, h: 1.0, rot: 20, z: 0 },
+      { id: 'b-column', name: 'Doric column', kind: 'column', fit: 'stretch', imported: true, x: 13.2, y: 1.2, w: 0.5, d: 0.5, h: 3.0, rot: 0, z: 0 },
+    ].map((o) => ({ ...o, level: 'lv-g' })),
     artworks: [
       { id: 'a-1', name: 'Harbour at dusk', host: 'w-n1', at: 2.6, w: 1.4, h: 1.0, c: 1.6 },
       { id: 'a-2', name: 'Two boats', host: 'w-n1', at: 4.6, w: 1.2, h: 0.9, c: 1.6 },
       { id: 'a-3', name: 'Net mender', host: 'w-n1', at: 9.4, w: 1.0, h: 1.3, c: 1.6 },
-    ],
-    datums: [
-      { id: 'ground', name: 'Ground', z: 0 },
-      { id: 'mezz', name: 'Mezzanine', z: 2.8 },
-      { id: 'studio-top', name: 'Studio top', z: 3.6 },
-      { id: 'eave', name: 'Gallery eave', z: 4.2 },
-      { id: 'ridge', name: 'Gallery ridge', z: 6.6 },
     ],
     imports: [],
     finishes: {},
@@ -51,7 +49,7 @@ export function seedModel() {
       { id: 'v-entry', name: 'Entry', pos: [3.2, -5.5, 1.6], target: [6, 3, 1.5], lens: 26 },
       { id: 'v-long', name: 'Long view', pos: [11.2, 5.2, 1.6], target: [1, 1.2, 1.5], lens: 24 },
       { id: 'v-bench', name: 'From the bench', pos: [6, 0.5, 1.5], target: [6, 6, 1.9], lens: 20 },
-      { id: 'v-torso', name: 'Torso close', pos: [7.4, 1.6, 1.5], target: [9, 3, 1.1], lens: 32 },
+      { id: 'v-torso', name: 'Torso close', pos: [7.4, 1.6, 1.5], target: [9, 3, 1.4], lens: 32 },
       { id: 'v-piano', name: 'Piano', pos: [13.2, 1.2, 1.6], target: [15, 4.6, 0.9], lens: 26 },
     ],
     presentations: [
@@ -75,6 +73,12 @@ export function seedModel() {
     ],
   };
 }
+
+/** Roof helpers: a rectangular roof is a section profile [s, z] swept along x; s runs across the span from y0. */
+export function roofProf(r) { return r.prof || [[0, r.eave ?? 3], [(r.y1 - r.y0) || 1, r.eave ?? 3]]; }
+export function roofEave(r) { const p = roofProf(r); return Math.min(p[0][1], p.at(-1)[1]); }
+export function roofTop(r) { return Math.max(...roofProf(r).map((q) => q[1])); }
+export function roofFlat(r) { const p = roofProf(r); return p.every((q) => Math.abs(q[1] - p[0][1]) < 0.01); }
 
 // ---------- small vector helpers ----------
 export const sub = (a, b) => a.map((v, i) => v - b[i]);
@@ -135,7 +139,13 @@ function openingOutline(w, o, inset = 0) {
 export function prims(m, opt = {}) {
   const out = [];
   const lift = opt.lift ? 2.6 : 0;
-  for (const r of m.rooms) if (roomEnclosed(m, r)) out.push({ id: r.id, kind: 'room', role: 'floor', pts: r.poly.map((p) => [...p, r.z + 0.001]), floor: true });
+  for (const r of m.rooms) {
+    if (r.type === 'platform') {
+      // a raised horizontal surface: a slab, not a Level
+      out.push({ id: r.id, kind: 'room', role: 'top', pts: r.poly.map((p) => [...p, r.z]), n: [0, 0, 1] });
+      for (let i = 0; i < r.poly.length; i++) { const p = r.poly[i], q = r.poly[(i + 1) % r.poly.length]; out.push({ id: r.id, kind: 'room', role: 'side', pts: [[...p, r.z - 0.25], [...q, r.z - 0.25], [...q, r.z], [...p, r.z]], n: [q[1] - p[1], p[0] - q[0], 0] }); }
+    } else if (roomEnclosed(m, r)) out.push({ id: r.id, kind: 'room', role: 'floor', pts: r.poly.map((p) => [...p, r.z + 0.001]), floor: true });
+  }
   for (const w of m.walls) {
     out.push({ id: w.id, kind: 'wall', role: 'wall', pts: [[...w.a, w.base], [...w.b, w.base], [...w.b, w.top], [...w.a, w.top]], n: [w.b[1] - w.a[1], w.a[0] - w.b[0], 0] });
     for (const o of m.openings.filter((o) => o.host === w.id)) out.push({ id: o.id, kind: 'opening', role: 'hole', host: w.id, pts: openingOutline(w, o) });
@@ -151,17 +161,14 @@ export function prims(m, opt = {}) {
   }
   for (const r of m.roofs) {
     const L = lift;
-    if (r.kind === 'gable') {
-      const ym = (r.y0 + r.y1) / 2, e = r.eave + L, k = r.ridge + L;
-      out.push({ id: r.id, kind: 'roof', role: 'roof', pts: [[r.x0, r.y0, e], [r.x1, r.y0, e], [r.x1, ym, k], [r.x0, ym, k]], n: [0, -1, 1] });
-      out.push({ id: r.id, kind: 'roof', role: 'roof', pts: [[r.x0, ym, k], [r.x1, ym, k], [r.x1, r.y1, e], [r.x0, r.y1, e]], n: [0, 1, 1] });
-      out.push({ id: r.id, kind: 'roof', role: 'gable', pts: [[r.x0, r.y0, e], [r.x0, ym, k], [r.x0, r.y1, e]], n: [-1, 0, 0] });
-      out.push({ id: r.id, kind: 'roof', role: 'gable', pts: [[r.x1, r.y0, e], [r.x1, ym, k], [r.x1, r.y1, e]], n: [1, 0, 0] });
-    } else if (r.poly) {
-      out.push({ id: r.id, kind: 'roof', role: 'roof', pts: r.poly.map((p) => [p[0], p[1], r.eave + L]), n: [0, 0, 1] });
-    } else {
-      out.push({ id: r.id, kind: 'roof', role: 'roof', pts: [[r.x0, r.y0, r.eave + L], [r.x1, r.y0, r.eave + L], [r.x1, r.y1, r.eave + L], [r.x0, r.y1, r.eave + L]], n: [0, 0, 1] });
+    if (r.poly) { out.push({ id: r.id, kind: 'roof', role: 'roof', pts: r.poly.map((p) => [p[0], p[1], (r.eave ?? roofEave(r)) + L]), n: [0, 0, 1] }); continue; }
+    const pr = roofProf(r).map(([s, z]) => [r.y0 + s, z + L]);
+    for (let k = 0; k < pr.length - 1; k++) {
+      const [ya, za] = pr[k], [yb, zb] = pr[k + 1];
+      out.push({ id: r.id, kind: 'roof', role: 'roof', seg: k, pts: [[r.x0, ya, za], [r.x1, ya, za], [r.x1, yb, zb], [r.x0, yb, zb]], n: [0, -(zb - za), yb - ya || 1e-3] });
     }
+    const capArea = Math.abs(pr.reduce((s, p, i) => { const q = pr[(i + 1) % pr.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0));
+    if (capArea > 0.02) for (const x of [r.x0, r.x1]) out.push({ id: r.id, kind: 'roof', role: 'gable', pts: pr.map(([y, z]) => [x, y, z]), n: [x === r.x0 ? -1 : 1, 0, 0] });
   }
   for (const o of m.objects) out.push(...boxPrims(o.id, 'object', o));
   for (const im of m.imports) out.push(...boxPrims(im.id, 'import', im));
@@ -250,10 +257,15 @@ export function renderSolid(m, cam, opts) {
     const q = cam.clip ? cam.clip(p.pts) : p.pts.map(cam.P);
     if (q.length < 3 || q.some((v) => v[3])) continue;
     let depth = q.reduce((s, v) => s + v[2], 0) / q.length;
+    // painter's order by story first (a floor slab covers the story below it), then depth
+    const zmin = Math.min(...p.pts.map((v) => v[2])), stories = opts.stories || [0];
+    let story = 0; stories.forEach((z, i) => { if (zmin >= z - 0.02) story = i; });
+    const camZ = cam.kind === 'persp' ? cam.C[2] : Infinity;
+    let key = stories[story] > camZ ? -story - 10 : story;
+    if (p.kind === 'roof') key = camZ < 3.5 ? -100 : 100; // from above roofs read over everything; from eye level they sit behind
     if (p.floor) depth -= 1e4;
-    if (p.kind === 'roof') depth += cam.kind === 'persp' && cam.C[2] < 3.5 ? -5e3 : 1e3; // from above roofs read over walls; from eye level they sit behind them
     if (p.role === 'hole' || p.role === 'art') depth += 0.02;
-    list.push({ p, q, depth });
+    list.push({ p, q, depth: key * 1e6 + depth });
     const c = cents[p.id] || (cents[p.id] = { u: 0, v: 0, n: 0 });
     for (const v of q) { c.u += v[0]; c.v += v[1]; c.n++; }
   }
@@ -267,12 +279,15 @@ export function renderSolid(m, cam, opts) {
     if (opts.hover === p.id) cls.push('is-hover');
     if (opts.marked && opts.marked.has(p.id)) cls.push('is-mark');
     if (opts.ghost && opts.ghost(p.id, p)) cls.push('is-ghost');
+    else if (opts.dim && opts.dim(p.id)) cls.push('is-dim');
     if (opts.related && opts.related.has(p.id)) cls.push('is-related');
     if (opts.xray && p.kind === 'roof') cls.push('is-xray');
+    if (opts.cut && opts.cut.has(p.id)) cls.push('is-cut');
     let fill;
     const fin = opts.finishes && opts.finishes[p.id];
     if (p.role === 'hole') fill = pal.hole;
     else if (p.role === 'floor') fill = fin ? fin.color : pal.floor;
+    else if (p.kind === 'room') fill = fin ? fin.color : shade(pal.obj, p.role === 'top' ? [0, 0, 1] : p.n, opts.flat);
     else if (p.role === 'art') fill = pal.art;
     else if (p.kind === 'roof') fill = shade(pal.roof, p.n, opts.flat);
     else if (p.kind === 'object') fill = shade(pal.obj, p.role === 'top' ? [0, 0, 1] : p.n, opts.flat);
@@ -307,30 +322,32 @@ export function renderPlan(m, opts) {
     if (opts.hover === id) c.push('is-hover');
     if (opts.marked && opts.marked.has(id)) c.push('is-mark');
     if (opts.ghost && opts.ghost(id)) c.push('is-ghost');
+    else if (opts.dim && opts.dim(id)) c.push('is-dim');
     if (opts.related && opts.related.has(id)) c.push('is-related');
     return c.join(' ');
   };
   const hidden = (id) => opts.hidden && opts.hidden(id);
   const centroids = {};
+  let labels = ''; // room names paint last, over furniture
   for (const r of m.rooms) {
     if (!roomEnclosed(m, r) || hidden(r.id)) continue;
     const fin = opts.finishes && opts.finishes[r.id];
-    svg += `<polygon class="${cls(r.id, 'pl-room')}" data-id="${r.id}" points="${r.poly.map((p) => `${p[0]},${-p[1]}`).join(' ')}" fill="${fin ? fin.color : pal.floor}"/>`;
+    svg += `<polygon class="${cls(r.id, r.type === 'platform' ? 'pl-room pl-plat' : 'pl-room')}" data-id="${r.id}" points="${r.poly.map((p) => `${p[0]},${-p[1]}`).join(' ')}" fill="${fin ? fin.color : pal.floor}"/>`;
     const c = centroid2(r.poly); centroids[r.id] = [c[0], -c[1]];
     const area = polyArea(r.poly).toFixed(1);
-    svg += `<text class="pl-label" x="${c[0]}" y="${-c[1] - 0.15}">${r.name}</text><text class="pl-meta" x="${c[0]}" y="${-c[1] + 0.45}">${area} m²</text>`;
+    if (opts.labels !== false) labels += `<text class="pl-label" x="${c[0]}" y="${-c[1] - 0.15}">${r.name}</text><text class="pl-meta" x="${c[0]}" y="${-c[1] + 0.45}">${area} m²</text>`;
   }
   for (const r of m.roofs) {
     if (hidden(r.id)) continue;
     if (r.poly) { svg += `<polygon class="${cls(r.id, 'pl-roof')}" data-id="${r.id}" points="${r.poly.map((p) => `${p[0]},${-p[1]}`).join(' ')}"/>`; const c = centroid2(r.poly); centroids[r.id] = [c[0], -c[1]]; continue; }
     svg += `<rect class="${cls(r.id, 'pl-roof')}" data-id="${r.id}" x="${r.x0}" y="${-r.y1}" width="${r.x1 - r.x0}" height="${r.y1 - r.y0}"/>`;
-    if (r.kind === 'gable') { const ym = -(r.y0 + r.y1) / 2; svg += `<line class="pl-ridge" x1="${r.x0}" y1="${ym}" x2="${r.x1}" y2="${ym}"/>`; }
+    const pr = roofProf(r); for (let k = 1; k < pr.length - 1; k++) if (pr[k][1] >= pr[k - 1][1] && pr[k][1] >= pr[k + 1][1]) { const ym = -(r.y0 + pr[k][0]); svg += `<line class="${cls(r.id, 'pl-ridge')}" x1="${r.x0}" y1="${ym}" x2="${r.x1}" y2="${ym}"/>`; }
     centroids[r.id] = [(r.x0 + r.x1) / 2, -(r.y0 + r.y1) / 2];
   }
   for (const w of m.walls) {
     if (hidden(w.id)) continue;
     const L = wallLen(w), d = [(w.b[0] - w.a[0]) / L, (w.b[1] - w.a[1]) / L], n = [-d[1] * 0.12, d[0] * 0.12];
-    const ops = m.openings.filter((o) => o.host === w.id && o.sill < 1.2).sort((a, b) => a.at - b.at);
+    const ops = m.openings.filter((o) => o.host === w.id && o.sill - w.base < 1.2).sort((a, b) => a.at - b.at);
     let t = 0; const spans = [];
     for (const o of ops) { spans.push([t, o.at - o.w / 2]); t = o.at + o.w / 2; }
     spans.push([t, L]);
@@ -348,11 +365,12 @@ export function renderPlan(m, opts) {
       if (hidden(o.id)) continue;
       const p0 = pt(o.at - o.w / 2), p1 = pt(o.at + o.w / 2), c = pt(o.at);
       centroids[o.id] = [c[0], -c[1]];
-      if (o.sill < 1.2 && !o.arch && o.sill === 0) {
+      const rs = o.sill - w.base;
+      if (rs < 1.2 && !o.arch && rs < 0.01) {
         // swing
         const r = o.w, sw = [p0[0] + n[0] / 0.12 * r * -1, p0[1] + n[1] / 0.12 * r * -1];
         svg += `<g class="${cls(o.id, 'pl-open')}" data-id="${o.id}"><line x1="${p0[0]}" y1="${-p0[1]}" x2="${sw[0]}" y2="${-sw[1]}"/><path d="M ${sw[0]} ${-sw[1]} A ${r} ${r} 0 0 ${d[0] + d[1] > 0 ? 0 : 1} ${p1[0]} ${-p1[1]}"/><line class="pl-hit" x1="${p0[0]}" y1="${-p0[1]}" x2="${p1[0]}" y2="${-p1[1]}"/></g>`;
-      } else if (o.sill < 1.2) {
+      } else if (rs < 1.2) {
         svg += `<g class="${cls(o.id, 'pl-open')}" data-id="${o.id}"><path d="M ${p0[0]} ${-p0[1]} Q ${c[0] - n[0] * 6} ${-(c[1] - n[1] * 6)} ${p1[0]} ${-p1[1]}"/><line class="pl-hit" x1="${p0[0]}" y1="${-p0[1]}" x2="${p1[0]}" y2="${-p1[1]}"/></g>`;
       } else {
         svg += `<g class="${cls(o.id, 'pl-open pl-high')}" data-id="${o.id}"><line x1="${p0[0] + n[0]}" y1="${-(p0[1] + n[1])}" x2="${p1[0] + n[0]}" y2="${-(p1[1] + n[1])}"/><line x1="${p0[0] - n[0]}" y1="${-(p0[1] - n[1])}" x2="${p1[0] - n[0]}" y2="${-(p1[1] - n[1])}"/><line class="pl-hit" x1="${p0[0]}" y1="${-p0[1]}" x2="${p1[0]}" y2="${-p1[1]}"/></g>`;
@@ -375,6 +393,7 @@ export function renderPlan(m, opts) {
     svg += `<polygon class="${cls(o.id, m.imports.includes(o) ? 'pl-obj pl-import' : 'pl-obj')}" data-id="${o.id}" points="${q.map((p) => p.join(',')).join(' ')}"/>`;
     centroids[o.id] = [o.x, -o.y];
   }
+  svg += labels;
   return { svg, centroids };
 }
 
@@ -387,22 +406,23 @@ export function renderUnroll(m, wallIds, opts) {
     const w = wallById(m, id); if (!w) continue;
     const L = wallLen(w);
     const sel = (x) => (opts.sel && opts.sel.has(x) ? ' is-sel' : '') + (opts.hover === x ? ' is-hover' : '') + (opts.marked && opts.marked.has(x) ? ' is-mark' : '');
-    svg += `<rect class="un-wall${sel(w.id)}" data-id="${w.id}" x="${u}" y="${-w.top}" width="${L}" height="${w.top - w.base}"/>`;
+    const B = w.base, T = w.top - B;
+    svg += `<rect class="un-wall${sel(w.id)}" data-id="${w.id}" x="${u}" y="${-T}" width="${L}" height="${T}"/>`;
     let grid = '';
-    for (let x = 1; x < L; x++) grid += `<line x1="${u + x}" y1="${-w.top}" x2="${u + x}" y2="${-w.base}"/>`;
-    for (let z = 1; z < w.top; z++) grid += `<line x1="${u}" y1="${-z}" x2="${u + L}" y2="${-z}"/>`;
+    for (let x = 1; x < L; x++) grid += `<line x1="${u + x}" y1="${-T}" x2="${u + x}" y2="0"/>`;
+    for (let z = 1; z < T; z++) grid += `<line x1="${u}" y1="${-z}" x2="${u + L}" y2="${-z}"/>`;
     svg += `<g class="un-grid">${grid}</g>`;
     for (const o of m.openings.filter((o) => o.host === id)) {
-      const pts = openingOutline({ a: [0, 0], b: [L, 0] }, o).map((p) => `${u + p[0]},${-p[2]}`).join(' ');
+      const pts = openingOutline({ a: [0, 0], b: [L, 0] }, o).map((p) => `${u + p[0]},${-(p[2] - B)}`).join(' ');
       svg += `<polygon class="un-open${sel(o.id)}" data-id="${o.id}" points="${pts}"/>`;
-      centroids[o.id] = [u + o.at, -(o.sill + o.h / 2)];
+      centroids[o.id] = [u + o.at, -(o.sill - B + o.h / 2)];
     }
     for (const a of m.artworks.filter((a) => a.host === id)) {
-      svg += `<rect class="un-art${sel(a.id)}" data-id="${a.id}" x="${u + a.at - a.w / 2}" y="${-(a.c + a.h / 2)}" width="${a.w}" height="${a.h}"/>`;
-      centroids[a.id] = [u + a.at, -a.c];
+      svg += `<rect class="un-art${sel(a.id)}" data-id="${a.id}" x="${u + a.at - a.w / 2}" y="${-(a.c - B + a.h / 2)}" width="${a.w}" height="${a.h}"/>`;
+      centroids[a.id] = [u + a.at, -(a.c - B)];
     }
     svg += `<text class="un-label" x="${u + L / 2}" y="0.7">${w.name} · ${L.toFixed(2)} m</text>`;
-    centroids[w.id] = [u + L / 2, -w.top / 2];
+    centroids[w.id] = [u + L / 2, -T / 2];
     u += L + gap;
   }
   svg = `<line class="un-datum" x1="-0.5" y1="0" x2="${u}" y2="0"/>` + svg;
@@ -411,6 +431,15 @@ export function renderUnroll(m, wallIds, opts) {
 
 // ---------- extents / view boxes ----------
 export const WORLD_BOX = [-1.5, -2, 19.5, 9.5, 0, 6.6];
+/** Axis box around everything authored, padded: [x0, y0, x1, y1, z0, z1]. */
+export function modelBox(m) {
+  const xs = [], ys = [], zs = [0];
+  for (const w of m.walls) { xs.push(w.a[0], w.b[0]); ys.push(w.a[1], w.b[1]); zs.push(w.top); }
+  for (const r of m.roofs) { if (r.poly) r.poly.forEach((p) => { xs.push(p[0]); ys.push(p[1]); }); else { xs.push(r.x0, r.x1); ys.push(r.y0, r.y1); zs.push(roofTop(r)); } }
+  for (const o of [...m.objects, ...m.imports]) { xs.push(o.x); ys.push(o.y); }
+  if (!xs.length) return WORLD_BOX;
+  return [Math.min(...xs) - 1.5, Math.min(...ys) - 2, Math.max(...xs) + 1.5, Math.max(...ys) + 1.5, 0, Math.max(...zs)];
+}
 export function boundsOf(cam, box = WORLD_BOX) {
   const [x0, y0, x1, y1, z0, z1] = box; let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
   for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) { const [u, v] = cam.P([x, y, z]); u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); }

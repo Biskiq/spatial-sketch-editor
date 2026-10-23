@@ -73,6 +73,13 @@ export const ICONS = {
   person: '<circle cx="12" cy="6" r="3"/><path d="M6.5 21 V15 A5.5 5.5 0 0 1 17.5 15 V21"/>',
   north: '<circle cx="12" cy="12" r="9"/><path d="M12 6.5 L14.5 12.5 H9.5 Z"/>',
   cut: '<circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8 8.5 L19 19 M8 15.5 L19 5"/>',
+  pin: '<path d="M9 3 H15 L14 9 L17.5 12.5 H6.5 L10 9 Z"/><path d="M12 12.5 V21"/>',
+  swap: '<path d="M4 8 H18 M14 4 L18 8 L14 12"/><path d="M20 16 H6 M10 12 L6 16 L10 20"/>',
+  filter: '<path d="M3.5 5 H20.5 L14 12.5 V19 L10 21 V12.5 Z"/>',
+  dropper: '<path d="M14.5 4.5 A2.6 2.6 0 0 1 19.5 9.5 L17 12 L12 7 Z"/><path d="M13 8 L5 16 V19 H8 L16 11"/>',
+  chevronLeft: '<path d="M15 6 L9 12 L15 18"/>',
+  expand: '<path d="M14 4 H20 V10 M10 20 H4 V14 M20 4 L13 11 M4 20 L11 13"/>',
+  minimize: '<path d="M20 4 L14 10 M14 5 V10 H19 M4 20 L10 14 M10 19 V14 H5"/>',
   travel: '<path d="M7 12 H21 M17 8 L21 12 L17 16"/><path d="M3 9 H6 M3 15 H6"/>',
 };
 export function icon(name, size = 18) {

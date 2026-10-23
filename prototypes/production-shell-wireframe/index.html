@@ -8,10 +8,11 @@
 </head>
 <body>
   <div class="wfbar" role="navigation" aria-label="Wireframe controls (not product UI)">
-    <b>WIREFRAME</b><span>production shell · exploration, not a contract</span>
+    <b>WIREFRAME</b><span>production shell · round 1.1 · exploration, not a contract</span>
     <span class="sp"></span>
-    <button data-wfbar="journeys">Journeys ▾</button>
-    <button data-wfbar="compare">Compare ▾</button>
+    <button data-wfbar="tours">Tours ▾</button>
+    <button data-wfbar="compare" id="wfbar-compare">Compare ▾</button>
+    <button data-wfbar="scenario">Project ▾</button>
     <button data-wfbar="width">Width ▾</button>
     <button data-wfbar="about">About ▾</button>
     <div id="wfmenu" class="wfmenu" style="display:none"></div>
@@ -20,6 +21,7 @@
     <div class="frame" id="frame">
       <div class="app" id="app">
         <header class="head" id="head"></header>
+        <div id="findlist"></div>
         <div class="body">
           <aside class="index" id="index" aria-label="Index"></aside>
           <main class="stage" id="stage" aria-label="Stage">
@@ -28,8 +30,7 @@
             <div id="furn"></div>
             <div id="rail"></div>
             <div id="card"></div>
-            <div id="side"></div>
-            <div id="lower"></div>
+                        <div id="lower"></div>
             <div id="float"></div>
           </main>
           <div id="isheet"></div>
@@ -38,7 +39,7 @@
       <div id="previewhost"></div>
     </div>
   </div>
-  <div id="coach"></div>
+  <div id="tourlayer"></div>
   <script type="module" src="app.js"></script>
 </body>
 </html>
